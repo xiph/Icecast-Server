@@ -21,20 +21,25 @@
 
 #define CATMODULE "yp" 
 
+static int    yp_url_timeout [MAX_YP_DIRECTORIES];
+
+void yp_recheck_config (ice_config_t *config)
+{
+    memcpy (&config->yp_url_timeout[0], yp_url_timeout, (sizeof yp_url_timeout));
+}
+
 void yp_initialize()
 {
+    ice_config_t *config = config_get_config();
+    yp_recheck_config (config);
+    config_release_config ();
     thread_create("YP Touch Thread", yp_touch_thread,
                             (void *)NULL, THREAD_DETACHED);
 }
 static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, 
-    int i)
+    int timeout)
 {
     int ret = 0;
-    int timeout;
-    ice_config_t *config = config_get_config();
-
-    timeout = config->yp_url_timeout[i];
-    config_release_config();
     /* If not specified, use a reasonable timeout
     of 30 seconds */
     if (timeout == 0) {
@@ -74,7 +79,6 @@ static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type,
 void *yp_touch_thread(void *arg)
 {
     yp_touch();
-    thread_exit(0);
     return NULL;
 }
 
@@ -114,7 +118,7 @@ int yp_remove(source_t *source)
             else {
                 /* specify URL to get */
                 ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                        url, "yp_remove", i);
+                        url, "yp_remove", yp_url_timeout[i]);
             }
             if (url) {
                 free(url);
@@ -197,6 +201,7 @@ int yp_touch()
                 if (source->ypdata[i]->sid != 0) {
                     if (strlen(source->ypdata[i]->sid) != 0) {
                         if (source->ypdata) {
+                            struct tm tm;
                             url_size = 
                                 strlen("action=touch&sid=&st=&listeners=") + 1;
                             if (source->ypdata[i]->current_song) {
@@ -231,7 +236,7 @@ int yp_touch()
                                 /* specify URL to get */
                                 ret = yp_submit_url(curl_con, 
                                     source->ypdata[i]->yp_url, 
-                                    url, "yp_touch", i);
+                                    url, "yp_touch", yp_url_timeout[i]);
                                 if (!ret) {
                                     source->ypdata[i]->sid[0] = 0;
                                 }
@@ -241,8 +246,8 @@ int yp_touch()
                             } 
                             curl_release_connection(curl_con);
                             memset(tyme, '\000', sizeof(tyme));
-                            strftime(tyme, 128, "%Y-%m-%d  %H:%M:%S", 
-                                localtime(&current_time));
+                            localtime_r (&current_time, &tm);
+                            strftime(tyme, 128, "%Y-%m-%d  %H:%M:%S", &tm); 
                             stats_event(source->mount, "yp_last_touch", tyme);
                             source->ypdata[i]->yp_last_touch = current_time;
                         }
@@ -378,7 +383,7 @@ int yp_add(source_t *source, int which)
                else {
                    /* specify URL to get */
                    ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                           url, "yp_add", i);
+                           url, "yp_add", yp_url_timeout[i]);
 
                    if (ret) {
                        if (strlen(curl_get_header_result(curl_con)->sid) > 0) {

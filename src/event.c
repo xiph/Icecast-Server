@@ -4,6 +4,7 @@
 
 #include "event.h"
 #include "cfgfile.h"
+#include "yp.h"
 
 #include "refbuf.h"
 #include "client.h"
@@ -44,6 +45,7 @@ void event_config_read(void *arg)
         config_clear(config);
         config_set_config(&new_config);
         restart_logging ();
+        yp_recheck_config (config);
 
         config_release_config();
     }

@@ -43,6 +43,11 @@ ypdata_t *yp_create_ypdata();
 void yp_destroy_ypdata(ypdata_t *ypdata);
 void add_yp_info(struct source_tag *source, char *stat_name, void *info, 
      int type);
+#ifdef USE_YP
+void yp_recheck_config (ice_config_t *config);
+#else
+#define yp_recheck_config(x)  do{}while(0)
+#endif
 void yp_initialize();
 
 #endif
