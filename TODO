@@ -1,3 +1,14 @@
+2.0 CRITICAL - These are the things without which 2.0 cannot be released
+____________
+
+- make install doesn't install everything. Needs to set up config file to point
+  at appropriate places, install web directory somewhere, put config file
+  somewhere. Should icecast automatically (i.e. without needing -c) look for
+  the config file in /etc/icecast.xml or something?
+
+- libshout 2.0 and ices 2.0 releases, also an ices 0.x release that works with
+  this. Without source clients, icecast isn't much use...
+
 BUGS
 ----
 - stats get off?  this needs testing more testing.
@@ -45,8 +56,6 @@ FEATURES
   (already getting unmaintainable)
 
 - httpp - split out query string for further processing
-
-- binding to multiple ports
 
 - option to use ipv6 (equiv to using <bind-address>::</bindaddress>, I think.
 
