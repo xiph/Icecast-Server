@@ -51,10 +51,10 @@
 
     <mount>
         <mount-name>/example1.ogg</mount-name>
+
         <username>othersource</username>
         <password>hackmemore</password>
 
-        <!-- These next three aren't yet implemented -->
         <max-listeners>1</max-listeners>
         <dump-file>/tmp/dump-example1.ogg</dump-file>
         <fallback-mount>/example2.ogg</fallback-mount>
@@ -64,6 +64,9 @@
 
 	<paths>
 		<basedir>/usr/local/icecast</basedir>
+
+        <!-- Note that if <chroot> is turned on below, these paths must both
+             be relative to the new root, not the original root -->
 		<logdir>/usr/local/icecast/logs</logdir>
 		<webroot>/usr/local/icecast/web</webroot>
 	</paths>
