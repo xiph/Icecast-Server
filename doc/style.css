@@ -1,0 +1,40 @@
+.ahem { display: none }
+
+body { font-size:10px; font-family:Verdana,sans-serif bg-color:#efefef link:#0000ff text:#323232 vlink:#800080 alink:#ff0000 }
+code,pre { font-size:11px; font-family:"Courier New",monospace;background:#cc9; padding:0 0.5em }
+pre { padding:0.5em }
+blockquote { margin:0.5em }
+blockquote p { margin:0 }
+
+.width300 { width:300px; background:red }
+.width400 { width:400px; background:blue }
+
+p.ruletest { color:red }
+
+div.boxtest { 
+ border:10px solid; 
+ padding:30px; 
+ background: #ffc; 
+ width:600px;
+}
+
+div.content { 
+ border:20px solid; 
+ padding:30px;
+ background: #ffc;
+}
+
+div.content { 
+ width:400px; 
+ voice-family: "\"}\""; 
+ voice-family:inherit;
+ width:300px;
+} 
+  /* CSS1 UAs should see and use 2nd width */
+
+html>body .content { width:300px } 
+
+p.ruletest { color: blue }
+
+
+

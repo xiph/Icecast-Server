@@ -1,0 +1,19 @@
+[OPTIONS]
+Auto Index=Yes
+Compatibility=1.1 or later
+Compiled file=icecast2.chm
+Contents file=icecast2.hhc
+Default Font=,8,0
+Default topic=index_win32.html
+Display compile progress=No
+Full-text search=Yes
+Index file=Index.hhk
+Language=0x409 English (United States)
+Title=Icecast 2
+
+
+[FILES]
+index_win32.html
+
+[INFOTYPES]
+
