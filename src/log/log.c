@@ -69,27 +69,43 @@ void log_initialize()
 	_initialized = 1;
 }
 
-int log_open(const char *filename)
+int log_open_file(FILE *file)
 {
-	int log_id;
+    int log_id;
 
-	if (filename == NULL) return LOG_EINSANE;
-	if (strcmp(filename, "") == 0) return LOG_EINSANE;
+    if(file == NULL) return LOG_EINSANE;
 
 	log_id = _get_log_id();
 	if (log_id < 0) return LOG_ENOMORELOGS;
 
-	loglist[log_id].logfile = fopen(filename, "a");
+	loglist[log_id].logfile = file;
 	if (loglist[log_id].logfile != NULL) {
-		loglist[log_id].filename = (char *)strdup(filename);
+		loglist[log_id].filename = NULL;
 	} else {
 		_release_log_id(log_id);
 		return LOG_ECANTOPEN;
 	}
 
-	setvbuf(loglist[log_id].logfile, NULL, _IOLBF, 0);
-
 	return log_id;
+}
+
+
+int log_open(const char *filename)
+{
+	int ret;
+    FILE *file;
+
+	if (filename == NULL) return LOG_EINSANE;
+	if (strcmp(filename, "") == 0) return LOG_EINSANE;
+    
+    file = fopen(filename, "a");
+
+    ret = log_open_file(file);
+
+	if(ret >= 0)
+        setvbuf(file, NULL, _IOLBF, 0);
+
+    return ret;
 }
 
 int log_open_with_buffer(const char *filename, int size)

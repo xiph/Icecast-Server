@@ -1,6 +1,8 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
+#include <stdio.h>
+
 #define LOG_EINSANE -1
 #define LOG_ENOMORELOGS -2
 #define LOG_ECANTOPEN -3
@@ -9,6 +11,7 @@
 
 
 void log_initialize();
+int log_open_file(FILE *file);
 int log_open(const char *filename);
 int log_open_with_buffer(const char *filename, int size);
 void log_set_level(int log_id, int level);
