@@ -682,14 +682,6 @@ static void source_init (source_t *source)
         str = httpp_getvar(source->parser, "icy-name");
     stats_event (source->mount, "server_name", str);
 
-    source->audio_info = util_dict_new();
-    str = httpp_getvar(source->parser, "ice-audio-info");
-    if (str)
-    {
-        _parse_audio_info (source, str);
-        stats_event (source->mount, "audio_info", str);
-    }
-
     if (source->dumpfilename != NULL)
     {
         source->dumpfile = fopen (source->dumpfilename, "ab");
@@ -714,6 +706,15 @@ static void source_init (source_t *source)
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
     source->running = 1;
+
+    source->audio_info = util_dict_new();
+    str = httpp_getvar(source->parser, "ice-audio-info");
+    if (str)
+    {
+        _parse_audio_info (source, str);
+        stats_event (source->mount, "audio_info", str);
+    }
+
     thread_mutex_unlock (&source->lock);
 
     if (source->on_connect)
@@ -1039,6 +1040,8 @@ void source_main(source_t *source)
 
 static void source_shutdown (source_t *source)
 {
+    char *str;
+
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
@@ -1071,6 +1074,13 @@ static void source_shutdown (source_t *source)
     /* delete this sources stats */
     stats_event_dec (NULL, "sources");
 
+    str = httpp_getvar(source->parser, "ice-audio-info");
+    if (str)
+    {
+        _parse_audio_info (source, str);
+        stats_event (source->mount, "audio_info", NULL);
+    }
+
     /* we don't remove the source from the tree here, it may be a relay and
        therefore reserved */
     source_clear_source (source);
@@ -1083,7 +1093,7 @@ static void source_shutdown (source_t *source)
     stats_event (source->mount, "type", NULL);
     stats_event (source->mount, "artist", NULL);
     stats_event (source->mount, "title", NULL);
-    stats_event (source->mount, "audio_info", NULL);
+    stats_event (source->mount, "ice-bitrate", NULL);
 
     thread_mutex_unlock (&source->lock);
     source_recheck_mounts ();
@@ -1156,8 +1166,13 @@ static void _parse_audio_info (source_t *source, const char *s)
             esc = util_url_unescape (value);
             if (esc)
             {
-                util_dict_set (source->audio_info, name, esc);
-                stats_event (source->mount, name, value);
+                if (source->running)
+                {
+                    util_dict_set (source->audio_info, name, esc);
+                    stats_event (source->mount, name, value);
+                }
+                else
+                    stats_event (source->mount, name, NULL);
                 free (esc);
             }
         }
