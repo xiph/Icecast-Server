@@ -637,9 +637,11 @@ static void get_next_buffer (source_t *source)
             {
                 if (source->burst_point->next)
                 {
-                    refbuf_release (source->burst_point);
+                    refbuf_t *to_go = source->burst_point;
+
                     source->burst_offset -= source->burst_point->len;
                     source->burst_point = source->burst_point->next;
+                    refbuf_release (to_go);
                 }
             }
 
@@ -1154,7 +1156,7 @@ static void _parse_audio_info (source_t *source, const char *s)
                 if (source->running)
                 {
                     util_dict_set (source->audio_info, name, esc);
-                    stats_event (source->mount, name, value);
+                    stats_event (source->mount, name, esc);
                 }
                 free (esc);
             }
