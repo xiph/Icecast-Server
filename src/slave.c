@@ -61,6 +61,7 @@
 
 static void *_slave_thread(void *arg);
 static void _add_slave_host (const char *server, int port);
+static slave_host *find_slave_host (const char *server, int port);
 
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
@@ -99,6 +100,8 @@ relay_server *relay_copy (relay_server *r)
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
+        copy->source = r->source;
+        r->source = NULL;
     }
     return copy;
 }
@@ -364,8 +367,8 @@ static void check_relay_stream (relay_server *relay)
                 DEBUG0 ("setting on_demand");
             }
             /* on-demand relays can be used as fallback mounts so allow
-             * for dependant mountpoints to show up on xsl pages*/
-            source_recheck_mounts ();
+             * for dependant mountpoints to show up on xsl pages */
+            update_settings = 1;
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
@@ -399,7 +402,7 @@ static void check_relay_stream (relay_server *relay)
         return;
 
     } while (0);
-    /* the relay thread may of close down */
+    /* the relay thread may of shut down itself */
     if (relay->cleanup && relay->thread)
     {
         ice_config_t *config;
@@ -410,12 +413,35 @@ static void check_relay_stream (relay_server *relay)
         relay->running = 0;
         relay->source->on_demand = relay->on_demand;
 
-        config = config_get_config ();
-        source_update_settings (config, relay->source);
-        config_release_config ();
-        stats_event (relay->localmount, "listeners", "0");
-        source_recheck_mounts ();
+        if (relay->on_demand)
+        {
+            config = config_get_config ();
+            source_update_settings (config, relay->source);
+            config_release_config ();
+            stats_event (relay->localmount, "listeners", "0");
+        }
+        update_settings = 1;
     }
+}
+
+/* return 1 if the relay needs to be restarted */
+static int relay_has_changed (relay_server *new, relay_server *old)
+{
+    do
+    {
+        if (strcmp (new->mount, old->mount) != 0)
+            break;
+        if (strcmp (new->server, old->server) != 0)
+            break;
+        if (new->mp3metadata != old->mp3metadata)
+            break;
+        if (new->port != old->port)
+            break;
+        if (new->on_demand != old->on_demand)
+            old->on_demand = new->on_demand;
+        return 0;
+    } while (0);
+    return 1;
 }
 
 
@@ -432,29 +458,30 @@ update_relay_set (relay_server **current, relay_server *updated)
 
     while (relay)
     {
-         existing_relay = *current;
-         existing_p = current;
+        existing_relay = *current;
+        existing_p = current;
 
-         while (existing_relay)
-         {
-             /* break out if keeping relay */
-             if (strcmp (relay->localmount, existing_relay->localmount) == 0)
-                 break;
-             existing_p = &existing_relay->next;
-             existing_relay = existing_relay->next;
-         }
-         if (existing_relay == NULL)
-         {
-             /* new one, copy and insert */
-             existing_relay = relay_copy (relay);
-         }
-         else
-         {
-             *existing_p = existing_relay->next;
-         }
-         existing_relay->next = new_list;
-         new_list = existing_relay;
-         relay = relay->next;
+        while (existing_relay)
+        {
+            /* break out if keeping relay */
+            if (strcmp (relay->localmount, existing_relay->localmount) == 0)
+                if (relay_has_changed (relay, existing_relay) == 0)
+                    break;
+            existing_p = &existing_relay->next;
+            existing_relay = existing_relay->next;
+        }
+        if (existing_relay == NULL)
+        {
+            /* new one, copy and insert */
+            existing_relay = relay_copy (relay);
+        }
+        else
+        {
+            *existing_p = existing_relay->next;
+        }
+        existing_relay->next = new_list;
+        new_list = existing_relay;
+        relay = relay->next;
     }
     return new_list;
 }
@@ -487,13 +514,14 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
     {
         if (to_free->running && to_free->source)
         {
+            /* relay has been removed from xml, shut down active relay */
             DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
             to_free->source->running = 0;
             thread_join (to_free->thread);
+            update_settings = 1;
         }
-        /* relay is going, drop its stats */
-        stats_event (to_free->localmount, NULL, NULL);
-        update_settings = 1;
+        else
+            stats_event (to_free->localmount, NULL, NULL);
         to_free = relay_free (to_free);
     }
 
@@ -619,24 +647,15 @@ static int update_from_master(ice_config_t *config)
 
 static void update_master_as_slave (ice_config_t *config)
 {
-    char *str;
-    slave_host *slave;
-
     if (config->master_server == NULL || config->master_redirect_port == 0)
         return;
-    str = strdup (config->master_server);
-    slave = calloc (1, sizeof(slave_host));
-    if (slave && str)
-    {
-        slave->server = str;
-        slave->port = config->master_server_port;
-        thread_rwlock_wlock (&slaves_lock);
+
+    thread_rwlock_wlock (&slaves_lock);
+    DEBUG1 ("redirect port is %d", config->master_redirect_port);
+    if (find_slave_host (config->master_server,
+                config->master_server_port) == NULL)
         _add_slave_host (config->master_server, config->master_server_port);
-        thread_rwlock_unlock (&slaves_lock);
-        return;
-    }
-    free (str);
-    free (slave);
+    thread_rwlock_unlock (&slaves_lock);
 }
 
 
@@ -771,21 +790,28 @@ void slave_host_add (client_t *client, const char *header)
     *separator = '\0';
     port = atoi (separator+1);
     thread_rwlock_wlock (&slaves_lock);
-    slave = global.slaves;
+    slave = find_slave_host (server, port);
+    if (slave)
+    {
+        slave->count++;
+        DEBUG0 ("already exists, increasing count");
+    }
+    else
+        _add_slave_host (server, port);
+    thread_rwlock_unlock (&slaves_lock);
+    free (server);
+}
+
+static slave_host *find_slave_host (const char *server, int port)
+{
+    slave_host *slave = global.slaves;
     while (slave)
     {
         if (strcmp (slave->server, server) == 0 && slave->port == port)
-        {
-            slave->count++;
-            DEBUG0 ("already exists, increasing count");
             break;
-        }
         slave = slave->next;
     }
-    if (slave == NULL)
-        _add_slave_host (server, port);
-    free (server);
-    thread_rwlock_unlock (&slaves_lock);
+    return slave;
 }
 
 static void _add_slave_host (const char *server, int port)
