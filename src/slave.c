@@ -475,6 +475,8 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
             to_free->source->running = 0;
             thread_join (to_free->thread);
         }
+        /* relay is going, drop its stats */
+        stats_event (to_free->localmount, NULL, NULL);
         to_free = relay_free (to_free);
     }
 
@@ -670,6 +672,7 @@ static void *_slave_thread(void *arg)
             thread_mutex_unlock (&(config_locks()->relay_lock));
         }
         rescan_relays = 0;
+        source_recheck_mounts();
     }
     DEBUG0 ("shutting down current relays");
     relay_check_streams (NULL, global.relays);

@@ -533,6 +533,8 @@ static void *_stats_thread(void *arg)
     stats_event_t *copy;
     event_listener_t *listener;
 
+    stats_event (NULL, "server", ICECAST_VERSION_STRING);
+
     /* global currently active stats */
     stats_event (NULL, "clients", "0");
     stats_event (NULL, "connections", "0");

@@ -282,7 +282,6 @@ void source_free_source (source_t *source)
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
 
-    stats_event (source->mount, NULL, NULL);
     free(source->fallback_mount);
     source->fallback_mount = NULL;
 
@@ -329,6 +328,7 @@ client_t *source_find_client(source_t *source, int id)
  */
 void source_move_clients (source_t *source, source_t *dest)
 {
+    unsigned int count = 0;
     /* we don't want the two write locks to deadlock in here */
     thread_mutex_lock (&move_clients_mutex);
     thread_mutex_lock (&dest->lock);
@@ -344,7 +344,6 @@ void source_move_clients (source_t *source, source_t *dest)
 
     do
     {
-        long count = 0;
         thread_mutex_lock (&source->lock);
 
         if (source->on_demand == 0 && source->format == NULL)
@@ -387,10 +386,10 @@ void source_move_clients (source_t *source, source_t *dest)
         if (count != source->new_listeners)
             WARN2 ("count %u, new listeners %u", count, source->new_listeners);
         
-        INFO2 ("passing %d listeners to \"%s\"",
-                source->listeners + source->new_listeners, dest->mount);
+        count = source->listeners + source->new_listeners;
+        INFO2 ("passing %d listeners to \"%s\"", count, dest->mount);
 
-        dest->new_listeners += source->listeners + source->new_listeners;
+        dest->new_listeners += count;
         dest->check_pending = 1;
         source->listeners = 0;
         source->new_listeners = 0;
@@ -400,7 +399,7 @@ void source_move_clients (source_t *source, source_t *dest)
 
     thread_mutex_unlock (&source->lock);
     /* see if we need to wake up an on-demand relay */
-    if (dest->running == 0 && dest->on_demand)
+    if (dest->running == 0 && dest->on_demand && count)
     {
         dest->on_demand_req = 1;
         slave_rescan();
@@ -1320,6 +1319,7 @@ void *source_client_thread (void *arg)
         global.sources--;
         global_unlock();
         WARN0 ("Error writing 200 OK message to source client");
+        source_free_source (source);
     }
     else
     {
@@ -1328,9 +1328,9 @@ void *source_client_thread (void *arg)
         stats_event_inc(NULL, "source_client_connections");
         stats_event (source->mount, "listeners", "0");
         source_main (source);
+        source_free_source (source);
         source_recheck_mounts();
     }
-    source_free_source (source);
     return NULL;
 }
 
