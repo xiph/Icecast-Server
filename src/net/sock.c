@@ -92,7 +92,7 @@ char *sock_get_localip(char *buff, int len)
 {
     char temp[1024];
 
-    if (gethostname(temp, 1024) != 0)
+    if (gethostname(temp, sizeof(temp)) != 0)
         return NULL;
 
     if (resolver_getip(temp, buff, len))
@@ -588,7 +588,7 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 */
 sock_t sock_get_server_socket(const int port, char *sinterface)
 {
-#ifdef HAVE_IPV6
+#ifdef HAVE_INET_PTON
     struct sockaddr_storage sa;
 #else    
     struct sockaddr_in sa;
@@ -610,7 +610,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
         if (!resolver_getip(sinterface, ip, sizeof (ip)))
             return SOCK_ERROR;
 
-#ifdef HAVE_IPV6
+#ifdef HAVE_INET_PTON
         if (inet_pton(AF_INET, ip, &((struct sockaddr_in*)&sa)->sin_addr) > 0) {
             ((struct sockaddr_in*)&sa)->sin_family = AF_INET;
             ((struct sockaddr_in*)&sa)->sin_port = htons(port);
@@ -667,7 +667,7 @@ int sock_listen(sock_t serversock, int backlog)
 
 int sock_accept(sock_t serversock, char *ip, int len)
 {
-#ifdef HAVE_IPV6
+#ifdef HAVE_INET_PTON
     struct sockaddr_storage sa;
 #else    
     struct sockaddr_in sa;
@@ -682,7 +682,7 @@ int sock_accept(sock_t serversock, char *ip, int len)
     ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
     if (ret >= 0 && ip != NULL) {
-#ifdef HAVE_IPV6
+#ifdef HAVE_INET_PTON
         if(((struct sockaddr_in *)&sa)->sin_family == AF_INET) 
             inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr,
                     ip, len);

@@ -107,8 +107,3 @@ int inet_aton(const char *s, struct in_addr *a);
 #endif
 
 #endif  /* __SOCK_H */
-
-
-
-
-
