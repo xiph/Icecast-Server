@@ -1,0 +1,18 @@
+BUGS
+----
+- stats get off?
+
+
+
+FEATURES
+--------
+- pull out vorbis comments.  and send to stats.
+
+- directory server GUID checks
+	directory server does GET /GUID-asldjfasldfjalsdkfjasldkfj HTTP/1.0
+	and either gets a 404 if it's wrong, or a 200 if it's correct.
+
+- adding new stats type, event.  events don't modify the global stats tree,
+	ie, source /1234.ogg disconnected
+
+- stats.xml, a users requests this, and gets an xml dump of the current stats.

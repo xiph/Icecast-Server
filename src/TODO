@@ -1,0 +1,1 @@
+need a shutdown function in case anything else in the code needs to have icecast gracefully shutdown.
