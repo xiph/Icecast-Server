@@ -320,8 +320,8 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 			source = source_create(client, con, parser, mount, format);
 		}
 	} else {
-		ERROR0("No content-type header, falling back to backwards compatiblity mode for icecast 1.x relays. Assuming content is mp3.");
         format_type_t format = FORMAT_TYPE_MP3;
+		ERROR0("No content-type header, falling back to backwards compatiblity mode for icecast 1.x relays. Assuming content is mp3.");
         source = source_create(client, con, parser, mount, format);
 	}
     client->respcode = 200;
