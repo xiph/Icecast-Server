@@ -444,6 +444,7 @@ static void *_stats_thread(void *arg)
             _free_event(event);
 
             thread_mutex_unlock(&_stats_mutex);
+            continue;
         } else {
             thread_mutex_unlock(&_global_event_mutex);
         }
