@@ -427,14 +427,14 @@ int fserve_client_create(client_t *httpclient, char *path)
                 bytes = sock_write(httpclient->con->sock,
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
-                    "Content-Length: %ld\r\n"
+                    "Content-Length: " FORMAT_INT64 "\r\n"
                     "Content-Range: bytes " FORMAT_INT64 \
                     "-" FORMAT_INT64 "/" FORMAT_INT64 "\r\n"
                     "Content-Type: %s\r\n\r\n",
                     currenttime,
                     new_content_len,
                     rangenumber,
-                    rangenumber+new_content_len,
+                    endpos,
                     client->content_length,
                     fserve_content_type(path));
             }
@@ -445,8 +445,10 @@ int fserve_client_create(client_t *httpclient, char *path)
             httpclient->respcode = 200;
             bytes = sock_write (httpclient->con->sock,
                     "HTTP/1.0 200 OK\r\n"
-                "Content-Type: %s\r\n\r\n",
-                fserve_content_type(path));
+                    "Content-Length: " FORMAT_INT64 "\r\n"
+                    "Content-Type: %s\r\n\r\n",
+                    client->content_length,
+                    fserve_content_type(path));
         }
         if(bytes > 0) httpclient->con->sent_bytes = bytes;
 

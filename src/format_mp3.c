@@ -82,7 +82,7 @@ int format_mp3_get_plugin (source_t *source)
 
     plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
-    plugin->type = FORMAT_TYPE_MP3;
+    plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
     plugin->write_buf_to_file = write_mp3_to_file;
@@ -90,8 +90,13 @@ int format_mp3_get_plugin (source_t *source)
     plugin->free_plugin = format_mp3_free_plugin;
     plugin->set_tag = mp3_set_tag;
     plugin->prerelease = NULL;
-    plugin->format_description = "MP3 audio";
     plugin->apply_settings = format_mp3_apply_settings;
+
+    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+    if (plugin->contenttype == NULL) {
+        /* We default to MP3 audio for old clients without content types */
+        plugin->contenttype = "audio/mpeg";
+    }
 
     plugin->_state = state;
 

@@ -121,13 +121,13 @@ int format_ogg_get_plugin (source_t *source)
     plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_OGG;
-    plugin->format_description = "Ogg Vorbis";
     plugin->get_buffer = vorbis_get_buffer;
     plugin->write_buf_to_client = vorbis_write_buf_to_client;
     plugin->write_buf_to_file = write_vorbis_to_file;
     plugin->create_client_data = create_vorbis_client_data;
     plugin->free_plugin = format_vorbis_free_plugin;
     plugin->set_tag = vorbis_set_tag;
+    plugin->contenttype = "application/ogg";
 
     state = (vstate_t *)calloc(1, sizeof(vstate_t));
     ogg_sync_init(&state->oy);

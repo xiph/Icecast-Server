@@ -58,75 +58,29 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
         return FORMAT_TYPE_OGG; /* Now blessed by IANA */
-    else if(strcmp(contenttype, "audio/mpeg") == 0)
-        return FORMAT_TYPE_MP3; 
-    else if(strcmp(contenttype, "audio/x-mpeg") == 0)
-        return FORMAT_TYPE_MP3; 
-    else if(strcmp(contenttype, "video/nsv") == 0)
-        return FORMAT_TYPE_NSV;
-    else if(strcmp(contenttype, "audio/aac") == 0)
-        return FORMAT_TYPE_AAC; 
-    else if(strcmp(contenttype, "audio/aacp") == 0)
-        return FORMAT_TYPE_AACPLUS; 
     else
-        return FORMAT_ERROR;
-}
-
-const char *format_get_mimetype(format_type_t type)
-{
-    switch(type) {
-        case FORMAT_TYPE_OGG:
-            return "application/ogg";
-            break;
-        case FORMAT_TYPE_MP3:
-            return "audio/mpeg";
-            break;
-        case FORMAT_TYPE_NSV:
-            return "video/nsv";
-            break;
-        case FORMAT_TYPE_AAC:
-            return "audio/aac";
-            break;
-        case FORMAT_TYPE_AACPLUS:
-            return "audio/aacp";
-            break;
-        default:
-            return NULL;
-    }
+        /* We default to the Generic format handler, which
+           can handle many more formats than just mp3 */
+        return FORMAT_TYPE_GENERIC;
 }
 
 int format_get_plugin(format_type_t type, source_t *source)
 {
     int ret = -1;
 
-    switch (type)
-    {
-        case FORMAT_TYPE_OGG:
-            ret = format_ogg_get_plugin (source);
-            break;
-        case FORMAT_TYPE_MP3:
-            ret = format_mp3_get_plugin (source);
-            break;
-        case FORMAT_TYPE_NSV:
-            ret = format_mp3_get_plugin (source);
-            source->format->format_description = "NSV Video";
-            source->format->type = FORMAT_TYPE_NSV;
-            break;
-        case FORMAT_TYPE_AAC:
-            ret = format_mp3_get_plugin (source);
-            source->format->format_description = "AAC Audio";
-            source->format->type = FORMAT_TYPE_AAC;
-            break;
-        case FORMAT_TYPE_AACPLUS:
-            ret = format_mp3_get_plugin (source);
-            source->format->format_description = "AACPlus Audio";
-            source->format->type = FORMAT_TYPE_AACPLUS;
-            break;
-        default:
-            break;
+    switch (type) {
+    case FORMAT_TYPE_OGG:
+        ret = format_ogg_get_plugin (source);
+        break;
+    case FORMAT_TYPE_GENERIC:
+        ret = format_mp3_get_plugin (source);
+        break;
+    default:
+        break;
     }
-    stats_event (source->mount, "content-type", 
-            format_get_mimetype(source->format->type));
+    if (ret < 0)
+        stats_event (source->mount, "content-type",
+                source->format->contenttype);
 
     return ret;
 }
@@ -274,7 +228,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     client->respcode = 200;
 
     bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-            "Content-Type: %s\r\n", format_get_mimetype (source->format->type));
+            "Content-Type: %s\r\n", source->format->contenttype);
 
     remaining -= bytes;
     ptr += bytes;

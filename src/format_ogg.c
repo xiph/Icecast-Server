@@ -551,7 +551,6 @@ int format_ogg_get_plugin (source_t *source)
     plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_OGG;
-    plugin->format_description = "Ogg Vorbis";
     plugin->get_buffer = ogg_get_buffer;
     plugin->write_buf_to_client = write_buf_to_client;
     plugin->write_buf_to_file = write_ogg_to_file;
@@ -559,6 +558,7 @@ int format_ogg_get_plugin (source_t *source)
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
     plugin->prerelease = refbuf_page_prerelease;
+    plugin->contenttype = "application/ogg";
 
     ogg_sync_init (&state->oy);
 

@@ -88,6 +88,7 @@ static void _stop_logging(void)
 {
     log_close(errorlog);
     log_close(accesslog);
+    log_close(playlistlog);
 }
 
 static void _initialize_subsystems(void)
@@ -203,7 +204,6 @@ static int _start_logging(void)
                 strerror(errno));
         _fatal_error(buf);
     }
-
     log_set_level(errorlog, config->loglevel);
 
     if(strcmp(config->access_log, "-")) {

@@ -20,8 +20,8 @@ typedef struct _fserve_t
     client_t *client;
 
     FILE *file;
-    int ready;
     int64_t content_length;
+    int ready;
     struct _fserve_t *next;
 } fserve_t;
 

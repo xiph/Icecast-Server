@@ -148,14 +148,14 @@ int admin_get_command(char *command)
         return COMMAND_TRANSFORMED_KILL_CLIENT;
     else if(!strcmp(command, KILLSOURCE_RAW_REQUEST))
         return COMMAND_RAW_KILL_SOURCE;
-    else if(!strcmp(command, MANAGEAUTH_RAW_REQUEST))
-        return COMMAND_RAW_MANAGEAUTH;
-    else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
-        return COMMAND_BUILDM3U;
-    else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MANAGEAUTH;
     else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_KILL_SOURCE;
+    else if(!strcmp(command, MANAGEAUTH_RAW_REQUEST))
+        return COMMAND_RAW_MANAGEAUTH;
+    else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_MANAGEAUTH;
+    else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
+        return COMMAND_BUILDM3U;
     else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
         return COMMAND_RAW_ADMIN_FUNCTION;
     else if(!strcmp(command, ADM_FUNCTION_TRANSFORMED_REQUEST))
@@ -236,8 +236,8 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
                 snprintf (buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
                 xmlNewChild (srcnode, NULL, "Connected", buf);
-                xmlNewChild (srcnode, NULL, "Format", 
-                        source->format->format_description);
+                xmlNewChild (srcnode, NULL, "content-type", 
+                        source->format->contenttype);
                 if (source->authenticator)
                 {
                     xmlNewChild(srcnode, NULL, "authenticator", 
@@ -321,9 +321,18 @@ void admin_handle_request(client_t *client, char *uri)
     }
 
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
-        ice_config_t *config = config_get_config ();
 
+        ice_config_t *config;
+        char *pass = httpp_get_query_param (client->parser, "pass");
+        if (pass == NULL)
+        {
+            client_send_400 (client, "missing pass parameter");
+            return;
+        }
+        config = config_get_config ();
         httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+        httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
+        httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
         config_release_config ();
     }
 
@@ -336,9 +345,18 @@ void admin_handle_request(client_t *client, char *uri)
             client->authenticated = 1;
         }
         /* This is a mount request, but admin user is allowed */
-        if (client->authenticated != 1) {
-            if (connection_check_admin_pass(client->parser))
-                client->authenticated = 1;
+        if (client->authenticated != 1)
+        {
+            if (connection_check_admin_pass(client->parser) == 0)
+            {
+                if (connection_check_source_pass(client->parser, mount) == 0)
+                {
+                    INFO1("Bad or missing password on mount modification admin "
+                            "request (command: %s)", command_string);
+                    client_send_401(client);
+                    return;
+                }
+            }
         }
         
         avl_tree_rlock(global.source_tree);
@@ -353,30 +371,25 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
+            if (source->running == 0 && source->on_demand == 0)
+            {
+                avl_tree_unlock (global.source_tree);
+                INFO2("Received admin command %s on unavailable mount \"%s\"",
+                        command_string, mount);
+                client_send_400 (client, "Source is not available");
+                return;
+            }
+            if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
+                    source->shoutcast_compat == 0)
+            {
+                avl_tree_unlock (global.source_tree);
+                ERROR0 ("illegal change of metadata on non-shoutcast "
+                        "compatible stream");
+                client_send_400 (client, "illegal metadata call");
+                return;
+            }
             INFO2("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
-            if (source->shoutcast_compat == 0)
-            {
-                if (source->running == 0 && source->on_demand == 0)
-                {
-                    INFO2("Received admin command %s on unavailable mount \"%s\"",
-                            command_string, mount);
-                    avl_tree_unlock (global.source_tree);
-                    client_send_400 (client, "Source is not available");
-                    return;
-                }
-                if (client->authenticated != 1)
-                {
-                    if (connection_check_source_pass(client->parser, mount) == 0)
-                    {
-                        INFO1("Bad or missing password on mount modification admin "
-                                "request (command: %s)", command_string);
-                        avl_tree_unlock(global.source_tree);
-                        client_send_401(client);
-                        return;
-                    }
-                }
-            }
             admin_handle_mount_request (client, source, command);
             avl_tree_unlock(global.source_tree);
         }
@@ -940,45 +953,17 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
     char *action;
     char *value;
-    char *source_pass;
-    char *config_source_pass;
-    ice_config_t *config;
 
     DEBUG0("Got shoutcast metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
-    COMMAND_REQUIRE(client, "pass", source_pass);
-
-    config = config_get_config();
-    config_source_pass = strdup(config->source_password);
-    config_release_config();
-
-    if ((source->format->type != FORMAT_TYPE_MP3) &&
-            (source->format->type != FORMAT_TYPE_NSV))
-    {
-        thread_mutex_unlock (&source->lock);
-        client_send_400 (client, "Not mp3 or NSV, cannot update metadata");
-        return;
-    }
 
     if (strcmp (action, "updinfo") != 0)
     {
         thread_mutex_unlock (&source->lock);
         client_send_400 (client, "No such action");
         return;
-    }
-
-    if (strcmp(source_pass, config_source_pass) != 0)
-    {
-        thread_mutex_unlock (&source->lock);
-        ERROR0("Invalid source password specified, metadata not updated");
-        client_send_400 (client, "Invalid source password");
-        return;
-    }
-
-    if (config_source_pass) {
-        free(config_source_pass);
     }
 
     if (source->format && source->format->set_tag)
