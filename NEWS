@@ -9,13 +9,27 @@ Speex, Writ.
 . Clients are started at theora key frame if theora is being streamed.
 . Added URL and command based listener authentication
 . server xml reload, and reopen logging available via admin url
-. slave startup re-organised so that relays are more independant
 . on xml reload, active sources are updated as well
 . When max-listeners reached, a HTTP 302 code can be sent to redirect
 clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
 . per-mount format-specific settings can be stated in mount
+. mp3 metadata interval can be stated/disabled per mount
+
+kh58
+. fix stability bug on vorbis rewrite module (--enable-vorbis-updates)
+. fixes to URL metadata handling. For vorbis streams they didn't update
+the stats/YP, for MP3 they were ignored if the source stream had no metadata
+. fixed small leak in slave host handling
+. resync with various trunk changes (aliasing cleanups, win32 timezone offset,
+log messages, docs, xsl files etc)
+. for auth_url ignore case for authentication header
+. updates to slave handling of stats when relays start/stop, mainly relating
+to on-demand relays
+. expand on the trigger for determining if a relay has changed, it was only
+on local mountpoint before.
+. if an on-demand relay shuts down, don't remove the YP info
 
 kh57
 . don't list hidden mounts on streamlist.txt
