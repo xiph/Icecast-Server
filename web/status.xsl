@@ -43,7 +43,7 @@
 <tr><td>Stream Genre:</td><td class="streamdata"> <xsl:value-of select="genre" /></td></tr>
 </xsl:if>
 <xsl:if test="server_url">
-<tr><td>Stream URL:</td><td class="streamdata"> <a href="{@server_url}"><xsl:value-of select="server_url" /></a></td></tr>
+<tr><td>Stream URL:</td><td class="streamdata"> <a href="{server_url}"><xsl:value-of select="server_url" /></a></td></tr>
 </xsl:if>
 <tr><td>Current Song:</td><td class="streamdata"> 
 <xsl:if test="artist"><xsl:value-of select="artist" /> - </xsl:if><xsl:value-of select="title" /></td></tr>
