@@ -18,9 +18,6 @@ a developer's copy):
    favorite flavor of CVS documentation; information on the xiph.org
    CVS repository can be found at http://www.xiph.org/cvs.html.
 
-   This module requires submodules to compile.  Checkout 'net', 'thread',
-   'httpp', 'log', 'timing', and 'avl' under the ./src directory.
-
 2. [re-]generate files such as "configure" and "Makefile.in" with the
    GNU autoconf/automake tools.  Run the "autogen.sh" script to
    perform this step.  
