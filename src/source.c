@@ -34,12 +34,28 @@
 #undef CATMODULE
 #define CATMODULE "source"
 
+#define  YP_SERVER_NAME 1
+#define  YP_SERVER_DESC 2
+#define  YP_SERVER_GENRE 3
+#define  YP_SERVER_URL 4
+#define  YP_BITRATE 5
+#define  YP_AUDIO_INFO 6
+#define  YP_SERVER_TYPE 7
+#define  YP_CURRENT_SONG 8
+#define  YP_URL_TIMEOUT 9
+#define  YP_TOUCH_INTERVAL 10
+#define  YP_LAST_TOUCH 11
+
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _remove_client(void *key);
 static int _free_client(void *key);
+static int _parse_audio_info(source_t *source, char *s);
+static void _add_yp_info(source_t *source, char *stat_name, 
+            void *info, int type);
 
-source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type)
+source_t *source_create(client_t *client, connection_t *con, 
+    http_parser_t *parser, const char *mount, format_type_t type)
 {
 	int	i = 0;
 	source_t *src;
@@ -57,6 +73,7 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
 	src->num_yp_directories = 0;
 	src->listeners = 0;
     src->send_return = 0;
+    src->audio_info = util_dict_new();
 	for (i=0;i<config_get_config()->num_yp_directories;i++) {
 		if (config_get_config()->yp_url[i]) {
 			src->ypdata[src->num_yp_directories] = yp_create_ypdata();
@@ -124,6 +141,7 @@ int source_free_source(void *key)
     for (i=0; i<source->num_yp_directories; i++) {
         yp_destroy_ypdata(source->ypdata[i]);
     }
+    util_dict_free(source->audio_info);
 	free(source);
 
 	return 1;
@@ -149,9 +167,11 @@ void *source_main(void *arg)
 	refbuf_t *refbuf, *abuf;
 	int data_done;
 
-	int listeners = 0;
-	int	i=0;
-	int	suppress_yp = 0;
+    int listeners = 0;
+    int	i=0;
+    int	suppress_yp = 0;
+    util_dict *audio_info;
+    char *ai;
 
     long queue_limit = config_get_config()->queue_size_limit;
 
@@ -191,58 +211,31 @@ void *source_main(void *arg)
 	stats_event(source->mount, "listeners", "0");
 	source->listeners = 0;
 	if ((s = httpp_getvar(source->parser, "ice-name"))) {
-		for (i=0;i<source->num_yp_directories;i++) {
-			if (source->ypdata[i]->server_name) {
-				free(source->ypdata[i]->server_name);
-			}
-			source->ypdata[i]->server_name = malloc(strlen(s) +1);
-			strcpy(source->ypdata[i]->server_name, s);
-		}
-		stats_event(source->mount, "name", s);
+        _add_yp_info(source, "server name", s, YP_SERVER_NAME);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-url"))) {
-		for (i=0;i<source->num_yp_directories;i++) {
-			if (source->ypdata[i]->server_url) {
-				free(source->ypdata[i]->server_url);
-			}
-			source->ypdata[i]->server_url = malloc(strlen(s) +1);
-			strcpy(source->ypdata[i]->server_url, s);
-		}
-		stats_event(source->mount, "url", s);
+        _add_yp_info(source, "server url", s, YP_SERVER_URL);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-genre"))) {
-		for (i=0;i<source->num_yp_directories;i++) {
-			if (source->ypdata[i]->server_genre) {
-				free(source->ypdata[i]->server_genre);
-			}
-			source->ypdata[i]->server_genre = malloc(strlen(s) +1);
-			strcpy(source->ypdata[i]->server_genre, s);
-		}
-		stats_event(source->mount, "genre", s);
+        _add_yp_info(source, "genre", s, YP_SERVER_GENRE);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-bitrate"))) {
-		for (i=0;i<source->num_yp_directories;i++) {
-			if (source->ypdata[i]->bitrate) {
-				free(source->ypdata[i]->bitrate);
-			}
-			source->ypdata[i]->bitrate = malloc(strlen(s) +1);
-			strcpy(source->ypdata[i]->bitrate, s);
-		}
-		stats_event(source->mount, "bitrate", s);
+        _add_yp_info(source, "bitrate", s, YP_BITRATE);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-description"))) {
-		for (i=0;i<source->num_yp_directories;i++) {
-			if (source->ypdata[i]->server_desc) {
-				free(source->ypdata[i]->server_desc);
-			}
-			source->ypdata[i]->server_desc = malloc(strlen(s) +1);
-			strcpy(source->ypdata[i]->server_desc, s);
-		}
-		stats_event(source->mount, "description", s);
+        _add_yp_info(source, "server description", s, YP_SERVER_DESC);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-private"))) {
 		stats_event(source->mount, "public", s);
 		suppress_yp = atoi(s);
+	}
+	if ((s = httpp_getvar(source->parser, "ice-audio-info"))) {
+        if (_parse_audio_info(source, s)) {
+            ai = util_dict_urlencode(source->audio_info, '&');
+            _add_yp_info(source, "audio info", 
+                    ai,
+                    YP_AUDIO_INFO);
+        }
 	}
 	for (i=0;i<source->num_yp_directories;i++) {
 		if (source->ypdata[i]->server_type) {
@@ -275,8 +268,14 @@ void *source_main(void *arg)
 
     	current_time = time(NULL);
 
+        _add_yp_info(source, "last_touch", (void *)current_time, 
+            YP_LAST_TOUCH);
+
 	    for (i=0;i<source->num_yp_directories;i++) {
-		    source->ypdata[i]->yp_last_touch = current_time;
+            /* Give the source 5 seconds to update the metadata
+               before we do our first touch */
+            source->ypdata[i]->yp_last_touch = current_time - 
+                source->ypdata[i]->yp_touch_interval + 5;
             /* Don't permit touch intervals of less than 30 seconds */
 	    	if (source->ypdata[i]->yp_touch_interval <= 30) {
 		    	source->ypdata[i]->yp_touch_interval = 30;
@@ -622,3 +621,127 @@ static int _free_client(void *key)
 	return 1;
 }
 
+static int _parse_audio_info(source_t *source, char *s)
+{
+    char *token;
+    char *pvar;
+    char *variable;
+    char *value;
+
+    while ((token = strtok(s,";")) != NULL) {
+        pvar = strchr(token, '=');
+        if (pvar) {
+            variable = (char *)malloc(pvar-token+1);
+            memset(variable, '\000', pvar-token+1);
+            strncpy(variable, token, pvar-token);	
+            pvar++;
+            if (strlen(pvar)) {
+                value = (char *)malloc(strlen(pvar)+1);
+                memset(value, '\000', strlen(pvar)+1);
+                strncpy(value, pvar, strlen(pvar));	
+                util_dict_set(source->audio_info, variable, value);
+                stats_event(source->mount, variable, value);
+            }
+            if (variable) {
+                    free(variable);
+            }
+            if (value) {
+                free(value);
+            }
+        }
+        s = NULL;
+    }
+    return 1;
+}
+
+static void _add_yp_info(source_t *source, char *stat_name, 
+            void *info, int type)
+{
+    int i;
+    if (!info) {
+        return;
+    }
+    for (i=0;i<source->num_yp_directories;i++) {
+        switch (type) {
+        case YP_SERVER_NAME:
+        if (source->ypdata[i]->server_name) {
+                free(source->ypdata[i]->server_name);
+                }
+                source->ypdata[i]->server_name = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->server_name, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_SERVER_DESC:
+                if (source->ypdata[i]->server_desc) {
+                    free(source->ypdata[i]->server_desc);
+                }
+                source->ypdata[i]->server_desc = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->server_desc, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_SERVER_GENRE:
+                if (source->ypdata[i]->server_genre) {
+                    free(source->ypdata[i]->server_genre);
+                }
+                source->ypdata[i]->server_genre = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->server_genre, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_SERVER_URL:
+                if (source->ypdata[i]->server_url) {
+                    free(source->ypdata[i]->server_url);
+                }
+                source->ypdata[i]->server_url = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->server_url, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_BITRATE:
+                if (source->ypdata[i]->bitrate) {
+                    free(source->ypdata[i]->bitrate);
+                }
+                source->ypdata[i]->bitrate = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->bitrate, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_AUDIO_INFO:
+                if (source->ypdata[i]->audio_info) {
+                    free(source->ypdata[i]->audio_info);
+                }
+                source->ypdata[i]->audio_info = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->audio_info, (char *)info);
+                break;
+        case YP_SERVER_TYPE:
+                if (source->ypdata[i]->server_type) {
+                    free(source->ypdata[i]->server_type);
+                }
+                source->ypdata[i]->server_type = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->server_type, (char *)info);
+                break;
+        case YP_CURRENT_SONG:
+                if (source->ypdata[i]->current_song) {
+                    free(source->ypdata[i]->current_song);
+                }
+                source->ypdata[i]->current_song = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->current_song, (char *)info);
+                stats_event(source->mount, stat_name, (char *)info);
+                break;
+        case YP_URL_TIMEOUT:
+                source->ypdata[i]->yp_url_timeout = (int)info;
+                break;
+        case YP_LAST_TOUCH:
+                source->ypdata[i]->yp_last_touch = (int)info;
+                break;
+        case YP_TOUCH_INTERVAL:
+                source->ypdata[i]->yp_touch_interval = (int)info;
+                break;
+        }
+    }
+}

@@ -385,3 +385,139 @@ char *util_base64_decode(unsigned char *input)
     return result;
 }
 
+util_dict *util_dict_new(void)
+{
+	return (util_dict *)calloc(1, sizeof(util_dict));
+}
+
+void util_dict_free(util_dict *dict)
+{
+    util_dict *next;
+
+    while (dict) {
+        next = dict->next;
+
+        if (dict->key)
+            free (dict->key);
+        if (dict->val)
+            free (dict->val);
+        free (dict);
+
+        dict = next;
+    }
+}
+
+const char *util_dict_get(util_dict *dict, const char *key)
+{
+	while (dict) {
+		if (!strcmp(key, dict->key))
+			return dict->val;
+		dict = dict->next;
+	}
+}
+
+int util_dict_set(util_dict *dict, const char *key, const char *val)
+{
+	util_dict *prev;
+
+	if (!dict || !key) {
+        ERROR0("NULL values passed to util_dict_set()");
+        return 0;
+    }
+
+	prev = NULL;
+	while (dict) {
+		if (!dict->key || !strcmp(dict->key, key))
+			break;
+		prev = dict;
+		dict = dict->next;
+	}
+
+	if (!dict) {
+		dict = util_dict_new();
+		if (!dict) {
+            ERROR0("unable to allocate new dictionary");
+			return 0;
+        }
+		if (prev)
+			prev->next = dict;
+	}
+
+	if (dict->key)
+		free (dict->val);
+	else if (!(dict->key = strdup(key))) {
+		if (prev)
+			prev->next = NULL;
+		util_dict_free (dict);
+
+        ERROR0("unable to allocate new dictionary key");
+        return 0;
+	}
+
+	dict->val = strdup(val);
+	if (!dict->val) {
+        ERROR0("unable to allocate new dictionary value");
+        return 0;
+	}
+
+	return 1;
+}
+
+/* given a dictionary, URL-encode each key and val and 
+   stringify them in order as key=val&key=val... if val 
+   is set, or just key&key if val is NULL.
+  TODO: Memory management needs overhaul. */
+char *util_dict_urlencode(util_dict *dict, char delim)
+{
+	char *res, *tmp;
+	char *enc;
+	int start = 1;
+
+	for (res = NULL; dict; dict = dict->next) {
+		/* encode key */
+		if (!dict->key)
+			continue;
+		if (!(enc = util_url_escape(dict->key))) {
+			if (res)
+				free(res);
+			return NULL;
+		}
+		if (start) {
+			if (!(res = malloc(strlen(enc) + 1))) {
+				free(enc);
+				return NULL;
+			}
+			sprintf(res, "%s", enc);
+			free(enc);
+			start = 0;
+		} else {
+			if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
+				free(enc);
+				free(res);
+				return NULL;
+			} else
+				res = tmp;
+			sprintf(res + strlen(res), "%c%s", delim, enc);
+			free(enc);
+		}
+
+		/* encode value */
+		if (!dict->val)
+			continue;
+		if (!(enc = util_url_escape(dict->val))) {
+			free(res);
+			return NULL;
+		}
+
+		if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
+			free(enc);
+			free(res);
+			return NULL;
+		} else
+			res = tmp;
+		sprintf(res + strlen(res), "=%s", enc);
+		free(enc);
+	}
+
+	return res;
+}

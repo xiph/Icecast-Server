@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "yp.h"
+#include "util.h"
 #include "format.h"
 
 typedef struct source_tag
@@ -27,6 +28,7 @@ typedef struct source_tag
 
 	rwlock_t *shutdown_rwlock;
 	ypdata_t *ypdata[MAX_YP_DIRECTORIES];
+    util_dict *audio_info;
 	int	num_yp_directories;
 	long listeners;
     long max_listeners;

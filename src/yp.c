@@ -196,8 +196,9 @@ int yp_add(source_t *source, int which)
 
         if (ok) {
             if (source->ypdata[i]) {
-                url_size = strlen("action=add&sn=&genre=&cpswd=&desc=&url="
-                                  "&listenurl=&type=&b=") + 1;
+                url_size = strlen("action=add&sn=&genre=&cpswd="
+                                  "&desc=&url=&listenurl=&type=&b=&")
+                                  + 1;
                 if (source->ypdata[i]->server_name) {
                     url_size += strlen(source->ypdata[i]->server_name);
                 }
@@ -261,10 +262,18 @@ int yp_add(source_t *source, int which)
                     source->ypdata[i]->current_song = (char *)malloc(1);
                     source->ypdata[i]->current_song[0] = 0;
                 }
+                if (source->ypdata[i]->audio_info) {
+                    url_size += strlen(source->ypdata[i]->audio_info);
+                }
+                else {
+                    source->ypdata[i]->audio_info = (char *)malloc(1);
+                    source->ypdata[i]->audio_info[0] = 0;
+                }
+
                 url_size += 1024;
                 url = malloc(url_size);
-                sprintf(url, "action=add&sn=%s&genre=%s&cpswd=%s&desc=%s&url=%s"
-                             "&listenurl=%s&type=%s&b=%s", 
+                sprintf(url, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
+                             "%s&url=%s&listenurl=%s&type=%s&b=%s&%s", 
                         source->ypdata[i]->server_name,
                         source->ypdata[i]->server_genre,
                         source->ypdata[i]->cluster_password,
@@ -272,7 +281,8 @@ int yp_add(source_t *source, int which)
                         source->ypdata[i]->server_url,
                         source->ypdata[i]->listen_url,
                         source->ypdata[i]->server_type,
-                        source->ypdata[i]->bitrate);
+                        source->ypdata[i]->bitrate,
+                        source->ypdata[i]->audio_info);
 
                curl_con = curl_get_connection();
                if (curl_con < 0) {
@@ -349,6 +359,9 @@ void yp_destroy_ypdata(ypdata_t *ypdata)
         }
         if (ypdata->server_type) {
             free(ypdata->server_type);
+        }
+        if (ypdata->audio_info) {
+            free(ypdata->audio_info);
         }
         free(ypdata);
     }

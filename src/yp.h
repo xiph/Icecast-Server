@@ -16,6 +16,7 @@ typedef struct ypdata_tag
 	char *server_url;
 	char *listen_url;
 	char *bitrate;
+	char *audio_info;
 	char *server_type;
 	char *current_song;
 	char *yp_url;
