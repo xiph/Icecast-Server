@@ -497,6 +497,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         configuration->relay = relay;
 
     relay->next = NULL;
+    relay->mp3metadata = 1;
 
     do {
         if (node == NULL) break;
