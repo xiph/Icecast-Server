@@ -490,7 +490,7 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 int sock_try_connection (int sock, const char *hostname, const unsigned port)
 {
     struct sockaddr_in sin, server;
-    char ip[20];
+    char ip[40];
 
     if (!hostname || !hostname[0] || port == 0)
         return -1;
@@ -498,7 +498,7 @@ int sock_try_connection (int sock, const char *hostname, const unsigned port)
     memset(&sin, 0, sizeof(struct sockaddr_in));
     memset(&server, 0, sizeof(struct sockaddr_in));
 
-    if (!resolver_getip(hostname, ip, 20))
+    if (!resolver_getip(hostname, ip, 40))
     {
         sock_close (sock);
         return -1;
