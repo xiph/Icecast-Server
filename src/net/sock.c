@@ -208,7 +208,7 @@ int sock_set_nodelay(sock_t sock)
 {
     int nodelay = 1;
 
-    return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)nodelay,
+    return setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void *)&nodelay,
             sizeof(int));
 }
 
