@@ -35,7 +35,7 @@ typedef struct log_tag
 	char *filename;
 	FILE *logfile;
 	
-        char *buffer;
+    char *buffer;
 } log_t;
 
 log_t loglist[LOG_MAXLOGS];
@@ -170,7 +170,9 @@ void log_write(int log_id, int priority, const char *cat, const char *fmt, ...)
 	va_list ap;
 
 	if (log_id < 0) return;
+    if (log_id > LOG_MAXLOGS) return; /* Bad log number */
 	if (loglist[log_id].level < priority) return;
+    if (priority > 4) return; /* Bad priority */
 
 
 	va_start(ap, fmt);

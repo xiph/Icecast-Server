@@ -16,6 +16,8 @@
 #include "stats.h"
 #include "format.h"
 
+#define MAX_HEADER_PAGES 10
+
 typedef struct _vstate_tag
 {
 	ogg_sync_state oy;
@@ -26,12 +28,12 @@ typedef struct _vstate_tag
 	ogg_page og;
 	unsigned long serialno;
 	int header;
-	refbuf_t *headbuf[10];
+	refbuf_t *headbuf[MAX_HEADER_PAGES];
 	int packets;
 } vstate_t;
 
 void format_vorbis_free_plugin(format_plugin_t *self);
-refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long len);
+int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long len, refbuf_t **buffer);
 refbuf_queue_t *format_vorbis_get_predata(format_plugin_t *self);
 
 format_plugin_t *format_vorbis_get_plugin(void)
@@ -68,7 +70,7 @@ void format_vorbis_free_plugin(format_plugin_t *self)
 	vorbis_comment_clear(&state->vc);
 	vorbis_info_clear(&state->vi);
 	
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_HEADER_PAGES; i++) {
 		if (state->headbuf[i]) {
 			refbuf_release(state->headbuf[i]);
 			state->headbuf[i] = NULL;
@@ -81,19 +83,19 @@ void format_vorbis_free_plugin(format_plugin_t *self)
 	free(self);
 }
 
-refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long len)
+int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long len, refbuf_t **buffer)
 {
-	char *buffer;
-	refbuf_t *refbuf;
+	char *buf;
 	int i, result;
 	ogg_packet op;
 	char *tag;
+    refbuf_t *refbuf;
 	vstate_t *state = (vstate_t *)self->_state;
 
 	if (data) {
 		/* write the data to the buffer */
-		buffer = ogg_sync_buffer(&state->oy, len);
-	        memcpy(buffer, data, len);
+		buf = ogg_sync_buffer(&state->oy, len);
+        memcpy(buf, data, len);
 		ogg_sync_wrote(&state->oy, len);
 	}
 
@@ -109,7 +111,7 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 			state->packets = 0;
 
 			/* release old headers, stream state, vorbis data */
-			for (i = 0; i < 10; i++) {
+			for (i = 0; i < MAX_HEADER_PAGES; i++) {
 				if (state->headbuf[i]) {
 					refbuf_release(state->headbuf[i]);
 					state->headbuf[i] = NULL;
@@ -150,6 +152,10 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 
 		/* cache header pages */
 		if (state->header > 0) {
+            if(state->header > MAX_HEADER_PAGES) {
+                refbuf_release(refbuf);
+                return -1;
+            }
 			refbuf_addref(refbuf);
 			state->headbuf[state->header - 1] = refbuf;
 
@@ -174,7 +180,8 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 		}
 	}
 
-	return refbuf;
+    *buffer = refbuf;
+	return 0;
 }
 
 refbuf_queue_t *format_vorbis_get_predata(format_plugin_t *self)
@@ -184,7 +191,7 @@ refbuf_queue_t *format_vorbis_get_predata(format_plugin_t *self)
 	vstate_t *state = (vstate_t *)self->_state;
 
 	queue = NULL;
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_HEADER_PAGES; i++) {
 		if (state->headbuf[i]) {
 			refbuf_addref(state->headbuf[i]);
 			refbuf_queue_add(&queue, state->headbuf[i]);

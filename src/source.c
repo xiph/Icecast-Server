@@ -147,7 +147,11 @@ void *source_main(void *arg)
 		stats_event(source->mount, "description", s);
 
 	while (global.running == ICE_RUNNING) {
-		refbuf = source->format->get_buffer(source->format, NULL, 0);
+		int ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
+        if(ret < 0) {
+            WARN0("Bad data from source");
+            break;
+        }
 		while (refbuf == NULL) {
 			bytes = 0;
 			while (bytes <= 0) {
@@ -167,7 +171,11 @@ void *source_main(void *arg)
 				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) break;
 			}
 			if (bytes <= 0) break;
-			refbuf = source->format->get_buffer(source->format, buffer, bytes);
+			ret = source->format->get_buffer(source->format, buffer, bytes, &refbuf);
+            if(ret < 0) {
+                WARN0("Bad data from source");
+                goto done;
+            }
 		}
 
 		if (bytes <= 0) {
@@ -332,6 +340,8 @@ void *source_main(void *arg)
 		/* release write lock on client_tree */
 		avl_tree_unlock(source->client_tree);
 	}
+
+done:
 
 	printf("DEBUG: we're going down...\n");
 

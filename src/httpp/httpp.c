@@ -3,6 +3,8 @@
 ** http parsing engine
 */
 
+#include <stdio.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -14,6 +16,8 @@
 #ifdef _WIN32
 #define strcasecmp stricmp
 #endif
+
+#define MAX_HEADERS 32
 
 /* internal functions */
 
@@ -48,7 +52,7 @@ void httpp_initialize(http_parser_t *parser, http_varlist_t *defaults)
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 {
 	char *data, *tmp;
-	char *line[32]; /* limited to 32 lines, should be more than enough */
+	char *line[MAX_HEADERS]; /* limited to 32 lines, should be more than enough */
 	int i, l, retlen;
 	int lines;
 	char *req_type = NULL;
@@ -73,7 +77,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	*/
 	lines = 0;
 	line[lines] = data;
-	for (i = 0; i < len; i++) {
+	for (i = 0; i < len && lines < MAX_HEADERS; i++) {
 		if (data[i] == '\r')
 			data[i] = '\0';
 		if (data[i] == '\n') {
