@@ -134,6 +134,7 @@ void curl_shutdown()
         curl_easy_cleanup(curl_connections[i].curl_handle);
         memset(&(curl_connections[i]), 0, sizeof(curl_connections[i]));
     }
+    curl_global_cleanup();
 }
 int curl_get_connection()
 {

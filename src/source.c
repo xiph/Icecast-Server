@@ -344,7 +344,7 @@ void *source_main(void *arg)
         if (config->yp_url[i]) {
             source->ypdata[source->num_yp_directories] = yp_create_ypdata();
             source->ypdata[source->num_yp_directories]->yp_url = 
-                config->yp_url[i];
+                strdup (config->yp_url[i]);
             source->ypdata[source->num_yp_directories]->yp_url_timeout = 
                 config->yp_url_timeout[i];
             source->ypdata[source->num_yp_directories]->yp_touch_interval = 0;

@@ -434,6 +434,9 @@ ypdata_t *yp_create_ypdata()
 void yp_destroy_ypdata(ypdata_t *ypdata)
 {
     if (ypdata) {
+        if (ypdata->yp_url) {
+            free(ypdata->yp_url);
+        }
         if (ypdata->sid) {
             free(ypdata->sid);
         }
