@@ -14,6 +14,7 @@ char *util_normalise_uri(char *uri);
 char *util_base64_encode(char *data);
 char *util_base64_decode(unsigned char *input);
 
+char *util_url_unescape(char *src);
 char *util_url_escape(char *src);
 
 /* String dictionary type, without support for NULL keys, or multiple

@@ -674,13 +674,10 @@ static int _parse_audio_info(source_t *source, char *s)
         pvar = strchr(token, '=');
         if (pvar) {
             variable = (char *)malloc(pvar-token+1);
-            memset(variable, '\000', pvar-token+1);
             strncpy(variable, token, pvar-token);	
             pvar++;
             if (strlen(pvar)) {
-                value = (char *)malloc(strlen(pvar)+1);
-                memset(value, '\000', strlen(pvar)+1);
-                strncpy(value, pvar, strlen(pvar));	
+                value = util_url_unescape(pvar);
                 util_dict_set(source->audio_info, variable, value);
                 stats_event(source->mount, variable, value);
                 if (value) {
@@ -688,7 +685,7 @@ static int _parse_audio_info(source_t *source, char *s)
                 }
             }
             if (variable) {
-                    free(variable);
+                free(variable);
             }
         }
         s = NULL;

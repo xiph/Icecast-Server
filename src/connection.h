@@ -37,6 +37,10 @@ int connection_create_source(struct _client_tag *client, connection_t *con,
 
 void connection_inject_event(int eventnum, void *event_data);
 
+int connection_check_source_pass(http_parser_t *parser, char *mount);
+int connection_check_relay_pass(http_parser_t *parser);
+int connection_check_admin_pass(http_parser_t *parser);
+
 extern rwlock_t _source_shutdown_rwlock;
 
 #endif  /* __CONNECTION_H__ */

@@ -11,7 +11,7 @@ noinst_HEADERS = config.h os.h logging.h sighandler.h connection.h global.h\
 	 compat.h format_mp3.h fserve.h xslt.h geturl.h yp.h event.h
 icecast_SOURCES = config.c main.c logging.c sighandler.c connection.c global.c\
 	 util.c slave.c source.c stats.c refbuf.c client.c format.c format_vorbis.c\
-	 format_mp3.c xslt.c fserve.c geturl.c yp.c event.c
+	 format_mp3.c xslt.c fserve.c geturl.c yp.c event.c admin.c
     
 icecast_LDADD = net/libicenet.la thread/libicethread.la httpp/libicehttpp.la\
 		log/libicelog.la avl/libiceavl.la timing/libicetiming.la

@@ -41,6 +41,7 @@
 #include "format.h"
 #include "format_mp3.h"
 #include "event.h"
+#include "admin.h"
 
 #define CATMODULE "connection"
 
@@ -437,7 +438,7 @@ static int _check_pass_ice(http_parser_t *parser, char *correctpass)
         return 1;
 }
 
-static int _check_relay_pass(http_parser_t *parser)
+int connection_check_relay_pass(http_parser_t *parser)
 {
     ice_config_t *config = config_get_config();
     char *pass = config->relay_password;
@@ -448,7 +449,7 @@ static int _check_relay_pass(http_parser_t *parser)
     return _check_pass_http(parser, "relay", pass);
 }
 
-static int _check_admin_pass(http_parser_t *parser)
+int connection_check_admin_pass(http_parser_t *parser)
 {
     ice_config_t *config = config_get_config();
     char *pass = config->admin_password;
@@ -461,7 +462,7 @@ static int _check_admin_pass(http_parser_t *parser)
     return _check_pass_http(parser, "admin", pass);
 }
 
-static int _check_source_pass(http_parser_t *parser, char *mount)
+int connection_check_source_pass(http_parser_t *parser, char *mount)
 {
     ice_config_t *config = config_get_config();
     char *pass = config->source_password;
@@ -502,108 +503,6 @@ static int _check_source_pass(http_parser_t *parser, char *mount)
     return ret;
 }
 
-static void handle_fallback_request(client_t *client)
-{
-    source_t *source;
-    char *mount, *value, *old;
-    int bytes;
-
-    mount = httpp_get_query_param(client->parser, "mount");
-    value = httpp_get_query_param(client->parser, "fallback");
-
-    if(!_check_source_pass(client->parser, mount)) {
-		INFO0("Bad or missing password on fallback configuration request");
-        client_send_401(client);
-        return;
-    }
-
-    if(value == NULL || mount == NULL) {
-        client_send_400(client, "Missing parameter");
-        return;
-    }
-
-    avl_tree_rlock(global.source_tree);
-    source = source_find_mount(mount);
-    avl_tree_unlock(global.source_tree);
-
-    if(source == NULL) {
-        client_send_400(client, "Current source not found");
-        return;
-    }
-
-    old = source->fallback_mount;
-    source->fallback_mount = strdup(value);
-    free(old);
-
-    client->respcode = 200;
-	bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n"
-            "Fallback configured");
-    if(bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
-}
-
-static void handle_metadata_request(client_t *client)
-{
-    source_t *source;
-    char *action;
-    char *mount;
-    char *value;
-    mp3_state *state;
-    int bytes;
-
-    action = httpp_get_query_param(client->parser, "mode");
-    mount = httpp_get_query_param(client->parser, "mount");
-    value = httpp_get_query_param(client->parser, "song");
-
-    if(!_check_source_pass(client->parser, mount)) {
-		INFO0("Metadata request with wrong or missing password");
-        client_send_401(client);
-        return;
-    }
-
-    if(value == NULL || action == NULL || mount == NULL) {
-        client_send_400(client, "Missing parameter");
-        return;
-    }
-
-    avl_tree_rlock(global.source_tree);
-    source = source_find_mount(mount);
-    avl_tree_unlock(global.source_tree);
-
-    if(source == NULL) {
-        client_send_400(client, "No such mountpoint");
-        return;
-    }
-
-    if(source->format->type != FORMAT_TYPE_MP3) {
-        client_send_400(client, "Not mp3, cannot update metadata");
-        return;
-    }
-
-    if(strcmp(action, "updinfo") != 0) {
-        client_send_400(client, "No such action");
-        return;
-    }
-
-    state = source->format->_state;
-    thread_mutex_lock(&(state->lock));
-    free(state->metadata);
-    state->metadata = strdup(value);
-    state->metadata_age++;
-    state->metadata_raw = 0;
-    thread_mutex_unlock(&(state->lock));
-
-    DEBUG2("Metadata on mountpoint %s changed to \"%s\"", mount, value);
-    stats_event(mount, "title", value);
-    client->respcode = 200;
-	bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n"
-            "Update successful");
-    if(bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
-}
-
 static void _handle_source_request(connection_t *con, 
         http_parser_t *parser, char *uri)
 {
@@ -614,7 +513,7 @@ static void _handle_source_request(connection_t *con,
     INFO1("Source logging in at mountpoint \"%s\"", uri);
     stats_event_inc(NULL, "source_connections");
 				
-	if (!_check_source_pass(parser, uri)) {
+	if (!connection_check_source_pass(parser, uri)) {
 		INFO1("Source (%s) attempted to login with invalid or missing password", uri);
         client_send_401(client);
         return;
@@ -645,7 +544,7 @@ static void _handle_stats_request(connection_t *con,
 
 	stats_event_inc(NULL, "stats_connections");
 				
-	if (!_check_admin_pass(parser)) {
+	if (!connection_check_admin_pass(parser)) {
         ERROR0("Bad password for stats connection");
 		connection_close(con);
 		httpp_destroy(parser);
@@ -699,27 +598,10 @@ static void _handle_get_request(connection_t *con,
 	** aren't subject to the limits.
 	*/
 	/* TODO: add GUID-xxxxxx */
-	if (strcmp(uri, "/admin/stats.xml") == 0) {
-	    if (!_check_admin_pass(parser)) {
-		    INFO0("Request for /admin/stats.xml with incorrect or no password");
-            client_send_401(client);
-            return;
-    	}
-        DEBUG0("Stats request, sending xml stats");
-		stats_sendxml(client);
-        client_destroy(client);
-        return;
-    }
 
-    if(strcmp(uri, "/admin/metadata") == 0) {
-        DEBUG0("Got metadata update request");
-        handle_metadata_request(client);
-        return;
-    }
-
-    if(strcmp(uri, "/admin/fallbacks") == 0) {
-        DEBUG0("Got fallback request");
-        handle_fallback_request(client);
+    /* Dispatch all admin requests */
+	if (strncmp(uri, "/admin/", 7) == 0) {
+        admin_handle_request(client, uri);
         return;
     }
 
@@ -801,7 +683,7 @@ static void _handle_get_request(connection_t *con,
     }
 
 	if (strcmp(uri, "/admin/streamlist") == 0) {
-		if (!_check_relay_pass(parser)) {
+		if (!connection_check_relay_pass(parser)) {
 			INFO0("Client attempted to fetch /admin/streamlist with bad password");
             client_send_401(client);
 		} else {

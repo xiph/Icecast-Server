@@ -216,7 +216,54 @@ char *util_get_path_from_normalised_uri(char *uri) {
     return fullpath;
 }
 
+static char hexchars[16] = {
+    '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
+};
+
+static char safechars[256] = {
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,
+      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+};
+
 char *util_url_escape(char *src)
+{
+    int len = strlen(src);
+    /* Efficiency not a big concern here, keep the code simple/conservative */
+    char *dst = calloc(1, len*3 + 1); 
+    unsigned char *source = src;
+    int i,j=0;
+
+    for(i=0; i < len; i++) {
+        if(safechars[source[i]]) {
+            dst[j++] = source[i];
+        }
+        else {
+            dst[j] = '%';
+            dst[j+1] = hexchars[ source[i] & 0x15 ];
+            dst[j+2] = hexchars[ (source[i] >> 4) & 0x15 ];
+            j+= 3;
+        }
+    }
+
+    dst[j] = 0;
+    return dst;
+}
+
+char *util_url_unescape(char *src)
 {
     int len = strlen(src);
     unsigned char *decoded;
@@ -247,7 +294,7 @@ char *util_url_escape(char *src)
                 done = 1;
                 break;
             case 0:
-                ERROR0("Fatal internal logic error in util_url_escape()");
+                ERROR0("Fatal internal logic error in util_url_unescape()");
                 free(decoded);
                 return NULL;
                 break;
@@ -275,7 +322,7 @@ char *util_normalise_uri(char *uri) {
     if(uri[0] != '/')
         return NULL;
 
-    path = util_url_escape(uri);
+    path = util_url_unescape(uri);
 
     if(path == NULL) {
         WARN1("Error decoding URI: %s\n", uri);
