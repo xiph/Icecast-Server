@@ -574,6 +574,7 @@ static void *_start_routine(void *arg)
 	void *(*start_routine)(void *) = start->start_routine;
 	void *real_arg = start->arg;
 	thread_t *thread = start->thread;
+    int detach = start->detached;
 
 	_block_signals();
 
@@ -587,7 +588,7 @@ static void *_start_routine(void *arg)
 
 	LOG_INFO4("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
 
-	if (start->detached) {
+	if (detach) {
 		pthread_detach(thread->sys_thread);
 	}
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
