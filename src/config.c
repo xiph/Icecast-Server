@@ -28,9 +28,11 @@
 #ifndef _WIN32
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
 #define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
+#define CONFIG_DEFAULT_WEBROOT_DIR "/usr/local/icecast/webroot"
 #else
 #define CONFIG_DEFAULT_BASE_DIR ".\\"
 #define CONFIG_DEFAULT_LOG_DIR ".\\logs"
+#define CONFIG_DEFAULT_WEBROOT_DIR ".\\webroot"
 #endif
 
 ice_config_t _configuration;
@@ -278,6 +280,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "logdir") == 0) {
 			if (_configuration.log_dir) free(_configuration.log_dir);
 			_configuration.log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "webroot") == 0) {
+			if (_configuration.webroot_dir) free(_configuration.webroot_dir);
+			_configuration.webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		}
 	} while ((node = node->next));
 }

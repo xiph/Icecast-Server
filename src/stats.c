@@ -18,6 +18,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "xslt.h"
 
 #ifdef _WIN32
 #define vsnprintf _vsnprintf
@@ -728,6 +729,45 @@ static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr ro
 	return node->node;
 }
 
+void stats_transform_xslt(client_t *client, char *xslpath)
+{
+    xmlDocPtr doc;
+
+    stats_get_xml(&doc);
+
+    transformXSLT(doc, xslpath, client);
+
+    xmlFreeDoc(doc);
+}
+
+void stats_get_xml(xmlDocPtr *doc)
+{
+	stats_event_t *event;
+	stats_event_t *queue;
+	xmlNodePtr node, srcnode;
+	source_xml_t *src_nodes = NULL;
+
+	queue = NULL;
+	_dump_stats_to_queue(&queue);
+
+	*doc = xmlNewDoc("1.0");
+	node = xmlNewDocNode(*doc, NULL, "icestats", NULL);
+	xmlDocSetRootElement(*doc, node);
+
+
+	event = _get_event_from_queue(&queue);
+	while (event) {
+		if (event->source == NULL) {
+			xmlNewChild(node, NULL, event->name, event->value);
+		} else {
+			srcnode = _find_xml_node(event->source, &src_nodes, node);
+			xmlNewChild(srcnode, NULL, event->name, event->value);
+		}
+
+		_free_event(event);
+		event = _get_event_from_queue(&queue);
+	}
+}
 void stats_sendxml(client_t *client)
 {
 	int bytes;

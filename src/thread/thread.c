@@ -115,11 +115,6 @@ void thread_initialize(void)
 {
 	thread_t *thread;
 
-	/* this must be called to init pthreads-win32 */
-#ifdef _WIN32
-	ptw32_processInitialize();
-#endif
-
 	/* set up logging */
 
 	log_initialize();
@@ -129,7 +124,7 @@ void thread_initialize(void)
 	log_set_level(_logid, THREAD_DEBUG);
 #endif
 
-	/* create all the interal mutexes, and initialize the mutex tree */
+	/* create all the internal mutexes, and initialize the mutex tree */
 
 	_mutextree = avl_tree_new(_compare_mutexes, NULL);
 

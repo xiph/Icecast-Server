@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -32,6 +33,7 @@
 #include "stats.h"
 #include "format.h"
 #include "logging.h"
+#include "xslt.h"
 
 #include "source.h"
 
@@ -333,6 +335,8 @@ static void *_handle_connection(void *arg)
 	http_var_t *var;
 	client_t *client;
 	int bytes;
+	struct stat statbuf;
+	char	fullPath[4096];
 
 	while (global.running == ICE_RUNNING) {
 		memset(header, 0, 4096);
@@ -437,6 +441,27 @@ static void *_handle_connection(void *arg)
 					if (strcmp(httpp_getvar(parser, HTTPP_VAR_URI), "/stats.xml") == 0) {
 						printf("sending stats.xml\n");
 						stats_sendxml(client);
+                        client_destroy(client);
+						continue;
+					}
+
+					/* Here we are parsing the URI request to see
+					** if the extension is .xsl, if so, then process
+					** this request as an XSLT request
+					*/
+					if (util_check_valid_extension(httpp_getvar(parser, HTTPP_VAR_URI)) == XSLT_CONTENT) {
+						util_get_full_path(httpp_getvar(parser, HTTPP_VAR_URI), fullPath, sizeof(fullPath));
+							
+						/* If the file exists, then transform it, otherwise, write a 404 error */
+						if (stat(fullPath, &statbuf) == 0) {
+							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+                            stats_transform_xslt(client, fullPath);
+						}
+						else {
+							sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
+								   "<b>The file you requested could not be found.</b>\r\n");
+						}
+						client_destroy(client);
 						continue;
 					}
 

@@ -39,6 +39,7 @@ typedef struct ice_config_tag
 
 	char *base_dir;
 	char *log_dir;
+	char *webroot_dir;
 
 	char *access_log;
 	char *error_log;

@@ -4,6 +4,10 @@
 #include "connection.h"
 #include "httpp.h"
 #include "client.h"
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 
 typedef struct _stats_connection_tag
 {
@@ -70,7 +74,9 @@ void stats_event_dec(char *source, char *name);
 void *stats_connection(void *arg);
 void *stats_callback(void *arg);
 
+void stats_transform_xslt(client_t *client, char *xslpath);
 void stats_sendxml(client_t *client);
+void stats_get_xml(xmlDocPtr *doc);
 
 #endif  /* __STATS_H__ */
 

@@ -1,4 +1,6 @@
 #include <sys/types.h>
+#include <stdio.h>
+#include <string.h>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -10,12 +12,17 @@
 #else
 #include <winsock2.h>
 #include <windows.h>
+#include <stdio.h>
+#define snprintf _snprintf
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
 #endif
 
 #include "sock.h"
 
 #include "config.h"
 #include "util.h"
+#include "os.h"
 
 /* Abstract out an interface to use either poll or select depending on which
  * is available (poll is preferred) to watch a single fd.
@@ -85,6 +92,46 @@ int util_read_header(int sock, char *buff, unsigned long len)
 	return ret;
 }
 
+int util_get_full_path(char *uri, char *fullPath, int fullPathLen) {
+	int ret = 0;
+	if (uri) {
+		memset(fullPath, '\000', fullPathLen);
+		snprintf(fullPath, fullPathLen-1, "%s%s%s", config_get_config()->webroot_dir, PATH_SEPARATOR, uri);
+		ret = 1;
+	}
+	return ret;
+}
 
+int util_check_valid_extension(char *uri) {
+	int	ret = 0;
+	char	*p2;
+
+	if (uri) {
+		p2 = strrchr(uri, '.');
+		if (p2) {
+			p2++;
+			if (strncmp(p2, "xsl", strlen("xsl")) == 0) {
+				/* Build the full path for the request, concatenating the webroot from the config.
+				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+				*/
+				ret = XSLT_CONTENT;
+			}
+			if (strncmp(p2, "htm", strlen("htm")) == 0) {
+				/* Build the full path for the request, concatenating the webroot from the config.
+				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+				*/
+				ret = HTML_CONTENT;
+			}
+			if (strncmp(p2, "html", strlen("html")) == 0) {
+				/* Build the full path for the request, concatenating the webroot from the config.
+				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+				*/
+				ret = HTML_CONTENT;
+			}
+
+		}
+	}
+	return ret;
+}
 
 
