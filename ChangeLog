@@ -1,0 +1,62 @@
+(Note: from here on, the changelog generally only includes new features, not
+bug fixes)
+
+2003-03-02 
+    More features:	 
+    -- per mountpoint listener maxima   
+    -- static configuration of mountpoint fallbacks   
+    -- stream dumping (write incoming stream to disk)
+
+2003-02-27
+    Fix log buffering on win32 - previously, logs were never flushed, so they
+    only got output every few tens or hundreds of lines.
+
+2003-02-27
+	Support new icy-audio-info header, to communicate various parameters to
+    clients and yp servers, including sample rate, quality, channels, bitrate
+
+2003-02-25
+    Full support for relaying mp3 metadata (if turned on in config file)
+
+2003-02-25
+    Allow configuration of maximum client queue length (in bytes)
+
+2003-02-14
+    Finished full IPv6 support. 
+
+2003-02-12
+	Allow configuring local mountpoint seperately from remote mountpoint for
+    relays
+
+2003-02-12
+	Per mountpoint usernames and passwords (for sources)
+
+2003-02-11
+	Now that it's been officially assigned, use application/ogg instead of
+	application/x-ogg
+
+2003-02-07
+    Allow relaying of mp3 streams from icecast 1.x and shoutcast
+
+2003-02-07
+    Added ability to configure individual relays (rather than just all streams
+    from a single server).
+
+2003-02-03
+    Added support for YP directory services listings
+	are only used by the yp listing routines
+
+2003-02-03
+    Support command line parameter -b to run in the background (not supported
+    on win32)
+
+2002-12-31 
+    Implement configurable mountpoint fallbacks (on source exit, clients are
+    transferred to another mountpoint automatically, without disconnecting
+    them)
+
+2002-12-31
+    Implemented full mp3 metadata support.
+
+(older stuff is missing from here)
+
