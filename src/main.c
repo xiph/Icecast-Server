@@ -415,6 +415,12 @@ int main(int argc, char **argv)
 
     /* let her rip */
     global.running = ICE_RUNNING;
+
+#ifdef USE_YP
+    /* Startup yp thread */
+    yp_initialize();
+#endif
+
     _server_proc();
 
     INFO0("Shutting down");
