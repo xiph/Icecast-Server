@@ -26,6 +26,20 @@ format_type_t format_get_type(char *contenttype)
         return -1;
 }
 
+char *format_get_mimetype(format_type_t type)
+{
+    switch(type) {
+        case FORMAT_TYPE_VORBIS:
+            return "application/x-ogg";
+            break;
+        case FORMAT_TYPE_MP3:
+            return "audio/mpeg";
+            break;
+        default:
+            return NULL;
+    }
+}
+
 format_plugin_t *format_get_plugin(format_type_t type, char *mount)
 {
 	format_plugin_t *plugin;

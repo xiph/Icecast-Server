@@ -310,7 +310,7 @@ static void *_handle_connection(void *arg)
 		if (global.running != ICE_RUNNING) break;
 
 		/* grab a connection and set the socket to blocking */
-		while (con = _get_connection()) {
+		while ((con = _get_connection())) {
 			stats_event_inc(NULL, "connections");
 
 			sock_set_blocking(con->sock, SOCK_BLOCK);
@@ -483,7 +483,7 @@ static void *_handle_connection(void *arg)
 						
 						if (parser->req_type == httpp_req_get) {
 							client->respcode = 200;
-							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: application/x-ogg\r\n");
+							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n", format_get_mimetype(source->format->type));
 							/* iterate through source http headers and send to client */
 							avl_tree_rlock(source->parser->vars);
 							node = avl_get_first(source->parser->vars);
