@@ -21,7 +21,6 @@
 typedef struct {
     char *metadata;
     int metadata_age;
-    int metadata_raw;
     mutex_t lock;
 
     /* These are for inline metadata */

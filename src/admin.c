@@ -659,7 +659,6 @@ static void command_metadata(client_t *client, source_t *source)
     free(state->metadata);
     state->metadata = strdup(value);
     state->metadata_age++;
-    state->metadata_raw = 0;
     thread_mutex_unlock(&(state->lock));
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 

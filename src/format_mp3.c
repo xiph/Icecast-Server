@@ -106,7 +106,6 @@ format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 static int send_metadata(client_t *client, mp3_client_data *client_state,
         mp3_state *source_state)
 {
-    int free_meta = 0;
     int len_byte;
     int len;
     int ret = -1;
@@ -122,32 +121,18 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
         if (source_state->metadata == NULL)
             break; /* Shouldn't be possible */
 
-        if (source_state->metadata_raw)
-        {
-            fullmetadata_size = strlen (source_state->metadata);
-            fullmetadata = source_state->metadata;
-            if (fullmetadata_size > 4080)
-            {
-                fullmetadata_size = 4080;
-            }
-        }
-        else
-        {
-            fullmetadata_size = strlen (source_state->metadata) + 
-                sizeof (meta_fmt);
+        fullmetadata_size = strlen (source_state->metadata) + sizeof (meta_fmt);
 
-            if (fullmetadata_size > 4080)
-            {
-                fullmetadata_size = 4080;
-            }
-            fullmetadata = malloc (fullmetadata_size);
-            if (fullmetadata == NULL)
-                break;
-
-            fullmetadata_size = snprintf (fullmetadata, fullmetadata_size,
-                    "StreamTitle='%.*s';", fullmetadata_size-(sizeof (meta_fmt)-1), source_state->metadata); 
-            free_meta = 1;
+        if (fullmetadata_size > 4080)
+        {
+            fullmetadata_size = 4080;
         }
+        fullmetadata = malloc (fullmetadata_size);
+        if (fullmetadata == NULL)
+            break;
+
+        fullmetadata_size = snprintf (fullmetadata, fullmetadata_size,
+                "StreamTitle='%.*s';", fullmetadata_size-(sizeof (meta_fmt)-1), source_state->metadata); 
 
         source_age = source_state->metadata_age;
 
@@ -184,15 +169,13 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
             client_state->metadata_offset = 0;
         }
         free (buf);
-        if (free_meta)
-            free (fullmetadata);
+        free (fullmetadata);
         return ret;
 
     } while (0);
 
     thread_mutex_unlock(&(source_state->lock));
-    if (free_meta)
-        free (fullmetadata);
+    free (fullmetadata);
     return -1;
 }
 
@@ -339,10 +322,24 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                     {
                         thread_mutex_lock(&(state->lock));
                         free(state->metadata);
-                        state->metadata = state->metadata_buffer;
+                        /* Now, reformat state->metadata_buffer to strip off
+                           StreamTitle=' and the closing '; (but only if there's
+                           enough data for it to be correctly formatted) */
+                        if(state->metadata_length >= 15) {
+                            state->metadata = malloc(state->metadata_length -
+                                    15 + 1);
+                            memcpy(state->metadata, 
+                                    state->metadata_buffer + 13, 
+                                    state->metadata_length - 15);
+                            state->metadata[state->metadata_length - 2] = 0;
+                            free(state->metadata_buffer);
+                        }
+                        else
+                            state->metadata = state->metadata_buffer;
+
+                        stats_event(self->mount, "title", state->metadata);
                         state->metadata_buffer = NULL;
                         state->metadata_age++;
-                        state->metadata_raw = 1;
                         thread_mutex_unlock(&(state->lock));
                     }
 
@@ -393,8 +390,6 @@ static void *format_mp3_create_client_data(format_plugin_t *self,
 static void format_mp3_send_headers(format_plugin_t *self,
         source_t *source, client_t *client)
 {
-    http_var_t *var;
-    avl_node *node;
     int bytes;
     mp3_client_data *mp3data = client->format_data;
     
