@@ -20,6 +20,13 @@ Feature differences from SVN trunk
 . added file intro to streams
 . fallback to file
 
+2.1-kh5
+. fix YP memory corruption bug introduced in kh4
+. resync with trunk
+  . updated YP parameters to follow spec.
+  . stats on the theora stream
+  . doc and xsl updates
+
 2.1-kh4
 . cleanup ogg codec build
 . handle ogg header pages better
