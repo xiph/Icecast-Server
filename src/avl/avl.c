@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.6 2003/07/07 01:40:08 brendan Exp $ */
+/* $Id: avl.c,v 1.7 2003/07/07 03:37:23 brendan Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -976,7 +976,7 @@ avl_get_item_by_key_least (avl_tree * tree,
   }
 }
 
-#define MAX(X, Y)  ((X) > (Y) ? (X) : (Y))
+#define AVL_MAX(X, Y)  ((X) > (Y) ? (X) : (Y))
 
 static long
 avl_verify_balance (avl_node * node)
@@ -994,7 +994,7 @@ avl_verify_balance (avl_node * node)
       fprintf (stderr, "unbalanced at node %d\n", (int) node->key);
       exit(1);
     }
-    return (1 + MAX (lh, rh));
+    return (1 + AVL_MAX (lh, rh));
   }
 }
     
