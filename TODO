@@ -11,6 +11,14 @@ ____________
 
 - integrate/include all the documentation done by external groups.
 
+- curl isn't optional. It _must be_, with full autoconf checks (including
+  version checks).
+
+- generally we don't do proper checking for the correct versions of various
+  libraries (this is probably more of an issue with ices2, but it also affects
+  icecast)
+
+
 
 BUGS
 ----
