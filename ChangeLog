@@ -1,3 +1,45 @@
+rev 8160:  oddsock | 2004-11-04 09:55:13 -0600 (Thu, 04 Nov 2004) | 2 lines
+
+	* added a content-length for flash-based players.  This will allow for them to stream mp3 from icecast.
+
+rev 8154:  karl | 2004-11-01 17:41:58 -0600 (Mon, 01 Nov 2004) | 2 lines
+
+	* add fallback mime type for css
+
+rev 8142:  oddsock | 2004-10-29 15:32:45 -0500 (Fri, 29 Oct 2004) | 1 line
+
+	* typo..whoops
+
+rev 8141:  oddsock | 2004-10-29 15:29:16 -0500 (Fri, 29 Oct 2004) | 1 line
+
+	* version bump for RC2
+
+rev 8140:  oddsock | 2004-10-29 15:27:01 -0500 (Fri, 29 Oct 2004) | 2 lines
+
+	* version bump for RC2
+
+rev 8139:  oddsock | 2004-10-29 15:26:03 -0500 (Fri, 29 Oct 2004) | 2 lines
+
+	* added bit about multi-level fallbacks
+
+rev 8133:  karl | 2004-10-29 12:19:03 -0500 (Fri, 29 Oct 2004) | 2 lines
+
+	* small doc update
+
+rev 8131:  oddsock | 2004-10-29 10:31:56 -0500 (Fri, 29 Oct 2004) | 4 lines
+
+	* * fix bug of not using url decoding value when processing audio_info string
+	* * we now process server name and description if we are not a public stream
+	* * Added quality to status.xsl
+
+rev 8127:  oddsock | 2004-10-28 11:11:10 -0500 (Thu, 28 Oct 2004) | 2 lines
+
+	* Added a changelog (via svn2cl) and updated NEWS....
+
+rev 8124:  oddsock | 2004-10-27 12:52:39 -0500 (Wed, 27 Oct 2004) | 2 lines
+
+	* forgot to add auth.xsl to the automake Makefile
+
 rev 8123:  karl | 2004-10-27 09:13:29 -0500 (Wed, 27 Oct 2004) | 2 lines
 
 	* correct type for volatile usage and uncomment log message for stats updating

@@ -1,5 +1,5 @@
 Name:		icecast
-Version:	2.1RC2
+Version:	2.1.0
 Release:	1
 Summary:	Xiph Streaming media server that supports multiple audio formats.
 
