@@ -125,28 +125,28 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
 
         fullmetadata_size = strlen (source_state->metadata) + sizeof (meta_fmt);
 
-        if (fullmetadata_size > 4080)
+        if (fullmetadata_size > 4079)
         {
-            fullmetadata_size = 4080;
+            fullmetadata_size = 4079;
         }
         fullmetadata = malloc (fullmetadata_size);
         if (fullmetadata == NULL)
             break;
 
         fullmetadata_size = snprintf (fullmetadata, fullmetadata_size,
-                "StreamTitle='%.*s';", fullmetadata_size-(sizeof (meta_fmt)-1), source_state->metadata); 
+                "StreamTitle='%.*s';", fullmetadata_size-(sizeof (meta_fmt)-1), source_state->metadata);
 
         source_age = source_state->metadata_age;
 
         if (fullmetadata_size > 0 && source_age != client_state->metadata_age)
         {
-            len_byte = (fullmetadata_size-1)/16 + 1; /* to give 1-255 */
+            len_byte = (fullmetadata_size)/16 + 1; /* to give 1-255 */
             client_state->metadata_offset = 0;
         }
         else
             len_byte = 0;
         len = 1 + len_byte*16;
-        buf = malloc (len);
+        buf = calloc (1, len);
         if (buf == NULL)
             break;
 
