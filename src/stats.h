@@ -2,7 +2,7 @@
 #define __STATS_H__
 
 #include "connection.h"
-#include "httpp.h"
+#include "httpp/httpp.h"
 #include "client.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>

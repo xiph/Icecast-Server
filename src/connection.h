@@ -3,9 +3,9 @@
 
 #include <sys/types.h>
 #include "compat.h"
-#include "httpp.h"
-#include "thread.h"
-#include "sock.h"
+#include "httpp/httpp.h"
+#include "thread/thread.h"
+#include "net/sock.h"
 
 struct _client_tag;
 

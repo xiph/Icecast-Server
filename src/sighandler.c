@@ -1,9 +1,8 @@
 #include <signal.h>
 
-#include "thread.h"
-#include "avl.h"
-#include "log.h"
-#include "httpp.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
 
 #include "global.h"
 #include "connection.h"

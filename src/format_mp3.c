@@ -17,7 +17,6 @@
 #include "format.h"
 #include "httpp/httpp.h"
 
-#include "log.h"
 #include "logging.h"
 
 #include "format_mp3.h"

@@ -8,7 +8,7 @@
 
 #include "client.h"
 #include "refbuf.h"
-#include "httpp.h"
+#include "httpp/httpp.h"
 
 struct source_tag;
 

@@ -2,9 +2,8 @@
 #include <time.h>
 #include <string.h>
 
-#include "thread.h"
-#include "httpp.h"
-#include "log.h"
+#include "thread/thread.h"
+#include "httpp/httpp.h"
 
 #include "connection.h"
 #include "refbuf.h"

@@ -21,9 +21,6 @@ icecast_DEPENDENCIES = $(icecast_LDADD)
 LIBS = @LIBS@ @XSLT_LIBS@ @SOCKET_LIBS@ @XML_LIBS@ @OGG_LIBS@ @VORBIS_LIBS@ @CURL_LIBS@ @PTHREAD_LIBS@
 CFLAGS = -g @CFLAGS@ @XML_CFLAGS@ @XSLT_CFLAGS@ @OGG_CFLAGS@ @VORBIS_CFLAGS@ @CURL_CFLAGS@ @PTHREAD_CFLAGS@
 
-INCLUDES = -I$(srcdir)/net -I$(srcdir)/thread -I$(srcdir)/avl -I$(srcdir)/httpp \
-	-I$(srcdir)/log -I$(srcdir)/timing
-
 debug:
 	$(MAKE) all CFLAGS="@DEBUG@ @XML_CFLAGS@ @OGG_CFLAGS@ @VORBIS_CFLAGS@"
 

@@ -19,7 +19,6 @@
 #include "format.h"
 
 #define CATMODULE "format-vorbis"
-#include "log.h"
 #include "logging.h"
 
 #define MAX_HEADER_PAGES 10

@@ -1,7 +1,7 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
-#include "log.h"
+#include "log/log.h"
 
 /* declare the global log descriptors */
 

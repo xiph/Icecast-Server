@@ -8,10 +8,10 @@
 #include <libxslt/xsltutils.h>
 
 
-#include <thread/thread.h>
-#include <avl/avl.h>
-#include <httpp/httpp.h>
-#include <net/sock.h>
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 
 
 #include "connection.h"

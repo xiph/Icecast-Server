@@ -16,10 +16,10 @@
 #include <windows.h>
 #endif
 
-#include "thread.h"
-#include "avl.h"
-#include "httpp.h"
-#include "sock.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 
 #include "connection.h"
 #include "global.h"
@@ -27,7 +27,6 @@
 #include "client.h"
 #include "stats.h"
 #include "format.h"
-#include "log.h"
 #include "logging.h"
 #include "config.h"
 #include "util.h"

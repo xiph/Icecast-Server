@@ -20,10 +20,10 @@
 #endif
 
 
-#include <thread/thread.h>
-#include <avl/avl.h>
-#include <httpp/httpp.h>
-#include <net/sock.h>
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 
 #include "connection.h"
 
@@ -33,7 +33,7 @@
 #include "stats.h"
 
 #define CATMODULE "xslt"
-#include "log.h"
+
 #include "logging.h"
 
 typedef struct {

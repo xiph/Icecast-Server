@@ -1,10 +1,10 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <string.h>
 
-#include "thread.h"
-#include "avl.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
 
-#include "httpp.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"

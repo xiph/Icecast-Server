@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "thread.h"
-#include "avl.h"
-#include "httpp.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "httpp/httpp.h"
 
 #include "connection.h"
 #include "refbuf.h"

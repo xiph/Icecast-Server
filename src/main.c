@@ -2,12 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "thread.h"
-#include "avl.h"
-#include "log.h"
-#include "sock.h"
-#include "resolver.h"
-#include "httpp.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "net/sock.h"
+#include "net/resolver.h"
+#include "httpp/httpp.h"
 
 #ifdef CHUID
 #include <sys/types.h>

@@ -19,7 +19,7 @@
 #define strncasecmp strnicmp
 #endif
 
-#include "sock.h"
+#include "net/sock.h"
 
 #include "config.h"
 #include "util.h"
@@ -30,7 +30,6 @@
 
 #define CATMODULE "util"
 
-#include "log.h"
 #include "logging.h"
 
 /* Abstract out an interface to use either poll or select depending on which

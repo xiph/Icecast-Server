@@ -22,11 +22,10 @@
 
 #include "os.h"
 
-#include "thread.h"
-#include "avl.h"
-#include "sock.h"
-#include "log.h"
-#include "httpp.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "net/sock.h"
+#include "httpp/httpp.h"
 
 #include "config.h"
 #include "global.h"
