@@ -19,13 +19,15 @@ void log_initialize();
 int log_open_file(FILE *file);
 int log_open(const char *filename);
 int log_open_with_buffer(const char *filename, int size);
-void log_set_level(int log_id, int level);
+void log_set_level(int log_id, unsigned level);
+void log_set_trigger(int id, unsigned trigger);
+int  log_set_filename(int id, const char *filename);
 void log_flush(int log_id);
 void log_reopen(int log_id);
 void log_close(int log_id);
 void log_shutdown();
 
-void log_write(int log_id, int priority, const char *cat, const char *func, 
+void log_write(int log_id, unsigned priority, const char *cat, const char *func, 
         const char *fmt, ...);
 void log_write_direct(int log_id, const char *fmt, ...);
 

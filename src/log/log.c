@@ -1,8 +1,21 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 
 #ifndef _WIN32
 #include <pthread.h>
@@ -30,20 +43,60 @@ typedef struct log_tag
 {
     int in_use;
 
-    int level;
+    unsigned level;
 
     char *filename;
     FILE *logfile;
+    unsigned size;
+    unsigned trigger_level;
     
     char *buffer;
 } log_t;
 
-log_t loglist[LOG_MAXLOGS];
+static log_t loglist[LOG_MAXLOGS];
 
-int _get_log_id();
-void _release_log_id(int log_id);
+static int _get_log_id();
+static void _release_log_id(int log_id);
 static void _lock_logger();
 static void _unlock_logger();
+
+
+static int _log_open (int id)
+{
+    if (loglist [id] . in_use == 0)
+        return 0;
+
+    /* check for cases where an open of the logfile is wanted */
+    if (loglist [id] . logfile == NULL || 
+       (loglist [id] . trigger_level && loglist [id] . size > loglist [id] . trigger_level))
+    {
+        if (loglist [id] . filename)  /* only re-open files where we have a name */
+        {
+            struct stat st;
+
+            if (loglist [id] . logfile)
+            {
+                char new_name [255];
+                fclose (loglist [id] . logfile);
+                loglist [id] . logfile = NULL;
+                /* simple rename, but could use time providing locking were used */
+                snprintf (new_name,  sizeof(new_name), "%s.old", loglist [id] . filename);
+                rename (loglist [id] . filename, new_name);
+            }
+            loglist [id] . logfile = fopen (loglist [id] . filename, "a");
+            if (loglist [id] . logfile == NULL)
+                return 0;
+            setvbuf (loglist [id] . logfile, NULL, IO_BUFFER_TYPE, 0);
+            if (stat (loglist [id] . filename, &st) < 0)
+                loglist [id] . size = 0;
+            else
+                loglist [id] . size = st.st_size;
+        }
+        else
+            loglist [id] . size = 0;
+    }
+    return 1;
+}
 
 void log_initialize()
 {
@@ -54,6 +107,8 @@ void log_initialize()
     for (i = 0; i < LOG_MAXLOGS; i++) {
         loglist[i].in_use = 0;
         loglist[i].level = 2;
+        loglist[i].size = 0;
+        loglist[i].trigger_level = 0;
         loglist[i].filename = NULL;
         loglist[i].logfile = NULL;
         loglist[i].buffer = NULL;
@@ -79,12 +134,8 @@ int log_open_file(FILE *file)
     if (log_id < 0) return LOG_ENOMORELOGS;
 
     loglist[log_id].logfile = file;
-    if (loglist[log_id].logfile != NULL) {
-        loglist[log_id].filename = NULL;
-    } else {
-        _release_log_id(log_id);
-        return LOG_ECANTOPEN;
-    }
+    loglist[log_id].filename = NULL;
+    loglist[log_id].size = 0;
 
     return log_id;
 }
@@ -92,7 +143,7 @@ int log_open_file(FILE *file)
 
 int log_open(const char *filename)
 {
-    int ret;
+    int id;
     FILE *file;
 
     if (filename == NULL) return LOG_EINSANE;
@@ -100,13 +151,46 @@ int log_open(const char *filename)
     
     file = fopen(filename, "a");
 
-    ret = log_open_file(file);
+    id = log_open_file(file);
 
-    if(ret >= 0)
-        setvbuf(file, NULL, IO_BUFFER_TYPE, 0);
+    if (id >= 0)
+    {
+        struct stat st;
 
-    return ret;
+        setvbuf (loglist [id] . logfile, NULL, IO_BUFFER_TYPE, 0);
+        loglist [id] . filename = strdup (filename);
+        if (stat (loglist [id] . filename, &st) == 0)
+            loglist [id] . size = st.st_size;
+    }
+
+    return id;
 }
+
+
+/* set the trigger level to trigger, represented in kilobytes */
+void log_set_trigger(int id, unsigned trigger)
+{
+    if (id >= 0 && id < LOG_MAXLOGS && loglist [id] . in_use)
+    {
+         loglist [id] . trigger_level = trigger*1024;
+    }
+}
+
+
+int log_set_filename(int id, const char *filename)
+{
+    if (id >= 0 && id < LOG_MAXLOGS)
+        return LOG_EINSANE;
+    if (filename == NULL || !strcmp(filename, "") || loglist [id] . in_use == 0)
+        return LOG_EINSANE;
+     _lock_logger();
+    if (loglist [id] . filename)
+        free (loglist [id] . filename);
+    loglist [id] . filename = strdup (filename);
+     _unlock_logger();
+    return id;
+}
+
 
 int log_open_with_buffer(const char *filename, int size)
 {
@@ -114,7 +198,8 @@ int log_open_with_buffer(const char *filename, int size)
     return LOG_ENOTIMPL;
 }
 
-void log_set_level(int log_id, int level)
+
+void log_set_level(int log_id, unsigned level)
 {
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
     if (loglist[log_id].in_use == 0) return;
@@ -127,12 +212,24 @@ void log_flush(int log_id)
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
     if (loglist[log_id].in_use == 0) return;
 
-    fflush(loglist[log_id].logfile);
+    _lock_logger();
+    if (loglist[log_id].logfile)
+        fflush(loglist[log_id].logfile);
+    _unlock_logger();
 }
 
 void log_reopen(int log_id)
 {
-    /* not implemented yet */
+    if (log_id >= 0 && log_id < LOG_MAXLOGS)
+        return;
+    if (loglist [log_id] . filename)
+    {
+        _lock_logger();
+
+        fclose (loglist [log_id] . logfile);
+        loglist [log_id] . logfile = NULL;
+        _unlock_logger();
+    }
 }
 
 void log_close(int log_id)
@@ -160,10 +257,10 @@ void log_shutdown()
     _initialized = 0;
 }
 
-void log_write(int log_id, int priority, const char *cat, const char *func, 
+void log_write(int log_id, unsigned priority, const char *cat, const char *func, 
         const char *fmt, ...)
 {
-        static char prior[4][5] = { "EROR\0", "WARN\0", "INFO\0", "DBUG\0" };
+    static char *prior[] = { "EROR", "WARN", "INFO", "DBUG" };
     char tyme[128];
     char pre[256];
     char line[LOG_MAXLINELEN];
@@ -173,22 +270,25 @@ void log_write(int log_id, int priority, const char *cat, const char *func,
     if (log_id < 0) return;
     if (log_id > LOG_MAXLOGS) return; /* Bad log number */
     if (loglist[log_id].level < priority) return;
-    if (priority > 4) return; /* Bad priority */
-
+    if (priority > sizeof(prior)/sizeof(prior[0])) return; /* Bad priority */
 
     va_start(ap, fmt);
     vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
 
     now = time(NULL);
 
-    /* localtime() isn't threadsafe, localtime_r isn't portable enough... */
     _lock_logger();
-    strftime(tyme, 128, "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
+    strftime(tyme, sizeof (tyme), "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
+
+    snprintf(pre, sizeof (pre), "%s %s%s", prior[priority-1], cat, func);
+
+    if (_log_open (log_id))
+    {
+        int len = fprintf (loglist[log_id].logfile, "%s %s %s\n", tyme, pre, line); 
+        if (len > 0)
+            loglist[log_id].size += len;
+    }
     _unlock_logger();
-
-    snprintf(pre, 256, "%s %s%s", prior[priority-1], cat, func);
-
-    fprintf(loglist[log_id].logfile, "%s %s %s\n", tyme, pre, line); 
 
     va_end(ap);
 }
@@ -201,14 +301,23 @@ void log_write_direct(int log_id, const char *fmt, ...)
     if (log_id < 0) return;
     
     va_start(ap, fmt);
+
+    _lock_logger();
     vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
-    fprintf(loglist[log_id].logfile, "%s\n", line);
+    if (_log_open (log_id))
+    {
+        int len = fprintf(loglist[log_id].logfile, "%s\n", line);
+        if (len > 0)
+            loglist[log_id].size += len;
+    }
+    _unlock_logger();
+
     va_end(ap);
 
     fflush(loglist[log_id].logfile);
 }
 
-int _get_log_id()
+static int _get_log_id()
 {
     int i;
     int id = -1;
@@ -229,7 +338,7 @@ int _get_log_id()
     return id;
 }
 
-void _release_log_id(int log_id)
+static void _release_log_id(int log_id)
 {
     /* lock mutex */
     _lock_logger();
