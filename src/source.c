@@ -252,7 +252,7 @@ void source_clear_source (source_t *source)
     source->no_mount = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
-    free (source->audio_info);
+    util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
     free(source->fallback_mount);
@@ -832,7 +832,6 @@ static int _add_client (char *passed_mount, client_t *client, int initial_connec
 {
     source_t *source;
     char *mount = passed_mount;
-    int ret;
 
     while (1)
     {
@@ -881,7 +880,7 @@ static int _add_client (char *passed_mount, client_t *client, int initial_connec
     source->new_listeners++;
 
     thread_mutex_unlock (&source->lock);
-    return ret;
+    return 0;
 }
 
 

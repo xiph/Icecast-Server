@@ -535,6 +535,12 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         source_mp3->offset = 0;
         source_mp3->build_metadata_len = 0;
     }
+    /* the data we have just read may of just been metadata */
+    if (refbuf->len == 0)
+    {
+        refbuf_release (refbuf);
+        return NULL;
+    }
     refbuf->associated = source_mp3->metadata;
     refbuf_addref (source_mp3->metadata);
     refbuf->sync_point = 1;
