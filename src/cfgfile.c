@@ -361,9 +361,11 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "master-server-port") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_server_port = atoi(tmp);
+            xmlFree (tmp);
         } else if (strcmp(node->name, "master-update-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_update_interval = atoi(tmp);
+            xmlFree (tmp);
         } else if (strcmp(node->name, "limits") == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "relay") == 0) {
