@@ -904,7 +904,7 @@ static void command_stats(client_t *client, int response) {
 
     DEBUG0("Stats request, sending xml stats");
 
-    stats_get_xml(&doc);
+    stats_get_xml(&doc, 1);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     client_destroy(client);
@@ -913,31 +913,30 @@ static void command_stats(client_t *client, int response) {
 
 static void command_list_mounts(client_t *client, int response)
 {
-    avl_node *node;
-    source_t *source;
-
     DEBUG0("List mounts request");
 
     avl_tree_rlock (global.source_tree);
     if (response == PLAINTEXT)
     {
         char buffer [4096], *buf = buffer;
-        unsigned remaining = sizeof (buffer);
-        int ret = sprintf (buffer,
+        unsigned int remaining = sizeof (buffer);
+        int ret = snprintf (buffer, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
-        node = avl_get_first(global.source_tree);
-        while (node && ret > 0 && ret < remaining)
+        avl_node *node = avl_get_first(global.source_tree);
+        while (node && ret > 0 && (unsigned)ret < remaining)
         {
+            source_t *source = (source_t *)node->key;
+            node = avl_get_next(node);
+            if (source->hidden)
+                continue;
             remaining -= ret;
             buf += ret;
-            source = (source_t *)node->key;
             ret = snprintf (buf, remaining, "%s\n", source->mount);
-            node = avl_get_next(node);
         }
         avl_tree_unlock (global.source_tree);
         /* handle last line */
-        if (ret > 0 && ret < remaining)
+        if (ret > 0 && (unsigned)ret < remaining)
         {
             remaining -= ret;
             buf += ret;

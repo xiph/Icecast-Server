@@ -243,6 +243,7 @@ void source_clear_source (source_t *source)
     source->max_listeners = -1;
     source->yp_public = 0;
     source->yp_prevent = 0;
+    source->hidden = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
@@ -855,6 +856,9 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->max_listeners = mountinfo->max_listeners;
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
+    source->hidden = mountinfo->hidden;
+    stats_event_hidden (source->mount, NULL, source->hidden);
+
     if (mountinfo->fallback_mount)
     {
         source->fallback_mount = strdup (mountinfo->fallback_mount);

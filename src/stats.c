@@ -48,6 +48,7 @@
 #define STATS_EVENT_DEC     2
 #define STATS_EVENT_ADD     3
 #define STATS_EVENT_REMOVE  4
+#define STATS_EVENT_HIDDEN  5
 
 typedef struct _event_listener_tag
 {
@@ -207,6 +208,22 @@ void stats_event(const char *source, const char *name, const char *value)
         queue_global_event (event);
 }
 
+/* make stat hidden (non-zero). name can be NULL if it applies to a whole
+ * source stats tree. */
+void stats_event_hidden (const char *source, const char *name, int hidden)
+{
+    stats_event_t *event;
+    const char *str = NULL;
+
+    if (hidden)
+        str = "";
+    event = build_event (source, name, str);
+    if (event)
+    {
+        event->action = STATS_EVENT_HIDDEN;
+        queue_global_event (event);
+    }
+}
 
 /* printf style formatting for stat create/update */
 void stats_event_args(const char *source, char *name, char *format, ...)
@@ -362,6 +379,7 @@ static stats_event_t *_copy_event(stats_event_t *event)
         copy->value = (char *)strdup(event->value);
     else
         copy->value = NULL;
+    copy->hidden = event->hidden;
     copy->next = NULL;
 
     return copy;
@@ -373,6 +391,14 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
 {
     char *str;
 
+    if (event->action == STATS_EVENT_HIDDEN)
+    {
+        if (event->value)
+            node->hidden = 1;
+        else
+            node->hidden = 0;
+        return;
+    }
     if (event->action != STATS_EVENT_SET)
     {
         int value = 0;
@@ -445,6 +471,10 @@ static void process_source_event (stats_event_t *event)
         DEBUG1 ("new source stat %s", event->source);
         snode->source = (char *)strdup(event->source);
         snode->stats_tree = avl_tree_new(_compare_stats, NULL);
+        if (event->action == STATS_EVENT_HIDDEN)
+            snode->hidden = 1;
+        else
+            snode->hidden = 0;
 
         avl_insert(_stats.source_tree, (void *)snode);
     }
@@ -462,6 +492,7 @@ static void process_source_event (stats_event_t *event)
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
                 node->name = (char *)strdup(event->name);
                 node->value = (char *)strdup(event->value);
+                node->hidden = snode->hidden;
 
                 avl_insert(snode->stats_tree, (void *)node);
             }
@@ -474,6 +505,22 @@ static void process_source_event (stats_event_t *event)
             return;
         }
         modify_node_event (node, event);
+        return;
+    }
+    if (event->action == STATS_EVENT_HIDDEN)
+    {
+        avl_node *node = avl_get_first (snode->stats_tree);
+
+        if (event->value)
+            snode->hidden = 1;
+        else
+            snode->hidden = 0;
+        while (node)
+        {
+            stats_node_t *stats = (stats_node_t*)node->key;
+            stats->hidden = snode->hidden;
+            node = avl_get_next (node);
+        }
         return;
     }
     if (event->action == STATS_EVENT_REMOVE)
@@ -579,6 +626,7 @@ static stats_event_t *_make_event_from_node(stats_node_t *node, char *source)
         event->source = NULL;
     event->name = (char *)strdup(node->name);
     event->value = (char *)strdup(node->value);
+    event->hidden = node->hidden;
     event->action = STATS_EVENT_SET;
     event->next = NULL;
 
@@ -798,14 +846,14 @@ void stats_transform_xslt(client_t *client, char *xslpath)
 {
     xmlDocPtr doc;
 
-    stats_get_xml(&doc);
+    stats_get_xml(&doc, 0);
 
     xslt_transform(doc, xslpath, client);
 
     xmlFreeDoc(doc);
 }
 
-void stats_get_xml(xmlDocPtr *doc)
+void stats_get_xml(xmlDocPtr *doc, int show_hidden)
 {
     stats_event_t *event;
     stats_event_t *queue;
@@ -824,16 +872,19 @@ void stats_get_xml(xmlDocPtr *doc)
     event = _get_event_from_queue(&queue);
     while (event)
     {
-        xmlChar *name, *value;
-        name = xmlEncodeEntitiesReentrant (*doc, event->name);
-        value = xmlEncodeEntitiesReentrant (*doc, event->value);
-        srcnode = node;
-        if (event->source) {
-            srcnode = _find_xml_node(event->source, &src_nodes, node);
+        if (event->hidden <= show_hidden)
+        {
+            xmlChar *name, *value;
+            name = xmlEncodeEntitiesReentrant (*doc, event->name);
+            value = xmlEncodeEntitiesReentrant (*doc, event->value);
+            srcnode = node;
+            if (event->source) {
+                srcnode = _find_xml_node(event->source, &src_nodes, node);
+            }
+            xmlNewChild(srcnode, NULL, name, value);
+            xmlFree (value);
+            xmlFree (name);
         }
-        xmlNewChild(srcnode, NULL, name, value);
-        xmlFree (value);
-        xmlFree (name);
 
         _free_event(event);
         event = _get_event_from_queue(&queue);

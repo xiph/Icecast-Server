@@ -58,6 +58,7 @@ typedef struct _mount_proxy {
                      * from global setting */
     unsigned int queue_size_limit;
     int no_yp; /* Do we prevent YP on this mount */
+    int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
 
     char *auth_type; /* Authentication type */

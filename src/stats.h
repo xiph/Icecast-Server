@@ -31,6 +31,7 @@ typedef struct _stats_node_tag
 {
     char *name;
     char *value;
+    int hidden;
 } stats_node_t;
 
 typedef struct _stats_event_tag
@@ -38,6 +39,7 @@ typedef struct _stats_event_tag
     char *source;
     char *name;
     char *value;
+    int  hidden;
     int  action;
 
     struct _stats_event_tag *next;
@@ -46,6 +48,7 @@ typedef struct _stats_event_tag
 typedef struct _stats_source_tag
 {
     char *source;
+    int  hidden;
     avl_tree *stats_tree;
 } stats_source_t;
 
@@ -83,13 +86,14 @@ void stats_event_args(const char *source, char *name, char *format, ...);
 void stats_event_inc(const char *source, const char *name);
 void stats_event_add(const char *source, const char *name, unsigned long value);
 void stats_event_dec(const char *source, const char *name);
+void stats_event_hidden (const char *source, const char *name, int hidden);
 
 void *stats_connection(void *arg);
 void *stats_callback(void *arg);
 
 void stats_transform_xslt(client_t *client, char *xslpath);
 void stats_sendxml(client_t *client);
-void stats_get_xml(xmlDocPtr *doc);
+void stats_get_xml(xmlDocPtr *doc, int show_hidden);
 char *stats_get_value(char *source, char *name);
 
 #endif  /* __STATS_H__ */

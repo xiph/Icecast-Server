@@ -558,6 +558,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->no_yp = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (strcmp(node->name, "hidden") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->hidden = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "authentication") == 0) {
             mount->auth_type = xmlGetProp(node, "type");
             option = node->xmlChildrenNode;
