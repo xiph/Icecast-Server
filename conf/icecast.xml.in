@@ -14,6 +14,10 @@
              client and listening client.  For low-latency setups, you
              might want to disable this. -->
         <burst-on-connect>1</burst-on-connect>
+        <!-- same as burst-on-connect, but this allows for being more
+             specific on how much to burst. Most people won't need to
+             change from the default 64k. Applies to all mountpoints  -->
+        <burst-size>65535</burst-size>
     </limits>
 
     <authentication>
@@ -84,6 +88,7 @@
 
         <max-listeners>1</max-listeners>
         <dump-file>/tmp/dump-example1.ogg</dump-file>
+        <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
