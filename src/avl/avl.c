@@ -22,12 +22,16 @@
  *
  */
 
-/* $Id: avl.c,v 1.2 2003/03/06 00:59:41 brendan Exp $ */
+/* $Id: avl.c,v 1.3 2003/03/08 16:05:38 karl Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
  * written in python, 'avl_tree.py'. Read that file first.
  */
+
+#ifdef HAVE_CONFIG_H
+ #include <config.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
