@@ -438,6 +438,14 @@ static int update_from_master(ice_config_t *config)
         free(authheader);
         free(data);
 
+        sock_read_line(mastersock, buf, sizeof(buf));
+        if (strncmp (buf, "HTTP/1.0 200", 12) != 0)
+        {
+            sock_close (mastersock);
+            WARN0 ("Master rejected authentication");
+            break;
+        }
+
         while (sock_read_line(mastersock, buf, sizeof(buf)))
         {
             if (!strlen(buf))
