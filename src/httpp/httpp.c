@@ -40,7 +40,7 @@ void httpp_initialize(http_parser_t *parser, http_varlist_t *defaults)
 	parser->req_type = httpp_req_none;
 	parser->uri = NULL;
 	parser->vars = avl_tree_new(_compare_vars, NULL);
-    parser->queryvars = avl_tree_new(_compare_vars, NULL);
+	parser->queryvars = avl_tree_new(_compare_vars, NULL);
 
 	/* now insert the default variables */
 	list = defaults;
@@ -119,60 +119,58 @@ static void parse_headers(http_parser_t *parser, char **line, int lines)
 
 int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long len, char *uri)
 {
-    char *data;
-    char *line[MAX_HEADERS];
-    int lines, slen,i, whitespace=0, where=0,code;
-    char *version=NULL, *resp_code=NULL, *message=NULL;
+	char *data;
+	char *line[MAX_HEADERS];
+	int lines, slen,i, whitespace=0, where=0,code;
+	char *version=NULL, *resp_code=NULL, *message=NULL;
     
-    if(http_data == NULL)
-        return 0;
+	if(http_data == NULL)
+		return 0;
 
 	/* make a local copy of the data, including 0 terminator */
 	data = (char *)malloc(len+1);
 	if (data == NULL) return 0;
 	memcpy(data, http_data, len);
-    data[len] = 0;
+	data[len] = 0;
 
-    lines = split_headers(data, len, line);
+	lines = split_headers(data, len, line);
 
-    /* In this case, the first line contains:
-     * VERSION RESPONSE_CODE MESSAGE, such as
-     * HTTP/1.0 200 OK
-     */
-    slen = strlen(line[0]);
-    version = line[0];
-    for(i=0; i < slen; i++) {
-        if(line[0][i] == ' ') {
-            line[0][i] = 0;
-            whitespace = 1;
-        }
-        else if(whitespace) {
-            whitespace = 0;
-            where++;
-            if(where == 1)
-                resp_code = &line[0][i];
-            else {
-                message = &line[0][i];
-                break;
-            }
-        }
-    }
+	/* In this case, the first line contains:
+	 * VERSION RESPONSE_CODE MESSAGE, such as HTTP/1.0 200 OK
+	 */
+	slen = strlen(line[0]);
+	version = line[0];
+	for(i=0; i < slen; i++) {
+		if(line[0][i] == ' ') {
+			line[0][i] = 0;
+			whitespace = 1;
+		} else if(whitespace) {
+			whitespace = 0;
+			where++;
+			if(where == 1)
+				resp_code = &line[0][i];
+			else {
+				message = &line[0][i];
+				break;
+			}
+		}
+	}
 
-    if(version == NULL || resp_code == NULL || message == NULL) {
-        free(data);
-        return 0;
-    }
+	if(version == NULL || resp_code == NULL || message == NULL) {
+		free(data);
+		return 0;
+	}
 
-    httpp_setvar(parser, HTTPP_VAR_ERROR_CODE, resp_code);
-    code = atoi(resp_code);
-    if(code < 200 || code >= 300) {
-        httpp_setvar(parser, HTTPP_VAR_ERROR_MESSAGE, message);
-    }
+	httpp_setvar(parser, HTTPP_VAR_ERROR_CODE, resp_code);
+	code = atoi(resp_code);
+	if(code < 200 || code >= 300) {
+		httpp_setvar(parser, HTTPP_VAR_ERROR_MESSAGE, message);
+	}
 
-    httpp_setvar(parser, HTTPP_VAR_URI, uri);
+	httpp_setvar(parser, HTTPP_VAR_URI, uri);
 	httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "NONE");
 
-    parse_headers(parser, line, lines);
+	parse_headers(parser, line, lines);
 
 	free(data);
 
@@ -181,96 +179,95 @@ int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long l
 
 static int hex(char c)
 {
-    if(c >= '0' && c <= '9')
-        return c - '0';
-    else if(c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    else if(c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    else
-        return -1;
+	if(c >= '0' && c <= '9')
+		return c - '0';
+	else if(c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	else if(c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	else
+		return -1;
 }
 
 static char *url_escape(char *src)
 {
-    int len = strlen(src);
-    unsigned char *decoded;
-    int i;
-    char *dst;
-    int done = 0;
+	int len = strlen(src);
+	unsigned char *decoded;
+	int i;
+	char *dst;
+	int done = 0;
 
-    decoded = calloc(1, len + 1);
+	decoded = calloc(1, len + 1);
 
-    dst = decoded;
+	dst = decoded;
 
-    for(i=0; i < len; i++) {
-        switch(src[i]) {
-            case '%':
-                if(i+2 >= len) {
-                    free(decoded);
-                    return NULL;
-                }
-                if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
-                    free(decoded);
-                    return NULL;
-                }
+	for(i=0; i < len; i++) {
+		switch(src[i]) {
+		case '%':
+			if(i+2 >= len) {
+				free(decoded);
+				return NULL;
+			}
+			if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
+				free(decoded);
+				return NULL;
+			}
 
-                *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
-                i+= 2;
-                break;
-            case '#':
-                done = 1;
-                break;
-            case 0:
-                free(decoded);
-                return NULL;
-                break;
-            default:
-                *dst++ = src[i];
-                break;
-        }
-        if(done)
-            break;
-    }
+			*dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
+			i+= 2;
+			break;
+		case '#':
+			done = 1;
+			break;
+		case 0:
+			free(decoded);
+			return NULL;
+			break;
+		default:
+			*dst++ = src[i];
+			break;
+		}
+		if(done)
+			break;
+	}
 
-    *dst = 0; /* null terminator */
+	*dst = 0; /* null terminator */
 
-    return decoded;
+	return decoded;
 }
 
 /** TODO: This is almost certainly buggy in some cases */
 static void parse_query(http_parser_t *parser, char *query)
 {
-    int len;
-    int i=0;
-    char *key = query;
-    char *val=NULL;
+	int len;
+	int i=0;
+	char *key = query;
+	char *val=NULL;
 
-    if(!query || !*query)
-        return;
+	if(!query || !*query)
+		return;
 
-    len = strlen(query);
+	len = strlen(query);
 
-    while(i<len) {
-        switch(query[i]) {
-            case '&':
-                query[i] = 0;
-                if(val && key) {
-                    httpp_set_query_param(parser, key, val);
-                }
-                key = query+i+1;
-                break;
-            case '=':
-                query[i] = 0;
-                val = query+i+1;
-                break;
-        }
-        i++;
-    }
+	while(i<len) {
+		switch(query[i]) {
+		case '&':
+			query[i] = 0;
+			if(val && key)
+				httpp_set_query_param(parser, key, val);
+			key = query+i+1;
+			break;
+		case '=':
+			query[i] = 0;
+			val = query+i+1;
+			break;
+		}
+		i++;
+	}
 
-    if(val && key) {
-        httpp_set_query_param(parser, key, val);
-    }
+	if(val && key) {
+		httpp_set_query_param(parser, key, val);
+	}
 }
 
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
@@ -282,7 +279,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	char *req_type = NULL;
 	char *uri = NULL;
 	char *version = NULL;
-    int whitespace, where, slen;
+	int whitespace, where, slen;
 
 	if (http_data == NULL)
 		return 0;
@@ -291,9 +288,9 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	data = (char *)malloc(len+1);
 	if (data == NULL) return 0;
 	memcpy(data, http_data, len);
-    data[len] = 0;
+	data[len] = 0;
 
-    lines = split_headers(data, len, line);
+	lines = split_headers(data, len, line);
 
 	/* parse the first line special
 	** the format is:
@@ -342,18 +339,16 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 		parser->req_type = httpp_req_unknown;
 	}
 
-	if (uri != NULL && strlen(uri) > 0) 
-    {
-        char *query;
-        if((query = strchr(uri, '?')) != NULL) {
-            *query = 0;
-            query++;
-            parse_query(parser, query);
-        }
+	if (uri != NULL && strlen(uri) > 0) {
+		char *query;
+		if((query = strchr(uri, '?')) != NULL) {
+			*query = 0;
+			query++;
+			parse_query(parser, query);
+		}
 
 		parser->uri = strdup(uri);
-    }
-	else
+	} else
 		parser->uri = NULL;
 
 	if ((version != NULL) && ((tmp = strchr(version, '/')) != NULL)) {
@@ -398,14 +393,14 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 		return 0;
 	}
 
-    if (parser->uri != NULL) {
+	if (parser->uri != NULL) {
 		httpp_setvar(parser, HTTPP_VAR_URI, parser->uri);
 	} else {
 		free(data);
 		return 0;
 	}
 
-    parse_headers(parser, line, lines);
+	parse_headers(parser, line, lines);
 
 	free(data);
 
@@ -439,7 +434,7 @@ char *httpp_getvar(http_parser_t *parser, char *name)
 	http_var_t *found;
 
 	var.name = name;
-    var.value = NULL;
+	var.value = NULL;
 
 	if (avl_get_by_key(parser->vars, (void *)&var, (void **)&found) == 0)
 		return found->value;
@@ -495,8 +490,8 @@ void httpp_clear(http_parser_t *parser)
 
 void httpp_destroy(http_parser_t *parser)
 {
-    httpp_clear(parser);
-    free(parser);
+	httpp_clear(parser);
+	free(parser);
 }
 
 char *_lowercase(char *str)
