@@ -562,7 +562,6 @@ static void *_stats_thread(void *arg)
             thread_mutex_unlock(&_global_event_mutex);
 
             event->next = NULL;
-            thread_mutex_unlock(&_global_event_mutex);
 
             thread_mutex_lock(&_stats_mutex);
 
