@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <curl/curl.h>
 
 #include <thread/thread.h>
 
@@ -29,7 +30,6 @@
 #include "source.h"
 #include "cfgfile.h"
 #include "stats.h"
-#include <curl/curl.h>
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -378,6 +378,7 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     }
     free (artist);
     free (title);
+
     val = (char *)stats_get_value (yp->mount, "listeners");
     if (val)
     {
@@ -418,6 +419,7 @@ static void process_ypdata (struct yp_server *server, ypdata_t *yp)
             yp->process = do_yp_remove;
             yp->next_update = 0;
         }
+
         ret = yp->process (yp, s, len);
         if (ret == 0)
         {
@@ -681,6 +683,7 @@ static void *yp_update_thread(void *arg)
         active_yps = server->next;
         destroy_yp_server (server);
     }
+
     return NULL;
 }
 
@@ -885,12 +888,13 @@ void yp_touch (const char *mount)
     trigger = time(NULL) + 3;
     if (server)
         search_list = server->mounts;
+
     while (server)
     {
         ypdata_t *yp = find_yp_mount (search_list, mount);
         if (yp)
         {
-            /* we may of found entries not purged yet, so skip them */
+            /* we may of found old entries not purged yet, so skip them */
             if (yp->release == 0 || yp->remove == 0)
             {
                 search_list = yp->next;

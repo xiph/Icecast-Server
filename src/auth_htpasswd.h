@@ -13,12 +13,9 @@
 #ifndef __AUTH_HTPASSWD_H__
 #define __AUTH_HTPASSWD_H__
 
-#include "source.h"
-#include "client.h"
-#include "config.h"
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 auth_t *auth_get_htpasswd_auth(config_options_t *options);
 

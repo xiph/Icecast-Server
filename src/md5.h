@@ -13,7 +13,6 @@
 #ifndef __MD5_H__
 #define __MD5_H__
 
-#include "config.h"
 #include "compat.h"
 
 #define HASH_LEN     16

@@ -201,7 +201,7 @@ static void *start_relay_stream (void *arg)
     do
     {
         char *auth_header;
-        char *redirect_header;
+        char *redirect_header = NULL;
 
         streamsock = sock_connect_wto (relay->server, relay->port, 10);
         if (streamsock == SOCK_ERROR)

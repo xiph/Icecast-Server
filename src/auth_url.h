@@ -12,17 +12,13 @@
 
 #ifndef __AUTH_URL_H__
 #define __AUTH_URL_H__
-#ifdef HAVE_AUTH_URL
 
-#include "source.h"
-#include "client.h"
-#include "config.h"
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 auth_t *auth_get_url_auth (config_options_t *options);
-#endif
+
 #endif
 
 
