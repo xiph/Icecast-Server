@@ -54,15 +54,17 @@ int util_timed_wait_for_fd(int fd, int timeout)
     return poll(&ufds, 1, timeout);
 #else
     fd_set rfds;
-    struct timeval tv;
+    struct timeval tv, *p=NULL;
 
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
 
-    tv.tv_sec = timeout/1000;
-    tv.tv_usec = (timeout % 1000)*1000;
-
-    return select(fd+1, &rfds, NULL, NULL, &tv);
+    if(timeout >= 0) {
+        tv.tv_sec = timeout/1000;
+        tv.tv_usec = (timeout % 1000)*1000;
+        p = &tv;
+    }
+    return select(fd+1, &rfds, NULL, NULL, p);
 #endif
 }
 

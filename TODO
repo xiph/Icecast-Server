@@ -4,13 +4,9 @@ BUGS
 
 - autoconf doesn't set HAVE_POLL 
 
-- automake isn't installing things (conf, web) correctly.
-
 - some stuff (like 'genre') isn't making it into the stats dump
 
-- thread_join uses thread->sys_thread, but thread structure has
-  already been freed in thread_exit()
-
+- make install - doesn't install configs?
 
 FEATURES
 --------
@@ -31,4 +27,7 @@ FEATURES
 
 - allow using get_predata() stuff to send an "intro" to any newly-connected
   user?
+
+- stats to list currently connected clients: ip and hostname
+
 

@@ -118,7 +118,7 @@ static connection_t *_accept_connection(void)
 	connection_t *con;
 	char *ip;
 
-    if (util_timed_wait_for_fd(global.serversock, 30) <= 0) {
+    if (util_timed_wait_for_fd(global.serversock, 100) <= 0) {
 		return NULL;
 	}
 

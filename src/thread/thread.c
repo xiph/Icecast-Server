@@ -707,6 +707,9 @@ void thread_join(thread_t *thread)
 	int i;
 
 	i = pthread_join(thread->sys_thread, &ret);
+    _mutex_lock(&_threadtree_mutex);
+    avl_delete(_threadtree, thread, _free_thread);
+    _mutex_unlock(&_threadtree_mutex);
     _free_thread(thread);
 }
 

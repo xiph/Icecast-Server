@@ -235,8 +235,10 @@ static void *fserv_thread_function(void *arg)
                 DEBUG0("Fileserving client had fatal error, disconnecting");
                 client->client->con->error = 1;
             }
+            /*
             else
                 DEBUG0("Fileserving client had recoverable error");
+             */
 
             avl_node_unlock(client_node);
             client_node = avl_get_next(client_node);

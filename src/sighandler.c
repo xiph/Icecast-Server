@@ -34,7 +34,7 @@ void sighandler_initialize(void)
 
 void _sig_hup(int signo)
 {
-	INFO1("Caught signal %d, rehashing config and reopening logfiles...", signo);
+	INFO1("Caught signal %d, rehashing config and reopening logfiles (unimplemented)...", signo);
 
 	/* reread config file */
 

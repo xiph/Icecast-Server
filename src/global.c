@@ -16,7 +16,7 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-	global.serversock = 0;
+	global.serversock = -1;
 	global.running = 0;
 	global.clients = 0;
 	global.sources = 0;
