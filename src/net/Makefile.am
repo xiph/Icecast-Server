@@ -7,8 +7,7 @@ noinst_HEADERS = resolver.h sock.h
 
 libicenet_la_SOURCES = sock.c resolver.c
 
-# SCCS stuff (for BitKeeper)
-GET = true
+INCLUDES = -I$(srcdir)/../thread
 
 debug:
         $(MAKE) all CFLAGS="@DEBUG@"
