@@ -946,6 +946,7 @@ static void process_pending_clients (source_t *source)
         int drop_client = 0;
 
         client = client->next;
+        to_go->next = NULL;
         /* do we need to handle http style headers */
         if (to_go->respcode == 0)
         {
@@ -965,10 +966,10 @@ static void process_pending_clients (source_t *source)
         }
         else
         {
+            if (*source->active_clients_tail == source->active_clients)
+                source->active_clients_tail = &to_go->next;
             to_go->next = source->active_clients;
             source->active_clients = to_go;
-            if (*source->active_clients_tail == to_go)
-                source->active_clients_tail = &to_go->next;
             count++;
         }
         source->new_listeners--;

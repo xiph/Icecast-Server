@@ -131,6 +131,7 @@ void slave_shutdown(void)
     if (!slave_running)
         return;
     slave_running = 0;
+    DEBUG0 ("waiting for slave thread");
     thread_join (_slave_thread_id);
 }
 
@@ -541,6 +542,7 @@ static void *_slave_thread(void *arg)
         /* only update relays lists when required */
         if (max_interval <= interval)
         {
+            DEBUG0 ("checking master stream list");
             config = config_get_config();
 
             interval = 0;
@@ -561,6 +563,7 @@ static void *_slave_thread(void *arg)
         }
         else
         {
+            DEBUG0 ("rescanning relay lists");
             thread_mutex_lock (&(config_locks()->relay_lock));
             relay_check_streams (global.master_relays, NULL);
             relay_check_streams (global.relays, NULL);
