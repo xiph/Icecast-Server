@@ -16,7 +16,7 @@ AC_SEARCH_LIBS([sethostent], [nsl],
 AC_SEARCH_LIBS([getnameinfo], [socket],
   [AC_DEFINE([HAVE_GETNAMEINFO], [1],
     [Define if you have the getnameinfo function])])
-AC_CHECK_FUNCS([endhostent getaddrinfo inet_aton])
+AC_CHECK_FUNCS([endhostent getaddrinfo inet_aton writev])
 
 # Irix defines INET_PTON but not sockaddr_storage!
 AC_CHECK_MEMBERS([struct sockaddr_storage.ss_family],
