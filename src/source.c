@@ -72,9 +72,11 @@ source_t *source_create(client_t *client, connection_t *con,
     src->yp_public = 0;
 
     if(mountinfo != NULL) {
-        src->fallback_mount = strdup (mountinfo->fallback_mount);
+        if (mountinfo->fallback_mount != NULL)
+            src->fallback_mount = strdup (mountinfo->fallback_mount);
         src->max_listeners = mountinfo->max_listeners;
-        src->dumpfilename = strdup (mountinfo->dumpfile);
+        if (mountinfo->dumpfile != NULL)
+            src->dumpfilename = strdup (mountinfo->dumpfile);
     }
 
     if(src->dumpfilename != NULL) {
