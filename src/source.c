@@ -49,7 +49,6 @@
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
-static int _remove_client(void *key);
 static int _free_client(void *key);
 static int _parse_audio_info(source_t *source, char *s);
 static void _add_yp_info(source_t *source, char *stat_name, 
@@ -96,6 +95,11 @@ source_t *source_create(client_t *client, connection_t *con,
 	return src;
 }
 
+static int source_remove_source(void *key)
+{
+    return 1;
+}
+
 /* you must already have a read lock on the global source tree
 ** to call this function
 */
@@ -136,7 +140,7 @@ int source_compare_sources(void *arg, void *a, void *b)
 
 int source_free_source(void *key)
 {
-	source_t *source = (source_t *)key;
+    source_t *source = key;
 	int i=0;
 
 	free(source->mount);
@@ -552,7 +556,7 @@ void *source_main(void *arg)
 
 		/** clear pending tree **/
 		while (avl_get_first(source->pending_tree)) {
-			avl_delete(source->pending_tree, avl_get_first(source->pending_tree)->key, _remove_client);
+			avl_delete(source->pending_tree, avl_get_first(source->pending_tree)->key, source_remove_client);
 		}
 
 		/* release write lock on pending_tree */
@@ -573,13 +577,21 @@ done:
     fallback_source = source_find_mount(source->fallback_mount);
     avl_tree_unlock(global.source_tree);
 
+    /* Now, we must remove this source from the source tree before
+     * removing the clients, otherwise new clients can sneak into the pending
+     * tree after we've cleared it
+     */
+	avl_tree_wlock(global.source_tree);
+	avl_delete(global.source_tree, source, source_remove_source);
+	avl_tree_unlock(global.source_tree);
+
 	/* we need to empty the client and pending trees */
 	avl_tree_wlock(source->pending_tree);
 	while (avl_get_first(source->pending_tree)) {
         client_t *client = (client_t *)avl_get_first(
                 source->pending_tree)->key;
         if(fallback_source) {
-            avl_delete(source->pending_tree, client, _remove_client);
+            avl_delete(source->pending_tree, client, source_remove_client);
 
             /* TODO: reset client local format data?  */
             avl_tree_wlock(fallback_source->pending_tree);
@@ -597,7 +609,7 @@ done:
         client_t *client = (client_t *)avl_get_first(source->client_tree)->key;
 
         if(fallback_source) {
-            avl_delete(source->client_tree, client, _remove_client);
+            avl_delete(source->client_tree, client, source_remove_client);
 
             /* TODO: reset client local format data?  */
             avl_tree_wlock(fallback_source->pending_tree);
@@ -621,12 +633,10 @@ done:
     if(source->dumpfile)
         fclose(source->dumpfile);
 
+    source_free_source(source);
+
 	/* release our hold on the lock so the main thread can continue cleaning up */
 	thread_rwlock_unlock(source->shutdown_rwlock);
-
-	avl_tree_wlock(global.source_tree);
-	avl_delete(global.source_tree, source, source_free_source);
-	avl_tree_unlock(global.source_tree);
 
 	thread_exit(0);
       
@@ -644,7 +654,7 @@ static int _compare_clients(void *compare_arg, void *a, void *b)
 	return 0;
 }
 
-static int _remove_client(void *key)
+int source_remove_client(void *key)
 {
 	return 1;
 }

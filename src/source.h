@@ -47,6 +47,7 @@ source_t *source_create(client_t *client, connection_t *con,
 source_t *source_find_mount(const char *mount);
 int source_compare_sources(void *arg, void *a, void *b);
 int source_free_source(void *key);
+int source_remove_client(void *key);
 void *source_main(void *arg);
 
 #endif

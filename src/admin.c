@@ -25,6 +25,7 @@
 #define COMMAND_FALLBACK            1
 #define COMMAND_METADATA_UPDATE     2
 #define COMMAND_SHOW_LISTENERS      3
+#define COMMAND_MOVE_CLIENTS        4
 
 /* Global commands */
 #define COMMAND_LIST_MOUNTS       101
@@ -47,6 +48,8 @@ int admin_get_command(char *command)
         return COMMAND_LIST_MOUNTS;
     else if(!strcmp(command, "streamlist"))
         return COMMAND_RAW_LISTSTREAM;
+    else if(!strcmp(command, "moveclients"))
+        return COMMAND_MOVE_CLIENTS;
     else
         return COMMAND_ERROR;
 }
@@ -54,6 +57,7 @@ int admin_get_command(char *command)
 static void command_fallback(client_t *client, source_t *source);
 static void command_metadata(client_t *client, source_t *source);
 static void command_show_listeners(client_t *client, source_t *source);
+static void command_move_clients(client_t *client, source_t *source);
 
 static void command_raw_stats(client_t *client);
 static void command_list_mounts(client_t *client, int formatted);
@@ -160,6 +164,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         case COMMAND_SHOW_LISTENERS:
             command_show_listeners(client, source);
             break;
+        case COMMAND_MOVE_CLIENTS:
+            command_move_clients(client, source);
+            break;
         default:
             WARN0("Mount request not recognised");
             client_send_400(client, "Mount request unknown");
@@ -212,6 +219,43 @@ static void html_write(client_t *client, char *fmt, ...)
     bytes = sock_write_fmt(client->con->sock, fmt, ap);
     va_end(ap);
     if(bytes > 0) client->con->sent_bytes = bytes;
+}
+
+static void command_move_clients(client_t *client, source_t *source)
+{
+    char *dest_source;
+    source_t *dest;
+    avl_node *client_node;
+    client_t *current;
+
+    COMMAND_REQUIRE(client, "destination", dest_source);
+    
+    avl_tree_rlock(global.source_tree);
+    dest = source_find_mount(dest_source);
+    avl_tree_unlock(global.source_tree);
+
+    if(dest == NULL) {
+        client_send_400(client, "No such source");
+        return;
+    }
+
+    avl_tree_wlock(source->client_tree);
+    client_node = avl_get_first(source->client_tree);
+    while(client_node) {
+        current = (client_t *)client_node->key;
+
+        avl_tree_wlock(dest->pending_tree);
+        avl_insert(dest->pending_tree, current);
+        avl_tree_unlock(dest->pending_tree);
+
+        client_node = avl_get_next(client_node);
+
+        avl_delete(source->client_tree, current, source_remove_client);
+    }
+
+    avl_tree_unlock(source->client_tree);
+        
+    html_success(client, "Clients moved");
 }
 
 static void command_show_listeners(client_t *client, source_t *source)
