@@ -17,6 +17,8 @@
 
 #ifdef _WIN32
 #define mutex_t CRITICAL_SECTION
+#define snprintf _snprintf
+#define vsnprintf _vsnprintf
 #else
 #define mutex_t pthread_mutex_t
 #endif
@@ -84,7 +86,8 @@ int log_open(const char *filename)
 		_release_log_id(log_id);
 		return LOG_ECANTOPEN;
 	}
-    setvbuf(loglist[log_id].logfile, NULL, _IOLBF, 0);
+
+	setvbuf(loglist[log_id].logfile, NULL, _IOLBF, 0);
 
 	return log_id;
 }
