@@ -23,6 +23,7 @@
 #define MAX_LISTEN_SOCKETS 10
 
 #include "thread/thread.h"
+#include "slave.h"
 
 typedef struct ice_global_tag
 {
@@ -36,6 +37,10 @@ typedef struct ice_global_tag
     int schedule_config_reread;
 
     avl_tree *source_tree;
+    /* for locally defined relays */
+    struct _relay_server *relays;
+    /* relays retrieved from master */
+    struct _relay_server *master_relays;
 
     cond_t shutdown_cond;
 } ice_global_t;

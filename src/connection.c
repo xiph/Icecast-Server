@@ -479,6 +479,7 @@ int connection_complete_source (source_t *source)
 
         global.sources++;
         global_unlock();
+        stats_event_inc(NULL, "sources");
 
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
@@ -578,10 +579,28 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
     }
     config_release_config();
 
+    /* we need to add this source into the tree but fail if this mountpoint
+     * already exists
+     */
+    avl_tree_wlock(global.source_tree);
+    if (source_find_mount_raw (mount) != NULL)
+    {
+        avl_tree_unlock(global.source_tree);
+        global_lock();
+        global.sources--;
+        global_unlock();
+        stats_event_dec(NULL, "sources");
+        INFO1("source \"%s\" already in use", mount);
+        client_send_404 (client, "Mountpoint in use");
+        return 0;
+    }
+    avl_insert(global.source_tree, (void *)source);
+    avl_tree_unlock(global.source_tree);
+
     source->send_return = 1;
     source->shutdown_rwlock = &_source_shutdown_rwlock;
     sock_set_blocking(con->sock, SOCK_NONBLOCK);
-    thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
+    thread_create("Source Thread", source_client_thread, (void *)source, THREAD_DETACHED);
     return 1;
 
 fail:
@@ -775,9 +794,7 @@ static void _handle_source_request(connection_t *con,
     }
     avl_tree_unlock(global.source_tree);
 
-    if (!connection_create_source(client, con, parser, uri)) {
-        client_send_404(client, "Mountpoint in use");
-    }
+    connection_create_source(client, con, parser, uri);
 }
 
 static void _handle_stats_request(connection_t *con, 

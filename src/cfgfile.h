@@ -32,15 +32,6 @@ typedef struct ice_config_dir_tag
     struct ice_config_dir_tag *next;
 } ice_config_dir_t;
 
-typedef struct _relay_server {
-    char *server;
-    int port;
-    char *mount;
-    char *localmount;
-    int mp3metadata;
-    struct _relay_server *next;
-} relay_server;
-
 typedef struct _config_options {
     char *name;
     char *value;

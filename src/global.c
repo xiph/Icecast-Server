@@ -37,6 +37,8 @@ void global_initialize(void)
 {
     memset(global.serversock, 0, sizeof(int)*MAX_LISTEN_SOCKETS);
     global.server_sockets = 0;
+    global.relays = NULL;
+    global.master_relays = NULL;
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
@@ -47,7 +49,7 @@ void global_initialize(void)
 void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
-    avl_tree_free(global.source_tree, source_free_source);
+    avl_tree_free(global.source_tree, NULL);
 }
 
 void global_lock(void)

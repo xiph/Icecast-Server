@@ -246,11 +246,13 @@ int source_compare_sources(void *arg, void *a, void *b)
 void source_clear_source (source_t *source)
 {
 #ifdef USE_YP
-     int i;
+    int i;
 #endif
     DEBUG1 ("clearing source \"%s\"", source->mount);
     client_destroy(source->client);
     source->client = NULL;
+    source->parser = NULL;
+    source->con = NULL;
 
     /* lets kick off any clients that are left on here */
     avl_tree_rlock (source->client_tree);
@@ -281,14 +283,14 @@ void source_clear_source (source_t *source)
         source->ypdata[i] = NULL;
     }
     source->num_yp_directories = 0;
+
+    util_dict_free (source->audio_info);
+    source->audio_info = NULL;
 #endif
     source->listeners = 0;
     source->no_mount = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
-
-    util_dict_free(source->audio_info);
-    source->audio_info = NULL;
 
     free(source->fallback_mount);
     source->fallback_mount = NULL;
@@ -298,32 +300,25 @@ void source_clear_source (source_t *source)
 }
 
 
+/* Remove the provided source from the global tree and free it */
 int source_free_source(void *key)
 {
     source_t *source = key;
-#ifdef USE_YP
-    int i;
-#endif
 
-    free(source->mount);
-    free(source->fallback_mount);
-    free(source->dumpfilename);
-    client_destroy(source->client);
+    DEBUG1 ("freeing source \"%s\"", source->mount);
+    avl_tree_wlock (global.source_tree);
+    avl_delete (global.source_tree, source, NULL);
+    avl_tree_unlock (global.source_tree);
+
     avl_tree_free(source->pending_tree, _free_client);
     avl_tree_free(source->client_tree, _free_client);
-    source->format->free_plugin(source->format);
-#ifdef USE_YP
-    for (i=0; i<source->num_yp_directories; i++)
-    {
-        yp_destroy_ypdata(source->ypdata[i]);
-        source->ypdata[i] = NULL;
-    }
-#endif
-    util_dict_free(source->audio_info);
-    free(source);
+
+    free (source->mount);
+    free (source);
 
     return 1;
 }
+
 
 client_t *source_find_client(source_t *source, int id)
 {
@@ -455,27 +450,6 @@ void *source_main(void *arg)
     /* grab a read lock, to make sure we get a chance to cleanup */
     thread_rwlock_rlock(source->shutdown_rwlock);
 
-    avl_tree_wlock(global.source_tree);
-    /* Now, we must do a final check with write lock taken out that the
-     * mountpoint is available..
-     */
-    if (source_find_mount_raw(source->mount) != NULL) {
-        avl_tree_unlock(global.source_tree);
-        if(source->send_return) {
-            client_send_404(source->client, "Mountpoint in use");
-        }
-        global_lock();
-        global.sources--;
-        global_unlock();
-        thread_rwlock_unlock(source->shutdown_rwlock);
-        thread_exit(0);
-        return NULL;
-    }
-    /* insert source onto source tree */
-    avl_insert(global.source_tree, (void *)source);
-    /* release write lock on global source tree */
-    avl_tree_unlock(global.source_tree);
-
     /* If we connected successfully, we can send the message (if requested)
      * back
      */
@@ -491,6 +465,7 @@ void *source_main(void *arg)
     stats_event(source->mount, "listeners", "0");
     stats_event(source->mount, "type", source->format->format_description);
 #ifdef USE_YP
+    source->audio_info = util_dict_new();
     /* ice-* is icecast, icy-* is shoutcast */
     if ((s = httpp_getvar(source->parser, "ice-url"))) {
         add_yp_info(source, "server_url", s, YP_SERVER_URL);
@@ -847,6 +822,7 @@ void *source_main(void *arg)
 
 done:
 
+    source->running = 0;
     INFO1("Source \"%s\" exiting", source->mount);
 
 #ifdef USE_YP
@@ -855,13 +831,11 @@ done:
     }
 #endif
     
-    /* Now, we must remove this source from the source tree before
-     * removing the clients, otherwise new clients can sneak into the pending
-     * tree after we've cleared it
+    /* we have de-activated the source now, so no more clients will be
+     * added, now move the listeners we have to the fallback (if any)
      */
-    avl_tree_wlock(global.source_tree);
+    avl_tree_rlock(global.source_tree);
     fallback_source = source_find_mount (source->fallback_mount);
-    avl_delete (global.source_tree, source, NULL);
 
     if (fallback_source != NULL)
         source_move_clients (source, fallback_source);
@@ -882,10 +856,10 @@ done:
     /* release our hold on the lock so the main thread can continue cleaning up */
     thread_rwlock_unlock(source->shutdown_rwlock);
 
-    source_free_source(source);
+    /* we don't remove the source from the tree here, it may be a relay and
+       therefore reserved */
+    source_clear_source (source);
 
-    thread_exit(0);
-      
     return NULL;
 }
 

@@ -13,8 +13,22 @@
 #ifndef __SLAVE_H__
 #define __SLAVE_H__
 
+typedef struct _relay_server {
+    char *server;
+    int port;
+    char *mount;
+    char *localmount;
+    struct source_tag *source;
+    int mp3metadata;
+    int running;
+    int cleanup;
+    struct _relay_server *next;
+} relay_server;
+
+
 void slave_initialize(void);
 void slave_shutdown(void);
 void slave_recheck (void);
+relay_server *relay_free (relay_server *relay);
 
 #endif  /* __SLAVE_H__ */
