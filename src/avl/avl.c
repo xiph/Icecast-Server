@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.9 2003/10/31 19:18:42 oddsock Exp $ */
+/* $Id: avl.c,v 1.10 2003/12/04 16:27:30 oddsock Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -989,12 +989,10 @@ avl_verify_balance (avl_node * node)
     long lh = avl_verify_balance (node->left);
     long rh = avl_verify_balance (node->right);
     if ((rh - lh) != AVL_GET_BALANCE(node)) {
-      fprintf (stderr, "invalid balance at node %ld\n", (long) node->key);
-      exit(1);
+      return 0;
     }
     if (((lh - rh) > 1) || ((lh - rh) < -1)) {
-      fprintf (stderr, "unbalanced at node %ld\n", (long) node->key);
-      exit(1);
+      return 0;
     }
     return (1 + AVL_MAX (lh, rh));
   }
@@ -1004,8 +1002,7 @@ static void
 avl_verify_parent (avl_node * node, avl_node * parent)
 {
   if (node->parent != parent) {
-    fprintf (stderr, "invalid parent at node %ld\n", (long) node->key);
-    exit(1);
+    return;
   }
   if (node->left) {
     avl_verify_parent (node->left, node);
