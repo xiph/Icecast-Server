@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <xmlmemory.h>
-#include <parser.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
 #include "config.h"
 
 #define CONFIG_DEFAULT_LOCATION "Earth"

@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include <xmlmemory.h>
-#include <parser.h>
-#include <tree.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 #include <thread/thread.h>
 #include <avl/avl.h>
