@@ -5,7 +5,7 @@
 <table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
 <h3>Overview</h3>
 <p>
-This section will describe each section of the config file and is grouped into the following sections :
+This section will describe each section of the config file and is grouped into the following sections:
 </p>
 <li><a href="#limits">Limits</a>
 <li><a href="#authentication">Authentication</a>
@@ -33,15 +33,15 @@ This section will describe each section of the config file and is grouped into t
         &lt;source-timeout&gt;10&lt;source-timeout&gt;
     &lt;limits&gt;
 </pre>
-<p>This section contains server level settings that, in general do not need to be changed.  Only modify this section if you are know what you are doing.
+<p>This section contains server level settings that, in general, do not need to be changed.  Only modify this section if you are know what you are doing.
 </p>
 <h4>clients</h4>
 <div class=indentedbox>
-Total number of concurrent clients supported by the server.  Listeners are considered clients, but so are accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max *concurrent* connections for the entire server (not per mountpoint)
+Total number of concurrent clients supported by the server.  Listeners are considered clients, but so is accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max *concurrent* connections for the entire server (not per mountpoint).
 </div>
 <h4>sources</h4>
 <div class=indentedbox>
-Max number of connected sources supported by the server.
+Maximum number of connected sources supported by the server.
 </div>
 <h4>threadpool</h4>
 <div class=indentedbox>
@@ -57,7 +57,7 @@ This does not seem to be used.
 </div>
 <h4>header-timeout</h4>
 <div class=indentedbox>
-the maximum time (in seconds) to wait for a request to come in once the client has made a connection to the server.  In general this value should not need to be tweaked.
+The maximum time (in seconds) to wait for a request to come in once the client has made a connection to the server.  In general this value should not need to be tweaked.
 </div>
 <h4>source-timeout</h4>
 <div class=indentedbox>
@@ -165,10 +165,10 @@ This flag turns on the icecast2 fileserver from which static files can be served
         &lt;relay-shoutcast-metadata&gt;0&lt;relay-shoutcast-metadata&gt;
     &lt;relay&gt;
 </pre>
-<p>This section contains the server's relay settings. There are two types of relays, a "Master server relay" or a "Specific Mountpoint relay".  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.   
+<p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.   
 
 <h3>Master Relay</h3>
-The following diagram shows the basics of doing a Master relay.  Note that Server 1 is configured with the &lt;master-server&gt;, &lt;master-server-port&gt;, etc settings and server 2 is the server from which Server 1 will pull all attached mountpoints and relay them.  Using a Master Server relay, ALL mountpoints on Server 2 will be relayed.  If only specific mountpoints need to be relayed, then you must configure Server 1 as a "Specific Mountpoint Relay".  Both Master server relays and Specific Mountpoint relays begin their "relaying" when the Server is started.
+The following diagram shows the basics of doing a Master relay.  Note that Server 1 is configured with the &lt;master-server&gt;, &lt;master-server-port&gt;, etc settings and Server 2 is the server from which Server 1 will pull all attached mountpoints and relay them.  Using a Master Server relay, ALL mountpoints on Server 2 will be relayed.  If only specific mountpoints need to be relayed, then you must configure Server 1 as a "Specific Mountpoint Relay".  Both Master server relays and Specific Mountpoint relays begin their "relaying" when the Server is started.
 
 <pre>
       |-----|                       |-----|
@@ -198,7 +198,7 @@ This is the TCP Port for the server which contains the mountpoints to be relayed
 </div>
 <h4>master-update-interval</h4>
 <div class=indentedbox>
-The interval (in seconds) that the Relay Server will poll the Master Server for any new mountpoints to relay
+The interval (in seconds) that the Relay Server will poll the Master Server for any new mountpoints to relay.
 </div>
 <h4>master-password</h4>
 <div class=indentedbox>
@@ -206,7 +206,7 @@ This is the admin password on the Master server.  It is used to query the server
 </div>
 <br>
 <h3>Specific Mountpoint Relay</h3>
-The following diagram shows the basics of doing a Specific Mountpoint relay.  Note that Server 1 is configured with the &lt;relay&gt; settings and server 2 is the server from which Server 1 will pull the specified mountpoint(s) and relay them.  Using a Specific Mountpoint Relay, only those mountpoints specified on Server 1 will be relayed from Server 2.
+The following diagram shows the basics of doing a Specific Mountpoint relay.  Note that Server 1 is configured with the &lt;relay&gt; settings and Server 2 is the server from which Server 1 will pull the specified mountpoint(s) and relay them.  Using a Specific Mountpoint Relay, only those mountpoints specified on Server 1 will be relayed from Server 2.
 
 <pre>
       |-----|                       |-----|
@@ -243,7 +243,7 @@ This is the TCP Port for the server which contains the mountpoint to be relayed.
 </div>
 <h4>mount</h4>
 <div class=indentedbox>
-The mountpoint located on the remote server.  If you are relaying a shoutcast stream, this must be '/'
+The mountpoint located on the remote server.  If you are relaying a shoutcast stream, this must be '/'.
 </div>
 <h4>local-mount</h4>
 <div class=indentedbox>
@@ -251,7 +251,7 @@ The name to use for the local mountpoint.  This is what the mount will be named 
 </div>
 <h4>relay-shoutcast-metadata</h4>
 <div class=indentedbox>
-If you are relaying a Shoutcast stream, you need to specify this indicator to also relay the metadata (song titles) that is part of the Shoutcast stream. (1=enabled, 0=disabled)
+If you are relaying a Shoutcast stream, you need to specify this indicator to also relay the metadata (song titles) that is part of the Shoutcast stream (1=enabled, 0=disabled).
 </div>
 <br>
 <br>
@@ -268,7 +268,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;fallback-mount&gt;example2.ogg&lt;fallback-mount&gt;
     &lt;mount&gt;
 </pre>
-<p>This section contains settings which apply only to a specific mountpoint.  Within this section you can reserve a specific mountpoint and set a source username/password for that mountpoint (Not yet implemented) as well as specify individual settings which will apply only to the supplied mountpoint.
+<p>This section contains settings which apply only to a specific mountpoint.  Within this section you can reserve a specific mountpoint and set a source username/password for that mountpoint (not yet implemented) as well as specify individual settings which will apply only to the supplied mountpoint.
 </p>
 <h4>mount-name</h4>
 <div class=indentedbox>
@@ -292,7 +292,7 @@ An optional value which will set the filename which will be a dump of the stream
 </div>
 <h4>fallback-mount</h4>
 <div class=indentedbox>
-This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected, all currently connected clients will be moved to the fallback-mount.
+This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected; all currently connected clients will be moved to the fallback-mount.
 </div>
 <br>
 <br>
