@@ -190,7 +190,8 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
                     source->fallback_mount:"");
             snprintf(buf, sizeof(buf), "%ld", source->listeners);
             xmlNewChild(srcnode, NULL, "listeners", buf);
-            snprintf(buf, sizeof(buf), "%ld", now - source->con->con_time);
+            snprintf(buf, sizeof(buf), "%lu",
+                    (unsigned long)(now - source->con->con_time));
             xmlNewChild(srcnode, NULL, "Connected", buf);
             xmlNewChild(srcnode, NULL, "Format", 
                     source->format->format_description);
