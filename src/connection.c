@@ -917,10 +917,10 @@ static void _handle_get_request(connection_t *con,
         /* Check for any required authentication first */
         if(source->authenticator != NULL) {
             if(auth_check_client(source, client) != AUTH_OK) {
+                avl_tree_unlock(global.source_tree);
                 INFO1("Client attempted to log in to source (\"%s\")with "
                         "incorrect or missing password", uri);
                 client_send_401(client);
-                avl_tree_unlock(global.source_tree);
                 return;
             }
         }

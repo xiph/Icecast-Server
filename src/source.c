@@ -202,6 +202,13 @@ void source_clear_source (source_t *source)
     source->parser = NULL;
     source->con = NULL;
 
+    if (source->dumpfile)
+    {
+        INFO1 ("Closing dumpfile for %s", source->mount);
+        fclose (source->dumpfile);
+        source->dumpfile = NULL;
+    }
+
     /* lets kick off any clients that are left on here */
     avl_tree_rlock (source->client_tree);
     while (avl_get_first (source->client_tree))
@@ -235,6 +242,7 @@ void source_clear_source (source_t *source)
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 #endif
+    source->queue_size_limit = 0;
     source->listeners = 0;
     source->no_mount = 0;
     source->max_listeners = -1;
@@ -249,10 +257,8 @@ void source_clear_source (source_t *source)
 
 
 /* Remove the provided source from the global tree and free it */
-int source_free_source(void *key)
+void source_free_source (source_t *source)
 {
-    source_t *source = key;
-
     DEBUG1 ("freeing source \"%s\"", source->mount);
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
@@ -264,7 +270,7 @@ int source_free_source(void *key)
     free (source->mount);
     free (source);
 
-    return 1;
+    return;
 }
 
 
@@ -288,58 +294,76 @@ client_t *source_find_client(source_t *source, int id)
     return NULL;
 }
 
+/* Move clients from source to dest provided dest is running
+ * and that the stream format is the same.
+ * The only lock that should be held when this is called is the
+ * source tree lock
+ */
 void source_move_clients (source_t *source, source_t *dest)
 {
-    client_t *client;
-    avl_node *node;
-
-    if (source->format->type != dest->format->type)
-    {
-        WARN2 ("stream %s and %s are of different types, ignored", source->mount, dest->mount);
-        return;
-    }
-    if (dest->running == 0)
-    {
-        WARN1 ("source %s not running, unable to move clients ", dest->mount);
-        return;
-    }
-    
     /* we don't want the two write locks to deadlock in here */
     thread_mutex_lock (&move_clients_mutex);
 
-    /* we need to move the client and pending trees */
+    /* if the destination is not running then we can't move clients */
+
+    if (dest->running == 0)
+    {
+        WARN1 ("destination mount %s not running, unable to move clients ", dest->mount);
+        thread_mutex_unlock (&move_clients_mutex);
+        return;
+    }
+
     avl_tree_wlock (dest->pending_tree);
-    avl_tree_wlock (source->pending_tree);
-
-    while (1)
+    do
     {
-        node = avl_get_first (source->pending_tree);
-        if (node == NULL)
-            break;
-        client = (client_t *)(node->key);
-        avl_delete (source->pending_tree, client, NULL);
+        client_t *client;
 
-        /* TODO: reset client local format data?  */
-        avl_insert (dest->pending_tree, (void *)client);
-    }
+        /* we need to move the client and pending trees */
+        avl_tree_wlock (source->pending_tree);
+
+        if (source->format == NULL)
+        {
+            INFO1 ("source mount %s is not available", source->mount);
+            break;
+        }
+        if (source->format->type != dest->format->type)
+        {
+            WARN2 ("stream %s and %s are of different types, ignored", source->mount, dest->mount);
+            break;
+        }
+
+        while (1)
+        {
+            avl_node *node = avl_get_first (source->pending_tree);
+            if (node == NULL)
+                break;
+            client = (client_t *)(node->key);
+            avl_delete (source->pending_tree, client, NULL);
+
+            /* TODO: reset client local format data?  */
+            avl_insert (dest->pending_tree, (void *)client);
+        }
+
+        avl_tree_wlock (source->client_tree);
+        while (1)
+        {
+            avl_node *node = avl_get_first (source->client_tree);
+            if (node == NULL)
+                break;
+
+            client = (client_t *)(node->key);
+            avl_delete (source->client_tree, client, NULL);
+
+            /* TODO: reset client local format data?  */
+            avl_insert (dest->pending_tree, (void *)client);
+        }
+        source->listeners = 0;
+        stats_event (source->mount, "listeners", "0");
+        avl_tree_unlock (source->client_tree);
+
+    } while (0);
+
     avl_tree_unlock (source->pending_tree);
-
-    avl_tree_wlock (source->client_tree);
-    while (1)
-    {
-        node = avl_get_first (source->client_tree);
-        if (node == NULL)
-            break;
-
-        client = (client_t *)(node->key);
-        avl_delete (source->client_tree, client, NULL);
-
-        /* TODO: reset client local format data?  */
-        avl_insert (dest->pending_tree, (void *)client);
-    }
-    source->listeners = 0;
-    stats_event(source->mount, "listeners", "0");
-    avl_tree_unlock (source->client_tree);
     avl_tree_unlock (dest->pending_tree);
     thread_mutex_unlock (&move_clients_mutex);
 }
@@ -486,7 +510,7 @@ static void source_init (source_t *source)
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "listeners", "0");
     stats_event (source->mount, "type", source->format->format_description);
-    
+
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
@@ -795,19 +819,16 @@ done:
     stats_event_dec(NULL, "sources");
     stats_event(source->mount, "listeners", NULL);
 
+    /* we don't remove the source from the tree here, it may be a relay and
+       therefore reserved */
+    source_clear_source (source);
+
     global_lock();
     global.sources--;
     global_unlock();
 
-    if(source->dumpfile)
-        fclose(source->dumpfile);
-
     /* release our hold on the lock so the main thread can continue cleaning up */
     thread_rwlock_unlock(source->shutdown_rwlock);
-
-    /* we don't remove the source from the tree here, it may be a relay and
-       therefore reserved */
-    source_clear_source (source);
 
     return;
 }

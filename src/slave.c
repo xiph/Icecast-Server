@@ -219,6 +219,7 @@ static void start_relay_stream (relay_server *relay)
     if (parser)
         httpp_destroy (parser);
     src->parser = NULL;
+    source_clear_source (relay->source);
 }
 
 
