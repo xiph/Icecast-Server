@@ -206,9 +206,6 @@ char *util_get_path_from_normalised_uri(char *uri) {
     return fullpath;
 }
 
-
-    
-
 /* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
  * path contains 'disallowed' sequences like foo/../ (which could be used to
  * escape from the webroot) or if it cannot be URI-decoded.

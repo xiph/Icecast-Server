@@ -44,3 +44,14 @@ void client_destroy(client_t *client)
 
 	free(client);
 }
+
+void client_send_404(client_t *client, char *message) {
+
+    int bytes;
+    bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\n"
+            "Content-Type: text/html\r\n\r\n"
+            "<b>%s</b>\r\n", message);
+    if(bytes > 0) client->con->sent_bytes = bytes;
+    client_destroy(client);
+}
+

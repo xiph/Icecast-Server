@@ -331,20 +331,267 @@ fail:
     return 0;
 }
 
+static int _check_source_pass(http_parser_t *parser)
+{
+    char *password, *correctpass;
+
+    password = httpp_getvar(parser, "ice-password");
+    correctpass = config_get_config()->source_password;
+    if(!password)
+        password = "";
+    if(!correctpass)
+        correctpass = "";
+
+	if (strcmp(password, correctpass))
+        return 0;
+    else
+        return 1;
+}
+
+static void _handle_source_request(connection_t *con, 
+        http_parser_t *parser, char *uri)
+{
+    INFO1("Source logging in at mountpoint \"%s\"", uri);
+    stats_event_inc(NULL, "source_connections");
+				
+	if (!_check_source_pass(parser)) {
+		INFO1("Source (%s) attempted to login with bad password", uri);
+		connection_close(con);
+		httpp_destroy(parser);
+        return;
+	}
+
+	/* check to make sure this source has
+	** a unique mountpoint
+	*/
+
+	avl_tree_rlock(global.source_tree);
+	if (source_find_mount(uri) != NULL) {
+		INFO1("Source tried to log in as %s, but mountpoint is already used", uri);
+		connection_close(con);
+		httpp_destroy(parser);
+		avl_tree_unlock(global.source_tree);
+		return;
+	}
+	avl_tree_unlock(global.source_tree);
+
+	if (!connection_create_source(con, parser, uri)) {
+		connection_close(con);
+		httpp_destroy(parser);
+	}
+}
+
+static void _handle_stats_request(connection_t *con, 
+        http_parser_t *parser, char *uri)
+{
+	stats_connection_t *stats;
+
+	stats_event_inc(NULL, "stats_connections");
+				
+	if (!_check_source_pass(parser)) {
+        ERROR0("Bad password for stats connection");
+		connection_close(con);
+		httpp_destroy(parser);
+        return;
+	}
+					
+	stats_event_inc(NULL, "stats");
+					
+	/* create stats connection and create stats handler thread */
+	stats = (stats_connection_t *)malloc(sizeof(stats_connection_t));
+	stats->parser = parser;
+	stats->con = con;
+					
+	thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
+}
+
+static void _handle_get_request(connection_t *con,
+        http_parser_t *parser, char *uri)
+{
+    char *fullpath;
+	client_t *client;
+	avl_node *node;
+	http_var_t *var;
+    int bytes;
+	struct stat statbuf;
+	source_t *source;
+
+    DEBUG0("Client connected");
+
+	/* make a client */
+	client = client_create(con, parser);
+	stats_event_inc(NULL, "client_connections");
+					
+	/* there are several types of HTTP GET clients
+	** media clients, which are looking for a source (eg, URI = /stream.ogg)
+	** stats clients, which are looking for /stats.xml
+	** and director server authorizers, which are looking for /GUID-xxxxxxxx 
+    ** (where xxxxxx is the GUID in question) - this isn't implemented yet.
+	** we need to handle the latter two before the former, as the latter two
+	** aren't subject to the limits.
+	*/
+	/* TODO: add GUID-xxxxxx */
+	if (strcmp(uri, "/stats.xml") == 0) {
+        DEBUG0("Stats request, sending xml stats");
+		stats_sendxml(client);
+        client_destroy(client);
+        return;
+    }
+
+	/* Here we are parsing the URI request to see
+	** if the extension is .xsl, if so, then process
+	** this request as an XSLT request
+	*/
+    fullpath = util_get_path_from_normalised_uri(uri);
+    if (util_check_valid_extension(fullpath) == XSLT_CONTENT) {
+    	/* If the file exists, then transform it, otherwise, write a 404 */
+    	if (stat(fullpath, &statbuf) == 0) {
+            DEBUG0("Stats request, sending XSL transformed stats");
+		    bytes = sock_write(client->con->sock, 
+                    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+            if(bytes > 0) client->con->sent_bytes = bytes;
+            stats_transform_xslt(client, fullpath);
+		    client_destroy(client);
+    	}
+	    else {
+            client_send_404(client, "The file you requested could not be found");
+    	}
+        free(fullpath);
+        return;
+	}
+    free(fullpath);
+
+    if(strcmp(util_get_extension(uri), "m3u") == 0) {
+        char *sourceuri = strdup(uri);
+        char *dot = strrchr(sourceuri, '.');
+        *dot = 0;
+	    avl_tree_rlock(global.source_tree);
+    	source = source_find_mount(sourceuri);
+	   	if (source) {
+            client->respcode = 200;
+            bytes = sock_write(client->con->sock,
+                    "HTTP/1.0 200 OK\r\n"
+                    "Content-Type: audio/x-mpegurl\r\n\r\n"
+                    "http://%s:%d%s", 
+                    config_get_config()->hostname, 
+                    config_get_config()->port,
+                    sourceuri
+                    );
+            if(bytes > 0) client->con->sent_bytes = bytes;
+    	    client_destroy(client);
+        }
+        else {
+            client_send_404(client, "The file you requested could not be found");
+        }
+		avl_tree_unlock(global.source_tree);
+        free(sourceuri);
+        return;
+    }
+
+	if (strcmp(uri, "/allstreams.txt") == 0) {
+		if (!_check_source_pass(parser)) {
+			INFO0("Client attempted to fetch allstreams.txt with bad password");
+            client_send_404(client, "Bad ice-password");
+		} else {
+			avl_node *node;
+			source_t *s;
+			avl_tree_rlock(global.source_tree);
+			node = avl_get_first(global.source_tree);
+			while (node) {
+				s = (source_t *)node->key;
+				bytes = sock_write(client->con->sock, "%s\r\n", s->mount);
+                if(bytes > 0) client->con->sent_bytes += bytes;
+                else break;
+
+				node = avl_get_next(node);
+			}
+			avl_tree_unlock(global.source_tree);
+		    client_destroy(client);
+		}
+        return;
+	}
+				
+	global_lock();
+	if (global.clients >= config_get_config()->client_limit) {
+		client->respcode = 504;
+		bytes = sock_write(client->con->sock, 
+                "HTTP/1.0 504 Server Full\r\n"
+                "Content-Type: text/html\r\n\r\n"
+    		    "<b>The server is already full.  Try again later.</b>\r\n");
+    	if (bytes > 0) client->con->sent_bytes = bytes;
+		client_destroy(client);
+		global_unlock();
+        return;
+	}
+	global_unlock();
+					
+	avl_tree_rlock(global.source_tree);
+	source = source_find_mount(uri);
+	if (source) {
+        DEBUG0("Source found for client");
+						
+		global_lock();
+		if (global.clients >= config_get_config()->client_limit) {
+			client->respcode = 504;
+			bytes = sock_write(client->con->sock, 
+                    "HTTP/1.0 504 Server Full\r\n"
+                    "Content-Type: text/html\r\n\r\n"
+				    "<b>The server is already full.  Try again later.</b>\r\n");
+			if (bytes > 0) client->con->sent_bytes = bytes;
+			client_destroy(client);
+			global_unlock();
+            avl_tree_unlock(global.source_tree);
+            return;
+		}
+		global.clients++;
+		global_unlock();
+						
+		client->respcode = 200;
+		bytes = sock_write(client->con->sock, 
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: %s\r\n", 
+                format_get_mimetype(source->format->type));
+        if(bytes > 0) client->con->sent_bytes += bytes;
+		/* iterate through source http headers and send to client */
+		avl_tree_rlock(source->parser->vars);
+		node = avl_get_first(source->parser->vars);
+		while (node) {
+			var = (http_var_t *)node->key;
+			if (strcasecmp(var->name, "ice-password") && 
+                    !strncasecmp("ice-", var->name, 4)) {
+				bytes = sock_write(client->con->sock, 
+                        "%s: %s\r\n", var->name, var->value);
+                if(bytes > 0) client->con->sent_bytes += bytes;
+			}
+			node = avl_get_next(node);
+		}
+		avl_tree_unlock(source->parser->vars);
+						
+		bytes = sock_write(client->con->sock, "\r\n");
+        if(bytes > 0) client->con->sent_bytes += bytes;
+							
+    	sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
+						
+		avl_tree_wlock(source->pending_tree);
+		avl_insert(source->pending_tree, (void *)client);
+		avl_tree_unlock(source->pending_tree);
+	}
+					
+	avl_tree_unlock(global.source_tree);
+					
+	if (!source) {
+        DEBUG0("Source not found for client");
+        client_send_404(client, "The source you requested could not be found.");
+	}
+}
+
 static void *_handle_connection(void *arg)
 {
 	char header[4096];
 	connection_t *con;
 	http_parser_t *parser;
-	source_t *source;
-	stats_connection_t *stats;
-	avl_node *node;
-	http_var_t *var;
-	client_t *client;
-	int bytes;
-	struct stat statbuf;
-	char *fullpath;
     char *rawuri, *uri;
+	client_t *client;
 
 	while (global.running == ICE_RUNNING) {
 		memset(header, 0, 4096);
@@ -370,7 +617,8 @@ static void *_handle_connection(void *arg)
 			if (httpp_parse(parser, header, strlen(header))) {
 				/* handle the connection or something */
 				
-				if (strcmp("ICE", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0 && strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0) {
+				if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
+                    strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
                     ERROR0("Bad HTTP protocol detected");
 					connection_close(con);
 					httpp_destroy(parser);
@@ -382,262 +630,26 @@ static void *_handle_connection(void *arg)
 
                 if(!uri) {
 					client = client_create(con, parser);
-					bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
-						   "<b>The path you requested was invalid.</b>\r\n");
-                    if(bytes > 0) client->con->sent_bytes = bytes;
-                    client_destroy(client);
+                    client_send_404(client, "The path you requested was invalid");
                     continue;
                 }
 
 				if (parser->req_type == httpp_req_source) {
-                    INFO1("Source logging in at mountpoint \"%s\"", uri);
-					stats_event_inc(NULL, "source_connections");
-				
-					if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-						INFO1("Source (%s) attempted to login with bad password", uri);
-						connection_close(con);
-						httpp_destroy(parser);
-                        free(uri);
-						continue;
-					}
-
-					/* check to make sure this source has
-					** a unique mountpoint
-					*/
-
-					avl_tree_rlock(global.source_tree);
-					if (source_find_mount(uri) != NULL) {
-						INFO1("Source tried to log in as %s, but is already used", uri);
-						connection_close(con);
-						httpp_destroy(parser);
-                        free(uri);
-						avl_tree_unlock(global.source_tree);
-						continue;
-					}
-					avl_tree_unlock(global.source_tree);
-
-					if (!connection_create_source(con, parser, uri)) {
-						connection_close(con);
-						httpp_destroy(parser);
-                        free(uri);
-					}
-
-					continue;
-				} else if (parser->req_type == httpp_req_stats) {
-					stats_event_inc(NULL, "stats_connections");
-					
-					if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-                        ERROR0("Bad password for stats connection");
-						connection_close(con);
-						httpp_destroy(parser);
-                        free(uri);
-						continue;
-					}
-					
-					stats_event_inc(NULL, "stats");
-					
-					/* create stats connection and create stats handler thread */
-					stats = (stats_connection_t *)malloc(sizeof(stats_connection_t));
-					stats->parser = parser;
-					stats->con = con;
-					
-					thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
-
-                    free(uri);
-					continue;
-				} else if (parser->req_type == httpp_req_play || parser->req_type == httpp_req_get) {
-                    DEBUG0("Client connected");
-
-					/* make a client */
-					client = client_create(con, parser);
-					stats_event_inc(NULL, "client_connections");
-					
-					/* there are several types of HTTP GET clients
-					** media clients, which are looking for a source (eg, URI = /stream.ogg)
-					** stats clients, which are looking for /stats.xml
-					** and director server authorizers, which are looking for /GUID-xxxxxxxx (where xxxxxx is the GUID in question
-					** we need to handle the latter two before the former, as the latter two
-					** aren't subject to the limits.
-					*/
-					// TODO: add GUID-xxxxxx
-					if (strcmp(uri, "/stats.xml") == 0) {
-                        DEBUG0("Stats request, sending xml stats");
-						stats_sendxml(client);
-                        client_destroy(client);
-                        free(uri);
-						continue;
-					}
-
-					/* Here we are parsing the URI request to see
-					** if the extension is .xsl, if so, then process
-					** this request as an XSLT request
-					*/
-                    fullpath = util_get_path_from_normalised_uri(uri);
-					if (util_check_valid_extension(fullpath) == XSLT_CONTENT) {
-						/* If the file exists, then transform it, otherwise, write a 404 error */
-						if (stat(fullpath, &statbuf) == 0) {
-                            DEBUG0("Stats request, sending XSL transformed stats");
-							bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-                            if(bytes > 0) client->con->sent_bytes = bytes;
-                            stats_transform_xslt(client, fullpath);
-						}
-						else {
-							bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
-								   "<b>The file you requested could not be found.</b>\r\n");
-                            if(bytes > 0) client->con->sent_bytes = bytes;
-						}
-                        free(fullpath);
-                        free(uri);
-						client_destroy(client);
-						continue;
-					}
-                    free(fullpath);
-
-                    if(strcmp(util_get_extension(uri), "m3u") == 0) {
-                        char *sourceuri = strdup(uri);
-                        char *dot = strrchr(sourceuri, '.');
-                        *dot = 0;
-					    avl_tree_rlock(global.source_tree);
-    					source = source_find_mount(sourceuri);
-	    				if (source) {
-                            client->respcode = 200;
-                            bytes = sock_write(client->con->sock,
-                                    "HTTP/1.0 200 OK\r\nContent-Type: audio/x-mpegurl\r\n\r\nhttp://%s:%d%s", 
-                                    config_get_config()->hostname, 
-                                    config_get_config()->port,
-                                    sourceuri
-                                    );
-                        }
-                        else {
-                            client->respcode = 404;
-                            bytes = sock_write(client->con->sock,
-                                    "HTTP/1.0 404 Not Found\r\nContent-Type: text/html\r\n\r\n<b>The file you requested could not be found</b>\r\n");
-                        }
-						avl_tree_unlock(global.source_tree);
-                        if(bytes > 0) client->con->sent_bytes = bytes;
-                        free(sourceuri);
-                        free(uri);
-						client_destroy(client);
-						continue;
-                    }
-
-					if (strcmp(uri, "/allstreams.txt") == 0) {
-						if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-							INFO0("Client attempted to fetch allstreams.txt with bad password");
-							if (parser->req_type == httpp_req_get) {
-								client->respcode = 404;
-								bytes = sock_write(client->con->sock, "HTTP/1.0 404 Source Not Found\r\nContent-Type: text/html\r\n\r\n"\
-										   "<b>The source you requested could not be found.</b>\r\n");
-								if (bytes > 0) client->con->sent_bytes = bytes;
-							}
-						} else {
-							avl_node *node;
-							source_t *s;
-							avl_tree_rlock(global.source_tree);
-							node = avl_get_first(global.source_tree);
-							while (node) {
-								s = (source_t *)node->key;
-								bytes = sock_write(client->con->sock, "%s\r\n", s->mount);
-                                if(bytes > 0) 
-                                    client->con->sent_bytes += bytes;
-                                else 
-                                    break;
-
-								node = avl_get_next(node);
-							}
-							avl_tree_unlock(global.source_tree);
-						}
-                        free(uri);
-						client_destroy(client);
-						continue;
-					}
-					
-					global_lock();
-					if (global.clients >= config_get_config()->client_limit) {
-						if (parser->req_type == httpp_req_get) {
-							client->respcode = 504;
-							bytes = sock_write(client->con->sock, "HTTP/1.0 504 Server Full\r\nContent-Type: text/html\r\n\r\n"\
-									   "<b>The server is already full.  Try again later.</b>\r\n");
-							if (bytes > 0) client->con->sent_bytes = bytes;
-						}
-						client_destroy(client);
-						global_unlock();
-                        free(uri);
-						continue;
-					}
-					global_unlock();
-					
-					avl_tree_rlock(global.source_tree);
-					source = source_find_mount(uri);
-					if (source) {
-                        DEBUG0("Source found for client");
-						
-						global_lock();
-						if (global.clients >= config_get_config()->client_limit) {
-							if (parser->req_type == httpp_req_get) {
-								client->respcode = 504;
-								bytes = sock_write(client->con->sock, "HTTP/1.0 504 Server Full\r\nContent-Type: text/html\r\n\r\n"\
-										   "<b>The server is already full.  Try again later.</b>\r\n");
-								if (bytes > 0) client->con->sent_bytes = bytes;
-							}
-                            free(uri);
-							client_destroy(client);
-							global_unlock();
-							continue;
-						}
-						global.clients++;
-						global_unlock();
-						
-						if (parser->req_type == httpp_req_get) {
-							client->respcode = 200;
-							bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n", format_get_mimetype(source->format->type));
-                            if(bytes > 0) client->con->sent_bytes += bytes;
-							/* iterate through source http headers and send to client */
-							avl_tree_rlock(source->parser->vars);
-							node = avl_get_first(source->parser->vars);
-							while (node) {
-								var = (http_var_t *)node->key;
-								if (strcasecmp(var->name, "ice-password") && !strncasecmp("ice-", var->name, 4)) {
-									bytes = sock_write(client->con->sock, "%s: %s\r\n", var->name, var->value);
-                                    if(bytes > 0) client->con->sent_bytes += bytes;
-								}
-								node = avl_get_next(node);
-							}
-							avl_tree_unlock(source->parser->vars);
-							
-							bytes = sock_write(client->con->sock, "\r\n");
-                            if(bytes > 0) client->con->sent_bytes += bytes;
-							
-							sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
-						}
-						
-						avl_tree_wlock(source->pending_tree);
-						avl_insert(source->pending_tree, (void *)client);
-						avl_tree_unlock(source->pending_tree);
-					}
-					
-					avl_tree_unlock(global.source_tree);
-					
-					if (!source) {
-                        DEBUG0("Source not found for client");
-						if (parser->req_type == httpp_req_get) {
-							client->respcode = 404;
-							bytes = sock_write(client->con->sock, "HTTP/1.0 404 Source Not Found\r\nContent-Type: text/html\r\n\r\n"\
-									   "<b>The source you requested could not be found.</b>\r\n");
-							if (bytes > 0) client->con->sent_bytes = bytes;
-						}
-						client_destroy(client);
-					}
-					
-                    free(uri);
-					continue;
-				} else {
+                    _handle_source_request(con, parser, uri);
+                }
+                else if (parser->req_type == httpp_req_stats) {
+                    _handle_stats_request(con, parser, uri);
+                }
+                else if (parser->req_type == httpp_req_get) {
+                    _handle_get_request(con, parser, uri);
+                }
+                else {
                     ERROR0("Wrong request type from client");
 					connection_close(con);
 					httpp_destroy(parser);
-                    free(uri);
-					continue;
-				}
+                }
+
+                free(uri);
 			} else {
                 ERROR0("HTTP request parsing failed");
 				connection_close(con);
