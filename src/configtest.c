@@ -49,6 +49,7 @@ void _dump_config(ice_config_t *config)
 	printf("log_dir = %s\n", config->log_dir);
 	printf("access_log = %s\n", config->access_log);
 	printf("error_log = %s\n", config->error_log);
+	printf("loglevel = %d\n", config->loglevel);
 	printf("-----\n");
 }
 
