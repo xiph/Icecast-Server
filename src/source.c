@@ -999,6 +999,7 @@ static void process_pending_clients (source_t *source)
     {
         DEBUG1("Adding %d client(s)", count);
         source->listeners += count;
+        stats_event_args (source->mount, "listeners", "%d", source->listeners);
     }
 }
 
