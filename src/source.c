@@ -139,10 +139,13 @@ void *source_main(void *arg)
 		stats_event(source->mount, "name", s);
 	if ((s = httpp_getvar(source->parser, "ice-url")))
 		stats_event(source->mount, "url", s);
+	if ((s = httpp_getvar(source->parser, "ice-genre")))
+		stats_event(source->mount, "genre", s);
 	if ((s = httpp_getvar(source->parser, "ice-bitrate")))
 		stats_event(source->mount, "bitrate", s);
 	if ((s = httpp_getvar(source->parser, "ice-description")))
 		stats_event(source->mount, "description", s);
+    stats_event(source->mount, "type", source->format->format_description);
 
 	while (global.running == ICE_RUNNING) {
 		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);

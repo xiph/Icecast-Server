@@ -96,10 +96,19 @@ int util_get_full_path(char *uri, char *fullPath, int fullPathLen) {
 	int ret = 0;
 	if (uri) {
 		memset(fullPath, '\000', fullPathLen);
-		snprintf(fullPath, fullPathLen-1, "%s%s%s", config_get_config()->webroot_dir, PATH_SEPARATOR, uri);
+		snprintf(fullPath, fullPathLen-1, "%s%s", config_get_config()->webroot_dir, uri);
 		ret = 1;
 	}
 	return ret;
+}
+
+char *util_get_extension(char *path) {
+    char *ext = strrchr(path, '.');
+
+    if(ext == NULL)
+        return "";
+    else
+        return ext+1;
 }
 
 int util_check_valid_extension(char *uri) {

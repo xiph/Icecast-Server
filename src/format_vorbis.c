@@ -52,6 +52,7 @@ format_plugin_t *format_vorbis_get_plugin(void)
 	plugin->get_buffer = format_vorbis_get_buffer;
 	plugin->get_predata = format_vorbis_get_predata;
 	plugin->free_plugin = format_vorbis_free_plugin;
+    plugin->format_description = "Ogg Vorbis";
 
 	state = (vstate_t *)calloc(1, sizeof(vstate_t));
 	ogg_sync_init(&state->oy);

@@ -28,6 +28,7 @@ format_plugin_t *format_mp3_get_plugin(void)
 	plugin->get_buffer = format_mp3_get_buffer;
 	plugin->get_predata = format_mp3_get_predata;
 	plugin->free_plugin = format_mp3_free_plugin;
+    plugin->format_description = "MP3 audio";
 
 	plugin->_state = NULL;
 

@@ -19,6 +19,8 @@ typedef struct _format_plugin_tag
 	/* we need to know the mount to report statistics */
 	char *mount;
 
+    char *format_description;
+
 	/* set this is the data format has a header that
 	** we must send before regular data
 	*/

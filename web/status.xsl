@@ -55,9 +55,16 @@ a:hover {color: black; font-family:Verdana}
 <tr>
 <td bgcolor="#5BB2EB" colspan="2" align="center">
 <center>
+<xsl:choose>
+<xsl:when test="listeners">
 <font class="mount">Current Stream Information<br></br>
 <xsl:value-of select="@mount" />
 </font>
+</xsl:when>
+<xsl:otherwise>
+<font class="mount">Stream Information (stream not currently available)</font>
+</xsl:otherwise>
+</xsl:choose>
 </center>
 </td>
 </tr>
@@ -80,14 +87,27 @@ a:hover {color: black; font-family:Verdana}
 </tr>
 <tr>
 <td width="100" >
-<font class="default1">Stream Status: </font>
+<font class="default1">Stream Type: </font>
 </td>
 <td>
 <font class="default2">
-<b><xsl:value-of select="listeners" /> listeners</b>
+<b><xsl:value-of select="type" /></b>
 </font>
 </td>
 </tr>
+<xsl:if test="listeners">
+<tr>
+<td width="100" >
+<font class="default1">Stream Listeners: </font>
+</td>
+<td>
+<font class="default2">
+<b><xsl:value-of select="listeners" /></b>
+</font>
+</td>
+</tr>
+</xsl:if>
+<xsl:if test="name">
 <tr>
 <td width="100" >
 <font class="default1">Stream Title: </font>
@@ -98,6 +118,8 @@ a:hover {color: black; font-family:Verdana}
 </font>
 </td>
 </tr>
+</xsl:if>
+<xsl:if test="genre">
 <tr>
 <td width="100" >
 <font class="default1">Stream Genre: </font>
@@ -108,6 +130,8 @@ a:hover {color: black; font-family:Verdana}
 </font>
 </td>
 </tr>
+</xsl:if>
+<xsl:if test="description">
 <tr>
 <td width="100" >
 <font class="default1">Stream Description: </font>
@@ -118,6 +142,8 @@ a:hover {color: black; font-family:Verdana}
 </font>
 </td>
 </tr>
+</xsl:if>
+<xsl:if test="url">
 <tr>
 <td width="100" >
 <font class="default1">Stream URL: </font>
@@ -130,6 +156,7 @@ a:hover {color: black; font-family:Verdana}
 </font>
 </td>
 </tr>
+</xsl:if>
 <tr>
 <td width="100" >
 <font class="default1">Current Song: </font>
@@ -140,16 +167,18 @@ a:hover {color: black; font-family:Verdana}
 </font>
 </td>
 </tr>
+<xsl:if test="listeners">
 <tr>
 <td width="100" >
 <font class="default1">Listen: </font>
 </td>
 <td>
 <font class="default2">
-<a href="{@mount}">Here</a>
+<a href="{@mount}.m3u">Here</a>
 </font>
 </td>
 </tr>
+</xsl:if>
 </table>
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
