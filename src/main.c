@@ -162,14 +162,35 @@ static void _server_proc(void)
 	sock_close(global.serversock);
 }
 
-#ifdef CHROOT
 /* chroot the process. Watch out - we need to do this before starting other
- * threads */
+ * threads. Change uid as well, after figuring out uid _first_ */
 
-static void _chroot_setup(void)
+static void _ch_root_uid__setup(void)
 {
    ice_config_t *conf = config_get_config();
+#ifdef CHUID
+   struct passwd *user;
+   struct group *group;
+   uid_t uid=-1;
+   gid_t gid=-1;
 
+   if(conf->chuid)
+   {
+       user = getpwnam(conf->user);
+       group = getgrnam(conf->group);
+
+       if(user)
+           uid = user->pw_uid;
+       else
+           fprintf(stderr, "Couldn't find user \"%s\" in password file\n", conf->user);
+       if(group)
+           gid = group->gr_gid;
+       else
+           fprintf(stderr, "Couldn't find group \"%s\" in groups file\n", conf->group);
+   }
+#endif
+
+#ifdef CHROOT
    if (conf->chroot)
    {
        if(getuid()) /* root check */
@@ -186,17 +207,9 @@ static void _chroot_setup(void)
            fprintf(stdout, "Changed root successfully to \"%s\".\n", conf->base_dir);
 
    }   
-}
 #endif
-
 #ifdef CHUID
-/* change uid and gid */
-static void _chuid_setup(void)
-{
-   ice_config_t *conf = config_get_config();
-   struct passwd *user;
-   struct group *group;
-   
+
    if(conf->chuid)
    {
        if(getuid()) /* root check */
@@ -205,22 +218,22 @@ static void _chuid_setup(void)
            return;
        }
 
-       user = getpwnam(conf->user);
-       group = getgrnam(conf->group);
-       
-       if(!setgid(group->gr_gid))
-           fprintf(stdout, "Changed groupid to %i.\n", group->gr_gid);
-       else
-           fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
+       if(gid != -1) {
+           if(!setgid(gid))
+               fprintf(stdout, "Changed groupid to %i.\n", group->gr_gid);
+           else
+               fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
+       }
 
-       if(!setuid(user->pw_uid))
-           fprintf(stdout, "Changed userid to %i.\n", user->pw_uid);
-       else
-           fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
-
+       if(uid != -1) {
+           if(!setuid(uid))
+               fprintf(stdout, "Changed userid to %i.\n", user->pw_uid);
+           else
+               fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
+       }
    }
-}
 #endif
+}
 
 int main(int argc, char **argv)
 {
@@ -263,15 +276,9 @@ int main(int argc, char **argv)
 	/* override config file options with commandline options */
 	config_parse_cmdline(argc, argv);
 
-#ifdef CHROOT
-    _chroot_setup(); /* Perform chroot, if requested */
-#endif
-
     _server_proc_init(); /* Bind socket, before we change userid */
 
-#ifdef CHUID
-    _chuid_setup(); /* change user id */
-#endif
+    _ch_root_uid__setup(); /* Change user id and root if requested/possible */
 
     stats_initialize(); /* We have to do this later on because of threading */
 
