@@ -1,0 +1,2395 @@
+rev 8123:  karl | 2004-10-27 09:13:29 -0500 (Wed, 27 Oct 2004) | 2 lines
+
+	* correct type for volatile usage and uncomment log message for stats updating
+
+rev 8122:  oddsock | 2004-10-27 09:09:10 -0500 (Wed, 27 Oct 2004) | 2 lines
+
+	* version bump
+
+rev 8112:  oddsock | 2004-10-26 22:29:56 -0500 (Tue, 26 Oct 2004) | 3 lines
+
+	* add volatile keywords to a few variables
+	* reset max_interval back to 0 on slave initialization
+
+rev 8111:  oddsock | 2004-10-26 16:34:08 -0500 (Tue, 26 Oct 2004) | 2 lines
+
+	* version bump
+
+rev 8109:  oddsock | 2004-10-26 14:50:41 -0500 (Tue, 26 Oct 2004) | 1 line
+
+	* version bump
+
+rev 8108:  karl | 2004-10-26 14:29:12 -0500 (Tue, 26 Oct 2004) | 2 lines
+
+	* An alias could disappear from under us, so copy the string
+
+rev 8107:  karl | 2004-10-26 11:31:16 -0500 (Tue, 26 Oct 2004) | 4 lines
+
+	* small updates. reject source client with invalid mountpoint, avoid aliasing
+	* issues with queue and id, and change handler to avoid leaving clients on the
+	* connection queue (rare)
+
+rev 8104:  karl | 2004-10-26 09:21:36 -0500 (Tue, 26 Oct 2004) | 2 lines
+
+	* small cleanups. fix buffer sizing, const and unused struct member
+
+rev 8102:  oddsock | 2004-10-25 17:44:57 -0500 (Mon, 25 Oct 2004) | 1 line
+
+	* CHM doesn't need to be versioned.
+
+rev 8101:  karl | 2004-10-25 16:10:10 -0500 (Mon, 25 Oct 2004) | 3 lines
+
+	* avoid aliasing issues, and make sure each server can take a seperate
+	* default interval as defined in the xml
+
+rev 8100:  karl | 2004-10-25 15:46:12 -0500 (Mon, 25 Oct 2004) | 2 lines
+
+	* the check for the public stream flag wasn't working correctly in all cases
+
+rev 8099:  oddsock | 2004-10-25 15:07:57 -0500 (Mon, 25 Oct 2004) | 3 lines
+
+	* missing icecast2_listenerauth.html from Makefile.am
+
+rev 8098:  karl | 2004-10-25 13:51:45 -0500 (Mon, 25 Oct 2004) | 2 lines
+
+	* add check for header when relaying from v2.0
+
+rev 8096:  oddsock | 2004-10-25 10:51:50 -0500 (Mon, 25 Oct 2004) | 2 lines
+
+	* fix line endings...
+
+rev 8095:  karl | 2004-10-25 10:42:04 -0500 (Mon, 25 Oct 2004) | 2 lines
+
+	* a couple of potential bad pointer type problems
+
+rev 8094:  oddsock | 2004-10-25 10:17:31 -0500 (Mon, 25 Oct 2004) | 2 lines
+
+	* remove ResizableDialog[.cpp|.h] from automake Makefile...
+
+rev 8092:  oddsock | 2004-10-25 09:48:14 -0500 (Mon, 25 Oct 2004) | 1 line
+
+	* removal of ResizableDialog[.cpp|.h] from the project file.
+
+rev 8091:  oddsock | 2004-10-25 09:43:07 -0500 (Mon, 25 Oct 2004) | 1 line
+
+	* Fix CLF on win32.  Apparently, windows doesn't support the %z flag of strftime() so we need to roll our own...Buzilla Bug #509
+
+rev 8090:  karl | 2004-10-25 09:03:42 -0500 (Mon, 25 Oct 2004) | 5 lines
+
+	* The _inc/_dec routines can race causing incorrect values as they don't account
+	* for unprocessed stat events.  Here I push the actual calculations to the stats
+	* thread. The API is maintained however all stats for a specific source can be
+	* dropped with one call now.
+
+rev 8070:  karl | 2004-10-23 19:34:15 -0500 (Sat, 23 Oct 2004) | 4 lines
+
+	* fix a busy CPU case when slow and fast file serving clients are connected at
+	* the same time.  Flag clients on return from select/poll and only process those.
+	* Also fix a rare race which could leave clients in pending
+
+rev 8068:  karl | 2004-10-22 19:44:29 -0500 (Fri, 22 Oct 2004) | 3 lines
+
+	* When starting relay threads, have the relay thread do the connection not the
+	* slave thread.  Also improve cleanup handling and log messages as well
+
+rev 8066:  oddsock | 2004-10-22 10:41:47 -0500 (Fri, 22 Oct 2004) | 1 line
+
+	* Remove ResizableDialog logic from the UI due to possible license conflicts..
+
+rev 7992:  oddsock | 2004-10-12 16:37:38 -0500 (Tue, 12 Oct 2004) | 1 line
+
+	* added HAVE_OLD_VSNPRINTF to project options
+
+rev 7983:  msmith | 2004-10-11 23:49:56 -0500 (Mon, 11 Oct 2004) | 4 lines
+
+	* Correct a typo in one message, and change "WARNING" to "ERROR" in another,
+	* since it's a fatal error.
+
+rev 7930:  j | 2004-10-07 17:22:18 -0500 (Thu, 07 Oct 2004) | 1 line
+
+	* property 'svn:executable' deleted from *.xsl
+
+rev 7929:  j | 2004-10-07 17:19:43 -0500 (Thu, 07 Oct 2004) | 1 line
+
+	* update admin interface to use xhtml
+
+rev 7912:  msmith | 2004-10-04 19:25:10 -0500 (Mon, 04 Oct 2004) | 4 lines
+
+	* Fix up a formatting problem, make it clear that this sentence is talking about
+	* HTTP authentication.
+
+rev 7911:  msmith | 2004-10-04 19:24:14 -0500 (Mon, 04 Oct 2004) | 5 lines
+
+	* Docs said admin username/password is required for all admin functionality.
+	* Fix to state that for mount-specific admin, you can use this OR the mount
+	* username/password.
+
+rev 7900:  msmith | 2004-09-30 19:47:52 -0500 (Thu, 30 Sep 2004) | 2 lines
+
+	* .. And fix more instances of missing / on mountpoints
+
+rev 7899:  msmith | 2004-09-30 19:42:19 -0500 (Thu, 30 Sep 2004) | 3 lines
+
+	* When creating a source (in source_reserve), issue a warning if the mountpoint
+	* does not start with a /, since clients will then be unable to connect to it
+
+rev 7898:  msmith | 2004-09-30 19:39:37 -0500 (Thu, 30 Sep 2004) | 2 lines
+
+	* Correct two examples to use a leading slash for a mountpoint name
+
+rev 7792:  j | 2004-09-18 16:01:39 -0500 (Sat, 18 Sep 2004) | 1 line
+
+	* This Page Tentatively Validates As XHTML 1.0 Strict (Tentatively Valid)!
+
+rev 7791:  j | 2004-09-18 15:14:50 -0500 (Sat, 18 Sep 2004) | 1 line
+
+	* replace table with hr+css
+
+rev 7789:  j | 2004-09-18 11:50:19 -0500 (Sat, 18 Sep 2004) | 3 lines
+
+	   - more xhtmlification of the icecast docs
+
+rev 7786:  j | 2004-09-18 09:31:39 -0500 (Sat, 18 Sep 2004) | 5 lines
+
+	   - convert icecast documentation to xhtml
+	   - clean up html code
+	   - sync index.html with README
+
+rev 7761:  karl | 2004-09-15 09:21:04 -0500 (Wed, 15 Sep 2004) | 3 lines
+
+	* the YP code could end up maintaining duplicate entries if the source
+	* reconnect delay is very short.
+
+rev 7615:  karl | 2004-08-23 14:01:18 -0500 (Mon, 23 Aug 2004) | 2 lines
+
+	* passed pointer could be NULL
+
+rev 7607:  karl | 2004-08-22 10:00:35 -0500 (Sun, 22 Aug 2004) | 2 lines
+
+	* add optional tags to example xml and remove unused source_t item
+
+rev 7599:  karl | 2004-08-21 07:56:24 -0500 (Sat, 21 Aug 2004) | 3 lines
+
+	* Add a couple of warnings, YP code not built and failed streamlist
+	* from master server
+
+rev 7597:  karl | 2004-08-20 17:59:09 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* unlikely to occur race, but fix it anyway
+
+rev 7596:  karl | 2004-08-20 17:55:27 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* small memory leak, only happened when a source exited
+
+rev 7595:  karl | 2004-08-20 16:40:44 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* make caller of restart_logging pass the config, don't assume it's locked
+
+rev 7594:  karl | 2004-08-20 14:46:48 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* update version, this isn't the offical release
+
+rev 7593:  karl | 2004-08-20 14:22:37 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* add burst-size, fallback-override tags and descriptions, add missing / in end tags
+
+rev 7592:  karl | 2004-08-20 10:13:59 -0500 (Fri, 20 Aug 2004) | 2 lines
+
+	* merged singleq branch 7177:7591
+
+rev 7509:  msmith | 2004-08-10 00:17:56 -0500 (Tue, 10 Aug 2004) | 3 lines
+
+	   -b was broken. Fix it.
+
+rev 7494:  karl | 2004-08-06 21:33:12 -0500 (Fri, 06 Aug 2004) | 3 lines
+
+	* encode any xml entities in the stats before applying them to the
+	* xsl pages
+
+rev 7439:  oddsock | 2004-07-31 17:25:07 -0500 (Sat, 31 Jul 2004) | 2 lines
+
+	* fix m3u generation logic that was not working for static files
+
+rev 7265:  msmith | 2004-07-22 21:49:33 -0500 (Thu, 22 Jul 2004) | 4 lines
+
+	* Make it even more explicit what went wrong when log opening failed, since many
+	* people don't seem to be able to figure it out.
+
+rev 7260:  oddsock | 2004-07-22 15:18:42 -0500 (Thu, 22 Jul 2004) | 1 line
+
+	* Documentation patch from Myke Place...
+
+rev 7257:  oddsock | 2004-07-22 13:34:28 -0500 (Thu, 22 Jul 2004) | 2 lines
+
+	* forgot to switch the default value too..thanks Brendan..
+
+rev 7256:  oddsock | 2004-07-22 08:38:20 -0500 (Thu, 22 Jul 2004) | 2 lines
+
+	* enable burst on connect by default per jack.
+
+rev 7165:  karl | 2004-07-16 10:47:12 -0500 (Fri, 16 Jul 2004) | 2 lines
+
+	* cleanup patch, push per client write error trap lower down
+
+rev 7100:  brendan | 2004-07-11 21:21:18 -0500 (Sun, 11 Jul 2004) | 1 line
+
+	* Add source comment to previous metadata bug fix: [sic]
+
+rev 7090:  brendan | 2004-07-11 11:50:28 -0500 (Sun, 11 Jul 2004) | 2 lines
+
+	* Migrate .cvsignore to svn:ignore
+
+rev 7089:  brendan | 2004-07-11 11:46:02 -0500 (Sun, 11 Jul 2004) | 3 lines
+
+	* The inline metadata text was losing the final character when the string length was a
+	* multiple of 16.
+
+rev 7088:  brendan | 2004-07-11 10:12:46 -0500 (Sun, 11 Jul 2004) | 2 lines
+
+	* Add svn:externals for shared modules
+
+rev 6862:  karl | 2004-06-25 13:25:10 -0500 (Fri, 25 Jun 2004) | 3 lines
+
+	* wait 5 mins on failed YP request, also log a default
+	* message if no error message is sent back
+
+rev 6810:  giles | 2004-06-05 22:08:19 -0500 (Sat, 05 Jun 2004) | 6 lines
+
+	* Recommit of changes lost in the server migration
+	* Original commit (r6810) 2004-06-04 03:15:36 -0400 (Fri, 04 Jun 2004) by msmith.
+
+	* Fix #526. Fallbacks weren't being found when the primary was disconnected (for
+	* newly-connecting clients).
+
+rev 6807:  karl | 2004-06-02 14:34:14 -0500 (Wed, 02 Jun 2004) | 3 lines
+
+	* make sure YP entries are flushed out when a source stops. Avoid
+	* segv on failed icecast startup and add some log messages.
+
+rev 6757:  oddsock | 2004-05-25 21:37:20 -0500 (Tue, 25 May 2004) | 2 lines
+
+	* remove geturl.c from icecast.dsp
+	* add a #define for snprintf for win32
+
+rev 6711:  oddsock | 2004-05-16 23:33:46 -0500 (Sun, 16 May 2004) | 2 lines
+
+	* added ability to disallow concurrent connections from the same username if using htpasswd listener authentication.
+
+rev 6649:  msmith | 2004-05-10 21:24:18 -0500 (Mon, 10 May 2004) | 4 lines
+
+	* Some servers apparently send a Content-Type header of audio/x-mpeg.
+	* Make icecast understand this.
+
+rev 6646:  karl | 2004-05-10 11:17:56 -0500 (Mon, 10 May 2004) | 5 lines
+
+	* Update of the YP code. This should resolve several YP issues that
+	* have been reported, the main one being icecast instability when
+	* there is a YP server outage.
+
+rev 6625:  msmith | 2004-05-05 00:05:05 -0500 (Wed, 05 May 2004) | 4 lines
+
+	* Use remove() then rename() only on win32 - where it's required.
+	* Don't use it on unix systems, which don't need it, and where doing
+	* _only_ rename() preserves atomicity.
+
+rev 6617:  oddsock | 2004-05-03 10:00:18 -0500 (Mon, 03 May 2004) | 2 lines
+
+	* much better documentation of listener authentication
+
+rev 6616:  oddsock | 2004-05-03 09:59:40 -0500 (Mon, 03 May 2004) | 2 lines
+
+	* some special handling with rename() needed for win32
+
+rev 6615:  oddsock | 2004-05-03 09:56:57 -0500 (Mon, 03 May 2004) | 2 lines
+
+	* proper config file handling...
+
+rev 6614:  oddsock | 2004-05-03 09:55:44 -0500 (Mon, 03 May 2004) | 2 lines
+
+	* patch to allow public listing of shoutcast servers that are relaying icecast streams
+
+rev 6612:  oddsock | 2004-04-30 12:32:34 -0500 (Fri, 30 Apr 2004) | 2 lines
+
+	* created an auth page which can be used to serve appropriate m3u's which contain authentication information.
+
+rev 6611:  oddsock | 2004-04-30 11:44:32 -0500 (Fri, 30 Apr 2004) | 2 lines
+
+	* new files
+
+rev 6610:  oddsock | 2004-04-30 09:36:07 -0500 (Fri, 30 Apr 2004) | 2 lines
+
+	* added web based interface to htpasswd client authentication
+
+rev 6607:  msmith | 2004-04-29 21:28:58 -0500 (Thu, 29 Apr 2004) | 3 lines
+
+	* Disable burst-on-connect by default
+
+rev 6606:  oddsock | 2004-04-29 10:23:13 -0500 (Thu, 29 Apr 2004) | 2 lines
+
+	* new feature in icecast : burst-on-connect - allows an initial burst of data to connecting listeners, thus reducing the startup time of a stream.
+
+rev 6603:  oddsock | 2004-04-28 15:58:47 -0500 (Wed, 28 Apr 2004) | 3 lines
+
+	* added small comment about <hostname>
+
+rev 6594:  oddsock | 2004-04-25 18:28:36 -0500 (Sun, 25 Apr 2004) | 2 lines
+
+	* added HAVE_LOCALTIME_R to project file
+	* added #define for snprintf (win32 requires _snprintf)
+
+rev 6553:  msmith | 2004-04-20 02:05:07 -0500 (Tue, 20 Apr 2004) | 2 lines
+
+	* Fix copy/paste error in sending 400 errors (reported by wayne zhao).
+
+rev 6533:  msmith | 2004-04-18 21:55:56 -0500 (Sun, 18 Apr 2004) | 2 lines
+
+	* Fix overflow when base64 decoding invalid base64.
+
+rev 6495:  msmith | 2004-04-06 20:53:46 -0500 (Tue, 06 Apr 2004) | 2 lines
+
+	* Give details in error messages on failure to open log files.
+
+rev 6457:  msmith | 2004-03-23 17:34:47 -0600 (Tue, 23 Mar 2004) | 6 lines
+
+	* Fix to default status.xsl: we were looking for server_url as an attribute rather
+	* than an element incorrectly in one place, this fixes it so that the link is
+	* correct. Patch from Dave St John.
+
+rev 6453:  brendan | 2004-03-21 21:41:00 -0600 (Sun, 21 Mar 2004) | 2 lines
+
+	* externals can't use relative URLs. Just check out the modules yourself for now...
+
+rev 6452:  brendan | 2004-03-21 21:32:22 -0600 (Sun, 21 Mar 2004) | 2 lines
+
+	* Let's see if svn:externals works with relative paths
+
+rev 6447:  msmith | 2004-03-21 21:04:51 -0600 (Sun, 21 Mar 2004) | 3 lines
+
+	* Remove obsolete bits from TODO
+
+rev 6152:  msmith | 2004-03-21 20:16:57 -0600 (Sun, 21 Mar 2004) | 6 lines
+
+	* Make icecast keep parsing command line options after -c.
+	* Error message if fork fails.
+
+	* All untested; the conversion broke the build.
+
+rev 6120:  giles | 2004-03-20 19:47:14 -0600 (Sat, 20 Mar 2004) | 1 line
+
+	* regularize repository layout
+
+rev 6118:  giles | 2004-03-20 19:46:05 -0600 (Sat, 20 Mar 2004) | 1 line
+
+	* regularize repository layout
+
+rev 6102:  giles | 2004-03-20 18:08:04 -0600 (Sat, 20 Mar 2004) | 1 line
+
+	* move the icecast source tree to the icecast project directory
+
+rev 5928:  msmith | 2004-03-09 17:52:20 -0600 (Tue, 09 Mar 2004) | 2 lines
+
+	* Another patch from Dale Ghent, this silences some warnings from the compiler.
+
+rev 5927:  msmith | 2004-03-09 17:49:24 -0600 (Tue, 09 Mar 2004) | 2 lines
+
+	* Revert previous; this was fixed in a better way.
+
+rev 5926:  msmith | 2004-03-09 17:41:58 -0600 (Tue, 09 Mar 2004) | 2 lines
+
+	* Use sys/types.h in md5.c, patch from Dale Ghent
+
+rev 5925:  giles | 2004-03-09 12:33:06 -0600 (Tue, 09 Mar 2004) | 3 lines
+
+	* Include inttypes.h from the compatibility header if it's available and stdint.h is not. This
+	* provides the stdint types on solaris and a number of other non-C99 platforms.
+
+rev 5921:  msmith | 2004-03-08 20:36:01 -0600 (Mon, 08 Mar 2004) | 5 lines
+
+	* Couple of minor contributed patches.
+
+	   - Solaris/autoconf nanosleep checking
+	   - use time_t as appropriate for yp
+
+rev 5878:  msmith | 2004-03-01 18:10:58 -0600 (Mon, 01 Mar 2004) | 2 lines
+
+	* Oops. Hack up the macro some more so it compiles properly.
+
+rev 5875:  msmith | 2004-02-29 20:28:48 -0600 (Sun, 29 Feb 2004) | 3 lines
+
+	* Fix macro to use ; instead of ,
+	* This gets rid of some warnings in later gcc versions.
+
+rev 5874:  karl | 2004-02-29 08:55:04 -0600 (Sun, 29 Feb 2004) | 2 lines
+
+	* remove warning wrt time_t
+
+rev 5873:  karl | 2004-02-29 08:38:15 -0600 (Sun, 29 Feb 2004) | 3 lines
+
+	* free up any per-client format specific resources, fixes a small memory
+	* leak with mp3 streams
+
+rev 5869:  karl | 2004-02-27 09:15:40 -0600 (Fri, 27 Feb 2004) | 2 lines
+
+	* update move clients code, small cleanups in other places
+
+rev 5868:  karl | 2004-02-26 10:51:43 -0600 (Thu, 26 Feb 2004) | 2 lines
+
+	* separate source initialisation, and collect the YP setup code into one area
+
+rev 5867:  karl | 2004-02-26 05:56:48 -0600 (Thu, 26 Feb 2004) | 3 lines
+
+	* Add per mount queue size and source timeout, which can override the
+	* general settings.
+
+rev 5866:  karl | 2004-02-26 04:39:56 -0600 (Thu, 26 Feb 2004) | 2 lines
+
+	* revert previous patch, mike didn't want it...
+
+rev 5865:  karl | 2004-02-25 15:43:52 -0600 (Wed, 25 Feb 2004) | 2 lines
+
+	* add missing lock on source tree
+
+rev 5864:  karl | 2004-02-25 14:23:07 -0600 (Wed, 25 Feb 2004) | 2 lines
+
+	* send mp3 url metadata into a format specific routine
+
+rev 5863:  karl | 2004-02-25 14:11:31 -0600 (Wed, 25 Feb 2004) | 2 lines
+
+	* *** empty log message ***
+
+rev 5862:  karl | 2004-02-25 10:24:30 -0600 (Wed, 25 Feb 2004) | 3 lines
+
+	* move the source client '200 OK' response to the source client specific part
+	* of the source thread, and rearrange stats around that
+
+rev 5861:  karl | 2004-02-24 16:34:34 -0600 (Tue, 24 Feb 2004) | 2 lines
+
+	* Add target for building icecast against static libs only
+
+rev 5860:  karl | 2004-02-24 15:02:44 -0600 (Tue, 24 Feb 2004) | 2 lines
+
+	* small cleanup and don't shutdown curl too early
+
+rev 5853:  karl | 2004-02-20 11:42:57 -0600 (Fri, 20 Feb 2004) | 3 lines
+
+	* Add accumulative stats back for source connections and don't hold locks
+	* while writing responses back to the client.
+
+rev 5849:  msmith | 2004-02-19 20:09:00 -0600 (Thu, 19 Feb 2004) | 3 lines
+
+	* Oops. As oddsock says, this was broken, and didn't compile, and was unneccesary
+	* anyway. reverted.
+
+rev 5848:  msmith | 2004-02-19 19:25:28 -0600 (Thu, 19 Feb 2004) | 3 lines
+
+	* Patch for preventing stats from staying around too long - stats thread should
+	* only go to sleep when it has nothing to do.
+
+rev 5846:  karl | 2004-02-19 15:16:59 -0600 (Thu, 19 Feb 2004) | 3 lines
+
+	* Make source client connections reserve the source mountpoint and get rid
+	* of the unused source setup code.
+
+rev 5845:  karl | 2004-02-19 14:28:21 -0600 (Thu, 19 Feb 2004) | 3 lines
+
+	* Make the slave thread reserve relay mountpoints, and prevent reconnection
+	* when a relay is currently active.
+
+rev 5844:  karl | 2004-02-19 10:32:26 -0600 (Thu, 19 Feb 2004) | 2 lines
+
+	* functions to allow for reserving a source_t with a mountpoint
+
+rev 5843:  karl | 2004-02-19 09:24:06 -0600 (Thu, 19 Feb 2004) | 2 lines
+
+	* Add checks for whether a source is active
+
+rev 5842:  karl | 2004-02-19 08:48:31 -0600 (Thu, 19 Feb 2004) | 2 lines
+
+	* small YP memory cleanup
+
+rev 5834:  karl | 2004-02-17 09:46:05 -0600 (Tue, 17 Feb 2004) | 2 lines
+
+	* minor cleanup
+
+rev 5830:  karl | 2004-02-16 18:09:14 -0600 (Mon, 16 Feb 2004) | 2 lines
+
+	* fix possible bad pointer reference when finding fallback mount
+
+rev 5829:  karl | 2004-02-16 15:59:08 -0600 (Mon, 16 Feb 2004) | 2 lines
+
+	* YP related cleanup, avoid bad pointer reference on HUP
+
+rev 5818:  msmith | 2004-02-09 22:37:30 -0600 (Mon, 09 Feb 2004) | 2 lines
+
+	* I Hate String Handling In C.
+
+rev 5817:  msmith | 2004-02-09 22:29:54 -0600 (Mon, 09 Feb 2004) | 4 lines
+
+	* Another fix: the length of the _string_ is not the same as the metadata length
+	* (the metadata is null-padded out to a multiple of 16 bytes), so we have to deal
+	* with that.
+
+rev 5816:  msmith | 2004-02-09 22:20:43 -0600 (Mon, 09 Feb 2004) | 2 lines
+
+	* Oops. Fix null-terminator.
+
+rev 5815:  msmith | 2004-02-09 21:50:39 -0600 (Mon, 09 Feb 2004) | 4 lines
+
+	* Fire off stats event for metadata updates when we get metadata inline.
+	* This fixes stats.xml listings for mp3 slave relays with metadata.
+	* We get rid of 'metadata_raw', since we now have to format out that stuff anyway.
+
+rev 5811:  oddsock | 2004-02-04 18:00:01 -0600 (Wed, 04 Feb 2004) | 2 lines
+
+	* fixed a title
+
+rev 5810:  oddsock | 2004-02-04 17:56:23 -0600 (Wed, 04 Feb 2004) | 3 lines
+
+	* after way too long with an ugly admin interface, lets go with
+	* a slightly-less-ugly-admin-interface-that-is-at-least-similar-to-the-website.
+
+rev 5809:  karl | 2004-02-02 18:48:02 -0600 (Mon, 02 Feb 2004) | 2 lines
+
+	* minor cleanup
+
+rev 5808:  karl | 2004-02-02 18:29:36 -0600 (Mon, 02 Feb 2004) | 2 lines
+
+	* cleanup headers sent to listeners
+
+rev 5807:  karl | 2004-02-02 13:22:11 -0600 (Mon, 02 Feb 2004) | 2 lines
+
+	* recheck the relays after the HUP has been handled
+
+rev 5795:  karl | 2004-01-29 17:23:53 -0600 (Thu, 29 Jan 2004) | 2 lines
+
+	* minor cleanup
+
+rev 5794:  karl | 2004-01-29 10:46:54 -0600 (Thu, 29 Jan 2004) | 3 lines
+
+	* cleanup duplicate work, fix rare but potential deadlock, and
+	* fix silly bug introduced ealrier
+
+rev 5793:  msmith | 2004-01-28 19:02:40 -0600 (Wed, 28 Jan 2004) | 2 lines
+
+	* Note GPL license in readme file.
+
+rev 5792:  msmith | 2004-01-28 19:02:12 -0600 (Wed, 28 Jan 2004) | 2 lines
+
+	* Add Copyright notice to each source file, as requested by debian.
+
+rev 5791:  karl | 2004-01-28 17:23:10 -0600 (Wed, 28 Jan 2004) | 2 lines
+
+	* change thread startup/shutdown order slightly wrt to slave thread
+
+rev 5789:  karl | 2004-01-27 20:17:57 -0600 (Tue, 27 Jan 2004) | 2 lines
+
+	* oops, missed these from previous commit, the lock is now taken further up
+
+rev 5788:  karl | 2004-01-27 19:22:36 -0600 (Tue, 27 Jan 2004) | 3 lines
+
+	* make sure the source doesn't disappear from under us when an admin
+	* request is performed.
+
+rev 5787:  karl | 2004-01-26 20:16:25 -0600 (Mon, 26 Jan 2004) | 2 lines
+
+	* minor cleanups, and only have one thread responding to TERM
+
+rev 5786:  karl | 2004-01-26 16:42:22 -0600 (Mon, 26 Jan 2004) | 2 lines
+
+	* fix potential deadlock case at source stream startup
+
+rev 5785:  karl | 2004-01-26 15:49:07 -0600 (Mon, 26 Jan 2004) | 2 lines
+
+	* add localtime_r checks, useful the threads
+
+rev 5780:  oddsock | 2004-01-21 09:19:48 -0600 (Wed, 21 Jan 2004) | 2 lines
+
+	* fixed small bug where if using fallbacks and the main mount was not connected, icecast was not connecting client to the fallback mount.
+
+rev 5764:  msmith | 2004-01-15 18:43:16 -0600 (Thu, 15 Jan 2004) | 3 lines
+
+	* Fix nasty bug in file serving code, would probably have made it fail with
+	* multiple simultaneous requests.
+
+rev 5763:  oddsock | 2004-01-15 09:37:25 -0600 (Thu, 15 Jan 2004) | 3 lines
+
+	   - properly initialize the authorizer structure, otherwise by default it is enabled
+	   - add new element (listenurl) to the stats for use in things like java player applets
+
+rev 5761:  oddsock | 2004-01-14 22:24:57 -0600 (Wed, 14 Jan 2004) | 3 lines
+
+	* fixed some variable definitions to be ANSI compatable.
+	* updated win32 project files with new files
+
+rev 5760:  msmith | 2004-01-14 19:01:09 -0600 (Wed, 14 Jan 2004) | 3 lines
+
+	* Client authentication added.
+	* Melanie's multilevel fallbacks added (after major changes).
+
+rev 5753:  oddsock | 2004-01-11 19:34:07 -0600 (Sun, 11 Jan 2004) | 2 lines
+
+	* add icecast.spec to the list of distributed files
+
+rev 5752:  oddsock | 2004-01-11 14:03:51 -0600 (Sun, 11 Jan 2004) | 2 lines
+
+	* fix reference to index document
+
+rev 5746:  oddsock | 2004-01-08 08:16:26 -0600 (Thu, 08 Jan 2004) | 3 lines
+
+	* commented out mount specific settings as they are optional and tend to cause
+	* confusion
+
+rev 5745:  oddsock | 2004-01-07 15:53:38 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* version bump for 2.0.0 release
+
+rev 5744:  oddsock | 2004-01-07 15:44:13 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* new logo :)
+
+rev 5743:  oddsock | 2004-01-07 15:26:14 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* removed yp.icecast.net from the config..apparently, they are no longer running a YP..
+
+rev 5742:  oddsock | 2004-01-07 14:41:03 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* more doc updates
+
+rev 5741:  oddsock | 2004-01-07 14:36:54 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* update HTML help files with new index
+
+rev 5740:  oddsock | 2004-01-07 14:31:19 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* version tag updates for pending 2.0.0 release
+
+rev 5739:  oddsock | 2004-01-07 14:28:23 -0600 (Wed, 07 Jan 2004) | 2 lines
+
+	* Misc documentation updates
+
+rev 5737:  oddsock | 2004-01-05 22:36:51 -0600 (Mon, 05 Jan 2004) | 2 lines
+
+	* config file now goes to /etc...
+
+rev 5736:  oddsock | 2004-01-05 21:43:00 -0600 (Mon, 05 Jan 2004) | 2 lines
+
+	* spec file for RPMs
+
+rev 5733:  oddsock | 2003-12-30 14:07:53 -0600 (Tue, 30 Dec 2003) | 2 lines
+
+	* add icecast_console project files to the Makefile.am
+
+rev 5732:  oddsock | 2003-12-30 13:39:11 -0600 (Tue, 30 Dec 2003) | 2 lines
+
+	* Fixed some peculiarities when shutting down server...
+
+rev 5731:  oddsock | 2003-12-30 09:57:05 -0600 (Tue, 30 Dec 2003) | 2 lines
+
+	* minor documentation fix
+
+rev 5723:  oddsock | 2003-12-29 10:35:01 -0600 (Mon, 29 Dec 2003) | 2 lines
+
+	* re-add these as binary, hopefully fixing the line ending problem when doing a make dist...
+
+rev 5722:  oddsock | 2003-12-29 10:34:10 -0600 (Mon, 29 Dec 2003) | 2 lines
+
+	* Remove the VC project files and re-add them as binary (-kb)
+
+rev 5721:  oddsock | 2003-12-29 10:28:06 -0600 (Mon, 29 Dec 2003) | 2 lines
+
+	* fixed VERSION STRING define
+
+rev 5720:  oddsock | 2003-12-29 10:18:48 -0600 (Mon, 29 Dec 2003) | 2 lines
+
+	* add option to display icecast version string, and cleaned up usage a bit..
+
+rev 5719:  oddsock | 2003-12-29 10:18:15 -0600 (Mon, 29 Dec 2003) | 2 lines
+
+	* update the TODO
+
+rev 5702:  oddsock | 2003-12-18 11:01:31 -0600 (Thu, 18 Dec 2003) | 3 lines
+
+	* added Karl to AUTHORS
+	* updated the README with more detailed information...
+
+rev 5701:  karl | 2003-12-17 17:03:38 -0600 (Wed, 17 Dec 2003) | 2 lines
+
+	* Fetching the stream list was failing after the config file was re-read.
+
+rev 5700:  karl | 2003-12-17 16:54:43 -0600 (Wed, 17 Dec 2003) | 3 lines
+
+	* failure case,  keep the source count in sync with the number of sources
+	* running, locking for shutdown was also affected.
+
+rev 5699:  oddsock | 2003-12-13 08:40:03 -0600 (Sat, 13 Dec 2003) | 2 lines
+
+	* update version for win32 build
+
+rev 5698:  oddsock | 2003-12-13 08:33:40 -0600 (Sat, 13 Dec 2003) | 2 lines
+
+	* version bump
+
+rev 5695:  oddsock | 2003-12-12 17:06:44 -0600 (Fri, 12 Dec 2003) | 6 lines
+
+	* fixed master-slave relaying...
+	* * slaves now ask for /admin/streamlist.txt which serves a plaintext version of the source list (this is what it was expecting to get)
+	* * /admin/streamlist still serves XML (which slave.c wasn't expecting)
+	* * fixed a few cases of pointer invalidation due to possible config re-reading.
+	* * slave relay now uses relay password to get the list of streams to relay
+
+rev 5686:  oddsock | 2003-12-04 10:54:48 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* disable pidfile by default
+
+rev 5685:  oddsock | 2003-12-04 10:30:31 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* version bump
+
+rev 5684:  oddsock | 2003-12-04 10:29:27 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* Rewrite of the method of gathering stats from the icecast core engine.  The old way was causing a bunch of instability issues...they have now been fixed :). Also regenerated the icecast2 docs
+
+rev 5682:  oddsock | 2003-12-04 10:25:28 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* Remove stats_callback() which is only used by the win32 UI...The stats gathering done by the UI has been completely rewritten to eliminate some reported instability.
+
+rev 5681:  oddsock | 2003-12-04 10:24:34 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* Added win32 include for getpid()
+
+rev 5680:  oddsock | 2003-12-04 10:23:51 -0600 (Thu, 04 Dec 2003) | 2 lines
+
+	* get rid of the fullpath of the module that is logged...Stupid VC6....
+
+rev 5675:  karl | 2003-12-01 19:11:12 -0600 (Mon, 01 Dec 2003) | 2 lines
+
+	* fix segv when fallback or dumpfilename are not specified
+
+rev 5674:  karl | 2003-12-01 17:30:13 -0600 (Mon, 01 Dec 2003) | 2 lines
+
+	* Add optional pidfile. Writes process id of icecast to named file
+
+rev 5673:  karl | 2003-12-01 11:18:37 -0600 (Mon, 01 Dec 2003) | 2 lines
+
+	* cleanup bad pointer access after config re-read
+
+rev 5630:  oddsock | 2003-11-24 21:04:40 -0600 (Mon, 24 Nov 2003) | 2 lines
+
+	* added VERSION_STRING to defines for win32 project
+
+rev 5629:  oddsock | 2003-11-24 20:51:02 -0600 (Mon, 24 Nov 2003) | 2 lines
+
+	* Icecast we are
+
+rev 5628:  oddsock | 2003-11-24 20:41:23 -0600 (Mon, 24 Nov 2003) | 2 lines
+
+	* Base ICECAST2_VERSION_STRING off VERSION_STRING which is generated by autoconf..win32 projects will have to manually define this currently..blah.
+
+rev 5627:  oddsock | 2003-11-22 16:23:04 -0600 (Sat, 22 Nov 2003) | 2 lines
+
+	* lets make the ICECAST_VERSION_STRING a bit less of a maintance issue...
+
+rev 5614:  oddsock | 2003-11-18 21:57:48 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Update the project files to use the ogg vorbis SDK 1.0.1
+
+rev 5613:  oddsock | 2003-11-18 21:57:14 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Final build of the docs for beta1
+
+rev 5609:  vanguardist | 2003-11-18 11:47:41 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Oddsock gets props for the docs
+
+rev 5608:  vanguardist | 2003-11-18 11:43:05 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* going and going...
+
+rev 5607:  vanguardist | 2003-11-18 11:36:31 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Weee~
+
+rev 5606:  vanguardist | 2003-11-18 11:33:00 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* A few more.
+
+rev 5605:  vanguardist | 2003-11-18 11:23:55 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Config doc luv.
+
+rev 5604:  vanguardist | 2003-11-18 11:07:55 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* np: Beatles - Helter Skelter.ogg (aka some cleanups)
+
+rev 5603:  vanguardist | 2003-11-18 10:55:01 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* Nothing but the best!
+
+rev 5602:  oddsock | 2003-11-18 10:32:46 -0600 (Tue, 18 Nov 2003) | 2 lines
+
+	* fix the default window size of the CHM
+
+rev 5601:  oddsock | 2003-11-17 20:44:57 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* minor style tweaks from Mike...
+
+rev 5600:  karl | 2003-11-17 18:59:51 -0600 (Mon, 17 Nov 2003) | 3 lines
+
+	* if relay is for an mp3 stream, then get inline metadata by default if
+	* possible
+
+rev 5599:  karl | 2003-11-17 18:49:59 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* fix minor leak on config file read
+
+rev 5598:  karl | 2003-11-17 18:39:19 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* minor cleanup
+
+rev 5595:  oddsock | 2003-11-17 17:08:46 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* Get rid of version in the window title...
+
+rev 5594:  brendan | 2003-11-17 17:07:37 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* Slight cosmetic fixes to the icecast2 docs
+
+rev 5593:  oddsock | 2003-11-17 16:55:45 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* version bump
+
+rev 5592:  oddsock | 2003-11-17 16:42:03 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* rebuild of compiled html help
+
+rev 5591:  oddsock | 2003-11-17 16:41:16 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* (a bit) More appropriate README
+
+rev 5590:  oddsock | 2003-11-17 16:40:27 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* version bump
+
+rev 5589:  oddsock | 2003-11-17 16:38:58 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* added WIN32-ism
+
+rev 5586:  karl | 2003-11-17 15:36:03 -0600 (Mon, 17 Nov 2003) | 2 lines
+
+	* type warning cleanup
+
+rev 5584:  brendan | 2003-11-16 20:31:07 -0600 (Sun, 16 Nov 2003) | 5 lines
+
+	* Whoops, put manual back in dist. I would have caught this at home if I could make dist,
+	* but HFS+ case-preserving/insensitive FS causes make dist to fail in the debian
+	* directory. Automake sees changelog, thinks it is ChangeLog, and adds it to make dist
+	* automatically, but then make can't find ChangeLog because it is actually changelog. Grr.
+
+rev 5583:  brendan | 2003-11-16 20:26:10 -0600 (Sun, 16 Nov 2003) | 2 lines
+
+	* make install installs manual in $prefix/share/doc/icecast
+
+rev 5580:  brendan | 2003-11-15 11:30:30 -0600 (Sat, 15 Nov 2003) | 2 lines
+
+	* Add docs to dist tarball. Next step: install docs in the right place.
+
+rev 5570:  oddsock | 2003-11-12 21:52:49 -0600 (Wed, 12 Nov 2003) | 2 lines
+
+	* updated NEWS
+
+rev 5569:  oddsock | 2003-11-12 21:50:30 -0600 (Wed, 12 Nov 2003) | 2 lines
+
+	* icecast2 documentation. need I say more ?
+
+rev 5562:  karl | 2003-11-11 12:21:49 -0600 (Tue, 11 Nov 2003) | 7 lines
+
+	* While tracking down the bug which causes the zombie thread manager while
+	* streaming mp3 with metadata, this patch has turned out to be successful at
+	* maintaining a working icecast for the few users who have reported the problem
+
+	* The patch essentially removes the use of the alloca and uses the malloc-type
+	* calls instead.
+
+rev 5528:  oddsock | 2003-10-31 13:24:16 -0600 (Fri, 31 Oct 2003) | 2 lines
+
+	* bumped version
+
+rev 5527:  oddsock | 2003-10-31 13:24:00 -0600 (Fri, 31 Oct 2003) | 2 lines
+
+	* fixed some display bugs when showing stats
+
+rev 5526:  oddsock | 2003-10-31 13:21:00 -0600 (Fri, 31 Oct 2003) | 4 lines
+
+	* added bypassing of thread_sleep() in certain cases.
+
+	* this came from KarlH.
+
+rev 5524:  oddsock | 2003-10-31 13:16:12 -0600 (Fri, 31 Oct 2003) | 2 lines
+
+	* removed unused tags and added the XIPH directory
+
+rev 5398:  giles | 2003-10-03 07:20:06 -0500 (Fri, 03 Oct 2003) | 2 lines
+
+	* The developer irc channel is back on freenode.
+
+rev 5277:  oddsock | 2003-09-01 22:20:56 -0500 (Mon, 01 Sep 2003) | 2 lines
+
+	* * clean up of ctrl-Ms (I hate MSVC sometimes) and bump of version in the setup script
+
+rev 5190:  keegan | 2003-08-04 03:42:13 -0500 (Mon, 04 Aug 2003) | 2 lines
+
+	* Added Debian packaging
+
+rev 5183:  karl | 2003-07-30 09:46:35 -0500 (Wed, 30 Jul 2003) | 4 lines
+
+	* fix issues with non-portable echo flags and re-do the tests for automake
+	* version checking. The enrironment var AUTOMAKE can be used to indicate the
+	* first one to check for
+
+rev 5181:  karl | 2003-07-27 17:53:58 -0500 (Sun, 27 Jul 2003) | 3 lines
+
+	* We need to state both of these to get the dependencies and linking working
+	* as expected.
+
+rev 5178:  karl | 2003-07-26 20:13:06 -0500 (Sat, 26 Jul 2003) | 2 lines
+
+	* remove unwanted bits left in from previous commits
+
+rev 5175:  karl | 2003-07-25 09:29:33 -0500 (Fri, 25 Jul 2003) | 2 lines
+
+	* place the config reread flag in the global structure
+
+rev 5174:  karl | 2003-07-24 18:45:29 -0500 (Thu, 24 Jul 2003) | 3 lines
+
+	* avoid hitting the mutex's in the signal handler, we could block, which is
+	* not something we want to do. Some mutex implementations are signal based.
+
+rev 5173:  karl | 2003-07-24 11:21:22 -0500 (Thu, 24 Jul 2003) | 3 lines
+
+	* minor fixes. autoconf/make init clenaup, missing includes added and
+	* compiler warnings removed
+
+rev 5172:  brendan | 2003-07-24 00:38:34 -0500 (Thu, 24 Jul 2003) | 2 lines
+
+	* Let aclocal know about m4 directory
+
+rev 5171:  brendan | 2003-07-24 00:32:37 -0500 (Thu, 24 Jul 2003) | 4 lines
+
+	* use _GNU_SOURCE where possible
+	* guard unistd.h with CHROOT rather than HAVE_UNISTD_H, since that's how it's
+	* tested in configure.in
+
+rev 5170:  brendan | 2003-07-24 00:24:00 -0500 (Thu, 24 Jul 2003) | 2 lines
+
+	* Mike's #include patch
+
+rev 5169:  karl | 2003-07-23 21:31:36 -0500 (Wed, 23 Jul 2003) | 2 lines
+
+	* remove duplication for compiler flags, and fixup curl detection
+
+rev 5168:  karl | 2003-07-22 19:27:10 -0500 (Tue, 22 Jul 2003) | 2 lines
+
+	* minor cleanups
+
+rev 5157:  karl | 2003-07-20 21:23:41 -0500 (Sun, 20 Jul 2003) | 2 lines
+
+	* Make icecast use the shared M4 macros. Cleanup the other files.
+
+rev 5156:  karl | 2003-07-20 20:58:54 -0500 (Sun, 20 Jul 2003) | 3 lines
+
+	* refer to cfgfile.h instead of config.h for icecast.xml, and use config.h
+	* for autoconf
+
+rev 5154:  karl | 2003-07-20 20:39:39 -0500 (Sun, 20 Jul 2003) | 3 lines
+
+	* a move over from config.c config.h.  This is so that config.h can be built
+	* by autoconf.  config.h is also the name expected by the convenience libs
+
+rev 5152:  karl | 2003-07-18 14:54:02 -0500 (Fri, 18 Jul 2003) | 3 lines
+
+	* The xml cleanup occurs after this anyway, and doing this here can cause
+	* bad things to occur when xslt gets used.
+
+rev 5146:  karl | 2003-07-16 14:41:59 -0500 (Wed, 16 Jul 2003) | 2 lines
+
+	* avoid header namespace clashes
+
+rev 5129:  karl | 2003-07-11 18:54:50 -0500 (Fri, 11 Jul 2003) | 4 lines
+
+	* Add log cycling on HUP signals. Currently reopens log files in append mode
+	* so allows for continuing the log, or cycling just one log.   log filename
+	* changes work as well.
+
+rev 5127:  karl | 2003-07-11 14:03:30 -0500 (Fri, 11 Jul 2003) | 2 lines
+
+	* don't terminate stream when debugging
+
+rev 5104:  oddsock | 2003-07-08 09:11:32 -0500 (Tue, 08 Jul 2003) | 2 lines
+
+	* unused variable
+
+rev 5103:  oddsock | 2003-07-08 09:11:01 -0500 (Tue, 08 Jul 2003) | 2 lines
+
+	* don't overwrite info in one yp with info from another :)
+
+rev 5094:  oddsock | 2003-07-07 17:04:29 -0500 (Mon, 07 Jul 2003) | 2 lines
+
+	* cleaned a bit
+
+rev 5093:  oddsock | 2003-07-07 17:02:39 -0500 (Mon, 07 Jul 2003) | 2 lines
+
+	* win32 goodies
+
+rev 5079:  brendan | 2003-07-06 10:27:50 -0500 (Sun, 06 Jul 2003) | 10 lines
+
+	* Move MP3 headers back into format_mp3.c per Mike's desire.
+
+	* I removed icy- support from the generic send headers function, as it is my
+	* understanding that only MP3 sources use icy headers. PLEASE correct me
+	* if I am wrong.
+
+	* I also added code in the mp3 function to convert ice-audio-info bitrate to
+	* an icy-br header. ice-audio-info is for YP, icy-br for clients. Perhaps we
+	* should send both to clients though?
+
+rev 5067:  brendan | 2003-07-05 01:36:16 -0500 (Sat, 05 Jul 2003) | 2 lines
+
+	* Write a newline after the m3u entry (patch by Paul Bryan).
+
+rev 5045:  brendan | 2003-07-02 20:39:59 -0500 (Wed, 02 Jul 2003) | 3 lines
+
+	* Convert ice headers to icy headers for MP3 streams.
+	* TODO: rewrite ice-audio-info bitrate tag to icy-br.
+
+rev 5044:  brendan | 2003-07-02 20:36:06 -0500 (Wed, 02 Jul 2003) | 4 lines
+
+	* When relaying MP3 we reported the source metainterval as well as our own,
+	* causing stuttering in some clients. Thank goodness icecast uses an
+	* odd metainterval, or this bug would never have been discoverd :)
+
+rev 5040:  brendan | 2003-07-02 14:47:44 -0500 (Wed, 02 Jul 2003) | 2 lines
+
+	* updates
+
+rev 5019:  karl | 2003-06-29 13:12:09 -0500 (Sun, 29 Jun 2003) | 2 lines
+
+	* infinite loop/memory leak fix for private streams when yp is enabled
+
+rev 5012:  oddsock | 2003-06-26 08:33:55 -0500 (Thu, 26 Jun 2003) | 7 lines
+
+	   - add_yp_info moved into yp.c
+	   - all yp adds/touches are now done within a single thread.
+	  This should eliminate any "thread growth" issues and make
+	  things behave much nicer when yp problems arise.  We should
+	  eventually change the add/touches to non-blocking sockets,
+	  which will be needed for large numbers of streams doing adds/touches.
+
+rev 5011:  oddsock | 2003-06-26 08:33:15 -0500 (Thu, 26 Jun 2003) | 2 lines
+
+	   - added startup of yp add/touch thread
+
+rev 5010:  oddsock | 2003-06-26 08:32:34 -0500 (Thu, 26 Jun 2003) | 2 lines
+
+	   - fixed small memory leak
+
+rev 5009:  oddsock | 2003-06-26 08:32:04 -0500 (Thu, 26 Jun 2003) | 5 lines
+
+	   - moved add_yp_info into yp.c
+	   - most of the yp processing now moved into the yp add/touch thread
+	   - use ice/icy-public rather than ice/icy-private to coorespond to libshout and general convention
+	   - memory leak fixed with audio-info
+
+rev 5008:  oddsock | 2003-06-26 08:31:38 -0500 (Thu, 26 Jun 2003) | 2 lines
+
+	   - force touches when vorbis metadata changes
+
+rev 5007:  oddsock | 2003-06-26 08:31:17 -0500 (Thu, 26 Jun 2003) | 2 lines
+
+	   - force touches when mp3 metadata is updated via admin interface
+
+rev 4986:  karl | 2003-06-20 13:50:24 -0500 (Fri, 20 Jun 2003) | 2 lines
+
+	* handle error returned from listening sockets, can cause busy looping
+
+rev 4983:  brendan | 2003-06-19 23:01:31 -0500 (Thu, 19 Jun 2003) | 5 lines
+
+	* Whoops! make install could overwrite an existing icecast.xml.
+	* Install icecast.xml.dist in doc
+	* Install as $(sysconfdir)/icecast.xml only if that file doesn't already
+	* exist.
+
+rev 4956:  brendan | 2003-06-17 16:10:56 -0500 (Tue, 17 Jun 2003) | 9 lines
+
+	* Fix critical TODO item 1 (make install)
+
+	* ATTN Mike!
+
+	* make install now installs the xsl files in pkgdatadir ($prefix/share/icecast) web
+	* and admin directories, and builds icecast.xml accordingly. icecast.xml is now
+	* installed in $sysconfdir/etc, and IMHO icecast should attempt to find a config
+	* file there, and only demand one on the command line if it can't.
+
+rev 4955:  brendan | 2003-06-17 16:07:26 -0500 (Tue, 17 Jun 2003) | 2 lines
+
+	* One half of rename to NEWS
+
+rev 4954:  brendan | 2003-06-16 17:33:15 -0500 (Mon, 16 Jun 2003) | 2 lines
+
+	* This critical item should be resolved.
+
+rev 4888:  karl | 2003-06-05 19:05:19 -0500 (Thu, 05 Jun 2003) | 3 lines
+
+	* Another net change, making it more bullet-proof, before could silently miss
+	* data. so now we allocate enough space for the write to succeed fully.
+
+rev 4885:  brendan | 2003-06-05 12:55:40 -0500 (Thu, 05 Jun 2003) | 2 lines
+
+	* coordinate IPv6 change with net module
+
+rev 4879:  oddsock | 2003-06-04 23:15:58 -0500 (Wed, 04 Jun 2003) | 2 lines
+
+	* fixed check for regular file type in win32-specific code
+
+rev 4872:  brendan | 2003-06-03 20:40:06 -0500 (Tue, 03 Jun 2003) | 2 lines
+
+	* spaces-only indentation for the love of $
+
+rev 4832:  brendan | 2003-05-28 10:14:47 -0500 (Wed, 28 May 2003) | 2 lines
+
+	* *** empty log message ***
+
+rev 4831:  brendan | 2003-05-28 10:04:53 -0500 (Wed, 28 May 2003) | 6 lines
+
+	* Fix curl version test.
+
+	* YP is enabled by default but automatically turned off if the curl test fails
+	* (unless --enable-yp is explicitly passed to configure, in which case configure
+	* will fail if the curl test fails).
+
+rev 4830:  msmith | 2003-05-28 08:43:48 -0500 (Wed, 28 May 2003) | 3 lines
+
+	* Fix lots of warnings in new admin stuff - primarily wrong types in printf
+	* format strings.
+
+rev 4825:  brendan | 2003-05-27 22:45:57 -0500 (Tue, 27 May 2003) | 2 lines
+
+	* Check whether CURLOPT_NOSIGNAL is available, or disable YP (hopefully).
+
+rev 4824:  brendan | 2003-05-27 21:59:12 -0500 (Tue, 27 May 2003) | 2 lines
+
+	* More autoconf junk
+
+rev 4711:  oddsock | 2003-05-15 18:19:57 -0500 (Thu, 15 May 2003) | 3 lines
+
+	* some win32-isms
+	* and a bad free that valgrind yelled at me about
+
+rev 4710:  oddsock | 2003-05-15 16:05:15 -0500 (Thu, 15 May 2003) | 3 lines
+
+	* new config param <adminroot>
+	* added yp.icecast.net as another possible yp directory
+
+rev 4709:  oddsock | 2003-05-15 16:04:39 -0500 (Thu, 15 May 2003) | 2 lines
+
+	* added new admin directory
+
+rev 4708:  oddsock | 2003-05-15 16:03:32 -0500 (Thu, 15 May 2003) | 6 lines
+
+	* infrastructure for new web-based admin interface
+
+	* new config option <adminroot>
+
+	* restructured code a bit in admin.c for a bit better extendability
+
+rev 4707:  oddsock | 2003-05-15 16:01:30 -0500 (Thu, 15 May 2003) | 2 lines
+
+	* new admin XSL templates for web interface
+
+rev 4662:  msmith | 2003-05-03 20:32:53 -0500 (Sat, 03 May 2003) | 2 lines
+
+	* Oops. Commit updated version of TODO
+
+rev 4634:  msmith | 2003-04-25 03:38:47 -0500 (Fri, 25 Apr 2003) | 3 lines
+
+	* Change the <mount> section slightly and add a comment to avoid confusing
+	* users.
+
+rev 4629:  msmith | 2003-04-23 07:44:29 -0500 (Wed, 23 Apr 2003) | 2 lines
+
+	* Implementation of aliases contributed by  Paul Donohue <icecast@TopQuark.net>
+
+rev 4628:  msmith | 2003-04-23 07:28:04 -0500 (Wed, 23 Apr 2003) | 2 lines
+
+	* And another
+
+rev 4627:  msmith | 2003-04-23 07:20:45 -0500 (Wed, 23 Apr 2003) | 2 lines
+
+	* Add a short list of the critical things to do for 2.0 to be released.
+
+rev 4622:  karl | 2003-04-21 21:35:05 -0500 (Mon, 21 Apr 2003) | 2 lines
+
+	* add missing check for inet_aton, sock.h wants this.
+
+rev 4620:  karl | 2003-04-21 12:52:12 -0500 (Mon, 21 Apr 2003) | 2 lines
+
+	* autoconf updates. Now builds on OpenBSD
+
+rev 4619:  karl | 2003-04-21 10:00:45 -0500 (Mon, 21 Apr 2003) | 3 lines
+
+	* icecast.xml in this subdirectory is now removed. This should now make the
+	* icecast tarball build again
+
+rev 4616:  msmith | 2003-04-18 09:59:26 -0500 (Fri, 18 Apr 2003) | 3 lines
+
+	* Only consider a path a candidate for file-serving if it exists AND is a normal
+	* file (not a directory, etc.)
+
+rev 4615:  oddsock | 2003-04-16 22:37:16 -0500 (Wed, 16 Apr 2003) | 5 lines
+
+	* removal of some errant newlines
+	* update of icecast.dsp for console build
+	* update of .iss setup build file
+	* removed icecast.xml from this dir (should never have been here)
+
+rev 4614:  oddsock | 2003-04-16 22:29:57 -0500 (Wed, 16 Apr 2003) | 2 lines
+
+	* new win32 project files for iceast2 console mode
+
+rev 4613:  oddsock | 2003-04-16 22:23:18 -0500 (Wed, 16 Apr 2003) | 4 lines
+
+	* printf to stdout not valid with our win32 binary, so lets now use something that will work on win32.  note that these should only be used up to the point at which logging is started, then everything should go there.
+
+	* also added a new stat to represent what is currently being sent to the yp server as "what's playing"
+
+rev 4612:  karl | 2003-04-16 20:03:32 -0500 (Wed, 16 Apr 2003) | 2 lines
+
+	* admin.h is needed for the tarball or else it will fail to compile icecast
+
+rev 4604:  oddsock | 2003-04-10 22:14:26 -0500 (Thu, 10 Apr 2003) | 2 lines
+
+	* new parameter for the icecast.xml config file (yp timeout interval)
+
+rev 4603:  oddsock | 2003-04-10 22:00:24 -0500 (Thu, 10 Apr 2003) | 14 lines
+
+	   - fixed alot of yp logic.  timeouts now work properly so the tolerance of
+	  the unavailability of yp servers is much much better now.
+
+	   - new icecast config option <yp-url-timeout> to specify the timeout
+
+	   - url encoding is now fixed so that the yp data is formatted much nicer (and is correct :))
+
+	   - added url encoding for some fields that were not url-encoded
+
+	   - modified util_dict_urlencode() to not url-encode the key (still does the value)
+
+	   - new curl option (CURLOPT_NOSIGNAL) which prevents curl from using signals when
+	  timeouts are hit.  This new option needs curl 7.10 at least.
+
+rev 4602:  msmith | 2003-04-10 09:28:02 -0500 (Thu, 10 Apr 2003) | 3 lines
+
+	* What was I on when I wrote this? oddsock pointed out that util_url_escape()
+	* was chronically broken
+
+rev 4579:  msmith | 2003-04-03 06:41:18 -0600 (Thu, 03 Apr 2003) | 2 lines
+
+	* Commit my TODO file.
+
+rev 4571:  msmith | 2003-03-31 06:54:44 -0600 (Mon, 31 Mar 2003) | 3 lines
+
+	* Implement killsource admin command, to kill sources. Doesn't always do much,
+	* ices (as an example) will auto-reconnect.
+
+rev 4569:  msmith | 2003-03-30 07:52:27 -0600 (Sun, 30 Mar 2003) | 14 lines
+
+	* Remove locking from refbuf: we used a single global lock for all of them, which
+	* caused significant lock contention with many sources. Further, a single refbuf
+	* is never used by more than one source (and hence one thread), so the locking
+	* was unneeded.
+
+	* Fix a nasty bug in source.c:_compare_clients() - was casting a void pointer
+	* to the wrong type, and hence all the tree-maintaince comparisons were totally
+	* wrong (but due to the exact nature of the bug this wasn't causing any active
+	* problems until...)
+
+	* Add another admin command to kill a client - remove it using an id. Note that
+	* many clients will do auto-reconnect, so this may not be sufficient on its own,
+	* we might need a ban (possibly temporary) function.
+
+rev 4552:  brendan | 2003-03-27 11:10:14 -0600 (Thu, 27 Mar 2003) | 2 lines
+
+	* First crack at making YP/curl optional.
+
+rev 4515:  oddsock | 2003-03-19 09:58:16 -0600 (Wed, 19 Mar 2003) | 3 lines
+
+	* update project file with new files added to icecast module
+	* updated version in install script
+
+rev 4513:  msmith | 2003-03-19 01:59:32 -0600 (Wed, 19 Mar 2003) | 3 lines
+
+	* Fix ordering of some calls in source shutdown, silly bug.
+	* Remove wrong comment.
+
+rev 4512:  msmith | 2003-03-19 01:55:42 -0600 (Wed, 19 Mar 2003) | 2 lines
+
+	* Fix lack of null terminator in audio info/stats stuff.
+
+rev 4509:  karl | 2003-03-17 19:40:40 -0600 (Mon, 17 Mar 2003) | 2 lines
+
+	* we need to define an API level we want for certain systems like solaris
+
+rev 4499:  brendan | 2003-03-17 10:17:49 -0600 (Mon, 17 Mar 2003) | 2 lines
+
+	* Announce version required
+
+rev 4495:  brendan | 2003-03-15 18:33:07 -0600 (Sat, 15 Mar 2003) | 2 lines
+
+	* #icecast at openprojects is defunct.
+
+rev 4492:  msmith | 2003-03-14 20:10:19 -0600 (Fri, 14 Mar 2003) | 3 lines
+
+	* Brendan was getting pissed off about inconsistent indentation styles.
+	* Convert all tabs to 4 spaces. All code must now use 4 space indents.
+
+rev 4489:  msmith | 2003-03-14 01:59:58 -0600 (Fri, 14 Mar 2003) | 6 lines
+
+	* Bugfix: source shutdown did things in the wrong order, could lead to clients
+	* ending up connecting to a source which didn't exist.
+
+	* Add 'moveclients' admin command to move all clients from one source to
+	* another (without shutting the old source down)
+
+rev 4488:  karl | 2003-03-13 18:45:49 -0600 (Thu, 13 Mar 2003) | 2 lines
+
+	* separate the check for pthread_rwlock_t, it will soon be an optional
+
+rev 4478:  brendan | 2003-03-11 23:40:45 -0600 (Tue, 11 Mar 2003) | 2 lines
+
+	* Typo (no sleeping between select()s waiting for connections)
+
+rev 4464:  msmith | 2003-03-10 16:20:16 -0600 (Mon, 10 Mar 2003) | 3 lines
+
+	* Fix relay stream listing. Remove seperate relay password, there's no
+	* need for it.
+
+rev 4455:  msmith | 2003-03-09 08:12:24 -0600 (Sun, 09 Mar 2003) | 2 lines
+
+	* Listing of current mountpoints in admin interface.
+
+rev 4454:  msmith | 2003-03-09 05:27:06 -0600 (Sun, 09 Mar 2003) | 2 lines
+
+	* Support listening on multiple sockets.
+
+rev 4447:  msmith | 2003-03-07 23:38:52 -0600 (Fri, 07 Mar 2003) | 2 lines
+
+	* Check the right variable for password in icy logins
+
+rev 4445:  msmith | 2003-03-07 23:02:13 -0600 (Fri, 07 Mar 2003) | 3 lines
+
+	* create /icy_0 (and incrementing numbers) for incoming icy protocol connections
+	* if the / mountpoint is taken
+
+rev 4444:  msmith | 2003-03-07 22:57:02 -0600 (Fri, 07 Mar 2003) | 2 lines
+
+	* Added support for shoutcast login protocol (ewww...)
+
+rev 4436:  karl | 2003-03-07 16:39:17 -0600 (Fri, 07 Mar 2003) | 4 lines
+
+	* Add XIPH_CFLAGS which will be used to pass compiler flags which you
+	* don't want to get clobbered by things like make CFLAGS='....'
+	* The typical flags you don't want clobbered are ones like -pthread
+
+rev 4434:  msmith | 2003-03-07 08:57:36 -0600 (Fri, 07 Mar 2003) | 2 lines
+
+	* Implement listing of all currently connected clients on a mountpoint
+
+rev 4417:  msmith | 2003-03-06 08:52:09 -0600 (Thu, 06 Mar 2003) | 2 lines
+
+	* Send a user-agent header on normal relay requests as well.
+
+rev 4416:  msmith | 2003-03-06 08:46:33 -0600 (Thu, 06 Mar 2003) | 2 lines
+
+	* Check admin password against the correct username
+
+rev 4414:  msmith | 2003-03-06 08:17:33 -0600 (Thu, 06 Mar 2003) | 6 lines
+
+	* Split admin stuff out into a seperate file, add various utility functions there.
+
+	* rename util_url_escape to util_url_unescape, and write a util_escape function
+	* that actually DOES escape things. Fix all the callers of the function to call
+	* the correct one of these two.
+
+rev 4406:  msmith | 2003-03-05 07:03:35 -0600 (Wed, 05 Mar 2003) | 6 lines
+
+	* Allow rereading config files.
+	* Lots of new locking happening so that it's safe to have the config file
+	* disappear under the rest of the program
+
+	* Does NOT affect currently-running sources at the moment
+
+rev 4400:  msmith | 2003-03-04 02:31:49 -0600 (Tue, 04 Mar 2003) | 3 lines
+
+	* Comment out dump file, people don't want that on by default (I'm not
+	* admitting to just having filled up /)
+
+rev 4398:  msmith | 2003-03-03 07:09:47 -0600 (Mon, 03 Mar 2003) | 2 lines
+
+	* doh! This one compiles.
+
+rev 4397:  msmith | 2003-03-03 07:04:34 -0600 (Mon, 03 Mar 2003) | 3 lines
+
+	* Fix buffer-queue length handling (was missing from refbuf_queue_add, which it
+	* used as well as refbuf_queue_insert).
+
+rev 4386:  msmith | 2003-03-02 05:01:21 -0600 (Sun, 02 Mar 2003) | 7 lines
+
+	* Add a changelog file for the last ~2 months.
+
+	* Other committers: any new features, and any major bugfixes, should be added in
+	* here, please. Try and keep it up to date. Minor changes (particularly those
+	* not visible to the user) and so on don't generally need an entry here - this
+	* should be a usable summary of new stuff for the non-developer.
+
+rev 4385:  msmith | 2003-03-02 04:36:24 -0600 (Sun, 02 Mar 2003) | 2 lines
+
+	* Fix various minor bugs in per-mountpoint configs.
+
+rev 4384:  msmith | 2003-03-02 04:18:28 -0600 (Sun, 02 Mar 2003) | 2 lines
+
+	* Add another comment suggested by a user.
+
+rev 4383:  msmith | 2003-03-02 04:13:59 -0600 (Sun, 02 Mar 2003) | 7 lines
+
+	* More features:
+	  -- per mountpoint listener maxima
+	  -- static configuration of mountpoint fallbacks
+	  -- stream dumping (write incoming stream to disk)
+
+	* Fixed some warnings that other people introduced.
+
+rev 4382:  brendan | 2003-02-28 14:16:36 -0600 (Fri, 28 Feb 2003) | 2 lines
+
+	* Typo
+
+rev 4380:  oddsock | 2003-02-26 21:01:12 -0600 (Wed, 26 Feb 2003) | 4 lines
+
+	* whoops...stats can't have spaces in them, since XML can't have spaces in the tags
+
+	* also, handle case where a client sends a bad ice-audio-info string (variable but no value)
+
+rev 4379:  oddsock | 2003-02-26 17:52:23 -0600 (Wed, 26 Feb 2003) | 10 lines
+
+	* added parsing of new icy-audio-info header which will be used to
+	* communicate things like samplerate/quality/number of channels to
+	* icecast2. This info will be then forwarded to the yp servers for
+	* better stream info.
+
+	* also factored out some logic in source_main into common functions
+
+	* added a few new routines into util.c (taken from Brendan's
+	* updates to libshout)
+
+rev 4366:  msmith | 2003-02-25 03:40:34 -0600 (Tue, 25 Feb 2003) | 2 lines
+
+	* mp3 metadata relaying now works (lots of bugs fixed)
+
+rev 4365:  msmith | 2003-02-24 08:56:49 -0600 (Mon, 24 Feb 2003) | 2 lines
+
+	* Commit fix for segfault in buffer length handling code.
+
+rev 4364:  msmith | 2003-02-24 07:37:15 -0600 (Mon, 24 Feb 2003) | 6 lines
+
+	* Max queue length for clients is now
+	    a) based on total bytes in queue, not total number of buffers in queue
+	    b) configurable (defaults to 100 kB)
+
+	* mp3 metadata relaying (inline). Untested.
+
+rev 4358:  msmith | 2003-02-20 16:18:24 -0600 (Thu, 20 Feb 2003) | 2 lines
+
+	* Oops. Very broken password checking, fix from Karl Heyes.
+
+rev 4354:  msmith | 2003-02-17 07:01:37 -0600 (Mon, 17 Feb 2003) | 3 lines
+
+	* Fix previous changes to source creation - misunderstood requirements for
+	* unlocking rwlocks. Move more checks and some other logic into source.c
+
+rev 4353:  msmith | 2003-02-17 06:05:45 -0600 (Mon, 17 Feb 2003) | 2 lines
+
+	* Commit some other work so it compiles again (incomplete mp3 metadata relaying)
+
+rev 4352:  msmith | 2003-02-17 05:56:12 -0600 (Mon, 17 Feb 2003) | 3 lines
+
+	* Fix a serious bug with source creation in relays when local-mount != mount,
+	* and fix a series of locking bugs in source creation.
+
+rev 4349:  msmith | 2003-02-14 19:13:35 -0600 (Fri, 14 Feb 2003) | 2 lines
+
+	* check for poll(2) in configure.
+
+rev 4348:  msmith | 2003-02-14 07:39:02 -0600 (Fri, 14 Feb 2003) | 2 lines
+
+	* Fix mp3 streaming for clients not using metadata
+
+rev 4347:  msmith | 2003-02-14 07:17:38 -0600 (Fri, 14 Feb 2003) | 3 lines
+
+	* Oops. Pull a header print outside the loop so the Server: header is only
+	* output once, not many times.
+
+rev 4346:  msmith | 2003-02-14 05:44:08 -0600 (Fri, 14 Feb 2003) | 2 lines
+
+	* Fix bad log entries from relaying.
+
+rev 4344:  msmith | 2003-02-14 04:31:21 -0600 (Fri, 14 Feb 2003) | 3 lines
+
+	* Fix incorrect use of enum that was leading to crashes on source connect for
+	* unknown mimetype.
+
+rev 4342:  msmith | 2003-02-13 05:29:07 -0600 (Thu, 13 Feb 2003) | 5 lines
+
+	* Better IPv6 support. Hopefully logging will work correctly now.
+	* However, some things still won't work, notably relaying (the relay can be
+	* ipv6, the server being relayed _from_ may not be).
+	* I'll fix that some time soon.
+
+rev 4341:  msmith | 2003-02-12 16:50:59 -0600 (Wed, 12 Feb 2003) | 2 lines
+
+	* Increase buffer size for IPs so that logging works better for v6 clients.
+
+rev 4340:  msmith | 2003-02-12 05:04:26 -0600 (Wed, 12 Feb 2003) | 2 lines
+
+	* Allow configuring local mountpoint seperately from remote mountpoint
+
+rev 4338:  msmith | 2003-02-11 08:23:34 -0600 (Tue, 11 Feb 2003) | 4 lines
+
+	* Per mountpoint usernames, passwords, and some infrastructure for other
+	* per-mountpoint configuration (some of these are given as examples in
+	* the config file, but they aren't yet used).
+
+rev 4336:  msmith | 2003-02-11 06:18:22 -0600 (Tue, 11 Feb 2003) | 3 lines
+
+	* Now that it's been completely officially assigned, use application/ogg instead
+	* of application/x-ogg
+
+rev 4332:  msmith | 2003-02-07 08:00:33 -0600 (Fri, 07 Feb 2003) | 2 lines
+
+	* Sigh. And another.
+
+rev 4331:  msmith | 2003-02-07 07:56:33 -0600 (Fri, 07 Feb 2003) | 2 lines
+
+	* Grumble. Silly gcc.
+
+rev 4330:  msmith | 2003-02-07 06:26:07 -0600 (Fri, 07 Feb 2003) | 2 lines
+
+	* Free new config variables on shutdown (forgot to add this before)
+
+rev 4329:  msmith | 2003-02-07 05:56:40 -0600 (Fri, 07 Feb 2003) | 3 lines
+
+	* Add format detection workaround for icecast 1.x, which is buggy and doesn't
+	* send a content-type header.
+
+rev 4328:  msmith | 2003-02-07 05:46:03 -0600 (Fri, 07 Feb 2003) | 2 lines
+
+	* Fix relaying. Oops.
+
+rev 4327:  msmith | 2003-02-07 04:53:38 -0600 (Fri, 07 Feb 2003) | 4 lines
+
+	* Rearrange some relaying code.
+	* Add ability to configure individual relays as well (i.e. single stream, rather
+	* than all the streams from a server).
+
+rev 4325:  msmith | 2003-02-06 07:10:48 -0600 (Thu, 06 Feb 2003) | 19 lines
+
+	* Lots of fixes for screwy code formatting, plus:
+
+	* make streams public by default, send ice-private: 1 to make them private.
+	* However, default config file has yp servers commented out.
+
+	* A little fix for compilation on some solaris systems
+
+	* Redo some config file stuff: now all the passwords are inside an element
+	* <authentication>, (though for now they're also accepted in the old location),
+	* and added admin username and password. Move some of the admin activities over
+	* to using the admin passwords (admin action that affect a mountpoint use the
+	* source password)
+
+	* Fill in some (but not yet all, maybe i'll do that later) of the infrastructure
+	* for per-mountpoint passwords.
+
+	* Fix lots of headers/code so that it works properly/portably  on non-win32
+	* systems.
+
+rev 4324:  oddsock | 2003-02-05 08:31:17 -0600 (Wed, 05 Feb 2003) | 2 lines
+
+	* forgot to add libcurl to the setup building script
+
+rev 4320:  oddsock | 2003-02-04 20:04:54 -0600 (Tue, 04 Feb 2003) | 2 lines
+
+	* if there is an error on touching, then reset the sid which will force another add
+
+rev 4317:  oddsock | 2003-02-02 14:43:02 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added check for HAVE_SYS_UIO_H
+
+rev 4316:  oddsock | 2003-02-02 10:48:15 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* style changes
+
+rev 4315:  oddsock | 2003-02-02 08:35:10 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added new entry for yp server
+
+rev 4314:  oddsock | 2003-02-02 08:33:47 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added references to geturl.h
+
+rev 4313:  oddsock | 2003-02-02 08:33:17 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* many modifications in order to support yp listing..the source structure now has additional fields, which are only used by the yp listing routines
+
+rev 4312:  oddsock | 2003-02-02 08:32:21 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added reference to log.h, WIN32 needed it otherwise it would fail on finding prototypes
+
+rev 4311:  oddsock | 2003-02-02 08:31:34 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added geturl.h reference
+
+rev 4310:  oddsock | 2003-02-02 08:26:54 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added initialization routines for curl, and also added the '-b' as a command line param...this will put icecast2 in the background
+
+rev 4309:  oddsock | 2003-02-02 08:25:53 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added function for retrieving specific stat values (for use by yp routines)
+
+rev 4308:  oddsock | 2003-02-02 08:24:58 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* new configuration entries for yp listing
+
+rev 4307:  oddsock | 2003-02-02 08:24:13 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added new files for yp listing, and also added refereneces to them in Makefile.am
+
+rev 4306:  oddsock | 2003-02-02 08:22:25 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added references to libcurl (needed for yp-listing in icecast2)
+
+rev 4305:  oddsock | 2003-02-02 08:21:57 -0600 (Sun, 02 Feb 2003) | 2 lines
+
+	* added libcurl to dependencies, needed for yp-listing within icecast2
+
+rev 4292:  msmith | 2003-01-23 05:12:54 -0600 (Thu, 23 Jan 2003) | 2 lines
+
+	* Fix segfault if current source didn't exist on fallback mount request.
+
+rev 4268:  msmith | 2003-01-18 06:30:29 -0600 (Sat, 18 Jan 2003) | 3 lines
+
+	* Fix for a couple of nasty bugs that could result in clients being incorrectly
+	* dropped under some circumstances. Thanks to Ricardo Galli for finding this.
+
+rev 4262:  msmith | 2003-01-18 01:39:29 -0600 (Sat, 18 Jan 2003) | 2 lines
+
+	* And some more message fixes (this and the previous from alet@librelogiciel.com (Jerome Alet)
+
+rev 4261:  msmith | 2003-01-18 01:38:18 -0600 (Sat, 18 Jan 2003) | 2 lines
+
+	* Fix a message that was talking about the wrong path
+
+rev 4260:  msmith | 2003-01-18 01:08:00 -0600 (Sat, 18 Jan 2003) | 4 lines
+
+	* Set TCP_NODELAY on sockets for streams and fileserving.
+
+	* Adapted from a patch sent by Richard Galli
+
+rev 4259:  msmith | 2003-01-18 00:54:29 -0600 (Sat, 18 Jan 2003) | 2 lines
+
+	* Small memory leak fixed (patch from Ricardo Galli <gallir@uib.es>)
+
+rev 4254:  brendan | 2003-01-16 02:07:36 -0600 (Thu, 16 Jan 2003) | 2 lines
+
+	* I wanted to see this variable
+
+rev 4243:  brendan | 2003-01-14 23:58:09 -0600 (Tue, 14 Jan 2003) | 4 lines
+
+	* OS X 10.2.3 doesn't define socklen_t.
+	* This version is compatible with autoconf 2.13. I believe it should also
+	* work in 2.5x, although the semantics of AC_CHECK_TYPE have changed.
+
+rev 4242:  brendan | 2003-01-14 23:38:31 -0600 (Tue, 14 Jan 2003) | 2 lines
+
+	* Missing .cvsignores
+
+rev 4241:  brendan | 2003-01-14 23:36:15 -0600 (Tue, 14 Jan 2003) | 2 lines
+
+	* automake/libtool generated files
+
+rev 4240:  brendan | 2003-01-14 23:34:20 -0600 (Tue, 14 Jan 2003) | 2 lines
+
+	* autoheader always requires the third argument to AC_DEFINE
+
+rev 4239:  brendan | 2003-01-14 23:33:38 -0600 (Tue, 14 Jan 2003) | 2 lines
+
+	* config.h.in is generated by autoheader
+
+rev 4235:  msmith | 2003-01-13 04:48:43 -0600 (Mon, 13 Jan 2003) | 3 lines
+
+	* Patch for freebsd to set gcc options for pthreads correctly, from
+	* "Nigel Weeks" <nigel@e-easy.com.au>
+
+rev 4198:  oddsock | 2003-01-01 15:21:20 -0600 (Wed, 01 Jan 2003) | 2 lines
+
+	* fixed SEGV when streaming with mp3 with metadata
+
+rev 4197:  msmith | 2003-01-01 01:31:46 -0600 (Wed, 01 Jan 2003) | 2 lines
+
+	* indentation fixes, and a small fix for tracking bytes sent.
+
+rev 4196:  oddsock | 2002-12-31 14:15:03 -0600 (Tue, 31 Dec 2002) | 2 lines
+
+	* those darn EOL chars
+
+rev 4195:  oddsock | 2002-12-31 14:07:14 -0600 (Tue, 31 Dec 2002) | 2 lines
+
+	* win32 compilation fixes
+
+rev 4194:  oddsock | 2002-12-31 13:48:28 -0600 (Tue, 31 Dec 2002) | 2 lines
+
+	* fixed mp3 metadata, now tested and working.
+
+rev 4192:  msmith | 2002-12-31 01:49:34 -0600 (Tue, 31 Dec 2002) | 3 lines
+
+	* New year's bonus feature:
+	 configurable fallbacks, now working.
+
+rev 4191:  msmith | 2002-12-31 00:28:39 -0600 (Tue, 31 Dec 2002) | 2 lines
+
+	* mp3 metadata complete. Still untested.
+
+rev 4181:  msmith | 2002-12-30 09:42:38 -0600 (Mon, 30 Dec 2002) | 2 lines
+
+	* Better file-serving, rationalisation of some paths
+
+rev 4180:  msmith | 2002-12-30 09:19:46 -0600 (Mon, 30 Dec 2002) | 3 lines
+
+	* mountpoint fallbacks.
+	* untested, and no interface available to configure them.
+
+rev 4179:  msmith | 2002-12-30 05:27:21 -0600 (Mon, 30 Dec 2002) | 2 lines
+
+	* Fix some minor errors.
+
+rev 4178:  msmith | 2002-12-30 05:22:59 -0600 (Mon, 30 Dec 2002) | 4 lines
+
+	* More mp3 metadata work.
+	* Untested but more or less complete.
+	* No way to actually set the metadata yet.
+
+rev 4177:  msmith | 2002-12-30 01:55:56 -0600 (Mon, 30 Dec 2002) | 2 lines
+
+	* mp3 metadata work (incomplete)
+
+rev 4176:  msmith | 2002-12-29 19:59:03 -0600 (Sun, 29 Dec 2002) | 2 lines
+
+	* Fix c++-ism that gcc didn't think to warn me about
+
+rev 4175:  msmith | 2002-12-29 09:46:32 -0600 (Sun, 29 Dec 2002) | 2 lines
+
+	* Fix up types after thread type rename earlier.
+
+rev 4174:  msmith | 2002-12-29 08:06:20 -0600 (Sun, 29 Dec 2002) | 2 lines
+
+	* Plug several small memory leak, and one huge one in the xslt output code
+
+rev 4169:  msmith | 2002-12-29 03:21:32 -0600 (Sun, 29 Dec 2002) | 2 lines
+
+	* Minor incompatible change to relaying, to match actual protocol.
+
+rev 4167:  msmith | 2002-12-29 02:10:10 -0600 (Sun, 29 Dec 2002) | 3 lines
+
+	* Add infrastructure for better/more flexible format support. Will be needed
+	* for mp3 metadata, for example.
+
+rev 4132:  msmith | 2002-11-30 20:10:25 -0600 (Sat, 30 Nov 2002) | 2 lines
+
+	* Fix EOLs
+
+rev 4117:  oddsock | 2002-11-23 09:55:27 -0600 (Sat, 23 Nov 2002) | 2 lines
+
+	* win32 port updates to recent changes
+
+rev 4116:  oddsock | 2002-11-23 09:54:50 -0600 (Sat, 23 Nov 2002) | 3 lines
+
+	* added missing win32 files
+	* fixed UNIX EOL on VC6 project files
+
+rev 4115:  msmith | 2002-11-22 07:13:04 -0600 (Fri, 22 Nov 2002) | 2 lines
+
+	* Fix a compile error.
+
+rev 4111:  msmith | 2002-11-22 07:00:44 -0600 (Fri, 22 Nov 2002) | 2 lines
+
+	* Lots of bugfixes contributed by Karl Heyes.
+
+rev 3985:  msmith | 2002-10-10 03:50:58 -0500 (Thu, 10 Oct 2002) | 3 lines
+
+	* Allow icelogin to coexist with http login. icelogin is still deprecated,
+	* and now a warning is issued.
+
+rev 3978:  msmith | 2002-10-06 04:57:07 -0500 (Sun, 06 Oct 2002) | 7 lines
+
+	* Previous bugfix was incorrect, and made the problem worse, since it ensured
+	* it would be triggered in certain cases, instead of merely making it dependant
+	* on previous values written to the variable in those cases.
+
+	* Fixes source disconnect on some (but very few) ogg bitstreams (the vast
+	* majority of my files play fine)
+
+rev 3975:  msmith | 2002-10-03 09:07:34 -0500 (Thu, 03 Oct 2002) | 2 lines
+
+	* Fix for possible obscure bug leading to source disconnects.
+
+rev 3966:  msmith | 2002-10-01 11:26:18 -0500 (Tue, 01 Oct 2002) | 2 lines
+
+	* README written.
+
+rev 3945:  msmith | 2002-09-24 03:16:24 -0500 (Tue, 24 Sep 2002) | 2 lines
+
+	* build updates.
+
+rev 3884:  oddsock | 2002-08-28 15:37:44 -0500 (Wed, 28 Aug 2002) | 4 lines
+
+	* removed tab for editing configuration file, opted for a much simpler approach (spwan a notepad session)
+	* fixed the "Make this stat the window title" logic
+	* Added menu to the dialog
+
+rev 3883:  msmith | 2002-08-28 08:50:58 -0500 (Wed, 28 Aug 2002) | 3 lines
+
+	* Fix an fserv crash bug if startup failed, and fix an fserv-didn't-actually-
+	* work-at-all-in-most-circumstances bug.
+
+rev 3882:  msmith | 2002-08-28 08:00:02 -0500 (Wed, 28 Aug 2002) | 2 lines
+
+	* Fix XSLT compiler flags. patch from Thomas Vander Stichele
+
+rev 3879:  oddsock | 2002-08-26 07:40:29 -0500 (Mon, 26 Aug 2002) | 2 lines
+
+	* initial documentation for the win32 port...Using HTML Help to build the win32 help file
+
+rev 3878:  msmith | 2002-08-25 01:14:47 -0500 (Sun, 25 Aug 2002) | 2 lines
+
+	* icecast2/win32 updates from oddsock.
+
+rev 3877:  msmith | 2002-08-25 01:12:51 -0500 (Sun, 25 Aug 2002) | 2 lines
+
+	* Move fserve_initialize() to later so that chroot() works right.
+
+rev 3858:  msmith | 2002-08-18 08:38:51 -0500 (Sun, 18 Aug 2002) | 3 lines
+
+	* Build an extension->mimetype mapping table from /etc/mime.types, use this
+	* for sending content-type when file serving.
+
+rev 3857:  msmith | 2002-08-18 04:38:45 -0500 (Sun, 18 Aug 2002) | 2 lines
+
+	* Use select() if poll() isn't available in fserve.
+
+rev 3856:  msmith | 2002-08-18 03:49:25 -0500 (Sun, 18 Aug 2002) | 3 lines
+
+	* Fileserving that might actually work for > 1 user.
+	* cleanups for the base64 decoder.
+
+rev 3852:  msmith | 2002-08-18 00:06:58 -0500 (Sun, 18 Aug 2002) | 2 lines
+
+	* File serving, from the webroot.
+
+rev 3850:  msmith | 2002-08-17 03:32:15 -0500 (Sat, 17 Aug 2002) | 3 lines
+
+	* Use relay password (fallback to using source password if no relay-password
+	* is set)
+
+rev 3849:  msmith | 2002-08-17 01:25:38 -0500 (Sat, 17 Aug 2002) | 2 lines
+
+	* Fall back to using the source-password if no master-password is set.
+
+rev 3847:  msmith | 2002-08-16 23:48:07 -0500 (Fri, 16 Aug 2002) | 2 lines
+
+	* Fix a null terminator so that relaying can work again
+
+rev 3845:  msmith | 2002-08-16 23:35:23 -0500 (Fri, 16 Aug 2002) | 2 lines
+
+	* Minor fix I forgot to commit yesterday for source data length accounting.
+
+rev 3840:  msmith | 2002-08-16 10:28:46 -0500 (Fri, 16 Aug 2002) | 2 lines
+
+	* Minor fixes for logging response codes correctly (hopefully)
+
+rev 3839:  msmith | 2002-08-16 10:04:04 -0500 (Fri, 16 Aug 2002) | 2 lines
+
+	* Typo.
+
+rev 3838:  msmith | 2002-08-16 09:55:56 -0500 (Fri, 16 Aug 2002) | 2 lines
+
+	* Fix relaying to work with new auth scheme.
+
+rev 3837:  msmith | 2002-08-16 09:26:48 -0500 (Fri, 16 Aug 2002) | 3 lines
+
+	* HTTP Basic source login support. The old "ice-password" method is still
+	* available, but is deprecated and turned off by default.
+
+rev 3811:  msmith | 2002-08-13 08:53:07 -0500 (Tue, 13 Aug 2002) | 2 lines
+
+	* Cache-checking is case-insensitive on win32.
+
+rev 3810:  msmith | 2002-08-13 07:46:45 -0500 (Tue, 13 Aug 2002) | 2 lines
+
+	* Cache stylesheets for transforming.
+
+rev 3808:  msmith | 2002-08-12 20:08:15 -0500 (Mon, 12 Aug 2002) | 2 lines
+
+	* Timing fixes
+
+rev 3807:  msmith | 2002-08-12 09:48:31 -0500 (Mon, 12 Aug 2002) | 2 lines
+
+	* _handle_connection() cleanup, major restructuring. No feature changes.
+
+rev 3806:  msmith | 2002-08-12 05:11:44 -0500 (Mon, 12 Aug 2002) | 2 lines
+
+	* Fix a bug in one of the error (404) responses.
+
+rev 3804:  msmith | 2002-08-11 09:23:39 -0500 (Sun, 11 Aug 2002) | 2 lines
+
+	* More path handling cleanups, and memory leak fixes.
+
+rev 3803:  msmith | 2002-08-11 09:00:56 -0500 (Sun, 11 Aug 2002) | 3 lines
+
+	* URI decoding and path normalisation pass one (stuff needed for fileserving
+	* later on)
+
+rev 3801:  msmith | 2002-08-11 07:15:40 -0500 (Sun, 11 Aug 2002) | 3 lines
+
+	* Decrement client connections on source termination to avoid eventual "server
+	* is full" messages.
+
+rev 3799:  msmith | 2002-08-10 22:30:30 -0500 (Sat, 10 Aug 2002) | 2 lines
+
+	* win32 updates from oddsock
+
+rev 3797:  msmith | 2002-08-10 03:01:56 -0500 (Sat, 10 Aug 2002) | 4 lines
+
+	* status.xsl updates, better now.
+	* Automatically create .m3u responses for any existing streams.
+	* If /stream.ogg exists, you can now request /stream.ogg.m3u in your browser.
+
+rev 3796:  msmith | 2002-08-09 23:51:11 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Better error messages on some corrupt sources.
+
+rev 3791:  msmith | 2002-08-09 22:22:44 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Various cleanups
+
+rev 3790:  msmith | 2002-08-09 22:12:45 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* More added files
+
+rev 3789:  msmith | 2002-08-09 22:11:24 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Added some more win32 files
+
+rev 3787:  msmith | 2002-08-09 10:55:02 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* oddsock's win32 port/GUI
+
+rev 3786:  msmith | 2002-08-09 10:41:44 -0500 (Fri, 09 Aug 2002) | 4 lines
+
+	* Two example xsl files (from oddsock).
+	* Request http://host:port/status.xsl
+	* to get a nicely formatted html status display in your web browser.
+
+rev 3785:  msmith | 2002-08-09 10:04:40 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Another free->xmlFree change
+
+rev 3784:  msmith | 2002-08-09 10:03:32 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* fix typo preventing compile
+
+rev 3782:  msmith | 2002-08-09 09:47:53 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* set default webroot dir correctly, and fix a minor memleak
+
+rev 3781:  msmith | 2002-08-09 09:38:42 -0500 (Fri, 09 Aug 2002) | 3 lines
+
+	* rename transformXSLT to xslt_transform() for consistency with the rest
+	* of the source.
+
+rev 3780:  msmith | 2002-08-09 09:36:12 -0500 (Fri, 09 Aug 2002) | 3 lines
+
+	* Redo memory-management in config.c so that xmlFree() is called instead of
+	* free(), hopefully fixing win32 segfaults.
+
+rev 3779:  msmith | 2002-08-09 09:15:08 -0500 (Fri, 09 Aug 2002) | 3 lines
+
+	* Various cleanups for accounting of sent bytes.
+	* Crash bug in stats fixed.
+
+rev 3776:  msmith | 2002-08-09 08:14:59 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Fix crash when socket couldn't be bound.
+
+rev 3775:  msmith | 2002-08-09 03:16:51 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Add new xslt files, which I forgot earlier
+
+rev 3774:  msmith | 2002-08-09 03:11:37 -0500 (Fri, 09 Aug 2002) | 3 lines
+
+	* Allow setting the log level (for the error log, not the access log) from the
+	* config file.
+
+rev 3773:  msmith | 2002-08-09 03:06:00 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* Logging cleanups, and a config file fix.
+
+rev 3772:  msmith | 2002-08-09 01:52:07 -0500 (Fri, 09 Aug 2002) | 2 lines
+
+	* oddsock's xslt stats support, slightly cleaned up
+
+rev 3767:  msmith | 2002-08-08 03:26:21 -0500 (Thu, 08 Aug 2002) | 2 lines
+
+	* Remove references to checking out sub-modules, this is no longer needed.
+
+rev 3761:  msmith | 2002-08-05 09:51:22 -0500 (Mon, 05 Aug 2002) | 2 lines
+
+	* Revert some accidental changes to the config file.
+
+rev 3760:  msmith | 2002-08-05 09:48:04 -0500 (Mon, 05 Aug 2002) | 2 lines
+
+	* Cleaned up version of Ciaran Anscomb's relaying patch.
+
+rev 3752:  msmith | 2002-08-03 03:16:52 -0500 (Sat, 03 Aug 2002) | 2 lines
+
+	* Updates for modified logging API.
+
+rev 3735:  msmith | 2002-07-31 10:00:12 -0500 (Wed, 31 Jul 2002) | 4 lines
+
+	* Config fixes for when parsing fails
+	* Don't needlessly call getsockopt() all the time (it's a system call, hence
+	* expensive)
+
+rev 3717:  msmith | 2002-07-24 09:52:28 -0500 (Wed, 24 Jul 2002) | 3 lines
+
+	* Allow either poll or select to be used (based on whether HAVE_POLL is defined.)
+	* Still need to make autoconf define HAVE_POLL where relevent.
+
+rev 3716:  msmith | 2002-07-24 08:55:12 -0500 (Wed, 24 Jul 2002) | 2 lines
+
+	* Send the correct mimetype on client request.
+
+rev 3713:  msmith | 2002-07-23 10:15:11 -0500 (Tue, 23 Jul 2002) | 4 lines
+
+	* MP3 support for icecast2.
+	   - no title/metadata support
+	   - requires modifications to source clients.
+
+rev 3572:  calc | 2002-07-10 23:00:04 -0500 (Wed, 10 Jul 2002) | 2 lines
+
+	* fix autogen.sh so that builddir != srcdir works
+
+rev 3537:  msmith | 2002-07-06 00:37:47 -0500 (Sat, 06 Jul 2002) | 2 lines
+
+	* Add some notes about select() limitations to TODO.
+
+rev 3439:  msmith | 2002-06-28 23:29:37 -0500 (Fri, 28 Jun 2002) | 2 lines
+
+	* Fix locations of headers.
+
+rev 3391:  msmith | 2002-06-14 23:57:50 -0500 (Fri, 14 Jun 2002) | 2 lines
+
+	* fix previous fix.
+
+rev 3390:  msmith | 2002-06-14 23:54:43 -0500 (Fri, 14 Jun 2002) | 2 lines
+
+	* fixed crash in shutdown if startup didn't happen properly.
+
+rev 3341:  msmith | 2002-06-03 04:12:50 -0500 (Mon, 03 Jun 2002) | 4 lines
+
+	* Fix for evil format string vulnerability - people, don't DO THIS!
+
+	* Fix from Emil Styrke <emil@lysator.liu.se>
+
+rev 3319:  msmith | 2002-05-21 00:22:32 -0500 (Tue, 21 May 2002) | 2 lines
+
+	* missing newlines. oops.
+
+rev 3316:  msmith | 2002-05-20 19:35:33 -0500 (Mon, 20 May 2002) | 2 lines
+
+	* Fix segfault from called log functions before log was initialised.
+
+rev 3315:  msmith | 2002-05-20 19:05:31 -0500 (Mon, 20 May 2002) | 3 lines
+
+	* Fix potential problem which would occur if <changeuser> was set, but had
+	* no <user> or no <group> element within it.
+
+rev 3311:  msmith | 2002-05-20 08:25:31 -0500 (Mon, 20 May 2002) | 2 lines
+
+	* chroot and setuid interacted badly in the previous version. Fixed now.
+
+rev 3302:  msmith | 2002-05-14 06:06:54 -0500 (Tue, 14 May 2002) | 2 lines
+
+	* Ian Kumlien's security (chroot() and setuid() patch), with some modifications.
+
+rev 3292:  msmith | 2002-05-08 09:07:42 -0500 (Wed, 08 May 2002) | 2 lines
+
+	* I am an idiot.
+
+rev 3291:  msmith | 2002-05-08 09:02:02 -0500 (Wed, 08 May 2002) | 2 lines
+
+	* Minor fix to previous fix - use the right variable!
+
+rev 3290:  msmith | 2002-05-08 00:18:43 -0500 (Wed, 08 May 2002) | 2 lines
+
+	* Ensure we don't throw away a buffer after only sending part of it.
+
+rev 3275:  msmith | 2002-05-03 10:04:56 -0500 (Fri, 03 May 2002) | 2 lines
+
+	* Memory leaks. Lots of little ones.
+
+rev 3220:  jack | 2002-04-05 10:33:35 -0600 (Fri, 05 Apr 2002) | 5 lines
+
+	* Oddsock finally found the win32 crash bug.  _event_listeners wasn't being
+	* initialized (the first time it was NULL).  After the server is restarted
+	* it retained a pointer to freed memory.  We should have been initializing
+	* this anyway.
+
+rev 3219:  msmith | 2002-04-05 03:28:26 -0600 (Fri, 05 Apr 2002) | 5 lines
+
+	* Buffer overflows.
+
+	* Requires a change to the format plugin interface - jack: if you want this
+	* done differently, feel free to change it (or ask me to).
+
+rev 3178:  jack | 2002-03-22 16:41:16 -0600 (Fri, 22 Mar 2002) | 10 lines
+
+	* Ouch.  Serious bug found by Ricardo Galli.
+
+	* When the cond var is signalled it will wake up a thread.  If all the
+	* connection handler threads are handling connections, the signal will be
+	* ignored and clients will 'pend' until another client causes the to signal
+	* again.
+
+	* We have to check to see if there are more pending connections before waiting
+	* on the signal again.
+
+rev 3175:  jack | 2002-03-22 15:18:03 -0600 (Fri, 22 Mar 2002) | 3 lines
+
+	* We were triggering error logic when no errors had occurred.  Thanks
+	* to Ricardo Galli for finding this bug.
+
+rev 3123:  jack | 2002-03-05 17:59:38 -0600 (Tue, 05 Mar 2002) | 2 lines
+
+	* win32 patches from Ed
+
+rev 3076:  msmith | 2002-02-19 16:01:51 -0600 (Tue, 19 Feb 2002) | 2 lines
+
+	* Comment audio/mpeg out until it gets implemented, to avoid segfaults.
+
+rev 3046:  jack | 2002-02-13 18:58:04 -0600 (Wed, 13 Feb 2002) | 2 lines
+
+	* Replace the placeholder with the real license.
+
+rev 3045:  jack | 2002-02-13 18:41:57 -0600 (Wed, 13 Feb 2002) | 2 lines
+
+	* Fix race condition on thread shutdown.
+
+rev 3044:  jack | 2002-02-13 18:28:41 -0600 (Wed, 13 Feb 2002) | 3 lines
+
+	* Shut down the stats_connection and stats_callback threads cleanly when
+	* stats_shutdown() is called.
+
+rev 3042:  msmith | 2002-02-11 03:11:18 -0600 (Mon, 11 Feb 2002) | 11 lines
+
+	* Bunch of fixes:
+
+	 - connections are now matched to format plugins based on content-type headers,
+	   and are rejected if there isn't a format handler for that content-type, or
+	   there is no content-type at all.
+	 - format_vorbis now handles pages with granulepos of -1 in the headers
+	   correctly (this happens if the headers are fairly large, because of
+	   many comments, for example).
+	 - various #include fixes.
+	 - buffer overflow in httpp.c fixed.
+
+rev 3034:  jack | 2002-02-07 21:59:17 -0600 (Thu, 07 Feb 2002) | 4 lines
+
+	* Minor cleanup of 'static' functions.
+
+	* Fixed usage bug where usage wasn't getting displayed properly.
+
+rev 3033:  jack | 2002-02-07 21:51:19 -0600 (Thu, 07 Feb 2002) | 2 lines
+
+	* More win32 fixes.
+
+rev 3029:  jack | 2002-02-06 19:04:09 -0600 (Wed, 06 Feb 2002) | 2 lines
+
+	* minor build fixes for win32 courtesy of Oddsock
+
+rev 3027:  jack | 2002-02-06 01:52:09 -0600 (Wed, 06 Feb 2002) | 2 lines
+
+	* Factor out common code in stats.c.
+
+rev 3026:  jack | 2002-02-06 00:11:03 -0600 (Wed, 06 Feb 2002) | 6 lines
+
+	* A very slightly modified version of oddsocks function to support gui
+	* stats updates.  Basically stats_connection() was copied to
+	* stats_callback() (i should probably factor out some of the code here!)
+	* with the change that instead of sending stats to a socket, it sends the
+	* event to a callback function.
+
+rev 3024:  jack | 2002-02-04 01:08:52 -0600 (Mon, 04 Feb 2002) | 8 lines
+
+	* Two things:
+
+	* 1) vorbis tags (ARTIST and TITLE) now appear in the stats.  Oddsock did
+	* the first cut of this.
+
+	* 2) stats bug fixed.  if a stats value was NULL a segfault occurred.
+	* strdup(NULL) is fun!
+
+rev 2968:  jack | 2002-01-20 22:28:30 -0600 (Sun, 20 Jan 2002) | 3 lines
+
+	* Add a source-timeout config option and implement it.  This prevents lame
+	* sources from sticking around way too long.  Default is 10 seconds.
+
+rev 2967:  jack | 2002-01-20 21:56:16 -0600 (Sun, 20 Jan 2002) | 2 lines
+
+	* Make it log to a file when the source gets disconnected
+
+rev 2966:  jack | 2002-01-20 21:10:37 -0600 (Sun, 20 Jan 2002) | 4 lines
+
+	* Fix a stupid but that Oddsock and Ciaran both found.  When sources log in
+	* we weren't checking to see if the mountpoint was already taken.  Since
+	* the mountpoint was the key in the avl tree, bad things happened.
+
+rev 2946:  jack | 2002-01-04 18:29:27 -0600 (Fri, 04 Jan 2002) | 6 lines
+
+	* Thanks to Ciaran for realizing that we werne't freeing the format plugins
+	* memory on source exits.  This caused a small but noticable memory leak.
+
+	* The fix was to add a new method to the format_plugin object -
+	* free_plugin() - and have the source thread call this on shutdown.
+
+rev 2273:  jack | 2001-10-29 09:53:28 -0600 (Mon, 29 Oct 2001) | 3 lines
+
+	* Another fix. -mv8 is a Sparc-only option, and gcc will barf if you use it
+	* on x86.
+
+rev 2271:  jack | 2001-10-29 09:32:39 -0600 (Mon, 29 Oct 2001) | 2 lines
+
+	* One more try at this.
+
+rev 2269:  jack | 2001-10-29 09:02:54 -0600 (Mon, 29 Oct 2001) | 2 lines
+
+	* Does this fix x86 Solaris?
+
+rev 2266:  jack | 2001-10-29 08:55:08 -0600 (Mon, 29 Oct 2001) | 3 lines
+
+	* Fix SUN_LIBS to apply to x86 Solaris boxen.  Who knew someone
+	* actually used x86 Solaris :)
+
+rev 2238:  jack | 2001-10-21 11:13:02 -0500 (Sun, 21 Oct 2001) | 2 lines
+
+	* Fix broken CFLAGS handling.
+
+rev 2235:  jack | 2001-10-21 10:25:45 -0500 (Sun, 21 Oct 2001) | 2 lines
+
+	* Fix lib handling.
+
+rev 2233:  jack | 2001-10-21 10:12:23 -0500 (Sun, 21 Oct 2001) | 3 lines
+
+	* AC_CHECK_FUNC is stupid.  It needs the LIBS set already, and you can't pass
+	* in a set of libs to use.  So we save/restore for the call.
+
+rev 2229:  jack | 2001-10-21 09:19:39 -0500 (Sun, 21 Oct 2001) | 9 lines
+
+	* A few configure.in fixes.
+
+	* * -D_REENTRANT probably needed on all platforms.  Let's not limit it to
+	  Linux and Solaris.
+
+	* * AM_PATH_OGG|VORBIS had a slight bug.  We shouldn't update the LIBS until
+	  after we've detected anything.  Thanks to Michael Pruett <michael@68k.org>
+	  for finding this.
+
+rev 2225:  msmith | 2001-10-21 05:07:51 -0500 (Sun, 21 Oct 2001) | 3 lines
+
+	* configure.in: solaris requires -D_REENTRANT. What about other platforms?
+	* source.c: fix bug in handling non-fatal errors like EAGAIN
+
+rev 2223:  jack | 2001-10-20 21:06:08 -0500 (Sat, 20 Oct 2001) | 2 lines
+
+	* Revert stacksize stuff and changes for the thread module.
+
+rev 2221:  jack | 2001-10-20 17:48:29 -0500 (Sat, 20 Oct 2001) | 4 lines
+
+	* Fix icecast for changes in thread module regarding stacksize.  For icecast,
+	* the default stacksize is unchanged (8k) until further testing on Solaris
+	* to determine if a larger value is needed.
+
+rev 2207:  jack | 2001-10-20 16:29:16 -0500 (Sat, 20 Oct 2001) | 2 lines
+
+	* Forgot to add new compat.h to Makefile.am.  Fixed.
+
+rev 2206:  jack | 2001-10-20 16:28:09 -0500 (Sat, 20 Oct 2001) | 4 lines
+
+	* Add check for stdint.h, since Solaris doesn't have it.  This is needed
+	* on Linux for uint64_t, but Solaris defines this in sys/types.h.  Use check
+	* where appropriate, and also add typedefs for Win32.
+
+rev 2198:  jack | 2001-10-20 02:59:01 -0500 (Sat, 20 Oct 2001) | 2 lines
+
+	* Updated the TODO file.
+
+rev 2197:  jack | 2001-10-20 02:40:09 -0500 (Sat, 20 Oct 2001) | 5 lines
+
+	* Thanks to Akos Maroy <darkeye@tyrell.hu> for this.  These variables need to
+	* be uppercase always in order to comply with the HTTP specification.
+	* While not a problem internal to icecast, they were slipping into the log
+	* files and breaking some less-than-robust parsers.
+
+rev 2196:  jack | 2001-10-20 01:51:29 -0500 (Sat, 20 Oct 2001) | 3 lines
+
+	* It's too bad we don't have a commit script that smacks me upside the head
+	* when I do stupid things like this.
+
+rev 2195:  jack | 2001-10-20 01:43:04 -0500 (Sat, 20 Oct 2001) | 3 lines
+
+	* Win32 fixes.  Look how portable this was ;)  Just header stuff and some defines.
+	* Whee!
+
+rev 2012:  jack | 2001-09-09 22:26:04 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* Add HACKING file for instructions for building from CVS.
+
+rev 2006:  jack | 2001-09-09 22:04:11 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* .cvsignore is fun!
+
+rev 2004:  jack | 2001-09-09 22:02:23 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* .cvsignore stuff
+
+rev 2003:  jack | 2001-09-09 21:56:53 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* Add .cvsignore
+
+rev 2002:  jack | 2001-09-09 21:55:41 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* Include configuration files in 'make dist'
+
+rev 2001:  jack | 2001-09-09 21:58:24 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* More .cvsignore
+
+rev 1996:  jack | 2001-09-09 21:21:46 -0500 (Sun, 09 Sep 2001) | 2 lines
+
+	* Initial revision
+

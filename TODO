@@ -25,14 +25,10 @@ FEATURES
 - allow using get_predata() stuff to send an "intro" to any newly-connected
   user?
 
-- stats to list currently connected clients: ip and hostname
-
 - general registerable url-handlers in connection.c rather than hard-coded list
   (already getting unmaintainable)
 
 - httpp - split out query string for further processing
-
-- option to use ipv6 (equiv to using <bind-address>::</bindaddress>, I think.
 
 - abstract all admin functionality to a set of commands, and command handlers.
   Make /admin/* just parse according to a set of rules, and dispatch generic
