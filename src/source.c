@@ -190,7 +190,7 @@ void *source_main(void *arg)
 						client->con->error = 1;
 					} else {
 						printf("SOURCE: client had recoverable error...\n");
-						client->pos += sbytes;
+						client->pos += sbytes>0?sbytes:0;
 						/* put the refbuf back on top of the queue, since we didn't finish with it */
 						refbuf_queue_insert(&client->queue, abuf);
 					}
@@ -220,7 +220,7 @@ void *source_main(void *arg)
 						client->con->error = 1;
 					} else {
 						printf("SOURCE: recoverable error %ld\n", bytes);
-						client->pos = sbytes;
+						client->pos = sbytes>0?sbytes:0;
 						refbuf_addref(refbuf);
 						refbuf_queue_insert(&client->queue, refbuf);
 					}

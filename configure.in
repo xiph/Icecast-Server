@@ -17,9 +17,9 @@ if test -z "$GCC"; then
                 PROFILE="-p -g3 -O2 -signed"
 		;;
         sparc-sun-solaris*)
-                DEBUG="-v -g"
-                CFLAGS="-xO4 -fast -w -fsimple -native -xcg92"
-                PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc"
+                DEBUG="-v -g -D_REENTRANT"
+                CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
+                PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
 		;;
         *)
                 DEBUG="-g"
@@ -35,9 +35,9 @@ else
                 PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
 		;;
         sparc-sun-*)
-                DEBUG="-g -Wall -fsigned-char -mv8"
-                CFLAGS="-O20 -ffast-math -fsigned-char -mv8"
-                PROFILE="-pg -g -O20 -fsigned-char -mv8" 
+                DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
+                CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
+                PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
 		;;
         *)
                 DEBUG="-g -Wall -fsigned-char"
