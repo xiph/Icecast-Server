@@ -2,7 +2,7 @@
  * Copyright (C) 1995 by Sam Rushing <rushing@nightmare.com>
  */
 
-/* $Id: avl.h,v 1.3 2003/03/06 01:55:20 brendan Exp $ */
+/* $Id: avl.h,v 1.4 2003/03/06 02:35:12 brendan Exp $ */
 
 #ifndef __AVL_H
 #define __AVL_H
@@ -11,14 +11,14 @@
 extern "C" {
 #endif
 
-#ifdef USE_THREAD
+#ifndef NO_THREAD
 #include "thread.h"
 #else
-#define thread_rwlock_create(x)
-#define thread_rwlock_destroy(x)
-#define thread_rwlock_rlock(x)
-#define thread_rwlock_wlock(x)
-#define thread_rwlock_unlock(x)
+#define thread_rwlock_create(x) do{}while(0)
+#define thread_rwlock_destroy(x) do{}while(0)
+#define thread_rwlock_rlock(x) do{}while(0)
+#define thread_rwlock_wlock(x) do{}while(0)
+#define thread_rwlock_unlock(x) do{}while(0)
 #endif
 
 typedef struct avl_node_tag {
@@ -32,7 +32,7 @@ typedef struct avl_node_tag {
    * The rest of the bits are used for <rank>
    */
   unsigned long		rank_and_balance;
-#ifdef USE_THREAD
+#ifndef NO_THREAD
   rwlock_t rwlock;
 #endif
 } avl_node;
@@ -68,7 +68,7 @@ typedef struct _avl_tree {
   unsigned long			length;
   avl_key_compare_fun_type	compare_fun;
   void * 			compare_arg;
-#ifdef USE_THREAD
+#ifndef NO_THREAD
   rwlock_t rwlock;
 #endif
 } avl_tree;

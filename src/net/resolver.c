@@ -19,13 +19,13 @@
 #include <winsock2.h>
 #endif
 
-#ifdef USE_THREAD
-#include "../thread/thread.h"
+#ifndef NO_THREAD
+#include "thread.h"
 #else
-#define thread_mutex_create(x)
-#define thread_mutex_destroy(x)
-#define thread_mutex_lock(x)
-#define thread_mutex_unlock(x)
+#define thread_mutex_create(x) do{}while(0)
+#define thread_mutex_destroy(x) do{}while(0)
+#define thread_mutex_lock(x) do{}while(0)
+#define thread_mutex_unlock(x) do{}while(0)
 #endif
 
 #include "resolver.h"
@@ -37,7 +37,7 @@ static int _isip(const char *what);
 
 /* internal data */
 
-#ifdef USE_THREAD
+#ifndef NO_THREAD
 static mutex_t _resolver_mutex;
 #endif
 static int _initialized = 0;
