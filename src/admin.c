@@ -37,6 +37,7 @@
 #include "format_mp3.h"
 
 #include "logging.h"
+#include "auth.h"
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif
@@ -50,10 +51,12 @@
 #define COMMAND_METADATA_UPDATE     2
 #define COMMAND_RAW_SHOW_LISTENERS  3
 #define COMMAND_RAW_MOVE_CLIENTS    4
+#define COMMAND_RAW_MANAGEAUTH      5
 
 #define COMMAND_TRANSFORMED_FALLBACK        50
 #define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
 #define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
+#define COMMAND_TRANSFORMED_MANAGEAUTH      55
 
 /* Global commands */
 #define COMMAND_RAW_LIST_MOUNTS             101
@@ -89,6 +92,8 @@
 #define KILLSOURCE_RAW_REQUEST "killsource"
 #define KILLSOURCE_TRANSFORMED_REQUEST "killsource.xsl"
 #define ADMIN_XSL_RESPONSE "response.xsl"
+#define MANAGEAUTH_RAW_REQUEST "manageauth"
+#define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
 #define DEFAULT_RAW_REQUEST ""
 #define DEFAULT_TRANSFORMED_REQUEST ""
 
@@ -133,6 +138,10 @@ int admin_get_command(char *command)
         return COMMAND_RAW_KILL_SOURCE;
     else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_KILL_SOURCE;
+    else if(!strcmp(command, MANAGEAUTH_RAW_REQUEST))
+        return COMMAND_RAW_MANAGEAUTH;
+    else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_MANAGEAUTH;
     else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, DEFAULT_RAW_REQUEST))
@@ -150,6 +159,8 @@ static void command_move_clients(client_t *client, source_t *source,
 static void command_stats(client_t *client, int response);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
+        int response);
+static void command_manageauth(client_t *client, source_t *source,
         int response);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
@@ -195,6 +206,10 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
             xmlNewChild(srcnode, NULL, "Connected", buf);
             xmlNewChild(srcnode, NULL, "Format", 
                     source->format->format_description);
+            if (source->authenticator) {
+                xmlNewChild(srcnode, NULL, "authenticator", 
+                    source->authenticator->type);
+            }
         }
         node = avl_get_next(node);
     }
@@ -402,6 +417,12 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         case COMMAND_TRANSFORMED_KILL_SOURCE:
             command_kill_source(client, source, TRANSFORMED);
             break;
+        case COMMAND_TRANSFORMED_MANAGEAUTH:
+            command_manageauth(client, source, TRANSFORMED);
+            break;
+        case COMMAND_RAW_MANAGEAUTH:
+            command_manageauth(client, source, RAW);
+            break;
         default:
             WARN0("Mount request not recognised");
             client_send_400(client, "Mount request unknown");
@@ -547,12 +568,76 @@ static void command_show_listeners(client_t *client, source_t *source,
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "%lu", current->con->id);
         xmlNewChild(listenernode, NULL, "ID", buf);
+        if (current->username) {
+            xmlNewChild(listenernode, NULL, "username", current->username);
+        }
         client_node = avl_get_next(client_node);
     }
 
     avl_tree_unlock(source->client_tree);
     admin_send_response(doc, client, response, 
         LISTCLIENTS_TRANSFORMED_REQUEST);
+    xmlFreeDoc(doc);
+    client_destroy(client);
+}
+
+static void command_manageauth(client_t *client, source_t *source,
+    int response)
+{
+    xmlDocPtr doc;
+    xmlNodePtr node, srcnode, msgnode;
+    char *action = NULL;
+    char *username = NULL;
+    char *password = NULL;
+    char *message = NULL;
+    int ret = AUTH_OK;
+
+    if((COMMAND_OPTIONAL(client, "action", action))) {
+        if (!strcmp(action, "add")) {
+            COMMAND_REQUIRE(client, "username", username);
+            COMMAND_REQUIRE(client, "password", password);
+            ret = auth_adduser(source, username, password);
+            if (ret == AUTH_FAILED) {
+                message = strdup("User add failed - check the icecast error log");
+            }
+            if (ret == AUTH_USERADDED) {
+                message = strdup("User added");
+            }
+            if (ret == AUTH_USEREXISTS) {
+                message = strdup("User already exists - not added");
+            }
+        }
+        if (!strcmp(action, "delete")) {
+            COMMAND_REQUIRE(client, "username", username);
+            ret = auth_deleteuser(source, username);
+            if (ret == AUTH_FAILED) {
+                message = strdup("User delete failed - check the icecast error log");
+            }
+            if (ret == AUTH_USERDELETED) {
+                message = strdup("User deleted");
+            }
+        }
+    }
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    srcnode = xmlNewChild(node, NULL, "source", NULL);
+    xmlSetProp(srcnode, "mount", source->mount);
+
+    if (message) {
+        msgnode = xmlNewChild(node, NULL, "iceresponse", NULL);
+        xmlNewChild(msgnode, NULL, "message", message);
+    }
+
+    xmlDocSetRootElement(doc, node);
+
+    auth_get_userlist(source, srcnode);
+
+    admin_send_response(doc, client, response, 
+        MANAGEAUTH_TRANSFORMED_REQUEST);
+    if (message) {
+        free(message);
+    }
     xmlFreeDoc(doc);
     client_destroy(client);
 }

@@ -551,6 +551,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                         option = option->next;
                         continue;
                     }
+                    opt->next = NULL;
 
                     if(last_option)
                         last_option->next = opt;

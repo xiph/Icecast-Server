@@ -4,5 +4,5 @@ AUTOMAKE_OPTIONS = foreign
 
 admindir = $(pkgdatadir)/admin
 dist_admin_DATA = listclients.xsl listmounts.xsl moveclients.xsl response.xsl \
-	stats.xsl
+	stats.xsl manageauth.xsl
 

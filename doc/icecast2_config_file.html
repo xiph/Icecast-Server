@@ -271,6 +271,10 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;max-listeners&gt;1&lt;max-listeners&gt;
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;dump-file&gt;
         &lt;fallback-mount&gt;example2.ogg&lt;fallback-mount&gt;
+        &lt;authentication type="htpasswd"&gt;
+                &lt;option name="filename" value="myauth"/&gt;
+        &lt;/authentication&gt;
+
     &lt;mount&gt;
 </pre>
 <p>This section contains settings which apply only to a specific mountpoint.  Within this section you can reserve a specific mountpoint and set a source username/password for that mountpoint (not yet implemented) as well as specify individual settings which will apply only to the supplied mountpoint.
@@ -298,6 +302,10 @@ An optional value which will set the filename which will be a dump of the stream
 <h4>fallback-mount</h4>
 <div class=indentedbox>
 This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected; all currently connected clients will be moved to the fallback-mount.
+</div>
+<h4>authentication</h4>
+<div class=indentedbox>
+This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.
 </div>
 <br>
 <br>

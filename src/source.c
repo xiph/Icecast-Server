@@ -978,6 +978,7 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         source->authenticator = auth_get_authenticator(
                 mountinfo->auth_type, mountinfo->auth_options);
+        stats_event(source->mount, "authenticator", mountinfo->auth_type);
     }
     if (mountinfo->dumpfile)
     {

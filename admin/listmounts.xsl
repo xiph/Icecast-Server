@@ -31,13 +31,16 @@
 <xsl:for-each select="source">
 <h3>
 <xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-(<xsl:value-of select="@mount" />)</h3>
+(<xsl:value-of select="@mount" />)
+<xsl:if test="authenticator"> <a href="manageauth.xsl?mount={@mount}"><img border="0" src="/key.gif"/></a> </xsl:if>
+</h3>
 	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
 	<tr>        
 	    <td align="center">
 		<a class="nav2" href="listclients.xsl?mount={@mount}">Show Listeners</a> | 
         	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a> | 
         	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
+                <xsl:if test="authenticator"> | <a class="nav2" href="manageauth.xsl?mount={@mount}">Manage Authentication</a></xsl:if>
 	    </td></tr>
 	</table>
 <br></br>

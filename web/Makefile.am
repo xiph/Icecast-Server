@@ -10,4 +10,5 @@ dist_web_DATA = status.xsl \
                 corner_topleft.jpg \
                 corner_topright.jpg \
                 icecast.png \
+                key.gif \
                 style.css

@@ -51,7 +51,7 @@
 <xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
 <xsl:for-each select="listener">
 		<tr>
-				<td><xsl:value-of select="IP" /></td>
+				<td><xsl:value-of select="IP" /><xsl:if test="username"> (<xsl:value-of select="username" />)</xsl:if></td>
 				<td><xsl:value-of select="Connected" /> seconds</td>
 				<td><xsl:value-of select="UserAgent" /></td>
 				<td><a class="nav2" href="killclient.xsl?mount={$themount}&amp;id={ID}">kill</a></td>
