@@ -161,7 +161,7 @@ void log_write(int log_id, int priority, const char *cat, const char *fmt, ...)
 	vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
 
 	now = time(NULL);
-	strftime(tyme, 128, "[%Y-%m-%d  %H:%M:%S]", gmtime(&now)); 
+	strftime(tyme, 128, "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
 
 	snprintf(pre, 256, "%s %s", prior[priority-1], cat);
 
