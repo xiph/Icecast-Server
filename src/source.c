@@ -148,12 +148,12 @@ void *source_main(void *arg)
     stats_event(source->mount, "type", source->format->format_description);
 
 	while (global.running == ICE_RUNNING) {
-        bytes = 0;
 		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
             break;
         }
+        bytes = 1; /* Set to > 0 so that the post-loop check won't be tripped */
 		while (refbuf == NULL) {
 			bytes = 0;
 			while (bytes <= 0) {
