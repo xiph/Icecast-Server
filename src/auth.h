@@ -13,12 +13,15 @@
 #ifndef __AUTH_H__
 #define __AUTH_H__
 
-#include "source.h"
-#include "client.h"
-#include "config.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include "source.h"
+#include "client.h"
 
 typedef enum
 {

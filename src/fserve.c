@@ -390,6 +390,7 @@ int fserve_client_create(client_t *httpclient, char *path)
 
     global_lock();
     if(global.clients >= client_limit) {
+        global_unlock();
         httpclient->respcode = 504;
         bytes = sock_write(httpclient->con->sock,
                 "HTTP/1.0 504 Server Full\r\n"
@@ -397,7 +398,6 @@ int fserve_client_create(client_t *httpclient, char *path)
                 "<b>Server is full, try again later.</b>\r\n");
         if(bytes > 0) httpclient->con->sent_bytes = bytes;
         fserve_client_destroy(client);
-        global_unlock();
         return -1;
     }
     global.clients++;
