@@ -1,0 +1,37 @@
+<!-- This config file contains a minimal set of configurable parameters,
+     and mostly just contains the things you need to change.  We created
+     this for those who got scared away from the rather large and heavily
+     commented icecast.xml.dist file. -->
+<icecast>
+    <limits>
+        <sources>2</sources>
+    </limits>
+    <authentication>
+        <source-password>hackme</source-password>
+        <relay-password>hackme</relay-password>
+        <admin-user>admin</admin-user>
+        <admin-password>hackme</admin-password>
+    </authentication>
+    <directory>
+        <yp-url-timeout>15</yp-url-timeout>
+        <yp-url>http://dir.xiph.org/cgi-bin/yp-cgi</yp-url>
+    </directory>
+    <hostname>localhost</hostname>
+    <listen-socket>
+        <port>8000</port>
+    </listen-socket>
+    <fileserve>1</fileserve>
+    <paths>
+        <logdir>@localstatedir@/log/@PACKAGE@</logdir>
+        <webroot>@pkgdatadir@/web</webroot>
+        <adminroot>@pkgdatadir@/admin</adminroot>
+    </paths>
+    <logging>
+        <accesslog>access.log</accesslog>
+        <errorlog>error.log</errorlog>
+      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+    </logging>
+    <security>
+        <chroot>0</chroot>
+    </security>
+</icecast>
