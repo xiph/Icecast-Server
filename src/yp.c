@@ -141,6 +141,7 @@ int yp_touch()
         source = (source_t *)node->key;
         current_time = time(NULL);
         if (!source->yp_public) {
+            node = avl_get_next(node);
             continue;
         }
         for (i=0; i<source->num_yp_directories; i++) {
