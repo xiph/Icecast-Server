@@ -33,8 +33,10 @@ fi
 
 curl_ok="yes"
 
-ac_curl_CPPFLAGS="$CPPFLAGS"
-ac_curl_LIBS="$LIBS"
+xt_curl_CFLAGS="$CFLAGS"
+xt_curl_CPPFLAGS="$CPPFLAGS"
+xt_curl_LIBS="$LIBS"
+CFLAGS="-DCURL_CFLAG"
 CPPFLAGS="$CPPFLAGS $CURL_CFLAGS"
 LIBS="$CURL_LIBS $LIBS"
 dnl
@@ -42,18 +44,16 @@ dnl Now check if the installed libcurl is sufficiently new.
 dnl
 AC_CHECK_HEADERS([curl/curl.h],, curl_ok="no") 
 AC_MSG_CHECKING(for libcurl)
-if test "$curl_ok" = "yes"; then
-    AC_RUN_IFELSE([
+if test "$curl_ok" = "yes"
+then
+    AC_RUN_IFELSE(AC_LANG_SOURCE([
 #include <curl/curl.h>
 int main()
 {
     return 0;
 }
-],,[curl_ok="no"])
+]),,[curl_ok="no"])
 fi
-CPPFLAGS="$ac_curl_CPPFLAGS"
-LIBS="$ac_curl_LIBS"
-
 if test "$curl_ok" = "yes"; then
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_CURL, 1, [Define if you have libcurl.])
@@ -64,4 +64,6 @@ else
     CURL_CFLAGS=""
     ifelse([$2], , :, [$2])
 fi
+CPPFLAGS="$xt_curl_CPPFLAGS"
+LIBS="$xt_curl_LIBS"
 ])
