@@ -55,3 +55,20 @@ FEATURES
   commands through that.
   Use this for alternative admin interfaces (GUI? telnet interface?)
 
+- listener authentication (per mountpoint?)
+
+- all timer-based functionality (yp updates, slave/relay checks) should have a
+  single timer thread which dispatches events through the normal event
+  mechanism (to worker threads from the main pool). This will reduce the
+  extraneous thread count.
+
+- atomic admin function to: set fallback from A->B, remove A, move mountpoint
+  B to A. Needs forced-source removal first.
+
+- race condition between avl_tree_unlock(pending_tree) and 
+  thread_cond_wait(&fserv_cond) in fserv.c, it's a pain to fix but should be.
+
+- do we need to use locks on the avl client_trees in source.c and fserv.c? 
+
+  
+
