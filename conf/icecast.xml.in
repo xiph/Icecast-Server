@@ -66,7 +66,6 @@
 
     <!-- Only define a <mount> section if you want to use advanced options,
          like alternative usernames or passwords
-      -->
     <mount>
         <mount-name>/example-complex.ogg</mount-name>
 
@@ -74,13 +73,15 @@
         <password>hackmemore</password>
 
         <max-listeners>1</max-listeners>
-        <!-- <dump-file>/tmp/dump-example1.ogg</dump-file> -->
+        <dump-file>/tmp/dump-example1.ogg</dump-file>
         <fallback-mount>/example2.ogg</fallback-mount>
     </mount>
+    -->
 
     <fileserve>1</fileserve>
 
     <paths>
+		<!-- basedir is only used if chroot is enabled -->
         <basedir>@pkgdatadir@</basedir>
 
         <!-- Note that if <chroot> is turned on below, these paths must both
@@ -111,7 +112,7 @@
         <changeowner>
             <user>nobody</user>
             <group>nogroup</group>
-	</changeowner>
+        </changeowner>
         -->
     </security>
 </icecast>
