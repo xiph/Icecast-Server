@@ -24,9 +24,13 @@ AC_ARG_ENABLE(shouttest, [  --disable-shouttest       Do not try to compile and 
 
   SHOUT_LIBS="$SHOUT_LIBS -lshout"
 
+  case $host in
+  sparc-sun-*)
+  	SHOUT_LIBS="$SHOUT_LIBS -lnsl -lsocket -lresolv"
+  esac
+
   AC_MSG_CHECKING(for Shout)
   no_shout=""
-
 
   if test "x$enable_shouttest" = "xyes" ; then
     ac_save_CFLAGS="$CFLAGS"
