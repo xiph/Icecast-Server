@@ -24,6 +24,7 @@
 
 #include "connection.h"
 #include "refbuf.h"
+#include "httpp/httpp.h"
 
 struct source_tag;
 

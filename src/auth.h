@@ -13,12 +13,13 @@
 #ifndef __AUTH_H__
 #define __AUTH_H__
 
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 #include "source.h"
 #include "client.h"
 
@@ -54,6 +55,8 @@ auth_t *auth_get_authenticator(const char *type, config_options_t *options);
 void auth_clear(auth_t *authenticator);
 int auth_postprocess_client (const char *mount, client_t *client);
 void auth_close_client (client_t *client);
+int add_authenticated_client (source_t *source, client_t *client);
+void add_client (char *mount, client_t *client);
 
 #endif
 

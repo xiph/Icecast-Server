@@ -194,7 +194,10 @@ static void admin_send_response(xmlDocPtr doc, client_t *client,
         int response, char *xslt_template);
 static void html_write(client_t *client, char *fmt, ...);
 
-xmlDocPtr admin_build_sourcelist(char *current_source)
+/* build an XML doc containing information about currently running sources.
+ * If a mountpoint is passed then that source will not be added to the XML
+ * doc even if the source is running */
+xmlDocPtr admin_build_sourcelist (const char *mount)
 {
     avl_node *node;
     source_t *source;
@@ -207,16 +210,16 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
     xmlnode = xmlNewDocNode(doc, NULL, "icestats", NULL);
     xmlDocSetRootElement(doc, xmlnode);
 
-    if (current_source) {
-        xmlNewChild(xmlnode, NULL, "current_source", current_source);
+    if (mount) {
+        xmlNewChild(xmlnode, NULL, "current_source", mount);
     }
 
     node = avl_get_first(global.source_tree);
     while(node) {
         source = (source_t *)node->key;
-        if (current_source && strcmp (current_source, source->mount) == 0)
+        if (mount && strcmp (mount, source->mount) == 0)
         {
-            node = avl_get_next(node);
+            node = avl_get_next (node);
             continue;
         }
 
@@ -229,7 +232,7 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
             xmlNewChild (srcnode, NULL, "fallback", 
                     (source->fallback_mount != NULL)?
                     source->fallback_mount:"");
-            snprintf (buf, sizeof(buf), "%ld", source->listeners);
+            snprintf (buf, sizeof(buf), "%u", source->listeners);
             xmlNewChild (srcnode, NULL, "listeners", buf);
             if (source->running)
             {
@@ -664,12 +667,11 @@ static void command_show_listeners(client_t *client, source_t *source,
     int response)
 {
     xmlDocPtr doc;
-    xmlNodePtr node, srcnode;
-    char *userAgent = NULL;
-    xmlNodePtr listenernode;
+    xmlNodePtr node, srcnode, listenernode;
     client_t *current;
-    time_t now = time(NULL);
     char buf[22];
+    char *userAgent = NULL;
+    time_t now = time(NULL);
 
     doc = xmlNewDoc("1.0");
     node = xmlNewDocNode(doc, NULL, "icestats", NULL);
@@ -681,7 +683,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     memset(buf, '\000', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%ld", source->listeners);
+    snprintf(buf, sizeof(buf)-1, "%u", source->listeners);
     xmlNewChild(srcnode, NULL, "Listeners", buf);
 
     current = source->active_clients;
@@ -812,7 +814,6 @@ static void command_manageauth(client_t *client, source_t *source,
     client_destroy(client);
 }
 
-
 static void command_kill_source(client_t *client, source_t *source,
         int response)
 {
@@ -912,9 +913,9 @@ static void command_metadata(client_t *client, source_t *source)
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
 
-    if (strcmp(action, "updinfo") != 0)
+    if (strcmp (action, "updinfo") != 0)
     {
-        client_send_400(client, "No such action");
+        client_send_400 (client, "No such action");
         return;
     }
 
@@ -989,7 +990,6 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         client_send_400 (client, "mountpoint will not accept URL updates");
     }
 }
-
 
 static void command_stats(client_t *client, int response) {
     xmlDocPtr doc;

@@ -50,6 +50,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "auth.h"
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"

@@ -14,6 +14,7 @@
 #define __FSERVE_H__
 
 #include <stdio.h>
+#include "compat.h"
 
 typedef struct _fserve_t
 {

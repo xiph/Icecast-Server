@@ -158,7 +158,7 @@ void config_clear(ice_config_t *c)
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
-    if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT) 
+    if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
         xmlFree(c->shoutcast_mount);
     for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);

@@ -42,10 +42,9 @@ typedef struct source_tag
     client_t *active_clients;
     client_t *first_normal_client;
 
-    int check_pending;
     client_t *pending_clients;
     client_t **pending_clients_tail;
-    long new_listeners;
+    unsigned int new_listeners;
 
     rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
@@ -53,7 +52,7 @@ typedef struct source_tag
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-    long listeners;
+    unsigned int listeners;
     long max_listeners;
     int yp_public;
     int yp_prevent;
@@ -104,8 +103,6 @@ void source_free_source(source_t *source);
 void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
 void source_main(source_t *source);
-void add_client (char *mount, client_t *client);
-int add_authenticated_client (source_t *source, client_t *client);
 int source_free_client (source_t *source, client_t *client);
 void source_recheck_mounts (void);
 

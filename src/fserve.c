@@ -46,6 +46,7 @@
 #include "logging.h"
 #include "cfgfile.h"
 #include "util.h"
+#include "compat.h"
 
 #include "fserve.h"
 

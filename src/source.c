@@ -62,6 +62,7 @@ mutex_t move_clients_mutex;
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
+static void process_listeners (source_t *source, int fast_clients_only, int deletion_expected);
 #ifdef _WIN32
 #define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
 #else
@@ -260,6 +261,7 @@ void source_clear_source (source_t *source)
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
+    source->yp_prevent = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
@@ -412,7 +414,6 @@ void source_move_clients (source_t *source, source_t *dest)
         INFO2 ("passing %d listeners to \"%s\"", count, dest->mount);
 
         dest->new_listeners += count;
-        dest->check_pending = 1;
         source->listeners = 0;
         source->new_listeners = 0;
         stats_event (source->mount, "listeners", "0");
@@ -446,6 +447,117 @@ static void find_client_start (source_t *source, client_t *client)
             break;
         }
         refbuf = refbuf->next;
+    }
+}
+
+/* get some data from the source. The stream data is placed in a refbuf
+ * and sent back, however NULL is also valid as in the case of a short
+ * timeout and there's no data pending.
+ */
+static void get_next_buffer (source_t *source)
+{
+    refbuf_t *refbuf = NULL;
+    int no_delay_count = 0;
+
+    while (global.running == ICE_RUNNING && source->running)
+    {
+        int fds = 0;
+        time_t current = time(NULL);
+        int delay = 200;
+
+        /* service fast clients but jump out once in a while to check on
+         * normal clients */
+        if (no_delay_count < 10)
+        {
+            if (source->active_clients != source->first_normal_client)
+            {
+                delay = 0;
+                no_delay_count++;
+            }
+        }
+        else
+            return;
+
+        thread_mutex_unlock (&source->lock);
+
+        if (source->con)
+            fds = util_timed_wait_for_fd (source->con->sock, delay);
+        else
+        {
+            thread_sleep (delay*1000);
+            source->last_read = current;
+        }
+
+        /* take the lock */
+        thread_mutex_lock (&source->lock);
+
+        if (source->recheck_settings)
+        {
+            ice_config_t *config = config_get_config();
+            source_update_settings (config, source);
+            config_release_config ();
+        }
+        if (fds < 0)
+        {
+            if (! sock_recoverable (sock_error()))
+            {
+                WARN0 ("Error while waiting on socket, Disconnecting source");
+                source->running = 0;
+            }
+            continue;
+        }
+
+        if (fds == 0)
+        {
+            if (source->last_read + (time_t)source->timeout < current)
+            {
+                WARN0 ("Disconnecting source due to socket timeout");
+                source->running = 0;
+                break;
+            }
+            if (delay == 0)
+            {
+                process_listeners (source, 1, 0);
+                continue;
+            }
+            break;
+        }
+        source->last_read = current;
+        refbuf = source->format->get_buffer (source);
+        if (refbuf)
+        {
+            /* append buffer to the in-flight data queue,  */
+            if (source->stream_data == NULL)
+            {
+                source->stream_data = refbuf;
+                source->burst_point = refbuf;
+                source->burst_offset = 0;
+            }
+            if (source->stream_data_tail)
+                source->stream_data_tail->next = refbuf;
+            source->stream_data_tail = refbuf;
+            source->queue_size += refbuf->len;
+            refbuf_addref (refbuf);
+
+            /* move the starting point for new listeners */
+            source->burst_offset += refbuf->len;
+            if (source->burst_offset > source->burst_size)
+            {
+                if (source->burst_point->next)
+                {
+                    refbuf_t *to_go = source->burst_point;
+
+                    source->burst_offset -= source->burst_point->len;
+                    source->burst_point = source->burst_point->next;
+                    refbuf_release (to_go);
+                }
+            }
+
+            /* save stream to file */
+            if (source->dumpfile && source->format->write_buf_to_file)
+                source->format->write_buf_to_file (source, refbuf);
+        }
+        break;
     }
 }
 
@@ -572,114 +684,48 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 }
 
 
-/* get some data from the source. The stream data is placed in a refbuf
- * and sent back, however NULL is also valid as in the case of a short
- * timeout and there's no data pending.
- */
-static void get_next_buffer (source_t *source)
+static void process_pending_clients (source_t *source)
 {
-    refbuf_t *refbuf = NULL;
-    int no_delay_count = 0;
+    unsigned count = 0;
+    client_t *client = source->pending_clients;
 
-    while (global.running == ICE_RUNNING && source->running)
+    while (client)
     {
-        int fds = 0;
-        time_t current = time(NULL);
-        int delay = 200;
+        client_t *to_go = client;
 
-        /* service fast clients but jump out once in a while to check on
-         * normal clients */
-        if (no_delay_count < 10)
+        client = client->next;
+        /*  trap from when clients have been moved */
+        if (to_go->write_to_client == NULL)
         {
-            if (source->active_clients != source->first_normal_client)
+            /* trap for client moved to fallback file */
+            if (source->file_only)
             {
-                delay = 0;
-                no_delay_count++;
+                to_go->write_to_client = format_intro_write_to_client;
+                client_set_queue (to_go, refbuf_new(4096));
+                to_go->intro_offset = 0;
+                to_go->pos = 4096;
+            }
+            else
+            {
+                to_go->write_to_client = source->format->write_buf_to_client;
+                client_set_queue (to_go, source->stream_data_tail);
             }
         }
-        else
-            return;
 
-        thread_mutex_unlock (&source->lock);
+        to_go->next = source->active_clients;
+        source->active_clients = to_go;
 
-        if (source->con)
-            fds = util_timed_wait_for_fd (source->con->sock, delay);
-        else
-        {
-            thread_sleep (delay*1000);
-            source->last_read = current;
-        }
+        count++;
+        source->new_listeners--;
+    }
+    source->pending_clients = NULL;
+    source->pending_clients_tail = &source->pending_clients;
 
-        /* take the lock */
-        thread_mutex_lock (&source->lock);
-
-        if (source->recheck_settings)
-        {
-            ice_config_t *config = config_get_config();
-            source_update_settings (config, source);
-            config_release_config ();
-        }
-        if (fds < 0)
-        {
-            if (! sock_recoverable (sock_error()))
-            {
-                WARN0 ("Problem while waiting on socket, Disconnecting source");
-                source->running = 0;
-            }
-            continue;
-        }
-
-        if (fds == 0)
-        {
-            if (source->last_read + (time_t)source->timeout < current)
-            {
-                WARN0 ("Disconnecting source due to socket timeout");
-                source->running = 0;
-                break;
-            }
-            if (delay == 0)
-            {
-                process_listeners (source, 1, 0);
-                continue;
-            }
-            break;
-        }
-        source->last_read = current;
-        refbuf = source->format->get_buffer (source);
-        if (refbuf)
-        {
-            /* append buffer to the in-flight data queue,  */
-            if (source->stream_data == NULL)
-            {
-                source->stream_data = refbuf;
-                source->burst_point = refbuf;
-                source->burst_offset = 0;
-            }
-            if (source->stream_data_tail)
-                source->stream_data_tail->next = refbuf;
-            source->stream_data_tail = refbuf;
-            source->queue_size += refbuf->len;
-            refbuf_addref (refbuf);
-
-            /* move the starting point for new listeners */
-            source->burst_offset += refbuf->len;
-            if (source->burst_offset > source->burst_size)
-            {
-                if (source->burst_point->next)
-                {
-                    refbuf_t *to_go = source->burst_point;
-
-                    source->burst_offset -= source->burst_point->len;
-                    source->burst_point = source->burst_point->next;
-                    refbuf_release (to_go);
-                }
-            }
-
-            /* save stream to file */
-            if (source->dumpfile && source->format->write_buf_to_file)
-                source->format->write_buf_to_file (source, refbuf);
-        }
-        break;
+    if (count)
+    {
+        DEBUG1("Adding %d client(s)", count);
+        source->listeners += count;
+        stats_event_args (source->mount, "listeners", "%d", source->listeners);
     }
 }
 
@@ -785,225 +831,8 @@ static void source_init (source_t *source)
 }
 
 
-/* Check whether this client is currently on this mount, the client may be
- * on either the active or pending lists.
- * return 1 if ok to add or 0 to prevent
- */
-static int check_duplicate_logins (source_t *source, client_t *client)
-{
-    auth_t *auth = source->authenticator;
 
-    /* allow multiple authenticated relays */
-    if (client->username == NULL || client->is_slave)
-        return 1;
-
-    if (auth && auth->allow_duplicate_users == 0)
-    {
-        client_t *existing;
-
-        existing = source->active_clients;
-        while (existing)
-        {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
-            existing = existing->next;
-        }
-        existing = source->pending_clients;
-        while (existing)
-        {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
-            existing = existing->next;
-        }
-    }
-    return 1;
-}
-
-
-/* The actual add client routine, this requires the source to be locked.
- * if 0 is returned then the client should not be touched, however if -1
- * is returned then the caller is responsible for handling the client
- */
-int add_authenticated_client (source_t *source, client_t *client)
-{
-    if (source->authenticator && check_duplicate_logins (source, client) == 0)
-        return -1;
-    /* lets add the client to the pending list */
-    client->next = source->pending_clients;
-    source->pending_clients = client;
-
-    client->write_to_client = format_http_write_to_client;
-    client->refbuf = refbuf_new (4096);
-
-    sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
-    sock_set_nodelay (client->con->sock);
-    if (source->running == 0 && source->on_demand)
-    {
-        /* enable on-demand relay to start, wake up the slave thread */
-        DEBUG0("kicking off on-demand relay");
-        source->on_demand_req = 1;
-        slave_rescan();
-    }
-    DEBUG1 ("Added client to pending on %s", source->mount);
-    source->check_pending = 1;
-    stats_event_inc (NULL, "clients");
-    return 0;
-}
-
-
-/* try to add client to a pending list.  return
- *  0 for success
- *  -1 too many clients
- *  -2 mount needs authentication
- *  -3 mount is unavailable
- */
-static int _add_client (char *passed_mount, client_t *client, int initial_connection)
-{
-    source_t *source;
-    char *mount = passed_mount;
-
-    while (1)
-    {
-        source = source_find_mount (mount);
-        if (passed_mount != mount)
-            free (mount);
-        if (source == NULL)
-            return -3;
-        if (initial_connection && source->no_mount
-                && strcmp (source->mount, passed_mount) == 0)
-            return -3;
-        thread_mutex_lock (&source->lock);
-
-        if (source->running || source->on_demand)
-        {
-            DEBUG2 ("max on %s is %d", source->mount, source->max_listeners);
-            DEBUG2 ("pending %d, current %d", source->new_listeners, source->listeners);
-            if (source->max_listeners == -1)
-                break;
-            if (client->is_slave)
-                break;
-            if (source->new_listeners + source->listeners < source->max_listeners)
-                break;
-
-            INFO2 ("max listeners (%d) reached on %s", source->max_listeners, source->mount);
-            if (source->fallback_when_full == 0 || source->fallback_mount == NULL)
-            {
-                thread_mutex_unlock (&source->lock);
-                return -1;
-            }
-            if (source->fallback_mount)
-                mount = strdup (source->fallback_mount);
-            else
-                mount = NULL;
-        }
-
-        thread_mutex_unlock (&source->lock);
-    }
-
-    if (auth_check_client (source, client) != AUTH_OK)
-    {
-        thread_mutex_unlock (&source->lock);
-        INFO0 ("listener failed to authenticate");
-        return -2;
-    }
-    source->new_listeners++;
-
-    thread_mutex_unlock (&source->lock);
-    return 0;
-}
-
-
-void add_client (char *mount, client_t *client)
-{
-    int added = -3;
-
-    if (mount)
-    {
-        if (connection_check_relay_pass(client->parser))
-        {
-            client_as_slave (client);
-            INFO0 ("client connected as slave");
-        }
-        thread_mutex_lock (&move_clients_mutex);
-        avl_tree_rlock (global.source_tree);
-        added = _add_client (mount, client, 1);
-        avl_tree_unlock (global.source_tree);
-        thread_mutex_unlock (&move_clients_mutex);
-    }
-    switch (added)
-    {
-    case -1: 
-        /* there may be slaves we can re-direct to */
-        if (slave_redirect (mount, client))
-            break;
-        client_send_404 (client,
-                "Too many clients on this mountpoint. Try again later.");
-        DEBUG1 ("max clients on %s", mount);
-        break;
-    case -2:
-        client_send_401 (client);
-        break;
-    case -3:
-        client_send_404 (client, "The file you requested could not be found");
-        break;
-    default:
-        return;
-    }
-    /* failed client, drop global count */
-    global_lock();
-    global.clients--;
-    global_unlock();
-}
-
-
-static void process_pending_clients (source_t *source)
-{
-    unsigned count = 0;
-    client_t *client = source->pending_clients;
-
-    while (client)
-    {
-        client_t *to_go = client;
-
-        client = client->next;
-        /*  trap from when clients have been moved */
-        if (to_go->write_to_client == NULL)
-        {
-            /* trap for client moved to fallback file */
-            if (source->file_only)
-            {
-                to_go->write_to_client = format_intro_write_to_client;
-                client_set_queue (to_go, refbuf_new(4096));
-                to_go->intro_offset = 0;
-                to_go->pos = 4096;
-            }
-            else
-            {
-                to_go->write_to_client = source->format->write_buf_to_client;
-                client_set_queue (to_go, source->stream_data_tail);
-            }
-        }
-
-        to_go->next = source->active_clients;
-        source->active_clients = to_go;
-
-        count++;
-        source->new_listeners--;
-    }
-    source->pending_clients = NULL;
-    source->pending_clients_tail = &source->pending_clients;
-    source->check_pending = 0;
-
-    if (count)
-    {
-        DEBUG1("Adding %d client(s)", count);
-        source->listeners += count;
-        stats_event_args (source->mount, "listeners", "%d", source->listeners);
-    }
-}
-
-
-void source_main(source_t *source)
+void source_main (source_t *source)
 {
     source_init (source);
 
@@ -1021,7 +850,7 @@ void source_main(source_t *source)
             remove_from_q = 1;
 
         /* add pending clients */
-        if (source->check_pending)
+        if (source->pending_clients)
             process_pending_clients (source);
 
         process_listeners (source, 0, remove_from_q);

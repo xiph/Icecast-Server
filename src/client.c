@@ -150,9 +150,8 @@ void client_send_401(client_t *client) {
 /* helper function for sending the data to a client */
 int client_send_bytes (client_t *client, const void *buf, unsigned len)
 {
-    int ret;
 #ifdef HAVE_AIO
-    int err;
+    int ret, err;
     struct aiocb *aiocbp = &client->aio;
 
     if (client->pending_io == 0)
@@ -175,16 +174,13 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
     client->pending_io = 0;
 
 #else
-    ret = sock_write_bytes (client->con->sock, buf, len);
+    int ret = sock_write_bytes (client->con->sock, buf, len);
 #endif
 
-    if (ret < 0)
+    if (ret < 0 && !sock_recoverable (sock_error()))
     {
-        if (! sock_recoverable (sock_error()))
-        {
-            DEBUG0 ("Client connection died");
-            client->con->error = 1;
-        }
+        DEBUG0 ("Client connection died");
+        client->con->error = 1;
     }
     if (ret > 0)
         client->con->sent_bytes += ret;

@@ -239,10 +239,12 @@ void stats_event_args(const char *source, char *name, char *format, ...)
     va_end(val);
 
     if (ret < 0 || (unsigned int)ret >= sizeof (buf))
+    {
         WARN2 ("problem with formatting %s stat %s",
                 source==NULL ? "global" : source, name);
-    else
-        stats_event(source, name, buf);
+        return;
+    }
+    stats_event(source, name, buf);
 }
 
 static char *_get_stats(char *source, char *name)
