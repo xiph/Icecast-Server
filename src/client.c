@@ -146,7 +146,8 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
     refbuf_t *to_release = client->refbuf;
 
     client->refbuf = refbuf;
-    refbuf_addref (client->refbuf);
+    if (refbuf)
+        refbuf_addref (client->refbuf);
     client->pos = 0;
     if (to_release)
         refbuf_release (to_release);
