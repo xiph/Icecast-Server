@@ -424,6 +424,20 @@ static int _check_pass_http(http_parser_t *parser,
     return 1;
 }
 
+static int _check_pass_icy(http_parser_t *parser, char *correctpass)
+{
+    char *password;
+
+    password = httpp_getvar(parser, HTTPP_VAR_ICYPASSWORD);
+    if(!password)
+        return 0;
+
+	if (strcmp(password, correctpass))
+        return 0;
+    else
+        return 1;
+}
+
 static int _check_pass_ice(http_parser_t *parser, char *correctpass)
 {
     char *password;
@@ -469,6 +483,7 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
     char *user = "source";
     int ret;
     int ice_login = config->ice_login;
+    char *protocol;
 
     mount_proxy *mountinfo = config->mounts;
     thread_mutex_lock(&(config_locks()->mounts_lock));
@@ -492,14 +507,19 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
         return 0;
     }
 
-    ret = _check_pass_http(parser, user, pass);
-    if(!ret && ice_login)
-    {
-        ret = _check_pass_ice(parser, pass);
-        if(ret)
-            WARN0("Source is using deprecated icecast login");
+    protocol = httpp_getvar(parser, "HTTP_VAR_PROTOCOL");
+    if(protocol != NULL && !strcmp(protocol, "ICY")) {
+        ret = _check_pass_icy(parser, pass);
     }
-
+    else {
+        ret = _check_pass_http(parser, user, pass);
+        if(!ret && ice_login)
+        {
+            ret = _check_pass_ice(parser, pass);
+            if(ret)
+                WARN0("Source is using deprecated icecast login");
+        }
+    }
     return ret;
 }
 
@@ -849,7 +869,12 @@ static void *_handle_connection(void *arg)
                 }
 
                 free(uri);
-			} else {
+			} 
+            else if(httpp_parse_icy(parser, header, strlen(header))) {
+                /* TODO: Map incoming icy connections to /icy_0, etc. */
+                _handle_source_request(con, parser, "/");
+            }
+            else {
                 ERROR0("HTTP request parsing failed");
 				connection_close(con);
 				httpp_destroy(parser);

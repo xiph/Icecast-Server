@@ -270,6 +270,42 @@ static void parse_query(http_parser_t *parser, char *query)
 	}
 }
 
+/* The old shoutcast procotol. Don't look at this, it's really nasty */
+int httpp_parse_icy(http_parser_t *parser, char *http_data, unsigned long len)
+{
+    char *data;
+    char *line[MAX_HEADERS];
+    int lines;
+
+    if(http_data == NULL)
+        return 0;
+
+    data = malloc(len + 1);
+    memcpy(data, http_data, len);
+    data[len] = 0;
+
+	lines = split_headers(data, len, line);
+
+    /* Now, this protocol looks like:
+     * sourcepassword\n
+     * headers: as normal\n"
+     * \n
+     */
+
+    parser->req_type = httpp_req_source;
+    httpp_setvar(parser, HTTPP_VAR_URI, "/");
+    httpp_setvar(parser, HTTPP_VAR_ICYPASSWORD, line[0]);
+    httpp_setvar(parser, HTTPP_VAR_PROTOCOL, "ICY");
+    /* This protocol is evil */
+    httpp_setvar(parser, HTTPP_VAR_VERSION, "666");
+
+    parse_headers(parser, line, lines);
+
+    free(data);
+    
+    return 1;
+}
+
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 {
 	char *data, *tmp;
@@ -348,8 +384,10 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 		}
 
 		parser->uri = strdup(uri);
-	} else
-		parser->uri = NULL;
+	} else {
+        free(data);
+        return 0;
+    }
 
 	if ((version != NULL) && ((tmp = strchr(version, '/')) != NULL)) {
 		tmp[0] = '\0';
