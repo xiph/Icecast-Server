@@ -361,6 +361,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node)
     else
         _configuration.mounts = mount;
 
+    mount->max_listeners = -1;
+
 	do {
 		if (node == NULL) break;
 		if (xmlIsBlankNode(node)) continue;

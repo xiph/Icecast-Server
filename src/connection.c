@@ -434,8 +434,10 @@ static int _check_source_pass(http_parser_t *parser, char *mount)
     mount_proxy *mountinfo = config_get_config()->mounts;
     while(mountinfo) {
         if(!strcmp(mountinfo->mountname, mount)) {
-            pass = mountinfo->password;
-            user = mountinfo->username;
+            if(mountinfo->password)
+                pass = mountinfo->password;
+            if(mountinfo->username)
+                user = mountinfo->username;
             break;
         }
         mountinfo = mountinfo->next;
@@ -803,7 +805,6 @@ static void _handle_get_request(connection_t *con,
             return;
         }
 		global.clients++;
-        source->listeners++;
 		global_unlock();
 						
         client->format_data = source->format->create_client_data(

@@ -74,6 +74,7 @@ source_t *source_create(client_t *client, connection_t *con,
     src->running = 1;
 	src->num_yp_directories = 0;
 	src->listeners = 0;
+    src->max_listeners = -1;
     src->send_return = 0;
     src->dumpfilename = NULL;
     src->dumpfile = NULL;
