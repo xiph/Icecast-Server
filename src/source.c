@@ -261,9 +261,6 @@ void source_clear_source (source_t *source)
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
-    free(source->fallback_mount);
-    source->fallback_mount = NULL;
-
     free(source->dumpfilename);
     source->dumpfilename = NULL;
 
@@ -284,6 +281,9 @@ void source_free_source (source_t *source)
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
+
+    free(source->fallback_mount);
+    source->fallback_mount = NULL;
 
     /* There should be no listeners on this mount */
     if (source->active_clients)
@@ -393,6 +393,7 @@ void source_move_clients (source_t *source, source_t *dest)
         dest->check_pending = 1;
         source->listeners = 0;
         source->new_listeners = 0;
+        stats_event (source->mount, "listeners", "0");
 
     } while (0);
 
@@ -810,7 +811,6 @@ int add_authenticated_client (source_t *source, client_t *client)
     DEBUG1 ("Added client to pending on %s", source->mount);
     source->check_pending = 1;
     stats_event_inc (NULL, "clients");
-    stats_event_inc (source->mount, "clients");
     return 0;
 }
 
@@ -1192,7 +1192,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->hidden = mountinfo->hidden;
 
     if (mountinfo->fallback_mount)
+    {
+        free (source->fallback_mount);
         source->fallback_mount = strdup (mountinfo->fallback_mount);
+    }
 
     if (mountinfo->auth_type != NULL)
     {
@@ -1201,7 +1204,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         stats_event(source->mount, "authenticator", mountinfo->auth_type);
     }
     if (mountinfo->dumpfile)
+    {
+        free (source->dumpfilename);
         source->dumpfilename = strdup (mountinfo->dumpfile);
+    }
 
     if (mountinfo->queue_size_limit)
         source->queue_size_limit = mountinfo->queue_size_limit;
@@ -1219,10 +1225,16 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->yp_prevent = 1;
 
     if (mountinfo->on_connect)
+    {
+        free (source->on_connect);
         source->on_connect = strdup(mountinfo->on_connect);
+    }
 
     if (mountinfo->on_disconnect)
+    {
+        free (source->on_disconnect);
         source->on_disconnect = strdup(mountinfo->on_disconnect);
+    }
 }
 
 

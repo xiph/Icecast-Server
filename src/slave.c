@@ -334,6 +334,9 @@ static void check_relay_stream (relay_server *relay)
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
             {
+                ice_config_t *config = config_get_config ();
+                source_update_settings (config, relay->source);
+                config_release_config ();
                 stats_event (relay->localmount, NULL, NULL);
                 stats_event (relay->localmount, "listeners", "0");
                 DEBUG0 ("setting on_demand");
@@ -348,10 +351,28 @@ static void check_relay_stream (relay_server *relay)
     }
     do
     {
+        source_t *source = relay->source;
         if (relay->source == NULL || relay->running)
             break;
-        if (relay->on_demand && relay->source->on_demand_req == 0)
-            break;
+        if (relay->on_demand)
+        {
+            DEBUG0 ("check fallback on-demand relay");
+            if (source->fallback_mount && source->fallback_override)
+            {
+                source_t *fallback;
+                avl_tree_rlock (global.source_tree);
+                DEBUG2 ("checking %s override %d", source->fallback_mount, source->fallback_override);
+                fallback = source_find_mount (source->fallback_mount);
+                if (fallback && fallback->running && fallback->listeners)
+                {
+                   DEBUG2 ("fallback running %d with %d listeners", fallback->running, fallback->listeners);
+                   source->on_demand_req = 1;
+                }
+                avl_tree_unlock (global.source_tree);
+            }
+            if (source->on_demand_req == 0)
+                break;
+        }
 
         relay->thread = thread_create ("Relay Thread", start_relay_stream,
                 relay, THREAD_ATTACHED);
