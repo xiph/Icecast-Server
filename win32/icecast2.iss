@@ -37,6 +37,7 @@ Source: "..\conf\icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\..\curl\lib\Release\libcurl.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 
 [Icons]
 
