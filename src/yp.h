@@ -28,39 +28,25 @@
 struct source_tag;
 
 #define YP_ADD_ALL -1
-typedef struct ypdata_tag
-{
-    char *sid;
-    char *server_name;
-    char *server_desc;
-    char *server_genre;
-    char *cluster_password;
-    char *server_url;
-    char *listen_url;
-    char *bitrate;
-    char *audio_info;
-    char *server_type;
-    char *current_song;
-    char *yp_url;
-    int    yp_url_timeout;
-    long yp_last_touch;
-    int    yp_touch_interval;
-} ypdata_t;
 
-void *yp_touch_thread(void *arg);
-int yp_add(struct source_tag *source, int which);
-int yp_touch();
-int yp_remove(struct source_tag *psource);
-ypdata_t *yp_create_ypdata();
-void yp_destroy_ypdata(ypdata_t *ypdata);
-void add_yp_info(struct source_tag *source, char *stat_name, void *info, 
-     int type);
 #ifdef USE_YP
+void yp_add (struct source_tag *source);
+void yp_remove (const char *mount);
+void yp_touch (const char *mount);
 void yp_recheck_config (ice_config_t *config);
-#else
-#define yp_recheck_config(x)  do{}while(0)
-#endif
 void yp_initialize();
+void yp_shutdown();
+
+#else
+
+#define yp_add(x)               do{}while(0)
+#define yp_remove(x)            do{}while(0)
+#define yp_touch(x)             do{}while(0)
+#define yp_recheck_config(x)    do{}while(0)
+#define yp_initialize()         do{}while(0)
+#define yp_shutdown()           do{}while(0)
+
+#endif /* USE_YP */
 
 #endif
 

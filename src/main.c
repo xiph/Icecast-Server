@@ -48,10 +48,7 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
-#ifdef USE_YP
-#include "geturl.h"
 #include "yp.h"
-#endif
 
 #include <libxml/xmlmemory.h>
 
@@ -103,9 +100,6 @@ static void _initialize_subsystems(void)
     global_initialize();
     refbuf_initialize();
     xslt_initialize();
-#ifdef USE_YP
-    curl_initialize();
-#endif
 }
 
 static void _shutdown_subsystems(void)
@@ -114,10 +108,8 @@ static void _shutdown_subsystems(void)
     xslt_shutdown();
     refbuf_shutdown();
     slave_shutdown();
+    yp_shutdown();
     stats_shutdown();
-#ifdef USE_YP
-    curl_shutdown();
-#endif
 
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
@@ -478,10 +470,8 @@ int main(int argc, char **argv)
     /* let her rip */
     global.running = ICE_RUNNING;
 
-#ifdef USE_YP
     /* Startup yp thread */
     yp_initialize();
-#endif
 
     /* Do this after logging init */
     slave_initialize();

@@ -45,9 +45,6 @@
 #include "logging.h"
 #include "cfgfile.h"
 #include "util.h"
-#ifdef USE_YP
-#include "geturl.h"
-#endif
 #include "source.h"
 #include "format.h"
 #include "auth.h"
@@ -62,7 +59,7 @@ mutex_t move_clients_mutex;
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
-static int _parse_audio_info(source_t *source, char *s);
+static void _parse_audio_info (source_t *source, const char *s);
 
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
@@ -195,9 +192,6 @@ int source_compare_sources(void *arg, void *a, void *b)
 void source_clear_source (source_t *source)
 {
     refbuf_t *refbuf;
-#ifdef USE_YP
-    int i;
-#endif
     DEBUG1 ("clearing source \"%s\"", source->mount);
     client_destroy(source->client);
     source->client = NULL;
@@ -233,17 +227,9 @@ void source_clear_source (source_t *source)
         source->format->free_plugin (source->format);
     }
     source->format = NULL;
-#ifdef USE_YP
-    for (i=0; i<source->num_yp_directories; i++)
-    {
-        yp_destroy_ypdata(source->ypdata[i]);
-        source->ypdata[i] = NULL;
-    }
-    source->num_yp_directories = 0;
+    if (source->yp_public)
+        yp_remove (source->mount);
 
-    util_dict_free (source->audio_info);
-    source->audio_info = NULL;
-#endif
     source->queue_size_limit = 0;
     source->listeners = 0;
     source->no_mount = 0;
@@ -380,108 +366,8 @@ void source_move_clients (source_t *source, source_t *dest)
 static void source_init (source_t *source)
 {
     ice_config_t *config = config_get_config();
-    char *listenurl;
+    char *listenurl, *str;
     int listen_url_size;
-#ifdef USE_YP
-    char *s;
-    time_t current_time;
-    int    i;
-    char *ai;
-
-    for (i=0;i<config->num_yp_directories;i++) {
-        if (config->yp_url[i]) {
-            source->ypdata[source->num_yp_directories] = yp_create_ypdata();
-            source->ypdata[source->num_yp_directories]->yp_url = 
-                strdup (config->yp_url[i]);
-            source->ypdata[source->num_yp_directories]->yp_url_timeout = 
-                config->yp_url_timeout[i];
-            source->ypdata[source->num_yp_directories]->yp_touch_interval = 0;
-            source->num_yp_directories++;
-        }
-    }
-    
-    source->audio_info = util_dict_new();
-    /* ice-* is icecast, icy-* is shoutcast */
-    if ((s = httpp_getvar(source->parser, "ice-url"))) {
-        add_yp_info(source, "server_url", s, YP_SERVER_URL);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-name"))) {
-        add_yp_info(source, "server_name", s, YP_SERVER_NAME);
-    }
-    if ((s = httpp_getvar(source->parser, "icy-name"))) {
-        add_yp_info(source, "server_name", s, YP_SERVER_NAME);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-url"))) {
-        add_yp_info(source, "server_url", s, YP_SERVER_URL);
-    }
-    if ((s = httpp_getvar(source->parser, "icy-url"))) {
-        add_yp_info(source, "server_url", s, YP_SERVER_URL);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-genre"))) {
-        add_yp_info(source, "genre", s, YP_SERVER_GENRE);
-    }
-    if ((s = httpp_getvar(source->parser, "icy-genre"))) {
-        add_yp_info(source, "genre", s, YP_SERVER_GENRE);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-bitrate"))) {
-        add_yp_info(source, "bitrate", s, YP_BITRATE);
-    }
-    if ((s = httpp_getvar(source->parser, "icy-br"))) {
-        add_yp_info(source, "bitrate", s, YP_BITRATE);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-description"))) {
-        add_yp_info(source, "server_description", s, YP_SERVER_DESC);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-public"))) {
-        stats_event(source->mount, "public", s);
-        source->yp_public = atoi(s);
-    }
-    if ((s = httpp_getvar(source->parser, "icy-pub"))) {
-        stats_event(source->mount, "public", s);
-        source->yp_public = atoi(s);
-    }
-    if ((s = httpp_getvar(source->parser, "ice-audio-info"))) {
-        stats_event(source->mount, "audio_info", s);
-        if (_parse_audio_info(source, s)) {
-            ai = util_dict_urlencode(source->audio_info, '&');
-            add_yp_info(source, "audio_info", 
-                    ai,
-                    YP_AUDIO_INFO);
-            if (ai) {
-                free(ai);
-            }
-        }
-    }
-    for (i=0;i<source->num_yp_directories;i++) {
-        add_yp_info(source, "server_type", 
-                     source->format->format_description,
-                     YP_SERVER_TYPE);
-        if (source->ypdata[i]->listen_url) {
-            free(source->ypdata[i]->listen_url);
-        }
-        /* 6 for max size of port */
-        listen_url_size = strlen("http://") + strlen(config->hostname) +
-            strlen(":") + 6 + strlen (source->mount) + 1;
-        source->ypdata[i]->listen_url = malloc (listen_url_size);
-        sprintf (source->ypdata[i]->listen_url, "http://%s:%d%s",
-                config->hostname, config->port, source->mount);
-    }
-
-    if(source->yp_public) {
-
-        current_time = time(NULL);
-
-        for (i=0;i<source->num_yp_directories;i++) {
-            /* Give the source 5 seconds to update the metadata
-               before we do our first touch */
-            /* Don't permit touch intervals of less than 30 seconds */
-            if (source->ypdata[i]->yp_touch_interval <= 30) {
-                source->ypdata[i]->yp_touch_interval = 30;
-            }
-            source->ypdata[i]->yp_last_touch = 0;
-        }
-    }
-#endif
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
@@ -493,6 +379,23 @@ static void source_init (source_t *source)
             config->hostname, config->port, source->mount);
     source->burst_on_connect = config->burst_on_connect;
     config_release_config();
+
+    /* maybe better in connection.c */
+    if ((str = httpp_getvar(source->parser, "ice-public")))
+        source->yp_public = atoi(str);
+    if ((str = httpp_getvar(source->parser, "icy-pub")))
+        source->yp_public = atoi(str);
+    if (str == NULL)
+       str = "0";
+    stats_event (source->mount, "public", str);
+
+    str = httpp_getvar(source->parser, "ice-audio-info");
+    source->audio_info = util_dict_new();
+    if (str)
+    {
+        _parse_audio_info (source, str);
+        stats_event (source->mount, "audio_info", str);
+    }
 
     stats_event (source->mount, "listenurl", listenurl);
 
@@ -546,6 +449,8 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
+    if (source->yp_public)
+        yp_add (source);
 }
 
 
@@ -858,12 +763,6 @@ done:
     source->running = 0;
     INFO1("Source \"%s\" exiting", source->mount);
 
-#ifdef USE_YP
-    if(source->yp_public) {
-        yp_remove(source);
-    }
-#endif
-    
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
      */
@@ -931,35 +830,36 @@ static int _free_client(void *key)
     return 1;
 }
 
-static int _parse_audio_info(source_t *source, char *s)
+static void _parse_audio_info (source_t *source, const char *s)
 {
-    char *token = NULL;
-    char *pvar = NULL;
-    char *variable = NULL;
-    char *value = NULL;
+    const char *start = s;
+    unsigned len;
 
-    while ((token = strtok(s,";")) != NULL) {
-        pvar = strchr(token, '=');
-        if (pvar) {
-            variable = (char *)malloc(pvar-token+1);
-            strncpy(variable, token, pvar-token);    
-            variable[pvar-token] = 0;
-            pvar++;
-            if (strlen(pvar)) {
-                value = util_url_unescape(pvar);
-                util_dict_set(source->audio_info, variable, value);
-                stats_event(source->mount, variable, value);
-                if (value) {
-                    free(value);
-                }
-            }
-            if (variable) {
-                free(variable);
+    while (start != NULL && *start != '\0')
+    {
+        if ((s = strchr (start, ';')) == NULL)
+            len = strlen (start);
+        else
+        {
+            len = (int)(s - start);
+            s++; /* skip passed the ';' */
+        }
+        if (len)
+        {
+            char name[100], value[100];
+            char *esc;
+
+            sscanf (start, "%199[^=]=%199[^;\r\n]", name, value);
+            esc = util_url_unescape (value);
+            if (esc)
+            {
+                util_dict_set (source->audio_info, name, esc);
+                stats_event (source->mount, name, value);
+                free (esc);
             }
         }
-        s = NULL;
+        start = s;
     }
-    return 1;
 }
 
 

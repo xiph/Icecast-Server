@@ -43,7 +43,6 @@ typedef struct source_tag
     avl_tree *pending_tree;
 
     rwlock_t *shutdown_rwlock;
-    ypdata_t *ypdata[MAX_YP_DIRECTORIES];
     util_dict *audio_info;
 
     char *dumpfilename; /* Name of a file to dump incoming stream to */

@@ -122,9 +122,6 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
     refbuf_t *refbuf, *source_refbuf;
     vstate_t *state = (vstate_t *)self->_state;
     source_t *source;
-#ifdef USE_YP
-    time_t current_time;
-#endif
 
     if (data) {
         /* write the data to the buffer */
@@ -199,21 +196,7 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
                 }
                 thread_mutex_unlock(&source->queue_mutex);
 
-#ifdef USE_YP
-                /* If we get an update on the mountpoint, force a
-                   yp touch */
-
-                if (source) {
-                    /* If we get an update on the mountpoint, force a
-                       yp touch */
-                    current_time = time(NULL);
-                    for (i=0; i<source->num_yp_directories; i++) {
-                        source->ypdata[i]->yp_last_touch = current_time -
-                            source->ypdata[i]->yp_touch_interval + 2;
-                    }
-                }
-#endif
-
+                yp_touch (self->mount);
             }
         }
 

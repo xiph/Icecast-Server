@@ -357,6 +357,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                         state->metadata_buffer = NULL;
                         state->metadata_age++;
                         thread_mutex_unlock(&(state->lock));
+                        yp_touch (self->mount);
                     }
 
                     state->offset = 0;

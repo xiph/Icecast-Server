@@ -92,7 +92,7 @@ then
 XIPH_PATH_CURL([
     AC_CHECK_DECL([CURLOPT_NOSIGNAL],
         [ AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
-        ICECAST_OPTIONAL="$ICECAST_OPTIONAL geturl.o yp.o"
+        ICECAST_OPTIONAL="$ICECAST_OPTIONAL yp.o"
         XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
         XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
         ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required), YP disabled])
