@@ -38,6 +38,20 @@ typedef struct http_parser_tag {
     avl_tree *queryvars;
 } http_parser_t;
 
+#ifdef _mangle
+# define httpp_create_parser _mangle(httpp_create_parser)
+# define httpp_initialize _mangle(httpp_initialize)
+# define httpp_parse _mangle(httpp_parse)
+# define httpp_parse_icy _mangle(httpp_parse_icy)
+# define httpp_parse_response _mangle(httpp_parse_response)
+# define httpp_setvar _mangle(httpp_setvar)
+# define httpp_getvar _mangle(httpp_getvar)
+# define httpp_set_query_param _mangle(httpp_set_query_param)
+# define httpp_get_query_param _mangle(httpp_get_query_param)
+# define httpp_destroy _mangle(httpp_destroy)
+# define httpp_clear _mangle(httpp_clear)
+#endif
+
 http_parser_t *httpp_create_parser(void);
 void httpp_initialize(http_parser_t *parser, http_varlist_t *defaults);
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len);

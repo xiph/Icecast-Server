@@ -31,8 +31,8 @@
 static char *_lowercase(char *str);
 
 /* for avl trees */
-int _compare_vars(void *compare_arg, void *a, void *b);
-int _free_vars(void *key);
+static int _compare_vars(void *compare_arg, void *a, void *b);
+static int _free_vars(void *key);
 
 http_parser_t *httpp_create_parser(void)
 {
@@ -553,7 +553,7 @@ static char *_lowercase(char *str)
     return str;
 }
 
-int _compare_vars(void *compare_arg, void *a, void *b)
+static int _compare_vars(void *compare_arg, void *a, void *b)
 {
     http_var_t *vara, *varb;
 
@@ -563,7 +563,7 @@ int _compare_vars(void *compare_arg, void *a, void *b)
     return strcmp(vara->name, varb->name);
 }
 
-int _free_vars(void *key)
+static int _free_vars(void *key)
 {
     http_var_t *var;
 
