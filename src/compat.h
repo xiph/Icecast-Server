@@ -23,7 +23,9 @@
 #  define uint64_t unsigned __int64
 #  define uint32_t unsigned int
 #else
-#  ifdef HAVE_STDINT_H
+#  if defined(HAVE_STDINT_H)
 #    include <stdint.h>
+#  elif defined(HAVE_INTTYPES_H)
+#    include <inttypes.h>
 #  endif
 #endif
