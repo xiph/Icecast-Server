@@ -1,5 +1,5 @@
 AC_INIT(src/main.c)
-AC_PREREQ(2.50)
+AC_PREREQ(2.54)
 dnl Process this file with autoconf to produce a configure script.
 
 AM_INIT_AUTOMAKE(icecast,2.0-alpha-2)
@@ -12,56 +12,35 @@ AM_PROG_LIBTOOL
 dnl Set some options based on environment
 
 case "$host" in
-    *openbsd*)
+    *openbsd* | *irix*)
     ;;
     *) AC_DEFINE(_XOPEN_SOURCE, 600, [Define if you have POSIX and XPG specifications])
     ;;
 esac
+DEBUG="-g"
 if test -z "$GCC"; then
+    XIPH_CPPFLAGS="-D_REENTRANT"
     case $host in 
         *-*-irix*)
-                DEBUG="-g -signed -D_REENTRANT" 
-                XIPH_CFLAGS="-O2 -w -signed -D_REENTRANT"
+                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -w -signed"
                 PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
                 ;;
         *-*-solaris*)
-                DEBUG="-v -g -D_REENTRANT"
-                XIPH_CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
-                PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
+                XIPH_CFLAGS="-xO4 -xcg92"
+                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -v -w -fsimple -fast"
+                PROFILE="-xpg -g -Dsuncc"
                 ;;
         *)
-                DEBUG="-g -D_REENTRANT"
-                XIPH_CFLAGS="-O -D_REENTRANT"
-                PROFILE="-g -p -D_REENTRANT"
+                XIPH_CFLAGS="-O"
+                PROFILE="-g -p"
                 ;;
     esac
 else
+    XIPH_CPPFLAGS="-Wall -ffast-math -fsigned-char"
+    PROFILE="-pg -g"
     case $host in 
-        *-*-linux*)
-                DEBUG="-g -Wall -fsigned-char -D_GNU_SOURCE"
-                XIPH_CPPFLAGS="-ffast-math -fsigned-char -D_GNU_SOURCE"
-                PROFILE="-Wall -W -pg -g -ffast-math -fsigned-char -D_GNU_SOURCE"
-                ;;
-        sparc-sun-solaris*)
+        *-solaris*)
                 AC_DEFINE(__EXTENSIONS__, 1, [define to 1 to get resolve header problem on solaris])
-                DEBUG="-g -Wall -fsigned-char -mv8"
-                XIPH_CPPFLAGS="-ffast-math -fsigned-char -mv8"
-                PROFILE="-pg -g -fsigned-char -mv8" 
-                ;;
-        *-pc-solaris*)
-                DEBUG="-g -Wall -fsigned-char"
-                XIPH_CPPFLAGS="-ffast-math -fsigned-char"
-                PROFILE="-pg -g -fsigned-char" 
-                ;;
-        *freebsd*)
-                DEBUG="-g -Wall -fsigned-char"
-                XIPH_CPPFLAGS="-fsigned-char"
-                PROFILE="-g -pg -fsigned-char" 
-                ;;
-        *)
-                DEBUG="-g -Wall -fsigned-char"
-                XIPH_CPPFLAGS="-Wall -fsigned-char"
-                PROFILE="-g -pg -Wall -fsigned-char" 
                 ;;
     esac
 fi
@@ -100,33 +79,24 @@ XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
 XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
 
 dnl -- YP support --
-AC_ARG_ENABLE([yp],
-        AC_HELP_STRING([--disable-yp],[disable YP directory support]))
-if test "x$enable_yp" != "xno"
+AC_ARG_ENABLE([yp], AC_HELP_STRING([--disable-yp],[disable YP directory support]),,
+        [enable_yp="yes"])
+if test "x$enable_yp" = "xyes"
 then
 XIPH_PATH_CURL([
-  AC_CHECK_DECL([CURLOPT_NOSIGNAL], [
-    AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL geturl.o yp.o"
-    ], [
-    if test "x$enable_yp" != "xyes"
-    then
-      AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required), YP disabled])
-    else
-      AC_MSG_ERROR([Your curl dev files are too old (7.10 or above required)])
-    fi
-    ], [#include <curl/curl.h>])
-  ], [
-  if test "x$enable_yp" != "xyes"
-  then
-    AC_MSG_NOTICE([libcurl not found, YP disabled])
-  else
-    AC_MSG_ERROR([libcurl not found])
-  fi
-  ])
+    AC_CHECK_DECL([CURLOPT_NOSIGNAL],
+        [ AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
+        ICECAST_OPTIONAL="$ICECAST_OPTIONAL geturl.o yp.o"
+        XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
+        XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
+        ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required), YP disabled])
+        ], [#include <curl/curl.h>
+        ])
+    ],[ AC_MSG_NOTICE([libcurl not found, YP disabled])
+    ])
+else
+    AC_MSG_NOTICE([YP support disabled])
 fi
-XIPH_VAR_APPEND([XIPH_CFLAGS],[$CURL_CFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
 
 dnl Make substitutions
 
@@ -143,4 +113,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
 AC_SUBST(ICECAST_OPTIONAL)
 
-AC_OUTPUT(Makefile conf/Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile admin/Makefile win32/Makefile win32/res/Makefile)
+AC_OUTPUT([Makefile conf/Makefile src/Makefile src/avl/Makefile
+src/httpp/Makefile src/thread/Makefile src/log/Makefile
+src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile
+admin/Makefile win32/Makefile win32/res/Makefile])

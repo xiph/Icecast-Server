@@ -22,11 +22,13 @@ elif test "x$CURL_CONFIG" != "x"; then
     CURL_LIBS="$($CURL_CONFIG --libs)"
     CURL_CFLAGS="$($CURL_CONFIG --cflags)"
 else
-    if test "x$prefix" != "xNONE"; then
-        CURL_LIBS="-L$prefix/lib"
-        CURL_CFLAGS="-I$prefix/include"
+    if test "x$prefix" = "xNONE"; then
+        curl_prefix="/usr/local"
+    else
+        curl_prefix="$prefix"
     fi
-    CURL_LIBS="$CURL_LIBS -lcurl"
+    CURL_LIBS="-L$curl_prefix/lib -lcurl"
+    CURL_CFLAGS="-I$curl_prefix/include"
 fi
 
 curl_ok="yes"
@@ -58,6 +60,8 @@ if test "$curl_ok" = "yes"; then
     ifelse([$1], , :, [$1])     
 else
     AC_MSG_RESULT(no)
+    CURL_LIBS=""
+    CURL_CFLAGS=""
     ifelse([$2], , :, [$2])
 fi
 ])
