@@ -531,7 +531,7 @@ void thread_sleep(unsigned long len)
 	int ret;
 
 	time_sleep.tv_sec = len / 1000000;
-	time_sleep.tv_nsec = len % 1000000;
+	time_sleep.tv_nsec = (len % 1000000) * 1000;
 
 	ret = nanosleep(&time_sleep, &time_remaining);
 	while (ret != 0 && errno == EINTR) {
