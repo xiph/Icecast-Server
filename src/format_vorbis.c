@@ -16,6 +16,10 @@
 #include "stats.h"
 #include "format.h"
 
+#define CATMODULE "format-vorbis"
+#include "log.h"
+#include "logging.h"
+
 #define MAX_HEADER_PAGES 10
 
 typedef struct _vstate_tag
@@ -155,17 +159,19 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
 		}
 
 		/* cache header pages */
-		if (state->header > 0) {
+		if (state->header > 0 && state->packets < 3) {
             if(state->header > MAX_HEADER_PAGES) {
                 refbuf_release(refbuf);
+                ERROR1("Bad vorbis input: header is more than %d pages long", MAX_HEADER_PAGES);
+
                 return -1;
             }
 			refbuf_addref(refbuf);
 			state->headbuf[state->header - 1] = refbuf;
 
-			if (state->packets >= 0 && state->packets < 2) {
+			if (state->packets >= 0 && state->packets < 3) {
 				ogg_stream_pagein(&state->os, &state->og);
-				while (state->packets < 2) {
+				while (state->packets < 3) {
 					result = ogg_stream_packetout(&state->os, &op);
 					if (result == 0) break; /* need more data */
 					if (result < 0) {
