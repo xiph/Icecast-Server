@@ -408,12 +408,32 @@ static int process_vorbis_headers (source_t *source)
     return 1;
 }
 
+static void update_stats (source_t *source, vorbis_comment *vc)
+{
+    char *tag;
+    /* put known comments in the stats, this could be site specific */
+    tag = vorbis_comment_query (vc, "TITLE", 0);
+    if (tag == NULL)
+        tag = "unknown";
+    else
+        INFO1 ("title set to \"%s\"", tag);
+    stats_event (source->mount, "title", tag);
+
+    tag = vorbis_comment_query (vc, "ARTIST", 0);
+    if (tag)
+    {
+        INFO1 ("artist set to \"%s\"", tag);
+        stats_event (source->mount, "artist", tag);
+    }
+    else
+        stats_event (source->mount, "artist", NULL);
+}
+
 
 /* this is called with the first page after the initial header */
 /* it processes any headers that have come in on the stream */
 static int process_vorbis_incoming_hdrs (source_t *source)
 {
-    char *tag;
     ogg_packet header;
     vstate_t *source_vorbis = source->format->_state;
 
@@ -440,20 +460,7 @@ static int process_vorbis_incoming_hdrs (source_t *source)
 
     /* we have all headers */
 
-    /* put known comments in the stats, this could be site specific */
-    tag = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
-    if (tag == NULL)
-        tag = "unknown";
-    else
-        INFO1 ("title set to \"%s\"", tag);
-    stats_event (source->mount, "title", tag);
-
-    tag = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
-    if (tag == NULL)
-        tag = "unknown";
-    else
-        INFO1 ("artist set to \"%s\"", tag);
-    stats_event (source->mount, "artist", tag);
+    update_stats (source, &source_vorbis->vc);
 
     stats_event_args (source->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
     stats_event_args (source->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
@@ -556,6 +563,17 @@ static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
             change = 1;
         }
     }
+    if (strcmp (tag, "song") == 0)
+    {
+        char *p = strdup (value);
+        if (p)
+        {
+            free (source_vorbis->url_artist);
+            free (source_vorbis->url_title);
+            source_vorbis->url_title = p;
+            change = 1;
+        }
+    }
     if (change)
         source_vorbis->stream_notify = 1;
 }
@@ -577,6 +595,7 @@ static void update_comments (source_t *source)
         vorbis_comment_add_tag (&vc, "title", source_vorbis->url_title);
     vorbis_comment_add (&vc, "server=" ICECAST_VERSION_STRING);
     ogg_packet_clear (&source_vorbis->url_comment);
+    update_stats (source, &vc);
     vorbis_commentheader_out (&vc, &source_vorbis->url_comment);
     vorbis_comment_clear (&vc);
     header.packetno = 1;
