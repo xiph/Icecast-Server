@@ -32,7 +32,7 @@ void transformXSLT(xmlDocPtr doc, char *xslfilename, client_t *client)
 	xmlDocPtr	res;
 	xsltStylesheetPtr cur;
 	const char *params[16 + 1];
-    size_t count,nBytes;
+    size_t count,bytes;
 
 	params[0] = NULL;
 
@@ -41,7 +41,10 @@ void transformXSLT(xmlDocPtr doc, char *xslfilename, client_t *client)
 
 	cur = xsltParseStylesheetFile(xslfilename);
 	if (cur == NULL) {
-		sock_write_string(client->con->sock, (char *)"Could not parse XSLT file");
+		bytes = sock_write_string(client->con->sock, 
+                (char *)"Could not parse XSLT file");
+        if(bytes > 0) client->con->sent_bytes += bytes;
+        
         return;
 	}
 
@@ -52,9 +55,12 @@ void transformXSLT(xmlDocPtr doc, char *xslfilename, client_t *client)
     count = xsltSaveResultTo(outputBuffer, res, cur);
 
     /*  Add null byte to end. */
-    nBytes = xmlOutputBufferWrite(outputBuffer, 1, "");
+    bytes = xmlOutputBufferWrite(outputBuffer, 1, "");
 
-	sock_write_string(client->con->sock, (char *)outputBuffer->buffer->content);
+	if(sock_write_string(client->con->sock, 
+                (char *)outputBuffer->buffer->content))
+        client->con->sent_bytes += bytes;
+    
 
     xmlFree(outputBuffer);
     xsltFreeStylesheet(cur);

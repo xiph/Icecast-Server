@@ -823,7 +823,6 @@ void stats_sendxml(client_t *client)
 		src_nodes = snd;
 	}
 	if (buff) free(buff);
-	client_destroy(client);
 }
 
 static int _compare_stats(void *arg, void *a, void *b)

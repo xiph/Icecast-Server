@@ -459,12 +459,14 @@ static void *_handle_connection(void *arg)
 						/* If the file exists, then transform it, otherwise, write a 404 error */
 						if (stat(fullPath, &statbuf) == 0) {
                             DEBUG0("Stats request, sending XSL transformed stats");
-							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+							bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+                            if(bytes > 0) client->con->sent_bytes = bytes;
                             stats_transform_xslt(client, fullPath);
 						}
 						else {
-							sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
+							bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
 								   "<b>The file you requested could not be found.</b>\r\n");
+                            if(bytes > 0) client->con->sent_bytes = bytes;
 						}
 						client_destroy(client);
 						continue;
@@ -486,7 +488,12 @@ static void *_handle_connection(void *arg)
 							node = avl_get_first(global.source_tree);
 							while (node) {
 								s = (source_t *)node->key;
-								sock_write(client->con->sock, "%s\r\n", s->mount);
+								bytes = sock_write(client->con->sock, "%s\r\n", s->mount);
+                                if(bytes > 0) 
+                                    client->con->sent_bytes += bytes;
+                                else 
+                                    break;
+
 								node = avl_get_next(node);
 							}
 							avl_tree_unlock(global.source_tree);
@@ -531,20 +538,23 @@ static void *_handle_connection(void *arg)
 						
 						if (parser->req_type == httpp_req_get) {
 							client->respcode = 200;
-							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n", format_get_mimetype(source->format->type));
+							bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n", format_get_mimetype(source->format->type));
+                            if(bytes > 0) client->con->sent_bytes += bytes;
 							/* iterate through source http headers and send to client */
 							avl_tree_rlock(source->parser->vars);
 							node = avl_get_first(source->parser->vars);
 							while (node) {
 								var = (http_var_t *)node->key;
 								if (strcasecmp(var->name, "ice-password") && !strncasecmp("ice-", var->name, 4)) {
-									sock_write(client->con->sock, "%s: %s\r\n", var->name, var->value);
+									bytes = sock_write(client->con->sock, "%s: %s\r\n", var->name, var->value);
+                                    if(bytes > 0) client->con->sent_bytes += bytes;
 								}
 								node = avl_get_next(node);
 							}
 							avl_tree_unlock(source->parser->vars);
 							
-							sock_write(client->con->sock, "\r\n");
+							bytes = sock_write(client->con->sock, "\r\n");
+                            if(bytes > 0) client->con->sent_bytes += bytes;
 							
 							sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
 						}
