@@ -88,12 +88,15 @@ static int _logid = -1;
 static long _next_thread_id = 0;
 static int _initialized = 0;
 static avl_tree *_threadtree = NULL;
-static mutex_t _threadtree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1 };
+static mutex_t _threadtree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1, 
+    PTHREAD_MUTEX_INITIALIZER};
 
 static long _next_mutex_id = 0;
 static avl_tree *_mutextree = NULL;
-static mutex_t _mutextree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1 };
-static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1 };
+static mutex_t _mutextree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
+    PTHREAD_MUTEX_INITIALIZER};
+static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
+    PTHREAD_MUTEX_INITIALIZER};
 
 /* INTERNAL FUNCTIONS */
 

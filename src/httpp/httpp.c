@@ -55,7 +55,8 @@ static int split_headers(char *data, unsigned long len, char **line)
 	/* first we count how many lines there are 
 	** and set up the line[] array	 
 	*/
-	int i, lines = 0;
+	int lines = 0;
+    unsigned long i;
 	line[lines] = data;
 	for (i = 0; i < len && lines < MAX_HEADERS; i++) {
 		if (data[i] == '\r')
