@@ -233,6 +233,7 @@ static void start_relay_stream (relay_server *relay)
             esc_authorisation = util_base64_encode(auth_header);
             free(auth_header);
             len = strlen (esc_authorisation) + 24;
+            auth_header = malloc (len);
             snprintf (auth_header, len,
                     "Authorization: Basic %s\r\n", esc_authorisation);
             free(esc_authorisation);
@@ -401,7 +402,7 @@ static int update_from_master(ice_config_t *config)
         char *authheader, *data;
         relay_server *relays = NULL, *relay;
         int len, count = 1;
-        int on_demand;
+        int on_demand, send_auth;
 
         if (config->master_username)
             username = strdup (config->master_username);
@@ -418,6 +419,7 @@ static int update_from_master(ice_config_t *config)
         if (password == NULL || master == NULL || port == 0)
             break;
         on_demand = config->on_demand;
+        send_auth = config->master_relay_auth;
         ret = 1;
         config_release_config();
         mastersock = sock_connect_wto (master, port, 0);
@@ -467,6 +469,11 @@ static int update_from_master(ice_config_t *config)
                 r->localmount = xmlStrdup (buf);
                 r->mp3metadata = 1;
                 r->on_demand = on_demand;
+                if (send_auth)
+                {
+                    r->username = xmlStrdup (username);
+                    r->password = xmlStrdup (password);
+                }
                 r->next = relays;
                 relays = r;
             }

@@ -342,6 +342,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
     configuration->master_username = NULL;
     configuration->master_password = NULL;
+    configuration->master_relay_auth = 0;
     configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
     configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
     configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
@@ -429,6 +430,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "master-update-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_update_interval = atoi(tmp);
+            xmlFree (tmp);
+        } else if (strcmp(node->name, "master-relay-auth") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->master_relay_auth = atoi(tmp);
             xmlFree (tmp);
         } else if (strcmp(node->name, "limits") == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);

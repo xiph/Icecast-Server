@@ -44,6 +44,9 @@ typedef struct _client_tag
     /* position in first buffer */
     unsigned long pos;
 
+    /* client is a slave server */
+    int is_slave;
+
     /* Client username, if authenticated */
     char *username;
 

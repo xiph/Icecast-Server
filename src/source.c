@@ -858,6 +858,8 @@ static int _add_client (char *passed_mount, client_t *client, int initial_connec
             DEBUG2 ("pending %d, current %d", source->new_listeners, source->listeners);
             if (source->max_listeners == -1)
                 break;
+            if (client->is_slave)
+                break;
             if (source->new_listeners + source->listeners < source->max_listeners)
                 break;
 
@@ -895,6 +897,11 @@ void add_client (char *mount, client_t *client)
 
     if (mount)
     {
+        if (connection_check_relay_pass(client->parser))
+        {
+            INFO0 ("client connected as slave");
+            client->is_slave = 1;
+        }
         thread_mutex_lock (&move_clients_mutex);
         avl_tree_rlock (global.source_tree);
         added = _add_client (mount, client, 1);

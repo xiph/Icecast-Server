@@ -43,7 +43,7 @@ auth_result auth_check_client(source_t *source, client_t *client)
     auth_t *authenticator = source->authenticator;
     auth_result result;
 
-    if(authenticator) {
+    if (client->is_slave == 0 && authenticator) {
         /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
         char *header = httpp_getvar(client->parser, "authorization");
         char *userpass, *tmp;
