@@ -211,10 +211,10 @@ void *source_main(void *arg)
 	stats_event(source->mount, "listeners", "0");
 	source->listeners = 0;
 	if ((s = httpp_getvar(source->parser, "ice-name"))) {
-        _add_yp_info(source, "server name", s, YP_SERVER_NAME);
+        _add_yp_info(source, "server_name", s, YP_SERVER_NAME);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-url"))) {
-        _add_yp_info(source, "server url", s, YP_SERVER_URL);
+        _add_yp_info(source, "server_url", s, YP_SERVER_URL);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-genre"))) {
         _add_yp_info(source, "genre", s, YP_SERVER_GENRE);
@@ -223,7 +223,7 @@ void *source_main(void *arg)
         _add_yp_info(source, "bitrate", s, YP_BITRATE);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-description"))) {
-        _add_yp_info(source, "server description", s, YP_SERVER_DESC);
+        _add_yp_info(source, "server_description", s, YP_SERVER_DESC);
 	}
 	if ((s = httpp_getvar(source->parser, "ice-private"))) {
 		stats_event(source->mount, "public", s);
@@ -232,7 +232,7 @@ void *source_main(void *arg)
 	if ((s = httpp_getvar(source->parser, "ice-audio-info"))) {
         if (_parse_audio_info(source, s)) {
             ai = util_dict_urlencode(source->audio_info, '&');
-            _add_yp_info(source, "audio info", 
+            _add_yp_info(source, "audio_info", 
                     ai,
                     YP_AUDIO_INFO);
         }
@@ -623,10 +623,10 @@ static int _free_client(void *key)
 
 static int _parse_audio_info(source_t *source, char *s)
 {
-    char *token;
-    char *pvar;
-    char *variable;
-    char *value;
+    char *token = NULL;
+    char *pvar = NULL;
+    char *variable = NULL;
+    char *value = NULL;
 
     while ((token = strtok(s,";")) != NULL) {
         pvar = strchr(token, '=');
@@ -641,12 +641,12 @@ static int _parse_audio_info(source_t *source, char *s)
                 strncpy(value, pvar, strlen(pvar));	
                 util_dict_set(source->audio_info, variable, value);
                 stats_event(source->mount, variable, value);
+                if (value) {
+                    free(value);
+                }
             }
             if (variable) {
                     free(variable);
-            }
-            if (value) {
-                free(value);
             }
         }
         s = NULL;
