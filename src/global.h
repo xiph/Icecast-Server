@@ -6,7 +6,7 @@
 #define ICE_RUNNING 1
 #define ICE_HALTING 2
 
-#define ICECAST_VERSION_STRING "Icecast 2.0-alpha2/cvs"
+#define ICECAST_VERSION_STRING "Icecast 2.x"
 
 #define MAX_LISTEN_SOCKETS 10
 
