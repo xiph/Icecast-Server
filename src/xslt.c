@@ -161,9 +161,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
-    thread_mutex_unlock(&xsltlock);
 
     if (cur == NULL) {
+        thread_mutex_unlock(&xsltlock);
         bytes = sock_write_string(client->con->sock, 
                 (char *)"Could not parse XSLT file");
         if(bytes > 0) client->con->sent_bytes += bytes;
@@ -176,6 +176,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     outputBuffer = xmlAllocOutputBuffer(NULL);
 
     count = xsltSaveResultTo(outputBuffer, res, cur);
+    thread_mutex_unlock(&xsltlock);
 
     /*  Add null byte to end. */
     bytes = xmlOutputBufferWrite(outputBuffer, 1, "");
