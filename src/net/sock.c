@@ -486,11 +486,11 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 
 #else
 
-
+/* TODO: This doesn't do ipv6 connections */
 int sock_try_connection (int sock, const char *hostname, const unsigned port)
 {
     struct sockaddr_in sin, server;
-    char ip[40];
+    char ip[MAX_ADDR_LEN];
 
     if (!hostname || !hostname[0] || port == 0)
         return -1;
@@ -498,7 +498,7 @@ int sock_try_connection (int sock, const char *hostname, const unsigned port)
     memset(&sin, 0, sizeof(struct sockaddr_in));
     memset(&server, 0, sizeof(struct sockaddr_in));
 
-    if (!resolver_getip(hostname, ip, 40))
+    if (!resolver_getip(hostname, ip, MAX_ADDR_LEN))
     {
         sock_close (sock);
         return -1;
@@ -582,7 +582,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 #endif
 	int sa_family, sa_len, error, opt;
 	sock_t sock;
-	char ip[40];
+	char ip[MAX_ADDR_LEN];
 
 	if (port < 0)
 		return SOCK_ERROR;
@@ -654,22 +654,36 @@ int sock_listen(sock_t serversock, int backlog)
 
 int sock_accept(sock_t serversock, char *ip, int len)
 {
-	struct sockaddr_in sin;
+#ifdef HAVE_IPV6
+	struct sockaddr_storage sa;
+#else	
+	struct sockaddr_in sa;
+#endif
 	int ret;
 	socklen_t slen;
 
 	if (!sock_valid_socket(serversock))
 		return SOCK_ERROR;
 
-	slen = sizeof(struct sockaddr_in);
-	ret = accept(serversock, (struct sockaddr *)&sin, &slen);
+	slen = sizeof(sa);
+	ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
 	if (ret >= 0 && ip != NULL) {
         /* inet_ntoa is not reentrant, we should protect this */
-		strncpy(ip, inet_ntoa(sin.sin_addr), len);
+#ifdef HAVE_IPV6
+        if(inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr, 
+                    ip, len) <= 0)
+        {
+            inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&sa)->sin6_addr,
+                    ip, len);
+        }
+#else
+		strncpy(ip, inet_ntoa(sa.sin_addr), len);
+#endif
 		sock_set_nolinger(ret);
 		sock_set_keepalive(ret);
 	}
 
 	return ret;
 }
+

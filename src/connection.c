@@ -126,9 +126,9 @@ static connection_t *_accept_connection(void)
 	}
 
 	/* malloc enough room for a full IP address (including ipv6) */
-	ip = (char *)malloc(40);
+	ip = (char *)malloc(MAX_ADDR_LEN);
 
-	sock = sock_accept(global.serversock, ip, 40);
+	sock = sock_accept(global.serversock, ip, MAX_ADDR_LEN);
 	if (sock >= 0) {
 		con = create_connection(sock, ip);
 

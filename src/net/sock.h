@@ -46,6 +46,12 @@ struct iovec
 #define inet_aton(a,b) inet_pton(AF_INET, (a), (b))
 #endif
 
+#ifdef INET6_ADDRSTRLEN
+#define MAX_ADDR_LEN INET6_ADDRSTRLEN
+#else
+#define MAX_ADDR_LEN 46
+#endif
+
 typedef int sock_t;
 
 /* The following values are based on unix avoiding errno value clashes */
