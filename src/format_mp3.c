@@ -132,7 +132,6 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
 
     if (len > 1) {
         strncpy(buf+1, fullmetadata + client_state->metadata_offset, len-2);
-        DEBUG1("Sending metadata (%s)", buf+1);
     }
 
     thread_mutex_unlock(&(source_state->lock));
@@ -219,7 +218,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
 
     if(!data)
         return 0;
-    
+
     if(state->inline_metadata_interval) {
         /* Source is sending metadata, handle it... */
 
@@ -257,6 +256,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
 
                 /* According to the "spec"... this byte * 16 */
                 state->metadata_length = byte * 16;
+
                 if(state->metadata_length) {
                     state->metadata_buffer = 
                         calloc(state->metadata_length + 1, 1);
@@ -282,14 +282,13 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                 memcpy(state->metadata_buffer + state->metadata_offset, 
                         data, readable);
 
+                state->metadata_offset += readable;
+
                 data += readable;
                 len -= readable;
 
                 if(state->metadata_offset == state->metadata_length)
                 {
-                    state->offset = 0;
-                    state->metadata_length = 0;
-                
                     if(state->metadata_length)
                     {
                         thread_mutex_lock(&(state->lock));
@@ -300,6 +299,9 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                         state->metadata_raw = 1;
                         thread_mutex_unlock(&(state->lock));
                     }
+
+                    state->offset = 0;
+                    state->metadata_length = 0;
                 }
             }
         }
@@ -365,7 +367,4 @@ static void format_mp3_send_headers(format_plugin_t *self,
             client->con->sent_bytes += bytes;
     }
 }
-
-
-
 

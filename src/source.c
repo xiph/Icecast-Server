@@ -284,6 +284,8 @@ void *source_main(void *arg)
 	    }
     }
 
+    DEBUG0("Source creation complete");
+
 	while (global.running == ICE_RUNNING && source->running) {
 		if(!suppress_yp) {
             current_time = time(NULL);

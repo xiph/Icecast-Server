@@ -94,7 +94,7 @@ int util_read_header(int sock, char *buff, unsigned long len)
 				}
 			}
 		} else {
-			break;
+    		break;
 		}
 	}
 

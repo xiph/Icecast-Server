@@ -86,7 +86,13 @@ static void create_relay_stream(char *server, int port,
 	}
 	con = create_connection(streamsock, NULL);
     if(mp3) {
-    	sock_write(streamsock, "GET %s HTTP/1.0\r\nIcy-MetaData: 1\r\n", 
+        /* Some mp3 servers are bitchy, send a user-agent string to make them
+         * send the right response.
+         */
+    	sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+                               "User-Agent: " ICECAST_VERSION_STRING "\r\n"
+                               "Icy-MetaData: 1\r\n"
+                               "\r\n", 
                 remotemount);
     }
     else {
@@ -94,6 +100,7 @@ static void create_relay_stream(char *server, int port,
     }
 	memset(header, 0, sizeof(header));
 	if (util_read_header(con->sock, header, 4096) == 0) {
+        WARN0("Header read failed");
 		connection_close(con);
 		return;
 	}
@@ -114,8 +121,10 @@ static void create_relay_stream(char *server, int port,
     client = client_create(con, parser);
 	if (!connection_create_source(client, con, parser, 
                 httpp_getvar(parser, HTTPP_VAR_URI))) {
+        DEBUG0("Failed to create source");
         client_destroy(client);
 	}
+
     return;
 }
 
