@@ -95,10 +95,8 @@ static int get_intro_data (FILE *intro, client_t *client)
         return 0;
     bytes = fread (refbuf->data, 1, 4096, intro);
     if (bytes == 0)
-    {
-        client->intro_offset = 0;
         return 0;
-    }
+
     refbuf->len = bytes;
     return 1;
 }
@@ -117,8 +115,16 @@ int format_intro_write_to_client (source_t *source, client_t *client)
         {
             if (source->stream_data_tail)
             {
+                refbuf_t *refbuf = source->burst_point;
+                int size = source->burst_size - client->intro_offset;
+                while (size > 0 && refbuf->next)
+                {
+                    size -= refbuf->len;
+                    refbuf = refbuf->next;
+                }
+                client->intro_offset = 0;
                 /* move client to stream */
-                client_set_queue (client, source->stream_data_tail);
+                client_set_queue (client, refbuf);
                 client->write_to_client = source->format->write_buf_to_client;
             }
             else
