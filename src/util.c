@@ -182,13 +182,39 @@ static int verify_path(char *path) {
     return 1;
 }
 
+char *util_get_path_from_uri(char *uri) {
+    char *path = util_normalise_uri(uri);
+    char *fullpath;
+
+    if(!path)
+        return NULL;
+    else {
+        fullpath = util_get_path_from_normalised_uri(path);
+        free(path);
+        return fullpath;
+    }
+}
+
+char *util_get_path_from_normalised_uri(char *uri) {
+    char *fullpath;
+
+    fullpath = malloc(strlen(uri) + strlen(config_get_config()->webroot_dir) + 1);
+    strcpy(fullpath, config_get_config()->webroot_dir);
+
+    strcat(fullpath, uri);
+
+    return fullpath;
+}
+
+
+    
+
 /* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
  * path contains 'disallowed' sequences like foo/../ (which could be used to
  * escape from the webroot) or if it cannot be URI-decoded.
  * Caller should free the path.
  */
-char *util_get_path_from_uri(char *uri) {
-    char *root = config_get_config()->webroot_dir;
+char *util_normalise_uri(char *uri) {
     int urilen = strlen(uri);
     unsigned char *path;
     char *dst;
@@ -198,12 +224,9 @@ char *util_get_path_from_uri(char *uri) {
     if(uri[0] != '/')
         return NULL;
 
-    path = calloc(1, urilen + strlen(root) + 1);
+    path = calloc(1, urilen + 1);
 
-    strcpy(path, root);
-
-    dst = path+strlen(root);
-
+    dst = path;
 
     for(i=0; i < urilen; i++) {
         switch(uri[i]) {
@@ -235,8 +258,6 @@ char *util_get_path_from_uri(char *uri) {
         if(done)
             break;
     }
-
-    DEBUG1("After URI-decode path is \"%s\"", path);
 
     *dst = 0; /* null terminator */
 

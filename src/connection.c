@@ -344,7 +344,7 @@ static void *_handle_connection(void *arg)
 	int bytes;
 	struct stat statbuf;
 	char *fullpath;
-    char *uri;
+    char *rawuri, *uri;
 
 	while (global.running == ICE_RUNNING) {
 		memset(header, 0, 4096);
@@ -377,7 +377,17 @@ static void *_handle_connection(void *arg)
 					continue;
 				}
 
-                uri = httpp_getvar(parser, HTTPP_VAR_URI);
+                rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
+                uri = util_normalise_uri(rawuri);
+
+                if(!uri) {
+					client = client_create(con, parser);
+					bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\
+						   "<b>The path you requested was invalid.</b>\r\n");
+                    if(bytes > 0) client->con->sent_bytes = bytes;
+                    client_destroy(client);
+                    continue;
+                }
 
 				if (parser->req_type == httpp_req_source) {
                     INFO1("Source logging in at mountpoint \"%s\"", uri);
@@ -387,6 +397,7 @@ static void *_handle_connection(void *arg)
 						INFO1("Source (%s) attempted to login with bad password", uri);
 						connection_close(con);
 						httpp_destroy(parser);
+                        free(uri);
 						continue;
 					}
 
@@ -399,6 +410,7 @@ static void *_handle_connection(void *arg)
 						INFO1("Source tried to log in as %s, but is already used", uri);
 						connection_close(con);
 						httpp_destroy(parser);
+                        free(uri);
 						avl_tree_unlock(global.source_tree);
 						continue;
 					}
@@ -407,6 +419,7 @@ static void *_handle_connection(void *arg)
 					if (!connection_create_source(con, parser, uri)) {
 						connection_close(con);
 						httpp_destroy(parser);
+                        free(uri);
 					}
 
 					continue;
@@ -417,6 +430,7 @@ static void *_handle_connection(void *arg)
                         ERROR0("Bad password for stats connection");
 						connection_close(con);
 						httpp_destroy(parser);
+                        free(uri);
 						continue;
 					}
 					
@@ -428,7 +442,8 @@ static void *_handle_connection(void *arg)
 					stats->con = con;
 					
 					thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
-					
+
+                    free(uri);
 					continue;
 				} else if (parser->req_type == httpp_req_play || parser->req_type == httpp_req_get) {
                     DEBUG0("Client connected");
@@ -449,6 +464,7 @@ static void *_handle_connection(void *arg)
                         DEBUG0("Stats request, sending xml stats");
 						stats_sendxml(client);
                         client_destroy(client);
+                        free(uri);
 						continue;
 					}
 
@@ -456,8 +472,8 @@ static void *_handle_connection(void *arg)
 					** if the extension is .xsl, if so, then process
 					** this request as an XSLT request
 					*/
-                    fullpath = util_get_path_from_uri(uri);
-					if (fullpath && util_check_valid_extension(fullpath) == XSLT_CONTENT) {
+                    fullpath = util_get_path_from_normalised_uri(uri);
+					if (util_check_valid_extension(fullpath) == XSLT_CONTENT) {
 						/* If the file exists, then transform it, otherwise, write a 404 error */
 						if (stat(fullpath, &statbuf) == 0) {
                             DEBUG0("Stats request, sending XSL transformed stats");
@@ -470,9 +486,12 @@ static void *_handle_connection(void *arg)
 								   "<b>The file you requested could not be found.</b>\r\n");
                             if(bytes > 0) client->con->sent_bytes = bytes;
 						}
+                        free(fullpath);
+                        free(uri);
 						client_destroy(client);
 						continue;
 					}
+                    free(fullpath);
 
                     if(strcmp(util_get_extension(uri), "m3u") == 0) {
                         char *sourceuri = strdup(uri);
@@ -496,6 +515,8 @@ static void *_handle_connection(void *arg)
                         }
 						avl_tree_unlock(global.source_tree);
                         if(bytes > 0) client->con->sent_bytes = bytes;
+                        free(sourceuri);
+                        free(uri);
 						client_destroy(client);
 						continue;
                     }
@@ -526,6 +547,7 @@ static void *_handle_connection(void *arg)
 							}
 							avl_tree_unlock(global.source_tree);
 						}
+                        free(uri);
 						client_destroy(client);
 						continue;
 					}
@@ -540,6 +562,7 @@ static void *_handle_connection(void *arg)
 						}
 						client_destroy(client);
 						global_unlock();
+                        free(uri);
 						continue;
 					}
 					global_unlock();
@@ -557,6 +580,7 @@ static void *_handle_connection(void *arg)
 										   "<b>The server is already full.  Try again later.</b>\r\n");
 								if (bytes > 0) client->con->sent_bytes = bytes;
 							}
+                            free(uri);
 							client_destroy(client);
 							global_unlock();
 							continue;
@@ -605,11 +629,13 @@ static void *_handle_connection(void *arg)
 						client_destroy(client);
 					}
 					
+                    free(uri);
 					continue;
 				} else {
                     ERROR0("Wrong request type from client");
 					connection_close(con);
 					httpp_destroy(parser);
+                    free(uri);
 					continue;
 				}
 			} else {

@@ -9,5 +9,7 @@ int util_read_header(int sock, char *buff, unsigned long len);
 int util_check_valid_extension(char *uri);
 char *util_get_extension(char *path);
 char *util_get_path_from_uri(char *uri);
+char *util_get_path_from_normalised_uri(char *uri);
+char *util_normalise_uri(char *uri);
 
 #endif  /* __UTIL_H__ */
