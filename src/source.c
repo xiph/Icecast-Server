@@ -209,8 +209,8 @@ void *source_main(void *arg)
 					bytes = abuf->len;
 
 				sbytes = sock_write_bytes(client->con->sock, &abuf->data[client->pos], bytes);
-				if (sbytes > 0) client->con->sent_bytes += sbytes;
-				if (sbytes < bytes) {
+				if (sbytes >= 0) client->con->sent_bytes += sbytes;
+				if (sbytes < 0) {
 					if (!sock_recoverable(sock_error())) {
 						printf("SOURCE: Client had unrecoverable error catching up (%ld/%ld)\n", sbytes, bytes);
 						client->con->error = 1;
@@ -238,15 +238,15 @@ void *source_main(void *arg)
 				refbuf_queue_add(&client->queue, refbuf);
 			} else {
 				sbytes = sock_write_bytes(client->con->sock, refbuf->data, refbuf->len);
-				if (sbytes > 0) client->con->sent_bytes += sbytes;
-				if (sbytes < refbuf->len) {
+				if (sbytes >= 0) client->con->sent_bytes += sbytes;
+				if (sbytes < 0) {
 					bytes = sock_error();
 					if (!sock_recoverable(bytes)) {
 						printf("SOURCE: client had unrecoverable error %ld with new data (%ld/%ld)\n", bytes, sbytes, refbuf->len);
 						client->con->error = 1;
 					} else {
 						printf("SOURCE: recoverable error %ld\n", bytes);
-						client->pos = sbytes>0?sbytes:0;
+						client->pos = sbytes > 0 ? sbytes : 0;
 						refbuf_addref(refbuf);
 						refbuf_queue_insert(&client->queue, refbuf);
 					}
