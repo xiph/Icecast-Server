@@ -14,9 +14,9 @@ icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c\
 	 format_mp3.c xslt.c fserve.c event.c admin.c
 EXTRA_icecast_SOURCES = geturl.c yp.c
     
-icecast_LDADD = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
-    httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la \
-    timing/libicetiming.la @XIPH_LIBS@
+icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
+    httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la timing/libicetiming.la
+icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@
 
 AM_CFLAGS = @XIPH_CFLAGS@
 AM_CPPFLAGS = @XIPH_CPPFLAGS@
