@@ -45,6 +45,7 @@ source_t *source_create(client_t *client, connection_t *con,
         http_parser_t *parser, const char *mount, format_type_t type,
         mount_proxy *mountinfo);
 source_t *source_find_mount(const char *mount);
+client_t *source_find_client(source_t *source, int id);
 int source_compare_sources(void *arg, void *a, void *b);
 int source_free_source(void *key);
 int source_remove_client(void *key);

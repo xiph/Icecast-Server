@@ -164,6 +164,26 @@ int source_free_source(void *key)
 
     return 1;
 }
+
+client_t *source_find_client(source_t *source, int id)
+{
+    client_t fakeclient;
+    client_t *result;
+    connection_t fakecon;
+
+    fakeclient.con = &fakecon;
+    fakeclient.con->id = id;
+
+    avl_tree_rlock(source->client_tree);
+    if(avl_get_by_key(source->client_tree, &fakeclient, (void **)&result) == 0)
+    {
+        avl_tree_unlock(source->client_tree);
+        return result;
+    }
+
+    avl_tree_unlock(source->client_tree);
+    return NULL;
+}
     
 
 void *source_main(void *arg)
@@ -657,8 +677,11 @@ done:
 
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
-    connection_t *cona = (connection_t *)a;
-    connection_t *conb = (connection_t *)b;
+    client_t *clienta = (client_t *)a;
+    client_t *clientb = (client_t *)b;
+
+    connection_t *cona = clienta->con;
+    connection_t *conb = clientb->con;
 
     if (cona->id < conb->id) return -1;
     if (cona->id > conb->id) return 1;

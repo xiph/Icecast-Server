@@ -7,20 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "thread.h"
-
 #include "refbuf.h"
-
-mutex_t _refbuf_mutex;
 
 void refbuf_initialize(void)
 {
-    thread_mutex_create(&_refbuf_mutex);
 }
 
 void refbuf_shutdown(void)
 {
-    thread_mutex_destroy(&_refbuf_mutex);
 }
 
 refbuf_t *refbuf_new(unsigned long size)
@@ -37,20 +31,17 @@ refbuf_t *refbuf_new(unsigned long size)
 
 void refbuf_addref(refbuf_t *self)
 {
-    thread_mutex_lock(&_refbuf_mutex);
     self->_count++;
-    thread_mutex_unlock(&_refbuf_mutex);
 }
 
 void refbuf_release(refbuf_t *self)
 {
-    thread_mutex_lock(&_refbuf_mutex);
     self->_count--;
     if (self->_count == 0) {
         free(self->data);
         free(self);
+        return;
     }
-    thread_mutex_unlock(&_refbuf_mutex);
 }
 
 void refbuf_queue_add(refbuf_queue_t **queue, refbuf_t *refbuf)

@@ -32,6 +32,9 @@
 #define COMMAND_RAW_STATS         102
 #define COMMAND_RAW_LISTSTREAM    103
 
+/* Client management commands */
+#define COMMAND_KILL_CLIENT       201
+
 int admin_get_command(char *command)
 {
     if(!strcmp(command, "fallbacks"))
@@ -50,6 +53,8 @@ int admin_get_command(char *command)
         return COMMAND_RAW_LISTSTREAM;
     else if(!strcmp(command, "moveclients"))
         return COMMAND_MOVE_CLIENTS;
+    else if(!strcmp(command, "killclient"))
+        return COMMAND_KILL_CLIENT;
     else
         return COMMAND_ERROR;
 }
@@ -61,6 +66,8 @@ static void command_move_clients(client_t *client, source_t *source);
 
 static void command_raw_stats(client_t *client);
 static void command_list_mounts(client_t *client, int formatted);
+
+static void command_kill_client(client_t *client, source_t *source);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -166,6 +173,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_MOVE_CLIENTS:
             command_move_clients(client, source);
+            break;
+        case COMMAND_KILL_CLIENT:
+            command_kill_client(client, source);
             break;
         default:
             WARN0("Mount request not recognised");
@@ -288,6 +298,33 @@ static void command_show_listeners(client_t *client, source_t *source)
     html_write(client, "</table></body></html>");
 
     client_destroy(client);
+}
+
+static void command_kill_client(client_t *client, source_t *source)
+{
+    char *idtext;
+    int id;
+    client_t *listener;
+
+    COMMAND_REQUIRE(client, "id", idtext);
+
+    id = atoi(idtext);
+
+    listener = source_find_client(source, id);
+
+    if(listener != NULL) {
+        INFO1("Admin request: client %d removed", id);
+
+        /* This tags it for removal on the next iteration of the main source
+         * loop
+         */
+        listener->con->error = 1;
+
+        html_success(client, "Client removed");
+    }
+    else {
+        html_success(client, "Client not found");
+    }
 }
 
 static void command_fallback(client_t *client, source_t *source)
