@@ -48,6 +48,7 @@
 #include "util.h"
 #include "source.h"
 #include "format.h"
+#include "fserve.h"
 #include "auth.h"
 
 #undef CATMODULE
@@ -510,6 +511,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 static void process_listeners (source_t *source, int fast_clients_only, int deletion_expected)
 {
     client_t *sentinel = NULL, *client, **client_p;
+    unsigned int listeners = source->listeners;
 
     if (fast_clients_only)
     {
@@ -558,6 +560,14 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
             client = client->next;
         }
     }
+    /* has the listener count changed */
+    if (source->listeners != listeners)
+    {
+        INFO2("listener count on %s now %d", source->mount, source->listeners);
+        stats_event_args (source->mount, "listeners", "%d", source->listeners);
+        if (source->listeners == 0 && source->on_demand)
+            source->running = 0;
+    }
 }
 
 
@@ -572,7 +582,7 @@ static void get_next_buffer (source_t *source)
 
     while (global.running == ICE_RUNNING && source->running)
     {
-        int fds;
+        int fds = 0;
         time_t current = time(NULL);
         int delay = 200;
 
@@ -591,7 +601,13 @@ static void get_next_buffer (source_t *source)
 
         thread_mutex_unlock (&source->lock);
 
-        fds = util_timed_wait_for_fd (source->con->sock, delay);
+        if (source->con)
+            fds = util_timed_wait_for_fd (source->con->sock, delay);
+        else
+        {
+            thread_sleep (delay*1000);
+            source->last_read = current;
+        }
 
         /* take the lock */
         thread_mutex_lock (&source->lock);
@@ -723,7 +739,8 @@ static void source_init (source_t *source)
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "type", source->format->format_description);
 
-    sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
+    if (source->con)
+        sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
@@ -761,7 +778,7 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
-    source_recheck_mounts();
+    slave_rebuild ();
     thread_mutex_lock (&source->lock);
     if (source->yp_public)
         yp_add (source);
@@ -949,12 +966,22 @@ static void process_pending_clients (source_t *source)
         client_t *to_go = client;
 
         client = client->next;
+        /*  trap from when clients have been moved */
         if (to_go->write_to_client == NULL)
         {
-            /* The client may of been moved here when we were an 
-             * inactive on-demand relay */
-            to_go->write_to_client = source->format->write_buf_to_client;
-            client_set_queue (to_go, source->stream_data_tail);
+            /* trap for client moved to fallback file */
+            if (source->file_only)
+            {
+                to_go->write_to_client = format_intro_write_to_client;
+                client_set_queue (to_go, refbuf_new(4096));
+                to_go->intro_offset = 0;
+                to_go->pos = 4096;
+            }
+            else
+            {
+                to_go->write_to_client = source->format->write_buf_to_client;
+                client_set_queue (to_go, source->stream_data_tail);
+            }
         }
 
         to_go->next = source->active_clients;
@@ -977,13 +1004,7 @@ static void process_pending_clients (source_t *source)
 
 void source_main(source_t *source)
 {
-    long bytes;
-    int listeners = 0;
-
     source_init (source);
-
-    bytes = 0;
-    listeners = 0;
 
     while (global.running == ICE_RUNNING && source->running)
     {
@@ -1003,16 +1024,6 @@ void source_main(source_t *source)
             process_pending_clients (source);
 
         process_listeners (source, 0, remove_from_q);
-
-        /* has the listener count changed */
-        if (source->listeners != listeners)
-        {
-            INFO2("listener count on %s now %d", source->mount, source->listeners);
-            stats_event_args (source->mount, "listeners", "%d", source->listeners);
-            if (source->listeners == 0 && source->on_demand)
-                source->running = 0;
-            listeners = source->listeners;
-        }
 
         /* lets reduce the queue, any lagging clients should of been
          * terminated by now
@@ -1250,7 +1261,10 @@ void source_update_settings (ice_config_t *config, source_t *source)
     {
         if (strcmp (mountproxy->mountname, source->mount) == 0)
         {
-            source_apply_mount (source, mountproxy);
+            if (source->file_only)
+                WARN1 ("skipping fallback to file \"%s\"", source->mount);
+            else
+                source_apply_mount (source, mountproxy);
             break;
         }
         mountproxy = mountproxy->next;
@@ -1275,6 +1289,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
     else
         stats_event_hidden (source->mount, NULL, 0);
 
+    if (source->file_only)
+        stats_event (source->mount, "file_only", "1");
     if (source->max_listeners == -1)
         stats_event (source->mount, "max_listeners", "unlimited");
     else
@@ -1322,10 +1338,13 @@ void *source_client_thread (void *arg)
 {
     source_t *source = arg;
     const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
-    int bytes;
+    int bytes = sizeof (ok_msg)-1;
 
-    source->client->respcode = 200;
-    bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
+    if (source->client)
+    {
+        source->client->respcode = 200;
+        bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
+    }
     if (bytes < (int)sizeof (ok_msg)-1)
     {
         global_lock();
@@ -1336,13 +1355,15 @@ void *source_client_thread (void *arg)
     }
     else
     {
-        source->client->con->sent_bytes += bytes;
+        if (source->client)
+            source->client->con->sent_bytes += bytes;
 
         stats_event_inc(NULL, "source_client_connections");
         stats_event (source->mount, "listeners", "0");
         source_main (source);
         source_free_source (source);
-        source_recheck_mounts();
+
+        slave_rebuild ();
     }
     return NULL;
 }
@@ -1381,6 +1402,66 @@ static void source_run_script (char *command, char *mountpoint)
     }
 }
 #endif
+
+
+static void *source_fallback_file (void *arg)
+{
+    char *mount = arg;
+    const char *type;
+    char *path;
+    unsigned int len;
+    FILE *file = NULL;
+    source_t *source = NULL;
+    ice_config_t *config;
+
+    do
+    {
+        if (mount == NULL || mount[0] != '/')
+            break;
+        config = config_get_config();
+        len  = strlen (config->webroot_dir) + strlen (mount) + 1;
+        path = malloc (len);
+        if (path)
+            snprintf (path, len, "%s%s", config->webroot_dir, mount);
+        
+        config_release_config ();
+        if (path == NULL)
+            break;
+
+        file = fopen (path, "rb");
+        if (file == NULL)
+        {
+            DEBUG1 ("unable to open file \"%s\"", path);
+            free (path);
+            break;
+        }
+        free (path);
+        source = source_reserve (mount);
+        if (source == NULL)
+        {
+            DEBUG1 ("mountpoint \"%s\" already reserved", mount);
+            break;
+        }
+        type = fserve_content_type (mount);
+        source->parser = httpp_create_parser();
+        httpp_initialize (source->parser, NULL);
+        httpp_setvar (source->parser, "content-type", type);
+        source->hidden = 1;
+        source->file_only = 1;
+        source->yp_prevent = 1;
+        source->intro_file = file;
+        file = NULL;
+
+        if (connection_complete_source (source) < 0)
+            break;
+        source_client_thread (source);
+    } while (0);
+    if (file)
+        fclose (file);
+    free (mount);
+    return NULL;
+}
+
 
 /* rescan the mount list, so that xsl files are updated to show
  * unconnected but active fallback mountpoints
@@ -1427,6 +1508,16 @@ void source_recheck_mounts (void)
                     stats_event (mount->mountname, "max_listeners", "unlimited");
                 else
                     stats_event_args (mount->mountname, "max_listeners", "%d", mount->max_listeners);
+            }
+        }
+        /* check for fallback to file */
+        if (global.running == ICE_RUNNING && mount->fallback_mount)
+        {
+            source_t *fallback = source_find_mount (mount->fallback_mount);
+            if (fallback == NULL)
+            {
+                thread_create ("Fallback file thread", source_fallback_file,
+                        strdup (mount->fallback_mount), THREAD_DETACHED);
             }
         }
 

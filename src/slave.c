@@ -123,6 +123,12 @@ void slave_rescan (void)
     rescan_relays = 1;
 }
 
+/* kick off a rescan but force a recheck of the mounts afterwards */
+void slave_rebuild (void)
+{
+    update_settings = 1;
+    slave_rescan ();
+}
 
 void slave_initialize(void)
 {
@@ -301,7 +307,7 @@ static void *start_relay_stream (void *arg)
         {
             /* only keep refreshing YP entries for inactive on-demand relays */
             yp_remove (relay->localmount);
-            source_recheck_mounts();
+            update_settings = 1;
         }
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
@@ -667,6 +673,7 @@ static void *_slave_thread(void *arg)
     config = config_get_config();
     update_master_as_slave (config);
     config_release_config();
+    source_recheck_mounts();
 
     while (slave_running)
     {

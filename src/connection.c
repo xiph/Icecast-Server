@@ -467,7 +467,7 @@ int connection_complete_source (source_t *source)
          * because we can't use this client to return an error code/message,
          * so we only do this once we know we're going to accept the source.
          */
-        if (source->client == NULL)
+        if (source->client == NULL && source->con)
             source->client = client_create (source->con, source->parser);
 
         source_update_settings (config, source);

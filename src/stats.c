@@ -843,14 +843,14 @@ void stats_transform_xslt(client_t *client, char *xslpath)
 {
     xmlDocPtr doc;
 
-    stats_get_xml(&doc);
+    stats_get_xml(&doc, 0);
 
     xslt_transform(doc, xslpath, client);
 
     xmlFreeDoc(doc);
 }
 
-void stats_get_xml(xmlDocPtr *doc)
+void stats_get_xml(xmlDocPtr *doc, int show_hidden)
 {
     stats_event_t *event;
     stats_event_t *queue;
@@ -869,7 +869,7 @@ void stats_get_xml(xmlDocPtr *doc)
     event = _get_event_from_queue(&queue);
     while (event)
     {
-        if (event->hidden == 0)
+        if (event->hidden <= show_hidden)
         {
             xmlChar *name, *value;
             name = xmlEncodeEntitiesReentrant (*doc, event->name);

@@ -916,7 +916,7 @@ static void command_stats(client_t *client, int response) {
 
     DEBUG0("Stats request, sending xml stats");
 
-    stats_get_xml(&doc);
+    stats_get_xml(&doc, 1);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     client_destroy(client);

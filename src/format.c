@@ -120,7 +120,7 @@ static int get_intro_data (FILE *intro, client_t *client)
 /* wrapper for the per-format write to client routine. Here we populate
  * the refbuf before calling it
  */
-static int format_intro_write_to_client (source_t *source, client_t *client)
+int format_intro_write_to_client (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
 
@@ -128,8 +128,17 @@ static int format_intro_write_to_client (source_t *source, client_t *client)
     {
         if (get_intro_data (source->intro_file, client) == 0)
         {
-            client_set_queue (client, source->stream_data_tail);
-            client->write_to_client = source->format->write_buf_to_client;
+            if (source->stream_data_tail)
+            {
+                /* move client to stream */
+                client_set_queue (client, source->stream_data_tail);
+                client->write_to_client = source->format->write_buf_to_client;
+            }
+            else
+            {
+                /* replay intro file */
+                client->intro_offset = 0;
+            }
             return 0;
         }
         client->pos = 0;

@@ -27,6 +27,7 @@ typedef struct _fserve_t
 void fserve_initialize(void);
 void fserve_shutdown(void);
 int fserve_client_create(client_t *httpclient, char *path);
+const char *fserve_content_type (char *path);
 
 
 #endif

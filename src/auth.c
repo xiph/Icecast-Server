@@ -155,7 +155,7 @@ int auth_postprocess_client (const char *mount, client_t *client)
 {
     int ret = -1;
     source_t *source;
-    avl_tree_unlock (global.source_tree);
+    avl_tree_rlock (global.source_tree);
     source = source_find_mount (mount);
     if (source)
     {

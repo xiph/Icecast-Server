@@ -93,7 +93,7 @@ void *stats_callback(void *arg);
 
 void stats_transform_xslt(client_t *client, char *xslpath);
 void stats_sendxml(client_t *client);
-void stats_get_xml(xmlDocPtr *doc);
+void stats_get_xml(xmlDocPtr *doc, int show_hidden);
 char *stats_get_value(char *source, char *name);
 
 #endif  /* __STATS_H__ */
