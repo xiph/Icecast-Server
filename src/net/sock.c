@@ -370,23 +370,25 @@ int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
     char *buff = NULL;
     int ret;
 
-    /* don't go infinite, but stop at some hugh limit */
-    while (len < 5*1024*1024)
+    /* don't go infinite, but stop at some huge limit */
+    while (len < 2*1024*1024)
     {
         char *tmp = realloc (buff, len);
+        ret = -1;
         if (tmp == NULL)
-        {
-            free (buff);
-            return -1;
-        }
+            break;
         buff = tmp;
         va_copy (ap_local, ap);
         ret = vsnprintf (buff, len, fmt, ap_local);
         if (ret > 0)
-            return sock_write_bytes (sock, buff, ret);
+        {
+            ret = sock_write_bytes (sock, buff, ret);
+            break;
+        }
         len += 8192;
     }
-    return -1;
+    free (buff);
+    return ret;
 }
 #else
 int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
