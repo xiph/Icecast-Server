@@ -343,14 +343,14 @@ static void _ch_root_uid_setup(void)
 
        if(gid != -1) {
            if(!setgid(gid))
-               fprintf(stdout, "Changed groupid to %i.\n", gid);
+               fprintf(stdout, "Changed groupid to %i.\n", (int)gid);
            else
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
        }
 
        if(uid != -1) {
            if(!setuid(uid))
-               fprintf(stdout, "Changed userid to %i.\n", uid);
+               fprintf(stdout, "Changed userid to %i.\n", (int)uid);
            else
                fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
        }
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
         pidfile = strdup (config->pidfile);
         if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
         {
-            fprintf (f, "%d\n", getpid());
+            fprintf (f, "%d\n", (int)getpid());
             fclose (f);
         }
     }
