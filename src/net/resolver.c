@@ -7,15 +7,18 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <stdlib.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
 
 #ifndef _WIN32
+#include <sys/socket.h>
 #include <pthread.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#else
+#include <winsock.h>
+#define sethostent(x)
 #endif
 
 #include "resolver.h"
@@ -156,7 +159,7 @@ void resolver_shutdown(void)
 #ifndef _WIN32
 		pthread_mutex_destroy(&_resolver_mutex);
 #else
-		DestroyCriticalSection(&_resolver_mutex);
+		DeleteCriticalSection(&_resolver_mutex);
 #endif
 
 		_initialized = 0;

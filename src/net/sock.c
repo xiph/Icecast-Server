@@ -23,24 +23,25 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/types.h>
-#include <sys/poll.h>
 #include <ctype.h>
 #include <string.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #ifndef _WIN32
-#include <errno.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <netdb.h>
+#include <sys/poll.h>
 #else
-#include <winsock.h>
+#include <winsock2.h>
 #define vsnprintf _vsnprintf
 #define EINPROGRESS WSAEINPROGRESS
 #define ENOTSOCK WSAENOTSOCK
+#define EWOULDBLOCK WSAEWOULDBLOCK
 #endif
 
 #include "sock.h"
@@ -415,7 +416,7 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 ** interface.  if interface is null, listen on all interfaces.
 ** returns the socket, or SOCK_ERROR on failure
 */
-sock_t sock_get_server_socket(const int port, char *interface)
+sock_t sock_get_server_socket(const int port, char *sinterface)
 {
 #ifdef HAVE_IPV6
 	struct sockaddr_storage sa;
@@ -435,8 +436,8 @@ sock_t sock_get_server_socket(const int port, char *interface)
 	sa_len = sizeof (struct sockaddr_in);
 
 	/* set the interface to bind to if specified */
-	if (interface != NULL) {
-		if (!resolver_getip(interface, ip, sizeof (ip)))
+	if (sinterface != NULL) {
+		if (!resolver_getip(sinterface, ip, sizeof (ip)))
 			return SOCK_ERROR;
 
 #ifdef HAVE_IPV6

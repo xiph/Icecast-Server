@@ -23,7 +23,7 @@
 #define __SOCK_H
 
 #ifdef _WIN32
-#include <winsock.h>
+#include <winsock2.h>
 typedef SOCKET sock_t
 #else
 typedef int sock_t;
@@ -59,7 +59,7 @@ int sock_read_bytes(sock_t sock, char *buff, const int len);
 int sock_read_line(sock_t sock, char *string, const int len);
 
 /* server socket functions */
-sock_t sock_get_server_socket(const int port, char *interface);
+sock_t sock_get_server_socket(const int port, char *sinterface);
 int sock_listen(sock_t serversock, int backlog);
 int sock_accept(sock_t serversock, char *ip, int len);
 
