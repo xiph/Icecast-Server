@@ -336,7 +336,15 @@ An optional value which will set the filename which will be a dump of the stream
 </div>
 <h4>fallback-mount</h4>
 <div class="indentedbox">
-This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected; all currently connected clients will be moved to the fallback-mount.
+This optional value specifies a mountpoint that clients are automatically moved to if the source
+shuts down or is not streaming at the time a listener connects.  Only one can be listed in each
+mount and should refer to another mountpoint on the same server that is streaming in the same
+streaming format.<br> 
+If clients cannot fallback to another mountpoint, due to a missing fallback-mount or it states a
+mountpoint that is just not available, then those clients will be disconnected.
+If clients are falling back to a mountpoint and the fallback-mount is not actively streaming
+but defines a fallback-mount itself then those clients may be moved there instead.
+This multi-level fallback allows clients to cascade several mountpoints. 
 </div>
 <h4>fallback-override</h4>
 <div class="indentedbox">
