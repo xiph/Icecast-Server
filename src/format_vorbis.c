@@ -118,7 +118,7 @@ int format_ogg_get_plugin (source_t *source)
     vstate_t *state;
     vorbis_comment vc;
 
-    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
+    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_OGG;
     plugin->format_description = "Ogg Vorbis";
@@ -161,6 +161,14 @@ void format_vorbis_free_plugin (format_plugin_t *plugin)
     free_ogg_packet (state->header[2]);
     if (state->prev_packet)
         free_ogg_packet (state->prev_packet);
+
+    while (state->headers_head)
+    {
+        refbuf_t *to_go = state->headers_head;
+        state->headers_head = to_go->next;
+        /* printf ("releasing vorbis header %p\n", to_go); */
+        refbuf_release (to_go);
+    }
 
     ogg_packet_clear (&state->url_comment);
 
@@ -294,7 +302,6 @@ static refbuf_t *get_buffer_finished (vstate_t *source_vorbis)
     }
     ogg_stream_clear (&source_vorbis->out_os);
     ogg_stream_init (&source_vorbis->out_os, get_next_serialno());
-    printf ("clearing up header pages \n");
     refbuf = source_vorbis->headers_head;
     while (refbuf)
     {
@@ -442,9 +449,9 @@ static int process_vorbis_incoming_hdrs (source_t *source)
         tag = "unknown";
     stats_event (source->mount, "artist", tag);
 
-    stats_event_args (source->mount, "ice-samplerate", "%ld", (long)source_vorbis->vi.rate);
-    stats_event_args (source->mount, "ice-channels", "%ld", (long)source_vorbis->vi.channels);
-    stats_event_args (source->mount, "ice-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal/1024);
+    stats_event_args (source->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
+    stats_event_args (source->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
+    stats_event_args (source->mount, "audio-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal);
     /* set queued pages to contain a 1/4 of a second worth of samples */
     source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 4;
 

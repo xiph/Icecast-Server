@@ -480,7 +480,7 @@ int connection_complete_source (source_t *source)
 
         return 0;
     }
-    WARN1("Request to add source when maximum source limit"
+    WARN1("Request to add source when maximum source limit "
             "reached %d", global.sources);
 
     global_unlock();

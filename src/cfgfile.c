@@ -219,7 +219,7 @@ void config_clear(ice_config_t *c)
         free(dirnode);
         dirnode = nextdirnode;
     }
-#ifdef HAVE_YP
+#ifdef USE_YP
     i = 0;
     while (i < c->num_yp_directories)
     {
