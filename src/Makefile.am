@@ -18,8 +18,6 @@ icecast_LDADD = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
     httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la \
     timing/libicetiming.la @XIPH_LIBS@
 
-icecast_DEPENDENCIES = @ICECAST_OPTIONAL@
-
 AM_CFLAGS = @XIPH_CFLAGS@
 AM_CPPFLAGS = @XIPH_CPPFLAGS@
 

@@ -33,10 +33,8 @@ fi
 
 curl_ok="yes"
 
-xt_curl_CFLAGS="$CFLAGS"
 xt_curl_CPPFLAGS="$CPPFLAGS"
 xt_curl_LIBS="$LIBS"
-CFLAGS="-DCURL_CFLAG"
 CPPFLAGS="$CPPFLAGS $CURL_CFLAGS"
 LIBS="$CURL_LIBS $LIBS"
 dnl
