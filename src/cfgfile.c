@@ -668,6 +668,14 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             relay->mp3metadata = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (strcmp(node->name, "username") == 0) {
+            relay->username = (char *)xmlNodeListGetString(doc,
+                    node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "password") == 0) {
+            relay->password = (char *)xmlNodeListGetString(doc,
+                    node->xmlChildrenNode, 1);
+        }
     } while ((node = node->next));
     if (relay->localmount == NULL)
         relay->localmount = xmlStrdup (relay->mount);

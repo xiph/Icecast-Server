@@ -19,6 +19,8 @@ typedef struct _relay_server {
     char *server;
     int port;
     char *mount;
+    char *username;
+    char *password;
     char *localmount;
     struct source_tag *source;
     int mp3metadata;

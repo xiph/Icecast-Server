@@ -74,6 +74,10 @@ relay_server *relay_free (relay_server *relay)
     xmlFree (relay->server);
     xmlFree (relay->mount);
     xmlFree (relay->localmount);
+    if (relay->username)
+        xmlFree (relay->username);
+    if (relay->password)
+        xmlFree (relay->password);
     free (relay);
     return next;
 }
@@ -88,6 +92,10 @@ relay_server *relay_copy (relay_server *r)
         copy->server = xmlStrdup (r->server);
         copy->mount = xmlStrdup (r->mount);
         copy->localmount = xmlStrdup (r->localmount);
+        if (r->username)
+            copy->username = xmlStrdup (r->username);
+        if (r->password)
+            copy->password = xmlStrdup (r->password);
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
     }
@@ -149,6 +157,8 @@ static void *start_relay_stream (void *arg)
     INFO1("Starting relayed source at mountpoint \"%s\"", relay->localmount);
     do
     {
+        char *auth_header;
+
         streamsock = sock_connect_wto (relay->server, relay->port, 30);
         if (streamsock == SOCK_ERROR)
         {
@@ -158,6 +168,26 @@ static void *start_relay_stream (void *arg)
         }
         con = create_connection (streamsock, -1, NULL);
 
+        if (relay->username && relay->password)
+        {
+            char *esc_authorisation;
+            unsigned len = strlen(relay->username) + strlen(relay->password) + 2;
+
+            auth_header = malloc (len);
+            snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
+            esc_authorisation = util_base64_encode(auth_header);
+            free(auth_header);
+            len = strlen (esc_authorisation) + 24;
+            auth_header = malloc (len);
+            snprintf (auth_header, len,
+                    "Authorization: Basic %s\r\n", esc_authorisation);
+            free(esc_authorisation);
+        }
+        else
+        {
+            auth_header = strdup ("");
+        }
+
         /* At this point we may not know if we are relaying an mp3 or vorbis
          * stream, but only send the icy-metadata header if the relay details
          * state so (the typical case).  It's harmless in the vorbis case. If
@@ -166,8 +196,12 @@ static void *start_relay_stream (void *arg)
         sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                 "User-Agent: " ICECAST_VERSION_STRING "\r\n"
                 "%s"
+                "%s"
                 "\r\n",
-                relay->mount, relay->mp3metadata?"Icy-MetaData: 1\r\n":"");
+                relay->mount,
+                relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
+                auth_header);
+        free (auth_header);
         memset (header, 0, sizeof(header));
         if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
         {
