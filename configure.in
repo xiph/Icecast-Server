@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.0-kh51], [karl@xiph.org])
+AC_INIT([Icecast], [2.0-kh52], [karl@xiph.org])
 
 AC_PREREQ(2.54)
 AC_CONFIG_SRCDIR(src/main.c)
