@@ -611,8 +611,9 @@ static void command_buildm3u(client_t *client, source_t *source,
     COMMAND_REQUIRE(client, "password", password);
 
     config = config_get_config();
-    host = config->hostname;
+    host = strdup(config->hostname);
     port = config->port;
+    config_release_config();
 
     client->respcode = 200;
     sock_write(client->con->sock,
@@ -626,9 +627,9 @@ static void command_buildm3u(client_t *client, source_t *source,
         port,
         source->mount
     );
-    
+
+    free(host);
     client_destroy(client);
-    config_release_config();
 }
 static void command_manageauth(client_t *client, source_t *source,
     int response)
