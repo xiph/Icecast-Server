@@ -49,8 +49,8 @@ else
   AC_MSG_CHECKING([for libtheora])
   AC_TRY_LINK_FUNC(theora_decode_header, [xt_have_theora="yes"],
           [xt_have_theora="Not found"])
-  AC_TRY_LINK_FUNC(theora_decode_header, [xt_have_theora="yes"],
-          [xt_have_theora="old version"])
+  AC_TRY_LINK_FUNC(theora_packet_isheader, [xt_have_theora="yes"],
+          [xt_have_theora="newer version required"])
 
   LIBS="$ac_save_LIBS"
   LDFLAGS="$ac_save_LDFLAGS"
@@ -64,7 +64,7 @@ else
     THEORA_CFLAGS=""
     THEORA_LDFLAGS=""
     THEORA_LIBS=""
-    AC_MSG_WARN([$xt_have_theora])
+    AC_MSG_RESULT([$xt_have_theora])
     $2
   fi
 fi
