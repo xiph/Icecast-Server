@@ -358,6 +358,14 @@ static int update_from_master(ice_config_t *config)
         free(authheader);
         free(data);
 
+        if (sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
+                strncmp (buf, "HTTP/1.0 200", 12) != 0)
+        {
+            sock_close (mastersock);
+            WARN0 ("Master rejected streamlist request");
+            break;
+        }
+
         while (sock_read_line(mastersock, buf, sizeof(buf)))
         {
             if (!strlen(buf))

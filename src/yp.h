@@ -14,8 +14,6 @@
 #ifndef __YP_H__
 #define __YP_H__
 
-#include <stdio.h>
-
 #define  YP_SERVER_NAME 1
 #define  YP_SERVER_DESC 2
 #define  YP_SERVER_GENRE 3
@@ -43,7 +41,7 @@ void yp_shutdown();
 #define yp_remove(x)            do{}while(0)
 #define yp_touch(x)             do{}while(0)
 #define yp_recheck_config(x)    do{}while(0)
-#define yp_initialize()         do{}while(0)
+#define yp_initialize()         WARN0("YP server handling has been disabled")
 #define yp_shutdown()           do{}while(0)
 
 #endif /* USE_YP */
