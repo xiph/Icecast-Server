@@ -6,7 +6,7 @@
 #ifndef __HTTPP_H
 #define __HTTPP_H
 
-#include "avl.h"
+#include <avl/avl.h>
 
 #define HTTPP_VAR_PROTOCOL "__protocol"
 #define HTTPP_VAR_VERSION "__version"

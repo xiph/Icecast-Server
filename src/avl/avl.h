@@ -2,7 +2,7 @@
  * Copyright (C) 1995 by Sam Rushing <rushing@nightmare.com>
  */
 
-/* $Id: avl.h,v 1.4 2003/03/06 02:35:12 brendan Exp $ */
+/* $Id: avl.h,v 1.5 2003/03/09 22:56:46 karl Exp $ */
 
 #ifndef __AVL_H
 #define __AVL_H
@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #ifndef NO_THREAD
-#include "thread.h"
+#include <thread/thread.h>
 #else
 #define thread_rwlock_create(x) do{}while(0)
 #define thread_rwlock_destroy(x) do{}while(0)

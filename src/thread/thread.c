@@ -42,10 +42,10 @@
 
 #include <signal.h>
 
-#include "thread.h"
-#include "avl.h"
+#include <thread/thread.h>
+#include <avl/avl.h>
 #ifdef THREAD_DEBUG
-#include "log.h"
+#include <log/log.h>
 #endif
 
 #ifdef _WIN32

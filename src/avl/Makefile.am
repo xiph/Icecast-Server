@@ -8,7 +8,7 @@ noinst_HEADERS = avl.h
 libiceavl_la_SOURCES = avl.c
 libiceavl_la_CFLAGS = @XIPH_CFLAGS@
 
-INCLUDES = -I$(srcdir)/../thread
+INCLUDES = -I$(srcdir)/..
 
 # SCCS stuff (for BitKeeper)
 GET = true

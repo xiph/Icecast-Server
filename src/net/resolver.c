@@ -23,7 +23,7 @@
 #endif
 
 #ifndef NO_THREAD
-#include "thread.h"
+#include <thread/thread.h>
 #else
 #define thread_mutex_create(x) do{}while(0)
 #define thread_mutex_destroy(x) do{}while(0)

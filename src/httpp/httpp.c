@@ -13,7 +13,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "avl.h"
+#include <avl/avl.h>
 #include "httpp.h"
 
 #ifdef _WIN32
