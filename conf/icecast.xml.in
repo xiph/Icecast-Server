@@ -88,7 +88,7 @@
 
         <!-- Note that if <chroot> is turned on below, these paths must both
              be relative to the new root, not the original root -->
-        <logdir>@localstatedir@/@PACKAGE@/logs</logdir>
+        <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
 
