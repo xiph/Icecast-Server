@@ -64,6 +64,7 @@ void stats_event_add(char *source, char *name, unsigned long value);
 void stats_event_dec(char *source, char *name);
 
 void *stats_connection(void *arg);
+void *stats_callback(void *arg);
 
 void stats_sendxml(client_t *client);
 

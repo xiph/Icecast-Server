@@ -598,6 +598,81 @@ void *stats_connection(void *arg)
 	return NULL;
 }
 
+/* this function is primarily to support gui code needing to get stats updates
+** create a thread with this as the start proc with an arg of the callback function
+** on each stats event the callback will be called with the event
+** and the callback is responsible for copying the data if it needs it after returning
+*/
+void *stats_callback(void *arg)
+{
+	void (*callback)(stats_event_t *event);
+
+	stats_event_t *local_event_queue = NULL;
+	mutex_t local_event_mutex;
+
+	avl_node *node;
+	avl_node *node2;
+	stats_event_t *event;
+	stats_source_t *source;
+
+	callback = arg;
+
+	thread_mutex_create(&local_event_mutex);
+
+	/* we must get the current stats and register for events atomically.
+	** we don't want to miss any and have inaccurate stats.
+	*/
+
+	/* first the global stats */
+	thread_mutex_lock(&_stats_mutex);
+	node = avl_get_first(_stats.global_tree);
+	while (node) {
+		event = _make_event_from_node((stats_node_t *)node->key, NULL);
+		_add_event_to_queue(event, &local_event_queue);
+		node = avl_get_next(node);
+	}
+
+	/* now the stats for each source */
+	node = avl_get_first(_stats.source_tree);
+	while (node) {
+		source = (stats_source_t *)node->key;
+		node2 = avl_get_first(source->stats_tree);
+		while (node2) {
+			event = _make_event_from_node((stats_node_t *)node2->key, source->source);
+			_add_event_to_queue(event, &local_event_queue);
+			node2 = avl_get_next(node2);
+		}
+
+		node = avl_get_next(node);
+	}
+
+	/* now we register to receive future event notices */
+	_register_listener(&local_event_queue, &local_event_mutex);
+
+	thread_mutex_unlock(&_stats_mutex);
+
+	while (global.running == ICE_RUNNING) {
+		thread_mutex_lock(&local_event_mutex);
+		event = _get_event_from_queue(&local_event_queue);
+		if (event != NULL) {
+			callback(event);
+			_free_event(event);
+		} else {
+			thread_mutex_unlock(&local_event_mutex);
+			thread_cond_wait(&_event_signal_cond);
+			continue;
+		}
+		
+		thread_mutex_unlock(&local_event_mutex);
+	}
+
+	thread_mutex_destroy(&local_event_mutex);
+
+	thread_exit(0);
+
+	return NULL;
+}
+
 typedef struct _source_xml_tag {
 	char *mount;
 	xmlNodePtr node;
