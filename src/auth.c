@@ -24,6 +24,7 @@
 auth_result auth_check_client(source_t *source, client_t *client)
 {
     auth_t *authenticator = source->authenticator;
+    auth_result result;
 
     if(authenticator) {
         /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
@@ -56,7 +57,7 @@ auth_result auth_check_client(source_t *source, client_t *client)
         username = userpass;
         password = tmp+1;
 
-        auth_result result = authenticator->authenticate(
+        result = authenticator->authenticate(
                 authenticator, username, password);
 
         if(result == AUTH_OK)
@@ -118,12 +119,12 @@ static int get_line(FILE *file, char *buf, int len)
 static char *get_hash(char *data, int len)
 {
     struct MD5Context context;
+    unsigned char digest[16];
 
     MD5Init(&context);
 
     MD5Update(&context, data, len);
 
-    unsigned char digest[16];
     MD5Final(digest, &context);
 
     return util_bin_to_hex(digest, 16);
@@ -179,11 +180,12 @@ static auth_result htpasswd_auth(auth_t *auth, char *username, char *password)
 static auth_t *auth_get_htpasswd_auth(config_options_t *options)
 {
     auth_t *authenticator = calloc(1, sizeof(auth_t));
+    htpasswd_auth_state *state;
 
     authenticator->authenticate = htpasswd_auth;
     authenticator->free = htpasswd_clear;
 
-    htpasswd_auth_state *state = calloc(1, sizeof(htpasswd_auth_state));
+    state = calloc(1, sizeof(htpasswd_auth_state));
 
     while(options) {
         if(!strcmp(options->name, "filename"))

@@ -106,6 +106,7 @@ void config_clear(ice_config_t *c)
     mount_proxy *mount, *nextmount;
     aliases *alias, *nextalias;
     int i;
+    config_options_t *option;
 
     if (c->config_filename)
         free(c->config_filename);
@@ -172,7 +173,7 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->fallback_mount);
 
         xmlFree(mount->auth_type);
-        config_options_t *option = mount->auth_options;
+        option = mount->auth_options;
         while(option) {
             config_options_t *nextopt = option->next;
             xmlFree(option->name);
@@ -451,6 +452,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *mount = calloc(1, sizeof(mount_proxy));
     mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
+    xmlNodePtr option;
+    config_options_t *last_option;
     
     while(current) {
         last = current;
@@ -506,8 +509,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (strcmp(node->name, "authentication") == 0) {
             mount->auth_type = xmlGetProp(node, "type");
-            xmlNodePtr option = node->xmlChildrenNode;
-            config_options_t *last = NULL;
+            option = node->xmlChildrenNode;
+            last_option = NULL;
             while(option != NULL) {
                 if(strcmp(option->name, "option") == 0) {
                     config_options_t *opt = malloc(sizeof(config_options_t));
@@ -525,11 +528,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                         continue;
                     }
 
-                    if(last)
-                        last->next = opt;
+                    if(last_option)
+                        last_option->next = opt;
                     else
                         mount->auth_options = opt;
-                    last = opt;
+                    last_option = opt;
                 }
                 option = option->next;
             }

@@ -93,6 +93,14 @@ SOURCE=..\src\admin.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\auth.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\auth.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\avl\avl.c
 # End Source File
 # Begin Source File
@@ -210,6 +218,14 @@ SOURCE=..\src\logging.h
 # Begin Source File
 
 SOURCE=..\src\main.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\md5.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\md5.h
 # End Source File
 # Begin Source File
 
