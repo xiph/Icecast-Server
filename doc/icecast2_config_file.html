@@ -24,15 +24,16 @@ This section will describe each section of the config file and is grouped into t
 <h2>Limits</h2>
 <pre>
     &lt;limits&gt;
-        &lt;clients&gt;100&lt;clients&gt;
-        &lt;sources&gt;2&lt;sources&gt;
-        &lt;threadpool&gt;5&lt;threadpool&gt;
-        &lt;queue-size&gt;102400&lt;queue-size&gt;
-        &lt;client-timeout&gt;30&lt;client-timeout&gt;
-        &lt;header-timeout&gt;15&lt;header-timeout&gt;
-        &lt;source-timeout&gt;10&lt;source-timeout&gt;
-        &lt;burst-on-connect&gt;1&lt;burst-on-connect&gt;
-    &lt;limits&gt;
+        &lt;clients&gt;100&lt;/clients&gt;
+        &lt;sources&gt;2&lt;/sources&gt;
+        &lt;threadpool&gt;5&lt;/threadpool&gt;
+        &lt;queue-size&gt;102400&lt;/queue-size&gt;
+        &lt;client-timeout&gt;30&lt;/client-timeout&gt;
+        &lt;header-timeout&gt;15&lt;/header-timeout&gt;
+        &lt;source-timeout&gt;10&lt;/source-timeout&gt;
+        &lt;burst-on-connect&gt;1&lt;/burst-on-connect&gt;
+        &lt;burst-size&gt;65536&lt;/burst-size&gt;
+    &lt;/limits&gt;
 </pre>
 <p>This section contains server level settings that, in general, do not need to be changed.  Only modify this section if you are know what you are doing.
 </p>
@@ -68,6 +69,13 @@ If a connected source does not send any data within this timeout period (in seco
 <div class=indentedbox>
 With this enabled, a connecting client will be sent a burst of audio data from the stream.  This will have the effect of reducing the startup time for the stream from the perspective of the listener.  This is due to the fact that most media players have local buffers that must be filled before the stream begins to play.  This may introduce a small latency in the stream (difference in time between when the source plays a clip and the listener hears a clip).  If this latency is important to you, then you can disable this feature.  The latency is bitrate-dependent, but as an example, for a 128kbps stream, the latency between the source and the player is ~ 1.5 secs WITHOUT burst on connect, and WITH burst on connect the latency is 3 secs.
 </div>
+<h4>burst-size</h4>
+<div class=indentedbox>
+The burst size is the amount of data (in bytes) to burst to a client at connection time. Like
+burst-on-connect, this is to quickly fill the pre-buffer used by media players. The default
+is 64kbytes which is a typical size used by most clients so changing it is not usually required.
+This setting applies to all mountpoints.
+</div>
 <br>
 <br>
 <br>
@@ -75,11 +83,11 @@ With this enabled, a connecting client will be sent a burst of audio data from t
 <h2>Authentication</h2>
 <pre>
     &lt;authentication&gt;
-        &lt;source-password&gt;hackme&lt;source-password&gt;
-        &lt;relay-password&gt;hackme&lt;relay-password&gt;
-        &lt;admin-user&gt;admin&lt;admin-user&gt;
-        &lt;admin-password&gt;hackme&lt;admin-password&gt;
-    &lt;authentication&gt;
+        &lt;source-password&gt;hackme&lt;/source-password&gt;
+        &lt;relay-password&gt;hackme&lt;/relay-password&gt;
+        &lt;admin-user&gt;admin&lt;/admin-user&gt;
+        &lt;admin-password&gt;hackme&lt;/admin-password&gt;
+    &lt;/authentication&gt;
 </pre>
 <p>This section contains all the users and passwords used for administration purposes or to connect sources and relays.
 </p>
@@ -103,9 +111,9 @@ The username/password used for all administration functions.  This includes retr
 <h2>YP Directory Settings</h2>
 <pre>
     &lt;directory&gt;
-        &lt;yp-url-timeout&gt;15&lt;yp-url-timeout&gt;
-        &lt;yp-url&gt;http://dir.xiph.org/cgi-bin/yp-cgi&lt;yp-url&gt;
-    &lt;directory&gt;
+        &lt;yp-url-timeout&gt;15&lt;/yp-url-timeout&gt;
+        &lt;yp-url&gt;http://dir.xiph.org/cgi-bin/yp-cgi&lt;/yp-url&gt;
+    &lt;/directory&gt;
 </pre>
 <p>This section contains all the settings for listing a stream on any of the Icecast2 YP Directory servers.  Multiple occurances of this section can be specified in order to be listed on multiple directory servers.
 </p>
@@ -126,16 +134,16 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;hostname&gt;localhost&lt;hostname&gt;
 
     &lt;-- You can use these two if you only want a single listener --&gt;
-    &lt;-- &lt;port&gt;8000&lt;port&gt; --&gt;
-    &lt;-- &lt;bind-address&gt;127.0.0.1&lt;bind-address&gt; --&gt;
+    &lt;-- &lt;port&gt;8000&lt;/port&gt; --&gt;
+    &lt;-- &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt; --&gt;
 
-    &lt;-- You may have multiple &lt;listener&gt; elements --&gt;
+    &lt;-- You may have multiple &lt;listen-socket&gt; elements --&gt;
     &lt;listen-socket&gt;
-        &lt;port&gt;8000&lt;port&gt;
-        &lt;bind-address&gt;127.0.0.1&lt;bind-address&gt;
-    &lt;listen-socket&gt;
+        &lt;port&gt;8000&lt;/port&gt;
+        &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
+    &lt;/listen-socket&gt;
 
-    &lt;fileserve&gt;1&lt;fileserve&gt;
+    &lt;fileserve&gt;1&lt;/fileserve&gt;
 </pre>
 <p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the hostname parameter will be used to specify the address that will be bound.
 </p>
@@ -157,18 +165,18 @@ This flag turns on the icecast2 fileserver from which static files can be served
 <a name="relay"></a>
 <h2>Relay Settings</h2>
 <pre>
-    &lt;master-server&gt;127.0.0.1&lt;master-server&gt;
-    &lt;master-server-port&gt;8001&lt;master-server-port&gt;
-    &lt;master-update-interval&gt;120&lt;master-update-interval&gt;
-    &lt;master-password&gt;hackme&lt;master-password&gt;
+    &lt;master-server&gt;127.0.0.1&lt;/master-server&gt;
+    &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
+    &lt;master-update-interval&gt;120&lt;/master-update-interval&gt;
+    &lt;master-password&gt;hackme&lt;/master-password&gt;
 
     &lt;relay&gt;
-        &lt;server&gt;127.0.0.1&lt;server&gt;
-        &lt;port&gt;8001&lt;port&gt;
-        &lt;mount&gt;example.ogg&lt;mount&gt;
-        &lt;local-mount&gt;different.ogg&lt;local-mount&gt;
-        &lt;relay-shoutcast-metadata&gt;0&lt;relay-shoutcast-metadata&gt;
-    &lt;relay&gt;
+        &lt;server&gt;127.0.0.1&lt;/server&gt;
+        &lt;port&gt;8001&lt;/port&gt;
+        &lt;mount&gt;example.ogg&lt;/mount&gt;
+        &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
+        &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
+    &lt;/relay&gt;
 </pre>
 <p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.   
 
@@ -231,11 +239,15 @@ The following diagram shows the basics of doing a Specific Mountpoint relay.  No
 Specific Mountpoint Relays can be configured to relay from an Icecast 2 server, as well as Icecast 1.x and Shoutcast.
 A server is configured as a Specific Mountpoint Server relay by specifying a &lt;relay&gt; XML chunk in the config file for each mountpoint to be relayed.  The server that is being relayed does not need any special configuration.
 
-        &lt;server&gt;127.0.0.1&lt;server&gt;
-        &lt;port&gt;8001&lt;port&gt;
-        &lt;mount&gt;example.ogg&lt;mount&gt;
-        &lt;local-mount&gt;different.ogg&lt;local-mount&gt;
-        &lt;relay-shoutcast-metadata&gt;0&lt;relay-shoutcast-metadata&gt;
+<pre>
+    &lt;relay&gt;
+        &lt;server&gt;127.0.0.1&lt;/server&gt;
+        &lt;port&gt;8001&lt;/port&gt;
+        &lt;mount&gt;example.ogg&lt;/mount&gt;
+        &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
+        &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
+    &lt;/relay&gt;
+</pre>
 
 </p>
 <h4>server</h4>
@@ -265,18 +277,20 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
 <h2>Mount Specific Settings</h2>
 <pre>
     &lt;mount&gt;
-        &lt;mount-name&gt;/example-complex.ogg&lt;mount-name&gt;
-        &lt;username&gt;othersource&lt;username&gt;
-        &lt;password&gt;hackmemore&lt;password&gt;
-        &lt;max-listeners&gt;1&lt;max-listeners&gt;
-        &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;dump-file&gt;
-        &lt;fallback-mount&gt;example2.ogg&lt;fallback-mount&gt;
+        &lt;mount-name&gt;/example-complex.ogg&lt;/mount-name&gt;
+        &lt;username&gt;othersource&lt;/username&gt;
+        &lt;password&gt;hackmemore&lt;/password&gt;
+        &lt;max-listeners&gt;1&lt;/max-listeners&gt;
+        &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
+        &lt;fallback-mount&gt;example2.ogg&lt;/fallback-mount&gt;
+        &lt;fallback-override&gt;1&lt;/fallback-override&gt;
+        &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
         &lt;/authentication&gt;
 
-    &lt;mount&gt;
+    &lt;/mount&gt;
 </pre>
 <p>This section contains settings which apply only to a specific mountpoint.  Within this section you can reserve a specific mountpoint and set a source username/password for that mountpoint (not yet implemented) as well as specify individual settings which will apply only to the supplied mountpoint.
 </p>
@@ -304,6 +318,16 @@ An optional value which will set the filename which will be a dump of the stream
 <div class=indentedbox>
 This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected; all currently connected clients will be moved to the fallback-mount.
 </div>
+<h4>fallback-override</h4>
+<div class=indentedbox>
+When enabled, this allows a connecting source client or relay on this mountpoint to move
+listening clients back from the fallback mount.
+</div>
+<h4>burst-size</h4>
+<div class=indentedbox>
+This optional setting allows for providing a burst size which overrides the default burst size
+as defined in limits.  The value is in bytes.
+</div>
 <h4>authentication</h4>
 <div class=indentedbox>
 This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication <a href="icecast2_listenerauth.html">here</a>.
@@ -315,13 +339,13 @@ This specifies that the named mount point will require listener authentication. 
 <h2>Path Settings</h2>
 <pre>
     &lt;paths&gt;
-        &lt;basedir&gt;./&lt;basedir&gt;
-        &lt;logdir&gt;./logs&lt;logdir&gt;
-        &lt;pidfile&gt;./icecast.pid&lt;pidfile&gt;
-        &lt;webroot&gt;./web&lt;webroot&gt;
-        &lt;adminroot&gt;./admin&lt;adminroot&gt;
+        &lt;basedir&gt;./&lt;/basedir&gt;
+        &lt;logdir&gt;./logs&lt;/logdir&gt;
+        &lt;pidfile&gt;./icecast.pid&lt;/pidfile&gt;
+        &lt;webroot&gt;./web&lt;/webroot&gt;
+        &lt;adminroot&gt;./admin&lt;/adminroot&gt;
         &lt;alias source="/foo" dest="/bar"/&gt;
-    &lt;paths&gt;
+    &lt;/paths&gt;
 </pre>
 <p>This section contains paths which are used for various things within icecast.  All paths should not end in a '/'.
 </p>
