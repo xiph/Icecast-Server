@@ -13,18 +13,18 @@ Class2=CIcecast2winDlg
 Class3=CAboutDlg
 
 ResourceCount=10
-Resource1=IDD_ABOUTBOX
+Resource1=IDD_SSTATUS
 Resource2=IDR_MAINFRAME
-Resource3=IDR_MENU3
-Resource4=IDR_TRAY
+Resource3=IDD_ABOUTBOX
+Resource4=IDD_ICECAST2WIN_DIALOG
 Class4=CStatus
-Resource5=IDR_MENU2
+Resource5=IDR_TRAY
 Class5=CConfigTab
 Class6=CStatsTab
-Resource6=IDD_SSTATUS
-Resource7=IDD_CONFIGDIALOG
-Resource8=IDD_ICECAST2WIN_DIALOG
-Resource9=IDD_STATSDIALOG
+Resource6=IDD_STATSDIALOG
+Resource7=IDR_MENU2
+Resource8=IDD_CONFIGDIALOG
+Resource9=IDR_MENU3
 Resource10=IDR_MENU4
 
 [CLS:CIcecast2winApp]
