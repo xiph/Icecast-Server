@@ -1,17 +1,23 @@
-<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
-<div class=boxtest>
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Icecast v2.0 Documentation</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+<div class="boxtest">
 <h1>Icecast 2 Listener Authentication</h1>
-<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
-<br>
-<br>
-<br>
+<table width="100%"><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+<br />
+<br />
+<br />
 <h2>Listener Authentication</h2>
 <p>Listener authentication is a feature of icecast which allows you to secure certain mountpoint so that in order to listen, a listener must provide a username and password.  With this feature a simple pay-for-play operation can be setup.  This section will show you the basics of setting up and maintaining this component.</p>
 
-<br>
-<br>
-<br>
+<br />
+<br />
+<br />
 <h2>HTPASSWD Listener Authentication</h2>
 <h3>Config File Entries</h3>
 <p>In order to use listener authentication, you MUST configure a mount specific option.  This means that you have to provide a &lt;mount&gt; section in the main icecast config file.  The following is an example :</p>
@@ -27,26 +33,26 @@
 <p>To support listener authentication you MUST provide at a minimum &lt;mount-name&gt; and &lt;authentication&gt;.  The mount-name is the name of the mountpoint that you will use to connect your source client with and authentication configures what type of icecast2 authenticator to use.  Currently, only a single type "htpasswd" is implemented.  New authenticators will be added later.  Each authenticator has a variable number of options that are required and these are specified as shown in the example.  The htpasswd authenticator requires a few parameters.  The first, filename, specifies the name of the file to use to store users and passwords.  Note that this file need not exist (and probably will not exist when you first set it up).  Icecast has built-in support for managing users and passwords via the web admin interface.  More on this later in this section.  The second option, allow_duplicate_users, if set to 0, will prevent multiple connections using the same username.  Setting this value to 1 will enable mutltiple connections from the same username on a given mountpoint.  Note there is no way to specify a "max connections" for a particular user.
 
 <p>Icecast supports a mixture of streams that require listener authentication and those that do not.  Only mounts that are named in the config file can be configured for listener authentication.</p>
-<br>
-<br>
-<br>
+<br />
+<br />
+<br />
 <h3>Configuring Users and Passwords</h3>
 <p>Once the appropriate entries are made to the config file, connect your source client (using the mountpoint you named in the config file).  To configure users and passwords for this stream you must use the web-based admin interface.  Navigate to http://server:ip/admin/stats.xsl to begin.  If you have configured everything properly, you should see a screen like the following :</p>
-<img border=1 src="listener_auth1.jpg">
+<img border="1" src="listener_auth1.jpg" />
 <p>You will see a red key in front of all mountpoint configured for listener authentication.  Also note that this page will only show CONNECTED mountpoints.</p>
 <p>To manage users and passwords for this mountpoint, click on the red key or follow the "Manage Authentication" link.  The following screen will be shown :</p>
-<img border=1 src="listener_auth2.jpg">
+<img border="1" src="listener_auth2.jpg" />
 <p>This screen will show all the users configured for this mountpoint.  Adding users is as simple as entering a username and password in the fields and clicking "Add New User".  Note that usernames MUST be unique and there are NO restrictions on passwords.  You can delete users by clicking the appropriate delete link next to each user.</p>
-<br>
-<br>
-<br>
+<br />
+<br />
+<br />
 <h3>Finishing it all off</h3>
 <p>Ok, so you've created your users, and you have everything setup properly, how do your users login ?  Well, we've provided a simple login form that you can use for this purpose.  This page (http://server:port/auth.xsl) will bring up a form that users can use to enter their username and password.</p>
-<img border=1 src="listener_auth3.jpg">
+<img border="1" src="listener_auth3.jpg" />
 <p>This page will serve a m3u with the username and password and in most cases should open the correct media player and begin playing your stream</p>
-<br>
-<br>
-<br>
+<br />
+<br />
+<br />
 <h2>A note about players and authentication</h2>
 <p>We do not have an exaustive list of players that support listener authentication.  We use standard HTTP basic authentication, and in general, many media players support this if they support anything at all.  Winamp and Foobar2000 support HTTP basic authentication on windows, and XMMS supports it on unix platforms.</p>
 </div>
