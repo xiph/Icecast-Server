@@ -5,6 +5,12 @@ BUGS
 - seem to be some segfaults in httpp still.  in a few of the cores i've
 	been sent, the avl_tree is null when calling into the avl module.
 
+- ensure we don't connect a source if the fd would be more then FD_SETSIZE
+  (1024, on linux). Otherwise memory gets overrun, and crashes result. 
+  Preferably allow using poll() instead of select() through a lightweight
+  abstraction.
+
+
 
 
 FEATURES
