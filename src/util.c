@@ -253,8 +253,8 @@ char *util_url_escape(char *src)
         }
         else {
             dst[j] = '%';
-            dst[j+1] = hexchars[ source[i] & 0x15 ];
-            dst[j+2] = hexchars[ (source[i] >> 4) & 0x15 ];
+            dst[j+1] = hexchars[ (source[i] >> 4) & 0xf ];
+            dst[j+2] = hexchars[ source[i] & 0xf ];
             j+= 3;
         }
     }
