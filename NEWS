@@ -19,6 +19,17 @@ clients to alternative slave hosts.
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
 
+kh53
+. remove the last remaining stats at stream shutdown.
+. implement hidden attribute for stats, source stats can be toggled between
+  hidden/visible. This is a slight change to stats usage but not major.
+. mountpoints on xsl are better handled now
+. drop slave-host from xml parsing. They are used internally, created and
+  removed by master relays authenticating against the relay user/pass.
+. when moving clients don't report on-demand relays as source not available
+. when moving clients don't show move clients on mount /a to /a entry.
+. race fix for YP entries
+
 kh52
 . A lot of resync work with trunk
 . add queue shrinking, reduces queues to either last listener or burst
