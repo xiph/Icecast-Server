@@ -142,7 +142,9 @@ int fserve_client_waiting (void)
             i++;
         }
     }
-    if (ufds && poll(ufds, fserve_clients, 200) > 0)
+    if (!ufds)
+      thread_sleep(200000);
+    else if (poll(ufds, fserve_clients, 200) > 0)
     {
         /* mark any clients that are ready */
         fclient = active_list;
