@@ -438,8 +438,6 @@ static void command_move_clients(client_t *client, source_t *source,
 {
     char *dest_source;
     source_t *dest;
-    avl_node *client_node;
-    client_t *current;
     xmlDocPtr doc;
     xmlNodePtr node;
     char buf[255];
@@ -459,16 +457,23 @@ static void command_move_clients(client_t *client, source_t *source,
         return;
     }
 
+    dest = source_find_mount (dest_source);
+
+    if (dest == NULL)
+    {
+        client_send_400 (client, "No such destination");
+        return;
+    }
+
     if (strcmp (dest->mount, source->mount) == 0) 
     {
         client_send_400 (client, "supplied mountpoints are identical");
         return;
     }
 
-    dest = source_find_mount(dest_source);
-
-    if(dest == NULL) {
-        client_send_400(client, "No such source");
+    if (dest->running == 0)
+    {
+        client_send_400 (client, "Destination not running");
         return;
     }
 
@@ -476,26 +481,11 @@ static void command_move_clients(client_t *client, source_t *source,
     node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
     xmlDocSetRootElement(doc, node);
 
-    avl_tree_wlock(source->client_tree);
-    client_node = avl_get_first(source->client_tree);
-    while(client_node) {
-        current = (client_t *)client_node->key;
+    source_move_clients (source, dest);
 
-        avl_tree_wlock(dest->pending_tree);
-        avl_insert(dest->pending_tree, current);
-        avl_tree_unlock(dest->pending_tree);
-
-        client_node = avl_get_next(client_node);
-
-        avl_delete(source->client_tree, current, source_remove_client);
-        source->listeners--;
-    }
-
-    avl_tree_unlock(source->client_tree);
-        
     memset(buf, '\000', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "Clients moved from %s to %s", dest_source, 
-        source->mount);
+    snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
+            source->mount, dest_source);
     xmlNewChild(node, NULL, "message", buf);
     xmlNewChild(node, NULL, "return", "1");
 

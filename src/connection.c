@@ -95,6 +95,7 @@ void connection_initialize(void)
     
     thread_mutex_create(&_connection_mutex);
     thread_mutex_create(&_queue_mutex);
+    thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&_pool_cond);
     thread_cond_create(&global.shutdown_cond);
@@ -111,6 +112,7 @@ void connection_shutdown(void)
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_mutex_destroy(&_queue_mutex);
     thread_mutex_destroy(&_connection_mutex);
+    thread_mutex_destroy(&move_clients_mutex);
 
     _initialized = 0;
 }
