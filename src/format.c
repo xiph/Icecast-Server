@@ -80,7 +80,7 @@ int format_generic_write_buf_to_client(format_plugin_t *format,
         client_t *client, unsigned char *buf, int len)
 {
     int ret;
-    
+
     ret = sock_write_bytes(client->con->sock, buf, len);
 
     if(ret < 0) {

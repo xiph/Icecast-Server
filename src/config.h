@@ -20,6 +20,7 @@ typedef struct _relay_server {
     int port;
     char *mount;
     char *localmount;
+    int mp3metadata;
     struct _relay_server *next;
 } relay_server;
 
@@ -44,6 +45,7 @@ typedef struct ice_config_tag
 
 	int client_limit;
 	int source_limit;
+    long queue_size_limit;
 	int threadpool_size;
 	int client_timeout;
 	int header_timeout;

@@ -6,6 +6,7 @@
 		<clients>100</clients>
 		<sources>2</sources>
 		<threadpool>5</threadpool>
+        <queue-size>102400</queue-size>
 		<client-timeout>30</client-timeout>
 		<header-timeout>15</header-timeout>
 		<source-timeout>10</source-timeout>
@@ -42,6 +43,9 @@
       <server>127.0.0.1</server>
       <port>8001</port>
       <mount>/example.ogg</mount>
+      <local-mount>/different.ogg</local-mount>
+
+      <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
     </relay>
     -->
 

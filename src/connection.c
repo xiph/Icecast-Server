@@ -535,6 +535,7 @@ static void handle_metadata_request(client_t *client)
     free(state->metadata);
     state->metadata = strdup(value);
     state->metadata_age++;
+    state->metadata_raw = 0;
     thread_mutex_unlock(&(state->lock));
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", mount, value);

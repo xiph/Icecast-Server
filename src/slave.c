@@ -66,7 +66,7 @@ void slave_shutdown(void) {
 }
 
 static void create_relay_stream(char *server, int port, 
-        char *remotemount, char *localmount)
+        char *remotemount, char *localmount, int mp3)
 {
     sock_t streamsock;
 	char header[4096];
@@ -85,7 +85,13 @@ static void create_relay_stream(char *server, int port,
         return;
 	}
 	con = create_connection(streamsock, NULL);
-	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", remotemount);
+    if(mp3) {
+    	sock_write(streamsock, "GET %s HTTP/1.0\r\nIcy-MetaData: 1\r\n", 
+                remotemount);
+    }
+    else {
+    	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", remotemount);
+    }
 	memset(header, 0, sizeof(header));
 	if (util_read_header(con->sock, header, 4096) == 0) {
 		connection_close(con);
@@ -168,7 +174,7 @@ static void *_slave_thread(void *arg) {
                     create_relay_stream(
                             config_get_config()->master_server,
                             config_get_config()->master_server_port,
-                            buf, NULL);
+                            buf, NULL, 0);
     			} 
                 else
     	    		avl_tree_unlock(global.source_tree);
@@ -184,7 +190,7 @@ static void *_slave_thread(void *arg) {
                 avl_tree_unlock(global.source_tree);
 
                 create_relay_stream(relay->server, relay->port, relay->mount,
-                        relay->localmount);
+                        relay->localmount, relay->mp3metadata);
             }
             else
                 avl_tree_unlock(global.source_tree);

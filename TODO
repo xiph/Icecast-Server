@@ -2,11 +2,11 @@ BUGS
 ----
 - stats get off?  this needs testing more testing.
 
-- autoconf doesn't set HAVE_POLL  (still true?)
-
 - some stuff (like 'genre') isn't making it into the stats dump
 
 - make install - doesn't install configs?
+
+- logging - bytes send and time listening may both be broken?
 
 FEATURES
 --------
@@ -46,7 +46,10 @@ FEATURES
 
 - httpp - split out query string for further processing
 
-- binding to multiple ports (possibly including full ipv6 support)
+- binding to multiple ports
 
+- option to use ipv6 (equiv to using <bind-address>::</bindaddress>, I think.
+
+- per-mountpoint listener maximums.
 
 

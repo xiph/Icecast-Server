@@ -101,15 +101,19 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
         return 0;
     }
 
-    fullmetadata_size = strlen(source_state->metadata) + 
-        strlen("StreamTitle='';StreamUrl=''") + 1;
+    if(source_state->metadata_raw) {
+        fullmetadata_size = strlen(source_state->metadata);
+        fullmetadata = source_state->metadata;
+    }
+    else {
+        fullmetadata_size = strlen(source_state->metadata) + 
+            strlen("StreamTitle='';StreamUrl=''") + 1;
 
-    fullmetadata = alloca(fullmetadata_size);
+        fullmetadata = alloca(fullmetadata_size);
 
-    memset(fullmetadata, 0, fullmetadata_size);
-
-    sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", 
-            source_state->metadata);
+        sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", 
+                source_state->metadata);
+    }
 
     source_age = source_state->metadata_age;
     send_metadata = source_age != client_state->metadata_age;
@@ -210,14 +214,104 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
 	refbuf_t *refbuf;
     mp3_state *state = self->_state;
 
-    if(!data) {
-        *buffer = NULL;
+    /* Set this to NULL in case it doesn't get set to a valid buffer later */
+    *buffer = NULL;
+
+    if(!data)
         return 0;
-    }
+    
     if(state->inline_metadata_interval) {
+        /* Source is sending metadata, handle it... */
+
+        while(len > 0) {
+            int to_read = state->inline_metadata_interval - state->offset;
+            if(to_read > 0) {
+                refbuf_t *old_refbuf = *buffer;
+
+                if(to_read > len)
+                    to_read = len;
+
+                if(old_refbuf) {
+                    refbuf = refbuf_new(to_read + old_refbuf->len);
+                    memcpy(refbuf->data, old_refbuf->data, old_refbuf->len);
+                    memcpy(refbuf->data+old_refbuf->len, data, to_read);
+
+                    refbuf_release(old_refbuf);
+                }
+                else {
+                    refbuf = refbuf_new(to_read);
+                    memcpy(refbuf->data, data, to_read);
+                }
+
+                *buffer = refbuf;
+
+                state->offset += to_read;
+                data += to_read;
+                len -= to_read;
+            }
+            else if(!state->metadata_length) {
+                /* Next up is the metadata byte... */
+                unsigned char byte = data[0];
+                data++;
+                len--;
+
+                /* According to the "spec"... this byte * 16 */
+                state->metadata_length = byte * 16;
+                if(state->metadata_length) {
+                    state->metadata_buffer = 
+                        calloc(state->metadata_length + 1, 1);
+
+                    /* Ensure we have a null-terminator even if the source
+                     * stream is invalid.
+                     */
+                    state->metadata_buffer[state->metadata_length] = 0;
+                }
+                else {
+                    state->offset = 0;
+                }
+
+                state->metadata_offset = 0;
+            }
+            else {
+                /* Metadata to read! */
+                int readable = state->metadata_length - state->metadata_offset;
+
+                if(readable > len)
+                    readable = len;
+
+                memcpy(state->metadata_buffer + state->metadata_offset, 
+                        data, readable);
+
+                data += readable;
+                len -= readable;
+
+                if(state->metadata_offset == state->metadata_length)
+                {
+                    state->offset = 0;
+                    state->metadata_length = 0;
+                
+                    if(state->metadata_length)
+                    {
+                        thread_mutex_lock(&(state->lock));
+                        free(state->metadata);
+                        state->metadata = state->metadata_buffer;
+                        state->metadata_buffer = NULL;
+                        state->metadata_age++;
+                        state->metadata_raw = 1;
+                        thread_mutex_unlock(&(state->lock));
+                    }
+                }
+            }
+        }
+
+        /* Either we got a buffer above (in which case it can be used), or
+         * we set *buffer to NULL in the prologue, so the return value is
+         * correct anyway...
+         */
         return 0;
     }
     else {
+        /* Simple case - no metadata, just dump data directly to a buffer */
         refbuf = refbuf_new(len);
 
         memcpy(refbuf->data, data, len);

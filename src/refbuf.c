@@ -83,8 +83,12 @@ refbuf_t *refbuf_queue_remove(refbuf_queue_t **queue)
 
 	refbuf = item->refbuf;
 	item->refbuf = NULL;
+
+    if(*queue)
+        (*queue)->total_length = item->total_length - refbuf->len;
 	
 	free(item);
+
        
 	return refbuf;
 }
@@ -95,6 +99,7 @@ void refbuf_queue_insert(refbuf_queue_t **queue, refbuf_t *refbuf)
 
 	item->refbuf = refbuf;
 	item->next = *queue;
+    item->total_length = item->next->total_length + item->refbuf->len;
 	*queue = item;
 }
 
@@ -111,5 +116,12 @@ int refbuf_queue_size(refbuf_queue_t **queue)
 	return size;
 }
 
+int refbuf_queue_length(refbuf_queue_t **queue)
+{
+    if(*queue)
+        return (*queue)->total_length;
+    else
+        return 0;
+}
 
 

@@ -13,6 +13,7 @@
 #define CONFIG_DEFAULT_ADMIN "icemaster@localhost"
 #define CONFIG_DEFAULT_CLIENT_LIMIT 256
 #define CONFIG_DEFAULT_SOURCE_LIMIT 16
+#define CONFIG_DEFAULT_QUEUE_SIZE_LIMIT (100*1024)
 #define CONFIG_DEFAULT_THREADPOOL_SIZE 4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT 30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
@@ -193,6 +194,7 @@ static void _set_defaults(void)
 	_configuration.admin = CONFIG_DEFAULT_ADMIN;
 	_configuration.client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
 	_configuration.source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
+	_configuration.queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
 	_configuration.threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
 	_configuration.client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
 	_configuration.header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
@@ -318,6 +320,10 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.source_limit = atoi(tmp);
 			if (tmp) xmlFree(tmp);
+		} else if (strcmp(node->name, "queue-size") == 0) {
+			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			_configuration.queue_size_limit = atoi(tmp);
+			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "threadpool") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.threadpool_size = atoi(tmp);
@@ -424,6 +430,11 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node)
         else if (strcmp(node->name, "local-mount") == 0) {
 			relay->localmount = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "relay-shoutcast-metadata") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            relay->mp3metadata = atoi(tmp);
+            if(tmp) xmlFree(tmp);
         }
 	} while ((node = node->next));
 }

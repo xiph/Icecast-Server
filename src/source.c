@@ -153,6 +153,8 @@ void *source_main(void *arg)
 	int	i=0;
 	int	suppress_yp = 0;
 
+    long queue_limit = config_get_config()->queue_size_limit;
+
 	timeout = config_get_config()->source_timeout;
 
 	/* grab a read lock, to make sure we get a chance to cleanup */
@@ -447,10 +449,8 @@ void *source_main(void *arg)
 			/* if the client is too slow, its queue will slowly build up.
 			** we need to make sure the client is keeping up with the
 			** data, so we'll kick any client who's queue gets to large.
-			** the queue_limit might need to be tuned, but should work fine.
-			** TODO: put queue_limit in a config file
 			*/
-			if (refbuf_queue_size(&client->queue) > 25) {
+			if (refbuf_queue_length(&client->queue) > queue_limit) {
                 DEBUG0("Client has fallen too far behind, removing");
 				client->con->error = 1;
 			}
