@@ -427,6 +427,7 @@ static int _check_source_pass(http_parser_t *parser, char *mount)
             user = mountinfo->username;
             break;
         }
+        mountinfo = mountinfo->next;
     }
 
     if(!pass) {
