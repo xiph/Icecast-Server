@@ -47,7 +47,7 @@ ac_save_LDFLAGS="$LDFLAGS"
 LDFLAGS="$LDFLAGS $VORBIS_LDFLAGS"
 LIBS="$LIBS $VORBIS_LIBS"
 AC_MSG_CHECKING([for libvorbis])
-AC_TRY_LINK_FUNC(vorbis_info_init, [AC_MSG_RESULT([ok])],
+AC_TRY_LINK_FUNC(ogg_stream_init, [AC_MSG_RESULT([ok])],
         [LIBS="$LIBS $OGG_LIBS -lm"
         AC_TRY_LINK_FUNC(vorbis_info_init,
             [AC_MSG_RESULT([found, adding extra libs])
