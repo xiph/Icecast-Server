@@ -1,5 +1,5 @@
 dnl xiph_compiler.m4
-dnl $Id: xiph_compiler.m4,v 1.2 2003/06/24 02:41:19 karl Exp $
+dnl $Id: xiph_compiler.m4,v 1.3 2003/06/24 05:04:54 brendan Exp $
 
 dnl XIPH_CLEAN_CCFLAGS
 dnl Brendan Cully <brendan@xiph.org> 20030612
@@ -33,7 +33,7 @@ done
 for flag in $xcc_REV_FLAGS
 do
   if { cat <<EOF
- $2 x
+ $$2 x
 EOF
 } | $FGREP -v -e " $flag " > /dev/null
   then
