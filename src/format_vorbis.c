@@ -226,7 +226,6 @@ static refbuf_t *get_buffer_audio (vstate_t *source_vorbis)
     }
     if (get_ogg_page (&source_vorbis->out_os, &page) > 0)
     {
-        refbuf_t *header;
         /* printf ("got audio page %lld\n", ogg_page_granulepos (&page)); */
         /* squeeze a page copy into a buffer */
         source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
@@ -235,13 +234,6 @@ static refbuf_t *get_buffer_audio (vstate_t *source_vorbis)
         refbuf = refbuf_new (page.header_len + page.body_len);
         memcpy (refbuf->data, page.header, page.header_len);
         memcpy (refbuf->data+page.header_len, page.body, page.body_len);
-        refbuf->associated = source_vorbis->headers_head;
-        header = source_vorbis->headers_head;
-        while (header)
-        {
-            refbuf_addref (header);
-            header = header->next;
-        }
         /* printf ("setting associated to %p\n", refbuf->associated); */
     }
     return refbuf;
@@ -258,7 +250,6 @@ static refbuf_t *get_buffer_header (vstate_t *source_vorbis)
     {
         refbuf_t *refbuf;
         /* squeeze a page copy into a buffer */
-        /* printf ("Stored vorbis header\n"); */
         refbuf = refbuf_new (page.header_len + page.body_len);
         memcpy (refbuf->data, page.header, page.header_len);
         memcpy (refbuf->data+page.header_len, page.body, page.body_len);
@@ -270,6 +261,7 @@ static refbuf_t *get_buffer_header (vstate_t *source_vorbis)
         if (source_vorbis->headers_head == NULL)
             source_vorbis->headers_head = refbuf;
         source_vorbis->headers_tail = refbuf;
+        /* printf ("Stored vorbis header %p\n", refbuf); */
         headers_flushed = 1;
     }
     if (headers_flushed)
@@ -284,10 +276,10 @@ static refbuf_t *get_buffer_header (vstate_t *source_vorbis)
 static refbuf_t *get_buffer_finished (vstate_t *source_vorbis)
 {
     ogg_page page;
+    refbuf_t *refbuf;
 
     if (ogg_stream_flush (&source_vorbis->out_os, &page) > 0)
     {
-        refbuf_t *refbuf;
         /* printf ("EOS stream flush %lld\n", ogg_page_granulepos (&page)); */
 
         source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
@@ -302,6 +294,15 @@ static refbuf_t *get_buffer_finished (vstate_t *source_vorbis)
     }
     ogg_stream_clear (&source_vorbis->out_os);
     ogg_stream_init (&source_vorbis->out_os, get_next_serialno());
+    printf ("clearing up header pages \n");
+    refbuf = source_vorbis->headers_head;
+    while (refbuf)
+    {
+        refbuf_t *to_go = refbuf;
+        refbuf = refbuf->next;
+        /* printf ("releasing vorbis header %p\n", to_go); */
+        refbuf_release (to_go);
+    }
     source_vorbis->headers_head = NULL;
     source_vorbis->headers_tail = NULL;
     source_vorbis->get_buffer_page = get_buffer_header;
@@ -486,8 +487,6 @@ static int initial_vorbis_page (vstate_t *source_vorbis, ogg_packet *packet)
     source_vorbis->prev_packet = NULL;
     source_vorbis->prev_window = 0;
 
-    source_vorbis->headers_head = NULL;
-    source_vorbis->headers_tail = NULL;
     source_vorbis->initial_audio_packet = 1;
 
     return 0;
@@ -587,8 +586,15 @@ static refbuf_t *vorbis_get_buffer (source_t *source)
                 refbuf = source_vorbis->get_buffer_page (source_vorbis);
             if (refbuf)
             {
-               refbuf->sync_point = 1;
-               return refbuf;
+                refbuf_t *header = source_vorbis->headers_head;
+                refbuf->associated = source_vorbis->headers_head;
+                while (header)
+                {
+                    refbuf_addref (header);
+                    header = header->next;
+                }
+                refbuf->sync_point = 1;
+                return refbuf;
             }
             
             /* printf ("check for processed packets\n"); */
