@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.8 2003/07/29 00:30:36 karl Exp $ */
+/* $Id: avl.c,v 1.9 2003/10/31 19:18:42 oddsock Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -93,6 +93,7 @@ avl_tree_free_helper (avl_node * node, avl_free_key_fun_type free_key_fun)
   if (node->right) {
     avl_tree_free_helper (node->right, free_key_fun);
   }
+  thread_rwlock_destroy (&node->rwlock);
   free (node);
 }
   
@@ -103,6 +104,7 @@ avl_tree_free (avl_tree * tree, avl_free_key_fun_type free_key_fun)
     avl_tree_free_helper (tree->root->right, free_key_fun);
   }
   if (tree->root) {
+    thread_rwlock_destroy(&tree->root->rwlock);
     free (tree->root);
   }
   thread_rwlock_destroy(&tree->rwlock);
