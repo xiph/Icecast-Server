@@ -44,6 +44,10 @@ typedef struct {
    int metadata_offset;
 } mp3_client_data;
 
+#ifdef WIN32
+#define alloca _alloca
+#endif
+
 format_plugin_t *format_mp3_get_plugin(void)
 {
 	format_plugin_t *plugin;

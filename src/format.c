@@ -21,6 +21,11 @@
 #include "logging.h"
 #define CATMODULE "format"
 
+#ifdef WIN32
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+#endif
+
 format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
