@@ -7,7 +7,9 @@
 dnl XIPH_PATH_OGG([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 dnl Test for libogg, and define OGG_CFLAGS and OGG_LIBS
 dnl
-AC_DEFUN(XIPH_PATH_OGG,
+dnl $Id$
+dnl
+AC_DEFUN([XIPH_PATH_OGG],
 [dnl 
 dnl Get the cflags and libraries
 dnl

@@ -1,7 +1,9 @@
 dnl XIPH_PATH_CURL([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 dnl Test for libcurl, and define CURL_CFLAGS and CURL_LIBS
 dnl
-AC_DEFUN(XIPH_PATH_CURL,
+dnl $Id$
+dnl
+AC_DEFUN([XIPH_PATH_CURL],
 [dnl 
 dnl Get the cflags and libraries
 dnl
