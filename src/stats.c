@@ -84,6 +84,9 @@ void stats_shutdown()
 {
 	int n;
 
+    if(!_stats_running) /* We can't shutdown if we're not running. */
+        return;
+
 	/* wait for thread to exit */
 	_stats_running = 0;
 	thread_join(_stats_thread_id);
