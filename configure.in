@@ -11,12 +11,6 @@ AM_PROG_LIBTOOL
 
 dnl Set some options based on environment
 
-case "$host" in
-    *openbsd* | *irix*)
-    ;;
-    *) AC_DEFINE(_XOPEN_SOURCE, 600, [Define if you have POSIX and XPG specifications])
-    ;;
-esac
 DEBUG="-g"
 if test -z "$GCC"; then
     XIPH_CPPFLAGS="-D_REENTRANT"
@@ -35,14 +29,18 @@ if test -z "$GCC"; then
                 PROFILE="-g -p"
                 ;;
     esac
+
+    case "$host" in
+        *openbsd* | *irix*)
+        ;;
+        *) AC_DEFINE([_XOPEN_SOURCE], 600, [Define if you have POSIX and XPG specifications])
+        ;;
+    esac
+
 else
     XIPH_CPPFLAGS="-Wall -ffast-math -fsigned-char"
     PROFILE="-pg -g"
-    case $host in 
-        *-solaris*)
-                AC_DEFINE(__EXTENSIONS__, 1, [define to 1 to get resolve header problem on solaris])
-                ;;
-    esac
+    AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
 fi
 
 dnl Checks for programs.
@@ -52,6 +50,7 @@ dnl Checks for libraries.
 dnl Checks for header files.
 AC_HEADER_STDC
 
+AC_CHECK_HEADERS([alloca.h])
 AC_CHECK_HEADER(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
 AC_CHECK_HEADER(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
 

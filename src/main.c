@@ -19,7 +19,7 @@
 #include <errno.h>
 #endif
 
-#ifdef HAVE_UNISTD_H
+#ifdef CHROOT
 #include <unistd.h>
 #endif
 
