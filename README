@@ -1,1 +1,23 @@
-This is still experimental.
+Icecast2 alpha 1.
+
+This is an alpha release. Not all functionality is fully implemented, though
+we believe it to be very stable for all the currently available features.
+
+It is known to build on linux and win32, and should be easily ported to other
+unix platforms (we expect this will require some autoconf work, though).
+
+Run
+   ./configure
+   make
+   make install
+
+To build and install this release.
+
+Documentation is mostly missing at this point. The example config file should
+explain most of the features available (but note that the directory services
+are not yet available). 
+
+Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
+us at irc.xiph.org, channel #icecast (or irc.openprojects.net, #icecast, though
+we're not always there) if you have any troubles.
+
