@@ -60,7 +60,6 @@ static void _initialize_subsystems(void)
 	global_initialize();
 	refbuf_initialize();
     xslt_initialize();
-    fserve_initialize();
 }
 
 static void _shutdown_subsystems(void)
@@ -265,14 +264,14 @@ int main(int argc, char **argv)
 	int res, ret;
 	char filename[256];
 
-	/* startup all the modules */
-	_initialize_subsystems();
-
 	/* parse the '-c icecast.xml' option
 	** only, so that we can read a configfile
 	*/
 	res = _parse_config_file(argc, argv, filename, 256);
 	if (res == 1) {
+	    /* startup all the modules */
+    	_initialize_subsystems();
+
 		/* parse the config file */
 		ret = config_parse_file(filename);
 		if (ret < 0) {
@@ -296,7 +295,6 @@ int main(int argc, char **argv)
 		}
 	} else if (res == -1) {
 		_print_usage();
-		_shutdown_subsystems();
 		return 1;
 	}
 	
@@ -313,6 +311,7 @@ int main(int argc, char **argv)
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
 
     stats_initialize(); /* We have to do this later on because of threading */
+    fserve_initialize(); /* This too */
 
 #ifdef CHUID 
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
