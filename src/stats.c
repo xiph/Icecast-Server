@@ -740,10 +740,14 @@ void stats_get_xml(xmlDocPtr *doc)
     event = _get_event_from_queue(&queue);
     while (event) {
         if (event->source == NULL) {
-            xmlNewChild(node, NULL, event->name, event->value);
+            xmlChar *value = xmlEncodeEntitiesReentrant (doc, event->value);
+            xmlNewChild(node, NULL, event->name, value);
+            xmlFree (value);
         } else {
+            xmlChar *value = xmlEncodeEntitiesReentrant (doc, event->value);
             srcnode = _find_xml_node(event->source, &src_nodes, node);
-            xmlNewChild(srcnode, NULL, event->name, event->value);
+            xmlNewChild(srcnode, NULL, event->name, value);
+            xmlFree (value);
         }
 
         _free_event(event);
