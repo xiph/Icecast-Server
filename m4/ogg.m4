@@ -46,6 +46,7 @@ AC_TRY_LINK_FUNC(ogg_sync_init,
             [ ifelse([$2], ,[AC_MSG_ERROR([not found, maybe you need to set LD_LIBRARY_PATH or /etc/ld.so.conf])], [$2])])
         ])
 CFLAGS="$ac_save_CFLAGS"
+LDFLAGS="$ac_save_LDFLAGS"
 LIBS="$ac_save_LIBS"
 
 AC_SUBST(OGG_CFLAGS)
