@@ -103,4 +103,4 @@ AC_SUBST(DEBUG)
 AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
 
-AC_OUTPUT(Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile)
+AC_OUTPUT(Makefile conf/Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile)

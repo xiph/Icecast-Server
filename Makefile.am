@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign dist-zip
 
-SUBDIRS = src
+SUBDIRS = src conf
 
 EXTRA_DIST = README AUTHORS COPYING
 
