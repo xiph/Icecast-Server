@@ -25,11 +25,10 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include <os.h>
 #else
 #include <unistd.h>
 #endif
-
-#include <os.h>
 
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
