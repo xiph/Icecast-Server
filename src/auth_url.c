@@ -94,7 +94,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     auth_client *auth_user = stream;
     unsigned bytes = size * nmemb;
 
-    if (strncmp (ptr, "icecast-auth-user: 1", 20) == 0)
+    if (strncasecmp (ptr, "icecast-auth-user: 1", 20) == 0)
         auth_user->authenticated = 1;
 
     return (int)bytes;
