@@ -1,0 +1,85 @@
+<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
+<div class=boxtest>
+<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<h1>Icecast 2 FAQ</h1>
+<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+<br>
+<br>
+<br>
+<h2>General Questions</h2>
+<h4>What is Icecast?</h4>
+<div class=indentedbox>
+<p>
+Icecast, the project, is a collection of programs and libraries for
+streaming audio over the Internet. This includes:
+</p>
+<ul>
+<li>icecast, a program that streams audio data to listeners</li>
+<li>libshout, a library for communicating with Icecast servers</li>
+<li>IceS, a program that sends audio data to Icecast servers</li>
+</ul>
+A source client is an external program which is responsible for sending content data to icecast.  Some source clients that support icecast2 are Oddcast, ices2, ices0.3, and DarkIce.
+</div>
+
+<h4>What is icecast, the program?</h4>
+<div class=indentedbox>
+<p>
+icecast streams audio to listeners, and is compatible with Nullsoft’s Shoutcast.
+</p>
+</div>
+<h4>What is libshout ?</h4>
+<div class=indentedbox>
+<p>
+	From the README:
+</p>
+<blockquote>
+	<p>
+	libshout is a library for communicating with and sending data to an icecast server.
+	It handles the socket connection, the timing of the data, and prevents bad data from getting to the icecast server.
+	</p>
+</blockquote>
+</div>
+
+<h4>What is IceS?</h4>
+<div class=indentedbox>
+<p>
+	IceS is a program that sends audio data to an icecast server to broadcast to clients.
+	IceS can either read audio data from disk,
+	such as from Ogg Vorbis files, or sample live audio from a sound card and encode it on the fly.
+</p>
+</div>
+
+<h4>How can I view the stream status page?</h4>
+<div class=indentedbox>
+		<p>
+			Check your icecast configuration file for an element
+			called &lt;webroot&gt;. This directory contains web stuff.
+			In it, place a file called “status.xsl” that
+			transforms an <acronym>XML</acronym> file containing stream
+			data into a web page
+			(either <acronym>XHTML</acronym> or <acronym>HTML</acronym>).
+		</p>
+		<p>
+			There are sample <acronym>XSL</acronym> stylesheets available
+			in icecast/web/ in the CVS distribution
+			of icecast.
+		</p>
+
+		<p>
+			In addition, the web directory can
+			hold multiple status transforms, if you can’t decide which
+			one you want.
+		</p>
+</div>
+
+<h4>What can I use to listen to an Icecast stream?</h4>
+<div class=indentedbox>
+		<p>
+			We maintain a list of Icecast-compatible audio players at
+			<a href="thirdparty.html">http://www.icecast.org/thirdparty.html</a>.
+		</p>
+</div>
+</div>
+</body>
+</html>
+

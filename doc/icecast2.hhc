@@ -9,21 +9,49 @@
 </OBJECT>
 <UL>
 	<LI> <OBJECT type="text/sitemap">
-		<param name="Name" value="Icecast2 - Win32 Specific">
-		<param name="Local" value="index_win32.html">
+		<param name="Name" value="Icecast2 - Table of Contents">
+		<param name="Local" value="icecast2_TOC.html">
 		</OBJECT>
 	<UL>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Server Status Tab">
-			<param name="Local" value="win32_section1.html">
+			<param name="Name" value="Introduction">
+			<param name="Local" value="icecast2_introduction.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Editing A Config File">
-			<param name="Local" value="win32_section2.html">
+			<param name="Name" value="Basic Setup">
+			<param name="Local" value="icecast2_basicsetup.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
-			<param name="Name" value="Stats Tab">
-			<param name="Local" value="win32_section3.html">
+			<param name="Name" value="Icecast Config File">
+			<param name="Local" value="icecast2_config_file.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Admin Interface">
+			<param name="Local" value="icecast2_admin.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Server Statistics">
+			<param name="Local" value="icecast2_stats.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Relaying">
+			<param name="Local" value="icecast2_relay.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Listing in a YP Directory">
+			<param name="Local" value="icecast2_yp.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Win32 specific documentation">
+			<param name="Local" value="icecast2_win32.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Glossary">
+			<param name="Local" value="icecast2_glossary.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="FAQ">
+			<param name="Local" value="icecast2_faq.html">
 			</OBJECT>
 	</UL>
 </UL>

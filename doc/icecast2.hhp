@@ -4,7 +4,7 @@ Compatibility=1.1 or later
 Compiled file=icecast2.chm
 Contents file=icecast2.hhc
 Default Font=,8,0
-Default topic=index_win32.html
+Default topic=icecast2_TOC.html
 Display compile progress=No
 Full-text search=Yes
 Index file=Index.hhk
@@ -13,7 +13,7 @@ Title=Icecast 2
 
 
 [FILES]
-index_win32.html
+icecast2_TOC.html
 
 [INFOTYPES]
 

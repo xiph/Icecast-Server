@@ -1,0 +1,54 @@
+<!doctype html public "-//w3c//dtd html 3.2//en">
+<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
+<div class="boxtest">
+<h1>Icecast 2 - Win32 Specific Documentation</h1>
+<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+<p>
+The win32 port of icecast2 is simply a UI framework around the core icecast2 server.  The win32 version of icecast2 uses directly the main executable of icecast (statically included) and simply provides a GUI interface to icecast2. 
+</p>
+<p>
+Most of the features of icecast2 are available in the win32 port.
+</p>
+<h2>Server Status Tab</h2>
+<p>
+The server status tab contains information regarding statistics that are global to the server.  There are two types of statistics in icecast2, source level and global statistics.  Global statistics are those that are accumilations of stats from all sources offered by the server.  Source level statistics are stats which apply only to a single source attached to the server.
+</p>
+<p>
+Examples of global statistics are :
+</p>
+<pre>
+	The number of current sources connected
+	The number of sources that have attempted connections
+	Total number of attempted connections to the server
+</pre>
+</p>
+<p>
+The Server Status tab contains at a minimal the global stats for the server.  Additionally, you may add source specific stats to this tab.  The intent is to provide a single "dashboard view" of what's going on in the server.  To add source statistics to the Server Status tab, see the section on the Stats tab.
+</p>
+<h3>Adding stats to the window title</h3>
+<p>
+Any stat that is contained on the Server Status tab can be displayed as the icecast2 window title.  This provides yet another mechanism by which you can view activities on the server.  To enable this feature, right click on any stat in the Server Status tab as seen below :
+</p>
+<img src="windowtitle.jpg">
+<br>
+<br>
+<br>
+<h3>Removing source level stats from the Server Status Tab</h3>
+<p>
+To remove a source level stat that you have inserted onto the Server Status Tab, simple right click that statistic and select "Delete from Global Stats".  The stat will be deleted from the Server Status tab, but will still remain on the source level Stats tab.
+</p>
+
+<h2>Editing The Icecast Config File</h2>
+<p>
+Editing the icecast2 configuration file is a very simple process.  For a description of what each field means, see the main icecast documenation.  Changes to the icecast2 configuration can only be done while the server is stopped.  To edit the current server configuration file, select "Configuration/Edit Configuration" from the main menu.
+</p>
+
+<h2>Stats Tab</h2>
+<p>
+The stats tab contains a view of all the connected mountpoints and the statistics that go along with them.  Each connected mountpoint is displayed in the left pane of the window, and all stats for the selected mountpoint are displayed in the right pane of the window.
+</p>
+<img src="stats1.jpg">
+
+</div>
+</body>
+</html>

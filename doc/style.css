@@ -1,7 +1,31 @@
 .ahem { display: none }
+body { 
+	font-size:12px; 
+	font-family:'Lucida Grande', Verdana, Geneva, Lucida, sans-serif;
+	background:#000000; 
+	link:#FFFFFF; 
+	text:#323232; 
+	vlink:#FFFFFF; 
+	alink:#FFFFFF;
+}
+a {
+    font-weight: bold;
+    text-decoration: none;
+}
 
-body { font-size:10px; font-family:Verdana,sans-serif bg-color:#efefef link:#0000ff text:#323232 vlink:#800080 alink:#ff0000 }
-code,pre { font-size:11px; font-family:"Courier New",monospace;background:#cc9; padding:0 0.5em }
+a:link	{	color: #ff0; }
+a:visited { color: #cc3; }
+a:hover	{	color: #f00; }
+code,pre { 
+	font-size:11px; 
+	color:#ffffff;
+	font-family:"Courier New",monospace;
+	background:#999; 
+	padding:0 0.5em 
+}
+td {
+	color:#ffffff;
+}
 pre { padding:0.5em }
 blockquote { margin:0.5em }
 blockquote p { margin:0 }
@@ -14,9 +38,25 @@ p.ruletest { color:red }
 div.boxtest { 
  border:10px solid; 
  padding:30px; 
+ background: #555555;
+ width:80%;;
+ color:#ffffff;
+}
+
+div.smallbox{ 
+ border:2px solid; 
+ padding:40px; 
  background: #ffc; 
  width:600px;
+ text:#FFFFFF;
 }
+
+div.indentedbox { 
+ border:0px solid; 
+ padding:10px; 
+ background: #779; 
+}
+
 
 div.content { 
  border:20px solid; 
