@@ -694,7 +694,7 @@ static void _handle_source_request(connection_t *con,
     client = client_create(con, parser);
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
-                
+
     if (uri[0] != '/')
     {
         WARN0 ("source mountpoint not starting with /");
@@ -708,7 +708,7 @@ static void _handle_source_request(connection_t *con,
              * protocol: attempt to diagnose this and return an error
              */
             /* TODO: Do what the above comment says */
-            INFO1("Source (%s) attempted to login with invalid or missing password", uri);
+            WARN1("Source (%s) attempted to login with invalid or missing password", uri);
             client_send_401(client);
             return;
         }
@@ -787,7 +787,7 @@ static void _handle_get_request(connection_t *con,
     fileserve = config->fileserve;
     host = config->hostname;
     port = config->port;
-    for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
+    for(i = 0; i < global.server_sockets; i++) {
         if(global.serversock[i] == con->serversock) {
             serverhost = config->listeners[i].bind_address;
             serverport = config->listeners[i].port;

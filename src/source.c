@@ -219,6 +219,9 @@ void source_clear_source (source_t *source)
     avl_tree_rlock (source->pending_tree);
     while (avl_get_first (source->pending_tree))
     {
+        /* _free_client decrements client count, so increment it first... */
+        stats_event_inc(NULL, "clients");
+
         avl_delete (source->pending_tree,
                 avl_get_first(source->pending_tree)->key, _free_client);
     }
@@ -689,6 +692,10 @@ void source_main (source_t *source)
         /** add pending clients **/
         client_node = avl_get_first(source->pending_tree);
         while (client_node) {
+
+            /* We have to do this first, since _free_client decrements it... */
+            stats_event_inc(NULL, "clients");
+
             if(source->max_listeners != -1 && 
                     source->listeners >= source->max_listeners) 
             {
@@ -711,7 +718,6 @@ void source_main (source_t *source)
 
             source->listeners++;
             DEBUG0("Client added");
-            stats_event_inc(NULL, "clients");
             stats_event_inc(source->mount, "connections");
 
             client_node = avl_get_next(client_node);
