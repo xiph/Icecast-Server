@@ -193,16 +193,10 @@ int sock_close(sock_t sock)
 /* sock_write_bytes
 **
 ** write bytes to the socket
-** this function will block until all bytes are 
-** written, or there is an unrecoverable error
-** even if the socket is non-blocking
+** this function will _NOT_ block
 */
 int sock_write_bytes(sock_t sock, const char *buff, const int len)
 {
-//	int wrote, res, polled;
-	int res;
-//	struct pollfd socks;
-
 	/* sanity check */
 	if (!buff) {
 		return SOCK_ERROR;
@@ -212,30 +206,7 @@ int sock_write_bytes(sock_t sock, const char *buff, const int len)
 		return SOCK_ERROR;
 	}
 
-//	socks.fd = sock;
-//	socks.events = POLLOUT;
-
-//	wrote = 0;
-//	while (wrote < len) {
-//		polled = poll(&socks, 1, 30000);
-
-//		if ((polled == -1) && sock_recoverable(sock_error()))
-//			continue;
-//		if (polled != 1)
-//			return SOCK_ERROR;
-	
-//		res = send(sock, &buff[wrote], len - wrote, 0);
-		res = send(sock, buff, len, 0);
-//
-//		if ((res < 0) && (!sock_recoverable(sock_error())))
-//			return SOCK_ERROR;
-//		if (res > 0)
-//			wrote += res;
-//	}
-//
-//      return wrote;
-
-	return res;
+	return send(sock, buff, len, 0);
 }
 
 /* sock_write_string
