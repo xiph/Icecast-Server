@@ -94,6 +94,7 @@ int source_free_source(void *key)
 	source_t *source = (source_t *)key;
 
 	free(source->mount);
+    free(source->fallback_mount);
     client_destroy(source->client);
 	avl_tree_free(source->pending_tree, _free_client);
 	avl_tree_free(source->client_tree, _free_client);
@@ -107,6 +108,7 @@ int source_free_source(void *key)
 void *source_main(void *arg)
 {
 	source_t *source = (source_t *)arg;
+    source_t *fallback_source;
 	char buffer[4096];
 	long bytes, sbytes;
 	int ret, timeout;
@@ -346,15 +348,44 @@ done:
 
     DEBUG0("Source exiting");
 
+    avl_tree_rlock(global.source_tree);
+    fallback_source = source_find_mount(source->fallback_mount);
+    avl_tree_unlock(global.source_tree);
+
 	/* we need to empty the client and pending trees */
 	avl_tree_wlock(source->pending_tree);
 	while (avl_get_first(source->pending_tree)) {
-		avl_delete(source->pending_tree, avl_get_first(source->pending_tree)->key, _free_client);
+        client_t *client = (client_t *)avl_get_first(
+                source->pending_tree)->key;
+        if(fallback_source) {
+            avl_delete(source->pending_tree, client, _remove_client);
+
+            // TODO: reset client local format data? 
+            avl_tree_wlock(fallback_source->pending_tree);
+            avl_insert(fallback_source->pending_tree, (void *)client);
+            avl_tree_unlock(fallback_source->pending_tree);
+        }
+        else {
+    		avl_delete(source->pending_tree, client, _free_client);
+        }
 	}
 	avl_tree_unlock(source->pending_tree);
+
 	avl_tree_wlock(source->client_tree);
 	while (avl_get_first(source->client_tree)) {
-		avl_delete(source->client_tree, avl_get_first(source->client_tree)->key, _free_client);
+        client_t *client = (client_t *)avl_get_first(source->client_tree)->key;
+
+        if(fallback_source) {
+            avl_delete(source->client_tree, client, _remove_client);
+
+            // TODO: reset client local format data? 
+            avl_tree_wlock(fallback_source->pending_tree);
+            avl_insert(fallback_source->pending_tree, (void *)client);
+            avl_tree_unlock(fallback_source->pending_tree);
+        }
+        else {
+		    avl_delete(source->client_tree, client, _free_client);
+        }
 	}
 	avl_tree_unlock(source->client_tree);
 

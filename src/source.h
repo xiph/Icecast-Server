@@ -10,6 +10,10 @@ typedef struct source_tag
 	http_parser_t *parser;
 	
 	char *mount;
+
+    /* If this source drops, try to move all clients to this fallback */
+    char *fallback_mount;
+
 	struct _format_plugin_tag *format;
 
 	avl_tree *client_tree;

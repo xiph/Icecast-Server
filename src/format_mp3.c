@@ -70,8 +70,6 @@ format_plugin_t *format_mp3_get_plugin(void)
 	return plugin;
 }
 
-/* TODO: need locking around source_state->metadata!! */
-
 static int send_metadata(client_t *client, mp3_client_data *client_state,
         mp3_state *source_state)
 {
@@ -217,6 +215,7 @@ static void format_mp3_send_headers(format_plugin_t *self,
     int bytes;
     
     client->respcode = 200;
+    /* TODO: This may need to be ICY/1.0 for shoutcast-compatibility? */
     bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\n" 
             "Content-Type: %s\r\n", 
