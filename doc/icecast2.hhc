@@ -42,6 +42,10 @@
 			<param name="Local" value="icecast2_yp.html">
 			</OBJECT>
 		<LI> <OBJECT type="text/sitemap">
+			<param name="Name" value="Listener Authentication">
+			<param name="Local" value="icecast2_listenerauth.html">
+			</OBJECT>
+		<LI> <OBJECT type="text/sitemap">
 			<param name="Name" value="Win32 specific documentation">
 			<param name="Local" value="icecast2_win32.html">
 			</OBJECT>

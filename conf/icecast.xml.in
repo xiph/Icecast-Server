@@ -110,6 +110,11 @@
         <!--
         <alias source="/foo" dest="/bar"/>
           -->
+        <!-- Aliases: can also be used for simple redirections as well,
+             this example will redirect all requests for http://server:port/ to
+             the status page
+          -->
+        <alias source="/" dest="/status.xsl"/>
     </paths>
 
     <logging>
