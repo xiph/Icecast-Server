@@ -56,7 +56,7 @@
         <password>hackmemore</password>
 
         <max-listeners>1</max-listeners>
-        <dump-file>/tmp/dump-example1.ogg</dump-file>
+<!--        <dump-file>/tmp/dump-example1.ogg</dump-file> -->
         <fallback-mount>/example2.ogg</fallback-mount>
     </mount>
 
