@@ -75,6 +75,7 @@ source_t *source_create(client_t *client, connection_t *con,
     src->yp_public = 0;
     src->fallback_override = 0;
     src->no_mount = 0;
+    src->authenticator = NULL;
 
     if(mountinfo != NULL) {
         if (mountinfo->fallback_mount != NULL)
@@ -257,19 +258,20 @@ void *source_main(void *arg)
     long current_time;
     int    i;
     char *ai;
-    int listen_url_size;
 #endif
 
     long queue_limit;
     ice_config_t *config;
     char *hostname;
+    char *listenurl;
+    int listen_url_size;
     int port;
 
     config = config_get_config();
     
     queue_limit = config->queue_size_limit;
     timeout = config->source_timeout;
-    hostname = config->hostname;
+    hostname = strdup(config->hostname);
     port = config->port;
 
 #ifdef USE_YP
@@ -409,6 +411,20 @@ void *source_main(void *arg)
         }
     }
 #endif
+    /* 6 for max size of port */
+    listen_url_size = strlen("http://") + 
+    strlen(hostname) + strlen(":") + 6 + strlen(source->mount) + 1;
+    
+    listenurl = malloc(listen_url_size);
+    memset(listenurl, '\000', listen_url_size);
+    sprintf(listenurl, "http://%s:%d%s", hostname, port, source->mount);
+    stats_event(source->mount, "listenurl", listenurl);
+    if (hostname) {
+        free(hostname);
+    }
+    if (listenurl) {
+        free(listenurl);
+    }
 
     DEBUG0("Source creation complete");
 
