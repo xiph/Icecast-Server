@@ -798,8 +798,49 @@ static void source_shutdown (source_t *source)
 }
 
 
-void add_authenticated_client (source_t *source, client_t *client)
+/* Check whether this client is currently on this mount, the client may be
+ * on either the active or pending lists.
+ * return 1 if ok to add or 0 to prevent
+ */
+static int check_duplicate_logins (source_t *source, client_t *client)
 {
+    auth_t *auth = source->authenticator;
+
+    /* allow multiple authenticated relays */
+    if (client->username == NULL || client->is_slave)
+        return 1;
+
+    if (auth && auth->allow_duplicate_users == 0)
+    {
+        client_t *existing;
+
+        existing = source->active_clients;
+        while (existing)
+        {
+            if (existing->username && strcmp (existing->username, client->username) == 0)
+                return 0;
+            existing = existing->next;
+        }
+        existing = source->pending_clients;
+        while (existing)
+        {
+            if (existing->username && strcmp (existing->username, client->username) == 0)
+                return 0;
+            existing = existing->next;
+        }
+    }
+    return 1;
+}
+
+
+/* The actual add client routine, this requires the source to be locked.
+ * if 0 is returned then the client should not be touched, however if -1
+ * is returned then the caller is responsible for handling the client
+ */
+int add_authenticated_client (source_t *source, client_t *client)
+{
+    if (source->authenticator && check_duplicate_logins (source, client) == 0)
+        return -1;
     /* lets add the client to the pending list */
     client->next = source->pending_clients;
     source->pending_clients = client;
@@ -819,6 +860,7 @@ void add_authenticated_client (source_t *source, client_t *client)
     source->check_pending = 1;
     stats_event_inc (NULL, "clients");
     stats_event_inc (source->mount, "clients");
+    return 0;
 }
 
 

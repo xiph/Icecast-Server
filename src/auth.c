@@ -85,7 +85,7 @@ auth_result auth_check_client(source_t *source, client_t *client)
     }
     else
     {
-        /* just add the client */
+        /* just add the client, this shouldn't fail */
         add_authenticated_client (source, client);
         return AUTH_OK;
     }
@@ -145,41 +145,12 @@ auth_t *auth_get_authenticator(const char *type, config_options_t *options)
 }
 
 
-/* Check whether this client is currently on this mount, the client may be
- * on either the active or pending lists.
- * return 1 if ok to add or 0 to prevent
+/* This should be called after auth has completed. After the user has
+ * been authenticated the client is ready to be placed on the source, but
+ * may still be dropped.
+ * Don't use client after this call, however a return of 0 indicates that
+ * client is on the source whereas -1 means that the client has failed
  */
-static int check_duplicate_logins (source_t *source, client_t *client)
-{
-    auth_t *auth = source->authenticator;
-
-    if (client->username == NULL)
-        return 1;
-
-    if (auth && auth->allow_duplicate_users == 0)
-    {
-        client_t *existing;
-
-        existing = source->active_clients;
-        while (existing)
-        {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
-            existing = existing->next;
-        }
-        existing = source->pending_clients;
-        while (existing)
-        {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
-            existing = existing->next;
-        }
-    }
-    return 1;
-}
-
-
-/* try to place authenticated client on named source */
 int auth_postprocess_client (const char *mount, client_t *client)
 {
     int ret = -1;
@@ -188,18 +159,16 @@ int auth_postprocess_client (const char *mount, client_t *client)
     source = source_find_mount (mount);
     if (source)
     {
-        ret = 0;
         thread_mutex_lock (&source->lock);
-        if ((source->running || source->on_demand )
-                && check_duplicate_logins (source, client))
-            add_authenticated_client (source, client);
-        else
-            ret = -1;
+
+        if (source->running || source->on_demand)
+            ret = add_authenticated_client (source, client);
+
         thread_mutex_unlock (&source->lock);
     }
     avl_tree_unlock (global.source_tree);
     if (ret < 0)
-        source_free_client (NULL, client);
+        auth_close_client (client);
     return ret;
 }
 

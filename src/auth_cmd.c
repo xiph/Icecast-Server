@@ -12,6 +12,13 @@
 
 /** 
  * Client authentication via command functions
+ *
+ * The stated program is started and via it's stdin it is passed
+ * mountpoint\n
+ * username\n
+ * password\n
+ * a return code of 0 indicates a valid user, authentication failure if
+ * otherwise
  */
 
 #ifdef HAVE_CONFIG_H
@@ -62,7 +69,7 @@ static void *auth_cmd_thread (void *arg)
     pid_t pid;
     client_t *client = auth_user->client;
     int status, len;
-    char str[256];
+    char str[512];
 
     DEBUG0("starting auth thread");
     if (pipe (fd) == 0)
@@ -103,20 +110,8 @@ static void *auth_cmd_thread (void *arg)
         /* try to add authenticated client */
         if (ok)
         {
-            source_t *source;
+            auth_postprocess_client (auth_user->mount, auth_user->client);
             send_fail = 0;
-            avl_tree_unlock (global.source_tree);
-            source = source_find_mount (auth_user->mount);
-            if (source)
-            {
-                thread_mutex_lock (&source->lock);
-                if (source->running)
-                    add_authenticated_client (source, auth_user->client);
-                else
-                    send_fail = 404;
-                thread_mutex_unlock (&source->lock);
-            }
-            avl_tree_unlock (global.source_tree);
         }
     }
     if (send_fail == 404)

@@ -96,7 +96,7 @@ void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void add_client (char *mount, client_t *client);
-void add_authenticated_client (source_t *source, client_t *client);
+int add_authenticated_client (source_t *source, client_t *client);
 int source_free_client (source_t *source, client_t *client);
 
 extern mutex_t move_clients_mutex;

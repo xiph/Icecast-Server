@@ -10,8 +10,28 @@
  *                      and others (see AUTHORS for details).
  */
 
-/** 
+/* 
  * Client authentication via URL functions
+ *
+ * authenticate user via a URL, this is done via libcurl so https can also
+ * be handled. The request will have POST information about the request in
+ * the form of
+ *
+ * action=auth&id=1&mount=/live&user=fred&pass=mypass&ip=127.0.0.1&agent=""
+ *
+ * For a user to be accecpted the following HTTP header needs
+ * to be returned
+ *
+ * icecast-auth-user: 1
+ *
+ * On client disconnection another request is sent to that same URL with the
+ * POST information of
+ *
+ * action=remove&id=1&mount=/live&user=fred&pass=mypass&duration=3600
+ *
+ * id refers to the icecast client identification, mount refers to the
+ * mountpoint (beginning with /) and duration is the amount of time in
+ * seconds
  */
 
 #ifdef HAVE_CONFIG_H
@@ -100,7 +120,7 @@ static void *auth_removeurl_thread (void *arg)
         DEBUG0("starting auth thread");
         username = util_url_escape (client->username);
         password = util_url_escape (client->password);
-        snprintf (post, 1024,"id=%ld&mount=%s&user=%s&pass=%s&duration=%ld",
+        snprintf (post, 1024,"action=remove&id=%ld&mount=%s&user=%s&pass=%s&duration=%ld",
                 client->con->id, auth_user->mount, username, password, duration);
         free (username);
         free (password);
@@ -162,7 +182,7 @@ static void *auth_url_thread (void *arg)
     user_agent = util_url_escape (agent);
     username  = util_url_escape (client->username);
     password  = util_url_escape (client->password);
-    snprintf (post, 1024,"id=%ld&mount=%s&user=%s&pass=%s&ip=%s&agent=%s",
+    snprintf (post, 1024,"action=auth&id=%ld&mount=%s&user=%s&pass=%s&ip=%s&agent=%s",
             client->con->id, auth_user->mount, username, password,
             client->con->ip, user_agent);
     free (user_agent);

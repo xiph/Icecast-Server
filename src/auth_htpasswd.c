@@ -116,7 +116,8 @@ static auth_result htpasswd_auth(source_t *source, client_t *client)
                 fclose(passwdfile);
                 free(hashed_password);
                 thread_rwlock_unlock(&state->file_rwlock);
-                add_authenticated_client (source, client);
+                if (add_authenticated_client (source, client) < 0)
+                    return AUTH_FAILED;
                 return AUTH_OK;
             }
             free(hashed_password);
