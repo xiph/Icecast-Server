@@ -17,6 +17,7 @@
 #include "geturl.h"
 #include "source.h"
 #include "cfgfile.h"
+#include "stats.h"
 
 #define CATMODULE "yp" 
 

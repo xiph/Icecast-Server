@@ -321,10 +321,13 @@ static char *fserve_content_type(char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
-    mime_type *result;
+    void *result;
 
-    if(!avl_get_by_key(mimetypes, &exttype, (void **)(&result)))
-        return result->type;
+    if (!avl_get_by_key (mimetypes, &exttype, &result))
+    {
+        mime_type *mime = result;
+        return mime->type;
+    }
     else {
         /* Fallbacks for a few basic ones */
         if(!strcmp(ext, "ogg"))
@@ -459,7 +462,7 @@ static void create_mime_mappings(char *fn) {
     FILE *mimefile = fopen(fn, "r");
     char line[4096];
     char *type, *ext, *cur;
-    mime_type *mapping, *tmp;
+    mime_type *mapping;
 
     mimetypes = avl_tree_new(_compare_mappings, NULL);
 
@@ -494,12 +497,14 @@ static void create_mime_mappings(char *fn) {
             while(*cur != ' ' && *cur != '\t' && *cur != '\n' && *cur)
                 cur++;
             *cur++ = 0;
-            if(*ext) {
+            if(*ext)
+            {
+                void *tmp;
                 /* Add a new extension->type mapping */
                 mapping = malloc(sizeof(mime_type));
                 mapping->ext = strdup(ext);
                 mapping->type = strdup(type);
-                if(!avl_get_by_key(mimetypes, mapping, (void **)(&tmp)))
+                if(!avl_get_by_key(mimetypes, mapping, &tmp))
                     avl_delete(mimetypes, mapping, _delete_mapping);
                 avl_insert(mimetypes, mapping);
             }

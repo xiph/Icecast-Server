@@ -188,7 +188,7 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
 void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, char *xslt_template)
 {
-    char *buff = NULL;
+    xmlChar *buff = NULL;
     int len = 0;
     ice_config_t *config;
     char *fullpath_xslt_template;
@@ -197,7 +197,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
 
     client->respcode = 200;
     if (response == RAW) {
-        xmlDocDumpMemory(doc, (xmlChar **)&buff, &len);
+        xmlDocDumpMemory(doc, &buff, &len);
         html_write(client, "HTTP/1.0 200 OK\r\n"
                "Content-Length: %d\r\n"
                "Content-Type: text/xml\r\n"

@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
+
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "net/sock.h"
@@ -17,10 +21,6 @@
 #include <grp.h>
 #include <pwd.h>
 #include <errno.h>
-#endif
-
-#ifdef CHROOT
-#include <unistd.h>
 #endif
 
 #include "cfgfile.h"
@@ -38,6 +38,7 @@
 #include "fserve.h"
 #ifdef USE_YP
 #include "geturl.h"
+#include "yp.h"
 #endif
 
 #include <libxml/xmlmemory.h>

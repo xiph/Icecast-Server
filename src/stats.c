@@ -806,7 +806,7 @@ void stats_sendxml(client_t *client)
     xmlDocPtr doc;
     xmlNodePtr node, srcnode;
     int len;
-    char *buff = NULL;
+    xmlChar *buff = NULL;
     source_xml_t *snd;
     source_xml_t *src_nodes = NULL;
 
@@ -831,7 +831,7 @@ void stats_sendxml(client_t *client)
         event = _get_event_from_queue(&queue);
     }
 
-    xmlDocDumpMemory(doc, (xmlChar **)&buff, &len);
+    xmlDocDumpMemory(doc, &buff, &len);
     xmlFreeDoc(doc);
     
     client->respcode = 200;
