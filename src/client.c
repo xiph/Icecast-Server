@@ -19,7 +19,7 @@
 
 client_t *client_create(connection_t *con, http_parser_t *parser)
 {
-	client_t *client = (client_t *)malloc(sizeof(client_t));
+	client_t *client = (client_t *)calloc(1, sizeof(client_t));
 
 	client->con = con;
 	client->parser = parser;
@@ -33,8 +33,11 @@ void client_destroy(client_t *client)
 {
 	refbuf_t *refbuf;
 
-	/* write log entry */
-	logging_access(client);
+	/* write log entry if ip is set (some things don't set it, like outgoing 
+     * slave requests
+     */
+    if(client->con->ip)
+    	logging_access(client);
 	
 	connection_close(client->con);
 	httpp_destroy(client->parser);
