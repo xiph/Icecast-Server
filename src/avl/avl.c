@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.7 2003/07/07 03:37:23 brendan Exp $ */
+/* $Id: avl.c,v 1.8 2003/07/29 00:30:36 karl Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -987,11 +987,11 @@ avl_verify_balance (avl_node * node)
     long lh = avl_verify_balance (node->left);
     long rh = avl_verify_balance (node->right);
     if ((rh - lh) != AVL_GET_BALANCE(node)) {
-      fprintf (stderr, "invalid balance at node %d\n", (int) node->key);
+      fprintf (stderr, "invalid balance at node %ld\n", (long) node->key);
       exit(1);
     }
     if (((lh - rh) > 1) || ((lh - rh) < -1)) {
-      fprintf (stderr, "unbalanced at node %d\n", (int) node->key);
+      fprintf (stderr, "unbalanced at node %ld\n", (long) node->key);
       exit(1);
     }
     return (1 + AVL_MAX (lh, rh));
@@ -1002,7 +1002,7 @@ static void
 avl_verify_parent (avl_node * node, avl_node * parent)
 {
   if (node->parent != parent) {
-    fprintf (stderr, "invalid parent at node %d\n", (int) node->key);
+    fprintf (stderr, "invalid parent at node %ld\n", (long) node->key);
     exit(1);
   }
   if (node->left) {
@@ -1027,7 +1027,7 @@ avl_verify_rank (avl_node * node)
       num_right = avl_verify_rank (node->right);
     }
     if (AVL_GET_RANK (node) != num_left + 1) {
-      fprintf (stderr, "invalid rank at node %d\n", (int) node->key);
+      fprintf (stderr, "invalid rank at node %ld\n", (long) node->key);
       exit (1);
     }
     return (num_left + num_right + 1);
