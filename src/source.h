@@ -1,6 +1,8 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
+#include "config.h"
+#include "yp.h"
 #include "format.h"
 
 typedef struct source_tag
@@ -20,6 +22,9 @@ typedef struct source_tag
 	avl_tree *pending_tree;
 
 	rwlock_t *shutdown_rwlock;
+	ypdata_t *ypdata[MAX_YP_DIRECTORIES];
+	int	num_yp_directories;
+	long	listeners;
 } source_t;
 
 source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type);

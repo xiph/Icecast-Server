@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "config.h"
 #include "util.h"
+#include "geturl.h"
 #include "source.h"
 #include "format.h"
 
@@ -40,6 +41,7 @@ static int _free_client(void *key);
 
 source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type)
 {
+	int	i = 0;
 	source_t *src;
 
 	src = (source_t *)malloc(sizeof(source_t));
@@ -51,6 +53,17 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
 	src->parser = parser;
 	src->client_tree = avl_tree_new(_compare_clients, NULL);
 	src->pending_tree = avl_tree_new(_compare_clients, NULL);
+	src->num_yp_directories = 0;
+	src->listeners = 0;
+	for (i=0;i<config_get_config()->num_yp_directories;i++) {
+		if (config_get_config()->yp_url[i]) {
+			src->ypdata[src->num_yp_directories] = create_ypdata();
+			src->ypdata[src->num_yp_directories]->yp_url = config_get_config()->yp_url[i];
+			src->ypdata[src->num_yp_directories]->yp_url_timeout = config_get_config()->yp_url_timeout[i];
+			src->ypdata[src->num_yp_directories]->yp_touch_freq = 0;
+			src->num_yp_directories++;
+		}
+	}
 
 	return src;
 }
@@ -96,6 +109,7 @@ int source_compare_sources(void *arg, void *a, void *b)
 int source_free_source(void *key)
 {
 	source_t *source = (source_t *)key;
+	int i=0;
 
 	free(source->mount);
     free(source->fallback_mount);
@@ -103,6 +117,9 @@ int source_free_source(void *key)
 	avl_tree_free(source->pending_tree, _free_client);
 	avl_tree_free(source->client_tree, _free_client);
 	source->format->free_plugin(source->format);
+	for (i=0;i<source->num_yp_directories;i++) {
+			destroy_ypdata(source->ypdata[i]);
+	}
 	free(source);
 
 	return 1;
@@ -119,11 +136,17 @@ void *source_main(void *arg)
 	client_t *client;
 	avl_node *client_node;
 	char *s;
+	long	currentTime = 0;
+	char	current_song[256];
+	char	prev_current_song[256];
 
 	refbuf_t *refbuf, *abuf;
 	int data_done;
 
 	int listeners = 0;
+	int listen_url_size = 0;
+	int	i=0;
+	int	list_on_yp = 0;
 
 	timeout = config_get_config()->source_timeout;
 
@@ -140,19 +163,128 @@ void *source_main(void *arg)
 
 	/* start off the statistics */
 	stats_event(source->mount, "listeners", "0");
-	if ((s = httpp_getvar(source->parser, "ice-name")))
+	source->listeners = 0;
+	if ((s = httpp_getvar(source->parser, "ice-name"))) {
+		for (i=0;i<source->num_yp_directories;i++) {
+			if (source->ypdata[i]->server_name) {
+				free(source->ypdata[i]->server_name);
+			}
+			source->ypdata[i]->server_name = (char *)malloc(strlen(s) +1);
+			memset(source->ypdata[i]->server_name, '\000', strlen(s) + 1);
+			strcpy(source->ypdata[i]->server_name, s);
+		}
 		stats_event(source->mount, "name", s);
-	if ((s = httpp_getvar(source->parser, "ice-url")))
+	}
+	if ((s = httpp_getvar(source->parser, "ice-url"))) {
+		for (i=0;i<source->num_yp_directories;i++) {
+			if (source->ypdata[i]->server_url) {
+				free(source->ypdata[i]->server_url);
+			}
+			source->ypdata[i]->server_url = (char *)malloc(strlen(s) +1);
+			memset(source->ypdata[i]->server_url, '\000', strlen(s) + 1);
+			strcpy(source->ypdata[i]->server_url, s);
+		}
 		stats_event(source->mount, "url", s);
-	if ((s = httpp_getvar(source->parser, "ice-genre")))
+	}
+	if ((s = httpp_getvar(source->parser, "ice-genre"))) {
+		for (i=0;i<source->num_yp_directories;i++) {
+			if (source->ypdata[i]->server_genre) {
+				free(source->ypdata[i]->server_genre);
+			}
+			source->ypdata[i]->server_genre = (char *)malloc(strlen(s) +1);
+			memset(source->ypdata[i]->server_genre, '\000', strlen(s) + 1);
+			strcpy(source->ypdata[i]->server_genre, s);
+		}
 		stats_event(source->mount, "genre", s);
-	if ((s = httpp_getvar(source->parser, "ice-bitrate")))
+	}
+	if ((s = httpp_getvar(source->parser, "ice-bitrate"))) {
+		for (i=0;i<source->num_yp_directories;i++) {
+			if (source->ypdata[i]->bitrate) {
+				free(source->ypdata[i]->bitrate);
+			}
+			source->ypdata[i]->bitrate = (char *)malloc(strlen(s) +1);
+			memset(source->ypdata[i]->bitrate, '\000', strlen(s) + 1);
+			strcpy(source->ypdata[i]->bitrate, s);
+		}
 		stats_event(source->mount, "bitrate", s);
-	if ((s = httpp_getvar(source->parser, "ice-description")))
+	}
+	if ((s = httpp_getvar(source->parser, "ice-description"))) {
+		for (i=0;i<source->num_yp_directories;i++) {
+			if (source->ypdata[i]->server_desc) {
+				free(source->ypdata[i]->server_desc);
+			}
+			source->ypdata[i]->server_desc = (char *)malloc(strlen(s) +1);
+			memset(source->ypdata[i]->server_desc, '\000', strlen(s) + 1);
+			strcpy(source->ypdata[i]->server_desc, s);
+		}
 		stats_event(source->mount, "description", s);
+	}
+	if ((s = httpp_getvar(source->parser, "ice-public"))) {
+		stats_event(source->mount, "public", s);
+		list_on_yp = atoi(s);
+	}
+	for (i=0;i<source->num_yp_directories;i++) {
+		if (source->ypdata[i]->server_type) {
+			free(source->ypdata[i]->server_type);
+		}
+		source->ypdata[i]->server_type = (char *)malloc(strlen(source->format->format_description) +1);
+		memset(source->ypdata[i]->server_type, '\000', strlen(source->format->format_description) + 1);
+		strcpy(source->ypdata[i]->server_type, source->format->format_description);
+	}
     stats_event(source->mount, "type", source->format->format_description);
 
+	for (i=0;i<source->num_yp_directories;i++) {
+		if (source->ypdata[i]->listen_url) {
+			free(source->ypdata[i]->listen_url);
+		}
+		// 6 for max size of port
+		listen_url_size = strlen("http://") + strlen(config_get_config()->hostname) + strlen(":") + 6 + strlen(source->mount) + 1;
+		source->ypdata[i]->listen_url = (char *)malloc(listen_url_size);
+		memset(source->ypdata[i]->listen_url, '\000', listen_url_size);
+		sprintf(source->ypdata[i]->listen_url, "http://%s:%d%s", config_get_config()->hostname, config_get_config()->port, source->mount);
+	}
+
+	if (list_on_yp) {
+			yp_add(source, YP_ADD_ALL);
+	}
+	time(&currentTime);
+	for (i=0;i<source->num_yp_directories;i++) {
+		source->ypdata[i]->yp_last_touch = currentTime;
+		if (source->ypdata[i]->yp_touch_freq == 0) {
+			source->ypdata[i]->yp_touch_freq = 30;
+		}
+	}
+
 	while (global.running == ICE_RUNNING) {
+		time(&currentTime);
+		if (list_on_yp) {
+			for (i=0;i<source->num_yp_directories;i++) {
+				if (currentTime > (source->ypdata[i]->yp_last_touch + source->ypdata[i]->yp_touch_freq)) {
+					memset(current_song, '\000', sizeof(current_song));
+					if (stats_get_value(source->mount, "artist")) {
+						strncat(current_song, stats_get_value(source->mount, "artist"), sizeof(current_song) - 1);
+						if (strlen(current_song) + 4 < sizeof(current_song)) {
+							strncat(current_song, " - ", 3);
+						}
+					}
+					if (stats_get_value(source->mount, "title")) {
+						if (strlen(current_song) + strlen(stats_get_value(source->mount, "title")) < sizeof(current_song) -1) {
+							strncat(current_song, stats_get_value(source->mount, "title"), sizeof(current_song) -1 - strlen(current_song));
+						}
+					}
+					if (source->ypdata[i]->current_song) {
+						free(source->ypdata[i]->current_song);
+						source->ypdata[i]->current_song = NULL;
+					}
+	
+					source->ypdata[i]->current_song = (char *)malloc(strlen(current_song) + 1);
+					memset(source->ypdata[i]->current_song, '\000', strlen(current_song) + 1);
+					strcpy(source->ypdata[i]->current_song, current_song);
+	
+					thread_create("YP Touch Thread", yp_touch_thread, (void *)source, THREAD_DETACHED); 
+				}
+			}
+		}
 		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
@@ -307,6 +439,7 @@ void *source_main(void *arg)
 				avl_delete(source->client_tree, (void *)client, _free_client);
 				listeners--;
 				stats_event_args(source->mount, "listeners", "%d", listeners);
+				source->listeners = listeners;
                 DEBUG0("Client removed");
 				continue;
 			}
@@ -325,6 +458,7 @@ void *source_main(void *arg)
 			stats_event_inc(NULL, "clients");
 			stats_event_inc(source->mount, "connections");
 			stats_event_args(source->mount, "listeners", "%d", listeners);
+			source->listeners = listeners;
 
 			/* we have to send cached headers for some data formats
 			** this is where we queue up the buffers to send
@@ -352,6 +486,9 @@ void *source_main(void *arg)
 done:
 
     DEBUG0("Source exiting");
+	if (list_on_yp) {
+		yp_remove(source);
+	}
 
     avl_tree_rlock(global.source_tree);
     fallback_source = source_find_mount(source->fallback_mount);
