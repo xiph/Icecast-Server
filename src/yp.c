@@ -31,6 +31,10 @@
 #include "stats.h"
 #include <curl/curl.h>
 
+#ifdef WIN32
+#define snprintf _snprintf
+#endif
+
 #define CATMODULE "yp" 
 
 struct yp_server
