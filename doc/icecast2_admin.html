@@ -7,7 +7,6 @@
 </head>
 <body>
 <div class="boxtest">
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
 <h1>Icecast 2 Admin Interface</h1>
 <hr id='titlebar' />
 <br />
@@ -21,6 +20,7 @@
 <br />
 <h2>Admin Functions (mount specific)</h2>
 <p>All these admin functions are mount specific in that they only apply to a particular mountpoint (as opposed to applying to the entire server).  Each of these functions requires a mountpoint to be specified as input.
+</p>
 <h3>Metadata Update</h3>
 <h4>description</h4>
 <div class="indentedbox">
@@ -28,7 +28,7 @@ This function provides the ability for either a source client or any external pr
 </div>
 <h4>example</h4>
 <pre>
-http://192.168.1.10:8000/admin/metadata?mount=/mystream&mode=updinfo&song=ACDC+Back+In+Black
+http://192.168.1.10:8000/admin/metadata?mount=/mystream&amp;mode=updinfo&amp;song=ACDC+Back+In+Black
 </pre>
 <br />
 <br />
@@ -39,7 +39,7 @@ This function provides the ability for either a source client or any external pr
 </div>
 <h4>example</h4>
 <pre>
-http://192.168.1.10:8000/admin/fallbacks?mount=/mystream.ogg&fallback=/myfallback.ogg
+http://192.168.1.10:8000/admin/fallbacks?mount=/mystream.ogg&amp;fallback=/myfallback.ogg
 </pre>
 <br />
 <br />
@@ -61,7 +61,7 @@ This function provides the ability to migrate currently connected listeners from
 </div>
 <h4>example</h4>
 <pre>
-http://192.168.1.10:8000/admin/moveclients?mount=/mystream.ogg&destination=/mynewstream.ogg
+http://192.168.1.10:8000/admin/moveclients?mount=/mystream.ogg&amp;destination=/mynewstream.ogg
 </pre>
 <br />
 <br />
@@ -72,7 +72,7 @@ This function provides the ability to disconnect a specific listener of a curren
 </div>
 <h4>example</h4>
 <pre>
-http://192.168.1.10:8000/admin/killclient?mount=/mystream.ogg&id=21
+http://192.168.1.10:8000/admin/killclient?mount=/mystream.ogg&amp;id=21
 </pre>
 <br />
 <br />
@@ -122,7 +122,7 @@ http://192.168.1.10:8000/admin/stats.xsl
 </pre>
 <p>From this URL all of the other admin functions can be exercised.</p>
 <p>Modification of existing XSLT transforms in /admin is allowed, but new files cannot be created here. Creation of new XSLT transforms as well as modification of existing transforms is allowed in /web. These work using the document returned by /admin/stats.xml. To see the XML document that is applied to each admin XSLT, just change the .xsl to .xml in your request (i.e. /admin/listclients.xml). You can then code your XSLT transform accordingly.
-<br />
+</p>
 </div>
 </body>
 </html>
