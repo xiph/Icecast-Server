@@ -77,3 +77,9 @@ html>body .content {
 p.ruletest { 
 	color: blue 
 }
+#titlebar{
+	background-color:#007b79;
+	border:0px;
+	height:10px;
+	width:100%;
+}
