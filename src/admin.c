@@ -604,6 +604,10 @@ static void command_metadata(client_t *client, source_t *source)
     char *action;
     char *value;
     mp3_state *state;
+#ifdef USE_YP
+    int i;
+    time_t current_time;
+#endif
 
     DEBUG0("Got metadata update request");
 
@@ -632,6 +636,16 @@ static void command_metadata(client_t *client, source_t *source)
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
         source->mount, value);
     stats_event(source->mount, "title", value);
+#ifdef USE_YP
+    /* If we get an update on the mountpoint, force a
+       yp touch */
+    current_time = time(NULL);
+    for (i=0; i<source->num_yp_directories; i++) {
+        source->ypdata[i]->yp_last_touch = current_time - 
+            source->ypdata[i]->yp_touch_interval + 2;
+    }
+#endif
+
 
     html_success(client, "Metadata update successful");
 }
