@@ -12,19 +12,20 @@ dnl Set some options based on environment
 if test -z "$GCC"; then
         case $host in 
         *-*-irix*)
-                DEBUG="-g -signed" 
-                CFLAGS="-O2 -w -signed"
-                PROFILE="-p -g3 -O2 -signed"
+                DEBUG="-g -signed -D_REENTRANT" 
+                CFLAGS="-O2 -w -signed -D_REENTRANT"
+                PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
 		;;
         sparc-sun-solaris*)
                 DEBUG="-v -g -D_REENTRANT"
                 CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
                 PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
+		SUN_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
-                DEBUG="-g"
-                CFLAGS="-O"
-                PROFILE="-g -p" 
+                DEBUG="-g -D_REENTRANT"
+                CFLAGS="-O -D_REENTRANT"
+                PROFILE="-g -p -D_REENTRANT"
 		;;
         esac
 else
@@ -38,11 +39,12 @@ else
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
+		SUN_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
-                DEBUG="-g -Wall -fsigned-char"
-                CFLAGS="-O20 -fsigned-char"
-                PROFILE="-O20 -g -pg -fsigned-char" 
+                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
+                CFLAGS="-O20 -fsigned-char -D_REENTRANT"
+                PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
 		;;
         esac
 fi
@@ -86,17 +88,19 @@ then
 fi
 if test -n "$XMLCONFIG"
 then
-  LIBS="$LIBS `$XMLCONFIG --libs`"
+  XML_LIBS="`$XMLCONFIG --libs`"
   CPPFLAGS="$CPPFLAGS `$XMLCONFIG --cflags`"
   AC_CHECK_FUNC(xmlParseFile,, [AC_MSG_ERROR([There was a problem linking with libxml])])
 else
   AC_MSG_ERROR([xml-config could not be found])
 fi
 
-AM_PATH_OGG(LIBS="$LIBS $OGG_LIBS", AC_MSG_ERROR(must have Ogg installed!))
-AM_PATH_VORBIS(LIBS="$LIBS $VORBIS_LIBS", AC_MSG_ERROR(must have Vorbis installed!))
+AM_PATH_OGG(, AC_MSG_ERROR(must have Ogg installed!))
+AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!))
 
 dnl Make substitutions
+
+LIBS="$LIBS $SUN_LIBS $XML_LIBS $OGG_LIBS $VORBIS_LIBS"
 
 AC_SUBST(LIBTOOL_DEPS)
 AC_SUBST(OPT)
