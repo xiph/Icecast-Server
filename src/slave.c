@@ -403,7 +403,7 @@ static int update_from_master(ice_config_t *config)
         int on_demand;
 
         if (config->master_username)
-            username = strdup (config->master_password);
+            username = strdup (config->master_username);
         else
             username = strdup ("relay");
         if (config->master_password)
@@ -427,11 +427,9 @@ static int update_from_master(ice_config_t *config)
             break;
         }
 
-        len = strlen(username) + strlen(password) + 1;
-        authheader = malloc(len+1);
-        strcpy(authheader, username);
-        strcat(authheader, ":");
-        strcat(authheader, password);
+        len = strlen(username) + strlen(password) + 2;
+        authheader = malloc(len);
+        snprintf (authheader, len, "%s:%s", username, password);
         data = util_base64_encode(authheader);
         sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
