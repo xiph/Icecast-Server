@@ -22,7 +22,7 @@ AC_ARG_ENABLE(shouttest, [  --disable-shouttest       Do not try to compile and 
     SHOUT_LIBS="-L$prefix/lib"
   fi
 
-  SHOUT_LIBS="$SHOUT_LIBS -lshout"
+  SHOUT_LIBS="$SHOUT_LIBS -lshout -lpthread"
 
   case $host in
   *-*-solaris*)
