@@ -39,8 +39,15 @@
 
 #define BUFSIZE 4096
 
+#ifdef _WIN32
+#define MIMETYPESFILE ".\\mime.types"
+#else
+#define MIMETYPESFILE "/etc/mime.types"
+#endif
+
 static avl_tree *client_tree;
 static avl_tree *pending_tree;
+static avl_tree *mimetypes;
 
 static cond_t fserv_cond;
 static thread_t *fserv_thread;
@@ -56,16 +63,25 @@ static fd_set fds;
 static int fd_max = 0;
 #endif
 
+typedef struct {
+    char *ext;
+    char *type;
+} mime_type;
+
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _remove_client(void *key);
 static int _free_client(void *key);
-void *fserv_thread_function(void *arg);
+static int _delete_mapping(void *mapping);
+static void *fserv_thread_function(void *arg);
+static void create_mime_mappings(char *fn);
 
 void fserve_initialize(void)
 {
     if(!config_get_config()->fileserve)
         return;
+
+    create_mime_mappings(MIMETYPESFILE);
 
 	client_tree = avl_tree_new(_compare_clients, NULL);
 	pending_tree = avl_tree_new(_compare_clients, NULL);
@@ -81,6 +97,8 @@ void fserve_shutdown(void)
 {
     if(!config_get_config()->fileserve)
         return;
+
+    avl_tree_free(mimetypes, _delete_mapping);
 
     run_fserv = 0;
     thread_cond_signal(&fserv_cond);
@@ -150,7 +168,7 @@ static void wait_for_fds() {
     }
 }
 
-void *fserv_thread_function(void *arg)
+static void *fserv_thread_function(void *arg)
 {
     avl_node *client_node, *pending_node;
     fserve_t *client;
@@ -282,18 +300,24 @@ void *fserv_thread_function(void *arg)
 static char *fserve_content_type(char *path)
 {
     char *ext = util_get_extension(path);
+    mime_type exttype = {ext, NULL};
+    mime_type *result;
 
-    if(!strcmp(ext, "ogg"))
-        return "application/x-ogg";
-    else if(!strcmp(ext, "mp3"))
-        return "audio/mpeg";
-    else if(!strcmp(ext, "html"))
-        return "text/html";
-    else if(!strcmp(ext, "txt"))
-        return "text/plain";
-    else
-        return "application/octet-stream";
-    /* TODO Add more types */
+    if(!avl_get_by_key(mimetypes, &exttype, (void **)(&result)))
+        return result->type;
+    else {
+        /* Fallbacks for a few basic ones */
+        if(!strcmp(ext, "ogg"))
+            return "application/x-ogg";
+        else if(!strcmp(ext, "mp3"))
+            return "audio/mpeg";
+        else if(!strcmp(ext, "html"))
+            return "text/html";
+        else if(!strcmp(ext, "txt"))
+            return "text/plain";
+        else
+            return "application/octet-stream";
+    }
 }
 
 static void fserve_client_destroy(fserve_t *client)
@@ -387,5 +411,75 @@ static int _free_client(void *key)
 
 	
 	return 1;
+}
+
+static int _delete_mapping(void *mapping) {
+    mime_type *map = mapping;
+    free(map->ext);
+    free(map->type);
+    free(map);
+
+    return 1;
+}
+
+static int _compare_mappings(void *arg, void *a, void *b)
+{
+    return strcmp(
+            ((mime_type *)a)->ext,
+            ((mime_type *)b)->ext);
+}
+
+static void create_mime_mappings(char *fn) {
+    FILE *mimefile = fopen(fn, "r");
+    char line[4096];
+    char *type, *ext, *cur;
+    mime_type *mapping, *tmp;
+
+    mimetypes = avl_tree_new(_compare_mappings, NULL);
+
+    if(!mimefile)
+        return;
+
+    while(fgets(line, 4096, mimefile))
+    {
+        line[4095] = 0;
+
+        if(*line == 0 || *line == '#')
+            continue;
+
+        type = line;
+
+        cur = line;
+
+        while(*cur != ' ' && *cur != '\t' && *cur)
+            cur++;
+        if(*cur == 0)
+            continue;
+
+        *cur++ = 0;
+
+        while(1) {
+            while(*cur == ' ' || *cur == '\t')
+                cur++;
+            if(*cur == 0)
+                break;
+
+            ext = cur;
+            while(*cur != ' ' && *cur != '\t' && *cur != '\n' && *cur)
+                cur++;
+            *cur++ = 0;
+            if(*ext) {
+                /* Add a new extension->type mapping */
+                mapping = malloc(sizeof(mime_type));
+                mapping->ext = strdup(ext);
+                mapping->type = strdup(type);
+                if(!avl_get_by_key(mimetypes, mapping, (void **)(&tmp)))
+                    avl_delete(mimetypes, mapping, _delete_mapping);
+                avl_insert(mimetypes, mapping);
+            }
+        }
+    }
+
+    fclose(mimefile);
 }
 
