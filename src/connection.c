@@ -75,10 +75,10 @@ typedef struct _thread_queue_tag {
 } thread_queue_t;
 
 static mutex_t _connection_mutex;
-static unsigned long _current_id = 0;
+static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
 
-static con_queue_t *_queue = NULL, **_queue_tail = &_queue;
+static volatile con_queue_t *_queue = NULL, **_queue_tail = &_queue;
 static mutex_t _queue_mutex;
 
 static thread_queue_t *_conhands = NULL;
@@ -264,7 +264,7 @@ static void _add_connection(connection_t *con)
     node->next = NULL;
     thread_mutex_lock(&_queue_mutex);
     *_queue_tail = node;
-    _queue_tail = &node->next;
+    _queue_tail = (volatile con_queue_t **)&node->next;
     thread_mutex_unlock(&_queue_mutex);
 }
 
@@ -388,9 +388,9 @@ static connection_t *_get_connection(void)
 
     thread_mutex_lock(&_queue_mutex);
     if (_queue) {
-        node = _queue;
+        node = (con_queue_t *)_queue;
         _queue = node->next;
-        if (_queue_tail == &node->next)
+        if ((con_queue_t**)_queue_tail == &node->next)
             _queue_tail = &_queue;
     }
     thread_mutex_unlock(&_queue_mutex);

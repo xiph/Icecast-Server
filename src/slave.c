@@ -64,8 +64,8 @@ static void _add_slave_host (const char *server, int port);
 
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
-static unsigned int max_interval = 0;
-static int rescan_relays = 0;
+static volatile unsigned int max_interval = 0;
+static volatile int rescan_relays = 0;
 static rwlock_t slaves_lock;
 
 relay_server *relay_free (relay_server *relay)
