@@ -98,6 +98,48 @@ int format_get_plugin(format_type_t type, source_t *source)
     return ret;
 }
 
+
+static int get_intro_data (FILE *intro, client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+    int bytes;
+
+    if (intro == NULL || fseek (intro, client->intro_offset, SEEK_SET) < 0)
+        return 0;
+    bytes = fread (refbuf->data, 1, 4096, intro);
+    if (bytes == 0)
+    {
+        client->intro_offset = 0;
+        return 0;
+    }
+    refbuf->len = bytes;
+    return 1;
+}
+
+
+/* wrapper for the per-format write to client routine. Here we populate
+ * the refbuf before calling it
+ */
+static int format_intro_write_to_client (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+
+    if (client->pos == refbuf->len)
+    {
+        if (get_intro_data (source->intro_file, client) == 0)
+        {
+            client_set_queue (client, source->stream_data_tail);
+            client->write_to_client = source->format->write_buf_to_client;
+            return 0;
+        }
+        client->pos = 0;
+        client->intro_offset += refbuf->len;
+    }
+
+    return source->format->write_buf_to_client (source, client);
+}
+
+
 int format_http_write_to_client (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
@@ -131,8 +173,19 @@ int format_http_write_to_client (source_t *source, client_t *client)
     if (ret > 0)
         client->pos += ret;
     if (client->pos == refbuf->len)
-        client_set_queue (client, NULL);
+    {
+        if (source->intro_file)
+        {
+            /* client should be sent an intro file */
+            client->write_to_client = format_intro_write_to_client;
+            client->intro_offset = 0;
+        }
+        else
+        {
+            client_set_queue (client, NULL);
+        }
 
+    }
     return ret;
 }
 

@@ -43,7 +43,7 @@ typedef struct _format_plugin_tag
     char *format_description;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
-    int (*write_buf_to_client)(struct source_tag *format, client_t *client);
+    int (*write_buf_to_client)(struct source_tag *source, client_t *client);
     void  (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);

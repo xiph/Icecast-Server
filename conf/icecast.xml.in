@@ -100,6 +100,7 @@
         <fallback-override>1</fallback-override>
         <fallback-when-full>1</fallback-when-full>
         <hidden>1</hidden>
+        <intro>/path/to/stream-intro.ogg</intro>
         <no-yp>1</no-yp>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>

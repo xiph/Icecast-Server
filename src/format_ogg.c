@@ -509,7 +509,7 @@ static void free_ogg_client_data (client_t *client);
 
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
-static int write_buf_to_client (source_t *self, client_t *client);
+static int write_buf_to_client (source_t *source, client_t *client);
 
 
 static void free_ogg_codecs (ogg_state_t *ogg_info)
@@ -802,7 +802,7 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 }
 
 
-static int write_buf_to_client (source_t *self, client_t *client)
+static int write_buf_to_client (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     char *buf;

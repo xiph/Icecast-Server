@@ -85,6 +85,8 @@ typedef struct source_tag
     refbuf_t *stream_data;
     refbuf_t *stream_data_tail;
 
+    FILE *intro_file;
+
 } source_t;
 
 source_t *source_reserve (const char *mount);

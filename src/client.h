@@ -40,6 +40,9 @@ typedef struct _client_tag
     /* auth completed, 0 not yet, 1 passed, 2 failed  */
     int authenticated;
 
+    /* is client getting intro data */
+    long intro_offset;
+
     /* where in the queue the client is */
     refbuf_t *refbuf;
 

@@ -264,6 +264,12 @@ void source_clear_source (source_t *source)
     free(source->dumpfilename);
     source->dumpfilename = NULL;
 
+    if (source->intro_file)
+    {
+        fclose (source->intro_file);
+        source->intro_file = NULL;
+    }
+
     free (source->on_connect);
     source->on_connect = NULL;
 
@@ -562,6 +568,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 static void get_next_buffer (source_t *source)
 {
     refbuf_t *refbuf = NULL;
+    int no_delay_count = 0;
 
     while (global.running == ICE_RUNNING && source->running)
     {
@@ -569,8 +576,18 @@ static void get_next_buffer (source_t *source)
         time_t current = time(NULL);
         int delay = 200;
 
-        if (source->active_clients != source->first_normal_client)
-            delay = 0;
+        /* service fast clients but jump out once in a while to check on
+         * normal clients */
+        if (no_delay_count < 10)
+        {
+            if (source->active_clients != source->first_normal_client)
+            {
+                delay = 0;
+                no_delay_count++;
+            }
+        }
+        else
+            return;
 
         thread_mutex_unlock (&source->lock);
 
@@ -1174,6 +1191,15 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         free (source->dumpfilename);
         source->dumpfilename = strdup (mountinfo->dumpfile);
+    }
+    if (source->intro_file)
+        fclose (source->intro_file);
+    if (mountinfo->intro_filename)
+    {
+        source->intro_file = fopen (mountinfo->intro_filename, "rb");
+        if (source->intro_file == NULL)
+            WARN2 ("Cannot open intro file \"%s\": %s",
+                    mountinfo->intro_filename, strerror(errno));
     }
 
     if (mountinfo->queue_size_limit)

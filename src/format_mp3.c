@@ -59,7 +59,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
-static int format_mp3_write_buf_to_client(source_t *self, client_t *client);
+static int format_mp3_write_buf_to_client(source_t *source, client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 static void format_mp3_apply_settings(struct source_tag *source, struct _mount_proxy *mount);
@@ -296,7 +296,7 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 /* Handler for writing mp3 data to a client, taking into account whether
  * client has requested shoutcast style metadata updates
  */
-static int format_mp3_write_buf_to_client (source_t *self, client_t *client) 
+static int format_mp3_write_buf_to_client (source_t *source, client_t *client) 
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;

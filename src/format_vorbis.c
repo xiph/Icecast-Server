@@ -98,7 +98,7 @@ static void free_vorbis_client_data (client_t *client);
 
 static void write_vorbis_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *vorbis_get_buffer (source_t *source);
-static int vorbis_write_buf_to_client (source_t *self, client_t *client);
+static int vorbis_write_buf_to_client (source_t *source, client_t *client);
 static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value);
 
 
@@ -751,7 +751,7 @@ static int send_vorbis_headers (client_t *client, refbuf_t *headers)
 }
 
 
-static int vorbis_write_buf_to_client (source_t *self, client_t *client)
+static int vorbis_write_buf_to_client (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     char *buf;
