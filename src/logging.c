@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include "thread.h"
 #include "httpp.h"
@@ -9,6 +10,8 @@
 #include "refbuf.h"
 #include "client.h"
 
+#include "os.h"
+#include "config.h"
 #include "logging.h"
 
 #ifdef _WIN32
@@ -69,7 +72,24 @@ void logging_access(client_t *client)
 
 
 
+void restart_logging ()
+{
+    ice_config_t *config = config_get_config_unlocked();
 
+    if (strcmp (config->error_log, "-"))
+    {
+        char fn_error[FILENAME_MAX];
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
+        log_set_filename (errorlog, fn_error);
+        log_set_level (errorlog, config->loglevel);
+        log_reopen (errorlog);
+    }
 
-
-
+    if (strcmp (config->access_log, "-"))
+    {
+        char fn_error[FILENAME_MAX];
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
+        log_set_filename (accesslog, fn_error);
+        log_reopen (accesslog);
+    }
+}

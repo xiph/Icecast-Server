@@ -39,6 +39,7 @@ void event_config_read(void *arg)
     else {
         config_clear(config);
         config_set_config(&new_config);
+        restart_logging ();
 
         config_release_config();
     }

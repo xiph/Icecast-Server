@@ -75,6 +75,7 @@ extern int accesslog;
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
 void logging_access(client_t *client);
+void restart_logging (void);
 
 #endif  /* __LOGGING_H__ */
 
