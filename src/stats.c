@@ -31,7 +31,7 @@ typedef struct _event_listener_tag
 	struct _event_listener_tag *next;
 } event_listener_t;
 
-int _stats_running = 1;
+int _stats_running = 0;
 long _stats_thread_id;
 int _stats_threads = 0;
 
