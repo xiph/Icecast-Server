@@ -460,6 +460,8 @@ int fserve_client_create(client_t *httpclient, char *path)
                 bytes = sock_write(httpclient->con->sock,
                     "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
                 if(bytes > 0) httpclient->con->sent_bytes = bytes;
+                fserve_client_destroy(httpclient);
+                return -1;
             }
         }
         else {
@@ -469,6 +471,8 @@ int fserve_client_create(client_t *httpclient, char *path)
             bytes = sock_write(httpclient->con->sock,
                 "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
             if(bytes > 0) httpclient->con->sent_bytes = bytes;
+            fserve_client_destroy(httpclient);
+            return -1;
         }
     }
     else {
