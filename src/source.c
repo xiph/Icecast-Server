@@ -27,6 +27,7 @@
 #include "log.h"
 #include "logging.h"
 #include "config.h"
+#include "util.h"
 
 #include "source.h"
 
@@ -117,9 +118,6 @@ void *source_main(void *arg)
 	refbuf_t *refbuf, *abuf;
 	int data_done;
 
-	fd_set rfds;
-	struct timeval tv;
-
 	int listeners = 0;
 
 	timeout = config_get_config()->source_timeout;
@@ -147,7 +145,7 @@ void *source_main(void *arg)
 		stats_event(source->mount, "description", s);
 
 	while (global.running == ICE_RUNNING) {
-		int ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
+		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
             break;
@@ -155,20 +153,16 @@ void *source_main(void *arg)
 		while (refbuf == NULL) {
 			bytes = 0;
 			while (bytes <= 0) {
-				FD_ZERO(&rfds);
-				FD_SET(source->con->sock, &rfds);
-				
-				tv.tv_sec = timeout;
-				tv.tv_usec = 0;
-				
-				ret = select(source->con->sock + 1, &rfds, NULL, NULL, &tv);
-				if (ret == 0) { /* timeout expired */
+                ret = util_timed_wait_for_fd(source->con->sock, timeout*1000);
+
+				if (ret <= 0) { /* timeout expired */
 					bytes = 0;
 					break;
 				}
 
 				bytes = sock_read_bytes(source->con->sock, buffer, 4096);
-				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) break;
+				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) 
+                    break;
 			}
 			if (bytes <= 0) break;
 			ret = source->format->get_buffer(source->format, buffer, bytes, &refbuf);

@@ -109,18 +109,10 @@ static unsigned long _next_connection_id(void)
 static connection_t *_accept_connection(void)
 {
 	int sock;
-	fd_set rfds;
 	connection_t *con;
-	struct timeval tv;
 	char *ip;
 
-	FD_ZERO(&rfds);
-	FD_SET(global.serversock, &rfds);
-
-	tv.tv_sec = 0;
-	tv.tv_usec = 30000;
-
-	if (select(global.serversock + 1, &rfds, NULL, NULL, &tv) <= 0) {
+    if (util_timed_wait_for_fd(global.serversock, 30) <= 0) {
 		return NULL;
 	}
 
