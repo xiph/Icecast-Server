@@ -499,6 +499,8 @@ static void source_init (source_t *source)
         source->yp_public = atoi(str);
     if ((str = httpp_getvar(source->parser, "icy-pub")))
         source->yp_public = atoi(str);
+    if ((str = httpp_getvar(source->parser, "icy-public")))
+        source->yp_public = atoi(str);
     if (str == NULL)
        str = "0";
     stats_event (source->mount, "public", str);
