@@ -338,17 +338,13 @@ fail:
     return 0;
 }
 
-static int _check_source_pass_http(http_parser_t *parser, char *correctuser)
+static int _check_pass_http(http_parser_t *parser, 
+        char *correctuser, char *correctpass)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
     char *header = httpp_getvar(parser, "authorization");
     char *userpass, *tmp;
     char *username, *password;
-    char *correctpass;
-
-    correctpass = config_get_config()->source_password;
-    if(!correctpass)
-        correctpass = "";
 
     if(header == NULL)
         return 0;
@@ -357,8 +353,11 @@ static int _check_source_pass_http(http_parser_t *parser, char *correctuser)
         return 0;
 
     userpass = util_base64_decode(header+6);
-    if(userpass == NULL)
+    if(userpass == NULL) {
+        WARN1("Base64 decode of Authorization header \"%s\" failed",
+                header+6);
         return 0;
+    }
 
     tmp = strchr(userpass, ':');
     if(!tmp) {
@@ -373,20 +372,18 @@ static int _check_source_pass_http(http_parser_t *parser, char *correctuser)
         free(userpass);
         return 0;
     }
+    free(userpass);
 
     return 1;
 }
 
-static int _check_source_pass_ice(http_parser_t *parser)
+static int _check_pass_ice(http_parser_t *parser, char *correctpass)
 {
-    char *password, *correctpass;
+    char *password;
 
     password = httpp_getvar(parser, "ice-password");
-    correctpass = config_get_config()->source_password;
     if(!password)
         password = "";
-    if(!correctpass)
-        correctpass = "";
 
 	if (strcmp(password, correctpass))
         return 0;
@@ -394,12 +391,25 @@ static int _check_source_pass_ice(http_parser_t *parser)
         return 1;
 }
 
-static int _check_source_pass(http_parser_t *parser, char *user)
+static int _check_relay_pass(http_parser_t *parser)
 {
+    char *pass = config_get_config()->relay_password;
+    if(!pass)
+        pass = config_get_config()->source_password;
+
+    return _check_pass_http(parser, "relay", pass);
+}
+
+static int _check_source_pass(http_parser_t *parser)
+{
+    char *pass = config_get_config()->source_password;
+    if(!pass)
+        pass = "";
+
     if(config_get_config()->ice_login)
-        return _check_source_pass_ice(parser);
+        return _check_pass_ice(parser, pass);
     else
-        return _check_source_pass_http(parser, user);
+        return _check_pass_http(parser, "source", pass);
 }
 
 static void _handle_source_request(connection_t *con, 
@@ -412,7 +422,7 @@ static void _handle_source_request(connection_t *con,
     INFO1("Source logging in at mountpoint \"%s\"", uri);
     stats_event_inc(NULL, "source_connections");
 				
-	if (!_check_source_pass(parser, "source")) {
+	if (!_check_source_pass(parser)) {
 		INFO1("Source (%s) attempted to login with invalid or missing password", uri);
         client_send_401(client);
         return;
@@ -443,7 +453,7 @@ static void _handle_stats_request(connection_t *con,
 
 	stats_event_inc(NULL, "stats_connections");
 				
-	if (!_check_source_pass(parser, "stats")) {
+	if (!_check_source_pass(parser)) {
         ERROR0("Bad password for stats connection");
 		connection_close(con);
 		httpp_destroy(parser);
@@ -487,7 +497,7 @@ static void _handle_get_request(connection_t *con,
 	*/
 	/* TODO: add GUID-xxxxxx */
 	if (strcmp(uri, "/stats.xml") == 0) {
-	    if (!_check_source_pass(parser, "stats")) {
+	    if (!_check_source_pass(parser)) {
 		    INFO0("Request for stats.xml with incorrect or no password");
             client_send_401(client);
             return;
@@ -550,7 +560,7 @@ static void _handle_get_request(connection_t *con,
     }
 
 	if (strcmp(uri, "/allstreams.txt") == 0) {
-		if (!_check_source_pass(parser, "relay")) {
+		if (!_check_relay_pass(parser)) {
 			INFO0("Client attempted to fetch allstreams.txt with bad password");
             client_send_401(client);
 		} else {
