@@ -244,13 +244,16 @@ static void *fserv_thread_function(void *arg)
 
         while (fclient)
         {
+            /* can we process this client */
             if (fclient->ready)
             {
-                /* we can process this client */
+                client_t *client = fclient->client;
+                refbuf_t *refbuf = client->refbuf;
                 fclient->ready = 0;
-                if(fclient->offset >= fclient->datasize) {
+                if (client->pos == refbuf->len)
+                {
                     /* Grab a new chunk */
-                    bytes = fread(fclient->buf, 1, BUFSIZE, fclient->file);
+                    bytes = fread (refbuf->data, 1, BUFSIZE, fclient->file);
                     if (bytes == 0)
                     {
                         fserve_t *to_go = fclient;
@@ -261,21 +264,14 @@ static void *fserv_thread_function(void *arg)
                         client_tree_changed = 1;
                         continue;
                     }
-                    fclient->offset = 0;
-                    fclient->datasize = bytes;
+                    refbuf->len = bytes;
+                    client->pos = 0;
                 }
 
                 /* Now try and send current chunk. */
-                sbytes = client_send_bytes (fclient->client, 
-                        &fclient->buf[fclient->offset], 
-                        fclient->datasize - fclient->offset);
+                sbytes = client->write_to_client (NULL, client);
 
-                /* TODO: remove clients if they take too long. */
-                if(sbytes > 0) {
-                    fclient->offset += sbytes;
-                }
-
-                if (fclient->client->con->error)
+                if (client->con->error)
                 {
                     fserve_t *to_go = fclient;
                     fclient = fclient->next;
@@ -339,19 +335,19 @@ static char *fserve_content_type(char *path)
     }
 }
 
-static void fserve_client_destroy(fserve_t *client)
+static void fserve_client_destroy(fserve_t *fclient)
 {
-    if(client) {
-        if(client->buf)
-            free(client->buf);
-        if(client->file)
-            fclose(client->file);
+    if (fclient)
+    {
+        if (fclient->file)
+            fclose (fclient->file);
 
-        if(client->client)
-            client_destroy(client->client);
-        free(client);
+        if (fclient->client)
+            client_destroy (fclient->client);
+        free (fclient);
     }
 }
+
 
 int fserve_client_create(client_t *httpclient, char *path)
 {
@@ -371,10 +367,10 @@ int fserve_client_create(client_t *httpclient, char *path)
     }
 
     client->client = httpclient;
-    client->offset = 0;
-    client->datasize = 0;
     client->ready = 0;
-    client->buf = malloc(BUFSIZE);
+    client_set_queue (httpclient, NULL);
+    httpclient->refbuf = refbuf_new (BUFSIZE);
+    httpclient->pos = BUFSIZE;
 
     global_lock();
     if(global.clients >= client_limit) {

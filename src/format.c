@@ -142,21 +142,25 @@ int format_generic_write_to_client (source_t *source, client_t *client)
     int ret;
     const char *buf;
     unsigned int len;
-    refbuf_t * refbuf = client->refbuf;
+    refbuf_t *refbuf = client->refbuf;
 
-    if (refbuf == NULL)
+    if (refbuf->next == NULL && client->pos == refbuf->len)
         return 0;
+
+    /* move to the next buffer if we have finished with the current one */
+    if (refbuf->next && client->pos == refbuf->len)
+    {
+        client_set_queue (client, refbuf->next);
+        refbuf = client->refbuf;
+    }
+
     buf = refbuf->data + client->pos;
     len = refbuf->len - client->pos;
 
     ret = client_send_bytes (client, buf, len);
 
-    if (ret == len)
-    {
-        client_set_queue (client, refbuf->next);
-        if (client->refbuf == NULL)
-            client->write_to_client = source->format->write_buf_to_client;
-    }
+    if (ret > 0)
+        client->pos += ret;
 
     return ret;
 }
