@@ -34,7 +34,8 @@ AC_DEFUN([XIPH_C_ATTRIBUTE],
 [dnl
 AC_TRY_COMPILE([int func(void) __attribute__((unused));],
   [int x __attribute__ ((unused));],,[dnl
-  AC_DEFINE([__attribute__(x)],, [Define to empty if __attribute__ is not supported])
+  AH_TEMPLATE([__attribute__],[Define to empty if __attribute__ is not supported])
+  AC_DEFINE([__attribute__(x)],[])
 ])
 ])dnl XIPH_C_ATTRIBUTE
 

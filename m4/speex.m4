@@ -8,7 +8,7 @@ dnl
 
 AC_DEFUN([XIPH_PATH_SPEEX],
 [
-XIPH_PATH_OGG([$1],[$2])
+AC_REQUIRE([XIPH_PATH_OGG])
 
 dnl Get the cflags and libraries for speex
 dnl
@@ -70,6 +70,7 @@ else
   then
       AC_MSG_RESULT([ok])
       AC_DEFINE([HAVE_SPEEX],[1],[Define if Speex support is available])
+      $1
   else
       ifelse([$2], , AC_MSG_ERROR([Unable to link to libspeex]), [$2])
       SPEEX_CFLAGS=""

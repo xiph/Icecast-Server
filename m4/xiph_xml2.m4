@@ -52,7 +52,7 @@ ac_xslt_save_LIBS="$LIBS"
 ac_xslt_save_CFLAGS="$CFLAGS"
 LIBS="$XSLT_LIBS $LIBS"
 CFLAGS="$CFLAGS $XSLT_CFLAGS"
-AC_CHECK_FUNC(xsltParseStylesheetFile,,[AC_MSG_ERROR([Unable to link with libxslt])])
+AC_CHECK_FUNC(xsltSaveResultToString,,[AC_MSG_ERROR([Unable to link with libxslt (>=v1.0.18)])])
 CFLAGS="$ac_xslt_save_CFLAGS"
 LIBS="$ac_xslt_save_LIBS"
 ])

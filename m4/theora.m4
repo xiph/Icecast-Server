@@ -7,7 +7,7 @@ dnl
 
 AC_DEFUN([XIPH_PATH_THEORA],
 [
-XIPH_PATH_OGG([$1],[$2])
+AC_REQUIRE([XIPH_PATH_OGG])
 
 dnl Get the cflags and libraries for theora
 dnl
@@ -40,20 +40,17 @@ else
               ])
   fi
 
-  THEORA_LIBS="-ltheora"
+  THEORA_LIBS="-ltheora -logg"
 
   ac_save_LIBS="$LIBS"
   ac_save_LDFLAGS="$LDFLAGS"
   LDFLAGS="$LDFLAGS $THEORA_LDFLAGS"
   LIBS="$LIBS $THEORA_LIBS"
-  xt_have_theora="yes"
   AC_MSG_CHECKING([for libtheora])
-  AC_TRY_LINK_FUNC(ogg_stream_init, [AC_MSG_RESULT([ok])],
-        [LIBS="$LIBS $OGG_LIBS"
-        AC_TRY_LINK_FUNC(ogg_stream_init,
-            [THEORA_LIBS="$THEORA_LIBS $OGG_LIBS"],
-            [xt_have_theora="no"])
-        ])
+  AC_TRY_LINK_FUNC(theora_decode_header, [xt_have_theora="yes"],
+          [xt_have_theora="Not found"])
+  AC_TRY_LINK_FUNC(theora_decode_header, [xt_have_theora="yes"],
+          [xt_have_theora="old version"])
 
   LIBS="$ac_save_LIBS"
   LDFLAGS="$ac_save_LDFLAGS"
@@ -62,14 +59,16 @@ else
   then
     AC_MSG_RESULT([ok])
     AC_DEFINE([HAVE_THEORA],[1],[Define if Theora support is available])
+    $1
   else
-    ifelse([$2], , AC_MSG_ERROR([Unable to link to libtheora]), [$2])
     THEORA_CFLAGS=""
     THEORA_LDFLAGS=""
     THEORA_LIBS=""
+    AC_MSG_WARN([$xt_have_theora])
+    $2
   fi
-  AC_SUBST(THEORA_CFLAGS)
-  AC_SUBST(THEORA_LDFLAGS)
-  AC_SUBST(THEORA_LIBS)
 fi
+AC_SUBST(THEORA_CFLAGS)
+AC_SUBST(THEORA_LDFLAGS)
+AC_SUBST(THEORA_LIBS)
 ])
