@@ -109,6 +109,8 @@ void config_shutdown(void)
         nextrelay = relay->next;
         xmlFree(relay->server);
         xmlFree(relay->mount);
+        if(relay->localmount)
+            xmlFree(relay->localmount);
         free(relay);
         relay = nextrelay;
     }
@@ -417,6 +419,10 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node)
         }
         else if (strcmp(node->name, "mount") == 0) {
 			relay->mount = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "local-mount") == 0) {
+			relay->localmount = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
 	} while ((node = node->next));

@@ -19,6 +19,7 @@ typedef struct _relay_server {
     char *server;
     int port;
     char *mount;
+    char *localmount;
     struct _relay_server *next;
 } relay_server;
 

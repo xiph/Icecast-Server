@@ -65,7 +65,8 @@ void slave_shutdown(void) {
 	thread_join(_slave_thread_id);
 }
 
-static void create_relay_stream(char *server, int port, char *mount)
+static void create_relay_stream(char *server, int port, 
+        char *remotemount, char *localmount)
 {
     sock_t streamsock;
 	char header[4096];
@@ -73,7 +74,10 @@ static void create_relay_stream(char *server, int port, char *mount)
 	http_parser_t *parser;
     client_t *client;
 
-    DEBUG1("Adding source at mountpoint \"%s\"", mount);
+    if(!localmount)
+        localmount = remotemount;
+
+    DEBUG1("Adding source at mountpoint \"%s\"", localmount);
 
 	streamsock = sock_connect_wto(server, port, 0);
 	if (streamsock == SOCK_ERROR) {
@@ -81,7 +85,7 @@ static void create_relay_stream(char *server, int port, char *mount)
         return;
 	}
 	con = create_connection(streamsock, NULL);
-	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", mount);
+	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", remotemount);
 	memset(header, 0, sizeof(header));
 	if (util_read_header(con->sock, header, 4096) == 0) {
 		connection_close(con);
@@ -89,7 +93,7 @@ static void create_relay_stream(char *server, int port, char *mount)
 	}
 	parser = httpp_create_parser();
 	httpp_initialize(parser, NULL);
-	if(!httpp_parse_response(parser, header, strlen(header), mount)) {
+	if(!httpp_parse_response(parser, header, strlen(header), localmount)) {
         if(httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE)) {
             ERROR1("Error parsing relay request: %s", 
                     httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
@@ -164,7 +168,7 @@ static void *_slave_thread(void *arg) {
                     create_relay_stream(
                             config_get_config()->master_server,
                             config_get_config()->master_server_port,
-                            buf);
+                            buf, NULL);
     			} 
                 else
     	    		avl_tree_unlock(global.source_tree);
@@ -179,7 +183,8 @@ static void *_slave_thread(void *arg) {
             if(!source_find_mount(relay->mount)) {
                 avl_tree_unlock(global.source_tree);
 
-                create_relay_stream(relay->server, relay->port, relay->mount);
+                create_relay_stream(relay->server, relay->port, relay->mount,
+                        relay->localmount);
             }
             else
                 avl_tree_unlock(global.source_tree);
