@@ -1,12 +1,10 @@
 Feature differences from SVN trunk
 
-. mp3 accepts artist and title separately on the url.
 . program invocation at stream start and end, per mount based.
 . on-demand relays, activated on first listener, disconnected when listeners 
   falls to 0. Available for master relays as well.
 . multiple Ogg codec streaming. Current codecs handled are Theora, Vorbis,
   Speex (Writ to be added back in later).
-. Clients are started at theora key frame if theora is being streamed.
 . Added URL and command based listener authentication
 . server xml reload, and reopen logging available via admin url
 . on xml reload, active sources are updated as well
@@ -16,9 +14,21 @@ Feature differences from SVN trunk
   max-listener check
 . per-mount format-specific settings can be stated in mount
 . mp3 metadata interval can be stated/disabled per mount
-. ogg stream rebuilding can be enabled to allow for url updates
 . added file intro to streams
 . fallback to file
+
+2.1-kh6
+. fix reported bugs in auth url.
+. at source shutdown make each client release refbuf before going to auth
+. added example php script for auth url. thanks to Stephen Nixon
+. don't do work on logical stream changes that will be dropped immediately
+  afterwards
+. make sure m3u does not race against HUP change
+. resync with trunk (2.2 fixes)
+  . type fixup when referring to time_t
+  . do not list failed relays in streamlist.txt
+  . xsl caching wasn't working right if many xsl pages were being referenced 
+  . playlist logging was being truncated by 1 for ogg
 
 2.1-kh5
 . fix YP memory corruption bug introduced in kh4
@@ -36,7 +46,7 @@ Feature differences from SVN trunk
 . unused code removal
 . merge from trunk
   - add cluster-password
-  - admin page from updating title via url
+  - admin page for updating title via url
 
 
 2.1-kh3
