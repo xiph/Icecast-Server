@@ -1,5 +1,5 @@
 dnl xiph_compiler.m4
-dnl $Id: xiph_compiler.m4,v 1.1 2003/06/24 00:58:10 brendan Exp $
+dnl $Id: xiph_compiler.m4,v 1.2 2003/06/24 02:41:19 karl Exp $
 
 dnl XIPH_CLEAN_CCFLAGS
 dnl Brendan Cully <brendan@xiph.org> 20030612
@@ -21,7 +21,7 @@ do
     ;;
   *)
     if { cat <<EOF
- $xcc_REV_FLAGS 
+ $xcc_REV_FLAGS x
 EOF
 } | $FGREP -v -e " $flag " > /dev/null
     then
@@ -33,7 +33,7 @@ done
 for flag in $xcc_REV_FLAGS
 do
   if { cat <<EOF
- $2 
+ $2 x
 EOF
 } | $FGREP -v -e " $flag " > /dev/null
   then
@@ -115,7 +115,7 @@ AC_REQUIRE([AC_PROG_FGREP])
 for arg in $2
 do
   if { cat <<EOF
- $$1 
+ $$1 x
 EOF
 } | $FGREP -v -e " $arg " > /dev/null
   then
@@ -137,7 +137,7 @@ filtered=""
 for arg in $2
 do
   if { cat <<EOF
- $compare 
+ $compare x
 EOF
 } | $FGREP -v -e " $arg " > /dev/null
   then
