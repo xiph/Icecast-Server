@@ -43,7 +43,7 @@ typedef struct _format_plugin_tag
     char *format_description;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
-    int (*write_buf_to_client)(struct _format_plugin_tag *format, client_t *client);
+    int (*write_buf_to_client)(struct source_tag *format, client_t *client);
     void  (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
@@ -59,11 +59,10 @@ format_type_t format_get_type(char *contenttype);
 char *format_get_mimetype(format_type_t type);
 int format_get_plugin(format_type_t type, struct source_tag *source);
 
-int format_generic_write_buf_to_client(format_plugin_t *format, 
-        client_t *client, unsigned char *buf, int len);
+int format_generic_write_to_client (struct source_tag *source, client_t *client);
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
-void format_prepare_headers (struct source_tag *source, client_t *client);
+int format_http_write_to_client (struct source_tag *source, client_t *client);
 void format_initialise();
 
 #endif  /* __FORMAT_H__ */

@@ -25,6 +25,8 @@
 #include "connection.h"
 #include "refbuf.h"
 
+struct source_tag;
+
 typedef struct _client_tag
 {
     /* the client's connection */
@@ -64,11 +66,7 @@ typedef struct _client_tag
 
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
-
-    char *predata;
-    unsigned predata_size;
-    unsigned predata_len;
-    unsigned predata_offset;
+    int (*write_to_client)(struct source_tag *source, struct _client_tag *client);
 
     struct _client_tag *next;
 } client_t;

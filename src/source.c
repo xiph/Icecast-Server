@@ -366,10 +366,19 @@ void source_move_clients (source_t *source, source_t *dest)
         /* we need to move the client and pending trees */
         while (source->active_clients)
         {
-            /* switch client to different queue */
             client_t *client = source->active_clients;
             source->active_clients = client->next;
-            client_set_queue (client, dest->stream_data_tail);
+
+            /* when switching a client to a different queue, be wary of the 
+             * refbuf it's referring to, if it's http headers then we need
+             * to write them so don't release it.
+             */
+            if (client->write_to_client != format_http_write_to_client)
+            {
+                client_set_queue (client, NULL);
+                client->write_to_client = NULL;
+            }
+
             *dest->pending_clients_tail = client;
             dest->pending_clients_tail = &client->next;
             count++;
@@ -381,6 +390,8 @@ void source_move_clients (source_t *source, source_t *dest)
         {
             client_t *client = source->pending_clients;
             source->pending_clients = client->next;
+            /* clients on pending have a unique refbuf containing headers
+             * so no need to change them here */
             *dest->pending_clients_tail = client;
             dest->pending_clients_tail = &client->next;
             count++;
@@ -447,21 +458,6 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     int total_written = 0;
     int ret = 1;
 
-    if (client->predata)
-    {
-        char *ptr = client->predata + client->predata_offset;
-        unsigned len  = client->predata_len - client->predata_offset;
-        bytes = client_send_bytes (client, ptr, len);
-        if (bytes > 0 && (unsigned)bytes < len)
-        {
-            client->predata_offset += bytes;
-            return 0;
-        }
-        free (client->predata);
-        client->predata_size = client->predata_len = client->predata_offset = 0;
-        client->predata = NULL;
-    }
-
     /* new users need somewhere to start from */
     if (client->refbuf == NULL)
     {
@@ -483,7 +479,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         loop--;
 
-        bytes = source->format->write_buf_to_client (source->format, client);
+        bytes = client->write_to_client (source, client);
         if (bytes <= 0)
         {
             ret = 0;
@@ -520,9 +516,9 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     client_p = &source->active_clients;
     while (client && client != sentinel)
     {
-        int move_it = send_to_listener (source, client, deletion_expected);
+        int fast_client = send_to_listener (source, client, deletion_expected);
 
-        if (move_it)
+        if (fast_client)
         {
             client_t *to_go = client;
 
@@ -802,8 +798,9 @@ int add_authenticated_client (source_t *source, client_t *client)
     client->next = source->pending_clients;
     source->pending_clients = client;
 
-    client->predata_size = 4096;
-    client->predata = calloc (1, client->predata_size);
+    client->write_to_client = format_http_write_to_client;
+    client->refbuf = refbuf_new (4096);
+
     sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
     sock_set_nodelay (client->con->sock);
     if (source->running == 0 && source->on_demand)
@@ -933,33 +930,20 @@ static void process_pending_clients (source_t *source)
     while (client)
     {
         client_t *to_go = client;
-        int drop_client = 0;
 
         client = client->next;
-        to_go->next = NULL;
-        /* do we need to handle http style headers */
-        if (to_go->respcode == 0)
+        if (to_go->write_to_client == NULL)
         {
-            DEBUG0("processing pending client headers");
+            /* The client may of been moved here when we were an 
+             * inactive on-demand relay */
+            to_go->write_to_client = source->format->write_buf_to_client;
+            client_set_queue (to_go, source->stream_data_tail);
+        }
 
-            format_prepare_headers (source, to_go);
-            if (source->format->create_client_data &&
-                    source->format->create_client_data (source, to_go) < 0)
-                drop_client = 1;
-        }
-        if (drop_client)
-        {
-            /* shouldn't happen, but don't stall */
-            ERROR0 ("dropping pending client");
-            to_go->respcode = 200;
-            source_free_client (source, to_go);
-        }
-        else
-        {
-            to_go->next = source->active_clients;
-            source->active_clients = to_go;
-            count++;
-        }
+        to_go->next = source->active_clients;
+        source->active_clients = to_go;
+
+        count++;
         source->new_listeners--;
     }
     source->pending_clients = NULL;

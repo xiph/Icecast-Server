@@ -13,8 +13,9 @@
 #ifndef __SLAVE_H__
 #define __SLAVE_H__
 
-#include <client.h>
 #include <thread/thread.h>
+
+struct _client_tag;
 
 typedef struct _relay_server {
     char *server;
@@ -44,9 +45,9 @@ void slave_initialize(void);
 void slave_shutdown(void);
 void slave_recheck (void);
 void slave_rescan (void);
-int slave_redirect (char *mountpoint, client_t *client);
-void slave_host_add (client_t *client, const char *header);
-void slave_host_remove (client_t *client);
+int slave_redirect (const char *mountpoint, struct _client_tag *client);
+void slave_host_add (struct _client_tag *client, const char *header);
+void slave_host_remove (struct _client_tag *client);
 relay_server *relay_free (relay_server *relay);
 
 #endif  /* __SLAVE_H__ */

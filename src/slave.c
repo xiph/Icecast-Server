@@ -147,7 +147,7 @@ void slave_shutdown(void)
 }
 
 
-int slave_redirect (char *mountpoint, client_t *client)
+int slave_redirect (const char *mountpoint, client_t *client)
 {
     slave_host *slave = NULL;
 

@@ -59,7 +59,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
-static int format_mp3_write_buf_to_client(format_plugin_t *self, client_t *client);
+static int format_mp3_write_buf_to_client(source_t *self, client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 static void format_mp3_apply_settings(struct source_tag *source, struct _mount_proxy *mount);
@@ -263,15 +263,15 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     /* If there is a change in metadata then send it else
      * send a single zero value byte in its place
      */
-    if (associated == client_mp3->associated)
-    {
-        metadata = "\0";
-        meta_len = 1;
-    }
-    else
+    if (associated && associated != client_mp3->associated)
     {
         metadata = associated->data + client_mp3->metadata_offset;
         meta_len = associated->len - client_mp3->metadata_offset;
+    }
+    else
+    {
+        metadata = "\0";
+        meta_len = 1;
     }
     ret = client_send_bytes (client, metadata, meta_len);
 
@@ -296,7 +296,7 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 /* Handler for writing mp3 data to a client, taking into account whether
  * client has requested shoutcast style metadata updates
  */
-static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *client) 
+static int format_mp3_write_buf_to_client (source_t *self, client_t *client) 
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
@@ -576,8 +576,9 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
     const char *metadata;
-    unsigned remaining = client->predata_size - client->predata_len + 2;
-    char *ptr = client->predata + client->predata_len - 2;
+    /* the +-2 is for overwriting the last set of \r\n */
+    unsigned remaining = 4096 - client->refbuf->len + 2;
+    char *ptr = client->refbuf->data + client->refbuf->len - 2;
     int bytes;
 
     if (client_mp3 == NULL)
@@ -604,11 +605,19 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
             client_mp3->interval = ICY_METADATA_INTERVAL;
         else
             client_mp3->interval = source_mp3->interval;
-        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
+        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n",
                 client_mp3->interval);
         if (bytes > 0)
-            client->predata_len += bytes - 2;
+        {
+            remaining -= bytes;
+            ptr += bytes;
+        }
     }
+    bytes = snprintf (ptr, remaining, "\r\n");
+    remaining -= bytes;
+    ptr += bytes;
+
+    client->refbuf->len = 4096 - remaining;
 
     return 0;
 }

@@ -29,6 +29,7 @@
 
 #include "connection.h"
 #include "refbuf.h"
+#include "format.h"
 
 #include "client.h"
 #include "logging.h"
@@ -48,6 +49,7 @@ client_t *client_create(connection_t *con, http_parser_t *parser)
     client->parser = parser;
     client->refbuf = NULL;
     client->pos = 0;
+    client->write_to_client = format_generic_write_to_client;
 
     return client;
 }

@@ -48,6 +48,9 @@
 #define snprintf _snprintf
 #endif
 
+static int format_prepare_headers (source_t *source, client_t *client);
+
+
 format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
@@ -95,41 +98,84 @@ int format_get_plugin(format_type_t type, source_t *source)
     return ret;
 }
 
-
-int format_generic_write_buf_to_client(format_plugin_t *format, 
-        client_t *client, unsigned char *buf, int len)
+int format_http_write_to_client (source_t *source, client_t *client)
 {
+    refbuf_t *refbuf = client->refbuf;
+    const char *buf;
+    unsigned int len;
     int ret;
 
+    if (refbuf == NULL)
+    {
+        client->write_to_client = source->format->write_buf_to_client;
+        return 0;
+    }
+    if (client->respcode == 0)
+    {
+        DEBUG0("processing pending client headers");
+
+        client->respcode = 200;
+        if (format_prepare_headers (source, client) < 0)
+        {
+            ERROR0 ("internal problem, dropping client");
+            client->con->error = 1;
+            return 0;
+        }
+    }
+
+    buf = refbuf->data + client->pos;
+    len = refbuf->len - client->pos;
+
     ret = client_send_bytes (client, buf, len);
-    if (ret < 0 && client->con->error == 0)
-        ret = 0;
+
+    if (ret > 0)
+        client->pos += ret;
+    if (client->pos == refbuf->len)
+        client_set_queue (client, NULL);
 
     return ret;
 }
 
 
-void format_prepare_headers (source_t *source, client_t *client)
+int format_generic_write_to_client (source_t *source, client_t *client)
+{
+    int ret;
+    const char *buf;
+    unsigned int len;
+    refbuf_t * refbuf = client->refbuf;
+
+    if (refbuf == NULL)
+        return 0;
+    buf = refbuf->data + client->pos;
+    len = refbuf->len - client->pos;
+
+    ret = client_send_bytes (client, buf, len);
+
+    if (ret == len)
+    {
+        client_set_queue (client, refbuf->next);
+        if (client->refbuf == NULL)
+            client->write_to_client = source->format->write_buf_to_client;
+    }
+
+    return ret;
+}
+
+
+static int format_prepare_headers (source_t *source, client_t *client)
 {
     unsigned remaining;
     char *ptr;
     int bytes;
     int bitrate_filtered = 0;
     avl_node *node;
-    char *agent;
 
-    remaining = client->predata_size;
-    ptr = client->predata;
+    remaining = client->refbuf->len;
+    ptr = client->refbuf->data;
     client->respcode = 200;
 
-    /* ugly hack, but send ICY OK header when client is realplayer */
-    agent = httpp_getvar (client->parser, "user-agent");
-    if (agent && strstr (agent, "RealMedia") != NULL)
-        bytes = snprintf (ptr, remaining, "ICY 200 OK\r\nContent-Type: %s\r\n",
-                format_get_mimetype (source->format->type));
-    else
-        bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n",
-                format_get_mimetype (source->format->type));
+    bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
+            "Content-Type: %s\r\n", format_get_mimetype (source->format->type));
 
     remaining -= bytes;
     ptr += bytes;
@@ -200,7 +246,11 @@ void format_prepare_headers (source_t *source, client_t *client)
     remaining -= bytes;
     ptr += bytes;
 
-    client->predata_len = client->predata_size - remaining;
+    client->refbuf->len -= remaining;
+    if (source->format->create_client_data)
+        if (source->format->create_client_data (source, client) < 0)
+            return -1;
+    return 0;
 }
 
 
