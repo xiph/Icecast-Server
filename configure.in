@@ -12,7 +12,12 @@ dnl Set some options based on environment
 
 SOCKET_LIBS=
 
-AC_DEFINE(_XOPEN_SOURCE, 500, [Define if you have POSIX and XPG specifications])
+case "$ac_cv_host" in
+    *openbsd*)
+    ;;
+    *) AC_DEFINE(_XOPEN_SOURCE, 500, [Define if you have POSIX and XPG specifications])
+    ;;
+esac
 if test -z "$GCC"; then
         case $host in 
         *-*-irix*)
@@ -24,7 +29,7 @@ if test -z "$GCC"; then
                 DEBUG="-v -g -D_REENTRANT"
                 CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
                 PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
-		SOCKET_LIBS="-lnsl -lsocket -lresolv"
+                SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
                 DEBUG="-g -D_REENTRANT"
@@ -38,35 +43,30 @@ else
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
-        		LIBS=" $LIBS -lpthread"
 		;;
         sparc-sun-solaris*)
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
-		        SOCKET_LIBS="-lnsl -lsocket -lresolv"
-        		LIBS=" $LIBS -lpthread"
+                SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
-	*-pc-solaris*)
+	    *-pc-solaris*)
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -D_REENTRANT" 
-		        SOCKET_LIBS="-lnsl -lsocket -lresolv"
-        		LIBS=" $LIBS -lpthread"
+                SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *freebsd*)
-                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
-                CFLAGS="-O20 -fsigned-char -D_REENTRANT"
-                PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
-        		LIBS=" $LIBS -pthread"
-		ogg_prefix="/usr/local"
-		vorbis_prefix="/usr/local"
+                DEBUG="-g -Wall -fsigned-char"
+                CFLAGS="-O20 -fsigned-char"
+                PROFILE="-O20 -g -pg -fsigned-char" 
+                ogg_prefix="/usr/local"
+                vorbis_prefix="/usr/local"
 		;;
         *)
-                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
-                CFLAGS="-O20 -fsigned-char -D_REENTRANT"
-                PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
-		        LIBS=" $LIBS -lpthread"
+                DEBUG="-g -Wall -fsigned-char"
+                CFLAGS="-O20 -Wall -fsigned-char"
+                PROFILE="-O20 -g -pg -Wall -fsigned-char" 
 		;;
         esac
 fi
