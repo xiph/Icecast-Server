@@ -7,19 +7,22 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body bgcolor="black">
-<table border="0" width="100%%">
+<table border="0" width="100%">
+<tr>
+<td width="50"></td>
+<td> <h2>Icecast Status Page</h2> </td>
+</tr>
+<xsl:for-each select="source">
+<xsl:choose>
+<xsl:when test="listeners">
 <tr>
 <td width="50"></td>
 <td>
-<h2>Icecast Status Page</h2>
 <div class="roundcont">
 <div class="roundtop">
 <img src="corner_topleft.jpg" class="corner" style="display: none" />
 </div>
 <div class="newscontent">
-<xsl:for-each select="source">
-<xsl:choose>
-<xsl:when test="listeners">
 <h3>
 <xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
 (<xsl:value-of select="@mount" />)
@@ -60,22 +63,15 @@
 </xsl:choose>
 </td></tr>
 </table>
-</xsl:when>
-<xsl:otherwise>
-<h3><xsl:value-of select="@mount" /> - Not Connected</h3>
-</xsl:otherwise>
-</xsl:choose>
-<br></br>
-<br></br>
-</xsl:for-each>
 </div>
 <div class="roundbottom">
 <img src="corner_bottomleft.jpg" class="corner" style="display: none" />
 </div>
 </div>
-<br></br><br></br>
-</td>
-<td width="25"></td></tr>
+</td></tr>
+</xsl:when>
+</xsl:choose>
+</xsl:for-each>
 </table>
 <div class="poster"><img align="left" src="/icecast.png" />Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
 </body>

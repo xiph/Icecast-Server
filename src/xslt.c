@@ -99,7 +99,7 @@ static int evict_cache_entry() {
     return oldest;
 }
 
-static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
+static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     int i;
     int empty = -1;
     struct stat file;
@@ -146,15 +146,12 @@ static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
     return cache[i].stylesheet;
 }
 
-void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
-    xmlOutputBufferPtr outputBuffer;
     xmlDocPtr    res;
     xsltStylesheetPtr cur;
-    const char *params[16 + 1];
-    size_t count,bytes;
-
-    params[0] = NULL;
+    xmlChar *string;
+    int len;
 
     xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
@@ -163,28 +160,22 @@ void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
     cur = xslt_get_stylesheet(xslfilename);
     thread_mutex_unlock(&xsltlock);
 
-    if (cur == NULL) {
-        bytes = sock_write_string(client->con->sock, 
-                (char *)"Could not parse XSLT file");
-        if(bytes > 0) client->con->sent_bytes += bytes;
-        
+    if (cur == NULL)
+    {
+        const char error[] = "Could not parse XSLT file";
+
+        client_send_bytes (client, error, sizeof (error)-1);
         return;
     }
 
-    res = xsltApplyStylesheet(cur, doc, params);
+    res = xsltApplyStylesheet(cur, doc, NULL);
 
-    outputBuffer = xmlAllocOutputBuffer(NULL);
-
-    count = xsltSaveResultTo(outputBuffer, res, cur);
-
-    /*  Add null byte to end. */
-    bytes = xmlOutputBufferWrite(outputBuffer, 1, "");
-
-    if(sock_write_string(client->con->sock, 
-                (char *)outputBuffer->buffer->content))
-        client->con->sent_bytes += bytes;
-    
-    xmlOutputBufferClose(outputBuffer);
+    xmlDocDumpFormatMemory (res, &string, &len, 1);
+    if (string)
+    {
+        client_send_bytes (client, string, len);
+        xmlFree (string);
+    }
     xmlFreeDoc(res);
 }
 

@@ -94,6 +94,7 @@ td {
     color: #FFFFFF;
 }
 .roundcont {
+	margin: 15px 0px;
 	width: 90%;
 	background-color: #656565;
 	color: #fff;
@@ -185,7 +186,7 @@ td {
 }
 
 .roundbottom {
-	background: url(corner_bottomright.jpg) no-repeat top right; 
+	background: url(corner_bottomright.jpg) no-repeat bottom right; 
 }
 
 img.corner {
