@@ -32,7 +32,7 @@
         <paths>
                 <basedir>/usr/local/icecast</basedir>
                 <logdir>/tmp</logdir>
-                <webroot>/usr/local/icecast/webroot</webroot>
+                <webroot>/usr/local/icecast/web</webroot>
         </paths>
 
 	<logging>

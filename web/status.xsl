@@ -94,7 +94,7 @@ a:hover {color: black; font-family:Verdana}
 </td>
 <td>
 <font class="default2">
-<b><xsl:value-of select="description" /></b>
+<b><xsl:value-of select="name" /></b>
 </font>
 </td>
 </tr>
@@ -104,7 +104,17 @@ a:hover {color: black; font-family:Verdana}
 </td>
 <td>
 <font class="default2">
-<b></b>
+<b><xsl:value-of select="genre" /></b>
+</font>
+</td>
+</tr>
+<tr>
+<td width="100" >
+<font class="default1">Stream Description: </font>
+</td>
+<td>
+<font class="default2">
+<b><xsl:value-of select="description" /></b>
 </font>
 </td>
 </tr>
