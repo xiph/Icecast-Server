@@ -145,11 +145,31 @@ static int wait_for_serversock(int timeout)
         return -1;
     }
     else {
+        int dst;
         for(i=0; i < global.server_sockets; i++) {
-            if(ufds[i].revents == POLLIN)
+            if(ufds[i].revents & POLLIN)
                 return ufds[i].fd;
+            if(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL))
+            {
+                if (ufds[i].revents & (POLLHUP|POLLERR))
+                {
+                    close (global.serversock[i]);
+                    WARN0("Had to close a listening socket");
+                }
+                global.serversock[i] = -1;
+            }
         }
-        return -1; /* Shouldn't happen */
+        /* remove any closed sockets */
+        for(i=0, dst=0; i < global.server_sockets; i++)
+        {
+            if (global.serversock[i] == -1)
+                continue;
+            if (i!=dst)
+                global.serversock[dst] = global.serversock[i];
+            dst++;
+        }
+        global.server_sockets = dst;
+        return -1;
     }
 #else
     fd_set rfds;
