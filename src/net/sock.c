@@ -362,6 +362,35 @@ int sock_write(sock_t sock, const char *fmt, ...)
     return rc;
 }
 
+#ifdef HAVE_OLD_VSNPRINTF
+int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
+{
+    va_list ap_local;
+    unsigned int len = 1024;
+    char *buff = NULL;
+    int ret;
+
+    /* don't go infinite, but stop at some huge limit */
+    while (len < 2*1024*1024)
+    {
+        char *tmp = realloc (buff, len);
+        ret = -1;
+        if (tmp == NULL)
+            break;
+        buff = tmp;
+        va_copy (ap_local, ap);
+        ret = vsnprintf (buff, len, fmt, ap_local);
+        if (ret > 0)
+        {
+            ret = sock_write_bytes (sock, buff, ret);
+            break;
+        }
+        len += 8192;
+    }
+    free (buff);
+    return ret;
+}
+#else
 int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 {
     char buffer [1024], *buff = buffer;
@@ -394,6 +423,7 @@ int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 
     return rc;
 }
+#endif
 
 
 int sock_read_bytes(sock_t sock, char *buff, const int len)
