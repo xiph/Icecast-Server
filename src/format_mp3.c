@@ -326,12 +326,21 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                            StreamTitle=' and the closing '; (but only if there's
                            enough data for it to be correctly formatted) */
                         if(state->metadata_length >= 15) {
+                            /* This is overly complex because the 
+                               metadata_length is the length of the actual raw
+                               data, but the (null-terminated) string is going
+                               to be shorter than this, and we can't trust that
+                               the raw data doesn't have other embedded-nulls */
+                            int stringlength;
+                            
                             state->metadata = malloc(state->metadata_length -
                                     15 + 1);
                             memcpy(state->metadata, 
                                     state->metadata_buffer + 13, 
                                     state->metadata_length - 15);
-                            state->metadata[state->metadata_length - 15] = 0;
+                            stringlength = strlen(state->metadata);
+                            if(stringlength > 2)
+                                state->metadata[stringlength - 2] = 0;
                             free(state->metadata_buffer);
                         }
                         else
