@@ -1,14 +1,37 @@
-feature differences from SVN trunk
+Feature differences from SVN trunk
 
-fast pre-buffering - single queue change allows for intergrated handling 
-of bursting
-mp3 accepts artist and title separately on the url.
-program invocation at stream start and end, per mount based.
-on-demand relays, activated on first listener, disconnected when listeners 
-falls to 0
-multiple Ogg codec streaming. start at theora key frame.
-Added URL and command based listener authentication
-server xml reload, reopen logging available via admin url
+. Use of a single queue allows for integrated handling of bursting data
+. fast pre-buffering aka burst-on-connect. State a burst size in bytes to
+indicate how much should be sent at listener connect.
+. mp3 accepts artist and title separately on the url.
+. program invocation at stream start and end, per mount based.
+. on-demand relays, activated on first listener, disconnected when listeners 
+falls to 0. Available for master relays as well.
+. multiple Ogg codec streaming. Current codecs handled are Theora, Vorbis,
+Speex, Writ.
+. Clients are started at theora key frame if theora is being streamed.
+. Added URL and command based listener authentication
+. server xml reload, and reopen logging available via admin url
+. slave startup re-organised so that relays are more independant
+. on xml reload, active sources are updated as well
+. When max-listeners reached, a HTTP 302 code can be sent to redirect
+clients to alternative slave hosts. 
+. authenticated relays, those that match the relay user/pass, bypass the 
+max-listener check
+
+kh51
+. make config lock a rwlock instead of mutex, removes unneccesary stalling
+  and removes possible (although not reported) deadlock cases
+. very hard to trigger race in util fixed
+. on-demand authenticated relay wasn't being kicked off properly
+. allow the prevention of duplicate authenticated clients connecting. The
+  mechanism is the same as SVN except duplication checking is a generic
+  authentication check and applies to all auth mechanisms.
+. make connection handler only sleep when connections are not pending
+. mp3 streams with in-line metadata could of created some empty nodes, not
+a stability problem, but wasteful.
+. small memory leak fixes
+. small internal code cleanups
 
 kh50
 . removed redundant pointer, adding new clients could cause a memory
