@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; -*- */
 /* sock.c
  * - General Socket Functions
  *
@@ -592,7 +593,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 #else    
     struct sockaddr_in sa;
 #endif
-    int sa_family, sa_len, error, opt;
+    int family, len, error, opt;
     sock_t sock;
     char ip[MAX_ADDR_LEN];
 
@@ -601,8 +602,8 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 
     /* defaults */
     memset(&sa, 0, sizeof(sa));
-    sa_family = AF_INET;
-    sa_len = sizeof(struct sockaddr_in);
+    family = AF_INET;
+    len = sizeof(struct sockaddr_in);
 
     /* set the interface to bind to if specified */
     if (sinterface != NULL) {
@@ -615,8 +616,8 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
             ((struct sockaddr_in*)&sa)->sin_port = htons(port);
         } else if (inet_pton(AF_INET6, ip, 
                     &((struct sockaddr_in6*)&sa)->sin6_addr) > 0) {
-            sa_family = AF_INET6;
-            sa_len = sizeof (struct sockaddr_in6);
+            family = AF_INET6;
+            len = sizeof (struct sockaddr_in6);
             ((struct sockaddr_in6*)&sa)->sin6_family = AF_INET6;
             ((struct sockaddr_in6*)&sa)->sin6_port = htons(port);
         } else {
@@ -637,7 +638,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
     }
 
     /* get a socket */
-    sock = socket(sa_family, SOCK_STREAM, 0);
+    sock = socket(family, SOCK_STREAM, 0);
     if (sock == -1)
         return SOCK_ERROR;
 
@@ -646,7 +647,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
     
     /* bind socket to port */
-    error = bind(sock, (struct sockaddr *)&sa, sa_len);
+    error = bind(sock, (struct sockaddr *)&sa, len);
     if (error == -1)
         return SOCK_ERROR;
 
