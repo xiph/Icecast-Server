@@ -448,11 +448,12 @@ int sock_read_line(sock_t sock, char *buff, const int len)
     }
 }
 
-/* see if a connection can be written to
-** return -1 for failure
-** return 0 for not yet
-** return 1 for ok 
-*/
+/* see if a connection has been established
+ * return SOCK_TIMEOUT for timeout
+ * return SOCK_ERROR for failure
+ * return 0 for try again, interrupted
+ * return 1 for ok 
+ */
 int sock_connected (int sock, unsigned timeout)
 {
     fd_set wfds;
@@ -480,7 +481,9 @@ int sock_connected (int sock, unsigned timeout)
             {
                 if (val == 0)
                     return 1;
+                sock_set_error (val);
             }
+            /* fall through */
         case -1:
             if (sock_recoverable (sock_error()))
                 return 0;
