@@ -88,7 +88,7 @@ typedef struct {
 static int _free_client(void *key);
 static int _delete_mapping(void *mapping);
 static void *fserv_thread_function(void *arg);
-static void create_mime_mappings(char *fn);
+static void create_mime_mappings(const char *fn);
 
 void fserve_initialize(void)
 {
@@ -314,7 +314,7 @@ static void *fserv_thread_function(void *arg)
     return NULL;
 }
 
-static char *fserve_content_type(char *path)
+static const char *fserve_content_type(char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
@@ -528,7 +528,7 @@ static int _compare_mappings(void *arg, void *a, void *b)
             ((mime_type *)b)->ext);
 }
 
-static void create_mime_mappings(char *fn) {
+static void create_mime_mappings(const char *fn) {
     FILE *mimefile = fopen(fn, "r");
     char line[4096];
     char *type, *ext, *cur;
