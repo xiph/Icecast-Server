@@ -27,14 +27,14 @@
 #undef CATMODULE
 #define CATMODULE "main"
 
-void _print_usage()
+static void _print_usage()
 {
-	printf("icecast 2.0 usage:\n");
-	printf("\t-c <file>\t\tSpecify configuration file\n");
+	printf("Usage:\n");
+	printf("\ticecast -c <file>\t\tSpecify configuration file\n");
 	printf("\n");
 }
 
-void _initialize_subsystems(void)
+static void _initialize_subsystems(void)
 {
 	log_initialize();
 	thread_initialize();
@@ -47,7 +47,7 @@ void _initialize_subsystems(void)
 	refbuf_initialize();
 }
 
-void _shutdown_subsystems(void)
+static void _shutdown_subsystems(void)
 {
 	refbuf_shutdown();
 	stats_shutdown();
@@ -60,11 +60,11 @@ void _shutdown_subsystems(void)
 	log_shutdown();
 }
 
-int _parse_config_file(int argc, char **argv, char *filename, int size)
+static int _parse_config_file(int argc, char **argv, char *filename, int size)
 {
 	int i = 1;
 
-	if (argc < 3) return 0;
+	if (argc < 3) return -1;
 
 	while (i < argc) {
 		if (strcmp(argv[i], "-c") == 0) {
@@ -78,10 +78,10 @@ int _parse_config_file(int argc, char **argv, char *filename, int size)
 		i++;
 	}
 
-	return 0;
+	return -1;
 }
 
-int _start_logging(void)
+static int _start_logging(void)
 {
 	char fn_error[FILENAME_MAX];
 	char fn_access[FILENAME_MAX];
@@ -106,13 +106,13 @@ int _start_logging(void)
 	return 0;
 }
 
-void _stop_logging(void)
+static void _stop_logging(void)
 {
 	log_close(errorlog);
 	log_close(accesslog);
 }
 
-int _setup_socket(void)
+static int _setup_socket(void)
 {
 	ice_config_t *config;
 
@@ -125,7 +125,7 @@ int _setup_socket(void)
 	return 1;
 }
 
-int _start_listening(void)
+static int _start_listening(void)
 {
 	if (sock_listen(global.serversock, ICE_LISTEN_QUEUE) == SOCK_ERROR)
 		return 0;
@@ -136,7 +136,7 @@ int _start_listening(void)
 }
 
 /* this is the heart of the beast */
-void _server_proc(void)
+static void _server_proc(void)
 {
 	if (!_setup_socket()) {
 		ERROR1("Could not create listener socket on port %d", config_get_config()->port);
@@ -189,7 +189,6 @@ int main(int argc, char **argv)
 			}
 		}
 	} else if (res == -1) {
-		fprintf(stderr, "FATAL: -c option must have a filename\n");
 		_print_usage();
 		_shutdown_subsystems();
 		return 1;
