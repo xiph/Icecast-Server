@@ -9,6 +9,7 @@
 typedef struct {
     char *metadata;
     int metadata_age;
+    mutex_t lock;
 } mp3_state;
 
 format_plugin_t *format_mp3_get_plugin(void);

@@ -37,14 +37,17 @@ static void format_mp3_send_headers(format_plugin_t *self,
         source_t *source, client_t *client);
 
 typedef struct {
+   int use_metadata;
    int interval;
    int offset;
-   int metadata;
+   int metadata_age;
+   int metadata_offset;
 } mp3_client_data;
 
 format_plugin_t *format_mp3_get_plugin(void)
 {
 	format_plugin_t *plugin;
+    mp3_state *state = calloc(1, sizeof(mp3_state));
 
 	plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
 
@@ -58,17 +61,90 @@ format_plugin_t *format_mp3_get_plugin(void)
 	plugin->free_plugin = format_mp3_free_plugin;
     plugin->format_description = "MP3 audio";
 
-	plugin->_state = calloc(1, sizeof(mp3_state));
+	plugin->_state = state;
+
+    thread_mutex_create(&(state->lock));
 
 	return plugin;
+}
+
+/* TODO: need locking around source_state->metadata!! */
+
+static int send_metadata(client_t *client, mp3_client_data *client_state,
+        mp3_state *source_state)
+{
+    int send_metadata;
+    int len_byte;
+    int len;
+    unsigned char *buf;
+    int ret;
+    int source_age;
+
+    thread_mutex_lock(&(source_state->lock));
+    if(source_state->metadata == NULL) {
+        /* Shouldn't be possible */
+        thread_mutex_unlock(&(source_state->lock));
+        return 0;
+    }
+
+    source_age = source_state->metadata_age;
+    send_metadata = (source_age != client_state->metadata_age) || 
+        client_state->metadata_offset;
+    len_byte = send_metadata?(strlen(source_state->metadata)/16 + 1 - 
+            client_state->metadata_offset):0;
+    len = 1 + len_byte*16;
+    buf = alloca(len);
+
+    memset(buf, 0, len);
+
+    buf[0] = len_byte;
+
+    strncpy(buf+1, source_state->metadata + client_state->metadata_offset, 
+            len-2);
+
+    thread_mutex_unlock(&(source_state->lock));
+
+    ret = sock_write_bytes(client->con->sock, buf, len);
+
+    if(ret > 0 && ret < len) {
+        client_state->metadata_offset += ret;
+    }
+    else if(ret == len) {
+        client_state->metadata_age = source_age;
+        client_state->offset = 0;
+        client_state->metadata_offset = 0;
+    }
+
+    return ret;
 }
 
 static int format_mp3_write_buf_to_client(format_plugin_t *self, 
     client_t *client, unsigned char *buf, int len) 
 {
     int ret;
+    
+    if(((mp3_state *)self->_state)->metadata) 
+    {
+        mp3_client_data *state = client->format_data;
+        int max = state->interval - state->offset;
 
-    ret = sock_write_bytes(client->con->sock, buf, len);
+        if(len == 0) /* Shouldn't happen */
+            return 0;
+
+        if(max > len)
+            max = len;
+
+        if(max > 0) {
+            ret = sock_write_bytes(client->con->sock, buf, max);
+            if(ret > 0)
+                state->offset += ret;
+        }
+        else
+            ret = send_metadata(client, state, self->_state);
+    }
+    else {
+        ret = sock_write_bytes(client->con->sock, buf, len);
+    }
 
     if(ret < 0) {
         if(sock_recoverable(ret)) {
@@ -85,6 +161,9 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
 static void format_mp3_free_plugin(format_plugin_t *self)
 {
 	/* free the plugin instance */
+    mp3_state *state = self->_state;
+    thread_mutex_destroy(&(state->lock));
+    free(state);
 	free(self);
 }
 
@@ -120,7 +199,7 @@ static void *format_mp3_create_client_data(format_plugin_t *self,
 
     metadata = httpp_getvar(source->parser, "icy-metadata");
     if(metadata)
-    data->metadata = atoi(metadata)>0?1:0;
+        data->use_metadata = atoi(metadata)>0?1:0;
 
     return data;
 }
@@ -140,7 +219,7 @@ static void format_mp3_send_headers(format_plugin_t *self,
 
     format_send_general_headers(self, source, client);
 
-    if(0 && ((mp3_client_data *)(client->format_data))->metadata) {
+    if(((mp3_client_data *)(client->format_data))->use_metadata) {
         int bytes = sock_write(client->con->sock, "icy-metaint: %d\r\n", 
                 ICY_METADATA_INTERVAL);
         if(bytes > 0)
