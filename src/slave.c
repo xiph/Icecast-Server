@@ -263,9 +263,12 @@ static void *start_relay_stream (void *arg)
             break;
         }
         stats_event_inc(NULL, "source_relay_connections");
+        stats_event (relay->localmount, "listeners", "0");
 
         source_main (relay->source);
 
+        if (relay->on_demand == 0)
+            stats_event (relay->localmount, "listeners", NULL);
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
         slave_rescan();
@@ -302,7 +305,10 @@ static void check_relay_stream (relay_server *relay)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
+            {
+                stats_event (relay->localmount, "listeners", "0");
                 DEBUG0 ("setting on_demand");
+            }
             relay->source->on_demand = relay->on_demand;
             /* on-demand relays can be used as fallback mounts so allow
              * for dependant mountpoints to show up on xsl pages*/
