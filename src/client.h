@@ -42,6 +42,9 @@ typedef struct _client_tag
 
     /* Format-handler-specific data for this client */
     void *format_data;
+
+    /* function to call to release format specific resources */
+    void (*free_client_data)(struct _client_tag *client);
 } client_t;
 
 client_t *client_create(connection_t *con, http_parser_t *parser);

@@ -59,6 +59,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
 static refbuf_queue_t *format_mp3_get_predata(format_plugin_t *self);
 static void *format_mp3_create_client_data(format_plugin_t *self,
         source_t *source, client_t *client);
+static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(format_plugin_t *self,
         client_t *client, unsigned char *buf, int len);
 static void format_mp3_send_headers(format_plugin_t *self, 
@@ -394,6 +395,7 @@ static void *format_mp3_create_client_data(format_plugin_t *self,
 
     data->interval = ICY_METADATA_INTERVAL;
     data->offset = 0;
+    client->free_client_data = free_mp3_client_data;
 
     metadata = httpp_getvar(client->parser, "icy-metadata");
     if(metadata)
@@ -401,6 +403,14 @@ static void *format_mp3_create_client_data(format_plugin_t *self,
 
     return data;
 }
+
+
+static void free_mp3_client_data (client_t *client)
+{
+    free (client->format_data);
+    client->format_data = NULL;
+}
+
 
 static void format_mp3_send_headers(format_plugin_t *self,
         source_t *source, client_t *client)

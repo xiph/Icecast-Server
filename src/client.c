@@ -63,6 +63,10 @@ void client_destroy(client_t *client)
     while ((refbuf = refbuf_queue_remove(&client->queue)))
         refbuf_release(refbuf);
 
+    /* we need to free client specific format data (if any) */
+    if (client->free_client_data)
+        client->free_client_data (client);
+
     free(client->username);
 
     free(client);
