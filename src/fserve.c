@@ -364,7 +364,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     ice_config_t *config = config_get_config();
     struct stat file_buf;
     char *range = NULL;
-    long new_content_len = 0;
+    int64_t new_content_len = 0;
     int64_t rangenumber = 0;
     int rangeproblem = 0;
     int ret = 0;
