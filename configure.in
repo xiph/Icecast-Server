@@ -9,6 +9,8 @@ AM_PROG_LIBTOOL
 
 dnl Set some options based on environment
 
+SOCKET_LIBS=
+
 if test -z "$GCC"; then
         case $host in 
         *-*-irix*)
@@ -20,7 +22,7 @@ if test -z "$GCC"; then
                 DEBUG="-v -g -D_REENTRANT"
                 CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
                 PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
-		SUN_LIBS="-lnsl -lsocket -lresolv"
+		SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
                 DEBUG="-g -D_REENTRANT"
@@ -39,7 +41,7 @@ else
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
-		SUN_LIBS="-lnsl -lsocket -lresolv"
+		SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
@@ -104,8 +106,10 @@ AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!))
 
 dnl Make substitutions
 
-LIBS="$LIBS $SUN_LIBS $XML_LIBS $OGG_LIBS $VORBIS_LIBS"
-
+AC_SUBST(XML_LIBS)
+AC_SUBST(OGG_LIBS)
+AC_SUBST(VORBIS_LIBS)
+AC_SUBST(SOCKET_LIBS)
 AC_SUBST(LIBTOOL_DEPS)
 AC_SUBST(OPT)
 AC_SUBST(LIBS)
