@@ -151,7 +151,6 @@ static void _add_connection(connection_t *con)
 	_queue = node;
 	thread_mutex_unlock(&_queue_mutex);
 
-	printf("connection added....\n");
 }
 
 static void _signal_pool(void)
@@ -294,7 +293,6 @@ int connection_create_source(connection_t *con, http_parser_t *parser, char *mou
 	*/
 	global_lock();
 	if (global.sources >= config_get_config()->source_limit) {
-		printf("TOO MANY SOURCE, KICKING THIS ONE\n");
 		INFO1("Source (%s) logged in, but there are too many sources", mount);
 		global_unlock();
 		return 0;
@@ -310,18 +308,26 @@ int connection_create_source(connection_t *con, http_parser_t *parser, char *mou
 		format_type_t format = format_get_type(contenttype);
 		if (format < 0) {
 			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
-			return 0;
+            goto fail;
 		} else {
 			source = source_create(con, parser, mount, format);
 		}
 	} else {
 		WARN0("No content-type header, cannot handle source");
-		return 0;
+        goto fail;
 	}
 	source->shutdown_rwlock = &_source_shutdown_rwlock;
 	sock_set_blocking(con->sock, SOCK_NONBLOCK);
 	thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
 	return 1;
+
+fail:
+    global_lock();
+    global.sources--;
+    global_unlock();
+
+    stats_event_dec(NULL, "sources");
+    return 0;
 }
 
 static void *_handle_connection(void *arg)
@@ -363,18 +369,18 @@ static void *_handle_connection(void *arg)
 				/* handle the connection or something */
 				
 				if (strcmp("ICE", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0 && strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0) {
-					printf("DEBUG: bad protocol\n");
+                    ERROR0("Bad HTTP protocol detected");
 					connection_close(con);
 					httpp_destroy(parser);
 					continue;
 				}
 
 				if (parser->req_type == httpp_req_source) {
-					printf("DEBUG: source logging in\n");
+                    INFO1("Source logging in at mountpoint \"%s\"", 
+                            httpp_getvar(parser, HTTPP_VAR_URI));
 					stats_event_inc(NULL, "source_connections");
 				
 					if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-						printf("DEBUG: bad password\n");
 						INFO1("Source (%s) attempted to login with bad password", httpp_getvar(parser, HTTPP_VAR_URI));
 						connection_close(con);
 						httpp_destroy(parser);
@@ -387,7 +393,6 @@ static void *_handle_connection(void *arg)
 
 					avl_tree_rlock(global.source_tree);
 					if (source_find_mount(httpp_getvar(parser, HTTPP_VAR_URI)) != NULL) {
-						printf("Source attempted to connect with an already used mountpoint.\n");
 						INFO1("Source tried to log in as %s, but is already used", httpp_getvar(parser, HTTPP_VAR_URI));
 						connection_close(con);
 						httpp_destroy(parser);
@@ -403,11 +408,10 @@ static void *_handle_connection(void *arg)
 
 					continue;
 				} else if (parser->req_type == httpp_req_stats) {
-					printf("DEBUG: stats connection...\n");
 					stats_event_inc(NULL, "stats_connections");
 					
 					if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-						printf("DEBUG: bad password\n");
+                        ERROR0("Bad password for stats connection");
 						connection_close(con);
 						httpp_destroy(parser);
 						continue;
@@ -424,7 +428,7 @@ static void *_handle_connection(void *arg)
 					
 					continue;
 				} else if (parser->req_type == httpp_req_play || parser->req_type == httpp_req_get) {
-					printf("DEBUG: client coming in...\n");
+                    DEBUG0("Client connected");
 
 					/* make a client */
 					client = client_create(con, parser);
@@ -439,7 +443,7 @@ static void *_handle_connection(void *arg)
 					*/
 					// TODO: add GUID-xxxxxx
 					if (strcmp(httpp_getvar(parser, HTTPP_VAR_URI), "/stats.xml") == 0) {
-						printf("sending stats.xml\n");
+                        DEBUG0("Stats request, sending xml stats");
 						stats_sendxml(client);
                         client_destroy(client);
 						continue;
@@ -454,6 +458,7 @@ static void *_handle_connection(void *arg)
 							
 						/* If the file exists, then transform it, otherwise, write a 404 error */
 						if (stat(fullPath, &statbuf) == 0) {
+                            DEBUG0("Stats request, sending XSL transformed stats");
 							sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
                             stats_transform_xslt(client, fullPath);
 						}
@@ -467,7 +472,6 @@ static void *_handle_connection(void *arg)
 
 					if (strcmp(httpp_getvar(parser, HTTPP_VAR_URI), "/allstreams.txt") == 0) {
 						if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
-							printf("DEBUG: bad password for allstreams.txt\n");
 							INFO0("Client attempted to fetch allstreams.txt with bad password");
 							if (parser->req_type == httpp_req_get) {
 								client->respcode = 404;
@@ -508,7 +512,7 @@ static void *_handle_connection(void *arg)
 					avl_tree_rlock(global.source_tree);
 					source = source_find_mount(httpp_getvar(parser, HTTPP_VAR_URI));
 					if (source) {
-						printf("DEBUG: source found for client\n");
+                        DEBUG0("Source found for client");
 						
 						global_lock();
 						if (global.clients >= config_get_config()->client_limit) {
@@ -534,7 +538,6 @@ static void *_handle_connection(void *arg)
 							while (node) {
 								var = (http_var_t *)node->key;
 								if (strcasecmp(var->name, "ice-password") && !strncasecmp("ice-", var->name, 4)) {
-									printf("DEBUG: sending %s: %s\n", var->name, var->value);
 									sock_write(client->con->sock, "%s: %s\r\n", var->name, var->value);
 								}
 								node = avl_get_next(node);
@@ -554,7 +557,7 @@ static void *_handle_connection(void *arg)
 					avl_tree_unlock(global.source_tree);
 					
 					if (!source) {
-						printf("DEBUG: source not found for client\n");
+                        DEBUG0("Source not found for client");
 						if (parser->req_type == httpp_req_get) {
 							client->respcode = 404;
 							bytes = sock_write(client->con->sock, "HTTP/1.0 404 Source Not Found\r\nContent-Type: text/html\r\n\r\n"\
@@ -566,13 +569,13 @@ static void *_handle_connection(void *arg)
 					
 					continue;
 				} else {
-					printf("DEBUG: wrong request type\n");
+                    ERROR0("Wrong request type from client");
 					connection_close(con);
 					httpp_destroy(parser);
 					continue;
 				}
 			} else {
-				printf("DEBUG: parsing failed\n");
+                ERROR0("HTTP request parsing failed");
 				connection_close(con);
 				httpp_destroy(parser);
 				continue;

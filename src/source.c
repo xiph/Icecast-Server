@@ -173,8 +173,7 @@ void *source_main(void *arg)
 		}
 
 		if (bytes <= 0) {
-			printf("DEBUG: got 0 bytes reading data, the source must have disconnected...\n");
-			INFO0("Disconnecting lame source...");
+			INFO0("Removing source following disconnection");
 			break;
 		}
 
@@ -225,10 +224,10 @@ void *source_main(void *arg)
                 }
 				if (sbytes < 0) {
 					if (!sock_recoverable(sock_error())) {
-						printf("SOURCE: Client had unrecoverable error catching up (%ld/%ld)\n", sbytes, bytes);
+                        DEBUG0("Client has unrecoverable error catching up. Client has probably disconnected");
 						client->con->error = 1;
 					} else {
-						printf("SOURCE: client had recoverable error...\n");
+                        DEBUG1("Client had recoverable error %ld", sock_error());
 						/* put the refbuf back on top of the queue, since we didn't finish with it */
 						refbuf_queue_insert(&client->queue, abuf);
 					}
@@ -262,10 +261,10 @@ void *source_main(void *arg)
 				if (sbytes < 0) {
 					bytes = sock_error();
 					if (!sock_recoverable(bytes)) {
-						printf("SOURCE: client had unrecoverable error %ld with new data (%ld/%ld)\n", bytes, sbytes, refbuf->len);
+                        DEBUG0("Client had unrecoverable error with new data, probably due to client disconnection");
 						client->con->error = 1;
 					} else {
-						printf("SOURCE: recoverable error %ld\n", bytes);
+                        DEBUG1("Client had recoverable error %ld", bytes);
 						client->pos = 0;
 						refbuf_addref(refbuf);
 						refbuf_queue_insert(&client->queue, refbuf);
@@ -280,7 +279,7 @@ void *source_main(void *arg)
 			** TODO: put queue_limit in a config file
 			*/
 			if (refbuf_queue_size(&client->queue) > 25) {
-				printf("SOURCE: client is too lagged... kicking\n");
+                DEBUG0("Client has fallen too far behind, removing");
 				client->con->error = 1;
 			}
 
@@ -311,7 +310,7 @@ void *source_main(void *arg)
 				global_unlock();
 				stats_event_dec(NULL, "clients");
 				stats_event_args(source->mount, "listeners", "%d", listeners);
-				printf("DEBUG: Client dropped...\n");
+                DEBUG0("Client removed");
 				continue;
 			}
 			client_node = avl_get_next(client_node);
@@ -325,7 +324,7 @@ void *source_main(void *arg)
 		while (client_node) {
 			avl_insert(source->client_tree, client_node->key);
 			listeners++;
-			printf("Client added\n");
+            DEBUG0("Client added");
 			stats_event_inc(NULL, "clients");
 			stats_event_inc(source->mount, "connections");
 			stats_event_args(source->mount, "listeners", "%d", listeners);
@@ -355,7 +354,7 @@ void *source_main(void *arg)
 
 done:
 
-	printf("DEBUG: we're going down...\n");
+    DEBUG0("Source exiting");
 
 	/* we need to empty the client and pending trees */
 	avl_tree_wlock(source->pending_tree);
@@ -372,8 +371,6 @@ done:
 	/* delete this sources stats */
 	stats_event_dec(NULL, "sources");
 	stats_event(source->mount, "listeners", NULL);
-
-	printf("DEBUG: source_main() is now exiting...\n");
 
 	global_lock();
 	global.sources--;

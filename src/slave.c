@@ -82,7 +82,7 @@ static void *_slave_thread(void *arg) {
 
 		mastersock = sock_connect_wto(config_get_config()->master_server, config_get_config()->master_server_port, 0);
 		if (mastersock == SOCK_ERROR) {
-			printf("DEBUG: failed to contact master server\n");
+            WARN0("Relay slave failed to contact master server to fetch stream list");
 			continue;
 		}
 		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nice-password: %s\r\n\r\n", config_get_config()->source_password);
@@ -91,10 +91,11 @@ static void *_slave_thread(void *arg) {
 			avl_tree_rlock(global.source_tree);
 			if (!source_find_mount(buf)) {
 				avl_tree_unlock(global.source_tree);
-				printf("DEBUG: adding source for %s\n", buf);
+
+                DEBUG1("Adding source at mountpoint \"%s\"", buf);
 				streamsock = sock_connect_wto(config_get_config()->master_server, config_get_config()->master_server_port, 0);
 				if (streamsock == SOCK_ERROR) {
-					printf("DEBUG: failed to get stream from master server\n");
+                    WARN0("Failed to relay stream from master server");
 					continue;
 				}
 				con = create_connection(streamsock, NULL);
