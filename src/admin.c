@@ -651,7 +651,7 @@ static void command_show_listeners(client_t *client, source_t *source,
             xmlNewChild(listenernode, NULL, "UserAgent", "Unknown");
         }
         memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%ld", now - current->con->con_time);
+        snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - current->con->con_time));
         xmlNewChild(listenernode, NULL, "Connected", buf);
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "%lu", current->con->id);

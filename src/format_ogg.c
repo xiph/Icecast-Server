@@ -241,7 +241,7 @@ static void update_comments (source_t *source)
     char *title = ogg_info->title;
     char *artist = ogg_info->artist;
     char *metadata = NULL;
-    unsigned int len = 0;
+    unsigned int len = 1; /* space for the nul byte at least */
     ogg_codec_t *codec;
     char codec_names [100] = "";
 
