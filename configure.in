@@ -61,6 +61,8 @@ AC_SEARCH_LIBS(getipnodebyname, nsl,
 dnl Checks for header files.
 AC_HEADER_STDC
 
+AC_CHECK_HEADER(stdint.h, AC_DEFINE(HAVE_STDINT_H, 1),,)
+
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 

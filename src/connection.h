@@ -1,7 +1,8 @@
 #ifndef __CONNECTION_H__
 #define __CONNECTION_H__
 
-#include <stdint.h>
+#include <sys/types.h>
+#include "compat.h"
 
 typedef struct connection_tag
 {
