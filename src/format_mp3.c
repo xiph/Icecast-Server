@@ -63,6 +63,8 @@ format_plugin_t *format_mp3_get_plugin(void)
 
 	plugin->_state = state;
 
+    state->metadata_age = 0;
+    state->metadata = strdup("");
     thread_mutex_create(&(state->lock));
 
 	return plugin;
@@ -88,10 +90,13 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
     }
 
     source_age = source_state->metadata_age;
-    send_metadata = (source_age != client_state->metadata_age) || 
-        client_state->metadata_offset;
-    len_byte = send_metadata?(strlen(source_state->metadata)/16 + 1 - 
-            client_state->metadata_offset):0;
+    send_metadata = source_age != client_state->metadata_age;
+
+    if(send_metadata && strlen(source_state->metadata) > 0)
+        len_byte = strlen(source_state->metadata)/16 + 1 - 
+            client_state->metadata_offset;
+    else
+        len_byte = 0;
     len = 1 + len_byte*16;
     buf = alloca(len);
 
@@ -163,6 +168,8 @@ static void format_mp3_free_plugin(format_plugin_t *self)
 	/* free the plugin instance */
     mp3_state *state = self->_state;
     thread_mutex_destroy(&(state->lock));
+
+    free(state->metadata);
     free(state);
 	free(self);
 }
