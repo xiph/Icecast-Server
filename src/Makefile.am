@@ -16,7 +16,7 @@ icecast_SOURCES = config.c main.c logging.c sighandler.c connection.c global.c\
 icecast_LDADD = net/libicenet.la thread/libicethread.la httpp/libicehttpp.la\
 		log/libicelog.la avl/libiceavl.la timing/libicetiming.la
 
-LIBS = @LIBS@ @XSLT_LIBS@ -lpthread @SOCKET_LIBS@ @XML_LIBS@ @OGG_LIBS@ @VORBIS_LIBS@
+LIBS = @LIBS@ @XSLT_LIBS@ @SOCKET_LIBS@ @XML_LIBS@ @OGG_LIBS@ @VORBIS_LIBS@
 CFLAGS = -g @CFLAGS@ @XML_CFLAGS@ @XSLT_CFLAGS@ @OGG_CFLAGS@ @VORBIS_CFLAGS@
 
 INCLUDES = -I$(srcdir)/net -I$(srcdir)/thread -I$(srcdir)/avl -I$(srcdir)/httpp \

@@ -36,23 +36,35 @@ else
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
+        		LIBS=" $LIBS -lpthread"
 		;;
         sparc-sun-solaris*)
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
-		SOCKET_LIBS="-lnsl -lsocket -lresolv"
+		        SOCKET_LIBS="-lnsl -lsocket -lresolv"
+        		LIBS=" $LIBS -lpthread"
 		;;
 	*-pc-solaris*)
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -D_REENTRANT" 
-		SOCKET_LIBS="-lnsl -lsocket -lresolv"
+		        SOCKET_LIBS="-lnsl -lsocket -lresolv"
+        		LIBS=" $LIBS -lpthread"
+		;;
+        *freebsd*)
+                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
+                CFLAGS="-O20 -fsigned-char -D_REENTRANT"
+                PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
+        		LIBS=" $LIBS -pthread"
+		ogg_prefix="/usr/local"
+		vorbis_prefix="/us/local"
 		;;
         *)
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
                 CFLAGS="-O20 -fsigned-char -D_REENTRANT"
                 PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
+		        LIBS=" $LIBS -lpthread"
 		;;
         esac
 fi
@@ -145,8 +157,8 @@ else
   AC_MSG_ERROR([xml-config could not be found])
 fi
 
-AM_PATH_OGG(, AC_MSG_ERROR(must have Ogg installed!))
-AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!))
+AM_PATH_OGG(, AC_MSG_ERROR(must have Ogg installed!(Perhaps you need --with-ogg-prefix=/usr/local)))
+AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!(Perhaps you need --with-vorbis-prefix=/usr/local)))
 
 dnl Make substitutions
 
