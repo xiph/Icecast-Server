@@ -16,6 +16,7 @@
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
+#define CONFIG_DEFAULT_FILESERVE 1
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
 #define CONFIG_DEFAULT_PORT 8888
@@ -162,6 +163,7 @@ static void _set_defaults(void)
 	_configuration.source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
 	_configuration.relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
 	_configuration.ice_login = CONFIG_DEFAULT_ICE_LOGIN;
+	_configuration.fileserve = CONFIG_DEFAULT_FILESERVE;
 	_configuration.touch_freq = CONFIG_DEFAULT_TOUCH_FREQ;
 	_configuration.dir_list = NULL;
 	_configuration.hostname = CONFIG_DEFAULT_HOSTNAME;
@@ -213,6 +215,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "icelogin") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.ice_login = atoi(tmp);
+			if (tmp) xmlFree(tmp);
+		} else if (strcmp(node->name, "fileserve") == 0) {
+			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			_configuration.fileserve = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "hostname") == 0) {
 			if (_configuration.hostname && _configuration.hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(_configuration.hostname);

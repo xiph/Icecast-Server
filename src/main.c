@@ -27,6 +27,7 @@
 #include "stats.h"
 #include "logging.h"
 #include "xslt.h"
+#include "fserve.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -53,10 +54,13 @@ static void _initialize_subsystems(void)
 	global_initialize();
 	refbuf_initialize();
     xslt_initialize();
+    DEBUG0("Calling fserve_initialize()");
+    fserve_initialize();
 }
 
 static void _shutdown_subsystems(void)
 {
+    fserve_shutdown();
     xslt_shutdown();
 	refbuf_shutdown();
 	stats_shutdown();

@@ -8,10 +8,10 @@ bin_PROGRAMS = icecast
 
 noinst_HEADERS = config.h os.h logging.h sighandler.h connection.h global.h\
 	 util.h slave.h source.h stats.h refbuf.h client.h format.h format_vorbis.h\
-	 compat.h format_mp3.h
+	 compat.h format_mp3.h fserve.h
 icecast_SOURCES = config.c main.c logging.c sighandler.c connection.c global.c\
 	 util.c slave.c source.c stats.c refbuf.c client.c format.c format_vorbis.c\
-	 format_mp3.c xslt.c
+	 format_mp3.c xslt.c fserve.c
     
 icecast_LDADD = net/libicenet.la thread/libicethread.la httpp/libicehttpp.la\
 		log/libicelog.la avl/libiceavl.la timing/libicetiming.la

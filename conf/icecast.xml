@@ -31,11 +31,13 @@
     <!--<master-update-interval>120</master-update-interval>-->
     <!--<master-password>hackme</master-password>-->
 
-        <paths>
-                <basedir>/usr/local/icecast</basedir>
-                <logdir>/tmp</logdir>
-                <webroot>/usr/local/icecast/web</webroot>
-        </paths>
+    <fileserve>1</fileserve>
+
+    <paths>
+            <basedir>/usr/local/icecast</basedir>
+            <logdir>/tmp</logdir>
+            <webroot>/usr/local/icecast/web</webroot>
+    </paths>
 
 	<logging>
 		<accesslog>access.log</accesslog>

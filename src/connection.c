@@ -34,6 +34,7 @@
 #include "format.h"
 #include "logging.h"
 #include "xslt.h"
+#include "fserve.h"
 
 #include "source.h"
 
@@ -530,6 +531,18 @@ static void _handle_get_request(connection_t *con,
         free(fullpath);
         return;
 	}
+    else if(config_get_config()->fileserve && 
+            stat(fullpath, &statbuf) == 0) {
+        client->respcode = 200;
+        bytes = sock_write(client->con->sock, 
+                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n\r\n", 
+                fserve_content_type(fullpath));
+        if(bytes > 0) client->con->sent_bytes = bytes;
+        if(fserve_client_create(client, fullpath) < 0)
+            client_destroy(client);
+        free(fullpath);
+        return;
+    }
     free(fullpath);
 
     if(strcmp(util_get_extension(uri), "m3u") == 0) {

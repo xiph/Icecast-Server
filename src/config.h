@@ -25,6 +25,7 @@ typedef struct ice_config_tag
 	int header_timeout;
 	int source_timeout;
     int ice_login;
+    int fileserve;
 
 	char *source_password;
     char *relay_password;
