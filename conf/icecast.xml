@@ -37,6 +37,13 @@
 	<!--<master-server-port>8001</master-server-port>-->
 	<!--<master-update-interval>120</master-update-interval>-->
 	<!--<master-password>hackme</master-password>-->
+    <!--
+    <relay>
+      <server>127.0.0.1</server>
+      <port>8001</port>
+      <mount>/example.ogg</mount>
+    </relay>
+    -->
 
 	<fileserve>1</fileserve>
 

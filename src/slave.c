@@ -64,13 +64,53 @@ void slave_shutdown(void) {
 	thread_join(_slave_thread_id);
 }
 
-static void *_slave_thread(void *arg) {
-	sock_t mastersock, streamsock;
-	char buf[256];
+static void create_relay_stream(char *server, int port, char *mount)
+{
+    sock_t streamsock;
 	char header[4096];
 	connection_t *con;
 	http_parser_t *parser;
     client_t *client;
+
+    DEBUG1("Adding source at mountpoint \"%s\"", mount);
+
+	streamsock = sock_connect_wto(server, port, 0);
+	if (streamsock == SOCK_ERROR) {
+        WARN0("Failed to relay stream from master server");
+        return;
+	}
+	con = create_connection(streamsock, NULL);
+	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", mount);
+	memset(header, 0, sizeof(header));
+	if (util_read_header(con->sock, header, 4096) == 0) {
+		connection_close(con);
+		return;
+	}
+	parser = httpp_create_parser();
+	httpp_initialize(parser, NULL);
+	if(!httpp_parse_response(parser, header, strlen(header), mount)) {
+        if(httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE)) {
+            ERROR1("Error parsing relay request: %s", 
+                    httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
+        }
+        else
+            ERROR0("Error parsing relay request");
+		connection_close(con);
+        httpp_destroy(parser);
+        return;
+    }
+
+    client = client_create(con, parser);
+	if (!connection_create_source(client, con, parser, 
+                httpp_getvar(parser, HTTPP_VAR_URI))) {
+        client_destroy(client);
+	}
+    return;
+}
+
+static void *_slave_thread(void *arg) {
+	sock_t mastersock;
+	char buf[256];
     int interval = config_get_config()->master_update_interval;
     char *authheader, *data;
     int len;
@@ -117,45 +157,30 @@ static void *_slave_thread(void *arg) {
 			if (!source_find_mount(buf)) {
 				avl_tree_unlock(global.source_tree);
 
-                DEBUG1("Adding source at mountpoint \"%s\"", buf);
-				streamsock = sock_connect_wto(config_get_config()->master_server, config_get_config()->master_server_port, 0);
-				if (streamsock == SOCK_ERROR) {
-                    WARN0("Failed to relay stream from master server");
-					continue;
-				}
-				con = create_connection(streamsock, NULL);
-				sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", buf);
-				memset(header, 0, sizeof(header));
-				if (util_read_header(con->sock, header, 4096) == 0) {
-					connection_close(con);
-					continue;
-				}
-				parser = httpp_create_parser();
-				httpp_initialize(parser, NULL);
-				if(!httpp_parse_response(parser, header, strlen(header), buf)) {
-                    if(httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE)) {
-                        ERROR1("Error parsing relay request: %s", 
-                                httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
-                    }
-                    else
-                        ERROR0("Error parsing relay request");
-					connection_close(con);
-                    httpp_destroy(parser);
-                    continue;
-                }
-
-                client = client_create(con, parser);
-				if (!connection_create_source(client, con, parser, 
-                            httpp_getvar(parser, HTTPP_VAR_URI))) {
-                    client_destroy(client);
-				}
-				continue;
-
-			}
-			avl_tree_unlock(global.source_tree);
+                create_relay_stream(
+                        config_get_config()->master_server,
+                        config_get_config()->master_server_port,
+                        buf);
+			} 
+            else
+    			avl_tree_unlock(global.source_tree);
 		}
 		sock_close(mastersock);
+
+        /* And now, we process the individual mounts... */
+        relay_server *relay = config_get_config()->relay;
+        while(relay) {
+            avl_tree_rlock(global.source_tree);
+            if(!source_find_mount(relay->mount)) {
+                avl_tree_unlock(global.source_tree);
+
+                create_relay_stream(relay->server, relay->port, relay->mount);
+            }
+            else
+                avl_tree_unlock(global.source_tree);
+        }
 	}
 	thread_exit(0);
 	return NULL;
 }
+

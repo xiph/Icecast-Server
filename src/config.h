@@ -15,6 +15,13 @@ typedef struct ice_config_dir_tag
 	struct ice_config_dir_tag *next;
 } ice_config_dir_t;
 
+typedef struct _relay_server {
+    char *server;
+    int port;
+    char *mount;
+    struct _relay_server *next;
+} relay_server;
+
 typedef struct ice_config_tag
 {
 	char *location;
@@ -44,6 +51,8 @@ typedef struct ice_config_tag
 	int master_server_port;
     int master_update_interval;
     char *master_password;
+
+    relay_server *relay;
 
 	char *base_dir;
 	char *log_dir;
