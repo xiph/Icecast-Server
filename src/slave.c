@@ -62,8 +62,8 @@
 static void *_slave_thread(void *arg);
 thread_type *_slave_thread_id;
 static int slave_running = 0;
-static unsigned int max_interval = 0;
-static int rescan_relays = 0;
+volatile static unsigned int max_interval = 0;
+volatile static int rescan_relays = 0;
 
 relay_server *relay_free (relay_server *relay)
 {
@@ -118,6 +118,7 @@ void slave_initialize(void)
         return;
 
     slave_running = 1;
+    max_interval = 0;
     _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
 }
 
