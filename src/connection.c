@@ -770,6 +770,7 @@ static void _handle_get_request(connection_t *con,
         if(bytes > 0) client->con->sent_bytes += bytes;
 							
     	sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
+        sock_set_nodelay(client->con->sock);
 						
 		avl_tree_wlock(source->pending_tree);
 		avl_insert(source->pending_tree, (void *)client);

@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <netdb.h>
@@ -198,6 +199,14 @@ int sock_set_nolinger(sock_t sock)
 	struct linger lin = { 0, 0 };
 	return setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&lin, 
             sizeof(struct linger));
+}
+
+int sock_set_nodelay(sock_t sock)
+{
+    int nodelay = 1;
+
+    return setsockopt(sock, SOL_TCP, TCP_NODELAY, (void *)nodelay,
+            sizeof(int));
 }
 
 int sock_set_keepalive(sock_t sock)

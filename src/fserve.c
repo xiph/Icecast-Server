@@ -380,6 +380,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     if(bytes > 0) httpclient->con->sent_bytes = bytes;
 
     sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
+    sock_set_nodelay(client->client->con->sock);
 
     avl_tree_wlock(pending_tree);
     avl_insert(pending_tree, client);
