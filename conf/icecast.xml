@@ -26,6 +26,7 @@
     <!-- Uncomment this if you want directory listings -->
     <!--
     <directory>
+        <yp-url-timeout>15</yp-url-timeout>
         <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
     </directory>
      -->
