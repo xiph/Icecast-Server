@@ -332,6 +332,15 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
 {
     int ret;
 
+    if (yp->bitrate == NULL)
+    {
+        yp->bitrate = stats_get_value (yp->mount, "ice-bitrate");
+        if (yp->bitrate == NULL)
+        {
+            yp->next_update = time(NULL) + 5;
+            return 0;
+        }
+    }
     ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
                     "%s&url=%s&listenurl=%s&type=%s&b=%s&%s\r\n",
                     yp->server_name, yp->server_genre, yp->cluster_password,
@@ -468,7 +477,6 @@ static ypdata_t *create_yp_entry (source_t *source)
         yp->server_name = strdup ("");
         yp->server_desc = strdup ("");
         yp->server_genre = strdup ("");
-        yp->bitrate = strdup ("");
         yp->server_desc = strdup ("");
         yp->server_type = strdup ("");
         yp->cluster_password = strdup ("");

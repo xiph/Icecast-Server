@@ -442,16 +442,21 @@ static int process_vorbis_incoming_hdrs (source_t *source)
     tag = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
     if (tag == NULL)
         tag = "unknown";
+    else
+        INFO1 ("title set to \"%s\"", tag);
     stats_event (source->mount, "title", tag);
 
     tag = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
     if (tag == NULL)
         tag = "unknown";
+    else
+        INFO1 ("artist set to \"%s\"", tag);
     stats_event (source->mount, "artist", tag);
 
     stats_event_args (source->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
     stats_event_args (source->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
     stats_event_args (source->mount, "audio-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal);
+    stats_event_args (source->mount, "ice-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal/1000);
     /* set queued pages to contain a 1/4 of a second worth of samples */
     source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 4;
 
