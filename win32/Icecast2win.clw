@@ -2,7 +2,7 @@
 
 [General Info]
 Version=1
-LastClass=CIcecast2winDlg
+LastClass=CStatus
 LastTemplate=CDialog
 NewFileInclude1=#include "stdafx.h"
 NewFileInclude2=#include "Icecast2win.h"
@@ -13,18 +13,18 @@ Class2=CIcecast2winDlg
 Class3=CAboutDlg
 
 ResourceCount=10
-Resource1=IDD_SSTATUS
+Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
-Resource3=IDD_ABOUTBOX
-Resource4=IDD_ICECAST2WIN_DIALOG
+Resource3=IDD_SSTATUS
+Resource4=IDR_TRAY
 Class4=CStatus
-Resource5=IDR_TRAY
+Resource5=IDR_MENU2
 Class5=CConfigTab
 Class6=CStatsTab
-Resource6=IDD_STATSDIALOG
-Resource7=IDR_MENU2
-Resource8=IDD_CONFIGDIALOG
-Resource9=IDR_MENU3
+Resource6=IDR_MENU3
+Resource7=IDD_CONFIGDIALOG
+Resource8=IDD_ICECAST2WIN_DIALOG
+Resource9=IDD_STATSDIALOG
 Resource10=IDR_MENU4
 
 [CLS:CIcecast2winApp]

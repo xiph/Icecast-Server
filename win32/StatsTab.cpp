@@ -75,6 +75,7 @@ BOOL CStatsTab::OnInitDialog()
 void CStatsTab::OnDblclkSourcelist(NMHDR* pNMHDR, LRESULT* pResult) 
 {
 	// TODO: Add your control notification handler code here
+	g_mainDialog->statsTab.m_StatsListCtrl.DeleteAllItems();
 	g_mainDialog->UpdateStatsLists();
 	*pResult = 0;
 }

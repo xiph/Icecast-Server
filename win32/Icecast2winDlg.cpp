@@ -574,6 +574,10 @@ void StartStats(void *dummy)
 			Sleep(5000);
 		}
 		if (global.running != ICE_RUNNING) {
+			numMainStats = 0;
+			g_mainDialog->statusTab.m_GlobalStatList.DeleteAllItems();
+			g_mainDialog->statsTab.m_SourceListCtrl.DeleteAllItems();
+			g_mainDialog->statsTab.m_StatsListCtrl.DeleteAllItems();
 			_endthread();
 		}
 	}
