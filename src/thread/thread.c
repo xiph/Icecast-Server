@@ -54,6 +54,7 @@
 #ifdef THREAD_DEBUG
 #define CATMODULE "thread"
 #define LOG_ERROR(y) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y)
+#define LOG_ERROR1(y, z1) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1)
 #define LOG_ERROR3(y, z1, z2, z3) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
 #define LOG_ERROR7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
 
@@ -68,6 +69,8 @@
 
 #define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y)
 #define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2)
+#define LOG_DEBUG3(y, z1, z2, z3) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
+#define LOG_DEBUG4(y, z1, z2, z3, z4) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4)
 #define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
 #endif
 
@@ -88,38 +91,45 @@ static long _next_thread_id = 0;
 static int _initialized = 0;
 static avl_tree *_threadtree = NULL;
 
-#ifdef DEBUG_MUTEXES
-static mutex_t _threadtree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1, 
-    PTHREAD_MUTEX_INITIALIZER};
-#else
-static mutex_t _threadtree_mutex = { PTHREAD_MUTEX_INITIALIZER };
-#endif
 
+#ifdef THREAD_DEBUG
 
+/* this is x86 specific, but gets a very precise and low overhead
+ * timer, other platforms may have similar mechanisms
+ */
+#define rdtscll(val) \
+     __asm__ __volatile__("rdtsc" : "=A" (val))
 
-#ifdef DEBUG_MUTEXES
+static inline unsigned long long get_count (void)
+{
+    unsigned long long ret;
+
+    rdtscll(ret);
+    return ret;
+}
+
 static int _logid = -1;
 static long _next_mutex_id = 0;
-
 static avl_tree *_mutextree = NULL;
-static mutex_t _mutextree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
-    PTHREAD_MUTEX_INITIALIZER};
-#endif
 
-#ifdef DEBUG_MUTEXES
-static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
-    PTHREAD_MUTEX_INITIALIZER};
+static mutex_t _threadtree_mutex = { -1, "unset", MUTEX_STATE_UNINIT,
+    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
+static mutex_t _mutextree_mutex = { -1, "unset", MUTEX_STATE_UNINIT,
+    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
+static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT,
+    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
+
+static int _compare_mutexes(void *compare_arg, void *a, void *b);
+static int _free_mutex(void *key);
+
 #else
+
+static mutex_t _threadtree_mutex = { PTHREAD_MUTEX_INITIALIZER };
 static mutex_t _library_mutex = { PTHREAD_MUTEX_INITIALIZER };
+
 #endif
 
 /* INTERNAL FUNCTIONS */
-
-/* avl tree functions */
-#ifdef DEBUG_MUTEXES
-static int _compare_mutexes(void *compare_arg, void *a, void *b);
-static int _free_mutex(void *key);
-#endif
 
 static int _compare_threads(void *compare_arg, void *a, void *b);
 static int _free_thread(void *key);
@@ -143,12 +153,6 @@ void thread_initialize(void)
     /* set up logging */
 
 #ifdef THREAD_DEBUG
-    log_initialize();
-    _logid = log_open("thread.log");
-    log_set_level(_logid, THREAD_DEBUG);
-#endif
-
-#ifdef DEBUG_MUTEXES
     /* create all the internal mutexes, and initialize the mutex tree */
 
     _mutextree = avl_tree_new(_compare_mutexes, NULL);
@@ -160,10 +164,14 @@ void thread_initialize(void)
 
     _mutextree_mutex.mutex_id = _next_mutex_id++;
     avl_insert(_mutextree, (void *)&_mutextree_mutex);
+
+    log_initialize();
+    _logid = log_open("thread.log");
+    log_set_level(_logid, 4);
 #endif
 
-    thread_mutex_create(&_threadtree_mutex);
-    thread_mutex_create(&_library_mutex);    
+    thread_mutex_create("threadtree", &_threadtree_mutex);
+    thread_mutex_create("thread lib", &_library_mutex);    
 
     /* initialize the thread tree and insert the main thread */
 
@@ -223,6 +231,7 @@ static void _block_signals(void)
         sigdelset(&ss, SIGKILL);
         sigdelset(&ss, SIGSTOP);
         sigdelset(&ss, SIGSEGV);
+        sigdelset(&ss, SIGCHLD);
         sigdelset(&ss, SIGBUS);
         if (pthread_sigmask(SIG_BLOCK, &ss, NULL) != 0) {
 #ifdef THREAD_DEBUG
@@ -299,6 +308,9 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
             thread->detached = 1;
         }
 
+#ifdef __OpenBSD__
+        thread->running = 1;
+#endif
         if (pthread_create (&thread->sys_thread, &attr, _start_routine, start) == 0)
         {
             pthread_attr_destroy (&attr);
@@ -310,7 +322,7 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
     while (0);
 
 #ifdef THREAD_DEBUG
-    LOG_ERROR("Could not create new thread %s", name);
+    LOG_ERROR1("Could not create new thread %s", name);
 #endif
     if (start) free (start);
     if (thread) free (thread);
@@ -323,7 +335,7 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
 */
 static void _mutex_create(mutex_t *mutex)
 {
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
     mutex->thread_id = MUTEX_STATE_NEVERLOCKED;
     mutex->line = -1;
 #endif
@@ -331,15 +343,18 @@ static void _mutex_create(mutex_t *mutex)
     pthread_mutex_init(&mutex->sys_mutex, NULL);
 }
 
-void thread_mutex_create_c(mutex_t *mutex, int line, char *file)
+void thread_mutex_create_c(const char *name, mutex_t *mutex, int line, const char *file)
 {
     _mutex_create(mutex);
 
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
+    mutex->name = strdup (name);
     _mutex_lock(&_mutextree_mutex);
     mutex->mutex_id = _next_mutex_id++;
     avl_insert(_mutextree, (void *)mutex);
     _mutex_unlock(&_mutextree_mutex);
+
+    LOG_DEBUG3 ("mutex %s created (%s:%d)", mutex->name, file, line);
 #endif
 }
 
@@ -347,7 +362,8 @@ void thread_mutex_destroy (mutex_t *mutex)
 {
     pthread_mutex_destroy(&mutex->sys_mutex);
 
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
+    free (mutex->file);
     _mutex_lock(&_mutextree_mutex);
     avl_delete(_mutextree, mutex, _free_mutex);
     _mutex_unlock(&_mutextree_mutex);
@@ -356,7 +372,11 @@ void thread_mutex_destroy (mutex_t *mutex)
 
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 {
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
+    mutex->lock_start = get_count();
+    mutex->file = strdup (file);
+    mutex->line = line;
+#if 0
     thread_type *th = thread_self();
 
     if (!th) LOG_WARN("No mt record for %u in lock [%s:%d]", thread_self(), file, line);
@@ -421,14 +441,14 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
     }
 
     _mutex_unlock(&_mutextree_mutex);
-#else
+#endif
     _mutex_lock(mutex);
 #endif /* DEBUG_MUTEXES */
 }
 
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 {
-#ifdef DEBUG_MUTEXES
+#if 0
     thread_type *th = thread_self();
 
     if (!th) {
@@ -486,9 +506,14 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
     }
 
     _mutex_unlock(&_mutextree_mutex);
-#else
-    _mutex_unlock(mutex);
 #endif /* DEBUG_MUTEXES */
+    _mutex_unlock(mutex);
+#ifdef THREAD_DEBUG
+    LOG_DEBUG4 ("lock %s, at %s:%d lasted %llu", mutex->name, mutex->file,
+            mutex->line, get_count() - mutex->lock_start);
+    free (mutex->file);
+    mutex->file = NULL;
+#endif
 }
 
 void thread_cond_create_c(cond_t *cond, int line, char *file)
@@ -583,18 +608,22 @@ void thread_exit_c(long val, int line, char *file)
         _mutex_unlock(&_mutextree_mutex);
     }
 #endif
-    
+#ifdef __OpenBSD__
+    thread->running = 0;
+#endif
+
     if (th && th->detached)
     {
 #ifdef THREAD_DEBUG
-        LOG_INFO4("Removing thread %d [%s] started at [%s:%d], reason: 'Thread Exited'", th->thread_id, th->name, th->file, th->line);
-#endif
+        LOG_DEBUG4("Removing thread %d [%s] started at [%s:%d]", th->thread_id,
+                th->name, th->file, th->line);
 
         _mutex_lock(&_threadtree_mutex);
         avl_delete(_threadtree, th, _free_thread);
         _mutex_unlock(&_threadtree_mutex);
+#endif
     }
-    
+
     pthread_exit ((void*)val);
 }
 
@@ -646,13 +675,18 @@ static void *_start_routine(void *arg)
     _mutex_unlock(&_threadtree_mutex);
 
 #ifdef THREAD_DEBUG
-    LOG_INFO4("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
+    LOG_DEBUG4("Added thread %d [%s] started at [%s:%d]", thread->thread_id,
+            thread->name, thread->file, thread->line);
 #endif
 
     pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, NULL);
     free (start);
 
     (start_routine)(real_arg);
+
+#ifdef __OpenBSD__
+    thread->running = 0;
+#endif
 
     if (thread->detached)
     {
@@ -738,6 +772,11 @@ void thread_join(thread_type *thread)
     void *ret;
     int i;
 
+#ifdef __OpenBSD__
+    /* openbsd masks signals while waiting */
+    while (thread->running)
+        thread_sleep (200000);
+#endif
     i = pthread_join(thread->sys_thread, &ret);
     _mutex_lock(&_threadtree_mutex);
     avl_delete(_threadtree, thread, _free_thread);
@@ -746,7 +785,7 @@ void thread_join(thread_type *thread)
 
 /* AVL tree functions */
 
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
 static int _compare_mutexes(void *compare_arg, void *a, void *b)
 {
     mutex_t *m1, *m2;
@@ -776,7 +815,7 @@ static int _compare_threads(void *compare_arg, void *a, void *b)
     return 0;
 }
 
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
 static int _free_mutex(void *key)
 {
     mutex_t *m;

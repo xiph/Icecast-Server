@@ -40,18 +40,25 @@ typedef struct {
     /* is the thread running detached? */
     int detached;
 
+#ifdef __OpenBSD__
+    int running;
+#endif
+
     /* the system specific thread */
     pthread_t sys_thread;
 } thread_type;
 
 typedef struct {
-#ifdef DEBUG_MUTEXES
+#ifdef THREAD_DEBUG
     /* the local id and name of the mutex */
     long mutex_id;
     char *name;
 
     /* the thread which is currently locking this mutex */
     long thread_id;
+
+    /* time the lock was taken */
+    unsigned long long lock_start;
 
     /* the file and line where the mutex was locked */
     char *file;
@@ -90,7 +97,7 @@ typedef struct {
 } rwlock_t;
 
 #define thread_create(n,x,y,z) thread_create_c(n,x,y,z,__LINE__,__FILE__)
-#define thread_mutex_create(x) thread_mutex_create_c(x,__LINE__,__FILE__)
+#define thread_mutex_create(name,x) thread_mutex_create_c(name,x,__LINE__,__FILE__)
 #define thread_mutex_lock(x) thread_mutex_lock_c(x,__LINE__,__FILE__)
 #define thread_mutex_unlock(x) thread_mutex_unlock_c(x,__LINE__,__FILE__)
 #define thread_cond_create(x) thread_cond_create_c(x,__LINE__,__FILE__)
@@ -147,7 +154,7 @@ void thread_shutdown(void);
 /* creation, destruction, locking, unlocking, signalling and waiting */
 thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
         void *arg, int detached, int line, char *file);
-void thread_mutex_create_c(mutex_t *mutex, int line, char *file);
+void thread_mutex_create_c(const char *name, mutex_t *mutex, int line, const char *file);
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_destroy(mutex_t *mutex);
