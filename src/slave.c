@@ -77,7 +77,7 @@ static void create_relay_stream(char *server, int port, char *mount)
 
 	streamsock = sock_connect_wto(server, port, 0);
 	if (streamsock == SOCK_ERROR) {
-        WARN0("Failed to relay stream from master server");
+        WARN2("Failed to relay stream from master server, couldn't connect to http://%s:%d", server, port);
         return;
 	}
 	con = create_connection(streamsock, NULL);
