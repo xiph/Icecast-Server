@@ -91,12 +91,16 @@ fi
 if test -n "$XMLCONFIG"
 then
   XML_LIBS="`$XMLCONFIG --libs`"
-  CPPFLAGS="$CPPFLAGS `$XMLCONFIG --cflags`"
+  XML_CFLAGS="`$XMLCONFIG --cflags`"
   save_LIBS="$LIBS"
+  save_CFLAGS="$CFLAGS"
   LIBS="$LIBS $XML_LIBS"
+  CFLAGS="$CFLAGS $XML_CFLAGS"
   AC_CHECK_FUNC(xmlParseFile,, [AC_MSG_ERROR([There was a problem linking with libxml])])
   LIBS="$save_LIBS"
+  CFLAGS="$save_CFLAGS"
   save_LIBS=
+  save_CFLAGS=
 else
   AC_MSG_ERROR([xml-config could not be found])
 fi
@@ -106,6 +110,9 @@ AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!))
 
 dnl Make substitutions
 
+AC_SUBST(XML_CFLAGS)
+AC_SUBST(OGG_CFLAGS)
+AC_SUBST(VORBIS_CFLAGS)
 AC_SUBST(XML_LIBS)
 AC_SUBST(OGG_LIBS)
 AC_SUBST(VORBIS_LIBS)
