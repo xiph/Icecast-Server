@@ -79,8 +79,10 @@ relay_server *relay_free (relay_server *relay)
     xmlFree (relay->server);
     xmlFree (relay->mount);
     xmlFree (relay->localmount);
-    xmlFree (relay->username);
-    xmlFree (relay->password);
+    if (relay->username)
+        xmlFree (relay->username);
+    if (relay->password)
+        xmlFree (relay->password);
     free (relay);
     return next;
 }
@@ -95,8 +97,10 @@ relay_server *relay_copy (relay_server *r)
         copy->server = xmlStrdup (r->server);
         copy->mount = xmlStrdup (r->mount);
         copy->localmount = xmlStrdup (r->localmount);
-        copy->username = xmlStrdup (r->username);
-        copy->password = xmlStrdup (r->password);
+        if (r->username)
+            copy->username = xmlStrdup (r->username);
+        if (r->password)
+            copy->password = xmlStrdup (r->password);
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;

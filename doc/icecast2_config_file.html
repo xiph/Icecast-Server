@@ -209,6 +209,8 @@ certain formats.
         &lt;port&gt;8001&lt;/port&gt;
         &lt;mount&gt;/example.ogg&lt;/mount&gt;
         &lt;local-mount&gt;/different.ogg&lt;/local-mount&gt;
+        &lt;username&gt;joe&lt;/username&gt;
+        &lt;password&gt;soap&lt;/password&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
         &lt;on-demand&gt;0&lt;/on-demand&gt;
     &lt;/relay&gt;
@@ -300,6 +302,8 @@ A server is configured as a Specific Mountpoint Server relay by specifying a &lt
         &lt;port&gt;8001&lt;/port&gt;
         &lt;mount&gt;/example.ogg&lt;/mount&gt;
         &lt;local-mount&gt;/different.ogg&lt;/local-mount&gt;
+        &lt;username&gt;joe&lt;/username&gt;
+        &lt;password&gt;soap&lt;/password&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
         &lt;on-demand&gt;1&lt;/on-demand&gt;
     &lt;/relay&gt;
@@ -321,6 +325,14 @@ The mountpoint located on the remote server.  If you are relaying a shoutcast st
 <h4>local-mount</h4>
 <div class="indentedbox">
 The name to use for the local mountpoint.  This is what the mount will be named on the RELAY SERVER.
+</div>
+<h4>username</h4>
+<div class="indentedbox">
+The source of the relay may require authentication itself, if so state the username here.
+</div>
+<h4>password</h4>
+<div class="indentedbox">
+The source of the relay may require authentication itself, if so state the password here.
 </div>
 <h4>relay-shoutcast-metadata</h4>
 <div class="indentedbox">

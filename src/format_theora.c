@@ -49,7 +49,8 @@ static void theora_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
     DEBUG0 ("freeing theora codec");
     stats_event (ogg_info->mount, "video_bitrate", NULL);
-    stats_event (ogg_info->mount, "framerate", NULL);
+    stats_event (ogg_info->mount, "video_quality", NULL);
+    stats_event (ogg_info->mount, "frame_rate", NULL);
     stats_event (ogg_info->mount, "frame_size", NULL);
     theora_info_clear (&theora->ti);
     theora_comment_clear (&theora->tc);
@@ -90,6 +91,19 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
             }
             header_page = 1;
             codec->headers++;
+            if (codec->headers == 3)
+            {
+                ogg_info->bitrate += theora->ti.target_bitrate;
+                stats_event_args (ogg_info->mount, "video_bitrate", "%ld",
+                        (long)theora->ti.target_bitrate);
+                stats_event_args (ogg_info->mount, "video_quality", "%ld",
+                        (long)theora->ti.quality);
+                stats_event_args (ogg_info->mount, "frame_size", "%ld x %ld",
+                        (long)theora->ti.frame_width,
+                        (long)theora->ti.frame_height);
+                stats_event_args (ogg_info->mount, "frame_rate", "%.2f",
+                        (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
+            }
             continue;
         }
         if (codec->headers < 3)
