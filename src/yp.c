@@ -84,8 +84,8 @@ typedef struct ypdata_tag
 static rwlock_t yp_lock;
 static mutex_t yp_pending_lock;
 
-static struct yp_server *active_yps = NULL, *pending_yps = NULL;
-static int yp_update = 0;
+static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
+static volatile int yp_update = 0;
 static int yp_running;
 static time_t now;
 static thread_type *yp_thread;
@@ -153,14 +153,14 @@ static struct yp_server *find_yp_server (const char *url)
 {
     struct yp_server *server;
 
-    server = active_yps;
+    server = (struct yp_server *)active_yps;
     while (server)
     {
         if (strcmp (server->url, url) == 0)
             return server;
         server = server->next;
     }
-    server = pending_yps;
+    server = (struct yp_server *)pending_yps;
     while (server)
     {
         if (strcmp (server->url, url) == 0)
@@ -208,7 +208,7 @@ void yp_recheck_config (ice_config_t *config)
     DEBUG0("Updating YP configuration");
     thread_rwlock_rlock (&yp_lock);
 
-    server = active_yps;
+    server = (struct yp_server *)active_yps;
     while (server)
     {
         server->remove = 1;
@@ -230,7 +230,7 @@ void yp_recheck_config (ice_config_t *config)
             }
             server->url = strdup (config->yp_url[i]);
             server->url_timeout = config->yp_url_timeout[i];
-            server->touch_interval = config->touch_interval;
+            server->touch_interval = config->yp_touch_interval[i];
             server->curl = curl_easy_init();
             if (server->curl == NULL)
             {
@@ -246,7 +246,7 @@ void yp_recheck_config (ice_config_t *config)
             curl_easy_setopt (server->curl, CURLOPT_TIMEOUT, server->url_timeout);
             curl_easy_setopt (server->curl, CURLOPT_NOSIGNAL, 1L);
             curl_easy_setopt (server->curl, CURLOPT_ERRORBUFFER, &(server->curl_error[0]));
-            server->next = pending_yps;
+            server->next = (struct yp_server *)pending_yps;
             pending_yps = server;
             INFO3 ("Adding new YP server \"%s\" (timeout %ds, default interval %ds)",
                     server->url, server->url_timeout, server->touch_interval);
@@ -536,7 +536,8 @@ static ypdata_t *create_yp_entry (source_t *source)
 /* Check for changes in the YP servers configured */
 static void check_servers ()
 {
-    struct yp_server *server = active_yps, **server_p = &active_yps;
+    struct yp_server *server = (struct yp_server *)active_yps,
+                     **server_p = (struct yp_server **)&active_yps;
 
     while (server)
     {
@@ -557,11 +558,11 @@ static void check_servers ()
     {
         avl_node *node;
 
-        server = pending_yps;
+        server = (struct yp_server *)pending_yps;
         pending_yps = server->next;
 
         DEBUG1("Add pending yps %s", server->url);
-        server->next = active_yps;
+        server->next = (struct yp_server *)active_yps;
         active_yps = server;
 
         /* new YP server configured, need to populate with existing sources */
@@ -644,7 +645,7 @@ static void *yp_update_thread(void *arg)
 
         /* do the YP communication */
         thread_rwlock_rlock (&yp_lock);
-        server = active_yps;
+        server = (struct yp_server *)active_yps;
         while (server)
         {
             /* DEBUG1 ("trying %s", server->url); */
@@ -658,7 +659,7 @@ static void *yp_update_thread(void *arg)
         {
             thread_rwlock_wlock (&yp_lock);
             check_servers ();
-            server = active_yps;
+            server = (struct yp_server *)active_yps;
             while (server)
             {
                 /* DEBUG1 ("Checking yps %s", server->url); */
@@ -675,7 +676,7 @@ static void *yp_update_thread(void *arg)
     /* free server and ypdata left */
     while (active_yps)
     {
-        struct yp_server *server = active_yps;
+        struct yp_server *server = (struct yp_server *)active_yps;
         active_yps = server->next;
         destroy_yp_server (server);
     }
@@ -826,7 +827,7 @@ void yp_add (source_t *source)
 
     /* make sure we don't race against another yp_add */
     thread_mutex_lock (&yp_pending_lock);
-    server = active_yps;
+    server = (struct yp_server *)active_yps;
     while (server)
     {
         ypdata_t *yp;
@@ -852,7 +853,7 @@ void yp_add (source_t *source)
 /* Mark an existing entry in the YP list as to be marked for deletion */
 void yp_remove (const char *mount)
 {
-    struct yp_server *server = active_yps;
+    struct yp_server *server = (struct yp_server *)active_yps;
 
     thread_rwlock_rlock (&yp_lock);
     while (server)
@@ -874,7 +875,7 @@ void yp_remove (const char *mount)
  * attempt */
 void yp_touch (const char *mount)
 {
-    struct yp_server *server = active_yps;
+    struct yp_server *server = (struct yp_server *)active_yps;
     time_t trigger;
     ypdata_t *search_list = NULL;
 

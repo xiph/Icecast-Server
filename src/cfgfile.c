@@ -215,7 +215,7 @@ void config_clear(ice_config_t *c)
         free(dirnode);
         dirnode = nextdirnode;
     }
-#ifdef HAVE_YP
+#ifdef USE_YP
     i = 0;
     while (i < c->num_yp_directories) 
     {
@@ -746,7 +746,8 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
             _add_server(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "touch-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->touch_interval = atoi(tmp);
+            configuration->yp_touch_interval[configuration->num_yp_directories] =
+                atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));

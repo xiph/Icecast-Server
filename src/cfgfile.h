@@ -135,6 +135,7 @@ typedef struct ice_config_tag
     char *group;
     char *yp_url[MAX_YP_DIRECTORIES];
     int    yp_url_timeout[MAX_YP_DIRECTORIES];
+    int    yp_touch_interval[MAX_YP_DIRECTORIES];
     int num_yp_directories;
 } ice_config_t;
 
