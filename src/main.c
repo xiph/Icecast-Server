@@ -130,7 +130,6 @@ static void _shutdown_subsystems(void)
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)
 {
     int i = 1;
-    int processID = 0;
     int config_ok = 0;
 
 
@@ -139,12 +138,16 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
     while (i < argc) {
         if (strcmp(argv[i], "-b") == 0) {
 #ifndef WIN32
+            pid_t pid;
             fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
-            if ((processID = (int)fork()) > 0) {
+
+            pid = fork();
+
+            if (pid > 0) {
                 /* exit the parent */
                 exit(0);
             }
-            else if (processID < 0) {
+            else if(pid < 0) {
                 fprintf(stderr, "FATAL: Unable to fork child!");
                 exit(1);
             }
