@@ -296,7 +296,6 @@ static connection_t *_get_connection(void)
 int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
 	source_t *source;
 	char *contenttype;
-    int bytes;
 
 	/* check to make sure this source wouldn't
 	** be over the limit
@@ -328,25 +327,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
         source = source_create(client, con, parser, mount, format);
 	}
 
-    /* We did a preliminary check earlier, to catch the common case before
-     * we do any unneccesary processing. Now, we do a check that must be
-     * correct - so we have to take a write lock out, since we need to 
-     * add this source if it doesn't already exist.
-     */
-    avl_tree_wlock(global.source_tree);
-	if (source_find_mount(mount) != NULL) {
-		INFO1("Source tried to log in as %s, but mountpoint is already used", 
-                mount);
-		avl_tree_unlock(global.source_tree);
-		goto fail;
-    }
-    /* Keep the tree locked - it gets unlocked in source_main */
-	
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\n\r\n");
-    if(bytes > 0) client->con->sent_bytes = bytes;
-
+    source->send_return = 1;
 	source->shutdown_rwlock = &_source_shutdown_rwlock;
 	sock_set_blocking(con->sock, SOCK_NONBLOCK);
 	thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);

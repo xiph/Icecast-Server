@@ -56,6 +56,7 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
     src->running = 1;
 	src->num_yp_directories = 0;
 	src->listeners = 0;
+    src->send_return = 0;
 	for (i=0;i<config_get_config()->num_yp_directories;i++) {
 		if (config_get_config()->yp_url[i]) {
 			src->ypdata[src->num_yp_directories] = yp_create_ypdata();
@@ -157,13 +158,32 @@ void *source_main(void *arg)
 	/* grab a read lock, to make sure we get a chance to cleanup */
 	thread_rwlock_rlock(source->shutdown_rwlock);
 
-    /* The caller has ensured we have a write lock on the tree... */
-
+    avl_tree_wlock(global.source_tree);
+    /* Now, we must do a final check with write lock taken out that the
+     * mountpoint is available..
+     */
+    if (source_find_mount(source->mount) != NULL) {
+        avl_tree_unlock(global.source_tree);
+        if(source->send_return) {
+            client_send_404(source->client, "Mountpoint in use");
+        }
+        thread_exit(0);
+        return NULL;
+    }
 	/* insert source onto source tree */
 	avl_insert(global.source_tree, (void *)source);
 	/* release write lock on global source tree */
 	avl_tree_unlock(global.source_tree);
 
+    /* If we connected successfully, we can send the message (if requested)
+     * back
+     */
+    if(source->send_return) {
+        source->client->respcode = 200;
+        bytes = sock_write(source->client->con->sock, 
+                "HTTP/1.0 200 OK\r\n\r\n");
+        if(bytes > 0) source->client->con->sent_bytes = bytes;
+    }
 
 	/* start off the statistics */
 	stats_event(source->mount, "listeners", "0");

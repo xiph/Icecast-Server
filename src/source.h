@@ -30,6 +30,7 @@ typedef struct source_tag
 	int	num_yp_directories;
 	long listeners;
     long max_listeners;
+    int send_return;
 } source_t;
 
 source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type);
