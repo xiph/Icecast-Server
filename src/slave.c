@@ -75,6 +75,11 @@ static void *_slave_thread(void *arg) {
     char *authheader, *data;
     int len;
     char *username = "relay";
+    char *password = config_get_config()->master_password;
+
+    if(password == NULL)
+        password = config_get_config()->source_password;
+
 
 	while (_initialized) {
         if (config_get_config()->master_update_interval > ++interval) {
@@ -90,11 +95,11 @@ static void *_slave_thread(void *arg) {
 			continue;
 		}
 
-        len = strlen(username) + strlen(config_get_config()->master_password) + 1;
+        len = strlen(username) + strlen(password) + 1;
         authheader = malloc(len+1);
         strcpy(authheader, username);
         strcat(authheader, ":");
-        strcat(authheader, config_get_config()->master_password);
+        strcat(authheader, password);
         data = util_base64_encode(authheader);
 		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nAuthorization: Basic %s\r\n\r\n", data);
         free(data);
