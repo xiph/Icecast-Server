@@ -11,12 +11,12 @@
 <br>
 <br>
 <h2>Type of Relays</h2>
-<p>There are two types of relays that icecast supports.  The first type is when both master and slave servers are icecast2 servers.  In this case, a "master-slave" relay can be setup such that all that needs to be done is configure the slave server with the connection information (serverip:port) of the master server and the slave will mirror all mountpoints on the master server.  The slave will also periodically check the master server to see if any new mountpoints have attached and if so, then will relay those as well.  The second type of relay is a "single-broadcast" relay.  In this case, the slave server is configured with a serverip+port+mount and only the mountpoint specified is relayed.  In order to relay a broadcast stream on a Shoutcast server, you must use the "single-broadcast" relay and specify a mountpoint of "/".</p>
+<p>There are two types of relays that icecast supports.  The first type is when both master and slave servers are icecast2 servers.  In this case, a "master-slave" relay can be setup such that all that needs to be done is configure the slave server with the connection information (serverip:port) of the master server and the slave will mirror all mountpoints on the master server.  The slave will also periodically check the master server to see if any new mountpoints have attached and if so will relay those as well.  The second type of relay is a "single-broadcast" relay.  In this case, the slave server is configured with a serverip+port+mount and only the mountpoint specified is relayed.  In order to relay a broadcast stream on a Shoutcast server, you must use the "single-broadcast" relay and specify a mountpoint of "/".</p>
 <br>
 <br>
 <br>
 <h2>Setting Up A Master-Slave Relay</h2>
-<p>In order to setup a relay of this type, both servers (the one you wish to relay and the one doing the relaying) need to be icecast2 servers. The following configuration snippet is used as an example:</p>
+<p>In order to setup a relay of this type both servers (the one you wish to relay and the one doing the relaying) need to be icecast2 servers. The following configuration snippet is used as an example:</p>
 <pre>
     &lt;master-server&gt;192.168.1.11&lt;/master-server&gt;
     &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
