@@ -216,7 +216,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
             break;
 #endif
         /* any others */
-        INFO0 ("Seen BOS page with unknown type");
+        ERROR0 ("Seen BOS page with unknown type");
         return -1;
     } while (0);
 
