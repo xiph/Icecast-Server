@@ -463,6 +463,10 @@ char *util_base64_decode(unsigned char *input)
         }
 
         *out++ = vals[0]<<2 | vals[1]>>4;
+        /* vals[3] and (if that is) vals[2] can be '=' as padding, which is
+           looked up in the base64decode table as '-1'. Check for this case,
+           and output zero-terminators instead of characters if we've got
+           padding. */
         if(vals[2] >= 0)
             *out++ = ((vals[1]&0x0F)<<4) | (vals[2]>>2);
         else
