@@ -74,11 +74,11 @@ void client_destroy(client_t *client)
 
 void client_send_400(client_t *client, char *message) {
     int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\n"
+    bytes = sock_write(client->con->sock, "HTTP/1.0 400 Bad Request\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
     if(bytes > 0) client->con->sent_bytes = bytes;
-    client->respcode = 404;
+    client->respcode = 400;
     client_destroy(client);
 }
 
