@@ -74,7 +74,7 @@ static int client_tree_changed=0;
 static struct pollfd *ufds = NULL;
 #else
 static fd_set fds;
-static int fd_max = 0;
+static int fd_max = -1;
 #endif
 
 typedef struct {
@@ -126,54 +126,63 @@ void fserve_shutdown(void)
     thread_join(fserv_thread);
 }
 
-static void wait_for_fds() {
-    fserve_t *fclient;
-
-    while(run_fserv) {
 #ifdef HAVE_POLL
-        unsigned int i = 0;
+int fserve_client_waiting (void)
+{
+    fserve_t *fclient;
+    unsigned int i = 0;
 
-        if(client_tree_changed) {
-            client_tree_changed = 0;
-            ufds = realloc(ufds, fserve_clients * sizeof(struct pollfd));
-            fclient = active_list;
-            while (fclient) {
-                ufds[i].fd = fclient->client->con->sock;
-                ufds[i].events = POLLOUT;
-                ufds[i].revents = 0;
-                fclient = fclient->next;
-                i++;
-            }
+    if(client_tree_changed) {
+        client_tree_changed = 0;
+        ufds = realloc(ufds, fserve_clients * sizeof(struct pollfd));
+        fclient = active_list;
+        while (fclient) {
+            ufds[i].fd = fclient->client->con->sock;
+            ufds[i].events = POLLOUT;
+            ufds[i].revents = 0;
+            fclient = fclient->next;
+            i++;
         }
+    }
 
-        if (poll(ufds, fserve_clients, 200) > 0)
+    if (poll(ufds, fserve_clients, 200) > 0)
+    {
+        fclient = active_list;
+        for (i=0; i<fserve_clients; i++)
         {
-            fclient = active_list;
-            for (i=0; i<fserve_clients; i++)
-            {
-                if (ufds[i].revents & (POLLOUT|POLLHUP|POLLERR))
-                    fclient->ready = 1;
-                fclient = fclient->next;
-            }
+            if (ufds[i].revents & (POLLOUT|POLLHUP|POLLERR))
+                fclient->ready = 1;
+            fclient = fclient->next;
         }
+        return 1;
+    }
+    return 0;
+}
 #else
+int fserve_client_waiting (void)
+{
+    fserve_t *fclient;
+    fd_set realfds;
+    if(client_tree_changed) {
+        client_tree_changed = 0;
+        FD_ZERO(&fds);
+        fd_max = -1;
+        fclient = active_list;
+        while (fclient) {
+            FD_SET (fclient->client->con->sock, &fds);
+            if (fclient->client->con->sock > fd_max)
+                fd_max = fclient->client->con->sock;
+            fclient = fclient->next;
+        }
+    }
+    /* hack for windows, select needs at least 1 descriptor */
+    if (fd_max == -1)
+        thread_sleep (200000);
+    else
+    {
         struct timeval tv;
-        fd_set realfds;
         tv.tv_sec = 0;
         tv.tv_usec = 200000;
-        if(client_tree_changed) {
-            client_tree_changed = 0;
-            FD_ZERO(&fds);
-            fd_max = 0;
-            fclient = active_list;
-            while (fclient) {
-                FD_SET (fclient->client->con->sock, &fds);
-                if (fclient->client->con->sock > fd_max)
-                    fd_max = fclient->client->con->sock;
-                fclient = fclient->next;
-            }
-        }
-
         memcpy(&realfds, &fds, sizeof(fd_set));
         if(select(fd_max+1, NULL, &realfds, NULL, &tv) > 0)
         {
@@ -184,8 +193,18 @@ static void wait_for_fds() {
                     fclient->ready = 1;
                 fclient = fclient->next;
             }
+            return 1;
         }
+    }
+    return 0;
+}
 #endif
+
+static void wait_for_fds() {
+    fserve_t *fclient;
+
+    while (run_fserv)
+    {
         /* add any new clients here */
         if (pending_list)
         {
@@ -205,6 +224,8 @@ static void wait_for_fds() {
             pending_list = NULL;
             thread_mutex_unlock (&pending_lock);
         }
+        if (fserve_client_waiting())
+           break;
     }
 }
 
