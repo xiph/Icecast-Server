@@ -19,24 +19,31 @@
 
 #define CATMODULE "admin"
 
-#define COMMAND_ERROR           (-1)
-#define COMMAND_FALLBACK          1
-#define COMMAND_RAW_STATS         2
-#define COMMAND_METADATA_UPDATE   3
-#define COMMAND_SHOW_LISTENERS    4
+#define COMMAND_ERROR             (-1)
+
+/* Mount-specific commands */
+#define COMMAND_FALLBACK            1
+#define COMMAND_METADATA_UPDATE     2
+#define COMMAND_SHOW_LISTENERS      3
+
+/* Global commands */
+#define COMMAND_LIST_MOUNTS       101
+#define COMMAND_RAW_STATS         102
 
 int admin_get_command(char *command)
 {
     if(!strcmp(command, "fallbacks"))
         return COMMAND_FALLBACK;
-    else if(!strcmp(command, "rawstats"))
-        return COMMAND_RAW_STATS;
-    else if(!strcmp(command, "stats.xml")) /* The old way */
-        return COMMAND_RAW_STATS;
     else if(!strcmp(command, "metadata"))
         return COMMAND_METADATA_UPDATE;
     else if(!strcmp(command, "listclients"))
         return COMMAND_SHOW_LISTENERS;
+    else if(!strcmp(command, "rawstats"))
+        return COMMAND_RAW_STATS;
+    else if(!strcmp(command, "stats.xml")) /* The old way */
+        return COMMAND_RAW_STATS;
+    else if(!strcmp(command, "listmounts"))
+        return COMMAND_LIST_MOUNTS;
     else
         return COMMAND_ERROR;
 }
@@ -46,6 +53,7 @@ static void command_metadata(client_t *client, source_t *source);
 static void command_show_listeners(client_t *client, source_t *source);
 
 static void command_raw_stats(client_t *client);
+static void command_list_mounts(client_t *client);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -79,11 +87,13 @@ void admin_handle_request(client_t *client, char *uri)
         source_t *source;
 
         /* This is a mount request, handle it as such */
-        if(!connection_check_source_pass(client->parser, mount)) {
-		    INFO1("Bad or missing password on mount modification admin "
-                  "request (command: %s)", command_string);
-            client_send_401(client);
-            return;
+        if(!connection_check_admin_pass(client->parser)) {
+            if(!connection_check_source_pass(client->parser, mount)) {
+	    	    INFO1("Bad or missing password on mount modification admin "
+                      "request (command: %s)", command_string);
+                client_send_401(client);
+                return;
+            }
         }
         
         avl_tree_rlock(global.source_tree);
@@ -120,6 +130,9 @@ static void admin_handle_general_request(client_t *client, int command)
     switch(command) {
         case COMMAND_RAW_STATS:
             command_raw_stats(client);
+            break;
+        case COMMAND_LIST_MOUNTS:
+            command_list_mounts(client);
             break;
         default:
             WARN0("General admin request not recognised");
@@ -283,6 +296,41 @@ static void command_raw_stats(client_t *client) {
     DEBUG0("Stats request, sending xml stats");
 
     stats_sendxml(client);
+    client_destroy(client);
+    return;
+}
+
+static void command_list_mounts(client_t *client) {
+    avl_node *node;
+    source_t *source;
+
+    DEBUG0("List mounts request");
+
+    html_head(client);
+
+    html_write(client, 
+            "<table><tr><td>Mountpoint</td><td>Fallback</td>"
+            "<td>Format</td><td>Listeners</td></tr>");
+
+    avl_tree_rlock(global.source_tree);
+
+    node = avl_get_first(global.source_tree);
+    while(node) {
+        source = (source_t *)node->key;
+
+        html_write(client, 
+                "<tr><td>%s</td><td>%s</td><td>%s</td><td>%ld</td></tr>",
+                source->mount, (source->fallback_mount != NULL)?
+                source->fallback_mount:"", source->format->format_description,
+                source->listeners);
+
+        node = avl_get_next(node);
+    }
+
+    avl_tree_unlock(global.source_tree);
+
+    html_write(client, "</table></body></html>");
+
     client_destroy(client);
     return;
 }
