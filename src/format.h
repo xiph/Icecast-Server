@@ -62,7 +62,6 @@ void format_send_general_headers(format_plugin_t *format,
         struct source_tag *source, client_t *client);
 int format_http_write_to_client (struct source_tag *source, client_t *client);
 int format_intro_write_to_client (struct source_tag *source, client_t *client);
-void format_initialise();
 
 #endif  /* __FORMAT_H__ */
 

@@ -18,7 +18,50 @@
 #ifndef __FORMAT_OGG_H__
 #define __FORMAT_OGG_H__
 
+#include <ogg/ogg.h>
+#include "refbuf.h"
+#include "format.h"
+
+typedef struct ogg_state_tag
+{
+    char *mount;
+    ogg_sync_state oy;
+    int error;
+
+    struct ogg_codec_tag *codecs;
+    char *artist;
+    char *title;
+    int log_metadata;
+    refbuf_t *file_headers;
+    refbuf_t *header_pages;
+    refbuf_t *header_pages_tail;
+    int headers_completed;
+    int rebuild;
+    long bitrate;
+    struct ogg_codec_tag *current;
+    struct ogg_codec_tag *codec_sync;
+} ogg_state_t;
+
+
+/* per codec/logical structure */
+typedef struct ogg_codec_tag
+{
+    struct ogg_codec_tag *next;
+    ogg_stream_state os;
+    unsigned headers;
+    void *specific;
+    refbuf_t        *possible_start;
+    refbuf_t        *page;
+
+    refbuf_t *(*process)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec);
+    refbuf_t *(*process_page)(ogg_state_t *ogg_info,
+            struct ogg_codec_tag *codec, ogg_page *page);
+    void (*codec_free)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec);
+} ogg_codec_t;
+
+
+refbuf_t *make_refbuf_with_page (ogg_page *page);
+void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page);
 int format_ogg_get_plugin (source_t *source);
-#define format_ogg_initialise() do{}while(0)
 
 #endif  /* __FORMAT_OGG_H__ */

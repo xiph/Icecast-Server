@@ -350,8 +350,10 @@ An on-demand relay will only retrieve the stream if there are listeners connecte
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
         &lt;no-yp&gt;1&lt;/no-yp&gt;
+        &lt;hidden&gt;1&lt;/hidden&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;mp3-metadata-interval&gt;8192&lt;/mp3-metadata-interval&gt;
+        &lt;ogg-rebuild&gt;1&lt;/ogg-rebuild&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
@@ -426,6 +428,15 @@ relay to be shown
 Listeners connecting to an mp3 stream can request metadata be sent to them. That metadata
 is sent every so many bytes, this setting allows for overriding the default for this
 mountpoint. A value of 0 means no metadata is sent to the client even if icecast receives it.
+</div>
+<h4>ogg-rebuild</h4>
+<div class="indentedbox">
+In certain situations some people may prefer to use URL updating of artist/title, this
+requires the stream to be rebuilt.  Even if url updates are not wanted, some may want the
+stream to be rebuilt as the source client/relay may be producing ogg pages that have too
+many samples causing larger, more infrequent writes on low bandwidth streams. The url
+updating mechanism is disabled if multiple codecs are used as not all logical streams
+can be rebuilt.
 </div>
 <h4>authentication</h4>
 <div class="indentedbox">

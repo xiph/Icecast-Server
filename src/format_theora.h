@@ -11,11 +11,11 @@
  */
 
 
-#ifndef __FORMAT_VORBIS_H
-#define __FORMAT_VORBIS_H
+#ifndef __FORMAT_THEORA_H
+#define __FORMAT_THEORA_H
 
 #include "format_ogg.h"
 
-ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page);
+ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page);
 
-#endif /* __FORMAT_VORBIS_H */
+#endif /* __FORMAT_THEORA_H */

@@ -604,6 +604,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->mp3_meta_interval = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (strcmp(node->name, "ogg-rebuild") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->ogg_rebuild = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "hidden") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->hidden = atoi(tmp);

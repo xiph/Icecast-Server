@@ -102,7 +102,6 @@ static void _initialize_subsystems(void)
     global_initialize();
     refbuf_initialize();
     xslt_initialize();
-    format_initialise();
 }
 
 static void _shutdown_subsystems(void)

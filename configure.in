@@ -74,20 +74,33 @@ XIPH_PATH_XSLT
 XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$XSLT_CFLAGS])
 XIPH_VAR_PREPEND([XIPH_LIBS],[$XSLT_LIBS])
 
-XIPH_PATH_VORBIS(, AC_MSG_ERROR([must have Ogg Vorbis v1.0 or above installed!]))
-XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$VORBIS_CFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$VORBIS_LIBS])
-XIPH_VAR_APPEND([XIPH_LDFLAGS],[$VORBIS_LDFLAGS])
+XIPH_PATH_VORBIS([
+    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$VORBIS_CFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$VORBIS_LIBS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$VORBIS_LDFLAGS])
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_ogg.o format_vorbis.o"
+    ],
+    [AC_MSG_ERROR([must have Ogg Vorbis v1.0 or above installed])
+    ])
 
-XIPH_PATH_THEORA(, AC_MSG_WARN([Theora not found disabled!]))
-XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$THEORA_CFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$THEORA_LIBS])
-XIPH_VAR_APPEND([XIPH_LDFLAGS],[$THEORA_LDFLAGS])
 
-XIPH_PATH_SPEEX(, AC_MSG_WARN([Speex support disabled!]))
-XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$SPEEX_CFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$SPEEX_LIBS])
-XIPH_VAR_APPEND([XIPH_LDFLAGS],[$SPEEX_LDFLAGS])
+XIPH_PATH_THEORA([
+    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$THEORA_CFLAGS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$THEORA_LDFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$THEORA_LIBS])
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_theora.o"
+    ],
+    [ AC_MSG_WARN([Theora not found, disabled!])
+    ])
+
+XIPH_PATH_SPEEX(
+    [ XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$SPEEX_CFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$SPEEX_LIBS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$SPEEX_LDFLAGS])
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_speex.o"
+    ],
+    [ AC_MSG_WARN([Speex support disabled!])
+    ])
 
 ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
 XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
@@ -128,17 +141,7 @@ if test x$enable_logging_ip = xyes; then
         AC_DEFINE([HAVE_LOGGING_IP],,[Define to log IP to access log])
 fi
 
-# use the older format_vorbis with metadata updates
-AC_ARG_ENABLE([vorbis-updates],
-        AC_HELP_STRING([--enable-vorbis-updates],[Allow for metadata via URL, only vorbis supported]),
-        vorbis_updates="$enableval",
-        vorbis_updates="no"
-        )
-if test x$vorbis_updates = xyes; then
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_vorbis.o"
-else
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_ogg.o"
-fi
+ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_cmd.o"
 
 dnl Make substitutions
 
