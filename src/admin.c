@@ -34,7 +34,6 @@
 #include "xslt.h"
 
 #include "format.h"
-#include "format_mp3.h"
 
 #include "logging.h"
 #ifdef _WIN32
@@ -642,7 +641,7 @@ static void command_metadata(client_t *client, source_t *source)
 {
     char *action;
     char *value;
-    mp3_state *state;
+    format_plugin_t *format;
 #ifdef USE_YP
     int i;
     time_t current_time;
@@ -653,27 +652,28 @@ static void command_metadata(client_t *client, source_t *source)
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
 
-    if(source->format->type != FORMAT_TYPE_MP3) {
-        client_send_400(client, "Not mp3, cannot update metadata");
+    format = source->format;
+    if (format->type != FORMAT_TYPE_MP3)
+    {
+        client_send_400 (client, "Not mp3, cannot update metadata");
         return;
     }
 
-    if(strcmp(action, "updinfo") != 0) {
-        client_send_400(client, "No such action");
+    if (strcmp (action, "updinfo") != 0)
+    {
+        client_send_400 (client, "No such action");
         return;
     }
-
-    state = source->format->_state;
-
-    thread_mutex_lock(&(state->lock));
-    free(state->metadata);
-    state->metadata = strdup(value);
-    state->metadata_age++;
-    thread_mutex_unlock(&(state->lock));
+    if (format->set_tag)
+    {
+        if (value)
+            format->set_tag (format, "title", value);
+    }
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
         source->mount, value);
     stats_event(source->mount, "title", value);
+
 #ifdef USE_YP
     /* If we get an update on the mountpoint, force a
        yp touch */
@@ -683,7 +683,6 @@ static void command_metadata(client_t *client, source_t *source)
             source->ypdata[i]->yp_touch_interval + 2;
     }
 #endif
-
 
     html_success(client, "Metadata update successful");
 }
