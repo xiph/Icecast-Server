@@ -8,6 +8,8 @@ between. It is very versatile in that new formats can be added
 relatively easily and supports open standards for commuincation and 
 interaction.
 
+Icecast is distributed under the GNU GPL, version 2. A copy of this
+license is included with this software in the COPYING file.
 
 Prerequisites
 ---------------------------------------------------------------------
