@@ -38,6 +38,7 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
+#define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_FILESERVE 1
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
@@ -156,6 +157,8 @@ void config_clear(ice_config_t *c)
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
+    if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
+        xmlFree(c->shoutcast_mount);
     for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
     }
@@ -316,6 +319,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
     configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
+    configuration->shoutcast_mount = CONFIG_DEFAULT_SHOUTCAST_MOUNT;
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
@@ -412,6 +416,11 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_update_interval = atoi(tmp);
             xmlFree (tmp);
+        } else if (strcmp(node->name, "shoutcast-mount") == 0) {
+            if (configuration->shoutcast_mount &&
+                    configuration->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
+                xmlFree(configuration->shoutcast_mount);
+            configuration->shoutcast_mount = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "limits") == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "relay") == 0) {

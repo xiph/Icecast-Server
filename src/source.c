@@ -485,20 +485,15 @@ static void source_init (source_t *source)
     char *listenurl, *str;
     int listen_url_size;
     char *s;
-    char *extra = "";
-
-    if (source->format->type == FORMAT_TYPE_NSV) {
-        extra = "?file=stream.nsv";
-    }
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
-        strlen(":") + 6 + strlen(source->mount) + strlen(extra) + 1;
+        strlen(":") + 6 + strlen(source->mount) + 1;
 
     listenurl = malloc (listen_url_size);
     memset (listenurl, '\000', listen_url_size);
-    snprintf (listenurl, listen_url_size, "http://%s:%d%s%s",
-            config->hostname, config->port, source->mount, extra);
+    snprintf (listenurl, listen_url_size, "http://%s:%d%s",
+            config->hostname, config->port, source->mount);
     config_release_config();
 
     do

@@ -96,6 +96,7 @@ typedef struct ice_config_tag
     int ice_login;
     int fileserve;
 
+    char *shoutcast_mount;
     char *source_password;
     char *admin_username;
     char *admin_password;

@@ -164,6 +164,7 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;/listen-socket&gt;
 
     &lt;fileserve&gt;1&lt;/fileserve&gt;
+    &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
 </pre>
 <p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the hostname parameter will be used to specify the address that will be bound.
 </p>
@@ -182,6 +183,12 @@ This optional flag will indicate that this port will operate in 'shoutcast-compa
 <h4>fileserve</h4>
 <div class="indentedbox">
 This flag turns on the icecast2 fileserver from which static files can be served.  All files are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration setting.
+</div>
+<h4>shoutcast-mount</h4>
+<div class="indentedbox">
+An optional mountpoint to use when shoutcast DSP compatible clients connect. The default is /stream but can
+be overridden here to use an alternative name which may include an extension that some clients require for
+certain formats.
 </div>
 <p>
 <br />

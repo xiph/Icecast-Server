@@ -299,32 +299,15 @@ void admin_handle_request(client_t *client, char *uri)
         return;
     }
 
-    mount = httpp_get_query_param(client->parser, "mount");
-
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
-        source_t *source;
 
-        mount = "/";
+        ice_config_t *config = config_get_config ();
+        httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+        config_release_config ();
         noauth = 1;
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount_raw(mount);
-        if (source == NULL) {
-            WARN2("Admin command %s on non-existent source %s", 
-                    command_string, mount);
-            avl_tree_unlock(global.source_tree);
-            client_send_400(client, "Mount / does not exist");
-            return;
-        }
-        else {
-            if (source->shoutcast_compat == 0) {
-                ERROR0("Illegal call to change metadata, source not shoutcast compatible");
-                avl_tree_unlock (global.source_tree);
-                client_send_400 (client, "Illegal metadata call");
-                return;
-            }
-        }
-        avl_tree_unlock(global.source_tree);
     }
+
+    mount = httpp_get_query_param(client->parser, "mount");
 
     if(mount != NULL) {
         source_t *source;

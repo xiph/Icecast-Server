@@ -988,9 +988,8 @@ static void _handle_get_request(connection_t *con,
     if (uri != passed_uri) free (uri);
 }
 
-void _handle_shoutcast_compatible(connection_t *con, char *source_password) {
+void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_password) {
     char shoutcast_password[256];
-    char shoutcast_source[256];
     char *http_compliant;
     int http_compliant_len = 0;
     char header[4096];
@@ -1031,18 +1030,14 @@ void _handle_shoutcast_compatible(connection_t *con, char *source_password) {
     /* Here we create a valid HTTP request based of the information
        that was passed in via the non-HTTP style protocol above. This
        means we can use some of our existing code to handle this case */
-    memset(shoutcast_source, 0, sizeof (shoutcast_source));
-    strcpy(shoutcast_source, "SOURCE / HTTP/1.0\r\n");
-    http_compliant_len = strlen(shoutcast_source) + 
-                         strlen(header) + 1;
+    http_compliant_len = strlen(header) + strlen(mount) + 20;
     http_compliant = (char *)calloc(1, http_compliant_len);
-    sprintf(http_compliant, "%s%s", shoutcast_source, 
-        header);
+    snprintf (http_compliant, http_compliant_len,
+            "SOURCE %s HTTP/1.0\r\n%s", mount, header);
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
-    if (httpp_parse(parser, http_compliant, 
-        strlen(http_compliant))) {
-        _handle_source_request(con, parser, "/", SHOUTCAST_SOURCE_AUTH);
+    if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
+        _handle_source_request(con, parser, mount, SHOUTCAST_SOURCE_AUTH);
         free(http_compliant);
         return;
     }
@@ -1097,10 +1092,12 @@ static void *_handle_connection(void *arg)
                 if(global.serversock[i] == con->serversock) {
                     config = config_get_config();
                     if (config->listeners[i].shoutcast_compat) {
+                        char *shoutcast_mount = strdup (config->shoutcast_mount);
                         source_password = strdup(config->source_password);
                         config_release_config();
-                        _handle_shoutcast_compatible(con, source_password);
+                        _handle_shoutcast_compatible(con, shoutcast_mount, source_password);
                         free(source_password);
+                        free (shoutcast_mount);
                         continue_flag = 1;
                         break;
                     }
