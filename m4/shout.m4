@@ -3,15 +3,15 @@ dnl Jack Moffitt <jack@icecast.org> 08-06-2001
 dnl Rewritten for libshout 2
 dnl Brendan Cully <brendan@xiph.org> 20030612
 dnl 
-dnl $Id: shout.m4,v 1.11 2003/07/01 18:02:19 brendan Exp $
+dnl $Id: shout.m4,v 1.12 2003/07/11 01:26:31 brendan Exp $
 
 # XIPH_PATH_SHOUT([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 # Test for libshout, and define SHOUT_CPPFLAGS SHOUT_CFLAGS SHOUT_LIBS, and
-# SHOUT_THREADED
+# SHOUT_THREADSAFE
 AC_DEFUN([XIPH_PATH_SHOUT],
 [dnl
 xt_have_shout="no"
-SHOUT_THREADED="no"
+SHOUT_THREADSAFE="no"
 SHOUT_CPPFLAGS=""
 SHOUT_CFLAGS=""
 SHOUT_LIBS=""
@@ -61,7 +61,11 @@ then
       ifelse([$1], , :, [$1])
       xt_have_shout="yes"
     ])
-    AC_CHECK_FUNC([thread_initialize], [SHOUT_THREADED="yes"])
+    AC_EGREP_CPP([yes], [#include <shout/shout.h>
+#if SHOUT_THREADSAFE
+yes
+#endif
+], [SHOUT_THREADSAFE="yes"])
   ])
   CPPFLAGS="$ac_save_CPPFLAGS"
   CFLAGS="$ac_save_CFLAGS"
