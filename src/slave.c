@@ -51,7 +51,8 @@ static int _initialized = 0;
 void slave_initialize(void) {
 	if (_initialized) return;
     /* Don't create a slave thread if it isn't configured */
-    if (config_get_config()->master_server == NULL)
+    if (config_get_config()->master_server == NULL && 
+            config_get_config()->relay == NULL)
         return;
 
 	_initialized = 1;
@@ -129,43 +130,46 @@ static void *_slave_thread(void *arg) {
         else
             interval = 0;
 
-		mastersock = sock_connect_wto(config_get_config()->master_server, config_get_config()->master_server_port, 0);
-		if (mastersock == SOCK_ERROR) {
-            WARN0("Relay slave failed to contact master server to fetch stream list");
-			continue;
-		}
+        if(config_get_config()->master_server != NULL) {
+		    mastersock = sock_connect_wto(config_get_config()->master_server, 
+                    config_get_config()->master_server_port, 0);
+    		if (mastersock == SOCK_ERROR) {
+                WARN0("Relay slave failed to contact master server to fetch stream list");
+		    	continue;
+    		}
 
-        len = strlen(username) + strlen(password) + 1;
-        authheader = malloc(len+1);
-        strcpy(authheader, username);
-        strcat(authheader, ":");
-        strcat(authheader, password);
-        data = util_base64_encode(authheader);
-		sock_write(mastersock, 
-                "GET /admin/streamlist HTTP/1.0\r\n"
-                "Authorization: Basic %s\r\n"
-                "\r\n", data);
-        free(authheader);
-        free(data);
-		while (sock_read_line(mastersock, buf, sizeof(buf))) {
-            if(!strlen(buf))
-                break;
+            len = strlen(username) + strlen(password) + 1;
+            authheader = malloc(len+1);
+            strcpy(authheader, username);
+            strcat(authheader, ":");
+            strcat(authheader, password);
+            data = util_base64_encode(authheader);
+		    sock_write(mastersock, 
+                    "GET /admin/streamlist HTTP/1.0\r\n"
+                    "Authorization: Basic %s\r\n"
+                    "\r\n", data);
+            free(authheader);
+            free(data);
+    		while (sock_read_line(mastersock, buf, sizeof(buf))) {
+                if(!strlen(buf))
+                    break;
+            }
+
+	    	while (sock_read_line(mastersock, buf, sizeof(buf))) {
+		    	avl_tree_rlock(global.source_tree);
+			    if (!source_find_mount(buf)) {
+				    avl_tree_unlock(global.source_tree);
+
+                    create_relay_stream(
+                            config_get_config()->master_server,
+                            config_get_config()->master_server_port,
+                            buf);
+    			} 
+                else
+    	    		avl_tree_unlock(global.source_tree);
+    		}
+	    	sock_close(mastersock);
         }
-
-		while (sock_read_line(mastersock, buf, sizeof(buf))) {
-			avl_tree_rlock(global.source_tree);
-			if (!source_find_mount(buf)) {
-				avl_tree_unlock(global.source_tree);
-
-                create_relay_stream(
-                        config_get_config()->master_server,
-                        config_get_config()->master_server_port,
-                        buf);
-			} 
-            else
-    			avl_tree_unlock(global.source_tree);
-		}
-		sock_close(mastersock);
 
         /* And now, we process the individual mounts... */
         relay_server *relay = config_get_config()->relay;
@@ -178,6 +182,7 @@ static void *_slave_thread(void *arg) {
             }
             else
                 avl_tree_unlock(global.source_tree);
+            relay = relay->next;
         }
 	}
 	thread_exit(0);
