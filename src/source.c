@@ -262,7 +262,7 @@ void *source_main(void *arg)
                         /* Didn't send the entire buffer, queue it */
                         client->pos = sbytes;
 						refbuf_addref(refbuf);
-                        refbuf_queue_insert(&client->queue, abuf);
+                        refbuf_queue_insert(&client->queue, refbuf);
                     }
                 }
 				if (sbytes < 0) {
