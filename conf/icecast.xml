@@ -3,12 +3,12 @@
 	<admin>jack@icecast.org</admin>
 
 	<limits>
-		<clients>2000</clients>
+		<clients>100</clients>
 		<sources>2</sources>
 		<threadpool>5</threadpool>
 		<client-timeout>30</client-timeout>
 		<header-timeout>15</header-timeout>
-		<source-timeout>100</source-timeout>
+		<source-timeout>10</source-timeout>
 	</limits>
 
 	<source-password>hackme</source-password>
@@ -30,7 +30,7 @@
     <!--<master-update-interval>120</master-update-interval>-->
 
         <paths>
-                <basedir>/home/msmith/icecast/icecast</basedir>
+                <basedir>/usr/local/icecast</basedir>
                 <logdir>/tmp</logdir>
         </paths>
 
@@ -41,8 +41,8 @@
 
     <security>
         <chroot>0</chroot>
-<!--        <changeowner>
-            <user>msmith</user>
+<!--    <changeowner>
+            <user>nobody</user>
             <group>nogroup</group>
         </changeowner>  -->
     </security>
