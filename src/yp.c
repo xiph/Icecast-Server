@@ -401,11 +401,18 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         free (max_listeners);
         max_listeners = (char *)stats_get_value (NULL, "client_limit");
     }
+    val = stats_get_value (yp->mount, "subtype");
+    if (val)
+    {
+        add_yp_info (yp, "subtype", val, YP_SUBTYPE);
+        free (val);
+    }
 
     ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
-            "&listeners=%u&max_listeners=%s\r\n",
-            yp->sid, yp->current_song, listeners, max_listeners);
+            "&listeners=%u&max_listeners=%s&stype=%s\r\n",
+            yp->sid, yp->current_song, listeners, max_listeners, yp->subtype);
 
+    free (max_listeners);
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
 

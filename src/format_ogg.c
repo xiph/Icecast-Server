@@ -285,7 +285,7 @@ static void update_comments (source_t *source)
             int len = strlen (codec_names);
             int remaining = sizeof (codec_names) - len;
             char *where = codec_names + len;
-            char *separator = " ";
+            char *separator = "/";
             if (len == 0)
                 separator = "";
             snprintf (where, remaining, "%s%s", separator, codec->name);
