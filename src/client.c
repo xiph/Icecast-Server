@@ -49,6 +49,8 @@ void client_destroy(client_t *client)
 {
     refbuf_t *refbuf;
 
+    if (client == NULL)
+        return;
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */

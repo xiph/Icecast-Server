@@ -56,19 +56,19 @@
 #define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
 
 /* Global commands */
-#define COMMAND_RAW_LIST_MOUNTS   101
-#define COMMAND_RAW_STATS         102
-#define COMMAND_RAW_LISTSTREAM    103
-#define COMMAND_PLAINTEXT_LISTSTREAM    104
-#define COMMAND_TRANSFORMED_LIST_MOUNTS   201
-#define COMMAND_TRANSFORMED_STATS         202
-#define COMMAND_TRANSFORMED_LISTSTREAM    203
+#define COMMAND_RAW_LIST_MOUNTS             101
+#define COMMAND_RAW_STATS                   102
+#define COMMAND_RAW_LISTSTREAM              103
+#define COMMAND_PLAINTEXT_LISTSTREAM        104
+#define COMMAND_TRANSFORMED_LIST_MOUNTS     201
+#define COMMAND_TRANSFORMED_STATS           202
+#define COMMAND_TRANSFORMED_LISTSTREAM      203
 
 /* Client management commands */
-#define COMMAND_RAW_KILL_CLIENT   301
-#define COMMAND_RAW_KILL_SOURCE   302
-#define COMMAND_TRANSFORMED_KILL_CLIENT   401
-#define COMMAND_TRANSFORMED_KILL_SOURCE   402
+#define COMMAND_RAW_KILL_CLIENT             301
+#define COMMAND_RAW_KILL_SOURCE             302
+#define COMMAND_TRANSFORMED_KILL_CLIENT     401
+#define COMMAND_TRANSFORMED_KILL_SOURCE     402
 
 #define FALLBACK_RAW_REQUEST "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
@@ -465,7 +465,7 @@ static void command_move_clients(client_t *client, source_t *source,
         return;
     }
 
-    if (strcmp (dest->mount, source->mount) == 0) 
+    if (strcmp (dest->mount, source->mount) == 0)
     {
         client_send_400 (client, "supplied mountpoints are identical");
         return;
