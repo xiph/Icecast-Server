@@ -99,7 +99,10 @@ void refbuf_queue_insert(refbuf_queue_t **queue, refbuf_t *refbuf)
 
 	item->refbuf = refbuf;
 	item->next = *queue;
-    item->total_length = item->next->total_length + item->refbuf->len;
+    if(item->next)
+        item->total_length = item->next->total_length + item->refbuf->len;
+    else
+        item->total_length = item->refbuf->len;
 	*queue = item;
 }
 
