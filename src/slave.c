@@ -103,7 +103,10 @@ static void create_relay_stream(char *server, int port,
                 remotemount);
     }
     else {
-    	sock_write(streamsock, "GET %s HTTP/1.0\r\n\r\n", remotemount);
+    	sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+                               "User-Agent: " ICECAST_VERSION_STRING "\r\n"
+                               "\r\n",
+                remotemount);
     }
 	memset(header, 0, sizeof(header));
 	if (util_read_header(con->sock, header, 4096) == 0) {
