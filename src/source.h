@@ -38,6 +38,7 @@ typedef struct source_tag
     int    num_yp_directories;
     long listeners;
     long max_listeners;
+    int yp_public;
     int send_return;
 } source_t;
 

@@ -38,26 +38,10 @@
 #undef CATMODULE
 #define CATMODULE "source"
 
-#define  YP_SERVER_NAME 1
-#define  YP_SERVER_DESC 2
-#define  YP_SERVER_GENRE 3
-#define  YP_SERVER_URL 4
-#define  YP_BITRATE 5
-#define  YP_AUDIO_INFO 6
-#define  YP_SERVER_TYPE 7
-#define  YP_CURRENT_SONG 8
-#define  YP_URL_TIMEOUT 9
-#define  YP_TOUCH_INTERVAL 10
-#define  YP_LAST_TOUCH 11
-
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static int _parse_audio_info(source_t *source, char *s);
-#ifdef USE_YP
-static void _add_yp_info(source_t *source, char *stat_name, 
-            void *info, int type);
-#endif
 
 source_t *source_create(client_t *client, connection_t *con, 
     http_parser_t *parser, const char *mount, format_type_t type, 
@@ -82,6 +66,7 @@ source_t *source_create(client_t *client, connection_t *con,
     src->dumpfilename = NULL;
     src->dumpfile = NULL;
     src->audio_info = util_dict_new();
+    src->yp_public = 0;
 
     if(mountinfo != NULL) {
         src->fallback_mount = mountinfo->fallback_mount;
@@ -205,10 +190,10 @@ void *source_main(void *arg)
 #ifdef USE_YP
     char *s;
     long current_time;
-    char current_song[256];
     int    i;
-    int    suppress_yp = 0;
     char *ai;
+    int listen_url_size;
+    char tyme[128];
 #endif
 
     long queue_limit;
@@ -274,41 +259,61 @@ void *source_main(void *arg)
     stats_event(source->mount, "listeners", "0");
     stats_event(source->mount, "type", source->format->format_description);
 #ifdef USE_YP
+    /* ice-* is icecast, icy-* is shoutcast */
+    if ((s = httpp_getvar(source->parser, "ice-url"))) {
+        add_yp_info(source, "server_url", s, YP_SERVER_URL);
+    }
     if ((s = httpp_getvar(source->parser, "ice-name"))) {
-        _add_yp_info(source, "server_name", s, YP_SERVER_NAME);
+        add_yp_info(source, "server_name", s, YP_SERVER_NAME);
+    }
+    if ((s = httpp_getvar(source->parser, "icy-name"))) {
+        add_yp_info(source, "server_name", s, YP_SERVER_NAME);
     }
     if ((s = httpp_getvar(source->parser, "ice-url"))) {
-        _add_yp_info(source, "server_url", s, YP_SERVER_URL);
+        add_yp_info(source, "server_url", s, YP_SERVER_URL);
+    }
+    if ((s = httpp_getvar(source->parser, "icy-url"))) {
+        add_yp_info(source, "server_url", s, YP_SERVER_URL);
     }
     if ((s = httpp_getvar(source->parser, "ice-genre"))) {
-        _add_yp_info(source, "genre", s, YP_SERVER_GENRE);
+        add_yp_info(source, "genre", s, YP_SERVER_GENRE);
+    }
+    if ((s = httpp_getvar(source->parser, "icy-genre"))) {
+        add_yp_info(source, "genre", s, YP_SERVER_GENRE);
     }
     if ((s = httpp_getvar(source->parser, "ice-bitrate"))) {
-        _add_yp_info(source, "bitrate", s, YP_BITRATE);
+        add_yp_info(source, "bitrate", s, YP_BITRATE);
+    }
+    if ((s = httpp_getvar(source->parser, "icy-br"))) {
+        add_yp_info(source, "bitrate", s, YP_BITRATE);
     }
     if ((s = httpp_getvar(source->parser, "ice-description"))) {
-        _add_yp_info(source, "server_description", s, YP_SERVER_DESC);
+        add_yp_info(source, "server_description", s, YP_SERVER_DESC);
     }
-    if ((s = httpp_getvar(source->parser, "ice-private"))) {
+    if ((s = httpp_getvar(source->parser, "ice-public"))) {
         stats_event(source->mount, "public", s);
-        suppress_yp = atoi(s);
+        source->yp_public = atoi(s);
+    }
+    if ((s = httpp_getvar(source->parser, "icy-pub"))) {
+        stats_event(source->mount, "public", s);
+        source->yp_public = atoi(s);
     }
     if ((s = httpp_getvar(source->parser, "ice-audio-info"))) {
+        stats_event(source->mount, "audio_info", s);
         if (_parse_audio_info(source, s)) {
             ai = util_dict_urlencode(source->audio_info, '&');
-            _add_yp_info(source, "audio_info", 
+            add_yp_info(source, "audio_info", 
                     ai,
                     YP_AUDIO_INFO);
+            if (ai) {
+                free(ai);
+            }
         }
     }
     for (i=0;i<source->num_yp_directories;i++) {
-        _add_yp_info(source, "server_type", 
+        add_yp_info(source, "server_type", 
                      source->format->format_description,
                      YP_SERVER_TYPE);
-    }
-
-    for (i=0;i<source->num_yp_directories;i++) {
-        int listen_url_size;
         if (source->ypdata[i]->listen_url) {
             free(source->ypdata[i]->listen_url);
         }
@@ -321,23 +326,18 @@ void *source_main(void *arg)
                 hostname, port, source->mount);
     }
 
-    if(!suppress_yp) {
-        yp_add(source, YP_ADD_ALL);
+    if(source->yp_public) {
 
         current_time = time(NULL);
-
-        _add_yp_info(source, "last_touch", (void *)current_time, 
-            YP_LAST_TOUCH);
 
         for (i=0;i<source->num_yp_directories;i++) {
             /* Give the source 5 seconds to update the metadata
                before we do our first touch */
-            source->ypdata[i]->yp_last_touch = current_time - 
-                source->ypdata[i]->yp_touch_interval + 5;
             /* Don't permit touch intervals of less than 30 seconds */
             if (source->ypdata[i]->yp_touch_interval <= 30) {
                 source->ypdata[i]->yp_touch_interval = 30;
             }
+            source->ypdata[i]->yp_last_touch = 0;
         }
     }
 #endif
@@ -345,39 +345,6 @@ void *source_main(void *arg)
     DEBUG0("Source creation complete");
 
     while (global.running == ICE_RUNNING && source->running) {
-#ifdef USE_YP
-        if(!suppress_yp) {
-            current_time = time(NULL);
-            for (i=0;i<source->num_yp_directories;i++) {
-                if (current_time > (source->ypdata[i]->yp_last_touch + 
-                            source->ypdata[i]->yp_touch_interval)) {
-                    current_song[0] = 0;
-                    if ((s = stats_get_value(source->mount, "artist"))) {
-                        strncat(current_song, s, 
-                                sizeof(current_song) - 1);
-                        if (strlen(current_song) + 4 < 
-                                sizeof(current_song)) 
-                        {
-                            strncat(current_song, " - ", 3);
-                        }
-                    }
-                    if ((s = stats_get_value(source->mount, "title"))) {
-                        if (strlen(current_song) + strlen(s)
-                                < sizeof(current_song) -1) 
-                        {
-                            strncat(current_song, 
-                                    s, 
-                                    sizeof(current_song) - 1 - 
-                                    strlen(current_song));
-                        }
-                    }
-                    _add_yp_info(source, "current_song", current_song, YP_CURRENT_SONG);
-                    thread_create("YP Touch Thread", yp_touch_thread, 
-                            (void *)source, THREAD_DETACHED); 
-                }
-            }
-        }
-#endif
         ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
@@ -593,7 +560,7 @@ done:
     INFO1("Source \"%s\" exiting", source->mount);
 
 #ifdef USE_YP
-    if(!suppress_yp) {
+    if(source->yp_public) {
         yp_remove(source);
     }
 #endif
@@ -731,126 +698,3 @@ static int _parse_audio_info(source_t *source, char *s)
     }
     return 1;
 }
-
-#ifdef USE_YP
-static void _add_yp_info(source_t *source, char *stat_name, 
-            void *info, int type)
-{
-    char *escaped;
-    int i;
-    if (!info) {
-        return;
-    }
-    for (i=0;i<source->num_yp_directories;i++) {
-        switch (type) {
-        case YP_SERVER_NAME:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->server_name) {
-                        free(source->ypdata[i]->server_name);
-                    }
-                    source->ypdata[i]->server_name = 
-                         malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->server_name, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_SERVER_DESC:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->server_desc) {
-                        free(source->ypdata[i]->server_desc);
-                    }
-                    source->ypdata[i]->server_desc = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->server_desc, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_SERVER_GENRE:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->server_genre) {
-                        free(source->ypdata[i]->server_genre);
-                    }
-                    source->ypdata[i]->server_genre = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->server_genre, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_SERVER_URL:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->server_url) {
-                        free(source->ypdata[i]->server_url);
-                    }
-                    source->ypdata[i]->server_url = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->server_url, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_BITRATE:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->bitrate) {
-                        free(source->ypdata[i]->bitrate);
-                    }
-                    source->ypdata[i]->bitrate = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->bitrate, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_AUDIO_INFO:
-                if (source->ypdata[i]->audio_info) {
-                    free(source->ypdata[i]->audio_info);
-                }
-                source->ypdata[i]->audio_info = 
-                    malloc(strlen((char *)info) +1);
-                strcpy(source->ypdata[i]->audio_info, (char *)info);
-                break;
-        case YP_SERVER_TYPE:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->server_type) {
-                        free(source->ypdata[i]->server_type);
-                    }
-                    source->ypdata[i]->server_type = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->server_type, (char *)escaped);
-                    free(escaped);
-                }
-                break;
-        case YP_CURRENT_SONG:
-                escaped = util_url_escape(info);
-                if (escaped) {
-                    if (source->ypdata[i]->current_song) {
-                        free(source->ypdata[i]->current_song);
-                    }
-                    source->ypdata[i]->current_song = 
-                        malloc(strlen((char *)escaped) +1);
-                    strcpy(source->ypdata[i]->current_song, (char *)escaped);
-                    stats_event(source->mount, "yp_currently_playing", (char *)info);
-                    free(escaped);
-                }
-                break;
-        case YP_URL_TIMEOUT:
-                source->ypdata[i]->yp_url_timeout = (int)info;
-                break;
-        case YP_LAST_TOUCH:
-                source->ypdata[i]->yp_last_touch = (int)info;
-                break;
-        case YP_TOUCH_INTERVAL:
-                source->ypdata[i]->yp_touch_interval = (int)info;
-                break;
-        }
-    }
-}
-#endif
