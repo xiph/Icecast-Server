@@ -15,5 +15,6 @@
 
 void slave_initialize(void);
 void slave_shutdown(void);
+void slave_recheck (void);
 
 #endif  /* __SLAVE_H__ */

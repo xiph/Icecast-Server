@@ -21,6 +21,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h"
+#include "slave.h"
 
 #define CATMODULE "event"
 
@@ -57,6 +58,7 @@ void event_config_read(void *arg)
         config_clear(config);
         config_set_config(&new_config);
         restart_logging ();
+        slave_recheck();
         yp_recheck_config (config);
 
         config_release_config();

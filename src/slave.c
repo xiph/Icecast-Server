@@ -62,6 +62,14 @@
 static void *_slave_thread(void *arg);
 thread_type *_slave_thread_id;
 static int _initialized = 0;
+static unsigned max_interval = 0;
+
+
+void slave_recheck (void)
+{
+    max_interval = 0;
+}
+
 
 void slave_initialize(void) {
     ice_config_t *config;
@@ -150,19 +158,12 @@ static void create_relay_stream(char *server, int port,
 static void *_slave_thread(void *arg) {
     sock_t mastersock;
     char buf[256];
-    int interval;
+    unsigned interval = 0;
     char *authheader, *data;
     int len;
     char *username = "relay";
-    int max_interval;
     relay_server *relay;
     ice_config_t *config;
-    
-    config = config_get_config();
-
-    interval = max_interval = config->master_update_interval;
-
-    config_release_config();
 
     while (_initialized) {
         if (max_interval > ++interval) {
@@ -252,7 +253,7 @@ static void *_slave_thread(void *arg) {
 
         thread_mutex_unlock(&(config_locks()->relay_lock));
     }
-    thread_exit(0);
+    INFO0 ("Slave thread shutting down");
     return NULL;
 }
 
