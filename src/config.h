@@ -22,6 +22,20 @@ typedef struct _relay_server {
     struct _relay_server *next;
 } relay_server;
 
+typedef struct _mount_proxy {
+    char *mountname; /* The mountpoint this proxy is used for */
+
+    char *username; /* Username and password for this mountpoint. If unset, */
+    char *password; /* falls back to global source password */
+
+    char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
+                       to not dump. */
+    int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
+                          limit here (i.e. only use the global limit) */
+    char *fallback_mount;
+    struct _mount_proxy *next;
+} mount_proxy;
+
 typedef struct ice_config_tag
 {
 	char *location;
@@ -53,6 +67,8 @@ typedef struct ice_config_tag
     char *master_password;
 
     relay_server *relay;
+
+    mount_proxy *mounts;
 
 	char *base_dir;
 	char *log_dir;

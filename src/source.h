@@ -28,7 +28,8 @@ typedef struct source_tag
 	rwlock_t *shutdown_rwlock;
 	ypdata_t *ypdata[MAX_YP_DIRECTORIES];
 	int	num_yp_directories;
-	long	listeners;
+	long listeners;
+    long max_listeners;
 } source_t;
 
 source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type);

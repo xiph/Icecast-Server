@@ -321,7 +321,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 		}
 	} else {
         format_type_t format = FORMAT_TYPE_MP3;
-		ERROR0("No content-type header, falling back to backwards compatiblity mode for icecast 1.x relays. Assuming content is mp3.");
+		ERROR0("No content-type header, falling back to backwards compatibility mode for icecast 1.x relays. Assuming content is mp3.");
         source = source_create(client, con, parser, mount, format);
 	}
     client->respcode = 200;
@@ -418,11 +418,24 @@ static int _check_admin_pass(http_parser_t *parser)
 static int _check_source_pass(http_parser_t *parser, char *mount)
 {
     char *pass = config_get_config()->source_password;
+    char *user = "source";
     int ret;
-    if(!pass)
-        pass = "";
 
-    ret = _check_pass_http(parser, "source", pass);
+    mount_proxy *mountinfo = config_get_config()->mounts;
+    while(mountinfo) {
+        if(!strcmp(mountinfo->mountname, mount)) {
+            pass = mountinfo->password;
+            user = mountinfo->username;
+            break;
+        }
+    }
+
+    if(!pass) {
+        WARN0("No source password set, rejecting source");
+        return 0;
+    }
+
+    ret = _check_pass_http(parser, user, pass);
     if(!ret && config_get_config()->ice_login)
     {
         ret = _check_pass_ice(parser, pass);

@@ -45,6 +45,17 @@
     </relay>
     -->
 
+    <mount>
+        <mount-name>/example1.ogg</mount-name>
+        <username>othersource</username>
+        <password>hackmemore</password>
+
+        <!-- These next three aren't yet implemented -->
+        <max-listeners>1</max-listeners>
+        <dump-file>/tmp/dump-example1.ogg</dump-file>
+        <fallback-mount>/example2.ogg</fallback-mount>
+    </mount>
+
 	<fileserve>1</fileserve>
 
 	<paths>

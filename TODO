@@ -2,13 +2,11 @@ BUGS
 ----
 - stats get off?  this needs testing more testing.
 
-- autoconf doesn't set HAVE_POLL 
+- autoconf doesn't set HAVE_POLL  (still true?)
 
 - some stuff (like 'genre') isn't making it into the stats dump
 
 - make install - doesn't install configs?
-
-- pthread/bsd: -pthread instead of -lpthread (autoconf)
 
 FEATURES
 --------
@@ -48,8 +46,7 @@ FEATURES
 
 - httpp - split out query string for further processing
 
-- finish mp3 metadata: http://server:ip/admin.cgi?pass=%s&mode=updinfo&mount=%s&song=%s
-
+- binding to multiple ports (possibly including full ipv6 support)
 
 
 

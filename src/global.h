@@ -6,6 +6,8 @@
 #define ICE_RUNNING 1
 #define ICE_HALTING 2
 
+#define ICECAST_VERSION_STRING "Icecast 2.0-alpha2/cvs"
+
 #include "thread/thread.h"
 
 typedef struct ice_global_tag

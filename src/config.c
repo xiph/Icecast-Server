@@ -56,6 +56,7 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node);
+static void _parse_mount(xmlDocPtr doc, xmlNodePtr node);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node);
 
 void config_initialize(void)
@@ -70,6 +71,7 @@ void config_shutdown(void)
 	ice_config_dir_t *dirnode, *nextdirnode;
     ice_config_t *c = &_configuration;
     relay_server *relay, *nextrelay;
+    mount_proxy *mount, *nextmount;
 
 	if (_config_filename) free(_config_filename);
 
@@ -109,6 +111,17 @@ void config_shutdown(void)
         xmlFree(relay->mount);
         free(relay);
         relay = nextrelay;
+    }
+    mount = _configuration.mounts;
+    while(mount) {
+        nextmount = mount->next;
+        xmlFree(mount->mountname);
+        xmlFree(mount->username);
+        xmlFree(mount->password);
+        xmlFree(mount->dumpfile);
+        xmlFree(mount->fallback_mount);
+        free(mount);
+        mount = nextmount;
     }
     dirnode = _configuration.dir_list;
     while(dirnode) {
@@ -273,6 +286,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			_parse_limits(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "relay") == 0) {
 			_parse_relay(doc, node->xmlChildrenNode);
+		} else if (strcmp(node->name, "mount") == 0) {
+			_parse_mount(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "directory") == 0) {
 			_parse_directory(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "paths") == 0) {
@@ -318,6 +333,55 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
 			_configuration.source_timeout = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		}
+	} while ((node = node->next));
+}
+
+static void _parse_mount(xmlDocPtr doc, xmlNodePtr node)
+{
+    char *tmp;
+    mount_proxy *mount = calloc(1, sizeof(mount_proxy));
+    mount_proxy *current = _configuration.mounts;
+    mount_proxy *last=NULL;
+    
+    while(current) {
+        last = current;
+        current = current->next;
+    }
+
+    if(last)
+        last->next = mount;
+    else
+        _configuration.mounts = mount;
+
+	do {
+		if (node == NULL) break;
+		if (xmlIsBlankNode(node)) continue;
+
+		if (strcmp(node->name, "mount-name") == 0) {
+            mount->mountname = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "username") == 0) {
+            mount->username = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "password") == 0) {
+            mount->password = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "dump-file") == 0) {
+            mount->dumpfile = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "fallback-mount") == 0) {
+            mount->fallback_mount = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "max-listeners") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->max_listeners = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
 	} while ((node = node->next));
 }
 
