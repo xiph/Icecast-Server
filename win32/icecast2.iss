@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=Icecast2_win32_2.0_04122003_setup
+OutputBaseFilename=Icecast2_win32_2.0_09012003_setup
 WizardImageFile=icecast2logo2.bmp
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51
@@ -23,23 +23,28 @@ Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "A
 
 [Dirs]
 Name: "{app}\web"
+Name: "{app}\admin"
 Name: "{app}\doc"
 Name: "{app}\logs"
 
 
 [Files]
-Source: "Release\Icecast2.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "Release\icecast2console.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "icecast2.bat"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; CopyMode: alwaysoverwrite
-Source: "..\web\status.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
-Source: "..\web\status2.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
-Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\conf\icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "..\..\curl\lib\Release\libcurl.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; Flags: ignoreversion
+Source: "..\web\status.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\status2.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\admin\listclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\listmounts.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\moveclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\response.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\stats.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\curl\lib\Release\libcurl.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 

@@ -15,7 +15,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "icecast2_console"=".\icecast2_console.dsp" - Package Owner=<4>
+Project: "icecast2 console"=.\icecast2_console.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
