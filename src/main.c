@@ -29,7 +29,7 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
-#ifdef HAVE_CURL
+#ifdef USE_YP
 #include "geturl.h"
 #endif
 
@@ -75,14 +75,14 @@ static void _initialize_subsystems(void)
     global_initialize();
     refbuf_initialize();
     xslt_initialize();
-#ifdef HAVE_CURL
+#ifdef USE_YP
     curl_initialize();
 #endif
 }
 
 static void _shutdown_subsystems(void)
 {
-#ifdef HAVE_CURL
+#ifdef USE_YP
     curl_shutdown();
 #endif
     fserve_shutdown();

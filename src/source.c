@@ -29,7 +29,7 @@
 #include "logging.h"
 #include "config.h"
 #include "util.h"
-#ifdef HAVE_CURL
+#ifdef USE_YP
 #include "geturl.h"
 #endif
 #include "source.h"
@@ -54,7 +54,7 @@
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static int _parse_audio_info(source_t *source, char *s);
-#ifdef HAVE_CURL
+#ifdef USE_YP
 static void _add_yp_info(source_t *source, char *stat_name, 
             void *info, int type);
 #endif
@@ -146,7 +146,9 @@ int source_compare_sources(void *arg, void *a, void *b)
 int source_free_source(void *key)
 {
     source_t *source = key;
-    int i=0;
+#ifdef USE_YP
+    int i;
+#endif
 
     free(source->mount);
     free(source->fallback_mount);
@@ -154,7 +156,7 @@ int source_free_source(void *key)
     avl_tree_free(source->pending_tree, _free_client);
     avl_tree_free(source->client_tree, _free_client);
     source->format->free_plugin(source->format);
-#ifdef HAVE_CURL
+#ifdef USE_YP
     for (i=0; i<source->num_yp_directories; i++) {
         yp_destroy_ypdata(source->ypdata[i]);
     }
@@ -195,17 +197,19 @@ void *source_main(void *arg)
     int ret, timeout;
     client_t *client;
     avl_node *client_node;
-    char *s;
-    long current_time;
-    char current_song[256];
 
     refbuf_t *refbuf, *abuf;
     int data_done;
 
     int listeners = 0;
-    int    i=0;
+#ifdef USE_YP
+    char *s;
+    long current_time;
+    char current_song[256];
+    int    i;
     int    suppress_yp = 0;
     char *ai;
+#endif
 
     long queue_limit;
     ice_config_t *config;
@@ -219,7 +223,7 @@ void *source_main(void *arg)
     hostname = config->hostname;
     port = config->port;
 
-#ifdef HAVE_CURL
+#ifdef USE_YP
     for (i=0;i<config->num_yp_directories;i++) {
         if (config->yp_url[i]) {
             source->ypdata[source->num_yp_directories] = yp_create_ypdata();
@@ -269,7 +273,7 @@ void *source_main(void *arg)
     source->listeners = 0;
     stats_event(source->mount, "listeners", "0");
     stats_event(source->mount, "type", source->format->format_description);
-#ifdef HAVE_CURL
+#ifdef USE_YP
     if ((s = httpp_getvar(source->parser, "ice-name"))) {
         _add_yp_info(source, "server_name", s, YP_SERVER_NAME);
     }
@@ -341,7 +345,7 @@ void *source_main(void *arg)
     DEBUG0("Source creation complete");
 
     while (global.running == ICE_RUNNING && source->running) {
-#ifdef HAVE_CURL
+#ifdef USE_YP
         if(!suppress_yp) {
             current_time = time(NULL);
             for (i=0;i<source->num_yp_directories;i++) {
@@ -357,7 +361,7 @@ void *source_main(void *arg)
                             strncat(current_song, " - ", 3);
                         }
                     }
-                    if (s = stats_get_value(source->mount, "title")) {
+                    if ((s = stats_get_value(source->mount, "title"))) {
                         if (strlen(current_song) + strlen(s)
                                 < sizeof(current_song) -1) 
                         {
@@ -588,7 +592,7 @@ done:
 
     INFO1("Source \"%s\" exiting", source->mount);
 
-#ifdef HAVE_CURL
+#ifdef USE_YP
     if(!suppress_yp) {
         yp_remove(source);
     }
@@ -728,7 +732,7 @@ static int _parse_audio_info(source_t *source, char *s)
     return 1;
 }
 
-#ifdef HAVE_CURL
+#ifdef USE_YP
 static void _add_yp_info(source_t *source, char *stat_name, 
             void *info, int type)
 {
