@@ -1006,7 +1006,11 @@ static void _parse_audio_info (source_t *source, const char *s)
 
 static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
-    DEBUG1 ("Applying mount information for \"%s\"", source->mount);
+    if (strcmp (mountinfo->mountname, source->mount) == 0)
+        INFO1 ("Applying mount information for \"%s\"", source->mount);
+    else
+        INFO2 ("Applying mount information for \"%s\" from \"%s\"",
+                source->mount, mountinfo->mountname);
     source->max_listeners = mountinfo->max_listeners;
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
@@ -1075,27 +1079,17 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
 void source_update_settings (ice_config_t *config, source_t *source)
 {
-    mount_proxy *mountproxy = config->mounts;
+    mount_proxy *mountinfo = config_find_mount (config, source->mount);
 
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
     source->burst_size = config->burst_size;
-
     source->dumpfilename = NULL;
+    
+    if (mountinfo && source->file_only == 0)
+        source_apply_mount (source, mountinfo);
 
-    while (mountproxy)
-    {
-        if (strcmp (mountproxy->mountname, source->mount) == 0)
-        {
-            if (source->file_only)
-                WARN1 ("skipping fallback to file \"%s\"", source->mount);
-            else
-                source_apply_mount (source, mountproxy);
-            break;
-        }
-        mountproxy = mountproxy->next;
-    }
     if (source->fallback_mount)
         DEBUG1 ("fallback %s", source->fallback_mount);
     if (source->dumpfilename)

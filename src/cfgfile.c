@@ -1002,14 +1002,18 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
 {
-    mount_proxy *mountinfo = config->mounts;
+    mount_proxy *mountinfo = config->mounts, *global = NULL;
 
     while (mountinfo)
     {
+        if (strcmp (mountinfo->mountname, "all") == 0)
+            global = mountinfo;
         if (strcmp (mountinfo->mountname, mount) == 0)
             break;
         mountinfo = mountinfo->next;
     }
+    if (mountinfo == NULL)
+        mountinfo = global;
     return mountinfo;
 }
 
