@@ -3,7 +3,7 @@ dnl Jack Moffitt <jack@icecast.org> 08-06-2001
 dnl Rewritten for libshout 2
 dnl Brendan Cully <brendan@xiph.org> 20030612
 dnl 
-dnl $Id: shout.m4,v 1.12 2003/07/11 01:26:31 brendan Exp $
+dnl $Id$
 
 # XIPH_PATH_SHOUT([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 # Test for libshout, and define SHOUT_CPPFLAGS SHOUT_CFLAGS SHOUT_LIBS, and
@@ -16,7 +16,7 @@ SHOUT_CPPFLAGS=""
 SHOUT_CFLAGS=""
 SHOUT_LIBS=""
 
-# NB: PKG_CHECK_MODULES exits if pkg-config is unavailable on the targe
+# NB: PKG_CHECK_MODULES exits if pkg-config is unavailable on the target
 # system, so we can't use it.
 
 # seed pkg-config with the default libshout location
