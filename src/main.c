@@ -76,12 +76,13 @@ static void _fatal_error(char *perr)
 
 static void _print_usage()
 {
+    printf(ICECAST_VERSION_STRING "\n\n");
     printf("usage: icecast [-h -b -v] -c <file>\n");
     printf("options:\n");
-	printf("\t-c <file>\tSpecify configuration file\n");
-	printf("\t-h\t\tDisplay usage\n");
-	printf("\t-v\t\tDisplay version info\n");
-	printf("\t-b\t\tRun icecast in the background\n");
+    printf("\t-c <file>\tSpecify configuration file\n");
+    printf("\t-h\t\tDisplay usage\n");
+    printf("\t-v\t\tDisplay version info\n");
+    printf("\t-b\t\tRun icecast in the background\n");
     printf("\n");
 }
 
@@ -109,14 +110,14 @@ static void _initialize_subsystems(void)
 
 static void _shutdown_subsystems(void)
 {
-#ifdef USE_YP
-    curl_shutdown();
-#endif
     fserve_shutdown();
     xslt_shutdown();
     refbuf_shutdown();
     slave_shutdown();
     stats_shutdown();
+#ifdef USE_YP
+    curl_shutdown();
+#endif
 
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
@@ -142,17 +143,18 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
     while (i < argc) {
         if (strcmp(argv[i], "-b") == 0) {
 #ifndef WIN32
-                fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
-                if ((processID = (int)fork()) > 0) {
-                        /* exit the parent */
-                        _exit(0);
-                }
+            fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
+            if ((processID = (int)fork()) > 0) {
+                /* exit the parent */
+                _exit(0);
+            }
 #endif
         }
         if (strcmp(argv[i], "-v") == 0) {
             fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
-			exit(0);
-		}
+            exit(0);
+        }
+
         if (strcmp(argv[i], "-c") == 0) {
             if (i + 1 < argc) {
                 strncpy(filename, argv[i + 1], size-1);
@@ -452,7 +454,7 @@ int main(int argc, char **argv)
         }
     }
 
-    INFO0("icecast server started");
+    INFO0 (ICECAST_VERSION_STRING " server started");
 
     /* REM 3D Graphics */
 
@@ -481,18 +483,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
