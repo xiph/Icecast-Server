@@ -23,6 +23,7 @@
 #define  YP_SERVER_TYPE 7
 #define  YP_CURRENT_SONG 8
 #define  YP_CLUSTER_PASSWORD 9
+#define  YP_SUBTYPE 10 
 
 struct source_tag;
 

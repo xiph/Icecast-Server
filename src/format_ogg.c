@@ -242,6 +242,8 @@ static void update_comments (source_t *source)
     char *artist = ogg_info->artist;
     char *metadata = NULL;
     unsigned int len = 0;
+    ogg_codec_t *codec;
+    char codec_names [100] = "";
 
     if (ogg_info->artist)
     {
@@ -274,6 +276,23 @@ static void update_comments (source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
+
+    codec = ogg_info->codecs;
+    while (codec)
+    {
+        if (codec->name)
+        {
+            int len = strlen (codec_names);
+            int remaining = sizeof (codec_names) - len;
+            char *where = codec_names + len;
+            char *separator = " ";
+            if (len == 0)
+                separator = "";
+            snprintf (where, remaining, "%s%s", separator, codec->name);
+        }
+        codec = codec->next;
+    }
+    stats_event (source->mount, "subtype", codec_names);
     yp_touch (source->mount);
 }
 

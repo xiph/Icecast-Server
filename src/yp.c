@@ -70,6 +70,7 @@ typedef struct ypdata_tag
     char *audio_info;
     char *server_type;
     char *current_song;
+    char *subtype;
 
     struct yp_server *server;
     time_t      next_update;
@@ -330,11 +331,21 @@ static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len)
 
 static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
 {
-    int ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
-                    "%s&url=%s&listenurl=%s&type=%s&b=%s&%s\r\n",
+    int ret;
+    char *value;
+
+    value = stats_get_value (yp->mount, "subtype");
+    if (value)
+    {
+        add_yp_info (yp, "subtype", value, YP_SUBTYPE);
+        free (value);
+    }
+
+    ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
+                    "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
                     yp->server_name, yp->server_genre, yp->cluster_password,
                     yp->server_desc, yp->url, yp->listen_url,
-                    yp->server_type, yp->bitrate, yp->audio_info);
+                    yp->server_type, yp->subtype, yp->bitrate, yp->audio_info);
     if (ret >= (signed)len)
         return ret+1;
     if (send_to_yp ("add", yp, s) == 0)
@@ -483,6 +494,7 @@ static ypdata_t *create_yp_entry (source_t *source)
         yp->url = strdup ("");
         yp->current_song = strdup ("");
         yp->audio_info = strdup ("");
+        yp->subtype = strdup ("");
         yp->process = do_yp_add;
 
         url = malloc (len);
@@ -747,9 +759,7 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
         if (ypdata->audio_info) {
             free(ypdata->audio_info);
         }
-        if (ypdata->cluster_password) {
-            free(ypdata->cluster_password);
-        }
+        free (ypdata->subtype);
         free (ypdata->error_msg);
         free (ypdata);
     }
@@ -845,6 +855,14 @@ static void add_yp_info (ypdata_t *yp, char *stat_name, void *info, int type)
                 if (yp->cluster_password)
                     free (yp->cluster_password);
                 yp->cluster_password = escaped;
+            }
+            break;
+        case YP_SUBTYPE:
+            escaped = util_url_escape(info);
+            if (escaped)
+            {
+                free (yp->subtype);
+                yp->subtype = escaped;
             }
             break;
     }

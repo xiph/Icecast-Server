@@ -357,6 +357,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
     codec->specific = vorbis;
     codec->codec_free = vorbis_codec_free;
     codec->headers = 1;
+    codec->name = "Vorbis";
 
     free_ogg_packet (vorbis->header[0]);
     free_ogg_packet (vorbis->header[1]);
