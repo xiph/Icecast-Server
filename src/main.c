@@ -64,8 +64,12 @@ static void _fatal_error(char *perr)
 
 static void _print_usage()
 {
-    printf("Usage:\n");
-    printf("\ticecast -c <file>\t\tSpecify configuration file\n");
+    printf("usage: icecast [-h -b -v] -c <file>\n");
+    printf("options:\n");
+	printf("\t-c <file>\tSpecify configuration file\n");
+	printf("\t-h\t\tDisplay usage\n");
+	printf("\t-v\t\tDisplay version info\n");
+	printf("\t-b\t\tRun icecast in the background\n");
     printf("\n");
 }
 
@@ -121,7 +125,7 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
     int i = 1;
     int    processID = 0;
 
-    if (argc < 3) return -1;
+    if (argc < 2) return -1;
 
     while (i < argc) {
         if (strcmp(argv[i], "-b") == 0) {
@@ -133,6 +137,10 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
                 }
 #endif
         }
+        if (strcmp(argv[i], "-v") == 0) {
+            fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
+			exit(0);
+		}
         if (strcmp(argv[i], "-c") == 0) {
             if (i + 1 < argc) {
                 strncpy(filename, argv[i + 1], size-1);
