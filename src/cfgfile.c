@@ -77,6 +77,7 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
+static void _parse_slave_host(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
@@ -118,6 +119,7 @@ void config_clear(ice_config_t *c)
     relay_server *relay, *nextrelay;
     mount_proxy *mount, *nextmount;
     aliases *alias, *nextalias;
+    slave_host *slave;
     int i;
     config_options_t *option;
 
@@ -218,6 +220,14 @@ void config_clear(ice_config_t *c)
         xmlFree(dirnode->host);
         free(dirnode);
         dirnode = nextdirnode;
+    }
+    slave = c->slave_list;
+    while (slave)
+    {
+        slave_host *to_go = slave;
+        slave = slave->next;
+        xmlFree (to_go->server);
+        free (to_go);
     }
 #ifdef HAVE_YP
     i = 0;
@@ -344,6 +354,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->user = CONFIG_DEFAULT_USER;
     configuration->group = CONFIG_DEFAULT_GROUP;
     configuration->num_yp_directories = 0;
+    configuration->slaves_count = 0;
     configuration->relay_username = NULL;
     configuration->relay_password = NULL;
 }
@@ -423,6 +434,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "relay") == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
+        } else if (strcmp(node->name, "slave-host") == 0) {
+            _parse_slave_host(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "mount") == 0) {
             _parse_mount(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "directory") == 0) {
@@ -615,6 +628,37 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             }
         }
     } while ((node = node->next));
+}
+
+static void _parse_slave_host(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c)
+{
+    slave_host *slave = calloc(1, sizeof(slave_host));
+    xmlChar *tmp;
+
+    slave->port = 8000;
+
+    do {
+        if (node == NULL) break;
+        if (xmlIsBlankNode(node)) continue;
+
+        if (strcmp(node->name, "server") == 0) {
+            slave->server = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "port") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            slave->port = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+    } while ((node = node->next));
+    if (slave->server)
+    {
+        slave->next = c->slave_list;
+        c->slave_list = slave;
+        c->slaves_count++;
+        return;
+    }
+    free (slave);
 }
 
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,

@@ -153,6 +153,48 @@ void slave_shutdown(void)
 }
 
 
+int slave_redirect (char *mountpoint, client_t *client)
+{
+    slave_host *slave = NULL;
+    ice_config_t *c = config_get_config();
+
+    /* select slave entry */
+    if (c->slaves_count)
+    {
+        int which=(int) (((float)c->slaves_count)*rand()/(RAND_MAX+1.0));
+        DEBUG1 ("which is %d", which);
+        slave = c->slave_list;
+        while (slave && which)
+        {
+            slave = slave->next;
+            which--;
+        }
+        DEBUG2 ("selected %s:%d", slave->server,slave->port);
+    }
+    if (slave)
+    {
+        char *location = NULL;
+        /* add 13 for "http://" the port ':' and nul */
+        int len = strlen(mountpoint) + strlen (slave->server) + 13;
+
+        location = malloc (len);
+        if (location)
+        {
+            INFO2 ("redirecting client to slave server"
+                    "at %s:%d", slave->server, slave->port);
+            snprintf (location, len, "http://%s:%d%s", slave->server,
+                    slave->port, mountpoint);
+            config_release_config();
+            client_send_302 (client, location);
+            free (location);
+            return 1;
+        }
+    }
+    config_release_config();
+    return 0;
+}
+
+
 /* This does the actual connection for a relay. A thread is
  * started off if a connection can be acquired
  */

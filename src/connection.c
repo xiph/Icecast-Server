@@ -889,8 +889,11 @@ static void _handle_get_request(connection_t *con,
     if (global.clients >= client_limit)
     {
         global_unlock();
-        client_send_404(client,
-                "The server is already full. Try again later.");
+        if (slave_redirect (uri, client) == 0)
+        {
+            client_send_404(client,
+                    "The server is already full. Try again later.");
+        }
         if (uri != passed_uri) free (uri);
         return;
     }

@@ -24,6 +24,7 @@
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "global.h"
+#include "slave.h"
 
 typedef struct ice_config_dir_tag
 {
@@ -131,6 +132,8 @@ typedef struct ice_config_tag
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;
+    slave_host *slave_list;
+    unsigned slaves_count;
 
     char *access_log;
     char *error_log;

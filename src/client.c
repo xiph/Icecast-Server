@@ -81,6 +81,18 @@ void client_destroy(client_t *client)
     free(client);
 }
 
+void client_send_302(client_t *client, char *location) {
+    int bytes;
+    bytes = sock_write(client->con->sock, "HTTP/1.0 302 Temporarily Moved\r\n"
+            "Content-Type: text/html\r\n"
+            "Location: %s\r\n\r\n"
+            "<a href=\"%s\">%s</a>", location, location, location);
+    if(bytes > 0) client->con->sent_bytes = bytes;
+    client->respcode = 302;
+    client_destroy(client);
+}
+
+
 void client_send_400(client_t *client, char *message) {
     int bytes;
     bytes = sock_write(client->con->sock, "HTTP/1.0 400 Bad Request\r\n"

@@ -904,7 +904,11 @@ void add_client (char *mount, client_t *client)
     switch (added)
     {
     case -1: 
-        client_send_404 (client, "Too many clients on this mountpoint. Try again later.");
+        /* there may be slaves we can re-direct to */
+        if (slave_redirect (mount, client))
+            break;
+        client_send_404 (client,
+                "Too many clients on this mountpoint. Try again later.");
         DEBUG1 ("max clients on %s", mount);
         break;
     case -2:
