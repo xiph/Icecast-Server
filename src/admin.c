@@ -853,7 +853,6 @@ static void command_metadata(client_t *client, source_t *source,
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
-    int ok = 1;
 
     doc = xmlNewDoc("1.0");
     node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
