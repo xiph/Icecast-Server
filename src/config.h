@@ -43,6 +43,7 @@ typedef struct ice_config_tag
 
 	char *access_log;
 	char *error_log;
+    int loglevel;
 
     int chroot;
     int chuid;

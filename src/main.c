@@ -107,7 +107,7 @@ static int _start_logging(void)
         accesslog = log_open_file(stderr);
     }
 	
-	log_set_level(errorlog, 4);
+	log_set_level(errorlog, config->loglevel);
 	log_set_level(accesslog, 4);
 
 	if (errorlog < 0)

@@ -19,6 +19,7 @@
 #define CONFIG_DEFAULT_PORT 8888
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
+#define CONFIG_DEFAULT_LOG_LEVEL 4
 #define CONFIG_DEFAULT_CHROOT 0
 #define CONFIG_DEFAULT_CHUID 0
 #define CONFIG_DEFAULT_USER NULL
@@ -151,6 +152,7 @@ static void _set_defaults(void)
 	_configuration.log_dir = (char *)strdup(CONFIG_DEFAULT_LOG_DIR);
 	_configuration.access_log = (char *)strdup(CONFIG_DEFAULT_ACCESS_LOG);
 	_configuration.error_log = (char *)strdup(CONFIG_DEFAULT_ERROR_LOG);
+	_configuration.loglevel = CONFIG_DEFAULT_LOG_LEVEL;
     _configuration.chroot = CONFIG_DEFAULT_CHROOT;
     _configuration.chuid = CONFIG_DEFAULT_CHUID;
     _configuration.user = CONFIG_DEFAULT_USER;
@@ -299,7 +301,11 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "errorlog") == 0) {
 			if (_configuration.error_log) free(_configuration.error_log);
 			_configuration.error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-		}
+		} else if (strcmp(node->name, "loglevel") == 0) {
+           char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           _configuration.loglevel = atoi(tmp);
+           if (tmp) free(tmp);
+        }
 	} while ((node = node->next));
 }
 
