@@ -443,6 +443,11 @@ static void handle_fallback_request(client_t *client)
     source = source_find_mount(mount);
     avl_tree_unlock(global.source_tree);
 
+    if(source == NULL) {
+        client_send_400(client, "Current source not found");
+        return;
+    }
+
     old = source->fallback_mount;
     source->fallback_mount = strdup(value);
     free(old);
