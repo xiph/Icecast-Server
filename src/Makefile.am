@@ -6,7 +6,7 @@ SUBDIRS = avl thread httpp net log timing
 
 bin_PROGRAMS = icecast
 
-noinst_HEADERS = config.h os.h logging.h sighandler.h connection.h global.h\
+noinst_HEADERS = admin.h config.h os.h logging.h sighandler.h connection.h global.h\
 	 util.h slave.h source.h stats.h refbuf.h client.h format.h format_vorbis.h\
 	 compat.h format_mp3.h fserve.h xslt.h geturl.h yp.h event.h
 icecast_SOURCES = config.c main.c logging.c sighandler.c connection.c global.c\
