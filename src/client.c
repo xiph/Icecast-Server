@@ -33,6 +33,9 @@
 #include "client.h"
 #include "logging.h"
 
+#undef CATMODULE
+#define CATMODULE "client"
+
 client_t *client_create(connection_t *con, http_parser_t *parser)
 {
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
@@ -125,3 +128,19 @@ void client_send_403(client_t *client) {
     client->respcode = 403;
     client_destroy(client);
 }
+
+
+/* helper function for sending the data to a client */
+int client_send_bytes (client_t *client, const void *buf, unsigned len)
+{
+    int ret = sock_write_bytes (client->con->sock, buf, len);
+    if (ret < 0 && !sock_recoverable (sock_error()))
+    {
+        DEBUG0 ("Client connection died");
+        client->con->error = 1;
+    }
+    if (ret > 0)
+        client->con->sent_bytes += ret;
+    return ret;
+}
+

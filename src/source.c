@@ -584,33 +584,24 @@ void source_main (source_t *source)
             /* do we have any old buffers? */
             abuf = refbuf_queue_remove(&client->queue);
             while (abuf) {
-                if (client->pos > 0)
-                    bytes = abuf->len - client->pos;
-                else
-                    bytes = abuf->len;
+                bytes = abuf->len - client->pos;
 
                 sbytes = source->format->write_buf_to_client(source->format,
                         client, &abuf->data[client->pos], bytes);
-                if (sbytes >= 0) {
-                    if(sbytes != bytes) {
+                if (sbytes < bytes) {
+                    if (client->con->error) {
+                        refbuf_release (abuf);
+                    }
+                    else {
                         /* We didn't send the entire buffer. Leave it for
                          * the moment, handle it in the next iteration.
                          */
-                        client->pos += sbytes;
-                        refbuf_queue_insert(&client->queue, abuf);
-                        data_done = 1;
-                        break;
+                        client->pos += sbytes<0?0:sbytes;
+                        refbuf_queue_insert (&client->queue, abuf);
                     }
-                }
-                else {
-                    DEBUG0("Client has unrecoverable error catching up. "
-                            "Client has probably disconnected");
-                    client->con->error = 1;
                     data_done = 1;
-                    refbuf_release(abuf);
                     break;
                 }
-                
                 /* we're done with that refbuf, release it and reset the pos */
                 refbuf_release(abuf);
                 client->pos = 0;
@@ -625,18 +616,11 @@ void source_main (source_t *source)
             } else {
                 sbytes = source->format->write_buf_to_client(source->format,
                         client, refbuf->data, refbuf->len);
-                if (sbytes >= 0) {
-                    if(sbytes != refbuf->len) {
-                        /* Didn't send the entire buffer, queue it */
-                        client->pos = sbytes;
-                        refbuf_addref(refbuf);
-                        refbuf_queue_insert(&client->queue, refbuf);
-                    }
-                }
-                else {
-                    DEBUG0("Client had unrecoverable error with new data, "
-                            "probably due to client disconnection");
-                    client->con->error = 1;
+                if (client->con->error == 0 && sbytes < refbuf->len) {
+                    /* Didn't send the entire buffer, queue it */
+                    client->pos = sbytes<0?0:sbytes;
+                    refbuf_addref(refbuf);
+                    refbuf_queue_insert(&client->queue, refbuf);
                 }
             }
 

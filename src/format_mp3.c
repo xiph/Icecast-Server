@@ -164,7 +164,8 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
         thread_mutex_unlock (&(source_state->lock));
 
         /* only write what hasn't been written already */
-        ret = sock_write_bytes (client->con->sock, buf+client_state->metadata_offset, len-client_state->metadata_offset);
+        ret = client_send_bytes (client, buf + client_state->metadata_offset,
+                len - client_state->metadata_offset);
 
         if (ret > 0 && ret < len) {
             client_state->metadata_offset += ret;
@@ -188,7 +189,7 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
 static int format_mp3_write_buf_to_client(format_plugin_t *self, 
     client_t *client, unsigned char *buf, int len) 
 {
-    int ret;
+    int ret = 0;
     mp3_client_data *mp3data = client->format_data;
     
     if(((mp3_state *)self->_state)->metadata && mp3data->use_metadata)
@@ -203,30 +204,18 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
             max = len;
 
         if(max > 0) {
-            ret = sock_write_bytes(client->con->sock, buf, max);
+            ret = client_send_bytes (client, buf, max);
             if(ret > 0)
                 state->offset += ret;
         }
         else {
-            ret = send_metadata(client, state, self->_state);
-            if(ret > 0)
-                client->con->sent_bytes += ret;
-            ret = 0;
+            send_metadata (client, state, self->_state);
         }
 
     }
     else {
-        ret = sock_write_bytes(client->con->sock, buf, len);
+        ret = client_send_bytes (client, buf, len);
     }
-
-    if(ret < 0) {
-        if(sock_recoverable(sock_error())) {
-            DEBUG1("Client had recoverable error %ld", ret);
-            ret = 0;
-        }
-    }
-    else
-        client->con->sent_bytes += ret;
 
     return ret;
 }

@@ -247,24 +247,14 @@ static void *fserv_thread_function(void *arg)
             }
 
             /* Now try and send current chunk. */
-            sbytes = sock_write_bytes(client->client->con->sock, 
+            sbytes = client_send_bytes (client->client, 
                     &client->buf[client->offset], 
                     client->datasize - client->offset);
 
             /* TODO: remove clients if they take too long. */
             if(sbytes >= 0) {
                 client->offset += sbytes;
-                client->client->con->sent_bytes += sbytes;
             }
-            else if(!sock_recoverable(sock_error())) {
-                DEBUG0("Fileserving client had fatal error, disconnecting");
-                client->client->con->error = 1;
-            }
-            /*
-            else
-                DEBUG0("Fileserving client had recoverable error");
-             */
-
             avl_node_unlock(client_node);
             client_node = avl_get_next(client_node);
         }
