@@ -561,6 +561,26 @@ static void _handle_get_request(connection_t *con,
             if(bytes > 0) client->con->sent_bytes = bytes;
     	    client_destroy(client);
         }
+        else if(config_get_config()->fileserve) {
+            fullpath = util_get_path_from_normalised_uri(sourceuri);
+            if(stat(fullpath, &statbuf) == 0) {
+                fserve_client_create(client, fullpath);
+                free(fullpath);
+            }
+            else {
+                free(fullpath);
+                fullpath = util_get_path_from_normalised_uri(uri);
+                if(stat(fullpath, &statbuf) == 0) {
+                    fserve_client_create(client, fullpath);
+                    free(fullpath);
+                }
+                else {
+                    free(fullpath);
+                    client_send_404(client, 
+                            "The file you requested could not be found");
+                }
+            }
+        }
         else {
             client_send_404(client, "The file you requested could not be found");
         }
@@ -569,7 +589,7 @@ static void _handle_get_request(connection_t *con,
         return;
     }
 
-	if (strcmp(uri, "/allstreams.txt") == 0) {
+	if (strcmp(uri, "/admin/streamlist") == 0) {
 		if (!_check_relay_pass(parser)) {
 			INFO0("Client attempted to fetch allstreams.txt with bad password");
             client_send_401(client);
