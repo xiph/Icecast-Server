@@ -40,13 +40,15 @@ typedef struct auth_tag
     void (*release_client)(struct source_tag *source, client_t *client);
     int (*checkuser)(source_t *source, client_t *client);
 
+    int allow_duplicate_users;
+
     void *state;
     void *type;
 } auth_t;
 
 auth_result auth_check_client(source_t *source, client_t *client);
 
-auth_t *auth_get_authenticator(char *type, config_options_t *options);
+auth_t *auth_get_authenticator(const char *type, config_options_t *options);
 void auth_clear(auth_t *authenticator);
 int auth_postprocess_client (const char *mount, client_t *client);
 void auth_close_client (client_t *client);

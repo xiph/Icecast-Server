@@ -48,22 +48,22 @@ auth_result auth_check_client(source_t *source, client_t *client)
         char *header = httpp_getvar(client->parser, "authorization");
         char *userpass, *tmp;
         char *username, *password;
-    
+
         if(header == NULL)
             return AUTH_FAILED;
-    
+
         if(strncmp(header, "Basic ", 6)) {
             INFO0("Authorization not using Basic");
             return 0;
         }
-        
+
         userpass = util_base64_decode(header+6);
         if(userpass == NULL) {
             WARN1("Base64 decode of Authorization header \"%s\" failed",
                     header+6);
             return AUTH_FAILED;
         }
-        
+
         tmp = strchr(userpass, ':');
         if(!tmp) { 
             free(userpass);
@@ -102,7 +102,7 @@ void auth_clear(auth_t *authenticator)
 }
 
 
-auth_t *auth_get_authenticator(char *type, config_options_t *options)
+auth_t *auth_get_authenticator(const char *type, config_options_t *options)
 {
     auth_t *auth = NULL;
 #ifdef HAVE_AUTH_URL
@@ -130,14 +130,56 @@ auth_t *auth_get_authenticator(char *type, config_options_t *options)
         return NULL;
     }
 
-    if(!auth)
-        ERROR1("Couldn't configure authenticator of type \"%s\"", type);
-    
-    return auth;
+    if (auth)
+    {
+        while (options)
+        {
+            if (!strcmp(options->name, "allow_duplicate_users"))
+                auth->allow_duplicate_users = atoi(options->value);
+            options = options->next;
+        }
+        return auth;
+    }
+    ERROR1("Couldn't configure authenticator of type \"%s\"", type);
+    return NULL;
 }
 
 
-/* place authenticated client on named source */
+/* Check whether this client is currently on this mount, the client may be
+ * on either the active or pending lists.
+ * return 1 if ok to add or 0 to prevent
+ */
+static int check_duplicate_logins (source_t *source, client_t *client)
+{
+    auth_t *auth = source->authenticator;
+
+    if (client->username == NULL)
+        return 1;
+
+    if (auth && auth->allow_duplicate_users == 0)
+    {
+        client_t *existing;
+
+        existing = source->active_clients;
+        while (existing)
+        {
+            if (existing->username && strcmp (existing->username, client->username) == 0)
+                return 0;
+            existing = existing->next;
+        }
+        existing = source->pending_clients;
+        while (existing)
+        {
+            if (existing->username && strcmp (existing->username, client->username) == 0)
+                return 0;
+            existing = existing->next;
+        }
+    }
+    return 1;
+}
+
+
+/* try to place authenticated client on named source */
 int auth_postprocess_client (const char *mount, client_t *client)
 {
     int ret = -1;
@@ -148,7 +190,8 @@ int auth_postprocess_client (const char *mount, client_t *client)
     {
         ret = 0;
         thread_mutex_lock (&source->lock);
-        if (source->running)
+        if ((source->running || source->on_demand )
+                && check_duplicate_logins (source, client))
             add_authenticated_client (source, client);
         else
             ret = -1;
