@@ -108,7 +108,7 @@ for flag in $acx_pthread_flags; do
         # functions on Solaris that doesn't have a non-functional libc stub.
         # We try pthread_create on general principles.
         AC_TRY_LINK([#include <pthread.h>],
-                    [pthread_t th; pthread_rwlock_t rw; pthread_join(th, 0);
+                    [pthread_t th; pthread_join(th, 0);
                      pthread_attr_init(0); pthread_cleanup_push(0, 0);
                      pthread_create(0,0,0,0); pthread_cleanup_pop(0); ],
                     [acx_pthread_ok=yes])
@@ -164,6 +164,7 @@ if test "x$acx_pthread_ok" = xyes; then
         if test "x$flag" != xno; then
                 PTHREAD_CFLAGS="$flag $PTHREAD_CFLAGS"
         fi
+        AC_CHECK_TYPES(pthread_rwlock_t)
 
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"

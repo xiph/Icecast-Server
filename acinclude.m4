@@ -465,6 +465,7 @@ if test "x$acx_pthread_ok" = xyes; then
         if test "x$flag" != xno; then
                 PTHREAD_CFLAGS="$flag $PTHREAD_CFLAGS"
         fi
+        AC_CHECK_TYPES(pthread_rwlock_t)
 
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"
