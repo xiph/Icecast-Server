@@ -16,7 +16,13 @@
 
 #define CATMODULE "yp" 
 
-static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, int i)
+void yp_initialize()
+{
+    thread_create("YP Touch Thread", yp_touch_thread,
+                            (void *)NULL, THREAD_DETACHED);
+}
+static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, 
+    int i)
 {
     int ret = 0;
     int timeout;
@@ -62,7 +68,7 @@ static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, int 
 
 void *yp_touch_thread(void *arg)
 {
-    yp_touch((source_t *)arg);
+    yp_touch();
     thread_exit(0);
     return NULL;
 }
@@ -113,7 +119,7 @@ int yp_remove(source_t *source)
     }
     return 1;
 }
-int yp_touch(source_t *source)
+int yp_touch()
 {
     char *url = NULL;
     int url_size = 0;
@@ -122,64 +128,132 @@ int yp_touch(source_t *source)
     int i = 0;
     int regen_sid = 0;
     long current_time = 0;
+    avl_node *node;
+    source_t *source;
+    char current_song[256];
+    char tyme[128];
+    char *s;
 
-    current_time = time(NULL);
-    for (i=0; i<source->num_yp_directories; i++) {
-        source->ypdata[i]->yp_last_touch = current_time;
-        if (source->ypdata[i]->sid == 0) {
-            regen_sid = 1;
+    while (global.running == ICE_RUNNING) {
+    avl_tree_rlock(global.source_tree);
+    node = avl_get_first(global.source_tree);
+    while (node) {
+        source = (source_t *)node->key;
+        current_time = time(NULL);
+        if (!source->yp_public) {
+            continue;
         }
-        else {
-            if (strlen(source->ypdata[i]->sid) == 0) {
-                regen_sid = 1;
-            }
-        }
-        if (regen_sid) {
-            if (!yp_add(source, i)) {
-                return 0;
-            }
-        }
-        if (source->ypdata) {
-            url_size = strlen("action=touch&sid=&st=&listeners=") + 1;
-            if (source->ypdata[i]->current_song) {
-                url_size += strlen(source->ypdata[i]->current_song);
-            }
-            else {
-                source->ypdata[i]->current_song = (char *)malloc(1);
-                source->ypdata[i]->current_song[0] = 0;
-            }
-            if (source->ypdata[i]->sid) {
-                url_size += strlen(source->ypdata[i]->sid);
-            }
-            else {
-                source->ypdata[i]->sid = (char *)malloc(1);
-                source->ypdata[i]->sid[0] = 0;
-            }
-            url_size += 1024;
-            url = malloc(url_size);
-            sprintf(url, "action=touch&sid=%s&st=%s&listeners=%ld", 
-                    source->ypdata[i]->sid,
-                    source->ypdata[i]->current_song,
-                    source->listeners);
+        for (i=0; i<source->num_yp_directories; i++) {
+            if (current_time > (source->ypdata[i]->yp_last_touch +
+                        source->ypdata[i]->yp_touch_interval)) {
+                current_song[0] = 0;
+                regen_sid = 0;
+                if ((s = (char *)stats_get_value(source->mount, "artist"))) {
+                    strncat(current_song, s,
+                            sizeof(current_song) - 1);
+                    if (strlen(current_song) + 4 <
+                            sizeof(current_song))
+                    {
+                        strncat(current_song, " - ", 3);
+                    }
+                    if (s) {
+                        free(s);
+                    }
+                }
+                if ((s = (char *)stats_get_value(source->mount, "title"))) {
+                    if (strlen(current_song) + strlen(s)
+                            < sizeof(current_song) -1)
+                    {
+                        strncat(current_song,
+                                s,
+                                sizeof(current_song) - 1 -
+                                strlen(current_song));
+                    }
+                    if (s) {
+                        free(s);
+                    }
+                }
+                add_yp_info(source, "current_song", current_song, 
+                    YP_CURRENT_SONG);
 
-            curl_con = curl_get_connection();
-            if (curl_con < 0) {
-                ERROR0("Unable to get auth connection");
-            }
-            else {
-                /* specify URL to get */
-                ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                        url, "yp_touch", i);
-                if (!ret) {
-                    source->ypdata[i]->sid[0] = 0;
+                source->ypdata[i]->yp_last_touch = current_time;
+                if (source->ypdata[i]->sid == 0) {
+                    regen_sid = 1;
+                }
+                else {
+                    if (strlen(source->ypdata[i]->sid) == 0) {
+                        regen_sid = 1;
+                    }
+                }
+                if (regen_sid) {
+                    yp_add(source, i);
+                }
+                if (source->ypdata[i]->sid != 0) {
+                    if (strlen(source->ypdata[i]->sid) != 0) {
+                        if (source->ypdata) {
+                            url_size = 
+                                strlen("action=touch&sid=&st=&listeners=") + 1;
+                            if (source->ypdata[i]->current_song) {
+                                url_size += 
+                                strlen(source->ypdata[i]->current_song);
+                            }
+                            else {
+                                source->ypdata[i]->current_song = 
+                                    (char *)malloc(1);
+                                source->ypdata[i]->current_song[0] = 0;
+                            }
+                            if (source->ypdata[i]->sid) {
+                                url_size += strlen(source->ypdata[i]->sid);
+                            }
+                            else {
+                                source->ypdata[i]->sid = (char *)malloc(1);
+                                source->ypdata[i]->sid[0] = 0;
+                            }
+                            url_size += 1024;
+                            url = malloc(url_size);
+                            sprintf(url, 
+                                "action=touch&sid=%s&st=%s&listeners=%ld", 
+                                source->ypdata[i]->sid,
+                                source->ypdata[i]->current_song,
+                                source->listeners);
+            
+                            curl_con = curl_get_connection();
+                            if (curl_con < 0) {
+                                ERROR0("Unable to get auth connection");
+                            }
+                            else {
+                                /* specify URL to get */
+                                ret = yp_submit_url(curl_con, 
+                                    source->ypdata[i]->yp_url, 
+                                    url, "yp_touch", i);
+                                if (!ret) {
+                                    source->ypdata[i]->sid[0] = 0;
+                                }
+                            }
+                            if (url) {
+                               free(url);
+                            } 
+                            curl_release_connection(curl_con);
+                            memset(tyme, '\000', sizeof(tyme));
+                            strftime(tyme, 128, "%Y-%m-%d  %H:%M:%S", 
+                                localtime(&current_time));
+                            stats_event(source->mount, "yp_last_touch", tyme);
+                            add_yp_info(source, "last_touch", 
+                                (void *)current_time,
+                                YP_LAST_TOUCH);
+
+                        }
+                    }
                 }
             }
-           if (url) {
-               free(url);
-           } 
-           curl_release_connection(curl_con);
         }
+        node = avl_get_next(node);
     }
+    avl_tree_unlock(global.source_tree);
+    thread_sleep(200000);
+    }
+
+
     return 1;
 }
 int yp_add(source_t *source, int which)
@@ -311,7 +385,7 @@ int yp_add(source_t *source, int which)
                                    source->ypdata[i]->sid = NULL;
                                }
                                source->ypdata[i]->sid = (char *)malloc(
-                                       strlen(curl_get_header_result(curl_con)->
+                                      strlen(curl_get_header_result(curl_con)->
                                            sid) +1);
                                strcpy(source->ypdata[i]->sid, 
                                        curl_get_header_result(curl_con)->sid);
@@ -377,3 +451,124 @@ void yp_destroy_ypdata(ypdata_t *ypdata)
     }
 }
 
+void add_yp_info(source_t *source, char *stat_name, 
+            void *info, int type)
+{
+    char *escaped;
+    int i;
+    if (!info) {
+        return;
+    }
+    for (i=0;i<source->num_yp_directories;i++) {
+        switch (type) {
+        case YP_SERVER_NAME:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->server_name) {
+                        free(source->ypdata[i]->server_name);
+                    }
+                    source->ypdata[i]->server_name = 
+                         malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->server_name, (char *)escaped);
+                    stats_event(source->mount, stat_name, (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_SERVER_DESC:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->server_desc) {
+                        free(source->ypdata[i]->server_desc);
+                    }
+                    source->ypdata[i]->server_desc = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->server_desc, (char *)escaped);
+                    stats_event(source->mount, stat_name, (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_SERVER_GENRE:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->server_genre) {
+                        free(source->ypdata[i]->server_genre);
+                    }
+                    source->ypdata[i]->server_genre = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->server_genre, (char *)escaped);
+                    stats_event(source->mount, stat_name, (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_SERVER_URL:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->server_url) {
+                        free(source->ypdata[i]->server_url);
+                    }
+                    source->ypdata[i]->server_url = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->server_url, (char *)escaped);
+                    stats_event(source->mount, stat_name, (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_BITRATE:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->bitrate) {
+                        free(source->ypdata[i]->bitrate);
+                    }
+                    source->ypdata[i]->bitrate = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->bitrate, (char *)escaped);
+                    stats_event(source->mount, stat_name, (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_AUDIO_INFO:
+                if (source->ypdata[i]->audio_info) {
+                    free(source->ypdata[i]->audio_info);
+                }
+                source->ypdata[i]->audio_info = 
+                    malloc(strlen((char *)info) +1);
+                strcpy(source->ypdata[i]->audio_info, (char *)info);
+                break;
+        case YP_SERVER_TYPE:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->server_type) {
+                        free(source->ypdata[i]->server_type);
+                    }
+                    source->ypdata[i]->server_type = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->server_type, (char *)escaped);
+                    free(escaped);
+                }
+                break;
+        case YP_CURRENT_SONG:
+                escaped = util_url_escape(info);
+                if (escaped) {
+                    if (source->ypdata[i]->current_song) {
+                        free(source->ypdata[i]->current_song);
+                    }
+                    source->ypdata[i]->current_song = 
+                        malloc(strlen((char *)escaped) +1);
+                    strcpy(source->ypdata[i]->current_song, (char *)escaped);
+                    stats_event(source->mount, "yp_currently_playing", 
+                        (char *)info);
+                    free(escaped);
+                }
+                break;
+        case YP_URL_TIMEOUT:
+                source->ypdata[i]->yp_url_timeout = (int)info;
+                break;
+        case YP_LAST_TOUCH:
+                source->ypdata[i]->yp_last_touch = (int)info;
+                break;
+        case YP_TOUCH_INTERVAL:
+                source->ypdata[i]->yp_touch_interval = (int)info;
+                break;
+        }
+    }
+}
