@@ -738,13 +738,18 @@ void stats_get_xml(xmlDocPtr *doc)
 
 
     event = _get_event_from_queue(&queue);
-    while (event) {
-        if (event->source == NULL) {
-            xmlNewChild(node, NULL, event->name, event->value);
-        } else {
+    while (event)
+    {
+        xmlChar *name, *value;
+        name = xmlEncodeEntitiesReentrant (*doc, event->name);
+        value = xmlEncodeEntitiesReentrant (*doc, event->value);
+        srcnode = node;
+        if (event->source) {
             srcnode = _find_xml_node(event->source, &src_nodes, node);
-            xmlNewChild(srcnode, NULL, event->name, event->value);
         }
+        xmlNewChild(srcnode, NULL, name, value);
+        xmlFree (value);
+        xmlFree (name);
 
         _free_event(event);
         event = _get_event_from_queue(&queue);
