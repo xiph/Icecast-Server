@@ -21,6 +21,7 @@ typedef struct _fserve_t
 
     FILE *file;
     int offset;
+    off_t content_length;
     int datasize;
     int ready;
     unsigned char *buf;

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #ifdef HAVE_POLL
 #include <sys/poll.h>
@@ -360,6 +361,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     int bytes;
     int client_limit;
     ice_config_t *config = config_get_config();
+    struct stat file_buf;
 
     client_limit = config->client_limit;
     config_release_config();
@@ -374,7 +376,11 @@ int fserve_client_create(client_t *httpclient, char *path)
     client->offset = 0;
     client->datasize = 0;
     client->ready = 0;
+    client->content_length = 0;
     client->buf = malloc(BUFSIZE);
+    if (stat(path, &file_buf) == 0) {
+        client->content_length = file_buf.st_size;
+    }
 
     global_lock();
     if(global.clients >= client_limit) {
@@ -394,7 +400,9 @@ int fserve_client_create(client_t *httpclient, char *path)
     httpclient->respcode = 200;
     bytes = sock_write(httpclient->con->sock,
             "HTTP/1.0 200 OK\r\n"
+            "Content-Length: %ld\r\n"
             "Content-Type: %s\r\n\r\n",
+            client->content_length,
             fserve_content_type(path));
     if(bytes > 0) httpclient->con->sent_bytes = bytes;
 
