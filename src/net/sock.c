@@ -503,32 +503,28 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
     ai = head;
     while (ai)
     {
-        if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) 
-                > -1)
+        if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) > -1)
         {
             if (timeout)
             {
                 sock_set_blocking (sock, SOCK_NONBLOCK);
                 if (connect (sock, ai->ai_addr, ai->ai_addrlen) < 0)
                 {
-                    int ret = sock_connected (sock, timeout);
-                    if (ret <= 0)
+                    if (sock_connected (sock, timeout) > 0)
                     {
-                        sock_close (sock);
-                        sock = SOCK_ERROR;
+                        sock_set_blocking(sock, SOCK_BLOCK);
+                        break;
                     }
                 }
-                sock_set_blocking(sock, SOCK_BLOCK);
             }
             else
             {
-                if (connect (sock, ai->ai_addr, ai->ai_addrlen) < 0)
-                {
-                    sock_close (sock);
-                    sock = SOCK_ERROR;
-                }
+                if (connect (sock, ai->ai_addr, ai->ai_addrlen) == 0)
+                    break;
             }
+            sock_close (sock);
         }
+        sock = SOCK_ERROR;
         ai = ai->ai_next;
     }
     if (head) freeaddrinfo (head);
