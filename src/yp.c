@@ -747,7 +747,7 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
         if (ypdata->audio_info) {
             free(ypdata->audio_info);
         }
-        if (ypdata->audio_info) {
+        if (ypdata->cluster_password) {
             free(ypdata->cluster_password);
         }
         free (ypdata->error_msg);
