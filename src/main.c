@@ -22,6 +22,7 @@
 
 #ifdef _WIN32
 #define snprintf _snprintf
+#endif
 
 #undef CATMODULE
 #define CATMODULE "main"

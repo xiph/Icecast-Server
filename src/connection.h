@@ -1,6 +1,8 @@
 #ifndef __CONNECTION_H__
 #define __CONNECTION_H__
 
+#include <stdint.h>
+
 typedef struct connection_tag
 {
 	unsigned long id;

@@ -19,7 +19,9 @@
 #include "client.h"
 #include "stats.h"
 
+#ifdef _WIN32
 #define vsnprintf _vsnprintf
+#endif
 
 typedef struct _event_listener_tag
 {
