@@ -390,6 +390,7 @@ static stats_event_t *_copy_event(stats_event_t *event)
 static void modify_node_event (stats_node_t *node, stats_event_t *event)
 {
     char *str;
+
     if (event->action == STATS_EVENT_HIDDEN)
     {
         if (event->value)

@@ -262,6 +262,7 @@ void source_clear_source (source_t *source)
     source->max_listeners = -1;
     source->yp_public = 0;
     source->yp_prevent = 0;
+    source->hidden = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
