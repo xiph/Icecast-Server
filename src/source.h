@@ -1,6 +1,8 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
+#include "format.h"
+
 typedef struct source_tag
 {
     client_t *client;
@@ -8,7 +10,7 @@ typedef struct source_tag
 	http_parser_t *parser;
 	
 	char *mount;
-	format_plugin_t *format;
+	struct _format_plugin_tag *format;
 
 	avl_tree *client_tree;
 	avl_tree *pending_tree;

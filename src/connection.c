@@ -31,12 +31,11 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
-#include "format.h"
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
-
 #include "source.h"
+#include "format.h"
 
 #define CATMODULE "connection"
 
@@ -482,8 +481,6 @@ static void _handle_get_request(connection_t *con,
 {
     char *fullpath;
 	client_t *client;
-	avl_node *node;
-	http_var_t *var;
     int bytes;
 	struct stat statbuf;
 	source_t *source;
@@ -636,26 +633,10 @@ static void _handle_get_request(connection_t *con,
 		global.clients++;
 		global_unlock();
 						
-		client->respcode = 200;
-		bytes = sock_write(client->con->sock, 
-                "HTTP/1.0 200 OK\r\n"
-                "Content-Type: %s\r\n", 
-                format_get_mimetype(source->format->type));
-        if(bytes > 0) client->con->sent_bytes += bytes;
-		/* iterate through source http headers and send to client */
-		avl_tree_rlock(source->parser->vars);
-		node = avl_get_first(source->parser->vars);
-		while (node) {
-			var = (http_var_t *)node->key;
-			if (strcasecmp(var->name, "ice-password") && 
-                    !strncasecmp("ice-", var->name, 4)) {
-				bytes = sock_write(client->con->sock, 
-                        "%s: %s\r\n", var->name, var->value);
-                if(bytes > 0) client->con->sent_bytes += bytes;
-			}
-			node = avl_get_next(node);
-		}
-		avl_tree_unlock(source->parser->vars);
+        client->format_data = source->format->create_client_data(
+                source->format, source, client);
+
+        source->format->client_send_headers(source->format, source, client);
 						
 		bytes = sock_write(client->con->sock, "\r\n");
         if(bytes > 0) client->con->sent_bytes += bytes;

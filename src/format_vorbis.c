@@ -12,6 +12,8 @@
 #include <vorbis/codec.h>
 
 #include "refbuf.h"
+#include "source.h"
+#include "client.h"
 
 #include "stats.h"
 #include "format.h"
@@ -40,7 +42,10 @@ static void format_vorbis_free_plugin(format_plugin_t *self);
 static int format_vorbis_get_buffer(format_plugin_t *self, char *data, 
         unsigned long len, refbuf_t **buffer);
 static refbuf_queue_t *format_vorbis_get_predata(format_plugin_t *self);
-static void *format_vorbis_create_client_data(format_plugin_t *self);
+static void *format_vorbis_create_client_data(format_plugin_t *self,
+        source_t *source, client_t *client);
+static void format_vorbis_send_headers(format_plugin_t *self,
+        source_t *source, client_t *client);
 
 format_plugin_t *format_vorbis_get_plugin(void)
 {
@@ -55,6 +60,7 @@ format_plugin_t *format_vorbis_get_plugin(void)
 	plugin->get_predata = format_vorbis_get_predata;
     plugin->write_buf_to_client = format_generic_write_buf_to_client;
     plugin->create_client_data = format_vorbis_create_client_data;
+    plugin->client_send_headers = format_vorbis_send_headers;
 	plugin->free_plugin = format_vorbis_free_plugin;
     plugin->format_description = "Ogg Vorbis";
 
@@ -218,8 +224,26 @@ refbuf_queue_t *format_vorbis_get_predata(format_plugin_t *self)
 	return queue;
 }
 
-static void *format_vorbis_create_client_data(format_plugin_t *self) {
+static void *format_vorbis_create_client_data(format_plugin_t *self,
+        source_t *source, client_t *client) 
+{
     return NULL;
+}
+
+static void format_vorbis_send_headers(format_plugin_t *self,
+        source_t *source, client_t *client)
+{
+    int bytes;
+    
+    client->respcode = 200;
+    bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 200 OK\r\n" 
+            "Content-Type: %s\r\n", 
+            format_get_mimetype(source->format->type));
+
+    if(bytes > 0) client->con->sent_bytes += bytes;
+
+    format_send_general_headers(self, source, client);
 }
 
 

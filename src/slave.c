@@ -37,10 +37,9 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
-#include "format.h"
 #include "logging.h"
-
 #include "source.h"
+#include "format.h"
 
 #define CATMODULE "slave"
 

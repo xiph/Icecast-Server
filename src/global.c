@@ -4,9 +4,9 @@
 #include "httpp.h"
 #include "connection.h"
 #include "refbuf.h"
-#include "format.h"
 #include "client.h"
 #include "source.h"
+#include "format.h"
 
 #include "global.h"
 

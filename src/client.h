@@ -6,6 +6,8 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
+#include "connection.h"
+
 typedef struct _client_tag
 {
 	/* the clients connection */

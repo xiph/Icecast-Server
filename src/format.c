@@ -11,6 +11,7 @@
 #include "connection.h"
 #include "refbuf.h"
 
+#include "source.h"
 #include "format.h"
 
 #include "format_vorbis.h"
@@ -82,5 +83,29 @@ int format_generic_write_buf_to_client(format_plugin_t *format,
         client->con->sent_bytes += ret;
 
     return ret;
+}
+
+void format_send_general_headers(format_plugin_t *format,
+        source_t *source, client_t *client)
+{
+    http_var_t *var;
+    avl_node *node;
+    int bytes;
+
+	/* iterate through source http headers and send to client */
+	avl_tree_rlock(source->parser->vars);
+	node = avl_get_first(source->parser->vars);
+	while (node) {
+		var = (http_var_t *)node->key;
+		if (strcasecmp(var->name, "ice-password") && 
+                (!strncasecmp("ice-", var->name, 4) ||
+                 !strncasecmp("icy-", var->name, 4))) { 
+            bytes = sock_write(client->con->sock, 
+                    "%s: %s\r\n", var->name, var->value);
+            if(bytes > 0) client->con->sent_bytes += bytes;
+		}
+		node = avl_get_next(node);
+	}
+	avl_tree_unlock(source->parser->vars);
 }
 

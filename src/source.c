@@ -23,13 +23,12 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
-#include "format.h"
 #include "log.h"
 #include "logging.h"
 #include "config.h"
 #include "util.h"
-
 #include "source.h"
+#include "format.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -325,8 +324,6 @@ void *source_main(void *arg)
 			*/
 			if (source->format->has_predata) {
 				client = (client_t *)client_node->key;
-                client->format_data = source->format->create_client_data(
-                        source->format);
 				client->queue = source->format->get_predata(source->format);
 			}
 
