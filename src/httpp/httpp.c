@@ -162,15 +162,14 @@ int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long l
         return 0;
     }
 
+    httpp_setvar(parser, HTTPP_VAR_ERROR_CODE, resp_code);
     code = atoi(resp_code);
     if(code < 200 || code >= 300) {
         httpp_setvar(parser, HTTPP_VAR_ERROR_MESSAGE, message);
-        free(data);
-        return 0;
     }
 
     httpp_setvar(parser, HTTPP_VAR_URI, uri);
-	httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "RELAY");
+	httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "NONE");
 
     parse_headers(parser, line, lines);
 

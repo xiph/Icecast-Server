@@ -13,6 +13,7 @@
 #define HTTPP_VAR_URI "__uri"
 #define HTTPP_VAR_REQ_TYPE "__req_type"
 #define HTTPP_VAR_ERROR_MESSAGE "__errormessage"
+#define HTTPP_VAR_ERROR_CODE "__errorcode"
 
 typedef enum httpp_request_type_tag {
 	httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head, httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
