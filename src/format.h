@@ -8,6 +8,7 @@
 
 #include "client.h"
 #include "refbuf.h"
+#include "httpp.h"
 
 struct source_tag;
 
@@ -50,7 +51,8 @@ typedef struct _format_plugin_tag
 
 format_type_t format_get_type(char *contenttype);
 char *format_get_mimetype(format_type_t type);
-format_plugin_t *format_get_plugin(format_type_t type, char *mount);
+format_plugin_t *format_get_plugin(format_type_t type, char *mount, 
+        http_parser_t *parser);
 
 int format_generic_write_buf_to_client(format_plugin_t *format, 
         client_t *client, unsigned char *buf, int len);

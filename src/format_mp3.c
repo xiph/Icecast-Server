@@ -23,6 +23,9 @@
 
 #define CATMODULE "format-mp3"
 
+/* Note that this seems to be 8192 in shoutcast - perhaps we want to be the
+ * same for compability with crappy clients?
+ */
 #define ICY_METADATA_INTERVAL 16000
 
 static void format_mp3_free_plugin(format_plugin_t *self);
@@ -48,8 +51,9 @@ typedef struct {
 #define alloca _alloca
 #endif
 
-format_plugin_t *format_mp3_get_plugin(void)
+format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 {
+    char *metadata;
 	format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
 
@@ -70,6 +74,10 @@ format_plugin_t *format_mp3_get_plugin(void)
     state->metadata_age = 0;
     state->metadata = strdup("");
     thread_mutex_create(&(state->lock));
+
+    metadata = httpp_getvar(parser, "icy-metaint");
+    if(metadata)
+        state->inline_metadata_interval = atoi(metadata);
 
 	return plugin;
 }
@@ -200,16 +208,23 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
     unsigned long len, refbuf_t **buffer)
 {
 	refbuf_t *refbuf;
+    mp3_state *state = self->_state;
+
     if(!data) {
         *buffer = NULL;
         return 0;
     }
-    refbuf = refbuf_new(len);
+    if(state->inline_metadata_interval) {
+        return 0;
+    }
+    else {
+        refbuf = refbuf_new(len);
 
-    memcpy(refbuf->data, data, len);
+        memcpy(refbuf->data, data, len);
 
-    *buffer = refbuf;
-	return 0;
+        *buffer = refbuf;
+	    return 0;
+    }
 }
 
 static refbuf_queue_t *format_mp3_get_predata(format_plugin_t *self)
