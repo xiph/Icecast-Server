@@ -49,6 +49,7 @@ typedef struct ogg_codec_tag
     struct ogg_codec_tag *next;
     ogg_stream_state os;
     unsigned headers;
+    const char *name;
     void *specific;
     refbuf_t        *possible_start;
     refbuf_t        *page;

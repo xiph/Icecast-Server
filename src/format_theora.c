@@ -177,6 +177,8 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
     codec->process_page = process_theora_page;
     codec->codec_free = theora_codec_free;
     codec->headers = 1;
+    codec->name = "Theora";
+
     format_ogg_attach_header (ogg_info, page);
     ogg_info->codec_sync = codec;
     return codec;
