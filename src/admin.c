@@ -285,6 +285,7 @@ void admin_handle_request(client_t *client, char *uri)
         {
             WARN2("Admin command %s on non-existent source %s", 
                     command_string, mount);
+            avl_tree_unlock(global.source_tree);
             client_send_400(client, "Source does not exist");
         }
         else
@@ -300,8 +301,8 @@ void admin_handle_request(client_t *client, char *uri)
             INFO2("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
             admin_handle_mount_request(client, source, command);
+            avl_tree_unlock(global.source_tree);
         }
-        avl_tree_unlock(global.source_tree);
     }
     else {
 

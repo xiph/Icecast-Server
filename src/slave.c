@@ -99,6 +99,7 @@ static void *_relay_thread (void *arg)
     relay_server *relay = arg;
 
     relay->running = 1;
+    stats_event_inc(NULL, "source_relay_connections");
 
     source_main (relay->source);
 

@@ -915,6 +915,7 @@ void *source_client_thread (void *arg)
     source_t *source = arg;
 
     source->send_return = 1;
+    stats_event_inc(NULL, "source_client_connections");
     source_main (source);
     source_free_source (source);
     return NULL;

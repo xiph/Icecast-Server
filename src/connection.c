@@ -480,6 +480,7 @@ int connection_complete_source (source_t *source)
         global.sources++;
         global_unlock();
         stats_event_inc(NULL, "sources");
+        stats_event_inc(NULL, "source_total_connections");
 
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
@@ -679,7 +680,6 @@ static void _handle_source_request(connection_t *con,
     client = client_create(con, parser);
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
-    stats_event_inc(NULL, "source_connections");
                 
     if (!connection_check_source_pass(parser, uri)) {
         /* We commonly get this if the source client is using the wrong
@@ -885,9 +885,9 @@ static void _handle_get_request(connection_t *con,
 
     global_lock();
     if (global.clients >= client_limit) {
-        client_send_504(client,
-                "The server is already full. Try again later.");
         global_unlock();
+        client_send_404(client,
+                "The server is already full. Try again later.");
         return;
     }
     global_unlock();
@@ -902,8 +902,8 @@ static void _handle_get_request(connection_t *con,
          * the originally requested source
          */
         if(strcmp(uri, source->mount) == 0 && source->no_mount) {
-            client_send_404(client, "This mount is unavailable.");
             avl_tree_unlock(global.source_tree);
+            client_send_404(client, "This mount is unavailable.");
             return;
         }
         if (source->running == 0)
@@ -928,10 +928,10 @@ static void _handle_get_request(connection_t *con,
         /* And then check that there's actually room in the server... */
         global_lock();
         if (global.clients >= client_limit) {
-            client_send_504(client, 
-                    "The server is already full. Try again later.");
             global_unlock();
             avl_tree_unlock(global.source_tree);
+            client_send_404(client, 
+                    "The server is already full. Try again later.");
             return;
         }
         /* Early-out for per-source max listeners. This gets checked again
@@ -941,10 +941,10 @@ static void _handle_get_request(connection_t *con,
         else if(source->max_listeners != -1 && 
                 source->listeners >= source->max_listeners) 
         {
-            client_send_504(client, 
-                    "Too many clients on this mountpoint. Try again later.");
             global_unlock();
             avl_tree_unlock(global.source_tree);
+            client_send_404(client, 
+                    "Too many clients on this mountpoint. Try again later.");
             return;
         }
         global.clients++;
