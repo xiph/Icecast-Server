@@ -220,6 +220,70 @@ static ogg_codec_t *initial_vorbis_page (ogg_page *page)
     return codec;
 }
 
+
+/* Writ codec handler */
+static void writ_codec_free (ogg_codec_t *codec)
+{
+    ogg_stream_clear (&codec->os);
+    free (codec);
+}
+
+
+static refbuf_t *process_writ_page (ogg_codec_t *codec, ogg_page *page)
+{
+    refbuf_t *refbuf;
+
+    if (codec->headers)
+    {
+        ogg_packet pkt;
+
+        ogg_stream_pagein (&codec->os, page);
+        while (ogg_stream_packetout (&codec->os, &pkt) > 0)
+        {
+            if (pkt.bytes >= 5 && pkt.packet[0] != (unsigned char)'\xff' &&
+                        memcmp (pkt.packet+1, "writ", 4) == 0)
+            {
+                codec->headers++;
+                continue;
+            }
+            codec->headers = 0;
+        }
+        if (codec->headers)
+            return NULL;
+    }
+    refbuf = make_refbuf_with_page (page);
+    /* allow clients to start here if nothing prevents it */
+    if (codec->feed->codec_sync == NULL)
+        refbuf->sync_point = 1;
+    return refbuf;
+}
+
+
+static ogg_codec_t *initial_writ_page (ogg_page *page)
+{
+    ogg_packet packet;
+    ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
+
+    ogg_stream_init (&codec->os, ogg_page_serialno (page));
+    ogg_stream_pagein (&codec->os, page);
+
+    ogg_stream_packetout (&codec->os, &packet);
+    if (memcmp (packet.packet, "\x00writ", 5) == 0)
+    {
+
+        INFO0 ("seen initial writ header");
+        codec->process_page = process_writ_page;
+        codec->codec_free = writ_codec_free;
+        codec->headers = 1;
+        return codec;
+    }
+    ogg_stream_clear (&codec->os);
+    free (codec);
+
+    return NULL;
+}
+
+
 #ifdef HAVE_SPEEX
 
 static void speex_codec_free (ogg_codec_t *codec)
@@ -529,6 +593,9 @@ static int process_initial_page (ogg_state_t *ogg_info, ogg_page *page)
     do
     {
         codec = initial_vorbis_page (page);
+        if (codec)
+            break;
+        codec = initial_writ_page (page);
         if (codec)
             break;
 #ifdef HAVE_THEORA
