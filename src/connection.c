@@ -41,6 +41,7 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
+#include "sighandler.h"
 
 #include "yp.h"
 #include "source.h"
@@ -341,7 +342,17 @@ void connection_accept_loop(void)
 
     _build_pool();
 
-    while (global.running == ICE_RUNNING) {
+    while (global.running == ICE_RUNNING)
+    {
+        if (schedule_config_reread)
+        {
+            /* reread config file */
+            INFO0("Scheduling config reread ...");
+
+            connection_inject_event(EVENT_CONFIG_READ, NULL);
+            schedule_config_reread = 0;
+        }
+
         con = _accept_connection();
 
         if (con) {
