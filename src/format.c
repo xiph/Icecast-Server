@@ -36,7 +36,7 @@ format_type_t format_get_type(char *contenttype)
     else if(strcmp(contenttype, "audio/mpeg") == 0)
         return FORMAT_TYPE_MP3; 
     else
-        return -1;
+        return FORMAT_ERROR;
 }
 
 char *format_get_mimetype(format_type_t type)

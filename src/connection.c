@@ -313,7 +313,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 
 	if (contenttype != NULL) {
 		format_type_t format = format_get_type(contenttype);
-		if (format < 0) {
+		if (format == FORMAT_ERROR) {
 			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
             goto fail;
 		} else {

@@ -14,7 +14,8 @@ struct source_tag;
 typedef enum _format_type_tag
 {
 	FORMAT_TYPE_VORBIS,
-	FORMAT_TYPE_MP3
+	FORMAT_TYPE_MP3,
+    FORMAT_ERROR /* No format, source not processable */
 } format_type_t;
 
 typedef struct _format_plugin_tag
