@@ -586,14 +586,35 @@ static void format_mp3_send_headers(format_plugin_t *self,
         source_t *source, client_t *client)
 {
     int bytes;
+    char *content_length;
+
     mp3_client_data *mp3data = client->format_data;
     
     client->respcode = 200;
+
+    /* This little bit of code is for compatability with
+       flash mp3 streaming. Flash requires a content-length
+       in order for it to stream mp3s, and so based off a
+       trial and error effort, the following number was derived.
+       It is the largest content-length that we can send, anything
+       larger causes flash streaming not to work. Note that it
+       is also possible that other flash-based players may not
+       send this request header (x-flash-version), but given the
+       sampleset I had access to, this should suffice. */
+    if (httpp_getvar(client->parser, "x-flash-version")) {
+        content_length = "Content-Length: 347122319\r\n";
+    }
+    else {
+        content_length = "";
+    }
+
     /* TODO: This may need to be ICY/1.0 for shoutcast-compatibility? */
     bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\n" 
-            "Content-Type: %s\r\n", 
-            format_get_mimetype(source->format->type));
+            "Content-Type: %s\r\n"
+            "%s", 
+            format_get_mimetype(source->format->type),
+            content_length);
 
     if (bytes > 0)
         client->con->sent_bytes += bytes;
