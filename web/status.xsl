@@ -37,6 +37,16 @@
 <xsl:if test="quality">
 <tr><td>Quality:</td><td class="streamdata"> <xsl:value-of select="quality" /></td></tr>
 </xsl:if>
+<xsl:if test="video_quality">
+<tr><td>Video Quality:</td><td class="streamdata"> <xsl:value-of select="video_quality" /></td></tr>
+</xsl:if>
+<xsl:if test="frame_size">
+<tr><td>Framesize:</td><td class="streamdata"> <xsl:value-of select="frame_size" /></td></tr>
+</xsl:if>
+<xsl:if test="frame_rate">
+<tr><td>Framerate:</td><td class="streamdata"> <xsl:value-of select="frame_rate" /></td></tr>
+</xsl:if>
+
 <xsl:if test="listeners">
 <tr><td>Stream Listeners:</td><td class="streamdata"> <xsl:value-of select="listeners" /></td></tr>
 </xsl:if>
