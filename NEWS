@@ -1,12 +1,27 @@
-feature differences from CVS
+feature differences from SVN trunk
 
-fast pre-buffering - burst a certain amount of data at connection time.
+fast pre-buffering - single queue change allows for intergrated handling 
+of bursting
 mp3 accepts artist and title separately on the url.
 program invocation at stream start and end, per mount based.
 on-demand relays, activated on first listener, disconnected when listeners 
 falls to 0
 multiple Ogg codec streaming. start at theora key frame.
-Added URL and command based authentication
+Added URL and command based listener authentication
+server xml reload, reopen logging available via admin url
+
+kh50
+. removed redundant pointer, adding new clients could cause a memory
+  corruption problem
+. structured relay startup differently, so that relays operate independently
+  from one another. relay threads are now attached.
+. resync with trunk. make m3u lookups more general, makes static files work
+  with .m3u
+. encode names and values from stats when building xsl pages
+. add /admin/function[.xsl]?perform=xx the current handlers are
+    xx = reopenlog
+    xx = updatecfg
+. removed old abort test
 
 kh49
 . allow for changes in mount settings to update active sources
