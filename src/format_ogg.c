@@ -41,6 +41,10 @@
 #include "format_speex.h"
 #endif
 
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
+
 #define CATMODULE "format-ogg"
 #include "logging.h"
 

@@ -193,6 +193,9 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->on_connect);
         xmlFree(mount->on_disconnect);
         xmlFree(mount->fallback_mount);
+        if (mount->cluster_password) {
+            xmlFree(mount->cluster_password);
+        }
 
         xmlFree(mount->auth_type);
         option = mount->auth_options;
@@ -664,6 +667,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->burst_size = atoi(tmp);
             if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "cluster-password") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->cluster_password = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
 }

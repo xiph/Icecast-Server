@@ -67,6 +67,7 @@ typedef struct _mount_proxy {
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
     char *auth_type; /* Authentication type */
+    char *cluster_password;
     config_options_t *auth_options; /* Options for this type */
     char *on_connect;
     char *on_disconnect;

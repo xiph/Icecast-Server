@@ -169,6 +169,22 @@ SOURCE=..\src\format_mp3.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\format_ogg.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_ogg.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_theora.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_theora.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\format_vorbis.c
 # End Source File
 # Begin Source File

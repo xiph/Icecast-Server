@@ -25,13 +25,11 @@
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
+        <alias source="/" dest="/status.xsl"/>
     </paths>
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
       	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
     </logging>
-    <security>
-        <chroot>0</chroot>
-    </security>
 </icecast>

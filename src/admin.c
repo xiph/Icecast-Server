@@ -47,16 +47,19 @@
 
 /* Mount-specific commands */
 #define COMMAND_RAW_FALLBACK        1
-#define COMMAND_METADATA_UPDATE     2
+#define COMMAND_RAW_METADATA_UPDATE 2
 #define COMMAND_RAW_SHOW_LISTENERS  3
 #define COMMAND_RAW_MOVE_CLIENTS    4
 #define COMMAND_RAW_MANAGEAUTH      5
 #define COMMAND_SHOUTCAST_METADATA_UPDATE   6
+#define COMMAND_RAW_UPDATEMETADATA  7
 
 #define COMMAND_TRANSFORMED_FALLBACK        50
 #define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
 #define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
 #define COMMAND_TRANSFORMED_MANAGEAUTH      55
+#define COMMAND_TRANSFORMED_UPDATEMETADATA  56
+#define COMMAND_TRANSFORMED_METADATA_UPDATE 57
 
 /* Global commands */
 #define COMMAND_RAW_LIST_MOUNTS             101
@@ -81,7 +84,8 @@
 #define FALLBACK_RAW_REQUEST "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
 #define SHOUTCAST_METADATA_REQUEST "admin.cgi"
-#define METADATA_REQUEST "metadata"
+#define METADATA_RAW_REQUEST "metadata"
+#define METADATA_TRANSFORMED_REQUEST "metadata.xsl"
 #define LISTCLIENTS_RAW_REQUEST "listclients"
 #define LISTCLIENTS_TRANSFORMED_REQUEST "listclients.xsl"
 #define STATS_RAW_REQUEST "stats"
@@ -100,6 +104,8 @@
 #define ADMIN_XSL_RESPONSE "response.xsl"
 #define MANAGEAUTH_RAW_REQUEST "manageauth"
 #define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
+#define UPDATEMETADATA_RAW_REQUEST "updatemetadata"
+#define UPDATEMETADATA_TRANSFORMED_REQUEST "updatemetadata.xsl"
 #define ADM_FUNCTION_RAW_REQUEST "function"
 #define ADM_FUNCTION_TRANSFORMED_REQUEST "function.xsl"
 #define DEFAULT_RAW_REQUEST ""
@@ -116,8 +122,10 @@ int admin_get_command(char *command)
         return COMMAND_RAW_FALLBACK;
     else if(!strcmp(command, FALLBACK_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_FALLBACK;
-    else if(!strcmp(command, METADATA_REQUEST))
-        return COMMAND_METADATA_UPDATE;
+    else if(!strcmp(command, METADATA_RAW_REQUEST))
+        return COMMAND_RAW_METADATA_UPDATE;
+    else if(!strcmp(command, METADATA_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_METADATA_UPDATE;
     else if(!strcmp(command, SHOUTCAST_METADATA_REQUEST))
         return COMMAND_SHOUTCAST_METADATA_UPDATE;
     else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
@@ -154,6 +162,10 @@ int admin_get_command(char *command)
         return COMMAND_RAW_MANAGEAUTH;
     else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_MANAGEAUTH;
+    else if(!strcmp(command, UPDATEMETADATA_RAW_REQUEST))
+        return COMMAND_RAW_UPDATEMETADATA;
+    else if(!strcmp(command, UPDATEMETADATA_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_UPDATEMETADATA;
     else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
         return COMMAND_BUILDM3U;
     else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
@@ -169,7 +181,7 @@ int admin_get_command(char *command)
 }
 
 static void command_fallback(client_t *client, source_t *source, int response);
-static void command_metadata(client_t *client, source_t *source);
+static void command_metadata(client_t *client, source_t *source, int response);
 static void command_shoutcast_metadata(client_t *client, source_t *source);
 static void command_show_listeners(client_t *client, source_t *source,
         int response);
@@ -184,6 +196,8 @@ static void command_manageauth(client_t *client, source_t *source,
 static void command_buildm3u(client_t *client, source_t *source,
         int response);
 static void command_kill_source(client_t *client, source_t *source,
+        int response);
+static void command_updatemetadata(client_t *client, source_t *source,
         int response);
 static void command_admin_function (client_t *client, int response);
 
@@ -469,8 +483,11 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         case COMMAND_RAW_FALLBACK:
             command_fallback(client, source, RAW);
             break;
-        case COMMAND_METADATA_UPDATE:
-            command_metadata(client, source);
+        case COMMAND_RAW_METADATA_UPDATE:
+            command_metadata(client, source, RAW);
+            break;
+        case COMMAND_TRANSFORMED_METADATA_UPDATE:
+            command_metadata(client, source, TRANSFORMED);
             break;
         case COMMAND_SHOUTCAST_METADATA_UPDATE:
             command_shoutcast_metadata(client, source);
@@ -507,6 +524,12 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_RAW_MANAGEAUTH:
             command_manageauth(client, source, RAW);
+            break;
+        case COMMAND_TRANSFORMED_UPDATEMETADATA:
+            command_updatemetadata(client, source, TRANSFORMED);
+            break;
+        case COMMAND_RAW_UPDATEMETADATA:
+            command_updatemetadata(client, source, RAW);
             break;
         case COMMAND_BUILDM3U:
             command_buildm3u(client, source, RAW);
@@ -900,11 +923,18 @@ static void command_fallback(client_t *client, source_t *source,
     html_success(client, "Fallback configured");
 }
 
-static void command_metadata(client_t *client, source_t *source)
+static void command_metadata(client_t *client, source_t *source,
+    int response)
 {
     char *action;
     char *song, *title, *artist;
     format_plugin_t *plugin;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlDocSetRootElement(doc, node);
 
     DEBUG0("Got metadata update request");
 
@@ -915,13 +945,19 @@ static void command_metadata(client_t *client, source_t *source)
 
     if (strcmp (action, "updinfo") != 0)
     {
-        client_send_400 (client, "No such action");
+        xmlNewChild(node, NULL, "message", "No such action");
+        xmlNewChild(node, NULL, "return", "0");
+        admin_send_response(doc, client, response,
+            ADMIN_XSL_RESPONSE);
+        xmlFreeDoc(doc);
+        client_destroy(client);
         return;
     }
 
     thread_mutex_lock (&source->lock);
 
     plugin = source->format;
+
     if (plugin && plugin->set_tag)
     {
         if (song)
@@ -941,13 +977,26 @@ static void command_metadata(client_t *client, source_t *source)
         }
 
         thread_mutex_unlock (&source->lock);
-        html_success(client, "Metadata update successful");
     }
     else
     {
         thread_mutex_unlock (&source->lock);
-        client_send_400 (client, "mountpoint will not accept URL updates");
+        xmlNewChild(node, NULL, "message", 
+            "Mountpoint will not accept URL updates");
+        xmlNewChild(node, NULL, "return", "1");
+        admin_send_response(doc, client, response, 
+            ADMIN_XSL_RESPONSE);
+        xmlFreeDoc(doc);
+        client_destroy(client);
+        return;
     }
+
+    xmlNewChild(node, NULL, "message", "Metadata update successful");
+    xmlNewChild(node, NULL, "return", "1");
+    admin_send_response(doc, client, response, 
+        ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
 }
 
 static void command_shoutcast_metadata(client_t *client, source_t *source)
@@ -1047,5 +1096,23 @@ static void command_list_mounts(client_t *client, int response)
     client_destroy(client);
 
     return;
+}
+
+static void command_updatemetadata(client_t *client, source_t *source,
+    int response)
+{
+    xmlDocPtr doc;
+    xmlNodePtr node, srcnode;
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    srcnode = xmlNewChild(node, NULL, "source", NULL);
+    xmlSetProp(srcnode, "mount", source->mount);
+    xmlDocSetRootElement(doc, node);
+
+    admin_send_response(doc, client, response, 
+        UPDATEMETADATA_TRANSFORMED_REQUEST);
+    xmlFreeDoc(doc);
+    client_destroy(client);
 }
 
