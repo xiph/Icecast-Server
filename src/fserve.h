@@ -21,6 +21,7 @@ typedef struct _fserve_t
 
     FILE *file;
     int ready;
+    int64_t content_length;
     struct _fserve_t *next;
 } fserve_t;
 

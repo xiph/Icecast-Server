@@ -355,6 +355,11 @@ int fserve_client_create(client_t *httpclient, char *path)
     int bytes;
     int client_limit;
     ice_config_t *config = config_get_config();
+    struct stat file_buf;
+    char *range = NULL;
+    int64_t new_content_len = 0;
+    int64_t rangenumber = 0;
+    int ret = 0;
 
     client_limit = config->client_limit;
     config_release_config();
@@ -371,38 +376,97 @@ int fserve_client_create(client_t *httpclient, char *path)
     client_set_queue (httpclient, NULL);
     httpclient->refbuf = refbuf_new (BUFSIZE);
     httpclient->pos = BUFSIZE;
+    if (stat(path, &file_buf) == 0) {
+        client->content_length = (int64_t)file_buf.st_size;
+    }
 
     global_lock();
     if(global.clients >= client_limit) {
-        httpclient->respcode = 504;
+        global_unlock();
+        httpclient->respcode = 503;
         bytes = sock_write(httpclient->con->sock,
-                "HTTP/1.0 504 Server Full\r\n"
+                "HTTP/1.0 503 Service Unavailable\r\n"
                 "Content-Type: text/html\r\n\r\n"
                 "<b>Server is full, try again later.</b>\r\n");
         if(bytes > 0) httpclient->con->sent_bytes = bytes;
         fserve_client_destroy(client);
-        global_unlock();
         return -1;
     }
     global.clients++;
     global_unlock();
 
-    httpclient->respcode = 200;
+    range = httpp_getvar (client->client->parser, "range");
+
+    do
+    {
+        if (range)
+        {
+            ret = sscanf(range, "bytes=" FORMAT_INT64 "-", &rangenumber);
+            if (ret == 1 && rangenumber>=0 && rangenumber < client->content_length)
+            {
+                /* Date: is required on all HTTP1.1 responses */
+                char currenttime[50];
+                time_t now;
+                int strflen;
+                struct tm result;
+                int64_t endpos;
+
+                ret = fseek(client->file, rangenumber, SEEK_SET);
+                if (ret == -1)
+                    break;
+
+                new_content_len = client->content_length - rangenumber;
+                endpos = rangenumber + new_content_len - 1;
+                if (endpos < 0)
+                    endpos = 0;
+                
+                time(&now);
+                strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
+                                   gmtime_r (&now, &result));
+                httpclient->respcode = 206;
+                bytes = sock_write(httpclient->con->sock,
+                    "HTTP/1.1 206 Partial Content\r\n"
+                    "Date: %s\r\n"
+                    "Content-Length: %ld\r\n"
+                    "Content-Range: bytes " FORMAT_INT64 \
+                    "-" FORMAT_INT64 "/" FORMAT_INT64 "\r\n"
+                    "Content-Type: %s\r\n\r\n",
+                    currenttime,
+                    new_content_len,
+                    rangenumber,
+                    rangenumber+new_content_len,
+                    client->content_length,
+                    fserve_content_type(path));
+            }
+            else
+                break;
+        }
+        else {
+            httpclient->respcode = 200;
+            bytes = sock_write (httpclient->con->sock,
+                    "HTTP/1.0 200 OK\r\n"
+                "Content-Type: %s\r\n\r\n",
+                fserve_content_type(path));
+        }
+        if(bytes > 0) httpclient->con->sent_bytes = bytes;
+
+        sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
+        sock_set_nodelay(client->client->con->sock);
+
+        thread_mutex_lock (&pending_lock);
+        client->next = (fserve_t *)pending_list;
+        pending_list = client;
+        thread_mutex_unlock (&pending_lock);
+
+        return 0;
+    } while (0);
+    /* If we run into any issues with the ranges
+       we fallback to a normal/non-range request */
+    httpclient->respcode = 416;
     bytes = sock_write(httpclient->con->sock,
-            "HTTP/1.0 200 OK\r\n"
-            "Content-Type: %s\r\n\r\n",
-            fserve_content_type(path));
+            "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     if(bytes > 0) httpclient->con->sent_bytes = bytes;
-
-    sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
-    sock_set_nodelay(client->client->con->sock);
-
-    thread_mutex_lock (&pending_lock);
-    client->next = (fserve_t *)pending_list;
-    pending_list = client;
-    thread_mutex_unlock (&pending_lock);
-
-    return 0;
+    return -1;
 }
 
 static int _free_client(void *key)

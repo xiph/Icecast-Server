@@ -257,6 +257,7 @@ void source_clear_source (source_t *source)
     source->queue_size_limit = 0;
     source->listeners = 0;
     source->no_mount = 0;
+    source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
     util_dict_free (source->audio_info);
@@ -1207,10 +1208,20 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         fclose (source->intro_file);
     if (mountinfo->intro_filename)
     {
-        source->intro_file = fopen (mountinfo->intro_filename, "rb");
-        if (source->intro_file == NULL)
-            WARN2 ("Cannot open intro file \"%s\": %s",
-                    mountinfo->intro_filename, strerror(errno));
+        ice_config_t *config = config_get_config_unlocked ();
+        unsigned int len  = strlen (config->webroot_dir) +
+            strlen (mountinfo->intro_filename) + 1;
+        char *path = malloc (len);
+        if (path)
+        {
+            snprintf (path, len, "%s%s", config->webroot_dir,
+                    mountinfo->intro_filename);
+
+            source->intro_file = fopen (path, "rb");
+            if (source->intro_file == NULL)
+                WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
+            free (path);
+        }
     }
 
     if (mountinfo->queue_size_limit)

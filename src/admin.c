@@ -51,6 +51,7 @@
 #define COMMAND_RAW_SHOW_LISTENERS  3
 #define COMMAND_RAW_MOVE_CLIENTS    4
 #define COMMAND_RAW_MANAGEAUTH      5
+#define COMMAND_SHOUTCAST_METADATA_UPDATE   6
 
 #define COMMAND_TRANSFORMED_FALLBACK        50
 #define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
@@ -79,6 +80,7 @@
 
 #define FALLBACK_RAW_REQUEST "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
+#define SHOUTCAST_METADATA_REQUEST "admin.cgi"
 #define METADATA_REQUEST "metadata"
 #define LISTCLIENTS_RAW_REQUEST "listclients"
 #define LISTCLIENTS_TRANSFORMED_REQUEST "listclients.xsl"
@@ -116,6 +118,8 @@ int admin_get_command(char *command)
         return COMMAND_TRANSFORMED_FALLBACK;
     else if(!strcmp(command, METADATA_REQUEST))
         return COMMAND_METADATA_UPDATE;
+    else if(!strcmp(command, SHOUTCAST_METADATA_REQUEST))
+        return COMMAND_SHOUTCAST_METADATA_UPDATE;
     else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
         return COMMAND_RAW_SHOW_LISTENERS;
     else if(!strcmp(command, LISTCLIENTS_TRANSFORMED_REQUEST))
@@ -166,6 +170,7 @@ int admin_get_command(char *command)
 
 static void command_fallback(client_t *client, source_t *source, int response);
 static void command_metadata(client_t *client, source_t *source);
+static void command_shoutcast_metadata(client_t *client, source_t *source);
 static void command_show_listeners(client_t *client, source_t *source,
         int response);
 static void command_move_clients(client_t *client, source_t *source,
@@ -289,14 +294,22 @@ void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
     int command;
+    int noauth = 0;
 
-    if(strncmp("/admin/", uri, 7)) {
+    DEBUG1("Admin request (%s)", uri);
+    if (!((strcmp(uri, "/admin.cgi") == 0) ||
+                (strncmp("/admin/", uri, 7) == 0))) {
         ERROR0("Internal error: admin request isn't");
         client_send_401(client);
         return;
     }
 
-    command_string = uri + 7;
+    if (strcmp(uri, "/admin.cgi") == 0) {
+        command_string = uri + 1;
+    }
+    else {
+        command_string = uri + 7;
+    }
 
     DEBUG1("Got command (%s)", command_string);
     command = admin_get_command(command_string);
@@ -309,6 +322,31 @@ void admin_handle_request(client_t *client, char *uri)
     }
 
     mount = httpp_get_query_param(client->parser, "mount");
+
+    if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
+        source_t *source;
+
+        mount = "/";
+        noauth = 1;
+        avl_tree_rlock(global.source_tree);
+        source = source_find_mount_raw(mount);
+        if (source == NULL) {
+            WARN2("Admin command %s on non-existent source %s", 
+                    command_string, mount);
+            avl_tree_unlock(global.source_tree);
+            client_send_400(client, "Mount / does not exist");
+            return;
+        }
+        else {
+            if (source->shoutcast_compat == 0) {
+                ERROR0("Illegal call to change metadata, source not shoutcast compatible");
+                avl_tree_unlock (global.source_tree);
+                client_send_400 (client, "Illegal metadata call");
+                return;
+            }
+        }
+        avl_tree_unlock(global.source_tree);
+    }
 
     if(mount != NULL) {
         source_t *source;
@@ -334,13 +372,16 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
-            if (source->running == 0 && source->on_demand == 0)
+            if (!source->shoutcast_compat)
             {
-                INFO2("Received admin command %s on unavailable mount \"%s\"",
-                        command_string, mount);
-                avl_tree_unlock (global.source_tree);
-                client_send_400 (client, "Source is not available");
-                return;
+                if (source->running == 0 && source->on_demand == 0)
+                {
+                    INFO2("Received admin command %s on unavailable mount \"%s\"",
+                            command_string, mount);
+                    avl_tree_unlock (global.source_tree);
+                    client_send_400 (client, "Source is not available");
+                    return;
+                }
             }
             INFO2("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
@@ -433,6 +474,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_METADATA_UPDATE:
             command_metadata(client, source);
+            break;
+        case COMMAND_SHOUTCAST_METADATA_UPDATE:
+            command_shoutcast_metadata(client, source);
             break;
         case COMMAND_RAW_SHOW_LISTENERS:
             command_show_listeners(client, source, RAW);
@@ -907,9 +951,76 @@ static void command_metadata(client_t *client, source_t *source)
     else
     {
         thread_mutex_unlock (&source->lock);
-        client_send_400 (client, "source will not accept URL updates");
+        client_send_400 (client, "mountpoint will not accept URL updates");
     }
 }
+
+static void command_shoutcast_metadata(client_t *client, source_t *source)
+{
+    char *action;
+    char *value;
+    char *source_pass;
+    char *config_source_pass;
+    ice_config_t *config;
+
+    DEBUG0("Got shoutcast metadata update request");
+
+    COMMAND_REQUIRE(client, "mode", action);
+    COMMAND_REQUIRE(client, "song", value);
+    COMMAND_REQUIRE(client, "pass", source_pass);
+
+    config = config_get_config();
+    config_source_pass = strdup(config->source_password);
+    config_release_config();
+
+    if ((source->format->type != FORMAT_TYPE_MP3) &&
+            (source->format->type != FORMAT_TYPE_NSV))
+    {
+        thread_mutex_unlock (&source->lock);
+        client_send_400 (client, "Not mp3 or NSV, cannot update metadata");
+        return;
+    }
+
+    if (strcmp (action, "updinfo") != 0)
+    {
+        thread_mutex_unlock (&source->lock);
+        client_send_400 (client, "No such action");
+        return;
+    }
+
+    if (strcmp(source_pass, config_source_pass) != 0)
+    {
+        thread_mutex_unlock (&source->lock);
+        ERROR0("Invalid source password specified, metadata not updated");
+        client_send_400 (client, "Invalid source password");
+        return;
+    }
+
+    if (config_source_pass) {
+        free(config_source_pass);
+    }
+
+    if (source->format && source->format->set_tag)
+    {
+        source->format->set_tag (source->format, "title", value);
+
+        DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
+                source->mount, value);
+        stats_event(source->mount, "title", value);
+        /* If we get an update on the mountpoint, force a
+         * yp touch */
+        yp_touch (source->mount);
+
+        thread_mutex_unlock (&source->lock);
+        html_success(client, "Metadata update successful");
+    }
+    else
+    {
+        thread_mutex_unlock (&source->lock);
+        client_send_400 (client, "mountpoint will not accept URL updates");
+    }
+}
+
 
 static void command_stats(client_t *client, int response) {
     xmlDocPtr doc;

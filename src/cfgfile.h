@@ -85,6 +85,7 @@ typedef struct _aliases {
 typedef struct {
     int port;
     char *bind_address;
+    int shoutcast_compat;
 } listener_t;
 
 typedef struct ice_config_tag

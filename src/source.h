@@ -61,6 +61,7 @@ typedef struct source_tag
     int fallback_override;
     int fallback_when_full;
     int no_mount;
+    int shoutcast_compat;
 
     /* per source burst handling for connecting clients */
     unsigned int burst_size;    /* trigger level for burst on connect */

@@ -30,7 +30,8 @@ typedef enum _format_type_tag
     FORMAT_ERROR, /* No format, source not processable */
     FORMAT_TYPE_OGG,
     FORMAT_TYPE_VORBIS,
-    FORMAT_TYPE_MP3
+    FORMAT_TYPE_MP3,
+    FORMAT_TYPE_NSV
 } format_type_t;
 
 typedef struct _format_plugin_tag
@@ -56,7 +57,7 @@ typedef struct _format_plugin_tag
 } format_plugin_t;
 
 format_type_t format_get_type(char *contenttype);
-char *format_get_mimetype(format_type_t type);
+const char *format_get_mimetype(format_type_t type);
 int format_get_plugin(format_type_t type, struct source_tag *source);
 
 int format_generic_write_to_client (struct source_tag *source, client_t *client);

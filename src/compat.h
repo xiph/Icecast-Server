@@ -10,6 +10,9 @@
  *                      and others (see AUTHORS for details).
  */
 
+#ifndef __COMPAT_H__
+#define __COMPAT_H__
+
 /* compat.h
  * 
  * This file contains most of the ugliness for header portability
@@ -29,3 +32,12 @@
 #    include <inttypes.h>
 #  endif
 #endif
+
+#ifdef _WIN32
+#define FORMAT_INT64      "%I64d"
+#else
+#define FORMAT_INT64      "%lld"
+#endif
+
+#endif /* __COMPAT_H__ */
+

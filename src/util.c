@@ -84,7 +84,7 @@ int util_timed_wait_for_fd(int fd, int timeout)
 #endif
 }
 
-int util_read_header(int sock, char *buff, unsigned long len)
+int util_read_header(int sock, char *buff, unsigned long len, int entire)
 {
     int read_bytes, ret;
     unsigned long pos;
@@ -107,9 +107,18 @@ int util_read_header(int sock, char *buff, unsigned long len)
 
             if ((read_bytes = recv(sock, &c, 1, 0))) {
                 if (c != '\r') buff[pos++] = c;
-                if ((pos > 1) && (buff[pos - 1] == '\n' && buff[pos - 2] == '\n')) {
-                    ret = 1;
-                    break;
+                if (entire) {
+                    if ((pos > 1) && (buff[pos - 1] == '\n' && 
+                                      buff[pos - 2] == '\n')) {
+                        ret = 1;
+                        break;
+                    }
+                }
+                else {
+                    if ((pos > 1) && (buff[pos - 1] == '\n')) {
+                        ret = 1;
+                        break;
+                    }
                 }
             }
         } else {

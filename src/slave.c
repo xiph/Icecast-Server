@@ -274,7 +274,7 @@ static void *start_relay_stream (void *arg)
         free (auth_header);
         free (redirect_header);
         memset (header, 0, sizeof(header));
-        if (util_read_header (con->sock, header, 4096) == 0)
+        if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
         {
             WARN0("Header read failed");
             break;
