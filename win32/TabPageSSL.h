@@ -3,9 +3,8 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CTabPageSSL declaration
-#include "ResizableDialog.h"
 
-class CTabPageSSL : public CResizableDialog
+class CTabPageSSL : public CDialog
 {
 public:
 // Construction

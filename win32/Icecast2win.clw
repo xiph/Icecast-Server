@@ -15,7 +15,7 @@ Class3=CAboutDlg
 ResourceCount=10
 Resource1=IDD_SSTATUS
 Resource2=IDR_MAINFRAME
-Resource3=IDD_ABOUTBOX
+Resource3=IDD_STATSDIALOG
 Resource4=IDR_MENU2
 Class4=CStatus
 Resource5=IDR_TRAY
@@ -25,7 +25,7 @@ Resource6=IDR_MENU4
 Resource7=IDD_ICECAST2WIN_DIALOG
 Resource8=IDD_CONFIGDIALOG
 Resource9=IDR_MENU3
-Resource10=IDD_STATSDIALOG
+Resource10=IDD_ABOUTBOX
 
 [CLS:CIcecast2winApp]
 Type=0

@@ -5,7 +5,6 @@
 #include "Icecast2win.h"
 #include "Icecast2winDlg.h"
 #include <process.h>
-#include "ResizableDialog.h"
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -24,7 +23,6 @@ extern "C" {
 #include "client.h"
 #include "stats.h"
 }
-
 
 #include <afxinet.h>
 
@@ -165,7 +163,7 @@ void RemoveFromAdditionalGlobalStats(CString source, CString name) {
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
-class CAboutDlg : public CResizableDialog
+class CAboutDlg : public CDialog
 {
 public:
 	CAboutDlg();
@@ -188,7 +186,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CResizableDialog(CAboutDlg::IDD)
+CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	//}}AFX_DATA_INIT
@@ -196,12 +194,12 @@ CAboutDlg::CAboutDlg() : CResizableDialog(CAboutDlg::IDD)
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CResizableDialog::DoDataExchange(pDX);
+	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CAboutDlg)
 	//}}AFX_DATA_MAP
 }
 
-BEGIN_MESSAGE_MAP(CAboutDlg, CResizableDialog)
+BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	//{{AFX_MSG_MAP(CAboutDlg)
 		// No message handlers
 	//}}AFX_MSG_MAP
@@ -212,7 +210,7 @@ END_MESSAGE_MAP()
 // CIcecast2winDlg dialog
 
 CIcecast2winDlg::CIcecast2winDlg(CWnd* pParent /*=NULL*/)
-	: CResizableDialog(CIcecast2winDlg::IDD, pParent)
+	: CDialog(CIcecast2winDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CIcecast2winDlg)
 	m_AccessEdit = _T("");
@@ -231,7 +229,7 @@ CIcecast2winDlg::CIcecast2winDlg(CWnd* pParent /*=NULL*/)
 
 void CIcecast2winDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CResizableDialog::DoDataExchange(pDX);
+	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CIcecast2winDlg)
 	DDX_Control(pDX, IDC_STATIC_SS, m_SS);
 	DDX_Control(pDX, IDC_SERVERSTATUS, m_ServerStatusBitmap);
@@ -241,7 +239,7 @@ void CIcecast2winDlg::DoDataExchange(CDataExchange* pDX)
 	//}}AFX_DATA_MAP
 }
 
-BEGIN_MESSAGE_MAP(CIcecast2winDlg, CResizableDialog)
+BEGIN_MESSAGE_MAP(CIcecast2winDlg, CDialog)
 	//{{AFX_MSG_MAP(CIcecast2winDlg)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
@@ -268,9 +266,10 @@ END_MESSAGE_MAP()
 
 #include "colors.h"
 
+
 BOOL CIcecast2winDlg::OnInitDialog()
 {
-	CResizableDialog::OnInitDialog();
+	CDialog::OnInitDialog();
 
 	// Add "About..." menu item to system menu.
 
@@ -290,7 +289,6 @@ BOOL CIcecast2winDlg::OnInitDialog()
 		}
 	}
 
-	
 	g_mainDialog = this;
 
 	// Set the icon for this dialog.  The framework does this automatically
@@ -327,10 +325,10 @@ BOOL CIcecast2winDlg::OnInitDialog()
 
 	LoadConfig();
 
-	AddAnchor(IDC_MAINTAB, TOP_LEFT, BOTTOM_RIGHT);
-	AddAnchor(IDC_STATICBLACK, TOP_LEFT, TOP_RIGHT);
+//	AddAnchor(IDC_MAINTAB, TOP_LEFT, BOTTOM_RIGHT);
+//	AddAnchor(IDC_STATICBLACK, TOP_LEFT, TOP_RIGHT);
 
-	EnableSaveRestore("icecast2win", "positions");
+//	EnableSaveRestore("icecast2win", "positions");
 
 	m_pTray = NULL;
 
@@ -354,7 +352,7 @@ void CIcecast2winDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else
 	{
-		CResizableDialog::OnSysCommand(nID, lParam);
+		CDialog::OnSysCommand(nID, lParam);
 	}
 }
 
@@ -383,7 +381,7 @@ void CIcecast2winDlg::OnPaint()
 	}
 	else
 	{
-		CResizableDialog::OnPaint();
+		CDialog::OnPaint();
 	}
 }
 
@@ -636,7 +634,7 @@ void CIcecast2winDlg::OnTimer(UINT nIDEvent)
 		}
 	}
 	
-	CResizableDialog::OnTimer(nIDEvent);
+	CDialog::OnTimer(nIDEvent);
 }
 
 char	g_configFile[1024] = "";
@@ -984,7 +982,7 @@ void CIcecast2winDlg::config_read()
 	char	buf[1024] = "";
 	CString	tempString;
 
-	m_colSource0Width = GetPrivateProfileInt(gAppName, "col0SourceWidth", 150, gConfigFile);
+	m_colSource0Width = GetPrivateProfileInt(gAppName, "col0SourceWidth", 163, gConfigFile);
 	m_colStats0Width = GetPrivateProfileInt(gAppName, "col0StatsWidth", 100, gConfigFile);
 	m_colStats1Width = GetPrivateProfileInt(gAppName, "col1StatsWidth", 150, gConfigFile);
 	m_colGStats0Width = GetPrivateProfileInt(gAppName, "col0GStatsWidth", 150, gConfigFile);
@@ -1038,12 +1036,12 @@ void CIcecast2winDlg::OnClose()
 {
 	// TODO: Add your message handler code here and/or call default
 	config_write();
-	CResizableDialog::OnClose();
+	CDialog::OnClose();
 }
 
 void CIcecast2winDlg::OnSize(UINT nType, int cx, int cy) 
 {
-	CResizableDialog::OnSize(nType, cx, cy);
+	CDialog::OnSize(nType, cx, cy);
 	
 	int border1 = 0;
 	int border2 = 78;
@@ -1051,8 +1049,20 @@ void CIcecast2winDlg::OnSize(UINT nType, int cx, int cy)
 	if (m_MainTab.m_hWnd) {
 		CRect rect;
 		GetClientRect (&rect);
-		m_MainTab.ResizeDialog(0, rect.Width()-border1, rect.Height()-border2);
-		m_MainTab.ResizeDialog(1, rect.Width()-border1, rect.Height()-border2);
+		int x = rect.Width()-border1;
+		int y = rect.Width()-border2;
+
+		statusTab.SetWindowPos(NULL, 4, 22, cx, cy, SWP_NOZORDER);
+		statsTab.SetWindowPos(NULL, 4, 22, cx, cy, SWP_NOZORDER);
+		statusTab.m_GlobalStatList.SetWindowPos(NULL, 14, 55, cx-40, cy-180, SWP_NOZORDER);
+		statsTab.m_StatsListCtrl.SetWindowPos(NULL, 213, 55, cx-243, cy-180, SWP_NOZORDER);
+		statsTab.m_SourceListCtrl.SetWindowPos(NULL, 14, 55, 166, cy-180, SWP_NOZORDER);
+//			CListCtrl	m_StatsListCtrl;
+//	CListCtrl	m_SourceListCtrl;
+		m_MainTab.SetWindowPos(NULL, 0, 80, cx, cy, SWP_NOZORDER);
+
+		//m_MainTab.ResizeDialog(0, rect.Width()-border1, rect.Height()-border2);
+		//m_MainTab.ResizeDialog(1, rect.Width()-border1, rect.Height()-border2);
 	}
 
 }
@@ -1123,7 +1133,7 @@ void CIcecast2winDlg::OnBlankRestore()
 
 void CIcecast2winDlg::OnDestroy() 
 {
-	CResizableDialog::OnDestroy();
+	CDialog::OnDestroy();
 	
 	if (m_pTray) {
 		delete m_pTray ;

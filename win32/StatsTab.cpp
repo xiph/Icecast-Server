@@ -61,9 +61,9 @@ BOOL CStatsTab::OnInitDialog()
 	m_StatsListCtrl.InsertColumn(0, _T("Statistic"), LVCFMT_LEFT, m_colStats0Width);
 	m_StatsListCtrl.InsertColumn(1, _T("Value"), LVCFMT_LEFT, m_colStats1Width);
 
-	AddAnchor(IDC_STATSLIST, TOP_LEFT, BOTTOM_RIGHT);
-	AddAnchor(IDC_SOURCELIST, TOP_LEFT, BOTTOM_LEFT);
-	AddAnchor(IDC_FILLER1, BOTTOM_LEFT, BOTTOM_RIGHT);
+//	AddAnchor(IDC_STATSLIST, TOP_LEFT, BOTTOM_RIGHT);
+//	AddAnchor(IDC_SOURCELIST, TOP_LEFT, BOTTOM_LEFT);
+//	AddAnchor(IDC_FILLER1, BOTTOM_LEFT, BOTTOM_RIGHT);
 	
 	m_SourceListCtrl.SetSelectionMark(0);
 	m_SLS.SetFont(&(g_mainDialog->labelFont), TRUE);

@@ -66,7 +66,7 @@ BOOL CConfigTab::OnInitDialog()
 	CTabPageSSL::OnInitDialog();
 	
 	// TODO: Add extra initialization here
-	AddAnchor(IDC_CONFIG, TOP_LEFT, BOTTOM_RIGHT);
+//	AddAnchor(IDC_CONFIG, TOP_LEFT, BOTTOM_RIGHT);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
