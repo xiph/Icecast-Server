@@ -87,13 +87,13 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void create_locks() {
     thread_mutex_create("relay lock", &_locks.relay_lock);
     thread_mutex_create("mounts lock", &_locks.mounts_lock);
-    thread_mutex_create("config lock", &_locks.config_lock);
+    thread_rwlock_create(&_locks.config_lock);
 }
 
 static void release_locks() {
     thread_mutex_destroy(&_locks.relay_lock);
     thread_mutex_destroy(&_locks.mounts_lock);
-    thread_mutex_destroy(&_locks.config_lock);
+    thread_rwlock_destroy(&_locks.config_lock);
 }
 
 void config_initialize(void) {
@@ -296,12 +296,18 @@ ice_config_locks *config_locks(void)
 
 void config_release_config(void)
 {
-    thread_mutex_unlock(&(_locks.config_lock));
+    thread_rwlock_unlock(&(_locks.config_lock));
 }
 
 ice_config_t *config_get_config(void)
 {
-    thread_mutex_lock(&(_locks.config_lock));
+    thread_rwlock_rlock(&(_locks.config_lock));
+    return &_current_configuration;
+}
+
+ice_config_t *config_grab_config(void)
+{
+    thread_rwlock_wlock(&(_locks.config_lock));
     return &_current_configuration;
 }
 

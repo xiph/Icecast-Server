@@ -569,7 +569,7 @@ static int admin_function (const char *function, char *buf, unsigned int len)
 {
     if (strcmp (function, "reopenlog") == 0)
     {
-        ice_config_t *config = config_get_config();
+        ice_config_t *config = config_grab_config();
 
         restart_logging (config);
         config_release_config();

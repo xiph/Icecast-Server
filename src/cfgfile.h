@@ -151,7 +151,7 @@ typedef struct ice_config_tag
 } ice_config_t;
 
 typedef struct {
-    mutex_t config_lock;
+    rwlock_t config_lock;
     mutex_t relay_lock;
     mutex_t mounts_lock;
 } ice_config_locks;
@@ -170,6 +170,7 @@ int config_rehash(void);
 ice_config_locks *config_locks(void);
 
 ice_config_t *config_get_config(void);
+ice_config_t *config_grab_config(void);
 void config_release_config(void);
 
 /* To be used ONLY in one-time startup code */
