@@ -33,7 +33,7 @@ easily and supports open standards for commuincation and interaction.
 %setup -q -n %{name}-%{version}
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{_prefix} --mandir=%{_mandir}
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{_prefix} --mandir=%{_mandir} --sysconfdir=/etc
 make
 
 %install
@@ -51,7 +51,7 @@ rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/%{name}
 %doc doc/*.html
 %doc doc/*.jpg
 %doc doc/*.css
-%config(noreplace) %{_prefix}/etc/%{name}.xml
+%config(noreplace) /etc/%{name}.xml
 %{_bindir}/icecast
 %{_prefix}/share/icecast/*
 
