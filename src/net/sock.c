@@ -177,6 +177,18 @@ int sock_set_blocking(sock_t sock, const int block)
 #endif
 }
 
+int sock_set_nolinger(sock_t sock)
+{
+	struct linger lin = { 0, 0 };
+	return setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&lin, sizeof(struct linger));
+}
+
+int sock_set_keepalive(sock_t sock)
+{
+	int keepalive = 1;
+	return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(int));
+}
+
 /* sock_close
 **
 ** close the socket
@@ -477,8 +489,11 @@ int sock_accept(sock_t serversock, char *ip, int len)
 	slen = sizeof(struct sockaddr_in);
 	ret = accept(serversock, (struct sockaddr *)&sin, &slen);
 
-	if (ret >= 0 && ip != NULL)
+	if (ret >= 0 && ip != NULL) {
 		strncpy(ip, inet_ntoa(sin.sin_addr), len);
+		sock_set_nolinger(ret);
+		sock_set_keepalive(ret);
+	}
 
 	return ret;
 }

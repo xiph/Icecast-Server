@@ -43,6 +43,8 @@ int sock_error(void);
 int sock_recoverable(int error);
 int sock_valid_socket(sock_t sock);
 int sock_set_blocking(sock_t sock, const int block);
+int sock_set_nolinger(sock_t sock);
+int sock_set_keepalive(sock_t sock);
 int sock_close(sock_t  sock);
 
 /* Connection related socket functions */
