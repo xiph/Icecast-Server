@@ -48,8 +48,9 @@ void config_initialize(void)
 
 void config_shutdown(void)
 {
-	if (_config_filename) free(_config_filename);
+	ice_config_dir_t *dirnode, *nextdirnode;
 
+	if (_config_filename) free(_config_filename);
 	if (_configuration.location) free(_configuration.location);
 	if (_configuration.admin) free(_configuration.admin);
 	if (_configuration.source_password) free(_configuration.source_password);
@@ -58,8 +59,16 @@ void config_shutdown(void)
 	if (_configuration.log_dir) free(_configuration.log_dir);
 	if (_configuration.access_log) free(_configuration.access_log);
 	if (_configuration.error_log) free(_configuration.error_log);
+    if (_configuration.bind_address) free(_configuration.bind_address);
+    dirnode = _configuration.dir_list;
+    while(dirnode) {
+        nextdirnode = dirnode->next;
+        free(dirnode->host);
+        free(dirnode);
+        dirnode = nextdirnode;
+    }
 
-        memset(&_configuration, 0, sizeof(ice_config_t));
+    memset(&_configuration, 0, sizeof(ice_config_t));
 }
 
 int config_parse_file(const char *filename)

@@ -268,7 +268,7 @@ char *httpp_getvar(http_parser_t *parser, char *name)
 		return NULL;
 }
 
-void httpp_destroy(http_parser_t *parser)
+void httpp_clear(http_parser_t *parser)
 {
 	parser->req_type = httpp_req_none;
 	if (parser->uri)
@@ -276,6 +276,12 @@ void httpp_destroy(http_parser_t *parser)
 	parser->uri = NULL;
 	avl_tree_free(parser->vars, _free_vars);
 	parser->vars = NULL;
+}
+
+void httpp_destroy(http_parser_t *parser)
+{
+    httpp_clear(parser);
+    free(parser);
 }
 
 char *_lowercase(char *str)

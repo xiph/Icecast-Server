@@ -814,6 +814,7 @@ static int _free_source_stats(void *key)
 	stats_source_t *node = (stats_source_t *)key;
 	avl_tree_free(node->stats_tree, _free_stats);
 	free(node->source);
+    free(node);
 
 	return 1;
 }

@@ -40,6 +40,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len);
 void httpp_setvar(http_parser_t *parser, char *name, char *value);
 char *httpp_getvar(http_parser_t *parser, char *name);
 void httpp_destroy(http_parser_t *parser);
+void httpp_clear(http_parser_t *parser);
  
 #endif
 

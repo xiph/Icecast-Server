@@ -117,6 +117,10 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
 					state->headbuf[i] = NULL;
 				}
 			}
+            /* Clear old stuff. Rarely but occasionally needed. */
+			ogg_stream_clear(&state->os);
+			vorbis_comment_clear(&state->vc);
+			vorbis_info_clear(&state->vi);
 
 			state->serialno = ogg_page_serialno(&state->og);
 			ogg_stream_init(&state->os, state->serialno);
