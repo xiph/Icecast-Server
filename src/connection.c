@@ -419,6 +419,42 @@ static int _check_source_pass(http_parser_t *parser)
     return ret;
 }
 
+static void handle_fallback_request(client_t *client)
+{
+    source_t *source;
+    char *mount, *value, *old;
+    int bytes;
+
+    if(!_check_source_pass(client->parser)) {
+		INFO0("Bad or missing password on fallback configuration request");
+        client_send_401(client);
+        return;
+    }
+
+    mount = httpp_get_query_param(client->parser, "mount");
+    value = httpp_get_query_param(client->parser, "fallback");
+
+    if(value == NULL || mount == NULL) {
+        client_send_400(client, "Missing parameter");
+        return;
+    }
+
+    avl_tree_rlock(global.source_tree);
+    source = source_find_mount(mount);
+    avl_tree_unlock(global.source_tree);
+
+    old = source->fallback_mount;
+    source->fallback_mount = strdup(value);
+    free(old);
+
+    client->respcode = 200;
+	bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n"
+            "Fallback configured");
+    if(bytes > 0) client->con->sent_bytes = bytes;
+    client_destroy(client);
+}
+
 static void handle_metadata_request(client_t *client)
 {
     source_t *source;
@@ -575,6 +611,12 @@ static void _handle_get_request(connection_t *con,
     if(strcmp(uri, "/admin/metadata") == 0) {
         DEBUG0("Got metadata update request");
         handle_metadata_request(client);
+        return;
+    }
+
+    if(strcmp(uri, "/admin/fallbacks") == 0) {
+        DEBUG0("Got fallback request");
+        handle_fallback_request(client);
         return;
     }
 

@@ -45,6 +45,7 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
 	src = (source_t *)malloc(sizeof(source_t));
     src->client = client;
 	src->mount = (char *)strdup(mount);
+    src->fallback_mount = NULL;
 	src->format = format_get_plugin(type, src->mount);
 	src->con = con;
 	src->parser = parser;
