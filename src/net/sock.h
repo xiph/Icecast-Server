@@ -88,7 +88,7 @@ int sock_connected (int sock, unsigned timeout);
 /* Socket write functions */
 int sock_write_bytes(sock_t sock, const void *buff, const size_t len);
 int sock_write(sock_t sock, const char *fmt, ...);
-int sock_write_fmt(sock_t sock, char *fmt, va_list ap);
+int sock_write_fmt(sock_t sock, const char *fmt, va_list ap);
 int sock_write_string(sock_t sock, const char *buff);
 ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count);
 

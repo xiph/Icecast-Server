@@ -57,6 +57,16 @@
 #include "sock.h"
 #include "resolver.h"
 
+#if 0
+#ifndef HAVE_VA_COPY
+ #ifdef HAVE___VA_COPY
+  #define va_copy(dest,src)    __va_copy(dest, src)
+ #else
+  #define va_copy(dest,src)    memcpy(&dest, &src, sizeof (va_list))
+ #endif
+#endif
+#endif
+
 /* sock_initialize
 **
 ** initializes the socket library.  you must call this
@@ -312,24 +322,49 @@ int sock_write_string(sock_t sock, const char *buff)
 */
 int sock_write(sock_t sock, const char *fmt, ...)
 {
-    char buff[1024];
+    int rc;
     va_list ap;
 
-    va_start(ap, fmt);
-    vsnprintf(buff, 1024, fmt, ap);
-    va_end(ap);
-    
-    return sock_write_bytes(sock, buff, strlen(buff));
+    va_start (ap, fmt);
+    rc = sock_write_fmt (sock, fmt, ap);
+    va_end (ap);
+
+    return rc;
 }
 
-int sock_write_fmt(sock_t sock, char *fmt, va_list ap)
+int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 {
-    char buff[1024];
+    char buffer [1024], *buff = buffer;
+    int len;
+    int rc = SOCK_ERROR;
+    va_list ap_retry;
 
-    vsnprintf(buff, 1024, fmt, ap);
+    va_copy (ap_retry, ap);
 
-    return sock_write_bytes(sock, buff, strlen(buff));
+    len = vsnprintf (buff, sizeof (buffer), fmt, ap);
+
+    if (len > 0)
+    {
+        if ((size_t)len < sizeof (buffer))   /* common case */
+            rc = sock_write_bytes(sock, buff, (size_t)len);
+        else
+        {
+            /* truncated */
+            buff = malloc (++len);
+            if (buff)
+            {
+                len = vsnprintf (buff, len, fmt, ap_retry);
+                va_end (ap_retry);
+                if (len > 0)
+                    rc = sock_write_bytes (sock, buff, len);
+                free (buff);
+            }
+        }
+    }
+
+    return rc;
 }
+
 
 int sock_read_bytes(sock_t sock, char *buff, const int len)
 {

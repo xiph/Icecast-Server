@@ -92,6 +92,17 @@ AC_CHECK_HEADER(sys/uio.h, AC_DEFINE(HAVE_SYS_UIO_H, 1, [Define if you have sys/
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
+AC_MSG_CHECKING([how to copy va_list])
+    AC_TRY_LINK([#include <stdarg.h>], [va_list ap1, ap2; va_copy(ap1, ap2);],
+            AC_MSG_RESULT([va_copy]),
+            [ AH_TEMPLATE([va_copy], [define if va_copy is not available])
+            AC_TRY_LINK([#include <stdarg.h>], [va_list ap1, ap2; __va_copy(ap1, ap2);],
+                [ AC_DEFINE([va_copy], [__va_copy])
+                AC_MSG_RESULT([__va_copy])],
+                [ AC_DEFINE([va_copy(dest,src)], [memcpy(&dest,&src,sizeof(va_list))])
+                AC_MSG_RESULT([memcpy])]
+                )
+            ])
 
 dnl Check for types
 AC_CHECK_TYPE([socklen_t], int)
