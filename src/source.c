@@ -234,8 +234,6 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *p = source->stream_data;
         source->stream_data = p->next;
-        if (source->stream_data && p->associated == source->stream_data->associated)
-            p->associated = NULL;
         refbuf_release (p);
     }
     source->stream_data_tail = NULL;
@@ -1019,12 +1017,10 @@ void source_main(source_t *source)
         if (remove_from_q)
         {
             refbuf_t *to_go = source->stream_data;
-            /* associated data is shared so don't release it if the next refbuf refers to it */
+
             if (to_go->next)
             {
                 source->stream_data = to_go->next;
-                if (to_go->associated == source->stream_data->associated)
-                    to_go->associated = NULL;
                 source->queue_size -= to_go->len;
                 if (source->burst_point == to_go)
                 {

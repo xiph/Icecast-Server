@@ -21,31 +21,20 @@
 typedef struct _refbuf_tag
 {
     char *data;
-    unsigned len;
-    unsigned allocated;
-    int idx;
+    unsigned int len;
     int sync_point;
     struct _refbuf_tag *associated;
-    void (*refbuf_associated_release)(struct _refbuf_tag *);
-    void (*refbuf_release)(struct _refbuf_tag *);
-
     struct _refbuf_tag *next;
+    unsigned long _count;
 } refbuf_t;
 
 void refbuf_initialize(void);
 void refbuf_shutdown(void);
 
-void refbuf_free (refbuf_t *refbuf);
 refbuf_t *refbuf_new(unsigned long size);
+void refbuf_addref(refbuf_t *self);
 void refbuf_release(refbuf_t *self);
 
 
 #endif  /* __REFBUF_H__ */
-
-
-
-
-
-
-
 

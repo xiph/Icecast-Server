@@ -33,48 +33,50 @@ void refbuf_shutdown(void)
 {
 }
 
-
-void refbuf_free (refbuf_t *refbuf)
-{
-    free (refbuf->data);
-    free (refbuf);
-}
-
-
 refbuf_t *refbuf_new(unsigned long size)
 {
     refbuf_t *refbuf;
 
-    refbuf = malloc (sizeof(refbuf_t));
-    if (refbuf)
+    refbuf = (refbuf_t *)malloc(sizeof(refbuf_t));
+    if (refbuf == NULL)
+        return NULL;
+    refbuf->data = NULL;
+    if (size)
     {
-        refbuf->data = NULL;
-        if (size && (refbuf->data = malloc (size)) == NULL)
+        refbuf->data = malloc (size);
+        if (refbuf->data == NULL)
         {
             free (refbuf);
             return NULL;
         }
-        refbuf->len = 0;
-        refbuf->sync_point = 0;
-        refbuf->allocated = size;
-        refbuf->next = NULL;
-        refbuf->associated = NULL;
-        refbuf->refbuf_associated_release = refbuf_free;
-        refbuf->refbuf_release = refbuf_free;
     }
+    refbuf->len = size;
+    refbuf->sync_point = 0;
+    refbuf->_count = 1;
+    refbuf->next = NULL;
+    refbuf->associated = NULL;
 
     return refbuf;
 }
 
-
-void refbuf_release(refbuf_t *refbuf)
+void refbuf_addref(refbuf_t *self)
 {
-    while (refbuf->associated)
-    {
-        refbuf_t *ref = refbuf->associated;
-        refbuf->associated = ref->next;
-        refbuf->refbuf_associated_release (ref);
+    self->_count++;
+}
+
+void refbuf_release(refbuf_t *self)
+{
+    self->_count--;
+    if (self->_count == 0) {
+        while (self->associated)
+        {
+            refbuf_t *ref = self->associated;
+            self->associated = ref->next;
+            refbuf_release (ref);
+        }
+        if (self->len)
+            free(self->data);
+        free(self);
     }
-    refbuf->refbuf_release (refbuf);
 }
 

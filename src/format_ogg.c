@@ -105,10 +105,8 @@ static refbuf_t *make_refbuf_with_page (ogg_page *page)
 {
     refbuf_t *refbuf = refbuf_new (page->header_len + page->body_len);
 
-    refbuf->idx = ogg_page_pageno (page);
     memcpy (refbuf->data, page->header, page->header_len);
     memcpy (refbuf->data+page->header_len, page->body, page->body_len);
-    refbuf->len = page->header_len + page->body_len;
     return refbuf;
 }
 
@@ -365,7 +363,6 @@ static refbuf_t *process_theora_page (ogg_codec_t *codec, ogg_page *page)
         return NULL;
     }
     refbuf = make_refbuf_with_page (page);
-    refbuf->idx = ogg_page_pageno (page);
 
     // DEBUG2 ("granulepos is %lld,  %p", granulepos, refbuf);
     if (granulepos == -1 || granulepos == theora->prev_granulepos)
@@ -446,9 +443,22 @@ static int write_buf_to_client (format_plugin_t *self, client_t *client);
 static void free_ogg_codecs (ogg_state_t *ogg_info)
 {
     ogg_codec_t *codec;
+    refbuf_t *header;
 
     if (ogg_info == NULL)
         return;
+    /* release the header pages first */
+    header = ogg_info->header_pages;
+    while (header)
+    {
+        refbuf_t *to_release = header;
+        header = header->next;
+        refbuf_release (to_release);
+    }
+    ogg_info->header_pages = NULL;
+    ogg_info->header_pages_tail = NULL;
+
+    /* now free the codecs */
     codec = ogg_info->codecs;
     while (codec)
     {
@@ -515,8 +525,6 @@ static int process_initial_page (ogg_state_t *ogg_info, ogg_page *page)
         ogg_info->codec_sync = NULL;
         /* need to zap old list of codecs when next group of BOS pages appear */
         free_ogg_codecs (ogg_info);
-        ogg_info->header_pages = NULL;
-        ogg_info->header_pages_tail = NULL;
     }
     do
     {
@@ -567,7 +575,15 @@ static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
         {
             refbuf_t *refbuf = codec->process_page (codec, page);
             if (refbuf)
+            {
+                refbuf_t *header = ogg_info->header_pages;
+                while (header)
+                {
+                    refbuf_addref (header);
+                    header = header->next;
+                }
                 refbuf->associated = ogg_info->header_pages;
+            }
             return refbuf;
         }
         codec = codec->next;
@@ -758,7 +774,7 @@ static int write_buf_to_client (format_plugin_t *self, client_t *client)
 
     if (ret > 0)
        written += ret;
-    return written ? written : -1;
+    return written;
 }
 
 

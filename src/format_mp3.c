@@ -95,7 +95,6 @@ int format_mp3_get_plugin (source_t *source)
 
     meta = refbuf_new (1);
     memcpy (meta->data, "", 1);
-    meta->len = 1;
     state->metadata = meta;
     state->interval = ICY_METADATA_INTERVAL;
 
@@ -135,18 +134,17 @@ static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
             source_mp3->url_title = p;
             source_mp3->update_metadata = 1;
         }
-        return;
     }
-    if (strcmp (tag, "artist") == 0)
+    else if (strcmp (tag, "artist") == 0)
     {
         char *p = strdup (value);
         if (p)
         {
             free (source_mp3->url_artist);
             source_mp3->url_artist = p;
+            source_mp3->update_metadata = 1;
         }
     }
-    source_mp3->update_metadata = 1;
 }
 
 
@@ -178,15 +176,19 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
 }
 
 
-void mp3_set_title (source_t *source)
+/* called from the source thread when the metadata has been updated.
+ * The artist title are checked and made ready for clients to send
+ */
+static void mp3_set_title (source_t *source)
 {
     const char meta[] = "StreamTitle='";
     int size;
     unsigned char len_byte;
     refbuf_t *p;
-    unsigned len = sizeof(meta) + 6;
+    unsigned len = sizeof(meta) + 2; /* the StreamTitle, quotes, ; and null */
     mp3_state *source_mp3 = source->format->_state;
 
+    /* work out message length */
     if (source_mp3->url_artist)
         len += strlen (source_mp3->url_artist);
     if (source_mp3->url_title)
@@ -194,16 +196,18 @@ void mp3_set_title (source_t *source)
     if (source_mp3->url_artist && source_mp3->url_title)
         len += 3;
 #define MAX_META_LEN 255*16
-    size  = sizeof (meta) + len + 2;
-    if (len > MAX_META_LEN-(sizeof(meta)+3))
+    if (len > MAX_META_LEN)
     {
         WARN1 ("Metadata too long at %d chars", len);
         return;
     }
-    len_byte = size / 16 + 1;
+    /* work out the metadata len byte */
+    len_byte = (len-1) / 16 + 1;
+
+    /* now we know how much space to allocate, +1 for the len byte */
     size = len_byte * 16 + 1;
+
     p = refbuf_new (size);
-    p->len = size;
     if (p)
     {
         mp3_state *source_mp3 = source->format->_state;
@@ -213,13 +217,20 @@ void mp3_set_title (source_t *source)
             snprintf (p->data, size, "%c%s%s - %s';", len_byte, meta,
                     source_mp3->url_artist, source_mp3->url_title);
         else
-            snprintf (p->data, size, "%c%s%.*s';", len_byte, meta, len, source_mp3->url_title);
+            snprintf (p->data, size, "%c%s%s';", len_byte, meta,
+                    source_mp3->url_title);
         filter_shoutcast_metadata (source, p->data, size);
+
+        refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
 }
 
 
+/* send the appropriate metadata, and return the number of bytes written
+ * which is 0 or greater.  Check the client in_metadata value afterwards
+ * to see if all metadata has been sent
+ */
 static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 {
     int ret = 0;
@@ -227,6 +238,9 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     int meta_len;
     mp3_client_data *client_mp3 = client->format_data;
 
+    /* If there is a change in metadata then send it else
+     * send a single zero value byte in its place
+     */
     if (associated == client_mp3->associated)
     {
         metadata = "\0";
@@ -249,14 +263,17 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     }
     if (ret > 0)
         client_mp3->metadata_offset += ret;
+    else
+        ret = 0;
     client_mp3->in_metadata = 1;
 
     return ret;
 }
 
 
-/* return bytes actually written, -1 for error or 0 for no more data to write */
-
+/* Handler for writing mp3 data to a client, taking into account whether
+ * client has requested shoutcast style metadata updates
+ */
 static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *client) 
 {
     int ret, written = 0;
@@ -281,14 +298,15 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
             refbuf_t *associated = refbuf->associated;
             ret = send_mp3_metadata (client, associated);
 
-            if (ret < (int)associated->len)
+            if (client_mp3->in_metadata)
                 break;
             written += ret;
         }
         /* see if we need to send the current metadata to the client */
         if (client_mp3->use_metadata)
         {
-            unsigned remaining = source_mp3->interval - client_mp3->since_meta_block;
+            unsigned remaining = source_mp3->interval -
+                client_mp3->since_meta_block;
 
             /* sending the metadata block */
             if (remaining <= len)
@@ -331,7 +349,7 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
             written += ret;
         }
         ret = 0;
-        /* we have now written what we need to in here */
+        /* we have now written what we needed to so move to the next buffer */
         if (refbuf->next)
         {
             client->refbuf = refbuf->next;
@@ -341,28 +359,32 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
 
     if (ret > 0)
         written += ret;
-    return written ? written : -1;
+    return written;
 }
 
 static void format_mp3_free_plugin (format_plugin_t *plugin)
 {
     /* free the plugin instance */
-    mp3_state *state = plugin->_state;
+    mp3_state *format_mp3 = plugin->_state;
 
-    free(state);
+    free (format_mp3->url_artist);
+    free (format_mp3->url_title);
+    refbuf_release (format_mp3->metadata);
+    free(format_mp3);
     free(plugin);
 }
 
 
+/* read an mp3 stream which does not have shoutcast style metadata */
 static refbuf_t *mp3_get_no_meta (source_t *source)
 {
     int bytes;
     refbuf_t *refbuf;
     mp3_state *source_mp3 = source->format->_state;
 
-    if ((refbuf = refbuf_new (4096)) == NULL)
+    if ((refbuf = refbuf_new (2048)) == NULL)
         return NULL;
-    bytes = sock_read_bytes (source->con->sock, refbuf->data, 4096);
+    bytes = sock_read_bytes (source->con->sock, refbuf->data, 2048);
 
     if (bytes == 0)
     {
@@ -380,6 +402,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     {
         refbuf->len  = bytes;
         refbuf->associated = source_mp3->metadata;
+        refbuf_addref (source_mp3->metadata);
         refbuf->sync_point = 1;
         return refbuf;
     }
@@ -392,6 +415,10 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
 }
 
 
+/* read mp3 data with inlined metadata from the source. Filter out the
+ * metadata so that the mp3 data itself is store on the queue and the
+ * metadata is is associated with it
+ */
 static refbuf_t *mp3_get_filter_meta (source_t *source)
 {
     refbuf_t *refbuf;
@@ -428,10 +455,11 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         return NULL;
     }
     /* fill the buffer with the read data */
-    bytes = (unsigned)ret;
+    bytes = (unsigned int)ret;
+    refbuf->len = 0;
     while (bytes > 0)
     {
-        unsigned metadata_remaining;
+        unsigned int metadata_remaining;
 
         mp3_block = source_mp3->inline_metadata_interval - source_mp3->offset;
 
@@ -442,7 +470,8 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             source_mp3->offset += bytes;
             break;
         }
-        /* we have enough data to get to the metadata block, but only transfer upto it */
+        /* we have enough data to get to the metadata
+         * block, but only transfer upto it */
         if (mp3_block)
         {
             src += mp3_block;
@@ -452,25 +481,29 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             continue;
         }
 
-        /* are we processing the inline metadata, len == 0 indicates not seen any */
+        /* process the inline metadata, len == 0 indicates not seen any yet */
         if (source_mp3->build_metadata_len == 0)
         {
-            memset (source_mp3->build_metadata, 0, sizeof (source_mp3->build_metadata));
+            memset (source_mp3->build_metadata, 0,
+                    sizeof (source_mp3->build_metadata));
             source_mp3->build_metadata_offset = 0;
             source_mp3->build_metadata_len = 1 + (*src * 16);
         }
 
         /* do we have all of the metatdata block */
-        metadata_remaining = source_mp3->build_metadata_len - source_mp3->build_metadata_offset;
+        metadata_remaining = source_mp3->build_metadata_len -
+            source_mp3->build_metadata_offset;
         if (bytes < metadata_remaining)
         {
-            memcpy (source_mp3->build_metadata + source_mp3->build_metadata_offset,
-                    src, bytes);
+            memcpy (source_mp3->build_metadata +
+                    source_mp3->build_metadata_offset, src, bytes);
             source_mp3->build_metadata_offset += bytes;
             break;
         }
+        /* copy all bytes except the last one, that way we *
+         * know a null byte terminates the message */
         memcpy (source_mp3->build_metadata + source_mp3->build_metadata_offset,
-                src, metadata_remaining);
+                src, metadata_remaining-1);
 
         /* overwrite metadata in the buffer */
         bytes -= metadata_remaining;
@@ -480,13 +513,15 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         if (source_mp3->build_metadata_len > 1)
         {
             refbuf_t *meta = refbuf_new (source_mp3->build_metadata_len);
-            memcpy (meta->data, source_mp3->build_metadata, source_mp3->build_metadata_len);
-            meta->len = source_mp3->build_metadata_len;
+            memcpy (meta->data, source_mp3->build_metadata,
+                    source_mp3->build_metadata_len);
 
             DEBUG1("shoutcast metadata %.4080s", meta->data+1);
             if (strncmp (meta->data+1, "StreamTitle=", 12) == 0)
             {
-                filter_shoutcast_metadata (source, source_mp3->build_metadata, source_mp3->build_metadata_len);
+                filter_shoutcast_metadata (source, source_mp3->build_metadata,
+                        source_mp3->build_metadata_len);
+                refbuf_release (source_mp3->metadata);
                 source_mp3->metadata = meta;
             }
             else
@@ -501,6 +536,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         source_mp3->build_metadata_len = 0;
     }
     refbuf->associated = source_mp3->metadata;
+    refbuf_addref (source_mp3->metadata);
     refbuf->sync_point = 1;
 
     return refbuf;
