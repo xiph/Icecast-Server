@@ -82,9 +82,9 @@ static void vorbis_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
     vorbis_codec_t *vorbis = codec->specific;
 
     DEBUG0 ("freeing vorbis codec");
-    stats_event (ogg_info->mount, "audio-bitrate", NULL);
-    stats_event (ogg_info->mount, "audio-channels", NULL);
-    stats_event (ogg_info->mount, "audio-samplerate", NULL);
+    stats_event (ogg_info->mount, "audio_bitrate", NULL);
+    stats_event (ogg_info->mount, "audio_channels", NULL);
+    stats_event (ogg_info->mount, "audio_samplerate", NULL);
     vorbis_info_clear (&vorbis->vi);
     vorbis_comment_clear (&vorbis->vc);
     ogg_stream_clear (&codec->os);
@@ -546,9 +546,9 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         ogg_info->artist = NULL;
     ogg_info->log_metadata = 1;
 
-    stats_event_args (ogg_info->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
-    stats_event_args (ogg_info->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
-    stats_event_args (ogg_info->mount, "audio-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal);
+    stats_event_args (ogg_info->mount, "audio_samplerate", "%ld", (long)source_vorbis->vi.rate);
+    stats_event_args (ogg_info->mount, "audio_channels", "%ld", (long)source_vorbis->vi.channels);
+    stats_event_args (ogg_info->mount, "audio_bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal);
     stats_event_args (ogg_info->mount, "ice-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal/1000);
 
     return NULL;

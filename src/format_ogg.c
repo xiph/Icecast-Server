@@ -221,7 +221,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
             break;
 #endif
         /* any others */
-        INFO0 ("Seen BOS page with unknown type");
+        ERROR0 ("Seen BOS page with unknown type");
         return -1;
     } while (0);
 
@@ -290,7 +290,7 @@ static void update_comments (source_t *source)
             int len = strlen (codec_names);
             int remaining = sizeof (codec_names) - len;
             char *where = codec_names + len;
-            char *separator = " ";
+            char *separator = "/";
             if (len == 0)
                 separator = "";
             snprintf (where, remaining, "%s%s", separator, codec->name);

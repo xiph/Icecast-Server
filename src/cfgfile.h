@@ -24,7 +24,6 @@
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "global.h"
-#include "slave.h"
 
 typedef struct ice_config_dir_tag
 {

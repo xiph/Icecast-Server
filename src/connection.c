@@ -50,7 +50,6 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
-#include "auth.h"
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
@@ -62,6 +61,7 @@
 #include "format_mp3.h"
 #include "event.h"
 #include "admin.h"
+#include "auth.h"
 
 #define CATMODULE "connection"
 
