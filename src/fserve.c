@@ -431,12 +431,12 @@ int fserve_client_create(client_t *httpclient, char *path)
                 char currenttime[50];
                 time_t now;
                 int strflen;
-                time(&now);
                 struct tm result;
                 int64_t endpos = rangenumber+new_content_len-1;
                 if (endpos < 0) {
                     endpos = 0;
                 }
+                time(&now);
                 strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
                                    gmtime_r(&now, &result));
                 httpclient->respcode = 206;
