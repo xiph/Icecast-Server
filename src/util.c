@@ -1,9 +1,11 @@
-#include <sys/time.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 
 #ifndef _WIN32
+#include <sys/time.h>
+#include <sys/socket.h>
 #include <unistd.h>
+#else
+#include <windows.h>
 #endif
 
 #include "sock.h"

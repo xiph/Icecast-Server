@@ -19,7 +19,7 @@
 #include "client.h"
 #include "stats.h"
 
-
+#define vsnprintf _vsnprintf
 
 typedef struct _event_listener_tag
 {

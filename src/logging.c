@@ -11,6 +11,10 @@
 
 #include "logging.h"
 
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
+
 /* the global log descriptors */
 int errorlog;
 int accesslog;

@@ -20,6 +20,9 @@
 #include "stats.h"
 #include "logging.h"
 
+#ifdef _WIN32
+#define snprintf _snprintf
+
 #undef CATMODULE
 #define CATMODULE "main"
 

@@ -16,10 +16,16 @@
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
 #define CONFIG_DEFAULT_PORT 8888
-#define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
-#define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
+
+#ifndef _WIN32
+#define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
+#define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
+#else
+#define CONFIG_DEFAULT_BASE_DIR ".\\"
+#define CONFIG_DEFAULT_LOG_DIR ".\\logs"
+#endif
 
 ice_config_t _configuration;
 char *_config_filename;

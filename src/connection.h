@@ -6,7 +6,7 @@ typedef struct connection_tag
 	unsigned long id;
 
 	time_t con_time;
-	long long sent_bytes;
+	uint64_t sent_bytes;
 
 	int sock;
 	int error;

@@ -3,9 +3,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <ogg/ogg.h>
+
+#ifndef _WIN32
 #include <sys/time.h>
 #include <sys/socket.h>
-#include <ogg/ogg.h>
+#else
+#include <window.h>
+#endif
 
 #include "thread.h"
 #include "avl.h"
