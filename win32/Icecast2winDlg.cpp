@@ -40,7 +40,6 @@ CEdit	*g_errorControl;
 CIcecast2winDlg	*g_mainDialog;
 bool	g_tailAccess = false;
 bool	g_tailError = false;
-void CollectStats(stats_event_t *event);
 CString gConfigurationSave;
 
 char	gTitleSource[1024] = "";
@@ -465,88 +464,64 @@ void CIcecast2winDlg::DisableControl(UINT control)
 }
 
 
-
-void CollectStats(stats_event_t *event)
+void AddUpdateStatistic(int sourceIndex, char *name, char *value)
 {
-	Element tempElement;
-	char	tempSource[1024] = "";
-
-	tempElement.name = "";
-	tempElement.value = "";
-
-	if (event->name != NULL) {
-		tempElement.name = event->name;
-	}
-	if (event->value != NULL) {
-		tempElement.value = event->value;
-	}
-	if (event->source != NULL) {
-		strcpy(tempSource, event->source);
-		
-	}
-	if (strlen(tempSource) == 0) {
-		strcpy(tempSource, "Global Stat");
-	}
-
-	int foundit = 0;
-	for (int i=0;i<numMainStats;i++) {
-		if (!strcmp(tempSource, "Global Stat")) {
-			if (gStats[i].stats[0].name == tempElement.name) {
-				gStats[i].stats[0].value = tempElement.value;
-			}
-		}
-		else {
-			if (!strcmp(gStats[i].source, tempSource)) {
-				int foundit2 = 0;
-				gStats[i].populated = 1;
-				for (int j=0;j<gStats[i].numStats;j++) {
-					if (gStats[i].stats[j].name == tempElement.name) {
-						gStats[i].stats[j].value = tempElement.value;
-
-						foundit2 = 1;
-					}
-				}
-				if (!foundit2) {
-					gStats[i].stats[j].name = tempElement.name;
-					gStats[i].stats[j].value = tempElement.value;
-					gStats[i].numStats++;
-				}
-				foundit = 1;
-			}
+	for (int j=0;j<gStats[sourceIndex].numStats;j++) {
+		if (gStats[sourceIndex].stats[j].name == name) {
+			gStats[sourceIndex].stats[j].value = value;
+			return;
 		}
 	}
-	if (!foundit) {
-
-		if (strlen(tempSource) == 0) {
-			strcpy(tempSource, "Global Stat");
-		}
-		gStats[numMainStats].source = tempSource;
-		gStats[numMainStats].stats[0].name = tempElement.name;
-		gStats[numMainStats].stats[0].value = tempElement.value;
-		gStats[numMainStats].populated = 1;
-
-		gStats[numMainStats].numStats++;
-		numMainStats++;
-	}
-	// Process source disconnects
-	if (event->name != NULL) {
-		if (!strcmp(event->name, "listeners")) {
-			if (event->value == NULL) {
-				// source has disconnected...
-				for (int i=0;i<numMainStats;i++) {
-					if (!strcmp(gStats[i].source, tempSource)) {
-						gStats[i].populated = 0;
-						g_mainDialog->statsTab.m_SourceListCtrl.DeleteAllItems();
-						g_mainDialog->statsTab.m_StatsListCtrl.DeleteAllItems();
-						break;
-					}
-				}
-			}
-		}
-	}
-	g_mainDialog->UpdateStatsLists();
+	int numStats = gStats[sourceIndex].numStats;
+	/* If we get here, we haven't found the stat, so add it */
+	gStats[sourceIndex].stats[numStats].name = name;
+	gStats[sourceIndex].stats[numStats].value = value;
+	gStats[sourceIndex].numStats++;
 
 }
+int GetSourceIndex(char *sourceName)
+{
+	if (sourceName == NULL) {
+		return 0;
+	}
+	for (int i=1;i<numMainStats+1;i++) {
+		if (!strcmp(gStats[i].source, sourceName)) {
+			return i;
+		}
+	}
+	/* This means we haven't seen the source, so lets add it */
+	numMainStats++;
+	gStats[numMainStats].source = sourceName;
+	gStats[numMainStats].populated = 1;
+	gStats[numMainStats].numStats = 0;
+	return numMainStats;
+
+}
+void UpdateSourceData(xmlDocPtr doc, xmlNodePtr cur, char *sourceName) {
+	xmlNodePtr children;
+	char	*ls_xmlContentPtr = NULL;
+	int sourceIndex = GetSourceIndex(sourceName);
+	int listenerInd = 0;
+
+	children = cur->xmlChildrenNode;
+	while (children != NULL) {
+		if (!strcmp((char *)children->name, "listeners")) {
+			listenerInd = 1;
+		}
+		ls_xmlContentPtr = (char *)xmlNodeListGetString(doc, children->xmlChildrenNode, 1);
+		AddUpdateStatistic(sourceIndex, (char *)children->name, ls_xmlContentPtr);
+		xmlFree(ls_xmlContentPtr);
+		children = children->next;
+	}
+	if (!listenerInd) {
+		/* If no listeners, then the source has been disconnected */
+		gStats[sourceIndex].populated = 0;
+		gStats[sourceIndex].numStats = 0;
+		g_mainDialog->statsTab.m_SourceListCtrl.DeleteAllItems();
+		g_mainDialog->statsTab.m_StatsListCtrl.DeleteAllItems();
+	}
+}
+
 bool g_collectingStats = false;
 
 void StartStats(void *dummy)
@@ -560,7 +535,43 @@ void StartStats(void *dummy)
 				gStats[j].numStats = 0;
 			}
 			numMainStats = 0;
-			stats_callback(CollectStats);
+
+			xmlDocPtr doc;
+
+			stats_get_xml(&doc);
+
+			xmlNodePtr cur;
+		    cur = xmlDocGetRootElement(doc); 
+
+		    if (cur == NULL) {
+				MessageBox(NULL, "empty XML document", "Error", MB_OK);
+				xmlFreeDoc(doc);
+				return;
+			}
+
+			cur = cur->xmlChildrenNode;
+			char* ls_xmlContentPtr2 = NULL;
+
+		    while (cur != NULL) {
+				if ((!xmlStrcmp(cur->name, (const xmlChar *)"source"))) {
+					ls_xmlContentPtr2 = (char *)xmlGetProp(cur, (unsigned char *)"mount");
+					UpdateSourceData(doc, cur, ls_xmlContentPtr2);
+				}
+				else {
+					/* A Global stat */
+					ls_xmlContentPtr2 = (char *)xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+					AddUpdateStatistic(0, (char *)cur->name, ls_xmlContentPtr2);
+				}
+				if (ls_xmlContentPtr2) {
+					xmlFree(ls_xmlContentPtr2);
+				}
+
+				cur = cur->next;
+			}
+			xmlFreeDoc(doc);
+			xmlCleanupParser();
+			g_mainDialog->UpdateStatsLists();
+			Sleep(5000);
 		}
 		if (global.running != ICE_RUNNING) {
 			_endthread();
@@ -665,7 +676,7 @@ void CIcecast2winDlg::OnFileStartserver()
 		LoadConfig();
 		SetTimer(0, 500, NULL);
 		_beginthread(StartServer, 0, (void *)(LPCSTR)myApp->m_configFile);
-		_beginthread(StartStats, 0, (void *)CollectStats);
+		_beginthread(StartStats, 0, (void *)NULL);
 	}
 }
 
@@ -704,7 +715,7 @@ void CIcecast2winDlg::OnStart()
 	else {
 		SetTimer(0, 500, NULL);
 		_beginthread(StartServer, 0, (void *)(LPCSTR)myApp->m_configFile);
-		_beginthread(StartStats, 0, (void *)CollectStats);
+		_beginthread(StartStats, 0, (void *)NULL);
 	}
 	
 }
@@ -714,7 +725,57 @@ void CIcecast2winDlg::UpdateStatsLists()
 	char	item[1024] = "";
 	int l = 0;
 
-	for (int i=0;i<numMainStats;i++) {
+	// Global Stats are index of 0
+	for (int k=0;k < gStats[0].numStats;k++) {
+		int inthere = 0;
+		for (l=0;l < statusTab.m_GlobalStatList.GetItemCount();l++) {
+
+			statusTab.m_GlobalStatList.GetItemText(l, 1, item, sizeof(item));
+			if (!strcmp(gStats[0].stats[k].name, item)) {
+				inthere = 1;
+				break;
+			}
+		}
+		if (!inthere) {
+			LVITEM	lvi;
+
+			lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
+			lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
+			lvi.iSubItem = 0;
+			//lvi.pszText = (LPTSTR)(LPCTSTR)gStats[0].source;
+			lvi.pszText = "Global Stat";
+			statusTab.m_GlobalStatList.InsertItem(&lvi);
+			lvi.iSubItem = 1;
+			lvi.pszText = (LPTSTR)(LPCTSTR)gStats[0].stats[k].name;
+			statusTab.m_GlobalStatList.SetItem(&lvi);
+			lvi.iSubItem = 2;
+			lvi.pszText = (LPTSTR)(LPCTSTR)gStats[0].stats[k].value;
+			statusTab.m_GlobalStatList.SetItem(&lvi);
+			if ((!strcmp(gTitleSource, gStats[0].source)) && 
+				(!strcmp(gTitleName, gStats[0].stats[k].name))) {
+				gStats[0].stats[k].titleFlag = 1;
+			}
+
+		}
+		else {
+			LVITEM	lvi;
+
+			lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
+			lvi.iItem = l;
+			lvi.iSubItem = 2;
+			lvi.pszText = (LPTSTR)(LPCTSTR)gStats[0].stats[k].value;
+			statusTab.m_GlobalStatList.SetItem(&lvi);
+		}
+		if (gStats[0].stats[k].titleFlag) {
+			CString	windowTitle = CString("Global Stat") + " - " + gStats[0].stats[k].name + " - " + gStats[0].stats[k].value;
+			SetWindowText(windowTitle);
+			if (m_pTray) {
+				m_pTray->SetTIP((LPSTR)(LPCSTR)windowTitle);
+			}
+		}
+	}
+
+	for (int i=1;i<numMainStats+1;i++) {
 		int inthere = 0;
 		int k = 0;
 		if (gStats[i].populated) {
@@ -842,56 +903,6 @@ void CIcecast2winDlg::UpdateStatsLists()
 				}
 			}
 			else {
-				// If Global Stat
-				for (k=0;k < gStats[i].numStats;k++) {
-					inthere = 0;
-					for (l=0;l < statusTab.m_GlobalStatList.GetItemCount();l++) {
-
-						statusTab.m_GlobalStatList.GetItemText(l, 1, item, sizeof(item));
-						if (!strcmp(gStats[i].stats[k].name, item)) {
-							inthere = 1;
-							break;
-						}
-					}
-					if (!inthere) {
-						LVITEM	lvi;
-
-						lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
-						lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
-						lvi.iSubItem = 0;
-						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].source;
-						statusTab.m_GlobalStatList.InsertItem(&lvi);
-						lvi.iSubItem = 1;
-						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].name;
-						statusTab.m_GlobalStatList.SetItem(&lvi);
-						lvi.iSubItem = 2;
-						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
-						statusTab.m_GlobalStatList.SetItem(&lvi);
-						if ((!strcmp(gTitleSource, gStats[i].source)) && 
-							(!strcmp(gTitleName, gStats[i].stats[k].name))) {
-							gStats[i].stats[k].titleFlag = 1;
-						}
-
-					}
-					else {
-						LVITEM	lvi;
-
-						lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
-						lvi.iItem = l;
-						lvi.iSubItem = 2;
-						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
-						statusTab.m_GlobalStatList.SetItem(&lvi);
-						break;
-					}
-					if (gStats[i].stats[k].titleFlag) {
-						CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[k].name + " - " + gStats[i].stats[k].value;
-						SetWindowText(windowTitle);
-						if (m_pTray) {
-							m_pTray->SetTIP((LPSTR)(LPCSTR)windowTitle);
-						}
-
-					}
-				}
 			}
 		}
 	}
