@@ -27,8 +27,7 @@ struct source_tag;
 typedef enum _format_type_tag
 {
     FORMAT_TYPE_VORBIS,
-    FORMAT_TYPE_MP3,
-    FORMAT_TYPE_NSV,
+    FORMAT_TYPE_GENERIC,
     FORMAT_ERROR /* No format, source not processable */
 } format_type_t;
 
@@ -39,7 +38,7 @@ typedef struct _format_plugin_tag
     /* we need to know the mount to report statistics */
     char *mount;
 
-    char *format_description;
+    char *contenttype;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(struct _format_plugin_tag *format, client_t *client);

@@ -82,14 +82,19 @@ int format_mp3_get_plugin (source_t *source)
 
     plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
 
-    plugin->type = FORMAT_TYPE_MP3;
+    plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
     plugin->write_buf_to_file = write_mp3_to_file;
     plugin->create_client_data = format_mp3_create_client_data;
     plugin->client_send_headers = format_mp3_send_headers;
     plugin->free_plugin = format_mp3_free_plugin;
-    plugin->format_description = "MP3 audio";
+
+    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+    if (plugin->contenttype == NULL) {
+        /* We default to MP3 audio for old clients without content types */
+        plugin->contenttype = "audio/mpeg";
+    }
 
     plugin->_state = state;
 
@@ -617,7 +622,7 @@ static void format_mp3_send_headers(format_plugin_t *self,
             "HTTP/1.0 200 OK\r\n" 
             "Content-Type: %s\r\n"
             "%s", 
-            format_get_mimetype(source->format->type),
+            source->format->contenttype,
             content_length);
 
     if (bytes > 0)

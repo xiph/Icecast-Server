@@ -217,8 +217,8 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
             snprintf(buf, sizeof(buf), "%lu",
                     (unsigned long)(now - source->con->con_time));
             xmlNewChild(srcnode, NULL, "Connected", buf);
-            xmlNewChild(srcnode, NULL, "Format", 
-                    source->format->format_description);
+            xmlNewChild(srcnode, NULL, "content-type", 
+                    source->format->contenttype);
             if (source->authenticator) {
                 xmlNewChild(srcnode, NULL, "authenticator", 
                     source->authenticator->type);
@@ -816,10 +816,8 @@ static void command_metadata(client_t *client, source_t *source)
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
 
-    if ((source->format->type != FORMAT_TYPE_MP3) &&
-        (source->format->type != FORMAT_TYPE_NSV))
-    {
-        client_send_400 (client, "Not mp3, cannot update metadata");
+    if (source->format->type == FORMAT_TYPE_VORBIS) {
+        client_send_400 (client, "Cannot update metadata on vorbis streams");
         return;
     }
 
@@ -866,10 +864,8 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     config_source_pass = strdup(config->source_password);
     config_release_config();
 
-    if ((source->format->type != FORMAT_TYPE_MP3) &&
-        (source->format->type != FORMAT_TYPE_NSV))
-    {
-        client_send_400 (client, "Not mp3 or NSV, cannot update metadata");
+    if (source->format->type == FORMAT_TYPE_VORBIS) {
+        client_send_400 (client, "Cannot update metadata on vorbis streams");
         return;
     }
 

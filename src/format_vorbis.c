@@ -87,7 +87,7 @@ int format_vorbis_get_plugin(source_t *source)
     plugin->create_client_data = format_vorbis_create_client_data;
     plugin->client_send_headers = format_vorbis_send_headers;
     plugin->free_plugin = format_vorbis_free_plugin;
-    plugin->format_description = "Ogg Vorbis";
+    plugin->contenttype = "application/ogg";
 
     state = (vstate_t *)calloc(1, sizeof(vstate_t));
     ogg_sync_init(&state->oy);
@@ -320,7 +320,7 @@ static void format_vorbis_send_headers(format_plugin_t *self,
     bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\n" 
             "Content-Type: %s\r\n", 
-            format_get_mimetype(source->format->type));
+            source->format->contenttype);
 
     if(bytes > 0) client->con->sent_bytes += bytes;
 

@@ -493,7 +493,7 @@ static ypdata_t *create_yp_entry (source_t *source)
             break;
 
         /* ice-* is icecast, icy-* is shoutcast */
-        add_yp_info (yp, "server_type", source->format->format_description, YP_SERVER_TYPE);
+        add_yp_info (yp, "server_type", source->format->contenttype, YP_SERVER_TYPE);
         if ((s = httpp_getvar(source->parser, "ice-name"))) {
             add_yp_info (yp, "server_name", s, YP_SERVER_NAME);
         }

@@ -542,7 +542,6 @@ static void source_init (source_t *source)
     stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "listeners", "0");
-    stats_event (source->mount, "type", source->format->format_description);
 
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
