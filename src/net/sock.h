@@ -114,7 +114,7 @@ int sock_close(sock_t  sock);
 /* Connection related socket functions */
 sock_t sock_connect_wto(const char *hostname, const int port, const int timeout);
 int sock_connect_non_blocking(const char *host, const unsigned port);
-int sock_connected(int sock, unsigned timeout);
+int sock_connected(int sock, int timeout);
 
 /* Socket write functions */
 int sock_write_bytes(sock_t sock, const void *buff, const size_t len);

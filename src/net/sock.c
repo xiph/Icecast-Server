@@ -448,20 +448,22 @@ int sock_read_line(sock_t sock, char *buff, const int len)
     }
 }
 
-/* see if a connection has been established
+/* see if a connection has been established. If timeout is < 0 then wait
+ * indefinitely, else wait for the stated number of seconds.
  * return SOCK_TIMEOUT for timeout
  * return SOCK_ERROR for failure
  * return 0 for try again, interrupted
  * return 1 for ok 
  */
-int sock_connected (int sock, unsigned timeout)
+int sock_connected (int sock, int timeout)
 {
     fd_set wfds;
     int val = SOCK_ERROR;
     socklen_t size = sizeof val;
     struct timeval tv, *timeval = NULL;
 
-    if (timeout)
+    /* make a timeout of <0 be indefinite */
+    if (timeout >= 0)
     {
         tv.tv_sec = timeout;
         tv.tv_usec = 0;
@@ -531,8 +533,11 @@ int sock_connect_non_blocking (const char *hostname, const unsigned port)
     return sock;
 }
 
-
-sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
+/* issue a connect, but return after the timeout (seconds) is reached. If
+ * timeout is 0 or less then we will wait until the OS gives up on the connect
+ * The socket is returned
+ */
+sock_t sock_connect_wto(const char *hostname, int port, int timeout)
 {
     int sock = SOCK_ERROR;
     struct addrinfo *ai, *head, hints;
@@ -551,7 +556,7 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
     {
         if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) >= 0)
         {
-            if (timeout)
+            if (timeout > 0)
                 sock_set_blocking (sock, SOCK_NONBLOCK);
 
             if (connect (sock, ai->ai_addr, ai->ai_addrlen) == 0)
@@ -562,13 +567,15 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
             {
                 if (sock_recoverable (sock_error()))
                 {
-                    if (sock_connected (sock, timeout) > 0)
+                    int connected = sock_connected (sock, timeout);
+                    if (connected == 0)  /* try again, interrupted */
+                        continue;
+                    if (connected == 1) /* connected */
                     {
-                        if (timeout) /* really wants to reset to what it was before */
+                        if (timeout >= 0)
                             sock_set_blocking(sock, SOCK_BLOCK);
                         break;
                     }
-                    continue;
                 }
                 sock_close (sock);
                 sock = SOCK_ERROR;
