@@ -32,4 +32,9 @@ void util_dict_free(util_dict *dict);
 int util_dict_set(util_dict *dict, const char *key, const char *val);
 const char *util_dict_get(util_dict *dict, const char *key);
 char *util_dict_urlencode(util_dict *dict, char delim);
+
+#ifndef HAVE_LOCALTIME_R
+struct tm *localtime_r (const time_t *timep, struct tm *result);
+#endif
+
 #endif  /* __UTIL_H__ */

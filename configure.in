@@ -62,7 +62,7 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 dnl Check for types
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(nanosleep poll)
+AC_CHECK_FUNCS(localtime_r nanosleep poll)
 XIPH_NET
 
 dnl -- configure options --

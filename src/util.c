@@ -24,6 +24,7 @@
 #endif
 
 #include "net/sock.h"
+#include "thread/thread.h"
 
 #include "cfgfile.h"
 #include "util.h"
@@ -587,3 +588,22 @@ char *util_dict_urlencode(util_dict *dict, char delim)
     return res;
 }
 
+#ifndef HAVE_LOCALTIME_R
+struct tm *localtime_r (const time_t *timep, struct tm *result)
+{
+     static mutex_t localtime_lock;
+     static int initialised = 0;
+     struct tm *tm;
+
+     if (initialised == 0)
+     {
+         thread_mutex_create (&localtime_lock);
+         initialised = 1;
+     }
+     thread_mutex_lock (&localtime_lock);
+     tm = localtime (timep);
+     memcpy (result, tm, sizeof (*result));
+     thread_mutex_unlock (&localtime_lock);
+     return result;
+}
+#endif
