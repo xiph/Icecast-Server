@@ -16,6 +16,7 @@
 #include "os.h"
 #include "cfgfile.h"
 #include "logging.h"
+#include "util.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -44,33 +45,43 @@ void logging_access(client_t *client)
 {
     char datebuf[128];
     char reqbuf[1024];
-    struct tm *thetime;
+    struct tm thetime;
     time_t now;
     time_t stayed;
+    char *referrer, *user_agent;
 
     now = time(NULL);
 
     /* build the data */
-    /* TODO: localtime is not threadsafe on all platforms
-    ** we should probably use localtime_r if it's available
-    */
-    PROTECT_CODE(thetime = localtime(&now); strftime(datebuf, 128, LOGGING_FORMAT_CLF, thetime))
+    localtime_r (&now, &thetime);
+    strftime (datebuf, sizeof(datebuf), LOGGING_FORMAT_CLF, &thetime);
 
     /* build the request */
-    snprintf(reqbuf, 1024, "%s %s %s/%s", httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE), httpp_getvar(client->parser, HTTPP_VAR_URI),
-         httpp_getvar(client->parser, HTTPP_VAR_PROTOCOL), httpp_getvar(client->parser, HTTPP_VAR_VERSION));
+    snprintf (reqbuf, sizeof(reqbuf), "%s %s %s/%s",
+            httpp_getvar (client->parser, HTTPP_VAR_REQ_TYPE),
+            httpp_getvar (client->parser, HTTPP_VAR_URI),
+            httpp_getvar (client->parser, HTTPP_VAR_PROTOCOL),
+            httpp_getvar (client->parser, HTTPP_VAR_VERSION));
 
     stayed = now - client->con->con_time;
 
-    log_write_direct(accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %d",
+    referrer = httpp_getvar (client->parser, "referer");
+    if (referrer == NULL)
+        referrer = "-";
+
+    user_agent = httpp_getvar (client->parser, "user-agent");
+    if (user_agent == NULL)
+        user_agent = "-";
+
+    log_write_direct (accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %u",
              client->con->ip,
              datebuf,
              reqbuf,
              client->respcode,
              client->con->sent_bytes,
-             (httpp_getvar(client->parser, "referer") != NULL) ? httpp_getvar(client->parser, "referer") : "-",
-             (httpp_getvar(client->parser, "user-agent") != NULL) ? httpp_getvar(client->parser, "user-agent") : "-",
-             (int)stayed);
+             referrer,
+             user_agent,
+             stayed);
 }
 
 

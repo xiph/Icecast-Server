@@ -222,7 +222,6 @@ static void _block_signals(void)
         /* These ones we want */
         sigdelset(&ss, SIGKILL);
         sigdelset(&ss, SIGSTOP);
-        sigdelset(&ss, SIGTERM);
         sigdelset(&ss, SIGSEGV);
         sigdelset(&ss, SIGBUS);
         if (pthread_sigmask(SIG_BLOCK, &ss, NULL) != 0) {
@@ -250,6 +249,7 @@ static void _catch_signals(void)
         sigaddset(&ss, SIGCHLD);
         sigaddset(&ss, SIGINT);
         sigaddset(&ss, SIGPIPE);
+        sigaddset(&ss, SIGTERM);
 
         if (pthread_sigmask(SIG_UNBLOCK, &ss, NULL) != 0) {
 #ifdef THREAD_DEBUG

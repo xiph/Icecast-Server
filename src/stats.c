@@ -455,8 +455,6 @@ static void *_stats_thread(void *arg)
     /* wake the other threads so they can shut down cleanly */
     thread_cond_broadcast(&_event_signal_cond);
 
-    thread_exit(0);
-
     return NULL;
 }
 
@@ -652,8 +650,6 @@ void *stats_connection(void *arg)
     _stats_threads--;
     thread_mutex_unlock(&_stats_mutex);
 
-    thread_exit(0);
-    
     return NULL;
 }
 

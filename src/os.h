@@ -15,4 +15,4 @@
 #define PATH_SEPARATOR "/"
 #endif
 
-#endif  /* __GLOBALS_H__ */
+#endif  /* __OS_H__ */

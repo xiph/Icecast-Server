@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.10 2003/12/04 16:27:30 oddsock Exp $ */
+/* $Id: avl.c,v 1.11 2004/01/27 02:16:25 karl Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -89,7 +89,8 @@ avl_tree_free_helper (avl_node * node, avl_free_key_fun_type free_key_fun)
   if (node->left) {
     avl_tree_free_helper (node->left, free_key_fun);
   }
-  free_key_fun (node->key);
+  if (free_key_fun)
+      free_key_fun (node->key);
   if (node->right) {
     avl_tree_free_helper (node->right, free_key_fun);
   }
@@ -446,7 +447,8 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
   p = x->parent;
   
   /* return the key and node to storage */
-  free_key_fun (x->key);
+  if (free_key_fun)
+      free_key_fun (x->key);
   thread_rwlock_destroy (&x->rwlock);
   free (x);
 
