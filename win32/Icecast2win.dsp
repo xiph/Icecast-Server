@@ -110,14 +110,6 @@ SOURCE=.\Icecast2winDlg.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\ResizableDialog.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\ResizableDialog.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\StatsTab.cpp
 # End Source File
 # Begin Source File
