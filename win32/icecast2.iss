@@ -48,6 +48,7 @@ Source: "..\admin\moveclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\response.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\stats.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\manageauth.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\updatemetadata.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\icecast_full.xml"; DestDir: "{app}"; Flags: ignoreversion
