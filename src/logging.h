@@ -16,7 +16,7 @@ extern int accesslog;
 */
 
 #ifdef _WIN32
-#define __FUNCTION__ __FILE__
+#define __FUNCTION__ strrchr (__FILE__, '\\') ? strrchr (__FILE__, '\\') + 1 : __FILE__
 #endif
 
 #define ERROR0(y) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y)
