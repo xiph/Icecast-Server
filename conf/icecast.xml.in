@@ -69,6 +69,7 @@
     <!--<master-server-port>8001</master-server-port>-->
     <!--<master-update-interval>120</master-update-interval>-->
     <!--<master-password>hackme</master-password>-->
+    <!--<master-relay-auth>1</master-relay-auth>-->
 
     <!-- Relays. State connection information, and by default 
          request inline metadata for mp3 streams if available.

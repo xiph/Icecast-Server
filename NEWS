@@ -8,6 +8,17 @@ falls to 0
 multiple Ogg codec streaming. start at theora key frame.
 Added URL and command based authentication
 
+kh49
+. allow for changes in mount settings to update active sources
+. allow for slaves to authenticate with the master using the 
+  master user/pass.
+. if client authenticates as a relay then bypass the normal
+  authentication and max listeners check.
+. fix a string length problem with relay auth
+. if slave fails to auth then log it and go back to waiting
+. remove unused/debug code
+. updated net code, timeout problem for slaves
+
 kh48
 . tweaks to per client write limits
 . allow for on-demand to be set on all relays by default
