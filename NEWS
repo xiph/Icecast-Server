@@ -3,19 +3,32 @@ Feature differences from SVN trunk
 . mp3 accepts artist and title separately on the url.
 . program invocation at stream start and end, per mount based.
 . on-demand relays, activated on first listener, disconnected when listeners 
-falls to 0. Available for master relays as well.
+  falls to 0. Available for master relays as well.
 . multiple Ogg codec streaming. Current codecs handled are Theora, Vorbis,
-Speex, Writ.
+  Speex, Writ.
 . Clients are started at theora key frame if theora is being streamed.
 . Added URL and command based listener authentication
 . server xml reload, and reopen logging available via admin url
 . on xml reload, active sources are updated as well
 . When max-listeners reached, a HTTP 302 code can be sent to redirect
-clients to alternative slave hosts. 
+  clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
-max-listener check
+  max-listener check
 . per-mount format-specific settings can be stated in mount
 . mp3 metadata interval can be stated/disabled per mount
+. added file intro to streams
+. fallback to file
+
+2.1-kh2
+. send max_listeners to YP, server limit if mount is unlimited
+. add server client_limit and source_limit to stats
+. filter duplicate metadata in inline mp3 streams 
+. minor fix the xslt
+. minor leak on failed range header fserve client
+. added AAC and AAC+ content-types for mp3 handler
+. resync with trunk
+    logging metadata, needs testing
+    added <shoutcast-mount> for shoucast DSP compatible clients
 
 2.1-kh1
 . Added <intro> tag to <mount> to allow the contents of a nominated file
