@@ -16,10 +16,6 @@
 #include "config.h"
 #include "compat.h"
 
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
 #define HASH_LEN     16
 
 struct MD5Context
