@@ -19,6 +19,10 @@
 #define CONFIG_DEFAULT_PORT 8888
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
+#define CONFIG_DEFAULT_CHROOT 0
+#define CONFIG_DEFAULT_CHUID 0
+#define CONFIG_DEFAULT_USER NULL
+#define CONFIG_DEFAULT_GROUP NULL
 
 #ifndef _WIN32
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
@@ -37,6 +41,7 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_directory(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node);
+static void _parse_security(xmlDocPtr doc, xmlNodePtr node);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node);
 
 void config_initialize(void)
@@ -60,6 +65,8 @@ void config_shutdown(void)
 	if (_configuration.access_log) free(_configuration.access_log);
 	if (_configuration.error_log) free(_configuration.error_log);
     if (_configuration.bind_address) free(_configuration.bind_address);
+    if (_configuration.user) free(_configuration.user);
+    if (_configuration.group) free(_configuration.group);
     dirnode = _configuration.dir_list;
     while(dirnode) {
         nextdirnode = dirnode->next;
@@ -138,6 +145,10 @@ static void _set_defaults(void)
 	_configuration.log_dir = (char *)strdup(CONFIG_DEFAULT_LOG_DIR);
 	_configuration.access_log = (char *)strdup(CONFIG_DEFAULT_ACCESS_LOG);
 	_configuration.error_log = (char *)strdup(CONFIG_DEFAULT_ERROR_LOG);
+    _configuration.chroot = CONFIG_DEFAULT_CHROOT;
+    _configuration.chuid = CONFIG_DEFAULT_CHUID;
+    _configuration.user = CONFIG_DEFAULT_USER;
+    _configuration.group = CONFIG_DEFAULT_GROUP;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
@@ -175,6 +186,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			_parse_paths(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "logging") == 0) {
 			_parse_logging(doc, node->xmlChildrenNode);
+        } else if (strcmp(node->name, "security") == 0) {
+            _parse_security(doc, node->xmlChildrenNode);
 		}
 	} while ((node = node->next));
 }
@@ -263,6 +276,39 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node)
 			_configuration.error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		}
 	} while ((node = node->next));
+}
+
+static void _parse_security(xmlDocPtr doc, xmlNodePtr node)
+{
+   char *tmp;
+   xmlNodePtr oldnode;
+
+   do {
+       if (node == NULL) break;
+       if (xmlIsBlankNode(node)) continue;
+
+       if (strcmp(node->name, "chroot") == 0) {
+           tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           _configuration.chroot = atoi(tmp);
+           if (tmp) free(tmp);
+       } else if (strcmp(node->name, "changeowner") == 0) {
+           _configuration.chuid = 1;
+           oldnode = node;
+           node = node->xmlChildrenNode;
+           do {
+               if(node == NULL) break;
+               if(xmlIsBlankNode(node)) continue;
+               if(strcmp(node->name, "user") == 0) {
+                   if(_configuration.user) free(_configuration.user);
+                   _configuration.user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+               } else if(strcmp(node->name, "group") == 0) {
+                   if(_configuration.group) free(_configuration.group);
+                   _configuration.group = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+               }
+           } while((node = node->next));
+           node = oldnode;
+       }
+   } while ((node = node->next));
 }
 
 static void _add_server(xmlDocPtr doc, xmlNodePtr node)

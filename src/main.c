@@ -8,6 +8,12 @@
 #include "resolver.h"
 #include "httpp.h"
 
+#ifdef CHUID
+#include <sys/types.h>
+#include <grp.h>
+#include <pwd.h>
+#include <errno.h>
+#endif
 
 #include "config.h"
 #include "sighandler.h"
@@ -43,7 +49,6 @@ static void _initialize_subsystems(void)
 	config_initialize();
 	connection_initialize();
 	global_initialize();
-	stats_initialize();
 	refbuf_initialize();
 }
 
@@ -135,8 +140,8 @@ static int _start_listening(void)
 	return 1;
 }
 
-/* this is the heart of the beast */
-static void _server_proc(void)
+/* bind the socket and start listening */
+static void _server_proc_init(void)
 {
 	if (!_setup_socket()) {
 		ERROR1("Could not create listener socket on port %d", config_get_config()->port);
@@ -147,11 +152,75 @@ static void _server_proc(void)
 		ERROR0("Failed trying to listen on server socket");
 		return;
 	}
+}
 
+/* this is the heart of the beast */
+static void _server_proc(void)
+{
 	connection_accept_loop();
 
 	sock_close(global.serversock);
 }
+
+#ifdef CHROOT
+/* chroot the process. Watch out - we need to do this before starting other
+ * threads */
+
+static void _chroot_setup(void)
+{
+   ice_config_t *conf = config_get_config();
+
+   if (conf->chroot)
+   {
+       if(getuid()) /* root check */
+       {
+           fprintf(stderr, "WARNING: Cannot change server root unless running as root.\n");
+           return;
+       }
+       if(chroot(conf->base_dir))
+       {
+           fprintf(stderr,"WARNING: Couldn't change server root: %s\n", strerror(errno));
+           return;
+       }
+       else
+           fprintf(stdout, "Changed root successfully to \"%s\".\n", conf->base_dir);
+
+   }   
+}
+#endif
+
+#ifdef CHUID
+/* change uid and gid */
+static void _chuid_setup(void)
+{
+   ice_config_t *conf = config_get_config();
+   struct passwd *user;
+   struct group *group;
+   
+   if(conf->chuid)
+   {
+       if(getuid()) /* root check */
+       {
+           fprintf(stderr, "WARNING: Can't change user id unless you are root.\n");
+           return;
+       }
+
+       user = getpwnam(conf->user);
+       group = getgrnam(conf->group);
+       
+       if(!setgid(group->gr_gid))
+           fprintf(stdout, "Changed groupid to %i.\n", group->gr_gid);
+       else
+           fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
+
+       if(!setuid(user->pw_uid))
+           fprintf(stdout, "Changed userid to %i.\n", user->pw_uid);
+       else
+           fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
+
+   }
+}
+#endif
 
 int main(int argc, char **argv)
 {
@@ -160,9 +229,6 @@ int main(int argc, char **argv)
 
 	/* startup all the modules */
 	_initialize_subsystems();
-
-	/* setup the default signal handlers */
-	sighandler_initialize();
 
 	/* parse the '-c icecast.xml' option
 	** only, so that we can read a configfile
@@ -196,6 +262,33 @@ int main(int argc, char **argv)
 	
 	/* override config file options with commandline options */
 	config_parse_cmdline(argc, argv);
+
+#ifdef CHROOT
+    _chroot_setup(); /* Perform chroot, if requested */
+#endif
+
+    _server_proc_init(); /* Bind socket, before we change userid */
+
+#ifdef CHUID
+    _chuid_setup(); /* change user id */
+#endif
+
+    stats_initialize(); /* We have to do this later on because of threading */
+
+#ifdef CHUID 
+    /* We'll only have getuid() if we also have setuid(), it's reasonable to
+     * assume */
+    if(!getuid()) /* Running as root! Don't allow this */
+    {
+        fprintf(stderr, "WARNING: You should not run icecast2 as root\n");
+        fprintf(stderr, "Use the changeowner directive in the config file\n");
+        _shutdown_subsystems();
+        return 1;
+    }
+#endif
+
+    /* setup default signal handlers */
+    sighandler_initialize();
 
 	if (!_start_logging()) {
 		fprintf(stderr, "FATAL: Could not start logging\n");

@@ -72,6 +72,8 @@ dnl Checks for header files.
 AC_HEADER_STDC
 
 AC_CHECK_HEADER(stdint.h, AC_DEFINE(HAVE_STDINT_H, 1),,)
+AC_CHECK_HEADER(pwd.h, AC_DEFINE(CHUID, 1),,)
+AC_CHECK_HEADER(unistd.h, AC_DEFINE(CHROOT, 1),,)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

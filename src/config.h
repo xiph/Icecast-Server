@@ -38,6 +38,11 @@ typedef struct ice_config_tag
 
 	char *access_log;
 	char *error_log;
+
+    int chroot;
+    int chuid;
+    char *user;
+    char *group;
 } ice_config_t;
 
 void config_initialize(void);
