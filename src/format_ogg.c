@@ -269,7 +269,10 @@ static void update_comments (source_t *source)
         logging_playlist (source->mount, metadata, source->listeners);
         free (metadata);
     }
-    yp_touch (ogg_info->mount);
+    stats_event (source->mount, "artist", artist);
+    stats_event (source->mount, "title", title);
+    DEBUG0 ("running touch");
+    yp_touch (source->mount);
 }
 
 

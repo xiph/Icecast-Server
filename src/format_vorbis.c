@@ -332,6 +332,7 @@ static int process_vorbis_incoming_hdrs (ogg_state_t *ogg_info, ogg_codec_t *cod
 {
     ogg_packet header;
     vorbis_codec_t *source_vorbis = codec->specific;
+    char *comment;
 
     DEBUG1 ("processing incoming header packet (%d)", codec->headers);
     while (codec->headers < 3)
@@ -356,6 +357,20 @@ static int process_vorbis_incoming_hdrs (ogg_state_t *ogg_info, ogg_codec_t *cod
     DEBUG0 ("we have the header packets now");
 
     /* we have all headers */
+    free (ogg_info->title);
+    comment = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
+    if (comment)
+        ogg_info->title = strdup (comment);
+    else
+        ogg_info->title = NULL;
+
+    free (ogg_info->artist);
+    comment = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
+    if (comment)
+        ogg_info->artist = strdup (comment);
+    else
+        ogg_info->artist = NULL;
+    ogg_info->log_metadata = 1;
 
     stats_event_args (ogg_info->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
     stats_event_args (ogg_info->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
@@ -365,7 +380,6 @@ static int process_vorbis_incoming_hdrs (ogg_state_t *ogg_info, ogg_codec_t *cod
     /* set queued pages to contain a 1/4 of a second worth of samples */
     source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 4;
 
-    /* printf ("finished with incoming header packets\n"); */
     source_vorbis->process_packet = process_vorbis_headers;
 
     return 1;
@@ -468,6 +482,7 @@ static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
         {
             free (ogg_info->artist);
             free (ogg_info->title);
+            ogg_info->artist = NULL;
             ogg_info->title = p;
             change = 1;
         }
@@ -554,6 +569,7 @@ static refbuf_t *vorbis_page (ogg_state_t *ogg_info,
             stats_event_args (ogg_info->mount, "audio-samplerate", "%ld", (long)vorbis->vi.rate);
             stats_event_args (ogg_info->mount, "audio-channels", "%ld", (long)vorbis->vi.channels);
             stats_event_args (ogg_info->mount, "audio-bitrate", "%ld", (long)vorbis->vi.bitrate_nominal);
+            stats_event_args (ogg_info->mount, "ice-bitrate", "%ld", (long)vorbis->vi.bitrate_nominal/1000);
             ogg_info->log_metadata = 1;
         }
         return NULL;

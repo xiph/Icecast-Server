@@ -926,7 +926,7 @@ static void command_metadata(client_t *client, source_t *source)
     {
         if (song)
         {
-            plugin->set_tag (plugin, "title", song);
+            plugin->set_tag (plugin, "song", song);
             INFO2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
         }
         else

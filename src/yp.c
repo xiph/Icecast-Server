@@ -338,6 +338,7 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
         if (yp->bitrate == NULL)
         {
             yp->next_update = time(NULL) + 5;
+            WARN1 ("mount \"%s\" bitrate unknown, cannot add to YP", yp->mount);
             return 0;
         }
     }
@@ -923,7 +924,7 @@ void yp_touch (const char *mount)
         if (yp)
         {
             /* we may of found old entries not purged yet, so skip them */
-            if (yp->release == 0 || yp->remove == 0)
+            if (yp->release != 0 || yp->remove != 0)
             {
                 search_list = yp->next;
                 continue;
