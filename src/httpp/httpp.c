@@ -478,11 +478,13 @@ char *httpp_getvar(http_parser_t *parser, char *name)
 {
     http_var_t var;
     http_var_t *found;
+    void *fp;
 
+    fp = &found;
     var.name = name;
     var.value = NULL;
 
-    if (avl_get_by_key(parser->vars, (void *)&var, (void **)&found) == 0)
+    if (avl_get_by_key(parser->vars, &var, fp) == 0)
         return found->value;
     else
         return NULL;
@@ -513,11 +515,13 @@ char *httpp_get_query_param(http_parser_t *parser, char *name)
 {
     http_var_t var;
     http_var_t *found;
+    void *fp;
 
+    fp = &found;
     var.name = name;
     var.value = NULL;
 
-    if (avl_get_by_key(parser->queryvars, (void *)&var, (void **)&found) == 0)
+    if (avl_get_by_key(parser->queryvars, (void *)&var, fp) == 0)
         return found->value;
     else
         return NULL;
