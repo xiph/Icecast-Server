@@ -104,7 +104,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
 
         sep = strchr(line, ':');
         if(sep == NULL) {
-            DEBUG0("No seperator in line");
+            DEBUG0("No separator in line");
             continue;
         }
 
@@ -188,7 +188,7 @@ int auth_htpasswd_existing_user(auth_t *auth, const char *username)
             continue;
         sep = strchr(line, ':');
         if(sep == NULL) {
-            DEBUG0("No seperator in line");
+            DEBUG0("No separator in line");
             continue;
         }
         *sep = 0;
@@ -287,7 +287,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
 
         sep = strchr(line, ':');
         if(sep == NULL) {
-            DEBUG0("No seperator in line");
+            DEBUG0("No separator in line");
             continue;
         }
 
@@ -347,7 +347,7 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 
         sep = strchr(line, ':');
         if(sep == NULL) {
-            DEBUG0("No seperator in line");
+            DEBUG0("No separator in line");
             continue;
         }
 

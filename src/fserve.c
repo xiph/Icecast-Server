@@ -143,7 +143,9 @@ int fserve_client_waiting (void)
         }
     }
 
-    if (poll(ufds, fserve_clients, 200) > 0)
+    if (!ufds)
+        thread_sleep(200000);
+    else if (poll(ufds, fserve_clients, 200) > 0)
     {
         /* mark any clients that are ready */
         fclient = active_list;
@@ -298,6 +300,11 @@ static void *fserv_thread_function(void *arg)
     {
         fserve_t *to_go = (fserve_t *)pending_list;
         pending_list = to_go->next;
+
+        /* Argh! _free_client decrements "clients" in stats, but it hasn't been
+           incremented if the client is still on the pending list. So, fix that
+           up first. Messy. */
+        stats_event_inc(NULL, "clients");
         _free_client (to_go);
     }
     thread_mutex_unlock (&pending_lock);

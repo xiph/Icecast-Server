@@ -50,7 +50,6 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
     char *header = httpp_getvar(client->parser, "authorization");
     char *userpass, *tmp;
     char *username, *password;
-    auth_client *auth_user;
 
     if (header == NULL || strncmp(header, "Basic ", 6))
     {
@@ -69,7 +68,6 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
     tmp = strchr(userpass, ':');
     if (tmp == NULL)
     { 
-        free (auth_user);
         free (userpass);
         return;
     }

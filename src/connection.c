@@ -763,7 +763,7 @@ static void _handle_get_request(connection_t *con,
     if (config->hostname)
         host = strdup (config->hostname);
     port = config->port;
-    for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
+    for(i = 0; i < global.server_sockets; i++) {
         if(global.serversock[i] == con->serversock) {
             serverhost = config->listeners[i].bind_address;
             serverport = config->listeners[i].port;
