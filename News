@@ -1,3 +1,14 @@
+2003-03-08
+    Started implementing generic admin interface. Supports (so far): 
+    - dynamic configuration of mount fallbacks
+        /admin/fallbacks?mount=/mount&fallback=/fallback
+    - setting of mp3 metadata
+        /admin/metadata?mount=/mount&mode=updinfo&song=New%20Title
+    - dumping raw xml stats
+        /admin/rawstats
+    - listing all connected clients on a mountpoint: 
+        /admin/listclients?mount=/mountname
+
 2003-03-05
     Implemented the ability to reread the config file on SIGHUP. For now, this
     does not affect configuration for currently running sources (only new

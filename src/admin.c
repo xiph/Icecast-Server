@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <time.h>
 
 #include "config.h"
 #include "connection.h"
@@ -21,6 +23,7 @@
 #define COMMAND_FALLBACK          1
 #define COMMAND_RAW_STATS         2
 #define COMMAND_METADATA_UPDATE   3
+#define COMMAND_SHOW_LISTENERS    4
 
 int admin_get_command(char *command)
 {
@@ -32,12 +35,15 @@ int admin_get_command(char *command)
         return COMMAND_RAW_STATS;
     else if(!strcmp(command, "metadata"))
         return COMMAND_METADATA_UPDATE;
+    else if(!strcmp(command, "listclients"))
+        return COMMAND_SHOW_LISTENERS;
     else
         return COMMAND_ERROR;
 }
 
 static void command_fallback(client_t *client, source_t *source);
 static void command_metadata(client_t *client, source_t *source);
+static void command_show_listeners(client_t *client, source_t *source);
 
 static void command_raw_stats(client_t *client);
 
@@ -132,10 +138,13 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         case COMMAND_METADATA_UPDATE:
             command_metadata(client, source);
             break;
+        case COMMAND_SHOW_LISTENERS:
+            command_show_listeners(client, source);
+            break;
         default:
             WARN0("Mount request not recognised");
             client_send_400(client, "Mount request unknown");
-            return;
+            break;
     }
 }
 
@@ -148,7 +157,7 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         } \
     } while(0);
 
-static void command_success(client_t *client, char *message)
+static void html_success(client_t *client, char *message)
 {
     int bytes;
 
@@ -158,6 +167,63 @@ static void command_success(client_t *client, char *message)
             "<html><head><title>Admin request successful</title></head>"
             "<body><p>%s</p></body></html>", message);
     if(bytes > 0) client->con->sent_bytes = bytes;
+    client_destroy(client);
+}
+
+static void html_head(client_t *client)
+{
+    int bytes;
+
+    client->respcode = 200;
+    bytes = sock_write(client->con->sock,
+            "HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n"
+            "<html><head><title>Admin request</title></head>"
+            "<body>");
+    if(bytes > 0) client->con->sent_bytes = bytes;
+}
+
+static void html_write(client_t *client, char *fmt, ...)
+{
+    int bytes;
+    va_list ap;
+
+    va_start(ap, fmt);
+    bytes = sock_write_fmt(client->con->sock, fmt, ap);
+    va_end(ap);
+    if(bytes > 0) client->con->sent_bytes = bytes;
+}
+
+static void command_show_listeners(client_t *client, source_t *source)
+{
+    avl_node *client_node;
+    client_t *current;
+    time_t now = time(NULL);
+
+    DEBUG1("Dumping listeners on mountpoint %s", source->mount);
+
+    html_head(client);
+
+    html_write(client, 
+            "<table><tr><td>IP</td><td>Connected</td><td>ID</td></tr>");
+
+    avl_tree_rlock(source->client_tree);
+
+    client_node = avl_get_first(source->client_tree);
+    while(client_node) {
+        current = (client_t *)client_node->key;
+
+        html_write(client, "<tr><td>%s</td><td>%d</td><td>%ld</td></tr>",
+                current->con->ip, now-current->con->con_time, current->con->id);
+
+        client_node = avl_get_next(client_node);
+    }
+
+    avl_tree_unlock(source->client_tree);
+
+    html_write(client, "</table></body></html>");
+
     client_destroy(client);
 }
 
@@ -174,7 +240,7 @@ static void command_fallback(client_t *client, source_t *source)
     source->fallback_mount = strdup(fallback);
     free(old);
 
-    command_success(client, "Fallback configured");
+    html_success(client, "Fallback configured");
 }
 
 static void command_metadata(client_t *client, source_t *source)
@@ -210,7 +276,7 @@ static void command_metadata(client_t *client, source_t *source)
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", source->mount, value);
     stats_event(source->mount, "title", value);
 
-    command_success(client, "Metadata update successful");
+    html_success(client, "Metadata update successful");
 }
 
 static void command_raw_stats(client_t *client) {

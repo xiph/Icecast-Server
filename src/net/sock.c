@@ -314,6 +314,15 @@ int sock_write(sock_t sock, const char *fmt, ...)
 	return sock_write_bytes(sock, buff, strlen(buff));
 }
 
+int sock_write_fmt(sock_t sock, char *fmt, va_list ap)
+{
+    char buff[1024];
+
+    vsnprintf(buff, 1024, fmt, ap);
+
+    return sock_write_bytes(sock, buff, strlen(buff));
+}
+
 int sock_read_bytes(sock_t sock, char *buff, const int len)
 {
 
