@@ -100,7 +100,7 @@ static int evict_cache_entry() {
     return oldest;
 }
 
-static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
+static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     int i;
     int empty = -1;
     struct stat file;
@@ -147,7 +147,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
     return cache[i].stylesheet;
 }
 
-void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
     xmlOutputBufferPtr outputBuffer;
     xmlDocPtr    res;

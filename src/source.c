@@ -813,10 +813,10 @@ static void _parse_audio_info (source_t *source, const char *s)
         }
         if (len)
         {
-            char name[100], value[100];
+            char name[100], value[200];
             char *esc;
 
-            sscanf (start, "%199[^=]=%199[^;\r\n]", name, value);
+            sscanf (start, "%99[^=]=%199[^;\r\n]", name, value);
             esc = util_url_unescape (value);
             if (esc)
             {

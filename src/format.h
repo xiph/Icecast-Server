@@ -40,11 +40,6 @@ typedef struct _format_plugin_tag
 
     char *format_description;
 
-    /* set this is the data format has a header that
-    ** we must send before regular data
-    */
-    int has_predata;
-
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(struct _format_plugin_tag *format, client_t *client);
     void (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
