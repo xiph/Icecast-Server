@@ -6,7 +6,7 @@
 dnl XIPH_PATH_OGG([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 dnl Test for libogg, and define OGG_CFLAGS OGG_LDFLAGS and OGG_LIBS
 dnl
-AC_DEFUN(XIPH_PATH_OGG,
+AC_DEFUN([XIPH_PATH_OGG],
 [dnl 
 AC_ARG_VAR([OGG_PREFIX],[path to ogg installation])
 AC_ARG_WITH(ogg,
