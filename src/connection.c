@@ -577,13 +577,14 @@ static void _handle_get_request(connection_t *con,
 			INFO0("Client attempted to fetch allstreams.txt with bad password");
             client_send_401(client);
 		} else {
+			avl_node *node;
+			source_t *s;
+
             client->respcode = 200;
             bytes = sock_write(client->con->sock,
                     "HTTP/1.0 200 OK\r\n\r\n");
             if(bytes > 0) client->con->sent_bytes = bytes;
 
-			avl_node *node;
-			source_t *s;
 			avl_tree_rlock(global.source_tree);
 			node = avl_get_first(global.source_tree);
 			while (node) {
