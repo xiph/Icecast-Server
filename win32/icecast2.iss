@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=Icecast2_win32_2.0_03192003_setup
+OutputBaseFilename=Icecast2_win32_2.0_04122003_setup
 WizardImageFile=icecast2logo2.bmp
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51
@@ -29,6 +29,8 @@ Name: "{app}\logs"
 
 [Files]
 Source: "Release\Icecast2.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "Release\icecast2console.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "icecast2.bat"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; CopyMode: alwaysoverwrite
 Source: "..\web\status.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
 Source: "..\web\status2.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite

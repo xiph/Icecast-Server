@@ -339,6 +339,7 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	sprintf(version, "Icecast2 Version %s", ICECAST_VERSION);
 	SetWindowText(version);
 
+
 	if (m_Autostart) {
 		OnStart();
 	}
@@ -627,6 +628,7 @@ void StartServer(void *configfile)
 	argv[1] = "-c";
 	argv[2] = g_configFile;
 	time(&(g_mainDialog->serverStart));
+
 	int ret = main(argc, (char **)argv);
 	if (ret) {
 		MessageBox(NULL, "Unable to start server", NULL, MB_OK);

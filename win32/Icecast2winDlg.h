@@ -47,6 +47,7 @@ public:
 
 
 
+
 	void StopServer();
 	bool m_isRunning;
 	void DisableControl(UINT control);
