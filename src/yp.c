@@ -314,12 +314,12 @@ static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len)
 
         INFO1 ("clearing up YP entry for %s", yp->mount);
         send_to_yp ("remove", yp, s);
-        yp->remove = 1;
         free (yp->sid);
         yp->sid = NULL;
-        yp->process = do_yp_add;
-        yp_update = 1;
     }
+    yp_update = 1;
+    yp->remove = 1;
+    yp->process = do_yp_add;
     return 0;
 }
 
@@ -850,6 +850,7 @@ void yp_remove (const char *mount)
         ypdata_t *yp = find_yp_mount (server, mount);
         if (yp)
         {
+            DEBUG2 ("mark %s on YP %s", mount, server->url);
             yp->process = do_yp_remove;
             yp->next_update = 0;
         }
@@ -888,7 +889,9 @@ void yp_shutdown ()
 {
     yp_running = 0;
     yp_update = 1;
-    thread_join (yp_thread);
+    if (yp_thread)
+        thread_join (yp_thread);
     curl_global_cleanup();
+    INFO0 ("YP thread down");
 }
 
