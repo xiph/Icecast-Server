@@ -35,7 +35,7 @@ blockquote p { margin:0 }
 p.ruletest { color:red }
 
 div.boxtest { 
- border:10px solid; 
+ border:2px solid; 
  padding:30px; 
  background: #555555;
  width:80%;;
