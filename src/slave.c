@@ -50,7 +50,7 @@ static int _initialized = 0;
 
 void slave_initialize(void) {
     ice_config_t *config;
-	if (_initialized) return;
+    if (_initialized) return;
 
     config = config_get_config();
     /* Don't create a slave thread if it isn't configured */
@@ -62,23 +62,23 @@ void slave_initialize(void) {
     }
     config_release_config();
 
-	_initialized = 1;
-	_slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
+    _initialized = 1;
+    _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
 }
 
 void slave_shutdown(void) {
-	if (!_initialized) return;
-	_initialized = 0;
-	thread_join(_slave_thread_id);
+    if (!_initialized) return;
+    _initialized = 0;
+    thread_join(_slave_thread_id);
 }
 
 static void create_relay_stream(char *server, int port, 
         char *remotemount, char *localmount, int mp3)
 {
     sock_t streamsock;
-	char header[4096];
-	connection_t *con;
-	http_parser_t *parser;
+    char header[4096];
+    connection_t *con;
+    http_parser_t *parser;
     client_t *client;
 
     if(!localmount)
@@ -86,61 +86,61 @@ static void create_relay_stream(char *server, int port,
 
     DEBUG1("Adding source at mountpoint \"%s\"", localmount);
 
-	streamsock = sock_connect_wto(server, port, 0);
-	if (streamsock == SOCK_ERROR) {
+    streamsock = sock_connect_wto(server, port, 0);
+    if (streamsock == SOCK_ERROR) {
         WARN2("Failed to relay stream from master server, couldn't connect to http://%s:%d", server, port);
         return;
-	}
-	con = create_connection(streamsock, NULL);
+    }
+    con = create_connection(streamsock, NULL);
     if(mp3) {
         /* Some mp3 servers are bitchy, send a user-agent string to make them
          * send the right response.
          */
-    	sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+        sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                                "User-Agent: " ICECAST_VERSION_STRING "\r\n"
                                "Icy-MetaData: 1\r\n"
                                "\r\n", 
                 remotemount);
     }
     else {
-    	sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+        sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                                "User-Agent: " ICECAST_VERSION_STRING "\r\n"
                                "\r\n",
                 remotemount);
     }
-	memset(header, 0, sizeof(header));
-	if (util_read_header(con->sock, header, 4096) == 0) {
+    memset(header, 0, sizeof(header));
+    if (util_read_header(con->sock, header, 4096) == 0) {
         WARN0("Header read failed");
-		connection_close(con);
-		return;
-	}
-	parser = httpp_create_parser();
-	httpp_initialize(parser, NULL);
-	if(!httpp_parse_response(parser, header, strlen(header), localmount)) {
+        connection_close(con);
+        return;
+    }
+    parser = httpp_create_parser();
+    httpp_initialize(parser, NULL);
+    if(!httpp_parse_response(parser, header, strlen(header), localmount)) {
         if(httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE)) {
             ERROR1("Error parsing relay request: %s", 
                     httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
         }
         else
             ERROR0("Error parsing relay request");
-		connection_close(con);
+        connection_close(con);
         httpp_destroy(parser);
         return;
     }
 
     client = client_create(con, parser);
-	if (!connection_create_source(client, con, parser, 
+    if (!connection_create_source(client, con, parser, 
                 httpp_getvar(parser, HTTPP_VAR_URI))) {
         DEBUG0("Failed to create source");
         client_destroy(client);
-	}
+    }
 
     return;
 }
 
 static void *_slave_thread(void *arg) {
-	sock_t mastersock;
-	char buf[256];
+    sock_t mastersock;
+    char buf[256];
     int interval;
     char *authheader, *data;
     int len;
@@ -161,9 +161,9 @@ static void *_slave_thread(void *arg) {
     config_release_config();
 
 
-	while (_initialized) {
+    while (_initialized) {
         if (max_interval > ++interval) {
-		    thread_sleep(1000000);
+            thread_sleep(1000000);
             continue;
         }
         else {
@@ -181,12 +181,12 @@ static void *_slave_thread(void *arg) {
             int port = config->master_server_port;
             config_release_config();
 
-		    mastersock = sock_connect_wto(server, port, 0);
+            mastersock = sock_connect_wto(server, port, 0);
 
-    		if (mastersock == SOCK_ERROR) {
+            if (mastersock == SOCK_ERROR) {
                 WARN0("Relay slave failed to contact master server to fetch stream list");
-		    	continue;
-    		}
+                continue;
+            }
 
             len = strlen(username) + strlen(password) + 1;
             authheader = malloc(len+1);
@@ -194,28 +194,28 @@ static void *_slave_thread(void *arg) {
             strcat(authheader, ":");
             strcat(authheader, password);
             data = util_base64_encode(authheader);
-		    sock_write(mastersock, 
+            sock_write(mastersock, 
                     "GET /admin/streamlist HTTP/1.0\r\n"
                     "Authorization: Basic %s\r\n"
                     "\r\n", data);
             free(authheader);
             free(data);
-    		while (sock_read_line(mastersock, buf, sizeof(buf))) {
+            while (sock_read_line(mastersock, buf, sizeof(buf))) {
                 if(!strlen(buf))
                     break;
             }
 
-	    	while (sock_read_line(mastersock, buf, sizeof(buf))) {
-		    	avl_tree_rlock(global.source_tree);
-			    if (!source_find_mount(buf)) {
-				    avl_tree_unlock(global.source_tree);
+            while (sock_read_line(mastersock, buf, sizeof(buf))) {
+                avl_tree_rlock(global.source_tree);
+                if (!source_find_mount(buf)) {
+                    avl_tree_unlock(global.source_tree);
 
                     create_relay_stream(server, port, buf, NULL, 0);
-    			} 
+                } 
                 else
-    	    		avl_tree_unlock(global.source_tree);
-    		}
-	    	sock_close(mastersock);
+                    avl_tree_unlock(global.source_tree);
+            }
+            sock_close(mastersock);
         }
         else {
             config_release_config();
@@ -241,8 +241,8 @@ static void *_slave_thread(void *arg) {
         }
 
         thread_mutex_unlock(&(config_locks()->relay_lock));
-	}
-	thread_exit(0);
-	return NULL;
+    }
+    thread_exit(0);
+    return NULL;
 }
 

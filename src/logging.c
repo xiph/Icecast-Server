@@ -36,35 +36,35 @@ int accesslog = 0;
 */
 void logging_access(client_t *client)
 {
-	char datebuf[128];
-	char reqbuf[1024];
-	struct tm *thetime;
-	time_t now;
-	time_t stayed;
+    char datebuf[128];
+    char reqbuf[1024];
+    struct tm *thetime;
+    time_t now;
+    time_t stayed;
 
-	now = time(NULL);
+    now = time(NULL);
 
-	/* build the data */
-	/* TODO: localtime is not threadsafe on all platforms
-	** we should probably use localtime_r if it's available
-	*/
-	PROTECT_CODE(thetime = localtime(&now); strftime(datebuf, 128, LOGGING_FORMAT_CLF, thetime))
+    /* build the data */
+    /* TODO: localtime is not threadsafe on all platforms
+    ** we should probably use localtime_r if it's available
+    */
+    PROTECT_CODE(thetime = localtime(&now); strftime(datebuf, 128, LOGGING_FORMAT_CLF, thetime))
 
-	/* build the request */
-	snprintf(reqbuf, 1024, "%s %s %s/%s", httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE), httpp_getvar(client->parser, HTTPP_VAR_URI),
-		 httpp_getvar(client->parser, HTTPP_VAR_PROTOCOL), httpp_getvar(client->parser, HTTPP_VAR_VERSION));
+    /* build the request */
+    snprintf(reqbuf, 1024, "%s %s %s/%s", httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE), httpp_getvar(client->parser, HTTPP_VAR_URI),
+         httpp_getvar(client->parser, HTTPP_VAR_PROTOCOL), httpp_getvar(client->parser, HTTPP_VAR_VERSION));
 
-	stayed = now - client->con->con_time;
+    stayed = now - client->con->con_time;
 
-	log_write_direct(accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %d",
-			 client->con->ip,
-			 datebuf,
-			 reqbuf,
-			 client->respcode,
-			 client->con->sent_bytes,
-			 (httpp_getvar(client->parser, "referer") != NULL) ? httpp_getvar(client->parser, "referer") : "-",
-			 (httpp_getvar(client->parser, "user-agent") != NULL) ? httpp_getvar(client->parser, "user-agent") : "-",
-			 (int)stayed);
+    log_write_direct(accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %d",
+             client->con->ip,
+             datebuf,
+             reqbuf,
+             client->respcode,
+             client->con->sent_bytes,
+             (httpp_getvar(client->parser, "referer") != NULL) ? httpp_getvar(client->parser, "referer") : "-",
+             (httpp_getvar(client->parser, "user-agent") != NULL) ? httpp_getvar(client->parser, "user-agent") : "-",
+             (int)stayed);
 }
 
 

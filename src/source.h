@@ -11,10 +11,10 @@
 typedef struct source_tag
 {
     client_t *client;
-	connection_t *con;
-	http_parser_t *parser;
-	
-	char *mount;
+    connection_t *con;
+    http_parser_t *parser;
+    
+    char *mount;
 
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;
@@ -23,20 +23,20 @@ typedef struct source_tag
      * shutdown */
     int running;
 
-	struct _format_plugin_tag *format;
+    struct _format_plugin_tag *format;
 
-	avl_tree *client_tree;
-	avl_tree *pending_tree;
+    avl_tree *client_tree;
+    avl_tree *pending_tree;
 
-	rwlock_t *shutdown_rwlock;
-	ypdata_t *ypdata[MAX_YP_DIRECTORIES];
+    rwlock_t *shutdown_rwlock;
+    ypdata_t *ypdata[MAX_YP_DIRECTORIES];
     util_dict *audio_info;
 
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-	int	num_yp_directories;
-	long listeners;
+    int    num_yp_directories;
+    long listeners;
     long max_listeners;
     int send_return;
 } source_t;

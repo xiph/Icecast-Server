@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.3 2003/03/08 16:05:38 karl Exp $ */
+/* $Id: avl.c,v 1.4 2003/03/15 02:10:18 msmith Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -39,8 +39,8 @@
 #include "avl.h"
 
 avl_node *
-avl_node_new (void *		key,
-	      avl_node *	parent)
+avl_node_new (void *        key,
+          avl_node *    parent)
 {
   avl_node * node = (avl_node *) malloc (sizeof (avl_node));
 
@@ -57,11 +57,11 @@ avl_node_new (void *		key,
     thread_rwlock_create(&node->rwlock);
     return node;
   }
-}	     
+}         
 
 avl_tree *
 avl_tree_new (avl_key_compare_fun_type compare_fun,
-	      void * compare_arg)
+          void * compare_arg)
 {
   avl_tree * t = (avl_tree *) malloc (sizeof (avl_tree));
 
@@ -111,7 +111,7 @@ avl_tree_free (avl_tree * tree, avl_free_key_fun_type free_key_fun)
 
 int
 avl_insert (avl_tree * ob,
-	       void * key)
+           void * key)
 {
   if (!(ob->root->right)) {
     avl_node * node = avl_node_new (key, ob->root);
@@ -131,42 +131,42 @@ avl_insert (avl_tree * ob,
 
     while (1) {
       if (ob->compare_fun (ob->compare_arg, key, p->key) < 1) {
-	/* move left */
-	AVL_SET_RANK (p, (AVL_GET_RANK (p) + 1));
-	q = p->left;
-	if (!q) {
-	  /* insert */
-	  avl_node * q_node = avl_node_new (key, p);
-	  if (!q_node) {
-	    return (-1);
-	  } else {
-	    q = q_node;
-	    p->left = q;
-	    break;
-	  }
-	} else if (AVL_GET_BALANCE(q)) {
-	  t = p;
-	  s = q;
-	}
-	p = q;
+    /* move left */
+    AVL_SET_RANK (p, (AVL_GET_RANK (p) + 1));
+    q = p->left;
+    if (!q) {
+      /* insert */
+      avl_node * q_node = avl_node_new (key, p);
+      if (!q_node) {
+        return (-1);
       } else {
-	/* move right */
-	q = p->right;
-	if (!q) {
-	  /* insert */
-	  avl_node * q_node = avl_node_new (key, p);
-	  if (!q_node) {
-	    return -1;
-	  } else {
-	    q = q_node;
-	    p->right = q;
-	    break;
-	  }
-	} else if (AVL_GET_BALANCE(q)) {
-	  t = p;
-	  s = q;
-	}
-	p = q;
+        q = q_node;
+        p->left = q;
+        break;
+      }
+    } else if (AVL_GET_BALANCE(q)) {
+      t = p;
+      s = q;
+    }
+    p = q;
+      } else {
+    /* move right */
+    q = p->right;
+    if (!q) {
+      /* insert */
+      avl_node * q_node = avl_node_new (key, p);
+      if (!q_node) {
+        return -1;
+      } else {
+        q = q_node;
+        p->right = q;
+        break;
+      }
+    } else if (AVL_GET_BALANCE(q)) {
+      t = p;
+      s = q;
+    }
+    p = q;
       }
     }
     
@@ -180,11 +180,11 @@ avl_insert (avl_tree * ob,
     }
     while (p != q) {
       if (ob->compare_fun (ob->compare_arg, key, p->key) < 1) {
-	AVL_SET_BALANCE (p, -1);
-	p = p->left;
+    AVL_SET_BALANCE (p, -1);
+    p = p->left;
       } else {
-	AVL_SET_BALANCE (p, +1);
-	p = p->right;
+    AVL_SET_BALANCE (p, +1);
+    p = p->right;
       }
     }
     
@@ -205,79 +205,79 @@ avl_insert (avl_tree * ob,
       return 0;
     } else if (AVL_GET_BALANCE(s) == a) {
       if (AVL_GET_BALANCE (r) == a) {
-	/* single rotation */
-	p = r;
-	if (a == -1) {
-	  s->left = r->right;
-	  if (r->right) {
-	    r->right->parent = s;
-	  }
-	  r->right = s;
-	  s->parent = r;
-	  AVL_SET_RANK (s, (AVL_GET_RANK (s) - AVL_GET_RANK (r)));
-	} else {
-	  s->right = r->left;
-	  if (r->left) {
-	    r->left->parent = s;
-	  }
-	  r->left = s;
-	  s->parent = r;
-	  AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (s)));
-	}
-	AVL_SET_BALANCE (s, 0);
-	AVL_SET_BALANCE (r, 0);
+    /* single rotation */
+    p = r;
+    if (a == -1) {
+      s->left = r->right;
+      if (r->right) {
+        r->right->parent = s;
+      }
+      r->right = s;
+      s->parent = r;
+      AVL_SET_RANK (s, (AVL_GET_RANK (s) - AVL_GET_RANK (r)));
+    } else {
+      s->right = r->left;
+      if (r->left) {
+        r->left->parent = s;
+      }
+      r->left = s;
+      s->parent = r;
+      AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (s)));
+    }
+    AVL_SET_BALANCE (s, 0);
+    AVL_SET_BALANCE (r, 0);
       } else if (AVL_GET_BALANCE (r) == -a) {
-	/* double rotation */
-	if (a == -1) {
-	  p = r->right;
-	  r->right = p->left;
-	  if (p->left) {
-	    p->left->parent = r;
-	  }
-	  p->left = r;
-	  r->parent = p;
-	  s->left = p->right;
-	  if (p->right) {
-	    p->right->parent = s;
-	  }
-	  p->right = s;
-	  s->parent = p;
-	  AVL_SET_RANK (p, (AVL_GET_RANK (p) + AVL_GET_RANK (r)));
-	  AVL_SET_RANK (s, (AVL_GET_RANK (s) - AVL_GET_RANK (p)));
-	} else {
-	  p = r->left;
-	  r->left = p->right;
-	  if (p->right) {
-	    p->right->parent = r;
-	  }
-	  p->right = r;
-	  r->parent = p;
-	  s->right = p->left;
-	  if (p->left) {
-	    p->left->parent = s;
-	  }
-	  p->left = s;
-	  s->parent = p;
-	  AVL_SET_RANK (r, (AVL_GET_RANK (r) - AVL_GET_RANK (p)));
-	  AVL_SET_RANK (p, (AVL_GET_RANK (p) + AVL_GET_RANK (s)));
-	}
-	if (AVL_GET_BALANCE (p) == a) {
-	  AVL_SET_BALANCE (s, -a);
-	  AVL_SET_BALANCE (r, 0);
-	} else if (AVL_GET_BALANCE (p) == -a) {
-	  AVL_SET_BALANCE (s, 0);
-	  AVL_SET_BALANCE (r, a);
-	} else {
-	  AVL_SET_BALANCE (s, 0);
-	  AVL_SET_BALANCE (r, 0);
-	}
-	AVL_SET_BALANCE (p, 0);
+    /* double rotation */
+    if (a == -1) {
+      p = r->right;
+      r->right = p->left;
+      if (p->left) {
+        p->left->parent = r;
+      }
+      p->left = r;
+      r->parent = p;
+      s->left = p->right;
+      if (p->right) {
+        p->right->parent = s;
+      }
+      p->right = s;
+      s->parent = p;
+      AVL_SET_RANK (p, (AVL_GET_RANK (p) + AVL_GET_RANK (r)));
+      AVL_SET_RANK (s, (AVL_GET_RANK (s) - AVL_GET_RANK (p)));
+    } else {
+      p = r->left;
+      r->left = p->right;
+      if (p->right) {
+        p->right->parent = r;
+      }
+      p->right = r;
+      r->parent = p;
+      s->right = p->left;
+      if (p->left) {
+        p->left->parent = s;
+      }
+      p->left = s;
+      s->parent = p;
+      AVL_SET_RANK (r, (AVL_GET_RANK (r) - AVL_GET_RANK (p)));
+      AVL_SET_RANK (p, (AVL_GET_RANK (p) + AVL_GET_RANK (s)));
+    }
+    if (AVL_GET_BALANCE (p) == a) {
+      AVL_SET_BALANCE (s, -a);
+      AVL_SET_BALANCE (r, 0);
+    } else if (AVL_GET_BALANCE (p) == -a) {
+      AVL_SET_BALANCE (s, 0);
+      AVL_SET_BALANCE (r, a);
+    } else {
+      AVL_SET_BALANCE (s, 0);
+      AVL_SET_BALANCE (r, 0);
+    }
+    AVL_SET_BALANCE (p, 0);
       }
       /* finishing touch */
       if (s == t->right) {
-	t->right = p;
+    t->right = p;
       } else {
-	t->left = p;
+    t->left = p;
       }
       p->parent = t;
     }
@@ -287,8 +287,8 @@ avl_insert (avl_tree * ob,
 
 int
 avl_get_by_index (avl_tree * tree,
-		   unsigned long index,
-		   void ** value_address)
+           unsigned long index,
+           void ** value_address)
 {
   avl_node * p = tree->root->right;
   unsigned long m = index + 1;
@@ -307,11 +307,11 @@ avl_get_by_index (avl_tree * tree,
     }
   }
 }
-		   
+           
 int
 avl_get_by_key (avl_tree * tree,
-		 void * key,
-		 void **value_address)
+         void * key,
+         void **value_address)
 {
   avl_node * x = tree->root->right;
   if (!x) {
@@ -321,15 +321,15 @@ avl_get_by_key (avl_tree * tree,
     int compare_result = tree->compare_fun (tree->compare_arg, key, x->key);
     if (compare_result < 0) {
       if (x->left) {
-	x = x->left;
+    x = x->left;
       } else {
-	return -1;
+    return -1;
       }
     } else if (compare_result > 0) {
       if (x->right) {
-	x = x->right;
+    x = x->right;
       } else {
-	return -1;
+    return -1;
       }
     } else {
       *value_address = x->key;
@@ -356,33 +356,33 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
        */
       AVL_SET_RANK (x, (AVL_GET_RANK(x) - 1));
       if (x->left) {
-	x = x->left;
+    x = x->left;
       } else {
-	/* Oops! now we have to undo the rank changes
-	 * all the way up the tree
-	 */
-	AVL_SET_RANK(x, (AVL_GET_RANK (x) + 1));
-	while (x != tree->root->right) {
-	  if (x->parent->left == x) {
-	    AVL_SET_RANK(x->parent, (AVL_GET_RANK (x->parent) + 1));
-	  }
-	  x = x->parent;
-	}
-	return -1;		/* key not in tree */
+    /* Oops! now we have to undo the rank changes
+     * all the way up the tree
+     */
+    AVL_SET_RANK(x, (AVL_GET_RANK (x) + 1));
+    while (x != tree->root->right) {
+      if (x->parent->left == x) {
+        AVL_SET_RANK(x->parent, (AVL_GET_RANK (x->parent) + 1));
+      }
+      x = x->parent;
+    }
+    return -1;        /* key not in tree */
       }
     } else if (compare_result > 0) {
       /* move right */
       if (x->right) {
-	x = x->right;
+    x = x->right;
       } else {
-	AVL_SET_RANK(x, (AVL_GET_RANK (x) + 1));
-	while (x != tree->root->right) {
-	  if (x->parent->left == x) {
-	    AVL_SET_RANK(x->parent, (AVL_GET_RANK (x->parent) + 1));
-	  }
-	  x = x->parent;
-	}
-	return -1;		/* key not in tree */
+    AVL_SET_RANK(x, (AVL_GET_RANK (x) + 1));
+    while (x != tree->root->right) {
+      if (x->parent->left == x) {
+        AVL_SET_RANK(x->parent, (AVL_GET_RANK (x->parent) + 1));
+      }
+      x = x->parent;
+    }
+    return -1;        /* key not in tree */
       }
     } else {
       break;
@@ -453,15 +453,15 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
     /* case 1: height unchanged */
     if (AVL_GET_BALANCE(p) == 0) {
       if (shortened_side == -1) {
-	/* we removed a left child, the tree is now heavier
-	 * on the right
-	 */
-	AVL_SET_BALANCE (p, +1);
+    /* we removed a left child, the tree is now heavier
+     * on the right
+     */
+    AVL_SET_BALANCE (p, +1);
       } else {
-	/* we removed a right child, the tree is now heavier
-	 * on the left
-	 */
-	AVL_SET_BALANCE (p, -1);
+    /* we removed a right child, the tree is now heavier
+     * on the left
+     */
+    AVL_SET_BALANCE (p, -1);
       }
       shorter = 0;
       
@@ -473,125 +473,125 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
       top = p->parent;
       /* set <q> to the taller of the two subtrees of <p> */
       if (shortened_side == 1) {
-	q = p->left;
+    q = p->left;
       } else {
-	q = p->right;
+    q = p->right;
       }
       if (AVL_GET_BALANCE (q) == 0) {
-	/* case 3a: height unchanged */
-	if (shortened_side == -1) {
-	  /* single rotate left */
-	  q->parent = p->parent;
-	  p->right = q->left;
-	  if (q->left) {
-	    q->left->parent = p;
-	  }
-	  q->left = p;
-	  p->parent = q;
-	  AVL_SET_RANK (q, (AVL_GET_RANK (q) + AVL_GET_RANK (p)));
-	} else {
-	  /* single rotate right */
-	  q->parent = p->parent;
-	  p->left = q->right;
-	  if (q->right) {
-	    q->right->parent = p;
-	  }
-	  q->right = p;
-	  p->parent = q;
-	  AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (q)));
-	}
-	shorter = 0;
-	AVL_SET_BALANCE (q, shortened_side);
-	AVL_SET_BALANCE (p, (- shortened_side));
+    /* case 3a: height unchanged */
+    if (shortened_side == -1) {
+      /* single rotate left */
+      q->parent = p->parent;
+      p->right = q->left;
+      if (q->left) {
+        q->left->parent = p;
+      }
+      q->left = p;
+      p->parent = q;
+      AVL_SET_RANK (q, (AVL_GET_RANK (q) + AVL_GET_RANK (p)));
+    } else {
+      /* single rotate right */
+      q->parent = p->parent;
+      p->left = q->right;
+      if (q->right) {
+        q->right->parent = p;
+      }
+      q->right = p;
+      p->parent = q;
+      AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (q)));
+    }
+    shorter = 0;
+    AVL_SET_BALANCE (q, shortened_side);
+    AVL_SET_BALANCE (p, (- shortened_side));
       } else if (AVL_GET_BALANCE (q) == AVL_GET_BALANCE (p)) {
-	/* case 3b: height reduced */
-	if (shortened_side == -1) {
-	  /* single rotate left */
-	  q->parent = p->parent;
-	  p->right = q->left;
-	  if (q->left) {
-	    q->left->parent = p;
-	  }
-	  q->left = p;
-	  p->parent = q;
-	  AVL_SET_RANK (q, (AVL_GET_RANK (q) + AVL_GET_RANK (p)));
-	} else {
-	  /* single rotate right */
-	  q->parent = p->parent;
-	  p->left = q->right;
-	  if (q->right) {
-	    q->right->parent = p;
-	  }
-	  q->right = p;
-	  p->parent = q;
-	  AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (q)));
-	}
-	shorter = 1;
-	AVL_SET_BALANCE (q, 0);
-	AVL_SET_BALANCE (p, 0);
+    /* case 3b: height reduced */
+    if (shortened_side == -1) {
+      /* single rotate left */
+      q->parent = p->parent;
+      p->right = q->left;
+      if (q->left) {
+        q->left->parent = p;
+      }
+      q->left = p;
+      p->parent = q;
+      AVL_SET_RANK (q, (AVL_GET_RANK (q) + AVL_GET_RANK (p)));
+    } else {
+      /* single rotate right */
+      q->parent = p->parent;
+      p->left = q->right;
+      if (q->right) {
+        q->right->parent = p;
+      }
+      q->right = p;
+      p->parent = q;
+      AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (q)));
+    }
+    shorter = 1;
+    AVL_SET_BALANCE (q, 0);
+    AVL_SET_BALANCE (p, 0);
       } else {
-	/* case 3c: height reduced, balance factors opposite */
-	if (shortened_side == 1) {
-	  /* double rotate right */
-	  /* first, a left rotation around q */
-	  r = q->right;
-	  r->parent = p->parent;
-	  q->right = r->left;
-	  if (r->left) {
-	    r->left->parent = q;
-	  }
-	  r->left = q;
-	  q->parent = r;
-	  /* now, a right rotation around p */
-	  p->left = r->right;
-	  if (r->right) {
-	    r->right->parent = p;
-	  }
-	  r->right = p;
-	  p->parent = r;
-	  AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (q)));
-	  AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (r)));
-	} else {
-	  /* double rotate left */
-	  /* first, a right rotation around q */
-	  r = q->left;
-	  r->parent = p->parent;
-	  q->left = r->right;
-	  if (r->right) {
-	    r->right->parent = q;
-	  }
-	  r->right = q;
-	  q->parent = r;
-	  /* now a left rotation around p */
-	  p->right = r->left;
-	  if (r->left) {
-	    r->left->parent = p;
-	  }
-	  r->left = p;
-	  p->parent = r;
-	  AVL_SET_RANK (q, (AVL_GET_RANK (q) - AVL_GET_RANK (r)));
-	  AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (p)));	    
-	}
-	if (AVL_GET_BALANCE (r) == shortened_side) {
-	  AVL_SET_BALANCE (q, (- shortened_side));
-	  AVL_SET_BALANCE (p, 0);
-	} else if (AVL_GET_BALANCE (r) == (- shortened_side)) {
-	  AVL_SET_BALANCE (q, 0);
-	  AVL_SET_BALANCE (p, shortened_side);
-	} else {
-	  AVL_SET_BALANCE (q, 0);
-	  AVL_SET_BALANCE (p, 0);
-	}
-	AVL_SET_BALANCE (r, 0);
-	q = r;
+    /* case 3c: height reduced, balance factors opposite */
+    if (shortened_side == 1) {
+      /* double rotate right */
+      /* first, a left rotation around q */
+      r = q->right;
+      r->parent = p->parent;
+      q->right = r->left;
+      if (r->left) {
+        r->left->parent = q;
+      }
+      r->left = q;
+      q->parent = r;
+      /* now, a right rotation around p */
+      p->left = r->right;
+      if (r->right) {
+        r->right->parent = p;
+      }
+      r->right = p;
+      p->parent = r;
+      AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (q)));
+      AVL_SET_RANK (p, (AVL_GET_RANK (p) - AVL_GET_RANK (r)));
+    } else {
+      /* double rotate left */
+      /* first, a right rotation around q */
+      r = q->left;
+      r->parent = p->parent;
+      q->left = r->right;
+      if (r->right) {
+        r->right->parent = q;
+      }
+      r->right = q;
+      q->parent = r;
+      /* now a left rotation around p */
+      p->right = r->left;
+      if (r->left) {
+        r->left->parent = p;
+      }
+      r->left = p;
+      p->parent = r;
+      AVL_SET_RANK (q, (AVL_GET_RANK (q) - AVL_GET_RANK (r)));
+      AVL_SET_RANK (r, (AVL_GET_RANK (r) + AVL_GET_RANK (p)));        
+    }
+    if (AVL_GET_BALANCE (r) == shortened_side) {
+      AVL_SET_BALANCE (q, (- shortened_side));
+      AVL_SET_BALANCE (p, 0);
+    } else if (AVL_GET_BALANCE (r) == (- shortened_side)) {
+      AVL_SET_BALANCE (q, 0);
+      AVL_SET_BALANCE (p, shortened_side);
+    } else {
+      AVL_SET_BALANCE (q, 0);
+      AVL_SET_BALANCE (p, 0);
+    }
+    AVL_SET_BALANCE (r, 0);
+    q = r;
       }
       /* a rotation has caused <q> (or <r> in case 3c) to become
        * the root.  let <p>'s former parent know this.
        */
       if (top->left == p) {
-	top->left = q;
+    top->left = q;
       } else {
-	top->right = q;
+    top->right = q;
       }
       /* end case 3 */
       p = q;
@@ -612,8 +612,8 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
 
 int
 avl_iterate_inorder_helper (avl_node * node,
-			avl_iter_fun_type iter_fun,
-			void * iter_arg)
+            avl_iter_fun_type iter_fun,
+            void * iter_arg)
 {
   int result;
   if (node->left) {
@@ -637,8 +637,8 @@ avl_iterate_inorder_helper (avl_node * node,
 
 int
 avl_iterate_inorder (avl_tree * tree,
-		 avl_iter_fun_type iter_fun,
-		 void * iter_arg)
+         avl_iter_fun_type iter_fun,
+         void * iter_arg)
 {
   int result;
 
@@ -652,71 +652,71 @@ avl_iterate_inorder (avl_tree * tree,
 
 avl_node *avl_get_first(avl_tree *tree)
 {
-	avl_node *node;
-	
-	node = tree->root->right;
-	if (node == NULL || node->key == NULL) return NULL;
+    avl_node *node;
+    
+    node = tree->root->right;
+    if (node == NULL || node->key == NULL) return NULL;
 
-	while (node->left)
-		node = node->left;
+    while (node->left)
+        node = node->left;
 
-	return node;
+    return node;
 }
 
 avl_node *avl_get_prev(avl_node *node)
 {
-	if (node->left) {
-		node = node->left;
-		while (node->right) {
-			node = node->right;
-		}
+    if (node->left) {
+        node = node->left;
+        while (node->right) {
+            node = node->right;
+        }
 
-		return node;
-	} else {
-		avl_node *child = node;
-		while (node->parent && node->parent->key) {
-			node = node->parent;
-			if (child == node->right) {
-				return node;
-			}
-			child = node;
-		}
-		
-		return NULL;
-	}
+        return node;
+    } else {
+        avl_node *child = node;
+        while (node->parent && node->parent->key) {
+            node = node->parent;
+            if (child == node->right) {
+                return node;
+            }
+            child = node;
+        }
+        
+        return NULL;
+    }
 }
 
 avl_node *avl_get_next(avl_node *node)
 {
-	if (node->right) {
-		node = node->right;
-		while (node->left) {
-			node = node->left;
-		}
-		
-		return node;
-	} else {
-		avl_node *child = node;
-		while (node->parent && node->parent->key) {
-			node = node->parent;
-			if (child == node->left) {
-				return node;
-			}
-			child = node;
-		}
-		
-		return NULL;
-	}
+    if (node->right) {
+        node = node->right;
+        while (node->left) {
+            node = node->left;
+        }
+        
+        return node;
+    } else {
+        avl_node *child = node;
+        while (node->parent && node->parent->key) {
+            node = node->parent;
+            if (child == node->left) {
+                return node;
+            }
+            child = node;
+        }
+        
+        return NULL;
+    }
 }
 
 /* iterate a function over a range of indices, using get_predecessor */
 
 int
 avl_iterate_index_range (avl_tree * tree,
-		     avl_iter_index_fun_type iter_fun,
-		     unsigned long low,
-		     unsigned long high,
-		     void * iter_arg)
+             avl_iter_index_fun_type iter_fun,
+             unsigned long low,
+             unsigned long high,
+             void * iter_arg)
 {
   unsigned long m;
   unsigned long num_left;
@@ -757,8 +757,8 @@ avl_iterate_index_range (avl_tree * tree,
 
 avl_node *
 avl_get_index_by_key (avl_tree * tree,
-		  void * key,
-		  unsigned long * index)
+          void * key,
+          unsigned long * index)
 {
   avl_node * x = tree->root->right;
   unsigned long m;
@@ -772,20 +772,20 @@ avl_get_index_by_key (avl_tree * tree,
     int compare_result = tree->compare_fun (tree->compare_arg, key, x->key);
     if (compare_result < 0) {
       if (x->left) {
-	m = m - AVL_GET_RANK(x);
-	x = x->left;
-	m = m + AVL_GET_RANK(x);
+    m = m - AVL_GET_RANK(x);
+    x = x->left;
+    m = m + AVL_GET_RANK(x);
       } else {
-	*index = m - 2;
-	return NULL;
+    *index = m - 2;
+    return NULL;
       }
     } else if (compare_result > 0) {
       if (x->right) {
-	x = x->right;
-	m = m + AVL_GET_RANK(x);
+    x = x->right;
+    m = m + AVL_GET_RANK(x);
       } else {
-	*index = m - 1;
-	return NULL;
+    *index = m - 1;
+    return NULL;
       }
     } else {
       *index = m - 1;
@@ -798,9 +798,9 @@ avl_get_index_by_key (avl_tree * tree,
 
 int
 avl_get_span_by_key (avl_tree * tree,
-		 void * key,
-		 unsigned long * low,
-		 unsigned long * high)
+         void * key,
+         unsigned long * low,
+         unsigned long * high)
 {
   unsigned long m, i, j;
   avl_node * node;
@@ -841,10 +841,10 @@ avl_get_span_by_key (avl_tree * tree,
 
 int
 avl_get_span_by_two_keys (avl_tree * tree,
-		      void * low_key,
-		      void * high_key,
-		      unsigned long * low,
-		      unsigned long * high)
+              void * low_key,
+              void * high_key,
+              unsigned long * low,
+              unsigned long * high)
 {
   unsigned long i, j;
   avl_node * low_node, * high_node;
@@ -889,11 +889,11 @@ avl_get_span_by_two_keys (avl_tree * tree,
   return 0;
 }
 
-		   
+           
 int
 avl_get_item_by_key_most (avl_tree * tree,
-		      void * key,
-		      void **value_address)
+              void * key,
+              void **value_address)
 {
   avl_node * x = tree->root->right;
   *value_address = NULL;
@@ -910,25 +910,25 @@ avl_get_item_by_key_most (avl_tree * tree,
     } else if (compare_result < 0) {
       /* the given key is less than the current key */
       if (x->left) {
-	x = x->left;
+    x = x->left;
       } else {
-	if (*value_address) 
-	  return 0;
-	else
-	  return -1;
+    if (*value_address) 
+      return 0;
+    else
+      return -1;
       }
     } else {
       /* the given key is more than the current key */
       /* save this value, it might end up being the right one! */
       *value_address = x->key;
       if (x->right) {
-	/* there is a bigger entry */
-	x = x->right;
+    /* there is a bigger entry */
+    x = x->right;
       } else {
-	if (*value_address) 
-	  return 0;
-	else
-	  return -1;
+    if (*value_address) 
+      return 0;
+    else
+      return -1;
       }
     }
   }
@@ -936,8 +936,8 @@ avl_get_item_by_key_most (avl_tree * tree,
 
 int
 avl_get_item_by_key_least (avl_tree * tree,
-		       void * key,
-		       void **value_address)
+               void * key,
+               void **value_address)
 {
   avl_node * x = tree->root->right;
   *value_address = NULL;
@@ -955,22 +955,22 @@ avl_get_item_by_key_least (avl_tree * tree,
       /* save this value, it might end up being the right one! */
       *value_address = x->key;
       if (x->left) {
-	x = x->left;
+    x = x->left;
       } else {
-	if (*value_address)  /* we have found a valid entry */
-	  return 0; 
-	else
-	  return -1;
+    if (*value_address)  /* we have found a valid entry */
+      return 0; 
+    else
+      return -1;
       }
     } else {
       if (x->right) {
-	/* there is a bigger entry */
-	x = x->right;
+    /* there is a bigger entry */
+    x = x->right;
       } else {
-	if (*value_address)  /* we have found a valid entry */
-	  return 0; 
-	else
-	  return -1;
+    if (*value_address)  /* we have found a valid entry */
+      return 0; 
+    else
+      return -1;
       }
     }
   }
@@ -1054,9 +1054,9 @@ avl_verify (avl_tree * tree)
  */ 
 
 typedef struct _link_node {
-  struct _link_node	* parent;
-  char			direction;
-  int			width;
+  struct _link_node    * parent;
+  char            direction;
+  int            width;
 } link_node;  
 
 char balance_chars[3] = {'\\', '-', '/'};
@@ -1103,36 +1103,36 @@ print_connectors (link_node * link)
 
 void
 print_node (avl_key_printer_fun_type key_printer,
-	    avl_node * node,
-	    link_node * link)
+        avl_node * node,
+        link_node * link)
 {
   char buffer[256];
   unsigned int width;
   width = key_printer (buffer, node->key);
 
   if (node->right) {
-	  link_node here;
-	  here.parent = link;
-	  here.direction = 1;
-	  here.width = width + 11;
+      link_node here;
+      here.parent = link;
+      here.direction = 1;
+      here.width = width + 11;
     print_node (key_printer, node->right, &here);
   }
   print_connectors (link);
   fprintf (stdout, "+-[%c %s %03d]",
-	   balance_chars[AVL_GET_BALANCE(node)+1],
-	   buffer,
-	   (int)AVL_GET_RANK(node));
+       balance_chars[AVL_GET_BALANCE(node)+1],
+       buffer,
+       (int)AVL_GET_RANK(node));
   if (node->left || node->right) {
     fprintf (stdout, "-|\n");
   } else {
     fprintf (stdout, "\n");
   }
   if (node->left) {
-	  link_node here;
-	  here.parent = link;
-	  here.direction = -1;
-	  here.width = width + 11;
-	  print_node (key_printer, node->left, &here);
+      link_node here;
+      here.parent = link;
+      here.direction = -1;
+      here.width = width + 11;
+      print_node (key_printer, node->left, &here);
   } 
 }  
 
@@ -1153,30 +1153,30 @@ avl_print_tree (avl_tree * tree, avl_key_printer_fun_type key_printer)
 
 void avl_tree_rlock(avl_tree *tree)
 {
-	thread_rwlock_rlock(&tree->rwlock);
+    thread_rwlock_rlock(&tree->rwlock);
 }
 
 void avl_tree_wlock(avl_tree *tree)
 {
-	thread_rwlock_wlock(&tree->rwlock);
+    thread_rwlock_wlock(&tree->rwlock);
 }
 
 void avl_tree_unlock(avl_tree *tree)
 {
-	thread_rwlock_unlock(&tree->rwlock);
+    thread_rwlock_unlock(&tree->rwlock);
 }
 
 void avl_node_rlock(avl_node *node)
 {
-	thread_rwlock_rlock(&node->rwlock);
+    thread_rwlock_rlock(&node->rwlock);
 }
 
 void avl_node_wlock(avl_node *node)
 {
-	thread_rwlock_wlock(&node->rwlock);
+    thread_rwlock_wlock(&node->rwlock);
 }
 
 void avl_node_unlock(avl_node *node)
 {
-	thread_rwlock_unlock(&node->rwlock);
+    thread_rwlock_unlock(&node->rwlock);
 }

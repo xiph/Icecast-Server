@@ -12,7 +12,7 @@ void event_config_read(void *arg)
     int ret;
     ice_config_t *config;
     ice_config_t new_config;
-	/* reread config file */
+    /* reread config file */
 
     config = config_get_config(); /* Both to get the lock, and to be able
                                      to find out the config filename */

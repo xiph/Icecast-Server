@@ -15,9 +15,9 @@
 
 typedef struct ice_config_dir_tag
 {
-	char *host;
-	int touch_interval;
-	struct ice_config_dir_tag *next;
+    char *host;
+    int touch_interval;
+    struct ice_config_dir_tag *next;
 } ice_config_dir_t;
 
 typedef struct _relay_server {
@@ -52,33 +52,33 @@ typedef struct ice_config_tag
 {
     char *config_filename;
 
-	char *location;
-	char *admin;
+    char *location;
+    char *admin;
 
-	int client_limit;
-	int source_limit;
+    int client_limit;
+    int source_limit;
     long queue_size_limit;
-	int threadpool_size;
-	int client_timeout;
-	int header_timeout;
-	int source_timeout;
+    int threadpool_size;
+    int client_timeout;
+    int header_timeout;
+    int source_timeout;
     int ice_login;
     int fileserve;
 
-	char *source_password;
+    char *source_password;
     char *admin_username;
     char *admin_password;
 
-	int touch_interval;
-	ice_config_dir_t *dir_list;
+    int touch_interval;
+    ice_config_dir_t *dir_list;
 
-	char *hostname;
+    char *hostname;
     int port;
 
     listener_t listeners[MAX_LISTEN_SOCKETS];
 
-	char *master_server;
-	int master_server_port;
+    char *master_server;
+    int master_server_port;
     int master_update_interval;
     char *master_password;
 
@@ -86,12 +86,12 @@ typedef struct ice_config_tag
 
     mount_proxy *mounts;
 
-	char *base_dir;
-	char *log_dir;
-	char *webroot_dir;
+    char *base_dir;
+    char *log_dir;
+    char *webroot_dir;
 
-	char *access_log;
-	char *error_log;
+    char *access_log;
+    char *error_log;
     int loglevel;
 
     int chroot;
@@ -99,7 +99,7 @@ typedef struct ice_config_tag
     char *user;
     char *group;
     char *yp_url[MAX_YP_DIRECTORIES];
-    int	yp_url_timeout[MAX_YP_DIRECTORIES];
+    int    yp_url_timeout[MAX_YP_DIRECTORIES];
     int num_yp_directories;
 } ice_config_t;
 

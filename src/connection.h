@@ -11,16 +11,16 @@ struct _client_tag;
 
 typedef struct connection_tag
 {
-	unsigned long id;
+    unsigned long id;
 
-	time_t con_time;
-	uint64_t sent_bytes;
+    time_t con_time;
+    uint64_t sent_bytes;
 
-	int sock;
-	int error;
+    int sock;
+    int error;
 
-	char *ip;
-	char *host;
+    char *ip;
+    char *host;
 
     /* For 'fake' connections */
     int event_number;

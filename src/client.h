@@ -10,18 +10,18 @@
 
 typedef struct _client_tag
 {
-	/* the clients connection */
-	connection_t *con;
-	/* the clients http headers */
-	http_parser_t *parser;
+    /* the clients connection */
+    connection_t *con;
+    /* the clients http headers */
+    http_parser_t *parser;
 
-	/* http response code for this client */
-	int respcode;
+    /* http response code for this client */
+    int respcode;
 
-	/* buffer queue */
-	refbuf_queue_t *queue;
-	/* position in first buffer */
-	unsigned long pos;
+    /* buffer queue */
+    refbuf_queue_t *queue;
+    /* position in first buffer */
+    unsigned long pos;
 
     /* Format-handler-specific data for this client */
     void *format_data;

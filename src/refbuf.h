@@ -8,18 +8,18 @@
 
 typedef struct _refbuf_tag
 {
-	char *data;
-	long len;
+    char *data;
+    long len;
 
-	unsigned long _count;
+    unsigned long _count;
 } refbuf_t;
 
 typedef struct _refbuf_queue_tag
 {
-	refbuf_t *refbuf;
+    refbuf_t *refbuf;
     long total_length;
-	
-	struct _refbuf_queue_tag *next;
+    
+    struct _refbuf_queue_tag *next;
 } refbuf_queue_t;
 
 void refbuf_initialize(void);

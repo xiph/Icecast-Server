@@ -41,126 +41,126 @@
 
 static void _print_usage()
 {
-	printf("Usage:\n");
-	printf("\ticecast -c <file>\t\tSpecify configuration file\n");
-	printf("\n");
+    printf("Usage:\n");
+    printf("\ticecast -c <file>\t\tSpecify configuration file\n");
+    printf("\n");
 }
 
 static void _stop_logging(void)
 {
-	log_close(errorlog);
-	log_close(accesslog);
+    log_close(errorlog);
+    log_close(accesslog);
 }
 
 static void _initialize_subsystems(void)
 {
-	log_initialize();
-	thread_initialize();
-	sock_initialize();
-	resolver_initialize();
-	config_initialize();
-	connection_initialize();
-	global_initialize();
-	refbuf_initialize();
+    log_initialize();
+    thread_initialize();
+    sock_initialize();
+    resolver_initialize();
+    config_initialize();
+    connection_initialize();
+    global_initialize();
+    refbuf_initialize();
     xslt_initialize();
-	curl_initialize();
+    curl_initialize();
 }
 
 static void _shutdown_subsystems(void)
 {
-	curl_shutdown();
+    curl_shutdown();
     fserve_shutdown();
     xslt_shutdown();
-	refbuf_shutdown();
-	stats_shutdown();
-	slave_shutdown();
+    refbuf_shutdown();
+    stats_shutdown();
+    slave_shutdown();
 
     /* Now that these are done, we can stop the loggers. */
-	_stop_logging();
+    _stop_logging();
 
-	global_shutdown();
-	connection_shutdown();
-	config_shutdown();
-	resolver_shutdown();
-	sock_shutdown();
-	thread_shutdown();
-	log_shutdown();
+    global_shutdown();
+    connection_shutdown();
+    config_shutdown();
+    resolver_shutdown();
+    sock_shutdown();
+    thread_shutdown();
+    log_shutdown();
 
     xmlCleanupParser();
 }
 
 static int _parse_config_file(int argc, char **argv, char *filename, int size)
 {
-	int i = 1;
-	int	processID = 0;
+    int i = 1;
+    int    processID = 0;
 
-	if (argc < 3) return -1;
+    if (argc < 3) return -1;
 
-	while (i < argc) {
-		if (strcmp(argv[i], "-b") == 0) {
+    while (i < argc) {
+        if (strcmp(argv[i], "-b") == 0) {
 #ifndef WIN32
-				fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
-				if ((processID = (int)fork()) > 0) {
-						/* exit the parent */
-						_exit(0);
-				}
+                fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
+                if ((processID = (int)fork()) > 0) {
+                        /* exit the parent */
+                        _exit(0);
+                }
 #endif
-		}
-		if (strcmp(argv[i], "-c") == 0) {
-			if (i + 1 < argc) {
-				strncpy(filename, argv[i + 1], size-1);
+        }
+        if (strcmp(argv[i], "-c") == 0) {
+            if (i + 1 < argc) {
+                strncpy(filename, argv[i + 1], size-1);
                 filename[size-1] = 0;
-				return 1;
-			} else {
-				return -1;
-			}
-		}
-		i++;
-	}
+                return 1;
+            } else {
+                return -1;
+            }
+        }
+        i++;
+    }
 
-	return -1;
+    return -1;
 }
 
 static int _start_logging(void)
 {
-	char fn_error[FILENAME_MAX];
-	char fn_access[FILENAME_MAX];
-	ice_config_t *config = config_get_config_unlocked();
+    char fn_error[FILENAME_MAX];
+    char fn_access[FILENAME_MAX];
+    ice_config_t *config = config_get_config_unlocked();
 
-	if(strcmp(config->error_log, "-")) {
+    if(strcmp(config->error_log, "-")) {
         snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
-	    errorlog = log_open(fn_error);
+        errorlog = log_open(fn_error);
     } else {
         errorlog = log_open_file(stderr);
     }
-	if(strcmp(config->access_log, "-")) {
+    if(strcmp(config->access_log, "-")) {
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
-	    accesslog = log_open(fn_access);
+        accesslog = log_open(fn_access);
     } else {
         accesslog = log_open_file(stderr);
     }
-	
-	log_set_level(errorlog, config->loglevel);
-	log_set_level(accesslog, 4);
+    
+    log_set_level(errorlog, config->loglevel);
+    log_set_level(accesslog, 4);
 
-	if (errorlog < 0)
-		fprintf(stderr, "FATAL: could not open %s for error logging\n", fn_error);
-	if (accesslog < 0)
-		fprintf(stderr, "FATAL: could not open %s for access logging\n", fn_access);
+    if (errorlog < 0)
+        fprintf(stderr, "FATAL: could not open %s for error logging\n", fn_error);
+    if (accesslog < 0)
+        fprintf(stderr, "FATAL: could not open %s for access logging\n", fn_access);
 
-	if (errorlog >= 0 && accesslog >= 0) return 1;
-	
-	return 0;
+    if (errorlog >= 0 && accesslog >= 0) return 1;
+    
+    return 0;
 }
 
 static int _setup_sockets(void)
 {
-	ice_config_t *config;
+    ice_config_t *config;
     int i = 0;
     int ret = 0;
     int successful = 0;
 
-	config = config_get_config_unlocked();
+    config = config_get_config_unlocked();
 
     for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
         if(config->listeners[i].port <= 0)
@@ -169,8 +169,8 @@ static int _setup_sockets(void)
         global.serversock[i] = sock_get_server_socket(
                 config->listeners[i].port, config->listeners[i].bind_address);
 
-    	if (global.serversock[i] == SOCK_ERROR) {
-		    fprintf(stderr, "Could not create listener socket on port %d\n", 
+        if (global.serversock[i] == SOCK_ERROR) {
+            fprintf(stderr, "Could not create listener socket on port %d\n", 
                     config->listeners[i].port);
             return 0;
         }
@@ -181,33 +181,33 @@ static int _setup_sockets(void)
     }
 
     global.server_sockets = successful;
-	
-	return ret;
+    
+    return ret;
 }
 
 static int _start_listening(void)
 {
     int i;
     for(i=0; i < global.server_sockets; i++) {
-    	if (sock_listen(global.serversock[i], ICE_LISTEN_QUEUE) == SOCK_ERROR)
-	    	return 0;
+        if (sock_listen(global.serversock[i], ICE_LISTEN_QUEUE) == SOCK_ERROR)
+            return 0;
 
-	    sock_set_blocking(global.serversock[i], SOCK_NONBLOCK);
+        sock_set_blocking(global.serversock[i], SOCK_NONBLOCK);
     }
 
-	return 1;
+    return 1;
 }
 
 /* bind the socket and start listening */
 static int _server_proc_init(void)
 {
-	if (!_setup_sockets())
-		return 0;
+    if (!_setup_sockets())
+        return 0;
 
-	if (!_start_listening()) {
-		fprintf(stderr, "Failed trying to listen on server socket\n");
-		return 0;
-	}
+    if (!_start_listening()) {
+        fprintf(stderr, "Failed trying to listen on server socket\n");
+        return 0;
+    }
 
     return 1;
 }
@@ -217,10 +217,10 @@ static void _server_proc(void)
 {
     int i;
 
-	connection_accept_loop();
+    connection_accept_loop();
 
     for(i=0; i < MAX_LISTEN_SOCKETS; i++)
-    	sock_close(global.serversock[i]);
+        sock_close(global.serversock[i]);
 }
 
 /* chroot the process. Watch out - we need to do this before starting other
@@ -302,47 +302,47 @@ static void _ch_root_uid_setup(void)
 
 int main(int argc, char **argv)
 {
-	int res, ret;
-	char filename[512];
+    int res, ret;
+    char filename[512];
 
-	/* parse the '-c icecast.xml' option
-	** only, so that we can read a configfile
-	*/
-	res = _parse_config_file(argc, argv, filename, 512);
-	if (res == 1) {
-	    /* startup all the modules */
-    	_initialize_subsystems();
+    /* parse the '-c icecast.xml' option
+    ** only, so that we can read a configfile
+    */
+    res = _parse_config_file(argc, argv, filename, 512);
+    if (res == 1) {
+        /* startup all the modules */
+        _initialize_subsystems();
 
-		/* parse the config file */
+        /* parse the config file */
         config_get_config();
-		ret = config_initial_parse_file(filename);
+        ret = config_initial_parse_file(filename);
         config_release_config();
-		if (ret < 0) {
-			fprintf(stderr, "FATAL: error parsing config file:");
-			switch (ret) {
-			case CONFIG_EINSANE:
-				fprintf(stderr, "filename was null or blank\n");
-				break;
-			case CONFIG_ENOROOT:
-				fprintf(stderr, "no root element found\n");
-				break;
-			case CONFIG_EBADROOT:
-				fprintf(stderr, "root element is not <icecast>\n");
-				break;
-			default:
-				fprintf(stderr, "parse error\n");
-				break;
-			}
+        if (ret < 0) {
+            fprintf(stderr, "FATAL: error parsing config file:");
+            switch (ret) {
+            case CONFIG_EINSANE:
+                fprintf(stderr, "filename was null or blank\n");
+                break;
+            case CONFIG_ENOROOT:
+                fprintf(stderr, "no root element found\n");
+                break;
+            case CONFIG_EBADROOT:
+                fprintf(stderr, "root element is not <icecast>\n");
+                break;
+            default:
+                fprintf(stderr, "parse error\n");
+                break;
+            }
             _shutdown_subsystems();
             return 1;
-		}
-	} else if (res == -1) {
-		_print_usage();
-		return 1;
-	}
-	
-	/* override config file options with commandline options */
-	config_parse_cmdline(argc, argv);
+        }
+    } else if (res == -1) {
+        _print_usage();
+        return 1;
+    }
+    
+    /* override config file options with commandline options */
+    config_parse_cmdline(argc, argv);
 
     /* Bind socket, before we change userid */
     if(!_server_proc_init()) {
@@ -371,28 +371,28 @@ int main(int argc, char **argv)
     /* setup default signal handlers */
     sighandler_initialize();
 
-	if (!_start_logging()) {
-		fprintf(stderr, "FATAL: Could not start logging\n");
-		_shutdown_subsystems();
-		return 1;
-	}
+    if (!_start_logging()) {
+        fprintf(stderr, "FATAL: Could not start logging\n");
+        _shutdown_subsystems();
+        return 1;
+    }
 
     /* Do this after logging init */
     slave_initialize();
 
-	INFO0("icecast server started");
+    INFO0("icecast server started");
 
-	/* REM 3D Graphics */
+    /* REM 3D Graphics */
 
-	/* let her rip */
-	global.running = ICE_RUNNING;
-	_server_proc();
+    /* let her rip */
+    global.running = ICE_RUNNING;
+    _server_proc();
 
-	INFO0("Shutting down");
+    INFO0("Shutting down");
 
-	_shutdown_subsystems();
+    _shutdown_subsystems();
 
-	return 0;
+    return 0;
 }
 
 

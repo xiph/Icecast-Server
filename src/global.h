@@ -14,15 +14,15 @@
 
 typedef struct ice_global_tag
 {
-	int serversock[MAX_LISTEN_SOCKETS];
+    int serversock[MAX_LISTEN_SOCKETS];
     int server_sockets;
 
-	int running;
+    int running;
 
-	int sources;
-	int clients;
+    int sources;
+    int clients;
 
-	avl_tree *source_tree;
+    avl_tree *source_tree;
 
     cond_t shutdown_cond;
 } ice_global_t;

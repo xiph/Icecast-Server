@@ -20,26 +20,26 @@ static mutex_t _global_mutex;
 void global_initialize(void)
 {
     memset(global.serversock, 0, sizeof(int)*MAX_LISTEN_SOCKETS);
-	global.server_sockets = 0;
-	global.running = 0;
-	global.clients = 0;
-	global.sources = 0;
-	global.source_tree = avl_tree_new(source_compare_sources, NULL);
-	thread_mutex_create(&_global_mutex);
+    global.server_sockets = 0;
+    global.running = 0;
+    global.clients = 0;
+    global.sources = 0;
+    global.source_tree = avl_tree_new(source_compare_sources, NULL);
+    thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
 {
-	thread_mutex_destroy(&_global_mutex);
-	avl_tree_free(global.source_tree, source_free_source);
+    thread_mutex_destroy(&_global_mutex);
+    avl_tree_free(global.source_tree, source_free_source);
 }
 
 void global_lock(void)
 {
-	thread_mutex_lock(&_global_mutex);
+    thread_mutex_lock(&_global_mutex);
 }
 
 void global_unlock(void)
 {
-	thread_mutex_unlock(&_global_mutex);
+    thread_mutex_unlock(&_global_mutex);
 }

@@ -11,52 +11,52 @@
 
 typedef struct _stats_connection_tag
 {
-	connection_t *con;
-	http_parser_t *parser;
+    connection_t *con;
+    http_parser_t *parser;
 } stats_connection_t;
 
 typedef struct _stats_node_tag
 {
-	char *name;
-	char *value;
+    char *name;
+    char *value;
 } stats_node_t;
 
 typedef struct _stats_event_tag
 {
-	char *source;
-	char *name;
-	char *value;
+    char *source;
+    char *name;
+    char *value;
 
-	struct _stats_event_tag *next;
+    struct _stats_event_tag *next;
 } stats_event_t;
 
 typedef struct _stats_source_tag
 {
-	char *source;
-	avl_tree *stats_tree;
+    char *source;
+    avl_tree *stats_tree;
 } stats_source_t;
 
 typedef struct _stats_tag
 {
-	avl_tree *global_tree;
+    avl_tree *global_tree;
 
-	/* global stats
-	start_time
-	total_users
-	max_users
-	total_sources
-	max_sources
-	total_user_connections
-	total_source_connections
-	*/
+    /* global stats
+    start_time
+    total_users
+    max_users
+    total_sources
+    max_sources
+    total_user_connections
+    total_source_connections
+    */
 
-	avl_tree *source_tree;
+    avl_tree *source_tree;
 
-	/* stats by source, and for stats
-	start_time
-	total_users
-	max_users
-	*/
+    /* stats by source, and for stats
+    start_time
+    total_users
+    max_users
+    */
 
 } stats_t;
 

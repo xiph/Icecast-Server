@@ -24,10 +24,10 @@ void _sig_die(int signo);
 void sighandler_initialize(void)
 {
 #ifndef _WIN32
-	signal(SIGHUP, _sig_hup);
-	signal(SIGINT, _sig_die);
-	signal(SIGTERM, _sig_die);
-	signal(SIGPIPE, SIG_IGN);
+    signal(SIGHUP, _sig_hup);
+    signal(SIGINT, _sig_die);
+    signal(SIGTERM, _sig_die);
+    signal(SIGPIPE, SIG_IGN);
 #endif
 }
 
@@ -40,25 +40,25 @@ void _sig_hup(int signo)
      * practice.
      */
 
-	INFO1("Caught signal %d, scheduling config reread ...", 
+    INFO1("Caught signal %d, scheduling config reread ...", 
             signo);
 
-	/* reread config file */
+    /* reread config file */
 
     connection_inject_event(EVENT_CONFIG_READ, NULL);
     
-	/* reopen logfiles (TODO: We don't do this currently) */
+    /* reopen logfiles (TODO: We don't do this currently) */
 
-	/* some OSes require us to reattach the signal handler */
-	signal(SIGHUP, _sig_hup);
+    /* some OSes require us to reattach the signal handler */
+    signal(SIGHUP, _sig_hup);
 }
 
 void _sig_die(int signo)
 {
-	INFO1("Caught signal %d, shutting down...", signo);
+    INFO1("Caught signal %d, shutting down...", signo);
 
-	/* inform the server to start shutting down */
-	global.running = ICE_HALTING;
+    /* inform the server to start shutting down */
+    global.running = ICE_HALTING;
 }
 
 #endif

@@ -70,40 +70,40 @@ int util_timed_wait_for_fd(int fd, int timeout)
 
 int util_read_header(int sock, char *buff, unsigned long len)
 {
-	int read_bytes, ret;
-	unsigned long pos;
-	char c;
-	ice_config_t *config;
+    int read_bytes, ret;
+    unsigned long pos;
+    char c;
+    ice_config_t *config;
     int header_timeout;
 
-	config = config_get_config();
+    config = config_get_config();
     header_timeout = config->header_timeout;
     config_release_config();
 
-	read_bytes = 1;
-	pos = 0;
-	ret = 0;
+    read_bytes = 1;
+    pos = 0;
+    ret = 0;
 
-	while ((read_bytes == 1) && (pos < (len - 1))) {
-		read_bytes = 0;
+    while ((read_bytes == 1) && (pos < (len - 1))) {
+        read_bytes = 0;
 
         if (util_timed_wait_for_fd(sock, header_timeout*1000) > 0) {
 
-			if ((read_bytes = recv(sock, &c, 1, 0))) {
-				if (c != '\r') buff[pos++] = c;
-				if ((pos > 1) && (buff[pos - 1] == '\n' && buff[pos - 2] == '\n')) {
-					ret = 1;
-					break;
-				}
-			}
-		} else {
-    		break;
-		}
-	}
+            if ((read_bytes = recv(sock, &c, 1, 0))) {
+                if (c != '\r') buff[pos++] = c;
+                if ((pos > 1) && (buff[pos - 1] == '\n' && buff[pos - 2] == '\n')) {
+                    ret = 1;
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }
 
-	if (ret) buff[pos] = '\0';
-	
-	return ret;
+    if (ret) buff[pos] = '\0';
+    
+    return ret;
 }
 
 char *util_get_extension(char *path) {
@@ -116,35 +116,35 @@ char *util_get_extension(char *path) {
 }
 
 int util_check_valid_extension(char *uri) {
-	int	ret = 0;
-	char	*p2;
+    int    ret = 0;
+    char    *p2;
 
-	if (uri) {
-		p2 = strrchr(uri, '.');
-		if (p2) {
-			p2++;
-			if (strncmp(p2, "xsl", strlen("xsl")) == 0) {
-				/* Build the full path for the request, concatenating the webroot from the config.
-				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-				*/
-				ret = XSLT_CONTENT;
-			}
-			if (strncmp(p2, "htm", strlen("htm")) == 0) {
-				/* Build the full path for the request, concatenating the webroot from the config.
-				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-				*/
-				ret = HTML_CONTENT;
-			}
-			if (strncmp(p2, "html", strlen("html")) == 0) {
-				/* Build the full path for the request, concatenating the webroot from the config.
-				** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-				*/
-				ret = HTML_CONTENT;
-			}
+    if (uri) {
+        p2 = strrchr(uri, '.');
+        if (p2) {
+            p2++;
+            if (strncmp(p2, "xsl", strlen("xsl")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = XSLT_CONTENT;
+            }
+            if (strncmp(p2, "htm", strlen("htm")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = HTML_CONTENT;
+            }
+            if (strncmp(p2, "html", strlen("html")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = HTML_CONTENT;
+            }
 
-		}
-	}
-	return ret;
+        }
+    }
+    return ret;
 }
 
 static int hex(char c)
@@ -442,7 +442,7 @@ char *util_base64_decode(unsigned char *input)
 
 util_dict *util_dict_new(void)
 {
-	return (util_dict *)calloc(1, sizeof(util_dict));
+    return (util_dict *)calloc(1, sizeof(util_dict));
 }
 
 void util_dict_free(util_dict *dict)
@@ -464,59 +464,59 @@ void util_dict_free(util_dict *dict)
 
 const char *util_dict_get(util_dict *dict, const char *key)
 {
-	while (dict) {
-		if (!strcmp(key, dict->key))
-			return dict->val;
-		dict = dict->next;
-	}
+    while (dict) {
+        if (!strcmp(key, dict->key))
+            return dict->val;
+        dict = dict->next;
+    }
     return NULL;
 }
 
 int util_dict_set(util_dict *dict, const char *key, const char *val)
 {
-	util_dict *prev;
+    util_dict *prev;
 
-	if (!dict || !key) {
+    if (!dict || !key) {
         ERROR0("NULL values passed to util_dict_set()");
         return 0;
     }
 
-	prev = NULL;
-	while (dict) {
-		if (!dict->key || !strcmp(dict->key, key))
-			break;
-		prev = dict;
-		dict = dict->next;
-	}
+    prev = NULL;
+    while (dict) {
+        if (!dict->key || !strcmp(dict->key, key))
+            break;
+        prev = dict;
+        dict = dict->next;
+    }
 
-	if (!dict) {
-		dict = util_dict_new();
-		if (!dict) {
+    if (!dict) {
+        dict = util_dict_new();
+        if (!dict) {
             ERROR0("unable to allocate new dictionary");
-			return 0;
+            return 0;
         }
-		if (prev)
-			prev->next = dict;
-	}
+        if (prev)
+            prev->next = dict;
+    }
 
-	if (dict->key)
-		free (dict->val);
-	else if (!(dict->key = strdup(key))) {
-		if (prev)
-			prev->next = NULL;
-		util_dict_free (dict);
+    if (dict->key)
+        free (dict->val);
+    else if (!(dict->key = strdup(key))) {
+        if (prev)
+            prev->next = NULL;
+        util_dict_free (dict);
 
         ERROR0("unable to allocate new dictionary key");
         return 0;
-	}
+    }
 
-	dict->val = strdup(val);
-	if (!dict->val) {
+    dict->val = strdup(val);
+    if (!dict->val) {
         ERROR0("unable to allocate new dictionary value");
         return 0;
-	}
+    }
 
-	return 1;
+    return 1;
 }
 
 /* given a dictionary, URL-encode each key and val and 
@@ -525,56 +525,56 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
   TODO: Memory management needs overhaul. */
 char *util_dict_urlencode(util_dict *dict, char delim)
 {
-	char *res, *tmp;
-	char *enc;
-	int start = 1;
+    char *res, *tmp;
+    char *enc;
+    int start = 1;
 
-	for (res = NULL; dict; dict = dict->next) {
-		/* encode key */
-		if (!dict->key)
-			continue;
-		if (!(enc = util_url_escape(dict->key))) {
-			if (res)
-				free(res);
-			return NULL;
-		}
-		if (start) {
-			if (!(res = malloc(strlen(enc) + 1))) {
-				free(enc);
-				return NULL;
-			}
-			sprintf(res, "%s", enc);
-			free(enc);
-			start = 0;
-		} else {
-			if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
-				free(enc);
-				free(res);
-				return NULL;
-			} else
-				res = tmp;
-			sprintf(res + strlen(res), "%c%s", delim, enc);
-			free(enc);
-		}
+    for (res = NULL; dict; dict = dict->next) {
+        /* encode key */
+        if (!dict->key)
+            continue;
+        if (!(enc = util_url_escape(dict->key))) {
+            if (res)
+                free(res);
+            return NULL;
+        }
+        if (start) {
+            if (!(res = malloc(strlen(enc) + 1))) {
+                free(enc);
+                return NULL;
+            }
+            sprintf(res, "%s", enc);
+            free(enc);
+            start = 0;
+        } else {
+            if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
+                free(enc);
+                free(res);
+                return NULL;
+            } else
+                res = tmp;
+            sprintf(res + strlen(res), "%c%s", delim, enc);
+            free(enc);
+        }
 
-		/* encode value */
-		if (!dict->val)
-			continue;
-		if (!(enc = util_url_escape(dict->val))) {
-			free(res);
-			return NULL;
-		}
+        /* encode value */
+        if (!dict->val)
+            continue;
+        if (!(enc = util_url_escape(dict->val))) {
+            free(res);
+            return NULL;
+        }
 
-		if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
-			free(enc);
-			free(res);
-			return NULL;
-		} else
-			res = tmp;
-		sprintf(res + strlen(res), "=%s", enc);
-		free(enc);
-	}
+        if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
+            free(enc);
+            free(res);
+            return NULL;
+        } else
+            res = tmp;
+        sprintf(res + strlen(res), "=%s", enc);
+        free(enc);
+    }
 
-	return res;
+    return res;
 }
 

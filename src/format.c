@@ -57,23 +57,23 @@ char *format_get_mimetype(format_type_t type)
 format_plugin_t *format_get_plugin(format_type_t type, char *mount, 
         http_parser_t *parser)
 {
-	format_plugin_t *plugin;
+    format_plugin_t *plugin;
 
-	switch (type) {
-	case FORMAT_TYPE_VORBIS:
-		plugin = format_vorbis_get_plugin();
-		if (plugin) plugin->mount = mount;
-		break;
+    switch (type) {
+    case FORMAT_TYPE_VORBIS:
+        plugin = format_vorbis_get_plugin();
+        if (plugin) plugin->mount = mount;
+        break;
     case FORMAT_TYPE_MP3:
         plugin = format_mp3_get_plugin(parser);
         if (plugin) plugin->mount = mount;
         break;
-	default:
-		plugin = NULL;
-		break;
-	}
+    default:
+        plugin = NULL;
+        break;
+    }
 
-	return plugin;
+    return plugin;
 }
 
 int format_generic_write_buf_to_client(format_plugin_t *format, 
@@ -102,21 +102,21 @@ void format_send_general_headers(format_plugin_t *format,
     avl_node *node;
     int bytes;
 
-	/* iterate through source http headers and send to client */
-	avl_tree_rlock(source->parser->vars);
-	node = avl_get_first(source->parser->vars);
-	while (node) {
-		var = (http_var_t *)node->key;
-		if (strcasecmp(var->name, "ice-password") && 
+    /* iterate through source http headers and send to client */
+    avl_tree_rlock(source->parser->vars);
+    node = avl_get_first(source->parser->vars);
+    while (node) {
+        var = (http_var_t *)node->key;
+        if (strcasecmp(var->name, "ice-password") && 
                 (!strncasecmp("ice-", var->name, 4) ||
                  !strncasecmp("icy-", var->name, 4))) { 
             bytes = sock_write(client->con->sock, 
                     "%s: %s\r\n", var->name, var->value);
             if(bytes > 0) client->con->sent_bytes += bytes;
-		}
-		node = avl_get_next(node);
-	}
-	avl_tree_unlock(source->parser->vars);
+        }
+        node = avl_get_next(node);
+    }
+    avl_tree_unlock(source->parser->vars);
     bytes = sock_write(client->con->sock,
             "Server: %s\r\n", ICECAST_VERSION_STRING);
     if(bytes > 0) client->con->sent_bytes += bytes;

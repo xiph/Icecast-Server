@@ -134,27 +134,27 @@ static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
 void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
 {
     xmlOutputBufferPtr outputBuffer;
-	xmlDocPtr	res;
-	xsltStylesheetPtr cur;
-	const char *params[16 + 1];
+    xmlDocPtr    res;
+    xsltStylesheetPtr cur;
+    const char *params[16 + 1];
     size_t count,bytes;
 
-	params[0] = NULL;
+    params[0] = NULL;
 
-	xmlSubstituteEntitiesDefault(1);
-	xmlLoadExtDtdDefaultValue = 1;
+    xmlSubstituteEntitiesDefault(1);
+    xmlLoadExtDtdDefaultValue = 1;
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
     thread_mutex_unlock(&xsltlock);
 
-	if (cur == NULL) {
-		bytes = sock_write_string(client->con->sock, 
+    if (cur == NULL) {
+        bytes = sock_write_string(client->con->sock, 
                 (char *)"Could not parse XSLT file");
         if(bytes > 0) client->con->sent_bytes += bytes;
         
         return;
-	}
+    }
 
     res = xsltApplyStylesheet(cur, doc, params);
 
@@ -165,7 +165,7 @@ void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
     /*  Add null byte to end. */
     bytes = xmlOutputBufferWrite(outputBuffer, 1, "");
 
-	if(sock_write_string(client->con->sock, 
+    if(sock_write_string(client->con->sock, 
                 (char *)outputBuffer->buffer->content))
         client->con->sent_bytes += bytes;
     

@@ -47,7 +47,7 @@
 #define ENOTSOCK WSAENOTSOCK
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define EALREADY WSAEALREADY
-#define socklen_t	int
+#define socklen_t    int
 #endif
 
 #include "sock.h"
@@ -61,11 +61,11 @@
 void sock_initialize(void)
 {
 #ifdef _WIN32
-	WSADATA wsad;
-	WSAStartup(0x0101, &wsad);
+    WSADATA wsad;
+    WSAStartup(0x0101, &wsad);
 #endif
 
-	resolver_initialize();
+    resolver_initialize();
 }
 
 /* sock_shutdown
@@ -76,7 +76,7 @@ void sock_initialize(void)
 void sock_shutdown(void)
 {
 #ifdef _WIN32
-	WSACleanup();
+    WSACleanup();
 #endif
 }
 
@@ -89,15 +89,15 @@ void sock_shutdown(void)
 */
 char *sock_get_localip(char *buff, int len)
 {
-	char temp[1024];
+    char temp[1024];
 
-	if (gethostname(temp, 1024) != 0)
-		return NULL;
+    if (gethostname(temp, 1024) != 0)
+        return NULL;
 
-	if (resolver_getip(temp, buff, len))
-		return buff;
+    if (resolver_getip(temp, buff, len))
+        return buff;
 
-	return NULL;
+    return NULL;
 }
 
 /* sock_error
@@ -107,9 +107,9 @@ char *sock_get_localip(char *buff, int len)
 int sock_error(void)
 {
 #ifdef _WIN32
-	return WSAGetLastError();
+    return WSAGetLastError();
 #else
-	return errno;
+    return errno;
 #endif
 }
 
@@ -163,15 +163,15 @@ int sock_valid_socket(sock_t sock)
 #ifdef _WIN32
 int inet_aton(const char *s, struct in_addr *a)
 {
-	int lsb, b2, b3, msb;
+    int lsb, b2, b3, msb;
 
-	if (sscanf(s, "%d.%d.%d.%d", &lsb, &b2, &b3, &msb) < 4) {
-		return 0;
-	}
+    if (sscanf(s, "%d.%d.%d.%d", &lsb, &b2, &b3, &msb) < 4) {
+        return 0;
+    }
 
-	a->s_addr = inet_addr(s);
+    a->s_addr = inet_addr(s);
     
-	return (a->s_addr != INADDR_NONE);
+    return (a->s_addr != INADDR_NONE);
 }
 #endif /* _WIN32 */
 
@@ -184,23 +184,23 @@ int inet_aton(const char *s, struct in_addr *a)
 int sock_set_blocking(sock_t sock, const int block)
 {
 #ifdef _WIN32
-	int varblock = block;
+    int varblock = block;
 #endif
 
-	if ((!sock_valid_socket(sock)) || (block < 0) || (block > 1))
-		return SOCK_ERROR;
+    if ((!sock_valid_socket(sock)) || (block < 0) || (block > 1))
+        return SOCK_ERROR;
 
 #ifdef _WIN32
-	return ioctlsocket(sock, FIONBIO, &varblock);
+    return ioctlsocket(sock, FIONBIO, &varblock);
 #else
-	return fcntl(sock, F_SETFL, (block == SOCK_BLOCK) ? 0 : O_NONBLOCK);
+    return fcntl(sock, F_SETFL, (block == SOCK_BLOCK) ? 0 : O_NONBLOCK);
 #endif
 }
 
 int sock_set_nolinger(sock_t sock)
 {
-	struct linger lin = { 0, 0 };
-	return setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&lin, 
+    struct linger lin = { 0, 0 };
+    return setsockopt(sock, SOL_SOCKET, SO_LINGER, (void *)&lin, 
             sizeof(struct linger));
 }
 
@@ -214,8 +214,8 @@ int sock_set_nodelay(sock_t sock)
 
 int sock_set_keepalive(sock_t sock)
 {
-	int keepalive = 1;
-	return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, 
+    int keepalive = 1;
+    return setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, 
             sizeof(int));
 }
 
@@ -226,9 +226,9 @@ int sock_set_keepalive(sock_t sock)
 int sock_close(sock_t sock)
 {
 #ifdef _WIN32
-	return closesocket(sock);
+    return closesocket(sock);
 #else
-	return close(sock);
+    return close(sock);
 #endif
 }
 
@@ -278,16 +278,16 @@ ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count)
 */
 int sock_write_bytes(sock_t sock, const void *buff, const size_t len)
 {
-	/* sanity check */
-	if (!buff) {
-		return SOCK_ERROR;
-	} else if (len <= 0) {
-		return SOCK_ERROR;
-	} /*else if (!sock_valid_socket(sock)) {
-		return SOCK_ERROR;
-	} */
+    /* sanity check */
+    if (!buff) {
+        return SOCK_ERROR;
+    } else if (len <= 0) {
+        return SOCK_ERROR;
+    } /*else if (!sock_valid_socket(sock)) {
+        return SOCK_ERROR;
+    } */
 
-	return send(sock, buff, len, 0);
+    return send(sock, buff, len, 0);
 }
 
 /* sock_write_string
@@ -297,7 +297,7 @@ int sock_write_bytes(sock_t sock, const void *buff, const size_t len)
 */
 int sock_write_string(sock_t sock, const char *buff)
 {
-	return (sock_write_bytes(sock, buff, strlen(buff)) > 0);
+    return (sock_write_bytes(sock, buff, strlen(buff)) > 0);
 }
 
 /* sock_write
@@ -308,14 +308,14 @@ int sock_write_string(sock_t sock, const char *buff)
 */
 int sock_write(sock_t sock, const char *fmt, ...)
 {
-	char buff[1024];
-	va_list ap;
+    char buff[1024];
+    va_list ap;
 
-	va_start(ap, fmt);
-	vsnprintf(buff, 1024, fmt, ap);
-	va_end(ap);
-	
-	return sock_write_bytes(sock, buff, strlen(buff));
+    va_start(ap, fmt);
+    vsnprintf(buff, 1024, fmt, ap);
+    va_end(ap);
+    
+    return sock_write_bytes(sock, buff, strlen(buff));
 }
 
 int sock_write_fmt(sock_t sock, char *fmt, va_list ap)
@@ -330,11 +330,11 @@ int sock_write_fmt(sock_t sock, char *fmt, va_list ap)
 int sock_read_bytes(sock_t sock, char *buff, const int len)
 {
 
-	/*if (!sock_valid_socket(sock)) return 0; */
-	if (!buff) return 0;
-	if (len <= 0) return 0;
+    /*if (!sock_valid_socket(sock)) return 0; */
+    if (!buff) return 0;
+    if (len <= 0) return 0;
 
-	return recv(sock, buff, len, 0);
+    return recv(sock, buff, len, 0);
 }
 
 /* sock_read_line
@@ -347,36 +347,36 @@ int sock_read_bytes(sock_t sock, char *buff, const int len)
 */
 int sock_read_line(sock_t sock, char *buff, const int len)
 {
-	char c = '\0';
-	int read_bytes, pos;
+    char c = '\0';
+    int read_bytes, pos;
   
-	/*if (!sock_valid_socket(sock)) {
-		return 0;
-	} else*/ if (!buff) {
-		return 0;
-	} else if (len <= 0) {
-		return 0;
-	}
+    /*if (!sock_valid_socket(sock)) {
+        return 0;
+    } else*/ if (!buff) {
+        return 0;
+    } else if (len <= 0) {
+        return 0;
+    }
 
-	pos = 0;
-	read_bytes = recv(sock, &c, 1, 0);
+    pos = 0;
+    read_bytes = recv(sock, &c, 1, 0);
 
-	if (read_bytes < 0) {
-		return 0;
-	}
+    if (read_bytes < 0) {
+        return 0;
+    }
 
-	while ((c != '\n') && (pos < len) && (read_bytes == 1)) {
-		if (c != '\r')
-			buff[pos++] = c;
-		read_bytes = recv(sock, &c, 1, 0);
-	}
-	
-	if (read_bytes == 1) {
-		buff[pos] = '\0';
-		return 1;
-	} else {
-		return 0;
-	}
+    while ((c != '\n') && (pos < len) && (read_bytes == 1)) {
+        if (c != '\r')
+            buff[pos++] = c;
+        read_bytes = recv(sock, &c, 1, 0);
+    }
+    
+    if (read_bytes == 1) {
+        buff[pos] = '\0';
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 /* see if a connection can be written to
@@ -588,99 +588,99 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 sock_t sock_get_server_socket(const int port, char *sinterface)
 {
 #ifdef HAVE_IPV6
-	struct sockaddr_storage sa;
-#else	
-	struct sockaddr_in sa;
+    struct sockaddr_storage sa;
+#else    
+    struct sockaddr_in sa;
 #endif
-	int sa_family, sa_len, error, opt;
-	sock_t sock;
-	char ip[MAX_ADDR_LEN];
+    int sa_family, sa_len, error, opt;
+    sock_t sock;
+    char ip[MAX_ADDR_LEN];
 
-	if (port < 0)
-		return SOCK_ERROR;
+    if (port < 0)
+        return SOCK_ERROR;
 
-	/* defaults */
-	memset(&sa, 0, sizeof(sa));
-	sa_family = AF_INET;
-	sa_len = sizeof(struct sockaddr_in);
+    /* defaults */
+    memset(&sa, 0, sizeof(sa));
+    sa_family = AF_INET;
+    sa_len = sizeof(struct sockaddr_in);
 
-	/* set the interface to bind to if specified */
-	if (sinterface != NULL) {
-		if (!resolver_getip(sinterface, ip, sizeof (ip)))
-			return SOCK_ERROR;
+    /* set the interface to bind to if specified */
+    if (sinterface != NULL) {
+        if (!resolver_getip(sinterface, ip, sizeof (ip)))
+            return SOCK_ERROR;
 
 #ifdef HAVE_IPV6
-		if (inet_pton(AF_INET, ip, &((struct sockaddr_in*)&sa)->sin_addr) > 0) {
-			((struct sockaddr_in*)&sa)->sin_family = AF_INET;
-			((struct sockaddr_in*)&sa)->sin_port = htons(port);
-		} else if (inet_pton(AF_INET6, ip, 
+        if (inet_pton(AF_INET, ip, &((struct sockaddr_in*)&sa)->sin_addr) > 0) {
+            ((struct sockaddr_in*)&sa)->sin_family = AF_INET;
+            ((struct sockaddr_in*)&sa)->sin_port = htons(port);
+        } else if (inet_pton(AF_INET6, ip, 
                     &((struct sockaddr_in6*)&sa)->sin6_addr) > 0) {
-			sa_family = AF_INET6;
-			sa_len = sizeof (struct sockaddr_in6);
-			((struct sockaddr_in6*)&sa)->sin6_family = AF_INET6;
-			((struct sockaddr_in6*)&sa)->sin6_port = htons(port);
-		} else {
-			return SOCK_ERROR;
-		}
+            sa_family = AF_INET6;
+            sa_len = sizeof (struct sockaddr_in6);
+            ((struct sockaddr_in6*)&sa)->sin6_family = AF_INET6;
+            ((struct sockaddr_in6*)&sa)->sin6_port = htons(port);
+        } else {
+            return SOCK_ERROR;
+        }
 #else
-		if (!inet_aton(ip, &sa.sin_addr)) {
-			return SOCK_ERROR;
-		} else {
-			sa.sin_family = AF_INET;
-			sa.sin_port = htons(port);
-		}
+        if (!inet_aton(ip, &sa.sin_addr)) {
+            return SOCK_ERROR;
+        } else {
+            sa.sin_family = AF_INET;
+            sa.sin_port = htons(port);
+        }
 #endif
-	} else {
-		((struct sockaddr_in*)&sa)->sin_addr.s_addr = INADDR_ANY;
-		((struct sockaddr_in*)&sa)->sin_family = AF_INET;
-		((struct sockaddr_in*)&sa)->sin_port = htons(port);
-	}
+    } else {
+        ((struct sockaddr_in*)&sa)->sin_addr.s_addr = INADDR_ANY;
+        ((struct sockaddr_in*)&sa)->sin_family = AF_INET;
+        ((struct sockaddr_in*)&sa)->sin_port = htons(port);
+    }
 
-	/* get a socket */
-	sock = socket(sa_family, SOCK_STREAM, 0);
-	if (sock == -1)
-		return SOCK_ERROR;
+    /* get a socket */
+    sock = socket(sa_family, SOCK_STREAM, 0);
+    if (sock == -1)
+        return SOCK_ERROR;
 
-	/* reuse it if we can */
-	opt = 1;
-	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
-	
-	/* bind socket to port */
-	error = bind(sock, (struct sockaddr *)&sa, sa_len);
-	if (error == -1)
-		return SOCK_ERROR;
+    /* reuse it if we can */
+    opt = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
+    
+    /* bind socket to port */
+    error = bind(sock, (struct sockaddr *)&sa, sa_len);
+    if (error == -1)
+        return SOCK_ERROR;
 
-	return sock;
+    return sock;
 }
 
 int sock_listen(sock_t serversock, int backlog)
 {
-	if (!sock_valid_socket(serversock))
-		return 0;
+    if (!sock_valid_socket(serversock))
+        return 0;
 
-	if (backlog <= 0)
-		backlog = 10;
+    if (backlog <= 0)
+        backlog = 10;
 
-	return (listen(serversock, backlog) == 0);
+    return (listen(serversock, backlog) == 0);
 }
 
 int sock_accept(sock_t serversock, char *ip, int len)
 {
 #ifdef HAVE_IPV6
-	struct sockaddr_storage sa;
-#else	
-	struct sockaddr_in sa;
+    struct sockaddr_storage sa;
+#else    
+    struct sockaddr_in sa;
 #endif
-	int ret;
-	socklen_t slen;
+    int ret;
+    socklen_t slen;
 
-	if (!sock_valid_socket(serversock))
-		return SOCK_ERROR;
+    if (!sock_valid_socket(serversock))
+        return SOCK_ERROR;
 
-	slen = sizeof(sa);
-	ret = accept(serversock, (struct sockaddr *)&sa, &slen);
+    slen = sizeof(sa);
+    ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
-	if (ret >= 0 && ip != NULL) {
+    if (ret >= 0 && ip != NULL) {
 #ifdef HAVE_IPV6
         if(((struct sockaddr_in *)&sa)->sin_family == AF_INET) 
             inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr,
@@ -694,12 +694,12 @@ int sock_accept(sock_t serversock, char *ip, int len)
         }
 #else
         /* inet_ntoa is not reentrant, we should protect this */
-		strncpy(ip, inet_ntoa(sa.sin_addr), len);
+        strncpy(ip, inet_ntoa(sa.sin_addr), len);
 #endif
-		sock_set_nolinger(ret);
-		sock_set_keepalive(ret);
-	}
+        sock_set_nolinger(ret);
+        sock_set_keepalive(ret);
+    }
 
-	return ret;
+    return ret;
 }
 

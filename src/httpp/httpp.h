@@ -17,25 +17,25 @@
 #define HTTPP_VAR_ICYPASSWORD "__icy_password"
 
 typedef enum httpp_request_type_tag {
-	httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head,
-	httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
+    httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head,
+    httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
 } httpp_request_type_e;
 
 typedef struct http_var_tag {
-	char *name;
-	char *value;
+    char *name;
+    char *value;
 } http_var_t;
 
 typedef struct http_varlist_tag {
-	http_var_t var;
-	struct http_varlist_tag *next;
+    http_var_t var;
+    struct http_varlist_tag *next;
 } http_varlist_t;
 
 typedef struct http_parser_tag {
-	httpp_request_type_e req_type;
-	char *uri;
-	avl_tree *vars;
-	avl_tree *queryvars;
+    httpp_request_type_e req_type;
+    char *uri;
+    avl_tree *vars;
+    avl_tree *queryvars;
 } http_parser_t;
 
 http_parser_t *httpp_create_parser(void);

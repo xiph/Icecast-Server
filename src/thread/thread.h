@@ -27,67 +27,67 @@
 /* renamed from thread_t due to conflict on OS X */
 
 typedef struct {
-	/* the local id for the thread, and it's name */
-	long thread_id;
-	char *name;
+    /* the local id for the thread, and it's name */
+    long thread_id;
+    char *name;
 
-	/* the time the thread was created */
-	time_t create_time;
-	
-	/* the file and line which created this thread */
-	char *file;
-	int line;
+    /* the time the thread was created */
+    time_t create_time;
+    
+    /* the file and line which created this thread */
+    char *file;
+    int line;
 
-	/* is the thread running detached? */
-	int detached;
+    /* is the thread running detached? */
+    int detached;
 
-	/* the system specific thread */
-	pthread_t sys_thread;
+    /* the system specific thread */
+    pthread_t sys_thread;
 } thread_type;
 
 typedef struct {
 #ifdef DEBUG_MUTEXES
-	/* the local id and name of the mutex */
-	long mutex_id;
-	char *name;
+    /* the local id and name of the mutex */
+    long mutex_id;
+    char *name;
 
-	/* the thread which is currently locking this mutex */
-	long thread_id;
+    /* the thread which is currently locking this mutex */
+    long thread_id;
 
-	/* the file and line where the mutex was locked */
-	char *file;
-	int line;	
+    /* the file and line where the mutex was locked */
+    char *file;
+    int line;    
 
 #endif
 
-	/* the system specific mutex */
-	pthread_mutex_t sys_mutex;
+    /* the system specific mutex */
+    pthread_mutex_t sys_mutex;
 } mutex_t;
 
 typedef struct {
 #ifdef THREAD_DEBUG
-	long cond_id;
-	char *name;
+    long cond_id;
+    char *name;
 #endif
 
-	pthread_mutex_t cond_mutex;
-	pthread_cond_t sys_cond;
+    pthread_mutex_t cond_mutex;
+    pthread_cond_t sys_cond;
 } cond_t;
 
 typedef struct {
 #ifdef THREAD_DEBUG
-	long rwlock_id;
-	char *name;
+    long rwlock_id;
+    char *name;
 
-	/* information on which thread and where in the code
-	** this rwlock was write locked
-	*/
-	long thread_id;
-	char *file;
-	int line;
+    /* information on which thread and where in the code
+    ** this rwlock was write locked
+    */
+    long thread_id;
+    char *file;
+    int line;
 #endif
 
-	pthread_rwlock_t sys_rwlock;
+    pthread_rwlock_t sys_rwlock;
 } rwlock_t;
 
 #define thread_create(n,x,y,z) thread_create_c(n,x,y,z,__LINE__,__FILE__)

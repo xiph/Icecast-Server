@@ -54,22 +54,22 @@ typedef struct {
 format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 {
     char *metadata;
-	format_plugin_t *plugin;
+    format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
 
-	plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
+    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
 
-	plugin->type = FORMAT_TYPE_MP3;
-	plugin->has_predata = 0;
-	plugin->get_buffer = format_mp3_get_buffer;
-	plugin->get_predata = format_mp3_get_predata;
+    plugin->type = FORMAT_TYPE_MP3;
+    plugin->has_predata = 0;
+    plugin->get_buffer = format_mp3_get_buffer;
+    plugin->get_predata = format_mp3_get_predata;
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
     plugin->create_client_data = format_mp3_create_client_data;
     plugin->client_send_headers = format_mp3_send_headers;
-	plugin->free_plugin = format_mp3_free_plugin;
+    plugin->free_plugin = format_mp3_free_plugin;
     plugin->format_description = "MP3 audio";
 
-	plugin->_state = state;
+    plugin->_state = state;
 
     state->metadata_age = 0;
     state->metadata = strdup("");
@@ -79,7 +79,7 @@ format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
     if(metadata)
         state->inline_metadata_interval = atoi(metadata);
 
-	return plugin;
+    return plugin;
 }
 
 static int send_metadata(client_t *client, mp3_client_data *client_state,
@@ -91,8 +91,8 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
     unsigned char *buf;
     int ret;
     int source_age;
-    char	*fullmetadata = NULL;
-    int	fullmetadata_size = 0;
+    char    *fullmetadata = NULL;
+    int    fullmetadata_size = 0;
 
     thread_mutex_lock(&(source_state->lock));
     if(source_state->metadata == NULL) {
@@ -198,19 +198,19 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
 
 static void format_mp3_free_plugin(format_plugin_t *self)
 {
-	/* free the plugin instance */
+    /* free the plugin instance */
     mp3_state *state = self->_state;
     thread_mutex_destroy(&(state->lock));
 
     free(state->metadata);
     free(state);
-	free(self);
+    free(self);
 }
 
 static int format_mp3_get_buffer(format_plugin_t *self, char *data, 
     unsigned long len, refbuf_t **buffer)
 {
-	refbuf_t *refbuf;
+    refbuf_t *refbuf;
     mp3_state *state = self->_state;
 
     /* Set this to NULL in case it doesn't get set to a valid buffer later */
@@ -319,7 +319,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
         memcpy(refbuf->data, data, len);
 
         *buffer = refbuf;
-	    return 0;
+        return 0;
     }
 }
 

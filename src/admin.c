@@ -96,7 +96,7 @@ void admin_handle_request(client_t *client, char *uri)
         /* This is a mount request, handle it as such */
         if(!connection_check_admin_pass(client->parser)) {
             if(!connection_check_source_pass(client->parser, mount)) {
-	    	    INFO1("Bad or missing password on mount modification admin "
+                INFO1("Bad or missing password on mount modification admin "
                       "request (command: %s)", command_string);
                 client_send_401(client);
                 return;
@@ -122,7 +122,7 @@ void admin_handle_request(client_t *client, char *uri)
     else {
 
         if(!connection_check_admin_pass(client->parser)) {
-		    INFO1("Bad or missing password on admin command "
+            INFO1("Bad or missing password on admin command "
                   "request (command: %s)", command_string);
             client_send_401(client);
             return;

@@ -88,8 +88,8 @@ void fserve_initialize(void)
 
     create_mime_mappings(MIMETYPESFILE);
 
-	client_tree = avl_tree_new(_compare_clients, NULL);
-	pending_tree = avl_tree_new(_compare_clients, NULL);
+    client_tree = avl_tree_new(_compare_clients, NULL);
+    pending_tree = avl_tree_new(_compare_clients, NULL);
     thread_cond_create(&fserv_cond);
 
     run_fserv = 1;
@@ -408,32 +408,32 @@ int fserve_client_create(client_t *httpclient, char *path)
 
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
-	connection_t *cona = (connection_t *)a;
+    connection_t *cona = (connection_t *)a;
     connection_t *conb = (connection_t *)b;
 
-	if (cona->id < conb->id) return -1;
-	if (cona->id > conb->id) return 1;
+    if (cona->id < conb->id) return -1;
+    if (cona->id > conb->id) return 1;
 
-	return 0;
+    return 0;
 }
 
 static int _remove_client(void *key)
 {
-	return 1;
+    return 1;
 }
 
 static int _free_client(void *key)
 {
-	fserve_t *client = (fserve_t *)key;
+    fserve_t *client = (fserve_t *)key;
 
-	fserve_client_destroy(client);
+    fserve_client_destroy(client);
     global_lock();
     global.clients--;
     global_unlock();
     stats_event_dec(NULL, "clients");
 
-	
-	return 1;
+    
+    return 1;
 }
 
 static int _delete_mapping(void *mapping) {

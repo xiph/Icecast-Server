@@ -7,15 +7,15 @@
 
 int main(void)
 {
-	int lid;
+    int lid;
 
-	log_initialize();
+    log_initialize();
 
-	lid = log_open("test.log");
+    lid = log_open("test.log");
 
-	LOG_ERR(lid, "The log id is %d, damnit...", lid);
+    LOG_ERR(lid, "The log id is %d, damnit...", lid);
 
-	log_close(lid);
+    log_close(lid);
 
-	log_shutdown();
+    log_shutdown();
 }
