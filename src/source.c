@@ -220,6 +220,9 @@ void *source_main(void *arg)
 				if (sbytes >= 0) {
                     client->con->sent_bytes += sbytes;
                     if(sbytes != bytes) {
+                        /* We didn't send the entire buffer. Leave it for
+                         * the moment, handle it in the next iteration.
+                         */
                         client->pos += sbytes;
                         refbuf_queue_insert(&client->queue, abuf);
                         data_done = 1;
@@ -255,7 +258,8 @@ void *source_main(void *arg)
 				sbytes = sock_write_bytes(client->con->sock, refbuf->data, refbuf->len);
 				if (sbytes >= 0) {
                     client->con->sent_bytes += sbytes;
-                    if(sbytes != bytes) {
+                    if(sbytes != refbuf->len) {
+                        /* Didn't send the entire buffer, queue it */
                         client->pos = sbytes;
 						refbuf_addref(refbuf);
                         refbuf_queue_insert(&client->queue, abuf);
