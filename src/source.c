@@ -219,8 +219,10 @@ int source_free_source(void *key)
     avl_tree_free(source->client_tree, _free_client);
     source->format->free_plugin(source->format);
 #ifdef USE_YP
-    for (i=0; i<source->num_yp_directories; i++) {
+    for (i=0; i<source->num_yp_directories; i++)
+    {
         yp_destroy_ypdata(source->ypdata[i]);
+        source->ypdata[i] = NULL;
     }
 #endif
     util_dict_free(source->audio_info);

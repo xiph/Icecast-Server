@@ -147,7 +147,7 @@ void config_clear(ice_config_t *c)
         xmlFree(c->webroot_dir);
     if (c->adminroot_dir && c->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR)
         xmlFree(c->adminroot_dir);
-    if (c->pidfile) 
+    if (c->pidfile)
         xmlFree(c->pidfile);
     if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
@@ -215,6 +215,14 @@ void config_clear(ice_config_t *c)
         free(dirnode);
         dirnode = nextdirnode;
     }
+#ifdef HAVE_YP
+    i = 0;
+    while (i < c->num_yp_directories) 
+    {
+        xmlFree (c->yp_url[i]);
+        i++;
+    }
+#endif
 
     memset(c, 0, sizeof(ice_config_t));
 }
