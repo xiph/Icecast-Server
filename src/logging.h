@@ -13,6 +13,10 @@ extern int accesslog;
 ** feel free to add more here if needed. 
 */
 
+#ifdef _WIN32
+#define __FUNCTION__ __FILE__ ":" __LINE__
+#endif
+
 #define ERROR0(y) log_write(errorlog, 1, CATMODULE "/" __FUNCTION__, y)
 #define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/" __FUNCTION__, y, a)
 #define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/" __FUNCTION__, y, a, b)

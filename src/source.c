@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <ogg/ogg.h>
 
 #ifndef _WIN32
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #else
-#include <window.h>
+#include <winsock2.h>
+#include <windows.h>
 #endif
 
 #include "thread.h"
@@ -23,6 +24,7 @@
 #include "client.h"
 #include "stats.h"
 #include "format.h"
+#include "log.h"
 #include "logging.h"
 #include "config.h"
 

@@ -8,16 +8,16 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
-#include <netdb.h>
 #include <string.h>
 
 #ifndef _WIN32
+#include <netdb.h>
 #include <sys/socket.h>
 #include <pthread.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #else
-#include <winsock.h>
+#include <winsock2.h>
 #define sethostent(x)
 #endif
 

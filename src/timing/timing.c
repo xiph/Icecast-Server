@@ -4,14 +4,16 @@
 
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/time.h>
-#include <unistd.h>
 #ifdef HAVE_STDINT_H
 # include <stdint.h>
 #endif
 
 #ifdef _WIN32
-# include <mmsystem.h>
+#include <windows.h>
+#include <mmsystem.h>
+#else
+#include <sys/time.h>
+#include <unistd.h>
 #endif
 
 #include "timing.h"

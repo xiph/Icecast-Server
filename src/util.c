@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
+#include <winsock2.h>
 #include <windows.h>
 #endif
 

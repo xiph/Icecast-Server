@@ -24,10 +24,9 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-typedef SOCKET sock_t
-#else
-typedef int sock_t;
 #endif
+
+typedef int sock_t;
 
 #define SOCK_ERROR -1
 #define SOCK_BLOCK 0
