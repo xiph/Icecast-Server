@@ -653,6 +653,12 @@ static void _handle_source_request(connection_t *con,
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
 
+    if (uri[0] != '/')
+    {
+        WARN0 ("source mountpoint not starting with /");
+        client_send_401 (client);
+        return;
+    }
     if (!connection_check_source_pass(parser, uri))
     {
         /* We commonly get this if the source client is using the wrong

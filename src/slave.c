@@ -327,6 +327,12 @@ static void check_relay_stream (relay_server *relay)
 {
     if (relay->source == NULL)
     {
+        if (relay->localmount[0] != '/')
+        {
+            WARN1 ("relay mountpoint \"%s\" does not start with /",
+                    relay->localmount);
+            return;
+        }
         /* new relay, reserve the name */
         relay->source = source_reserve (relay->localmount);
         if (relay->source)
