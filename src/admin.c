@@ -184,7 +184,10 @@ static void admin_send_response(xmlDocPtr doc, client_t *client,
         int response, char *xslt_template);
 static void html_write(client_t *client, char *fmt, ...);
 
-xmlDocPtr admin_build_sourcelist(char *current_source)
+/* build an XML doc containing information about currently running sources.
+ * If a mountpoint is passed then that source will not be added to the XML
+ * doc even if the source is running */
+xmlDocPtr admin_build_sourcelist (const char *mount)
 {
     avl_node *node;
     source_t *source;
@@ -197,13 +200,19 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
     xmlnode = xmlNewDocNode(doc, NULL, "icestats", NULL);
     xmlDocSetRootElement(doc, xmlnode);
 
-    if (current_source) {
-        xmlNewChild(xmlnode, NULL, "current_source", current_source);
+    if (mount) {
+        xmlNewChild(xmlnode, NULL, "current_source", mount);
     }
 
     node = avl_get_first(global.source_tree);
     while(node) {
         source = (source_t *)node->key;
+        if (mount && strcmp (mount, source->mount) == 0)
+        {
+            node = avl_get_next (node);
+            continue;
+        }
+
         if (source->running)
         {
             srcnode = xmlNewChild(xmlnode, NULL, "source", NULL);
