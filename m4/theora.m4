@@ -18,52 +18,58 @@ AC_ARG_WITH(theora,
     theora_prefix="$withval",
     theora_prefix="$THEORA_PREFIX"
     )
-if test "x$theora_prefix" = "x"; then
+
+if test "x$with_theora" = "xno"
+then
+  AC_MSG_RESULT([Theora support disabled by request])
+else
+  if test "x$theora_prefix" = "x"; then
     if test "x$prefix" = "xNONE"; then
         theora_prefix="/usr/local"
     else
         theora_prefix="$prefix"
     fi
-fi
+  fi
 
-THEORA_CFLAGS="$OGG_CFLAGS"
-THEORA_LDFLAGS="$OGG_LDFLAGS"
-if test "x$theora_prefix" != "x$ogg_prefix"; then
-    XIPH_GCC_WARNING(-I"$theora_prefix/include",,
-            [THEORA_CFLAGS="$THEORA_CFLAGS -I$theora_prefix/include"
-            THEORA_LDFLAGS="-L$theora_prefix/lib $THEORA_LDFLAGS"
-            ])
-fi
+  THEORA_CFLAGS="$OGG_CFLAGS"
+  THEORA_LDFLAGS="$OGG_LDFLAGS"
+  if test "x$theora_prefix" != "x$ogg_prefix"; then
+      XIPH_GCC_WARNING(-I"$theora_prefix/include",,
+              [THEORA_CFLAGS="$THEORA_CFLAGS -I$theora_prefix/include"
+              THEORA_LDFLAGS="-L$theora_prefix/lib $THEORA_LDFLAGS"
+              ])
+  fi
 
-THEORA_LIBS="-ltheora"
+  THEORA_LIBS="-ltheora"
 
-ac_save_LIBS="$LIBS"
-ac_save_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $THEORA_LDFLAGS"
-LIBS="$LIBS $THEORA_LIBS"
-xt_have_theora="yes"
-AC_MSG_CHECKING([for libtheora])
-AC_TRY_LINK_FUNC(ogg_stream_init, [AC_MSG_RESULT([ok])],
+  ac_save_LIBS="$LIBS"
+  ac_save_LDFLAGS="$LDFLAGS"
+  LDFLAGS="$LDFLAGS $THEORA_LDFLAGS"
+  LIBS="$LIBS $THEORA_LIBS"
+  xt_have_theora="yes"
+  AC_MSG_CHECKING([for libtheora])
+  AC_TRY_LINK_FUNC(ogg_stream_init, [AC_MSG_RESULT([ok])],
         [LIBS="$LIBS $OGG_LIBS"
         AC_TRY_LINK_FUNC(ogg_stream_init,
             [THEORA_LIBS="$THEORA_LIBS $OGG_LIBS"],
             [xt_have_theora="no"])
         ])
 
-LIBS="$ac_save_LIBS"
-LDFLAGS="$ac_save_LDFLAGS"
+  LIBS="$ac_save_LIBS"
+  LDFLAGS="$ac_save_LDFLAGS"
 
-if test "x$xt_have_theora" = "xyes"
-then
+  if test "x$xt_have_theora" = "xyes"
+  then
     AC_MSG_RESULT([ok])
     AC_DEFINE([HAVE_THEORA],[1],[Define if Theora support is available])
-else
+  else
     ifelse([$2], , AC_MSG_ERROR([Unable to link to libtheora]), [$2])
     THEORA_CFLAGS=""
     THEORA_LDFLAGS=""
     THEORA_LIBS=""
+  fi
+  AC_SUBST(THEORA_CFLAGS)
+  AC_SUBST(THEORA_LDFLAGS)
+  AC_SUBST(THEORA_LIBS)
 fi
-AC_SUBST(THEORA_CFLAGS)
-AC_SUBST(THEORA_LDFLAGS)
-AC_SUBST(THEORA_LIBS)
 ])
