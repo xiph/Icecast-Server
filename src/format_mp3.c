@@ -334,10 +334,15 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                             int stringlength;
                             
                             state->metadata = malloc(state->metadata_length -
-                                    15 + 1);
+                                    12);
                             memcpy(state->metadata, 
                                     state->metadata_buffer + 13, 
-                                    state->metadata_length - 15);
+                                    state->metadata_length - 13);
+                            /* Make sure we've got a null-terminator of some
+                               sort */
+                            state->metadata[state->metadata_length - 13] = 0;
+
+                            /* Now figure out the _right_ one */
                             stringlength = strlen(state->metadata);
                             if(stringlength > 2)
                                 state->metadata[stringlength - 2] = 0;
