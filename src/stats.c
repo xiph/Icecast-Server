@@ -413,6 +413,9 @@ static void *_stats_thread(void *arg)
 		thread_sleep(300000);
 	}
 
+	/* wake the other threads so they can shut down cleanly */
+	thread_cond_broadcast(&_event_signal_cond);
+
 	thread_exit(0);
 
 	return NULL;
@@ -593,6 +596,7 @@ void *stats_connection(void *arg)
 		} else {
 			thread_mutex_unlock(&local_event_mutex);
 			thread_cond_wait(&_event_signal_cond);
+			if (!_stats_running) break;
 			continue;
 		}
 			       
@@ -635,6 +639,7 @@ void *stats_callback(void *arg)
 		} else {
 			thread_mutex_unlock(&local_event_mutex);
 			thread_cond_wait(&_event_signal_cond);
+			if (!_stats_running) break;
 			continue;
 		}
 		
