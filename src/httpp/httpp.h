@@ -16,7 +16,8 @@
 #define HTTPP_VAR_ERROR_CODE "__errorcode"
 
 typedef enum httpp_request_type_tag {
-	httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head, httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
+	httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head,
+	httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
 } httpp_request_type_e;
 
 typedef struct http_var_tag {
@@ -33,7 +34,7 @@ typedef struct http_parser_tag {
 	httpp_request_type_e req_type;
 	char *uri;
 	avl_tree *vars;
-    avl_tree *queryvars;
+	avl_tree *queryvars;
 } http_parser_t;
 
 http_parser_t *httpp_create_parser(void);
@@ -48,6 +49,3 @@ void httpp_destroy(http_parser_t *parser);
 void httpp_clear(http_parser_t *parser);
  
 #endif
-
-
-

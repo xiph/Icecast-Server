@@ -469,7 +469,7 @@ char *httpp_get_query_param(http_parser_t *parser, char *name)
 	http_var_t *found;
 
 	var.name = name;
-    var.value = NULL;
+	var.value = NULL;
 
 	if (avl_get_by_key(parser->queryvars, (void *)&var, (void **)&found) == 0)
 		return found->value;
