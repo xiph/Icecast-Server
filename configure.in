@@ -78,7 +78,7 @@ XIPH_PATH_VORBIS([
     XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$VORBIS_CFLAGS])
     XIPH_VAR_PREPEND([XIPH_LIBS],[$VORBIS_LIBS])
     XIPH_VAR_APPEND([XIPH_LDFLAGS],[$VORBIS_LDFLAGS])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_ogg.o format_vorbis.o"
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_vorbis.o"
     ],
     [AC_MSG_ERROR([must have Ogg Vorbis v1.0 or above installed])
     ])

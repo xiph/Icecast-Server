@@ -12,9 +12,9 @@ noinst_HEADERS = admin.h cfgfile.h os.h logging.h sighandler.h connection.h \
     auth.h auth_htpasswd.h auth_cmd.h auth_url.h format_ogg.h \
     format_vorbis.h format_theora.h format_speex.h
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
-    util.c slave.c source.c stats.c refbuf.c client.c format.c \
+    util.c slave.c source.c stats.c refbuf.c client.c format.c format_ogg.c \
     format_mp3.c xslt.c fserve.c event.c admin.c auth.c auth_htpasswd.c md5.c
-EXTRA_icecast_SOURCES = yp.c \
+EXTRA_icecast_SOURCES = yp.c auth_url.c auth_cmd.c \
     format_vorbis.c format_theora.c format_speex.c
     
 icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
