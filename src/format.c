@@ -55,6 +55,8 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_VORBIS; /* Now blessed by IANA */
     else if(strcmp(contenttype, "audio/mpeg") == 0)
         return FORMAT_TYPE_MP3; 
+    else if(strcmp(contenttype, "audio/x-mpeg") == 0)
+        return FORMAT_TYPE_MP3; /* Relay-compatibility for some servers */
     else
         return FORMAT_ERROR;
 }
