@@ -73,6 +73,8 @@ static int split_headers(char *data, unsigned long len, char **line)
         if (data[i] == '\n') {
             lines++;
             data[i] = '\0';
+            if (lines >= MAX_HEADERS)
+                return MAX_HEADERS;
             if (i + 1 < len) {
                 if (data[i + 1] == '\n' || data[i + 1] == '\r')
                     break;
@@ -82,7 +84,7 @@ static int split_headers(char *data, unsigned long len, char **line)
     }
 
     i++;
-    while (data[i] == '\n') i++;
+    while (i < len && data[i] == '\n') i++;
 
     return lines;
 }
