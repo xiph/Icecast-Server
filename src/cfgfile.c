@@ -167,8 +167,7 @@ void config_clear(ice_config_t *c)
         nextrelay = relay->next;
         xmlFree(relay->server);
         xmlFree(relay->mount);
-        if(relay->localmount)
-            xmlFree(relay->localmount);
+        xmlFree(relay->localmount);
         free(relay);
         relay = nextrelay;
     }
@@ -600,6 +599,8 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
+    if (relay->localmount == NULL)
+        relay->localmount = xmlStrdup (relay->mount);
 }
 
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
@@ -701,6 +702,7 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->yp_url_timeout[configuration->num_yp_directories] = 
                 atoi(tmp);
+            if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "server") == 0) {
             _add_server(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "touch-interval") == 0) {

@@ -147,7 +147,7 @@ source_t *source_find_mount_raw(const char *mount)
 
 
 /* Search for mount, if the mount is there but not currently running then
- * check it's fallback, and so on.  Must have a global source lock to call
+ * check the fallback, and so on.  Must have a global source lock to call
  * this function.
  */
 source_t *source_find_mount (const char *mount)
