@@ -98,10 +98,8 @@ void logging_access(client_t *client)
 
 
 
-void restart_logging ()
+void restart_logging (ice_config_t *config)
 {
-    ice_config_t *config = config_get_config_unlocked();
-
     if (strcmp (config->error_log, "-"))
     {
         char fn_error[FILENAME_MAX];

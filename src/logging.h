@@ -13,6 +13,7 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
+#include "cfgfile.h"
 #include "log/log.h"
 
 /* declare the global log descriptors */
@@ -87,7 +88,7 @@ extern int accesslog;
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
 void logging_access(client_t *client);
-void restart_logging (void);
+void restart_logging (ice_config_t *config);
 
 #endif  /* __LOGGING_H__ */
 
