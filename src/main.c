@@ -43,6 +43,12 @@ static void _print_usage()
 	printf("\n");
 }
 
+static void _stop_logging(void)
+{
+	log_close(errorlog);
+	log_close(accesslog);
+}
+
 static void _initialize_subsystems(void)
 {
 	log_initialize();
@@ -54,7 +60,6 @@ static void _initialize_subsystems(void)
 	global_initialize();
 	refbuf_initialize();
     xslt_initialize();
-    DEBUG0("Calling fserve_initialize()");
     fserve_initialize();
 }
 
@@ -65,6 +70,10 @@ static void _shutdown_subsystems(void)
 	refbuf_shutdown();
 	stats_shutdown();
 	slave_shutdown();
+
+    /* Now that these are done, we can stop the loggers. */
+	_stop_logging();
+
 	global_shutdown();
 	connection_shutdown();
 	config_shutdown();
@@ -125,12 +134,6 @@ static int _start_logging(void)
 	if (errorlog >= 0 && accesslog >= 0) return 1;
 	
 	return 0;
-}
-
-static void _stop_logging(void)
-{
-	log_close(errorlog);
-	log_close(accesslog);
 }
 
 static int _setup_socket(void)
@@ -344,8 +347,6 @@ int main(int argc, char **argv)
 	_server_proc();
 
 	INFO0("Shutting down");
-
-	_stop_logging();
 
 	_shutdown_subsystems();
 

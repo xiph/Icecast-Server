@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/poll.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -41,6 +42,11 @@ static avl_tree *pending_tree;
 static cond_t fserv_cond;
 static thread_t *fserv_thread;
 static int run_fserv;
+static int fserve_clients;
+static int client_tree_changed=0;
+
+static struct pollfd *ufds = NULL;
+static int ufdssize = 0;
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
@@ -77,6 +83,42 @@ void fserve_shutdown(void)
     avl_tree_free(pending_tree, _free_client);
 }
 
+static void wait_for_fds() {
+    avl_node *client_node;
+    fserve_t *client;
+    int i;
+
+    while(run_fserv) {
+        if(client_tree_changed) {
+            client_tree_changed = 0;
+            i = 0;
+            ufdssize = fserve_clients;
+            ufds = realloc(ufds, ufdssize * sizeof(struct pollfd));
+            avl_tree_rlock(client_tree);
+            client_node = avl_get_first(client_tree);
+            while(client_node) {
+                client = client_node->key;
+                ufds[i].fd = client->client->con->sock;
+                ufds[i].events = POLLOUT;
+                client_node = avl_get_next(client_node);
+            }
+            avl_tree_unlock(client_tree);
+        }
+
+        if(poll(ufds, ufdssize, 200) > 0) {
+            return;
+        }
+        else {
+            avl_tree_rlock(pending_tree);
+            client_node = avl_get_first(pending_tree);
+            avl_tree_unlock(pending_tree);
+            if(client_node)
+                return;
+        }
+    }
+}
+
+
 void *fserv_thread_function(void *arg)
 {
     avl_node *client_node, *pending_node;
@@ -88,14 +130,24 @@ void *fserv_thread_function(void *arg)
 
         client_node = avl_get_first(client_tree);
         if(!client_node) {
+            avl_tree_rlock(pending_tree);
             pending_node = avl_get_first(pending_tree);
             if(!pending_node) {
                 /* There are no current clients. Wait until there are... */
+                avl_tree_unlock(pending_tree);
                 avl_tree_unlock(client_tree);
                 thread_cond_wait(&fserv_cond);
                 continue;
             }
+            avl_tree_unlock(pending_tree);
         }
+
+        /* This isn't hugely efficient, but it'll do for now */
+        avl_tree_unlock(client_tree);
+        wait_for_fds();
+
+        avl_tree_rlock(client_tree);
+        client_node = avl_get_first(client_tree);
 
         while(client_node) {
             avl_node_wlock(client_node);
@@ -145,8 +197,10 @@ void *fserv_thread_function(void *arg)
         while(client_node) {
             client = (fserve_t *)client_node->key;
             if(client->client->con->error) {
+                fserve_clients--;
                 client_node = avl_get_next(client_node);
                 avl_delete(client_tree, (void *)client, _free_client);
+                client_tree_changed = 1;
                 continue;
             }
             client_node = avl_get_next(client_node);
@@ -159,6 +213,9 @@ void *fserv_thread_function(void *arg)
         while(client_node) {
             client = (fserve_t *)client_node->key;
             avl_insert(client_tree, client);
+            client_tree_changed = 1;
+            fserve_clients++;
+            stats_event_inc(NULL, "clients");
             client_node = avl_get_next(client_node);
 
         }
@@ -191,7 +248,7 @@ void *fserv_thread_function(void *arg)
     return NULL;
 }
 
-char *fserve_content_type(char *path)
+static char *fserve_content_type(char *path)
 {
     char *ext = util_get_extension(path);
 
@@ -225,16 +282,42 @@ static void fserve_client_destroy(fserve_t *client)
 int fserve_client_create(client_t *httpclient, char *path)
 {
     fserve_t *client = calloc(1, sizeof(fserve_t));
+    int bytes;
 
-    client->client = httpclient;
     client->file = fopen(path, "rb");
     if(!client->file) {
-        fserve_client_destroy(client);
+        client_send_404(httpclient, "File not readable");
         return -1;
     }
+
+    client->client = httpclient;
     client->offset = 0;
     client->datasize = 0;
     client->buf = malloc(BUFSIZE);
+
+    global_lock();
+    if(global.clients >= config_get_config()->client_limit) {
+        httpclient->respcode = 504;
+        bytes = sock_write(httpclient->con->sock,
+                "HTTP/1.0 504 Server Full\r\n"
+                "Content-Type: text/html\r\n\r\n"
+                "<b>Server is full, try again later.</b>\r\n");
+        if(bytes > 0) httpclient->con->sent_bytes = bytes;
+        fserve_client_destroy(client);
+        global_unlock();
+        return -1;
+    }
+    global.clients++;
+    global_unlock();
+
+    httpclient->respcode = 200;
+    bytes = sock_write(httpclient->con->sock,
+            "HTTP/1.0 200 OK\r\n"
+            "Content-Type: %s\r\n\r\n",
+            fserve_content_type(path));
+    if(bytes > 0) httpclient->con->sent_bytes = bytes;
+
+    sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
 
     avl_tree_wlock(pending_tree);
     avl_insert(pending_tree, client);
@@ -266,6 +349,11 @@ static int _free_client(void *key)
 	fserve_t *client = (fserve_t *)key;
 
 	fserve_client_destroy(client);
+    global_lock();
+    global.clients--;
+    global_unlock();
+    stats_event_dec(NULL, "clients");
+
 	
 	return 1;
 }

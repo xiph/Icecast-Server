@@ -533,13 +533,7 @@ static void _handle_get_request(connection_t *con,
 	}
     else if(config_get_config()->fileserve && 
             stat(fullpath, &statbuf) == 0) {
-        client->respcode = 200;
-        bytes = sock_write(client->con->sock, 
-                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\n\r\n", 
-                fserve_content_type(fullpath));
-        if(bytes > 0) client->con->sent_bytes = bytes;
-        if(fserve_client_create(client, fullpath) < 0)
-            client_destroy(client);
+        fserve_client_create(client, fullpath);
         free(fullpath);
         return;
     }

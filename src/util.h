@@ -12,6 +12,6 @@ char *util_get_path_from_uri(char *uri);
 char *util_get_path_from_normalised_uri(char *uri);
 char *util_normalise_uri(char *uri);
 char *util_base64_encode(char *data);
-char *util_base64_decode(char *input);
+char *util_base64_decode(unsigned char *input);
 
 #endif  /* __UTIL_H__ */

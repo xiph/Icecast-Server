@@ -275,6 +275,25 @@ static char base64table[64] = {
     'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
 };
 
+static signed char base64decode[256] = {
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, 62, -2, -2, -2, 63,
+     52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -2, -2, -2, -1, -2, -2,
+     -2,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -2, -2, -2, -2, -2,
+     -2, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2
+};
+
 /* This isn't efficient, but it doesn't need to be */
 char *util_base64_encode(char *data)
 {
@@ -309,25 +328,7 @@ char *util_base64_encode(char *data)
     return result;
 }
 
-static int base64chartoval(char input)
-{
-    if(input >= 'A' && input <= 'Z')
-        return input - 'A';
-    else if(input >= 'a' && input <= 'z')
-        return input - 'a' + 26;
-    else if(input >= '0' && input <= '9')
-        return input - '0' + 52;
-    else if(input == '+')
-        return 62;
-    else if(input == '/')
-        return 63;
-    else if(input == '=')
-        return -1;
-    else
-        return -2;
-}
-
-char *util_base64_decode(char *input)
+char *util_base64_decode(unsigned char *input)
 {
     int len = strlen(input);
     char *out = malloc(len*3/4 + 5);
@@ -341,10 +342,10 @@ char *util_base64_decode(char *input)
             return NULL; /* Invalid Base64 data */
         }
 
-        vals[0] = base64chartoval(*input++);
-        vals[1] = base64chartoval(*input++);
-        vals[2] = base64chartoval(*input++);
-        vals[3] = base64chartoval(*input++);
+        vals[0] = base64decode[*input++];
+        vals[1] = base64decode[*input++];
+        vals[2] = base64decode[*input++];
+        vals[3] = base64decode[*input++];
 
         if(vals[0] < 0 || vals[1] < 0 || vals[2] < -1 || vals[3] < -1) {
             continue;
