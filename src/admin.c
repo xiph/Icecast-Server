@@ -569,9 +569,9 @@ static int admin_function (const char *function, char *buf, unsigned int len)
 {
     if (strcmp (function, "reopenlog") == 0)
     {
-        config_get_config();
+        ice_config_t *config = config_get_config();
 
-        restart_logging();
+        restart_logging (config);
         config_release_config();
         snprintf (buf, len, "Re-opening log files");
         return 0;

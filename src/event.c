@@ -58,7 +58,7 @@ void event_config_read(void *arg)
     else {
         config_clear(config);
         config_set_config(&new_config);
-        restart_logging ();
+        restart_logging (config);
         slave_recheck();
         yp_recheck_config (config);
         source_update (config);
