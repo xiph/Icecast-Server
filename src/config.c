@@ -4,7 +4,11 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include "config.h"
+#include "refbuf.h"
+#include "client.h"
+#include "logging.h" 
 
+#define CATMODULE "CONFIG"
 #define CONFIG_DEFAULT_LOCATION "Earth"
 #define CONFIG_DEFAULT_ADMIN "icemaster@localhost"
 #define CONFIG_DEFAULT_CLIENT_LIMIT 256
@@ -28,6 +32,7 @@
 #define CONFIG_DEFAULT_USER NULL
 #define CONFIG_DEFAULT_GROUP NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL 120
+#define CONFIG_YP_URL_TIMEOUT 10
 
 #ifndef _WIN32
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
@@ -185,6 +190,7 @@ static void _set_defaults(void)
     _configuration.chuid = CONFIG_DEFAULT_CHUID;
     _configuration.user = CONFIG_DEFAULT_USER;
     _configuration.group = CONFIG_DEFAULT_GROUP;
+    _configuration.num_yp_directories = 0;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
@@ -298,11 +304,21 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
 {
 	char *tmp;
 
+	if (_configuration.num_yp_directories >= MAX_YP_DIRECTORIES) {
+		ERROR0("Maximum number of yp directories exceeded!");
+		return;
+	}
 	do {
 		if (node == NULL) break;
 		if (xmlIsBlankNode(node)) continue;
 
-		if (strcmp(node->name, "server") == 0) {
+		if (strcmp(node->name, "yp-url") == 0) {
+			if (_configuration.yp_url[_configuration.num_yp_directories]) xmlFree(_configuration.yp_url[_configuration.num_yp_directories]);
+			_configuration.yp_url[_configuration.num_yp_directories] = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "yp-url-timeout") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            _configuration.yp_url_timeout[_configuration.num_yp_directories] = atoi(tmp);
+		} else if (strcmp(node->name, "server") == 0) {
 			_add_server(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "touch-freq") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -310,6 +326,7 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
 			if (tmp) xmlFree(tmp);
 		}
 	} while ((node = node->next));
+	_configuration.num_yp_directories++;
 }
 
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node)

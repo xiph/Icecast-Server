@@ -6,6 +6,8 @@
 #define CONFIG_EBADROOT -3
 #define CONFIG_EPARSE -4
 
+#define MAX_YP_DIRECTORIES 25
+
 typedef struct ice_config_dir_tag
 {
 	char *host;
@@ -53,6 +55,9 @@ typedef struct ice_config_tag
     int chuid;
     char *user;
     char *group;
+    char *yp_url[MAX_YP_DIRECTORIES];
+    int	yp_url_timeout[MAX_YP_DIRECTORIES];
+    int num_yp_directories;
 } ice_config_t;
 
 void config_initialize(void);
