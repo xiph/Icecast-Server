@@ -226,7 +226,7 @@ static refbuf_t *get_buffer_audio (vstate_t *source_vorbis)
     }
     if (get_ogg_page (&source_vorbis->out_os, &page) > 0)
     {
-        refbuf *header;
+        refbuf_t *header;
         /* printf ("got audio page %lld\n", ogg_page_granulepos (&page)); */
         /* squeeze a page copy into a buffer */
         source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
