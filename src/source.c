@@ -745,7 +745,7 @@ static void source_shutdown (source_t *source)
 
     /* delete this sources stats */
     stats_event_dec(NULL, "sources");
-    stats_event(source->mount, "listeners", NULL);
+    stats_event(source->mount, NULL, NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
        therefore reserved */
