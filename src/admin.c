@@ -927,18 +927,20 @@ static void command_list_mounts(client_t *client, int response)
     if (response == PLAINTEXT)
     {
         char buffer [4096], *buf = buffer;
-        unsigned remaining = sizeof (buffer);
-        int ret = sprintf (buffer,
+        unsigned int remaining = sizeof (buffer);
+        int ret = snprintf (buffer, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
         avl_node *node = avl_get_first(global.source_tree);
         while (node && ret > 0 && (unsigned)ret < remaining)
         {
             source_t *source = (source_t *)node->key;
+            node = avl_get_next(node);
+            if (source->hidden)
+                continue;
             remaining -= ret;
             buf += ret;
             ret = snprintf (buf, remaining, "%s\n", source->mount);
-            node = avl_get_next(node);
         }
         avl_tree_unlock (global.source_tree);
         /* handle last line */
