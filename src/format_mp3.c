@@ -16,10 +16,6 @@
 # include <strings.h>
 #endif
 
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
-
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
@@ -35,7 +31,6 @@
 #ifdef WIN32
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
-#define alloca _alloca
 #endif
 
 #define CATMODULE "format-mp3"
@@ -98,78 +93,103 @@ format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 static int send_metadata(client_t *client, mp3_client_data *client_state,
         mp3_state *source_state)
 {
-    int send_metadata;
+    int free_meta = 0;
     int len_byte;
     int len;
+    int ret = -1;
     unsigned char *buf;
-    int ret;
     int source_age;
-    char    *fullmetadata = NULL;
-    int    fullmetadata_size = 0;
+    char *fullmetadata = NULL;
+    int  fullmetadata_size = 0;
+    const char meta_fmt[] = "StreamTitle='';"; 
 
-    thread_mutex_lock(&(source_state->lock));
-    if(source_state->metadata == NULL) {
-        /* Shouldn't be possible */
-        thread_mutex_unlock(&(source_state->lock));
-        return 0;
-    }
+    do 
+    {
+        thread_mutex_lock (&(source_state->lock));
+        if (source_state->metadata == NULL)
+            break; /* Shouldn't be possible */
 
-    if(source_state->metadata_raw) {
-        fullmetadata_size = strlen(source_state->metadata);
-        fullmetadata = source_state->metadata;
-    }
-    else {
-        fullmetadata_size = strlen(source_state->metadata) + 
-            strlen("StreamTitle='';StreamUrl=''") + 1;
+        if (source_state->metadata_raw)
+        {
+            fullmetadata_size = strlen (source_state->metadata);
+            fullmetadata = source_state->metadata;
+            if (fullmetadata_size > 4080)
+            {
+                fullmetadata_size = 4080;
+            }
+        }
+        else
+        {
+            fullmetadata_size = strlen (source_state->metadata) + 
+                sizeof (meta_fmt);
 
-        fullmetadata = alloca(fullmetadata_size);
+            if (fullmetadata_size > 4080)
+            {
+                fullmetadata_size = 4080;
+            }
+            fullmetadata = malloc (fullmetadata_size);
+            if (fullmetadata == NULL)
+                break;
 
-        sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", 
-                source_state->metadata);
-    }
+            fullmetadata_size = snprintf (fullmetadata, fullmetadata_size,
+                    "StreamTitle='%.*s';", fullmetadata_size-(sizeof (meta_fmt)-1), source_state->metadata); 
+            free_meta = 1;
+        }
 
-    source_age = source_state->metadata_age;
-    send_metadata = source_age != client_state->metadata_age;
+        source_age = source_state->metadata_age;
 
-    if(send_metadata && strlen(fullmetadata) > 0)
-        len_byte = strlen(fullmetadata)/16 + 1 - 
-            client_state->metadata_offset;
-    else
-        len_byte = 0;
-    len = 1 + len_byte*16;
-    buf = alloca(len);
+        if (fullmetadata_size > 0 && source_age != client_state->metadata_age)
+        {
+            len_byte = (fullmetadata_size-1)/16 + 1; /* to give 1-255 */
+            client_state->metadata_offset = 0;
+        }
+        else
+            len_byte = 0;
+        len = 1 + len_byte*16;
+        buf = malloc (len);
+        if (buf == NULL)
+            break;
 
-    memset(buf, 0, len);
+        buf[0] = len_byte;
 
-    buf[0] = len_byte;
+        if (len > 1) {
+            strncpy (buf+1, fullmetadata, len-1);
+            buf[len-1] = '\0';
+        }
 
-    if (len > 1) {
-        strncpy(buf+1, fullmetadata + client_state->metadata_offset, len-2);
-    }
+        thread_mutex_unlock (&(source_state->lock));
+
+        /* only write what hasn't been written already */
+        ret = sock_write_bytes (client->con->sock, buf+client_state->metadata_offset, len-client_state->metadata_offset);
+
+        if (ret > 0 && ret < len) {
+            client_state->metadata_offset += ret;
+        }
+        else if (ret == len) {
+            client_state->metadata_age = source_age;
+            client_state->offset = 0;
+            client_state->metadata_offset = 0;
+        }
+        free (buf);
+        if (free_meta)
+            free (fullmetadata);
+        return ret;
+
+    } while (0);
 
     thread_mutex_unlock(&(source_state->lock));
-
-    ret = sock_write_bytes(client->con->sock, buf, len);
-
-    if(ret > 0 && ret < len) {
-        client_state->metadata_offset += ret;
-    }
-    else if(ret == len) {
-        client_state->metadata_age = source_age;
-        client_state->offset = 0;
-        client_state->metadata_offset = 0;
-    }
-
-    return ret;
+    if (free_meta)
+        free (fullmetadata);
+    return -1;
 }
 
 static int format_mp3_write_buf_to_client(format_plugin_t *self, 
     client_t *client, unsigned char *buf, int len) 
 {
     int ret;
+    mp3_client_data *mp3data = client->format_data;
     
-    if(((mp3_state *)self->_state)->metadata && 
-            ((mp3_client_data *)(client->format_data))->use_metadata)
+    if(((mp3_state *)self->_state)->metadata && mp3data->use_metadata)
     {
         mp3_client_data *state = client->format_data;
         int max = state->interval - state->offset;
@@ -363,6 +383,7 @@ static void format_mp3_send_headers(format_plugin_t *self,
     http_var_t *var;
     avl_node *node;
     int bytes;
+    mp3_client_data *mp3data = client->format_data;
     
     client->respcode = 200;
     /* TODO: This may need to be ICY/1.0 for shoutcast-compatibility? */
@@ -402,7 +423,7 @@ static void format_mp3_send_headers(format_plugin_t *self,
     }
     avl_tree_unlock(source->parser->vars);
 
-    if(((mp3_client_data *)(client->format_data))->use_metadata) {
+    if (mp3data->use_metadata) {
         int bytes = sock_write(client->con->sock, "icy-metaint:%d\r\n", 
                 ICY_METADATA_INTERVAL);
         if(bytes > 0)
@@ -412,6 +433,6 @@ static void format_mp3_send_headers(format_plugin_t *self,
     bytes = sock_write(client->con->sock,
 		       "Server: %s\r\n", ICECAST_VERSION_STRING);
     if (bytes > 0)
-	client->con->sent_bytes += bytes;
+        client->con->sent_bytes += bytes;
 }
 
