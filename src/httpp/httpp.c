@@ -9,7 +9,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "thread.h"
 #include "avl.h"
 #include "httpp.h"
 

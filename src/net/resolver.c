@@ -19,7 +19,15 @@
 #include <winsock2.h>
 #endif
 
+#ifdef USE_THREAD
 #include "../thread/thread.h"
+#else
+#define thread_mutex_create(x)
+#define thread_mutex_destroy(x)
+#define thread_mutex_lock(x)
+#define thread_mutex_unlock(x)
+#endif
+
 #include "resolver.h"
 #include "sock.h"
 
@@ -29,7 +37,9 @@ static int _isip(const char *what);
 
 /* internal data */
 
+#ifdef USE_THREAD
 static mutex_t _resolver_mutex;
+#endif
 static int _initialized = 0;
 
 #ifdef HAVE_INET_PTON

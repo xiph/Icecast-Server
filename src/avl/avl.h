@@ -2,7 +2,7 @@
  * Copyright (C) 1995 by Sam Rushing <rushing@nightmare.com>
  */
 
-/* $Id: avl.h,v 1.2 2002/02/11 09:11:18 msmith Exp $ */
+/* $Id: avl.h,v 1.3 2003/03/06 01:55:20 brendan Exp $ */
 
 #ifndef __AVL_H
 #define __AVL_H
@@ -11,7 +11,15 @@
 extern "C" {
 #endif
 
+#ifdef USE_THREAD
 #include "thread.h"
+#else
+#define thread_rwlock_create(x)
+#define thread_rwlock_destroy(x)
+#define thread_rwlock_rlock(x)
+#define thread_rwlock_wlock(x)
+#define thread_rwlock_unlock(x)
+#endif
 
 typedef struct avl_node_tag {
   void *		key;
@@ -24,8 +32,9 @@ typedef struct avl_node_tag {
    * The rest of the bits are used for <rank>
    */
   unsigned long		rank_and_balance;
-
+#ifdef USE_THREAD
   rwlock_t rwlock;
+#endif
 } avl_node;
 
 #define AVL_GET_BALANCE(n)	((int)(((n)->rank_and_balance & 3) - 1))
@@ -59,8 +68,9 @@ typedef struct _avl_tree {
   unsigned long			length;
   avl_key_compare_fun_type	compare_fun;
   void * 			compare_arg;
-
+#ifdef USE_THREAD
   rwlock_t rwlock;
+#endif
 } avl_tree;
 
 avl_tree * avl_tree_new (avl_key_compare_fun_type compare_fun, void * compare_arg);
