@@ -15,6 +15,7 @@
 #include "event.h"
 #include "stats.h"
 #include "os.h"
+#include "xslt.h"
 
 #include "format.h"
 #include "format_mp3.h"
@@ -145,7 +146,6 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
     xmlNodePtr xmlnode, srcnode;
     xmlDocPtr doc;
     char buf[22];
-    int len = 0;
     time_t now = time(NULL);
 
     doc = xmlNewDoc("1.0");
@@ -168,10 +168,10 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
                     (source->fallback_mount != NULL)?
                     source->fallback_mount:"");
         memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%d", source->listeners);
+        snprintf(buf, sizeof(buf)-1, "%ld", source->listeners);
         xmlNewChild(srcnode, NULL, "listeners", buf);
         memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%d", now - source->con->con_time);
+        snprintf(buf, sizeof(buf)-1, "%ld", now - source->con->con_time);
         xmlNewChild(srcnode, NULL, "Connected", buf);
         xmlNewChild(srcnode, NULL, "Format", 
             source->format->format_description);
@@ -387,20 +387,6 @@ static void html_success(client_t *client, char *message)
     client_destroy(client);
 }
 
-static void html_head(client_t *client)
-{
-    int bytes;
-
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock,
-            "HTTP/1.0 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            "\r\n"
-            "<html><head><title>Admin request</title></head>"
-            "<body>");
-    if(bytes > 0) client->con->sent_bytes = bytes;
-}
-
 static void html_write(client_t *client, char *fmt, ...)
 {
     int bytes;
@@ -425,7 +411,7 @@ static void command_move_clients(client_t *client, source_t *source,
     int parameters_passed = 0;
 
     DEBUG0("Doing optional check");
-    if (COMMAND_OPTIONAL(client, "destination", dest_source)) {
+    if((COMMAND_OPTIONAL(client, "destination", dest_source))) {
         parameters_passed = 1;
     }
     DEBUG1("Done optional check (%d)", parameters_passed);
@@ -488,7 +474,6 @@ static void command_show_listeners(client_t *client, source_t *source,
     avl_node *client_node;
     client_t *current;
     char buf[22];
-    int len = 0;
     char *userAgent = NULL;
     time_t now = time(NULL);
 
@@ -499,7 +484,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     memset(buf, '\000', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%d", source->listeners);
+    snprintf(buf, sizeof(buf)-1, "%ld", source->listeners);
     xmlNewChild(srcnode, NULL, "Listeners", buf);
 
     avl_tree_rlock(source->client_tree);
@@ -517,10 +502,10 @@ static void command_show_listeners(client_t *client, source_t *source,
             xmlNewChild(listenernode, NULL, "UserAgent", "Unknown");
         }
         memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%d", now - current->con->con_time);
+        snprintf(buf, sizeof(buf)-1, "%ld", now - current->con->con_time);
         xmlNewChild(listenernode, NULL, "Connected", buf);
         memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%d", current->con->id);
+        snprintf(buf, sizeof(buf)-1, "%lu", current->con->id);
         xmlNewChild(listenernode, NULL, "ID", buf);
         client_node = avl_get_next(client_node);
     }
@@ -664,14 +649,7 @@ static void command_stats(client_t *client, int response) {
 }
 
 static void command_list_mounts(client_t *client, int response) {
-    avl_node *node;
-    source_t *source;
-    int bytes;
     xmlDocPtr doc;
-    xmlNodePtr xmlnode, srcnode, datanode;
-    char buf[22];
-    int len = 0;
-    time_t now = time(NULL);
 
     DEBUG0("List mounts request");
 
