@@ -36,6 +36,9 @@ typedef struct thread_tag {
 	char *file;
 	int line;
 
+    /* is the thread running detached? */
+    int detached;
+
 	/* the system specific thread */
 	pthread_t sys_thread;
 } thread_t;

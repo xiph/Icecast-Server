@@ -102,6 +102,7 @@ static int _compare_mutexes(void *compare_arg, void *a, void *b);
 static int _compare_threads(void *compare_arg, void *a, void *b);
 static int _free_mutex(void *key);
 static int _free_thread(void *key);
+static int _free_thread_if_detached(void *key);
 
 /* mutex fuctions */
 static void _mutex_create(mutex_t *mutex);
@@ -254,6 +255,7 @@ thread_t *thread_create_c(char *name, void *(*start_routine)(void *), void *arg,
 
 	thread->name = strdup(name);
 	thread->create_time = time(NULL);
+    thread->detached = 0;
 
 	start->start_routine = start_routine;
 	start->arg = arg;
@@ -551,7 +553,7 @@ void thread_exit_c(int val, int line, char *file)
 #endif
 
 		_mutex_lock(&_threadtree_mutex);
-		avl_delete(_threadtree, th, _free_thread);
+    	avl_delete(_threadtree, th, _free_thread_if_detached);
 		_mutex_unlock(&_threadtree_mutex);
 	}
 	
@@ -614,6 +616,7 @@ static void *_start_routine(void *arg)
 
 	if (detach) {
 		pthread_detach(thread->sys_thread);
+        thread->detached = 1;
 	}
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
@@ -704,6 +707,7 @@ void thread_join(thread_t *thread)
 	int i;
 
 	i = pthread_join(thread->sys_thread, &ret);
+    _free_thread(thread);
 }
 
 /* AVL tree functions */
@@ -768,6 +772,13 @@ static int _free_thread(void *key)
 	return 1;
 }
 
+static int _free_thread_if_detached(void *key)
+{
+    thread_t *t = key;
+    if(t->detached)
+        return _free_thread(key);
+    return 1;
+}
 
 
 
