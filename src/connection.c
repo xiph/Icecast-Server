@@ -752,7 +752,7 @@ static void _handle_get_request(connection_t *con,
     int bytes;
     struct stat statbuf;
     int fileserve;
-    char *host;
+    char *host = NULL;
     int port;
     int i;
     char *serverhost = NULL;
@@ -765,7 +765,8 @@ static void _handle_get_request(connection_t *con,
     DEBUG1("start with %s", passed_uri);
     config = config_get_config();
     fileserve = config->fileserve;
-    host = config->hostname;
+    if (config->hostname)
+        host = strdup (config->hostname);
     port = config->port;
     for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
         if(global.serversock[i] == con->serversock) {
@@ -807,6 +808,7 @@ static void _handle_get_request(connection_t *con,
             (strncmp(uri, "/admin/", 7) == 0)) {
         admin_handle_request(client, uri);
         if (uri != passed_uri) free (uri);
+        free (host);
         return;
     }
 
@@ -831,6 +833,7 @@ static void _handle_get_request(connection_t *con,
         }
         free(fullpath);
         if (uri != passed_uri) free (uri);
+        free (host);
         return;
     }
     else if(fileserve && stat(fullpath, &statbuf) == 0 && 
@@ -843,6 +846,7 @@ static void _handle_get_request(connection_t *con,
         fserve_client_create(client, fullpath);
         free(fullpath);
         if (uri != passed_uri) free (uri);
+        free (host);
         return;
     }
     free(fullpath);
@@ -864,8 +868,10 @@ static void _handle_get_request(connection_t *con,
         client_destroy(client);
         free(sourceuri);
         if (uri != passed_uri) free (uri);
+        free (host);
         return;
     }
+    free (host);
 
     global_lock();
     if (global.clients >= client_limit)
