@@ -376,7 +376,7 @@ static void source_init (source_t *source)
     int listen_url_size;
 #ifdef USE_YP
     char *s;
-    long current_time;
+    time_t current_time;
     int    i;
     char *ai;
 
@@ -518,7 +518,7 @@ static void source_init (source_t *source)
 
     /*
     ** Now, if we have a fallback source and override is on, we want
-    ** to steal it's clients, because it means we've come back online
+    ** to steal its clients, because it means we've come back online
     ** after a failure and they should be gotten back from the waiting
     ** loop or jingle track or whatever the fallback is used for
     */
