@@ -738,7 +738,6 @@ void thread_join(thread_type *thread)
     _mutex_lock(&_threadtree_mutex);
     avl_delete(_threadtree, thread, _free_thread);
     _mutex_unlock(&_threadtree_mutex);
-    _free_thread(thread);
 }
 
 /* AVL tree functions */
