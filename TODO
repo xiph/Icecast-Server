@@ -1,32 +1,18 @@
 2.0 CRITICAL - These are the things without which 2.0 cannot be released
 ____________
 
-- Should icecast automatically (i.e. without needing -c) look for the config
-  file in /etc/icecast.xml or something?
-
 - libshout 2.0 and ices 2.0 releases, also an ices 0.x release that works with
   this. Without source clients, icecast isn't much use...
 
-- integrate/include all the documentation done by external groups.
-
-- generally we don't do proper checking for the correct versions of various
-  libraries (this is probably more of an issue with ices2, but it also affects
-  icecast)
-
 BUGS
 ----
-- stats get off?  this needs testing more testing.
-
-- some stuff (like 'genre') isn't making it into the stats dump
-
 - logging - bytes send and time listening may both be broken?
-
-- slave servers don't work. relay user is not respected by the source (only
-  admin can read /admin/streamlist), and the slave can't parse the xml result
-  of streamlist anyway (it expects a simple mountpoint per line)
 
 FEATURES
 --------
+
+- Should icecast automatically (i.e. without needing -c) look for the config
+  file in /etc/icecast.xml or something?
 
 - pull out vorbis comments.  and send to stats. This seems to be being
   done, but it isn't working right.
