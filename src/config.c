@@ -225,7 +225,6 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
     _parse_root(doc, node->xmlChildrenNode, configuration);
 
     xmlFreeDoc(doc);
-    xmlCleanupParser();
 
     return 0;
 }
