@@ -1,0 +1,198 @@
+/******************************************************************************
+
+	This file styles the bar that goes across the top of all Xiph.Org
+	pages.
+	
+	The style that comes from this was first (to my knowledge) at
+	http://alistapart.com/stories/practicalcss/ in the
+	"Splitting the Difference" section.
+
+******************************************************************************/
+
+/* This effect doesn't work at all if all content is pinched in a bit. */
+html, body {
+	margin: 0;
+	padding: 0;
+}
+
+.xiphnav {
+    font-family: Verdana, sans-serif;
+	font-weight: normal;
+    padding:    .25em;
+    margin-bottom:  .5em;
+    border-bottom:  1px solid #000;
+    color: #000;
+    background: #aaa;
+}
+h2 {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 250%;
+    color: #FFFFFF;
+}
+.nav {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 110%;
+    color: #FFFFFF;
+}
+.nav:hover {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: bold;
+    color: #F8EF64;
+}
+.xiphnav_a {
+    text-decoration: none;
+    font-weight: normal;
+    color: #000;
+}
+.news {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: normal;
+    color: #FFFFFF;
+}
+.newsheader {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: normal;
+    font-size: 110%;
+    color: #F8EF64;
+    background: #444444;
+}
+.streamtd {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: normal;
+    font-size: 85%;
+    color: #FFFFFF;
+    padding:15px;
+}
+.streamtd_alt {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: normal;
+    font-size: 85%;
+    color: #FFFFFF;
+}
+
+.streamtd_alt_2 {
+    font-family: Verdana, sans-serif;
+    text-decoration: underline;
+    font-weight: normal;
+    font-size: 85%;
+    color: #FFFFFF;
+}
+
+td {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: normal;
+    color: #FFFFFF;
+}
+.roundcont {
+	width: 90%;
+	background-color: #656565;
+	color: #fff;
+}
+
+.newscontent {
+	margin: 0 20px;
+}
+.newscontent h3 {
+	margin: 10px 0px;
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 110%;
+	color: #F8EF64;
+        border-bottom:  3px dashed #000000;
+}
+.newscontent h4 {
+	margin: 10px 0px;
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 110%;
+	color: #F8EF64;
+}
+.newscontent p {
+	margin: 0 0;
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: none;
+	font-size: 90%;
+}
+.newscontent td {
+	margin: 0 0;
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: none;
+	font-size: 90%;
+}
+.newscontent td.streamdata {
+	margin: 0 0;
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: none;
+	font-size: 90%;
+        color: #F8EF64;
+}
+.newscontent a {
+    font-family: Verdana, sans-serif;
+    text-decoration: underline;
+    font-weight: bold;
+    color: #F8EF64;
+}
+.newscontent a:hover {
+    font-family: Verdana, sans-serif;
+    text-decoration: underline;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+.newscontent a.nav2 {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    font-weight: bold;
+    background: #444444;
+    color: #F8EF64;
+}
+.newscontent a.nav2:hover {
+    font-family: Verdana, sans-serif;
+    text-decoration: none;
+    background: #777777;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+.poster {
+    font-family: Verdana, sans-serif;
+	margin: 0px 0px;
+	display: block;
+	text-decoration: none;
+	font-size: 100%;
+	color: #F8EF64;
+    border-top:  3px dashed #000000;
+}
+.roundcont p {
+	margin: 10px 50px;
+}
+
+.roundtop { 
+	background: url(corner_topright.jpg) no-repeat top right; 
+}
+
+.roundbottom {
+	background: url(corner_bottomright.jpg) no-repeat top right; 
+}
+
+img.corner {
+	width: 15px;
+	height: 15px;
+	border: none;
+	display: block !important;
+}
+
+
