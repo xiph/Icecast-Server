@@ -872,7 +872,18 @@ static void *_handle_connection(void *arg)
 			} 
             else if(httpp_parse_icy(parser, header, strlen(header))) {
                 /* TODO: Map incoming icy connections to /icy_0, etc. */
-                _handle_source_request(con, parser, "/");
+                char mount[20];
+                int i = 0;
+
+                strcpy(mount, "/");
+
+                avl_tree_rlock(global.source_tree);
+                while(source_find_mount(mount) != NULL) {
+                    sprintf(mount, "/icy_%d", i++);
+                }
+                avl_tree_unlock(global.source_tree);
+
+                _handle_source_request(con, parser, mount);
             }
             else {
                 ERROR0("HTTP request parsing failed");
