@@ -54,7 +54,7 @@ typedef struct _format_plugin_tag
             struct source_tag *source, client_t *client);
     void (*client_send_headers)(struct _format_plugin_tag *format, 
             struct source_tag *source, client_t *client);
-
+    void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
 
     /* for internal state management */

@@ -63,6 +63,7 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
         client_t *client, unsigned char *buf, int len);
 static void format_mp3_send_headers(format_plugin_t *self, 
         source_t *source, client_t *client);
+static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 
 typedef struct {
    int use_metadata;
@@ -88,6 +89,7 @@ format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
     plugin->create_client_data = format_mp3_create_client_data;
     plugin->client_send_headers = format_mp3_send_headers;
     plugin->free_plugin = format_mp3_free_plugin;
+    plugin->set_tag = mp3_set_tag;
     plugin->format_description = "MP3 audio";
 
     plugin->_state = state;
@@ -102,6 +104,19 @@ format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 
     return plugin;
 }
+
+
+static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
+{
+    mp3_state *state = plugin->_state;
+
+    thread_mutex_lock(&(state->lock));
+    free(state->metadata);
+    state->metadata = strdup(value);
+    state->metadata_age++;
+    thread_mutex_unlock(&(state->lock));
+}
+
 
 static int send_metadata(client_t *client, mp3_client_data *client_state,
         mp3_state *source_state)
