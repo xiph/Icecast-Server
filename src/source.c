@@ -685,6 +685,7 @@ static int _parse_audio_info(source_t *source, char *s)
         if (pvar) {
             variable = (char *)malloc(pvar-token+1);
             strncpy(variable, token, pvar-token);    
+            variable[pvar-token] = 0;
             pvar++;
             if (strlen(pvar)) {
                 value = util_url_unescape(pvar);
