@@ -62,9 +62,11 @@
 #define COMMAND_RAW_STATS                   102
 #define COMMAND_RAW_LISTSTREAM              103
 #define COMMAND_PLAINTEXT_LISTSTREAM        104
+#define COMMAND_RAW_ADMIN_FUNCTION          105
 #define COMMAND_TRANSFORMED_LIST_MOUNTS     201
 #define COMMAND_TRANSFORMED_STATS           202
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
+#define COMMAND_TRANSFORMED_ADMIN_FUNCTION  204
 
 /* Client management commands */
 #define COMMAND_RAW_KILL_CLIENT             301
@@ -96,6 +98,8 @@
 #define ADMIN_XSL_RESPONSE "response.xsl"
 #define MANAGEAUTH_RAW_REQUEST "manageauth"
 #define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
+#define ADM_FUNCTION_RAW_REQUEST "function"
+#define ADM_FUNCTION_TRANSFORMED_REQUEST "function.xsl"
 #define DEFAULT_RAW_REQUEST ""
 #define DEFAULT_TRANSFORMED_REQUEST ""
 #define BUILDM3U_RAW_REQUEST "buildm3u"
@@ -148,6 +152,10 @@ int admin_get_command(char *command)
         return COMMAND_TRANSFORMED_MANAGEAUTH;
     else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_KILL_SOURCE;
+    else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
+        return COMMAND_RAW_ADMIN_FUNCTION;
+    else if(!strcmp(command, ADM_FUNCTION_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_ADMIN_FUNCTION;
     else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, DEFAULT_RAW_REQUEST))
@@ -172,6 +180,8 @@ static void command_buildm3u(client_t *client, source_t *source,
         int response);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
+static void command_admin_function (client_t *client, int response);
+
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
 static void admin_handle_general_request(client_t *client, int command);
@@ -377,6 +387,9 @@ static void admin_handle_general_request(client_t *client, int command)
         case COMMAND_RAW_LISTSTREAM:
             command_list_mounts(client, RAW);
             break;
+        case COMMAND_RAW_ADMIN_FUNCTION:
+            command_admin_function(client, RAW);
+            break;
         case COMMAND_PLAINTEXT_LISTSTREAM:
             command_list_mounts(client, PLAINTEXT);
             break;
@@ -391,6 +404,9 @@ static void admin_handle_general_request(client_t *client, int command)
             break;
         case COMMAND_TRANSFORMED_MOVE_CLIENTS:
             command_list_mounts(client, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_ADMIN_FUNCTION:
+            command_admin_function(client, TRANSFORMED);
             break;
         default:
             WARN0("General admin request not recognised");
@@ -548,6 +564,54 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlFreeDoc(doc);
     client_destroy(client);
 }
+
+static int admin_function (const char *function, char *buf, unsigned int len)
+{
+    if (strcmp (function, "reopenlog") == 0)
+    {
+        config_get_config();
+
+        restart_logging();
+        config_release_config();
+        snprintf (buf, len, "Re-opening log files");
+        return 0;
+    }
+    if (strcmp (function, "updatecfg") == 0)
+    {
+        event_config_read(NULL);
+        snprintf (buf, len, "Updating from configuration file");
+        return 0;
+    }
+    return 1;
+}
+
+
+static void command_admin_function (client_t *client, int response)
+{
+    xmlDocPtr doc;
+    xmlNodePtr node;
+    char *perform;
+    char buf[256];
+
+    COMMAND_REQUIRE (client, "perform", perform);
+    if (admin_function (perform, buf, sizeof buf) < 0)
+    {
+        client_send_400 (client, "No such handler");
+        return;
+    }
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlDocSetRootElement(doc, node);
+
+    xmlNewChild(node, NULL, "message", buf);
+    xmlNewChild(node, NULL, "return", "1");
+
+    admin_send_response(doc, client, response, 
+        ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
+}
+
 
 static void command_show_listeners(client_t *client, source_t *source,
     int response)
