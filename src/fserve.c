@@ -387,7 +387,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
             WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
             free (fullpath);
-            return -1;
+            return 0;
         }
         m3u_file_available = 0;
     }
@@ -430,7 +430,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         client_destroy (httpclient);
         free (sourceuri);
         free (fullpath);
-        return -1;
+        return 0;
     }
 
     if (util_check_valid_extension (fullpath) == XSLT_CONTENT)
@@ -444,14 +444,14 @@ int fserve_client_create(client_t *httpclient, const char *path)
         stats_transform_xslt (httpclient, fullpath);
         client_destroy (httpclient);
         free (fullpath);
-        return -1;
+        return 0;
     }
 
     client->file = fopen (fullpath, "rb");
     if (client->file == NULL)
     {
         client_send_404 (httpclient, "File not readable");
-        return -1;
+        return 0;
     }
 
     client->client = httpclient;
@@ -471,7 +471,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
                 "<b>Server is full, try again later.</b>\r\n");
         if(bytes > 0) httpclient->con->sent_bytes = bytes;
         fserve_client_destroy(client);
-        return -1;
+        return 0;
     }
     global.clients++;
     global_unlock();
@@ -550,7 +550,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     if(bytes > 0) httpclient->con->sent_bytes = bytes;
     fserve_client_destroy (client);
-    return -1;
+    return 0;
 }
 
 static int _free_client(void *key)

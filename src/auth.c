@@ -291,7 +291,13 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
         }
         ret = add_client_to_source (source, client);
         avl_tree_unlock (global.source_tree);
-        DEBUG0 ("client authenticated, passed to source");
+        if (ret == 0)
+            DEBUG0 ("client authenticated, passed to source");
+        else
+        {
+            if (slave_redirect (mount, client))
+                ret = 0;
+        }
     }
     else
     {
@@ -353,6 +359,7 @@ void add_client (const char *mount, client_t *client)
         auth_user->process = client->auth->authenticate;
         auth_user->client = client;
 
+        INFO0 ("adding client for authentication");
         queue_auth_client (auth_user);
     }
     else

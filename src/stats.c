@@ -419,6 +419,8 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         }
         str = malloc (16);
         snprintf (str, 16, "%d", value);
+        if (event->value == NULL)
+            event->value = strdup (str);
     }
     else
         str = (char *)strdup (event->value);
