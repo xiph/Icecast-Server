@@ -353,6 +353,7 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     unsigned listeners = 0;
     char *val, *artist, *title;
     int ret;
+    char *max_listeners;
 
     artist = (char *)stats_get_value (yp->mount, "artist");
     title = (char *)stats_get_value (yp->mount, "title");
@@ -383,8 +384,16 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         listeners = atoi (val);
         free (val);
     }
-    ret = snprintf (s, len, "action=touch&sid=%s&st=%s&listeners=%u\r\n", 
-            yp->sid, yp->current_song, listeners);
+    max_listeners = stats_get_value (yp->mount, "max_listeners");
+    if (max_listeners == NULL || strcmp (max_listeners, "unlimited") == 0)
+    {
+        free (max_listeners);
+        max_listeners = (char *)stats_get_value (NULL, "client_limit");
+    }
+
+    ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
+            "&listeners=%u&max_listeners=%s\r\n",
+            yp->sid, yp->current_song, listeners, max_listeners);
 
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
@@ -738,6 +747,9 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
         if (ypdata->audio_info) {
             free(ypdata->audio_info);
         }
+        if (ypdata->audio_info) {
+            free(ypdata->cluster_password);
+        }
         free (ypdata->error_msg);
         free (ypdata);
     }
@@ -913,7 +925,7 @@ void yp_touch (const char *mount)
         if (yp)
         {
             /* we may of found old entries not purged yet, so skip them */
-            if (yp->release == 0 || yp->remove == 0)
+            if (yp->release != 0 || yp->remove != 0)
             {
                 search_list = yp->next;
                 continue;
