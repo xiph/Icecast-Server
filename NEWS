@@ -2,13 +2,21 @@ feature differences from CVS
 
 fast pre-buffering - burst a certain amount of data at connection time.
 mp3 accepts artist and title separately on the url.
-vorbis can accept url updates if module compiled in
 program invocation at stream start and end, per mount based.
 on-demand relays, activated on first listener, disconnected when listeners 
 falls to 0
-initial implementation of multiple Ogg codec streaming, theora, vorbis and
-speex. more work needed to start at theora key frame.
+multiple Ogg codec streaming. start at theora key frame.
 Added URL and command based authentication
+
+kh48
+. tweaks to per client write limits
+. allow for on-demand to be set on all relays by default
+. resync with trunk for refbuf singleq merge
+. updated win32 build
+. Add Ogg writ handler
+. mp3 fixes, url metadata related
+. resync yp timeout code to the same as in trunk
+. allow for redirecting new clients to other hosts when full
 
 kh47
 . per mount burst size was not being referred to properly
