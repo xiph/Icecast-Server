@@ -201,6 +201,10 @@ static char *_get_stats(char *source, char *name)
 	return value;
 }
 
+char *stats_get_value(char *source, char *name)
+{
+	return(_get_stats(source, name));
+}
 void stats_event_inc(char *source, char *name)
 {
 	char *old_value;
