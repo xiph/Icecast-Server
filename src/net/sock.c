@@ -668,15 +668,19 @@ int sock_accept(sock_t serversock, char *ip, int len)
 	ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
 	if (ret >= 0 && ip != NULL) {
-        /* inet_ntoa is not reentrant, we should protect this */
 #ifdef HAVE_IPV6
-        if(inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr, 
-                    ip, len) <= 0)
-        {
-            inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&sa)->sin6_addr,
+        if(((struct sockaddr_in *)&sa)->sin_family == AF_INET) 
+            inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr,
                     ip, len);
+        else if(((struct sockaddr_in6 *)&sa)->sin6_family == AF_INET6) 
+            inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&sa)->sin6_addr, 
+                    ip, len);
+        else {
+            strncpy(ip, "ERROR", len-1);
+            ip[len-1] = 0;
         }
 #else
+        /* inet_ntoa is not reentrant, we should protect this */
 		strncpy(ip, inet_ntoa(sa.sin_addr), len);
 #endif
 		sock_set_nolinger(ret);
