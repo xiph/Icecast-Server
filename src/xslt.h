@@ -22,5 +22,5 @@
 #include "stats.h"
 
 
-void transformXSLT(xmlDocPtr doc, char *xslfilename, client_t *client);
+void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client);
 

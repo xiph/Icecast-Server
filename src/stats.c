@@ -735,7 +735,7 @@ void stats_transform_xslt(client_t *client, char *xslpath)
 
     stats_get_xml(&doc);
 
-    transformXSLT(doc, xslpath, client);
+    xslt_transform(doc, xslpath, client);
 
     xmlFreeDoc(doc);
 }
