@@ -90,6 +90,17 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
             }
             header_page = 1;
             codec->headers++;
+            if (codec->headers == 3)
+            {
+                ogg_info->bitrate += theora->ti.target_bitrate;
+                stats_event_args (ogg_info->mount, "video_bitrate", "%ld",
+                        (long)theora->ti.target_bitrate);
+                stats_event_args (ogg_info->mount, "frame_size", "%ld x %ld",
+                        (long)theora->ti.frame_width,
+                        (long)theora->ti.frame_height);
+                stats_event_args (ogg_info->mount, "framerate", "%.2f",
+                        (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
+            }
             continue;
         }
         if (codec->headers < 3)
