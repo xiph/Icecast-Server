@@ -575,7 +575,10 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
-    char *metadata = httpp_getvar(client->parser, "icy-metadata");
+    const char *metadata;
+    unsigned remaining = client->predata_size - client->predata_len + 2;
+    char *ptr = client->predata + client->predata_len - 2;
+    int bytes;
 
     if (client_mp3 == NULL)
     {
@@ -585,13 +588,18 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
-    
+
+    /* hack for flash player, it wants a length */
+    if (httpp_getvar(client->parser, "x-flash-version"))
+    {
+        bytes = snprintf (ptr, remaining, "Content-Length: 347122319\r\n");
+        remaining -= bytes;
+        ptr += bytes;
+    }
+
+    metadata = httpp_getvar(client->parser, "icy-metadata");
     if (metadata && atoi(metadata) && source_mp3->interval)
     {
-        unsigned remaining = client->predata_size - client->predata_len + 2;
-        char *ptr = client->predata + client->predata_len - 2;
-        int bytes;
-
         if (source_mp3->interval < 0)
             client_mp3->interval = ICY_METADATA_INTERVAL;
         else
