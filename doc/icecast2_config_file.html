@@ -303,6 +303,7 @@ This specifies a mountpoint that is used in the case of a source disconnect.  If
     &lt;paths&gt;
         &lt;basedir&gt;./&lt;basedir&gt;
         &lt;logdir&gt;./logs&lt;logdir&gt;
+        &lt;pidfile&gt;./icecast.pid&lt;pidfile&gt;
         &lt;webroot&gt;./web&lt;webroot&gt;
         &lt;adminroot&gt;./admin&lt;adminroot&gt;
         &lt;alias source="/foo" dest="/bar"/&gt;
@@ -317,6 +318,10 @@ This path is used in conjunction with the chroot settings, and specified the bas
 <h4>logdir</h4>
 <div class=indentedbox>
 This path specifies the base directory used for logging. Both the error.log and access.log will be created relative to this directory.  
+</div>
+<h4>pidfile</h4>
+<div class=indentedbox>
+This pathname specifies the file to write at startup and to remove at normal shutdown. The file contains the process id of the icecast process. This could be read and used for sending signals icecast.
 </div>
 <h4>webroot</h4>
 <div class=indentedbox>

@@ -96,6 +96,7 @@ typedef struct ice_config_tag
 
     char *base_dir;
     char *log_dir;
+    char *pidfile;
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;

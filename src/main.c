@@ -45,6 +45,7 @@
 
 #ifdef _WIN32
 #define snprintf _snprintf
+#define getpid _getpid
 #endif
 
 #undef CATMODULE
@@ -336,6 +337,8 @@ static void _ch_root_uid_setup(void)
 int main(int argc, char **argv)
 {
     int res, ret;
+    ice_config_t *config;
+    char *pidfile = NULL;
     char filename[512];
     char pbuf[1024];
 
@@ -414,6 +417,18 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    config = config_get_config_unlocked();
+    /* recreate the pid file */
+    if (config->pidfile)
+    {
+        FILE *f;
+        pidfile = strdup (config->pidfile);
+        if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
+        {
+            fprintf (f, "%d\n", getpid());
+            fclose (f);
+        }
+    }
     /* Do this after logging init */
     slave_initialize();
 
@@ -434,6 +449,12 @@ int main(int argc, char **argv)
     INFO0("Shutting down");
 
     _shutdown_subsystems();
+
+    if (pidfile)
+    {
+        remove (pidfile);
+        free (pidfile);
+    }
 
     return 0;
 }

@@ -130,6 +130,8 @@ void config_clear(ice_config_t *c)
         xmlFree(c->webroot_dir);
     if (c->adminroot_dir && c->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR)
         xmlFree(c->adminroot_dir);
+    if (c->pidfile) 
+        xmlFree(c->pidfile);
     if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
@@ -644,6 +646,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "logdir") == 0) {
             if (configuration->log_dir && configuration->log_dir != CONFIG_DEFAULT_LOG_DIR) xmlFree(configuration->log_dir);
             configuration->log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "pidfile") == 0) {
+            if (configuration->pidfile) xmlFree(configuration->pidfile);
+            configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "webroot") == 0) {
             if (configuration->webroot_dir && configuration->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(configuration->webroot_dir);
             configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
