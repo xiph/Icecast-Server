@@ -80,7 +80,7 @@ typedef struct thread_start_tag {
 	/* the other stuff we need to make sure this thread is inserted into
 	** the thread tree
 	*/
-	thread_t *thread;
+	thread_type *thread;
 	pthread_t sys_thread;
 } thread_start_t;
 
@@ -118,7 +118,7 @@ static void _block_signals(void);
 
 void thread_initialize(void)
 {
-	thread_t *thread;
+	thread_type *thread;
 
 	/* set up logging */
 
@@ -149,7 +149,7 @@ void thread_initialize(void)
 
 	_threadtree = avl_tree_new(_compare_threads, NULL);
 
-	thread = (thread_t *)malloc(sizeof(thread_t));
+	thread = (thread_type *)malloc(sizeof(thread_type));
 
 	thread->thread_id = _next_thread_id++;
 	thread->line = 0;
@@ -238,13 +238,14 @@ static void _catch_signals(void)
 }
 
 
-thread_t *thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file)
+thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
+        void *arg, int detached, int line, char *file)
 {
 	int created;
-	thread_t *thread;
+	thread_type *thread;
 	thread_start_t *start;
 
-	thread = (thread_t *)malloc(sizeof(thread_t));	
+	thread = (thread_type *)malloc(sizeof(thread_type));	
 	start = (thread_start_t *)malloc(sizeof(thread_start_t));
 	thread->line = line;
 	thread->file = strdup(file);
@@ -318,7 +319,7 @@ void thread_mutex_destroy (mutex_t *mutex)
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 {
 #ifdef DEBUG_MUTEXES
-	thread_t *th = thread_self();
+	thread_type *th = thread_self();
 
 	if (!th) LOG_WARN("No mt record for %u in lock [%s:%d]", thread_self(), file, line);
 
@@ -390,7 +391,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 {
 #ifdef DEBUG_MUTEXES
-	thread_t *th = thread_self();
+	thread_type *th = thread_self();
 
 	if (!th) {
 		LOG_ERROR3("No record for %u in unlock [%s:%d]", thread_self(), file, line);
@@ -522,7 +523,7 @@ void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, char *file)
 
 void thread_exit_c(int val, int line, char *file)
 {
-	thread_t *th = thread_self();
+	thread_type *th = thread_self();
 
 #if defined(DEBUG_MUTEXES) && defined(CHECK_MUTEXES)
 	if (th) {
@@ -597,7 +598,7 @@ static void *_start_routine(void *arg)
 	thread_start_t *start = (thread_start_t *)arg;
 	void *(*start_routine)(void *) = start->start_routine;
 	void *real_arg = start->arg;
-	thread_t *thread = start->thread;
+	thread_type *thread = start->thread;
     int detach = start->detached;
 
 	_block_signals();
@@ -632,10 +633,10 @@ static void *_start_routine(void *arg)
 	return NULL;
 }
 
-thread_t *thread_self(void)
+thread_type *thread_self(void)
 {
 	avl_node *node;
-	thread_t *th;
+	thread_type *th;
 	pthread_t sys_thread = pthread_self();
 
 	_mutex_lock(&_threadtree_mutex);
@@ -651,7 +652,7 @@ thread_t *thread_self(void)
 	node = avl_get_first(_threadtree);
 	
 	while (node) {
-		th = (thread_t *)node->key;
+		th = (thread_type *)node->key;
 
 		if (th && pthread_equal(sys_thread, th->sys_thread)) {
 			_mutex_unlock(&_threadtree_mutex);
@@ -672,7 +673,7 @@ thread_t *thread_self(void)
 
 void thread_rename(const char *name)
 {
-	thread_t *th;
+	thread_type *th;
 
 	th = thread_self();
 	if (th->name) free(th->name);
@@ -701,7 +702,7 @@ void thread_library_unlock(void)
 	_mutex_unlock(&_library_mutex);
 }
 
-void thread_join(thread_t *thread)
+void thread_join(thread_type *thread)
 {
 	void *ret;
 	int i;
@@ -731,10 +732,10 @@ static int _compare_mutexes(void *compare_arg, void *a, void *b)
 
 static int _compare_threads(void *compare_arg, void *a, void *b)
 {
-	thread_t *t1, *t2;
+	thread_type *t1, *t2;
 
-	t1 = (thread_t *)a;
-	t2 = (thread_t *)b;
+	t1 = (thread_type *)a;
+	t2 = (thread_type *)b;
 
 	if (t1->thread_id > t2->thread_id)
 		return 1;
@@ -761,9 +762,9 @@ static int _free_mutex(void *key)
 
 static int _free_thread(void *key)
 {
-	thread_t *t;
+	thread_type *t;
 
-	t = (thread_t *)key;
+	t = (thread_type *)key;
 
 	if (t->file)
 		free(t->file);
@@ -777,7 +778,7 @@ static int _free_thread(void *key)
 
 static int _free_thread_if_detached(void *key)
 {
-    thread_t *t = key;
+    thread_type *t = key;
     if(t->detached)
         return _free_thread(key);
     return 1;

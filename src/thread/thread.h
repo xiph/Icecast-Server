@@ -24,6 +24,8 @@
 
 #include <pthread.h>
 
+/* renamed from thread_t due to conflict on OS X */
+
 typedef struct thread_tag {
 	/* the local id for the thread, and it's name */
 	long thread_id;
@@ -41,7 +43,7 @@ typedef struct thread_tag {
 
 	/* the system specific thread */
 	pthread_t sys_thread;
-} thread_t;
+} thread_type;
 
 typedef struct mutex_tag {
 	/* the local id and name of the mutex */
@@ -108,7 +110,8 @@ void thread_initialize_with_log_id(int log_id);
 void thread_shutdown(void);
 
 /* creation, destruction, locking, unlocking, signalling and waiting */
-thread_t *thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file);
+thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
+        void *arg, int detached, int line, char *file);
 void thread_mutex_create_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file);
@@ -135,13 +138,13 @@ void thread_library_unlock(void);
 #define PROTECT_CODE(code) { thread_library_lock(); code; thread_library_unlock(); }
 
 /* thread information functions */
-thread_t *thread_self(void);
+thread_type *thread_self(void);
 
 /* renames current thread */
 void thread_rename(const char *name);
 
 /* waits until thread_exit is called for another thread */
-void thread_join(thread_t *thread);
+void thread_join(thread_type *thread);
 
 #endif  /* __THREAD_H__ */
 
