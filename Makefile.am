@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign dist-zip
 
-SUBDIRS = src conf doc web win32
+SUBDIRS = src conf doc web admin win32
 
 EXTRA_DIST = README AUTHORS COPYING
 

@@ -189,4 +189,4 @@ AC_SUBST(PROFILE)
 AC_SUBST(XIPH_CFLAGS)
 AC_SUBST(ICECAST_OBJECTS)
 
-AC_OUTPUT(Makefile conf/Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile win32/Makefile win32/res/Makefile)
+AC_OUTPUT(Makefile conf/Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile admin/Makefile win32/Makefile win32/res/Makefile)
