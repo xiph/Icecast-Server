@@ -20,6 +20,9 @@ typedef struct _client_tag
 	refbuf_queue_t *queue;
 	/* position in first buffer */
 	unsigned long pos;
+
+    /* Format-handler-specific data for this client */
+    void *format_data;
 } client_t;
 
 client_t *client_create(connection_t *con, http_parser_t *parser);

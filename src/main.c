@@ -91,7 +91,8 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
 	while (i < argc) {
 		if (strcmp(argv[i], "-c") == 0) {
 			if (i + 1 < argc) {
-				strncpy(filename, argv[i + 1], size);
+				strncpy(filename, argv[i + 1], size-1);
+                filename[size-1] = 0;
 				return 1;
 			} else {
 				return -1;
@@ -262,12 +263,12 @@ static void _ch_root_uid_setup(void)
 int main(int argc, char **argv)
 {
 	int res, ret;
-	char filename[256];
+	char filename[512];
 
 	/* parse the '-c icecast.xml' option
 	** only, so that we can read a configfile
 	*/
-	res = _parse_config_file(argc, argv, filename, 256);
+	res = _parse_config_file(argc, argv, filename, 512);
 	if (res == 1) {
 	    /* startup all the modules */
     	_initialize_subsystems();

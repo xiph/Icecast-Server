@@ -16,6 +16,9 @@
 #include "format_vorbis.h"
 #include "format_mp3.h"
 
+#include "logging.h"
+#define CATMODULE "format"
+
 format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
@@ -60,3 +63,23 @@ format_plugin_t *format_get_plugin(format_type_t type, char *mount)
 
 	return plugin;
 }
+
+int format_generic_write_buf_to_client(format_plugin_t *format, 
+        client_t *client, unsigned char *buf, int len)
+{
+    int ret;
+    
+    ret = sock_write_bytes(client->con->sock, buf, len);
+
+    if(ret < 0) {
+        if(sock_recoverable(ret)) {
+            DEBUG1("Client had recoverable error %ld", ret);
+            ret = 0;
+        }
+    }
+    else
+        client->con->sent_bytes += ret;
+
+    return ret;
+}
+

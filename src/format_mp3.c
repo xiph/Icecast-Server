@@ -13,9 +13,11 @@
 #include "stats.h"
 #include "format.h"
 
-void format_mp3_free_plugin(format_plugin_t *self);
-int format_mp3_get_buffer(format_plugin_t *self, char *data, unsigned long len, refbuf_t **buffer);
-refbuf_queue_t *format_mp3_get_predata(format_plugin_t *self);
+static void format_mp3_free_plugin(format_plugin_t *self);
+static int format_mp3_get_buffer(format_plugin_t *self, char *data, 
+        unsigned long len, refbuf_t **buffer);
+static refbuf_queue_t *format_mp3_get_predata(format_plugin_t *self);
+static void *format_mp3_create_client_data(format_plugin_t *self);
 
 format_plugin_t *format_mp3_get_plugin(void)
 {
@@ -27,6 +29,8 @@ format_plugin_t *format_mp3_get_plugin(void)
 	plugin->has_predata = 0;
 	plugin->get_buffer = format_mp3_get_buffer;
 	plugin->get_predata = format_mp3_get_predata;
+    plugin->write_buf_to_client = format_generic_write_buf_to_client;
+    plugin->create_client_data = format_mp3_create_client_data;
 	plugin->free_plugin = format_mp3_free_plugin;
     plugin->format_description = "MP3 audio";
 
@@ -61,5 +65,8 @@ refbuf_queue_t *format_mp3_get_predata(format_plugin_t *self)
     return NULL;
 }
 
+static void *format_mp3_create_client_data(format_plugin_t *self) {
+    return NULL;
+}
 
 

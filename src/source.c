@@ -219,9 +219,9 @@ void *source_main(void *arg)
 				else
 					bytes = abuf->len;
 
-				sbytes = sock_write_bytes(client->con->sock, &abuf->data[client->pos], bytes);
+				sbytes = source->format->write_buf_to_client(source->format,
+                        client, &abuf->data[client->pos], bytes);
 				if (sbytes >= 0) {
-                    client->con->sent_bytes += sbytes;
                     if(sbytes != bytes) {
                         /* We didn't send the entire buffer. Leave it for
                          * the moment, handle it in the next iteration.
@@ -232,16 +232,9 @@ void *source_main(void *arg)
                         break;
                     }
                 }
-				if (sbytes < 0) {
-					if (!sock_recoverable(sock_error())) {
-                        DEBUG0("Client has unrecoverable error catching up. Client has probably disconnected");
-						client->con->error = 1;
-					} else {
-                        DEBUG1("Client had recoverable error %ld", sock_error());
-						/* put the refbuf back on top of the queue, since we didn't finish with it */
-						refbuf_queue_insert(&client->queue, abuf);
-					}
-					
+                else {
+                    DEBUG0("Client has unrecoverable error catching up. Client has probably disconnected");
+                    client->con->error = 1;
 					data_done = 1;
 					break;
 				}
@@ -258,9 +251,9 @@ void *source_main(void *arg)
 				refbuf_addref(refbuf);
 				refbuf_queue_add(&client->queue, refbuf);
 			} else {
-				sbytes = sock_write_bytes(client->con->sock, refbuf->data, refbuf->len);
+				sbytes = source->format->write_buf_to_client(source->format,
+                        client, refbuf->data, refbuf->len);
 				if (sbytes >= 0) {
-                    client->con->sent_bytes += sbytes;
                     if(sbytes != refbuf->len) {
                         /* Didn't send the entire buffer, queue it */
                         client->pos = sbytes;
@@ -268,17 +261,9 @@ void *source_main(void *arg)
                         refbuf_queue_insert(&client->queue, refbuf);
                     }
                 }
-				if (sbytes < 0) {
-					bytes = sock_error();
-					if (!sock_recoverable(bytes)) {
-                        DEBUG0("Client had unrecoverable error with new data, probably due to client disconnection");
-						client->con->error = 1;
-					} else {
-                        DEBUG1("Client had recoverable error %ld", bytes);
-						client->pos = 0;
-						refbuf_addref(refbuf);
-						refbuf_queue_insert(&client->queue, refbuf);
-					}
+                else {
+                    DEBUG0("Client had unrecoverable error with new data, probably due to client disconnection");
+                    client->con->error = 1;
 				}
 			}
 
@@ -340,6 +325,8 @@ void *source_main(void *arg)
 			*/
 			if (source->format->has_predata) {
 				client = (client_t *)client_node->key;
+                client->format_data = source->format->create_client_data(
+                        source->format);
 				client->queue = source->format->get_predata(source->format);
 			}
 
