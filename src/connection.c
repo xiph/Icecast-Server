@@ -699,7 +699,7 @@ static void _handle_get_request(connection_t *con,
 
 	if (strcmp(uri, "/admin/streamlist") == 0) {
 		if (!_check_relay_pass(parser)) {
-			INFO0("Client attempted to fetch allstreams.txt with bad password");
+			INFO0("Client attempted to fetch /admin/streamlist with bad password");
             client_send_401(client);
 		} else {
 			avl_node *node;
