@@ -50,6 +50,8 @@ Source: "..\admin\stats.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\manageauth.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\icecast_full.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\icecast_shoutcast_compat.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
