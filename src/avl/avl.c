@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.4 2003/03/15 02:10:18 msmith Exp $ */
+/* $Id: avl.c,v 1.5 2003/07/07 01:10:14 brendan Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -83,7 +83,7 @@ avl_tree_new (avl_key_compare_fun_type compare_fun,
   }
 }
   
-void
+static void
 avl_tree_free_helper (avl_node * node, avl_free_key_fun_type free_key_fun)
 {
   if (node->left) {
@@ -610,7 +610,7 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
   return (0);
 }
 
-int
+static int
 avl_iterate_inorder_helper (avl_node * node,
             avl_iter_fun_type iter_fun,
             void * iter_arg)
@@ -755,7 +755,7 @@ avl_iterate_index_range (avl_tree * tree,
  * representing the closest preceding value.
  */
 
-avl_node *
+static avl_node *
 avl_get_index_by_key (avl_tree * tree,
           void * key,
           unsigned long * index)
@@ -978,7 +978,7 @@ avl_get_item_by_key_least (avl_tree * tree,
 
 #define MAX(X, Y)  ((X) > (Y) ? (X) : (Y))
 
-long
+static long
 avl_verify_balance (avl_node * node)
 {
   if (!node) {
@@ -998,7 +998,7 @@ avl_verify_balance (avl_node * node)
   }
 }
     
-void
+static void
 avl_verify_parent (avl_node * node, avl_node * parent)
 {
   if (node->parent != parent) {
@@ -1013,7 +1013,7 @@ avl_verify_parent (avl_node * node, avl_node * parent)
   }
 }
 
-long
+static long
 avl_verify_rank (avl_node * node)
 {
   if (!node) {
@@ -1059,9 +1059,9 @@ typedef struct _link_node {
   int            width;
 } link_node;  
 
-char balance_chars[3] = {'\\', '-', '/'};
+static char balance_chars[3] = {'\\', '-', '/'};
 
-int
+static int
 default_key_printer (char * buffer, void * key)
 {
   return sprintf (buffer, "%p", key);

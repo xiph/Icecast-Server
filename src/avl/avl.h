@@ -2,7 +2,7 @@
  * Copyright (C) 1995 by Sam Rushing <rushing@nightmare.com>
  */
 
-/* $Id: avl.h,v 1.6 2003/03/15 02:10:18 msmith Exp $ */
+/* $Id: avl.h,v 1.7 2003/07/07 01:10:14 brendan Exp $ */
 
 #ifndef __AVL_H
 #define __AVL_H
@@ -61,6 +61,34 @@ typedef int (*avl_key_printer_fun_type)    (char *, void *);
  * <compare_fun> and <compare_arg> let us associate a particular compare
  * function with each tree, separately.
  */
+
+#ifdef _mangle
+# define avl_tree_new _mangle(avl_tree_new)
+# define avl_node_new _mangle(avl_node_new)
+# define avl_tree_free _mangle(avl_tree_free)
+# define avl_insert _mangle(avl_insert)
+# define avl_delete _mangle(avl_delete)
+# define avl_get_by_index _mangle(avl_get_by_index)
+# define avl_get_by_key _mangle(avl_get_by_key)
+# define avl_iterate_inorder _mangle(avl_iterate_inorder)
+# define avl_iterate_index_range _mangle(avl_iterate_index_range)
+# define avl_tree_rlock _mangle(avl_tree_rlock)
+# define avl_tree_wlock _mangle(avl_tree_wlock)
+# define avl_tree_wlock _mangle(avl_tree_wlock)
+# define avl_tree_unlock _mangle(avl_tree_unlock)
+# define avl_node_rlock _mangle(avl_node_rlock)
+# define avl_node_wlock _mangle(avl_node_wlock)
+# define avl_node_unlock _mangle(avl_node_unlock)
+# define avl_get_span_by_key _mangle(avl_get_span_by_key)
+# define avl_get_span_by_two_keys _mangle(avl_get_span_by_two_keys)
+# define avl_verify _mangle(avl_verify)
+# define avl_print_tree _mangle(avl_print_tree)
+# define avl_get_first _mangle(avl_get_first)
+# define avl_get_prev _mangle(avl_get_prev)
+# define avl_get_next _mangle(avl_get_next)
+# define avl_get_item_by_key_most _mangle(avl_get_item_by_key_most)
+# define avl_get_item_by_key_least _mangle(avl_get_item_by_key_least)
+#endif
 
 typedef struct _avl_tree {
   avl_node *            root;
@@ -173,7 +201,3 @@ void avl_node_unlock(avl_node *node);
 #endif
 
 #endif /* __AVL_H */
-
-
-
-
