@@ -117,6 +117,7 @@ static void *_slave_thread(void *arg) {
     int len;
     char *username = "relay";
     char *password = config_get_config()->master_password;
+    relay_server *relay;
 
     if(password == NULL)
         password = config_get_config()->source_password;
@@ -172,7 +173,7 @@ static void *_slave_thread(void *arg) {
         }
 
         /* And now, we process the individual mounts... */
-        relay_server *relay = config_get_config()->relay;
+        relay = config_get_config()->relay;
         while(relay) {
             avl_tree_rlock(global.source_tree);
             if(!source_find_mount(relay->mount)) {
