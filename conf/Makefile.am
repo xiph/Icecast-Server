@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-EXTRA_DIST = icecast.xml.in icecast_minimal.xml.in icecast_shoutcast_compat.xml.in
+EXTRA_DIST = icecast.xml.in icecast_minimal.xml.in icecast_shoutcast_compat.xml.in icecast_auth.php
 DISTCLEANFILES = icecast.xml.dist icecast_minimal.xml.dist icecast_shoutcast_compat.xml.dist
 
 docdir = $(datadir)/$(PACKAGE)/doc
