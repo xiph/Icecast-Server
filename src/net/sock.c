@@ -32,6 +32,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/select.h>
+#endif
 
 #ifndef _WIN32
 #include <unistd.h>
