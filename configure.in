@@ -37,10 +37,16 @@ else
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
 		;;
-        *-*-solaris*)
+        sparc-sun-solaris*)
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
+		SOCKET_LIBS="-lnsl -lsocket -lresolv"
+		;;
+	*-pc-solaris*)
+                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
+                CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT"
+                PROFILE="-pg -g -O20 -fsigned-char -D_REENTRANT" 
 		SOCKET_LIBS="-lnsl -lsocket -lresolv"
 		;;
         *)
