@@ -2,7 +2,7 @@
 # Run this to set up the build system: configure, makefiles, etc.
 # (based on the version in enlightenment's cvs)
 
-package="icecast"
+package="ices"
 
 olddir=`pwd`
 srcdir=`dirname $0`
@@ -22,52 +22,55 @@ VERSIONGREP="sed -e s/.*[^0-9\.]\([0-9]\.[0-9]\).*/\1/"
                                                                                 
 # do we need automake?
 if test -r Makefile.am; then
-  options=`fgrep AUTOMAKE_OPTIONS Makefile.am`
-  AM_NEEDED=`echo "$options" | $VERSIONGREP`
-  if test -z "$AM_NEEDED" || test "x$AM_NEEDED" = "x$options"; then
-    echo -n "checking for automake..."
-    AUTOMAKE=automake
-    ACLOCAL=aclocal
-    if ($AUTOMAKE --version < /dev/null > /dev/null 2>&1); then
-      echo "yes"
+    echo Checking for automake version
+    options=`fgrep AUTOMAKE_OPTIONS Makefile.am`
+    AM_NEEDED=`echo "$options" | $VERSIONGREP`
+    AM_PROGS=automake
+    AC_PROGS=aclocal
+    if test -n "$AM_NEEDED" && test "x$AM_NEEDED" != "x$options"
+    then
+        AM_PROGS="automake-$AM_NEEDED automake$AM_NEEDED $AM_PROGS"
+        AC_PROGS="aclocal-$AM_NEEDED aclocal$AM_NEEDED $AC_PROGS"
     else
-      echo "no"
-      AUTOMAKE=""
+        AM_NEEDED=""
     fi
-  else
-    echo -n "checking for automake $AM_NEEDED or later..."
-    for am in automake-$AM_NEEDED automake$AM_NEEDED automake; do
-      ($am --version < /dev/null > /dev/null 2>&1) || continue
-      ver=`$am --version < /dev/null | head -1 | $VERSIONGREP`
-      if test $ver = $AM_NEEDED; then
+    AM_PROGS="$AUTOMAKE $AM_PROGS"
+    AC_PROGS="$ACLOCAL $AC_PROGS"
+    for am in $AM_PROGS; do
+      ($am --version > /dev/null 2>&1) 2>/dev/null || continue
+      ver=`$am --version | head -1 | $VERSIONGREP`
+      AWK_RES=`echo $ver $AM_NEEDED | awk '{ if ( $1 >= $2 ) print "yes"; else print "no" }'`
+      if test "$AWK_RES" = "yes"; then
         AUTOMAKE=$am
-        echo $AUTOMAKE
+        echo "  found $AUTOMAKE"
         break
       fi
     done
-    test -z $AUTOMAKE &&  echo "no"
-    echo -n "checking for aclocal $AM_NEEDED or later..."
-    for ac in aclocal-$AM_NEEDED aclocal$AM_NEEDED aclocal; do
-      ($ac --version < /dev/null > /dev/null 2>&1) || continue
+    for ac in $AC_PROGS; do
+      ($ac --version > /dev/null 2>&1) 2>/dev/null || continue
       ver=`$ac --version < /dev/null | head -1 | $VERSIONGREP`
-      if test $ver = $AM_NEEDED; then
+      AWK_RES=`echo $ver $AM_NEEDED | awk '{ if ( $1 >= $2 ) print "yes"; else print "no" }'`
+      if test "$AWK_RES" = "yes"; then
         ACLOCAL=$ac
-        echo $ACLOCAL
+        echo "  found $ACLOCAL"
         break
       fi
     done
-    test -z $ACLOCAL && echo "no"
-  fi
-  test -z $AUTOMAKE || test -z $ACLOCAL && {
+    test -z $AUTOMAKE || test -z $ACLOCAL && {
         echo
-        echo "You must have automake installed to compile $package."
+        if test -n "$AM_NEEDED"; then
+            echo "You must have automake version $AM_NEEDED installed"
+            echo "to compile $package."
+        else
+            echo "You must have automake installed to compile $package."
+        fi
         echo "Download the appropriate package for your distribution,"
         echo "or get the source tarball at ftp://ftp.gnu.org/pub/gnu/"
         DIE=1
-  }
+      }
 fi
 
-(libtoolize --version) < /dev/null > /dev/null 2>&1 || {
+(libtoolize --version)  > /dev/null 2>&1 || {
 	echo
 	echo "You must have libtool installed to compile $package."
 	echo "Download the appropriate package for your system,"
@@ -83,7 +86,7 @@ fi
 echo "Generating configuration files for $package, please wait...."
 
 ACLOCAL_FLAGS="$ACLOCAL_FLAGS -I m4"
-if ! test -z $ACLOCAL; then
+if test -n "$ACLOCAL"; then
   echo "  $ACLOCAL $ACLOCAL_FLAGS"
   $ACLOCAL $ACLOCAL_FLAGS
 fi
@@ -94,7 +97,7 @@ autoheader
 echo "  libtoolize --automake"
 libtoolize --automake
 
-if ! test -z $AUTOMAKE; then
+if test -n "$AUTOMAKE"; then
   echo "  $AUTOMAKE --add-missing"
   $AUTOMAKE --add-missing 
 fi
