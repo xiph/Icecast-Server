@@ -46,6 +46,7 @@ typedef struct thread_tag {
 } thread_type;
 
 typedef struct mutex_tag {
+#ifdef DEBUG_MUTEXES
 	/* the local id and name of the mutex */
 	long mutex_id;
 	char *name;
@@ -57,19 +58,24 @@ typedef struct mutex_tag {
 	char *file;
 	int line;	
 
+#endif
+
 	/* the system specific mutex */
 	pthread_mutex_t sys_mutex;
 } mutex_t;
 
 typedef struct cond_tag {
+#ifdef THREAD_DEBUG
 	long cond_id;
 	char *name;
+#endif
 
 	pthread_mutex_t cond_mutex;
 	pthread_cond_t sys_cond;
 } cond_t;
 
 typedef struct rwlock_tag {
+#ifdef THREAD_DEBUG
 	long rwlock_id;
 	char *name;
 
@@ -79,6 +85,7 @@ typedef struct rwlock_tag {
 	long thread_id;
 	char *file;
 	int line;
+#endif
 
 	pthread_rwlock_t sys_rwlock;
 } rwlock_t;

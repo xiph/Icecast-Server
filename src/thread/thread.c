@@ -84,26 +84,44 @@ typedef struct thread_start_tag {
 	pthread_t sys_thread;
 } thread_start_t;
 
-static int _logid = -1;
 static long _next_thread_id = 0;
 static int _initialized = 0;
 static avl_tree *_threadtree = NULL;
+
+#ifdef DEBUG_MUTEXES
 static mutex_t _threadtree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1, 
     PTHREAD_MUTEX_INITIALIZER};
+#else
+static mutex_t _threadtree_mutex = { PTHREAD_MUTEX_INITIALIZER };
+#endif
 
+
+
+#ifdef DEBUG_MUTEXES
+static int _logid = -1;
 static long _next_mutex_id = 0;
+
 static avl_tree *_mutextree = NULL;
 static mutex_t _mutextree_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
     PTHREAD_MUTEX_INITIALIZER};
+#endif
+
+#ifdef DEBUG_MUTEXES
 static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT, NULL, -1,
     PTHREAD_MUTEX_INITIALIZER};
+#else
+static mutex_t _library_mutex = { PTHREAD_MUTEX_INITIALIZER };
+#endif
 
 /* INTERNAL FUNCTIONS */
 
 /* avl tree functions */
+#ifdef DEBUG_MUTEXES
 static int _compare_mutexes(void *compare_arg, void *a, void *b);
-static int _compare_threads(void *compare_arg, void *a, void *b);
 static int _free_mutex(void *key);
+#endif
+
+static int _compare_threads(void *compare_arg, void *a, void *b);
 static int _free_thread(void *key);
 static int _free_thread_if_detached(void *key);
 
@@ -131,6 +149,7 @@ void thread_initialize(void)
 	log_set_level(_logid, THREAD_DEBUG);
 #endif
 
+#ifdef DEBUG_MUTEXES
 	/* create all the internal mutexes, and initialize the mutex tree */
 
 	_mutextree = avl_tree_new(_compare_mutexes, NULL);
@@ -140,7 +159,6 @@ void thread_initialize(void)
 	*/
 	_mutex_create(&_mutextree_mutex);
 
-#ifdef DEBUG_MUTEXES
 	_mutextree_mutex.mutex_id = _next_mutex_id++;
 	avl_insert(_mutextree, (void *)&_mutextree_mutex);
 #endif
@@ -173,9 +191,11 @@ void thread_shutdown(void)
 	if (_initialized == 1) {
 		thread_mutex_destroy(&_library_mutex);
 		thread_mutex_destroy(&_threadtree_mutex);
+#ifdef THREAD_DEBUG
 		thread_mutex_destroy(&_mutextree_mutex);
 		
 		avl_tree_free(_mutextree, _free_mutex);
+#endif
 		avl_tree_free(_threadtree, _free_thread);
 	}
 
@@ -290,8 +310,10 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
 */
 static void _mutex_create(mutex_t *mutex)
 {
+#ifdef DEBUG_MUTEXES
 	mutex->thread_id = MUTEX_STATE_NEVERLOCKED;
 	mutex->line = -1;
+#endif
 
 	pthread_mutex_init(&mutex->sys_mutex, NULL);
 }
@@ -496,8 +518,6 @@ void thread_cond_wait_c(cond_t *cond, int line, char *file)
 	pthread_cond_wait(&cond->sys_cond, &cond->cond_mutex);
 	pthread_mutex_unlock(&cond->cond_mutex);
 }
-
-static int rwlocknum = 0;
 
 void thread_rwlock_create_c(rwlock_t *rwlock, int line, char *file)
 {
@@ -719,6 +739,7 @@ void thread_join(thread_type *thread)
 
 /* AVL tree functions */
 
+#ifdef DEBUG_MUTEXES
 static int _compare_mutexes(void *compare_arg, void *a, void *b)
 {
 	mutex_t *m1, *m2;
@@ -732,6 +753,7 @@ static int _compare_mutexes(void *compare_arg, void *a, void *b)
 		return -1;
 	return 0;
 }
+#endif
 
 static int _compare_threads(void *compare_arg, void *a, void *b)
 {
@@ -747,6 +769,7 @@ static int _compare_threads(void *compare_arg, void *a, void *b)
 	return 0;
 }
 
+#ifdef DEBUG_MUTEXES
 static int _free_mutex(void *key)
 {
 	mutex_t *m;
@@ -762,6 +785,7 @@ static int _free_mutex(void *key)
 
 	return 1;
 }
+#endif
 
 static int _free_thread(void *key)
 {
