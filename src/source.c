@@ -39,11 +39,12 @@ static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _remove_client(void *key);
 static int _free_client(void *key);
 
-source_t *source_create(connection_t *con, http_parser_t *parser, const char *mount, format_type_t type)
+source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type)
 {
 	source_t *src;
 
 	src = (source_t *)malloc(sizeof(source_t));
+    src->client = client;
 	src->mount = (char *)strdup(mount);
 	src->format = format_get_plugin(type, src->mount);
 	src->con = con;
@@ -94,8 +95,7 @@ int source_free_source(void *key)
 	source_t *source = (source_t *)key;
 
 	free(source->mount);
-	connection_close(source->con);
-	httpp_destroy(source->parser);
+    client_destroy(source->client);
 	avl_tree_free(source->pending_tree, _free_client);
 	avl_tree_free(source->client_tree, _free_client);
 	source->format->free_plugin(source->format);

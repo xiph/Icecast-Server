@@ -14,6 +14,7 @@
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
+#define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
 #define CONFIG_DEFAULT_PORT 8888
@@ -156,6 +157,7 @@ static void _set_defaults(void)
 	_configuration.header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
 	_configuration.source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
 	_configuration.source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
+	_configuration.ice_login = CONFIG_DEFAULT_ICE_LOGIN;
 	_configuration.touch_freq = CONFIG_DEFAULT_TOUCH_FREQ;
 	_configuration.dir_list = NULL;
 	_configuration.hostname = CONFIG_DEFAULT_HOSTNAME;
@@ -200,6 +202,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			    if (_configuration.source_password && _configuration.source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(_configuration.source_password);
 			    _configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
+		} else if (strcmp(node->name, "icelogin") == 0) {
+			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			_configuration.ice_login = atoi(tmp);
+			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "hostname") == 0) {
 			if (_configuration.hostname && _configuration.hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(_configuration.hostname);
 			_configuration.hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

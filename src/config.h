@@ -24,6 +24,7 @@ typedef struct ice_config_tag
 	int client_timeout;
 	int header_timeout;
 	int source_timeout;
+    int ice_login;
 
 	char *source_password;
 

@@ -286,9 +286,11 @@ static connection_t *_get_connection(void)
 	return con;
 }
 
-int connection_create_source(connection_t *con, http_parser_t *parser, char *mount) {
+int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
 	source_t *source;
 	char *contenttype;
+    int bytes;
+
 	/* check to make sure this source wouldn't
 	** be over the limit
 	*/
@@ -311,12 +313,16 @@ int connection_create_source(connection_t *con, http_parser_t *parser, char *mou
 			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
             goto fail;
 		} else {
-			source = source_create(con, parser, mount, format);
+			source = source_create(client, con, parser, mount, format);
 		}
 	} else {
 		WARN0("No content-type header, cannot handle source");
         goto fail;
 	}
+    bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 200 OK\r\n\r\n");
+    if(bytes > 0) client->con->sent_bytes = bytes;
+
 	source->shutdown_rwlock = &_source_shutdown_rwlock;
 	sock_set_blocking(con->sock, SOCK_NONBLOCK);
 	thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
@@ -331,7 +337,46 @@ fail:
     return 0;
 }
 
-static int _check_source_pass(http_parser_t *parser)
+static int _check_source_pass_http(http_parser_t *parser)
+{
+    /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
+    char *header = httpp_getvar(parser, "authorization");
+    char *userpass, *tmp;
+    char *username, *password;
+    char *correctpass;
+
+    correctpass = config_get_config()->source_password;
+    if(!correctpass)
+        correctpass = "";
+
+    if(header == NULL)
+        return 0;
+
+    if(strncmp(header, "Basic ", 6))
+        return 0;
+
+    userpass = util_base64_decode(header+6);
+    if(userpass == NULL)
+        return 0;
+
+    tmp = strchr(userpass, ':');
+    if(!tmp) {
+        free(userpass);
+        return 0;
+    }
+    *tmp = 0;
+    username = userpass;
+    password = tmp+1;
+
+    if(strcmp(username, "source") || strcmp(password, correctpass)) {
+        free(userpass);
+        return 0;
+    }
+
+    return 1;
+}
+
+static int _check_source_pass_ice(http_parser_t *parser)
 {
     char *password, *correctpass;
 
@@ -348,16 +393,27 @@ static int _check_source_pass(http_parser_t *parser)
         return 1;
 }
 
+static int _check_source_pass(http_parser_t *parser)
+{
+    if(config_get_config()->ice_login)
+        return _check_source_pass_ice(parser);
+    else
+        return _check_source_pass_http(parser);
+}
+
 static void _handle_source_request(connection_t *con, 
         http_parser_t *parser, char *uri)
 {
+    client_t *client;
+
+	client = client_create(con, parser);
+
     INFO1("Source logging in at mountpoint \"%s\"", uri);
     stats_event_inc(NULL, "source_connections");
 				
 	if (!_check_source_pass(parser)) {
 		INFO1("Source (%s) attempted to login with bad password", uri);
-		connection_close(con);
-		httpp_destroy(parser);
+        client_send_401(client);
         return;
 	}
 
@@ -368,16 +424,14 @@ static void _handle_source_request(connection_t *con,
 	avl_tree_rlock(global.source_tree);
 	if (source_find_mount(uri) != NULL) {
 		INFO1("Source tried to log in as %s, but mountpoint is already used", uri);
-		connection_close(con);
-		httpp_destroy(parser);
+        client_send_404(client, "Mountpoint in use");
 		avl_tree_unlock(global.source_tree);
 		return;
 	}
 	avl_tree_unlock(global.source_tree);
 
-	if (!connection_create_source(con, parser, uri)) {
-		connection_close(con);
-		httpp_destroy(parser);
+	if (!connection_create_source(client, con, parser, uri)) {
+        client_destroy(client);
 	}
 }
 
@@ -432,6 +486,11 @@ static void _handle_get_request(connection_t *con,
 	*/
 	/* TODO: add GUID-xxxxxx */
 	if (strcmp(uri, "/stats.xml") == 0) {
+	    if (!_check_source_pass(parser)) {
+		    INFO1("Source (%s) attempted to login with bad password", uri);
+            client_send_401(client);
+            return;
+    	}
         DEBUG0("Stats request, sending xml stats");
 		stats_sendxml(client);
         client_destroy(client);
@@ -491,7 +550,7 @@ static void _handle_get_request(connection_t *con,
 	if (strcmp(uri, "/allstreams.txt") == 0) {
 		if (!_check_source_pass(parser)) {
 			INFO0("Client attempted to fetch allstreams.txt with bad password");
-            client_send_404(client, "Bad ice-password");
+            client_send_401(client);
 		} else {
 			avl_node *node;
 			source_t *s;

@@ -55,3 +55,12 @@ void client_send_404(client_t *client, char *message) {
     client_destroy(client);
 }
 
+void client_send_401(client_t *client) {
+    int bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 401 Authentication Required\r\n"
+            "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n"
+            "\r\n"
+            "You need to authenticate\r\n");
+    if(bytes > 0) client->con->sent_bytes = bytes;
+    client_destroy(client);
+}

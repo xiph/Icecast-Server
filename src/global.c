@@ -5,6 +5,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "format.h"
+#include "client.h"
 #include "source.h"
 
 #include "global.h"

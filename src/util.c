@@ -268,3 +268,102 @@ char *util_normalise_uri(char *uri) {
     }
 }
 
+static char base64table[64] = {
+    'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
+    'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
+    'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
+    'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
+};
+
+/* This isn't efficient, but it doesn't need to be */
+char *util_base64_encode(char *data)
+{
+    int len = strlen(data);
+    char *out = malloc(len*4/3 + 4);
+    char *result = out;
+    int chunk;
+
+    while(len > 0) {
+        chunk = (len >3)?3:len;
+        *out++ = base64table[(*data & 0xFC)>>2];
+        *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
+        switch(chunk) {
+            case 3:
+                *out++ = base64table[((*(data+1) & 0x0F)<<2) | ((*(data+2) & 0xC0)>>6)];
+                *out++ = base64table[(*(data+2)) & 0x3F];
+                break;
+            case 2:
+                *out++ = base64table[((*(data+1) & 0x0F)<<2)];
+                *out++ = '=';
+                break;
+            case 1:
+                *out++ = '=';
+                *out++ = '=';
+                break;
+        }
+        data += chunk;
+        len -= chunk;
+    }
+
+    return result;
+}
+
+static int base64chartoval(char input)
+{
+    if(input >= 'A' && input <= 'Z')
+        return input - 'A';
+    else if(input >= 'a' && input <= 'z')
+        return input - 'a' + 26;
+    else if(input >= '0' && input <= '9')
+        return input - '0' + 52;
+    else if(input == '+')
+        return 62;
+    else if(input == '/')
+        return 63;
+    else if(input == '=')
+        return -1;
+    else
+        return -2;
+}
+
+char *util_base64_decode(char *input)
+{
+    int len = strlen(input);
+    char *out = malloc(len*3/4 + 5);
+    char *result = out;
+    signed char vals[4];
+
+    while(len > 0) {
+        if(len < 4)
+        {
+            free(result);
+            return NULL; /* Invalid Base64 data */
+        }
+
+        vals[0] = base64chartoval(*input++);
+        vals[1] = base64chartoval(*input++);
+        vals[2] = base64chartoval(*input++);
+        vals[3] = base64chartoval(*input++);
+
+        if(vals[0] < 0 || vals[1] < 0 || vals[2] < -1 || vals[3] < -1) {
+            continue;
+        }
+
+        *out++ = vals[0]<<2 | vals[1]>>4;
+        if(vals[2] >= 0)
+            *out++ = ((vals[1]&0x0F)<<4) | (vals[2]>>2);
+        else
+            *out++ = 0;
+
+        if(vals[3] >= 0)
+            *out++ = ((vals[2]&0x03)<<6) | (vals[3]);
+        else
+            *out++ = 0;
+
+        len -= 4;
+    }
+    *out = 0;
+
+    return result;
+}
+

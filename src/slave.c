@@ -70,6 +70,7 @@ static void *_slave_thread(void *arg) {
 	char header[4096];
 	connection_t *con;
 	http_parser_t *parser;
+    client_t *client;
     int interval = config_get_config()->master_update_interval;
 
 	while (_initialized) {
@@ -85,6 +86,7 @@ static void *_slave_thread(void *arg) {
             WARN0("Relay slave failed to contact master server to fetch stream list");
 			continue;
 		}
+        // FIXME: This is now broken... 
 		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nice-password: %s\r\n\r\n", config_get_config()->source_password);
 		while (sock_read_line(mastersock, buf, sizeof(buf))) {
 			buf[strlen(buf)] = 0;
@@ -119,10 +121,10 @@ static void *_slave_thread(void *arg) {
                     continue;
                 }
 
-				if (!connection_create_source(con, parser, 
+                client = client_create(con, parser);
+				if (!connection_create_source(client, con, parser, 
                             httpp_getvar(parser, HTTPP_VAR_URI))) {
-					connection_close(con);
-					httpp_destroy(parser);
+                    client_destroy(client);
 				}
 				continue;
 
