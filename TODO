@@ -9,6 +9,9 @@ ____________
 - libshout 2.0 and ices 2.0 releases, also an ices 0.x release that works with
   this. Without source clients, icecast isn't much use...
 
+- integrate/include all the documentation done by external groups.
+
+
 BUGS
 ----
 - stats get off?  this needs testing more testing.
