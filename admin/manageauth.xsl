@@ -69,6 +69,7 @@
 <br />
 <br />
 </xsl:for-each>
+<xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 </div>
 <div class="roundbottom">
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
