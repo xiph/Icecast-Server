@@ -93,13 +93,15 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
         return 0;
     }
 
-    fullmetadata_size = strlen(source_state->metadata) + strlen("StreamTitle='';StreamUrl=''") + 1;
+    fullmetadata_size = strlen(source_state->metadata) + 
+        strlen("StreamTitle='';StreamUrl=''") + 1;
 
     fullmetadata = alloca(fullmetadata_size);
 
     memset(fullmetadata, 0, fullmetadata_size);
 
-    sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", source_state->metadata);
+    sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", 
+            source_state->metadata);
 
     source_age = source_state->metadata_age;
     send_metadata = source_age != client_state->metadata_age;
@@ -117,8 +119,8 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
     buf[0] = len_byte;
 
     if (len > 1) {
-	    strncpy(buf+1, fullmetadata + client_state->metadata_offset, len-2);
-	    DEBUG1("Sending metadata (%s)", buf+1);
+        strncpy(buf+1, fullmetadata + client_state->metadata_offset, len-2);
+        DEBUG1("Sending metadata (%s)", buf+1);
     }
 
     thread_mutex_unlock(&(source_state->lock));
@@ -160,8 +162,10 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
         }
         else {
             ret = send_metadata(client, state, self->_state);
-	    ret = 0;
-	}
+            if(ret > 0)
+                client->con->sent_bytes += ret;
+            ret = 0;
+        }
 
     }
     else {
