@@ -250,6 +250,7 @@ void source_clear_source (source_t *source)
     source->format = NULL;
 
     auth_clear (source->authenticator);
+    source->authenticator = NULL;
 
     source->burst_point = NULL;
     source->burst_size = 0;
@@ -957,6 +958,7 @@ int source_free_client (source_t *source, client_t *client)
     global_unlock();
     stats_event_dec(NULL, "clients");
 
+    client_set_queue (client, NULL);
     if (source && source->authenticator && source->authenticator->release_client)
     {
         source->authenticator->release_client (source, client);

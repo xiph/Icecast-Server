@@ -56,6 +56,7 @@ void auth_clear(auth_t *authenticator);
 int auth_postprocess_client (const char *mount, client_t *client);
 void auth_close_client (client_t *client);
 int add_authenticated_client (source_t *source, client_t *client);
+void auth_failed_client (const char *mount);
 void add_client (char *mount, client_t *client);
 
 #endif

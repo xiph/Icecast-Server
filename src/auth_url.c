@@ -122,20 +122,20 @@ static void *auth_removeurl_thread (void *arg)
         DEBUG0("starting auth thread");
         username = util_url_escape (client->username);
         password = util_url_escape (client->password);
-        snprintf (post, 1024,"action=remove&id=%ld&mount=%s&user=%s&pass=%s&duration=%ld",
-                client->con->id, auth_user->mount, username, password, duration);
+        snprintf (post, sizeof (post), "action=remove&id=%ld&mount=%s&user=%s&pass=%s&duration=%lu",
+                client->con->id, auth_user->mount, username, password, (long unsigned)duration);
         free (username);
         free (password);
         handle = curl_easy_init ();
         if (handle)
         {
-            int res;
+            int res = 0;
             char errormsg [CURL_ERROR_SIZE];
             char *userpass = NULL;
 
             if (auth_user->username && auth_user->password)
             {
-                unsigned len = strlen (auth_user->username) + strlen (auth_user->password) + 1;
+                unsigned len = strlen (auth_user->username) + strlen (auth_user->password) + 2;
                 userpass = malloc (len);
                 snprintf (userpass, len, "%s:%s", auth_user->username, auth_user->password);
                 curl_easy_setopt (handle, CURLOPT_USERPWD, userpass);
@@ -172,7 +172,7 @@ static void *auth_url_thread (void *arg)
 {
     auth_client *auth_user = arg;
     client_t *client = auth_user->client;
-    int res;
+    int res = 0;
     char *agent, *user_agent, *username, *password;
     CURL *handle;
     char post[1024];
@@ -199,7 +199,7 @@ static void *auth_url_thread (void *arg)
 
         if (auth_user->username && auth_user->password)
         {
-            unsigned len = strlen (auth_user->username) + strlen (auth_user->password) + 1;
+            unsigned len = strlen (auth_user->username) + strlen (auth_user->password) + 2;
             userpass = malloc (len);
             snprintf (userpass, len, "%s:%s", auth_user->username, auth_user->password);
             curl_easy_setopt (handle, CURLOPT_USERPWD, userpass);
@@ -217,10 +217,12 @@ static void *auth_url_thread (void *arg)
         res = curl_easy_perform (handle);
         curl_easy_cleanup (handle);
         free (userpass);
+        // auth_user->authenticated = 1;
 
         if (res)
         {
             WARN2 ("auth to server %s failed with %s", auth_user->addurl, errormsg);
+            auth_failed_client (auth_user->mount);
             auth_close_client (client);
         }
         else
@@ -232,6 +234,8 @@ static void *auth_url_thread (void *arg)
                 {
                     /* do cleanup, and exit as the remove does cleanup as well */
                     free (auth_user->addurl);
+                    auth_user->addurl = NULL;
+                    auth_failed_client (auth_user->mount);
                     auth_removeurl_thread (auth_user);
                     return NULL;
                 }
@@ -239,12 +243,16 @@ static void *auth_url_thread (void *arg)
             else
             {
                 DEBUG0 ("client authentication failed");
+                auth_failed_client (auth_user->mount);
                 auth_close_client (client);
             }
         }
     }
     else
+    {
+        auth_failed_client (auth_user->mount);
         auth_close_client (client);
+    }
 
     free (auth_user->username);
     free (auth_user->password);

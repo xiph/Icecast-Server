@@ -168,9 +168,26 @@ int auth_postprocess_client (const char *mount, client_t *client)
         thread_mutex_unlock (&source->lock);
     }
     avl_tree_unlock (global.source_tree);
-    if (ret < 0)
-        auth_close_client (client);
     return ret;
+}
+
+
+void auth_failed_client (const char *mount)
+{
+    source_t *source;
+
+    avl_tree_rlock (global.source_tree);
+    source = source_find_mount (mount);
+    if (source)
+    {
+        thread_mutex_lock (&source->lock);
+
+        if (source->new_listeners)
+            source->new_listeners--;
+
+        thread_mutex_unlock (&source->lock);
+    }
+    avl_tree_unlock (global.source_tree);
 }
 
 

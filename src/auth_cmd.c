@@ -113,6 +113,8 @@ static void *auth_cmd_thread (void *arg)
             auth_postprocess_client (auth_user->mount, auth_user->client);
             send_fail = 0;
         }
+        else
+            auth_failed_client (auth_user->mount);
     }
     if (send_fail == 404)
         client_send_404 (client, "Mount not available");
