@@ -331,7 +331,7 @@ static int format_mp3_get_buffer(format_plugin_t *self, char *data,
                             memcpy(state->metadata, 
                                     state->metadata_buffer + 13, 
                                     state->metadata_length - 15);
-                            state->metadata[state->metadata_length - 2] = 0;
+                            state->metadata[state->metadata_length - 15] = 0;
                             free(state->metadata_buffer);
                         }
                         else
