@@ -18,7 +18,7 @@ if test -z "$GCC"; then
                 CFLAGS="-O2 -w -signed -D_REENTRANT"
                 PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
 		;;
-        sparc-sun-solaris*)
+        *-sun-solaris*)
                 DEBUG="-v -g -D_REENTRANT"
                 CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
                 PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
@@ -37,7 +37,7 @@ else
                 CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
                 PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
 		;;
-        sparc-sun-*)
+        *-sun-*)
                 DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
                 CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
                 PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
