@@ -424,18 +424,21 @@ static void *_stats_thread(void *arg)
                         }
                     }
                 } else {
-                    /* this is a new source */
-                    asnode = (stats_source_t *)malloc(sizeof(stats_source_t));
-                    asnode->source = (char *)strdup(event->source);
-                    asnode->stats_tree = avl_tree_new(_compare_stats, NULL);
+                    if (event->value)
+                    {
+                        /* this is a new source */
+                        asnode = (stats_source_t *)malloc(sizeof(stats_source_t));
+                        asnode->source = (char *)strdup(event->source);
+                        asnode->stats_tree = avl_tree_new(_compare_stats, NULL);
 
-                    anode = (stats_node_t *)malloc(sizeof(stats_node_t));
-                    anode->name = (char *)strdup(event->name);
-                    anode->value = (char *)strdup(event->value);
-                    
-                    avl_insert(asnode->stats_tree, (void *)anode);
+                        anode = (stats_node_t *)malloc(sizeof(stats_node_t));
+                        anode->name = (char *)strdup(event->name);
+                        anode->value = (char *)strdup(event->value);
 
-                    avl_insert(_stats.source_tree, (void *)asnode);
+                        avl_insert(asnode->stats_tree, (void *)anode);
+
+                        avl_insert(_stats.source_tree, (void *)asnode);
+                    }
                 }
             }
             

@@ -137,6 +137,10 @@ static void vorbis_codec_free (ogg_codec_t *codec)
 {
     vorbis_codec_t *vorbis = codec->specific;
 
+    stats_event (codec->feed->mount, "audio-samplerate", NULL);
+    stats_event (codec->feed->mount, "audio-channels", NULL);
+    stats_event (codec->feed->mount, "audio-bitrate", NULL);
+
     codec->feed->artist = NULL;
     codec->feed->title = NULL;
     vorbis_info_clear (&vorbis->vi);
@@ -368,6 +372,10 @@ typedef struct _theora_codec_tag
 static void theora_codec_free (ogg_codec_t *codec)
 {
     theora_codec_t *theora = codec->specific;
+
+    stats_event (codec->feed->mount, "video_bitrate", NULL);
+    stats_event (codec->feed->mount, "frame_size", NULL);
+    stats_event (codec->feed->mount, "framerate", NULL);
 
     theora_info_clear (&theora->ti);
     theora_comment_clear (&theora->tc);

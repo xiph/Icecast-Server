@@ -102,6 +102,7 @@ void source_main(source_t *source);
 void add_client (char *mount, client_t *client);
 int add_authenticated_client (source_t *source, client_t *client);
 int source_free_client (source_t *source, client_t *client);
+void source_recheck_mounts (void);
 
 extern mutex_t move_clients_mutex;
 

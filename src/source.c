@@ -77,10 +77,6 @@ source_t *source_reserve (const char *mount)
 
     do
     {
-        unsigned int listen_url_size;
-        char *listenurl;
-        ice_config_t *config;
-
         avl_tree_wlock (global.source_tree);
         src = source_find_mount_raw (mount);
         if (src)
@@ -102,25 +98,6 @@ source_t *source_reserve (const char *mount)
         thread_mutex_create (src->mount, &src->lock);
 
         avl_insert (global.source_tree, src);
-
-        config = config_get_config();
-
-        /* 6 for max size of port */
-        listen_url_size = strlen("http://") + strlen(config->hostname) +
-            strlen(":") + 6 + strlen(mount) + 1;
-
-        listenurl = malloc (listen_url_size);
-        if (listenurl)
-        {
-            snprintf (listenurl, listen_url_size, "http://%s:%d%s",
-                    config->hostname, config->port, mount);
-
-            stats_event (mount, "listenurl", listenurl);
-
-            free(listenurl);
-        }
-        config_release_config();
-        stats_event (mount, "listeners", "0");
 
     } while (0);
 
@@ -307,8 +284,6 @@ void source_free_source (source_t *source)
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
-    stats_event (source->mount, "listeners", NULL);
-    stats_event (source->mount, NULL, NULL);
 
     /* There should be no listeners on this mount */
     if (source->active_clients)
@@ -418,7 +393,6 @@ void source_move_clients (source_t *source, source_t *dest)
         dest->check_pending = 1;
         source->listeners = 0;
         source->new_listeners = 0;
-        stats_event (source->mount, "listeners", "0");
 
     } while (0);
 
@@ -764,6 +738,7 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
+    source_recheck_mounts();
     thread_mutex_lock (&source->lock);
     if (source->yp_public)
         yp_add (source);
@@ -1100,7 +1075,18 @@ static void source_shutdown (source_t *source)
        therefore reserved */
     source_clear_source (source);
 
+    /* remove main source stats */
+    stats_event (source->mount, "public", NULL);
+    stats_event (source->mount, "server_description", NULL);
+    stats_event (source->mount, "server_name", NULL);
+    stats_event (source->mount, "genre", NULL);
+    stats_event (source->mount, "type", NULL);
+    stats_event (source->mount, "artist", NULL);
+    stats_event (source->mount, "title", NULL);
+    stats_event (source->mount, "audio_info", NULL);
+
     thread_mutex_unlock (&source->lock);
+    source_recheck_mounts ();
 
     global_lock();
     global.sources--;
@@ -1347,3 +1333,31 @@ static void source_run_script (char *command, char *mountpoint)
     }
 }
 #endif
+
+/* rescan the mount list, so that xsl files are updated to show
+ * unconnected but active fallback mountpoints
+ */
+void source_recheck_mounts (void)
+{
+    ice_config_t *config = config_get_config();
+    mount_proxy *mount = config->mounts;
+
+    avl_tree_rlock (global.source_tree);
+
+    while (mount)
+    {
+        char *value = NULL;
+        source_t *source = source_find_mount (mount->mountname);
+        if (source && mount->hidden == 0)
+        {
+            if (source->running || source->on_demand)
+                value = "0";
+        }
+        stats_event (mount->mountname, "listeners", value);
+
+        mount = mount->next;
+    }
+    avl_tree_unlock (global.source_tree);
+    config_release_config();
+}
+

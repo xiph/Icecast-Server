@@ -304,6 +304,9 @@ static void check_relay_stream (relay_server *relay)
             if (relay->on_demand)
                 DEBUG0 ("setting on_demand");
             relay->source->on_demand = relay->on_demand;
+            /* on-demand relays can be used as fallback mounts so allow
+             * for dependant mountpoints to show up on xsl pages*/
+            source_recheck_mounts ();
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
