@@ -42,6 +42,8 @@
 #define EINPROGRESS WSAEINPROGRESS
 #define ENOTSOCK WSAENOTSOCK
 #define EWOULDBLOCK WSAEWOULDBLOCK
+#define EALREADY WSAEALREADY
+#define socklen_t	int
 #endif
 
 #include "sock.h"

@@ -9,6 +9,8 @@
 
 #ifdef _WIN32
 #define PATH_SEPARATOR "\\"
+#define size_t int
+#define ssize_t int
 #else
 #define PATH_SEPARATOR "/"
 #endif
