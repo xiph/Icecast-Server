@@ -4,6 +4,9 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef HAVE_POLL
+#include <sys/poll.h>
+#endif
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -121,20 +124,84 @@ connection_t *create_connection(sock_t sock, char *ip) {
 	return con;
 }
 
+static int wait_for_serversock(int timeout)
+{
+#ifdef HAVE_POLL
+    struct pollfd ufds[MAX_LISTEN_SOCKETS];
+    int i, ret;
+
+    for(i=0; i < global.server_sockets; i++) {
+        ufds[i].fd = global.serversock[i];
+        ufds[i].events = POLLIN;
+        ufds[i].revents = 0;
+    }
+
+    ret = poll(ufds, global.server_sockets, timeout);
+    if(ret < 0) {
+        return -2;
+    }
+    else if(ret == 0) {
+        return -1;
+    }
+    else {
+        for(i=0; i < global.server_sockets; i++) {
+            if(ufds[i].revents == POLLIN)
+                return ufds[i].fd;
+        }
+        return -1; /* Shouldn't happen */
+    }
+#else
+    fd_set rfds;
+    struct timeval tv, *p=NULL;
+    int i, ret;
+    int max = -1;
+
+    FD_ZERO(&rfds);
+
+    for(i=0; i < global.server_sockets; i++) {
+        FD_SET(global.serversock[i], &rfds);
+        if(global.serversock[i] > max)
+            max = global.serversock[i];
+    }
+
+    if(timeout >= 0) {
+        tv.tv_sec = timeout/1000;
+        tv.tv_usec = (timeout % 1000)/1000;
+        p = &tv;
+    }
+
+    ret = select(max+1, &rfds, NULL, NULL, p);
+    if(ret < 0) {
+        return -2;
+    }
+    else if(ret == 0) {
+        return -1;
+    }
+    else {
+        for(i=0; i < global.server_sockets; i++) {
+            if(FD_ISSET(global.serversock[i], &rfds))
+                return global.serversock[i];
+        }
+        return -1; /* Should be impossible, stop compiler warnings */
+    }
+#endif
+}
+
 static connection_t *_accept_connection(void)
 {
 	int sock;
 	connection_t *con;
 	char *ip;
+    int serversock; 
 
-    if (util_timed_wait_for_fd(global.serversock, 100) <= 0) {
-		return NULL;
-	}
+    serversock = wait_for_serversock(100);
+    if(serversock < 0)
+        return NULL;
 
 	/* malloc enough room for a full IP address (including ipv6) */
 	ip = (char *)malloc(MAX_ADDR_LEN);
 
-	sock = sock_accept(global.serversock, ip, MAX_ADDR_LEN);
+	sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
 	if (sock >= 0) {
 		con = create_connection(sock, ip);
 

@@ -26,7 +26,6 @@
 #define CONFIG_DEFAULT_FILESERVE 1
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
-#define CONFIG_DEFAULT_PORT 8888
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
 #define CONFIG_DEFAULT_LOG_LEVEL 4
@@ -61,6 +60,8 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *c);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *c);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
 static void create_locks() {
@@ -97,6 +98,7 @@ void config_clear(ice_config_t *c)
 	ice_config_dir_t *dirnode, *nextdirnode;
     relay_server *relay, *nextrelay;
     mount_proxy *mount, *nextmount;
+    int i;
 
     if (c->config_filename)
         free(c->config_filename);
@@ -125,7 +127,9 @@ void config_clear(ice_config_t *c)
         xmlFree(c->access_log);
 	if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
-    if (c->bind_address) xmlFree(c->bind_address);
+    for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
+        if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
+    }
     if (c->master_server) xmlFree(c->master_server);
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
@@ -262,10 +266,11 @@ static void _set_defaults(ice_config_t *configuration)
 	configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
 	configuration->dir_list = NULL;
 	configuration->hostname = CONFIG_DEFAULT_HOSTNAME;
-	configuration->port = CONFIG_DEFAULT_PORT;
-	configuration->bind_address = NULL;
+    configuration->port = 0;
+	configuration->listeners[0].port = 0;
+	configuration->listeners[0].bind_address = NULL;
 	configuration->master_server = NULL;
-	configuration->master_server_port = CONFIG_DEFAULT_PORT;
+	configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
 	configuration->master_password = NULL;
 	configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
@@ -324,13 +329,17 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
 		} else if (strcmp(node->name, "hostname") == 0) {
 			if (configuration->hostname && configuration->hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(configuration->hostname);
 			configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-		} else if (strcmp(node->name, "port") == 0) {
+		} else if (strcmp(node->name, "listen-socket") == 0) {
+            _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
+        } else if (strcmp(node->name, "port") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			configuration->port = atoi(tmp);
+            configuration->port = atoi(tmp);
+			configuration->listeners[0].port = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "bind-address") == 0) {
-			if (configuration->bind_address) xmlFree(configuration->bind_address);
-			configuration->bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->listeners[0].bind_address) 
+                xmlFree(configuration->listeners[0].bind_address);
+			configuration->listeners[0].bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "master-server") == 0) {
 			if (configuration->master_server) xmlFree(configuration->master_server);
 			configuration->master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -497,6 +506,38 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             relay->mp3metadata = atoi(tmp);
             if(tmp) xmlFree(tmp);
+        }
+	} while ((node = node->next));
+}
+
+static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
+{
+    listener_t *listener = NULL;
+    int i;
+    char *tmp;
+
+    for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
+        if(configuration->listeners[i].port <= 0) {
+            listener = &(configuration->listeners[i]);
+            break;
+        }
+    }
+
+	do {
+		if (node == NULL) break;
+		if (xmlIsBlankNode(node)) continue;
+
+		if (strcmp(node->name, "port") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(configuration->port == 0)
+                configuration->port = atoi(tmp);
+            listener->port = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "bind-address") == 0) {
+            listener->bind_address = (char *)xmlNodeListGetString(doc, 
+                    node->xmlChildrenNode, 1);
         }
 	} while ((node = node->next));
 }

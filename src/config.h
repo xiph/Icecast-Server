@@ -8,7 +8,10 @@
 
 #define MAX_YP_DIRECTORIES 25
 
+
 #include "thread/thread.h"
+#include "avl/avl.h"
+#include "global.h"
 
 typedef struct ice_config_dir_tag
 {
@@ -40,6 +43,11 @@ typedef struct _mount_proxy {
     struct _mount_proxy *next;
 } mount_proxy;
 
+typedef struct {
+    int port;
+    char *bind_address;
+} listener_t;
+
 typedef struct ice_config_tag
 {
     char *config_filename;
@@ -66,8 +74,10 @@ typedef struct ice_config_tag
 	ice_config_dir_t *dir_list;
 
 	char *hostname;
-	int port;
-	char *bind_address;
+    int port;
+
+    listener_t listeners[MAX_LISTEN_SOCKETS];
+
 	char *master_server;
 	int master_server_port;
     int master_update_interval;

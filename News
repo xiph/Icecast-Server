@@ -1,4 +1,7 @@
 2003-03-09
+    Support listening on multiple sockets.
+
+2003-03-08
     Support for shoutcast source protocol added.
 
 2003-03-08

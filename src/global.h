@@ -8,11 +8,14 @@
 
 #define ICECAST_VERSION_STRING "Icecast 2.0-alpha2/cvs"
 
+#define MAX_LISTEN_SOCKETS 10
+
 #include "thread/thread.h"
 
 typedef struct ice_global_tag
 {
-	int serversock;
+	int serversock[MAX_LISTEN_SOCKETS];
+    int server_sockets;
 
 	int running;
 

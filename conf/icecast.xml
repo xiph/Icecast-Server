@@ -31,9 +31,22 @@
      -->
 
 	<hostname>localhost</hostname>
-	<port>8000</port>
 
+    <!-- You can use these two if you only want a single listener -->
+	<!--<port>8000</port> -->
 	<!--<bind-address>127.0.0.1</bind-address>-->
+
+    <!-- You may have multiple <listener> elements -->
+    <listen-socket>
+        <port>8000</port>
+        <!-- <bind-address>127.0.0.1</bind-address> -->
+    </listen-socket>
+    <!--
+    <listen-socket>
+        <port>8001</port>
+    </listen-socket>
+    -->
+
 	<!--<master-server>127.0.0.1</master-server>-->
 	<!--<master-server-port>8001</master-server-port>-->
 	<!--<master-update-interval>120</master-update-interval>-->

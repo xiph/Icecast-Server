@@ -153,26 +153,47 @@ static int _start_logging(void)
 	return 0;
 }
 
-static int _setup_socket(void)
+static int _setup_sockets(void)
 {
 	ice_config_t *config;
+    int i = 0;
+    int ret = 0;
+    int successful = 0;
 
 	config = config_get_config_unlocked();
 
-	global.serversock = sock_get_server_socket(config->port, config->bind_address);
+    for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
+        if(config->listeners[i].port <= 0)
+            break;
 
-	if (global.serversock == SOCK_ERROR)
-		return 0;
+        global.serversock[i] = sock_get_server_socket(
+                config->listeners[i].port, config->listeners[i].bind_address);
+
+    	if (global.serversock[i] == SOCK_ERROR) {
+		    fprintf(stderr, "Could not create listener socket on port %d\n", 
+                    config->listeners[i].port);
+            return 0;
+        }
+        else {
+            ret = 1;
+            successful++;
+        }
+    }
+
+    global.server_sockets = successful;
 	
-	return 1;
+	return ret;
 }
 
 static int _start_listening(void)
 {
-	if (sock_listen(global.serversock, ICE_LISTEN_QUEUE) == SOCK_ERROR)
-		return 0;
+    int i;
+    for(i=0; i < global.server_sockets; i++) {
+    	if (sock_listen(global.serversock[i], ICE_LISTEN_QUEUE) == SOCK_ERROR)
+	    	return 0;
 
-	sock_set_blocking(global.serversock, SOCK_NONBLOCK);
+	    sock_set_blocking(global.serversock[i], SOCK_NONBLOCK);
+    }
 
 	return 1;
 }
@@ -180,11 +201,8 @@ static int _start_listening(void)
 /* bind the socket and start listening */
 static int _server_proc_init(void)
 {
-	if (!_setup_socket()) {
-		fprintf(stderr, "Could not create listener socket on port %d\n", 
-                config_get_config_unlocked()->port);
+	if (!_setup_sockets())
 		return 0;
-	}
 
 	if (!_start_listening()) {
 		fprintf(stderr, "Failed trying to listen on server socket\n");
@@ -197,9 +215,12 @@ static int _server_proc_init(void)
 /* this is the heart of the beast */
 static void _server_proc(void)
 {
+    int i;
+
 	connection_accept_loop();
 
-	sock_close(global.serversock);
+    for(i=0; i < MAX_LISTEN_SOCKETS; i++)
+    	sock_close(global.serversock[i]);
 }
 
 /* chroot the process. Watch out - we need to do this before starting other

@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "thread.h"
 #include "avl.h"
 
@@ -17,7 +19,8 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-	global.serversock = -1;
+    memset(global.serversock, 0, sizeof(int)*MAX_LISTEN_SOCKETS);
+	global.server_sockets = 0;
 	global.running = 0;
 	global.clients = 0;
 	global.sources = 0;
