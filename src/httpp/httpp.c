@@ -11,6 +11,10 @@
 #include "avl.h"
 #include "httpp.h"
 
+#ifdef _WIN32
+#define strcasecmp stricmp
+#endif
+
 /* internal functions */
 
 /* misc */
@@ -47,10 +51,11 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	char *line[32]; /* limited to 32 lines, should be more than enough */
 	int i, l, retlen;
 	int lines;
-	char *req_type;
-	char *uri;
-	char *version;
-	char *name, *value;
+	char *req_type = NULL;
+	char *uri = NULL;
+	char *version = NULL;
+	char *name = NULL;
+	char *value = NULL;
 	int whitespace, where;
 	int slen;
 
