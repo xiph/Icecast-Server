@@ -22,7 +22,9 @@
 <xsl:when test="listeners">
 <h3>
 <xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-(<xsl:value-of select="@mount" />)</h3>
+(<xsl:value-of select="@mount" />)
+<xsl:if test="authenticator"> <a href="/auth.xsl"><img border="0" src="/key.gif"/></a> </xsl:if>
+</h3>
 <table border="0" cellpadding="4">
 <xsl:if test="server_name">
 <tr><td>Stream Title:</td><td class="streamdata"> <xsl:value-of select="server_name" /></td></tr>
@@ -47,7 +49,16 @@
 </xsl:if>
 <tr><td>Current Song:</td><td class="streamdata"> 
 <xsl:if test="artist"><xsl:value-of select="artist" /> - </xsl:if><xsl:value-of select="title" /></td></tr>
-<tr><td>Listen:</td><td class="streamdata"> <a href="{@mount}.m3u">Click to Listen</a></td></tr>
+<tr><td>Listen:</td><td class="streamdata"> 
+<xsl:choose>
+<xsl:when test="authenticator">
+<a href="auth.xsl">Click to Listen</a>
+</xsl:when>
+<xsl:otherwise>
+<a href="{@mount}.m3u">Click to Listen</a>
+</xsl:otherwise>
+</xsl:choose>
+</td></tr>
 </table>
 </xsl:when>
 <xsl:otherwise>

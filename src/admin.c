@@ -73,6 +73,9 @@
 #define COMMAND_TRANSFORMED_KILL_CLIENT     401
 #define COMMAND_TRANSFORMED_KILL_SOURCE     402
 
+/* Admin commands requiring no auth */
+#define COMMAND_BUILDM3U                    501
+
 #define FALLBACK_RAW_REQUEST "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
 #define METADATA_REQUEST "metadata"
@@ -96,6 +99,7 @@
 #define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
 #define DEFAULT_RAW_REQUEST ""
 #define DEFAULT_TRANSFORMED_REQUEST ""
+#define BUILDM3U_RAW_REQUEST "buildm3u"
 
 #define RAW         1
 #define TRANSFORMED 2
@@ -142,6 +146,8 @@ int admin_get_command(char *command)
         return COMMAND_RAW_MANAGEAUTH;
     else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_MANAGEAUTH;
+    else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
+        return COMMAND_BUILDM3U;
     else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, DEFAULT_RAW_REQUEST))
@@ -161,6 +167,8 @@ static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
 static void command_manageauth(client_t *client, source_t *source,
+        int response);
+static void command_buildm3u(client_t *client, source_t *source,
         int response);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
@@ -260,6 +268,7 @@ void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
     int command;
+    int noauth = 0;
 
     if(strncmp("/admin/", uri, 7)) {
         ERROR0("Internal error: admin request isn't");
@@ -284,13 +293,18 @@ void admin_handle_request(client_t *client, char *uri)
     if(mount != NULL) {
         source_t *source;
 
+        if (command == COMMAND_BUILDM3U) {
+            noauth = 1;
+        }
         /* This is a mount request, handle it as such */
-        if(!connection_check_admin_pass(client->parser)) {
-            if(!connection_check_source_pass(client->parser, mount)) {
-                INFO1("Bad or missing password on mount modification admin "
-                      "request (command: %s)", command_string);
-                client_send_401(client);
-                return;
+        if (!noauth) {
+            if(!connection_check_admin_pass(client->parser)) {
+                if(!connection_check_source_pass(client->parser, mount)) {
+                    INFO1("Bad or missing password on mount modification admin "
+                          "request (command: %s)", command_string);
+                    client_send_401(client);
+                    return;
+                }
             }
         }
         
@@ -422,6 +436,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_RAW_MANAGEAUTH:
             command_manageauth(client, source, RAW);
+            break;
+        case COMMAND_BUILDM3U:
+            command_buildm3u(client, source, RAW);
             break;
         default:
             WARN0("Mount request not recognised");
@@ -581,6 +598,38 @@ static void command_show_listeners(client_t *client, source_t *source,
     client_destroy(client);
 }
 
+static void command_buildm3u(client_t *client, source_t *source,
+    int response)
+{
+    char *username = NULL;
+    char *password = NULL;
+    char *host = NULL;
+    int port = 0;
+    ice_config_t *config;
+
+    COMMAND_REQUIRE(client, "username", username);
+    COMMAND_REQUIRE(client, "password", password);
+
+    config = config_get_config();
+    host = config->hostname;
+    port = config->port;
+
+    client->respcode = 200;
+    sock_write(client->con->sock,
+        "HTTP/1.0 200 OK\r\n"
+        "Content-Type: audio/x-mpegurl\r\n"
+        "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
+        "http://%s:%s@%s:%d%s\r\n",
+        username,
+        password,
+        host,
+        port,
+        source->mount
+    );
+    
+    client_destroy(client);
+    config_release_config();
+}
 static void command_manageauth(client_t *client, source_t *source,
     int response)
 {
