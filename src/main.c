@@ -28,6 +28,7 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
+#include "geturl.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -62,10 +63,12 @@ static void _initialize_subsystems(void)
 	global_initialize();
 	refbuf_initialize();
     xslt_initialize();
+	curl_initialize();
 }
 
 static void _shutdown_subsystems(void)
 {
+	curl_shutdown();
     fserve_shutdown();
     xslt_shutdown();
 	refbuf_shutdown();
@@ -89,10 +92,20 @@ static void _shutdown_subsystems(void)
 static int _parse_config_file(int argc, char **argv, char *filename, int size)
 {
 	int i = 1;
+	int	processID = 0;
 
 	if (argc < 3) return -1;
 
 	while (i < argc) {
+		if (strcmp(argv[i], "-b") == 0) {
+#ifndef WIN32
+				fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
+				if ((processID = (int)fork()) > 0) {
+						/* exit the parent */
+						_exit(0);
+				}
+#endif
+		}
 		if (strcmp(argv[i], "-c") == 0) {
 			if (i + 1 < argc) {
 				strncpy(filename, argv[i + 1], size-1);
