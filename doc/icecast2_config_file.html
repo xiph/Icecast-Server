@@ -333,6 +333,7 @@ An on-demand relay will only retrieve the stream if there are listeners connecte
         &lt;fallback-mount&gt;example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
+        &lt;mp3-metadata-interval&gt;8192&lt;/mp3-metadata-interval&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
@@ -381,6 +382,12 @@ as defined in limits.  The value is in bytes.
 Enable this to prevent this mount from being shown on the xsl pages.  This is mainly
 for cases where a local relay is configured and you do not want the source of the local
 relay to be shown
+</div>
+<h4>mp3-metadata-interval</h4>
+<div class="indentedbox">
+Listeners connecting to an mp3 stream can request metadata be sent to them. That metadata
+is sent every so many bytes, this setting allows for overriding the default for this
+mountpoint. A value of 0 means no metadata is sent to the client even if icecast receives it.
 </div>
 <h4>authentication</h4>
 <div class="indentedbox">
