@@ -414,6 +414,7 @@ const char *util_dict_get(util_dict *dict, const char *key)
 			return dict->val;
 		dict = dict->next;
 	}
+    return NULL;
 }
 
 int util_dict_set(util_dict *dict, const char *key, const char *val)
@@ -521,3 +522,4 @@ char *util_dict_urlencode(util_dict *dict, char delim)
 
 	return res;
 }
+

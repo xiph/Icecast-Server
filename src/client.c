@@ -69,6 +69,17 @@ void client_send_404(client_t *client, char *message) {
     client_destroy(client);
 }
 
+void client_send_504(client_t *client, char *message) {
+    int bytes;
+    client->respcode = 504;
+	bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 504 Server Full\r\n"
+            "Content-Type: text/html\r\n\r\n"
+            "<b>%s</b>\r\n", message);
+   	if (bytes > 0) client->con->sent_bytes = bytes;
+	client_destroy(client);
+}
+
 void client_send_401(client_t *client) {
     int bytes = sock_write(client->con->sock, 
             "HTTP/1.0 401 Authentication Required\r\n"

@@ -29,6 +29,7 @@ typedef struct _client_tag
 
 client_t *client_create(connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
+void client_send_504(client_t *client, char *message);
 void client_send_404(client_t *client, char *message);
 void client_send_401(client_t *client);
 void client_send_400(client_t *client, char *message);

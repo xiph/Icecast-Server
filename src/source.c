@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <ogg/ogg.h>
+#include <errno.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -55,7 +56,8 @@ static void _add_yp_info(source_t *source, char *stat_name,
             void *info, int type);
 
 source_t *source_create(client_t *client, connection_t *con, 
-    http_parser_t *parser, const char *mount, format_type_t type)
+    http_parser_t *parser, const char *mount, format_type_t type, 
+    mount_proxy *mountinfo)
 {
 	int	i = 0;
 	source_t *src;
@@ -73,6 +75,8 @@ source_t *source_create(client_t *client, connection_t *con,
 	src->num_yp_directories = 0;
 	src->listeners = 0;
     src->send_return = 0;
+    src->dumpfilename = NULL;
+    src->dumpfile = NULL;
     src->audio_info = util_dict_new();
 	for (i=0;i<config_get_config()->num_yp_directories;i++) {
 		if (config_get_config()->yp_url[i]) {
@@ -85,6 +89,20 @@ source_t *source_create(client_t *client, connection_t *con,
 			src->num_yp_directories++;
 		}
 	}
+
+    if(mountinfo != NULL) {
+        src->fallback_mount = mountinfo->fallback_mount;
+        src->max_listeners = mountinfo->max_listeners;
+        src->dumpfilename = mountinfo->dumpfile;
+    }
+
+    if(src->dumpfilename != NULL) {
+        src->dumpfile = fopen(src->dumpfilename, "ab");
+        if(src->dumpfile == NULL) {
+            WARN2("Cannot open dump file \"%s\" for appending: %s, disabling.",
+                    src->dumpfilename, strerror(errno));
+        }
+    }
 
 	return src;
 }
@@ -170,7 +188,6 @@ void *source_main(void *arg)
     int listeners = 0;
     int	i=0;
     int	suppress_yp = 0;
-    util_dict *audio_info;
     char *ai;
 
     long queue_limit = config_get_config()->queue_size_limit;
@@ -377,6 +394,18 @@ void *source_main(void *arg)
 		** EAGAIN.  this will allow a client that got slightly lagged
 		** to catch back up if it can
 		*/
+
+        /* First, stream dumping, if enabled */
+        if(source->dumpfile) {
+            if(fwrite(refbuf->data, 1, refbuf->len, source->dumpfile) !=
+                    refbuf->len) 
+            {
+                WARN1("Write to dump file failed, disabling: %s", 
+                        strerror(errno));
+                fclose(source->dumpfile);
+                source->dumpfile = NULL;
+            }
+        }
 
 		/* acquire read lock on client_tree */
 		avl_tree_rlock(source->client_tree);
@@ -585,6 +614,9 @@ done:
 	avl_tree_wlock(global.source_tree);
 	avl_delete(global.source_tree, source, source_free_source);
 	avl_tree_unlock(global.source_tree);
+
+    if(source->dumpfile)
+        fclose(source->dumpfile);
 
 	thread_exit(0);
       

@@ -6,6 +6,8 @@
 #include "util.h"
 #include "format.h"
 
+#include <stdio.h>
+
 typedef struct source_tag
 {
     client_t *client;
@@ -29,13 +31,19 @@ typedef struct source_tag
 	rwlock_t *shutdown_rwlock;
 	ypdata_t *ypdata[MAX_YP_DIRECTORIES];
     util_dict *audio_info;
+
+    char *dumpfilename; /* Name of a file to dump incoming stream to */
+    FILE *dumpfile;
+
 	int	num_yp_directories;
 	long listeners;
     long max_listeners;
     int send_return;
 } source_t;
 
-source_t *source_create(client_t *client, connection_t *con, http_parser_t *parser, const char *mount, format_type_t type);
+source_t *source_create(client_t *client, connection_t *con, 
+        http_parser_t *parser, const char *mount, format_type_t type,
+        mount_proxy *mountinfo);
 source_t *source_find_mount(const char *mount);
 int source_compare_sources(void *arg, void *a, void *b);
 int source_free_source(void *key);

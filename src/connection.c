@@ -296,6 +296,7 @@ static connection_t *_get_connection(void)
 int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
 	source_t *source;
 	char *contenttype;
+    mount_proxy *mountproxy, *mountinfo = NULL;
 
 	/* check to make sure this source wouldn't
 	** be over the limit
@@ -310,6 +311,15 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 	global_unlock();
 
 	stats_event_inc(NULL, "sources");
+    
+    mountproxy = config_get_config()->mounts;
+    while(mountproxy) {
+        if(!strcmp(mountproxy->mountname, mount)) {
+            mountinfo = mountproxy;
+            break;
+        }
+        mountproxy = mountproxy->next;
+    }
 
 	contenttype = httpp_getvar(parser, "content-type");
 
@@ -319,12 +329,13 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
             goto fail;
 		} else {
-			source = source_create(client, con, parser, mount, format);
+			source = source_create(client, con, parser, mount, 
+                    format, mountinfo);
 		}
 	} else {
         format_type_t format = FORMAT_TYPE_MP3;
 		ERROR0("No content-type header, falling back to backwards compatibility mode for icecast 1.x relays. Assuming content is mp3.");
-        source = source_create(client, con, parser, mount, format);
+        source = source_create(client, con, parser, mount, format, mountinfo);
 	}
 
     source->send_return = 1;
@@ -762,13 +773,8 @@ static void _handle_get_request(connection_t *con,
 				
 	global_lock();
 	if (global.clients >= config_get_config()->client_limit) {
-		client->respcode = 504;
-		bytes = sock_write(client->con->sock, 
-                "HTTP/1.0 504 Server Full\r\n"
-                "Content-Type: text/html\r\n\r\n"
-    		    "<b>The server is already full.  Try again later.</b>\r\n");
-    	if (bytes > 0) client->con->sent_bytes = bytes;
-		client_destroy(client);
+        client_send_504(client,
+                "The server is already full. Try again later.");
 		global_unlock();
         return;
 	}
@@ -781,18 +787,23 @@ static void _handle_get_request(connection_t *con,
 						
 		global_lock();
 		if (global.clients >= config_get_config()->client_limit) {
-			client->respcode = 504;
-			bytes = sock_write(client->con->sock, 
-                    "HTTP/1.0 504 Server Full\r\n"
-                    "Content-Type: text/html\r\n\r\n"
-				    "<b>The server is already full.  Try again later.</b>\r\n");
-			if (bytes > 0) client->con->sent_bytes = bytes;
-			client_destroy(client);
+            client_send_504(client, 
+                    "The server is already full. Try again later.");
 			global_unlock();
             avl_tree_unlock(global.source_tree);
             return;
 		}
+        else if(source->max_listeners != -1 && 
+                source->listeners >= source->max_listeners) 
+        {
+            client_send_504(client, 
+                    "Too many clients on this mountpoint. Try again later.");
+			global_unlock();
+            avl_tree_unlock(global.source_tree);
+            return;
+        }
 		global.clients++;
+        source->listeners++;
 		global_unlock();
 						
         client->format_data = source->format->create_client_data(
