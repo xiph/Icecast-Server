@@ -23,6 +23,7 @@
 #include "httpp/httpp.h"
 
 struct source_tag;
+struct _mount_proxy;
 
 typedef enum _format_type_tag
 {
@@ -52,6 +53,7 @@ typedef struct _format_plugin_tag
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
     void (*prerelease)(struct source_tag *source, refbuf_t *refbuf);
+    void (*apply_settings)(struct source_tag *source, struct _mount_proxy *mount);
 
     /* for internal state management */
     void *_state;

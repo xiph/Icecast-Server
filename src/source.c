@@ -1217,6 +1217,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         free (source->on_disconnect);
         source->on_disconnect = strdup(mountinfo->on_disconnect);
     }
+    if (source->format && source->format->apply_settings)
+        source->format->apply_settings (source, mountinfo);
 }
 
 

@@ -548,7 +548,7 @@ int format_ogg_get_plugin (source_t *source)
     format_plugin_t *plugin;
     ogg_state_t *state = calloc (1, sizeof (ogg_state_t));
 
-    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
+    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_OGG;
     plugin->format_description = "Ogg Vorbis";

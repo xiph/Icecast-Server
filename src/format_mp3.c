@@ -51,7 +51,7 @@
 /* Note that this seems to be 8192 in shoutcast - perhaps we want to be the
  * same for compability with crappy clients?
  */
-#define ICY_METADATA_INTERVAL 8192
+#define ICY_METADATA_INTERVAL 16000
 
 static void format_mp3_free_plugin(format_plugin_t *plugin);
 static refbuf_t *mp3_get_filter_meta (source_t *source);
@@ -62,6 +62,7 @@ static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(format_plugin_t *self, client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
+static void format_mp3_apply_settings(struct source_tag *source, struct _mount_proxy *mount);
 
 
 typedef struct {
@@ -79,7 +80,7 @@ int format_mp3_get_plugin (source_t *source)
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
 
-    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
+    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_MP3;
     plugin->get_buffer = mp3_get_no_meta;
@@ -90,13 +91,13 @@ int format_mp3_get_plugin (source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->prerelease = NULL;
     plugin->format_description = "MP3 audio";
+    plugin->apply_settings = format_mp3_apply_settings;
 
     plugin->_state = state;
 
     meta = refbuf_new (1);
     memcpy (meta->data, "", 1);
     state->metadata = meta;
-    state->interval = ICY_METADATA_INTERVAL;
 
     metadata = httpp_getvar (source->parser, "icy-metaint");
     if (metadata)
@@ -177,6 +178,17 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             }
         } while (0);
     }
+}
+
+
+static void format_mp3_apply_settings (source_t *source, mount_proxy *mount)
+{
+    mp3_state *source_mp3 = source->format->_state;
+
+    source_mp3->interval = ICY_METADATA_INTERVAL;
+    if (mount->mp3_meta_interval >= 0)
+        source_mp3->interval = mount->mp3_meta_interval;
+    DEBUG2 ("mp3 interval %d, %d", mount->mp3_meta_interval, source_mp3->interval);
 }
 
 
@@ -567,10 +579,11 @@ static void mp3_set_predata (source_t *source, client_t *client)
     {
         unsigned remaining = client->predata_size - client->predata_len + 2;
         char *ptr = client->predata + client->predata_len - 2;
+        mp3_state *source_mp3 = source->format->_state;
         int bytes;
 
         bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
-                ICY_METADATA_INTERVAL);
+                source_mp3->interval);
         if (bytes > 0)
             client->predata_len += bytes - 2;
     }
@@ -580,7 +593,7 @@ static void mp3_set_predata (source_t *source, client_t *client)
 static int format_mp3_create_client_data(source_t *source, client_t *client) 
 {
     mp3_client_data *data = calloc(1,sizeof(mp3_client_data));
-    char *metadata;
+    mp3_state *source_mp3 = source->format->_state;
 
     if (data == NULL)
     {
@@ -590,13 +603,16 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     client->format_data = data;
     client->free_client_data = free_mp3_client_data;
-    metadata = httpp_getvar(client->parser, "icy-metadata");
-    
-    if(metadata)
+    if (source_mp3->interval > 0)
     {
-        data->use_metadata = atoi(metadata)>0?1:0;
+        char *metadata = httpp_getvar(client->parser, "icy-metadata");
+    
+        if (metadata)
+        {
+            data->use_metadata = atoi(metadata)>0?1:0;
 
-        mp3_set_predata (source, client);
+            mp3_set_predata (source, client);
+        }
     }
 
     return 0;
