@@ -14,6 +14,7 @@
 #define __FSERVE_H__
 
 #include <stdio.h>
+#include "compat.h"
 
 typedef struct _fserve_t
 {
@@ -21,7 +22,7 @@ typedef struct _fserve_t
 
     FILE *file;
     int offset;
-    off_t content_length;
+    int64_t content_length;
     int datasize;
     int ready;
     unsigned char *buf;

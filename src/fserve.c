@@ -47,6 +47,7 @@
 #include "logging.h"
 #include "cfgfile.h"
 #include "util.h"
+#include "compat.h"
 
 #include "fserve.h"
 
@@ -379,7 +380,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     client->content_length = 0;
     client->buf = malloc(BUFSIZE);
     if (stat(path, &file_buf) == 0) {
-        client->content_length = file_buf.st_size;
+        client->content_length = (int64_t)file_buf.st_size;
     }
 
     global_lock();
@@ -400,7 +401,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     httpclient->respcode = 200;
     bytes = sock_write(httpclient->con->sock,
             "HTTP/1.0 200 OK\r\n"
-            "Content-Length: %ld\r\n"
+            "Content-Length: " FORMAT_INT64 "\r\n"
             "Content-Type: %s\r\n\r\n",
             client->content_length,
             fserve_content_type(path));
