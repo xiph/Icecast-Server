@@ -63,8 +63,11 @@
     </relay>
     -->
 
+    <!-- Only define a <mount> section if you want to use advanced options,
+         like alternative usernames or passwords
+      -->
     <mount>
-        <mount-name>/example1.ogg</mount-name>
+        <mount-name>/example-complex.ogg</mount-name>
 
         <username>othersource</username>
         <password>hackmemore</password>
