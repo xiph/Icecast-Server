@@ -86,6 +86,7 @@ AC_HEADER_STDC
 AC_CHECK_HEADER(stdint.h, AC_DEFINE(HAVE_STDINT_H, 1, [Define if you have stdint.h]),,)
 AC_CHECK_HEADER(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
 AC_CHECK_HEADER(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
+AC_CHECK_HEADER(sys/uio.h, AC_DEFINE(HAVE_SYS_UIO_H, 1, [Define if you have sys/uio.h]),,)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
