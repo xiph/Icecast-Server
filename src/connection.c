@@ -826,45 +826,17 @@ static void _handle_get_request(connection_t *con,
         char *sourceuri = strdup(uri);
         char *dot = strrchr(sourceuri, '.');
         *dot = 0;
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount(sourceuri);
-           if (source) {
-            client->respcode = 200;
-            bytes = sock_write(client->con->sock,
-                    "HTTP/1.0 200 OK\r\n"
-                    "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "http://%s:%d%s\r\n", 
-                    host, 
-                    port,
-                    sourceuri
-                    );
-            if(bytes > 0) client->con->sent_bytes = bytes;
-            client_destroy(client);
-        }
-        else if(fileserve) {
-            fullpath = util_get_path_from_normalised_uri(sourceuri);
-            if(stat(fullpath, &statbuf) == 0) {
-                fserve_client_create(client, fullpath);
-                free(fullpath);
-            }
-            else {
-                free(fullpath);
-                fullpath = util_get_path_from_normalised_uri(uri);
-                if(stat(fullpath, &statbuf) == 0) {
-                    fserve_client_create(client, fullpath);
-                    free(fullpath);
-                }
-                else {
-                    free(fullpath);
-                    client_send_404(client, 
-                            "The file you requested could not be found");
-                }
-            }
-        }
-        else {
-            client_send_404(client, "The file you requested could not be found");
-        }
-        avl_tree_unlock(global.source_tree);
+        client->respcode = 200;
+        bytes = sock_write(client->con->sock,
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: audio/x-mpegurl\r\n\r\n"
+                "http://%s:%d%s\r\n", 
+                host, 
+                port,
+                sourceuri
+                );
+        if(bytes > 0) client->con->sent_bytes = bytes;
+        client_destroy(client);
         free(sourceuri);
         if (uri != passed_uri) free (uri);
         return;
