@@ -4,6 +4,7 @@
 
 package="icecast"
 
+olddir=`pwd`
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 
@@ -58,4 +59,5 @@ automake --add-missing
 echo "  autoconf"
 autoconf
 
+cd $olddir
 $srcdir/configure "$@" && echo
