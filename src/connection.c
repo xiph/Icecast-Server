@@ -673,8 +673,8 @@ static void _handle_get_request(connection_t *con,
     char *host;
     int port;
     int i;
-    char *serverhost;
-    int serverport;
+    char *serverhost = NULL;
+    int serverport = 0;
     aliases *alias;
     ice_config_t *config;
     int client_limit;

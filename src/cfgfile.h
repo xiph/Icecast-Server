@@ -1,5 +1,5 @@
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+#ifndef __CFGFILE_H__
+#define __CFGFILE_H__
 
 #define CONFIG_EINSANE -1
 #define CONFIG_ENOROOT -2
@@ -138,7 +138,7 @@ void config_release_config(void);
 /* To be used ONLY in one-time startup code */
 ice_config_t *config_get_config_unlocked(void);
 
-#endif  /* __CONFIG_H__ */
+#endif  /* __CFGFILE_H__ */
 
 
 

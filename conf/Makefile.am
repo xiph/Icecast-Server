@@ -3,6 +3,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 EXTRA_DIST = icecast.xml.in
+DISTCLEANFILES = icecast.xml.dist
 
 docdir = $(datadir)/$(PACKAGE)/doc
 doc_DATA = icecast.xml.dist
