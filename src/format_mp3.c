@@ -144,7 +144,8 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
 {
     int ret;
     
-    if(((mp3_state *)self->_state)->metadata) 
+    if(((mp3_state *)self->_state)->metadata && 
+            ((mp3_client_data *)(client->format_data))->use_metadata)
     {
         mp3_client_data *state = client->format_data;
         int max = state->interval - state->offset;
