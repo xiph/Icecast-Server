@@ -42,7 +42,7 @@ uint64_t timing_get_time(void)
   struct timeb t;
 
   ftime(&t);
-  return t.time * 1000 + t.millitm)
+  return t.time * 1000 + t.millitm;
 #else
     return timeGetTime();
 #endif
