@@ -484,25 +484,35 @@ void CollectStats(stats_event_t *event)
 		strcpy(tempSource, event->source);
 		
 	}
+	if (strlen(tempSource) == 0) {
+		strcpy(tempSource, "Global Stat");
+	}
 
 	int foundit = 0;
 	for (int i=0;i<numMainStats;i++) {
-		if (!strcmp(gStats[i].source, tempSource)) {
-			int foundit2 = 0;
-			gStats[i].populated = 1;
-			for (int j=0;j<gStats[i].numStats;j++) {
-				if (gStats[i].stats[j].name == tempElement.name) {
-					gStats[i].stats[j].value = tempElement.value;
+		if (!strcmp(tempSource, "Global Stat")) {
+			if (gStats[i].stats[0].name == tempElement.name) {
+				gStats[i].stats[0].value = tempElement.value;
+			}
+		}
+		else {
+			if (!strcmp(gStats[i].source, tempSource)) {
+				int foundit2 = 0;
+				gStats[i].populated = 1;
+				for (int j=0;j<gStats[i].numStats;j++) {
+					if (gStats[i].stats[j].name == tempElement.name) {
+						gStats[i].stats[j].value = tempElement.value;
 
-					foundit2 = 1;
+						foundit2 = 1;
+					}
 				}
+				if (!foundit2) {
+					gStats[i].stats[j].name = tempElement.name;
+					gStats[i].stats[j].value = tempElement.value;
+					gStats[i].numStats++;
+				}
+				foundit = 1;
 			}
-			if (!foundit2) {
-				gStats[i].stats[j].name = tempElement.name;
-				gStats[i].stats[j].value = tempElement.value;
-				gStats[i].numStats++;
-			}
-			foundit = 1;
 		}
 	}
 	if (!foundit) {
@@ -871,6 +881,7 @@ void CIcecast2winDlg::UpdateStatsLists()
 						lvi.iSubItem = 2;
 						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
 						statusTab.m_GlobalStatList.SetItem(&lvi);
+						break;
 					}
 					if (gStats[i].stats[k].titleFlag) {
 						CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[k].name + " - " + gStats[i].stats[k].value;
