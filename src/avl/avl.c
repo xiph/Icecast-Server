@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.5 2003/07/07 01:10:14 brendan Exp $ */
+/* $Id: avl.c,v 1.6 2003/07/07 01:40:08 brendan Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -1074,7 +1074,7 @@ default_key_printer (char * buffer, void * key)
  * it backwards using recursion.
  */
 
-void
+static void
 print_connectors (link_node * link)
 {
   if (link->parent) {
@@ -1101,7 +1101,7 @@ print_connectors (link_node * link)
  * representation.
  */
 
-void
+static void
 print_node (avl_key_printer_fun_type key_printer,
         avl_node * node,
         link_node * link)
