@@ -148,6 +148,7 @@ void *source_main(void *arg)
     stats_event(source->mount, "type", source->format->format_description);
 
 	while (global.running == ICE_RUNNING) {
+        bytes = 0;
 		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
@@ -159,13 +160,18 @@ void *source_main(void *arg)
                 ret = util_timed_wait_for_fd(source->con->sock, timeout*1000);
 
 				if (ret <= 0) { /* timeout expired */
+                    WARN1("Disconnecting source: socket timeout (%d s) expired",
+                           timeout);
 					bytes = 0;
 					break;
 				}
 
 				bytes = sock_read_bytes(source->con->sock, buffer, 4096);
-				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) 
+				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) {
+                    DEBUG1("Disconnecting source due to socket read error: %s",
+                            strerror(sock_error()));
                     break;
+                }
 			}
 			if (bytes <= 0) break;
             source->client->con->sent_bytes += bytes;
