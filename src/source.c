@@ -237,6 +237,8 @@ void source_clear_source (source_t *source)
     source->no_mount = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
+    util_dict_free (source->audio_info);
+    source->audio_info = NULL;
 
     free(source->fallback_mount);
     source->fallback_mount = NULL;
