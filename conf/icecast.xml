@@ -1,22 +1,22 @@
 <icecast>
-	<location>Not Currently Used</location>
-	<admin>Not Currently Used</admin>
+    <location>Not Currently Used</location>
+    <admin>Not Currently Used</admin>
 
-	<limits>
-		<clients>100</clients>
-		<sources>2</sources>
-		<threadpool>5</threadpool>
+    <limits>
+        <clients>100</clients>
+        <sources>2</sources>
+        <threadpool>5</threadpool>
         <queue-size>102400</queue-size>
-		<client-timeout>30</client-timeout>
-		<header-timeout>15</header-timeout>
-		<source-timeout>10</source-timeout>
-	</limits>
+        <client-timeout>30</client-timeout>
+        <header-timeout>15</header-timeout>
+        <source-timeout>10</source-timeout>
+    </limits>
 
     <authentication>
         <!-- Sources log in with username 'source' -->
-    	<source-password>hackme</source-password>
+        <source-password>hackme</source-password>
         <!-- Relays log in username 'relay' -->
-	    <relay-password>hackme</relay-password>
+        <relay-password>hackme</relay-password>
 
         <!-- Admin logs in with the username given below -->
         <admin-user>admin</admin-user>
@@ -35,11 +35,11 @@
     </directory>
      -->
 
-	<hostname>localhost</hostname>
+    <hostname>localhost</hostname>
 
     <!-- You can use these two if you only want a single listener -->
-	<!--<port>8000</port> -->
-	<!--<bind-address>127.0.0.1</bind-address>-->
+    <!--<port>8000</port> -->
+    <!--<bind-address>127.0.0.1</bind-address>-->
 
     <!-- You may have multiple <listener> elements -->
     <listen-socket>
@@ -52,18 +52,18 @@
     </listen-socket>
     -->
 
-	<!--<master-server>127.0.0.1</master-server>-->
-	<!--<master-server-port>8001</master-server-port>-->
-	<!--<master-update-interval>120</master-update-interval>-->
-	<!--<master-password>hackme</master-password>-->
+    <!--<master-server>127.0.0.1</master-server>-->
+    <!--<master-server-port>8001</master-server-port>-->
+    <!--<master-update-interval>120</master-update-interval>-->
+    <!--<master-password>hackme</master-password>-->
     <!--
     <relay>
-      <server>127.0.0.1</server>
-      <port>8001</port>
-      <mount>/example.ogg</mount>
-      <local-mount>/different.ogg</local-mount>
+        <server>127.0.0.1</server>
+        <port>8001</port>
+        <mount>/example.ogg</mount>
+        <local-mount>/different.ogg</local-mount>
 
-      <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
+        <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
     </relay>
     -->
 
@@ -77,19 +77,19 @@
         <password>hackmemore</password>
 
         <max-listeners>1</max-listeners>
-<!--        <dump-file>/tmp/dump-example1.ogg</dump-file> -->
+        <!-- <dump-file>/tmp/dump-example1.ogg</dump-file> -->
         <fallback-mount>/example2.ogg</fallback-mount>
     </mount>
 
-	<fileserve>1</fileserve>
+    <fileserve>1</fileserve>
 
-	<paths>
-		<basedir>/usr/local/icecast</basedir>
+    <paths>
+        <basedir>/usr/local/icecast</basedir>
 
         <!-- Note that if <chroot> is turned on below, these paths must both
              be relative to the new root, not the original root -->
-		<logdir>/usr/local/icecast/logs</logdir>
-		<webroot>/usr/local/icecast/web</webroot>
+        <logdir>/usr/local/icecast/logs</logdir>
+        <webroot>/usr/local/icecast/web</webroot>
         <adminroot>/usr/local/icecast/admin</adminroot>
 
         <!-- Aliases: treat requests for 'source' path as being for 'dest' path
@@ -99,19 +99,21 @@
         <!--
         <alias source="/foo" dest="/bar"/>
           -->
-	</paths>
+    </paths>
 
-	<logging>
-		<accesslog>access.log</accesslog>
-		<errorlog>error.log</errorlog>
+    <logging>
+        <accesslog>access.log</accesslog>
+        <errorlog>error.log</errorlog>
       	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
-	</logging>
+    </logging>
 
-	<security>
-		<chroot>0</chroot>
-<!--		<changeowner>
-			<user>nobody</user>
-			<group>nogroup</group>
-		</changeowner>  -->
-	</security>
+    <security>
+        <chroot>0</chroot>
+        <!--
+        <changeowner>
+            <user>nobody</user>
+            <group>nogroup</group>
+	</changeowner>
+        -->
+    </security>
 </icecast>
