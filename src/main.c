@@ -406,7 +406,7 @@ int main(int argc, char **argv)
             _fatal_error(pbuf);
             switch (ret) {
             case CONFIG_EINSANE:
-                _fatal_error("filename was null of blank");
+                _fatal_error("filename was null or blank");
                 break;
             case CONFIG_ENOROOT:
                 _fatal_error("no root element found");
@@ -446,7 +446,7 @@ int main(int argc, char **argv)
      * assume */
     if(!getuid()) /* Running as root! Don't allow this */
     {
-        fprintf(stderr, "WARNING: You should not run icecast2 as root\n");
+        fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
         _shutdown_subsystems();
         return 1;
