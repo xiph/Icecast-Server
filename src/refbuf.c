@@ -101,6 +101,20 @@ refbuf_t *refbuf_queue_remove(refbuf_queue_t **queue)
        
     return refbuf;
 }
+refbuf_t * refbuf_queue_get(refbuf_queue_t **queue, int item)
+{   
+    refbuf_queue_t *node = *queue;
+    int size = 0; 
+    while (node) {
+        if (size == item) {
+            return node->refbuf;
+        }
+        node = node->next; 
+        size++;
+    }
+    return NULL;
+}
+
 
 void refbuf_queue_insert(refbuf_queue_t **queue, refbuf_t *refbuf)
 {

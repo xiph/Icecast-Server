@@ -58,6 +58,9 @@ typedef struct source_tag
     int no_mount;
     unsigned queue_size_limit;
     unsigned timeout;  /* source timeout in seconds */
+    refbuf_queue_t *queue;
+    mutex_t queue_mutex;
+    int burst_on_connect;
 } source_t;
 
 source_t *source_reserve (const char *mount);

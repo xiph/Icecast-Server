@@ -31,6 +31,7 @@ This section will describe each section of the config file and is grouped into t
         &lt;client-timeout&gt;30&lt;client-timeout&gt;
         &lt;header-timeout&gt;15&lt;header-timeout&gt;
         &lt;source-timeout&gt;10&lt;source-timeout&gt;
+        &lt;burst-on-connect&gt;1&lt;burst-on-connect&gt;
     &lt;limits&gt;
 </pre>
 <p>This section contains server level settings that, in general, do not need to be changed.  Only modify this section if you are know what you are doing.
@@ -62,6 +63,10 @@ The maximum time (in seconds) to wait for a request to come in once the client h
 <h4>source-timeout</h4>
 <div class=indentedbox>
 If a connected source does not send any data within this timeout period (in seconds), then the source connection will be removed from the server.
+</div>
+<h4>burst-on-connect</h4>
+<div class=indentedbox>
+With this enabled, a connecting client will be sent a burst of audio data from the stream.  This will have the effect of reducing the startup time for the stream from the perspective of the listener.  This is due to the fact that most media players have local buffers that must be filled before the stream begins to play.  This may introduce a small latency in the stream (difference in time between when the source plays a clip and the listener hears a clip).  If this latency is important to you, then you can disable this feature.  The latency is bitrate-dependent, but as an example, for a 128kbps stream, the latency between the source and the player is ~ 1.5 secs WITHOUT burst on connect, and WITH burst on connect the latency is 3 secs.
 </div>
 <br>
 <br>

@@ -49,6 +49,7 @@ void refbuf_queue_insert(refbuf_queue_t **queue, refbuf_t *refbuf);
 int refbuf_queue_size(refbuf_queue_t **queue);
 /* Size in bytes */
 int refbuf_queue_length(refbuf_queue_t **queue);
+refbuf_t * refbuf_queue_get(refbuf_queue_t **queue, int item);
 
 #endif  /* __REFBUF_H__ */
 

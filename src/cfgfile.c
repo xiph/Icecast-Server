@@ -339,6 +339,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->num_yp_directories = 0;
     configuration->relay_username = NULL;
     configuration->relay_password = NULL;
+    configuration->burst_on_connect = 1;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
@@ -459,6 +460,10 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "source-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->source_timeout = atoi(tmp);
+            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "burst-on-connect") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->burst_on_connect = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));

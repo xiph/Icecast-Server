@@ -194,6 +194,7 @@ int source_compare_sources(void *arg, void *a, void *b)
 
 void source_clear_source (source_t *source)
 {
+    refbuf_t *refbuf;
 #ifdef USE_YP
     int i;
 #endif
@@ -254,6 +255,12 @@ void source_clear_source (source_t *source)
 
     free(source->dumpfilename);
     source->dumpfilename = NULL;
+    /* Lets clear out the source queue too */
+    while ((refbuf = refbuf_queue_remove(&source->queue)))
+        refbuf_release(refbuf);
+    source->queue = NULL;
+    source->burst_on_connect = 1;
+    thread_mutex_destroy(&source->queue_mutex);
 }
 
 
@@ -484,6 +491,7 @@ static void source_init (source_t *source)
     memset (listenurl, '\000', listen_url_size);
     snprintf (listenurl, listen_url_size, "http://%s:%d%s",
             config->hostname, config->port, source->mount);
+    source->burst_on_connect = config->burst_on_connect;
     config_release_config();
 
     stats_event (source->mount, "listenurl", listenurl);
@@ -514,6 +522,8 @@ static void source_init (source_t *source)
 
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
+    thread_mutex_create(&source->queue_mutex);
+
     DEBUG0("Source creation complete");
     source->running = 1;
 
@@ -543,11 +553,11 @@ void source_main (source_t *source)
 {
     char buffer[4096];
     long bytes, sbytes;
-    int ret;
+    int ret, i;
     client_t *client;
     avl_node *client_node;
 
-    refbuf_t *refbuf, *abuf;
+    refbuf_t *refbuf, *abuf, *stale_refbuf;
     int data_done;
 
     source_init (source);
@@ -557,6 +567,27 @@ void source_main (source_t *source)
         if(ret < 0) {
             WARN0("Bad data from source");
             break;
+        }
+        if (source->burst_on_connect) {
+            thread_mutex_lock(&source->queue_mutex);
+            /* Add to the source buffer */
+            if (refbuf) {
+                refbuf_addref(refbuf);
+                refbuf_queue_add(&(source->queue), refbuf);
+                /* We derive the size of the source buffer queue based off the 
+                   setting for queue_size_limit (client buffer queue size).  
+                   This is because the source buffer queue size should be a
+                   percentage of the client buffer size (definately cannot
+                   be larger). Why 50% ? Because > 75% does not give the
+                   client enough leeway for lagging on initial connection
+                   and < 25% does not provide a good enough burst on connect. */
+                if (refbuf_queue_length(&(source->queue)) > 
+                    source->queue_size_limit/2) {
+                    stale_refbuf = refbuf_queue_remove(&(source->queue));
+                    refbuf_release(stale_refbuf);
+                }
+            }
+            thread_mutex_unlock(&source->queue_mutex);
         }
         bytes = 1; /* Set to > 0 so that the post-loop check won't be tripped */
         while (refbuf == NULL) {
@@ -589,6 +620,20 @@ void source_main (source_t *source)
             if(ret < 0) {
                 WARN0("Bad data from source");
                 goto done;
+            }
+            if (source->burst_on_connect) {
+                /* Add to the source buffer */
+                thread_mutex_lock(&source->queue_mutex);
+                if (refbuf) {
+                    refbuf_addref(refbuf);
+                    refbuf_queue_add(&(source->queue), refbuf);
+                    if (refbuf_queue_length(&(source->queue)) > 
+                        source->queue_size_limit/2) {
+                        stale_refbuf = refbuf_queue_remove(&(source->queue));
+                        refbuf_release(stale_refbuf);
+                    }
+                }
+                thread_mutex_unlock(&source->queue_mutex);
             }
         }
 
@@ -710,7 +755,10 @@ void source_main (source_t *source)
         /* release read lock on client_tree */
         avl_tree_unlock(source->client_tree);
 
-        refbuf_release(refbuf);
+        /* Only release the refbuf if we didn't add it to the source queue */
+        if (!source->burst_on_connect) {
+            refbuf_release(refbuf);
+        }
 
         /* acquire write lock on client_tree */
         avl_tree_wlock(source->client_tree);
@@ -767,9 +815,25 @@ void source_main (source_t *source)
             /* we have to send cached headers for some data formats
             ** this is where we queue up the buffers to send
             */
+            client = (client_t *)client_node->key;
             if (source->format->has_predata) {
-                client = (client_t *)client_node->key;
                 client->queue = source->format->get_predata(source->format);
+            }
+            if (source->burst_on_connect) {
+                /* here is where we fill up the new client with refbufs from
+                   the source buffer.  this will allow an initial burst of
+                   audio data to be sent to the client, and allow for a faster
+                   startup time (from listener perspective) for the stream */ 
+                if (!client->burst_sent) {
+                    thread_mutex_lock(&source->queue_mutex);
+                    for (i=0;i<refbuf_queue_size(&(source->queue));i++) {
+                        refbuf_queue_add(&(client->queue),
+                            refbuf_queue_get(&(source->queue), i));
+                    }
+                    thread_mutex_unlock(&source->queue_mutex);
+                    client->burst_sent = 1;
+                    DEBUG1("Added %d buffers to initial client queue", refbuf_queue_length(&(source->queue)));
+                }
             }
 
             client_node = avl_get_next(client_node);

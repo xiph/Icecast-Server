@@ -45,6 +45,7 @@ typedef struct _client_tag
 
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
+    int burst_sent;
 } client_t;
 
 client_t *client_create(connection_t *con, http_parser_t *parser);

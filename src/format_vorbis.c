@@ -119,10 +119,10 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
     int i, result;
     ogg_packet op;
     char *tag;
-    refbuf_t *refbuf;
+    refbuf_t *refbuf, *source_refbuf;
     vstate_t *state = (vstate_t *)self->_state;
-#ifdef USE_YP
     source_t *source;
+#ifdef USE_YP
     time_t current_time;
 #endif
 
@@ -185,12 +185,23 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
                 ogg_stream_clear(&state->os);
                 vorbis_comment_clear(&state->vc);
                 vorbis_info_clear(&state->vi);
-#ifdef USE_YP
-                /* If we get an update on the mountpoint, force a
-                   yp touch */
+
+                /* Drain the source queue on metadata update otherwise you
+                   could have a mismatch between what is on the source queue
+                   and what is in the state->headbuf */
                 avl_tree_rlock(global.source_tree);
                 source = source_find_mount_raw(self->mount);
                 avl_tree_unlock(global.source_tree);
+
+                thread_mutex_lock(&source->queue_mutex);
+                while ((source_refbuf = refbuf_queue_remove(&source->queue))) {
+                    refbuf_release(source_refbuf);
+                }
+                thread_mutex_unlock(&source->queue_mutex);
+
+#ifdef USE_YP
+                /* If we get an update on the mountpoint, force a
+                   yp touch */
 
                 if (source) {
                     /* If we get an update on the mountpoint, force a
