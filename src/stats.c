@@ -461,8 +461,7 @@ static void *_stats_thread(void *arg)
             thread_mutex_unlock(&_global_event_mutex);
         }
 
-        if(global_event_queue == NULL) /* Only sleep if no events are pending */
-            thread_sleep(300000);
+        thread_sleep(300000);
     }
 
     /* wake the other threads so they can shut down cleanly */
