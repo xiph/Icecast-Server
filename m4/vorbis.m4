@@ -1,132 +1,82 @@
 # Configure paths for libvorbis
 # Jack Moffitt <jack@icecast.org> 10-21-2000
+# updated by Karl Heyes 31-Mar-2003
 # Shamelessly stolen from Owen Taylor and Manish Singh
-# thomasvs added check for vorbis_bitrate_addblock which is new in rc3
 
 dnl XIPH_PATH_VORBIS([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
-dnl Test for libvorbis, and define VORBIS_CFLAGS and VORBIS_LIBS
+dnl Test for libvorbis, and define VORBIS_CFLAGS VORBIS_LIBS
+dnl VORBIS_VORBISENC_LIBS VORBIS_VORBISFILE_LIBS VORBIS_LDFLAGS
 dnl
-AC_DEFUN(XIPH_PATH_VORBIS,
-[dnl 
-dnl Get the cflags and libraries
+
+AC_DEFUN([XIPH_PATH_VORBIS],
+[
+XIPH_PATH_OGG([$1],[$2])
+
+dnl Get the cflags and libraries for vorbis
 dnl
-AC_ARG_WITH([vorbis],
-  [  --with-vorbis=PFX           prefix where libvorbis is installed (optional)],
-  [vorbis_prefix="$withval"], [vorbis_prefix=""])
-AC_ARG_WITH([vorbis-libraries],
-  [  --with-vorbis-libraries=DIR directory where libvorbis library is
-                              installed (optional)],
-  [vorbis_libraries="$withval"], [vorbis_libraries=""])
-AC_ARG_WITH([vorbis-includes],
-  [  --with-vorbis-includes=DIR  directory where libvorbis header files are
-                              installed (optional)],
-  [vorbis_includes="$withval"], [vorbis_includes=""])
-AC_ARG_ENABLE([vorbistest],
-  [  --disable-vorbistest    do not try to compile and run a test Vorbis program],,
-  [enable_vorbistest=yes])
+AC_ARG_VAR([VORBIS_PREFIX],[path to vorbis installation])
+AC_ARG_WITH(vorbis,
+    AC_HELP_STRING([--with-vorbis=PREFIX],
+        [Prefix where libvorbis is installed (optional)]),
+    vorbis_prefix="$withval",
+    vorbis_prefix="$VORBIS_PREFIX"
+    )
+if test "x$vorbis_prefix" = "x"; then
+    if test "x$prefix" = "xNONE"; then
+        vorbis_prefix="/usr/local"
+    else
+        vorbis_prefix="$prefix"
+    fi
+fi
 
-  if test "x$vorbis_libraries" != "x" ; then
-    VORBIS_LIBS="-L$vorbis_libraries"
-  elif test "x$vorbis_prefix" != "x" ; then
-    VORBIS_LIBS="-L$vorbis_prefix/lib"
-  elif test "x$prefix" != "xNONE"; then
-    VORBIS_LIBS="-L$prefix/lib"
-  fi
+VORBIS_CFLAGS="$OGG_CFLAGS"
+VORBIS_LDFLAGS="$OGG_LDFLAGS"
+if test "x$vorbis_prefix" != "x$ogg_prefix"; then
+    XIPH_GCC_INCLUDE_WARNING("$vorbis_prefix/include",,
+            [VORBIS_CFLAGS="$VORBIS_CFLAGS -I$vorbis_prefix/include"
+            VORBIS_LDFLAGS="-L$vorbis_prefix/lib $VORBIS_LDFLAGS"
+            ])
+fi
 
-  VORBIS_LIBS="$VORBIS_LIBS -lvorbis -lm"
-  VORBISFILE_LIBS="-lvorbisfile"
-  VORBISENC_LIBS="-lvorbisenc"
+VORBIS_LIBS="-lvorbis"
+VORBISFILE_LIBS="-lvorbisfile"
+VORBISENC_LIBS="-lvorbisenc"
 
-  if test "x$vorbis_includes" != "x" ; then
-    VORBIS_CFLAGS="-I$vorbis_includes"
-  elif test "x$vorbis_prefix" != "x" ; then
-    VORBIS_CFLAGS="-I$vorbis_prefix/include"
-  elif test "x$prefix" != "xNONE"; then
-    VORBIS_CFLAGS="-I$prefix/include"
-  fi
+ac_save_LIBS="$LIBS"
+ac_save_LDFLAGS="$LDFLAGS"
+LDFLAGS="$LDFLAGS $VORBIS_LDFLAGS"
+LIBS="$LIBS $VORBIS_LIBS"
+AC_MSG_CHECKING([checking for libvorbis])
+AC_TRY_LINK_FUNC(vorbis_info_init, [AC_MSG_RESULT([ok])],
+        [LIBS="$LIBS $OGG_LIBS -lm"
+        AC_TRY_LINK_FUNC(vorbis_info_init,
+            [AC_MSG_RESULT([found, adding extra libs])
+            VORBIS_LIBS="$VORBIS_LIBS $OGG_LIBS -lm"],
+            [ifelse([$2], , AC_MSG_ERROR([Unable to link to libvorbis]), [$2])
+            ])
+        ])
 
+LIBS="$ac_save_LIBS"
+LDFLAGS="$ac_save_LDFLAGS"
 
-  AC_MSG_CHECKING(for Vorbis)
-  no_vorbis=""
+#
+# Now check if the installed Vorbis is sufficiently new.
+#
+ac_save_CFLAGS="$CFLAGS"
+ac_save_LIBS="$LIBS"
+CFLAGS="$CFLAGS $VORBIS_CFLAGS"
+LIBS="$LIBS $VORBIS_LDFLAGS $VORBIS_LIBS"
 
-
-  if test "x$enable_vorbistest" = "xyes" ; then
-    ac_save_CFLAGS="$CFLAGS"
-    ac_save_LIBS="$LIBS"
-    CFLAGS="$CFLAGS $VORBIS_CFLAGS $OGG_CFLAGS"
-    LIBS="$LIBS $VORBIS_LIBS $VORBISENC_LIBS $OGG_LIBS"
-dnl
-dnl Now check if the installed Vorbis is sufficiently new.
-dnl
-      rm -f conf.vorbistest
-      AC_TRY_RUN([
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+AC_CHECK_TYPES([struct ovectl_ratemanage_arg],[vorbis_ok=yes],
+        [ifelse([$2], ,[AC_MSG_ERROR([libvorbis needs updating])], [$2])], [
 #include <vorbis/codec.h>
 #include <vorbis/vorbisenc.h>
-
-int main ()
-{
-    vorbis_block 	vb;
-    vorbis_dsp_state	vd;
-    vorbis_info		vi;
-
-    vorbis_info_init (&vi);
-    vorbis_encode_init (&vi, 2, 44100, -1, 128000, -1);
-    vorbis_analysis_init (&vd, &vi);
-    vorbis_block_init (&vd, &vb);
-    /* this function was added in 1.0rc3, so this is what we're testing for */
-    vorbis_bitrate_addblock (&vb);
-
-    system("touch conf.vorbistest");
-    return 0;
-}
-
-],, no_vorbis=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
-       CFLAGS="$ac_save_CFLAGS"
-       LIBS="$ac_save_LIBS"
-  fi
-
-  if test "x$no_vorbis" = "x" ; then
-     AC_MSG_RESULT(yes)
-     ifelse([$1], , :, [$1])     
-  else
-     AC_MSG_RESULT(no)
-     if test -f conf.vorbistest ; then
-       :
-     else
-       echo "*** Could not run Vorbis test program, checking why..."
-       CFLAGS="$CFLAGS $VORBIS_CFLAGS"
-       LIBS="$LIBS $VORBIS_LIBS $OGG_LIBS"
-       AC_TRY_LINK([
-#include <stdio.h>
-#include <vorbis/codec.h>
-],     [ return 0; ],
-       [ echo "*** The test program compiled, but did not run. This usually means"
-       echo "*** that the run-time linker is not finding Vorbis or finding the wrong"
-       echo "*** version of Vorbis. If it is not finding Vorbis, you'll need to set your"
-       echo "*** LD_LIBRARY_PATH environment variable, or edit /etc/ld.so.conf to point"
-       echo "*** to the installed location  Also, make sure you have run ldconfig if that"
-       echo "*** is required on your system"
-       echo "***"
-       echo "*** If you have an old version installed, it is best to remove it, although"
-       echo "*** you may also be able to get things to work by modifying LD_LIBRARY_PATH"],
-       [ echo "*** The test program failed to compile or link. See the file config.log for the"
-       echo "*** exact error that occured. This usually means Vorbis was incorrectly installed"
-       echo "*** or that you have moved Vorbis since it was installed." ])
-       CFLAGS="$ac_save_CFLAGS"
-       LIBS="$ac_save_LIBS"
-     fi
-     VORBIS_CFLAGS=""
-     VORBIS_LIBS=""
-     VORBISFILE_LIBS=""
-     VORBISENC_LIBS=""
-     ifelse([$2], , :, [$2])
-  fi
-  AC_SUBST(VORBIS_CFLAGS)
-  AC_SUBST(VORBIS_LIBS)
-  AC_SUBST(VORBISFILE_LIBS)
-  AC_SUBST(VORBISENC_LIBS)
-  rm -f conf.vorbistest
+        ])
+CFLAGS="$ac_save_CFLAGS"
+LIBS="$ac_save_LIBS"
+AC_SUBST(VORBIS_CFLAGS)
+AC_SUBST(VORBIS_LDFLAGS)
+AC_SUBST(VORBIS_LIBS)
+AC_SUBST(VORBISFILE_LIBS)
+AC_SUBST(VORBISENC_LIBS)
 ])
