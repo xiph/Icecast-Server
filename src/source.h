@@ -73,6 +73,7 @@ typedef struct source_tag
     unsigned timeout;  /* source timeout in seconds */
     int on_demand;
     int on_demand_req;
+    int hidden;
     int recheck_settings;
 
     time_t last_read;

@@ -64,6 +64,7 @@ void event_config_read(void *arg)
         source_update (config_get_config_unlocked());
 
         config_release_config();
+        source_recheck_mounts();
     }
 }
 

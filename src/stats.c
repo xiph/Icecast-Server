@@ -35,6 +35,8 @@
 #include "client.h"
 #include "stats.h"
 #include "xslt.h"
+#define CATMODULE "stats"
+#include "logging.h"
 
 #ifdef _WIN32
 #define vsnprintf _vsnprintf
@@ -155,18 +157,17 @@ stats_t *stats_get_stats()
     return NULL;
 }
 
-void stats_event(const char *source, char *name, char *value)
+void stats_event(const char *source, const char *name, const char *value)
 {
     stats_event_t *node;
     stats_event_t *event;
 
-    if (name == NULL || strcmp(name, "") == 0) return;
-
     /* build event */
     event = (stats_event_t *)malloc(sizeof(stats_event_t));
     event->source = NULL;
+    event->name = NULL;
     if (source != NULL) event->source = (char *)strdup(source);
-    event->name = (char *)strdup(name);
+    if (name) event->name = (char *)strdup(name);
     event->value = NULL;
     event->next = NULL;
     if (value != NULL) event->value = (char *)strdup(value);
@@ -340,9 +341,23 @@ static stats_event_t *_copy_event(stats_event_t *event)
         copy->value = (char *)strdup(event->value);
     else
         copy->value = NULL;
+    copy->hidden = event->hidden;
     copy->next = NULL;
 
     return copy;
+}
+
+static void  _mark_hidden (stats_source_t *snode, int hidden)
+{
+    avl_node *node = avl_get_first (snode->stats_tree);
+
+    snode->hidden = hidden;
+    while (node)
+    {
+        stats_node_t *stats = (stats_node_t*)node->key;
+        stats->hidden = hidden;
+        node = avl_get_next (node);
+    }
 }
 
 static void *_stats_thread(void *arg)
@@ -376,6 +391,7 @@ static void *_stats_thread(void *arg)
                         anode = (stats_node_t *)malloc(sizeof(stats_node_t));
                         anode->name = (char *)strdup(event->name);
                         anode->value = (char *)strdup(event->value);
+                        anode->hidden = 0;
 
                         avl_insert(_stats.global_tree, (void *)anode);
                     } else {
@@ -396,46 +412,65 @@ static void *_stats_thread(void *arg)
                 snode = _find_source(_stats.source_tree, event->source);
                 if (snode != NULL) {
                     /* this is a source we already have a tree for */
-                    if (event->value != NULL) {
+                    if (event->name) {
                         /* we're add/updating */
                         node = _find_node(snode->stats_tree, event->name);
                         if (node == NULL) {
                             /* adding node */
-                            anode = (stats_node_t *)malloc(sizeof(stats_node_t));
-                            anode->name = (char *)strdup(event->name);
-                            anode->value = (char *)strdup(event->value);
+                            if (event->value)
+                            {
+                                DEBUG1 ("new node %s", event->name);
+                                anode = (stats_node_t *)malloc(sizeof(stats_node_t));
+                                anode->name = (char *)strdup(event->name);
+                                anode->value = (char *)strdup(event->value);
+                                anode->hidden = snode->hidden;
 
-                            avl_insert(snode->stats_tree, (void *)anode);
+                                avl_insert(snode->stats_tree, (void *)anode);
+                            }
                         } else {
-                            /* updating node */
-                            free(node->value);
-                            node->value = (char *)strdup(event->value);
-                        }
-                    } else {
-                        /* we're deleting */
-                        node = _find_node(snode->stats_tree, event->name);
-                        if (node != NULL) {
-                            avl_delete(snode->stats_tree, (void *)node, _free_stats);
-
+                            if (event->value) {
+                                /* updating node */
+                                DEBUG1 ("update node %s", event->name);
+                                free(node->value);
+                                node->value = (char *)strdup(event->value);
+                            } else {
+                                /* we're deleting */
+                                node = _find_node(snode->stats_tree, event->name);
+                                if (node != NULL) {
+                                    DEBUG1 ("delete node %s", event->name);
+                                    avl_delete(snode->stats_tree, (void *)node, _free_stats);
+                                }
                                 avlnode = avl_get_first(snode->stats_tree);
-                            if (avlnode == NULL) {
-                                avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+                                if (avlnode == NULL) {
+                                    DEBUG1 ("delete source node %s", event->source);
+                                    avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+                                }
                             }
                         }
                     }
-                } else {
-                    if (event->value)
+                    else
                     {
-                        /* this is a new source */
+                        if (event->value)
+                            _mark_hidden (snode, 1);
+                        else
+                            _mark_hidden (snode, 0);
+                    }
+                } else {
+                    /* this is a new source */
+                    if (event->name)
+                    {
+                        DEBUG1 ("new source node %s needed before settings", event->source);
+                    }
+                    else
+                    {
+                        DEBUG1 ("new source stat %s", event->source);
                         asnode = (stats_source_t *)malloc(sizeof(stats_source_t));
                         asnode->source = (char *)strdup(event->source);
                         asnode->stats_tree = avl_tree_new(_compare_stats, NULL);
-
-                        anode = (stats_node_t *)malloc(sizeof(stats_node_t));
-                        anode->name = (char *)strdup(event->name);
-                        anode->value = (char *)strdup(event->value);
-
-                        avl_insert(asnode->stats_tree, (void *)anode);
+                        if (event->value)
+                            asnode->hidden = 1;
+                        else
+                            asnode->hidden = 0;
 
                         avl_insert(_stats.source_tree, (void *)asnode);
                     }
@@ -502,6 +537,7 @@ static stats_event_t *_make_event_from_node(stats_node_t *node, char *source)
         event->source = NULL;
     event->name = (char *)strdup(node->name);
     event->value = (char *)strdup(node->value);
+    event->hidden = node->hidden;
     event->next = NULL;
 
     return event;
@@ -742,16 +778,19 @@ void stats_get_xml(xmlDocPtr *doc)
 
     event = _get_event_from_queue(&queue);
     while (event) {
-        xmlChar *name, *value;
-        name = xmlEncodeEntitiesReentrant (*doc, event->name);
-        value = xmlEncodeEntitiesReentrant (*doc, event->value);
-        srcnode = node;
-        if (event->source) {
-            srcnode = _find_xml_node(event->source, &src_nodes, node);
+        if (event->hidden == 0)
+        {
+            xmlChar *name, *value;
+            name = xmlEncodeEntitiesReentrant (*doc, event->name);
+            value = xmlEncodeEntitiesReentrant (*doc, event->value);
+            srcnode = node;
+            if (event->source) {
+                srcnode = _find_xml_node(event->source, &src_nodes, node);
+            }
+            xmlNewChild(srcnode, NULL, name, value);
+            xmlFree (value);
+            xmlFree (name);
         }
-        xmlNewChild(srcnode, NULL, name, value);
-        xmlFree (value);
-        xmlFree (name);
 
         _free_event(event);
         event = _get_event_from_queue(&queue);

@@ -268,7 +268,10 @@ static void *start_relay_stream (void *arg)
         source_main (relay->source);
 
         if (relay->on_demand == 0)
+        {
             stats_event (relay->localmount, "listeners", NULL);
+            source_recheck_mounts();
+        }
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
         slave_rescan();
@@ -306,6 +309,7 @@ static void check_relay_stream (relay_server *relay)
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
             {
+                stats_event (relay->localmount, NULL, NULL);
                 stats_event (relay->localmount, "listeners", "0");
                 DEBUG0 ("setting on_demand");
             }

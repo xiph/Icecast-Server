@@ -653,19 +653,22 @@ static void source_init (source_t *source)
     char *str = NULL;
 
     thread_mutex_lock (&source->lock);
-    if (source->yp_prevent == 0)
+    do
     {
+        str = "0";
+        if (source->yp_prevent)
+            break;
         if ((str = httpp_getvar (source->parser, "ice-public")))
-            source->yp_public = atoi (str);
+            break;
         if ((str = httpp_getvar (source->parser, "icy-pub")))
-            source->yp_public = atoi (str);
+            break;
         /* handle header from icecast v2 release */
         if ((str = httpp_getvar (source->parser, "icy-public")))
-            source->yp_public = atoi (str);
-        if (str == NULL)
-            str = "0";
-        stats_event (source->mount, "public", str);
-    }
+            break;
+        str = "0";
+    } while (0);
+    source->yp_public = atoi (str);
+    stats_event (source->mount, "public", str);
 
     str = httpp_getvar(source->parser, "ice-genre");
     if (str == NULL)
@@ -1096,7 +1099,6 @@ static void source_shutdown (source_t *source)
     stats_event (source->mount, "ice-bitrate", NULL);
 
     thread_mutex_unlock (&source->lock);
-    source_recheck_mounts ();
 
     global_lock();
     global.sources--;
@@ -1187,6 +1189,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->max_listeners = mountinfo->max_listeners;
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
+    source->hidden = mountinfo->hidden;
 
     if (mountinfo->fallback_mount)
         source->fallback_mount = strdup (mountinfo->fallback_mount);
@@ -1257,6 +1260,13 @@ void source_update_settings (ice_config_t *config, source_t *source)
         DEBUG1 ("disconnect script \"%s\"", source->on_disconnect);
     if (source->on_demand)
         DEBUG0 ("on-demand set");
+    if (source->hidden)
+    {
+        stats_event (source->mount, NULL, "hidden");
+        DEBUG0 ("hidden from xsl");
+    }
+    else
+        stats_event (source->mount, NULL, NULL);
 
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
@@ -1311,6 +1321,7 @@ void *source_client_thread (void *arg)
         stats_event (source->mount, "listeners", "0");
         source_main (source);
         stats_event (source->mount, "listeners", NULL);
+        source_recheck_mounts();
     }
     source_free_source (source);
     return NULL;
@@ -1363,14 +1374,32 @@ void source_recheck_mounts (void)
 
     while (mount)
     {
-        char *value = NULL;
+        int update_stats = 0;
+        const char *hidden = NULL;
         source_t *source = source_find_mount (mount->mountname);
-        if (source && mount->hidden == 0)
+
+        if (mount->hidden)
+           hidden = "hidden";
+        if (source)
         {
-            if (source->running || source->on_demand)
-                value = "0";
+            /* something is active, maybe a fallback */
+            if (strcmp (source->mount, mount->mountname) == 0)
+            {
+                /* normally the source thread would deal with this there
+                 * isn't one for inactive on-demand relays */
+                if (source->on_demand && source->running == 0)
+                    update_stats = 1;
+            }
+            else
+                update_stats = 1;
         }
-        stats_event (mount->mountname, "listeners", value);
+        else
+            stats_event (mount->mountname, "listeners", NULL);
+        if (update_stats)
+        {
+            stats_event (mount->mountname, NULL, hidden);
+            stats_event (mount->mountname, "listeners", "0");
+        }
 
         mount = mount->next;
     }

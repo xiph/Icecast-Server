@@ -31,6 +31,7 @@ typedef struct _stats_node_tag
 {
     char *name;
     char *value;
+    int hidden;
 } stats_node_t;
 
 typedef struct _stats_event_tag
@@ -38,6 +39,7 @@ typedef struct _stats_event_tag
     char *source;
     char *name;
     char *value;
+    int  hidden;
 
     struct _stats_event_tag *next;
 } stats_event_t;
@@ -45,6 +47,7 @@ typedef struct _stats_event_tag
 typedef struct _stats_source_tag
 {
     char *source;
+    int  hidden;
     avl_tree *stats_tree;
 } stats_source_t;
 
@@ -77,7 +80,7 @@ void stats_shutdown();
 
 stats_t *stats_get_stats();
 
-void stats_event(const char *source, char *name, char *value);
+void stats_event(const char *source, const char *name, const char *value);
 void stats_event_args(const char *source, char *name, char *format, ...);
 void stats_event_inc(char *source, char *name);
 void stats_event_add(char *source, char *name, unsigned long value);
