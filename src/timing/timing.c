@@ -24,6 +24,10 @@
 #include <sys/select.h>
 #endif
 
+#ifdef __MINGW32__
+#include <sys/timeb.h>
+#endif
+
 #include "timing.h"
 
 /* see timing.h for an explanation of _mangle() */
@@ -34,7 +38,14 @@
 uint64_t timing_get_time(void)
 {
 #ifdef _WIN32
+#ifdef __MINGW32__
+  struct timeb t;
+
+  ftime(&t);
+  return t.time * 1000 + t.millitm)
+#else
     return timeGetTime();
+#endif
 #else 
     struct timeval mtv;
 

@@ -24,11 +24,14 @@
 
 #include <stdarg.h>
 
-#ifdef _WIN32
+#ifdef HAVE_WINSOCK2_H
 #include <winsock2.h>
-#include <os.h>
-#else
+#endif
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#elif _WIN32
+#include <os.h>
 #endif
 
 #ifdef HAVE_SYS_UIO_H

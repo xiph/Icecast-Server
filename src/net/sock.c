@@ -50,12 +50,13 @@
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define EALREADY WSAEALREADY
 #define socklen_t    int
+#ifndef __MINGW32__
 #define va_copy(ap1, ap2) memcpy(&ap1, &ap2, sizeof(va_list))
+#endif
 #endif
 
 #include "sock.h"
 #include "resolver.h"
-
 
 /* sock_initialize
 **
@@ -160,7 +161,8 @@ int sock_valid_socket(sock_t sock)
     socklen_t optlen;
 
     optlen = sizeof(int);
-    ret = getsockopt(sock, SOL_SOCKET, SO_TYPE, &optval, &optlen);
+    /* apparently on windows getsockopt.optval is a char * */
+    ret = getsockopt(sock, SOL_SOCKET, SO_TYPE, (void*) &optval, &optlen);
 
     return (ret == 0);
 }
@@ -193,7 +195,11 @@ int inet_aton(const char *s, struct in_addr *a)
 int sock_set_blocking(sock_t sock, const int block)
 {
 #ifdef _WIN32
+#ifdef __MINGW32__
+    u_long varblock = block;
+#else
     int varblock = block;
+#endif
 #endif
 
     if ((!sock_valid_socket(sock)) || (block < 0) || (block > 1))
@@ -433,10 +439,14 @@ int sock_connected (int sock, unsigned timeout)
 
     switch (select(sock + 1, NULL, &wfds, NULL, &tv))
     {
-        case 0:  return SOCK_TIMEOUT;
-        default: if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &val, &size) < 0)
-                     val = SOCK_ERROR;
-        case -1: return val;
+        case 0:
+	    return SOCK_TIMEOUT;
+        default:
+	    /* on windows getsockopt.val is defined as char* */
+	    if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*) &val, &size) < 0)
+		val = SOCK_ERROR;
+        case -1:
+	    return val;
     }
 }
 
