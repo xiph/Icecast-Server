@@ -114,6 +114,8 @@ http://192.168.1.10:8000/admin/listmounts
 http://192.168.1.10:8000/admin/stats.xsl
 </pre>
 <p>From this URL all of the other admin functions can be exercised.</p>
+<p>Modification of existing XSLT transforms in /admin is allowed, but new files cannot be created here. Creation of new XSLT transforms as well as modification of existing transforms is allowed in /web. These work using the document returned by /admin/stats.xml. To see the XML document that is applied to each admin XSLT, just change the .xsl to .xml in your request (i.e. /admin/listclients.xml). You can then code your XSLT transform accordingly.
+<br>
 </div>
 </body>
 </html>
