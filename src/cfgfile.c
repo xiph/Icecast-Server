@@ -339,7 +339,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->num_yp_directories = 0;
     configuration->relay_username = NULL;
     configuration->relay_password = NULL;
-    configuration->burst_on_connect = 0;
+    configuration->burst_on_connect = 1;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
