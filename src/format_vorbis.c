@@ -127,7 +127,10 @@ static refbuf_t *format_vorbis_get_buffer (source_t *source)
 {
     int result;
     ogg_packet op;
-    char *tag;
+    char *title_tag;
+    char *artist_tag;
+    char *metadata = NULL;
+    int   metadata_len = 0;
     refbuf_t *refbuf, *header;
     char *data;
     format_plugin_t *self = source->format;
@@ -202,13 +205,39 @@ static refbuf_t *format_vorbis_get_buffer (source_t *source)
 
                 DEBUG0 ("doing stats");
                 /* put known comments in the stats */
-                tag = vorbis_comment_query(&state->vc, "TITLE", 0);
-                if (tag) stats_event(source->mount, "title", tag);
+                title_tag = vorbis_comment_query(&state->vc, "TITLE", 0);
+                if (title_tag) stats_event(source->mount, "title", title_tag);
                 else stats_event(source->mount, "title", "unknown");
-                tag = vorbis_comment_query(&state->vc, "ARTIST", 0);
-                if (tag) stats_event(source->mount, "artist", tag);
+                artist_tag = vorbis_comment_query(&state->vc, "ARTIST", 0);
+                if (artist_tag) stats_event(source->mount, "artist", artist_tag);
                 else stats_event(source->mount, "artist", "unknown");
 
+                metadata = NULL;
+                if (artist_tag) {
+                    if (title_tag) {
+                        metadata_len = strlen(artist_tag) + strlen(title_tag) +
+                                       strlen(" - ") + 1;
+                        metadata = (char *)calloc(1, metadata_len);
+                        sprintf(metadata, "%s - %s", artist_tag, title_tag);
+                    }
+                    else {
+                        metadata_len = strlen(artist_tag) + 1;
+                        metadata = (char *)calloc(1, metadata_len);
+                        sprintf(metadata, "%s", artist_tag);
+                    }
+                }
+                else {
+                    if (title_tag) {
+                        metadata_len = strlen(title_tag) + 1;
+                        metadata = (char *)calloc(1, metadata_len);
+                        sprintf(metadata, "%s", title_tag);
+                    }
+                }
+                if (metadata) {
+                    logging_playlist(source->mount, metadata, source->listeners);
+                    free(metadata);
+                    metadata = NULL;
+                }
                 /* don't need these now */
                 ogg_stream_clear(&state->os);
                 vorbis_comment_clear(&state->vc);

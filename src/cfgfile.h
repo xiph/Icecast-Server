@@ -128,6 +128,7 @@ typedef struct ice_config_tag
 
     char *access_log;
     char *error_log;
+    char *playlist_log;
     int loglevel;
 
     int chroot;

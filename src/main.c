@@ -87,6 +87,7 @@ static void _stop_logging(void)
 {
     log_close(errorlog);
     log_close(accesslog);
+    log_close(playlistlog);
 }
 
 static void _initialize_subsystems(void)
@@ -178,6 +179,7 @@ static int _start_logging(void)
 {
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
+    char fn_playlist[FILENAME_MAX];
     char buf[1024];
     int log_to_stderr;
 
@@ -219,9 +221,26 @@ static int _start_logging(void)
                 strerror(errno));
         _fatal_error(buf);
     }
+
+    if(config->playlist_log) {
+        snprintf(fn_playlist, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
+        playlistlog = log_open(fn_playlist);
+        if (playlistlog < 0) {
+            buf[sizeof(buf)-1] = 0;
+            snprintf(buf, sizeof(buf)-1, 
+                "FATAL: could not open playlist logging (%s): %s",
+                log_to_stderr?"standard error":fn_playlist,
+                strerror(errno));
+            _fatal_error(buf);
+        }
+        log_to_stderr = 0;
+    } else {
+        playlistlog = -1;
+    }
     
     log_set_level(errorlog, config->loglevel);
     log_set_level(accesslog, 4);
+    log_set_level(playlistlog, 4);
 
     if (errorlog >= 0 && accesslog >= 0) return 1;
     

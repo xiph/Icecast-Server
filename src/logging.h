@@ -20,6 +20,7 @@
 
 extern int errorlog;
 extern int accesslog;
+extern int playlistlog;
 
 /* these are all ERRORx and WARNx where _x_ is the number of parameters
 ** it takes.  it turns out most other copmilers don't have support for
@@ -88,6 +89,7 @@ extern int accesslog;
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
 void logging_access(client_t *client);
+void logging_playlist(char *mount, char *metadata, long listeners);
 void restart_logging (ice_config_t *config);
 
 #endif  /* __LOGGING_H__ */

@@ -423,6 +423,7 @@ Aliases are used to provide a way to create multiple mountpoints that refer to t
     &lt;logging&gt;
         &lt;accesslog&gt;access.log&lt;/accesslog&gt;
         &lt;errorlog&gt;error.log&lt;/errorlog&gt;
+        &lt;playlistlog&gt;playlist.log&lt;/playlistlog&gt;
       	&lt;loglevel&gt;4&lt;/loglevel&gt; &lt;-- 4 Debug, 3 Info, 2 Warn, 1 Error --&gt;
     &lt;/logging&gt;
 </pre>
@@ -437,6 +438,10 @@ Into this file, all requests made to the icecast2 will be logged.  This file is 
 <h4>errorlog</h4>
 <div class="indentedbox">
 All icecast generated log messages will be written to this file.  If the loglevel is set too high (Debug for instance) then this file can grow fairly large over time.  Currently, there is no log-rotation implemented.
+</div>
+<h4>playlistlog</h4>
+<div class="indentedbox">
+Into this file, a log of all metadata for each mountpoint will be written.  The format of the logfile will most likely change over time as we narrow in on a standard format for this.  Currently, the file is pipe delimited.  This option is optional and can be removed entirely from the config file.
 </div>
 <h4>loglevel</h4>
 <div class="indentedbox">

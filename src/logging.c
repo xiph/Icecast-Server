@@ -37,6 +37,7 @@
 /* the global log descriptors */
 int errorlog = 0;
 int accesslog = 0;
+int playlistlog = 0;
 
 #ifdef _WIN32
 /* Since strftime's %z option on win32 is different, we need
@@ -153,6 +154,37 @@ void logging_access(client_t *client)
              user_agent,
              stayed);
 }
+/* This function will provide a log of metadata for each
+   mountpoint.  The metadata *must* be in UTF-8, and thus
+   you can assume that the log itself is UTF-8 encoded */
+void logging_playlist(char *mount, char *metadata, long listeners)
+{
+    char datebuf[128];
+    struct tm thetime;
+    time_t now;
+
+    if (playlistlog == -1) {
+        return;
+    }
+
+    now = time(NULL);
+
+    localtime_r (&now, &thetime);
+    /* build the data */
+#ifdef _WIN32
+    memset(datebuf, '\000', sizeof(datebuf));
+    get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
+#else
+    strftime (datebuf, sizeof(datebuf), LOGGING_FORMAT_CLF, &thetime);
+#endif
+    /* This format MAY CHANGE OVER TIME.  We are looking into finding a good
+       standard format for this, if you have any ideas, please let us know */
+    log_write_direct (playlistlog, "%s|%s|%d|%s",
+             datebuf,
+             mount,
+             listeners,
+             metadata);
+}
 
 
 
@@ -173,5 +205,13 @@ void restart_logging (ice_config_t *config)
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         log_set_filename (accesslog, fn_error);
         log_reopen (accesslog);
+    }
+
+    if (config->playlist_log)
+    {
+        char fn_error[FILENAME_MAX];
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
+        log_set_filename (playlistlog, fn_error);
+        log_reopen (playlistlog);
     }
 }

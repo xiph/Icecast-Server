@@ -847,6 +847,9 @@ static void command_metadata(client_t *client, source_t *source)
         source->mount, value);
     stats_event(source->mount, "title", value);
 
+    /* At this point, we assume that the metadata passed in
+       is encoded in UTF-8 */
+    logging_playlist(source->mount, value, source->listeners);
     /* If we get an update on the mountpoint, force a
        yp touch */
     yp_touch (source->mount);
