@@ -70,6 +70,10 @@ source_t *source_reserve (const char *mount)
 {
     source_t *src = NULL;
 
+    if(mount[0] != '/')
+        WARN1("Source at \"%s\" does not start with '/', clients will be "
+                "unable to connect", mount);
+
     do
     {
         avl_tree_wlock (global.source_tree);
