@@ -17,6 +17,17 @@ clients to alternative slave hosts.
 max-listener check
 . per-mount format-specific settings can be stated in mount
 
+kh57
+. don't list hidden mounts on streamlist.txt
+. fixup format_vorbis from singleq merge, memory leaks and uninitialised
+  pointers.
+. for YP, grab the ice-bitrate from stats at the time of adding to server,
+  this is useful as YP spec has bitrate as mandatory but bitrate may only
+  be determined from stream.
+. check per-mount auth settings for per-mount admin requests, useful on
+  url metadata updates
+. resync web and admin docs with recent xhtml work in trunk
+
 kh56
 . provide an alternate sock_write_fmt for old style vsnprintf, this was
   causing no data (on truncation) to be sent on windows (stats.xml).
@@ -32,6 +43,8 @@ kh56
 . The default mp3 interval is now 16000 bytes (inline with trunk) but this
   can be overridden per-mount with <mp3-metadata-interval> in bytes. Other
   format-specific settings could be possible.
+. update fserve thread to check which clients are writable, CPU loading
+  could become high if slow and fast clients are connected.
 
 kh55
 . let the stats relays loop around instead of blocking on conditions, that
