@@ -20,7 +20,8 @@ void log_reopen(int log_id);
 void log_close(int log_id);
 void log_shutdown();
 
-void log_write(int log_id, int priority, const char *cat, const char *fmt, ...);
+void log_write(int log_id, int priority, const char *cat, const char *func, 
+        const char *fmt, ...);
 void log_write_direct(int log_id, const char *fmt, ...);
 
 #endif  /* __LOG_H__ */

@@ -160,7 +160,8 @@ void log_shutdown()
 	_initialized = 0;
 }
 
-void log_write(int log_id, int priority, const char *cat, const char *fmt, ...)
+void log_write(int log_id, int priority, const char *cat, const char *func, 
+        const char *fmt, ...)
 {
         static char prior[4][5] = { "EROR\0", "WARN\0", "INFO\0", "DBUG\0" };
 	char tyme[128];
@@ -181,7 +182,7 @@ void log_write(int log_id, int priority, const char *cat, const char *fmt, ...)
 	now = time(NULL);
 	strftime(tyme, 128, "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
 
-	snprintf(pre, 256, "%s %s", prior[priority-1], cat);
+	snprintf(pre, 256, "%s %s%s", prior[priority-1], cat, func);
 
 	fprintf(loglist[log_id].logfile, "%s %s %s\n", tyme, pre, line); 
 

@@ -47,22 +47,22 @@
 #endif
 
 #define CATMODULE "thread"
-#define LOG_ERROR(y) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y)
-#define LOG_ERROR3(y, z1, z2, z3) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y, z1, z2, z3)
-#define LOG_ERROR7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
+#define LOG_ERROR(y) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y)
+#define LOG_ERROR3(y, z1, z2, z3) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
+#define LOG_ERROR7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
 
-#define LOG_WARN(y) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y)
-#define LOG_WARN3(y, z1, z2, z3) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3)
-#define LOG_WARN5(y, z1, z2, z3, z4, z5) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
-#define LOG_WARN7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
+#define LOG_WARN(y) log_write(_logid, 2, CATMODULE "/", __FUNCTION__, y)
+#define LOG_WARN3(y, z1, z2, z3) log_write(_logid, 2, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
+#define LOG_WARN5(y, z1, z2, z3, z4, z5) log_write(_logid, 2, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
+#define LOG_WARN7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 2, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
 
-#define LOG_INFO(y) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y)
-#define LOG_INFO4(y, z1, z2, z3, z4) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4)
-#define LOG_INFO5(y, z1, z2, z3, z4, z5) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
+#define LOG_INFO(y) log_write(_logid, 3, CATMODULE "/", __FUNCTION__, y)
+#define LOG_INFO4(y, z1, z2, z3, z4) log_write(_logid, 3, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4)
+#define LOG_INFO5(y, z1, z2, z3, z4, z5) log_write(_logid, 3, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
 
-#define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y)
-#define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2)
-#define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
+#define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y)
+#define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2)
+#define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
 
 /* thread starting structure */
 typedef struct thread_start_tag {
@@ -255,7 +255,6 @@ long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int 
 	start->arg = arg;
 	start->thread = thread;
 	start->detached = detached;
-
 
 	created = 0;
 	if (pthread_create(&thread->sys_thread, NULL, _start_routine, start) == 0)
