@@ -326,7 +326,7 @@ static void *_handle_connection(void *arg)
 		if (httpp_parse(parser, header, strlen(header))) {
 			/* handle the connection or something */
 
-			if (strcmp("ice", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0 && strcmp("http", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0) {
+			if (strcmp("ICE", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0 && strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) != 0) {
 				printf("DEBUG: bad protocol\n");
 				connection_close(con);
 				httpp_destroy(parser);

@@ -147,7 +147,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	if ((version != NULL) && ((tmp = strchr(version, '/')) != NULL)) {
 		tmp[0] = '\0';
 		if ((strlen(version) > 0) && (strlen(&tmp[1]) > 0)) {
-			httpp_setvar(parser, HTTPP_VAR_PROTOCOL, _lowercase(version));
+			httpp_setvar(parser, HTTPP_VAR_PROTOCOL, version);
 			httpp_setvar(parser, HTTPP_VAR_VERSION, &tmp[1]);
 		} else {
 			free(data);
@@ -161,22 +161,22 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	if (parser->req_type != httpp_req_none && parser->req_type != httpp_req_unknown) {
 		switch (parser->req_type) {
 		case httpp_req_get:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "get");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "GET");
 			break;
 		case httpp_req_post:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "post");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "POST");
 			break;
 		case httpp_req_head:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "head");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "HEAD");
 			break;
 		case httpp_req_source:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "source");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "SOURCE");
 			break;
 		case httpp_req_play:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "play");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "PLAY");
 			break;
 		case httpp_req_stats:
-			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "stats");
+			httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "STATS");
 			break;
 		default:
 			break;
