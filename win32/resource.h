@@ -27,6 +27,7 @@
 #define IDC_CURSOR2                     156
 #define IDB_BITMAP7                     159
 #define IDR_TRAY                        160
+#define IDR_MENU4                       161
 #define IDC_MAINTAB                     1000
 #define IDC_ERROR_EDIT                  1003
 #define IDC_ACCESS_EDIT                 1004
@@ -59,13 +60,16 @@
 #define ID__DELETEFROMGLOBALSTATS       32777
 #define ID__MAKETHISSTATTHEWINDOWTITLE  32779
 #define ID_BLANK_RESTORE                32780
+#define ID_ABOUT_HELP                   32781
+#define ID_FILE_EDITCONFIGURATION       32782
+#define ID_ABOUT_CREDITS                32784
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        161
-#define _APS_NEXT_COMMAND_VALUE         32781
+#define _APS_NEXT_RESOURCE_VALUE        162
+#define _APS_NEXT_COMMAND_VALUE         32785
 #define _APS_NEXT_CONTROL_VALUE         1037
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

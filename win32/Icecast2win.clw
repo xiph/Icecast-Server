@@ -12,11 +12,11 @@ Class1=CIcecast2winApp
 Class2=CIcecast2winDlg
 Class3=CAboutDlg
 
-ResourceCount=9
-Resource1=IDR_MENU3
+ResourceCount=10
+Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
-Resource3=IDD_ABOUTBOX
-Resource4=IDD_STATSDIALOG
+Resource3=IDR_MENU3
+Resource4=IDR_TRAY
 Class4=CStatus
 Resource5=IDR_MENU2
 Class5=CConfigTab
@@ -24,7 +24,8 @@ Class6=CStatsTab
 Resource6=IDD_SSTATUS
 Resource7=IDD_CONFIGDIALOG
 Resource8=IDD_ICECAST2WIN_DIALOG
-Resource9=IDR_TRAY
+Resource9=IDD_STATSDIALOG
+Resource10=IDR_MENU4
 
 [CLS:CIcecast2winApp]
 Type=0
@@ -37,7 +38,7 @@ Type=0
 HeaderFile=Icecast2winDlg.h
 ImplementationFile=Icecast2winDlg.cpp
 Filter=C
-LastObject=IDC_HIDESYSTRAY
+LastObject=ID_ABOUT_HELP
 BaseClass=CResizableDialog
 VirtualFilter=dWC
 
@@ -139,4 +140,13 @@ Type=1
 Class=CIcecast2winDlg
 Command1=ID_BLANK_RESTORE
 CommandCount=1
+
+[MNU:IDR_MENU4]
+Type=1
+Class=CIcecast2winDlg
+Command1=ID_FILE_EXIT
+Command2=ID_FILE_EDITCONFIGURATION
+Command3=ID_ABOUT_HELP
+Command4=ID_ABOUT_CREDITS
+CommandCount=4
 

@@ -79,6 +79,7 @@ STYLE WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "icecast2"
+MENU IDR_MENU4
 FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "Tab1",IDC_MAINTAB,"SysTabControl32",0x0,0,48,318,201
@@ -102,7 +103,7 @@ BEGIN
     LTEXT           "",IDC_FILLER2,0,199,319,11
     CONTROL         "List1",IDC_GLOBALSTAT_LIST,"SysListView32",LVS_REPORT | 
                     WS_BORDER | WS_TABSTOP,9,34,300,147
-    CTEXT           "Global Statistics",IDC_STATIC_GS,9,9,300,21
+    CTEXT           "Global Statistics",IDC_STATIC_GS,9,6,300,10
     LTEXT           "Server Has Been Running For ",IDC_STATIC_RUN,46,184,100,
                     8
     LTEXT           "",IDC_RUNNINGFOR,149,184,156,8
@@ -125,7 +126,7 @@ BEGIN
     CONTROL         "List2",IDC_SOURCELIST,"SysListView32",LVS_REPORT | 
                     WS_BORDER | WS_TABSTOP,9,34,111,159
     LTEXT           "",IDC_FILLER1,0,199,320,11
-    CTEXT           "Source Level Statistics",IDC_STATIC_SLS,9,7,300,15
+    CTEXT           "Source Level Statistics",IDC_STATIC_SLS,9,7,300,10
     LTEXT           "Click source to view statistics",IDC_STATIC,18,25,111,8
 END
 
@@ -240,6 +241,23 @@ BEGIN
     POPUP "Blank"
     BEGIN
         MENUITEM "Restore",                     ID_BLANK_RESTORE
+    END
+END
+
+IDR_MENU4 MENU DISCARDABLE 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "E&xit",                       ID_FILE_EXIT
+    END
+    POPUP "C&onfiguration"
+    BEGIN
+        MENUITEM "&Edit Configuration",         ID_FILE_EDITCONFIGURATION
+    END
+    POPUP "&About"
+    BEGIN
+        MENUITEM "H&elp",                       ID_ABOUT_HELP
+        MENUITEM "Cr&edits",                    ID_ABOUT_CREDITS
     END
 END
 

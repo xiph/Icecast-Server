@@ -63,7 +63,6 @@ typedef struct tagElementAdditional {
 
 
 typedef struct tagMainElement {
-//	char	source[1024];
 	CString	source;
 	long	numStats;
 	Element	stats[MAXSTATSPERSOURCE];
@@ -125,6 +124,8 @@ void AddToTitleAdditionalGlobalStats(CString source, CString name) {
 		if ((gAdditionalGlobalStats.stats[i].source == source) && (gAdditionalGlobalStats.stats[i].name == name)) {
 			ClearTitleAdditionalGlobalStats(source, name);
 			gAdditionalGlobalStats.stats[i].titleFlag = 1;
+			strcpy(gTitleSource, source);
+			strcpy(gTitleName, name);
 			foundit = 1;
 			break;
 		}
@@ -135,6 +136,8 @@ void AddToTitleAdditionalGlobalStats(CString source, CString name) {
 				if ((gStats[i].source == source) && (gStats[i].stats[j].name == name)) {
 					ClearTitleAdditionalGlobalStats(source, name);
 					gStats[i].stats[j].titleFlag = 1;
+					strcpy(gTitleSource, source);
+					strcpy(gTitleName, name);
 					foundit = 1;
 					break;
 				}
@@ -255,6 +258,8 @@ BEGIN_MESSAGE_MAP(CIcecast2winDlg, CResizableDialog)
 	ON_COMMAND(ID_BLANK_RESTORE, OnBlankRestore)
 	ON_MESSAGE(WM_TRAY_NOTIFY, OnTrayNotify)
 	ON_WM_DESTROY()
+	ON_COMMAND(ID_FILE_EDITCONFIGURATION, OnFileEditconfiguration)
+	ON_COMMAND(ID_ABOUT_HELP, OnAboutHelp)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -287,7 +292,6 @@ BOOL CIcecast2winDlg::OnInitDialog()
 
 	
 	g_mainDialog = this;
-//	statsTab.SetDialogBkColor(BGCOLOR,TEXTCOLOR);
 
 	// Set the icon for this dialog.  The framework does this automatically
 	//  when the application's main window is not a dialog
@@ -295,7 +299,6 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 	
 	// TODO: Add extra initialization here
-
 	config_read();
 
 	statsTab.m_colSource0Width = m_colSource0Width;
@@ -305,18 +308,13 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	statusTab.m_colStats1Width = m_colGStats1Width;
 	statusTab.m_colStats2Width = m_colGStats2Width;
 	
-
-
-	configTab.Create(IDD_CONFIGDIALOG, this);
 	statsTab.Create(IDD_STATSDIALOG, this);
 	statusTab.Create(IDD_SSTATUS, this);
 
 	int nPageID = 0;
 	m_MainTab.AddSSLPage (_T("Server Status"), nPageID, (CTabPageSSL *)&statusTab);
 	nPageID++;
-	m_MainTab.AddSSLPage (_T("Configuration"), nPageID, (CTabPageSSL *)&configTab);
-	nPageID++;
-	m_MainTab.AddSSLPage (_T("Stats"), nPageID, (CTabPageSSL *)&statsTab);
+	m_MainTab.AddSSLPage (_T("Source Level Stats"), nPageID, (CTabPageSSL *)&statsTab);
 	nPageID++;
 
 	
@@ -324,7 +322,6 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	
 	runningBitmap.LoadBitmap(IDB_BITMAP6);
 	stoppedBitmap.LoadBitmap(IDB_BITMAP5);
-	//m_SS.SetFont(&labelFont, TRUE);
 
 	UpdateData(FALSE);
 
@@ -334,8 +331,8 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	AddAnchor(IDC_STATICBLACK, TOP_LEFT, TOP_RIGHT);
 
 	EnableSaveRestore("icecast2win", "positions");
-	
 
+	m_pTray = NULL;
 
 	if (m_Autostart) {
 		OnStart();
@@ -397,76 +394,6 @@ void CIcecast2winDlg::OnSelchangeMaintab(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: Add your control notification handler code here
 
-	/*
-	if (m_MainTab.GetCurSel() == 0) {
-		EnableControl(IDC_NUMBER_CLIENTS);
-		EnableControl(IDC_SERVERSTATUS);
-		EnableControl(IDC_SOURCES_CONNECTED);
-		m_ConfigEditCtrl.ShowWindow(SW_HIDE);
-		m_StatsEditCtrl.ShowWindow(SW_HIDE);
-	}
-	if (m_MainTab.GetCurSel() == 99) {
-		DisableControl(IDC_NUMBER_CLIENTS);
-		DisableControl(IDC_SERVERSTATUS);
-		DisableControl(IDC_SOURCES_CONNECTED);
-		m_ConfigEditCtrl.ShowWindow(SW_HIDE);
-		m_StatsEditCtrl.ShowWindow(SW_HIDE);
-	}
-	if (m_MainTab.GetCurSel() == 99) {
-		DisableControl(IDC_NUMBER_CLIENTS);
-		DisableControl(IDC_SERVERSTATUS);
-		DisableControl(IDC_SOURCES_CONNECTED);
-		m_ConfigEditCtrl.ShowWindow(SW_HIDE);
-		m_StatsEditCtrl.ShowWindow(SW_HIDE);
-	}
-	if (m_MainTab.GetCurSel() == 1) {
-		DisableControl(IDC_NUMBER_CLIENTS);
-		DisableControl(IDC_SERVERSTATUS);
-		DisableControl(IDC_SOURCES_CONNECTED);
-		m_ConfigEditCtrl.ShowWindow(SW_SHOW);
-		m_StatsEditCtrl.ShowWindow(SW_HIDE);
-		LoadConfig();
-		ParseConfig();
-	}
-	if (m_MainTab.GetCurSel() == 2) {
-		DisableControl(IDC_NUMBER_CLIENTS);
-		DisableControl(IDC_SERVERSTATUS);
-		DisableControl(IDC_SOURCES_CONNECTED);
-		m_ConfigEditCtrl.ShowWindow(SW_HIDE);
-		m_StatsEditCtrl.ShowWindow(SW_SHOW);
-		if (global.running == ICE_RUNNING) {
-			CString	statData;
-			for (int i=0;i<numMainStats;i++) {
-				if (!strcmp(gStats[i].source, "")) {
-					statData += "\r\nBase Server Data\r\n-------------------------\r\n";
-					for (int j=0;j<gStats[i].numStats;j++) {
-						statData += gStats[i].stats[j].name;
-						statData += " = ";
-						statData += gStats[i].stats[j].value;
-						statData += "\r\n";
-					}
-				}
-				else {
-					statData += "\r\nData For Source ";
-					statData += gStats[i].source;
-					statData += "\r\n-------------------------\r\n";
-					for (int j=0;j<gStats[i].numStats;j++) {
-						statData += gStats[i].stats[j].name;
-						statData += " = ";
-						statData += gStats[i].stats[j].value;
-						statData += "\r\n";
-					}
-				}
-			}
-			m_StatsEdit = statData;
-			UpdateData(FALSE);
-		}
-		else {
-			MessageBox("Server not running, cannot get stats", "Message", MB_OK);
-		}
-
-	}
-*/
 	*pResult = 0;
 }
 
@@ -479,59 +406,11 @@ void CIcecast2winDlg::LoadConfig()
 	configTab.m_Config = "";
 	filep = fopen(myApp->m_configFile, "r");
 	if (filep) {
-		while (!feof(filep)) { 
-			memset(buffer, '\000', sizeof(buffer));
-			fgets(buffer, sizeof(buffer), filep);
-			if (strlen(buffer) > 0) {
-				char *p1 = strstr(buffer, "\r\n");
-				if (p1) {
-					*p1 = '\000';
-				}
-				else {
-					buffer[strlen(buffer)-1] = '\000';
-				}
-				configTab.m_Config = configTab.m_Config + buffer;
-				configTab.m_Config += "\r\n";
-			}
-		}
+		fclose(filep);
 	}
 	else {
-		configTab.m_Config = " \
-<icecast>\r\n \
-	<location>Here and There</location>\r\n\
-	<admin>nobody@me.org</admin>\r\n\
-	<limits>\r\n\
-		<clients>100</clients>\r\n\
-		<sources>2</sources>\r\n\
-		<threadpool>5</threadpool>\r\n\
-		<client-timeout>30</client-timeout>\r\n\
-		<header-timeout>15</header-timeout>\r\n\
-		<source-timeout>10</source-timeout>\r\n\
-	</limits>\r\n\
-	<source-password>changeme</source-password>\r\n\
-	<directory>\r\n\
-		<touch-freq>5</touch-freq>\r\n\
-		<server>\r\n\
-			<host>yp.icecast.org</host>\r\n\
-			<touch-freq>15</touch-freq>\r\n\
-		</server>\r\n\
-	</directory>\r\n\
-	<bind-address>0.0.0.0</bind-address>\r\n\
-	<port>8000</port>\r\n\
-        <paths>\r\n\
-                <basedir>./</basedir>\r\n\
-                <logdir>./</logdir>\r\n\
-                <webroot>./webroot</webroot>\r\n\
-        </paths>\r\n\
-	<logging>\r\n\
-		<accesslog>access.log</accesslog>\r\n\
-		<errorlog>error.log</errorlog>\r\n\
-	</logging>\r\n\
-</icecast>\r\n\
-";
+		MessageBox("Unable to load config file (" + CString(myApp->m_configFile) + ") unable to start", NULL, MB_OK);
 	}
-	gConfigurationSave = configTab.m_Config;
-	configTab.UpdateData(FALSE);
 
 }
 
@@ -539,32 +418,10 @@ void CIcecast2winDlg::LoadConfig()
 void CIcecast2winDlg::OnFileExit() 
 {
 	// TODO: Add your command handler code here
-
-
 	DestroyWindow();
 }
 
 
-void CIcecast2winDlg::ParseConfig()
-{
-	char	access[2046] = "";
-	char	error[2046] = "";
-	char	logdir[2046] = "";
-
-	memset(access, '\000', sizeof(access));
-	memset(error, '\000', sizeof(error));
-	memset(logdir, '\000', sizeof(logdir));
-
-	getTag(m_ConfigEdit.GetBuffer(0), "logdir", logdir);
-	getTag(m_ConfigEdit.GetBuffer(0), "accesslog", access);
-	getTag(m_ConfigEdit.GetBuffer(0), "errorlog", error);
-
-	m_AccessLog = logdir;
-	m_AccessLog += access;
-	m_ErrorLog = logdir;
-	m_ErrorLog += error;
-
-}
 
 void CIcecast2winDlg::getTag(char *pbuf, char *ptag, char *dest)
 {
@@ -611,14 +468,10 @@ void CollectStats(stats_event_t *event)
 	tempElement.name = "";
 	tempElement.value = "";
 
-//	memset(&tempElement, '\000', sizeof(tempElement));
-
 	if (event->name != NULL) {
-		//strcpy(tempElement.name, event->name);
 		tempElement.name = event->name;
 	}
 	if (event->value != NULL) {
-		//strcpy(tempElement.value, event->value);
 		tempElement.value = event->value;
 	}
 	if (event->source != NULL) {
@@ -639,7 +492,6 @@ void CollectStats(stats_event_t *event)
 				}
 			}
 			if (!foundit2) {
-//				memcpy(&gStats[i].stats[gStats[i].numStats], &tempElement, sizeof(tempElement));
 				gStats[i].stats[j].name = tempElement.name;
 				gStats[i].stats[j].value = tempElement.value;
 				gStats[i].numStats++;
@@ -649,7 +501,6 @@ void CollectStats(stats_event_t *event)
 	}
 	if (!foundit) {
 
-//		strcpy(gStats[numMainStats].source, tempSource);
 		if (strlen(tempSource) == 0) {
 			strcpy(tempSource, "Global Stat");
 		}
@@ -658,7 +509,6 @@ void CollectStats(stats_event_t *event)
 		gStats[numMainStats].stats[0].value = tempElement.value;
 		gStats[numMainStats].populated = 1;
 
-//		memcpy(&gStats[numMainStats].stats[0], &tempElement, sizeof(tempElement));
 		gStats[numMainStats].numStats++;
 		numMainStats++;
 	}
@@ -690,7 +540,6 @@ void StartStats(void *dummy)
 	}
 	while (global.running == ICE_RUNNING) {
 		if (global.running == ICE_RUNNING) {
-//			memset(&gStats, '\000', sizeof(gStats));
 			for (int j=0;j<MAXSOURCES;j++) {
 				gStats[j].numStats = 0;
 			}
@@ -731,7 +580,6 @@ void CIcecast2winDlg::OnTimer(UINT nIDEvent)
 				m_StartButton.SetWindowText("Stop Server");
 				m_StartButton.SetState(0);
 			}
-			//UpdateData(FALSE);
 			time_t	currentTime;
 			time(&currentTime);
 			time_t  runningTime = currentTime - serverStart;
@@ -751,12 +599,9 @@ void CIcecast2winDlg::OnTimer(UINT nIDEvent)
 			m_ServerStatusBitmap.SetBitmap(HBITMAP(stoppedBitmap));
 			m_StartButton.SetWindowText("Start Server");
 			m_StartButton.SetState(0);
-			configTab.m_ConfigCtrl.SetReadOnly(FALSE);
 			UpdateData(FALSE);
 			statusTab.m_RunningFor = "Not running";
 			statusTab.UpdateData(FALSE);
-			//UpdateData(FALSE);
-
 		}
 	}
 	
@@ -765,8 +610,6 @@ void CIcecast2winDlg::OnTimer(UINT nIDEvent)
 
 char	g_configFile[1024] = "";
 char	g_progName[255] = "icecast2";
-//int		__argc = 2;
-//char*	__argv[2];
 
 void StartServer(void *configfile)
 {
@@ -779,8 +622,10 @@ void StartServer(void *configfile)
 	argv[1] = "-c";
 	argv[2] = g_configFile;
 	time(&(g_mainDialog->serverStart));
-	main(argc, (char **)argv);
-//	g_mainDialog->StopServer();
+	int ret = main(argc, (char **)argv);
+	if (ret) {
+		MessageBox(NULL, "Unable to start server", NULL, MB_OK);
+	}
 	global.running = ICE_HALTING;
 	_endthread();
 
@@ -801,12 +646,8 @@ void CIcecast2winDlg::OnFileStartserver()
 	else {
 		m_ConfigEditCtrl.SetReadOnly(TRUE);
 		LoadConfig();
-		ParseConfig();
 		SetTimer(0, 500, NULL);
 		_beginthread(StartServer, 0, (void *)(LPCSTR)myApp->m_configFile);
-//		_beginthread(StartTailAccessLog, 0, (void *)0);
-//		_beginthread(StartTailErrorLog, 0, (void *)0);
-		// EDZ
 		_beginthread(StartStats, 0, (void *)CollectStats);
 	}
 }
@@ -822,7 +663,6 @@ bool infocus = false;
 void CIcecast2winDlg::StopServer()
 {
 	KillTimer(0);
-	configTab.m_ConfigCtrl.SetReadOnly(FALSE);
 	global.running = ICE_HALTING;
 	m_StartButton.SetWindowText("Start Server");
 	m_StartButton.SetState(0);
@@ -844,11 +684,8 @@ void CIcecast2winDlg::OnStart()
 		StopServer();
 	}
 	else {
-		configTab.m_ConfigCtrl.SetReadOnly(TRUE);
-		ParseConfig();
 		SetTimer(0, 500, NULL);
 		_beginthread(StartServer, 0, (void *)(LPCSTR)myApp->m_configFile);
-		// EDZ
 		_beginthread(StartStats, 0, (void *)CollectStats);
 	}
 	
@@ -957,6 +794,7 @@ void CIcecast2winDlg::UpdateStatsLists()
 					if (!inthere2) {
 						LVITEM	lvi;
 
+
 						lvi.mask =  LVIF_TEXT;
 						lvi.iItem = statusTab.m_GlobalStatList.GetItemCount();
 						lvi.iSubItem = 0;
@@ -968,15 +806,20 @@ void CIcecast2winDlg::UpdateStatsLists()
 						lvi.iSubItem = 2;
 						lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].value;
 						statusTab.m_GlobalStatList.SetItem(&lvi);
-					}
-					if ((!strcmp(gAdditionalGlobalStats.stats[l].source, gTitleSource)) &&
-						(!strcmp(gAdditionalGlobalStats.stats[l].name, gTitleName))) {
-						gAdditionalGlobalStats.stats[l].titleFlag = 1;
+						if ((!strcmp(gTitleSource, gAdditionalGlobalStats.stats[l].source)) && 
+							(!strcmp(gTitleName, gAdditionalGlobalStats.stats[l].name))) {
+							gAdditionalGlobalStats.stats[l].titleFlag = 1;
+						}
+							
+
 					}
 
 					if (gAdditionalGlobalStats.stats[l].titleFlag) {
 						CString	windowTitle = gAdditionalGlobalStats.stats[l].source + " - " + gAdditionalGlobalStats.stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
 						SetWindowText(windowTitle);
+						if (m_pTray) {
+							m_pTray->SetTIP((LPSTR)(LPCSTR)windowTitle);
+						}
 					}
 				}
 			}
@@ -1006,6 +849,11 @@ void CIcecast2winDlg::UpdateStatsLists()
 						lvi.iSubItem = 2;
 						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
 						statusTab.m_GlobalStatList.SetItem(&lvi);
+						if ((!strcmp(gTitleSource, gStats[i].source)) && 
+							(!strcmp(gTitleName, gStats[i].stats[k].name))) {
+							gStats[i].stats[k].titleFlag = 1;
+						}
+
 					}
 					else {
 						LVITEM	lvi;
@@ -1016,13 +864,13 @@ void CIcecast2winDlg::UpdateStatsLists()
 						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
 						statusTab.m_GlobalStatList.SetItem(&lvi);
 					}
-					if ((!strcmp(gStats[i].source, gTitleSource)) &&
-						(!strcmp(gStats[i].stats[k].name, gTitleName))) {
-						gStats[i].stats[k].titleFlag = 1;
-					}
 					if (gStats[i].stats[k].titleFlag) {
 						CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[k].name + " - " + gStats[i].stats[k].value;
 						SetWindowText(windowTitle);
+						if (m_pTray) {
+							m_pTray->SetTIP((LPSTR)(LPCSTR)windowTitle);
+						}
+
 					}
 				}
 			}
@@ -1079,7 +927,6 @@ void CIcecast2winDlg::config_write()
 		memset(buf, '\000', sizeof(buf));
 		sprintf(buf2, "AdditionalStatsName%d", i);
 		WritePrivateProfileString(gAppName, buf2, gAdditionalGlobalStats.stats[i].name, gConfigFile);
-		gAdditionalGlobalStats.stats[i].name = buf;
 
 		if (gAdditionalGlobalStats.stats[i].titleFlag) {
 			sprintf(buf2, "%s|%s", gAdditionalGlobalStats.stats[i].source, gAdditionalGlobalStats.stats[i].name);
@@ -1132,7 +979,6 @@ void CIcecast2winDlg::config_read()
 	}
 	GetPrivateProfileString(gAppName, "TitleName", "", buf, sizeof(buf), gConfigFile);
 
-	/*
 	if (strlen(buf) > 0) {
 		char *p1 = strchr(buf, '|');
 		if (p1) {
@@ -1151,7 +997,6 @@ void CIcecast2winDlg::config_read()
 			strcpy(gTitleName, tmpName);
 		}
 	}
-	*/
 
 }
 
@@ -1174,7 +1019,6 @@ void CIcecast2winDlg::OnSize(UINT nType, int cx, int cy)
 		GetClientRect (&rect);
 		m_MainTab.ResizeDialog(0, rect.Width()-border1, rect.Height()-border2);
 		m_MainTab.ResizeDialog(1, rect.Width()-border1, rect.Height()-border2);
-		m_MainTab.ResizeDialog(2, rect.Width()-border1, rect.Height()-border2);
 	}
 
 }
@@ -1226,7 +1070,9 @@ void CIcecast2winDlg::OnHidesystray()
 void CIcecast2winDlg::OnHide() 
 {
 	// TODO: Add your control notification handler code here
-	m_pTray = new CTrayNot (this,WM_TRAY_NOTIFY, NULL,theApp.m_pIconList);
+	if (m_pTray == NULL) {
+		m_pTray = new CTrayNot (this,WM_TRAY_NOTIFY, NULL,theApp.m_pIconList);
+	}
 	m_pTray->SetState(0);
 	m_bHidden = TRUE;
 	
@@ -1251,4 +1097,53 @@ void CIcecast2winDlg::OnDestroy()
 	} 
 	// TODO: Add your message handler code here
 	
+}
+
+void CIcecast2winDlg::OnFileEditconfiguration() 
+{
+	// TODO: Add your command handler code here
+	
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory( &si, sizeof(si) );
+    si.cb = sizeof(si);
+    ZeroMemory( &pi, sizeof(pi) );
+
+
+	int ok = 1;
+	if (global.running == ICE_RUNNING) {
+		MessageBox("I'm sorry, but you cannot edit the configuration file while the server is running", NULL, MB_OK);
+	}
+	else {
+		// Start the child process. 
+		if( !CreateProcess( NULL, // No module name (use command line). 
+			"notepad icecast.xml", // Command line. 
+			NULL,             // Process handle not inheritable. 
+			NULL,             // Thread handle not inheritable. 
+			FALSE,            // Set handle inheritance to FALSE. 
+			0,                // No creation flags. 
+			NULL,             // Use parent's environment block. 
+			NULL,             // Use parent's starting directory. 
+			&si,              // Pointer to STARTUPINFO structure.
+			&pi )             // Pointer to PROCESS_INFORMATION structure.
+		) 
+		{
+		   ok = 0;
+		}
+
+		// Wait until child process exits.
+		WaitForSingleObject( pi.hProcess, INFINITE );
+
+		// Close process and thread handles. 
+		CloseHandle( pi.hProcess );
+		CloseHandle( pi.hThread );
+	}
+
+}
+
+void CIcecast2winDlg::OnAboutHelp() 
+{
+	// TODO: Add your command handler code here
+	ShellExecute(NULL, "open", "doc\\icecast2.chm", NULL, NULL, SW_SHOWNORMAL);	
 }

@@ -111,6 +111,8 @@ protected:
 	afx_msg void OnBlankRestore();
 	afx_msg LONG OnTrayNotify ( WPARAM wParam, LPARAM lParam );
 	afx_msg void OnDestroy();
+	afx_msg void OnFileEditconfiguration();
+	afx_msg void OnAboutHelp();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

@@ -23,6 +23,7 @@ class CIcecast2winApp : public CWinApp
 {
 public:
 	char m_configFile[1024];
+	HICON m_pIconList[2];
 	CIcecast2winApp();
 
 // Overrides
@@ -47,4 +48,5 @@ public:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
+extern CIcecast2winApp theApp;
 #endif // !defined(AFX_ICECAST2WIN_H__76A528C9_A424_4417_BFDF_0E556A9EE4F1__INCLUDED_)
