@@ -101,58 +101,6 @@ source_t *source_reserve (const char *mount)
 }
 
 
-source_t *source_create(client_t *client, connection_t *con, 
-    http_parser_t *parser, const char *mount, format_type_t type, 
-    mount_proxy *mountinfo)
-{
-    source_t *src;
-
-    src = (source_t *)malloc(sizeof(source_t));
-    src->client = client;
-    src->mount = (char *)strdup(mount);
-    src->fallback_mount = NULL;
-    src->format = format_get_plugin(type, src->mount, parser);
-    src->con = con;
-    src->parser = parser;
-    src->client_tree = avl_tree_new(_compare_clients, NULL);
-    src->pending_tree = avl_tree_new(_compare_clients, NULL);
-    src->running = 1;
-    src->num_yp_directories = 0;
-    src->listeners = 0;
-    src->max_listeners = -1;
-    src->send_return = 0;
-    src->dumpfilename = NULL;
-    src->dumpfile = NULL;
-    src->audio_info = util_dict_new();
-    src->yp_public = 0;
-    src->fallback_override = 0;
-    src->no_mount = 0;
-    src->authenticator = NULL;
-
-    if(mountinfo != NULL) {
-        if (mountinfo->fallback_mount != NULL)
-            src->fallback_mount = strdup (mountinfo->fallback_mount);
-        src->max_listeners = mountinfo->max_listeners;
-        if (mountinfo->dumpfile != NULL)
-            src->dumpfilename = strdup (mountinfo->dumpfile);
-        if(mountinfo->auth_type != NULL)
-            src->authenticator = auth_get_authenticator(
-                    mountinfo->auth_type, mountinfo->auth_options);
-        src->fallback_override = mountinfo->fallback_override;
-        src->no_mount = mountinfo->no_mount;
-    }
-
-    if(src->dumpfilename != NULL) {
-        src->dumpfile = fopen(src->dumpfilename, "ab");
-        if(src->dumpfile == NULL) {
-            WARN2("Cannot open dump file \"%s\" for appending: %s, disabling.",
-                    src->dumpfilename, strerror(errno));
-        }
-    }
-
-    return src;
-}
-
 /* Find a mount with this raw name - ignoring fallbacks. You should have the
  * global source tree locked to call this.
  */
@@ -562,6 +510,16 @@ void *source_main(void *arg)
     if (listenurl) {
         free(listenurl);
     }
+    if (source->dumpfilename != NULL)
+    {
+        source->dumpfile = fopen (source->dumpfilename, "ab");
+        if (source->dumpfile == NULL)
+        {
+            WARN2("Cannot open dump file \"%s\" for appending: %s, disabling.",
+                    source->dumpfilename, strerror(errno));
+        }
+    }
+
 
     DEBUG0("Source creation complete");
     source->running = 1;

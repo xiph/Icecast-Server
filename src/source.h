@@ -59,9 +59,6 @@ typedef struct source_tag
     int no_mount;
 } source_t;
 
-source_t *source_create(client_t *client, connection_t *con, 
-        http_parser_t *parser, const char *mount, format_type_t type,
-        mount_proxy *mountinfo);
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
 void source_apply_mount (source_t *source, mount_proxy *mountinfo);

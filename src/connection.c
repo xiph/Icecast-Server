@@ -520,98 +520,6 @@ int connection_complete_source (source_t *source)
 }
 
 
-int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
-    source_t *source;
-    char *contenttype;
-    mount_proxy *mountproxy, *mountinfo = NULL;
-    int source_limit;
-    ice_config_t *config;
-
-    config = config_get_config();
-    source_limit = config->source_limit;
-    config_release_config();
-
-    /* check to make sure this source wouldn't
-    ** be over the limit
-    */
-    global_lock();
-    if (global.sources >= source_limit) {
-        INFO1("Source (%s) logged in, but there are too many sources", mount);
-        global_unlock();
-        return 0;
-    }
-    global.sources++;
-    global_unlock();
-
-    stats_event_inc(NULL, "sources");
-    
-    config = config_get_config();
-    mountproxy = config->mounts;
-    thread_mutex_lock(&(config_locks()->mounts_lock));
-
-    while(mountproxy) {
-        if(!strcmp(mountproxy->mountname, mount)) {
-            mountinfo = mountproxy;
-            break;
-        }
-        mountproxy = mountproxy->next;
-    }
-
-    contenttype = httpp_getvar(parser, "content-type");
-
-    if (contenttype != NULL) {
-        format_type_t format = format_get_type(contenttype);
-        if (format == FORMAT_ERROR) {
-            WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
-            thread_mutex_unlock(&(config_locks()->mounts_lock));
-            config_release_config();
-            goto fail;
-        } else {
-            source = source_create(client, con, parser, mount, 
-                    format, mountinfo);
-            thread_mutex_unlock(&(config_locks()->mounts_lock));
-        }
-    } else {
-        format_type_t format = FORMAT_TYPE_MP3;
-        ERROR0("No content-type header, falling back to backwards compatibility mode for icecast 1.x relays. Assuming content is mp3.");
-        source = source_create(client, con, parser, mount, format, mountinfo);
-        thread_mutex_unlock(&(config_locks()->mounts_lock));
-    }
-    config_release_config();
-
-    /* we need to add this source into the tree but fail if this mountpoint
-     * already exists
-     */
-    avl_tree_wlock(global.source_tree);
-    if (source_find_mount_raw (mount) != NULL)
-    {
-        avl_tree_unlock(global.source_tree);
-        global_lock();
-        global.sources--;
-        global_unlock();
-        stats_event_dec(NULL, "sources");
-        INFO1("source \"%s\" already in use", mount);
-        client_send_404 (client, "Mountpoint in use");
-        return 0;
-    }
-    avl_insert(global.source_tree, (void *)source);
-    avl_tree_unlock(global.source_tree);
-
-    source->send_return = 1;
-    source->shutdown_rwlock = &_source_shutdown_rwlock;
-    sock_set_blocking(con->sock, SOCK_NONBLOCK);
-    thread_create("Source Thread", source_client_thread, (void *)source, THREAD_DETACHED);
-    return 1;
-
-fail:
-    global_lock();
-    global.sources--;
-    global_unlock();
-
-    stats_event_dec(NULL, "sources");
-    return 0;
-}
-
 static int _check_pass_http(http_parser_t *parser, 
         char *correctuser, char *correctpass)
 {
@@ -761,10 +669,12 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
     return ret;
 }
 
+
 static void _handle_source_request(connection_t *con, 
         http_parser_t *parser, char *uri)
 {
     client_t *client;
+    source_t *source;
 
     client = client_create(con, parser);
 
@@ -780,22 +690,27 @@ static void _handle_source_request(connection_t *con,
         client_send_401(client);
         return;
     }
-
-    /* check to make sure this source has
-    ** a unique mountpoint
-    */
-
-    avl_tree_rlock(global.source_tree);
-    if (source_find_mount_raw(uri) != NULL) {
-        avl_tree_unlock(global.source_tree);
-        INFO1("Source tried to log in as %s, but mountpoint is already used", uri);
-        client_send_404(client, "Mountpoint in use");
-        return;
+    source = source_reserve (uri);
+    if (source)
+    {
+        source->client = client;
+        source->parser = parser;
+        source->con = con;
+        if (connection_complete_source (source) < 0)
+        {
+            source->client = NULL;
+            source_free_source (source);
+        }
+        else
+            thread_create ("Source Thread", source_client_thread,
+                    source, THREAD_DETACHED);
     }
-    avl_tree_unlock(global.source_tree);
-
-    connection_create_source(client, con, parser, uri);
+    else
+    {
+        client_send_404 (client, "Mountpoint in use");
+    }
 }
+
 
 static void _handle_stats_request(connection_t *con, 
         http_parser_t *parser, char *uri)

@@ -48,8 +48,6 @@ void connection_shutdown(void);
 void connection_accept_loop(void);
 void connection_close(connection_t *con);
 connection_t *create_connection(sock_t sock, sock_t serversock, char *ip);
-int connection_create_source(struct _client_tag *client, connection_t *con, 
-        http_parser_t *parser, char *mount);
 int connection_complete_source (struct source_tag *source);
 
 void connection_inject_event(int eventnum, void *event_data);
