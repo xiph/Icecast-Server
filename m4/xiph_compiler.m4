@@ -1,5 +1,5 @@
 dnl xiph_compiler.m4
-dnl $Id: xiph_compiler.m4,v 1.4 2003/06/26 16:03:37 brendan Exp $
+dnl $Id: xiph_compiler.m4,v 1.5 2003/07/17 09:23:44 karl Exp $
 
 dnl XIPH_FUNC_VA_COPY
 dnl Karl Heyes
@@ -151,12 +151,12 @@ dnl
 AC_DEFUN([XIPH_VAR_PREPEND],
 [dnl
 AC_REQUIRE([AC_PROG_FGREP])
-xt_compare="$1"
+xt_compare="$$1"
 xt_filtered=""   
 for arg in $2
 do
   if { cat <<EOF
- $compare x
+ $xt_compare x
 EOF
 } | $FGREP -v -e " $arg " > /dev/null
   then
