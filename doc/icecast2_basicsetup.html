@@ -7,20 +7,22 @@
 </head>
 <body>
 <div class="boxtest">
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
 <h1>Icecast 2 Basic Setup</h1>
 <table width="100%"><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+<p>
 <br />
 <br />
 <br />
+</p>
 <h2>Basic Requirements</h2>
 <p>This section will describe the essential requirements in setting up a simple Internet radio station.  It is by no means a complete list but should give you enough to get started.</p>
 <p>There are two major components involved: the streaming server (icecast in this case) and the source client.  The icecast server will be the place where all listeners of your station will connect.  The source client (in general) runs on a separate machine than icecast, but does not necessarily need to.  Source clients send the content to icecast and provide the stream data (encoded audio) that is then relayed out to listeners by icecast.</p>
 <p>It is important to note that not all source clients work with icecast2.  You will need to check to make sure that icecast2 is supported by your chosen source client.</p>
-
+<p>
 <br />
 <br />
 <br />
+</p>
 <h2>The Basics</h2>
 <p>Each icecast server can house multiple broadcasts (or mountpoints) each containing a separate stream of content.  A listener can only listen to a single mountpoint at a time.  This means you can have a single icecast server contain either multiple broadcasts with different content, or possibly the same broadcast but with streams of different bitrates or qualities.  In this case each broadcast or stream is a separate mountpoint.</p>
 <p>At this point, the steps outlined here related to the Unix version or Win32 console version of icecast.  Icecast is also available in a Win32 GUI version, and the steps are similar in setup, but not quite the same.</p>
@@ -57,10 +59,11 @@ source password - from &lt;source-password&gt;<br />
 <p>Additionally, you will need to choose a mountpoint and specify this in the source client.  Icecast does not need to know about each mount point (although you can configure settings for specific mountpoint - this is covered under Advanced configuration) there are, however, some points to mention regarding mountpoints.  All Ogg Vorbis streams should have mountpoints that end in .ogg (i,e. /mystream.ogg).  This is due to the lazy way most media players infer the type of stream.  MP3 streams usually do not contain an extension (/mystream).  Mount points also should not contain any spaces or odd characters (again due to the lazy way many of the media players are coded).</p>
 <p>Once you have configured your source client, you should be able to connect it to the icecast server.  Verify that it is connected by hitting the stats.xml URL that was mentioned above.</p>
 <p>Now that you have the source connnected, listening to the stream involves simply opening the appropriate following URL in a browser: http://yourip:port/mounpointyouspecified.m3u.  So, for instance, if you attached your source client to an icecast server located at 192.168.1.10:8000 with a mountpoint of /mystream.ogg, then you would open : http://192.168.1.10:8000/mystream.ogg.m3u.  Note that the .m3u extention will serve up a link that opens most media players.  Also it is important to note that m3u need not contain only MP3 stream, it can contain streams of arbitrary content-type and is used by icecast to serve a playlist that represents your broadcast to listening clients.  Alternatively you can open up the stream URL directly within your media player (http://192.168.1.10:8000/mystream.ogg in this case)</p>
-
+<p>
 <br />
 <br />
 <br />
+</p>
 </div>
 </body>
 </html>

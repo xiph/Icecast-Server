@@ -7,13 +7,13 @@
 </head>
 <body>
 <div class="boxtest">
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
 <h1>Icecast 2 Config File</h1>
 <table width="100%"><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
 <h3>Overview</h3>
 <p>
 This section will describe each section of the config file and is grouped into the following sections:
 </p>
+<ul>
 <li><a href="#limits">Limits</a>
 <li><a href="#authentication">Authentication</a>
 <li><a href="#yp">YP Directory Settings</a>
@@ -23,10 +23,12 @@ This section will describe each section of the config file and is grouped into t
 <li><a href="#path">File path settings</a>
 <li><a href="#log">Logging</a>
 <li><a href="#security">Security</a>
-
+</ul>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="limits"></a>
 <h2>Limits</h2>
 <pre>
@@ -83,9 +85,11 @@ burst-on-connect, this is to quickly fill the pre-buffer used by media players. 
 is 64kbytes which is a typical size used by most clients so changing it is not usually required.
 This setting applies to all mountpoints.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="authentication"></a>
 <h2>Authentication</h2>
 <pre>
@@ -111,9 +115,11 @@ Currently not used.
 <div class="indentedbox">
 The username/password used for all administration functions.  This includes retrieving statistics, accessing the web-based administration screens, etc.  A list of these functions can be found in the "Administration" section of the manual.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="yp"></a>
 <h2>YP Directory Settings</h2>
 <pre>
@@ -132,9 +138,11 @@ This value is the maximum time icecast2 will wait for a response from a particul
 <div class="indentedbox">
 The URL which icecast2 uses to communicate with the Directory server.  The value for this setting is provided by the owner of the Directory server.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="misc"></a>
 <h2>Misc Server Settings</h2>
 <pre>
@@ -166,9 +174,11 @@ And option IP address that can be used to bind to a specific network card.  If n
 <div class="indentedbox">
 This flag turns on the icecast2 fileserver from which static files can be served.  All files are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration setting.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="relay"></a>
 <h2>Relay Settings</h2>
 <pre>
@@ -277,9 +287,11 @@ The name to use for the local mountpoint.  This is what the mount will be named 
 <div class="indentedbox">
 If you are relaying a Shoutcast stream, you need to specify this indicator to also relay the metadata (song titles) that is part of the Shoutcast stream (1=enabled, 0=disabled).
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="mount"></a>
 <h2>Mount Specific Settings</h2>
 <pre>
@@ -339,9 +351,11 @@ as defined in limits.  The value is in bytes.
 <div class="indentedbox">
 This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication <a href="icecast2_listenerauth.html">here</a>.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="path"></a>
 <h2>Path Settings</h2>
 <pre>
@@ -380,9 +394,11 @@ This path specifies the base directory used for all admin requests.  More specif
 <div class="indentedbox">
 Aliases are used to provide a way to create multiple mountpoints that refer to the same mountpoint.
 </div>
+<p>
 <br />
 <br />
 <br />
+</p>
 <a name="log"></a>
 <h2>Logging Settings</h2>
 <pre>
@@ -409,10 +425,12 @@ Indicates what messages are logged by icecast.  Log messages are categorized int
 </div>
 <br />
 <br />
+<ul>
 <li>loglevel = 4 - Debug, Info, Warn, Error messages are printed
 <li>loglevel = 3 - Info, Warn, Error messages are printed
 <li>loglevel = 2 - Warn, Error messages are printed
 <li>loglevel = 1 - Error messages only are printed
+</ul>
 <br />
 <a name="security"></a>
 <h2>Security Settings</h2>
