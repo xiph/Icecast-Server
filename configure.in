@@ -10,7 +10,7 @@ AM_MAINTAINER_MODE
 
 AC_PROG_CC
 AC_CANONICAL_HOST
-AM_PROG_LIBTOOL
+AC_PROG_LIBTOOL
 
 dnl Set some options based on environment
 
@@ -81,8 +81,10 @@ XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
 XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
 
 dnl -- YP support --
-AC_ARG_ENABLE([yp], AC_HELP_STRING([--disable-yp],[disable YP directory support]),,
-        [enable_yp="yes"])
+AC_ARG_ENABLE([yp],
+        AC_HELP_STRING([--disable-yp],[disable YP directory support]),
+        enable_yp="$enableval",
+        enable_yp="yes")
 if test "x$enable_yp" = "xyes"
 then
 XIPH_PATH_CURL([

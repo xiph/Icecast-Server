@@ -1029,13 +1029,13 @@ static void *_handle_connection(void *arg)
             else if(httpp_parse_icy(parser, header, strlen(header))) {
                 /* TODO: Map incoming icy connections to /icy_0, etc. */
                 char mount[20];
-                int i = 0;
+                unsigned i = 0;
 
                 strcpy(mount, "/");
 
                 avl_tree_rlock(global.source_tree);
-                while(source_find_mount(mount) != NULL) {
-                    sprintf(mount, "/icy_%d", i++);
+                while (source_find_mount (mount) != NULL) {
+                    snprintf (mount, sizeof (mount), "/icy_%u", i++);
                 }
                 avl_tree_unlock(global.source_tree);
 
@@ -1049,8 +1049,6 @@ static void *_handle_connection(void *arg)
             }
         }
     }
-
-    thread_exit(0);
 
     return NULL;
 }
