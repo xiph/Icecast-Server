@@ -26,7 +26,7 @@
 
 /* renamed from thread_t due to conflict on OS X */
 
-typedef struct thread_tag {
+typedef struct {
 	/* the local id for the thread, and it's name */
 	long thread_id;
 	char *name;
@@ -38,14 +38,14 @@ typedef struct thread_tag {
 	char *file;
 	int line;
 
-    /* is the thread running detached? */
-    int detached;
+	/* is the thread running detached? */
+	int detached;
 
 	/* the system specific thread */
 	pthread_t sys_thread;
 } thread_type;
 
-typedef struct mutex_tag {
+typedef struct {
 #ifdef DEBUG_MUTEXES
 	/* the local id and name of the mutex */
 	long mutex_id;
@@ -64,7 +64,7 @@ typedef struct mutex_tag {
 	pthread_mutex_t sys_mutex;
 } mutex_t;
 
-typedef struct cond_tag {
+typedef struct {
 #ifdef THREAD_DEBUG
 	long cond_id;
 	char *name;
@@ -74,7 +74,7 @@ typedef struct cond_tag {
 	pthread_cond_t sys_cond;
 } cond_t;
 
-typedef struct rwlock_tag {
+typedef struct {
 #ifdef THREAD_DEBUG
 	long rwlock_id;
 	char *name;
