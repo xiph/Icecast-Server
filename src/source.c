@@ -29,6 +29,7 @@
 #else
 #include <winsock2.h>
 #include <windows.h>
+#define snprintf _snprintf
 #endif
 
 #include "thread/thread.h"
