@@ -32,7 +32,7 @@ OGG_LIBS="-logg"
 #
 # check if the installed Ogg is sufficiently new.
 #
-AC_MSG_CHECKING([checking for ogg_sync_init in libogg])
+AC_MSG_CHECKING([for ogg_sync_init in libogg])
 ac_save_CFLAGS="$CFLAGS"
 ac_save_LIBS="$LIBS"
 ac_save_LDFLAGS="$LDFLAGS"
