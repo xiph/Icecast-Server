@@ -247,8 +247,6 @@ static connection_t *_accept_connection(void)
     if (!sock_recoverable(sock_error()))
     {
         WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-        abort();
-        /* global.running = ICE_HALTING; */
     }
     
     free(ip);
@@ -724,7 +722,6 @@ static void _handle_get_request(connection_t *con,
     client_t *client;
     int bytes;
     struct stat statbuf;
-    source_t *source;
     int fileserve;
     char *host;
     int port;
