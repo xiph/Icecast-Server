@@ -193,7 +193,6 @@ void *source_main(void *arg)
     int    i;
     char *ai;
     int listen_url_size;
-    char tyme[128];
 #endif
 
     long queue_limit;
