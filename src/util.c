@@ -304,6 +304,7 @@ char *util_base64_encode(char *data)
         data += chunk;
         len -= chunk;
     }
+    *out = 0;
 
     return result;
 }
