@@ -405,47 +405,16 @@ static void format_mp3_send_headers(format_plugin_t *self,
             "Content-Type: %s\r\n", 
             format_get_mimetype(source->format->type));
 
-    if(bytes > 0) client->con->sent_bytes += bytes;
+    if (bytes > 0)
+        client->con->sent_bytes += bytes;
 
-    /* iterate through source http headers and send to client */
-    avl_tree_rlock(source->parser->vars);
-    node = avl_get_first(source->parser->vars);
-    while (node) {
-        var = (http_var_t *)node->key;
-	if (!strcasecmp(var->name, "ice-audio-info")) {
-	    /* convert ice-audio-info to icy-br */
-	    char *brfield;
-	    unsigned int bitrate;
-
-	    brfield = strstr(var->value, "bitrate=");
-	    if (brfield && sscanf(var->value, "bitrate=%u", &bitrate)) {
-		bytes = sock_write(client->con->sock, "icy-br:%u\r\n", bitrate);
-		if (bytes > 0)
-		    client->con->sent_bytes += bytes;
-	    }
-	} else if (strcasecmp(var->name, "ice-password") &&
-	    strcasecmp(var->name, "icy-metaint") &&
-	    (!strncasecmp("ice-", var->name, 4) ||
-	     !strncasecmp("icy-", var->name, 4))) {
-	    bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
-			       var->name + 3, var->value);
-            if (bytes > 0)
-		client->con->sent_bytes += bytes;
-        }
-        node = avl_get_next(node);
-    }
-    avl_tree_unlock(source->parser->vars);
-
-    if (mp3data->use_metadata) {
+    if (mp3data->use_metadata)
+    {
         int bytes = sock_write(client->con->sock, "icy-metaint:%d\r\n", 
                 ICY_METADATA_INTERVAL);
         if(bytes > 0)
             client->con->sent_bytes += bytes;
     }
-
-    bytes = sock_write(client->con->sock,
-		       "Server: %s\r\n", ICECAST_VERSION_STRING);
-    if (bytes > 0)
-        client->con->sent_bytes += bytes;
+    format_send_general_headers(self, source, client);
 }
 

@@ -124,14 +124,44 @@ void format_send_general_headers(format_plugin_t *format,
     /* iterate through source http headers and send to client */
     avl_tree_rlock(source->parser->vars);
     node = avl_get_first(source->parser->vars);
-    while (node) {
+    while (node)
+    {
         var = (http_var_t *)node->key;
-        if (strcasecmp(var->name, "ice-password") &&
-	    (!strncasecmp("ice-", var->name, 4))) {
-	    bytes = sock_write(client->con->sock, 
-			       "%s: %s\r\n", var->name, var->value);
-            if (bytes > 0)
-		client->con->sent_bytes += bytes;
+        if (!strcasecmp(var->name, "ice-audio-info")) {
+            /* convert ice-audio-info to icy-br */
+            char *brfield;
+            unsigned int bitrate;
+
+            brfield = strstr(var->value, "bitrate=");
+            if (brfield && sscanf(var->value, "bitrate=%u", &bitrate)) {
+                bytes = sock_write(client->con->sock, "icy-br:%u\r\n", bitrate);
+                if (bytes > 0)
+                    client->con->sent_bytes += bytes;
+            }
+        }
+        else
+        {
+            if (strcasecmp(var->name, "ice-password") &&
+                strcasecmp(var->name, "icy-metaint"))
+            {
+                bytes = 0;
+                if (!strncasecmp("ice-", var->name, 4))
+                {
+                    if (!strcasecmp("ice-bitrate", var->name))
+                        bytes += sock_write(client->con->sock, "icy-br:%s\r\n", var->value);
+                    else
+                        bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
+                            var->name + 3, var->value);
+                            
+                }
+                if (!strncasecmp("icy-", var->name, 4))
+                {
+                    bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
+                            var->name + 3, var->value);
+                }
+                if (bytes > 0)
+                    client->con->sent_bytes += bytes;
+            }
         }
         node = avl_get_next(node);
     }
