@@ -11,12 +11,19 @@
 #include <libxslt/transform.h>
 #include <libxslt/xsltutils.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+
+#ifndef _WIN32
+#include <sys/time.h>
+#endif
+
 
 #include <thread/thread.h>
 #include <avl/avl.h>
 #include <httpp/httpp.h>
 #include <net/sock.h>
-
 
 #include "connection.h"
 
@@ -25,6 +32,99 @@
 #include "client.h"
 #include "stats.h"
 
+#define CATMODULE "xslt"
+#include "log.h"
+#include "logging.h"
+
+typedef struct {
+    char              *filename;
+    time_t             last_modified;
+    time_t             cache_age;
+    xsltStylesheetPtr  stylesheet;
+} stylesheet_cache_t;
+
+/* Keep it small... */
+#define CACHESIZE 3
+
+stylesheet_cache_t cache[CACHESIZE];
+mutex_t xsltlock;
+
+void xslt_initialize()
+{
+    memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
+    thread_mutex_create(&xsltlock);
+}
+
+void xslt_shutdown() {
+    int i;
+
+    for(i=0; i < CACHESIZE; i++) {
+        if(cache[i].filename)
+            free(cache[i].filename);
+        if(cache[i].stylesheet)
+            xsltFreeStylesheet(cache[i].stylesheet);
+    }
+
+    xsltCleanupGlobals();
+}
+
+static int evict_cache_entry() {
+    int i, age=0, oldest;
+
+    for(i=0; i < CACHESIZE; i++) {
+        if(cache[i].cache_age > age) {
+            age = cache[i].cache_age;
+            oldest = i;
+        }
+    }
+
+    xsltFreeStylesheet(cache[oldest].stylesheet);
+    free(cache[oldest].filename);
+
+    return oldest;
+}
+
+static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
+    int i;
+    int empty = -1;
+    struct stat file;
+
+    if(stat(fn, &file)) {
+        DEBUG1("Error checking for stylesheet file: %s", strerror(errno));
+        return NULL;
+    }
+
+    for(i=0; i < CACHESIZE; i++) {
+        if(cache[i].filename)
+        {
+            if(!strcmp(fn, cache[i].filename))
+            {
+                if(file.st_mtime > cache[i].last_modified)
+                {
+                    xsltFreeStylesheet(cache[i].stylesheet);
+
+                    cache[i].last_modified = file.st_mtime;
+                    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+                    cache[i].cache_age = time(NULL);
+                }
+                return cache[i].stylesheet;
+            }
+        }
+        else
+            empty = i;
+    }
+
+    if(empty>=0)
+        i = empty;
+    else
+        i = evict_cache_entry();
+
+    cache[i].last_modified = file.st_mtime;
+    cache[i].filename = strdup(fn);
+    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+    cache[i].cache_age = time(NULL);
+    return cache[i].stylesheet;
+}
 
 void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
 {
@@ -39,7 +139,10 @@ void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
 	xmlSubstituteEntitiesDefault(1);
 	xmlLoadExtDtdDefaultValue = 1;
 
-	cur = xsltParseStylesheetFile(xslfilename);
+    thread_mutex_lock(&xsltlock);
+    cur = xslt_get_stylesheet(xslfilename);
+    thread_mutex_unlock(&xsltlock);
+
 	if (cur == NULL) {
 		bytes = sock_write_string(client->con->sock, 
                 (char *)"Could not parse XSLT file");
@@ -63,9 +166,6 @@ void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
     
 
     xmlFree(outputBuffer);
-    xsltFreeStylesheet(cur);
     xmlFreeDoc(res);
-
-    xsltCleanupGlobals(); /* Neccesary? */
 }
 

@@ -36,6 +36,7 @@ extern int accesslog;
 #define DEBUG1(y, a) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a)
 #define DEBUG2(y, a, b) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b)
 #define DEBUG3(y, a, b, c) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b, c)
+#define DEBUG4(y, a, b, c, d) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b, c, d)
 
 /* CATMODULE is the category or module that logging messages come from.
 ** we set one here in cause someone forgets in the .c file.

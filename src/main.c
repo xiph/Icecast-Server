@@ -26,6 +26,7 @@
 #include "slave.h"
 #include "stats.h"
 #include "logging.h"
+#include "xslt.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -51,10 +52,12 @@ static void _initialize_subsystems(void)
 	connection_initialize();
 	global_initialize();
 	refbuf_initialize();
+    xslt_initialize();
 }
 
 static void _shutdown_subsystems(void)
 {
+    xslt_shutdown();
 	refbuf_shutdown();
 	stats_shutdown();
 	slave_shutdown();
