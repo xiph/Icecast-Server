@@ -50,7 +50,8 @@ echo ' ' >>$LIBCONFIG_FILE
 echo '# parse options' >>$LIBCONFIG_FILE
 echo 'o=""' >>$LIBCONFIG_FILE
 echo 'h=""' >>$LIBCONFIG_FILE
-echo 'for i ; do' >>$LIBCONFIG_FILE
+echo 'for i' >>$LIBCONFIG_FILE
+echo 'do' >>$LIBCONFIG_FILE
 echo '  case $i in' >>$LIBCONFIG_FILE
 options="prefix exec-prefix eprefix package version cflags libs bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir infodir mandir target host build pkgdatadir pkglibdir pkgincludedir template-version help"
 echo '    --prefix=*) prefix=`echo $i | sed -e "s/--prefix=//"` ;;' >>$LIBCONFIG_FILE
