@@ -241,6 +241,10 @@ void *source_main(void *arg)
         if(source->send_return) {
             client_send_404(source->client, "Mountpoint in use");
         }
+        global_lock();
+        global.sources--;
+        global_unlock();
+        thread_rwlock_unlock(source->shutdown_rwlock);
         thread_exit(0);
         return NULL;
     }
