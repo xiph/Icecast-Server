@@ -5,7 +5,7 @@ Feature differences from SVN trunk
 . on-demand relays, activated on first listener, disconnected when listeners 
   falls to 0. Available for master relays as well.
 . multiple Ogg codec streaming. Current codecs handled are Theora, Vorbis,
-  Speex, Writ.
+  Speex (Writ to be added back in later).
 . Clients are started at theora key frame if theora is being streamed.
 . Added URL and command based listener authentication
 . server xml reload, and reopen logging available via admin url
@@ -16,8 +16,23 @@ Feature differences from SVN trunk
   max-listener check
 . per-mount format-specific settings can be stated in mount
 . mp3 metadata interval can be stated/disabled per mount
+. ogg stream rebuilding can be enabled to allow for url updates
 . added file intro to streams
 . fallback to file
+
+2.1-kh3
+. merge of the 2 ogg modules
+  - drop --enable-vorbis-upodates, use <ogg-rebuild> in the <mount> instead
+  - split codec specific code into separate files
+. authenticated relays (non-slave host) should work again
+. update autoconf macros
+. move code around to help with sync-up, code move to auth as well
+. yp touch wasn't updating as quick as it should
+. resync with trunk
+  - make format_mp3 the default handler, passing through the mime type, that
+    way unknown streams like AAC, NSV just pass through
+  - fixup for naming and authenticating of shoutcast mountpoint
+  - docs and win32 build setup
 
 2.1-kh2
 . send max_listeners to YP, server limit if mount is unlimited
