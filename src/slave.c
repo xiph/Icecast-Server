@@ -60,10 +60,13 @@
 #define CATMODULE "slave"
 
 static void *_slave_thread(void *arg);
-thread_type *_slave_thread_id;
+static void _add_slave_host (const char *server, int port);
+
+static thread_type *_slave_thread_id;
 static int slave_running = 0;
 static unsigned int max_interval = 0;
 static int rescan_relays = 0;
+static rwlock_t slaves_lock;
 
 relay_server *relay_free (relay_server *relay)
 {
@@ -122,6 +125,7 @@ void slave_initialize(void)
     if (slave_running)
         return;
 
+    thread_rwlock_create (&slaves_lock);
     slave_running = 1;
     _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
 }
@@ -134,20 +138,21 @@ void slave_shutdown(void)
     slave_running = 0;
     DEBUG0 ("waiting for slave thread");
     thread_join (_slave_thread_id);
+    thread_rwlock_destroy (&slaves_lock);
 }
 
 
 int slave_redirect (char *mountpoint, client_t *client)
 {
     slave_host *slave = NULL;
-    ice_config_t *c = config_get_config();
 
+    DEBUG1 ("slave count is %d", global.slave_count);
+    thread_rwlock_rlock (&slaves_lock);
     /* select slave entry */
-    if (c->slaves_count)
+    if (global.slave_count)
     {
-        int which=(int) (((float)c->slaves_count)*rand()/(RAND_MAX+1.0));
-        DEBUG1 ("which is %d", which);
-        slave = c->slave_list;
+        int which=(int) (((float)global.slave_count)*rand()/(RAND_MAX+1.0));
+        slave = global.slaves;
         while (slave && which)
         {
             slave = slave->next;
@@ -168,13 +173,13 @@ int slave_redirect (char *mountpoint, client_t *client)
                     "at %s:%d", slave->server, slave->port);
             snprintf (location, len, "http://%s:%d%s", slave->server,
                     slave->port, mountpoint);
-            config_release_config();
+            thread_rwlock_unlock (&slaves_lock);
             client_send_302 (client, location);
             free (location);
             return 1;
         }
     }
-    config_release_config();
+    thread_rwlock_unlock (&slaves_lock);
     return 0;
 }
 
@@ -196,6 +201,7 @@ static void *start_relay_stream (void *arg)
     do
     {
         char *auth_header;
+        char *redirect_header;
 
         streamsock = sock_connect_wto (relay->server, relay->port, 10);
         if (streamsock == SOCK_ERROR)
@@ -210,6 +216,7 @@ static void *start_relay_stream (void *arg)
         {
             char *esc_authorisation;
             unsigned len = strlen(relay->username) + strlen(relay->password) + 2;
+            ice_config_t *config;
 
             auth_header = malloc (len);
             snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
@@ -220,9 +227,23 @@ static void *start_relay_stream (void *arg)
             snprintf (auth_header, len,
                     "Authorization: Basic %s\r\n", esc_authorisation);
             free(esc_authorisation);
+
+            /* header to use for participating in load sharing */
+            config = config_get_config ();
+            if (config->master_redirect_port)
+            {
+                len = strlen ("ice-redirect:") + strlen (config->hostname) + 10;
+                redirect_header = malloc (len);
+                snprintf (redirect_header, len, "ice-redirect: %s:%d\r\n",
+                        config->hostname, config->master_redirect_port);
+            }
+            config_release_config ();
         }
         else
+        {
             auth_header = strdup ("");
+            redirect_header = strdup ("");
+        }
 
         /* At this point we may not know if we are relaying an mp3 or vorbis
          * stream, but only send the icy-metadata header if the relay details
@@ -233,10 +254,14 @@ static void *start_relay_stream (void *arg)
                 "User-Agent: " ICECAST_VERSION_STRING "\r\n"
                 "%s"
                 "%s"
+                "%s"
                 "\r\n",
-                relay->mount, relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
+                relay->mount,
+                relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
+                redirect_header,
                 auth_header);
         free (auth_header);
+        free (redirect_header);
         memset (header, 0, sizeof(header));
         if (util_read_header (con->sock, header, 4096) == 0)
         {
@@ -540,10 +565,37 @@ static int update_from_master(ice_config_t *config)
 }
 
 
+static void update_master_as_slave (ice_config_t *config)
+{
+    char *str;
+    slave_host *slave;
+
+    if (config->master_server == NULL || config->master_redirect_port == 0)
+        return;
+    str = strdup (config->master_server);
+    slave = calloc (1, sizeof(slave_host));
+    if (slave && str)
+    {
+        slave->server = str;
+        slave->port = config->master_server_port;
+        thread_rwlock_wlock (&slaves_lock);
+        _add_slave_host (config->master_server, config->master_server_port);
+        thread_rwlock_unlock (&slaves_lock);
+        return;
+    }
+    free (str);
+    free (slave);
+}
+
+
 static void *_slave_thread(void *arg)
 {
     ice_config_t *config;
     unsigned int interval = 0;
+
+    config = config_get_config();
+    update_master_as_slave (config);
+    config_release_config();
 
     while (slave_running)
     {
@@ -561,6 +613,7 @@ static void *_slave_thread(void *arg)
 
             interval = 0;
             max_interval = config->master_update_interval;
+            update_master_as_slave (config);
 
             /* the connection could take some time, so the lock can drop */
             if (update_from_master (config))
@@ -592,5 +645,104 @@ static void *_slave_thread(void *arg)
     INFO0 ("Slave thread shutdown complete");
 
     return NULL;
+}
+
+
+/* remove this slave clients entry in the slave host list */
+void slave_host_remove (client_t *client)
+{
+    const char *var = httpp_getvar (client->parser, "ice-redirect");
+
+    if (var)
+    {
+        slave_host *slave, **trail;
+        char *server = strdup (var), *separator;
+        int port;
+
+        separator = strchr (server, ':');
+        if (separator == NULL)
+        {
+            free (server);
+            return;
+        }
+        *separator = '\0';
+        port = atoi (separator+1);
+        thread_rwlock_wlock (&slaves_lock);
+        slave = global.slaves;
+        trail = &global.slaves;
+        while (slave)
+        {
+            if (strcmp (slave->server, server) == 0 && slave->port == port)
+            {
+                slave->count--;
+                if (slave->count == 0)
+                {
+                    INFO2 ("slave at %s:%d removed", slave->server, slave->port);
+                    *trail = slave->next;
+                    free (slave->server);
+                    global.slave_count--;
+                }
+                break;
+            }
+            trail = &slave->next;
+            slave = slave->next;
+        }
+        thread_rwlock_unlock (&slaves_lock);
+    }
+}
+
+
+/* with the provided header (eg "localhost:8000") add a new slave host
+ * entry to so that clients can redirect to other sites when full
+ */
+void slave_host_add (client_t *client, const char *header)
+{
+    slave_host *slave;
+    char *server, *separator;
+    int port;
+
+    if (client == NULL || header == NULL)
+        return;
+
+    server = strdup (header);
+    separator = strchr (server, ':');
+    if (separator == NULL)
+    {
+        free (server);
+        return;
+    }
+    *separator = '\0';
+    port = atoi (separator+1);
+    thread_rwlock_wlock (&slaves_lock);
+    slave = global.slaves;
+    while (slave)
+    {
+        if (strcmp (slave->server, server) == 0 && slave->port == port)
+        {
+            slave->count++;
+            DEBUG0 ("already exists, increasing count");
+            break;
+        }
+        slave = slave->next;
+    }
+    if (slave == NULL)
+        _add_slave_host (server, port);
+    free (server);
+    thread_rwlock_unlock (&slaves_lock);
+}
+
+static void _add_slave_host (const char *server, int port)
+{
+    slave_host *slave = calloc (1, sizeof (slave_host));
+    if (slave == NULL)
+        return;
+    slave->server = strdup (server);
+    slave->port = port;
+    slave->count = 1;
+    slave->next = global.slaves;
+    global.slaves = slave;
+    global.slave_count++;
+    INFO3 ("slave (%d) at %s:%d added", global.slave_count,
+            slave->server, slave->port);
 }
 

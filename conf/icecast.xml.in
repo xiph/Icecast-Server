@@ -58,25 +58,16 @@
     </listen-socket>
     -->
 
-    <!-- when full, redirect listeners to the listed slaves -->
-    <!--
-    <slave-host>
-        <server>somehost.com</server>
-        <port>8000</port>
-    </slave-host> 
-
-    <slave-host>
-        <server>someotherhost.com</server>
-        <port>8000</port>
-    </slave-host> 
-    -->
-
     <!--<relays-on-demand>1</relays-on-demand>-->
     <!--<master-server>127.0.0.1</master-server>-->
     <!--<master-server-port>8001</master-server-port>-->
     <!--<master-update-interval>120</master-update-interval>-->
     <!--<master-password>hackme</master-password>-->
     <!--<master-relay-auth>1</master-relay-auth>-->
+
+    <!-- Report <hostname> and this port to master server for redirecting
+         clients to this slave -->
+    <!--<master-redirect-port>8000</master-redirect-port>-->
 
     <!-- Relays. State connection information, and by default 
          request inline metadata for mp3 streams if available.

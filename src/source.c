@@ -885,8 +885,8 @@ void add_client (char *mount, client_t *client)
     {
         if (connection_check_relay_pass(client->parser))
         {
+            client_as_slave (client);
             INFO0 ("client connected as slave");
-            client->is_slave = 1;
         }
         thread_mutex_lock (&move_clients_mutex);
         avl_tree_rlock (global.source_tree);

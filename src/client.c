@@ -70,6 +70,9 @@ void client_destroy(client_t *client)
             ;
     }
 #endif
+    if (client->is_slave)
+        slave_host_remove (client);
+
     connection_close(client->con);
     httpp_destroy(client->parser);
 
@@ -196,5 +199,18 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
     client->pos = 0;
     if (to_release)
         refbuf_release (to_release);
+}
+
+void client_as_slave (client_t *client)
+{
+    char *slave_redirect = httpp_getvar (client->parser, "ice-redirect");
+    INFO1 ("client connected as slave from %s", client->con->ip);
+    client->is_slave = 1;
+    if (slave_redirect)
+    {
+        /* this will be something like ip:port */
+        DEBUG1 ("header for auth slave is \"%s\"", slave_redirect);
+        slave_host_add (client, slave_redirect);
+    }
 }
 

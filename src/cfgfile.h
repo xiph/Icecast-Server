@@ -135,8 +135,8 @@ typedef struct ice_config_tag
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;
-    slave_host *slave_list;
     unsigned slaves_count;
+    int master_redirect_port;
 
     char *access_log;
     char *error_log;

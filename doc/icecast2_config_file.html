@@ -215,9 +215,22 @@ This is the TCP Port for the server which contains the mountpoints to be relayed
 <div class=indentedbox>
 The interval (in seconds) that the Relay Server will poll the Master Server for any new mountpoints to relay.
 </div>
+<h4>master-username</h4>
+<div class=indentedbox>
+This is the username to authenticate with the master. The default is "relay". This is used to
+get hold of the streamlist and can be used to authenticate master relays. The master server
+will compare with the relay-user.
+</div>
 <h4>master-password</h4>
 <div class=indentedbox>
-This is the admin password on the Master server.  It is used to query the server for a list of mountpoints to relay.
+As with master-username, this is the password to authenticate with the master server. The
+relay-password on the master server is used for comparison.
+</div>
+<h4>master-redirect-port</h4>
+<div class=indentedbox>
+When a slave starts a master relay using authentication, then a host and port can also be sent to
+inform the master for the purposes of redirecting clients to the slave. The host is provided by
+the hostname setting and this specifies the port to redirect listeners to.
 </div>
 <h4>relays-on-demand</h4>
 <div class=indentedbox>
