@@ -90,7 +90,11 @@ if test -n "$XMLCONFIG"
 then
   XML_LIBS="`$XMLCONFIG --libs`"
   CPPFLAGS="$CPPFLAGS `$XMLCONFIG --cflags`"
+  save_LIBS="$LIBS"
+  LIBS="$LIBS $XML_LIBS"
   AC_CHECK_FUNC(xmlParseFile,, [AC_MSG_ERROR([There was a problem linking with libxml])])
+  LIBS="$save_LIBS"
+  save_LIBS=
 else
   AC_MSG_ERROR([xml-config could not be found])
 fi
