@@ -108,6 +108,7 @@ void format_send_general_headers(format_plugin_t *format,
     while (node) {
         var = (http_var_t *)node->key;
         if (strcasecmp(var->name, "ice-password") && 
+            strcasecmp(var->name, "icy-metaint") &&
                 (!strncasecmp("ice-", var->name, 4) ||
                  !strncasecmp("icy-", var->name, 4))) { 
             bytes = sock_write(client->con->sock, 
