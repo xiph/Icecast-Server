@@ -93,8 +93,11 @@ int format_mp3_get_plugin (source_t *source)
 
     plugin->_state = state;
 
-    meta = refbuf_new (1);
-    memcpy (meta->data, "", 1);
+    /* initial metadata needs to be blank for sending to clients and for
+       comparing with new metadata */
+    meta = refbuf_new (2);
+    memcpy (meta->data, "\0\0", 2);
+    meta->len = 1;
     state->metadata = meta;
     state->interval = ICY_METADATA_INTERVAL;
 
@@ -518,8 +521,9 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         bytes -= metadata_remaining;
         memmove (src, src+metadata_remaining, bytes);
 
-        /* assign metadata if it's not 1 byte, as that indicates a change */
-        if (source_mp3->build_metadata_len > 1)
+        /* assign metadata if it's greater than 1 byte, and the text has changed */
+        if (source_mp3->build_metadata_len > 1 &&
+                strcmp (source_mp3->build_metadata+1, source_mp3->metadata->data+1) != 0)
         {
             refbuf_t *meta = refbuf_new (source_mp3->build_metadata_len);
             memcpy (meta->data, source_mp3->build_metadata,
