@@ -203,6 +203,7 @@ static ogg_codec_t *initial_vorbis_page (ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
+    DEBUG0("checking for vorbis codec");
     if (vorbis_synthesis_headerin (&vorbis_codec->vi, &vorbis_codec->vc, &packet) < 0)
     {
         ogg_stream_clear (&codec->os);
@@ -249,7 +250,11 @@ static refbuf_t *process_writ_page (ogg_codec_t *codec, ogg_page *page)
             codec->headers = 0;
         }
         if (codec->headers)
+        {
+            /* add header page to associated list */
+            format_ogg_attach_header (codec->feed, page);
             return NULL;
+        }
     }
     refbuf = make_refbuf_with_page (page);
     /* allow clients to start here if nothing prevents it */
@@ -267,6 +272,7 @@ static ogg_codec_t *initial_writ_page (ogg_page *page)
     ogg_stream_init (&codec->os, ogg_page_serialno (page));
     ogg_stream_pagein (&codec->os, page);
 
+    DEBUG0("checking for writ codec");
     ogg_stream_packetout (&codec->os, &packet);
     if (memcmp (packet.packet, "\x00writ", 5) == 0)
     {
@@ -329,6 +335,7 @@ static ogg_codec_t *initial_speex_page (ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
+    DEBUG0("checking for speex codec");
     header = speex_packet_to_header (packet.packet, packet.bytes);
     if (header == NULL)
     {
@@ -476,6 +483,7 @@ static ogg_codec_t *initial_theora_page (ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
+    DEBUG0("checking for theora codec");
     if (theora_decode_header (&theora_codec->ti, &theora_codec->tc, &packet) < 0)
     {
         theora_info_clear (&theora_codec->ti);
@@ -625,7 +633,6 @@ static int process_initial_page (ogg_state_t *ogg_info, ogg_page *page)
 
         codec->feed = ogg_info;
         format_ogg_attach_header (ogg_info, page);
-        // printf ("initial header page stored at %p\n", ogg_info->header_pages);
     }
 
     return 0;
