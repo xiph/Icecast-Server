@@ -84,6 +84,7 @@ int log_open(const char *filename)
 		_release_log_id(log_id);
 		return LOG_ECANTOPEN;
 	}
+    setvbuf(loglist[log_id].logfile, NULL, _IOLBF, 0);
 
 	return log_id;
 }
