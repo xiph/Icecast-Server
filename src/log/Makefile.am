@@ -11,8 +11,8 @@ libicelog_la_SOURCES = log.c
 GET = true
 
 debug:
-        $(MAKE) all CFLAGS="@DEBUG@"
+	$(MAKE) all CFLAGS="@DEBUG@"
 
 profile:
-        $(MAKE) all CFLAGS="@PROFILE@"
+	$(MAKE) all CFLAGS="@PROFILE@"
 
