@@ -133,10 +133,12 @@ static void _shutdown_subsystems(void)
     xmlCleanupParser();
 }
 
-static int _parse_config_file(int argc, char **argv, char *filename, int size)
+static int _parse_config_opts(int argc, char **argv, char *filename, int size)
 {
     int i = 1;
-    int    processID = 0;
+    int processID = 0;
+    int config_ok = 0;
+
 
     if (argc < 2) return -1;
 
@@ -146,7 +148,11 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
             fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
             if ((processID = (int)fork()) > 0) {
                 /* exit the parent */
-                _exit(0);
+                exit(0);
+            }
+            else {
+                fprintf(stderr, "FATAL: Unable to fork child!");
+                exit(1);
             }
 #endif
         }
@@ -159,7 +165,7 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
             if (i + 1 < argc) {
                 strncpy(filename, argv[i + 1], size-1);
                 filename[size-1] = 0;
-                return 1;
+                config_ok = 1;
             } else {
                 return -1;
             }
@@ -167,7 +173,10 @@ static int _parse_config_file(int argc, char **argv, char *filename, int size)
         i++;
     }
 
-    return -1;
+    if(config_ok)
+        return 1;
+    else
+        return -1;
 }
 
 static int _start_logging(void)
@@ -369,7 +378,7 @@ int main(int argc, char **argv)
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    res = _parse_config_file(argc, argv, filename, 512);
+    res = _parse_config_opts(argc, argv, filename, 512);
     if (res == 1) {
         /* startup all the modules */
         _initialize_subsystems();
