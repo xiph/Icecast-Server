@@ -864,8 +864,6 @@ static void *_handle_connection(void *arg)
     client_t *client;
 
     while (global.running == ICE_RUNNING) {
-        thread_sleep (100000);
-        if (global.running != ICE_RUNNING) break;
 
         /* grab a connection and set the socket to blocking */
         while ((con = _get_connection())) {
@@ -934,6 +932,7 @@ static void *_handle_connection(void *arg)
                 }
 
                 free(uri);
+                continue;
             } 
             else if(httpp_parse_icy(parser, header, strlen(header))) {
                 /* TODO: Map incoming icy connections to /icy_0, etc. */
@@ -949,6 +948,7 @@ static void *_handle_connection(void *arg)
                 avl_tree_unlock(global.source_tree);
 
                 _handle_source_request(con, parser, mount);
+                continue;
             }
             else {
                 ERROR0("HTTP request parsing failed");
@@ -957,6 +957,7 @@ static void *_handle_connection(void *arg)
                 continue;
             }
         }
+        thread_sleep (100000);
     }
     DEBUG0 ("Connection thread done");
 
