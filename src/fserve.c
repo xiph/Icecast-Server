@@ -47,7 +47,7 @@
 
 static avl_tree *client_tree;
 static avl_tree *pending_tree;
-static avl_tree *mimetypes;
+static avl_tree *mimetypes = NULL;
 
 static cond_t fserv_cond;
 static thread_t *fserv_thread;
@@ -98,6 +98,9 @@ void fserve_shutdown(void)
     if(!config_get_config()->fileserve)
         return;
 
+    if(!run_fserv)
+        return;
+
     avl_tree_free(mimetypes, _delete_mapping);
 
     run_fserv = 0;
@@ -136,6 +139,7 @@ static void wait_for_fds() {
             return;
 #else
         struct timeval tv;
+        fd_set realfds;
         tv.tv_sec = 0;
         tv.tv_usec = 200000;
         if(client_tree_changed) {
@@ -155,7 +159,8 @@ static void wait_for_fds() {
             avl_tree_unlock(client_tree);
         }
 
-        if(select(fd_max+1, NULL, &fds, NULL, &tv) > 0)
+        memcpy(&realfds, &fds, sizeof(fd_set));
+        if(select(fd_max+1, NULL, &realfds, NULL, &tv) > 0)
             return;
 #endif
         else {
