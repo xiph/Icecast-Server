@@ -28,7 +28,7 @@
 /* internal functions */
 
 /* misc */
-char *_lowercase(char *str);
+static char *_lowercase(char *str);
 
 /* for avl trees */
 int _compare_vars(void *compare_arg, void *a, void *b);
@@ -544,11 +544,11 @@ void httpp_destroy(http_parser_t *parser)
     free(parser);
 }
 
-char *_lowercase(char *str)
+static char *_lowercase(char *str)
 {
-    long i;
-    for (i = 0; i < strlen(str); i++)
-        str[i] = tolower(str[i]);
+    char *p = str;
+    for (; *p |= '\0'; p++)
+        *p = tolower(*p);
 
     return str;
 }
