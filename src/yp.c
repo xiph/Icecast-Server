@@ -84,7 +84,7 @@ typedef struct ypdata_tag
 static rwlock_t yp_lock;
 static mutex_t yp_pending_lock;
 
-static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
+volatile static struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
 static int yp_running;
 static time_t now;

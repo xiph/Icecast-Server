@@ -79,7 +79,7 @@ static mutex_t _connection_mutex;
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
 
-static volatile con_queue_t *_queue = NULL;
+volatile static con_queue_t *_queue = NULL;
 static mutex_t _queue_mutex;
 
 static thread_queue_t *_conhands = NULL;
