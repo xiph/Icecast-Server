@@ -151,12 +151,12 @@ static int _start_listening(void)
 static void _server_proc_init(void)
 {
 	if (!_setup_socket()) {
-		ERROR1("Could not create listener socket on port %d", config_get_config()->port);
+		fprintf(stderr, "Could not create listener socket on port %d", config_get_config()->port);
 		return;
 	}
 
 	if (!_start_listening()) {
-		ERROR0("Failed trying to listen on server socket");
+		fprintf(stderr, "Failed trying to listen on server socket");
 		return;
 	}
 }
