@@ -511,7 +511,7 @@ static void *_handle_connection(void *arg)
                         else {
                             client->respcode = 404;
                             bytes = sock_write(client->con->sock,
-                                    "HTTP/1.0 404 Not Found\r\nContent-Type: text/html\r\n<b>The file you requested could not be found</b>\r\n");
+                                    "HTTP/1.0 404 Not Found\r\nContent-Type: text/html\r\n\r\n<b>The file you requested could not be found</b>\r\n");
                         }
 						avl_tree_unlock(global.source_tree);
                         if(bytes > 0) client->con->sent_bytes = bytes;
