@@ -77,7 +77,6 @@ format_plugin_t *format_vorbis_get_plugin(void)
     plugin->create_client_data = format_vorbis_create_client_data;
     plugin->client_send_headers = format_vorbis_send_headers;
     plugin->free_plugin = format_vorbis_free_plugin;
-    plugin->set_tag = NULL;
     plugin->format_description = "Ogg Vorbis";
 
     state = (vstate_t *)calloc(1, sizeof(vstate_t));

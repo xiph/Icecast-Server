@@ -34,6 +34,7 @@
 #include "xslt.h"
 
 #include "format.h"
+#include "format_mp3.h"
 
 #include "logging.h"
 #ifdef _WIN32
@@ -641,7 +642,7 @@ static void command_metadata(client_t *client, source_t *source)
 {
     char *action;
     char *value;
-    format_plugin_t *format;
+    mp3_state *state;
 #ifdef USE_YP
     int i;
     time_t current_time;
@@ -652,8 +653,7 @@ static void command_metadata(client_t *client, source_t *source)
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
 
-    format = source->format;
-    if (format->type != FORMAT_TYPE_MP3)
+    if (source->format->type != FORMAT_TYPE_MP3)
     {
         client_send_400 (client, "Not mp3, cannot update metadata");
         return;
@@ -664,11 +664,14 @@ static void command_metadata(client_t *client, source_t *source)
         client_send_400 (client, "No such action");
         return;
     }
-    if (format->set_tag)
-    {
-        if (value)
-            format->set_tag (format, "title", value);
-    }
+
+    state = source->format->_state;
+
+    thread_mutex_lock(&(state->lock));
+    free(state->metadata);
+    state->metadata = strdup(value);
+    state->metadata_age++;
+    thread_mutex_unlock(&(state->lock));
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
         source->mount, value);
