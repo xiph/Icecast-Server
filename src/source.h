@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 
+struct auth_tag;
+
 typedef struct source_tag
 {
     client_t *client;
@@ -40,12 +42,16 @@ typedef struct source_tag
     long max_listeners;
     int yp_public;
     int send_return;
+    struct auth_tag *authenticator;
+    int fallback_override;
+    int no_mount;
 } source_t;
 
 source_t *source_create(client_t *client, connection_t *con, 
         http_parser_t *parser, const char *mount, format_type_t type,
         mount_proxy *mountinfo);
 source_t *source_find_mount(const char *mount);
+source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, int id);
 int source_compare_sources(void *arg, void *a, void *b);
 int source_free_source(void *key);

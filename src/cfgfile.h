@@ -29,6 +29,12 @@ typedef struct _relay_server {
     struct _relay_server *next;
 } relay_server;
 
+typedef struct _config_options {
+    char *name;
+    char *value;
+    struct _config_options *next;
+} config_options_t;
+
 typedef struct _mount_proxy {
     char *mountname; /* The mountpoint this proxy is used for */
 
@@ -39,7 +45,15 @@ typedef struct _mount_proxy {
                        to not dump. */
     int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
                           limit here (i.e. only use the global limit) */
-    char *fallback_mount;
+    char *fallback_mount; /* Fallback mountname */
+
+    int fallback_override; /* When this source arrives, do we steal back
+                              clients from the fallback? */
+    int no_mount; /* Do we permit direct requests of this mountpoint? (or only
+                     indirect, through fallbacks) */
+
+    char *auth_type; /* Authentication type */
+    config_options_t *auth_options; /* Options for this type */
     struct _mount_proxy *next;
 } mount_proxy;
 

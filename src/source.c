@@ -37,9 +37,12 @@
 #endif
 #include "source.h"
 #include "format.h"
+#include "auth.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
+
+#define MAX_FALLBACK_DEPTH 10
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
@@ -70,6 +73,8 @@ source_t *source_create(client_t *client, connection_t *con,
     src->dumpfile = NULL;
     src->audio_info = util_dict_new();
     src->yp_public = 0;
+    src->fallback_override = 0;
+    src->no_mount = 0;
 
     if(mountinfo != NULL) {
         if (mountinfo->fallback_mount != NULL)
@@ -77,6 +82,11 @@ source_t *source_create(client_t *client, connection_t *con,
         src->max_listeners = mountinfo->max_listeners;
         if (mountinfo->dumpfile != NULL)
             src->dumpfilename = strdup (mountinfo->dumpfile);
+        if(mountinfo->auth_type != NULL)
+            src->authenticator = auth_get_authenticator(
+                    mountinfo->auth_type, mountinfo->auth_options);
+        src->fallback_override = mountinfo->fallback_override;
+        src->no_mount = mountinfo->no_mount;
     }
 
     if(src->dumpfilename != NULL) {
@@ -95,10 +105,10 @@ static int source_remove_source(void *key)
     return 1;
 }
 
-/* you must already have a read lock on the global source tree
-** to call this function
-*/
-source_t *source_find_mount(const char *mount)
+/* Find a mount with this raw name - ignoring fallbacks. You should have the
+ * global source tree locked to call this.
+ */
+source_t *source_find_mount_raw(const char *mount)
 {
     source_t *source;
     avl_node *node;
@@ -123,6 +133,56 @@ source_t *source_find_mount(const char *mount)
     
     /* didn't find it */
     return NULL;
+}
+
+static source_t *source_find_mount_recursive(const char *mount, int depth)
+{
+    source_t *source = source_find_mount_raw(mount);
+    mount_proxy *mountinfo;
+    ice_config_t *config;
+    char *fallback_mount;
+    
+    if(source == NULL) {
+        if(depth > MAX_FALLBACK_DEPTH)
+            return NULL;
+
+        /* Look for defined mounts to find a fallback source */
+
+        config = config_get_config();
+        mountinfo = config->mounts;
+        thread_mutex_lock(&(config_locks()->mounts_lock));
+        config_release_config();
+
+        while(mountinfo) {
+            if(!strcmp(mountinfo->mountname, mount))
+                break;
+            mountinfo = mountinfo->next;
+        }
+        
+        if(mountinfo)
+            fallback_mount = mountinfo->fallback_mount;
+        else
+            fallback_mount = NULL;
+
+        thread_mutex_unlock(&(config_locks()->mounts_lock));
+
+        if(fallback_mount != NULL) {
+            return source_find_mount_recursive(mount, depth+1);
+        }
+    }
+
+    return source;
+}
+
+/* you must already have a read lock on the global source tree
+** to call this function
+*/
+source_t *source_find_mount(const char *mount)
+{
+    if (!mount)
+        return NULL;
+
+    return source_find_mount_recursive(mount, 0);
 }
 
 int source_compare_sources(void *arg, void *a, void *b)
@@ -192,7 +252,6 @@ void *source_main(void *arg)
     refbuf_t *refbuf, *abuf;
     int data_done;
 
-    int listeners = 0;
 #ifdef USE_YP
     char *s;
     long current_time;
@@ -236,7 +295,7 @@ void *source_main(void *arg)
     /* Now, we must do a final check with write lock taken out that the
      * mountpoint is available..
      */
-    if (source_find_mount(source->mount) != NULL) {
+    if (source_find_mount_raw(source->mount) != NULL) {
         avl_tree_unlock(global.source_tree);
         if(source->send_return) {
             client_send_404(source->client, "Mountpoint in use");
@@ -353,6 +412,51 @@ void *source_main(void *arg)
 
     DEBUG0("Source creation complete");
 
+    /*
+    ** Now, if we have a fallback source and override is on, we want
+    ** to steal it's clients, because it means we've come back online
+    ** after a failure and they should be gotten back from the waiting
+    ** loop or jingle track or whatever the fallback is used for
+    */
+
+    if(source->fallback_override && source->fallback_mount) {
+        avl_tree_rlock(global.source_tree);
+        fallback_source = source_find_mount(source->fallback_mount);
+        avl_tree_unlock(global.source_tree);
+
+        if(fallback_source) {
+            /* we need to move the client and pending trees */
+            avl_tree_wlock(fallback_source->pending_tree);
+            while (avl_get_first(fallback_source->pending_tree)) {
+                client_t *client = (client_t *)avl_get_first(
+                        fallback_source->pending_tree)->key;
+                avl_delete(fallback_source->pending_tree, client, 
+                        source_remove_client);
+
+                /* TODO: reset client local format data?  */
+                avl_tree_wlock(source->pending_tree);
+                avl_insert(source->pending_tree, (void *)client);
+                avl_tree_unlock(source->pending_tree);
+            }
+            avl_tree_unlock(fallback_source->pending_tree);
+
+            avl_tree_wlock(fallback_source->client_tree);
+            while (avl_get_first(fallback_source->client_tree)) {
+                client_t *client = (client_t *)avl_get_first(
+                        fallback_source->client_tree)->key;
+
+                avl_delete(fallback_source->client_tree, client, 
+                        source_remove_client);
+
+                /* TODO: reset client local format data?  */
+                avl_tree_wlock(source->pending_tree);
+                avl_insert(source->pending_tree, (void *)client);
+                avl_tree_unlock(source->pending_tree);
+            }
+            avl_tree_unlock(fallback_source->client_tree);
+        }
+    }
+
     while (global.running == ICE_RUNNING && source->running) {
         ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
@@ -375,7 +479,9 @@ void *source_main(void *arg)
                 }
 
                 bytes = sock_read_bytes(source->con->sock, buffer, 4096);
-                if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) {
+                if (bytes == 0 || 
+                        (bytes < 0 && !sock_recoverable(sock_error()))) 
+                {
                     DEBUG1("Disconnecting source due to socket read error: %s",
                             strerror(sock_error()));
                     break;
@@ -383,7 +489,8 @@ void *source_main(void *arg)
             }
             if (bytes <= 0) break;
             source->client->con->sent_bytes += bytes;
-            ret = source->format->get_buffer(source->format, buffer, bytes, &refbuf);
+            ret = source->format->get_buffer(source->format, buffer, bytes, 
+                    &refbuf);
             if(ret < 0) {
                 WARN0("Bad data from source");
                 goto done;
@@ -453,7 +560,8 @@ void *source_main(void *arg)
                     }
                 }
                 else {
-                    DEBUG0("Client has unrecoverable error catching up. Client has probably disconnected");
+                    DEBUG0("Client has unrecoverable error catching up. "
+                            "Client has probably disconnected");
                     client->con->error = 1;
                     data_done = 1;
                     refbuf_release(abuf);
@@ -483,7 +591,8 @@ void *source_main(void *arg)
                     }
                 }
                 else {
-                    DEBUG0("Client had unrecoverable error with new data, probably due to client disconnection");
+                    DEBUG0("Client had unrecoverable error with new data, "
+                            "probably due to client disconnection");
                     client->con->error = 1;
                 }
             }
@@ -518,9 +627,9 @@ void *source_main(void *arg)
             if (client->con->error) {
                 client_node = avl_get_next(client_node);
                 avl_delete(source->client_tree, (void *)client, _free_client);
-                listeners--;
-                stats_event_args(source->mount, "listeners", "%d", listeners);
-                source->listeners = listeners;
+                source->listeners--;
+                stats_event_args(source->mount, "listeners", "%d", 
+                        source->listeners);
                 DEBUG0("Client removed");
                 continue;
             }
@@ -533,15 +642,32 @@ void *source_main(void *arg)
         /** add pending clients **/
         client_node = avl_get_first(source->pending_tree);
         while (client_node) {
+            if(source->max_listeners != -1 && 
+                    source->listeners >= source->max_listeners) 
+            {
+                /* The common case is caught in the main connection handler,
+                 * this deals with rarer cases (mostly concerning fallbacks)
+                 * and doesn't give the listening client any information about
+                 * why they were disconnected
+                 */
+                client = (client_t *)client_node->key;
+                client_node = avl_get_next(client_node);
+                avl_delete(source->pending_tree, (void *)client, _free_client);
+
+                INFO0("Client deleted, exceeding maximum listeners for this "
+                        "mountpoint.");
+                continue;
+            }
+            
+            /* Otherwise, the client is accepted, add it */
             avl_insert(source->client_tree, client_node->key);
-            /* listener count may have changed */
-            listeners = source->listeners;
-            listeners++;
+
+            source->listeners++;
             DEBUG0("Client added");
             stats_event_inc(NULL, "clients");
             stats_event_inc(source->mount, "connections");
-            stats_event_args(source->mount, "listeners", "%d", listeners);
-            source->listeners = listeners;
+            stats_event_args(source->mount, "listeners", "%d", 
+                    source->listeners);
 
             /* we have to send cached headers for some data formats
             ** this is where we queue up the buffers to send
@@ -556,7 +682,9 @@ void *source_main(void *arg)
 
         /** clear pending tree **/
         while (avl_get_first(source->pending_tree)) {
-            avl_delete(source->pending_tree, avl_get_first(source->pending_tree)->key, source_remove_client);
+            avl_delete(source->pending_tree, 
+                    avl_get_first(source->pending_tree)->key, 
+                    source_remove_client);
         }
 
         /* release write lock on pending_tree */

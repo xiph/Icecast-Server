@@ -177,7 +177,7 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
                 /* If we get an update on the mountpoint, force a
                    yp touch */
                 avl_tree_rlock(global.source_tree);
-                source = source_find_mount(self->mount);
+                source = source_find_mount_raw(self->mount);
                 avl_tree_unlock(global.source_tree);
 
                 if (source) {

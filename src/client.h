@@ -7,12 +7,14 @@
 #define __CLIENT_H__
 
 #include "connection.h"
+#include "refbuf.h"
+#include "httpp/httpp.h"
 
 typedef struct _client_tag
 {
-    /* the clients connection */
+    /* the client's connection */
     connection_t *con;
-    /* the clients http headers */
+    /* the client's http headers */
     http_parser_t *parser;
 
     /* http response code for this client */
@@ -22,6 +24,9 @@ typedef struct _client_tag
     refbuf_queue_t *queue;
     /* position in first buffer */
     unsigned long pos;
+
+    /* Client username, if authenticated */
+    char *username;
 
     /* Format-handler-specific data for this client */
     void *format_data;

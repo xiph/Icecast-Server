@@ -220,7 +220,7 @@ char *util_get_path_from_normalised_uri(char *uri) {
 }
 
 static char hexchars[16] = {
-    '0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'
+    '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
 };
 
 static char safechars[256] = {
@@ -367,6 +367,21 @@ static signed char base64decode[256] = {
      -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
      -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2
 };
+
+char *util_bin_to_hex(unsigned char *data, int len)
+{
+    char *hex = malloc(len*2 + 1);
+    int i;
+
+    for(i = 0; i < len; i++) {
+        hex[i*2] = hexchars[(data[i]&0xf0) >> 4];
+        hex[i*2+1] = hexchars[data[i]&0x0f];
+    }
+
+    hex[len*2] = 0;
+
+    return hex;
+}
 
 /* This isn't efficient, but it doesn't need to be */
 char *util_base64_encode(char *data)

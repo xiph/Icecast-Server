@@ -49,6 +49,8 @@ void client_destroy(client_t *client)
     while ((refbuf = refbuf_queue_remove(&client->queue)))
         refbuf_release(refbuf);
 
+    free(client->username);
+
     free(client);
 }
 

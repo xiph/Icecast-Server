@@ -2,6 +2,7 @@
 #define __CONNECTION_H__
 
 #include <sys/types.h>
+#include <time.h>
 #include "compat.h"
 #include "httpp/httpp.h"
 #include "thread/thread.h"
@@ -15,6 +16,7 @@ typedef struct connection_tag
 
     time_t con_time;
     uint64_t sent_bytes;
+
 
     int sock;
     int serversock;

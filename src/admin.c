@@ -269,7 +269,7 @@ void admin_handle_request(client_t *client, char *uri)
         }
         
         avl_tree_rlock(global.source_tree);
-        source = source_find_mount(mount);
+        source = source_find_mount_raw(mount);
         avl_tree_unlock(global.source_tree);
 
         if(source == NULL) {

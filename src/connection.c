@@ -49,6 +49,7 @@
 #include "format_mp3.h"
 #include "event.h"
 #include "admin.h"
+#include "auth.h"
 
 #define CATMODULE "connection"
 
@@ -571,6 +572,7 @@ int connection_check_admin_pass(http_parser_t *parser)
     config_release_config();
     return ret;
 }
+
 int connection_check_relay_pass(http_parser_t *parser)
 {
     int ret;
@@ -647,6 +649,10 @@ static void _handle_source_request(connection_t *con,
     stats_event_inc(NULL, "source_connections");
                 
     if (!connection_check_source_pass(parser, uri)) {
+        /* We commonly get this if the source client is using the wrong
+         * protocol: attempt to diagnose this and return an error
+         */
+        /* TODO: Do what the above comment says */
         INFO1("Source (%s) attempted to login with invalid or missing password", uri);
         client_send_401(client);
         return;
@@ -657,7 +663,7 @@ static void _handle_source_request(connection_t *con,
     */
 
     avl_tree_rlock(global.source_tree);
-    if (source_find_mount(uri) != NULL) {
+    if (source_find_mount_raw(uri) != NULL) {
         avl_tree_unlock(global.source_tree);
         INFO1("Source tried to log in as %s, but mountpoint is already used", uri);
         client_send_404(client, "Mountpoint in use");
@@ -854,7 +860,29 @@ static void _handle_get_request(connection_t *con,
     source = source_find_mount(uri);
     if (source) {
         DEBUG0("Source found for client");
-                        
+
+        /* The source may not be the requested source - it might have gone
+         * via one or more fallbacks. We only reject it for no-mount if it's
+         * the originally requested source
+         */
+        if(strcmp(uri, source->mount) == 0 && source->no_mount) {
+            client_send_404(client, "This mount is unavailable.");
+            avl_tree_unlock(global.source_tree);
+            return;
+        }
+
+        /* Check for any required authentication first */
+        if(source->authenticator != NULL) {
+            if(auth_check_client(source, client) != AUTH_OK) {
+                INFO1("Client attempted to log in to source (\"%s\")with "
+                        "incorrect or missing password", uri);
+                client_send_401(client);
+                avl_tree_unlock(global.source_tree);
+                return;
+            }
+        }
+
+        /* And then check that there's actually room in the server... */
         global_lock();
         if (global.clients >= client_limit) {
             client_send_504(client, 
@@ -863,6 +891,10 @@ static void _handle_get_request(connection_t *con,
             avl_tree_unlock(global.source_tree);
             return;
         }
+        /* Early-out for per-source max listeners. This gets checked again
+         * by the source itself, later. This route gives a useful message to
+         * the client, also.
+         */
         else if(source->max_listeners != -1 && 
                 source->listeners >= source->max_listeners) 
         {

@@ -170,6 +170,17 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->password);
         xmlFree(mount->dumpfile);
         xmlFree(mount->fallback_mount);
+
+        xmlFree(mount->auth_type);
+        config_options_t *option = mount->auth_options;
+        while(option) {
+            config_options_t *nextopt = option->next;
+            xmlFree(option->name);
+            xmlFree(option->value);
+            free(option);
+            option = nextopt;
+        }
+
         free(mount);
         mount = nextmount;
     }
@@ -482,6 +493,46 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_listeners = atoi(tmp);
             if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "fallback-override") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->fallback_override = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "no-mount") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->no_mount = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "authentication") == 0) {
+            mount->auth_type = xmlGetProp(node, "type");
+            xmlNodePtr option = node->xmlChildrenNode;
+            config_options_t *last = NULL;
+            while(option != NULL) {
+                if(strcmp(option->name, "option") == 0) {
+                    config_options_t *opt = malloc(sizeof(config_options_t));
+                    opt->name = xmlGetProp(option, "name");
+                    if(!opt->name) {
+                        free(opt);
+                        option = option->next;
+                        continue;
+                    }
+                    opt->value = xmlGetProp(option, "value");
+                    if(!opt->value) {
+                        free(opt->name);
+                        free(opt);
+                        option = option->next;
+                        continue;
+                    }
+
+                    if(last)
+                        last->next = opt;
+                    else
+                        mount->auth_options = opt;
+                    last = opt;
+                }
+                option = option->next;
+            }
         }
     } while ((node = node->next));
 }
