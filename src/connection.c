@@ -479,8 +479,6 @@ int connection_complete_source (source_t *source)
 
         global.sources++;
         global_unlock();
-        stats_event_inc(NULL, "sources");
-        stats_event_inc(NULL, "source_total_connections");
 
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
@@ -489,8 +487,6 @@ int connection_complete_source (source_t *source)
          */
         if (source->client == NULL)
             source->client = client_create (source->con, source->parser);
-
-        sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
         while (mountproxy)
         {

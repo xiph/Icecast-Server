@@ -53,7 +53,6 @@ typedef struct source_tag
     long listeners;
     long max_listeners;
     int yp_public;
-    int send_return;
     struct auth_tag *authenticator;
     int fallback_override;
     int no_mount;

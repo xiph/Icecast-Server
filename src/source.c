@@ -398,18 +398,10 @@ void *source_main(void *arg)
     /* grab a read lock, to make sure we get a chance to cleanup */
     thread_rwlock_rlock(source->shutdown_rwlock);
 
-    /* If we connected successfully, we can send the message (if requested)
-     * back
-     */
-    if(source->send_return) {
-        source->client->respcode = 200;
-        bytes = sock_write(source->client->con->sock, 
-                "HTTP/1.0 200 OK\r\n\r\n");
-        if(bytes > 0) source->client->con->sent_bytes = bytes;
-    }
-
     /* start off the statistics */
     source->listeners = 0;
+    stats_event_inc(NULL, "sources");
+    stats_event_inc(NULL, "source_total_connections");
     stats_event(source->mount, "listeners", "0");
     stats_event(source->mount, "type", source->format->format_description);
 #ifdef USE_YP
@@ -520,6 +512,7 @@ void *source_main(void *arg)
         }
     }
 
+    sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
     source->running = 1;
@@ -913,10 +906,25 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 void *source_client_thread (void *arg)
 {
     source_t *source = arg;
+    const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
+    int bytes;
 
-    source->send_return = 1;
-    stats_event_inc(NULL, "source_client_connections");
-    source_main (source);
+    source->client->respcode = 200;
+    bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
+    if (bytes < sizeof (ok_msg)-1)
+    {
+        global_lock();
+        global.sources--;
+        global_unlock();
+        WARN0 ("Error writing 200 OK message to source client");
+    }
+    else
+    {
+        source->client->con->sent_bytes += bytes;
+
+        stats_event_inc(NULL, "source_client_connections");
+        source_main (source);
+    }
     source_free_source (source);
     return NULL;
 }
