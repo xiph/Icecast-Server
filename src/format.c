@@ -150,8 +150,12 @@ void format_send_general_headers(format_plugin_t *format,
                     if (!strcasecmp("ice-bitrate", var->name))
                         bytes += sock_write(client->con->sock, "icy-br:%s\r\n", var->value);
                     else
-                        bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
-                            var->name + 3, var->value);
+                        if (!strcasecmp("ice-public", var->name))
+                            bytes += sock_write(client->con->sock, 
+                                "icy-pub:%s\r\n", var->value);
+                        else
+                            bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
+                                var->name + 3, var->value);
                             
                 }
                 if (!strncasecmp("icy-", var->name, 4))
