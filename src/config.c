@@ -109,8 +109,6 @@ void config_clear(ice_config_t *c)
         xmlFree(c->admin);
 	if (c->source_password && c->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
         xmlFree(c->source_password);
-	if (c->relay_password && c->relay_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
-        xmlFree(c->relay_password);
 	if (c->admin_username)
         xmlFree(c->admin_username);
 	if (c->admin_password)
@@ -260,7 +258,6 @@ static void _set_defaults(ice_config_t *configuration)
 	configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
 	configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
 	configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
-	configuration->relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
 	configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
 	configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
 	configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
@@ -314,10 +311,6 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
 			    if (configuration->source_password && configuration->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(configuration->source_password);
 			    configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
-        } else if (strcmp(node->name, "relay-password") == 0) {
-            /* TODO: This is the backwards-compatibility location */
-			if (configuration->relay_password && configuration->relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(configuration->relay_password);
-			configuration->relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "icelogin") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			configuration->ice_login = atoi(tmp);
@@ -563,13 +556,6 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 			    configuration->source_password = 
                     (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
-        } else if (strcmp(node->name, "relay-password") == 0) {
-			if (configuration->relay_password && 
-                    configuration->relay_password != 
-                    CONFIG_DEFAULT_RELAY_PASSWORD) 
-                xmlFree(configuration->relay_password);
-			configuration->relay_password = 
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "admin-password") == 0) {
             if(configuration->admin_password)
                 xmlFree(configuration->admin_password);

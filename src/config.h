@@ -66,7 +66,6 @@ typedef struct ice_config_tag
     int fileserve;
 
 	char *source_password;
-    char *relay_password;
     char *admin_username;
     char *admin_password;
 

@@ -29,6 +29,7 @@
 /* Global commands */
 #define COMMAND_LIST_MOUNTS       101
 #define COMMAND_RAW_STATS         102
+#define COMMAND_RAW_LISTSTREAM    103
 
 int admin_get_command(char *command)
 {
@@ -44,6 +45,8 @@ int admin_get_command(char *command)
         return COMMAND_RAW_STATS;
     else if(!strcmp(command, "listmounts"))
         return COMMAND_LIST_MOUNTS;
+    else if(!strcmp(command, "streamlist"))
+        return COMMAND_RAW_LISTSTREAM;
     else
         return COMMAND_ERROR;
 }
@@ -53,7 +56,7 @@ static void command_metadata(client_t *client, source_t *source);
 static void command_show_listeners(client_t *client, source_t *source);
 
 static void command_raw_stats(client_t *client);
-static void command_list_mounts(client_t *client);
+static void command_list_mounts(client_t *client, int formatted);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -132,7 +135,10 @@ static void admin_handle_general_request(client_t *client, int command)
             command_raw_stats(client);
             break;
         case COMMAND_LIST_MOUNTS:
-            command_list_mounts(client);
+            command_list_mounts(client, 1);
+            break;
+        case COMMAND_RAW_LISTSTREAM:
+            command_list_mounts(client, 0);
             break;
         default:
             WARN0("General admin request not recognised");
@@ -300,17 +306,28 @@ static void command_raw_stats(client_t *client) {
     return;
 }
 
-static void command_list_mounts(client_t *client) {
+static void command_list_mounts(client_t *client, int formatted) {
     avl_node *node;
     source_t *source;
+    int bytes;
 
     DEBUG0("List mounts request");
 
-    html_head(client);
+    if(formatted) {
+        html_head(client);
 
-    html_write(client, 
-            "<table><tr><td>Mountpoint</td><td>Fallback</td>"
-            "<td>Format</td><td>Listeners</td></tr>");
+        html_write(client, 
+                "<table><tr><td>Mountpoint</td><td>Fallback</td>"
+                "<td>Format</td><td>Listeners</td></tr>");
+    }
+    else {
+        client->respcode = 200;
+        bytes = sock_write(client->con->sock,
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: text/html\r\n"
+                "\r\n");
+        if(bytes > 0) client->con->sent_bytes = bytes;
+    }
 
     avl_tree_rlock(global.source_tree);
 
@@ -318,18 +335,25 @@ static void command_list_mounts(client_t *client) {
     while(node) {
         source = (source_t *)node->key;
 
-        html_write(client, 
-                "<tr><td>%s</td><td>%s</td><td>%s</td><td>%ld</td></tr>",
-                source->mount, (source->fallback_mount != NULL)?
-                source->fallback_mount:"", source->format->format_description,
-                source->listeners);
+        if(formatted) {
+            html_write(client, 
+                    "<tr><td>%s</td><td>%s</td><td>%s</td><td>%ld</td></tr>",
+                    source->mount, (source->fallback_mount != NULL)?
+                    source->fallback_mount:"", 
+                    source->format->format_description, source->listeners);
+        }
+        else {
+            bytes = sock_write(client->con->sock, "%s\r\n", source->mount);
+            if(bytes > 0) client->con->sent_bytes += bytes;
+        }
 
         node = avl_get_next(node);
     }
 
     avl_tree_unlock(global.source_tree);
 
-    html_write(client, "</table></body></html>");
+    if(formatted) 
+        html_write(client, "</table></body></html>");
 
     client_destroy(client);
     return;

@@ -519,17 +519,6 @@ static int _check_pass_ice(http_parser_t *parser, char *correctpass)
         return 1;
 }
 
-int connection_check_relay_pass(http_parser_t *parser)
-{
-    ice_config_t *config = config_get_config();
-    char *pass = config->relay_password;
-    if(!pass)
-        pass = config->source_password;
-    config_release_config();
-
-    return _check_pass_http(parser, "relay", pass);
-}
-
 int connection_check_admin_pass(http_parser_t *parser)
 {
     ice_config_t *config = config_get_config();
@@ -769,35 +758,6 @@ static void _handle_get_request(connection_t *con,
         return;
     }
 
-	if (strcmp(uri, "/admin/streamlist") == 0) {
-		if (!connection_check_relay_pass(parser)) {
-			INFO0("Client attempted to fetch /admin/streamlist with bad password");
-            client_send_401(client);
-		} else {
-			avl_node *node;
-			source_t *s;
-
-            client->respcode = 200;
-            bytes = sock_write(client->con->sock,
-                    "HTTP/1.0 200 OK\r\n\r\n");
-            if(bytes > 0) client->con->sent_bytes = bytes;
-
-			avl_tree_rlock(global.source_tree);
-			node = avl_get_first(global.source_tree);
-			while (node) {
-				s = (source_t *)node->key;
-				bytes = sock_write(client->con->sock, "%s\r\n", s->mount);
-                if(bytes > 0) client->con->sent_bytes += bytes;
-                else break;
-
-				node = avl_get_next(node);
-			}
-			avl_tree_unlock(global.source_tree);
-		    client_destroy(client);
-		}
-        return;
-	}
-				
 	global_lock();
 	if (global.clients >= client_limit) {
         client_send_504(client,
