@@ -22,7 +22,7 @@
  *
  */
 
-/* $Id: avl.c,v 1.1 2001/09/10 02:28:03 jack Exp $ */
+/* $Id: avl.c,v 1.2 2003/03/06 00:59:41 brendan Exp $ */
 
 /*
  * This is a fairly straightfoward translation of a prototype
@@ -32,9 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "thread.h"
 #include "avl.h"
-
 
 avl_node *
 avl_node_new (void *		key,
@@ -103,6 +101,7 @@ avl_tree_free (avl_tree * tree, avl_free_key_fun_type free_key_fun)
   if (tree->root) {
     free (tree->root);
   }
+  thread_rwlock_destroy(&tree->rwlock);
   free (tree);
 }
 
@@ -442,6 +441,7 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
   
   /* return the key and node to storage */
   free_key_fun (x->key);
+  thread_rwlock_destroy (&x->rwlock);
   free (x);
 
   while (shorter && p->parent) {
