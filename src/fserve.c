@@ -414,8 +414,11 @@ int fserve_client_create(client_t *httpclient, char *path)
 
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
-    connection_t *cona = (connection_t *)a;
-    connection_t *conb = (connection_t *)b;
+    fserve_t *clienta = (fserve_t *)a;
+    fserve_t *clientb = (fserve_t *)b;
+
+    connection_t *cona = clienta->client->con;
+    connection_t *conb = clientb->client->con;
 
     if (cona->id < conb->id) return -1;
     if (cona->id > conb->id) return 1;
