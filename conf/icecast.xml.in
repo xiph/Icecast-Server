@@ -1,7 +1,4 @@
 <icecast>
-    <location>Not Currently Used</location>
-    <admin>Not Currently Used</admin>
-
     <limits>
         <clients>100</clients>
         <sources>2</sources>
@@ -25,6 +22,10 @@
 
     <!-- Uncomment this if you want directory listings -->
     <!--
+    <directory>
+        <yp-url-timeout>15</yp-url-timeout>
+        <yp-url>http://dir.xiph.org/cgi-bin/yp-cgi</yp-url>
+    </directory>
     <directory>
         <yp-url-timeout>15</yp-url-timeout>
         <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
