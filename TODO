@@ -1,6 +1,9 @@
 BUGS
 ----
-- stats get off?
+- stats get off?  this needs testing more testing.
+
+- seem to be some segfaults in httpp still.  in a few of the cores i've
+	been sent, the avl_tree is null when calling into the avl module.
 
 
 
@@ -15,4 +18,6 @@ FEATURES
 - adding new stats type, event.  events don't modify the global stats tree,
 	ie, source /1234.ogg disconnected
 
-- stats.xml, a users requests this, and gets an xml dump of the current stats.
+- support W3C Extended Logging (http://www.w3.org/TR/WD-logfile.html)
+	toggle between this and Apache Combined Log Format in the config file.
+	default to apache style.
