@@ -36,6 +36,8 @@ echo '        [[--prefix[=DIR]]]' >>$LIBCONFIG_FILE
 echo '        [[--exec-prefix[=DIR]]]' >>$LIBCONFIG_FILE
 echo '        [[--package]]' >>$LIBCONFIG_FILE
 echo '        [[--version]]' >>$LIBCONFIG_FILE
+echo '        [[--cppflags]]' >>$LIBCONFIG_FILE
+echo '        [[--cflags-only]]' >>$LIBCONFIG_FILE
 echo '        [[--cflags]]' >>$LIBCONFIG_FILE
 echo '        [[--libs]]' >>$LIBCONFIG_FILE
 echo '        [[--help]]' >>$LIBCONFIG_FILE
@@ -53,7 +55,7 @@ echo 'h=""' >>$LIBCONFIG_FILE
 echo 'for i' >>$LIBCONFIG_FILE
 echo 'do' >>$LIBCONFIG_FILE
 echo '  case $i in' >>$LIBCONFIG_FILE
-options="prefix exec-prefix eprefix package version cflags libs bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir infodir mandir target host build pkgdatadir pkglibdir pkgincludedir template-version help"
+options="prefix exec-prefix eprefix package version cppflags cflags-only cflags libs bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir infodir mandir target host build pkgdatadir pkglibdir pkgincludedir template-version help"
 echo '    --prefix=*) prefix=`echo $i | sed -e "s/--prefix=//"` ;;' >>$LIBCONFIG_FILE
 echo '    --exec-prefix=*) exec_prefix=`echo $i | sed -e "s/--exec-prefix=//"` ;;' >>$LIBCONFIG_FILE
 echo '    --eprefix=*) exec_prefix=`echo $i | sed -e "s/--eprefix=//"` ;;' >>$LIBCONFIG_FILE
@@ -61,6 +63,7 @@ for option in $options ; do
   case $option in
     exec-prefix)  echo "    --$option) echo_exec_prefix=\"yes\" ;;" >>$LIBCONFIG_FILE ;;
     template-version)  echo "    --$option) echo_template_version=\"yes\" ;;" >>$LIBCONFIG_FILE ;;
+    cflags-only)  echo "    --$option) echo_cflags_only=\"yes\" ;;" >>$LIBCONFIG_FILE ;;
     *)  echo "    --$option) echo_$option=\"yes\" ;;" >>$LIBCONFIG_FILE ;;
   esac
 done
@@ -92,18 +95,21 @@ for option in $options extra; do
   case $option in
     exec-prefix)  echo "if test x\$echo_exec_prefix = xyes ; then" >>$LIBCONFIG_FILE ;;
     template-version)  echo "if test x\$echo_template_version = xyes ; then" >>$LIBCONFIG_FILE ;;
+    cflags-only)  echo "if test x\$echo_cflags_only = xyes ; then" >>$LIBCONFIG_FILE ;;
     *)  echo "if test x\$echo_$option = xyes ; then" >>$LIBCONFIG_FILE ;;
   esac
   case $option in
     exec-prefix | eprefix)  echo '  o="$o $exec_prefix"' >>$LIBCONFIG_FILE ;;
     template-version)  echo '  o="$o $template_version"' >>$LIBCONFIG_FILE ;;
+    cflags-only)  echo '  o="$o $cflags"' >>$LIBCONFIG_FILE ;;
+    cppflags)  echo '  o="$o $cppflags"' >>$LIBCONFIG_FILE ;;
     cflags)
 #      echo '  i=`eval echo "$includedir"`' >>$LIBCONFIG_FILE ;
 #      echo '  i=`eval echo "$i"`' >>$LIBCONFIG_FILE ;
 #      echo '  if test "_$i" != "_/usr/include" ; then' >>$LIBCONFIG_FILE ;
 #      echo '    o="$o -I$includedir"' >>$LIBCONFIG_FILE ;
 #      echo '  fi' >>$LIBCONFIG_FILE ;
-      echo '  o="$o $cflags"' >>$LIBCONFIG_FILE ;;
+      echo '  o="$o $cppflags $cflags"' >>$LIBCONFIG_FILE ;;
     libs)  echo '  o="$o -L$libdir $libs"' >>$LIBCONFIG_FILE ;;
     help)  echo '  h="1"' >>$LIBCONFIG_FILE ;;
     pkgdatadir)  echo "  o=\"$o \${datadir}/\${package}\"" >>$LIBCONFIG_FILE ;;
@@ -135,7 +141,9 @@ echo '  --prefix           \$prefix        $prefix' >>$LIBCONFIG_FILE
 echo '  --exec_prefix  or... ' >>$LIBCONFIG_FILE
 echo '  --eprefix          \$exec_prefix   $exec_prefix' >>$LIBCONFIG_FILE
 echo '  --version          \$version       $version' >>$LIBCONFIG_FILE
-echo '  --cflags           -I\$includedir  unless it is /usr/include' >>$LIBCONFIG_FILE
+echo '  --cppflags         C preprocessor flags' >>$LIBCONFIG_FILE
+echo '  --cflags-only      C compiler flags' >>$LIBCONFIG_FILE
+echo '  --cflags           C preprocessor and compiler flags' >>$LIBCONFIG_FILE
 echo '  --libs             -L\$libdir \$LIBS $libs' >>$LIBCONFIG_FILE
 echo '  --package          \$package       $package' >>$LIBCONFIG_FILE
 echo '  --bindir           \$bindir        $bindir' >>$LIBCONFIG_FILE
@@ -177,6 +185,15 @@ dnl we're going to need uppercase, lowercase and user-friendly versions of the
 dnl string `MODULE'
 m4_pushdef([MODULE_UP], m4_translit([$1], [a-z], [A-Z]))dnl
 m4_pushdef([MODULE_DOWN], m4_translit([$1], [A-Z], [a-z]))dnl
+if test -z "$MODULE_DOWN[]_cppflags" ; then
+  if test -n "$MODULE_UP[]_CPPFLAGS" ; then
+      MODULE_DOWN[]_cppflags="$MODULE_UP[]_CPPFLAGS"
+  else
+dnl    AC_MSG_WARN([variable `MODULE_DOWN[]_cppflags' undefined])
+    MODULE_DOWN[]_cppflags=''
+  fi
+fi
+AC_SUBST(MODULE_DOWN[]_cppflags)
 if test -z "$MODULE_DOWN[]_cflags" ; then
   if test -n "$MODULE_UP[]_CFLAGS" ; then
       MODULE_DOWN[]_cflags="$MODULE_UP[]_CFLAGS"
@@ -204,6 +221,7 @@ if test -z "$MODULE_UP[]_VERSION" ; then
 fi
 AC_SUBST(MODULE_UP[]_VERSION)dnl
 echo 'if test x$echo_module_$1 = xyes ; then' >>$LIBCONFIG_FILE
+AC_CONFIG_LIBCONFIG_IN_MODULES_VARS([cppflags], [MODULE_DOWN[]_cppflags], [cppflags])
 AC_CONFIG_LIBCONFIG_IN_MODULES_VARS([cflags], [MODULE_DOWN[]_cflags], [cflags])
 AC_CONFIG_LIBCONFIG_IN_MODULES_VARS([libs], [MODULE_DOWN[]_libs], [libs])
 AC_CONFIG_LIBCONFIG_IN_MODULES_VARS([version], [MODULE_UP[]_VERSION], [modversion])
