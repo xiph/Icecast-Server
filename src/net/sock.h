@@ -26,9 +26,25 @@
 #include <winsock2.h>
 #endif
 
+#ifdef HAVE_SYS_UIO_H
+#include <sys/uio.h>
+#else
+#ifndef _SYS_UIO_H
+struct iovec
+{
+    void   *iov_base;
+    size_t iov_len;
+};
+#endif
+#endif
+
 typedef int sock_t;
 
+/* The following values are based on unix avoiding errno value clashes */
+#define SOCK_SUCCESS 0
 #define SOCK_ERROR -1
+#define SOCK_TIMEOUT -2
+
 #define SOCK_BLOCK 0
 #define SOCK_NONBLOCK 1
 
@@ -41,6 +57,7 @@ void sock_shutdown(void);
 char *sock_get_localip(char *buff, int len);
 int sock_error(void);
 int sock_recoverable(int error);
+int sock_stalled (int error);
 int sock_valid_socket(sock_t sock);
 int sock_set_blocking(sock_t sock, const int block);
 int sock_set_nolinger(sock_t sock);
@@ -49,11 +66,15 @@ int sock_close(sock_t  sock);
 
 /* Connection related socket functions */
 sock_t sock_connect_wto(const char *hostname, const int port, const int timeout);
+int sock_connect_non_blocking (const char *host, const unsigned port);
+int sock_connected (int sock, unsigned timeout);
 
 /* Socket write functions */
-int sock_write_bytes(sock_t sock, const char *buff, const int len);
+int sock_write_bytes(sock_t sock, const void *buff, const size_t len);
 int sock_write(sock_t sock, const char *fmt, ...);
 int sock_write_string(sock_t sock, const char *buff);
+ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count);
+
 
 /* Socket read functions */
 int sock_read_bytes(sock_t sock, char *buff, const int len);
