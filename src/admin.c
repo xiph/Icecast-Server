@@ -270,19 +270,20 @@ void admin_handle_request(client_t *client, char *uri)
         
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(mount);
-        avl_tree_unlock(global.source_tree);
 
-        if(source == NULL) {
+        if (source == NULL)
+        {
             WARN2("Admin command %s on non-existent source %s", 
                     command_string, mount);
             client_send_400(client, "Source does not exist");
-            return;
         }
-
-        INFO2("Received admin command %s on mount \"%s\"", 
-                command_string, mount);
-
-        admin_handle_mount_request(client, source, command);
+        else
+        {
+            INFO2("Received admin command %s on mount \"%s\"", 
+                    command_string, mount);
+            admin_handle_mount_request(client, source, command);
+        }
+        avl_tree_unlock(global.source_tree);
     }
     else {
 
@@ -448,10 +449,14 @@ static void command_move_clients(client_t *client, source_t *source,
         client_destroy(client);
         return;
     }
-    
-    avl_tree_rlock(global.source_tree);
+
+    if (strcmp (dest->mount, source->mount) == 0) 
+    {
+        client_send_400 (client, "supplied mountpoints are identical");
+        return;
+    }
+
     dest = source_find_mount(dest_source);
-    avl_tree_unlock(global.source_tree);
 
     if(dest == NULL) {
         client_send_400(client, "No such source");
