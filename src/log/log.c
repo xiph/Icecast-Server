@@ -242,7 +242,11 @@ void log_close(int log_id)
 
     _lock_logger();
 
-    if (loglist[log_id].in_use == 0) return;
+    if (loglist[log_id].in_use == 0)
+    {
+        _unlock_logger();
+        return;
+    }
 
     loglist[log_id].in_use = 0;
     loglist[log_id].level = 2;
