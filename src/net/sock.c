@@ -293,7 +293,7 @@ int sock_write_bytes(sock_t sock, const void *buff, const size_t len)
 /* sock_write_string
 **
 ** writes a string to a socket
-** this function always blocks even if the socket is nonblocking
+** This function must only be called with a blocking socket.
 */
 int sock_write_string(sock_t sock, const char *buff)
 {
@@ -303,7 +303,7 @@ int sock_write_string(sock_t sock, const char *buff)
 /* sock_write
 **
 ** write a formatted string to the socket
-** this function will always block, even if the socket is nonblocking
+** this function must only be called with a blocking socket.
 ** will truncate the string if it's greater than 1024 chars.
 */
 int sock_write(sock_t sock, const char *fmt, ...)
