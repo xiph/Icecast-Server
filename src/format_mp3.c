@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; -*- */
 /* Icecast
  *
  * This program is distributed under the GNU General Public License, version 2.
@@ -10,7 +11,6 @@
  *                      and others (see AUTHORS for details).
  */
 
-/* -*- c-basic-offset: 4; -*- */
 /* format_mp3.c
 **
 ** format plugin for mp3
@@ -125,6 +125,10 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
 
         fullmetadata_size = strlen (source_state->metadata) + sizeof (meta_fmt);
 
+	/* Noted without comment: When the metadata string is a multiple of
+	 * 16 bytes, the "reference" shoutcast server increases the length
+	 * byte by one and appends 16 nulls, rather than omitting the
+	 * pointless trailing null. */
         if (fullmetadata_size > 4079)
         {
             fullmetadata_size = 4079;
