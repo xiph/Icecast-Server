@@ -157,12 +157,12 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
-    thread_mutex_unlock(&xsltlock);
 
     if (cur == NULL)
     {
         const char error[] = "Could not parse XSLT file";
 
+        thread_mutex_unlock(&xsltlock);
         client_send_bytes (client, error, sizeof (error)-1);
         return;
     }
@@ -170,6 +170,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     res = xsltApplyStylesheet(cur, doc, NULL);
 
     xsltSaveResultToString (&string, &len, res, cur);
+    thread_mutex_unlock(&xsltlock);
     if (string)
     {
         client_send_bytes (client, string, len);

@@ -200,7 +200,7 @@ static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
     format_ogg_free_headers (ogg_info);
     source_vorbis->get_buffer_page = NULL;
-    source_vorbis->process_packet = process_vorbis_headers;
+    source_vorbis->process_packet = NULL;
     if (source_vorbis->initial_audio_packet == 0)
         source_vorbis->prev_window = 0;
 
