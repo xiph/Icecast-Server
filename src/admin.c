@@ -699,28 +699,43 @@ static void command_stats(client_t *client, int response) {
     return;
 }
 
-static void command_list_mounts(client_t *client, int response) {
-    xmlDocPtr doc;
+static void command_list_mounts(client_t *client, int response)
+{
     avl_node *node;
     source_t *source;
 
     DEBUG0("List mounts request");
 
-
+    avl_tree_rlock (global.source_tree);
     if (response == PLAINTEXT)
     {
+        char buffer [4096], *buf = buffer;
+        unsigned remaining = sizeof (buffer);
+        int ret = sprintf (buffer,
+                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+
         node = avl_get_first(global.source_tree);
-		html_write(client, 
-            "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-        while(node) {
+        while (node && ret > 0 && ret < remaining)
+        {
+            remaining -= ret;
+            buf += ret;
             source = (source_t *)node->key;
-            html_write(client, "%s\n", source->mount);
+            ret = snprintf (buf, remaining, "%s\n", source->mount);
             node = avl_get_next(node);
         }
+        avl_tree_unlock (global.source_tree);
+        /* handle last line */
+        if (ret > 0 && ret < remaining)
+        {
+            remaining -= ret;
+            buf += ret;
+        }
+        sock_write_bytes (client->con->sock, buffer, sizeof (buffer)-remaining);
     }
-    else {
-
-        doc = admin_build_sourcelist(NULL);
+    else
+    {
+        xmlDocPtr doc = admin_build_sourcelist(NULL);
+        avl_tree_unlock (global.source_tree);
 
         admin_send_response(doc, client, response, 
             LISTMOUNTS_TRANSFORMED_REQUEST);
