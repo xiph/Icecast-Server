@@ -483,6 +483,7 @@ static void source_init (source_t *source)
     ice_config_t *config = config_get_config();
     char *listenurl, *str;
     int listen_url_size;
+    char *s;
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
@@ -567,8 +568,22 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
-    if (source->yp_public)
+    if (source->yp_public) {
         yp_add (source);
+    }
+    else {
+    /* If we are a private server, see if ic*-name and description
+       is provided, and if so, add them to the stats */
+        if ((s = httpp_getvar(source->parser, "ice-name"))) {
+            stats_event (source->mount, "server_name", s);
+        }
+        if ((s = httpp_getvar(source->parser, "icy-name"))) {
+            stats_event (source->mount, "server_name", s);
+        }
+        if ((s = httpp_getvar(source->parser, "ice-description"))) {
+            stats_event (source->mount, "server_description", s);
+        }
+    }
 }
 
 
@@ -821,7 +836,7 @@ static void _parse_audio_info (source_t *source, const char *s)
             if (esc)
             {
                 util_dict_set (source->audio_info, name, esc);
-                stats_event (source->mount, name, value);
+                stats_event (source->mount, name, esc);
                 free (esc);
             }
         }
