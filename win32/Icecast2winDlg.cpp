@@ -34,6 +34,7 @@ extern "C" {
 static char THIS_FILE[] = __FILE__;
 #endif
 
+#define ICECAST_VERSION "2.0alpha1"
 CEdit	*g_accessControl;
 CEdit	*g_errorControl;
 CIcecast2winDlg	*g_mainDialog;
@@ -333,6 +334,10 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	EnableSaveRestore("icecast2win", "positions");
 
 	m_pTray = NULL;
+
+	char	version[255] = "";
+	sprintf(version, "Icecast2 Version %s", ICECAST_VERSION);
+	SetWindowText(version);
 
 	if (m_Autostart) {
 		OnStart();
@@ -680,6 +685,7 @@ void CIcecast2winDlg::OnStart()
 	CIcecast2winApp	*myApp = (CIcecast2winApp *)AfxGetApp();
 
 	// TODO: Add your control notification handler code here
+
 	if (global.running == ICE_RUNNING) {
 		StopServer();
 	}
