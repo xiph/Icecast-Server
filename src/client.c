@@ -52,6 +52,7 @@ void client_send_404(client_t *client, char *message) {
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
     if(bytes > 0) client->con->sent_bytes = bytes;
+    client->respcode = 404;
     client_destroy(client);
 }
 
@@ -62,5 +63,6 @@ void client_send_401(client_t *client) {
             "\r\n"
             "You need to authenticate\r\n");
     if(bytes > 0) client->con->sent_bytes = bytes;
+    client->respcode = 401;
     client_destroy(client);
 }

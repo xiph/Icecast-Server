@@ -319,6 +319,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 		WARN0("No content-type header, cannot handle source");
         goto fail;
 	}
+    client->respcode = 200;
     bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\n\r\n");
     if(bytes > 0) client->con->sent_bytes = bytes;
@@ -506,6 +507,7 @@ static void _handle_get_request(connection_t *con,
     	/* If the file exists, then transform it, otherwise, write a 404 */
     	if (stat(fullpath, &statbuf) == 0) {
             DEBUG0("Stats request, sending XSL transformed stats");
+            client->respcode = 200;
 		    bytes = sock_write(client->con->sock, 
                     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
             if(bytes > 0) client->con->sent_bytes = bytes;
