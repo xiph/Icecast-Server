@@ -103,8 +103,8 @@ static void _shutdown_subsystems(void)
     fserve_shutdown();
     xslt_shutdown();
     refbuf_shutdown();
-    stats_shutdown();
     slave_shutdown();
+    stats_shutdown();
 
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
@@ -439,8 +439,6 @@ int main(int argc, char **argv)
             fclose (f);
         }
     }
-    /* Do this after logging init */
-    slave_initialize();
 
     INFO0("icecast server started");
 
@@ -453,6 +451,9 @@ int main(int argc, char **argv)
     /* Startup yp thread */
     yp_initialize();
 #endif
+
+    /* Do this after logging init */
+    slave_initialize();
 
     _server_proc();
 
