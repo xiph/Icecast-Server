@@ -295,6 +295,8 @@ static void *start_relay_stream (void *arg)
 
         if (relay->on_demand == 0)
         {
+            /* only keep refreshing YP entries for inactive on-demand relays */
+            yp_remove (relay->localmount);
             source_recheck_mounts();
         }
         /* initiate an immediate relay cleanup run */

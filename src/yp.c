@@ -844,16 +844,26 @@ void yp_add (source_t *source)
     while (server)
     {
         ypdata_t *yp;
-        /* add new ypdata to each servers pending yp */
-        if ((yp = create_yp_entry (source)) != NULL)
+
+        /* check if YP entry is known about, as source_t is unique this
+         * should only apply to the restarting of on-demand relays */
+        yp = find_yp_mount (server->mounts, source->mount);
+        if (yp == NULL)
         {
-            DEBUG2 ("Adding %s to %s", source->mount, server->url);
-            yp->server = server;
-            yp->touch_interval = server->touch_interval;
-            yp->next = server->pending_mounts;
-            server->pending_mounts = yp;
-            yp_update = 1;
+            /* add new ypdata to each servers pending yp */
+            yp = create_yp_entry (source);
+            if (yp)
+            {
+                DEBUG2 ("Adding %s to %s", source->mount, server->url);
+                yp->server = server;
+                yp->touch_interval = server->touch_interval;
+                yp->next = server->pending_mounts;
+                server->pending_mounts = yp;
+                yp_update = 1;
+            }
         }
+        else
+            DEBUG1 ("YP entry %s already exists", source->mount);
         server = server->next;
     }
     thread_mutex_unlock (&yp_pending_lock);

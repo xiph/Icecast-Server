@@ -285,6 +285,9 @@ void source_free_source (source_t *source)
     free(source->fallback_mount);
     source->fallback_mount = NULL;
 
+    /* make sure all YP entries have gone */
+    yp_remove (source->mount);
+
     /* There should be no listeners on this mount */
     if (source->active_clients)
         WARN1("active listeners on mountpoint %s", source->mount);
@@ -1045,8 +1048,6 @@ static void source_shutdown (source_t *source)
 {
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
-
-    yp_remove (source->mount);
 
     if (source->on_disconnect)
         source_run_script (source->on_disconnect, source->mount);
