@@ -40,6 +40,7 @@ typedef struct _stats_event_tag
     char *name;
     char *value;
     int  hidden;
+    int  action;
 
     struct _stats_event_tag *next;
 } stats_event_t;
@@ -82,9 +83,10 @@ stats_t *stats_get_stats();
 
 void stats_event(const char *source, const char *name, const char *value);
 void stats_event_args(const char *source, char *name, char *format, ...);
-void stats_event_inc(char *source, char *name);
-void stats_event_add(char *source, char *name, unsigned long value);
-void stats_event_dec(char *source, char *name);
+void stats_event_inc(const char *source, const char *name);
+void stats_event_add(const char *source, const char *name, unsigned long value);
+void stats_event_dec(const char *source, const char *name);
+void stats_event_hidden (const char *source, const char *name, int hidden);
 
 void *stats_connection(void *arg);
 void *stats_callback(void *arg);

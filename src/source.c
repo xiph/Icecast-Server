@@ -282,6 +282,7 @@ void source_free_source (source_t *source)
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
 
+    stats_event (source->mount, NULL, NULL);
     free(source->fallback_mount);
     source->fallback_mount = NULL;
 
@@ -1043,8 +1044,6 @@ void source_main(source_t *source)
 
 static void source_shutdown (source_t *source)
 {
-    char *str;
-
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
@@ -1077,27 +1076,12 @@ static void source_shutdown (source_t *source)
     /* delete this sources stats */
     stats_event_dec (NULL, "sources");
 
-    str = httpp_getvar(source->parser, "ice-audio-info");
-    if (str)
-    {
-        _parse_audio_info (source, str);
-        stats_event (source->mount, "audio_info", NULL);
-    }
-
     /* we don't remove the source from the tree here, it may be a relay and
        therefore reserved */
     source_clear_source (source);
 
-    /* remove main source stats */
-    stats_event (source->mount, "public", NULL);
-    stats_event (source->mount, "server_description", NULL);
-    stats_event (source->mount, "server_name", NULL);
-    stats_event (source->mount, "genre", NULL);
-    stats_event (source->mount, "type", NULL);
-    stats_event (source->mount, "artist", NULL);
-    stats_event (source->mount, "title", NULL);
-    stats_event (source->mount, "ice-bitrate", NULL);
-    stats_event (source->mount, "max_listeners", NULL);
+    /* remove source stats */
+    stats_event (source->mount, NULL, NULL);
 
     thread_mutex_unlock (&source->lock);
 
@@ -1174,8 +1158,6 @@ static void _parse_audio_info (source_t *source, const char *s)
                     util_dict_set (source->audio_info, name, esc);
                     stats_event (source->mount, name, value);
                 }
-                else
-                    stats_event (source->mount, name, NULL);
                 free (esc);
             }
         }
@@ -1275,11 +1257,11 @@ void source_update_settings (ice_config_t *config, source_t *source)
         DEBUG0 ("on-demand set");
     if (source->hidden)
     {
-        stats_event (source->mount, NULL, "hidden");
+        stats_event_hidden (source->mount, NULL, 1);
         DEBUG0 ("hidden from xsl");
     }
     else
-        stats_event (source->mount, NULL, NULL);
+        stats_event_hidden (source->mount, NULL, 0);
 
     if (source->max_listeners == -1)
         stats_event (source->mount, "max_listeners", "unlimited");
@@ -1289,6 +1271,11 @@ void source_update_settings (ice_config_t *config, source_t *source)
         snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
+    if (source->on_demand)
+        stats_event (source->mount, "on-demand", "1");
+    else
+        stats_event (source->mount, "on-demand", NULL);
+
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
@@ -1341,7 +1328,6 @@ void *source_client_thread (void *arg)
         stats_event_inc(NULL, "source_client_connections");
         stats_event (source->mount, "listeners", "0");
         source_main (source);
-        stats_event (source->mount, "listeners", NULL);
         source_recheck_mounts();
     }
     source_free_source (source);
@@ -1396,11 +1382,10 @@ void source_recheck_mounts (void)
     while (mount)
     {
         int update_stats = 0;
-        const char *hidden = NULL;
+        int hidden;
         source_t *source = source_find_mount (mount->mountname);
 
-        if (mount->hidden)
-           hidden = "hidden";
+        hidden = mount->hidden;
         if (source)
         {
             /* something is active, maybe a fallback */
@@ -1415,11 +1400,21 @@ void source_recheck_mounts (void)
                 update_stats = 1;
         }
         else
-            stats_event (mount->mountname, "listeners", NULL);
+            stats_event (mount->mountname, NULL, NULL);
         if (update_stats)
         {
-            stats_event (mount->mountname, NULL, hidden);
-            stats_event (mount->mountname, "listeners", "0");
+            source = source_find_mount_raw (mount->mountname);
+            if (source)
+                source_update_settings (config, source);
+            else
+            {
+                stats_event_hidden (mount->mountname, NULL, hidden);
+                stats_event (mount->mountname, "listeners", "0");
+                if (mount->max_listeners < 0)
+                    stats_event (mount->mountname, "max_listeners", "unlimited");
+                else
+                    stats_event_args (mount->mountname, "max_listeners", "%d", mount->max_listeners);
+            }
         }
 
         mount = mount->next;

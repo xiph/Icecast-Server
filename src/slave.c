@@ -294,7 +294,6 @@ static void *start_relay_stream (void *arg)
 
         if (relay->on_demand == 0)
         {
-            stats_event (relay->localmount, "listeners", NULL);
             source_recheck_mounts();
         }
         /* initiate an immediate relay cleanup run */
@@ -338,16 +337,15 @@ static void check_relay_stream (relay_server *relay)
         if (relay->source)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
+            relay->source->on_demand = relay->on_demand;
             if (relay->on_demand)
             {
                 ice_config_t *config = config_get_config ();
                 source_update_settings (config, relay->source);
                 config_release_config ();
-                stats_event (relay->localmount, NULL, NULL);
                 stats_event (relay->localmount, "listeners", "0");
                 DEBUG0 ("setting on_demand");
             }
-            relay->source->on_demand = relay->on_demand;
             /* on-demand relays can be used as fallback mounts so allow
              * for dependant mountpoints to show up on xsl pages*/
             source_recheck_mounts ();
@@ -388,11 +386,19 @@ static void check_relay_stream (relay_server *relay)
     /* the relay thread may of close down */
     if (relay->cleanup && relay->thread)
     {
+        ice_config_t *config;
         DEBUG1 ("waiting for relay thread for \"%s\"", relay->localmount);
         thread_join (relay->thread);
         relay->thread = NULL;
         relay->cleanup = 0;
         relay->running = 0;
+        relay->source->on_demand = relay->on_demand;
+
+        config = config_get_config ();
+        source_update_settings (config, relay->source);
+        config_release_config ();
+        stats_event (relay->localmount, "listeners", "0");
+        source_recheck_mounts ();
     }
 }
 
