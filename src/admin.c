@@ -339,15 +339,22 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
-            if (!source->shoutcast_compat) {
-                if (source->running == 0)
-                {
-                    INFO2("Received admin command %s on unavailable mount \"%s\"",
-                            command_string, mount);
-                    avl_tree_unlock (global.source_tree);
-                    client_send_400 (client, "Source is not available");
-                    return;
-                }
+            if (source->running == 0)
+            {
+                avl_tree_unlock (global.source_tree);
+                INFO2("Received admin command %s on unavailable mount \"%s\"",
+                        command_string, mount);
+                client_send_400 (client, "Source is not available");
+                return;
+            }
+            if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
+                    source->shoutcast_compat == 0)
+            {
+                avl_tree_unlock (global.source_tree);
+                ERROR0 ("illegal change of metadata on non-shoutcast "
+                        "compatible stream");
+                client_send_400 (client, "illegal metadata call");
+                return;
             }
             INFO2("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
