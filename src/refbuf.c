@@ -63,10 +63,12 @@ void refbuf_queue_add(refbuf_queue_t **queue, refbuf_t *refbuf)
 
 	if (*queue == NULL) {
 		*queue = item;
+        (*queue)->total_length = item->len;
 	} else {
 		node = *queue;
 		while (node->next) node = node->next;
 		node->next = item;
+        (*queue)->total_length += item->len;
 	}
 }
 
