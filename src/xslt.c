@@ -169,7 +169,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     res = xsltApplyStylesheet(cur, doc, NULL);
 
-    xmlDocDumpFormatMemory (res, &string, &len, 1);
+    xsltSaveResultToString (&string, &len, res, cur);
     if (string)
     {
         client_send_bytes (client, string, len);
