@@ -61,7 +61,7 @@
 #endif
 
 static fserve_t *active_list = NULL;
-static volatile fserve_t *pending_list = NULL;
+volatile static fserve_t *pending_list = NULL;
 static mutex_t pending_lock;
 static avl_tree *mimetypes = NULL;
 

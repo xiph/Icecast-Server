@@ -1075,13 +1075,11 @@ static void source_shutdown (source_t *source)
 
     /* delete this sources stats */
     stats_event_dec (NULL, "sources");
+    stats_event(source->mount, NULL, NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
        therefore reserved */
     source_clear_source (source);
-
-    /* remove source stats */
-    stats_event (source->mount, NULL, NULL);
 
     thread_mutex_unlock (&source->lock);
 
@@ -1146,10 +1144,10 @@ static void _parse_audio_info (source_t *source, const char *s)
         }
         if (len)
         {
-            char name[200], value[200];
+            char name[100], value[200];
             char *esc;
 
-            sscanf (start, "%199[^=]=%199[^;\r\n]", name, value);
+            sscanf (start, "%99[^=]=%199[^;\r\n]", name, value);
             esc = util_url_unescape (value);
             if (esc)
             {

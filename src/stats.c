@@ -58,17 +58,17 @@ typedef struct _event_listener_tag
     struct _event_listener_tag *next;
 } event_listener_t;
 
-static volatile int _stats_running = 0;
+volatile static int _stats_running = 0;
 static thread_type *_stats_thread_id;
-static volatile int _stats_threads = 0;
+volatile static int _stats_threads = 0;
 
 static stats_t _stats;
 static mutex_t _stats_mutex;
 
-static volatile stats_event_t *_global_event_queue;
+volatile static stats_event_t *_global_event_queue;
 mutex_t _global_event_mutex;
 
-static volatile event_listener_t *_event_listeners;
+volatile static event_listener_t *_event_listeners;
 
 
 static void *_stats_thread(void *arg);
@@ -867,7 +867,8 @@ void stats_get_xml(xmlDocPtr *doc)
 
 
     event = _get_event_from_queue(&queue);
-    while (event) {
+    while (event)
+    {
         if (event->hidden == 0)
         {
             xmlChar *name, *value;

@@ -128,6 +128,7 @@ void slave_initialize(void)
 
     thread_rwlock_create (&slaves_lock);
     slave_running = 1;
+    max_interval = 0;
     _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
 }
 
