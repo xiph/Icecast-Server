@@ -586,7 +586,10 @@ static refbuf_t *vorbis_get_buffer (source_t *source)
             if (source_vorbis->get_buffer_page)
                 refbuf = source_vorbis->get_buffer_page (source_vorbis);
             if (refbuf)
+            {
+               refbuf->sync_point = 1;
                return refbuf;
+            }
             
             /* printf ("check for processed packets\n"); */
             if (source_vorbis->process_packet && source_vorbis->process_packet (source) > 0)
