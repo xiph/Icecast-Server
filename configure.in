@@ -164,10 +164,14 @@ fi
 
 AM_PATH_OGG(, AC_MSG_ERROR(must have Ogg installed!(Perhaps you need --with-ogg-prefix=/usr/local)))
 AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!(Perhaps you need --with-vorbis-prefix=/usr/local)))
-AM_PATH_CURL(
-  [ICECAST_OBJECTS="$ICECAST_OBJECTS geturl.o yp.o"],
-  [AC_MSG_NOTICE([libcurl not found, YP disabled])])
-ACX_PTHREAD(, AC_MSG_ERROR(POSIX threads missing))
+AM_PATH_CURL([
+  AC_CHECK_DECL([CURLOPT_NOSIGNAL],
+    [ICECAST_OBJECTS="$ICECAST_OBJECTS geturl.o yp.o"],
+    [AC_MSG_NOTICE([Your libcurl is too old (7.10 or above required), YP disabled])],
+    [#include <curl/curl.h>])], [
+  AC_MSG_NOTICE([libcurl not found, YP disabled])
+  ])
+ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
 
 dnl Make substitutions
 
