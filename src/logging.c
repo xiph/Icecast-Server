@@ -38,6 +38,60 @@
 int errorlog = 0;
 int accesslog = 0;
 
+#ifdef _WIN32
+/* Since strftime's %z option on win32 is different, we need
+   to go through a few loops to get the same info as %z */
+int get_clf_time (char *buffer, unsigned len, struct tm *t)
+{
+    char    sign;
+    char    *timezone_string;
+    struct tm gmt;
+    time_t time1 = time(NULL);
+    int time_days, time_hours, time_tz;
+    int tempnum1, tempnum2;
+    struct tm *thetime;
+    time_t now;
+
+    gmtime_r(&time1, &gmt);
+
+    time_days = t->tm_yday - gmt.tm_yday;
+
+    if (time_days < -1) {
+        tempnum1 = 24;
+    }
+    else {
+        tempnum1 = 1;
+    }
+    if (tempnum1 < time_days) {
+       tempnum2 = -24;
+    }
+    else {
+        tempnum2 = time_days*24;
+    }
+    
+    time_hours = (tempnum2 + t->tm_hour - gmt.tm_hour);
+    time_tz = time_hours * 60 + t->tm_min - gmt.tm_min;
+    
+    if (time_tz < 0) {
+        sign = '-';
+        time_tz = -time_tz;
+    }
+    else {
+        sign = '+';
+    }
+
+    timezone_string = calloc(1, 7);
+    snprintf(timezone_string, 7, " %c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
+
+    now = time(NULL);
+
+    thetime = localtime(&now);
+    strftime (buffer, len-7, "%d/%b/%Y:%H:%M:%S", thetime);
+    strcat(buffer, timezone_string);
+
+    return 1;
+}
+#endif
 /* 
 ** ADDR USER AUTH DATE REQUEST CODE BYTES REFERER AGENT [TIME]
 **
@@ -64,10 +118,14 @@ void logging_access(client_t *client)
 
     now = time(NULL);
 
-    /* build the data */
     localtime_r (&now, &thetime);
+    /* build the data */
+#ifdef _WIN32
+    memset(datebuf, '\000', sizeof(datebuf));
+    get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
+#else
     strftime (datebuf, sizeof(datebuf), LOGGING_FORMAT_CLF, &thetime);
-
+#endif
     /* build the request */
     snprintf (reqbuf, sizeof(reqbuf), "%s %s %s/%s",
             httpp_getvar (client->parser, HTTPP_VAR_REQ_TYPE),

@@ -820,8 +820,8 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
             _add_server(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "touch-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->yp_touch_interval[configuration->num_yp_directories]
-                = atoi(tmp);
+            configuration->yp_touch_interval[configuration->num_yp_directories] =
+                atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
@@ -993,4 +993,5 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
     }
     
 }
+
 

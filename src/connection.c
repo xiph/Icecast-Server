@@ -245,9 +245,7 @@ static connection_t *_accept_connection(void)
     }
 
     if (!sock_recoverable(sock_error()))
-    {
         WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-    }
     
     free(ip);
 
@@ -749,9 +747,6 @@ static void _handle_get_request(connection_t *con,
     }
     alias = config->aliases;
     client_limit = config->client_limit;
-
-
-    stats_event_inc(NULL, "client_connections");
                     
     /* there are several types of HTTP GET clients
     ** media clients, which are looking for a source (eg, URI = /stream.ogg)
@@ -776,6 +771,7 @@ static void _handle_get_request(connection_t *con,
 
     /* make a client */
     client = client_create(con, parser);
+    stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
     if (strncmp(uri, "/admin/", 7) == 0) {

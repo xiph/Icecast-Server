@@ -181,32 +181,43 @@ static int _start_logging(void)
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
     char buf[1024];
+    int log_to_stderr;
 
     ice_config_t *config = config_get_config_unlocked();
 
     if(strcmp(config->error_log, "-")) {
         snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
         errorlog = log_open(fn_error);
+        log_to_stderr = 0;
     } else {
         errorlog = log_open_file(stderr);
+        log_to_stderr = 1;
     }
 
-    if (errorlog < 0)
-    {
-        snprintf (buf, sizeof(buf), "FATAL: could not open error logging: %s", strerror(errno));
-        _fatal_error (buf);
+    if (errorlog < 0) {
+        buf[sizeof(buf)-1] = 0;
+        snprintf(buf, sizeof(buf)-1, 
+                "FATAL: could not open error logging (%s): %s",
+                log_to_stderr?"standard error":fn_error,
+                strerror(errno));
+        _fatal_error(buf);
     }
+    log_set_level(errorlog, config->loglevel);
 
     if(strcmp(config->access_log, "-")) {
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         accesslog = log_open(fn_access);
+        log_to_stderr = 0;
     } else {
         accesslog = log_open_file(stderr);
+        log_to_stderr = 1;
     }
 
-    if (accesslog < 0)
-    {
-        snprintf (buf, sizeof(buf), "FATAL: could not open access logging: %s",
+    if (accesslog < 0) {
+        buf[sizeof(buf)-1] = 0;
+        snprintf(buf, sizeof(buf)-1, 
+                "FATAL: could not open access logging (%s): %s",
+                log_to_stderr?"standard error":fn_access,
                 strerror(errno));
         _fatal_error(buf);
     }
@@ -397,7 +408,7 @@ int main(int argc, char **argv)
             _fatal_error(pbuf);
             switch (ret) {
             case CONFIG_EINSANE:
-                _fatal_error("filename was null of blank");
+                _fatal_error("filename was null or blank");
                 break;
             case CONFIG_ENOROOT:
                 _fatal_error("no root element found");
@@ -437,7 +448,7 @@ int main(int argc, char **argv)
      * assume */
     if(!getuid()) /* Running as root! Don't allow this */
     {
-        fprintf(stderr, "WARNING: You should not run icecast2 as root\n");
+        fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
         _shutdown_subsystems();
         return 1;

@@ -80,7 +80,7 @@ relay_server *relay_free (relay_server *relay)
     xmlFree (relay->localmount);
     xmlFree (relay->username);
     xmlFree (relay->password);
-    xmlFree (relay);
+    free (relay);
     return next;
 }
 
@@ -344,7 +344,7 @@ static void check_relay_stream (relay_server *relay)
     {
         if (relay->localmount[0] != '/')
         {
-            WARN1 ("relay mountpoint \"%s\" does not start with /",
+            WARN1 ("relay mountpoint \"%s\" does not start with /, skipping",
                     relay->localmount);
             return;
         }

@@ -40,6 +40,7 @@
 
 #ifdef _WIN32
 #define vsnprintf _vsnprintf
+#define snprintf _snprintf
 #endif
 
 #define STATS_EVENT_SET     0
@@ -115,8 +116,8 @@ static void queue_global_event (stats_event_t *event)
             node = node->next;
         node->next = event;
     }
-    // DEBUG3("event added (%s, %s, %s)", event->source,
-        // event->name, event->value);
+    /* DEBUG3("event added (%s, %s, %s)", event->source,
+         event->name, event->value); */
     thread_mutex_unlock(&_global_event_mutex);
 }
 
@@ -420,7 +421,7 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         str = (char *)strdup (event->value);
     free (node->value);
     node->value = str;
-    // DEBUG3 ("update node %s \"%s\" (%d)", node->name, node->value, event->action);
+    /* DEBUG3 ("update node %s \"%s\" (%d)", node->name, node->value, event->action); */
 }
 
 

@@ -84,7 +84,7 @@ typedef struct ypdata_tag
 static rwlock_t yp_lock;
 static mutex_t yp_pending_lock;
 
-static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
+volatile static struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
 static int yp_running;
 static time_t now;
@@ -546,8 +546,8 @@ static ypdata_t *create_yp_entry (source_t *source)
 /* Check for changes in the YP servers configured */
 static void check_servers ()
 {
-    struct yp_server    *server = (struct yp_server *)active_yps,
-                        **server_p = (struct yp_server **)&active_yps;
+    struct yp_server *server = (struct yp_server *)active_yps,
+                     **server_p = (struct yp_server **)&active_yps;
 
     while (server)
     {
