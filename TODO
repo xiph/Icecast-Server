@@ -2,14 +2,21 @@ BUGS
 ----
 - stats get off?  this needs testing more testing.
 
-- autoconf doesn't set HAS_POLL 
+- autoconf doesn't set HAVE_POLL 
 
 - automake isn't installing things (conf, web) correctly.
+
+- some stuff (like 'genre') isn't making it into the stats dump
+
+- thread_join uses thread->sys_thread, but thread structure has
+  already been freed in thread_exit()
 
 
 FEATURES
 --------
-- pull out vorbis comments.  and send to stats.
+
+- pull out vorbis comments.  and send to stats. This seems to be being
+  done, but it isn't working right.
 
 - directory server GUID checks
 	directory server does GET /GUID-asldjfasldfjalsdkfjasldkfj HTTP/1.0
