@@ -594,7 +594,6 @@ int connection_check_relay_pass(http_parser_t *parser)
     return ret;
 }
 
-
 int connection_check_source_pass(http_parser_t *parser, char *mount)
 {
     ice_config_t *config = config_get_config();

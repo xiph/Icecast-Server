@@ -116,6 +116,7 @@ void slave_rescan (void)
     rescan_relays = 1;
 }
 
+
 void slave_initialize(void)
 {
     if (slave_running)
@@ -374,7 +375,7 @@ update_relay_set (relay_server **current, relay_server *updated)
 
 /* update the relay_list with entries from new_relay_list. Any new relays
  * are added to the list, and any not listed in the provided new_relay_list
- * are separated an returned in a separate list 
+ * are separated and returned in a separate list
  */
 static relay_server *
 update_relays (relay_server **relay_list, relay_server *new_relay_list)
@@ -399,9 +400,9 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
     {
         if (to_free->running && to_free->source)
         {
-           DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
-           to_free->source->running = 0;
-           thread_join (to_free->thread);
+            DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
+            to_free->source->running = 0;
+            thread_join (to_free->thread);
         }
         to_free = relay_free (to_free);
     }

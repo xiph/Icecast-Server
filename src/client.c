@@ -46,6 +46,7 @@ client_t *client_create(connection_t *con, http_parser_t *parser)
 
     client->con = con;
     client->parser = parser;
+    client->refbuf = NULL;
     client->pos = 0;
 
     return client;
@@ -75,6 +76,7 @@ void client_destroy(client_t *client)
     /* drop ref counts if need be */
     if (client->refbuf)
         refbuf_release (client->refbuf);
+    /* we need to free client specific format data (if any) */
     if (client->free_client_data)
         client->free_client_data (client);
 

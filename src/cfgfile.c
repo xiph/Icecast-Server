@@ -328,7 +328,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
-    configuration->burst_size_limit = CONFIG_DEFAULT_BURST_SIZE;
     configuration->threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
@@ -364,6 +363,8 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->slaves_count = 0;
     configuration->relay_username = NULL;
     configuration->relay_password = NULL;
+    /* default to a typical prebuffer size used by clients */
+    configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
@@ -478,10 +479,6 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->source_limit = atoi(tmp);
             if (tmp) xmlFree(tmp);
-        } else if (strcmp(node->name, "burst-size") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->burst_size_limit = atoi(tmp);
-            if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "queue-size") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->queue_size_limit = atoi(tmp);
@@ -501,6 +498,15 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "source-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->source_timeout = atoi(tmp);
+            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "burst-on-connect") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (atoi(tmp) == 0)
+                configuration->burst_size = 0;
+            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "burst-size") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->burst_size = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
@@ -526,7 +532,9 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     else
         configuration->mounts = mount;
 
+    /* default <mount> settings */
     mount->max_listeners = -1;
+    mount->burst_size = -1;
     mount->next = NULL;
 
     do {
@@ -622,14 +630,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->queue_size_limit = atoi (tmp);
             if(tmp) xmlFree(tmp);
         }
-        else if (strcmp(node->name, "burst-size") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            if (tmp)
-            {
-                mount->burst_size = atoi (tmp);
-                xmlFree(tmp);
-            }
-        }
         else if (strcmp(node->name, "source-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp)
@@ -637,6 +637,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                 mount->source_timeout = atoi (tmp);
                 xmlFree(tmp);
             }
+        } else if (strcmp(node->name, "burst-size") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->burst_size = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
 }

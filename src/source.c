@@ -59,7 +59,8 @@ mutex_t move_clients_mutex;
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
-static void _parse_audio_info (source_t *source, const char *str);
+static void _parse_audio_info (source_t *source, const char *s);
+static void source_shutdown (source_t *source);
 #ifdef _WIN32
 #define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
 #else
@@ -226,6 +227,7 @@ void source_clear_source (source_t *source)
         source_free_client (source, client);
     }
     source->pending_clients_tail = &source->pending_clients;
+    source->first_normal_client = NULL;
 
     /* flush out the stream data, we don't want any left over */
     while (source->stream_data)
@@ -248,7 +250,8 @@ void source_clear_source (source_t *source)
     auth_clear (source->authenticator);
 
     source->burst_point = NULL;
-    source->first_normal_client = NULL;
+    source->burst_size = 0;
+    source->burst_offset = 0;
     source->queue_size = 0;
     source->queue_size_limit = 0;
     source->listeners = 0;
@@ -617,7 +620,7 @@ static void get_next_buffer (source_t *source)
             {
                 source->stream_data = refbuf;
                 source->burst_point = refbuf;
-                source->burst_size = 0;
+                source->burst_offset = 0;
             }
             if (source->stream_data_tail)
                 source->stream_data_tail->next = refbuf;
@@ -626,13 +629,13 @@ static void get_next_buffer (source_t *source)
             refbuf_addref (refbuf);
 
             /* move the starting point for new listeners */
-            source->burst_size += refbuf->len;
-            if (source->burst_size > source->burst_size_limit)
+            source->burst_offset += refbuf->len;
+            if (source->burst_offset > source->burst_size)
             {
                 if (source->burst_point->next)
                 {
                     refbuf_release (source->burst_point);
-                    source->burst_size -= source->burst_point->len;
+                    source->burst_offset -= source->burst_point->len;
                     source->burst_point = source->burst_point->next;
                 }
             }
@@ -731,8 +734,8 @@ static void source_init (source_t *source)
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
-    source->running = 1;
     source->last_read = time (NULL);
+    source->running = 1;
     thread_mutex_unlock (&source->lock);
 
     if (source->on_connect)
@@ -760,53 +763,6 @@ static void source_init (source_t *source)
     thread_mutex_lock (&source->lock);
     if (source->yp_public)
         yp_add (source);
-}
-
-
-static void source_shutdown (source_t *source)
-{
-    INFO1("Source \"%s\" exiting", source->mount);
-    source->running = 0;
-
-    yp_remove (source->mount);
-
-    if (source->on_disconnect)
-        source_run_script (source->on_disconnect, source->mount);
-
-    if (source->fallback_mount)
-    {
-        source_t *fallback_source;
-
-        avl_tree_rlock(global.source_tree);
-        fallback_source = source_find_mount (source->fallback_mount);
-
-        if (fallback_source != NULL)
-        {
-            /* be careful wrt to deadlocking */
-            thread_mutex_unlock (&source->lock);
-            source_move_clients (source, fallback_source);
-            thread_mutex_lock (&source->lock);
-        }
-
-        avl_tree_unlock (global.source_tree);
-    }
-
-    /* delete this sources stats */
-    stats_event_dec (NULL, "sources");
-    stats_event (source->mount, "listeners", NULL);
-
-    /* we don't remove the source from the tree here, it may be a relay and
-       therefore reserved */
-    source_clear_source (source);
-
-    thread_mutex_unlock (&source->lock);
-
-    global_lock();
-    global.sources--;
-    global_unlock();
-
-    /* release our hold on the lock so the main thread can continue cleaning up */
-    thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
 
@@ -1102,6 +1058,56 @@ void source_main(source_t *source)
 }
 
 
+static void source_shutdown (source_t *source)
+{
+    INFO1("Source \"%s\" exiting", source->mount);
+    source->running = 0;
+
+    yp_remove (source->mount);
+
+    if (source->on_disconnect)
+        source_run_script (source->on_disconnect, source->mount);
+
+    /* we have de-activated the source now, so no more clients will be
+     * added, now move the listeners we have to the fallback (if any)
+     */
+    if (source->fallback_mount)
+    {
+        source_t *fallback_source;
+
+        avl_tree_rlock(global.source_tree);
+        fallback_source = source_find_mount (source->fallback_mount);
+
+        if (fallback_source != NULL)
+        {
+            /* be careful wrt to deadlocking */
+            thread_mutex_unlock (&source->lock);
+            source_move_clients (source, fallback_source);
+            thread_mutex_lock (&source->lock);
+        }
+
+        avl_tree_unlock (global.source_tree);
+    }
+
+    /* delete this sources stats */
+    stats_event_dec (NULL, "sources");
+    stats_event (source->mount, "listeners", NULL);
+
+    /* we don't remove the source from the tree here, it may be a relay and
+       therefore reserved */
+    source_clear_source (source);
+
+    thread_mutex_unlock (&source->lock);
+
+    global_lock();
+    global.sources--;
+    global_unlock();
+
+    /* release our hold on the lock so the main thread can continue cleaning up */
+    thread_rwlock_unlock(source->shutdown_rwlock);
+}
+
+
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
     client_t *clienta = (client_t *)a;
@@ -1196,8 +1202,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo->source_timeout)
         source->timeout = mountinfo->source_timeout;
 
-    if (mountinfo->burst_size)
-        source->burst_size_limit = mountinfo->burst_size;
+    if (mountinfo->burst_size >= 0)
+        source->burst_size = (unsigned int)mountinfo->burst_size;
 
     if (mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
@@ -1220,7 +1226,7 @@ void source_update_settings (ice_config_t *config, source_t *source)
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
-    source->burst_size_limit = config->burst_size_limit;
+    source->burst_size = config->burst_size;
 
     source->dumpfilename = NULL;
     auth_clear (source->authenticator);
@@ -1250,7 +1256,7 @@ void source_update_settings (ice_config_t *config, source_t *source)
 
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
-    DEBUG1 ("burst size to %u", source->burst_size_limit);
+    DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
     DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
     source->recheck_settings = 0;

@@ -63,8 +63,8 @@ typedef struct source_tag
     int no_mount;
 
     /* per source burst handling for connecting clients */
-    unsigned int burst_size;
-    unsigned int burst_size_limit;
+    unsigned int burst_size;    /* trigger level for burst on connect */
+    unsigned int burst_offset; 
     refbuf_t *burst_point;
 
     unsigned int queue_size;
