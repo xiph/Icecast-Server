@@ -343,7 +343,7 @@ static void *_handle_connection(void *arg)
 	client_t *client;
 	int bytes;
 	struct stat statbuf;
-	char	fullPath[4096];
+	char *fullpath;
     char *uri;
 
 	while (global.running == ICE_RUNNING) {
@@ -456,15 +456,14 @@ static void *_handle_connection(void *arg)
 					** if the extension is .xsl, if so, then process
 					** this request as an XSLT request
 					*/
-					if (util_check_valid_extension(uri) == XSLT_CONTENT) {
-						util_get_full_path(uri, fullPath, sizeof(fullPath));
-							
+                    fullpath = util_get_path_from_uri(uri);
+					if (fullpath && util_check_valid_extension(fullpath) == XSLT_CONTENT) {
 						/* If the file exists, then transform it, otherwise, write a 404 error */
-						if (stat(fullPath, &statbuf) == 0) {
+						if (stat(fullpath, &statbuf) == 0) {
                             DEBUG0("Stats request, sending XSL transformed stats");
 							bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
                             if(bytes > 0) client->con->sent_bytes = bytes;
-                            stats_transform_xslt(client, fullPath);
+                            stats_transform_xslt(client, fullpath);
 						}
 						else {
 							bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\nContent-Type: text/html\r\n\r\n"\

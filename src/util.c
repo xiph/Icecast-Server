@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -23,6 +24,14 @@
 #include "config.h"
 #include "util.h"
 #include "os.h"
+#include "refbuf.h"
+#include "connection.h"
+#include "client.h"
+
+#define CATMODULE "util"
+
+#include "log.h"
+#include "logging.h"
 
 /* Abstract out an interface to use either poll or select depending on which
  * is available (poll is preferred) to watch a single fd.
@@ -92,16 +101,6 @@ int util_read_header(int sock, char *buff, unsigned long len)
 	return ret;
 }
 
-int util_get_full_path(char *uri, char *fullPath, int fullPathLen) {
-	int ret = 0;
-	if (uri) {
-		memset(fullPath, '\000', fullPathLen);
-		snprintf(fullPath, fullPathLen-1, "%s%s", config_get_config()->webroot_dir, uri);
-		ret = 1;
-	}
-	return ret;
-}
-
 char *util_get_extension(char *path) {
     char *ext = strrchr(path, '.');
 
@@ -143,4 +142,111 @@ int util_check_valid_extension(char *uri) {
 	return ret;
 }
 
+static int hex(char c)
+{
+    if(c >= '0' && c <= '9')
+        return c - '0';
+    else if(c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    else if(c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    else
+        return -1;
+}
+
+static int verify_path(char *path) {
+    int dir = 0, indotseq = 0;
+
+    while(*path) {
+        if(*path == '/' || *path == '\\') {
+            if(indotseq)
+                return 0;
+            if(dir)
+                return 0;
+            dir = 1;
+            path++;
+            continue;
+        }
+
+        if(dir || indotseq) {
+            if(*path == '.')
+                indotseq = 1;
+            else
+                indotseq = 0;
+        }
+        
+        dir = 0;
+        path++;
+    }
+
+    return 1;
+}
+
+/* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
+ * path contains 'disallowed' sequences like foo/../ (which could be used to
+ * escape from the webroot) or if it cannot be URI-decoded.
+ * Caller should free the path.
+ */
+char *util_get_path_from_uri(char *uri) {
+    char *root = config_get_config()->webroot_dir;
+    int urilen = strlen(uri);
+    unsigned char *path;
+    char *dst;
+    int i;
+    int done = 0;
+
+    if(uri[0] != '/')
+        return NULL;
+
+    path = calloc(1, urilen + strlen(root) + 1);
+
+    strcpy(path, root);
+
+    dst = path+strlen(root);
+
+
+    for(i=0; i < urilen; i++) {
+        switch(uri[i]) {
+            case '%':
+                if(i+2 >= urilen) {
+                    free(path);
+                    return NULL;
+                }
+                if(hex(uri[i+1]) == -1 || hex(uri[i+2]) == -1 ) {
+                    free(path);
+                    return NULL;
+                }
+
+                *dst++ = hex(uri[i+1]) * 16  + hex(uri[i+2]);
+                i+= 2;
+                break;
+            case '#':
+                done = 1;
+                break;
+            case 0:
+                ERROR0("Fatal internal logic error in util_get_path_from_uri()");
+                free(path);
+                return NULL;
+                break;
+            default:
+                *dst++ = uri[i];
+                break;
+        }
+        if(done)
+            break;
+    }
+
+    DEBUG1("After URI-decode path is \"%s\"", path);
+
+    *dst = 0; /* null terminator */
+
+    /* We now have a full URI-decoded path. Check it for allowability */
+    if(verify_path(path))
+        return (char *)path;
+    else {
+        WARN1("Rejecting invalid path \"%s\"", path);
+        free(path);
+        return NULL;
+    }
+}
 

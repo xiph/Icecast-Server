@@ -302,6 +302,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "webroot") == 0) {
 			if (_configuration.webroot_dir && _configuration.webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(_configuration.webroot_dir);
 			_configuration.webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(_configuration.webroot_dir[strlen(_configuration.webroot_dir)-1] == '/')
+                _configuration.webroot_dir[strlen(_configuration.webroot_dir)-1] = 0;
+
 		}
 	} while ((node = node->next));
 }
