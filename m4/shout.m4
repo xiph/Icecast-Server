@@ -3,7 +3,7 @@ dnl Jack Moffitt <jack@icecast.org> 08-06-2001
 dnl Rewritten for libshout 2
 dnl Brendan Cully <brendan@xiph.org> 20030612
 dnl 
-dnl $Id: shout.m4,v 1.9 2003/06/26 19:34:00 brendan Exp $
+dnl $Id: shout.m4,v 1.10 2003/06/26 19:38:23 brendan Exp $
 
 # XIPH_PATH_SHOUT([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 # Test for libshout, and define SHOUT_CFLAGS and SHOUT_LIBS
@@ -18,6 +18,7 @@ SHOUT_LIBS=""
 
 # seed pkg-config with the default libshout location
 PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-/usr/local/lib/pkgconfig}
+export PKG_CONFIG_PATH
 
 # Step 1: Use pkg-config if available
 AC_PATH_PROG([PKGCONFIG], [pkg-config], [no])
