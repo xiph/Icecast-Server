@@ -12,6 +12,7 @@ dnl Set some options based on environment
 
 SOCKET_LIBS=
 
+AC_DEFINE(_XOPEN_SOURCE, 500, [Define if you have POSIX and XPG specifications])
 if test -z "$GCC"; then
         case $host in 
         *-*-irix*)
