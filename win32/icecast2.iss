@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast v2.0
+AppVerName=Icecast v2.0 beta 1
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=Icecast2_win32_2.0_10312003_setup
+OutputBaseFilename=icecast2_win32_2.0_beta1_setup
 WizardImageFile=icecast2logo2.bmp
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51
@@ -48,7 +48,7 @@ Source: "..\..\curl\lib\Release\libcurl.dll"; DestDir: "{app}"; Flags: ignorever
 
 [Icons]
 
-Name: "{group}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe"
+Name: "{group}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe";WorkingDir: "{app}";
 Name: "{userdesktop}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe"; MinVersion: 4,4; Tasks: desktopicon;WorkingDir: "{app}";
 
 [Run]
