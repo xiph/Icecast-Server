@@ -231,8 +231,9 @@ static void start_relay_stream (relay_server *relay)
             auth_header = malloc (len);
             snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
             esc_authorisation = util_base64_encode(auth_header);
-            auth_header = malloc (len + 24);
-            snprintf (auth_header, len+24,
+            free(auth_header);
+            len = strlen (esc_authorisation) + 24;
+            snprintf (auth_header, len,
                     "Authorization: Basic %s\r\n", esc_authorisation);
             free(esc_authorisation);
         }
