@@ -222,12 +222,11 @@ char *util_get_path_from_normalised_uri(char *uri) {
     ice_config_t *config = config_get_config();
 
     webroot = config->webroot_dir;
-    config_release_config();
 
     fullpath = malloc(strlen(uri) + strlen(webroot) + 1);
-    strcpy(fullpath, webroot);
-
-    strcat(fullpath, uri);
+    if (fullpath)
+        sprintf (fullpath, "%s%s", webroot, uri);
+    config_release_config();
 
     return fullpath;
 }
