@@ -179,14 +179,17 @@ void log_set_trigger(int id, unsigned trigger)
 
 int log_set_filename(int id, const char *filename)
 {
-    if (id >= 0 && id < LOG_MAXLOGS)
+    if (id < 0 || id >= LOG_MAXLOGS)
         return LOG_EINSANE;
-    if (filename == NULL || !strcmp(filename, "") || loglist [id] . in_use == 0)
+    if (!strcmp(filename, "") || loglist [id] . in_use == 0)
         return LOG_EINSANE;
      _lock_logger();
     if (loglist [id] . filename)
         free (loglist [id] . filename);
-    loglist [id] . filename = strdup (filename);
+    if (filename)
+        loglist [id] . filename = strdup (filename);
+    else
+        loglist [id] . filename = NULL;
      _unlock_logger();
     return id;
 }
@@ -220,14 +223,15 @@ void log_flush(int log_id)
 
 void log_reopen(int log_id)
 {
-    if (log_id >= 0 && log_id < LOG_MAXLOGS)
+    if (log_id < 0 && log_id >= LOG_MAXLOGS)
         return;
-    if (loglist [log_id] . filename)
+    if (loglist [log_id] . filename && loglist [log_id] . logfile)
     {
         _lock_logger();
 
         fclose (loglist [log_id] . logfile);
         loglist [log_id] . logfile = NULL;
+
         _unlock_logger();
     }
 }
@@ -235,14 +239,22 @@ void log_reopen(int log_id)
 void log_close(int log_id)
 {
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
+
+    _lock_logger();
+
     if (loglist[log_id].in_use == 0) return;
 
     loglist[log_id].in_use = 0;
     loglist[log_id].level = 2;
     if (loglist[log_id].filename) free(loglist[log_id].filename);
     if (loglist[log_id].buffer) free(loglist[log_id].buffer);
-    fclose(loglist[log_id].logfile);
-    loglist[log_id].logfile = NULL;
+
+    if (loglist [log_id] . logfile)
+    {
+        fclose (loglist [log_id] . logfile);
+        loglist [log_id] . logfile = NULL;
+    }
+    _unlock_logger();
 }
 
 void log_shutdown()
