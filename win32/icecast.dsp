@@ -85,6 +85,14 @@ LIB32=link.exe -lib
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
+SOURCE=..\src\admin.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\admin.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\avl\avl.c
 # End Source File
 # Begin Source File
@@ -118,6 +126,14 @@ SOURCE=..\src\connection.c
 # Begin Source File
 
 SOURCE=..\src\connection.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\event.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\event.h
 # End Source File
 # Begin Source File
 
