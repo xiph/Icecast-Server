@@ -10,439 +10,546 @@
  *                      and others (see AUTHORS for details).
  */
 
-/* format_vorbis.c
-**
-** format plugin for vorbis
-**
-*/
+
+/* Ogg codec handler for vorbis streams */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
 #include <ogg/ogg.h>
 #include <vorbis/codec.h>
+#include <memory.h>
 
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
 
+#include "format_ogg.h"
 #include "stats.h"
 #include "format.h"
 
 #define CATMODULE "format-vorbis"
 #include "logging.h"
 
-#define MAX_HEADER_PAGES 10
 
-typedef struct _vstate_tag
+typedef struct vorbis_codec_tag
 {
-    ogg_sync_state oy;
-    ogg_stream_state os;
     vorbis_info vi;
     vorbis_comment vc;
 
-    ogg_page og;
-    unsigned long serialno;
-    int header;
-    refbuf_t *file_headers;
-    refbuf_t *header_pages;
-    refbuf_t *header_pages_tail;
-    int packets;
-} vstate_t;
+    int rebuild_comment;
+    int stream_notify;
 
-struct client_vorbis
+    ogg_stream_state new_os;
+    int page_samples_trigger;
+    ogg_int64_t prev_granulepos;
+    ogg_packet *prev_packet;
+    ogg_int64_t granulepos;
+    ogg_int64_t samples_in_page;
+    int prev_window;
+    int initial_audio_packet;
+
+    ogg_page bos_page;
+    ogg_packet *header [3];
+    ogg_int64_t prev_page_samples;
+
+    int (*process_packet)(ogg_state_t *ogg_info, ogg_codec_t *codec);
+    refbuf_t *(*get_buffer_page)(ogg_state_t *ogg_info, ogg_codec_t *codec);
+
+} vorbis_codec_t;
+
+static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec);
+static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
+                ogg_codec_t *codec, ogg_page *page);
+static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec);
+static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value);
+
+
+static void free_ogg_packet (ogg_packet *packet)
 {
-    refbuf_t *headers;
-    refbuf_t *header_page;
-    unsigned int pos;
-    int processing_headers;
-};
-
-
-static void format_vorbis_free_plugin(format_plugin_t *self);
-static refbuf_t *format_vorbis_get_buffer (source_t *source);
-static int format_vorbis_create_client_data (source_t *source, client_t *client);
-static void format_vorbis_send_headers(format_plugin_t *self,
-        source_t *source, client_t *client);
-static int write_buf_to_client (format_plugin_t *self, client_t *client);
-static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
-
-
-int format_vorbis_get_plugin(source_t *source)
-{
-    format_plugin_t *plugin;
-    vstate_t *state;
-
-    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
-
-    plugin->type = FORMAT_TYPE_VORBIS;
-    plugin->write_buf_to_file = write_ogg_to_file;
-    plugin->get_buffer = format_vorbis_get_buffer;
-    plugin->write_buf_to_client = write_buf_to_client;
-    plugin->create_client_data = format_vorbis_create_client_data;
-    plugin->client_send_headers = format_vorbis_send_headers;
-    plugin->free_plugin = format_vorbis_free_plugin;
-    plugin->contenttype = "application/ogg";
-
-    state = (vstate_t *)calloc(1, sizeof(vstate_t));
-    ogg_sync_init(&state->oy);
-
-    plugin->_state = (void *)state;
-    source->format = plugin;
-
-    return 0;
+    if (packet)
+    {
+        free (packet->packet);
+        free (packet);
+    }
 }
 
-void format_vorbis_free_plugin(format_plugin_t *self)
+
+static void vorbis_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    vstate_t *state = (vstate_t *)self->_state;
-    refbuf_t *header = state->header_pages;
+    vorbis_codec_t *vorbis = codec->specific;
 
-    /* free memory associated with this plugin instance */
-
-    /* free state memory */
-    while (header)
-    {
-        refbuf_t *to_release = header;
-        header = header->next;
-        refbuf_release (to_release);
-    }
-    ogg_sync_clear(&state->oy);
-    ogg_stream_clear(&state->os);
-    vorbis_comment_clear(&state->vc);
-    vorbis_info_clear(&state->vi);
-    
-    free(state);
-
-    /* free the plugin instance */
-    free(self);
+    DEBUG0 ("freeing vorbis codec");
+    stats_event (ogg_info->mount, "audio-bitrate", NULL);
+    stats_event (ogg_info->mount, "audio-channels", NULL);
+    stats_event (ogg_info->mount, "audio-samplerate", NULL);
+    vorbis_info_clear (&vorbis->vi);
+    vorbis_comment_clear (&vorbis->vc);
+    ogg_stream_clear (&codec->os);
+    ogg_stream_clear (&vorbis->new_os);
+    free_ogg_packet (vorbis->header[0]);
+    free_ogg_packet (vorbis->header[1]);
+    free_ogg_packet (vorbis->header[2]);
+    free_ogg_packet (vorbis->prev_packet);
+    free (vorbis->bos_page.header);
+    free (vorbis);
+    free (codec);
 }
 
-static refbuf_t *format_vorbis_get_buffer (source_t *source)
+
+static ogg_packet *copy_ogg_packet (ogg_packet *packet)
 {
-    int result;
-    ogg_packet op;
-    char *title_tag;
-    char *artist_tag;
-    char *metadata = NULL;
-    int   metadata_len = 0;
-    refbuf_t *refbuf, *header;
-    char *data;
-    format_plugin_t *self = source->format;
-    int bytes;
-    vstate_t *state = (vstate_t *)self->_state;
-
-    data = ogg_sync_buffer (&state->oy, 4096);
-
-    bytes = sock_read_bytes (source->con->sock, data, 4096);
-    if (bytes < 0)
+    ogg_packet *next;
+    do
     {
-        if (sock_recoverable (sock_error()))
-            return NULL;
-        WARN0 ("source connection has died");
-        ogg_sync_wrote (&state->oy, 0);
-        source->running = 0;
-        return NULL;
-    }
-    if (bytes == 0)
+        next = malloc (sizeof (ogg_packet));
+        if (next == NULL)
+            break;
+        memcpy (next, packet, sizeof (ogg_packet));
+        next->packet = malloc (next->bytes);
+        if (next->packet == NULL)
+            break;
+        memcpy (next->packet, packet->packet, next->bytes);
+        return next;
+    } while (0);
+
+    if (next)
+        free (next);
+    return NULL;
+}
+
+
+static void add_audio_packet (vorbis_codec_t *source_vorbis, ogg_packet *packet)
+{
+    if (source_vorbis->initial_audio_packet)
     {
-        INFO1 ("End of Stream %s", source->mount);
-        ogg_sync_wrote (&state->oy, 0);
-        source->running = 0;
-        return NULL;
+        packet->granulepos = 0;
+        source_vorbis->initial_audio_packet = 0;
     }
-    ogg_sync_wrote (&state->oy, bytes);
-
-    refbuf = NULL;
-    if (ogg_sync_pageout(&state->oy, &state->og) == 1) {
-        refbuf = refbuf_new(state->og.header_len + state->og.body_len);
-        memcpy(refbuf->data, state->og.header, state->og.header_len);
-        memcpy(&refbuf->data[state->og.header_len], state->og.body, state->og.body_len);
-
-        if (state->serialno != ogg_page_serialno(&state->og)) {
-            DEBUG0("new stream");
-            /* this is a new logical bitstream */
-            state->header = 0;
-            state->packets = 0;
-
-            /* Clear old stuff. Rarely but occasionally needed. */
-            header = state->header_pages;
-            while (header)
-            {
-                refbuf_t *to_release = header;
-                DEBUG0 ("clearing out header page");
-                header = header->next;
-                refbuf_release (to_release);
-            }
-            ogg_stream_clear(&state->os);
-            vorbis_comment_clear(&state->vc);
-            vorbis_info_clear(&state->vi);
-            state->header_pages = NULL;
-            state->header_pages_tail = NULL;
-
-            state->serialno = ogg_page_serialno(&state->og);
-            ogg_stream_init(&state->os, state->serialno);
-            vorbis_info_init(&state->vi);
-            vorbis_comment_init(&state->vc);
-        }
-
-        if (state->header >= 0) {
-            /* FIXME: In some streams (non-vorbis ogg streams), this could get
-             * extras pages beyond the header. We need to collect the pages
-             * here anyway, but they may have to be discarded later.
-             */
-            DEBUG1 ("header %d", state->header);
-            if (ogg_page_granulepos(&state->og) <= 0) {
-                state->header++;
-            } else {
-                /* we're done caching headers */
-                state->header = -1;
-
-                DEBUG0 ("doing stats");
-                /* put known comments in the stats */
-                title_tag = vorbis_comment_query(&state->vc, "TITLE", 0);
-                if (title_tag) stats_event(source->mount, "title", title_tag);
-                else stats_event(source->mount, "title", "unknown");
-                artist_tag = vorbis_comment_query(&state->vc, "ARTIST", 0);
-                if (artist_tag) stats_event(source->mount, "artist", artist_tag);
-                else stats_event(source->mount, "artist", "unknown");
-
-                metadata = NULL;
-                if (artist_tag) {
-                    if (title_tag) {
-                        metadata_len = strlen(artist_tag) + strlen(title_tag) +
-                                       strlen(" - ") + 1;
-                        metadata = (char *)calloc(1, metadata_len);
-                        sprintf(metadata, "%s - %s", artist_tag, title_tag);
-                    }
-                    else {
-                        metadata_len = strlen(artist_tag) + 1;
-                        metadata = (char *)calloc(1, metadata_len);
-                        sprintf(metadata, "%s", artist_tag);
-                    }
-                }
-                else {
-                    if (title_tag) {
-                        metadata_len = strlen(title_tag) + 1;
-                        metadata = (char *)calloc(1, metadata_len);
-                        sprintf(metadata, "%s", title_tag);
-                    }
-                }
-                if (metadata) {
-                    logging_playlist(source->mount, metadata, source->listeners);
-                    free(metadata);
-                    metadata = NULL;
-                }
-                /* don't need these now */
-                ogg_stream_clear(&state->os);
-                vorbis_comment_clear(&state->vc);
-                vorbis_info_clear(&state->vi);
-
-                yp_touch (source->mount);
-            }
-        }
-
-        /* cache header pages */
-        if (state->header > 0 && state->packets < 3) {
-            /* build a list of headers pages for attaching */
-            if (state->header_pages_tail)
-                state->header_pages_tail->next = refbuf;
-            state->header_pages_tail = refbuf;
-
-            if (state->header_pages == NULL)
-                state->header_pages = refbuf;
-
-            if (state->packets >= 0 && state->packets < 3) {
-                ogg_stream_pagein(&state->os, &state->og);
-                while (state->packets < 3) {
-                    result = ogg_stream_packetout(&state->os, &op);
-                    if (result == 0) break; /* need more data */
-                    if (result < 0) {
-                        state->packets = -1;
-                        break;
-                    }
-
-                    state->packets++;
-
-                    if (vorbis_synthesis_headerin(&state->vi, &state->vc, &op) < 0) {
-                        state->packets = -1;
-                        break;
-                    }
-                }
-            }
-            /* we do not place ogg headers on the main queue */
-            return NULL;
-        }
-        /* increase ref counts on each header page going out */
-        header = state->header_pages;
-        while (header)
-        {
-            refbuf_addref (header);
-            header = header->next;
-        }
-        refbuf->associated = state->header_pages;
+    else
+    {
+        source_vorbis->samples_in_page +=
+            (packet->granulepos - source_vorbis->prev_granulepos);
+        source_vorbis->prev_granulepos = packet->granulepos;
+        source_vorbis->granulepos += source_vorbis->prev_window;
     }
+    ogg_stream_packetin (&source_vorbis->new_os, packet);
+}
 
+
+static refbuf_t *get_buffer_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
+{
+    refbuf_t *refbuf = NULL;
+    ogg_page page;
+    vorbis_codec_t *source_vorbis = codec->specific;
+    int (*get_ogg_page)(ogg_stream_state*, ogg_page *) = ogg_stream_pageout;
+
+    if (source_vorbis->samples_in_page > source_vorbis->page_samples_trigger)
+        get_ogg_page = ogg_stream_flush;
+
+    if (get_ogg_page (&source_vorbis->new_os, &page) > 0)
+    {
+        /* squeeze a page copy into a buffer */
+        source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
+        source_vorbis->prev_page_samples = ogg_page_granulepos (&page);
+
+        refbuf = make_refbuf_with_page (&page);
+    }
     return refbuf;
 }
 
-static void free_ogg_client_data (client_t *client)
-{
-    free (client->format_data);
-    client->format_data = NULL;
-}
 
-static int format_vorbis_create_client_data (source_t *source, client_t *client)
+static refbuf_t *get_buffer_header (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    struct client_vorbis *client_data = calloc (1, sizeof (struct client_vorbis));
-    int ret = -1;
+    int headers_flushed = 0;
+    ogg_page page;
+    vorbis_codec_t *source_vorbis = codec->specific;
 
-    if (client_data)
+    while (ogg_stream_flush (&source_vorbis->new_os, &page) > 0)
     {
-        client->format_data = client_data;
-        client->free_client_data = free_ogg_client_data;
-        ret = 0;
+        format_ogg_attach_header (ogg_info, &page);
+        headers_flushed = 1;
     }
-    return ret;
+    if (headers_flushed)
+    {
+        source_vorbis->get_buffer_page = get_buffer_audio;
+    }
+    return NULL;
 }
 
-static void format_vorbis_send_headers(format_plugin_t *self,
-        source_t *source, client_t *client)
+
+static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    int bytes;
-    
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\n" 
-            "Content-Type: %s\r\n", 
-            source->format->contenttype);
-
-    if(bytes > 0) client->con->sent_bytes += bytes;
-
-    format_send_general_headers(self, source, client);
-}
-
-static int send_ogg_headers (client_t *client, refbuf_t *headers)
-{
-    struct client_vorbis *client_data = client->format_data;
+    vorbis_codec_t *source_vorbis = codec->specific;
+    ogg_page page;
     refbuf_t *refbuf;
-    int written = 0;
 
-    if (client_data->processing_headers == 0)
+    if (ogg_stream_flush (&source_vorbis->new_os, &page) > 0)
     {
-        client_data->header_page = headers;
-        client_data->pos = 0;
-        client_data->processing_headers = 1;
-    }
-    refbuf = client_data->header_page;
-    while (refbuf)
-    {
-        char *data = refbuf->data + client_data->pos;
-        unsigned int len = refbuf->len - client_data->pos;
-        int ret;
+        source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
+        source_vorbis->prev_page_samples = ogg_page_granulepos (&page);
 
-        ret = client_send_bytes (client, data, len);
-        if (ret > 0)
-        {
-           written += ret;
-           client_data->pos += ret;
-        }
-        if (ret < (int)len)
-            return written;
-        if (client_data->pos == refbuf->len)
-        {
-            refbuf = refbuf->next;
-            client_data->header_page = refbuf;
-            client_data->pos = 0;
-        }
+        refbuf = make_refbuf_with_page (&page);
+        DEBUG0 ("flushing page");
+        return refbuf;
     }
-    /* update client info on headers sent */
-    client_data->processing_headers = 0;
-    client_data->headers = headers;
-    return written;
+    ogg_stream_clear (&source_vorbis->new_os);
+    ogg_stream_init (&source_vorbis->new_os, rand());
+
+    format_ogg_free_headers (ogg_info);
+    source_vorbis->get_buffer_page = NULL;
+    source_vorbis->process_packet = process_vorbis_headers;
+    if (source_vorbis->initial_audio_packet == 0)
+        source_vorbis->prev_window = 0;
+
+    return NULL;
 }
 
-static int write_buf_to_client (format_plugin_t *self, client_t *client)
-{
-    refbuf_t *refbuf = client->refbuf;
-    char *buf;
-    unsigned int len;
-    struct client_vorbis *client_data = client->format_data;
-    int ret, written = 0;
 
-    if (refbuf->next == NULL && client->pos == refbuf->len)
+/* push last packet into stream marked with eos */
+static void initiate_flush (vorbis_codec_t *source_vorbis)
+{
+    DEBUG0 ("adding EOS packet");
+    if (source_vorbis->prev_packet)
+    {
+        /* insert prev_packet with eos */
+        source_vorbis->prev_packet->e_o_s = 1;
+        add_audio_packet (source_vorbis, source_vorbis->prev_packet);
+        source_vorbis->prev_packet->e_o_s = 0;
+    }
+    source_vorbis->get_buffer_page = get_buffer_finished;
+    source_vorbis->initial_audio_packet = 1;
+}
+
+
+/* process the vorbis audio packets. Here we just take each packet out 
+ * and add them into the new stream, flushing after so many samples. We
+ * also check if an new headers are requested after each processed page
+ */
+static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
+{
+    vorbis_codec_t *source_vorbis = codec->specific;
+
+    while (1)
+    {
+        int window;
+        ogg_packet packet;
+
+        /* now, lets extract what packets we can */
+        if (ogg_stream_packetout (&codec->os, &packet) <= 0)
+            break;
+
+        /* calculate granulepos for the packet */
+        window = vorbis_packet_blocksize (&source_vorbis->vi, &packet) / 4;
+
+        source_vorbis->granulepos += window;
+        if (source_vorbis->prev_packet)
+        {
+            ogg_packet *prev_packet = source_vorbis->prev_packet;
+
+            add_audio_packet (source_vorbis, prev_packet);
+            free_ogg_packet (prev_packet);
+            packet . granulepos = source_vorbis->granulepos;
+        }
+        else
+        {
+            packet . granulepos = 0;
+        }
+
+        /* store the current packet details */
+        source_vorbis->prev_window = window;
+        source_vorbis->prev_packet = copy_ogg_packet (&packet);
+        if (packet.e_o_s)
+        {
+            initiate_flush (source_vorbis);
+            return 1;
+        }
+
+        /* allow for pages to be flushed if there's over a certain number of samples */
+        if (source_vorbis->samples_in_page > source_vorbis->page_samples_trigger)
+            return 1;
+    }
+    if (source_vorbis->stream_notify)
+    {
+        initiate_flush (source_vorbis);
+        source_vorbis->stream_notify = 0;
+    }
+    return -1;
+}
+
+
+/* This handles the headers at the backend, here we insert the header packets
+ * we want for the queue.
+ */
+static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
+{
+    vorbis_codec_t *source_vorbis = codec->specific;
+
+    if (source_vorbis->header [0] == NULL)
         return 0;
 
-    if (refbuf->next && client->pos == refbuf->len)
+    DEBUG0 ("Adding the 3 header packets");
+    ogg_stream_packetin (&source_vorbis->new_os, source_vorbis->header [0]);
+    /* NOTE: we could build a separate comment packet each time */
+    if (source_vorbis->rebuild_comment)
     {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-    do
-    {
-        if (client_data->headers != refbuf->associated)
-        {
-            /* different headers seen so send the new ones */
-            ret = send_ogg_headers (client, refbuf->associated);
-            if (client_data->processing_headers)
-                break;
-            written += ret;
-        }
-        buf = refbuf->data + client->pos;
-        len = refbuf->len - client->pos;
-        ret = client_send_bytes (client, buf, len);
+        vorbis_comment vc;
+        ogg_packet header;
 
-        if (ret > 0)
-            client->pos += ret;
+        vorbis_comment_init (&vc);
+        if (ogg_info->artist) 
+            vorbis_comment_add_tag (&vc, "artist", ogg_info->artist);
+        if (ogg_info->title)
+            vorbis_comment_add_tag (&vc, "title", ogg_info->title);
+        vorbis_comment_add (&vc, "server=" ICECAST_VERSION_STRING);
+        vorbis_commentheader_out (&vc, &header);
+
+        ogg_stream_packetin (&source_vorbis->new_os, &header);
+        vorbis_comment_clear (&vc);
+        ogg_packet_clear (&header);
+    }
+    else
+        ogg_stream_packetin (&source_vorbis->new_os, source_vorbis->header [1]);
+    ogg_stream_packetin (&source_vorbis->new_os, source_vorbis->header [2]);
+    source_vorbis->rebuild_comment = 0;
+
+    ogg_info->log_metadata = 1;
+    source_vorbis->get_buffer_page = get_buffer_header;
+    source_vorbis->process_packet = process_vorbis_audio;
+    source_vorbis->granulepos = source_vorbis->prev_window;
+    source_vorbis->initial_audio_packet = 1;
+    return 1;
+}
+
+
+/* check if the provided BOS page is the start of a vorbis stream. If so
+ * then setup a structure so it can be used
+ */
+ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
+{
+    // ogg_state_t *ogg_info = plugin->_state;
+    ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
+    ogg_packet packet;
+
+    vorbis_codec_t *vorbis = calloc (1, sizeof (vorbis_codec_t));
+
+    ogg_stream_init (&codec->os, ogg_page_serialno (page));
+    ogg_stream_pagein (&codec->os, page);
+
+    vorbis_info_init (&vorbis->vi);
+    vorbis_comment_init (&vorbis->vc);
+
+    ogg_stream_packetout (&codec->os, &packet);
+
+    DEBUG0("checking for vorbis codec");
+    if (vorbis_synthesis_headerin (&vorbis->vi, &vorbis->vc, &packet) < 0)
+    {
+        ogg_stream_clear (&codec->os);
+        vorbis_info_clear (&vorbis->vi);
+        vorbis_comment_clear (&vorbis->vc);
+        free (vorbis);
+        free (codec);
+        return NULL;
+    }
+    INFO0 ("seen initial vorbis header");
+    codec->specific = vorbis;
+    codec->codec_free = vorbis_codec_free;
+    codec->headers = 1;
+
+    free_ogg_packet (vorbis->header[0]);
+    free_ogg_packet (vorbis->header[1]);
+    free_ogg_packet (vorbis->header[2]);
+    memset (vorbis->header, 0, sizeof (vorbis->header));
+    vorbis->header [0] = copy_ogg_packet (&packet);
+    ogg_stream_init (&vorbis->new_os, rand());
+
+    codec->process_page = process_vorbis_page;
+    codec->process = process_vorbis;
+    plugin->set_tag = vorbis_set_tag;
+
+    vorbis->bos_page.header = malloc (page->header_len + page->body_len);
     
-        if (ret < (int)len) 
-            break;
-        written += ret;
-        /* we have now written the page(s) */
-        ret = 0;
-    } while (0);
+    memcpy (vorbis->bos_page.header, page->header, page->header_len);
+    vorbis->bos_page.header_len = page->header_len;
 
-    if (ret > 0)
-       written += ret;
-    return written;
-}
+    vorbis->bos_page.body = vorbis->bos_page.header + page->header_len;
+    memcpy (vorbis->bos_page.body, page->body, page->body_len);
+    vorbis->bos_page.body_len = page->body_len;
 
-static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
-{   
-    int ret = 1;
-
-    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) != refbuf->len)
-    {   
-        WARN0 ("Write to dump file failed, disabling");
-        fclose (source->dumpfile);
-        source->dumpfile = NULL;
-        ret = 0;
-    }
-    return ret;
+    return codec;
 }
 
 
-static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
+/* called from the admin interface, here we update the artist/title info
+ * and schedule a new set of header pages
+ */
+static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
 {   
-    vstate_t *state = (vstate_t *)source->format->_state;
+    ogg_state_t *ogg_info = plugin->_state;
+    ogg_codec_t *codec = ogg_info->codecs;
+    vorbis_codec_t *source_vorbis;
+    int change = 0;
 
+    /* avoid updating if multiple codecs in use */
+    if (codec && codec->next == NULL)
+        source_vorbis = codec->specific;
+    else
+        return;
 
-    if (state->file_headers != refbuf->associated)
+    if (strcmp (tag, "artist") == 0)
     {
-        refbuf_t *header = refbuf->associated;
-        while (header) 
+        char *p = strdup (value);
+        if (p)
         {
-            if (write_ogg_data (source, header) == 0)
-                return;
-            header = header->next;
+            free (ogg_info->artist);
+            ogg_info->artist = p;
+            change = 1;
         }
-        state->file_headers = refbuf->associated;
     }
-    write_ogg_data (source, refbuf);
+    if (strcmp (tag, "title") == 0)
+    {
+        char *p = strdup (value);
+        if (p)
+        {
+            free (ogg_info->title);
+            ogg_info->title = p;
+            change = 1;
+        }
+    }
+    if (strcmp (tag, "song") == 0)
+    {
+        char *p = strdup (value);
+        if (p)
+        {
+            free (ogg_info->artist);
+            free (ogg_info->title);
+            ogg_info->artist = NULL;
+            ogg_info->title = p;
+            change = 1;
+        }
+    }
+    if (change)
+    {
+        source_vorbis->stream_notify = 1;
+        source_vorbis->rebuild_comment = 1;
+    }
+}
+
+
+/* main backend routine when rebuilding streams. Here we loop until we either
+ * have a refbuf to add onto the queue, or we want more data to process.
+ */
+static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec)
+{
+    vorbis_codec_t *source_vorbis = codec->specific;
+    refbuf_t *refbuf;
+
+    while (1)
+    {
+        if (source_vorbis->get_buffer_page)
+        {
+            refbuf = source_vorbis->get_buffer_page (ogg_info, codec);
+            if (refbuf)
+                return refbuf;
+        }
+
+        if (source_vorbis->process_packet &&
+                source_vorbis->process_packet (ogg_info, codec) > 0)
+            continue;
+        return NULL;
+    }
+}
+
+
+/* no processing of pages, just wrap them up in a refbuf and pass
+ * back for adding to the queue
+ */
+static refbuf_t *process_vorbis_passthru_page (ogg_state_t *ogg_info,
+        ogg_codec_t *codec, ogg_page *page)
+{
+    return make_refbuf_with_page (page);
+}
+
+
+/* handle incoming page. as the stream is being rebuilt, we need to
+ * add all pages from the stream before processing packets
+ */
+static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
+        ogg_codec_t *codec, ogg_page *page)
+{
+    ogg_packet header;
+    vorbis_codec_t *source_vorbis = codec->specific;
+    char *comment;
+
+    if (ogg_stream_pagein (&codec->os, page) < 0)
+    {
+        ogg_info->error = 1;
+        return NULL;
+    }
+    if (codec->headers == 3)
+        return NULL;
+
+    while (codec->headers < 3)
+    {
+        /* now, lets extract the packets */
+        DEBUG1 ("processing incoming header packet (%d)", codec->headers);
+
+        if (ogg_stream_packetout (&codec->os, &header) <= 0)
+        {
+            if (ogg_info->codecs->next)
+                format_ogg_attach_header (ogg_info, page);
+            return NULL;
+        }
+
+        /* change comments here if need be */
+        if (vorbis_synthesis_headerin (&source_vorbis->vi, &source_vorbis->vc, &header) < 0)
+        {
+            ogg_info->error = 1;
+            WARN0 ("Problem parsing ogg vorbis header");
+            return NULL;
+        }
+        header.granulepos = 0;
+        source_vorbis->header [codec->headers] = copy_ogg_packet (&header);
+        codec->headers++;
+    }
+    DEBUG0 ("we have the header packets now");
+
+    /* if vorbis is the only codec then allow rebuilding of the streams */
+    if (ogg_info->codecs->next == NULL)
+    {
+        /* set queued vorbis pages to contain about 1/2 of a second worth of samples */
+        source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 2;
+        source_vorbis->process_packet = process_vorbis_headers;
+    }
+    else
+    {
+        format_ogg_attach_header (ogg_info, &source_vorbis->bos_page);
+        format_ogg_attach_header (ogg_info, page);
+        codec->process_page = process_vorbis_passthru_page;
+    }
+
+    free (ogg_info->title);
+    comment = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
+    if (comment)
+        ogg_info->title = strdup (comment);
+    else
+        ogg_info->title = NULL;
+
+    free (ogg_info->artist);
+    comment = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
+    if (comment)
+        ogg_info->artist = strdup (comment);
+    else
+        ogg_info->artist = NULL;
+    ogg_info->log_metadata = 1;
+
+    stats_event_args (ogg_info->mount, "audio-samplerate", "%ld", (long)source_vorbis->vi.rate);
+    stats_event_args (ogg_info->mount, "audio-channels", "%ld", (long)source_vorbis->vi.channels);
+    stats_event_args (ogg_info->mount, "audio-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal);
+    stats_event_args (ogg_info->mount, "ice-bitrate", "%ld", (long)source_vorbis->vi.bitrate_nominal/1000);
+
+    return NULL;
 }
 

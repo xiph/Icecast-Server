@@ -51,6 +51,7 @@ refbuf_t *refbuf_new(unsigned long size)
         }
     }
     refbuf->len = size;
+    refbuf->sync_point = 0;
     refbuf->_count = 1;
     refbuf->next = NULL;
     refbuf->associated = NULL;

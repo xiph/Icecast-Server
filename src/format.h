@@ -26,9 +26,9 @@ struct source_tag;
 
 typedef enum _format_type_tag
 {
-    FORMAT_TYPE_VORBIS,
-    FORMAT_TYPE_GENERIC,
-    FORMAT_ERROR /* No format, source not processable */
+    FORMAT_ERROR, /* No format, source not processable */
+    FORMAT_TYPE_OGG,
+    FORMAT_TYPE_GENERIC
 } format_type_t;
 
 typedef struct _format_plugin_tag
@@ -46,6 +46,7 @@ typedef struct _format_plugin_tag
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*client_send_headers)(struct _format_plugin_tag *format, 
             struct source_tag *source, client_t *client);
+    void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
 
     /* for internal state management */

@@ -51,9 +51,9 @@
 format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
-        return FORMAT_TYPE_VORBIS; /* Backwards compatibility */
+        return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
-        return FORMAT_TYPE_VORBIS; /* Now blessed by IANA */
+        return FORMAT_TYPE_OGG; /* Now blessed by IANA */
     else 
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3 */
@@ -65,8 +65,8 @@ int format_get_plugin(format_type_t type, source_t *source)
     int ret = -1;
 
     switch (type) {
-    case FORMAT_TYPE_VORBIS:
-        ret = format_vorbis_get_plugin (source);
+    case FORMAT_TYPE_OGG:
+        ret = format_ogg_get_plugin (source);
         break;
     case FORMAT_TYPE_GENERIC:
         ret = format_mp3_get_plugin (source);

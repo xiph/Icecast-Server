@@ -80,7 +80,7 @@ int format_mp3_get_plugin (source_t *source)
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
 
-    plugin = (format_plugin_t *)malloc(sizeof(format_plugin_t));
+    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
@@ -89,6 +89,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->create_client_data = format_mp3_create_client_data;
     plugin->client_send_headers = format_mp3_send_headers;
     plugin->free_plugin = format_mp3_free_plugin;
+    plugin->set_tag = mp3_set_tag;
 
     plugin->contenttype = httpp_getvar (source->parser, "content-type");
     if (plugin->contenttype == NULL) {
@@ -179,6 +180,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             if (p)
             {
                 memcpy (p, metadata+13, len);
+                logging_playlist (source->mount, p, source->listeners);
                 stats_event (source->mount, "title", p);
                 yp_touch (source->mount);
                 free (p);
@@ -421,6 +423,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
         refbuf->len  = bytes;
         refbuf->associated = source_mp3->metadata;
         refbuf_addref (source_mp3->metadata);
+        refbuf->sync_point = 1;
         return refbuf;
     }
     refbuf_release (refbuf);
@@ -561,6 +564,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     }
     refbuf->associated = source_mp3->metadata;
     refbuf_addref (source_mp3->metadata);
+    refbuf->sync_point = 1;
 
     return refbuf;
 }

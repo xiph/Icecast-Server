@@ -825,18 +825,15 @@ static void command_fallback(client_t *client, source_t *source,
 static void command_metadata(client_t *client, source_t *source)
 {
     char *action;
-    char *value;
-    mp3_state *state;
+    char *song, *title, *artist;
+    format_plugin_t *plugin;
 
     DEBUG0("Got metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
-    COMMAND_REQUIRE(client, "song", value);
-
-    if (source->format->type == FORMAT_TYPE_VORBIS) {
-        client_send_400 (client, "Cannot update metadata on vorbis streams");
-        return;
-    }
+    COMMAND_OPTIONAL(client, "song", song);
+    COMMAND_OPTIONAL(client, "title", title);
+    COMMAND_OPTIONAL(client, "artist", artist);
 
     if (strcmp (action, "updinfo") != 0)
     {
@@ -844,22 +841,32 @@ static void command_metadata(client_t *client, source_t *source)
         return;
     }
 
-    state = source->format->_state;
+    plugin = source->format;
 
-    mp3_set_tag (source->format, "title", value);
+    if (plugin && plugin->set_tag)
+    {
+        if (song)
+        {
+            plugin->set_tag (plugin, "song", song);
+            DEBUG2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+        }
+        else
+        {
+            if (artist && title)
+            {
+                plugin->set_tag (plugin, "title", title);
+                plugin->set_tag (plugin, "artist", artist);
+                INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
+                        source->mount, artist, title);
+            }
+        }
 
-    DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
-        source->mount, value);
-    stats_event(source->mount, "title", value);
-
-    /* At this point, we assume that the metadata passed in
-       is encoded in UTF-8 */
-    logging_playlist(source->mount, value, source->listeners);
-    /* If we get an update on the mountpoint, force a
-       yp touch */
-    yp_touch (source->mount);
-
-    html_success(client, "Metadata update successful");
+        html_success(client, "Metadata update successful");
+    }
+    else
+    {
+        client_send_400 (client, "mountpoint will not accept URL updates");
+    }
 }
 
 static void command_shoutcast_metadata(client_t *client, source_t *source)
@@ -873,7 +880,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
 
-    if (source->format->type == FORMAT_TYPE_VORBIS) {
+    if (source->format->type == FORMAT_TYPE_OGG) {
         client_send_400 (client, "Cannot update metadata on vorbis streams");
         return;
     }
@@ -890,11 +897,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
         source->mount, value);
-    stats_event(source->mount, "title", value);
 
-    /* If we get an update on the mountpoint, force a
-       yp touch */
-    yp_touch (source->mount);
 
     html_success(client, "Metadata update successful");
 }

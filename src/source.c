@@ -381,6 +381,26 @@ void source_move_clients (source_t *source, source_t *dest)
     thread_mutex_unlock (&move_clients_mutex);
 }
 
+
+/* clients need to be start from somewhere in the queue
+ *  * so we will look for a refbuf which has been previous
+ *   * marked as a sync point */
+static void find_client_start (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = source->burst_point;
+
+    while (refbuf)
+    {
+        if (refbuf->sync_point)
+        {
+            client_set_queue (client, refbuf);
+            break;
+        }
+        refbuf = refbuf->next;
+    }
+}
+
+
 /* get some data from the source. The stream data is placed in a refbuf
  * and sent back, however NULL is also valid as in the case of a short
  * timeout and there's no data pending.
@@ -442,10 +462,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
     /* new users need somewhere to start from */
     if (client->refbuf == NULL)
     {
-        /* make clients start at the per source burst point on the queue */
-        client_set_queue (client, source->burst_point);
+        find_client_start (source, client);
         if (client->refbuf == NULL)
-           return;
+            return;
     }
 
     while (1)
