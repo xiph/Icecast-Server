@@ -173,7 +173,7 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
     }
 
     if(ret < 0) {
-        if(sock_recoverable(ret)) {
+        if(sock_recoverable(sock_error())) {
             DEBUG1("Client had recoverable error %ld", ret);
             ret = 0;
         }
