@@ -168,7 +168,7 @@ static source_t *source_find_mount_recursive(const char *mount, int depth)
         thread_mutex_unlock(&(config_locks()->mounts_lock));
 
         if(fallback_mount != NULL) {
-            return source_find_mount_recursive(mount, depth+1);
+            return source_find_mount_recursive(fallback_mount, depth+1);
         }
     }
 
