@@ -331,6 +331,8 @@ static char *fserve_content_type(char *path)
             return "audio/mpeg";
         else if(!strcmp(ext, "html"))
             return "text/html";
+        else if(!strcmp(ext, "css"))
+            return "text/css";
         else if(!strcmp(ext, "txt"))
             return "text/plain";
         else
