@@ -1097,6 +1097,7 @@ static void source_shutdown (source_t *source)
     stats_event (source->mount, "artist", NULL);
     stats_event (source->mount, "title", NULL);
     stats_event (source->mount, "ice-bitrate", NULL);
+    stats_event (source->mount, "max_listeners", NULL);
 
     thread_mutex_unlock (&source->lock);
 
@@ -1280,6 +1281,14 @@ void source_update_settings (ice_config_t *config, source_t *source)
     else
         stats_event (source->mount, NULL, NULL);
 
+    if (source->max_listeners == -1)
+        stats_event (source->mount, "max_listeners", "unlimited");
+    else
+    {
+        char buf [10];
+        snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
+        stats_event (source->mount, "max_listeners", buf);
+    }
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
