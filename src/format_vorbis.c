@@ -141,11 +141,11 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
 
 				/* put known comments in the stats */
 				tag = vorbis_comment_query(&state->vc, "TITLE", 0);
-				if (tag) stats_event_args(self->mount, "title", tag);
-				else stats_event_args(self->mount, "title", "unknown");
+				if (tag) stats_event(self->mount, "title", tag);
+				else stats_event(self->mount, "title", "unknown");
 				tag = vorbis_comment_query(&state->vc, "ARTIST", 0);
-				if (tag) stats_event_args(self->mount, "artist", tag);
-				else stats_event_args(self->mount, "artist", "unknown");
+				if (tag) stats_event(self->mount, "artist", tag);
+				else stats_event(self->mount, "artist", "unknown");
 
 				/* don't need these now */
 				ogg_stream_clear(&state->os);
