@@ -97,7 +97,11 @@ static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
     for(i=0; i < CACHESIZE; i++) {
         if(cache[i].filename)
         {
+#ifdef _WIN32
+            if(!stricmp(fn, cache[i].filename))
+#else
             if(!strcmp(fn, cache[i].filename))
+#endif
             {
                 if(file.st_mtime > cache[i].last_modified)
                 {
