@@ -66,7 +66,7 @@ static void format_mp3_apply_settings(struct source_tag *source, struct _mount_p
 
 
 typedef struct {
-   int use_metadata;
+   unsigned int interval;
    int metadata_offset;
    unsigned int since_meta_block;
    int in_metadata;
@@ -299,7 +299,6 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
-    mp3_state *source_mp3 = self->_state;
     refbuf_t *refbuf = client->refbuf;
     char *buf;
     unsigned int len;
@@ -330,9 +329,9 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
             written += ret;
         }
         /* see if we need to send the current metadata to the client */
-        if (client_mp3->use_metadata)
+        if (client_mp3->interval)
         {
-            unsigned int remaining = source_mp3->interval -
+            unsigned int remaining = client_mp3->interval -
                 client_mp3->since_meta_block;
 
             /* sending the metadata block */
@@ -571,47 +570,34 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 }
 
 
-static void mp3_set_predata (source_t *source, client_t *client)
-{
-    mp3_client_data *mp3data = client->format_data;
-
-    if (mp3data->use_metadata)
-    {
-        unsigned remaining = client->predata_size - client->predata_len + 2;
-        char *ptr = client->predata + client->predata_len - 2;
-        mp3_state *source_mp3 = source->format->_state;
-        int bytes;
-
-        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
-                source_mp3->interval);
-        if (bytes > 0)
-            client->predata_len += bytes - 2;
-    }
-}
-
-
 static int format_mp3_create_client_data(source_t *source, client_t *client) 
 {
-    mp3_client_data *data = calloc(1,sizeof(mp3_client_data));
+    mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
 
-    if (data == NULL)
+    if (client_mp3 == NULL)
     {
         ERROR0 ("malloc failed");
         return -1;
     }
 
-    client->format_data = data;
+    client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
     if (source_mp3->interval > 0)
     {
         char *metadata = httpp_getvar(client->parser, "icy-metadata");
     
-        if (metadata)
+        if (metadata && atoi(metadata))
         {
-            data->use_metadata = atoi(metadata)>0?1:0;
+            unsigned remaining = client->predata_size - client->predata_len + 2;
+            char *ptr = client->predata + client->predata_len - 2;
+            int bytes;
 
-            mp3_set_predata (source, client);
+            client_mp3->interval = source_mp3->interval;
+            bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
+                    client_mp3->interval);
+            if (bytes > 0)
+                client->predata_len += bytes - 2;
         }
     }
 
