@@ -589,7 +589,7 @@ static void _handle_get_request(connection_t *con,
 					
 	/* there are several types of HTTP GET clients
 	** media clients, which are looking for a source (eg, URI = /stream.ogg)
-	** stats clients, which are looking for /stats.xml
+	** stats clients, which are looking for /admin/stats.xml
 	** and director server authorizers, which are looking for /GUID-xxxxxxxx 
     ** (where xxxxxx is the GUID in question) - this isn't implemented yet.
 	** we need to handle the latter two before the former, as the latter two
@@ -598,7 +598,7 @@ static void _handle_get_request(connection_t *con,
 	/* TODO: add GUID-xxxxxx */
 	if (strcmp(uri, "/admin/stats.xml") == 0) {
 	    if (!_check_source_pass(parser)) {
-		    INFO0("Request for stats.xml with incorrect or no password");
+		    INFO0("Request for /admin/stats.xml with incorrect or no password");
             client_send_401(client);
             return;
     	}
