@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <curl/curl.h>
 
 #include <thread/thread.h>
 
@@ -29,7 +30,6 @@
 #include "source.h"
 #include "cfgfile.h"
 #include "stats.h"
-#include <curl/curl.h>
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -55,6 +55,7 @@ struct yp_server
 typedef struct ypdata_tag
 {
     int remove;
+    int release;
     int cmd_ok;
 
     char *sid;
@@ -186,9 +187,9 @@ static void destroy_yp_server (struct yp_server *server)
 
 
 /* search for a ypdata entry corresponding to a specific mountpoint */
-static ypdata_t *find_yp_mount (struct yp_server *server, const char *mount)
+static ypdata_t *find_yp_mount (ypdata_t *mounts, const char *mount)
 {
-    ypdata_t *yp = server->mounts;
+    ypdata_t *yp = mounts;
     while (yp)
     {
         if (strcmp (yp->mount, mount) == 0)
@@ -322,6 +323,7 @@ static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len)
     yp_update = 1;
     yp->remove = 1;
     yp->process = do_yp_add;
+
     return 0;
 }
 
@@ -409,6 +411,12 @@ static void process_ypdata (struct yp_server *server, ypdata_t *yp)
         if ((tmp = realloc (s, len)) == NULL)
             return;
         s = tmp;
+
+        if (yp->release)
+        {
+            yp->process = do_yp_remove;
+            yp->next_update = 0;
+        }
 
         ret = yp->process (yp, s, len);
         if (ret == 0)
@@ -849,11 +857,11 @@ void yp_remove (const char *mount)
     thread_rwlock_rlock (&yp_lock);
     while (server)
     {
-        ypdata_t *yp = find_yp_mount (server, mount);
+        ypdata_t *yp = find_yp_mount (server->mounts, mount);
         if (yp)
         {
-            DEBUG2 ("mark %s on YP %s", mount, server->url);
-            yp->process = do_yp_remove;
+            DEBUG2 ("release %s on YP %s", mount, server->url);
+            yp->release = 1;
             yp->next_update = 0;
         }
         server = server->next;
@@ -868,20 +876,32 @@ void yp_touch (const char *mount)
 {
     struct yp_server *server = active_yps;
     time_t trigger;
+    ypdata_t *search_list = NULL;
 
     thread_rwlock_rlock (&yp_lock);
     /* do update in 3 secs, give stats chance to update */
     trigger = time(NULL) + 3;
+    if (server)
+        search_list = server->mounts;
+
     while (server)
     {
-        ypdata_t *yp = find_yp_mount (server, mount);
+        ypdata_t *yp = find_yp_mount (search_list, mount);
         if (yp)
         {
+            /* we may of found old entries not purged yet, so skip them */
+            if (yp->release == 0 || yp->remove == 0)
+            {
+                search_list = yp->next;
+                continue;
+            }
             /* only force if touch */
             if (yp->process == do_yp_touch)
                 yp->next_update = trigger;
         }
         server = server->next;
+        if (server)
+            search_list = server->mounts;
     }
     thread_rwlock_unlock (&yp_lock);
 }
