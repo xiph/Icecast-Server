@@ -172,7 +172,7 @@ static void _server_proc(void)
 /* chroot the process. Watch out - we need to do this before starting other
  * threads. Change uid as well, after figuring out uid _first_ */
 
-static void _ch_root_uid__setup(void)
+static void _ch_root_uid_setup(void)
 {
    ice_config_t *conf = config_get_config();
 #ifdef CHUID
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
 
     _server_proc_init(); /* Bind socket, before we change userid */
 
-    _ch_root_uid__setup(); /* Change user id and root if requested/possible */
+    _ch_root_uid_setup(); /* Change user id and root if requested/possible */
 
     stats_initialize(); /* We have to do this later on because of threading */
 

@@ -16,8 +16,8 @@
 #endif
 
 /* the global log descriptors */
-int errorlog;
-int accesslog;
+int errorlog = 0;
+int accesslog = 0;
 
 /* 
 ** ADDR USER AUTH DATE REQUEST CODE BYTES REFERER AGENT [TIME]
