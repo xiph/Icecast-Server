@@ -486,7 +486,6 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 
 #else
 
-/* TODO: This doesn't do ipv6 connections */
 int sock_try_connection (int sock, const char *hostname, const unsigned port)
 {
     struct sockaddr_in sin, server;
