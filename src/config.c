@@ -74,7 +74,7 @@ void config_shutdown(void)
         xmlFree(c->base_dir);
 	if (c->log_dir && c->log_dir != CONFIG_DEFAULT_LOG_DIR) 
         xmlFree(c->log_dir);
-    if (c->webroot_dir && s->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR)
+    if (c->webroot_dir && c->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR)
         xmlFree(c->webroot_dir);
 	if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
