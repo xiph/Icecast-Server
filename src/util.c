@@ -450,6 +450,7 @@ char *util_base64_decode(unsigned char *input)
         vals[3] = base64decode[*input++];
 
         if(vals[0] < 0 || vals[1] < 0 || vals[2] < -1 || vals[3] < -1) {
+            len -= 4;
             continue;
         }
 
