@@ -34,6 +34,7 @@
 
 /* Client management commands */
 #define COMMAND_KILL_CLIENT       201
+#define COMMAND_KILL_SOURCE       202
 
 int admin_get_command(char *command)
 {
@@ -55,6 +56,8 @@ int admin_get_command(char *command)
         return COMMAND_MOVE_CLIENTS;
     else if(!strcmp(command, "killclient"))
         return COMMAND_KILL_CLIENT;
+    else if(!strcmp(command, "killsource"))
+        return COMMAND_KILL_SOURCE;
     else
         return COMMAND_ERROR;
 }
@@ -68,6 +71,7 @@ static void command_raw_stats(client_t *client);
 static void command_list_mounts(client_t *client, int formatted);
 
 static void command_kill_client(client_t *client, source_t *source);
+static void command_kill_source(client_t *client, source_t *source);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -176,6 +180,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_KILL_CLIENT:
             command_kill_client(client, source);
+            break;
+        case COMMAND_KILL_SOURCE:
+            command_kill_source(client, source);
             break;
         default:
             WARN0("Mount request not recognised");
@@ -298,6 +305,13 @@ static void command_show_listeners(client_t *client, source_t *source)
     html_write(client, "</table></body></html>");
 
     client_destroy(client);
+}
+
+static void command_kill_source(client_t *client, source_t *source)
+{
+    source->running = 0;
+
+    html_success(client, "Removing source");
 }
 
 static void command_kill_client(client_t *client, source_t *source)

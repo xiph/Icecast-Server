@@ -597,7 +597,7 @@ void *source_main(void *arg)
 
 done:
 
-    DEBUG0("Source exiting");
+    INFO1("Source \"%s\" exiting", source->mount);
 
 #ifdef HAVE_CURL
     if(!suppress_yp) {
