@@ -114,6 +114,11 @@ void thread_initialize(void)
 {
 	thread_t *thread;
 
+	/* this must be called to init pthreads-win32 */
+#ifdef _WIN32
+	ptw32_processInitialize();
+#endif
+
 	/* set up logging */
 
 	log_initialize();

@@ -87,8 +87,6 @@ int config_parse_file(const char *filename)
 		return CONFIG_EBADROOT;
 	}
 
-	xmlDocDump(stdout, doc);
-
 	_parse_root(doc, node->xmlChildrenNode);
 
 	xmlFreeDoc(doc);
