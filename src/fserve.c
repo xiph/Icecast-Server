@@ -66,7 +66,7 @@ static mutex_t pending_lock;
 static avl_tree *mimetypes = NULL;
 
 static thread_type *fserv_thread;
-static int run_fserv;
+static int run_fserv = 0;
 static unsigned int fserve_clients;
 static int client_tree_changed=0;
 
@@ -109,21 +109,13 @@ void fserve_initialize(void)
 
 void fserve_shutdown(void)
 {
-    ice_config_t *config = config_get_config();
-    int serve = config->fileserve;
-
-    config_release_config();
-
-    if(!serve)
-        return;
-
     if(!run_fserv)
         return;
 
-    avl_tree_free(mimetypes, _delete_mapping);
-
     run_fserv = 0;
     thread_join(fserv_thread);
+    INFO0("file serving thread stopped");
+    avl_tree_free(mimetypes, _delete_mapping);
 }
 
 #ifdef HAVE_POLL
@@ -132,6 +124,7 @@ int fserve_client_waiting (void)
     fserve_t *fclient;
     unsigned int i = 0;
 
+    /* only rebuild ufds if there are clients added/removed */
     if(client_tree_changed) {
         client_tree_changed = 0;
         ufds = realloc(ufds, fserve_clients * sizeof(struct pollfd));
@@ -147,6 +140,7 @@ int fserve_client_waiting (void)
 
     if (poll(ufds, fserve_clients, 200) > 0)
     {
+        /* mark any clients that are ready */
         fclient = active_list;
         for (i=0; i<fserve_clients; i++)
         {
@@ -163,6 +157,8 @@ int fserve_client_waiting (void)
 {
     fserve_t *fclient;
     fd_set realfds;
+
+    /* only rebuild fds if there are clients added/removed */
     if(client_tree_changed) {
         client_tree_changed = 0;
         FD_ZERO(&fds);
@@ -183,9 +179,12 @@ int fserve_client_waiting (void)
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = 200000;
+        /* make a duplicate of the set so we do not have to rebuild it
+         * each time around */
         memcpy(&realfds, &fds, sizeof(fd_set));
         if(select(fd_max+1, NULL, &realfds, NULL, &tv) > 0)
         {
+            /* mark any clients that are ready */
             fclient = active_list;
             while (fclient)
             {
@@ -224,6 +223,7 @@ static void wait_for_fds() {
             pending_list = NULL;
             thread_mutex_unlock (&pending_lock);
         }
+        /* drop out of here is someone is ready */
         if (fserve_client_waiting())
            break;
     }
@@ -234,7 +234,7 @@ static void *fserv_thread_function(void *arg)
     fserve_t *fclient, **trail;
     int sbytes, bytes;
 
-    DEBUG0("file serving thread started");
+    INFO0("file serving thread started");
     while (run_fserv)
     {
         wait_for_fds();
@@ -246,6 +246,7 @@ static void *fserv_thread_function(void *arg)
         {
             if (fclient->ready)
             {
+                /* we can process this client */
                 fclient->ready = 0;
                 if(fclient->offset >= fclient->datasize) {
                     /* Grab a new chunk */
