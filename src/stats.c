@@ -523,31 +523,27 @@ void _dump_stats_to_queue(stats_event_t **queue)
 	thread_mutex_unlock(&_stats_mutex);
 }
 
-void *stats_connection(void *arg)
+/* factoring out code for stats loops
+** this function copies all stats to queue, and registers 
+** the queue for all new events atomically.
+** note: mutex must already be created!
+*/
+static void _atomic_get_and_register(stats_event_t **queue, mutex_t *mutex)
 {
-	stats_connection_t *statcon = (stats_connection_t *)arg;
-	stats_event_t *local_event_queue = NULL;
-	mutex_t local_event_mutex;
-
 	avl_node *node;
 	avl_node *node2;
 	stats_event_t *event;
 	stats_source_t *source;
 
-
-	thread_mutex_create(&local_event_mutex);
-
-	/* we must get the current stats and register for events atomicly.  
-	** we don't want to miss any and have inaccurate stats.
-	*/
 	thread_mutex_lock(&_stats_mutex);
 
 	/* first we fill our queue with the current stats */
+	
 	/* start with the global stats */
 	node = avl_get_first(_stats.global_tree);
 	while (node) {
 		event = _make_event_from_node((stats_node_t *)node->key, NULL);
-		_add_event_to_queue(event, &local_event_queue);
+		_add_event_to_queue(event, queue);
 
 		node = avl_get_next(node);
 	}
@@ -559,7 +555,7 @@ void *stats_connection(void *arg)
 		node2 = avl_get_first(source->stats_tree);
 		while (node2) {
 			event = _make_event_from_node((stats_node_t *)node2->key, source->source);
-			_add_event_to_queue(event, &local_event_queue);
+			_add_event_to_queue(event, queue);
 
 			node2 = avl_get_next(node2);
 		}
@@ -568,9 +564,21 @@ void *stats_connection(void *arg)
 	}
 
 	/* now we register to receive future event notices */
-	_register_listener(&local_event_queue, &local_event_mutex);
+	_register_listener(queue, mutex);
 
 	thread_mutex_unlock(&_stats_mutex);
+}
+
+void *stats_connection(void *arg)
+{
+	stats_connection_t *statcon = (stats_connection_t *)arg;
+	stats_event_t *local_event_queue = NULL;
+	mutex_t local_event_mutex;
+	stats_event_t *event;
+
+	thread_mutex_create(&local_event_mutex);
+
+	_atomic_get_and_register(&local_event_queue, &local_event_mutex);
 
 	while (global.running == ICE_RUNNING) {
 		thread_mutex_lock(&local_event_mutex);
@@ -610,46 +618,13 @@ void *stats_callback(void *arg)
 	stats_event_t *local_event_queue = NULL;
 	mutex_t local_event_mutex;
 
-	avl_node *node;
-	avl_node *node2;
 	stats_event_t *event;
-	stats_source_t *source;
 
 	callback = arg;
 
 	thread_mutex_create(&local_event_mutex);
 
-	/* we must get the current stats and register for events atomically.
-	** we don't want to miss any and have inaccurate stats.
-	*/
-
-	/* first the global stats */
-	thread_mutex_lock(&_stats_mutex);
-	node = avl_get_first(_stats.global_tree);
-	while (node) {
-		event = _make_event_from_node((stats_node_t *)node->key, NULL);
-		_add_event_to_queue(event, &local_event_queue);
-		node = avl_get_next(node);
-	}
-
-	/* now the stats for each source */
-	node = avl_get_first(_stats.source_tree);
-	while (node) {
-		source = (stats_source_t *)node->key;
-		node2 = avl_get_first(source->stats_tree);
-		while (node2) {
-			event = _make_event_from_node((stats_node_t *)node2->key, source->source);
-			_add_event_to_queue(event, &local_event_queue);
-			node2 = avl_get_next(node2);
-		}
-
-		node = avl_get_next(node);
-	}
-
-	/* now we register to receive future event notices */
-	_register_listener(&local_event_queue, &local_event_mutex);
-
-	thread_mutex_unlock(&_stats_mutex);
+	_atomic_get_and_register(&local_event_queue, &local_event_mutex);
 
 	while (global.running == ICE_RUNNING) {
 		thread_mutex_lock(&local_event_mutex);
