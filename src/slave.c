@@ -104,7 +104,11 @@ static void *_slave_thread(void *arg) {
 		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nAuthorization: Basic %s\r\n\r\n", data);
         free(data);
 		while (sock_read_line(mastersock, buf, sizeof(buf))) {
-			buf[strlen(buf)] = 0;
+            if(!strlen(buf))
+                break;
+        }
+
+		while (sock_read_line(mastersock, buf, sizeof(buf))) {
 			avl_tree_rlock(global.source_tree);
 			if (!source_find_mount(buf)) {
 				avl_tree_unlock(global.source_tree);

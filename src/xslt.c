@@ -111,6 +111,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(char *fn) {
                     cache[i].stylesheet = xsltParseStylesheetFile(fn);
                     cache[i].cache_age = time(NULL);
                 }
+                DEBUG1("Using cached sheet %i", i);
                 return cache[i].stylesheet;
             }
         }
