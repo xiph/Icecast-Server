@@ -111,8 +111,11 @@ int format_mp3_get_plugin (source_t *source)
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
-        state->offset = 0;
-        plugin->get_buffer = mp3_get_filter_meta;
+        if (state->inline_metadata_interval)
+        {
+            state->offset = 0;
+            plugin->get_buffer = mp3_get_filter_meta;
+        }
     }
     source->format = plugin;
     thread_mutex_create ("mp3 url lock", &state->url_lock);

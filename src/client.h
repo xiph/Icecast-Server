@@ -18,7 +18,7 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-#ifndef WIN32
+#ifdef HAVE_AIO
 #include <aio.h>
 #endif
 

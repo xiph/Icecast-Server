@@ -525,16 +525,19 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
 
     while (to_free)
     {
-        if (to_free->running && to_free->source)
+        if (to_free->source)
         {
-            /* relay has been removed from xml, shut down active relay */
-            DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
-            to_free->source->running = 0;
-            thread_join (to_free->thread);
-            update_settings = 1;
+            if (to_free->running)
+            {
+                /* relay has been removed from xml, shut down active relay */
+                DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
+                to_free->source->running = 0;
+                thread_join (to_free->thread);
+                update_settings = 1;
+            }
+            else
+                stats_event (to_free->localmount, NULL, NULL);
         }
-        else
-            stats_event (to_free->localmount, NULL, NULL);
         to_free = relay_free (to_free);
     }
 

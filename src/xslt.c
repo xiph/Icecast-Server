@@ -107,7 +107,8 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     struct stat file;
 
     if(stat(fn, &file)) {
-        DEBUG1("Error checking for stylesheet file: %s", strerror(errno));
+        WARN2("Error checking for stylesheet file \"%s\": %s", fn, 
+                strerror(errno));
         return NULL;
     }
 

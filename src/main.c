@@ -75,10 +75,9 @@ static void _fatal_error(char *perr)
 static void _print_usage()
 {
     printf(ICECAST_VERSION_STRING "\n\n");
-    printf("usage: icecast [-h -b -v] -c <file>\n");
+    printf("usage: icecast [-b -v] -c <file>\n");
     printf("options:\n");
     printf("\t-c <file>\tSpecify configuration file\n");
-    printf("\t-h\t\tDisplay usage\n");
     printf("\t-v\t\tDisplay version info\n");
     printf("\t-b\t\tRun icecast in the background\n");
     printf("\n");

@@ -50,6 +50,7 @@
 #include "format.h"
 #include "fserve.h"
 #include "auth.h"
+#include "os.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -615,7 +616,8 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
      * if so, check to see if this client is still referring to it */
     if (deletion_expected && client->refbuf == source->stream_data)
     {
-        DEBUG0("Client has fallen too far behind, removing");
+        INFO2 ("Client %lu (%s) has fallen too far behind, removing",
+                client->con->id, client->con->ip);
         client->con->error = 1;
         ret = 1;
     }
@@ -1040,11 +1042,11 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         ice_config_t *config = config_get_config_unlocked ();
         unsigned int len  = strlen (config->webroot_dir) +
-            strlen (mountinfo->intro_filename) + 1;
+            strlen (mountinfo->intro_filename) + 2;
         char *path = malloc (len);
         if (path)
         {
-            snprintf (path, len, "%s%s", config->webroot_dir,
+            snprintf (path, len, "%s" PATH_SEPARATOR "%s", config->webroot_dir,
                     mountinfo->intro_filename);
 
             source->intro_file = fopen (path, "rb");
