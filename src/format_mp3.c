@@ -16,6 +16,10 @@
 # include <strings.h>
 #endif
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"

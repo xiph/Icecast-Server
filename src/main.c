@@ -19,6 +19,10 @@
 #include <errno.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "cfgfile.h"
 #include "sighandler.h"
 

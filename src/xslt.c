@@ -73,7 +73,7 @@ void xslt_shutdown() {
 }
 
 static int evict_cache_entry() {
-    int i, age=0, oldest;
+    int i, age=0, oldest=0;
 
     for(i=0; i < CACHESIZE; i++) {
         if(cache[i].cache_age > age) {
