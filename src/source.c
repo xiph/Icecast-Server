@@ -1327,6 +1327,12 @@ void source_update_settings (ice_config_t *config, source_t *source)
 void source_update (ice_config_t *config)
 {
     avl_node *node;
+    char limit [20];
+
+    snprintf (limit, sizeof (limit), "%d", config->client_limit);
+    stats_event (NULL, "client_limit", limit);
+    snprintf (limit, sizeof (limit), "%d", config->source_limit);
+    stats_event (NULL, "source_limit", limit);
 
     avl_tree_rlock (global.source_tree);
     node = avl_get_first (global.source_tree);

@@ -364,6 +364,7 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     unsigned listeners = 0;
     char *val, *artist, *title;
     int ret;
+    char *max_listeners;
 
     artist = (char *)stats_get_value (yp->mount, "artist");
     title = (char *)stats_get_value (yp->mount, "title");
@@ -394,8 +395,16 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         listeners = atoi (val);
         free (val);
     }
-    ret = snprintf (s, len, "action=touch&sid=%s&st=%s&listeners=%u\r\n", 
-            yp->sid, yp->current_song, listeners);
+    max_listeners = stats_get_value (yp->mount, "max_listeners");
+    if (max_listeners == NULL || strcmp (max_listeners, "unlimited") == 0)
+    {
+        free (max_listeners);
+        max_listeners = (char *)stats_get_value (NULL, "client_limit");
+    }
+
+    ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
+            "&listeners=%u&max_listeners=%s\r\n",
+            yp->sid, yp->current_song, listeners, max_listeners);
 
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/

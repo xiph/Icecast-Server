@@ -334,6 +334,7 @@ static void _build_pool(void)
 
     config = config_get_config();
     threadpool_size = config->threadpool_size;
+    source_update (config);
     config_release_config();
 
     for (i = 0; i < threadpool_size; i++) {
