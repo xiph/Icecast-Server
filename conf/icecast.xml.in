@@ -10,9 +10,10 @@
         <!-- If enabled, this will provide a burst of data when a client 
              first connects, thereby significantly reducing the startup 
              time for listeners that do substantial buffering. However,
-             it also significantly increases latency, so it's disabled
-             by default -->
-        <burst-on-connect>0</burst-on-connect>
+             it also significantly increases latency between the source
+             client and listening client.  For low-latency setups, you
+             might want to disable this. -->
+        <burst-on-connect>1</burst-on-connect>
     </limits>
 
     <authentication>
