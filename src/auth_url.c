@@ -42,8 +42,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/wait.h>
+#else
+#define snprintf _snprintf
 #endif
 
 #include <curl/curl.h>
