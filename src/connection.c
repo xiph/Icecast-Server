@@ -557,15 +557,35 @@ static int _check_pass_ice(http_parser_t *parser, char *correctpass)
 
 int connection_check_admin_pass(http_parser_t *parser)
 {
+    int ret;
     ice_config_t *config = config_get_config();
     char *pass = config->admin_password;
     char *user = config->admin_username;
-    config_release_config();
 
-    if(!pass || !user)
+    if(!pass || !user) {
+        config_release_config();
         return 0;
+    }
 
-    return _check_pass_http(parser, user, pass);
+    ret = _check_pass_http(parser, user, pass);
+    config_release_config();
+    return ret;
+}
+int connection_check_relay_pass(http_parser_t *parser)
+{
+    int ret;
+    ice_config_t *config = config_get_config();
+    char *pass = config->relay_password;
+    char *user = "relay";
+
+    if(!pass || !user) {
+        config_release_config();
+        return 0;
+    }
+
+    ret = _check_pass_http(parser, user, pass);
+    config_release_config();
+    return ret;
 }
 
 int connection_check_source_pass(http_parser_t *parser, char *mount)
@@ -579,7 +599,6 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
 
     mount_proxy *mountinfo = config->mounts;
     thread_mutex_lock(&(config_locks()->mounts_lock));
-    config_release_config();
 
     while(mountinfo) {
         if(!strcmp(mountinfo->mountname, mount)) {
@@ -596,6 +615,7 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
 
     if(!pass) {
         WARN0("No source password set, rejecting source");
+        config_release_config();
         return 0;
     }
 
@@ -612,6 +632,7 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
                 WARN0("Source is using deprecated icecast login");
         }
     }
+    config_release_config();
     return ret;
 }
 

@@ -120,6 +120,10 @@ void config_clear(ice_config_t *c)
         xmlFree(c->admin_username);
     if (c->admin_password)
         xmlFree(c->admin_password);
+    if (c->relay_username)
+        xmlFree(c->relay_username);
+    if (c->relay_password)
+        xmlFree(c->relay_password);
     if (c->hostname && c->hostname != CONFIG_DEFAULT_HOSTNAME) 
         xmlFree(c->hostname);
     if (c->base_dir && c->base_dir != CONFIG_DEFAULT_BASE_DIR) 
@@ -302,6 +306,8 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->user = CONFIG_DEFAULT_USER;
     configuration->group = CONFIG_DEFAULT_GROUP;
     configuration->num_yp_directories = 0;
+    configuration->relay_username = NULL;
+    configuration->relay_password = NULL;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
@@ -592,6 +598,16 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
             if(configuration->admin_username)
                 xmlFree(configuration->admin_username);
             configuration->admin_username =
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "relay-password") == 0) {
+            if(configuration->relay_password)
+                xmlFree(configuration->relay_password);
+            configuration->relay_password =
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "relay-user") == 0) {
+            if(configuration->relay_username)
+                xmlFree(configuration->relay_username);
+            configuration->relay_username =
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));

@@ -76,6 +76,8 @@ typedef struct ice_config_tag
     char *source_password;
     char *admin_username;
     char *admin_password;
+    char *relay_username;
+    char *relay_password;
 
     int touch_interval;
     ice_config_dir_t *dir_list;

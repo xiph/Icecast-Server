@@ -95,22 +95,16 @@ static void create_relay_stream(char *server, int port,
         return;
     }
     con = create_connection(streamsock, -1, NULL);
-    if(mp3) {
-        /* Some mp3 servers are bitchy, send a user-agent string to make them
-         * send the right response.
-         */
-        sock_write(streamsock, "GET %s HTTP/1.0\r\n"
-                               "User-Agent: " ICECAST_VERSION_STRING "\r\n"
-                               "Icy-MetaData: 1\r\n"
-                               "\r\n", 
-                remotemount);
-    }
-    else {
-        sock_write(streamsock, "GET %s HTTP/1.0\r\n"
-                               "User-Agent: " ICECAST_VERSION_STRING "\r\n"
-                               "\r\n",
-                remotemount);
-    }
+    /* At this point we may not know if we are relaying a mp3 or vorbis stream,
+     * so lets send in the icy-metadata header just in case, it's harmless in 
+     * the vorbis case. If we don't send in this header then relay will not 
+     * have mp3 metadata.
+     */
+    sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+                           "User-Agent: " ICECAST_VERSION_STRING "\r\n"
+                           "Icy-MetaData: 1\r\n"
+                           "\r\n", 
+                           remotemount);
     memset(header, 0, sizeof(header));
     if (util_read_header(con->sock, header, 4096) == 0) {
         WARN0("Header read failed");
@@ -198,7 +192,7 @@ static void *_slave_thread(void *arg) {
             strcat(authheader, password);
             data = util_base64_encode(authheader);
             sock_write(mastersock, 
-                    "GET /admin/streamlist HTTP/1.0\r\n"
+                    "GET /admin/streamlist.txt HTTP/1.0\r\n"
                     "Authorization: Basic %s\r\n"
                     "\r\n", data);
             free(authheader);
