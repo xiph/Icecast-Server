@@ -40,7 +40,6 @@ typedef struct source_tag
     struct _format_plugin_tag *format;
 
     client_t *active_clients;
-    client_t **active_clients_tail;
     client_t *first_normal_client;
 
     int check_pending;

@@ -92,7 +92,6 @@ source_t *source_reserve (const char *mount)
         src->mount = strdup (mount);
         src->max_listeners = -1;
 
-        src->active_clients_tail = &src->active_clients;
         src->pending_clients_tail = &src->pending_clients;
 
         thread_mutex_create (src->mount, &src->lock);
@@ -220,7 +219,6 @@ void source_clear_source (source_t *source)
         source->active_clients = client->next;
         source_free_client (source, client);
     }
-    source->active_clients_tail = &source->active_clients;
     while (source->pending_clients)
     {
         client_t *client = source->pending_clients;
@@ -367,7 +365,6 @@ void source_move_clients (source_t *source, source_t *dest)
             dest->pending_clients_tail = &client->next;
             count++;
         }
-        source->active_clients_tail = &source->active_clients;
         if (count != source->listeners)
             WARN2 ("count %u, listeners %u", count, source->listeners);
         count = 0;
@@ -517,8 +514,6 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
             client_t *to_go = client;
 
             *client_p = client->next;
-            if (client->next == NULL)
-                source->active_clients_tail = client_p;
             client = client->next;
 
             if (source->first_normal_client == to_go)
@@ -536,10 +531,8 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
             {
                 /* move fast clients to beginning of list */
                 if (client_p == &source->active_clients)
-                {
-                    source->active_clients_tail = &to_go->next;
                     client_p = &to_go->next;
-                }
+
                 to_go->next = source->active_clients;
                 source->active_clients = to_go;
             }
@@ -966,8 +959,6 @@ static void process_pending_clients (source_t *source)
         }
         else
         {
-            if (*source->active_clients_tail == source->active_clients)
-                source->active_clients_tail = &to_go->next;
             to_go->next = source->active_clients;
             source->active_clients = to_go;
             count++;
