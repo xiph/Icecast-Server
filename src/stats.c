@@ -74,7 +74,7 @@ void stats_initialize()
 
 	/* fire off the stats thread */
 	_stats_running = 1;
-	_stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, ICE_DEFAULT_STACKSIZE, THREAD_ATTACHED);
+	_stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, THREAD_ATTACHED);
 }
 
 void stats_shutdown()

@@ -216,7 +216,7 @@ static void _build_pool(void)
 
 	for (i = 0; i < config->threadpool_size; i++) {
 		snprintf(buff, 64, "Connection Thread #%d", i);
-		tid = thread_create(buff, _handle_connection, NULL, ICE_DEFAULT_STACKSIZE, THREAD_ATTACHED);
+		tid = thread_create(buff, _handle_connection, NULL, THREAD_ATTACHED);
 		_push_thread(&_conhands, tid);
 	}
 }
@@ -364,7 +364,7 @@ static void *_handle_connection(void *arg)
 
 				sock_set_blocking(con->sock, SOCK_NONBLOCK);
 				
-				thread_create("Source Thread", source_main, (void *)source, ICE_DEFAULT_STACKSIZE, THREAD_DETACHED);
+				thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
 				
 				continue;
 			} else if (parser->req_type == httpp_req_stats) {
@@ -385,7 +385,7 @@ static void *_handle_connection(void *arg)
 				stats->parser = parser;
 				stats->con = con;
 
-				thread_create("Stats Connection", stats_connection, (void *)stats, ICE_DEFAULT_STACKSIZE, THREAD_DETACHED);
+				thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
 
 				continue;
 			} else if (parser->req_type == httpp_req_play || parser->req_type == httpp_req_get) {
