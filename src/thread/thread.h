@@ -106,7 +106,7 @@ void thread_initialize_with_log_id(int log_id);
 void thread_shutdown(void);
 
 /* creation, destruction, locking, unlocking, signalling and waiting */
-long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file);
+long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int stacksize, int detached, int line, char *file);
 void thread_mutex_create_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file);
