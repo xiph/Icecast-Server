@@ -40,6 +40,7 @@
 #include "geturl.h"
 #include "format.h"
 #include "format_mp3.h"
+#include "event.h"
 
 #define CATMODULE "connection"
 
@@ -112,6 +113,10 @@ connection_t *create_connection(sock_t sock, char *ip) {
 	con->con_time = time(NULL);
 	con->id = _next_connection_id();
 	con->ip = ip;
+
+    con->event_number = EVENT_NO_EVENT;
+    con->event = NULL;
+
 	return con;
 }
 
@@ -209,10 +214,13 @@ static void _build_pool(void)
 	int i;
     thread_type *tid;
 	char buff[64];
+    int threadpool_size;
 
 	config = config_get_config();
+    threadpool_size = config->threadpool_size;
+    config_release_config();
 
-	for (i = 0; i < config->threadpool_size; i++) {
+	for (i = 0; i < threadpool_size; i++) {
 		snprintf(buff, 64, "Connection Thread #%d", i);
 		tid = thread_create(buff, _handle_connection, NULL, THREAD_ATTACHED);
 		_push_thread(&_conhands, tid);
@@ -290,6 +298,16 @@ static connection_t *_get_connection(void)
 	return con;
 }
 
+void connection_inject_event(int eventnum, void *event_data) {
+    connection_t *con = calloc(1, sizeof(connection_t));
+
+    con->event_number = eventnum;
+    con->event = event_data;
+
+    _add_connection(con);
+    _signal_pool();
+}
+
 /* TODO: Make this return an appropriate error code so that we can use HTTP
  * codes where appropriate
  */
@@ -297,12 +315,18 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 	source_t *source;
 	char *contenttype;
     mount_proxy *mountproxy, *mountinfo = NULL;
+    int source_limit;
+    ice_config_t *config;
+
+    config = config_get_config();
+    source_limit = config->source_limit;
+    config_release_config();
 
 	/* check to make sure this source wouldn't
 	** be over the limit
 	*/
 	global_lock();
-	if (global.sources >= config_get_config()->source_limit) {
+	if (global.sources >= source_limit) {
 		INFO1("Source (%s) logged in, but there are too many sources", mount);
 		global_unlock();
 		return 0;
@@ -312,7 +336,11 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 
 	stats_event_inc(NULL, "sources");
     
-    mountproxy = config_get_config()->mounts;
+    config = config_get_config();
+    mountproxy = config->mounts;
+    thread_mutex_lock(&(config_locks()->mounts_lock));
+    config_release_config();
+
     while(mountproxy) {
         if(!strcmp(mountproxy->mountname, mount)) {
             mountinfo = mountproxy;
@@ -327,15 +355,18 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 		format_type_t format = format_get_type(contenttype);
 		if (format == FORMAT_ERROR) {
 			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
+            thread_mutex_unlock(&(config_locks()->mounts_lock));
             goto fail;
 		} else {
 			source = source_create(client, con, parser, mount, 
                     format, mountinfo);
+            thread_mutex_unlock(&(config_locks()->mounts_lock));
 		}
 	} else {
         format_type_t format = FORMAT_TYPE_MP3;
 		ERROR0("No content-type header, falling back to backwards compatibility mode for icecast 1.x relays. Assuming content is mp3.");
         source = source_create(client, con, parser, mount, format, mountinfo);
+        thread_mutex_unlock(&(config_locks()->mounts_lock));
 	}
 
     source->send_return = 1;
@@ -408,17 +439,22 @@ static int _check_pass_ice(http_parser_t *parser, char *correctpass)
 
 static int _check_relay_pass(http_parser_t *parser)
 {
-    char *pass = config_get_config()->relay_password;
+    ice_config_t *config = config_get_config();
+    char *pass = config->relay_password;
     if(!pass)
-        pass = config_get_config()->source_password;
+        pass = config->source_password;
+    config_release_config();
 
     return _check_pass_http(parser, "relay", pass);
 }
 
 static int _check_admin_pass(http_parser_t *parser)
 {
-    char *pass = config_get_config()->admin_password;
-    char *user = config_get_config()->admin_username;
+    ice_config_t *config = config_get_config();
+    char *pass = config->admin_password;
+    char *user = config->admin_username;
+    config_release_config();
+
     if(!pass || !user)
         return 0;
 
@@ -427,11 +463,16 @@ static int _check_admin_pass(http_parser_t *parser)
 
 static int _check_source_pass(http_parser_t *parser, char *mount)
 {
-    char *pass = config_get_config()->source_password;
+    ice_config_t *config = config_get_config();
+    char *pass = config->source_password;
     char *user = "source";
     int ret;
+    int ice_login = config->ice_login;
 
-    mount_proxy *mountinfo = config_get_config()->mounts;
+    mount_proxy *mountinfo = config->mounts;
+    thread_mutex_lock(&(config_locks()->mounts_lock));
+    config_release_config();
+
     while(mountinfo) {
         if(!strcmp(mountinfo->mountname, mount)) {
             if(mountinfo->password)
@@ -443,13 +484,15 @@ static int _check_source_pass(http_parser_t *parser, char *mount)
         mountinfo = mountinfo->next;
     }
 
+    thread_mutex_unlock(&(config_locks()->mounts_lock));
+
     if(!pass) {
         WARN0("No source password set, rejecting source");
         return 0;
     }
 
     ret = _check_pass_http(parser, user, pass);
-    if(!ret && config_get_config()->ice_login)
+    if(!ret && ice_login)
     {
         ret = _check_pass_ice(parser, pass);
         if(ret)
@@ -627,6 +670,19 @@ static void _handle_get_request(connection_t *con,
     int bytes;
 	struct stat statbuf;
 	source_t *source;
+    int fileserve;
+    char *host;
+    int port;
+    ice_config_t *config;
+    int client_limit;
+
+    config = config_get_config();
+    fileserve = config->fileserve;
+    host = config->hostname;
+    port = config->port;
+    client_limit = config->client_limit;
+    config_release_config();
+
 
     DEBUG0("Client connected");
 
@@ -689,8 +745,8 @@ static void _handle_get_request(connection_t *con,
         free(fullpath);
         return;
 	}
-    else if(config_get_config()->fileserve && 
-            stat(fullpath, &statbuf) == 0) {
+    else if(fileserve && stat(fullpath, &statbuf) == 0) 
+    {
         fserve_client_create(client, fullpath);
         free(fullpath);
         return;
@@ -709,14 +765,14 @@ static void _handle_get_request(connection_t *con,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
                     "http://%s:%d%s", 
-                    config_get_config()->hostname, 
-                    config_get_config()->port,
+                    host, 
+                    port,
                     sourceuri
                     );
             if(bytes > 0) client->con->sent_bytes = bytes;
     	    client_destroy(client);
         }
-        else if(config_get_config()->fileserve) {
+        else if(fileserve) {
             fullpath = util_get_path_from_normalised_uri(sourceuri);
             if(stat(fullpath, &statbuf) == 0) {
                 fserve_client_create(client, fullpath);
@@ -774,7 +830,7 @@ static void _handle_get_request(connection_t *con,
 	}
 				
 	global_lock();
-	if (global.clients >= config_get_config()->client_limit) {
+	if (global.clients >= client_limit) {
         client_send_504(client,
                 "The server is already full. Try again later.");
 		global_unlock();
@@ -788,7 +844,7 @@ static void _handle_get_request(connection_t *con,
         DEBUG0("Source found for client");
 						
 		global_lock();
-		if (global.clients >= config_get_config()->client_limit) {
+		if (global.clients >= client_limit) {
             client_send_504(client, 
                     "The server is already full. Try again later.");
 			global_unlock();
@@ -847,6 +903,21 @@ static void *_handle_connection(void *arg)
 
 		/* grab a connection and set the socket to blocking */
 		while ((con = _get_connection())) {
+
+            /* Handle meta-connections */
+            if(con->event_number > 0) {
+                switch(con->event_number) {
+                    case EVENT_CONFIG_READ:
+                        event_config_read(con->event);
+                        break;
+                    default:
+                        ERROR1("Unknown event number: %d", con->event_number);
+                        break;
+                }
+                free(con);
+                continue;
+            }
+
 			stats_event_inc(NULL, "connections");
 
 			sock_set_blocking(con->sock, SOCK_BLOCK);

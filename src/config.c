@@ -3,6 +3,8 @@
 #include <string.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+
+#include "thread/thread.h"
 #include "config.h"
 #include "refbuf.h"
 #include "client.h"
@@ -45,36 +47,59 @@
 #define CONFIG_DEFAULT_WEBROOT_DIR ".\\webroot"
 #endif
 
-ice_config_t _configuration;
-char *_config_filename;
+ice_config_t _current_configuration;
+ice_config_locks _locks;
 
-static void _set_defaults(void);
-static void _parse_root(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_limits(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_directory(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_paths(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_logging(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_security(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_relay(xmlDocPtr doc, xmlNodePtr node);
-static void _parse_mount(xmlDocPtr doc, xmlNodePtr node);
-static void _add_server(xmlDocPtr doc, xmlNodePtr node);
+static void _set_defaults(ice_config_t *c);
+static void _parse_root(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_paths(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *c);
+static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
-void config_initialize(void)
-{
-	memset(&_configuration, 0, sizeof(ice_config_t));
-	_set_defaults();
-	_config_filename = NULL;
+static void create_locks() {
+    thread_mutex_create(&_locks.relay_lock);
+    thread_mutex_create(&_locks.mounts_lock);
+    thread_mutex_create(&_locks.config_lock);
 }
 
-void config_shutdown(void)
+static void release_locks() {
+    thread_mutex_destroy(&_locks.relay_lock);
+    thread_mutex_destroy(&_locks.mounts_lock);
+    thread_mutex_destroy(&_locks.config_lock);
+}
+
+void config_initialize(void) {
+    create_locks();
+}
+
+void config_shutdown(void) {
+    config_get_config();
+    config_clear(&_current_configuration);
+    config_release_config();
+    release_locks();
+}
+
+void config_init_configuration(ice_config_t *configuration)
+{
+	memset(configuration, 0, sizeof(ice_config_t));
+	_set_defaults(configuration);
+}
+
+void config_clear(ice_config_t *c)
 {
 	ice_config_dir_t *dirnode, *nextdirnode;
-    ice_config_t *c = &_configuration;
     relay_server *relay, *nextrelay;
     mount_proxy *mount, *nextmount;
 
-	if (_config_filename) free(_config_filename);
+    if (c->config_filename)
+        free(c->config_filename);
 
 	if (c->location && c->location != CONFIG_DEFAULT_LOCATION) 
         xmlFree(c->location);
@@ -105,7 +130,9 @@ void config_shutdown(void)
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
-    relay = _configuration.relay;
+
+    thread_mutex_lock(&(_locks.relay_lock));
+    relay = c->relay;
     while(relay) {
         nextrelay = relay->next;
         xmlFree(relay->server);
@@ -115,7 +142,10 @@ void config_shutdown(void)
         free(relay);
         relay = nextrelay;
     }
-    mount = _configuration.mounts;
+    thread_mutex_unlock(&(_locks.relay_lock));
+
+    thread_mutex_lock(&(_locks.mounts_lock));
+    mount = c->mounts;
     while(mount) {
         nextmount = mount->next;
         xmlFree(mount->mountname);
@@ -126,7 +156,9 @@ void config_shutdown(void)
         free(mount);
         mount = nextmount;
     }
-    dirnode = _configuration.dir_list;
+    thread_mutex_unlock(&(_locks.mounts_lock));
+
+    dirnode = c->dir_list;
     while(dirnode) {
         nextdirnode = dirnode->next;
         xmlFree(dirnode->host);
@@ -137,17 +169,21 @@ void config_shutdown(void)
     memset(c, 0, sizeof(ice_config_t));
 }
 
-int config_parse_file(const char *filename)
+int config_initial_parse_file(const char *filename)
+{
+    /* Since we're already pointing at it, we don't need to copy it in place */
+    return config_parse_file(filename, &_current_configuration);
+}
+
+int config_parse_file(const char *filename, ice_config_t *configuration)
 {
 	xmlDocPtr doc;
 	xmlNodePtr node;
 
 	if (filename == NULL || strcmp(filename, "") == 0) return CONFIG_EINSANE;
 	
-	_config_filename = (char *)strdup(filename);
-
     xmlInitParser();
-	doc = xmlParseFile(_config_filename);
+	doc = xmlParseFile(filename);
 	if (doc == NULL) {
 		return CONFIG_EPARSE;
 	}
@@ -165,7 +201,11 @@ int config_parse_file(const char *filename)
 		return CONFIG_EBADROOT;
 	}
 
-	_parse_root(doc, node->xmlChildrenNode);
+    config_init_configuration(configuration);
+
+	configuration->config_filename = (char *)strdup(filename);
+
+	_parse_root(doc, node->xmlChildrenNode, configuration);
 
 	xmlFreeDoc(doc);
     xmlCleanupParser();
@@ -178,54 +218,71 @@ int config_parse_cmdline(int arg, char **argv)
 	return 0;
 }
 
-int config_rehash(void)
+ice_config_locks *config_locks(void)
 {
-	return 0;
+    return &_locks;
+}
+
+void config_release_config(void)
+{
+    thread_mutex_unlock(&(_locks.config_lock));
 }
 
 ice_config_t *config_get_config(void)
 {
-	return &_configuration;
+    thread_mutex_lock(&(_locks.config_lock));
+	return &_current_configuration;
 }
 
-static void _set_defaults(void)
+/* MUST be called with the lock held! */
+void config_set_config(ice_config_t *config) {
+    memcpy(&_current_configuration, config, sizeof(ice_config_t));
+}
+
+ice_config_t *config_get_config_unlocked(void)
 {
-	_configuration.location = CONFIG_DEFAULT_LOCATION;
-	_configuration.admin = CONFIG_DEFAULT_ADMIN;
-	_configuration.client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
-	_configuration.source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
-	_configuration.queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
-	_configuration.threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
-	_configuration.client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
-	_configuration.header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
-	_configuration.source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
-	_configuration.source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
-	_configuration.relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
-	_configuration.ice_login = CONFIG_DEFAULT_ICE_LOGIN;
-	_configuration.fileserve = CONFIG_DEFAULT_FILESERVE;
-	_configuration.touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
-	_configuration.dir_list = NULL;
-	_configuration.hostname = CONFIG_DEFAULT_HOSTNAME;
-	_configuration.port = CONFIG_DEFAULT_PORT;
-	_configuration.bind_address = NULL;
-	_configuration.master_server = NULL;
-	_configuration.master_server_port = CONFIG_DEFAULT_PORT;
-    _configuration.master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
-	_configuration.master_password = NULL;
-	_configuration.base_dir = CONFIG_DEFAULT_BASE_DIR;
-	_configuration.log_dir = CONFIG_DEFAULT_LOG_DIR;
-    _configuration.webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
-	_configuration.access_log = CONFIG_DEFAULT_ACCESS_LOG;
-	_configuration.error_log = CONFIG_DEFAULT_ERROR_LOG;
-	_configuration.loglevel = CONFIG_DEFAULT_LOG_LEVEL;
-    _configuration.chroot = CONFIG_DEFAULT_CHROOT;
-    _configuration.chuid = CONFIG_DEFAULT_CHUID;
-    _configuration.user = CONFIG_DEFAULT_USER;
-    _configuration.group = CONFIG_DEFAULT_GROUP;
-    _configuration.num_yp_directories = 0;
+	return &_current_configuration;
 }
 
-static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
+static void _set_defaults(ice_config_t *configuration)
+{
+	configuration->location = CONFIG_DEFAULT_LOCATION;
+	configuration->admin = CONFIG_DEFAULT_ADMIN;
+	configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
+	configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
+	configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
+	configuration->threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
+	configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
+	configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
+	configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
+	configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
+	configuration->relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
+	configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
+	configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
+	configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
+	configuration->dir_list = NULL;
+	configuration->hostname = CONFIG_DEFAULT_HOSTNAME;
+	configuration->port = CONFIG_DEFAULT_PORT;
+	configuration->bind_address = NULL;
+	configuration->master_server = NULL;
+	configuration->master_server_port = CONFIG_DEFAULT_PORT;
+    configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
+	configuration->master_password = NULL;
+	configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
+	configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
+    configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
+	configuration->access_log = CONFIG_DEFAULT_ACCESS_LOG;
+	configuration->error_log = CONFIG_DEFAULT_ERROR_LOG;
+	configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
+    configuration->chroot = CONFIG_DEFAULT_CHROOT;
+    configuration->chuid = CONFIG_DEFAULT_CHUID;
+    configuration->user = CONFIG_DEFAULT_USER;
+    configuration->group = CONFIG_DEFAULT_GROUP;
+    configuration->num_yp_directories = 0;
+}
+
+static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *configuration)
 {
 	char *tmp;
 
@@ -234,13 +291,13 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "location") == 0) {
-			if (_configuration.location && _configuration.location != CONFIG_DEFAULT_LOCATION) xmlFree(_configuration.location);
-			_configuration.location = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->location && configuration->location != CONFIG_DEFAULT_LOCATION) xmlFree(configuration->location);
+			configuration->location = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "admin") == 0) {
-			if (_configuration.admin && _configuration.admin != CONFIG_DEFAULT_ADMIN) xmlFree(_configuration.admin);
-			_configuration.admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->admin && configuration->admin != CONFIG_DEFAULT_ADMIN) xmlFree(configuration->admin);
+			configuration->admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if(strcmp(node->name, "authentication") == 0) {
-			_parse_authentication(doc, node->xmlChildrenNode);
+			_parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "source-password") == 0) {
             /* TODO: This is the backwards-compatibility location */
             char *mount, *pass;
@@ -249,62 +306,63 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
                 /* FIXME: This is a placeholder for per-mount passwords */
             }
             else {
-			    if (_configuration.source_password && _configuration.source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(_configuration.source_password);
-			    _configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			    if (configuration->source_password && configuration->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(configuration->source_password);
+			    configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
         } else if (strcmp(node->name, "relay-password") == 0) {
             /* TODO: This is the backwards-compatibility location */
-			if (_configuration.relay_password && _configuration.relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(_configuration.relay_password);
-			_configuration.relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->relay_password && configuration->relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(configuration->relay_password);
+			configuration->relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "icelogin") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.ice_login = atoi(tmp);
+			configuration->ice_login = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "fileserve") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.fileserve = atoi(tmp);
+			configuration->fileserve = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "hostname") == 0) {
-			if (_configuration.hostname && _configuration.hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(_configuration.hostname);
-			_configuration.hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->hostname && configuration->hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(configuration->hostname);
+			configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "port") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.port = atoi(tmp);
+			configuration->port = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "bind-address") == 0) {
-			if (_configuration.bind_address) xmlFree(_configuration.bind_address);
-			_configuration.bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->bind_address) xmlFree(configuration->bind_address);
+			configuration->bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "master-server") == 0) {
-			if (_configuration.master_server) xmlFree(_configuration.master_server);
-			_configuration.master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->master_server) xmlFree(configuration->master_server);
+			configuration->master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "master-password") == 0) {
-			if (_configuration.master_password) xmlFree(_configuration.master_password);
-			_configuration.master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->master_password) xmlFree(configuration->master_password);
+			configuration->master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "master-server-port") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.master_server_port = atoi(tmp);
+			configuration->master_server_port = atoi(tmp);
         } else if (strcmp(node->name, "master-update-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            _configuration.master_update_interval = atoi(tmp);
+            configuration->master_update_interval = atoi(tmp);
 		} else if (strcmp(node->name, "limits") == 0) {
-			_parse_limits(doc, node->xmlChildrenNode);
+			_parse_limits(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "relay") == 0) {
-			_parse_relay(doc, node->xmlChildrenNode);
+			_parse_relay(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "mount") == 0) {
-			_parse_mount(doc, node->xmlChildrenNode);
+			_parse_mount(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "directory") == 0) {
-			_parse_directory(doc, node->xmlChildrenNode);
+			_parse_directory(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "paths") == 0) {
-			_parse_paths(doc, node->xmlChildrenNode);
+			_parse_paths(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "logging") == 0) {
-			_parse_logging(doc, node->xmlChildrenNode);
+			_parse_logging(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "security") == 0) {
-            _parse_security(doc, node->xmlChildrenNode);
+            _parse_security(doc, node->xmlChildrenNode, configuration);
 		}
 	} while ((node = node->next));
 }
 
-static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *configuration)
 {
 	char *tmp;
 
@@ -314,41 +372,42 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
 
 		if (strcmp(node->name, "clients") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.client_limit = atoi(tmp);
+			configuration->client_limit = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "sources") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.source_limit = atoi(tmp);
+			configuration->source_limit = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "queue-size") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.queue_size_limit = atoi(tmp);
+			configuration->queue_size_limit = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "threadpool") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.threadpool_size = atoi(tmp);
+			configuration->threadpool_size = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "client-timeout") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.client_timeout = atoi(tmp);
+			configuration->client_timeout = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "header-timeout") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.header_timeout = atoi(tmp);
+			configuration->header_timeout = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		} else if (strcmp(node->name, "source-timeout") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.source_timeout = atoi(tmp);
+			configuration->source_timeout = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		}
 	} while ((node = node->next));
 }
 
-static void _parse_mount(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *configuration)
 {
     char *tmp;
     mount_proxy *mount = calloc(1, sizeof(mount_proxy));
-    mount_proxy *current = _configuration.mounts;
+    mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
     
     while(current) {
@@ -359,7 +418,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node)
     if(last)
         last->next = mount;
     else
-        _configuration.mounts = mount;
+        configuration->mounts = mount;
 
     mount->max_listeners = -1;
 
@@ -395,11 +454,12 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node)
 	} while ((node = node->next));
 }
 
-static void _parse_relay(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
     char *tmp;
     relay_server *relay = calloc(1, sizeof(relay_server));
-    relay_server *current = _configuration.relay;
+    relay_server *current = configuration->relay;
     relay_server *last=NULL;
     
     while(current) {
@@ -410,7 +470,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node)
     if(last)
         last->next = relay;
     else
-        _configuration.relay = relay;
+        configuration->relay = relay;
 
 	do {
 		if (node == NULL) break;
@@ -441,7 +501,8 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node)
 	} while ((node = node->next));
 }
 
-static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
 	do {
 		if (node == NULL) break;
@@ -454,39 +515,40 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node)
                 /* FIXME: This is a placeholder for per-mount passwords */
             }
             else {
-			    if (_configuration.source_password && 
-                        _configuration.source_password != 
+			    if (configuration->source_password && 
+                        configuration->source_password != 
                         CONFIG_DEFAULT_SOURCE_PASSWORD) 
-                    xmlFree(_configuration.source_password);
-			    _configuration.source_password = 
+                    xmlFree(configuration->source_password);
+			    configuration->source_password = 
                     (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
         } else if (strcmp(node->name, "relay-password") == 0) {
-			if (_configuration.relay_password && 
-                    _configuration.relay_password != 
+			if (configuration->relay_password && 
+                    configuration->relay_password != 
                     CONFIG_DEFAULT_RELAY_PASSWORD) 
-                xmlFree(_configuration.relay_password);
-			_configuration.relay_password = 
+                xmlFree(configuration->relay_password);
+			configuration->relay_password = 
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "admin-password") == 0) {
-            if(_configuration.admin_password)
-                xmlFree(_configuration.admin_password);
-            _configuration.admin_password =
+            if(configuration->admin_password)
+                xmlFree(configuration->admin_password);
+            configuration->admin_password =
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "admin-user") == 0) {
-            if(_configuration.admin_username)
-                xmlFree(_configuration.admin_username);
-            _configuration.admin_username =
+            if(configuration->admin_username)
+                xmlFree(configuration->admin_username);
+            configuration->admin_username =
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         }
 	} while ((node = node->next));
 }
 
-static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
 	char *tmp;
 
-	if (_configuration.num_yp_directories >= MAX_YP_DIRECTORIES) {
+	if (configuration->num_yp_directories >= MAX_YP_DIRECTORIES) {
 		ERROR0("Maximum number of yp directories exceeded!");
 		return;
 	}
@@ -495,68 +557,71 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "yp-url") == 0) {
-			if (_configuration.yp_url[_configuration.num_yp_directories]) 
-                xmlFree(_configuration.yp_url[_configuration.num_yp_directories]);
-			_configuration.yp_url[_configuration.num_yp_directories] = 
+			if (configuration->yp_url[configuration->num_yp_directories]) 
+                xmlFree(configuration->yp_url[configuration->num_yp_directories]);
+			configuration->yp_url[configuration->num_yp_directories] = 
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "yp-url-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            _configuration.yp_url_timeout[_configuration.num_yp_directories] = 
+            configuration->yp_url_timeout[configuration->num_yp_directories] = 
                 atoi(tmp);
 		} else if (strcmp(node->name, "server") == 0) {
-			_add_server(doc, node->xmlChildrenNode);
+			_add_server(doc, node->xmlChildrenNode, configuration);
 		} else if (strcmp(node->name, "touch-interval") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.touch_interval = atoi(tmp);
+			configuration->touch_interval = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		}
 	} while ((node = node->next));
-	_configuration.num_yp_directories++;
+	configuration->num_yp_directories++;
 }
 
-static void _parse_paths(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
 	do {
 		if (node == NULL) break;
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "basedir") == 0) {
-			if (_configuration.base_dir && _configuration.base_dir != CONFIG_DEFAULT_BASE_DIR) xmlFree(_configuration.base_dir);
-			_configuration.base_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->base_dir && configuration->base_dir != CONFIG_DEFAULT_BASE_DIR) xmlFree(configuration->base_dir);
+			configuration->base_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "logdir") == 0) {
-			if (_configuration.log_dir && _configuration.log_dir != CONFIG_DEFAULT_LOG_DIR) xmlFree(_configuration.log_dir);
-			_configuration.log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->log_dir && configuration->log_dir != CONFIG_DEFAULT_LOG_DIR) xmlFree(configuration->log_dir);
+			configuration->log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "webroot") == 0) {
-			if (_configuration.webroot_dir && _configuration.webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(_configuration.webroot_dir);
-			_configuration.webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            if(_configuration.webroot_dir[strlen(_configuration.webroot_dir)-1] == '/')
-                _configuration.webroot_dir[strlen(_configuration.webroot_dir)-1] = 0;
+			if (configuration->webroot_dir && configuration->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(configuration->webroot_dir);
+			configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
+                configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
 
 		}
 	} while ((node = node->next));
 }
 
-static void _parse_logging(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
 	do {
 		if (node == NULL) break;
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "accesslog") == 0) {
-			if (_configuration.access_log && _configuration.access_log != CONFIG_DEFAULT_ACCESS_LOG) xmlFree(_configuration.access_log);
-			_configuration.access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->access_log && configuration->access_log != CONFIG_DEFAULT_ACCESS_LOG) xmlFree(configuration->access_log);
+			configuration->access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "errorlog") == 0) {
-			if (_configuration.error_log && _configuration.error_log != CONFIG_DEFAULT_ERROR_LOG) xmlFree(_configuration.error_log);
-			_configuration.error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (configuration->error_log && configuration->error_log != CONFIG_DEFAULT_ERROR_LOG) xmlFree(configuration->error_log);
+			configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "loglevel") == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           _configuration.loglevel = atoi(tmp);
+           configuration->loglevel = atoi(tmp);
            if (tmp) xmlFree(tmp);
         }
 	} while ((node = node->next));
 }
 
-static void _parse_security(xmlDocPtr doc, xmlNodePtr node)
+static void _parse_security(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_t *configuration)
 {
    char *tmp;
    xmlNodePtr oldnode;
@@ -567,21 +632,21 @@ static void _parse_security(xmlDocPtr doc, xmlNodePtr node)
 
        if (strcmp(node->name, "chroot") == 0) {
            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           _configuration.chroot = atoi(tmp);
+           configuration->chroot = atoi(tmp);
            if (tmp) xmlFree(tmp);
        } else if (strcmp(node->name, "changeowner") == 0) {
-           _configuration.chuid = 1;
+           configuration->chuid = 1;
            oldnode = node;
            node = node->xmlChildrenNode;
            do {
                if(node == NULL) break;
                if(xmlIsBlankNode(node)) continue;
                if(strcmp(node->name, "user") == 0) {
-                   if(_configuration.user) xmlFree(_configuration.user);
-                   _configuration.user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                   if(configuration->user) xmlFree(configuration->user);
+                   configuration->user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
                } else if(strcmp(node->name, "group") == 0) {
-                   if(_configuration.group) xmlFree(_configuration.group);
-                   _configuration.group = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                   if(configuration->group) xmlFree(configuration->group);
+                   configuration->group = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
                }
            } while((node = node->next));
            node = oldnode;
@@ -589,14 +654,15 @@ static void _parse_security(xmlDocPtr doc, xmlNodePtr node)
    } while ((node = node->next));
 }
 
-static void _add_server(xmlDocPtr doc, xmlNodePtr node)
+static void _add_server(xmlDocPtr doc, xmlNodePtr node, 
+        ice_config_t *configuration)
 {
 	ice_config_dir_t *dirnode, *server;
 	int addnode;
 	char *tmp;
 
 	server = (ice_config_dir_t *)malloc(sizeof(ice_config_dir_t));
-	server->touch_interval = _configuration.touch_interval;
+	server->touch_interval = configuration->touch_interval;
 	server->host = NULL;
 	addnode = 0;
 	
@@ -617,9 +683,9 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node)
 	} while ((node = node->next));
 
 	if (addnode) {
-		dirnode = _configuration.dir_list;
+		dirnode = configuration->dir_list;
 		if (dirnode == NULL) {
-			_configuration.dir_list = server;
+			configuration->dir_list = server;
 		} else {
 			while (dirnode->next) dirnode = dirnode->next;
 			

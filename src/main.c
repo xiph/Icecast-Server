@@ -125,7 +125,7 @@ static int _start_logging(void)
 {
 	char fn_error[FILENAME_MAX];
 	char fn_access[FILENAME_MAX];
-	ice_config_t *config = config_get_config();
+	ice_config_t *config = config_get_config_unlocked();
 
 	if(strcmp(config->error_log, "-")) {
         snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
@@ -157,9 +157,10 @@ static int _setup_socket(void)
 {
 	ice_config_t *config;
 
-	config = config_get_config();
+	config = config_get_config_unlocked();
 
 	global.serversock = sock_get_server_socket(config->port, config->bind_address);
+
 	if (global.serversock == SOCK_ERROR)
 		return 0;
 	
@@ -180,7 +181,8 @@ static int _start_listening(void)
 static int _server_proc_init(void)
 {
 	if (!_setup_socket()) {
-		fprintf(stderr, "Could not create listener socket on port %d\n", config_get_config()->port);
+		fprintf(stderr, "Could not create listener socket on port %d\n", 
+                config_get_config_unlocked()->port);
 		return 0;
 	}
 
@@ -205,7 +207,7 @@ static void _server_proc(void)
 
 static void _ch_root_uid_setup(void)
 {
-   ice_config_t *conf = config_get_config();
+   ice_config_t *conf = config_get_config_unlocked();
 #ifdef CHUID
    struct passwd *user;
    struct group *group;
@@ -291,7 +293,9 @@ int main(int argc, char **argv)
     	_initialize_subsystems();
 
 		/* parse the config file */
-		ret = config_parse_file(filename);
+        config_get_config();
+		ret = config_initial_parse_file(filename);
+        config_release_config();
 		if (ret < 0) {
 			fprintf(stderr, "FATAL: error parsing config file:");
 			switch (ret) {

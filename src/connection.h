@@ -21,6 +21,10 @@ typedef struct connection_tag
 
 	char *ip;
 	char *host;
+
+    /* For 'fake' connections */
+    int event_number;
+    void *event;
 } connection_t;
 
 void connection_initialize(void);
@@ -30,6 +34,8 @@ void connection_close(connection_t *con);
 connection_t *create_connection(sock_t sock, char *ip);
 int connection_create_source(struct _client_tag *client, connection_t *con, 
         http_parser_t *parser, char *mount);
+
+void connection_inject_event(int eventnum, void *event_data);
 
 extern rwlock_t _source_shutdown_rwlock;
 

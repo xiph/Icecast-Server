@@ -1,5 +1,7 @@
-(Note: from here on, the changelog generally only includes new features, not
-bug fixes)
+2003-03-05
+    Implemented the ability to reread the config file on SIGHUP. For now, this
+    does not affect configuration for currently running sources (only new
+    sources and global parameters like max-listeners)
 
 2003-03-02 
     More features:	 

@@ -78,7 +78,12 @@ static void create_mime_mappings(char *fn);
 
 void fserve_initialize(void)
 {
-    if(!config_get_config()->fileserve)
+    ice_config_t *config = config_get_config();
+    int serve = config->fileserve;
+
+    config_release_config();
+
+    if(!serve)
         return;
 
     create_mime_mappings(MIMETYPESFILE);
@@ -95,7 +100,12 @@ void fserve_initialize(void)
 
 void fserve_shutdown(void)
 {
-    if(!config_get_config()->fileserve)
+    ice_config_t *config = config_get_config();
+    int serve = config->fileserve;
+
+    config_release_config();
+
+    if(!serve)
         return;
 
     if(!run_fserv)
@@ -345,6 +355,11 @@ int fserve_client_create(client_t *httpclient, char *path)
 {
     fserve_t *client = calloc(1, sizeof(fserve_t));
     int bytes;
+    int client_limit;
+    ice_config_t *config = config_get_config();
+
+    client_limit = config->client_limit;
+    config_release_config();
 
     client->file = fopen(path, "rb");
     if(!client->file) {
@@ -358,7 +373,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     client->buf = malloc(BUFSIZE);
 
     global_lock();
-    if(global.clients >= config_get_config()->client_limit) {
+    if(global.clients >= client_limit) {
         httpclient->respcode = 504;
         bytes = sock_write(httpclient->con->sock,
                 "HTTP/1.0 504 Server Full\r\n"

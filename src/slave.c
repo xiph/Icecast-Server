@@ -49,11 +49,18 @@ thread_type *_slave_thread_id;
 static int _initialized = 0;
 
 void slave_initialize(void) {
+    ice_config_t *config;
 	if (_initialized) return;
+
+    config = config_get_config();
     /* Don't create a slave thread if it isn't configured */
-    if (config_get_config()->master_server == NULL && 
-            config_get_config()->relay == NULL)
+    if (config->master_server == NULL && 
+            config->relay == NULL)
+    {
+        config_release_config();
         return;
+    }
+    config_release_config();
 
 	_initialized = 1;
 	_slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
@@ -131,28 +138,48 @@ static void create_relay_stream(char *server, int port,
 static void *_slave_thread(void *arg) {
 	sock_t mastersock;
 	char buf[256];
-    int interval = config_get_config()->master_update_interval;
+    int interval;
     char *authheader, *data;
     int len;
     char *username = "relay";
-    char *password = config_get_config()->master_password;
+    char *password;
+    int max_interval;
     relay_server *relay;
+    ice_config_t *config;
+    
+    config = config_get_config();
+
+    password = config->master_password;
+    interval = max_interval = config->master_update_interval;
 
     if(password == NULL)
-        password = config_get_config()->source_password;
+        password = config->source_password;
+
+    config_release_config();
 
 
 	while (_initialized) {
-        if (config_get_config()->master_update_interval > ++interval) {
+        if (max_interval > ++interval) {
 		    thread_sleep(1000000);
             continue;
         }
-        else
-            interval = 0;
+        else {
+            /* In case it's been reconfigured */
+            config = config_get_config();
+            max_interval = config->master_update_interval;
+            config_release_config();
 
-        if(config_get_config()->master_server != NULL) {
-		    mastersock = sock_connect_wto(config_get_config()->master_server, 
-                    config_get_config()->master_server_port, 0);
+            interval = 0;
+        }
+
+        config = config_get_config();
+        if(config->master_server != NULL) {
+            char *server = config->master_server;
+            int port = config->master_server_port;
+            config_release_config();
+
+		    mastersock = sock_connect_wto(server, port, 0);
+
     		if (mastersock == SOCK_ERROR) {
                 WARN0("Relay slave failed to contact master server to fetch stream list");
 		    	continue;
@@ -180,19 +207,23 @@ static void *_slave_thread(void *arg) {
 			    if (!source_find_mount(buf)) {
 				    avl_tree_unlock(global.source_tree);
 
-                    create_relay_stream(
-                            config_get_config()->master_server,
-                            config_get_config()->master_server_port,
-                            buf, NULL, 0);
+                    create_relay_stream(server, port, buf, NULL, 0);
     			} 
                 else
     	    		avl_tree_unlock(global.source_tree);
     		}
 	    	sock_close(mastersock);
         }
+        else {
+            config_release_config();
+        }
 
         /* And now, we process the individual mounts... */
-        relay = config_get_config()->relay;
+        config = config_get_config();
+        relay = config->relay;
+        thread_mutex_lock(&(config_locks()->relay_lock));
+        config_release_config();
+
         while(relay) {
             avl_tree_rlock(global.source_tree);
             if(!source_find_mount(relay->localmount)) {
@@ -205,6 +236,8 @@ static void *_slave_thread(void *arg) {
                 avl_tree_unlock(global.source_tree);
             relay = relay->next;
         }
+
+        thread_mutex_unlock(&(config_locks()->relay_lock));
 	}
 	thread_exit(0);
 	return NULL;

@@ -10,6 +10,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h"
+#include "event.h"
 
 #include "sighandler.h"
 
@@ -34,16 +35,22 @@ void sighandler_initialize(void)
 
 void _sig_hup(int signo)
 {
-	INFO1("Caught signal %d, rehashing config and reopening logfiles (unimplemented)...", signo);
+    /* We do this elsewhere because it's a bad idea to hang around for too
+     * long re-reading an entire config file inside a signal handler. Bad
+     * practice.
+     */
+
+	INFO1("Caught signal %d, scheduling config reread ...", 
+            signo);
 
 	/* reread config file */
 
-	/* reopen logfiles */
+    connection_inject_event(EVENT_CONFIG_READ, NULL);
+    
+	/* reopen logfiles (TODO: We don't do this currently) */
 
-#ifdef __linux__
-	/* linux requires us to reattach the signal handler */
+	/* some OSes require us to reattach the signal handler */
 	signal(SIGHUP, _sig_hup);
-#endif
 }
 
 void _sig_die(int signo)

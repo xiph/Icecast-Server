@@ -15,14 +15,18 @@
 
 #define CATMODULE "yp" 
 
-int yp_submit_url(int curl_con, char *yp_url, char *url, char *type)
+int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, int i)
 {
     int ret = 0;
+    int *timeout;
+    ice_config_t *config = config_get_config();
+
+    timeout = config->yp_url_timeout + i;
+    config_release_config();
 
     curl_easy_setopt(curl_get_handle(curl_con), CURLOPT_URL, yp_url);
     curl_easy_setopt(curl_get_handle(curl_con), CURLOPT_POSTFIELDS, url);
-    curl_easy_setopt(curl_get_handle(curl_con), CURLOPT_TIMEOUT, 
-            config_get_config()->yp_url_timeout);
+    curl_easy_setopt(curl_get_handle(curl_con), CURLOPT_TIMEOUT, timeout);
 
     /* get it! */
     memset(curl_get_result(curl_con), 0, sizeof(struct curl_memory_struct));
@@ -93,7 +97,7 @@ int yp_remove(source_t *source)
             else {
                 /* specify URL to get */
                 ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                        url, "yp_remove");
+                        url, "yp_remove", i);
             }
             if (url) {
                 free(url);
@@ -159,7 +163,7 @@ int yp_touch(source_t *source)
             else {
                 /* specify URL to get */
                 ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                        url, "yp_touch");
+                        url, "yp_touch", i);
                 if (!ret) {
                     source->ypdata[i]->sid[0] = 0;
                 }
@@ -291,7 +295,7 @@ int yp_add(source_t *source, int which)
                else {
                    /* specify URL to get */
                    ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, 
-                           url, "yp_add");
+                           url, "yp_add", i);
 
                    if (ret) {
                        if (strlen(curl_get_header_result(curl_con)->sid) > 0) {

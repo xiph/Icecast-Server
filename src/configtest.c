@@ -11,7 +11,7 @@ int main(void)
 	
 	config_parse_file("icecast.xml");
 
-	config = config_get_config();
+	config = config_get_config_unlocked();
 
 	_dump_config(config);
 

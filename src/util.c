@@ -74,8 +74,11 @@ int util_read_header(int sock, char *buff, unsigned long len)
 	unsigned long pos;
 	char c;
 	ice_config_t *config;
+    int header_timeout;
 
 	config = config_get_config();
+    header_timeout = config->header_timeout;
+    config_release_config();
 
 	read_bytes = 1;
 	pos = 0;
@@ -84,7 +87,7 @@ int util_read_header(int sock, char *buff, unsigned long len)
 	while ((read_bytes == 1) && (pos < (len - 1))) {
 		read_bytes = 0;
 
-        if (util_timed_wait_for_fd(sock, config->header_timeout*1000) > 0) {
+        if (util_timed_wait_for_fd(sock, header_timeout*1000) > 0) {
 
 			if ((read_bytes = recv(sock, &c, 1, 0))) {
 				if (c != '\r') buff[pos++] = c;
@@ -199,9 +202,14 @@ char *util_get_path_from_uri(char *uri) {
 
 char *util_get_path_from_normalised_uri(char *uri) {
     char *fullpath;
+    char *webroot;
+    ice_config_t *config = config_get_config();
 
-    fullpath = malloc(strlen(uri) + strlen(config_get_config()->webroot_dir) + 1);
-    strcpy(fullpath, config_get_config()->webroot_dir);
+    webroot = config->webroot_dir;
+    config_release_config();
+
+    fullpath = malloc(strlen(uri) + strlen(webroot) + 1);
+    strcpy(fullpath, webroot);
 
     strcat(fullpath, uri);
 

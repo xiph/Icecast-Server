@@ -8,6 +8,8 @@
 
 #define MAX_YP_DIRECTORIES 25
 
+#include "thread/thread.h"
+
 typedef struct ice_config_dir_tag
 {
 	char *host;
@@ -40,6 +42,8 @@ typedef struct _mount_proxy {
 
 typedef struct ice_config_tag
 {
+    char *config_filename;
+
 	char *location;
 	char *admin;
 
@@ -90,15 +94,30 @@ typedef struct ice_config_tag
     int num_yp_directories;
 } ice_config_t;
 
+typedef struct {
+    mutex_t config_lock;
+    mutex_t relay_lock;
+    mutex_t mounts_lock;
+} ice_config_locks;
+
 void config_initialize(void);
 void config_shutdown(void);
 
-int config_parse_file(const char *filename);
+int config_parse_file(const char *filename, ice_config_t *configuration);
+int config_initial_parse_file(const char *filename);
 int config_parse_cmdline(int arg, char **argv);
+void config_set_config(ice_config_t *config);
+void config_clear(ice_config_t *config);
 
 int config_rehash(void);
 
+ice_config_locks *config_locks(void);
+
 ice_config_t *config_get_config(void);
+void config_release_config(void);
+
+/* To be used ONLY in one-time startup code */
+ice_config_t *config_get_config_unlocked(void);
 
 #endif  /* __CONFIG_H__ */
 

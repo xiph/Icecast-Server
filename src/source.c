@@ -59,7 +59,6 @@ source_t *source_create(client_t *client, connection_t *con,
     http_parser_t *parser, const char *mount, format_type_t type, 
     mount_proxy *mountinfo)
 {
-	int	i = 0;
 	source_t *src;
 
 	src = (source_t *)malloc(sizeof(source_t));
@@ -79,17 +78,6 @@ source_t *source_create(client_t *client, connection_t *con,
     src->dumpfilename = NULL;
     src->dumpfile = NULL;
     src->audio_info = util_dict_new();
-	for (i=0;i<config_get_config()->num_yp_directories;i++) {
-		if (config_get_config()->yp_url[i]) {
-			src->ypdata[src->num_yp_directories] = yp_create_ypdata();
-			src->ypdata[src->num_yp_directories]->yp_url = 
-                config_get_config()->yp_url[i];
-			src->ypdata[src->num_yp_directories]->yp_url_timeout = 
-                config_get_config()->yp_url_timeout[i];
-			src->ypdata[src->num_yp_directories]->yp_touch_interval = 0;
-			src->num_yp_directories++;
-		}
-	}
 
     if(mountinfo != NULL) {
         src->fallback_mount = mountinfo->fallback_mount;
@@ -191,9 +179,31 @@ void *source_main(void *arg)
     int	suppress_yp = 0;
     char *ai;
 
-    long queue_limit = config_get_config()->queue_size_limit;
+    long queue_limit;
+    ice_config_t *config;
+    char *hostname;
+    int port;
 
-	timeout = config_get_config()->source_timeout;
+    config = config_get_config();
+    
+    queue_limit = config->queue_size_limit;
+	timeout = config->source_timeout;
+    hostname = config->hostname;
+    port = config->port;
+
+	for (i=0;i<config->num_yp_directories;i++) {
+		if (config->yp_url[i]) {
+			source->ypdata[source->num_yp_directories] = yp_create_ypdata();
+			source->ypdata[source->num_yp_directories]->yp_url = 
+                config->yp_url[i];
+			source->ypdata[source->num_yp_directories]->yp_url_timeout = 
+                config->yp_url_timeout[i];
+			source->ypdata[source->num_yp_directories]->yp_touch_interval = 0;
+			source->num_yp_directories++;
+		}
+	}
+
+    config_release_config();
 
 	/* grab a read lock, to make sure we get a chance to cleanup */
 	thread_rwlock_rlock(source->shutdown_rwlock);
@@ -273,12 +283,11 @@ void *source_main(void *arg)
 		}
 		/* 6 for max size of port */
 		listen_url_size = strlen("http://") + 
-            strlen(config_get_config()->hostname) + 
+            strlen(hostname) + 
             strlen(":") + 6 + strlen(source->mount) + 1;
 		source->ypdata[i]->listen_url = malloc(listen_url_size);
 		sprintf(source->ypdata[i]->listen_url, "http://%s:%d%s", 
-                config_get_config()->hostname, config_get_config()->port, 
-                source->mount);
+                hostname, port, source->mount);
 	}
 
 	if(!suppress_yp) {
@@ -609,15 +618,15 @@ done:
 	global.sources--;
 	global_unlock();
 
+    if(source->dumpfile)
+        fclose(source->dumpfile);
+
 	/* release our hold on the lock so the main thread can continue cleaning up */
 	thread_rwlock_unlock(source->shutdown_rwlock);
 
 	avl_tree_wlock(global.source_tree);
 	avl_delete(global.source_tree, source, source_free_source);
 	avl_tree_unlock(global.source_tree);
-
-    if(source->dumpfile)
-        fclose(source->dumpfile);
 
 	thread_exit(0);
       

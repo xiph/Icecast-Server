@@ -50,6 +50,8 @@ FEATURES
 
 - option to use ipv6 (equiv to using <bind-address>::</bindaddress>, I think.
 
-- per-mountpoint listener maximums.
-
+- abstract all admin functionality to a set of commands, and command handlers.
+  Make /admin/* just parse according to a set of rules, and dispatch generic
+  commands through that.
+  Use this for alternative admin interfaces (GUI? telnet interface?)
 
