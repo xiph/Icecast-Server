@@ -38,14 +38,17 @@
 
 #include <signal.h>
 
-#include "log.h"
 #include "thread.h"
 #include "avl.h"
+#ifdef THREAD_DEBUG
+#include "log.h"
+#endif
 
 #ifdef _WIN32
 #define __FUNCTION__ __FILE__
 #endif
 
+#ifdef THREAD_DEBUG
 #define CATMODULE "thread"
 #define LOG_ERROR(y) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y)
 #define LOG_ERROR3(y, z1, z2, z3) log_write(_logid, 1, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
@@ -63,6 +66,7 @@
 #define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y)
 #define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2)
 #define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
+#endif
 
 /* thread starting structure */
 typedef struct thread_start_tag {
@@ -117,9 +121,8 @@ void thread_initialize(void)
 
 	/* set up logging */
 
-	log_initialize();
-
 #ifdef THREAD_DEBUG
+	log_initialize();
 	_logid = log_open("thread.log");
 	log_set_level(_logid, THREAD_DEBUG);
 #endif
@@ -174,9 +177,9 @@ void thread_shutdown(void)
 
 #ifdef THREAD_DEBUG
 	log_close(_logid);
+	log_shutdown();
 #endif
 
-	log_shutdown();
 }
 
 /*
@@ -199,8 +202,11 @@ static void _block_signals(void)
         sigdelset(&ss, SIGTERM);
         sigdelset(&ss, SIGSEGV);
         sigdelset(&ss, SIGBUS);
-        if (pthread_sigmask(SIG_BLOCK, &ss, NULL) != 0)
+        if (pthread_sigmask(SIG_BLOCK, &ss, NULL) != 0) {
+#ifdef THREAD_DEBUG
                 LOG_ERROR("Pthread_sigmask() failed for blocking signals");
+#endif
+        }
 #endif
 }
 
@@ -222,8 +228,11 @@ static void _catch_signals(void)
         sigaddset(&ss, SIGINT);
         sigaddset(&ss, SIGPIPE);
 
-        if (pthread_sigmask(SIG_UNBLOCK, &ss, NULL) != 0)
+        if (pthread_sigmask(SIG_UNBLOCK, &ss, NULL) != 0) {
+#ifdef THREAD_DEBUG
                 LOG_ERROR("pthread_sigmask() failed for catching signals!");
+#endif
+        }
 #endif
 }
 
@@ -254,11 +263,15 @@ thread_t *thread_create_c(char *name, void *(*start_routine)(void *), void *arg,
 	created = 0;
 	if (pthread_create(&thread->sys_thread, NULL, _start_routine, start) == 0)
 		created = 1;
+#ifdef THREAD_DEBUG
 	else
 		LOG_ERROR("Could not create new thread");
+#endif
 
 	if (created == 0) {
+#ifdef THREAD_DEBUG
 		LOG_ERROR("System won't let me create more threads, giving up");
+#endif
 		return NULL;
 	}
 
@@ -533,7 +546,9 @@ void thread_exit_c(int val, int line, char *file)
 #endif
 	
 	if (th)	{
+#ifdef THREAD_DEBUG
 		LOG_INFO4("Removing thread %d [%s] started at [%s:%d], reason: 'Thread Exited'", th->thread_id, th->name, th->file, th->line);
+#endif
 
 		_mutex_lock(&_threadtree_mutex);
 		avl_delete(_threadtree, th, _free_thread);
@@ -593,7 +608,9 @@ static void *_start_routine(void *arg)
 	avl_insert(_threadtree, (void *)thread);
 	_mutex_unlock(&_threadtree_mutex);
 
+#ifdef THREAD_DEBUG
 	LOG_INFO4("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
+#endif
 
 	if (detach) {
 		pthread_detach(thread->sys_thread);
@@ -605,7 +622,9 @@ static void *_start_routine(void *arg)
 	*/
 	(start_routine)(real_arg);
 
+#ifdef THREAD_DEBUG
 	LOG_WARN("Thread x should never exit from here!!!");
+#endif
 
 	return NULL;
 }
@@ -619,7 +638,9 @@ thread_t *thread_self(void)
 	_mutex_lock(&_threadtree_mutex);
 
 	if (_threadtree == NULL) {
+#ifdef THREAD_DEBUG
 		LOG_WARN("Thread tree is empty, this must be wrong!");
+#endif
 		_mutex_unlock(&_threadtree_mutex);
 		return NULL;
 	}
@@ -639,7 +660,9 @@ thread_t *thread_self(void)
 	_mutex_unlock(&_threadtree_mutex);
 
 
+#ifdef THREAD_DEBUG
 	LOG_ERROR("Nonexistant thread alive...");
+#endif
 	
 	return NULL;
 }
