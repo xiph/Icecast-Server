@@ -22,7 +22,7 @@
 <tr>
 <td width="50"></td>
 <td>
-<h2>Icecast Status Page</h2>
+<h2>List Connected Listeners</h2>
 <div class="roundcont">
 <div class="roundtop">
 <img src="/corner_topleft.jpg" class="corner" style="display: none" />
