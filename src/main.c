@@ -150,17 +150,19 @@ static int _start_listening(void)
 }
 
 /* bind the socket and start listening */
-static void _server_proc_init(void)
+static int _server_proc_init(void)
 {
 	if (!_setup_socket()) {
 		fprintf(stderr, "Could not create listener socket on port %d\n", config_get_config()->port);
-		return;
+		return 0;
 	}
 
 	if (!_start_listening()) {
 		fprintf(stderr, "Failed trying to listen on server socket\n");
-		return;
+		return 0;
 	}
+
+    return 1;
 }
 
 /* this is the heart of the beast */
@@ -291,7 +293,12 @@ int main(int argc, char **argv)
 	/* override config file options with commandline options */
 	config_parse_cmdline(argc, argv);
 
-    _server_proc_init(); /* Bind socket, before we change userid */
+    /* Bind socket, before we change userid */
+    if(!_server_proc_init()) {
+        fprintf(stderr, "Server startup failed. Exiting.\n");
+        _shutdown_subsystems();
+        return 1;
+    }
 
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
 
