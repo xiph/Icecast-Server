@@ -4,6 +4,7 @@
 #define CONFIG_EINSANE -1
 #define CONFIG_ENOROOT -2
 #define CONFIG_EBADROOT -3
+#define CONFIG_EPARSE -4
 
 typedef struct ice_config_dir_tag
 {

@@ -89,7 +89,7 @@ int config_parse_file(const char *filename)
 
 	doc = xmlParseFile(_config_filename);
 	if (doc == NULL) {
-		return -1;
+		return CONFIG_EPARSE;
 	}
 
 	node = xmlDocGetRootElement(doc);

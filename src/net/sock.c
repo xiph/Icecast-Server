@@ -214,9 +214,9 @@ int sock_write_bytes(sock_t sock, const char *buff, const int len)
 		return SOCK_ERROR;
 	} else if (len <= 0) {
 		return SOCK_ERROR;
-	} else if (!sock_valid_socket(sock)) {
+	} /*else if (!sock_valid_socket(sock)) {
 		return SOCK_ERROR;
-	}
+	} */
 
 	return send(sock, buff, len, 0);
 }
@@ -251,9 +251,8 @@ int sock_write(sock_t sock, const char *fmt, ...)
 
 int sock_read_bytes(sock_t sock, char *buff, const int len)
 {
-//	int ret;
 
-	if (!sock_valid_socket(sock)) return 0;
+	/*if (!sock_valid_socket(sock)) return 0; */
 	if (!buff) return 0;
 	if (len <= 0) return 0;
 
@@ -273,9 +272,9 @@ int sock_read_line(sock_t sock, char *buff, const int len)
 	char c = '\0';
 	int read_bytes, pos;
   
-	if (!sock_valid_socket(sock)) {
+	/*if (!sock_valid_socket(sock)) {
 		return 0;
-	} else if (!buff) {
+	} else*/ if (!buff) {
 		return 0;
 	} else if (len <= 0) {
 		return 0;
@@ -490,6 +489,7 @@ int sock_accept(sock_t serversock, char *ip, int len)
 	ret = accept(serversock, (struct sockaddr *)&sin, &slen);
 
 	if (ret >= 0 && ip != NULL) {
+        // inet_ntoa is not reentrant, we should protect this
 		strncpy(ip, inet_ntoa(sin.sin_addr), len);
 		sock_set_nolinger(ret);
 		sock_set_keepalive(ret);

@@ -277,6 +277,8 @@ int main(int argc, char **argv)
 				fprintf(stderr, "parse error\n");
 				break;
 			}
+            _shutdown_subsystems();
+            return 1;
 		}
 	} else if (res == -1) {
 		_print_usage();
