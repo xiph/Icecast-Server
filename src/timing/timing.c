@@ -37,5 +37,10 @@ void timing_sleep(uint64_t sleeptime)
 	sleeper.tv_sec = 0;
 	sleeper.tv_usec = sleeptime * 1000;
 
-	select(1, NULL, NULL, NULL, &sleeper);
+	/* NOTE:
+	 * This should be 0 for the first argument.  The linux manpage
+	 * says so.  The solaris manpage also says this is a legal
+	 * value.  If you think differerntly, please provide references.
+	 */
+	select(0, NULL, NULL, NULL, &sleeper);
 }
