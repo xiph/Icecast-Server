@@ -308,10 +308,6 @@ void *source_main(void *arg)
 				client_node = avl_get_next(client_node);
 				avl_delete(source->client_tree, (void *)client, _free_client);
 				listeners--;
-				global_lock();
-				global.clients--;
-				global_unlock();
-				stats_event_dec(NULL, "clients");
 				stats_event_args(source->mount, "listeners", "%d", listeners);
                 DEBUG0("Client removed");
 				continue;
@@ -410,6 +406,11 @@ static int _remove_client(void *key)
 static int _free_client(void *key)
 {
 	client_t *client = (client_t *)key;
+
+	global_lock();
+	global.clients--;
+	global_unlock();
+	stats_event_dec(NULL, "clients");
 	
 	client_destroy(client);
 	

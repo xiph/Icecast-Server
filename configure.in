@@ -84,6 +84,35 @@ dnl Checks for library functions.
 
 dnl -- configure options --
 
+AC_ARG_WITH(xslt-config,
+  [ --with-xslt-config=PATH  use xslt-config in PATH to find libxslt ],
+  [if ! test -x "$with_xslt_config"
+   then
+     AC_MSG_ERROR([$with_xslt_config cannot be executed])
+   fi
+   XSLTCONFIG="$with_xslt_config"]
+)
+if test -z "$XSLTCONFIG"
+then
+  AC_CHECK_PROGS(XSLTCONFIG, [xslt-config])
+fi
+if test -n "$XSLTCONFIG"
+then
+  XSLT_LIBS="`$XSLTCONFIG --libs`"
+  XSLT_CFLAGS="`$XSLTCONFIG --cflags`"
+  save_LIBS="$LIBS"
+  save_CFLAGS="$CFLAGS"
+  LIBS="$LIBS $XSLT_LIBS"
+  CFLAGS="$CFLAGS $XSLT_CFLAGS"
+  AC_CHECK_FUNC(xsltParseStylesheetFile,, [AC_MSG_ERROR([There was a problem linking with libxslt])])
+  LIBS="$save_LIBS"
+  CFLAGS="$save_CFLAGS"
+  save_LIBS=
+  save_CFLAGS=
+else
+  AC_MSG_ERROR([xslt-config could not be found])
+fi
+
 AC_ARG_WITH(xml-config,
   [  --with-xml-config=PATH  use xml-config in PATH to find libxml ],
   [if ! test -x "$with_xml_config"
@@ -118,9 +147,11 @@ AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!))
 
 dnl Make substitutions
 
+AC_SUBST(XSLT_CFLAGS)
 AC_SUBST(XML_CFLAGS)
 AC_SUBST(OGG_CFLAGS)
 AC_SUBST(VORBIS_CFLAGS)
+AC_SUBST(XSLT_LIBS)
 AC_SUBST(XML_LIBS)
 AC_SUBST(OGG_LIBS)
 AC_SUBST(VORBIS_LIBS)
