@@ -287,14 +287,16 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     if (curlcode)
     {
         yp->process = do_yp_add;
-        yp->next_update += 60;
+        yp->next_update += 300;
         ERROR2 ("connection to %s failed with \"%s\"", server->url, server->curl_error);
         return -1;
     }
     if (yp->cmd_ok == 0)
     {
+        if (yp->error_msg == NULL)
+            yp->error_msg = strdup ("no response from server");
         yp->process = do_yp_add;
-        yp->next_update += 60;
+        yp->next_update += 300;
         ERROR3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
         return -1;
     }
