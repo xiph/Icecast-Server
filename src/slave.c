@@ -248,6 +248,9 @@ static void *start_relay_stream (void *arg)
                 snprintf (redirect_header, len, "ice-redirect: %s:%d\r\n",
                         config->hostname, config->master_redirect_port);
             }
+            else
+                redirect_header = strdup ("");
+
             config_release_config ();
         }
         else
