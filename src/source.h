@@ -67,6 +67,7 @@ typedef struct source_tag
 
     int on_demand;
     int on_demand_req;
+    int recheck_settings;
 
     time_t last_read;
     char *on_connect;
@@ -84,7 +85,8 @@ typedef struct source_tag
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
-void source_apply_mount (source_t *source, mount_proxy *mountinfo);
+void source_update_settings (ice_config_t *config, source_t *source);
+void source_update (ice_config_t *config);
 void source_clear_source (source_t *source);
 source_t *source_find_mount(const char *mount);
 source_t *source_find_mount_raw(const char *mount);

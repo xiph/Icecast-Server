@@ -421,10 +421,6 @@ static void find_client_start (source_t *source, client_t *client)
         }
         refbuf = refbuf->next;
     }
-#if 0
-    if (refbuf == NULL)
-        DEBUG1 ("no start point for client %u", client->con->id);
-#endif
     client->refbuf = refbuf;
 }
 
@@ -581,6 +577,12 @@ static void get_next_buffer (source_t *source)
         /* take the lock */
         thread_mutex_lock (&source->lock);
 
+        if (source->recheck_settings)
+        {
+            ice_config_t *config = config_get_config();
+            source_update_settings (config, source);
+            config_release_config ();
+        }
         if (fds < 0)
         {
             if (! sock_recoverable (sock_error()))
@@ -626,7 +628,6 @@ static void get_next_buffer (source_t *source)
             source->burst_size += refbuf->len;
             if (source->burst_size > source->burst_size_limit)
             {
-                // DEBUG2 ("starting counts are %d, %d", source->burst_size, source->burst_size_limit);
                 source->burst_size -= source->burst_point->len;
                 source->burst_point = source->burst_point->next;
             }
@@ -968,8 +969,6 @@ static void process_pending_clients (source_t *source)
             source->active_clients = to_go;
             if (*source->active_clients_tail == to_go)
                 source->active_clients_tail = &to_go->next;
-//            *source->active_clients_tail = to_go;
-            //source->active_clients_tail = &to_go->next;
             count++;
         }
         source->new_listeners--;
@@ -1041,7 +1040,6 @@ void source_main(source_t *source)
                 if (source->format->prerelease)
                     source->format->prerelease (source, to_go);
                 refbuf_release (to_go);
-                // DEBUG1 ("releasing %p", to_go);
             }
             else
                 WARN0("possible queue length error");
@@ -1123,17 +1121,16 @@ static void parse_audio_info (source_t *source, const char *s)
 }
 
 
-void source_apply_mount (source_t *source, mount_proxy *mountinfo)
+static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
-    DEBUG1("Applying mount information for \"%s\"", source->mount);
+    DEBUG1 ("Applying mount information for \"%s\"", source->mount);
     source->max_listeners = mountinfo->max_listeners;
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
+
     if (mountinfo->fallback_mount)
-    {
         source->fallback_mount = strdup (mountinfo->fallback_mount);
-        DEBUG1 ("fallback %s", mountinfo->fallback_mount);
-    }
+
     if (mountinfo->auth_type != NULL)
     {
         source->authenticator = auth_get_authenticator(
@@ -1141,45 +1138,93 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         stats_event(source->mount, "authenticator", mountinfo->auth_type);
     }
     if (mountinfo->dumpfile)
-    {
-        DEBUG1("Dumping stream to %s", mountinfo->dumpfile);
         source->dumpfilename = strdup (mountinfo->dumpfile);
-    }
+
     if (mountinfo->queue_size_limit)
-    {
         source->queue_size_limit = mountinfo->queue_size_limit;
-        DEBUG1 ("queue size to %u", source->queue_size_limit);
-    }
+
     if (mountinfo->source_timeout)
-    {
         source->timeout = mountinfo->source_timeout;
-        DEBUG1 ("source timeout to %u", source->timeout);
-    }
+
     if (mountinfo->burst_size)
-    {
         source->burst_size_limit = mountinfo->burst_size;
-        DEBUG1 ("burst size to %u", source->burst_size_limit);
-    }
+
     if (mountinfo->fallback_when_full)
-    {
         source->fallback_when_full = mountinfo->fallback_when_full;
-        DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
-    }
+
     if (mountinfo->no_yp)
-    {
         source->yp_prevent = 1;
-        DEBUG0("prevent YP listings");
-    }
+
     if (mountinfo->on_connect)
-    {
         source->on_connect = strdup(mountinfo->on_connect);
-        DEBUG1 ("connect script \"%s\"", source->on_connect);
-    }
+
     if (mountinfo->on_disconnect)
-    {
         source->on_disconnect = strdup(mountinfo->on_disconnect);
-        DEBUG1 ("disconnect script \"%s\"", source->on_disconnect);
+}
+
+
+void source_update_settings (ice_config_t *config, source_t *source)
+{
+    mount_proxy *mountproxy = config->mounts;
+
+    /* set global settings first */
+    source->queue_size_limit = config->queue_size_limit;
+    source->timeout = config->source_timeout;
+    source->burst_size_limit = config->burst_size_limit;
+
+    source->dumpfilename = NULL;
+    auth_clear (source->authenticator);
+    source->authenticator = NULL;
+
+    while (mountproxy)
+    {
+        if (strcmp (mountproxy->mountname, source->mount) == 0)
+        {
+            source_apply_mount (source, mountproxy);
+            break;
+        }
+        mountproxy = mountproxy->next;
     }
+    if (source->fallback_mount)
+        DEBUG1 ("fallback %s", source->fallback_mount);
+    if (source->dumpfilename)
+        DEBUG1 ("Dumping stream to %s", source->dumpfilename);
+    if (source->yp_prevent)
+        DEBUG0 ("preventing YP listings");
+    if (source->on_connect)
+        DEBUG1 ("connect script \"%s\"", source->on_connect);
+    if (source->on_disconnect)
+        DEBUG1 ("disconnect script \"%s\"", source->on_disconnect);
+    if (source->on_demand)
+        DEBUG0 ("on-demand set");
+
+    DEBUG1 ("max listeners to %d", source->max_listeners);
+    DEBUG1 ("queue size to %u", source->queue_size_limit);
+    DEBUG1 ("burst size to %u", source->burst_size_limit);
+    DEBUG1 ("source timeout to %u", source->timeout);
+    DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
+    source->recheck_settings = 0;
+}
+
+
+void source_update (ice_config_t *config)
+{
+    avl_node *node;
+
+    avl_tree_rlock (global.source_tree);
+    node = avl_get_first (global.source_tree);
+    while (node)
+    {
+        source_t *source = node->key;
+
+        /* we can't lock the source as we have config locked, so flag the
+         * source for updating */
+        source->recheck_settings = 1;
+
+        node = avl_get_next (node);
+    }
+
+    avl_tree_unlock (global.source_tree);
 }
 
 

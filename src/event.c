@@ -17,6 +17,7 @@
 #include "event.h"
 #include "cfgfile.h"
 #include "yp.h"
+#include "source.h"
 
 #include "refbuf.h"
 #include "client.h"
@@ -60,6 +61,7 @@ void event_config_read(void *arg)
         restart_logging ();
         slave_recheck();
         yp_recheck_config (config);
+        source_update (config);
 
         config_release_config();
     }

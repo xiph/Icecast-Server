@@ -432,7 +432,6 @@ int connection_complete_source (source_t *source)
     if (global.sources < config->source_limit)
     {
         char *contenttype;
-        mount_proxy *mountproxy = config->mounts;
         format_type_t format_type;
 
         /* setup format handler */
@@ -471,12 +470,6 @@ int connection_complete_source (source_t *source)
         global.sources++;
         global_unlock();
 
-        /* set global settings first */
-        source->queue_size_limit = config->queue_size_limit;
-        source->timeout = config->source_timeout;
-        source->on_demand = config->on_demand;
-        source->burst_size_limit = config->burst_size_limit;
-
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
          * because we can't use this client to return an error code/message,
@@ -485,15 +478,7 @@ int connection_complete_source (source_t *source)
         if (source->client == NULL)
             source->client = client_create (source->con, source->parser);
 
-        while (mountproxy)
-        {
-            if (strcmp (mountproxy->mountname, source->mount) == 0)
-            {
-                source_apply_mount (source, mountproxy);
-                break;
-            }
-            mountproxy = mountproxy->next;
-        }
+        source_update_settings (config, source);
         config_release_config();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;
