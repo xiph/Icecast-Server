@@ -6,6 +6,7 @@ noinst_LTLIBRARIES = libicehttpp.la
 noinst_HEADERS = httpp.h
 
 libicehttpp_la_SOURCES = httpp.c
+libicehttpp_la_CFLAGS = @XIPH_CFLAGS@
 
 INCLUDES = -I$(srcdir)/../avl -I$(srcdir)/../thread
 
@@ -13,8 +14,8 @@ INCLUDES = -I$(srcdir)/../avl -I$(srcdir)/../thread
 GET = true
 
 debug:
-        $(MAKE) all CFLAGS="@DEBUG@"
+	$(MAKE) all CFLAGS="@DEBUG@"
 
 profile:
-        $(MAKE) all CFLAGS="@PROFILE@"
+	$(MAKE) all CFLAGS="@PROFILE@"
 

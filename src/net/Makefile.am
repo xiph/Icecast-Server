@@ -6,12 +6,13 @@ noinst_LTLIBRARIES = libicenet.la
 noinst_HEADERS = resolver.h sock.h
 
 libicenet_la_SOURCES = sock.c resolver.c
+libicenet_la_CFLAGS = @XIPH_CFLAGS@
 
 INCLUDES = -I$(srcdir)/../thread
 
 debug:
-        $(MAKE) all CFLAGS="@DEBUG@"
+	$(MAKE) all CFLAGS="@DEBUG@"
 
 profile:
-        $(MAKE) all CFLAGS="@PROFILE@"
+	$(MAKE) all CFLAGS="@PROFILE@
 

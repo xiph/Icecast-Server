@@ -6,6 +6,7 @@ noinst_LTLIBRARIES = libiceavl.la
 noinst_HEADERS = avl.h
 
 libiceavl_la_SOURCES = avl.c
+libiceavl_la_CFLAGS = @XIPH_CFLAGS@
 
 INCLUDES = -I$(srcdir)/../thread
 
@@ -13,8 +14,8 @@ INCLUDES = -I$(srcdir)/../thread
 GET = true
 
 debug:
-        $(MAKE) all CFLAGS="@DEBUG@"
+	$(MAKE) all CFLAGS="@DEBUG@"
 
 profile:
-        $(MAKE) all CFLAGS="@PROFILE@"
+	$(MAKE) all CFLAGS="@PROFILE@"
 
