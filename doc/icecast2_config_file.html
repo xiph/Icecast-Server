@@ -191,8 +191,8 @@ This flag turns on the icecast2 fileserver from which static files can be served
     &lt;relay&gt;
         &lt;server&gt;127.0.0.1&lt;/server&gt;
         &lt;port&gt;8001&lt;/port&gt;
-        &lt;mount&gt;example.ogg&lt;/mount&gt;
-        &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
+        &lt;mount&gt;/example.ogg&lt;/mount&gt;
+        &lt;local-mount&gt;/different.ogg&lt;/local-mount&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
         &lt;on-demand&gt;0&lt;/on-demand&gt;
     &lt;/relay&gt;
@@ -282,8 +282,8 @@ A server is configured as a Specific Mountpoint Server relay by specifying a &lt
     &lt;relay&gt;
         &lt;server&gt;127.0.0.1&lt;/server&gt;
         &lt;port&gt;8001&lt;/port&gt;
-        &lt;mount&gt;example.ogg&lt;/mount&gt;
-        &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
+        &lt;mount&gt;/example.ogg&lt;/mount&gt;
+        &lt;local-mount&gt;/different.ogg&lt;/local-mount&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
         &lt;on-demand&gt;1&lt;/on-demand&gt;
     &lt;/relay&gt;
@@ -330,7 +330,7 @@ An on-demand relay will only retrieve the stream if there are listeners connecte
         &lt;password&gt;hackmemore&lt;/password&gt;
         &lt;max-listeners&gt;1&lt;/max-listeners&gt;
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
-        &lt;fallback-mount&gt;example2.ogg&lt;/fallback-mount&gt;
+        &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;mp3-metadata-interval&gt;8192&lt;/mp3-metadata-interval&gt;
@@ -365,7 +365,15 @@ An optional value which will set the filename which will be a dump of the stream
 </div>
 <h4>fallback-mount</h4>
 <div class="indentedbox">
-This specifies a mountpoint that is used in the case of a source disconnect.  If listeners are connected to the mount specified by the &lt;mount-name&gt; config value, then if the source is disconnected; all currently connected clients will be moved to the fallback-mount.
+This optional value specifies a mountpoint that clients are automatically moved to if the source
+shuts down or is not streaming at the time a listener connects.  Only one can be listed in each
+mount and should refer to another mountpoint on the same server that is streaming in the same
+streaming format.<br>
+If clients cannot fallback to another mountpoint, due to a missing fallback-mount or it states a
+mountpoint that is just not available, then those clients will be disconnected.
+If clients are falling back to a mountpoint and the fallback-mount is not actively streaming
+but defines a fallback-mount itself then those clients may be moved there instead.
+This multi-level fallback allows clients to cascade several mountpoints.
 </div>
 <h4>fallback-override</h4>
 <div class="indentedbox">

@@ -11,4 +11,5 @@ dist_web_DATA = status.xsl \
                 corner_topright.jpg \
                 icecast.png \
                 key.gif \
-                style.css
+                style.css \
+                auth.xsl

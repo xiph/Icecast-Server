@@ -34,6 +34,9 @@
 <xsl:if test="bitrate">
 <tr><td>Bitrate:</td><td class="streamdata"> <xsl:value-of select="bitrate" /></td></tr>
 </xsl:if>
+<xsl:if test="quality">
+<tr><td>Quality:</td><td class="streamdata"> <xsl:value-of select="quality" /></td></tr>
+</xsl:if>
 <xsl:if test="listeners">
 <tr><td>Stream Listeners:</td><td class="streamdata"> <xsl:value-of select="listeners" /></td></tr>
 </xsl:if>
