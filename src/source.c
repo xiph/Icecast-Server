@@ -1293,7 +1293,9 @@ void *source_client_thread (void *arg)
         source->client->con->sent_bytes += bytes;
 
         stats_event_inc(NULL, "source_client_connections");
+        stats_event (source->mount, "listeners", "0");
         source_main (source);
+        stats_event (source->mount, "listeners", NULL);
     }
     source_free_source (source);
     return NULL;
