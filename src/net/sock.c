@@ -120,6 +120,15 @@ int sock_error(void)
 #endif
 }
 
+static void sock_set_error(int val)
+{
+#ifdef _WIN32
+     WSASetLastError (val);
+#else
+     errno = val;
+#endif
+}
+
 /* sock_recoverable
 **
 ** determines if the socket error is recoverable
@@ -127,23 +136,43 @@ int sock_error(void)
 */
 int sock_recoverable(int error)
 {
-    return (error == 0 || error == EAGAIN || error == EINTR || 
-            error == EINPROGRESS || error == EWOULDBLOCK);
+    switch (error)
+    {
+    case 0:
+    case EAGAIN:
+    case EINTR:
+    case EINPROGRESS:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+    case EWOULDBLOCK:
+#endif
+#ifdef ERESTART
+    case ERESTART:
+#endif
+        return 1;
+    default:
+        return 0;
+    }
 }
 
 int sock_stalled (int error)
 {
-    return error == EAGAIN || error == EINPROGRESS || error == EWOULDBLOCK || 
-        error == EALREADY;
+    switch (error)
+    {
+    case EAGAIN:
+    case EINPROGRESS:
+    case EALREADY:
+#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
+    case EWOULDBLOCK:
+#endif
+#ifdef ERESTART
+    case ERESTART:
+#endif
+        return 1;
+    default:
+        return 0;
+    }
 }
 
-#if 0
-/* what is this??? */
-static int sock_success (int error)
-{
-    return error == 0;
-}
-#endif
 
 static int sock_connect_pending (int error)
 {
@@ -420,7 +449,7 @@ int sock_read_line(sock_t sock, char *buff, const int len)
 }
 
 /* see if a connection can be written to
-** return -1 unable to check
+** return -1 for failure
 ** return 0 for not yet
 ** return 1 for ok 
 */
@@ -429,24 +458,33 @@ int sock_connected (int sock, unsigned timeout)
     fd_set wfds;
     int val = SOCK_ERROR;
     socklen_t size = sizeof val;
-    struct timeval tv;
+    struct timeval tv, *timeval = NULL;
 
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
+    if (timeout)
+    {
+        tv.tv_sec = timeout;
+        tv.tv_usec = 0;
+        timeval = &tv;
+    }
 
     FD_ZERO(&wfds);
     FD_SET(sock, &wfds);
 
-    switch (select(sock + 1, NULL, &wfds, NULL, &tv))
+    switch (select(sock + 1, NULL, &wfds, NULL, timeval))
     {
         case 0:
-	    return SOCK_TIMEOUT;
+            return SOCK_TIMEOUT;
         default:
-	    /* on windows getsockopt.val is defined as char* */
-	    if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*) &val, &size) < 0)
-		val = SOCK_ERROR;
+            /* on windows getsockopt.val is defined as char* */
+            if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*) &val, &size) == 0)
+            {
+                if (val == 0)
+                    return 1;
+            }
         case -1:
-	    return val;
+            if (sock_recoverable (sock_error()))
+                return 0;
+            return SOCK_ERROR;
     }
 }
 
@@ -508,31 +546,37 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
     ai = head;
     while (ai)
     {
-        if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) > -1)
+        if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) >= 0)
         {
             if (timeout)
-            {
                 sock_set_blocking (sock, SOCK_NONBLOCK);
-                if (connect (sock, ai->ai_addr, ai->ai_addrlen) < 0)
+
+            if (connect (sock, ai->ai_addr, ai->ai_addrlen) == 0)
+                break;
+
+            /* loop as the connect maybe async */
+            while (sock != SOCK_ERROR)
+            {
+                if (sock_recoverable (sock_error()))
                 {
                     if (sock_connected (sock, timeout) > 0)
                     {
-                        sock_set_blocking(sock, SOCK_BLOCK);
+                        if (timeout) /* really wants to reset to what it was before */
+                            sock_set_blocking(sock, SOCK_BLOCK);
                         break;
                     }
+                    continue;
                 }
+                sock_close (sock);
+                sock = SOCK_ERROR;
             }
-            else
-            {
-                if (connect (sock, ai->ai_addr, ai->ai_addrlen) == 0)
-                    break;
-            }
-            sock_close (sock);
+            if (sock != SOCK_ERROR)
+                break;
         }
-        sock = SOCK_ERROR;
         ai = ai->ai_next;
     }
-    if (head) freeaddrinfo (head);
+    if (head)
+        freeaddrinfo (head);
 
     return sock;
 }
