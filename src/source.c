@@ -145,55 +145,56 @@ source_t *source_find_mount_raw(const char *mount)
     return NULL;
 }
 
-static source_t *source_find_mount_recursive(const char *mount, int depth)
+
+/* Search for mount, if the mount is there but not currently running then
+ * check it's fallback, and so on.  Must have a global source lock to call
+ * this function.
+ */
+source_t *source_find_mount (const char *mount)
 {
-    source_t *source = source_find_mount_raw(mount);
-    mount_proxy *mountinfo;
+    source_t *source = NULL;
     ice_config_t *config;
-    char *fallback_mount;
-    
-    if(source == NULL) {
-        if(depth > MAX_FALLBACK_DEPTH)
-            return NULL;
+    mount_proxy *mountinfo;
+    int depth = 0;
 
-        /* Look for defined mounts to find a fallback source */
+    config = config_get_config();
+    while (mount != NULL)
+    {
+        /* limit the number of times through, maybe infinite */
+        if (depth > MAX_FALLBACK_DEPTH)
+        {
+            source = NULL;
+            break;
+        }
 
-        config = config_get_config();
+        source = source_find_mount_raw(mount);
+        if (source == NULL)
+            break; /* fallback to missing mountpoint */
+
+        if (source->running)
+            break;
+
+        /* source is not running, meaning that the fallback is not configured
+           within the source, we need to check the mount list */
         mountinfo = config->mounts;
-        thread_mutex_lock(&(config_locks()->mounts_lock));
-        config_release_config();
-
-        while(mountinfo) {
-            if(!strcmp(mountinfo->mountname, mount))
+        source = NULL;
+        while (mountinfo)
+        {
+            if (strcmp (mountinfo->mountname, mount) == 0)
                 break;
             mountinfo = mountinfo->next;
         }
-        
-        if(mountinfo)
-            fallback_mount = mountinfo->fallback_mount;
+        if (mountinfo)
+            mount = mountinfo->fallback_mount;
         else
-            fallback_mount = NULL;
-
-        thread_mutex_unlock(&(config_locks()->mounts_lock));
-
-        if(fallback_mount != NULL) {
-            return source_find_mount_recursive(fallback_mount, depth+1);
-        }
+            mount = NULL;
+        depth++;
     }
 
+    config_release_config();
     return source;
 }
 
-/* you must already have a read lock on the global source tree
-** to call this function
-*/
-source_t *source_find_mount(const char *mount)
-{
-    if (!mount)
-        return NULL;
-
-    return source_find_mount_recursive(mount, 0);
-}
 
 int source_compare_sources(void *arg, void *a, void *b)
 {
