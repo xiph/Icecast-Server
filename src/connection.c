@@ -769,7 +769,7 @@ static void _handle_get_request(connection_t *con,
             bytes = sock_write(client->con->sock,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "http://%s:%d%s", 
+                    "http://%s:%d%s\r\n", 
                     host, 
                     port,
                     sourceuri
