@@ -34,7 +34,10 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
+
+#include "yp.h"
 #include "source.h"
+#include "geturl.h"
 #include "format.h"
 #include "format_mp3.h"
 
@@ -511,6 +514,7 @@ static void handle_metadata_request(client_t *client)
     thread_mutex_unlock(&(state->lock));
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", mount, value);
+    stats_event(mount, "title", value);
     client->respcode = 200;
 	bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n"

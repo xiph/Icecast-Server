@@ -38,6 +38,7 @@
 #include "client.h"
 #include "stats.h"
 #include "logging.h"
+#include "geturl.h"
 #include "source.h"
 #include "format.h"
 
