@@ -206,6 +206,7 @@ void config_clear(ice_config_t *c)
             free(option);
             option = nextopt;
         }
+        auth_release (mount->auth);
 
         free(mount);
         mount = nextmount;
@@ -530,8 +531,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *mount = calloc(1, sizeof(mount_proxy));
     mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
-    xmlNodePtr option;
-    config_options_t *last_option;
     
     while(current) {
         last = current;
@@ -613,35 +612,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "authentication") == 0) {
-            mount->auth_type = xmlGetProp(node, "type");
-            option = node->xmlChildrenNode;
-            last_option = NULL;
-            while(option != NULL) {
-                if(strcmp(option->name, "option") == 0) {
-                    config_options_t *opt = malloc(sizeof(config_options_t));
-                    opt->name = xmlGetProp(option, "name");
-                    if(!opt->name) {
-                        free(opt);
-                        option = option->next;
-                        continue;
-                    }
-                    opt->value = xmlGetProp(option, "value");
-                    if(!opt->value) {
-                        free(opt->name);
-                        free(opt);
-                        option = option->next;
-                        continue;
-                    }
-                    opt->next = NULL;
-
-                    if(last_option)
-                        last_option->next = opt;
-                    else
-                        mount->auth_options = opt;
-                    last_option = opt;
-                }
-                option = option->next;
-            }
+            mount->auth = auth_get_authenticator (node);
         }
         else if (strcmp(node->name, "on-connect") == 0) {
             mount->on_connect = (char *)xmlNodeListGetString(
@@ -1028,4 +999,17 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
     
 }
 
+
+mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
+{
+    mount_proxy *mountinfo = config->mounts;
+
+    while (mountinfo)
+    {
+        if (strcmp (mountinfo->mountname, mount) == 0)
+            break;
+        mountinfo = mountinfo->next;
+    }
+    return mountinfo;
+}
 

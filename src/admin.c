@@ -250,16 +250,23 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             xmlNewChild (srcnode, NULL, "listeners", buf);
             if (source->running)
             {
+                ice_config_t *config;
+                mount_proxy *mountinfo;
+
                 snprintf (buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
                 xmlNewChild (srcnode, NULL, "Connected", buf);
                 xmlNewChild (srcnode, NULL, "content-type", 
                         source->format->contenttype);
-                if (source->authenticator)
+
+                config = config_get_config();
+                mountinfo = config_find_mount (config, source->mount);
+                if (mountinfo->auth)
                 {
                     xmlNewChild(srcnode, NULL, "authenticator", 
-                            source->authenticator->type);
+                            mountinfo->auth->type);
                 }
+                config_release_config();
             }
         }
         thread_mutex_unlock (&source->lock);
@@ -787,12 +794,23 @@ static void command_manageauth(client_t *client, source_t *source,
     char *password = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
+    mount_proxy *mountinfo = NULL;
 
-    if((COMMAND_OPTIONAL(client, "action", action))) {
+    if((COMMAND_OPTIONAL(client, "action", action)))
+    {
+        ice_config_t *config = config_get_config ();
+        mountinfo = config_find_mount (config, source->mount);
+        if (mountinfo == NULL || mountinfo->auth == NULL)
+        {
+            WARN1 ("manage auth request for %s but no facility available", source->mount);
+            config_release_config ();
+            client_send_404 (client, "no such auth facility");
+            return;
+        }
         if (!strcmp(action, "add")) {
             COMMAND_REQUIRE(client, "username", username);
             COMMAND_REQUIRE(client, "password", password);
-            ret = source->authenticator->adduser(source->authenticator, username, password);
+            ret = mountinfo->auth->adduser(mountinfo->auth, username, password);
             if (ret == AUTH_FAILED) {
                 message = strdup("User add failed - check the icecast error log");
             }
@@ -805,7 +823,7 @@ static void command_manageauth(client_t *client, source_t *source,
         }
         if (!strcmp(action, "delete")) {
             COMMAND_REQUIRE(client, "username", username);
-            ret = source->authenticator->deleteuser(source->authenticator, username);
+            ret = mountinfo->auth->deleteuser(mountinfo->auth, username);
             if (ret == AUTH_FAILED) {
                 message = strdup("User delete failed - check the icecast error log");
             }
@@ -813,6 +831,7 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User deleted");
             }
         }
+        config_release_config ();
     }
 
     doc = xmlNewDoc("1.0");
@@ -827,7 +846,8 @@ static void command_manageauth(client_t *client, source_t *source,
 
     xmlDocSetRootElement(doc, node);
 
-    source->authenticator->listuser(source->authenticator, srcnode);
+    if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
+        mountinfo->auth->listuser (mountinfo->auth, srcnode);
 
     admin_send_response(doc, client, response, 
             MANAGEAUTH_TRANSFORMED_REQUEST);

@@ -32,176 +32,149 @@
 #include "cfgfile.h"
 #include "stats.h"
 #include "httpp/httpp.h"
-#include "md5.h"
+#include "fserve.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
 
 
+volatile static auth_client *clients_to_auth;
+volatile static int auth_running;
+static mutex_t auth_lock;
+static thread_type *auth_thread;
 
-auth_result auth_check_client(source_t *source, client_t *client)
+
+static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
 {
-    auth_t *authenticator = source->authenticator;
-    auth_result result;
+    /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
+    char *header = httpp_getvar(client->parser, "authorization");
+    char *userpass, *tmp;
+    char *username, *password;
+    auth_client *auth_user;
 
-    if (client->is_slave == 0 && authenticator) {
-        /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-        char *header = httpp_getvar(client->parser, "authorization");
-        char *userpass, *tmp;
-        char *username, *password;
-
-        if(header == NULL)
-            return AUTH_FAILED;
-
-        if(strncmp(header, "Basic ", 6)) {
-            INFO0("Authorization not using Basic");
-            return 0;
-        }
-
-        userpass = util_base64_decode(header+6);
-        if(userpass == NULL) {
-            WARN1("Base64 decode of Authorization header \"%s\" failed",
-                    header+6);
-            return AUTH_FAILED;
-        }
-
-        tmp = strchr(userpass, ':');
-        if(!tmp) { 
-            free(userpass);
-            return AUTH_FAILED;
-        }
-
-        *tmp = 0;
-        username = userpass;
-        password = tmp+1;
-
-        client->username = strdup (username);
-        client->password = strdup (password);
-
-        result = authenticator->authenticate (source, client);
-
-        free(userpass);
-
-        return result;
-    }
-    else
+    if (header == NULL || strncmp(header, "Basic ", 6))
     {
-        /* just add the client, this shouldn't fail */
-        add_authenticated_client (source, client);
-        return AUTH_OK;
+        INFO0("Authorization not using Basic");
+        return;
     }
+
+    userpass = util_base64_decode (header+6);
+    if (userpass == NULL)
+    {
+        WARN1("Base64 decode of Authorization header \"%s\" failed",
+                header+6);
+        return;
+    }
+
+    tmp = strchr(userpass, ':');
+    if (tmp == NULL)
+    { 
+        free (auth_user);
+        free (userpass);
+        return;
+    }
+
+    *tmp = 0;
+    username = userpass;
+    password = tmp+1;
+
+    client->auth = mountinfo->auth;
+    client->auth->refcount++;
+    client->username = strdup (username);
+    client->password = strdup (password);
+
+    free(userpass);
 }
 
 
-void auth_clear(auth_t *authenticator)
+static void queue_auth_client (auth_client *auth_user)
+{
+    thread_mutex_lock (&auth_lock);
+    auth_user->next = (auth_client *)clients_to_auth;
+    clients_to_auth = auth_user;
+    thread_mutex_unlock (&auth_lock);
+}
+
+
+/* release the auth. It is referred to by multiple structures so this is
+ * refcounted and only actual freed after the last use
+ */
+void auth_release (auth_t *authenticator)
 {
     if (authenticator == NULL)
         return;
-    authenticator->free (authenticator);
+
+    authenticator->refcount--;
+    if (authenticator->refcount)
+        return;
+
+    if (authenticator->free)
+        authenticator->free (authenticator);
     free (authenticator->type);
     free (authenticator);
 }
 
 
-auth_t *auth_get_authenticator(const char *type, config_options_t *options)
+void auth_client_free (auth_client *auth_user)
 {
-    auth_t *auth = NULL;
-#ifdef HAVE_AUTH_URL
-    if(!strcmp(type, "url")) {
-        auth = auth_get_url_auth(options);
-        auth->type = strdup(type);
-    }
-    else
-#endif
-    if(!strcmp(type, "command")) {
-#ifdef WIN32
-        ERROR1("Authenticator type: \"%s\" not supported on win32 platform", type);
-        return NULL;
-#else
-        auth = auth_get_cmd_auth(options);
-        auth->type = strdup(type);
-#endif
-    }
-    else if(!strcmp(type, "htpasswd")) {
-        auth = auth_get_htpasswd_auth(options);
-        auth->type = strdup(type);
-    }
-    else {
-        ERROR1("Unrecognised authenticator type: \"%s\"", type);
-        return NULL;
-    }
-
-    if (auth)
+    if (auth_user == NULL)
+        return;
+    if (auth_user->client)
     {
-        while (options)
-        {
-            if (!strcmp(options->name, "allow_duplicate_users"))
-                auth->allow_duplicate_users = atoi(options->value);
-            options = options->next;
-        }
-        return auth;
+        client_t *client = auth_user->client;
+
+        /* failed client, drop global count */
+        global_lock();
+        global.clients--;
+        global_unlock();
+        if (client->respcode)
+            client_destroy (client);
+        else
+            client_send_401 (client);
+        auth_user->client = NULL;
     }
-    ERROR1("Couldn't configure authenticator of type \"%s\"", type);
+    free (auth_user);
+}
+
+
+/* The auth thread main loop. */
+static void *auth_run_thread (void *arg)
+{
+    INFO0 ("Authenication thread started");
+    while (1)
+    {
+        if (clients_to_auth)
+        {
+            auth_client *auth_user;
+
+            thread_mutex_lock (&auth_lock);
+            auth_user = (auth_client*)clients_to_auth;
+            clients_to_auth = auth_user->next;
+            thread_mutex_unlock (&auth_lock);
+            auth_user->next = NULL;
+
+            if (auth_user->process == NULL)
+                ERROR0 ("client auth process not set");
+
+            if (auth_user->process (auth_user) != AUTH_OK)
+            {
+                INFO0 ("client failed");
+            }
+
+            auth_client_free (auth_user);
+
+            continue;
+        }
+        /* is there a request to shutdown */
+        if (auth_running == 0)
+            break;
+        thread_sleep (150000);
+    }
+    INFO0 ("Authenication thread shutting down");
     return NULL;
 }
 
 
-/* This should be called after auth has completed. After the user has
- * been authenticated the client is ready to be placed on the source, but
- * may still be dropped.
- * Don't use client after this call, however a return of 0 indicates that
- * client is on the source whereas -1 means that the client has failed
- */
-int auth_postprocess_client (const char *mount, client_t *client)
-{
-    int ret = -1;
-    source_t *source;
-    avl_tree_rlock (global.source_tree);
-    source = source_find_mount (mount);
-    if (source)
-    {
-        thread_mutex_lock (&source->lock);
-
-        if (source->running || source->on_demand)
-            ret = add_authenticated_client (source, client);
-
-        thread_mutex_unlock (&source->lock);
-    }
-    avl_tree_unlock (global.source_tree);
-    return ret;
-}
-
-
-void auth_failed_client (const char *mount)
-{
-    source_t *source;
-
-    avl_tree_rlock (global.source_tree);
-    source = source_find_mount (mount);
-    if (source)
-    {
-        thread_mutex_lock (&source->lock);
-
-        if (source->new_listeners)
-            source->new_listeners--;
-
-        thread_mutex_unlock (&source->lock);
-    }
-    avl_tree_unlock (global.source_tree);
-}
-
-
-void auth_close_client (client_t *client)
-{
-    /* failed client, drop global count */
-    global_lock();
-    global.clients--;
-    global_unlock();
-    if (client->respcode)
-        client_destroy (client);
-    else
-        client_send_401 (client);
-}
 
 
 /* Check whether this client is currently on this mount, the client may be
@@ -210,7 +183,7 @@ void auth_close_client (client_t *client)
  */
 static int check_duplicate_logins (source_t *source, client_t *client)
 {
-    auth_t *auth = source->authenticator;
+    auth_t *auth = client->auth;
 
     /* allow multiple authenticated relays */
     if (client->username == NULL || client->is_slave)
@@ -243,13 +216,42 @@ static int check_duplicate_logins (source_t *source, client_t *client)
  * if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-int add_authenticated_client (source_t *source, client_t *client)
+int add_client_to_source (source_t *source, client_t *client)
 {
-    if (source->authenticator && check_duplicate_logins (source, client) == 0)
+    int loop = 10;
+    do
+    {
+        unsigned int total;
+        thread_mutex_lock (&source->lock);
+        total = source->new_listeners + source->listeners;
+        DEBUG2 ("max on %s is %d", source->mount, source->max_listeners);
+        DEBUG2 ("pending %d, current %d", source->new_listeners, source->listeners);
+        if (source->max_listeners == -1)
+            break;
+        if (client->is_slave)
+            break;
+        if (total < (unsigned int)source->max_listeners)
+            break;
+
+        if (loop && source->fallback_when_full && source->fallback_mount)
+        {
+            source_t *next = source_find_mount (source->fallback_mount);
+            thread_mutex_unlock (&source->lock);
+            INFO1 ("stream full trying %s", next->mount);
+            source = next;
+            loop--;
+            continue;
+        }
+        /* now we fail the client */
+        thread_mutex_unlock (&source->lock);
         return -1;
+
+    } while (1);
     /* lets add the client to the pending list */
+    source->new_listeners++;
     client->next = source->pending_clients;
     source->pending_clients = client;
+    thread_mutex_unlock (&source->lock);
 
     client->write_to_client = format_http_write_to_client;
     client->refbuf = refbuf_new (4096);
@@ -269,107 +271,230 @@ int add_authenticated_client (source_t *source, client_t *client)
 }
 
 
-/* try to add client to a pending list.  return
- *  0 for success
- *  -1 too many clients
- *  -2 mount needs authentication
- *  -3 mount is unavailable
+/* Add listener to the pending lists of either the  source or fserve thread.
+ * This can be run from the connection or auth thread context
  */
-static int _add_client (char *passed_mount, client_t *client, int initial_connection)
+static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
-    source_t *source;
-    char *mount = passed_mount;
-    
-    while (1)
-    {
-        source = source_find_mount (mount);
-        if (passed_mount != mount) 
-            free (mount);
-        if (source == NULL)
-            return -3;
-        if (initial_connection && source->no_mount
-                && strcmp (source->mount, passed_mount) == 0)
-            return -3;
-        thread_mutex_lock (&source->lock);
+    int ret = 0;
+    source_t *source = NULL;
 
-        if (source->running || source->on_demand)
+    avl_tree_rlock (global.source_tree);
+    source = source_find_mount (mount);
+
+    if (source)
+    {
+        if (client->auth && check_duplicate_logins (source, client) == 0)
         {
-            DEBUG2 ("max on %s is %d", source->mount, source->max_listeners);
-            DEBUG2 ("pending %d, current %d", source->new_listeners, source->listeners);
-            if (source->max_listeners == -1)
-                break;
-            if (client->is_slave)
-                break;
-            if (source->new_listeners + source->listeners < (unsigned int)source->max_listeners)
-                break;
-
-            INFO2 ("max listeners (%d) reached on %s", source->max_listeners, source->mount);
-            if (source->fallback_when_full == 0 || source->fallback_mount == NULL)
-            {
-                thread_mutex_unlock (&source->lock);
-                return -1;
-            }
-            if (source->fallback_mount)
-                mount = strdup (source->fallback_mount);
-            else
-                mount = NULL;
+            avl_tree_unlock (global.source_tree);
+            return -1;
         }
-
-        thread_mutex_unlock (&source->lock);
+        ret = add_client_to_source (source, client);
+        avl_tree_unlock (global.source_tree);
+        DEBUG0 ("client authenticated, passed to source");
     }
-
-    if (auth_check_client (source, client) != AUTH_OK)
+    else
     {
-        thread_mutex_unlock (&source->lock);
-        INFO0 ("listener failed to authenticate");
-        return -2;
+        avl_tree_unlock (global.source_tree);
+        ret = fserve_client_create (client, mount);
     }
-    source->new_listeners++;
-
-    thread_mutex_unlock (&source->lock);
-    return 0;
+    return ret;
 }
 
 
-void add_client (char *mount, client_t *client)
+int auth_postprocess_client (auth_client *auth_user)
 {
-    int added = -3;
+    int ret;
+    ice_config_t *config = config_get_config();
 
-    if (mount)
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_user->client->authenticated = 1;
+
+    ret = add_authenticated_client (auth_user->mount, mountinfo, auth_user->client);
+    config_release_config();
+
+    if (ret < 0)
+        client_send_504 (auth_user->client, "stream full");
+    auth_user->client = NULL;
+
+    return ret;
+}
+
+
+/* Add a listener. Check for any mount information that states any
+ * authentication to be used.
+ */
+void add_client (const char *mount, client_t *client)
+{
+    mount_proxy *mountinfo; 
+    ice_config_t *config = config_get_config();
+
+    mountinfo = config_find_mount (config, mount);
+    if (mountinfo && mountinfo->auth)
     {
+        auth_client *auth_user;
+
+        auth_client_setup (mountinfo, client);
+        config_release_config ();
+
+        /* config lock taken in here */
         if (connection_check_relay_pass(client->parser))
         {
             client_as_slave (client);
             INFO0 ("client connected as slave");
         }
-        thread_mutex_lock (&move_clients_mutex);
-        avl_tree_rlock (global.source_tree);
-        added = _add_client (mount, client, 1);
-        avl_tree_unlock (global.source_tree);
-        thread_mutex_unlock (&move_clients_mutex);
+        auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user == NULL || client->auth == NULL)
+        {
+            client_send_401 (client);
+            return;
+        }
+        auth_user->mount = strdup (mount);
+        auth_user->process = client->auth->authenticate;
+        auth_user->client = client;
+
+        queue_auth_client (auth_user);
     }
-    switch (added)
+    else
     {
-    case -1: 
-        /* there may be slaves we can re-direct to */
-        if (slave_redirect (mount, client))
-            break;
-        client_send_404 (client,
-                "Too many clients on this mountpoint. Try again later.");
-        DEBUG1 ("max clients on %s", mount);
-        break;
-    case -2:
-        client_send_401 (client);
-        break;
-    case -3:
-        client_send_404 (client, "The file you requested could not be found");
-        break;
-    default:
-        return;
+        int ret = add_authenticated_client (mount, mountinfo, client);
+        config_release_config ();
+        if (ret < 0)
+            client_send_504 (client, "stream_full");
     }
-    /* failed client, drop global count */
-    global_lock();
-    global.clients--;
-    global_unlock();
+}
+
+
+/* determine whether we need to process this client further. This
+ * involves any auth exit, typically for external auth servers.
+ */
+int release_client (client_t *client)
+{
+    if (client->auth && client->auth->release_client)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user == NULL)
+            return 0;
+
+        auth_user->mount = strdup (httpp_getvar (client->parser, HTTPP_VAR_URI));
+        auth_user->process = client->auth->release_client;
+        auth_user->client = client;
+
+        queue_auth_client (auth_user);
+        return 1;
+    }
+    return 0;
+}
+
+
+static void get_authenticator (auth_t *auth, config_options_t *options)
+{
+    do
+    {
+#ifdef HAVE_AUTH_URL
+        if (strcmp (auth->type, "url") == 0)
+        {
+            auth_get_url_auth (auth, options);
+            break;
+        }
+#endif
+        if (strcmp (auth->type, "command") == 0)
+        {
+#ifdef WIN32
+            ERROR1("Authenticator type: \"%s\" not supported on win32 platform", type);
+            return NULL;
+#else
+            auth_get_cmd_auth (auth, options);
+            break;
+#endif
+        }
+        if (strcmp (auth->type, "htpasswd") == 0)
+        {
+            auth_get_htpasswd_auth (auth, options);
+            break;
+        }
+        
+        ERROR1("Unrecognised authenticator type: \"%s\"", auth->type);
+        return;
+    } while (0);
+
+    auth->refcount = 1;
+    while (options)
+    {
+        if (strcmp(options->name, "allow_duplicate_users") == 0)
+            auth->allow_duplicate_users = atoi (options->value);
+        options = options->next;
+    }
+}
+
+
+auth_t *auth_get_authenticator (xmlNodePtr node)
+{
+    auth_t *auth = calloc (1, sizeof (auth_t));
+    config_options_t *options = NULL, **next_option = &options;
+    xmlNodePtr option;
+
+    if (auth == NULL)
+        return NULL;
+
+    option = node->xmlChildrenNode;
+    while (option)
+    {
+        xmlNodePtr current = option;
+        option = option->next;
+        if (strcmp (current->name, "option") == 0)
+        {
+            config_options_t *opt = calloc (1, sizeof (config_options_t));
+            opt->name = xmlGetProp (current, "name");
+            if (opt->name == NULL)
+            {
+                free(opt);
+                continue;
+            }
+            opt->value = xmlGetProp (current, "value");
+            if (opt->value == NULL)
+            {
+                xmlFree (opt->name);
+                free (opt);
+                continue;
+            }
+            *next_option = opt;
+            next_option = &opt->next;
+        }
+        else
+            WARN1 ("unknown auth setting (%s)", current->name);
+    }
+    auth->type = xmlGetProp (node, "type");
+    get_authenticator (auth, options);
+    while (options)
+    {
+        config_options_t *opt = options;
+        options = opt->next;
+        xmlFree (opt->name);
+        xmlFree (opt->value);
+        free (opt);
+    }
+    return auth;
+}
+
+
+/* these are called at server start and termination */
+
+void auth_initialise ()
+{
+    clients_to_auth = NULL;
+    auth_running = 1;
+    thread_mutex_create ("auth lock", &auth_lock);
+    auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);
+}
+
+void auth_shutdown ()
+{
+    if (auth_thread)
+    {
+        auth_running = 0;
+        thread_join (auth_thread);
+        INFO0 ("Auth thread has terminated");
+    }
 }
 

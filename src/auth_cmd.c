@@ -46,13 +46,6 @@ typedef struct {
     char *filename;
 } auth_cmd;
 
-typedef struct {
-   char *mount;
-   client_t *client;
-   char *cmd;
-} auth_client;
-
-
 static void cmd_clear(auth_t *self)
 {
     auth_cmd *cmd = self->state;
@@ -60,18 +53,16 @@ static void cmd_clear(auth_t *self)
     free(cmd);
 }
 
-static void *auth_cmd_thread (void *arg)
+static auth_result auth_cmd_client (auth_client *auth_user)
 {
-    auth_client *auth_user = arg;
     int fd[2];
-    int ok = 0;
-    int send_fail = 404;
     pid_t pid;
     client_t *client = auth_user->client;
+    auth_t *auth = client->auth;
+    auth_cmd *cmd = auth->state;
     int status, len;
     char str[512];
 
-    DEBUG0("starting auth thread");
     if (pipe (fd) == 0)
     {
         pid = fork();
@@ -81,7 +72,7 @@ static void *auth_cmd_thread (void *arg)
                 dup2 (fd[0], fileno(stdin));
                 close (fd[0]);
                 close (fd[1]);
-                execl (auth_user->cmd, auth_user->cmd, NULL);
+                execl (cmd->filename, cmd->filename, NULL);
                 exit (EXIT_FAILURE);
             case -1:
                 break;
@@ -101,45 +92,13 @@ static void *auth_cmd_thread (void *arg)
                 {
                     DEBUG1("command exited normally with %d", WEXITSTATUS (status));
                     if (WEXITSTATUS(status) == 0)
-                        ok = 1;
-                    else
-                        send_fail = 401;
+                        if (auth_postprocess_client (auth_user) < 0)
+                            return AUTH_FAILED;
                 }
                 break;
         }
-        /* try to add authenticated client */
-        if (ok)
-        {
-            auth_postprocess_client (auth_user->mount, auth_user->client);
-            send_fail = 0;
-        }
-        else
-            auth_failed_client (auth_user->mount);
     }
-    if (send_fail == 404)
-        client_send_404 (client, "Mount not available");
-    if (send_fail == 401)
-        client_send_401 (client);
-    free (auth_user->mount);
-    free (auth_user->cmd);
-    free (auth_user);
-    return NULL;
-}
-
-
-static auth_result auth_cmd_client (source_t *source, client_t *client)
-{
-    auth_client *auth_user = calloc (1, sizeof (auth_client));
-    auth_cmd *cmd = source->authenticator->state;
-
-    if (auth_user == NULL)
-        return AUTH_FAILED;
-
-    auth_user->cmd = strdup (cmd->filename);
-    auth_user->mount = strdup (source->mount);
-    auth_user->client = client;
-    thread_create("Auth by command thread", auth_cmd_thread, auth_user, THREAD_DETACHED);
-    return AUTH_OK;
+    return AUTH_FAILED;
 }
 
 static auth_result auth_cmd_adduser(auth_t *auth, const char *username, const char *password)
@@ -157,9 +116,8 @@ static auth_result auth_cmd_listuser (auth_t *auth, xmlNodePtr srcnode)
     return AUTH_FAILED;
 }
 
-auth_t *auth_get_cmd_auth (config_options_t *options)
+void auth_get_cmd_auth (auth_t *authenticator, config_options_t *options)
 {
-    auth_t *authenticator = calloc(1, sizeof(auth_t));
     auth_cmd *state;
 
     authenticator->authenticate = auth_cmd_client;
@@ -177,6 +135,5 @@ auth_t *auth_get_cmd_auth (config_options_t *options)
     }
     authenticator->state = state;
     INFO0("external command based authentication setup");
-    return authenticator;
 }
 

@@ -21,6 +21,7 @@
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
+#include <errno.h>
 
 #ifdef HAVE_POLL
 #include <sys/poll.h>
@@ -311,10 +312,10 @@ static void *fserv_thread_function(void *arg)
     return NULL;
 }
 
-const char *fserve_content_type (char *path)
+const char *fserve_content_type (const char *path)
 {
-    char *ext = util_get_extension(path);
-    mime_type exttype = {ext, NULL};
+    const char *ext = util_get_extension(path);
+    mime_type exttype = {strdup(ext), NULL};
     void *result;
 
     if (!avl_get_by_key (mimetypes, &exttype, &result))
@@ -353,7 +354,7 @@ static void fserve_client_destroy(fserve_t *fclient)
 }
 
 
-int fserve_client_create(client_t *httpclient, char *path)
+int fserve_client_create(client_t *httpclient, const char *path)
 {
     fserve_t *client = calloc(1, sizeof(fserve_t));
     int bytes;
@@ -364,14 +365,92 @@ int fserve_client_create(client_t *httpclient, char *path)
     int64_t new_content_len = 0;
     int64_t rangenumber = 0;
     int ret = 0;
+    char *fullpath;
+    int m3u_requested = 0, m3u_file_available = 1;
 
+    // server limit check should be done earlier
     client_limit = config->client_limit;
     config_release_config();
 
-    DEBUG1 ("handle file %s", path);
-    client->file = fopen(path, "rb");
-    if(!client->file) {
-        client_send_404(httpclient, "File not readable");
+    fullpath = util_get_path_from_normalised_uri (path);
+    INFO2 ("handle file %s (%s)", path, fullpath);
+
+    if (strcmp (util_get_extension (fullpath), "m3u") == 0)
+        m3u_requested = 1;
+
+    /* check for the actual file */
+    if (stat (fullpath, &file_buf) != 0)
+    {
+        /* the m3u can be generated, but send an m3u file if available */
+        if (m3u_requested == 0)
+        {
+            WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
+            client_send_404 (httpclient, "The file you requested could not be found");
+            free (fullpath);
+            return -1;
+        }
+        m3u_file_available = 0;
+    }
+
+    if (m3u_requested && m3u_file_available == 0)
+    {
+        char *host = httpp_getvar (httpclient->parser, "host");
+        char *sourceuri = strdup (path);
+        char *dot = strrchr(sourceuri, '.');
+        int port = 8002;
+        *dot = 0;
+        DEBUG1 ("host passed is %s", host);
+        httpclient->respcode = 200;
+        if (host == NULL)
+        {
+            config = config_get_config();
+            host = strdup (config->hostname);
+            port = config->port;
+            config_release_config();
+            bytes = sock_write (httpclient->con->sock,
+                    "HTTP/1.0 200 OK\r\n"
+                    "Content-Type: audio/x-mpegurl\r\n\r\n"
+                    "http://%s:%d%s\r\n", 
+                    host, port,
+                    sourceuri
+                    );
+            free (host);
+        }
+        else
+        {
+            bytes = sock_write (httpclient->con->sock,
+                    "HTTP/1.0 200 OK\r\n"
+                    "Content-Type: audio/x-mpegurl\r\n\r\n"
+                    "http://%s%s\r\n", 
+                    host, 
+                    sourceuri
+                    );
+        }
+        if (bytes > 0) httpclient->con->sent_bytes = bytes;
+        client_destroy (httpclient);
+        free (sourceuri);
+        free (fullpath);
+        return -1;
+    }
+
+    if (util_check_valid_extension (fullpath) == XSLT_CONTENT)
+    {
+        /* If the file exists, then transform it, otherwise, write a 404 */
+        DEBUG0("Stats request, sending XSL transformed stats");
+        httpclient->respcode = 200;
+        bytes = sock_write(httpclient->con->sock, 
+                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        if(bytes > 0) httpclient->con->sent_bytes = bytes;
+        stats_transform_xslt (httpclient, fullpath);
+        client_destroy (httpclient);
+        free (fullpath);
+        return -1;
+    }
+
+    client->file = fopen (fullpath, "rb");
+    if (client->file == NULL)
+    {
+        client_send_404 (httpclient, "File not readable");
         return -1;
     }
 
@@ -380,9 +459,7 @@ int fserve_client_create(client_t *httpclient, char *path)
     client_set_queue (httpclient, NULL);
     httpclient->refbuf = refbuf_new (BUFSIZE);
     httpclient->pos = BUFSIZE;
-    if (stat(path, &file_buf) == 0) {
-        client->content_length = (int64_t)file_buf.st_size;
-    }
+    client->content_length = (int64_t)file_buf.st_size;
 
     global_lock();
     if(global.clients >= client_limit) {

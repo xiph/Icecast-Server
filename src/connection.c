@@ -19,8 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #endif
@@ -747,10 +745,7 @@ static void _handle_stats_request(connection_t *con,
 static void _handle_get_request(connection_t *con,
         http_parser_t *parser, char *passed_uri)
 {
-    char *fullpath;
     client_t *client;
-    int bytes;
-    struct stat statbuf;
     int fileserve;
     char *host = NULL;
     int port;
@@ -807,66 +802,6 @@ static void _handle_get_request(connection_t *con,
     if ((strcmp(uri, "/admin.cgi") == 0) ||
             (strncmp(uri, "/admin/", 7) == 0)) {
         admin_handle_request(client, uri);
-        if (uri != passed_uri) free (uri);
-        free (host);
-        return;
-    }
-
-    /* Here we are parsing the URI request to see
-    ** if the extension is .xsl, if so, then process
-    ** this request as an XSLT request
-    */
-    fullpath = util_get_path_from_normalised_uri(uri);
-    if (util_check_valid_extension(fullpath) == XSLT_CONTENT) {
-        /* If the file exists, then transform it, otherwise, write a 404 */
-        if (stat(fullpath, &statbuf) == 0) {
-            DEBUG0("Stats request, sending XSL transformed stats");
-            client->respcode = 200;
-            bytes = sock_write(client->con->sock, 
-                    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-            if(bytes > 0) client->con->sent_bytes = bytes;
-            stats_transform_xslt(client, fullpath);
-            client_destroy(client);
-        }
-        else {
-            client_send_404(client, "The file you requested could not be found");
-        }
-        free(fullpath);
-        if (uri != passed_uri) free (uri);
-        free (host);
-        return;
-    }
-    else if(fileserve && stat(fullpath, &statbuf) == 0 && 
-#ifdef _WIN32
-            ((statbuf.st_mode) & _S_IFREG))
-#else
-            S_ISREG(statbuf.st_mode)) 
-#endif
-    {
-        fserve_client_create(client, fullpath);
-        free(fullpath);
-        if (uri != passed_uri) free (uri);
-        free (host);
-        return;
-    }
-    free(fullpath);
-
-    if(strcmp(util_get_extension(uri), "m3u") == 0) {
-        char *sourceuri = strdup(uri);
-        char *dot = strrchr(sourceuri, '.');
-        *dot = 0;
-        client->respcode = 200;
-        bytes = sock_write(client->con->sock,
-                "HTTP/1.0 200 OK\r\n"
-                "Content-Type: audio/x-mpegurl\r\n\r\n"
-                "http://%s:%d%s\r\n", 
-                host, 
-                port,
-                sourceuri
-                );
-        if(bytes > 0) client->con->sent_bytes = bytes;
-        client_destroy(client);
-        free(sourceuri);
         if (uri != passed_uri) free (uri);
         free (host);
         return;

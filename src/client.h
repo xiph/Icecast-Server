@@ -53,6 +53,9 @@ typedef struct _client_tag
     /* client is a slave server */
     int is_slave;
 
+    /* auth used for this client */
+    struct auth_tag *auth;
+
     /* Client username, if authenticated */
     char *username;
 

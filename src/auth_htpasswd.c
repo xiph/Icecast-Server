@@ -81,10 +81,11 @@ static char *get_hash(const char *data, int len)
 #define MAX_LINE_LEN 512
 
 /* Not efficient; opens and scans the entire file for every request */
-static auth_result htpasswd_auth(source_t *source, client_t *client)
+static auth_result htpasswd_auth (auth_client *auth_user)
 {
-    auth_t *auth = source->authenticator;
+    auth_t *auth = auth_user->client->auth;
     htpasswd_auth_state *state = auth->state;
+    client_t *client = auth_user->client;
     FILE *passwdfile = fopen(state->filename, "rb");
     char line[MAX_LINE_LEN];
     char *sep;
@@ -116,7 +117,7 @@ static auth_result htpasswd_auth(source_t *source, client_t *client)
                 fclose(passwdfile);
                 free(hashed_password);
                 thread_rwlock_unlock(&state->file_rwlock);
-                if (add_authenticated_client (source, client) < 0)
+                if (auth_postprocess_client (auth_user) < 0)
                     return AUTH_FAILED;
                 return AUTH_OK;
             }
@@ -132,9 +133,8 @@ static auth_result htpasswd_auth(source_t *source, client_t *client)
     return AUTH_FAILED;
 }
 
-auth_t *auth_get_htpasswd_auth(config_options_t *options)
+int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
 {
-    auth_t *authenticator = calloc(1, sizeof(auth_t));
     htpasswd_auth_state *state;
 
     authenticator->authenticate = htpasswd_auth;
@@ -155,7 +155,7 @@ auth_t *auth_get_htpasswd_auth(config_options_t *options)
         free(state);
         free(authenticator);
         ERROR0("No filename given in options for authenticator.");
-        return NULL;
+        return -1;
     }
 
     authenticator->state = state;
@@ -164,7 +164,7 @@ auth_t *auth_get_htpasswd_auth(config_options_t *options)
 
     thread_rwlock_create(&state->file_rwlock);
 
-    return authenticator;
+    return 0;
 }
 
 int auth_htpasswd_existing_user(auth_t *auth, const char *username)
@@ -268,7 +268,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     }
     tmpfile_len = strlen(state->filename) + 6;
     tmpfile = calloc(1, tmpfile_len);
-    sprintf(tmpfile, ".%s.tmp", state->filename);
+    sprintf(tmpfile, "%s.tmp", state->filename);
 
     tmp_passwdfile = fopen(tmpfile, "wb");
 
