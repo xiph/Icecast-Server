@@ -33,7 +33,7 @@ typedef struct _event_listener_tag
 } event_listener_t;
 
 int _stats_running = 0;
-thread_t *_stats_thread_id;
+thread_type *_stats_thread_id;
 int _stats_threads = 0;
 
 stats_t _stats;

@@ -16,6 +16,7 @@
 #include "format_vorbis.h"
 #include "format_mp3.h"
 
+#include "log.h"
 #include "logging.h"
 #define CATMODULE "format"
 

@@ -45,7 +45,7 @@
 #define CATMODULE "slave"
 
 static void *_slave_thread(void *arg);
-thread_t *_slave_thread_id;
+thread_type *_slave_thread_id;
 static int _initialized = 0;
 
 void slave_initialize(void) {

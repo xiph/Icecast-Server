@@ -50,7 +50,7 @@ static avl_tree *pending_tree;
 static avl_tree *mimetypes = NULL;
 
 static cond_t fserv_cond;
-static thread_t *fserv_thread;
+static thread_type *fserv_thread;
 static int run_fserv;
 static int fserve_clients;
 static int client_tree_changed=0;
