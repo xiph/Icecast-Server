@@ -160,6 +160,11 @@ int yp_touch()
     node = avl_get_first(global.source_tree);
     while (node) {
         source = (source_t *)node->key;
+        if (source->running == 0)
+        {
+            node = avl_get_next (node);
+            continue;
+        }
         current_time = time(NULL);
         if (!source->yp_public) {
             node = avl_get_next(node);

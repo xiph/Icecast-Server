@@ -884,6 +884,13 @@ static void _handle_get_request(connection_t *con,
             avl_tree_unlock(global.source_tree);
             return;
         }
+        if (source->running == 0)
+        {
+            avl_tree_unlock(global.source_tree);
+            DEBUG0("inactive source, client dropped");
+            client_send_404(client, "This mount is unavailable.");
+            return;
+        }
 
         /* Check for any required authentication first */
         if(source->authenticator != NULL) {
