@@ -142,21 +142,15 @@ static void *_slave_thread(void *arg) {
     char *authheader, *data;
     int len;
     char *username = "relay";
-    char *password;
     int max_interval;
     relay_server *relay;
     ice_config_t *config;
     
     config = config_get_config();
 
-    password = config->master_password;
     interval = max_interval = config->master_update_interval;
 
-    if(password == NULL)
-        password = config->source_password;
-
     config_release_config();
-
 
     while (_initialized) {
         if (max_interval > ++interval) {
@@ -167,21 +161,26 @@ static void *_slave_thread(void *arg) {
             /* In case it's been reconfigured */
             config = config_get_config();
             max_interval = config->master_update_interval;
-            config_release_config();
 
             interval = 0;
         }
 
-        config = config_get_config();
         if(config->master_server != NULL) {
-            char *server = config->master_server;
+            char *server = strdup (config->master_server);
             int port = config->master_server_port;
+            char *password = NULL;
+            if (config->master_password != NULL)
+                password = strdup (config->master_password);
+            else
+                password = strdup (config->source_password);
             config_release_config();
 
             mastersock = sock_connect_wto(server, port, 0);
 
             if (mastersock == SOCK_ERROR) {
                 WARN0("Relay slave failed to contact master server to fetch stream list");
+                free (server);
+                free (password);
                 continue;
             }
 
@@ -212,6 +211,8 @@ static void *_slave_thread(void *arg) {
                 else
                     avl_tree_unlock(global.source_tree);
             }
+            free (server);
+            free (password);
             sock_close(mastersock);
         }
         else {
