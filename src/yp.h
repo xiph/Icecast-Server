@@ -12,9 +12,6 @@
 #define  YP_AUDIO_INFO 6
 #define  YP_SERVER_TYPE 7
 #define  YP_CURRENT_SONG 8
-#define  YP_URL_TIMEOUT 9
-#define  YP_TOUCH_INTERVAL 10
-#define  YP_LAST_TOUCH 11
 
 struct source_tag;
 

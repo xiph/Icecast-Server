@@ -239,10 +239,7 @@ int yp_touch()
                             strftime(tyme, 128, "%Y-%m-%d  %H:%M:%S", 
                                 localtime(&current_time));
                             stats_event(source->mount, "yp_last_touch", tyme);
-                            add_yp_info(source, "last_touch", 
-                                (void *)current_time,
-                                YP_LAST_TOUCH);
-
+                            source->ypdata[i]->yp_last_touch = current_time;
                         }
                     }
                 }
@@ -560,15 +557,6 @@ void add_yp_info(source_t *source, char *stat_name,
                         (char *)info);
                     free(escaped);
                 }
-                break;
-        case YP_URL_TIMEOUT:
-                source->ypdata[i]->yp_url_timeout = (int)info;
-                break;
-        case YP_LAST_TOUCH:
-                source->ypdata[i]->yp_last_touch = (int)info;
-                break;
-        case YP_TOUCH_INTERVAL:
-                source->ypdata[i]->yp_touch_interval = (int)info;
                 break;
         }
     }
