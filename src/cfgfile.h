@@ -65,7 +65,6 @@ typedef struct _mount_proxy {
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
-    int ogg_rebuild;
 
     char *auth_type; /* Authentication type */
     config_options_t *auth_options; /* Options for this type */

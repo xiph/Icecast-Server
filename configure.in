@@ -83,14 +83,13 @@ XIPH_PATH_VORBIS([
     [AC_MSG_ERROR([must have Ogg Vorbis v1.0 or above installed])
     ])
 
-
 XIPH_PATH_THEORA([
     XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$THEORA_CFLAGS])
     XIPH_VAR_APPEND([XIPH_LDFLAGS],[$THEORA_LDFLAGS])
     XIPH_VAR_PREPEND([XIPH_LIBS],[$THEORA_LIBS])
     ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_theora.o"
     ],
-    [ AC_MSG_WARN([Theora not found, disabled!])
+    [ AC_MSG_WARN([Theora disabled!])
     ])
 
 XIPH_PATH_SPEEX(

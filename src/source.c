@@ -877,8 +877,6 @@ void source_main (source_t *source)
                 }
                 source->stream_data = to_go->next;
                 source->queue_size -= to_go->len;
-                if (source->format->prerelease)
-                    source->format->prerelease (source, to_go);
                 refbuf_release (to_go);
             }
         }

@@ -35,8 +35,8 @@ typedef struct ogg_state_tag
     refbuf_t *file_headers;
     refbuf_t *header_pages;
     refbuf_t *header_pages_tail;
-    int headers_completed;
-    int rebuild;
+    refbuf_t **bos_end;
+    int bos_completed;
     long bitrate;
     struct ogg_codec_tag *current;
     struct ogg_codec_tag *codec_sync;
@@ -62,6 +62,7 @@ typedef struct ogg_codec_tag
 
 refbuf_t *make_refbuf_with_page (ogg_page *page);
 void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page);
+void format_ogg_free_headers (ogg_state_t *ogg_info);
 int format_ogg_get_plugin (source_t *source);
 
 #endif  /* __FORMAT_OGG_H__ */

@@ -59,92 +59,69 @@ static void theora_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 }
 
 
-static int _ilog (unsigned int v)
-{ 
-  int ret=0;
-  while(v){
-    ret++;
-    v>>=1;
-  }
-  return ret;
-}
-
-
+/* theora pages are not rebuilt, so here we just for headers and then
+ * pass them straight through to the the queue
+ */
 static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page)
 {
-    refbuf_t *refbuf;
     theora_codec_t *theora = codec->specific;
+    ogg_packet packet;
+    int header_page = 0;
+    int has_keyframe = 0;
+    refbuf_t *refbuf = NULL;
     ogg_int64_t granulepos;
 
-    granulepos = ogg_page_granulepos (page);
-    if (codec->headers < 3)
+    if (ogg_stream_pagein (&codec->os, page) < 0)
     {
-        ogg_packet packet;
-
-        ogg_stream_pagein (&codec->os, page);
-        while (ogg_stream_packetout (&codec->os, &packet) > 0)
-        {
-           if (theora_packet_isheader (&packet) == 0 || 
-                   theora_decode_header (&theora->ti, &theora->tc, &packet) < 0)
-           {
-               ogg_info->error = 1;
-               WARN0 ("problem with theora header");
-               return NULL;
-           }
-           codec->headers++;
-           if (codec->headers == 3)
-           {
-               theora->granule_shift = _ilog (theora->ti.keyframe_frequency_force - 1);
-               DEBUG1 ("granule shift is %lu", theora->granule_shift);
-               theora->last_iframe = (ogg_int64_t)-1;
-               codec->possible_start = NULL;
-               ogg_info->bitrate += theora->ti.target_bitrate;
-               stats_event_args (ogg_info->mount, "video_bitrate",
-                       "%ld", (long)theora->ti.target_bitrate);
-               stats_event_args (ogg_info->mount, "frame_size",
-                       "%ld x %ld", (long)theora->ti.frame_width, (long)theora->ti.frame_height);
-               stats_event_args (ogg_info->mount, "framerate",
-                       "%.2f", (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
-           }
-        }
-        /* add page to associated list */
-        format_ogg_attach_header (ogg_info, page);
-
+        ogg_info->error = 1;
         return NULL;
     }
-    refbuf = make_refbuf_with_page (page);
-    refbuf->sync_point = 1;
+    granulepos = ogg_page_granulepos (page);
 
-    if (granulepos == -1 || granulepos == theora->prev_granulepos)
+    while (ogg_stream_packetout (&codec->os, &packet) > 0)
     {
-        if (codec->possible_start == NULL)
+        if (theora_packet_isheader (&packet))
         {
-            refbuf_addref (refbuf);
-            codec->possible_start = refbuf;
+            if (theora_decode_header (&theora->ti, &theora->tc, &packet) < 0)
+            {
+                ogg_info->error = 1;
+                WARN0 ("problem with theora header");
+                return NULL;
+            }
+            header_page = 1;
+            codec->headers++;
+            continue;
         }
+        if (codec->headers < 3)
+        {
+            ogg_info->error = 1;
+            ERROR0 ("Not enough header packets");
+            return NULL;
+        }
+        if (theora_packet_iskeyframe (&packet))
+            has_keyframe = 1;
     }
-    else
+    if (header_page)
     {
-        if ((granulepos >> theora->granule_shift) != theora->last_iframe)
-        {
-            theora->last_iframe = (granulepos >> theora->granule_shift);
-            if (codec->possible_start == NULL)
-            {
-                refbuf_addref (refbuf);
-                codec->possible_start = refbuf;
-            }
-            codec->possible_start->sync_point = 1;
-        }
-        else
-        {
-            if (theora->prev_granulepos != -1)
-            {
-                if (codec->possible_start)
-                    refbuf_release (codec->possible_start);
-                refbuf_addref (refbuf);
-                codec->possible_start = refbuf;
-            }
-        }
+        format_ogg_attach_header (ogg_info, page);
+        return NULL;
+    }
+
+    refbuf = make_refbuf_with_page (page);
+    /* DEBUG3 ("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
+
+    if (has_keyframe && codec->possible_start)
+    {
+        codec->possible_start->sync_point = 1;
+        refbuf_release (codec->possible_start);
+        codec->possible_start = NULL;
+    }
+    if (granulepos != theora->prev_granulepos || granulepos == 0)
+    {
+        if (codec->possible_start)
+            refbuf_release (codec->possible_start);
+        refbuf_addref (refbuf);
+        codec->possible_start = refbuf;
     }
     theora->prev_granulepos = granulepos;
 
@@ -152,6 +129,9 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
 }
 
 
+/* Check if specified BOS page is the start of a theora stream and
+ * if so, create a codec structure for handling it
+ */
 ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
 {
     ogg_state_t *ogg_info = plugin->_state;
@@ -184,6 +164,7 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
     codec->codec_free = theora_codec_free;
     codec->headers = 1;
     format_ogg_attach_header (ogg_info, page);
+    ogg_info->codec_sync = codec;
     return codec;
 }
 

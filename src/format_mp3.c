@@ -89,7 +89,6 @@ int format_mp3_get_plugin (source_t *source)
     plugin->create_client_data = format_mp3_create_client_data;
     plugin->free_plugin = format_mp3_free_plugin;
     plugin->set_tag = mp3_set_tag;
-    plugin->prerelease = NULL;
     plugin->apply_settings = format_mp3_apply_settings;
 
     plugin->contenttype = httpp_getvar (source->parser, "content-type");
@@ -101,7 +100,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->_state = state;
 
     /* initial metadata needs to be blank for sending to clients and for
-        comparing with new metadata */
+       comparing with new metadata */
     meta = refbuf_new (2);
     memcpy (meta->data, "\0\0", 2);
     meta->len = 1;
@@ -181,6 +180,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             if (p)
             {
                 memcpy (p, metadata+13, len);
+                logging_playlist (source->mount, p, source->listeners);
                 stats_event (source->mount, "title", p);
                 yp_touch (source->mount);
                 free (p);

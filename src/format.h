@@ -47,7 +47,6 @@ typedef struct _format_plugin_tag
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
-    void (*prerelease)(struct source_tag *source, refbuf_t *refbuf);
     void (*apply_settings)(struct source_tag *source, struct _mount_proxy *mount);
 
     /* for internal state management */

@@ -11,10 +11,10 @@
  */
 
 /* format_ogg.c
-**
-** format plugin for Ogg
-**
-*/
+ *
+ * format plugin for Ogg
+ *
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -49,7 +49,6 @@ struct _ogg_state_tag;
 static void format_ogg_free_plugin (format_plugin_t *plugin);
 static int  create_ogg_client_data(source_t *source, client_t *client);
 static void free_ogg_client_data (client_t *client);
-static void format_ogg_apply_settings (source_t *source, mount_proxy *mount);
 
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
@@ -65,24 +64,6 @@ struct ogg_client
 };
 
 
-void refbuf_page_prerelease (struct source_tag *source, refbuf_t *refbuf)
-{
-    ogg_state_t *ogg_info = source->format->_state;
-
-    /* only theora will be marking refbufs as sync that are behind in the
-     * queue, here we just make sure that it isn't the one we are going to
-     * remove. */
-    if (ogg_info->codec_sync)
-    {
-        if (ogg_info->codec_sync->possible_start == refbuf)
-        {
-            refbuf_release (refbuf);
-            ogg_info->codec_sync->possible_start = NULL;
-        }
-    }
-}
-
-
 refbuf_t *make_refbuf_with_page (ogg_page *page)
 {
     refbuf_t *refbuf = refbuf_new (page->header_len + page->body_len);
@@ -93,10 +74,24 @@ refbuf_t *make_refbuf_with_page (ogg_page *page)
 }
 
 
+/* routine for taking the provided page (should be a header page) and
+ * placing it on the collection of header pages
+ */
 void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
 {
     refbuf_t *refbuf = make_refbuf_with_page (page);
 
+    if (ogg_page_bos (page))
+    {
+        DEBUG0 ("attaching BOS page");
+        if (*ogg_info->bos_end == NULL)
+            ogg_info->header_pages_tail = refbuf;
+        refbuf->next = *ogg_info->bos_end;
+        *ogg_info->bos_end = refbuf;
+        ogg_info->bos_end = &refbuf->next;
+        return;
+    }
+    DEBUG0 ("attaching header page");
     if (ogg_info->header_pages_tail)
         ogg_info->header_pages_tail->next = refbuf;
     ogg_info->header_pages_tail = refbuf;
@@ -106,14 +101,10 @@ void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
 }
 
 
-
-static void free_ogg_codecs (ogg_state_t *ogg_info)
+void format_ogg_free_headers (ogg_state_t *ogg_info)
 {
-    ogg_codec_t *codec;
     refbuf_t *header;
 
-    if (ogg_info == NULL)
-        return;
     /* release the header pages first */
     DEBUG0 ("releasing header pages");
     header = ogg_info->header_pages;
@@ -125,6 +116,19 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     }
     ogg_info->header_pages = NULL;
     ogg_info->header_pages_tail = NULL;
+    ogg_info->bos_end = &ogg_info->header_pages;
+}
+
+
+/* release the memory used for the codec and header pages from the module */
+static void free_ogg_codecs (ogg_state_t *ogg_info)
+{
+    ogg_codec_t *codec;
+
+    if (ogg_info == NULL)
+        return;
+
+    format_ogg_free_headers (ogg_info);
 
     /* now free the codecs */
     codec = ogg_info->codecs;
@@ -137,7 +141,7 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     }
     ogg_info->codecs = NULL;
     ogg_info->current = NULL;
-    ogg_info->headers_completed = 0;
+    ogg_info->bos_completed = 0;
 }
 
 
@@ -154,9 +158,7 @@ int format_ogg_get_plugin (source_t *source)
     plugin->write_buf_to_file = write_ogg_to_file;
     plugin->create_client_data = create_ogg_client_data;
     plugin->free_plugin = format_ogg_free_plugin;
-    plugin->apply_settings = format_ogg_apply_settings;
     plugin->set_tag = NULL;
-    plugin->prerelease = refbuf_page_prerelease;
     plugin->contenttype = "application/ogg";
 
     ogg_sync_init (&state->oy);
@@ -164,6 +166,7 @@ int format_ogg_get_plugin (source_t *source)
     plugin->_state = state;
     source->format = plugin;
     state->mount = source->mount;
+    state->bos_end = &state->header_pages;
 
     return 0;
 }
@@ -178,22 +181,20 @@ void format_ogg_free_plugin (format_plugin_t *plugin)
     free (state->artist);
     free (state->title);
 
-    /* free state memory */
     ogg_sync_clear (&state->oy);
     free (state);
 
-    /* free the plugin instance */
     free (plugin);
 }
 
 
-
+/* a new BOS page has been seen so check which codec it is */
 static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
 {
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec;
 
-    if (ogg_info->headers_completed)
+    if (ogg_info->bos_completed)
     {
         ogg_info->bitrate = 0;
         ogg_info->codec_sync = NULL;
@@ -231,7 +232,10 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
 }
 
 
-
+/* This is called when there has been a change in the metadata. Usually
+ * artist and title are provided separately so here we update the stats
+ * and write log entry if required.
+ */
 static void update_comments (source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
@@ -271,11 +275,13 @@ static void update_comments (source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
-    DEBUG0 ("running touch");
     yp_touch (source->mount);
 }
 
 
+/* called when preparing a refbuf with audio data to be passed
+ * back for queueing
+ */
 static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
 {
     ogg_state_t *ogg_info = source->format->_state;
@@ -293,12 +299,17 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
         update_comments (source);
         ogg_info->log_metadata = 0;
     }
+    /* listeners can start anywhere unless the codecs themselves are
+     * marking starting points */
     if (ogg_info->codec_sync == NULL)
         refbuf->sync_point = 1;
     return refbuf;
 }
 
 
+/* process the incoming page. this requires searching through the
+ * currently known codecs that have been seen in the stream
+ */
 static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
 {
     ogg_codec_t *codec = ogg_info->codecs;
@@ -320,7 +331,10 @@ static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
 }
 
 
-
+/* main plugin handler for getting a buffer for the queue. In here we
+ * just add an incoming page to the codecs and process it until either
+ * more data is needed or we prodice a buffer for the queue.
+ */
 static refbuf_t *ogg_get_buffer (source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
@@ -335,6 +349,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
             refbuf_t *refbuf;
             ogg_codec_t *codec = ogg_info->current;
 
+            /* if a codec has just been given a page then process it */
             if (codec && codec->process)
             {
                 refbuf = codec->process (ogg_info, codec);
@@ -351,7 +366,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                     process_initial_page (source->format, &page);
                     continue;
                 }
-                ogg_info->headers_completed = 1;
+                ogg_info->bos_completed = 1;
                 refbuf = process_ogg_page (ogg_info, &page);
                 if (ogg_info->error)
                 {
@@ -414,7 +429,9 @@ static void free_ogg_client_data (client_t *client)
 }
 
 
-
+/* send out the header pages. These are for all codecs but are
+ * in the order for the stream, ie BOS pages first
+ */
 static int send_ogg_headers (client_t *client, refbuf_t *headers)
 {
     struct ogg_client *client_data = client->format_data;
@@ -453,6 +470,9 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 }
 
 
+/* main client write routine for sending ogg data. Each refbuf has a
+ * single page so we only need to determine if there are new headers
+ */
 static int write_buf_to_client (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
@@ -531,15 +551,4 @@ static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
     write_ogg_data (source, refbuf);
 }
 
-static void format_ogg_apply_settings (source_t *source, mount_proxy *mount)
-{
-    ogg_state_t *ogg_info = source->format->_state;
-
-    ogg_info->rebuild = 0;
-    if (mount->ogg_rebuild)
-    {
-        ogg_info->rebuild = 1;
-        DEBUG0 ("rebuilding stream enabled");
-    }
-}
 
