@@ -23,7 +23,7 @@ if test "x$ogg_prefix" = "x"; then
     fi
 fi
 
-XIPH_GCC_INCLUDE_WARNING([$ogg_prefix/include],,
+XIPH_GCC_WARNING([-I$ogg_prefix/include],,
         [OGG_CFLAGS="-I$ogg_prefix/include"
         OGG_LDFLAGS="-L$ogg_prefix/lib"
         ])

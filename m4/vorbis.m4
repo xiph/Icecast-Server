@@ -32,7 +32,7 @@ fi
 VORBIS_CFLAGS="$OGG_CFLAGS"
 VORBIS_LDFLAGS="$OGG_LDFLAGS"
 if test "x$vorbis_prefix" != "x$ogg_prefix"; then
-    XIPH_GCC_INCLUDE_WARNING("$vorbis_prefix/include",,
+    XIPH_GCC_WARNING(-I"$vorbis_prefix/include",,
             [VORBIS_CFLAGS="$VORBIS_CFLAGS -I$vorbis_prefix/include"
             VORBIS_LDFLAGS="-L$vorbis_prefix/lib $VORBIS_LDFLAGS"
             ])

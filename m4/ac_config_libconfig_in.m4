@@ -98,11 +98,11 @@ for option in $options extra; do
     exec-prefix | eprefix)  echo '  o="$o $exec_prefix"' >>$LIBCONFIG_FILE ;;
     template-version)  echo '  o="$o $template_version"' >>$LIBCONFIG_FILE ;;
     cflags)
-      echo '  i=`eval echo "$includedir"`' >>$LIBCONFIG_FILE ;
-      echo '  i=`eval echo "$i"`' >>$LIBCONFIG_FILE ;
-      echo '  if test "_$i" != "_/usr/include" ; then' >>$LIBCONFIG_FILE ;
-      echo '    o="$o -I$includedir"' >>$LIBCONFIG_FILE ;
-      echo '  fi' >>$LIBCONFIG_FILE ;
+#      echo '  i=`eval echo "$includedir"`' >>$LIBCONFIG_FILE ;
+#      echo '  i=`eval echo "$i"`' >>$LIBCONFIG_FILE ;
+#      echo '  if test "_$i" != "_/usr/include" ; then' >>$LIBCONFIG_FILE ;
+#      echo '    o="$o -I$includedir"' >>$LIBCONFIG_FILE ;
+#      echo '  fi' >>$LIBCONFIG_FILE ;
       echo '  o="$o $cflags"' >>$LIBCONFIG_FILE ;;
     libs)  echo '  o="$o -L$libdir $libs"' >>$LIBCONFIG_FILE ;;
     help)  echo '  h="1"' >>$LIBCONFIG_FILE ;;
