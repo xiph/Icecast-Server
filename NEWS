@@ -12,6 +12,13 @@ Icecast 2.1
   check the docs for a more detailed description of this new feature.
 
 -Multi-Level Fallbacks-
+ 
+  Multi-level fallbacks allow for specifications of a series of fallback mounts
+  that you could use, for instance, to set up a series of progressively lower
+  bitrate streams that would be cascaded through.  For instance, a modem user
+  would connect to the highest bitrate stream, and then could be cascaded
+  down to a progressively lower stream until they reach a value they can
+  handle.
 
 -Burst-On-Connect-
 
