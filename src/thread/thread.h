@@ -111,6 +111,35 @@ typedef struct {
 #define THREAD_DETACHED 1
 #define THREAD_ATTACHED 0
 
+#ifdef _mangle
+# define thread_initialize _mangle(thread_initialize)
+# define thread_initialize_with_log_id _mangle(thread_initialize_with_log_id)
+# define thread_shutdown _mangle(thread_shutdown)
+# define thread_create_c _mangle(thread_create_c)
+# define thread_mutex_create_c _mangle(thread_mutex_create)
+# define thread_mutex_lock_c _mangle(thread_mutex_lock_c)
+# define thread_mutex_unlock_c _mangle(thread_mutex_unlock_c)
+# define thread_mutex_destroy _mangle(thread_mutex_destroy)
+# define thread_cond_create_c _mangle(thread_cond_create_c)
+# define thread_cond_signal_c _mangle(thread_cond_signal_c)
+# define thread_cond_broadcast_c _mangle(thread_cond_broadcast_c)
+# define thread_cond_wait_c _mangle(thread_cond_wait_c)
+# define thread_cond_timedwait_c _mangle(thread_cond_timedwait_c)
+# define thread_cond_destroy _mangle(thread_cond_destroy)
+# define thread_rwlock_create_c _mangle(thread_rwlock_create_c)
+# define thread_rwlock_rlock_c _mangle(thread_rwlock_rlock_c)
+# define thread_rwlock_wlock_c _mangle(thread_rwlock_wlock_c)
+# define thread_rwlock_unlock_c _mangle(thread_rwlock_unlock_c)
+# define thread_rwlock_destroy _mangle(thread_rwlock_destroy)
+# define thread_exit_c _mangle(thread_exit_c)
+# define thread_sleep _mangle(thread_sleep)
+# define thread_library_lock _mangle(thread_library_lock)
+# define thread_library_unlock _mangle(thread_library_unlock)
+# define thread_self _mangle(thread_self)
+# define thread_rename _mangle(thread_rename)
+# define thread_join _mangle(thread_join)
+#endif
+
 /* init/shutdown of the library */
 void thread_initialize(void);
 void thread_initialize_with_log_id(int log_id);
@@ -154,6 +183,3 @@ void thread_rename(const char *name);
 void thread_join(thread_type *thread);
 
 #endif  /* __THREAD_H__ */
-
-
-
