@@ -404,7 +404,17 @@ static int _check_relay_pass(http_parser_t *parser)
     return _check_pass_http(parser, "relay", pass);
 }
 
-static int _check_source_pass(http_parser_t *parser)
+static int _check_admin_pass(http_parser_t *parser)
+{
+    char *pass = config_get_config()->admin_password;
+    char *user = config_get_config()->admin_username;
+    if(!pass || !user)
+        return 0;
+
+    return _check_pass_http(parser, "admin", pass);
+}
+
+static int _check_source_pass(http_parser_t *parser, char *mount)
 {
     char *pass = config_get_config()->source_password;
     int ret;
@@ -428,14 +438,14 @@ static void handle_fallback_request(client_t *client)
     char *mount, *value, *old;
     int bytes;
 
-    if(!_check_source_pass(client->parser)) {
+    mount = httpp_get_query_param(client->parser, "mount");
+    value = httpp_get_query_param(client->parser, "fallback");
+
+    if(!_check_source_pass(client->parser, mount)) {
 		INFO0("Bad or missing password on fallback configuration request");
         client_send_401(client);
         return;
     }
-
-    mount = httpp_get_query_param(client->parser, "mount");
-    value = httpp_get_query_param(client->parser, "fallback");
 
     if(value == NULL || mount == NULL) {
         client_send_400(client, "Missing parameter");
@@ -472,15 +482,15 @@ static void handle_metadata_request(client_t *client)
     mp3_state *state;
     int bytes;
 
-    if(!_check_source_pass(client->parser)) {
+    action = httpp_get_query_param(client->parser, "mode");
+    mount = httpp_get_query_param(client->parser, "mount");
+    value = httpp_get_query_param(client->parser, "song");
+
+    if(!_check_source_pass(client->parser, mount)) {
 		INFO0("Metadata request with wrong or missing password");
         client_send_401(client);
         return;
     }
-
-    action = httpp_get_query_param(client->parser, "mode");
-    mount = httpp_get_query_param(client->parser, "mount");
-    value = httpp_get_query_param(client->parser, "song");
 
     if(value == NULL || action == NULL || mount == NULL) {
         client_send_400(client, "Missing parameter");
@@ -533,7 +543,7 @@ static void _handle_source_request(connection_t *con,
     INFO1("Source logging in at mountpoint \"%s\"", uri);
     stats_event_inc(NULL, "source_connections");
 				
-	if (!_check_source_pass(parser)) {
+	if (!_check_source_pass(parser, uri)) {
 		INFO1("Source (%s) attempted to login with invalid or missing password", uri);
         client_send_401(client);
         return;
@@ -564,7 +574,7 @@ static void _handle_stats_request(connection_t *con,
 
 	stats_event_inc(NULL, "stats_connections");
 				
-	if (!_check_source_pass(parser)) {
+	if (!_check_admin_pass(parser)) {
         ERROR0("Bad password for stats connection");
 		connection_close(con);
 		httpp_destroy(parser);
@@ -606,7 +616,7 @@ static void _handle_get_request(connection_t *con,
 	*/
 	/* TODO: add GUID-xxxxxx */
 	if (strcmp(uri, "/admin/stats.xml") == 0) {
-	    if (!_check_source_pass(parser)) {
+	    if (!_check_admin_pass(parser)) {
 		    INFO0("Request for /admin/stats.xml with incorrect or no password");
             client_send_401(client);
             return;

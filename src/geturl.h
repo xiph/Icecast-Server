@@ -20,7 +20,7 @@ struct curl_memory_struct {
 struct curl_memory_struct2 {
     char sid[YP_SID_SIZE];
     char message[YP_RESPONSE_SIZE];
-    int touch_freq;
+    int touch_interval;
     int response;
     size_t size;
 };
@@ -41,5 +41,6 @@ struct curl_memory_struct2 *curl_get_header_result(int which);
 void curl_print_header_result(struct curl_memory_struct2 *mem);
 int curl_get_connection();
 int curl_release_connection(int which);
+
 #endif
 

@@ -126,13 +126,13 @@ void stats_shutdown()
 
 stats_t *stats_get_stats()
 {
-	// lock global stats
+	/* lock global stats
 	
-	// copy stats
+	 copy stats
 
-	// unlock global stats
+	 unlock global stats
 
-	// return copied stats
+	 return copied stats */
 
 	return NULL;
 }

@@ -665,7 +665,7 @@ int sock_accept(sock_t serversock, char *ip, int len)
 	ret = accept(serversock, (struct sockaddr *)&sin, &slen);
 
 	if (ret >= 0 && ip != NULL) {
-        // inet_ntoa is not reentrant, we should protect this
+        /* inet_ntoa is not reentrant, we should protect this */
 		strncpy(ip, inet_ntoa(sin.sin_addr), len);
 		sock_set_nolinger(ret);
 		sock_set_keepalive(ret);

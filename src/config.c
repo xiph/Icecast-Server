@@ -54,6 +54,7 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node);
+static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node);
 
 void config_initialize(void)
@@ -171,7 +172,7 @@ static void _set_defaults(void)
 	_configuration.relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
 	_configuration.ice_login = CONFIG_DEFAULT_ICE_LOGIN;
 	_configuration.fileserve = CONFIG_DEFAULT_FILESERVE;
-	_configuration.touch_freq = CONFIG_DEFAULT_TOUCH_FREQ;
+	_configuration.touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
 	_configuration.dir_list = NULL;
 	_configuration.hostname = CONFIG_DEFAULT_HOSTNAME;
 	_configuration.port = CONFIG_DEFAULT_PORT;
@@ -207,7 +208,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "admin") == 0) {
 			if (_configuration.admin && _configuration.admin != CONFIG_DEFAULT_ADMIN) xmlFree(_configuration.admin);
 			_configuration.admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-		} else if (strcmp(node->name, "source-password") == 0) {
+		} else if(strcmp(node->name, "authentication") == 0) {
+			_parse_authentication(doc, node->xmlChildrenNode);
+        } else if (strcmp(node->name, "source-password") == 0) {
+            /* TODO: This is the backwards-compatibility location */
             char *mount, *pass;
             if ((mount = (char *)xmlGetProp(node, "mount")) != NULL) {
                 pass = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -218,8 +222,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			    _configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
         } else if (strcmp(node->name, "relay-password") == 0) {
-			    if (_configuration.relay_password && _configuration.relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(_configuration.relay_password);
-			    _configuration.relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            /* TODO: This is the backwards-compatibility location */
+			if (_configuration.relay_password && _configuration.relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(_configuration.relay_password);
+			_configuration.relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "icelogin") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.ice_login = atoi(tmp);
@@ -300,6 +305,47 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
 	} while ((node = node->next));
 }
 
+static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node)
+{
+	do {
+		if (node == NULL) break;
+		if (xmlIsBlankNode(node)) continue;
+
+		if (strcmp(node->name, "source-password") == 0) {
+            char *mount, *pass;
+            if ((mount = (char *)xmlGetProp(node, "mount")) != NULL) {
+                pass = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                /* FIXME: This is a placeholder for per-mount passwords */
+            }
+            else {
+			    if (_configuration.source_password && 
+                        _configuration.source_password != 
+                        CONFIG_DEFAULT_SOURCE_PASSWORD) 
+                    xmlFree(_configuration.source_password);
+			    _configuration.source_password = 
+                    (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            }
+        } else if (strcmp(node->name, "relay-password") == 0) {
+			if (_configuration.relay_password && 
+                    _configuration.relay_password != 
+                    CONFIG_DEFAULT_RELAY_PASSWORD) 
+                xmlFree(_configuration.relay_password);
+			_configuration.relay_password = 
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "admin-password") == 0) {
+            if(_configuration.admin_password)
+                xmlFree(_configuration.admin_password);
+            _configuration.admin_password =
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "admin-user") == 0) {
+            if(_configuration.admin_username)
+                xmlFree(_configuration.admin_username);
+            _configuration.admin_username =
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        }
+	} while ((node = node->next));
+}
+
 static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
 {
 	char *tmp;
@@ -313,16 +359,19 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node)
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "yp-url") == 0) {
-			if (_configuration.yp_url[_configuration.num_yp_directories]) xmlFree(_configuration.yp_url[_configuration.num_yp_directories]);
-			_configuration.yp_url[_configuration.num_yp_directories] = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			if (_configuration.yp_url[_configuration.num_yp_directories]) 
+                xmlFree(_configuration.yp_url[_configuration.num_yp_directories]);
+			_configuration.yp_url[_configuration.num_yp_directories] = 
+                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "yp-url-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            _configuration.yp_url_timeout[_configuration.num_yp_directories] = atoi(tmp);
+            _configuration.yp_url_timeout[_configuration.num_yp_directories] = 
+                atoi(tmp);
 		} else if (strcmp(node->name, "server") == 0) {
 			_add_server(doc, node->xmlChildrenNode);
-		} else if (strcmp(node->name, "touch-freq") == 0) {
+		} else if (strcmp(node->name, "touch-interval") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			_configuration.touch_freq = atoi(tmp);
+			_configuration.touch_interval = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		}
 	} while ((node = node->next));
@@ -411,7 +460,7 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node)
 	char *tmp;
 
 	server = (ice_config_dir_t *)malloc(sizeof(ice_config_dir_t));
-	server->touch_freq = _configuration.touch_freq;
+	server->touch_interval = _configuration.touch_interval;
 	server->host = NULL;
 	addnode = 0;
 	
@@ -420,11 +469,12 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node)
 		if (xmlIsBlankNode(node)) continue;
 
 		if (strcmp(node->name, "host") == 0) {
-			server->host = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			server->host = (char *)xmlNodeListGetString(doc, 
+                    node->xmlChildrenNode, 1);
 			addnode = 1;
-		} else if (strcmp(node->name, "touch-freq") == 0) {
+		} else if (strcmp(node->name, "touch-interval") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-			server->touch_freq = atoi(tmp);
+			server->touch_interval = atoi(tmp);
 			if (tmp) xmlFree(tmp);
 		}
 		server->next = NULL;

@@ -42,6 +42,10 @@ struct iovec
 #endif
 #endif
 
+#ifdef HAVE_INET_PTON
+#define inet_aton(a,b) inet_pton(AF_INET, (a), (b))
+#endif
+
 typedef int sock_t;
 
 /* The following values are based on unix avoiding errno value clashes */

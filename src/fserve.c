@@ -226,7 +226,7 @@ static void *fserv_thread_function(void *arg)
                     &client->buf[client->offset], 
                     client->datasize - client->offset);
 
-            // TODO: remove clients if they take too long.
+            /* TODO: remove clients if they take too long. */
             if(sbytes >= 0) {
                 client->offset += sbytes;
                 client->client->con->sent_bytes += sbytes;

@@ -11,12 +11,23 @@
 		<source-timeout>10</source-timeout>
 	</limits>
 
-	<source-password>hackme</source-password>
-	<relay-password>hackme</relay-password>
+    <authentication>
+        <!-- Sources log in with username 'source' -->
+    	<source-password>hackme</source-password>
+        <!-- Relays log in username 'relay' -->
+	    <relay-password>hackme</relay-password>
 
-        <directory>
-                <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
-        </directory>
+        <!-- Admin logs in with the username given below -->
+        <admin-user>admin</admin-user>
+        <admin-password>hackme</admin-password>
+    </authentication>
+
+    <!-- Uncomment this if you want directory listings -->
+    <!--
+    <directory>
+        <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
+    </directory>
+     -->
 
 	<hostname>localhost</hostname>
 	<port>8000</port>
@@ -30,15 +41,15 @@
 	<fileserve>1</fileserve>
 
 	<paths>
-		<basedir>/usr/local/icecast2</basedir>
-		<logdir>/usr/local/icecast2/logs</logdir>
-		<webroot>/usr/local/icecast2/web</webroot>
+		<basedir>/usr/local/icecast</basedir>
+		<logdir>/usr/local/icecast/logs</logdir>
+		<webroot>/usr/local/icecast/web</webroot>
 	</paths>
 
 	<logging>
 		<accesslog>access.log</accesslog>
 		<errorlog>error.log</errorlog>
-        	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+      	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
 	</logging>
 
 	<security>

@@ -53,14 +53,17 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
 	src->parser = parser;
 	src->client_tree = avl_tree_new(_compare_clients, NULL);
 	src->pending_tree = avl_tree_new(_compare_clients, NULL);
+    src->running = 1;
 	src->num_yp_directories = 0;
 	src->listeners = 0;
 	for (i=0;i<config_get_config()->num_yp_directories;i++) {
 		if (config_get_config()->yp_url[i]) {
 			src->ypdata[src->num_yp_directories] = yp_create_ypdata();
-			src->ypdata[src->num_yp_directories]->yp_url = config_get_config()->yp_url[i];
-			src->ypdata[src->num_yp_directories]->yp_url_timeout = config_get_config()->yp_url_timeout[i];
-			src->ypdata[src->num_yp_directories]->yp_touch_freq = 0;
+			src->ypdata[src->num_yp_directories]->yp_url = 
+                config_get_config()->yp_url[i];
+			src->ypdata[src->num_yp_directories]->yp_url_timeout = 
+                config_get_config()->yp_url_timeout[i];
+			src->ypdata[src->num_yp_directories]->yp_touch_interval = 0;
 			src->num_yp_directories++;
 		}
 	}
@@ -136,17 +139,15 @@ void *source_main(void *arg)
 	client_t *client;
 	avl_node *client_node;
 	char *s;
-	long	currentTime = 0;
-	char	current_song[256];
-	char	prev_current_song[256];
+	long current_time;
+	char current_song[256];
 
 	refbuf_t *refbuf, *abuf;
 	int data_done;
 
 	int listeners = 0;
-	int listen_url_size = 0;
 	int	i=0;
-	int	list_on_yp = 0;
+	int	suppress_yp = 0;
 
 	timeout = config_get_config()->source_timeout;
 
@@ -169,8 +170,7 @@ void *source_main(void *arg)
 			if (source->ypdata[i]->server_name) {
 				free(source->ypdata[i]->server_name);
 			}
-			source->ypdata[i]->server_name = (char *)malloc(strlen(s) +1);
-			memset(source->ypdata[i]->server_name, '\000', strlen(s) + 1);
+			source->ypdata[i]->server_name = malloc(strlen(s) +1);
 			strcpy(source->ypdata[i]->server_name, s);
 		}
 		stats_event(source->mount, "name", s);
@@ -180,8 +180,7 @@ void *source_main(void *arg)
 			if (source->ypdata[i]->server_url) {
 				free(source->ypdata[i]->server_url);
 			}
-			source->ypdata[i]->server_url = (char *)malloc(strlen(s) +1);
-			memset(source->ypdata[i]->server_url, '\000', strlen(s) + 1);
+			source->ypdata[i]->server_url = malloc(strlen(s) +1);
 			strcpy(source->ypdata[i]->server_url, s);
 		}
 		stats_event(source->mount, "url", s);
@@ -191,8 +190,7 @@ void *source_main(void *arg)
 			if (source->ypdata[i]->server_genre) {
 				free(source->ypdata[i]->server_genre);
 			}
-			source->ypdata[i]->server_genre = (char *)malloc(strlen(s) +1);
-			memset(source->ypdata[i]->server_genre, '\000', strlen(s) + 1);
+			source->ypdata[i]->server_genre = malloc(strlen(s) +1);
 			strcpy(source->ypdata[i]->server_genre, s);
 		}
 		stats_event(source->mount, "genre", s);
@@ -202,8 +200,7 @@ void *source_main(void *arg)
 			if (source->ypdata[i]->bitrate) {
 				free(source->ypdata[i]->bitrate);
 			}
-			source->ypdata[i]->bitrate = (char *)malloc(strlen(s) +1);
-			memset(source->ypdata[i]->bitrate, '\000', strlen(s) + 1);
+			source->ypdata[i]->bitrate = malloc(strlen(s) +1);
 			strcpy(source->ypdata[i]->bitrate, s);
 		}
 		stats_event(source->mount, "bitrate", s);
@@ -213,78 +210,97 @@ void *source_main(void *arg)
 			if (source->ypdata[i]->server_desc) {
 				free(source->ypdata[i]->server_desc);
 			}
-			source->ypdata[i]->server_desc = (char *)malloc(strlen(s) +1);
-			memset(source->ypdata[i]->server_desc, '\000', strlen(s) + 1);
+			source->ypdata[i]->server_desc = malloc(strlen(s) +1);
 			strcpy(source->ypdata[i]->server_desc, s);
 		}
 		stats_event(source->mount, "description", s);
 	}
-	if ((s = httpp_getvar(source->parser, "ice-public"))) {
+	if ((s = httpp_getvar(source->parser, "ice-private"))) {
 		stats_event(source->mount, "public", s);
-		list_on_yp = atoi(s);
+		suppress_yp = atoi(s);
 	}
 	for (i=0;i<source->num_yp_directories;i++) {
 		if (source->ypdata[i]->server_type) {
 			free(source->ypdata[i]->server_type);
 		}
-		source->ypdata[i]->server_type = (char *)malloc(strlen(source->format->format_description) +1);
-		memset(source->ypdata[i]->server_type, '\000', strlen(source->format->format_description) + 1);
-		strcpy(source->ypdata[i]->server_type, source->format->format_description);
+		source->ypdata[i]->server_type = malloc(
+                strlen(source->format->format_description) + 1);
+		strcpy(source->ypdata[i]->server_type, 
+                source->format->format_description);
 	}
     stats_event(source->mount, "type", source->format->format_description);
 
 	for (i=0;i<source->num_yp_directories;i++) {
+        int listen_url_size;
 		if (source->ypdata[i]->listen_url) {
 			free(source->ypdata[i]->listen_url);
 		}
-		// 6 for max size of port
-		listen_url_size = strlen("http://") + strlen(config_get_config()->hostname) + strlen(":") + 6 + strlen(source->mount) + 1;
-		source->ypdata[i]->listen_url = (char *)malloc(listen_url_size);
-		memset(source->ypdata[i]->listen_url, '\000', listen_url_size);
-		sprintf(source->ypdata[i]->listen_url, "http://%s:%d%s", config_get_config()->hostname, config_get_config()->port, source->mount);
+		/* 6 for max size of port */
+		listen_url_size = strlen("http://") + 
+            strlen(config_get_config()->hostname) + 
+            strlen(":") + 6 + strlen(source->mount) + 1;
+		source->ypdata[i]->listen_url = malloc(listen_url_size);
+		sprintf(source->ypdata[i]->listen_url, "http://%s:%d%s", 
+                config_get_config()->hostname, config_get_config()->port, 
+                source->mount);
 	}
 
-	if (list_on_yp) {
-			yp_add(source, YP_ADD_ALL);
-	}
-	time(&currentTime);
-	for (i=0;i<source->num_yp_directories;i++) {
-		source->ypdata[i]->yp_last_touch = currentTime;
-		if (source->ypdata[i]->yp_touch_freq == 0) {
-			source->ypdata[i]->yp_touch_freq = 30;
-		}
-	}
+	if(!suppress_yp) {
+        yp_add(source, YP_ADD_ALL);
 
-	while (global.running == ICE_RUNNING) {
-		time(&currentTime);
-		if (list_on_yp) {
+    	current_time = time(NULL);
+
+	    for (i=0;i<source->num_yp_directories;i++) {
+		    source->ypdata[i]->yp_last_touch = current_time;
+            /* Don't permit touch intervals of less than 30 seconds */
+	    	if (source->ypdata[i]->yp_touch_interval <= 30) {
+		    	source->ypdata[i]->yp_touch_interval = 30;
+    		}
+	    }
+    }
+
+	while (global.running == ICE_RUNNING && source->running) {
+		if(!suppress_yp) {
+            current_time = time(NULL);
 			for (i=0;i<source->num_yp_directories;i++) {
-				if (currentTime > (source->ypdata[i]->yp_last_touch + source->ypdata[i]->yp_touch_freq)) {
-					memset(current_song, '\000', sizeof(current_song));
+				if (current_time > (source->ypdata[i]->yp_last_touch + 
+                            source->ypdata[i]->yp_touch_interval)) {
+                    current_song[0] = 0;
 					if (stats_get_value(source->mount, "artist")) {
-						strncat(current_song, stats_get_value(source->mount, "artist"), sizeof(current_song) - 1);
+						strncat(current_song, 
+                                stats_get_value(source->mount, "artist"), 
+                                sizeof(current_song) - 1);
 						if (strlen(current_song) + 4 < sizeof(current_song)) {
 							strncat(current_song, " - ", 3);
 						}
 					}
 					if (stats_get_value(source->mount, "title")) {
-						if (strlen(current_song) + strlen(stats_get_value(source->mount, "title")) < sizeof(current_song) -1) {
-							strncat(current_song, stats_get_value(source->mount, "title"), sizeof(current_song) -1 - strlen(current_song));
+						if (strlen(current_song) + 
+                                strlen(stats_get_value(source->mount, "title"))
+                                < sizeof(current_song) -1) 
+                        {
+							strncat(current_song, 
+                                    stats_get_value(source->mount, "title"), 
+                                    sizeof(current_song) - 1 - 
+                                    strlen(current_song));
 						}
 					}
+                    
 					if (source->ypdata[i]->current_song) {
 						free(source->ypdata[i]->current_song);
 						source->ypdata[i]->current_song = NULL;
 					}
 	
-					source->ypdata[i]->current_song = (char *)malloc(strlen(current_song) + 1);
-					memset(source->ypdata[i]->current_song, '\000', strlen(current_song) + 1);
+					source->ypdata[i]->current_song = 
+                        malloc(strlen(current_song) + 1);
 					strcpy(source->ypdata[i]->current_song, current_song);
 	
-					thread_create("YP Touch Thread", yp_touch_thread, (void *)source, THREAD_DETACHED); 
+					thread_create("YP Touch Thread", yp_touch_thread, 
+                            (void *)source, THREAD_DETACHED); 
 				}
 			}
 		}
+
 		ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
@@ -486,7 +502,7 @@ void *source_main(void *arg)
 done:
 
     DEBUG0("Source exiting");
-	if (list_on_yp) {
+	if(!suppress_yp) {
 		yp_remove(source);
 	}
 
@@ -502,7 +518,7 @@ done:
         if(fallback_source) {
             avl_delete(source->pending_tree, client, _remove_client);
 
-            // TODO: reset client local format data? 
+            /* TODO: reset client local format data?  */
             avl_tree_wlock(fallback_source->pending_tree);
             avl_insert(fallback_source->pending_tree, (void *)client);
             avl_tree_unlock(fallback_source->pending_tree);
@@ -520,7 +536,7 @@ done:
         if(fallback_source) {
             avl_delete(source->client_tree, client, _remove_client);
 
-            // TODO: reset client local format data? 
+            /* TODO: reset client local format data?  */
             avl_tree_wlock(fallback_source->pending_tree);
             avl_insert(fallback_source->pending_tree, (void *)client);
             avl_tree_unlock(fallback_source->pending_tree);
@@ -580,3 +596,4 @@ static int _free_client(void *key)
 	
 	return 1;
 }
+

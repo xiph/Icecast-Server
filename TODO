@@ -8,6 +8,8 @@ BUGS
 
 - make install - doesn't install configs?
 
+- pthread/bsd: -pthread instead of -lpthread (autoconf)
+
 FEATURES
 --------
 
@@ -29,5 +31,25 @@ FEATURES
   user?
 
 - stats to list currently connected clients: ip and hostname
+
+- stream switching (drop clients to another stream on disconnect of source)
+  - a) fallbacks from named location to new mountpoint
+  - OR b) fallbacks for connected clients to new mountpoint (so newly-connecting
+       clients just get a 404 on the old path)
+  - OR c) combination - first one, plus generic alias ability?
+
+- /admin/* for all admin functionality
+  - configuring fallbacks
+  - mp3 metadata injection
+  - remote shutdown?
+
+- general registerable url-handlers in connection.c rather than hard-coded list
+  (already getting unmaintainable)
+
+- httpp - split out query string for further processing
+
+- finish mp3 metadata: http://server:ip/admin.cgi?pass=%s&mode=updinfo&mount=%s&song=%s
+
+
 
 

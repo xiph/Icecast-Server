@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <thread/thread.h>
 
@@ -20,10 +21,10 @@
 #define CATMODULE "geturl" 
 
 static curl_connection curl_connections[NUM_CONNECTIONS];
-mutex_t _curl_mutex;
+static mutex_t _curl_mutex;
 
-size_t
-curl_write_memory_callback(void *ptr, size_t size, size_t nmemb, void *data)
+size_t curl_write_memory_callback(void *ptr, size_t size, 
+        size_t nmemb, void *data)
 {
     register int realsize = size * nmemb;
 
@@ -35,8 +36,9 @@ curl_write_memory_callback(void *ptr, size_t size, size_t nmemb, void *data)
 
     return realsize;
 }
-size_t
-curl_header_memory_callback(void *ptr, size_t size, size_t nmemb, void *data)
+
+size_t curl_header_memory_callback(void *ptr, size_t size, 
+        size_t nmemb, void *data)
 {
     char *p1 = 0;
     char *p2 = 0;
@@ -48,19 +50,18 @@ curl_header_memory_callback(void *ptr, size_t size, size_t nmemb, void *data)
         p1 = (char *)ptr + strlen("SID: ");
         p2 = strchr((const char *)p1, '\r');
         memset(mem->sid, '\000', sizeof(mem->sid));
-            if (p2) {
-                if (p2-p1 > sizeof(mem->sid)-1) {
-                    copylen = sizeof(mem->sid)-1;
-                }
-                else {
-                    copylen = p2-p1;
-                }
-                strncpy(mem->sid, p1, copylen);
+        if (p2) {
+            if (p2-p1 > sizeof(mem->sid)-1) {
+                copylen = sizeof(mem->sid)-1;
             }
             else {
-                strncpy(mem->sid, p1, sizeof(mem->sid)-1);
-                strcpy(mem->sid, p1);
+                copylen = p2-p1;
             }
+            strncpy(mem->sid, p1, copylen);
+        }
+        else {
+            strncpy(mem->sid, p1, sizeof(mem->sid)-1);
+        }
     }
     if (!strncmp(ptr, "YPMessage: ", strlen("YPMessage: "))) {
         p1 = (char *)ptr + strlen("YPMessage: ");
@@ -77,12 +78,11 @@ curl_header_memory_callback(void *ptr, size_t size, size_t nmemb, void *data)
         }
         else {
             strncpy(mem->message, p1, sizeof(mem->message)-1);
-            strcpy(mem->message, p1);
         }
     }
     if (!strncmp(ptr, "TouchFreq: ", strlen("TouchFreq: "))) {
         p1 = (char *)ptr + strlen("TouchFreq: ");
-        mem->touch_freq = atoi(p1);
+        mem->touch_interval = atoi(p1);
     }
     if (!strncmp(ptr, "YPResponse: ", strlen("YPResponse: "))) {
         p1 = (char *)ptr + strlen("YPResponse: ");
@@ -95,13 +95,14 @@ int curl_initialize()
     int i = 0;
     thread_mutex_create(&_curl_mutex);
 
-    memset(&curl_connections, '\000', sizeof(curl_connections));
+    memset(&curl_connections, 0, sizeof(curl_connections));
     for (i=0; i<NUM_CONNECTIONS; i++) {
         curl_connections[i].curl_handle = curl_easy_init();
         curl_easy_setopt(curl_connections[i].curl_handle, 
                 CURLOPT_WRITEFUNCTION, curl_write_memory_callback);
         curl_easy_setopt(curl_connections[i].curl_handle, 
-                CURLOPT_WRITEHEADER, (void *)&(curl_connections[i].header_result));
+                CURLOPT_WRITEHEADER, 
+                (void *)&(curl_connections[i].header_result));
         curl_easy_setopt(curl_connections[i].curl_handle, 
                 CURLOPT_HEADERFUNCTION, curl_header_memory_callback);
         curl_easy_setopt(curl_connections[i].curl_handle, 
@@ -114,7 +115,7 @@ void curl_shutdown()
     int i = 0;
     for (i=0; i<NUM_CONNECTIONS; i++) {
         curl_easy_cleanup(curl_connections[i].curl_handle);
-        memset(&(curl_connections[i]), '\000', sizeof(curl_connections[i]));
+        memset(&(curl_connections[i]), 0, sizeof(curl_connections[i]));
     }
 }
 int curl_get_connection()
@@ -145,9 +146,9 @@ int curl_release_connection(int which)
 {
     thread_mutex_lock(&_curl_mutex);
     curl_connections[which].in_use = 0;
-    memset(&(curl_connections[which].result), '\000', 
+    memset(&(curl_connections[which].result), 0, 
                 sizeof(curl_connections[which].result));
-    memset(&(curl_connections[which].header_result), '\000', 
+    memset(&(curl_connections[which].header_result), 0, 
                 sizeof(curl_connections[which].header_result));
     thread_mutex_unlock(&_curl_mutex);
     return 1;
@@ -155,7 +156,7 @@ int curl_release_connection(int which)
 void curl_print_header_result(struct curl_memory_struct2 *mem) {
     DEBUG1("SID -> (%s)", mem->sid);
     DEBUG1("Message -> (%s)", mem->message);
-    DEBUG1("Touch Freq -> (%d)", mem->touch_freq);
+    DEBUG1("Touch Freq -> (%d)", mem->touch_interval);
     DEBUG1("Response -> (%d)", mem->response);
 }
 
@@ -164,6 +165,7 @@ CURL *curl_get_handle(int which)
 {
     return curl_connections[which].curl_handle;
 }
+
 struct curl_memory_struct *curl_get_result(int which)
 {
     return &(curl_connections[which].result);
@@ -173,3 +175,4 @@ struct curl_memory_struct2 *curl_get_header_result(int which)
 {
     return &(curl_connections[which].header_result);
 }
+

@@ -11,7 +11,7 @@
 typedef struct ice_config_dir_tag
 {
 	char *host;
-	int touch_freq;
+	int touch_interval;
 	struct ice_config_dir_tag *next;
 } ice_config_dir_t;
 
@@ -31,8 +31,10 @@ typedef struct ice_config_tag
 
 	char *source_password;
     char *relay_password;
+    char *admin_username;
+    char *admin_password;
 
-	int touch_freq;
+	int touch_interval;
 	ice_config_dir_t *dir_list;
 
 	char *hostname;

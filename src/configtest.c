@@ -32,11 +32,11 @@ void _dump_config(ice_config_t *config)
 	printf("threadpool_size = %d\n", config->threadpool_size);
 	printf("client_timeout = %d\n", config->client_timeout);
 	printf("source_password = %s\n", config->source_password);
-	printf("touch_freq = %d\n", config->touch_freq);
+	printf("touch_interval = %d\n", config->touch_interval);
 
 	node = config->dir_list;
 	while (node) {
-		printf("directory.touch_freq = %d\n", node->touch_freq);
+		printf("directory.touch_interval = %d\n", node->touch_interval);
 		printf("directory.host = %s\n", node->host);
 		
 		node = node->next;

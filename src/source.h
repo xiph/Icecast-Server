@@ -16,6 +16,10 @@ typedef struct source_tag
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;
 
+    /* set to zero to request the source to shutdown without causing a global
+     * shutdown */
+    int running;
+
 	struct _format_plugin_tag *format;
 
 	avl_tree *client_tree;
