@@ -1,0 +1,198 @@
+icecast2 (1.9+2.0alphasnap2+20030802-1) unstable; urgency=low
+
+  * Added a 'watch' file to automate tracking of updates.
+  * Now uses dh-buildinfo to store information about the package build
+    environment.  Added a Build-Dependancy to dh-buildinfo.
+  * Removed cdbs/autotools-vars.mk, from cdbs CVS, because a new release
+    was made.
+  * Enabled curl during configure stage, since --disable-curl was recently
+    broken upstream, and potentially broken YP support can be disabled at
+    runtime.
+  * Trimmed ancient upgrade nodes and other cruft, left over from
+    pre-Debian versions, from README.Debian.
+  * Removed some autotools build cruft, since bugs were fixed upstream.
+  * Normalized {preinst,postinst,postrm} filenames to
+    icecast2.{preinst,postinst,postrm}.  Thanks to Emmanuel le Chevoir
+    for this suggestion.
+  * Fixed preinst; was stopping /usr/bin/icecast instead of
+    /usr/bin/icecast2.  Thanks to Emmanuel le Chevoir for this suggestion.
+  * Removed prerm, since it was not serving any purpose.  Thanks to
+    Emmanuel le Chevoir for this suggestion.
+  * Cleaned up postinst: removed old comments, fixed a path typo in the
+    configuration file location change message.
+  * Cleaned up postrm: removed old comments, fixed a typo in the group
+    removal test.
+  * Thanks to Jonas Smedegaard for sponsoring this package, and
+    providing many good suggestions.
+
+ -- Keegan Quinn <ice@thebasement.org>  Sat,  2 Aug 2003 20:28:13 -0700
+
+icecast2 (1.9+2.0alphasnap2+20030720-1.1) unstable; urgency=low
+
+  * NMU by sponsor (still closes: Bug#178160).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Wed, 23 Jul 2003 06:03:42 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030720-1) unstable; urgency=low
+
+  * New daily snapshot build.
+  * Added Build-Dependancy to cdbs, and increased debhelper version
+    requirement as recommended by cdbs README.
+  * Corrected Standards-Version to 3.6.0.  This package now generates
+    no lintian errors.
+  * Updated Recommends for ices to ices2; it was renamed.
+  * Added more information to the long description.
+  * Thanks to Jonas Smedegaard for sponsoring this package.
+  * This revision still closes: #178160 - the last was not uploaded.
+
+ -- Keegan Quinn <ice@thebasement.org>  Mon, 21 Jul 2003 08:55:27 -0700
+
+icecast2 (1.9+2.0alphasnap2+20030714-0.2) unstable; urgency=low
+
+  * Sponsored upload. Closes: Bug#178160.
+  * Switch to cdbs (agreed with maintainer).
+  * Use cdbs autotools-vars.mk from CVS to avoid cross-compiling on same
+    host.
+  * Add build-dependency on libxml2-dev.
+  * Explicitly configure without curl support to avoid building broken
+    YP stuff.
+  * Hack src/Makefile.am to use AM_CFLAGS instead of CFLAGS (which is
+    overridden by cdbs), and add clean rule to avoid invoking automake.
+  * Disable daemon by default and hint about changing passwords before
+    enabling.
+  * Avoid moving config files from pre-Debian times - instead just print
+    a warning if config exists in old location (better mess as little as
+    possible with files not ever claimed to be ours).
+  * Update README.Debian to reflect the above, include note about YP
+    support not compiled in, and remove note regarding adoption.
+  * Strip paths from packaging scripts (they may move around in the
+    future, and if PATH is wrong then something else broken anyway).
+  * Avoid removing unused /usr/share/icecast2 on purge.
+  * Remove icecast group on purge only if empty.
+  * Standards-version 3.6 (no changes needed).
+  * Fix wrong escaping of sed vars in conf/Makefile.
+  * Symlink public files from /usr/share/icecast2 to /etc/icecast2
+    (instead of pointing public root dirs below /etc).
+  * Use upstream config (paths are properly included now).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun, 20 Jul 2003 20:19:30 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030714-0.1) unstable; urgency=low
+
+  * New daily snapshot build.
+  * Updated versioning scheme to reflect (as well as possible) that the 
+    source is a daily snapshot now, not CVS.
+
+ -- Keegan Quinn <ice@thebasement.org>  Mon, 14 Jul 2003 19:39:58 -0700
+
+icecast2 (1.9+2.0alphacvs030704-0.1) unstable; urgency=low
+
+  * Constructed a build script to completely automate the construction
+    of the 'pristine' tarball from CVS.  This doesn't really effect the
+    contents of the package, just makes it easier for me to rebuild.
+  * New CVS source.
+  * Removed Build-Dependancy on libcurl2-dev; packages built without this
+    library present will not have YP functionality, which is okay for
+    now since it's badly broken.
+  * Updated the default configuration file, including some new options
+    recently added upstream.
+  * Added a number of tweaks to clean up and rearrange new configuration
+    and documentation added to upstream install target.
+  * Moved the configuration file from /etc/icecast.xml to
+    /etc/icecast2/icecast.xml.  See README.Debian.
+  * Nice ugly version number to reflect that upstream calls this the 2.0
+    alpha branch, without potentially introducing the need for an epoch.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Jul 2003 23:46:56 -0700
+
+icecast2 (0.00.cvs030529-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Removed unnecessary debconf stuff.
+  * Added README.Debian.
+  * Path updates:
+    - /usr/share/icecast to /usr/share/icecast2,
+    - /var/log/icecast to /var/log/icecast2,
+    - /usr/bin/icecast to /usr/bin/icecast2,
+    - /usr/share/man/man8/icecast.8.gz to /usr/share/man/man8/icecast2.8.gz.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed, 29 May 2003 22:53:21 -0700
+
+icecast2 (0.00.cvs030403-0.2) unstable; urgency=low
+
+  * Tried to make the default configuration more understandable. 
+
+ -- Keegan Quinn <ice@thebasement.org>  Fri,  4 Apr 2003 10:55:27 -0800
+
+icecast2 (0.00.cvs030403-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Minor changes to postrm.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 16:05:09 -0800
+
+icecast2 (0.00.cvs030401-0.7) unstable; urgency=low
+
+  * Minor changes to postinst.
+  * Added --background flag to initscript, since this version of icecast
+    does not yet run detached.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 14:24:19 -0800
+
+icecast2 (0.00.cvs030401-0.6) unstable; urgency=low
+
+  * Added Debianized configuration file.
+  * Created and set ownership of /var/log/icecast and /usr/share/icecast.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 14:15:11 -0800
+
+icecast2 (0.00.cvs030401-0.5) unstable; urgency=low
+
+  * Attempt at making debconf work properly.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 12:07:16 -0800
+
+icecast2 (0.00.cvs030401-0.4) unstable; urgency=low
+
+  * Minor edits to init.d script.
+  * Added bits to create and remove system accounts appropriately.
+  * Typo fix in the manual page.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 11:06:48 -0800
+
+icecast2 (0.00.cvs030401-0.3) unstable; urgency=low
+
+  * Finished init.d script and manual page.
+  * Updated postinst to handle rc*.d links.
+  * Package is now lintian/linda clean.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 16:29:18 -0800
+
+icecast2 (0.00.cvs030401-0.2) unstable; urgency=low
+
+  * Updated copyright (replacing dh_make template).
+  * Fixed duplicate conffiles.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 16:18:02 -0800
+
+icecast2 (0.00.cvs030401-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Lots of packaging cleanup.
+  * Initial stab at manual page and init.d script.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 10:25:56 -0800
+
+icecast2 (0.00.cvs030320-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Automated CVS original source creation.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu, 20 Mar 2003 12:58:49 -0800
+
+icecast2 (0.00.cvs030315-0.1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Keegan Quinn <ice@thebasement.org>  Sun, 16 Mar 2003 13:45:23 -0800
+

@@ -115,7 +115,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
 AC_SUBST(ICECAST_OPTIONAL)
 
-AC_OUTPUT([Makefile conf/Makefile src/Makefile src/avl/Makefile
+AC_OUTPUT([Makefile conf/Makefile debian/Makefile src/Makefile src/avl/Makefile
 src/httpp/Makefile src/thread/Makefile src/log/Makefile
 src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile
 admin/Makefile win32/Makefile win32/res/Makefile])

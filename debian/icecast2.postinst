@@ -1,0 +1,43 @@
+#! /bin/sh
+# postinst script for icecast2
+
+set -e
+
+case "$1" in
+    configure)
+
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+	exit 0
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+# Move configuration file to current location, if an old one exists
+# and the init.d script configuration file was updated
+if [ -f /etc/icecast.xml ] && grep -q /etc/icecast2/ /etc/default/icecast2; then
+    echo "It seems you have an old configuration lying around at"
+    echo "/etc/icecast.xml. You will need to manually merge with"
+    echo "the current configuration at /etc/icecast2/icecast.xml."
+
+    echo "See /usr/share/doc/icecast2/examples for new configuration options."
+fi
+
+# Check for an account named 'icecast'
+if ! id icecast >/dev/null 2>&1; then
+    # Create the new system account
+    adduser --system --disabled-password --disabled-login \
+	--home /usr/share/icecast2 --no-create-home --group icecast
+fi
+
+chown -R icecast:icecast /var/log/icecast2
+
+#DEBHELPER#
+
+exit 0
+

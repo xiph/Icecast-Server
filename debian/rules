@@ -1,0 +1,34 @@
+#!/usr/bin/make -f
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/autotools.mk
+
+DEB_INSTALL_CHANGELOGS_ALL = NEWS
+DEB_CONFIGURE_SYSCONFDIR = /etc/icecast2
+DEB_MAKE_INVOKE += PACKAGE=icecast2 docdir=/usr/share/doc/icecast2 pkgdatadir=/usr/share/icecast2
+
+binary-post-install/icecast2::
+	# Debian has a central copy of the GPL, no need to distribute again
+	rm -f $(DEB_DESTDIR)/usr/share/doc/icecast2/COPYING
+
+	# Live peacefully with icecast 1
+	mv $(DEB_DESTDIR)/usr/bin/icecast $(DEB_DESTDIR)/usr/bin/icecast2
+
+	# Move XSLT templates to /etc and replace with symlinks
+	for file in `cd $(DEB_DESTDIR)/usr/share && find icecast2 -type f -name *.xsl`; do \
+		mkdir -p $(DEB_DESTDIR)/etc/`dirname $$file`; \
+		mv $(DEB_DESTDIR)/usr/share/$$file $(DEB_DESTDIR)/etc/$$file; \
+		ln -s /etc/$$file $(DEB_DESTDIR)/usr/share/$$file; \
+	done
+
+	# NEWS is ChangeLog - avoid original name
+	rm -f $(DEB_DESTDIR)/usr/share/doc/icecast2/NEWS
+
+	mkdir -p $(CURDIR)/debian/icecast2/var/log/icecast2
+
+	# Store build information
+	dh_buildinfo
+
+clean::
+	# Upstream forgot to clean this one it seems...
+	rm -f conf/icecast.xml.dist
+
