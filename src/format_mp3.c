@@ -98,6 +98,7 @@ int format_mp3_get_plugin (source_t *source)
     meta = refbuf_new (1);
     memcpy (meta->data, "", 1);
     state->metadata = meta;
+    state->interval = -1;
 
     metadata = httpp_getvar (source->parser, "icy-metaint");
     if (metadata)
@@ -185,7 +186,7 @@ static void format_mp3_apply_settings (source_t *source, mount_proxy *mount)
 {
     mp3_state *source_mp3 = source->format->_state;
 
-    source_mp3->interval = ICY_METADATA_INTERVAL;
+    source_mp3->interval = -1;
     if (mount->mp3_meta_interval >= 0)
         source_mp3->interval = mount->mp3_meta_interval;
     DEBUG2 ("mp3 interval %d, %d", mount->mp3_meta_interval, source_mp3->interval);
@@ -574,6 +575,7 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
+    char *metadata = httpp_getvar(client->parser, "icy-metadata");
 
     if (client_mp3 == NULL)
     {
@@ -583,22 +585,21 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
-    if (source_mp3->interval > 0)
-    {
-        char *metadata = httpp_getvar(client->parser, "icy-metadata");
     
-        if (metadata && atoi(metadata))
-        {
-            unsigned remaining = client->predata_size - client->predata_len + 2;
-            char *ptr = client->predata + client->predata_len - 2;
-            int bytes;
+    if (metadata && atoi(metadata) && source_mp3->interval)
+    {
+        unsigned remaining = client->predata_size - client->predata_len + 2;
+        char *ptr = client->predata + client->predata_len - 2;
+        int bytes;
 
+        if (source_mp3->interval < 0)
+            client_mp3->interval = ICY_METADATA_INTERVAL;
+        else
             client_mp3->interval = source_mp3->interval;
-            bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
-                    client_mp3->interval);
-            if (bytes > 0)
-                client->predata_len += bytes - 2;
-        }
+        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n\r\n",
+                client_mp3->interval);
+        if (bytes > 0)
+            client->predata_len += bytes - 2;
     }
 
     return 0;
