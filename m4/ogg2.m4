@@ -4,12 +4,12 @@
 # Who shamelessly stole it from Owen Taylor and Manish Singh
 # Isn't Free Software awesome?
 
-dnl XIPH_PATH_OGG([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
+dnl XIPH_PATH_OGG2([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
 dnl Test for libogg, and define OGG_CFLAGS and OGG_LIBS
 dnl
 dnl $Id$
 dnl
-AC_DEFUN([XIPH_PATH_OGG],
+AC_DEFUN([XIPH_PATH_OGG2],
 [dnl 
 dnl Get the cflags and libraries
 dnl
