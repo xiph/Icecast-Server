@@ -168,6 +168,7 @@ void *source_main(void *arg)
                     break;
 			}
 			if (bytes <= 0) break;
+            source->client->con->sent_bytes += bytes;
 			ret = source->format->get_buffer(source->format, buffer, bytes, &refbuf);
             if(ret < 0) {
                 WARN0("Bad data from source");
