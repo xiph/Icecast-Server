@@ -474,7 +474,7 @@ int connection_complete_source (source_t *source)
         /* set global settings first */
         source->queue_size_limit = config->queue_size_limit;
         source->timeout = config->source_timeout;
-        // source->burst_size = config->burst_size_limit;
+        source->on_demand = config->on_demand;
         source->burst_size_limit = config->burst_size_limit;
 
         /* for relays, we don't yet have a client, however we do require one

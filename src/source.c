@@ -441,7 +441,7 @@ static void find_client_start (source_t *source, client_t *client)
 static int send_to_listener (source_t *source, client_t *client, int deletion_expected)
 {
     int bytes;
-    int loop = 10;   /* max number of iterations in one go */
+    int loop = 20;   /* max number of iterations in one go */
     int total_written = 0;
     int ret = 1;
 
@@ -472,7 +472,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
-        if (total_written > 15000 || loop == 0)
+        if (total_written > 25000 || loop == 0)
             break;
 
         loop--; 

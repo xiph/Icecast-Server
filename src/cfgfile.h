@@ -99,6 +99,7 @@ typedef struct ice_config_tag
     int source_timeout;
     int ice_login;
     int fileserve;
+    int on_demand; /* global setting for all relays */
 
     char *source_password;
     char *admin_username;

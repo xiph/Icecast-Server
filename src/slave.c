@@ -358,6 +358,7 @@ static int update_from_master(ice_config_t *config)
         char *authheader, *data;
         relay_server *relays = NULL, *relay;
         int len, count = 1;
+        int on_demand;
 
         if (config->master_username)
             username = strdup (config->master_password);
@@ -373,6 +374,7 @@ static int update_from_master(ice_config_t *config)
 
         if (password == NULL || master == NULL || port == 0)
             break;
+        on_demand = config->on_demand;
         ret = 1;
         config_release_config();
         mastersock = sock_connect_wto (master, port, 0);
@@ -415,6 +417,7 @@ static int update_from_master(ice_config_t *config)
                 r->mount = xmlStrdup (buf);
                 r->localmount = xmlStrdup (buf);
                 r->mp3metadata = 1;
+                r->on_demand = on_demand;
                 r->next = relays;
                 relays = r;
             }
