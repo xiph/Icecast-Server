@@ -60,7 +60,7 @@ int util_timed_wait_for_fd(int fd, int timeout)
     FD_SET(fd, &rfds);
 
     tv.tv_sec = timeout/1000;
-    tv.tv_usec = (timeout - tv.tv_sec)*1000;
+    tv.tv_usec = (timeout % 1000)*1000;
 
     return select(fd+1, &rfds, NULL, NULL, &tv);
 #endif

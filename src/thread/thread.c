@@ -568,7 +568,7 @@ void thread_sleep(unsigned long len)
 	struct timeval tv;
 
 	tv.tv_sec = len / 1000000;
-	tv.tv_usec = (len % 1000000) / 1000;
+	tv.tv_usec = (len % 1000000);
 
 	select(0, NULL, NULL, NULL, &tv);
 # endif
