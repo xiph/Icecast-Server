@@ -17,6 +17,31 @@ Feature differences from SVN trunk
 . added file intro to streams
 . fallback to file
 
+TODO
+. update slave host handling to add entry via url, as on-demand relays don't
+  connect until there are listeners.
+. auth_url, allow xml specified header instead of hardcoded one
+. auth_url, issue request at source startup/shutdown, so listeners can be
+  cleared from auth server
+
+2.2-kh1
+. Auth update. could have affected a few cases, report any odd issues
+  with connection
+  - auth_t part of mount_proxy now
+  - xsl/m3u/fserve handling occurs after auth
+  - single auth thread used (can be part of a pool)
+  - listeners are auth'd on the mountpoint they requested, no matter if 
+    a fallback was triggered.
+. fix bug introduced in kh6 when url updates are used with vorbis only streams
+. source stats for on-demand relays could disappear when they should not
+. after intro file has been sent, the listener is placed on stream queue to
+  complete the stated burst size
+. mount "all" can be used to state mount settings for all non-admin mountpoints
+. ignore a 0 metadata interval in mp3 streams, some servers have sent that
+. auth_htpasswd, the tmp file failed to work if an absolute path was specified
+. auth_url, 'client=' is sent instead of 'id='
+. various log msg cleanups
+
 2.1-kh6
 . fix reported bugs in auth url.
 . at source shutdown make each client release refbuf before going to auth
