@@ -399,7 +399,7 @@ void source_move_clients (source_t *source, source_t *dest)
     if (dest->running == 0 && dest->on_demand)
     {
         dest->on_demand_req = 1;
-        slave_recheck();
+        slave_rescan();
     }
     thread_mutex_unlock (&dest->lock);
     thread_mutex_unlock (&move_clients_mutex);
@@ -820,7 +820,7 @@ void add_authenticated_client (source_t *source, client_t *client)
         /* enable on-demand relay to start, wake up the slave thread */
         DEBUG0("kicking off on-demand relay");
         source->on_demand_req = 1;
-        slave_recheck();
+        slave_rescan();
     }
     DEBUG1 ("Added client to pending on %s", source->mount);
     source->check_pending = 1;
