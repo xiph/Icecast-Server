@@ -23,6 +23,7 @@ typedef struct _format_plugin_tag
 
 	refbuf_t *(*get_buffer)(struct _format_plugin_tag *self, char *data, unsigned long len);
 	refbuf_queue_t *(*get_predata)(struct _format_plugin_tag *self);
+	void (*free_plugin)(struct _format_plugin_tag *self);
 
 	/* for internal state management */
 	void *_state;

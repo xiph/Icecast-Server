@@ -90,6 +90,7 @@ int source_free_source(void *key)
 	httpp_destroy(source->parser);
 	avl_tree_free(source->pending_tree, _free_client);
 	avl_tree_free(source->client_tree, _free_client);
+	source->format->free_plugin(source->format);
 	free(source);
 
 	return 1;
