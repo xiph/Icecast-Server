@@ -52,6 +52,7 @@
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define EALREADY WSAEALREADY
 #define socklen_t    int
+#define va_copy(ap1, ap2) ((ap1) = (ap2))
 #endif
 
 #include "sock.h"
