@@ -7,7 +7,7 @@
 <br>
 <br>
 <h2>Overview</h2>
-<p>This section contains information about the admin interface of icecast.  Through this interface the user can manupulate many of the aspects of the server.  From it you can do things such as gather statistics, move listeners from mountpoint to mountpoint, disconnect connected sources, disconnect connected listeners, and many other activities.  Each function is enumerated here as well as an example usage of the function.</p>
+<p>This section contains information about the admin interface of icecast.  Through this interface the user can manipulate many server features.  From it you can gather statistics, mov	e listeners from mountpoint to mountpoint, disconnect connected sources, disconnect connected listeners, and many other activities.  Each function is enumerated here as well as an example usage of the function.</p>
 <p>Each of these functions requires authentication via the &lt;admin-username&gt; and &lt;admin-password&gt; specified in the icecast config file. It is also important to note that in all the examples 192.168.1.10 is used as the example host and 8000 is used as the example port for the icecast server.</p>
 <br>
 <br>
@@ -28,7 +28,7 @@ http://192.168.1.10:8000/admin/metadata?mount=/mystream.ogg&action=updinfo&song=
 <h3>Fallback Update</h3>
 <h4>description</h4>
 <div class=indentedbox>
-This function provides the ability for either a source client or any external program to update the "fallback mountpoint" for a particular mountpoint.  Fallback mounts are those that are used in the even of a source client disconnection.  If a source client disconnects for some reason that all currently connected clients are sent immediately to the fallback mountpoint
+This function provides the ability for either a source client or any external program to update the "fallback mountpoint" for a particular mountpoint.  Fallback mounts are those that are used in the even of a source client disconnection.  If a source client disconnects for some reason that all currently connected clients are sent immediately to the fallback mountpoint.
 </div>
 <h4>example</h4>
 <pre>
@@ -39,7 +39,7 @@ http://192.168.1.10:8000/admin/fallbacks?mount=/mystream.ogg&fallback=/myfallbac
 <h3>List Clients</h3>
 <h4>description</h4>
 <div class=indentedbox>
-This function will list all the clients currently connected to a specific mountpoint.  The results are sent back in XML form.
+This function lists all the clients currently connected to a specific mountpoint.  The results are sent back in XML form.
 </div>
 <h4>example</h4>
 <pre>
@@ -50,7 +50,7 @@ http://192.168.1.10:8000/admin/listclients?mount=/mystream.ogg
 <h3>Move Clients (Listeners)</h3>
 <h4>description</h4>
 <div class=indentedbox>
-This function will provide the ability to migrate currently connected listeners from one mountpoint to another.  This function requires 2 mountpoints to be passed in, mount (the *from* mountpoint) and destination (the *to* mountpoint).  After processing this function all currently connected listeners on mount will be connected to destination.  Note that the destination mountpoint must exist and have a sounce client already feeding it a stream.
+This function provides the ability to migrate currently connected listeners from one mountpoint to another.  This function requires 2 mountpoints to be passed in: mount (the *from* mountpoint) and destination (the *to* mountpoint).  After processing this function all currently connected listeners on mount will be connected to destination.  Note that the destination mountpoint must exist and have a sounce client already feeding it a stream.
 </div>
 <h4>example</h4>
 <pre>
@@ -61,7 +61,7 @@ http://192.168.1.10:8000/admin/moveclients?mount=/mystream.ogg&destination=/myne
 <h3>Kill Client (Listener)</h3>
 <h4>description</h4>
 <div class=indentedbox>
-This function will provide the ability to disconnect a specific listener of a currently connected mountpoint.  Listeners are identified by a unique id that can be retrieved by via the "List Clients" admin function.  This id must be passed in to the request.  After processing this request, the listener will no longer be connected to the mountpoint.
+This function provides the ability to disconnect a specific listener of a currently connected mountpoint.  Listeners are identified by a unique id that can be retrieved by via the "List Clients" admin function.  This id must be passed in to the request.  After processing this request, the listener will no longer be connected to the mountpoint.
 </div>
 <h4>example</h4>
 <pre>
@@ -86,7 +86,7 @@ http://192.168.1.10:8000/admin/killsource?mount=/mystream.ogg
 <h4>description</h4>
 <div class=indentedbox>
 This admin function provides the ability to query the internal statistics kept by the icecast server.  Almost all information about the internal workings of the server such as the mountpoints connected, how many client requests have been served, how many listeners for each mountpoint, etc, are available via this admin function.<br>
-Note that this admin function can also be invoked via the http://server:port/admin/stats.xml syntax, however this syntax should not be used and will eventually become depricated.
+Note that this admin function can also be invoked via the http://server:port/admin/stats.xml syntax, however this syntax should not be used and will eventually become deprecated.
 </div>
 <h4>example</h4>
 <pre>
