@@ -24,10 +24,10 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/types.h>
-#include <sys/time.h>
 
 #ifndef _WIN32
 #include <unistd.h>
+#include <sys/time.h>
 #endif
 
 #include <pthread.h>
@@ -39,10 +39,22 @@
 #include "avl.h"
 
 #define CATMODULE "thread"
-#define LOG_ERROR(y, z...) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y, ##z)
-#define LOG_WARN(y, z...) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, ##z)
-#define LOG_INFO(y, z...) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y, ##z)
-#define LOG_DEBUG(y, z...) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, ##z)
+#define LOG_ERROR(y) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y)
+#define LOG_ERROR3(y, z1, z2, z3) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y, z1, z2, z3)
+#define LOG_ERROR7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 1, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
+
+#define LOG_WARN(y) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y)
+#define LOG_WARN3(y, z1, z2, z3) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3)
+#define LOG_WARN5(y, z1, z2, z3, z4, z5) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
+#define LOG_WARN7(y, z1, z2, z3, z4, z5, z6, z7) log_write(_logid, 2, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5, z6, z7)
+
+#define LOG_INFO(y) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y)
+#define LOG_INFO4(y, z1, z2, z3, z4) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4)
+#define LOG_INFO5(y, z1, z2, z3, z4, z5) log_write(_logid, 3, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
+
+#define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y)
+#define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2)
+#define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
 
 /* INTERNAL DATA */
 #define STACKSIZE 8192
@@ -297,7 +309,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 
 	if (!th) LOG_WARN("No mt record for %u in lock [%s:%d]", thread_self(), file, line);
 
-	LOG_DEBUG("Locking %p (%s) on line %d in file %s by thread %d", mutex, mutex->name, line, file, th ? th->thread_id : -1);
+	LOG_DEBUG5("Locking %p (%s) on line %d in file %s by thread %d", mutex, mutex->name, line, file, th ? th->thread_id : -1);
 
 # ifdef CHECK_MUTEXES
 	/* Just a little sanity checking to make sure that we're locking
@@ -319,7 +331,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 			if (tmutex->mutex_id == mutex->mutex_id) {
 				if (tmutex->thread_id == th->thread_id) { 
 					/* Deadlock, same thread can't lock the same mutex twice */
-					LOG_ERROR("DEADLOCK AVOIDED (%d == %d) on mutex [%s] in file %s line %d by thread %d [%s]", 
+					LOG_ERROR7("DEADLOCK AVOIDED (%d == %d) on mutex [%s] in file %s line %d by thread %d [%s]", 
 					     tmutex->thread_id, th->thread_id, mutex->name ? mutex->name : "undefined", file, line, th->thread_id, th->name);
 
 					_mutex_unlock(&_mutextree_mutex);
@@ -350,7 +362,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 	
 	_mutex_lock(&_mutextree_mutex);
 
-	LOG_DEBUG("Locked %p by thread %d", mutex, th ? th->thread_id : -1);
+	LOG_DEBUG2("Locked %p by thread %d", mutex, th ? th->thread_id : -1);
 	mutex->line = line;
 	if (th) {
 		mutex->thread_id = th->thread_id;
@@ -368,10 +380,10 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 	thread_t *th = thread_self();
 
 	if (!th) {
-		LOG_ERROR("No record for %u in unlock [%s:%d]", thread_self(), file, line);
+		LOG_ERROR3("No record for %u in unlock [%s:%d]", thread_self(), file, line);
 	}
 
-	LOG_DEBUG("Unlocking %p (%s) on line %d in file %s by thread %d", mutex, mutex->name, line, file, th ? th->thread_id : -1);
+	LOG_DEBUG5("Unlocking %p (%s) on line %d in file %s by thread %d", mutex, mutex->name, line, file, th ? th->thread_id : -1);
 
 	mutex->line = line;
 
@@ -388,7 +400,7 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 
 			if (tmutex->mutex_id == mutex->mutex_id) {
 				if (tmutex->thread_id != th->thread_id) {
-					LOG_ERROR("ILLEGAL UNLOCK (%d != %d) on mutex [%s] in file %s line %d by thread %d [%s]", tmutex->thread_id, th->thread_id, 
+					LOG_ERROR7("ILLEGAL UNLOCK (%d != %d) on mutex [%s] in file %s line %d by thread %d [%s]", tmutex->thread_id, th->thread_id, 
 					     mutex->name ? mutex->name : "undefined", file, line, th->thread_id, th->name);
 					_mutex_unlock(&_mutextree_mutex);
 					return;
@@ -415,7 +427,7 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 
 	_mutex_lock(&_mutextree_mutex);
 
-	LOG_DEBUG("Unlocked %p by thread %d", mutex, th ? th->thread_id : -1);
+	LOG_DEBUG2("Unlocked %p by thread %d", mutex, th ? th->thread_id : -1);
 	mutex->line = -1;
 	if (mutex->thread_id == th->thread_id) {
 		mutex->thread_id = MUTEX_STATE_NOTLOCKED;
@@ -509,7 +521,7 @@ void thread_exit_c(int val, int line, char *file)
 #endif
 	
 	if (th)	{
-		LOG_INFO("Removing thread %d [%s] started at [%s:%d], reason: 'Thread Exited'", th->thread_id, th->name, th->file, th->line);
+		LOG_INFO4("Removing thread %d [%s] started at [%s:%d], reason: 'Thread Exited'", th->thread_id, th->name, th->file, th->line);
 
 		_mutex_lock(&_threadtree_mutex);
 		avl_delete(_threadtree, th, _free_thread);
@@ -568,7 +580,7 @@ static void *_start_routine(void *arg)
 	avl_insert(_threadtree, (void *)thread);
 	_mutex_unlock(&_threadtree_mutex);
 
-	LOG_INFO("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
+	LOG_INFO4("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
 
 	if (start->detached) {
 		pthread_detach(thread->sys_thread);
