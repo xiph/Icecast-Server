@@ -1,0 +1,622 @@
+/* Icecast
+ *
+ * This program is distributed under the GNU General Public License, version 2.
+ * A copy of this license is included with this source.
+ *
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ *                      Michael Smith <msmith@xiph.org>,
+ *                      oddsock <oddsock@xiph.org>,
+ *                      Karl Heyes <karl@xiph.org>
+ *                      and others (see AUTHORS for details).
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <sys/types.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#ifndef _WIN32
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#ifdef HAVE_POLL
+#include <sys/poll.h>
+#endif
+#else
+#include <winsock2.h>
+#include <windows.h>
+#include <stdio.h>
+#define snprintf _snprintf
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+#endif
+
+#include "net/sock.h"
+#include "thread/thread.h"
+
+#include "cfgfile.h"
+#include "util.h"
+#include "os.h"
+#include "refbuf.h"
+#include "connection.h"
+#include "client.h"
+
+#define CATMODULE "util"
+
+#include "logging.h"
+
+/* Abstract out an interface to use either poll or select depending on which
+ * is available (poll is preferred) to watch a single fd.
+ *
+ * timeout is in milliseconds.
+ *
+ * returns > 0 if activity on the fd occurs before the timeout.
+ *           0 if no activity occurs
+ *         < 0 for error.
+ */
+int util_timed_wait_for_fd(int fd, int timeout)
+{
+#ifdef HAVE_POLL
+    struct pollfd ufds;
+
+    ufds.fd = fd;
+    ufds.events = POLLIN;
+    ufds.revents = 0;
+
+    return poll(&ufds, 1, timeout);
+#else
+    fd_set rfds;
+    struct timeval tv, *p=NULL;
+
+    FD_ZERO(&rfds);
+    FD_SET(fd, &rfds);
+
+    if(timeout >= 0) {
+        tv.tv_sec = timeout/1000;
+        tv.tv_usec = (timeout % 1000)*1000;
+        p = &tv;
+    }
+    return select(fd+1, &rfds, NULL, NULL, p);
+#endif
+}
+
+int util_read_header(int sock, char *buff, unsigned long len)
+{
+    int read_bytes, ret;
+    unsigned long pos;
+    char c;
+    ice_config_t *config;
+    int header_timeout;
+
+    config = config_get_config();
+    header_timeout = config->header_timeout;
+    config_release_config();
+
+    read_bytes = 1;
+    pos = 0;
+    ret = 0;
+
+    while ((read_bytes == 1) && (pos < (len - 1))) {
+        read_bytes = 0;
+
+        if (util_timed_wait_for_fd(sock, header_timeout*1000) > 0) {
+
+            if ((read_bytes = recv(sock, &c, 1, 0))) {
+                if (c != '\r') buff[pos++] = c;
+                if ((pos > 1) && (buff[pos - 1] == '\n' && buff[pos - 2] == '\n')) {
+                    ret = 1;
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }
+
+    if (ret) buff[pos] = '\0';
+    
+    return ret;
+}
+
+char *util_get_extension(char *path) {
+    char *ext = strrchr(path, '.');
+
+    if(ext == NULL)
+        return "";
+    else
+        return ext+1;
+}
+
+int util_check_valid_extension(char *uri) {
+    int    ret = 0;
+    char    *p2;
+
+    if (uri) {
+        p2 = strrchr(uri, '.');
+        if (p2) {
+            p2++;
+            if (strncmp(p2, "xsl", strlen("xsl")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = XSLT_CONTENT;
+            }
+            if (strncmp(p2, "htm", strlen("htm")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = HTML_CONTENT;
+            }
+            if (strncmp(p2, "html", strlen("html")) == 0) {
+                /* Build the full path for the request, concatenating the webroot from the config.
+                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
+                */
+                ret = HTML_CONTENT;
+            }
+
+        }
+    }
+    return ret;
+}
+
+static int hex(char c)
+{
+    if(c >= '0' && c <= '9')
+        return c - '0';
+    else if(c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    else if(c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    else
+        return -1;
+}
+
+static int verify_path(char *path) {
+    int dir = 0, indotseq = 0;
+
+    while(*path) {
+        if(*path == '/' || *path == '\\') {
+            if(indotseq)
+                return 0;
+            if(dir)
+                return 0;
+            dir = 1;
+            path++;
+            continue;
+        }
+
+        if(dir || indotseq) {
+            if(*path == '.')
+                indotseq = 1;
+            else
+                indotseq = 0;
+        }
+        
+        dir = 0;
+        path++;
+    }
+
+    return 1;
+}
+
+char *util_get_path_from_uri(char *uri) {
+    char *path = util_normalise_uri(uri);
+    char *fullpath;
+
+    if(!path)
+        return NULL;
+    else {
+        fullpath = util_get_path_from_normalised_uri(path);
+        free(path);
+        return fullpath;
+    }
+}
+
+char *util_get_path_from_normalised_uri(char *uri) {
+    char *fullpath;
+    char *webroot;
+    ice_config_t *config = config_get_config();
+
+    webroot = config->webroot_dir;
+    config_release_config();
+
+    fullpath = malloc(strlen(uri) + strlen(webroot) + 1);
+    strcpy(fullpath, webroot);
+
+    strcat(fullpath, uri);
+
+    return fullpath;
+}
+
+static char hexchars[16] = {
+    '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
+};
+
+static char safechars[256] = {
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,
+      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+};
+
+char *util_url_escape(char *src)
+{
+    int len = strlen(src);
+    /* Efficiency not a big concern here, keep the code simple/conservative */
+    char *dst = calloc(1, len*3 + 1); 
+    unsigned char *source = src;
+    int i,j=0;
+
+    for(i=0; i < len; i++) {
+        if(safechars[source[i]]) {
+            dst[j++] = source[i];
+        }
+        else {
+            dst[j] = '%';
+            dst[j+1] = hexchars[ (source[i] >> 4) & 0xf ];
+            dst[j+2] = hexchars[ source[i] & 0xf ];
+            j+= 3;
+        }
+    }
+
+    dst[j] = 0;
+    return dst;
+}
+
+char *util_url_unescape(char *src)
+{
+    int len = strlen(src);
+    unsigned char *decoded;
+    int i;
+    char *dst;
+    int done = 0;
+
+    decoded = calloc(1, len + 1);
+
+    dst = decoded;
+
+    for(i=0; i < len; i++) {
+        switch(src[i]) {
+            case '%':
+                if(i+2 >= len) {
+                    free(decoded);
+                    return NULL;
+                }
+                if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
+                    free(decoded);
+                    return NULL;
+                }
+
+                *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
+                i+= 2;
+                break;
+            case '#':
+                done = 1;
+                break;
+            case 0:
+                ERROR0("Fatal internal logic error in util_url_unescape()");
+                free(decoded);
+                return NULL;
+                break;
+            default:
+                *dst++ = src[i];
+                break;
+        }
+        if(done)
+            break;
+    }
+
+    *dst = 0; /* null terminator */
+
+    return decoded;
+}
+
+/* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
+ * path contains 'disallowed' sequences like foo/../ (which could be used to
+ * escape from the webroot) or if it cannot be URI-decoded.
+ * Caller should free the path.
+ */
+char *util_normalise_uri(char *uri) {
+    char *path;
+
+    if(uri[0] != '/')
+        return NULL;
+
+    path = util_url_unescape(uri);
+
+    if(path == NULL) {
+        WARN1("Error decoding URI: %s\n", uri);
+        return NULL;
+    }
+
+    /* We now have a full URI-decoded path. Check it for allowability */
+    if(verify_path(path))
+        return path;
+    else {
+        WARN1("Rejecting invalid path \"%s\"", path);
+        free(path);
+        return NULL;
+    }
+}
+
+static char base64table[64] = {
+    'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
+    'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
+    'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
+    'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
+};
+
+static signed char base64decode[256] = {
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, 62, -2, -2, -2, 63,
+     52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -2, -2, -2, -1, -2, -2,
+     -2,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+     15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -2, -2, -2, -2, -2,
+     -2, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
+     -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2
+};
+
+char *util_bin_to_hex(unsigned char *data, int len)
+{
+    char *hex = malloc(len*2 + 1);
+    int i;
+
+    for(i = 0; i < len; i++) {
+        hex[i*2] = hexchars[(data[i]&0xf0) >> 4];
+        hex[i*2+1] = hexchars[data[i]&0x0f];
+    }
+
+    hex[len*2] = 0;
+
+    return hex;
+}
+
+/* This isn't efficient, but it doesn't need to be */
+char *util_base64_encode(char *data)
+{
+    int len = strlen(data);
+    char *out = malloc(len*4/3 + 4);
+    char *result = out;
+    int chunk;
+
+    while(len > 0) {
+        chunk = (len >3)?3:len;
+        *out++ = base64table[(*data & 0xFC)>>2];
+        *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
+        switch(chunk) {
+            case 3:
+                *out++ = base64table[((*(data+1) & 0x0F)<<2) | ((*(data+2) & 0xC0)>>6)];
+                *out++ = base64table[(*(data+2)) & 0x3F];
+                break;
+            case 2:
+                *out++ = base64table[((*(data+1) & 0x0F)<<2)];
+                *out++ = '=';
+                break;
+            case 1:
+                *out++ = '=';
+                *out++ = '=';
+                break;
+        }
+        data += chunk;
+        len -= chunk;
+    }
+    *out = 0;
+
+    return result;
+}
+
+char *util_base64_decode(unsigned char *input)
+{
+    int len = strlen(input);
+    char *out = malloc(len*3/4 + 5);
+    char *result = out;
+    signed char vals[4];
+
+    while(len > 0) {
+        if(len < 4)
+        {
+            free(result);
+            return NULL; /* Invalid Base64 data */
+        }
+
+        vals[0] = base64decode[*input++];
+        vals[1] = base64decode[*input++];
+        vals[2] = base64decode[*input++];
+        vals[3] = base64decode[*input++];
+
+        if(vals[0] < 0 || vals[1] < 0 || vals[2] < -1 || vals[3] < -1) {
+            len -=4;
+            continue;
+        }
+
+        *out++ = vals[0]<<2 | vals[1]>>4;
+        if(vals[2] >= 0)
+            *out++ = ((vals[1]&0x0F)<<4) | (vals[2]>>2);
+        else
+            *out++ = 0;
+
+        if(vals[3] >= 0)
+            *out++ = ((vals[2]&0x03)<<6) | (vals[3]);
+        else
+            *out++ = 0;
+
+        len -= 4;
+    }
+    *out = 0;
+
+    return result;
+}
+
+util_dict *util_dict_new(void)
+{
+    return (util_dict *)calloc(1, sizeof(util_dict));
+}
+
+void util_dict_free(util_dict *dict)
+{
+    util_dict *next;
+
+    while (dict) {
+        next = dict->next;
+
+        if (dict->key)
+            free (dict->key);
+        if (dict->val)
+            free (dict->val);
+        free (dict);
+
+        dict = next;
+    }
+}
+
+const char *util_dict_get(util_dict *dict, const char *key)
+{
+    while (dict) {
+        if (!strcmp(key, dict->key))
+            return dict->val;
+        dict = dict->next;
+    }
+    return NULL;
+}
+
+int util_dict_set(util_dict *dict, const char *key, const char *val)
+{
+    util_dict *prev;
+
+    if (!dict || !key) {
+        ERROR0("NULL values passed to util_dict_set()");
+        return 0;
+    }
+
+    prev = NULL;
+    while (dict) {
+        if (!dict->key || !strcmp(dict->key, key))
+            break;
+        prev = dict;
+        dict = dict->next;
+    }
+
+    if (!dict) {
+        dict = util_dict_new();
+        if (!dict) {
+            ERROR0("unable to allocate new dictionary");
+            return 0;
+        }
+        if (prev)
+            prev->next = dict;
+    }
+
+    if (dict->key)
+        free (dict->val);
+    else if (!(dict->key = strdup(key))) {
+        if (prev)
+            prev->next = NULL;
+        util_dict_free (dict);
+
+        ERROR0("unable to allocate new dictionary key");
+        return 0;
+    }
+
+    dict->val = strdup(val);
+    if (!dict->val) {
+        ERROR0("unable to allocate new dictionary value");
+        return 0;
+    }
+
+    return 1;
+}
+
+/* given a dictionary, URL-encode each val and 
+   stringify it in order as key=val&key=val... if val 
+   is set, or just key&key if val is NULL.
+  TODO: Memory management needs overhaul. */
+char *util_dict_urlencode(util_dict *dict, char delim)
+{
+    char *res, *tmp;
+    char *enc;
+    int start = 1;
+
+    for (res = NULL; dict; dict = dict->next) {
+        /* encode key */
+        if (!dict->key)
+            continue;
+        if (start) {
+            if (!(res = malloc(strlen(dict->key) + 1))) {
+                return NULL;
+            }
+            sprintf(res, "%s", dict->key);
+            start = 0;
+        } else {
+            if (!(tmp = realloc(res, strlen(res) + strlen(dict->key) + 2))) {
+                free(res);
+                return NULL;
+            } else
+                res = tmp;
+            sprintf(res + strlen(res), "%c%s", delim, dict->key);
+        }
+
+        /* encode value */
+        if (!dict->val)
+            continue;
+        if (!(enc = util_url_escape(dict->val))) {
+            free(res);
+            return NULL;
+        }
+
+        if (!(tmp = realloc(res, strlen(res) + strlen(enc) + 2))) {
+            free(enc);
+            free(res);
+            return NULL;
+        } else
+            res = tmp;
+        sprintf(res + strlen(res), "=%s", enc);
+        free(enc);
+    }
+
+    return res;
+}
+
+#ifndef HAVE_LOCALTIME_R
+struct tm *localtime_r (const time_t *timep, struct tm *result)
+{
+     static mutex_t localtime_lock;
+     static int initialised = 0;
+     struct tm *tm;
+
+     if (initialised == 0)
+     {
+         thread_mutex_create (&localtime_lock);
+         initialised = 1;
+     }
+     thread_mutex_lock (&localtime_lock);
+     tm = localtime (timep);
+     memcpy (result, tm, sizeof (*result));
+     thread_mutex_unlock (&localtime_lock);
+     return result;
+}
+#endif

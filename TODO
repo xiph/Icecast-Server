@@ -1,0 +1,89 @@
+2.0 CRITICAL - These are the things without which 2.0 cannot be released
+____________
+
+- Should icecast automatically (i.e. without needing -c) look for the config
+  file in /etc/icecast.xml or something?
+
+- libshout 2.0 and ices 2.0 releases, also an ices 0.x release that works with
+  this. Without source clients, icecast isn't much use...
+
+- integrate/include all the documentation done by external groups.
+
+- generally we don't do proper checking for the correct versions of various
+  libraries (this is probably more of an issue with ices2, but it also affects
+  icecast)
+
+BUGS
+----
+- stats get off?  this needs testing more testing.
+
+- some stuff (like 'genre') isn't making it into the stats dump
+
+- logging - bytes send and time listening may both be broken?
+
+- slave servers don't work. relay user is not respected by the source (only
+  admin can read /admin/streamlist), and the slave can't parse the xml result
+  of streamlist anyway (it expects a simple mountpoint per line)
+
+FEATURES
+--------
+
+- pull out vorbis comments.  and send to stats. This seems to be being
+  done, but it isn't working right.
+
+- directory server GUID checks
+	directory server does GET /GUID-asldjfasldfjalsdkfjasldkfj HTTP/1.0
+	and either gets a 404 if it's wrong, or a 200 if it's correct.
+
+- adding new stats type, event.  events don't modify the global stats tree,
+	ie, source /1234.ogg disconnected
+
+- support W3C Extended Logging (http://www.w3.org/TR/WD-logfile.html)
+	toggle between this and Apache Combined Log Format in the config file.
+	default to apache style.
+
+- allow using get_predata() stuff to send an "intro" to any newly-connected
+  user?
+
+- stats to list currently connected clients: ip and hostname
+
+- stream switching (drop clients to another stream on disconnect of source)
+  - a) fallbacks from named location to new mountpoint
+  - OR b) fallbacks for connected clients to new mountpoint (so newly-connecting
+       clients just get a 404 on the old path)
+  - OR c) combination - first one, plus generic alias ability?
+
+- /admin/* for all admin functionality
+  - configuring fallbacks
+  - mp3 metadata injection
+  - remote shutdown?
+
+- general registerable url-handlers in connection.c rather than hard-coded list
+  (already getting unmaintainable)
+
+- httpp - split out query string for further processing
+
+- option to use ipv6 (equiv to using <bind-address>::</bindaddress>, I think.
+
+- abstract all admin functionality to a set of commands, and command handlers.
+  Make /admin/* just parse according to a set of rules, and dispatch generic
+  commands through that.
+  Use this for alternative admin interfaces (GUI? telnet interface?)
+
+- listener authentication (per mountpoint?)
+
+- all timer-based functionality (yp updates, slave/relay checks) should have a
+  single timer thread which dispatches events through the normal event
+  mechanism (to worker threads from the main pool). This will reduce the
+  extraneous thread count.
+
+- atomic admin function to: set fallback from A->B, remove A, move mountpoint
+  B to A. Needs forced-source removal first.
+
+- race condition between avl_tree_unlock(pending_tree) and 
+  thread_cond_wait(&fserv_cond) in fserv.c, it's a pain to fix but should be.
+
+- do we need to use locks on the avl client_trees in source.c and fserv.c? 
+
+  
+

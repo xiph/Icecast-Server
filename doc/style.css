@@ -1,0 +1,79 @@
+.ahem { display: none }
+body { 
+	font-family:'Lucida Grande', Verdana, Geneva, Lucida, sans-serif;
+	background:#000000; 
+	link:#FFFFFF; 
+	text:#323232; 
+	vlink:#FFFFFF; 
+	alink:#FFFFFF;
+}
+a {
+    font-weight: bold;
+    text-decoration: none;
+}
+
+a:link	{	color: #ff0; }
+a:visited { color: #cc3; }
+a:hover	{	color: #f00; }
+code,pre { 
+	font-size:90%; 
+	color:#ffffff;
+	font-family:"Courier New",monospace;
+	background:#777777;
+	padding:0 0.5em 
+}
+td {
+	color:#ffffff;
+}
+pre { padding:0.5em }
+blockquote { margin:0.5em }
+blockquote p { margin:0 }
+
+.width300 { width:300px; background:red }
+.width400 { width:400px; background:blue }
+
+p.ruletest { color:red }
+
+div.boxtest { 
+ border:2px solid; 
+ padding:30px; 
+ background: #555555;
+ width:80%;;
+ color:#ffffff;
+}
+
+div.smallbox{ 
+ border:2px solid; 
+ padding:40px; 
+ background: #ffc; 
+ width:600px;
+ text:#FFFFFF;
+}
+
+div.indentedbox { 
+ border:0px solid; 
+ padding:10px; 
+ background: #779; 
+}
+
+
+div.content { 
+ border:20px solid; 
+ padding:30px;
+ background: #ffc;
+}
+
+div.content { 
+ width:400px; 
+ voice-family: "\"}\""; 
+ voice-family:inherit;
+ width:300px;
+} 
+  /* CSS1 UAs should see and use 2nd width */
+
+html>body .content { width:300px } 
+
+p.ruletest { color: blue }
+
+
+

@@ -1,0 +1,76 @@
+<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
+<div class=boxtest>
+<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<h1>Icecast 2 Documentation Table of Contents</h1>
+<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+
+<li><a href="icecast2_introduction.html">Introduction</a>
+<li><a href="icecast2_basicsetup.html">Basic Setup</a>
+<li><a href="icecast2_config_file.html">Icecast Config File</a>
+<li><a href="icecast2_admin.html">Admin Interface</a>
+<li><a href="icecast2_stats.html">Server Statistics</a>
+<li><a href="icecast2_relay.html">Relaying</a>
+<li><a href="icecast2_yp.html">Listing in a YP directory</a>
+<li><a href="icecast2_listenerauth.html">Listener Authentication</a>
+<li><a href="icecast2_win32.html">Win32 specific documentation</a>
+<li><a href="icecast2_glossary.html">Glossary</a>
+<li><a href="icecast2_faq.html">FAQ</a>
+
+
+
+<pre>
+icecast 2.x - README
+---------------------------------------------------------------------
+
+Icecast is a streaming media server which currently supports Ogg 
+Vorbis and MP3 audio streams. It can be used to create an Internet 
+radio station or a privately running jukebox and many things in 
+between. It is very versatile in that new formats can be added 
+relatively easily and supports open standards for commuincation and 
+interaction.
+
+
+Prerequisites
+---------------------------------------------------------------------
+icecast requires the following packages :
+
+* libxml2 - http://xmlsoft.org/downloads.html
+* libxslt - http://xmlsoft.org/XSLT/downloads.html
+* curl - http://curl.haxx.se/download.html (>= version 7.10 required)
+  NOTE: icecast may be compiled without curl, however this will
+        disable all Directory server interaction (YP).
+* ogg/vorbis - http://www.vorbis.com/files (>= version 1.0 required)
+
+A Note About RPMS
+---------------------------------------------------------------------
+This section only applies to you if your operating system uses RPMS.
+
+In order to build icecast, you will need to install the "devel" RPM
+packages for each of the prerequisite packages in addition to the
+normal RPMS for each package.
+
+please check the websites for each of the prerequisite packages for
+appropriate download links for RPMS.
+
+
+Build/Install
+---------------------------------------------------------------------
+To build icecast on a Unix platform, perform the following :
+
+Run
+   ./configure
+   make
+   make install
+
+To build and install this release.
+
+A sample config file will be placed in /usr/local/etc (on UNIX) or in 
+the current working directory (on Win32) and is called icecast.xml
+
+Documentation for icecast is available in the doc directory, by 
+viewing doc/icecast2_TOC.html in a browser.
+
+Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
+us at irc.freenode.net, channel #icecast, if you have any troubles.
+
+</pre>

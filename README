@@ -1,0 +1,21 @@
+Icecast2 Beta 1.
+
+This is an beta release. Not all functionality is fully implemented, though
+we believe it to be very stable for all the currently available features.
+
+To build icecast on a Unix platform, perform the following :
+
+Run
+   ./configure
+   make
+   make install
+
+To build and install this release.
+
+A sample config file will be placed in /usr/local/etc (on UNIX) or in the current working directory (on Win32) and is called icecast.xml
+
+Documentation for icecast is available in the doc directory, by viewing doc/icecast2_TOC.html in a browser.
+
+Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
+us at irc.freenode.net, channel #icecast, if you have any troubles.
+

@@ -1,0 +1,37 @@
+<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
+<div class=boxtest>
+<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<h1>Icecast 2 Glossary</h1>
+<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
+<br>
+<br>
+<br>
+<a name="source client"></a>
+<h4>source client</h4>
+<div class=indentedbox>
+A source client is an external program which is responsible for sending content data to icecast.  Some source clients that support icecast2 are Oddcast, ices2, ices0.3, and DarkIce.
+</div>
+<a name="slave server"></a>
+<h4>slave server (Relay)</h4>
+<div class=indentedbox>
+The slave server in a relay configuration is the server that is pulling the data from the master server. It acts as a listening client to the master server.
+</div>
+<a name="master server"></a>
+<h4>master server (Relay)</h4>
+<div class=indentedbox>
+The master server in a relay configuration is the server that has the stream that is being relayed.
+</div>
+<a name="mountpoint"></a>
+<h4>mountpoint</h4>
+<div class=indentedbox>
+A mountpoint is a resource on the icecast server that represents a single broadcast stream.  Mountpoints are named similar to files (/mystream.ogg, /mymp3stream).  When listeners connect to icecast2, they must specify the mountpoint in the request (i.e. http://192.168.1.10:8000/mystream.ogg).  Additionally, source clients must specify a mountpoint when they connect as well.  Statistics are kept track of by mountpoint.  Mountpoints are a fundamental aspect of icecast2 and how it is organized.
+</div>
+<a name="fallback"></a>
+<h4>fallback mountpoint</h4>
+<div class=indentedbox>
+A fallback mountpoint is configured with a parent mountpoint.  In the event of the parent mountpoint losing connection with icecast, Icecast will then move all clients currently connected to the now defunct mountpoint to it's fallback mountpoint.
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,416 @@
+feature differences from CVS
+
+fast pre-buffering - burst a certain amount of data at connection time.
+mp3 accepts artist and title separately on the url.
+vorbis can accept url updates if module compiled in
+program invocation at stream start and end, per mount based.
+on-demand relays, activated on first listener, disconnected when listeners 
+falls to 0
+initial implementation of multiple Ogg codec streaming, theora, vorbis and
+speex. more work needed to start at theora key frame.
+Added URL and command based authentication
+
+kh47
+. per mount burst size was not being referred to properly
+. added sync markers to queue for client starts, the buffer with a sync mark
+  from the burst point is where a client starts from.
+. theora marks a sync marker on a page which has the start of a keyframe.
+. vorbis and speex mark sync on all buffers unless theora is used. mp3 sync
+  marks on every buffer.
+. some code re-org for queue management, allows old refbuf removal even
+  on socket read timeout
+. place clients that can take more pending data at the beginning of the client
+  queue. This allows for reducing client scanning when there's a short timeout
+
+kh46
+. New listeners actually drop to fallback mount, silly inverse bug
+. typo in mp3 metadata handling, affected error case, rare
+. make short delay timeout work when reading from source, minor handling
+  case from previous update.
+. make the ogg vorbis module use 1000 not 1024 as a factor for stats.
+. if a YP server is up but not responding with an error message then show
+  a default one.
+. fixed a fallback problem and improved the log messages for when fallback
+  is triggered.
+
+kh45
+. fix minor YP cleanup case when YP server fails and source disconnects
+. cleanup from previous patch exposed a potential source reading bug, which
+  had shown up because sources could disconnect for no reason.
+
+kh44
+. fix segv case for non-auth streams, unchecked in last release.
+. only send ICY 200 OK if realplayer else send HTTP/1.0 200 OK
+. allow for setting username/password for auth URLs
+. still apply timeout to recoverable source read
+
+kh43
+. add <username> <password> tags for <relay>, default none, both need to
+  be provided for auth to be attempted.
+. add url based auth module. example in conf, you can state add and
+  remove urls to run for each client, each add is passed id, user, pass, ip,
+  user agent. The remove is passed id, user, pass, duration
+. make sure the global client count is in sync when auth is used
+
+kh42
+. drop the use of thread conditional variables in the connection threads,
+  they we not working as they should
+. minor cleanups, log messages etc
+. re-work auth subsystem to allow for slow auth mechanisms
+. added command auth, do that listener auth can be done externally. The
+  external command should take a mount, user and pass on separate lines and
+  return a status code of 0 (authenticated) or non-zero (reject)
+
+kh41
+. fixed 401 reporting on missing urls, should be 404. Handle a very rare
+  long lock held case as well
+
+kh40
+. make sure public is 0 in the stats tree
+. move parse_audio_info back to source.c and make it thread safe
+. add debug for YP ok case, debug is supposed to be rarely used after all
+. up the per-listener max write threshold
+. report 401 for failed auth connections
+. add audio/x-mpeg mime type
+
+kh39
+. mp3 streams without metadata were not having their metadata initialised
+  properly, causing problems when clients connected with metadata capable
+  clients.
+. send ice-audio-info to clients, provides YP info in relays situations
+
+kh38
+. re-sync with svn codebase, update listener auth and docs
+. send ICY OK instead of HTTP OK for realplayer test
+. minor cleanups
+
+kh37
+. add the previous vorbis specific handler back in, it allowed for updates
+  via url. enabled via configure --enable-vorbis-updates
+. updated admin pages to those in the main tree
+. plug some minor memory leaks in yp
+
+kh36
+. force yp_remove, log message when found, fixed a race as well
+. fix mp3 segv when on-demand relays are used
+. fix debug messaging in yp.c, helps to track any YP related problems
+. emit icy-br instead of icy-bitrate, allow relays to be on YP listings, but
+  handle icy-bitrate as well
+. <no-yp> (default 0) in <mount> prevents a mount from going on YP listings
+. fixes to ice-audio-info handling.
+. make yp thread wait longer than it does at shutdown, allows for final
+  yp_remove on closing streams
+
+kh35
+. handle YP error conditions better.
+. moving clients via url allows on-demand relays to startup/shutdown
+. segv bug fixed from previous release, http headers were being prepared
+  on mount switchover.
+
+kh34
+. minor fixes for YP, fix missing bits from rewrite
+  if any YP request fails go back to add
+  do a yp touch on inline mp3 updates as well as url metadata updates 
+. sync with main tree for minor patches.
+. set default stream burst size to 64k (typical player prebuffer size)
+. fix some missing web stats
+. add <fallback-when-full> (0 default) to <mount>, put new listeners
+  on next available fallback, 404 otherwise
+
+kh33
+. schedule a YP touch on admin metadata updates
+. build fix relating to geturl files.
+
+kh32
+. minor compile cleanups from CVS
+. make sure a failed script does exit
+. report system message on initial log open failure
+. update YP thread code, big change.
+
+kh31
+. fix for bug when adding clients from pending list.
+
+kh30
+. add make static for those who want it
+. changed code on list processing for active and pending clients
+. changed when format-specific client data gets freed up
+. shuffle code around, OK response to source client only source_client_thread
+. 404 sent to client on failed on-demand relay
+. more re-sync work + various non-functional cleanups
+
+kh29
+. revert test harness code left from before which advertised private streams
+  and cleanup unwanted messages
+. more cleanups, more sync work with CVS
+. source_t wasn't going after source client disconnection
+
+kh28
+. more re-sync work
+. fixed a yp deadlock case for stuffed yp servers.
+
+kh27
+. fixed 2 possible deadlock cases
+. fixed race wrt to alias lookup after HUP change
+. reset ogg stream type to "Ogg Vorbis" even if it isn't, so that YP
+  shows icons correctly.
+
+kh26
+. fixed YP related bugs, leaks + bad pointer access
+. fixed rare segv case in format_mp3
+. more cleanup work in source shutdown
+. Changed how client http headers are sent back
+. Implement on demand relay, enabled with <on-demand>1</on-demand> in <relay>
+
+kh25
+. Changed Ogg module
+  - added Ogg multiplexing
+  - added theora and speex streaming
+  - URL updates removed from vorbis, due to multiple codec support, maybe added later.
+. continue with more re-sync to CVS work
+. fixed a few rare races that had shown up with the re-sync work.
+
+kh24
+. more re-sync work with CVS.
+. Identified a couple more locking issues via the admin interface
+. remove errno use from stream dump routines
+
+kh23
+. re-sync with CVS tree, fallback override, no-mount, initial work on
+  listener authentication.
+. locking updates 
+. on-connect/disconnect scripts are started and not waited on.
+. icy/ice headers cleanup
+. initialise config correctly
+
+kh22
+. fix some rare lock races
+. page samples fix on EOS flush, reset granulepos to 0 on new stream
+. add /admin/streamlist.txt from beta3
+. big update of the relay code, supports master relay now
+. added yp-log-headers tag in <logging> to disable YP header logging, it
+  can make for lots of noise in the logs
+
+kh21
+. only send a 200 OK for source connections that are from source clientts
+  and not relays
+. on failed source init, some setup was not cleared and the source count
+  was not decremented
+. Check that writes to clients have actual data available
+. fix deadlock case with yp
+. fix locking for url metdata updates generically
+. fix use of non thread-safe function localtime in yp
+
+kh20
+. fixed slave/stats shutdown race
+. re-applying avl fix for null free function
+. fix for vorbis, API changes caused stalls when sending to client
+. relay updating/restarting code fixed.
+. changes to vorbis input to allow for url updates
+. allow for stating artist and title on url
+
+kh19
+. fix a few more signed/unsigned problems, affecting mp3 mainly
+. re-worked pthread configure option
+. update various bits to bring in line with v2.0 beta2
+
+kh18
+. another signed/unsigned int bug fixed
+. added a short delay trigger for waiting clients, improves bursting
+. added --disable-log-ip for the access log
+. fix segv when adding clients to inactive relays
+
+kh17
+. cleanup some api bits
+. fix mp3 bug causing glitches in the audio
+. added pidfile support
+
+kh16
+. made outgoing serial numbers unique, helps in fallback situations
+. revert date field to where it was in access.log. That way it conforms
+  to the common log format for analysers.
+. changed interal api of the client write function so that handling of
+  burst limits is better. Also allow the queue to be more format specific.
+
+kh15
+. Updated vorbis input to rebuild stream, forcing pages to contain around
+  1 second worth of audio.
+
+kh14
+. use localtime_r when available
+. compile time switch for enabling/disabling logging IP in access log
+. handle source counts better.
+. relays retain the source struct so source clients don't steal inactive
+  relay mountpoints.
+
+kh13
+. update to latest CVS docs
+. fixup source timeout, internally it's in milliseconds, and can be
+  stated per mount as well as globally.
+
+kh12
+. terminate stream if inline metadata does not contain "StreamTitle"
+. Added docs by oddsock, and other updates from CVS
+. wait for source start/stop run scripts to finish, linuxthreads
+  were leaving zombies.
+. missing initialiser for relay connection, caused segv on failed
+  connections
+. fix 3 mp3 metadata mis-alignment bugs on stalled links
+
+kh11
+. fix a bad memory reference from kh9
+. don't free finished clients too early, bad memory reference
+
+kh10
+. when reading from straight mp3 stream (no shoutcast metadata)
+  updates via url were not getting to clients. fixed
+
+kh9
+. per-mount queue and burst size options
+. pre-mount on-connect/on-disconnect scripts
+. more re-sync with cvs updates
+. force relay re-check on xml update
+
+kh8
+. timeout value had multiple applied
+. more dead code removal
+. make initial mp3 metadata block blank
+. fix potential leak in mp3 reading code.
+
+kh7
+. added stream type check for client moving
+. various cleanups, dead code removal
+. minor relay structure mem leak fix
+. fix source count check.
+. enable the fileserve thread again
+
+kh6
+. stream dumping added
+. mp3 title update via url fixed up
+. fixed up listclients, moveclients.
+. re-implemented source fallbacks
+
+kh5
+. 2 lots of ;; caused compile problems on windows
+. enable curl for YP access
+. allow the format specific get buffer routine to return
+  NULL for retry, needs to set running to 0 now
+. add vorbis header parsing for artist title stats
+. add mp3 title parsing for the stats
+
+kh4
+. handle relay start and shutdown better.
+. apply avl rwlock leak fix
+. apply stats thread sleep avoidance fix
+. update sock.c errno check
+. enable stats/YP thread, add various stat triggers
+
+kh3
+. fix burst size larger than queue size case
+. prevent relay connections initiating if connection is running
+. send server package string from autoconf
+. fixed a few segvs from previous update
+
+kh2
+. fix mp3 handling, metadata handling wasn't correct.
+. fix flow control, locks/source counts with relay
+. Added <burst-size> tag default 0 (in bytes)
+. Use queue size field, was hardcoded before
+. Don't filter refbuf if 0 length but have associated data
+. handle EOF/error from socket in format_mp3
+
+kh1 - core update
+. removed many locks
+. used single queue for source data.
+. clients start at end of queue and allowed to repeat writes, thus
+  giving bursts at connection. capped at 8 writes
+. many secondary things not working. stream dumping, YP, stats,
+  web interface
+. mp3 incl shoutcast meta and ogg should work 
+
+2003-10-12
+    Added documentation
+
+2003-04-23
+    Support aliases
+
+2003-03-09
+    Support listening on multiple sockets.
+
+2003-03-08
+    Support for shoutcast source protocol added.
+
+2003-03-08
+    Started implementing generic admin interface. Supports (so far): 
+    - dynamic configuration of mount fallbacks
+        /admin/fallbacks?mount=/mount&fallback=/fallback
+    - setting of mp3 metadata
+        /admin/metadata?mount=/mount&mode=updinfo&song=New%20Title
+    - dumping raw xml stats
+        /admin/rawstats
+    - listing all connected clients on a mountpoint: 
+        /admin/listclients?mount=/mountname
+
+2003-03-05
+    Implemented the ability to reread the config file on SIGHUP. For now, this
+    does not affect configuration for currently running sources (only new
+    sources and global parameters like max-listeners)
+
+2003-03-02 
+    More features:	 
+    -- per mountpoint listener maxima   
+    -- static configuration of mountpoint fallbacks   
+    -- stream dumping (write incoming stream to disk)
+
+2003-02-27
+    Fix log buffering on win32 - previously, logs were never flushed, so they
+    only got output every few tens or hundreds of lines.
+
+2003-02-27
+	Support new icy-audio-info header, to communicate various parameters to
+    clients and yp servers, including sample rate, quality, channels, bitrate
+
+2003-02-25
+    Full support for relaying mp3 metadata (if turned on in config file)
+
+2003-02-25
+    Allow configuration of maximum client queue length (in bytes)
+
+2003-02-14
+    Finished full IPv6 support. 
+
+2003-02-12
+	Allow configuring local mountpoint seperately from remote mountpoint for
+    relays
+
+2003-02-12
+	Per mountpoint usernames and passwords (for sources)
+
+2003-02-11
+	Now that it's been officially assigned, use application/ogg instead of
+	application/x-ogg
+
+2003-02-07
+    Allow relaying of mp3 streams from icecast 1.x and shoutcast
+
+2003-02-07
+    Added ability to configure individual relays (rather than just all streams
+    from a single server).
+
+2003-02-03
+    Added support for YP directory services listings
+	are only used by the yp listing routines
+
+2003-02-03
+    Support command line parameter -b to run in the background (not supported
+    on win32)
+
+2002-12-31 
+    Implement configurable mountpoint fallbacks (on source exit, clients are
+    transferred to another mountpoint automatically, without disconnecting
+    them)
+
+2002-12-31
+    Implemented full mp3 metadata support.
+
+(older stuff is missing from here)
+
