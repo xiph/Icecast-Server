@@ -294,7 +294,6 @@ void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
     int command;
-    int noauth = 0;
 
     DEBUG1("Admin request (%s)", uri);
     if (!((strcmp(uri, "/admin.cgi") == 0) ||
@@ -321,32 +320,14 @@ void admin_handle_request(client_t *client, char *uri)
         return;
     }
 
-    mount = httpp_get_query_param(client->parser, "mount");
-
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
-        source_t *source;
+        ice_config_t *config = config_get_config ();
 
-        mount = "/";
-        noauth = 1;
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount_raw(mount);
-        if (source == NULL) {
-            WARN2("Admin command %s on non-existent source %s", 
-                    command_string, mount);
-            avl_tree_unlock(global.source_tree);
-            client_send_400(client, "Mount / does not exist");
-            return;
-        }
-        else {
-            if (source->shoutcast_compat == 0) {
-                ERROR0("Illegal call to change metadata, source not shoutcast compatible");
-                avl_tree_unlock (global.source_tree);
-                client_send_400 (client, "Illegal metadata call");
-                return;
-            }
-        }
-        avl_tree_unlock(global.source_tree);
+        httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+        config_release_config ();
     }
+
+    mount = httpp_get_query_param(client->parser, "mount");
 
     if(mount != NULL) {
         source_t *source;
@@ -372,7 +353,9 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
-            if (!source->shoutcast_compat)
+            INFO2("Received admin command %s on mount \"%s\"", 
+                    command_string, mount);
+            if (source->shoutcast_compat == 0)
             {
                 if (source->running == 0 && source->on_demand == 0)
                 {
@@ -382,18 +365,16 @@ void admin_handle_request(client_t *client, char *uri)
                     client_send_400 (client, "Source is not available");
                     return;
                 }
-            }
-            INFO2("Received admin command %s on mount \"%s\"", 
-                    command_string, mount);
-            if (client->authenticated != 1)
-            {
-                if (connection_check_source_pass(client->parser, mount) == 0)
+                if (client->authenticated != 1)
                 {
-                    INFO1("Bad or missing password on mount modification admin "
-                            "request (command: %s)", command_string);
-                    avl_tree_unlock(global.source_tree);
-                    client_send_401(client);
-                    return;
+                    if (connection_check_source_pass(client->parser, mount) == 0)
+                    {
+                        INFO1("Bad or missing password on mount modification admin "
+                                "request (command: %s)", command_string);
+                        avl_tree_unlock(global.source_tree);
+                        client_send_401(client);
+                        return;
+                    }
                 }
             }
             admin_handle_mount_request (client, source, command);
@@ -1007,6 +988,9 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);
         stats_event(source->mount, "title", value);
+        /* At this point, we assume that the metadata passed in
+           is encoded in UTF-8 */
+        logging_playlist(source->mount, value, source->listeners);
         /* If we get an update on the mountpoint, force a
          * yp touch */
         yp_touch (source->mount);

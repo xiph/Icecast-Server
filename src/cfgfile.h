@@ -107,6 +107,7 @@ typedef struct ice_config_tag
     int fileserve;
     int on_demand; /* global setting for all relays */
 
+    char *shoutcast_mount;
     char *source_password;
     char *admin_username;
     char *admin_password;
@@ -143,6 +144,7 @@ typedef struct ice_config_tag
 
     char *access_log;
     char *error_log;
+    char *playlist_log;
     int loglevel;
 
     int chroot;

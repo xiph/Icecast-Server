@@ -691,21 +691,53 @@ static refbuf_t *ogg_get_buffer (source_t *source)
 
                 if (ogg_info->send_yp_info)
                 {
-                    char *tag;
-                    tag = ogg_info->title;
-                    if (tag == NULL)
-                        tag = "unknown";
-                    stats_event (source->mount, "title", tag);
-                    INFO1("Updating title \"%s\"", tag);
+                    char *title;
+                    char *artist;
+                    char *metadata = NULL;
+                    unsigned int len = 0;
 
-                    tag = ogg_info->artist;
-                    if (tag == NULL)
-                        tag = "unknown";
-                    stats_event (source->mount, "artist", tag);
+                    title = ogg_info->title;
+                    if (title)
+                        INFO1("Updating title \"%s\"", title);
+                    stats_event (source->mount, "title", title);
+
+                    artist = ogg_info->artist;
+                    if (artist)
+                        INFO1("Updating artist \"%s\"", artist);
+                    stats_event (source->mount, "artist", artist);
+                    if (artist)
+                    {
+                        if (title)
+                        {
+                            len += strlen(artist) + strlen(title) + 3;
+                            metadata = calloc (1, len);
+                            snprintf (metadata, len, "%s - %s", artist, title);
+                        }
+                        else
+                        {
+                            len += strlen(artist);
+                            metadata = calloc (1, len);
+                            snprintf (metadata, len, "%s", artist);
+                        }
+                    }
+                    else
+                    {
+                        if (title)
+                        {
+                            len += strlen (title);
+                            metadata = calloc (1, len);
+                            snprintf (metadata, len, "%s", title);
+                        }
+                    }
+                    if (metadata)
+                    {
+                        logging_playlist (source->mount, metadata, source->listeners);
+                        free (metadata);
+                    }
+
                     if (ogg_info->bitrate)
                         stats_event_args (source->mount, "ice-bitrate", "%u", ogg_info->bitrate/1000);
 
-                    INFO1("Updating artist \"%s\"", tag);
                     ogg_info->send_yp_info = 0;
                     yp_touch (source->mount);
                 }

@@ -31,7 +31,9 @@ typedef enum _format_type_tag
     FORMAT_TYPE_OGG,
     FORMAT_TYPE_VORBIS,
     FORMAT_TYPE_MP3,
-    FORMAT_TYPE_NSV
+    FORMAT_TYPE_NSV,
+    FORMAT_TYPE_AAC,
+    FORMAT_TYPE_AACPLUS
 } format_type_t;
 
 typedef struct _format_plugin_tag

@@ -39,10 +39,12 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
+#define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_FILESERVE 1
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
+#define CONFIG_DEFAULT_PLAYLIST_LOG NULL
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
 #define CONFIG_DEFAULT_LOG_LEVEL 4
@@ -150,10 +152,14 @@ void config_clear(ice_config_t *c)
         xmlFree(c->adminroot_dir);
     if (c->pidfile)
         xmlFree(c->pidfile);
+    if (c->playlist_log && c->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) 
+        xmlFree(c->playlist_log);
     if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
+    if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT) 
+        xmlFree(c->shoutcast_mount);
     for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
     }
@@ -324,6 +330,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
     configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
+    configuration->shoutcast_mount = CONFIG_DEFAULT_SHOUTCAST_MOUNT;
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
@@ -345,6 +352,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
     configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
     configuration->adminroot_dir = CONFIG_DEFAULT_ADMINROOT_DIR;
+    configuration->playlist_log = CONFIG_DEFAULT_PLAYLIST_LOG;
     configuration->access_log = CONFIG_DEFAULT_ACCESS_LOG;
     configuration->error_log = CONFIG_DEFAULT_ERROR_LOG;
     configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
@@ -439,6 +447,11 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_relay_auth = atoi(tmp);
             xmlFree (tmp);
+        } else if (strcmp(node->name, "shoutcast-mount") == 0) {
+            if (configuration->shoutcast_mount &&
+                    configuration->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
+                xmlFree(configuration->shoutcast_mount);
+            configuration->shoutcast_mount = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "limits") == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "relay") == 0) {
@@ -919,6 +932,9 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "errorlog") == 0) {
             if (configuration->error_log && configuration->error_log != CONFIG_DEFAULT_ERROR_LOG) xmlFree(configuration->error_log);
             configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "playlistlog") == 0) {
+            if (configuration->playlist_log && configuration->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) xmlFree(configuration->playlist_log);
+            configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "loglevel") == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = atoi(tmp);

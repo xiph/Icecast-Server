@@ -64,6 +64,10 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_MP3; 
     else if(strcmp(contenttype, "video/nsv") == 0)
         return FORMAT_TYPE_NSV;
+    else if(strcmp(contenttype, "audio/aac") == 0)
+        return FORMAT_TYPE_AAC; 
+    else if(strcmp(contenttype, "audio/aacp") == 0)
+        return FORMAT_TYPE_AACPLUS; 
     else
         return FORMAT_ERROR;
 }
@@ -80,6 +84,12 @@ const char *format_get_mimetype(format_type_t type)
         case FORMAT_TYPE_NSV:
             return "video/nsv";
             break;
+        case FORMAT_TYPE_AAC:
+            return "audio/aac";
+            break;
+        case FORMAT_TYPE_AACPLUS:
+            return "audio/aacp";
+            break;
         default:
             return NULL;
     }
@@ -91,19 +101,29 @@ int format_get_plugin(format_type_t type, source_t *source)
 
     switch (type)
     {
-    case FORMAT_TYPE_OGG:
-        ret = format_ogg_get_plugin (source);
-        break;
-    case FORMAT_TYPE_MP3:
-        ret = format_mp3_get_plugin (source);
-        break;
-     case FORMAT_TYPE_NSV:
-        ret = format_mp3_get_plugin (source);
-        source->format->format_description = "NSV Video";
-        source->format->type = FORMAT_TYPE_NSV;
-        break;
-    default:
-        break;
+        case FORMAT_TYPE_OGG:
+            ret = format_ogg_get_plugin (source);
+            break;
+        case FORMAT_TYPE_MP3:
+            ret = format_mp3_get_plugin (source);
+            break;
+        case FORMAT_TYPE_NSV:
+            ret = format_mp3_get_plugin (source);
+            source->format->format_description = "NSV Video";
+            source->format->type = FORMAT_TYPE_NSV;
+            break;
+        case FORMAT_TYPE_AAC:
+            ret = format_mp3_get_plugin (source);
+            source->format->format_description = "AAC Audio";
+            source->format->type = FORMAT_TYPE_AAC;
+            break;
+        case FORMAT_TYPE_AACPLUS:
+            ret = format_mp3_get_plugin (source);
+            source->format->format_description = "AACPlus Audio";
+            source->format->type = FORMAT_TYPE_AACPLUS;
+            break;
+        default:
+            break;
     }
     stats_event (source->mount, "content-type", 
             format_get_mimetype(source->format->type));

@@ -164,6 +164,7 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;/listen-socket&gt;
 
     &lt;fileserve&gt;1&lt;/fileserve&gt;
+    &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
 </pre>
 <p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the hostname parameter will be used to specify the address that will be bound.
 </p>
@@ -182,6 +183,12 @@ This optional flag will indicate that this port will operate in 'shoutcast-compa
 <h4>fileserve</h4>
 <div class="indentedbox">
 This flag turns on the icecast2 fileserver from which static files can be served.  All files are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration setting.
+</div>
+<h4>shoutcast-mount</h4>
+<div class="indentedbox">
+An optional mountpoint to use when shoutcast DSP compatible clients connect. The default is /stream but can
+be overridden here to use an alternative name which may include an extension that some clients require for
+certain formats.
 </div>
 <p>
 <br />
@@ -471,6 +478,7 @@ Aliases are used to provide a way to create multiple mountpoints that refer to t
     &lt;logging&gt;
         &lt;accesslog&gt;access.log&lt;/accesslog&gt;
         &lt;errorlog&gt;error.log&lt;/errorlog&gt;
+        &lt;playlistlog&gt;playlist.log&lt;/playlistlog&gt;
       	&lt;loglevel&gt;4&lt;/loglevel&gt; &lt;-- 4 Debug, 3 Info, 2 Warn, 1 Error --&gt;
     &lt;/logging&gt;
 </pre>
@@ -485,6 +493,10 @@ Into this file, all requests made to the icecast2 will be logged.  This file is 
 <h4>errorlog</h4>
 <div class="indentedbox">
 All icecast generated log messages will be written to this file.  If the loglevel is set too high (Debug for instance) then this file can grow fairly large over time.  Currently, there is no log-rotation implemented.
+</div>
+<h4>playlistlog</h4>
+<div class="indentedbox">
+Into this file, a log of all metadata for each mountpoint will be written.  The format of the logfile will most likely change over time as we narrow in on a standard format for this.  Currently, the file is pipe delimited.  This option is optional and can be removed entirely from the config file.
 </div>
 <h4>loglevel</h4>
 <div class="indentedbox">

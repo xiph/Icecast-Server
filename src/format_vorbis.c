@@ -410,23 +410,56 @@ static int process_vorbis_headers (source_t *source)
 
 static void update_stats (source_t *source, vorbis_comment *vc)
 {
-    char *tag;
-    /* put known comments in the stats, this could be site specific */
-    tag = vorbis_comment_query (vc, "TITLE", 0);
-    if (tag == NULL)
-        tag = "unknown";
-    else
-        INFO1 ("title set to \"%s\"", tag);
-    stats_event (source->mount, "title", tag);
+    char *artist;
+    char *title;
+    char *metadata = NULL;
+    unsigned int len = 1;
 
-    tag = vorbis_comment_query (vc, "ARTIST", 0);
-    if (tag)
+    /* put known comments in the stats, this could be site specific */
+    title = vorbis_comment_query (vc, "TITLE", 0);
+    if (title)
     {
-        INFO1 ("artist set to \"%s\"", tag);
-        stats_event (source->mount, "artist", tag);
+        INFO1 ("title set to \"%s\"", title);
+        len += strlen (title);
+    }
+    stats_event (source->mount, "title", title);
+
+    artist = vorbis_comment_query (vc, "ARTIST", 0);
+    if (artist)
+    {
+        INFO1 ("artist set to \"%s\"", artist);
+        len += strlen (artist);
+    }
+    stats_event (source->mount, "artist", artist);
+    if (artist)
+    {
+        if (title)
+        {
+            len += strlen(artist) + strlen(title) + 3;
+            metadata = calloc (1, len);
+            snprintf (metadata, len, "%s - %s", artist, title);
+        }
+        else
+        {
+            len += strlen(artist);
+            metadata = calloc (1, len);
+            snprintf (metadata, len, "%s", artist);
+        }
     }
     else
-        stats_event (source->mount, "artist", NULL);
+    {
+        if (title)
+        {
+            len += strlen (title);
+            metadata = calloc (1, len);
+            snprintf (metadata, len, "%s", title);
+        }
+    }
+    if (metadata)
+    {
+        logging_playlist (source->mount, metadata, source->listeners);
+        free (metadata);
+    }
 }
 
 

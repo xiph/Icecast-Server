@@ -52,7 +52,7 @@ int connection_complete_source (struct source_tag *source);
 
 void connection_inject_event(int eventnum, void *event_data);
 
-int connection_check_source_pass(http_parser_t *parser, char *mount);
+int connection_check_source_pass(http_parser_t *parser, const char *mount);
 int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 
