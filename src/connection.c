@@ -753,6 +753,7 @@ static void _handle_get_request(connection_t *con,
     aliases *alias;
     ice_config_t *config;
     int client_limit;
+    int ret;
 
     config = config_get_config();
     fileserve = config->fileserve;
@@ -916,11 +917,20 @@ static void _handle_get_request(connection_t *con,
 
         /* Check for any required authentication first */
         if(source->authenticator != NULL) {
-            if(auth_check_client(source, client) != AUTH_OK) {
+            ret = auth_check_client(source, client);
+            if(ret != AUTH_OK) {
                 avl_tree_unlock(global.source_tree);
-                INFO1("Client attempted to log in to source (\"%s\")with "
+                if (ret == AUTH_FORBIDDEN) {
+                    INFO1("Client attempted to log multiple times to source "
+                        "(\"%s\")", uri);
+                    client_send_403(client);
+                }
+                else {
+                /* If not FORBIDDEN, default to 401 */
+                    INFO1("Client attempted to log in to source (\"%s\")with "
                         "incorrect or missing password", uri);
-                client_send_401(client);
+                    client_send_401(client);
+                }
                 return;
             }
         }

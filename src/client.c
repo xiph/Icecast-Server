@@ -115,3 +115,13 @@ void client_send_401(client_t *client) {
     client->respcode = 401;
     client_destroy(client);
 }
+
+void client_send_403(client_t *client) {
+    int bytes = sock_write(client->con->sock, 
+            "HTTP/1.0 403 Forbidden\r\n"
+            "\r\n"
+            "Access restricted.\r\n");
+    if(bytes > 0) client->con->sent_bytes = bytes;
+    client->respcode = 403;
+    client_destroy(client);
+}

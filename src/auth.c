@@ -34,6 +34,30 @@
 #define CATMODULE "auth"
 
 
+int auth_is_listener_connected(source_t *source, char *username)
+{
+    client_t *client;
+    avl_node *client_node;
+
+    avl_tree_rlock(source->client_tree);
+
+    client_node = avl_get_first(source->client_tree);
+    while(client_node) {
+        client = (client_t *)client_node->key;
+        if (client->username) {
+            if (!strcmp(client->username, username)) {
+                avl_tree_unlock(source->client_tree);
+                return 1;
+            }
+        }
+        client_node = avl_get_next(client_node);
+    }
+
+    avl_tree_unlock(source->client_tree);
+    return 0;
+
+}
+
 auth_result auth_check_client(source_t *source, client_t *client)
 {
     auth_t *authenticator = source->authenticator;
@@ -71,7 +95,7 @@ auth_result auth_check_client(source_t *source, client_t *client)
         password = tmp+1;
 
         result = authenticator->authenticate(
-                authenticator, username, password);
+                authenticator, source, username, password);
 
         if(result == AUTH_OK)
             client->username = strdup(username);
@@ -106,6 +130,7 @@ auth_t *auth_get_authenticator(char *type, config_options_t *options)
 
 typedef struct {
     char *filename;
+    int allow_duplicate_users;
     rwlock_t file_rwlock;
 } htpasswd_auth_state;
 
@@ -150,14 +175,21 @@ static char *get_hash(char *data, int len)
 #define MAX_LINE_LEN 512
 
 /* Not efficient; opens and scans the entire file for every request */
-static auth_result htpasswd_auth(auth_t *auth, char *username, char *password)
+static auth_result htpasswd_auth(auth_t *auth, source_t *source, char *username, char *password)
 {
     htpasswd_auth_state *state = auth->state;
-    FILE *passwdfile = fopen(state->filename, "rb");
+    FILE *passwdfile = NULL;
     char line[MAX_LINE_LEN];
     char *sep;
 
     thread_rwlock_rlock(&state->file_rwlock);
+    if (!state->allow_duplicate_users) {
+        if (auth_is_listener_connected(source, username)) {
+            thread_rwlock_unlock(&state->file_rwlock);
+            return AUTH_FORBIDDEN;
+        }
+    }
+    passwdfile = fopen(state->filename, "rb");
     if(passwdfile == NULL) {
         WARN2("Failed to open authentication database \"%s\": %s", 
                 state->filename, strerror(errno));
@@ -208,9 +240,12 @@ static auth_t *auth_get_htpasswd_auth(config_options_t *options)
 
     state = calloc(1, sizeof(htpasswd_auth_state));
 
+    state->allow_duplicate_users = 1;
     while(options) {
         if(!strcmp(options->name, "filename"))
             state->filename = strdup(options->value);
+        if(!strcmp(options->name, "allow_duplicate_users"))
+            state->allow_duplicate_users = atoi(options->value);
         options = options->next;
     }
 
@@ -458,3 +493,4 @@ int auth_get_userlist(source_t *source, xmlNodePtr srcnode)
     }
     return ret;
 }
+

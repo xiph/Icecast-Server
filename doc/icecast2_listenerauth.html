@@ -20,10 +20,11 @@
         &lt;mount-name&gt;/example-complex.ogg&lt;/mount-name&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
+                &lt;option name="allow_duplicate_users" value="0"/&gt;
         &lt;/authentication&gt;
     &lt;/mount&gt;
 </pre>
-<p>To support listener authentication you MUST provide at a minimum &lt;mount-name&gt; and &lt;authentication&gt;.  The mount-name is the name of the mountpoint that you will use to connect your source client with and authentication configures what type of icecast2 authenticator to use.  Currently, only a single type "htpasswd" is implemented.  New authenticators will be added later.  Each authenticator has a variable number of options that are required and these are specified as shown in the example.  The htpasswd authenticator requires only a single parameter, filename, which specifies the name of the file to use to store users and passwords.  Note that this file need not exist (and probably will not exist when you first set it up).  Icecast has built-in support for managing users and passwords via the web admin interface.  More on this later in this section.</p>
+<p>To support listener authentication you MUST provide at a minimum &lt;mount-name&gt; and &lt;authentication&gt;.  The mount-name is the name of the mountpoint that you will use to connect your source client with and authentication configures what type of icecast2 authenticator to use.  Currently, only a single type "htpasswd" is implemented.  New authenticators will be added later.  Each authenticator has a variable number of options that are required and these are specified as shown in the example.  The htpasswd authenticator requires a few parameters.  The first, filename, specifies the name of the file to use to store users and passwords.  Note that this file need not exist (and probably will not exist when you first set it up).  Icecast has built-in support for managing users and passwords via the web admin interface.  More on this later in this section.  The second option, allow_duplicate_users, if set to 0, will prevent multiple connections using the same username.  Setting this value to 1 will enable mutltiple connections from the same username on a given mountpoint.  Note there is no way to specify a "max connections" for a particular user.
 
 <p>Icecast supports a mixture of streams that require listener authentication and those that do not.  Only mounts that are named in the config file can be configured for listener authentication.</p>
 <br>

@@ -86,6 +86,7 @@
         <fallback-mount>/example2.ogg</fallback-mount>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
+                <option name="allow_duplicate_users" value="0"/>
         </authentication>
     </mount>
     -->

@@ -24,6 +24,7 @@ typedef enum
 {
     AUTH_OK,
     AUTH_FAILED,
+    AUTH_FORBIDDEN,
     AUTH_USERADDED,
     AUTH_USEREXISTS,
     AUTH_USERDELETED,
@@ -33,7 +34,7 @@ typedef struct auth_tag
 {
     /* Authenticate using the given username and password */
     auth_result (*authenticate)(struct auth_tag *self, 
-            char *username, char *password);
+            source_t *source, char *username, char *password);
     void (*free)(struct auth_tag *self);
     void *state;
     void *type;
