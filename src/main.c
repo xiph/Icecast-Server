@@ -42,6 +42,15 @@
 #undef CATMODULE
 #define CATMODULE "main"
 
+static void _fatal_error(char *perr)
+{
+#ifdef WIN32
+    MessageBox(NULL, perr, "Error", MB_OK);
+#else
+    fprintf(stdout, "%s\n", perr);
+#endif
+}
+
 static void _print_usage()
 {
     printf("Usage:\n");
@@ -132,6 +141,8 @@ static int _start_logging(void)
 {
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
+    char pbuf[1024];
+
     ice_config_t *config = config_get_config_unlocked();
 
     if(strcmp(config->error_log, "-")) {
@@ -150,11 +161,14 @@ static int _start_logging(void)
     log_set_level(errorlog, config->loglevel);
     log_set_level(accesslog, 4);
 
-    if (errorlog < 0)
-        fprintf(stderr, "FATAL: could not open %s for error logging\n", fn_error);
-    if (accesslog < 0)
-        fprintf(stderr, "FATAL: could not open %s for access logging\n", fn_access);
-
+    if (errorlog < 0) {
+        _fatal_error("FATAL: could not open error logging");
+    }
+    if (accesslog < 0) {
+        memset(pbuf, '\000', sizeof(pbuf));
+        snprintf(pbuf, sizeof(pbuf)-1, "FATAL: could not open access logging");
+        _fatal_error(pbuf);
+    }
     if (errorlog >= 0 && accesslog >= 0) return 1;
     
     return 0;
@@ -166,6 +180,7 @@ static int _setup_sockets(void)
     int i = 0;
     int ret = 0;
     int successful = 0;
+    char pbuf[1024];
 
     config = config_get_config_unlocked();
 
@@ -177,8 +192,11 @@ static int _setup_sockets(void)
                 config->listeners[i].port, config->listeners[i].bind_address);
 
         if (global.serversock[i] == SOCK_ERROR) {
-            fprintf(stderr, "Could not create listener socket on port %d\n", 
-                    config->listeners[i].port);
+            memset(pbuf, '\000', sizeof(pbuf));
+            snprintf(pbuf, sizeof(pbuf)-1, 
+                "Could not create listener socket on port %d", 
+                config->listeners[i].port);
+            _fatal_error(pbuf);
             return 0;
         }
         else {
@@ -212,7 +230,7 @@ static int _server_proc_init(void)
         return 0;
 
     if (!_start_listening()) {
-        fprintf(stderr, "Failed trying to listen on server socket\n");
+        _fatal_error("Failed trying to listen on server socket");
         return 0;
     }
 
@@ -311,6 +329,7 @@ int main(int argc, char **argv)
 {
     int res, ret;
     char filename[512];
+    char pbuf[1024];
 
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
@@ -325,19 +344,22 @@ int main(int argc, char **argv)
         ret = config_initial_parse_file(filename);
         config_release_config();
         if (ret < 0) {
-            fprintf(stderr, "FATAL: error parsing config file:");
+            memset(pbuf, '\000', sizeof(pbuf));
+            snprintf(pbuf, sizeof(pbuf)-1, 
+                "FATAL: error parsing config file (%s)", filename);
+            _fatal_error(pbuf);
             switch (ret) {
             case CONFIG_EINSANE:
-                fprintf(stderr, "filename was null or blank\n");
+                _fatal_error("filename was null of blank");
                 break;
             case CONFIG_ENOROOT:
-                fprintf(stderr, "no root element found\n");
+                _fatal_error("no root element found");
                 break;
             case CONFIG_EBADROOT:
-                fprintf(stderr, "root element is not <icecast>\n");
+                _fatal_error("root element is not <icecast>");
                 break;
             default:
-                fprintf(stderr, "parse error\n");
+                _fatal_error("XML config parsing error");
                 break;
             }
             _shutdown_subsystems();
@@ -353,7 +375,7 @@ int main(int argc, char **argv)
 
     /* Bind socket, before we change userid */
     if(!_server_proc_init()) {
-        fprintf(stderr, "Server startup failed. Exiting.\n");
+        _fatal_error("Server startup failed. Exiting");
         _shutdown_subsystems();
         return 1;
     }
@@ -379,7 +401,7 @@ int main(int argc, char **argv)
     sighandler_initialize();
 
     if (!_start_logging()) {
-        fprintf(stderr, "FATAL: Could not start logging\n");
+        _fatal_error("FATAL: Could not start logging");
         _shutdown_subsystems();
         return 1;
     }

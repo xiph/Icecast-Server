@@ -831,7 +831,7 @@ static void _add_yp_info(source_t *source, char *stat_name,
                     source->ypdata[i]->current_song = 
                         malloc(strlen((char *)escaped) +1);
                     strcpy(source->ypdata[i]->current_song, (char *)escaped);
-                    stats_event(source->mount, stat_name, (char *)info);
+                    stats_event(source->mount, "yp_currently_playing", (char *)info);
                     free(escaped);
                 }
                 break;
