@@ -366,9 +366,17 @@ int auth_htpasswd_deleteuser(auth_t *auth, char *username)
     fclose(passwdfile);
 
     /* Now move the contents of the tmp file to the original */
-    if (rename(tmpfile, state->filename) != 0) {
+    /* Windows won't let us rename a file if the destination file
+       exists...so, lets remove the original first */
+    if (remove(state->filename) != 0) {
         ERROR3("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
                 tmpfile, state->filename, strerror(errno));
+    }
+    else {
+        if (rename(tmpfile, state->filename) != 0) {
+            ERROR3("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
+                tmpfile, state->filename, strerror(errno));
+	}
     }
 
     free(tmpfile);
