@@ -25,7 +25,7 @@ AC_ARG_ENABLE(shouttest, [  --disable-shouttest       Do not try to compile and 
   SHOUT_LIBS="$SHOUT_LIBS -lshout"
 
   case $host in
-  sparc-sun-*)
+  *-*-solaris*)
   	SHOUT_LIBS="$SHOUT_LIBS -lnsl -lsocket -lresolv"
   esac
 
