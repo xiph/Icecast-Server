@@ -57,6 +57,7 @@ typedef struct _mount_proxy {
     int burst_size; /* amount to send to a new client if possible, -1 take
                      * from global setting */
     unsigned int queue_size_limit;
+    int no_yp; /* Do we prevent YP on this mount */
     unsigned int source_timeout;  /* source timeout in seconds */
 
     char *auth_type; /* Authentication type */

@@ -242,6 +242,7 @@ void source_clear_source (source_t *source)
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
+    source->yp_prevent = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
@@ -498,6 +499,9 @@ static void source_init (source_t *source)
 
     do
     {
+        str = "0";
+        if (source->yp_prevent)
+            break;
         if ((str = httpp_getvar(source->parser, "ice-public")))
             break;
         if ((str = httpp_getvar(source->parser, "icy-pub")))
@@ -877,6 +881,12 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->timeout = mountinfo->source_timeout;
         DEBUG1 ("source timeout to %u", source->timeout);
     }
+    if (mountinfo->no_yp)
+    {
+        source->yp_prevent = 1;
+        DEBUG0 ("preventing YP listings");
+    }
+
     if (mountinfo->burst_size > -1)
         source->burst_size = mountinfo->burst_size;
     DEBUG1 ("amount to burst on client connect set to %u", source->burst_size);

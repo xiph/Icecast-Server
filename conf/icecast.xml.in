@@ -91,6 +91,7 @@
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
         <fallback-override>1</fallback-override>
+        <no-yp>1</no-yp>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
                 <option name="allow_duplicate_users" value="0"/>

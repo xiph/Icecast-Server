@@ -320,6 +320,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
+        &lt;no-yp&gt;1&lt;/no-yp&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
@@ -366,6 +367,12 @@ This multi-level fallback allows clients to cascade several mountpoints.
 <div class="indentedbox">
 When enabled, this allows a connecting source client or relay on this mountpoint to move
 listening clients back from the fallback mount.
+</div>
+<h4>no-yp</h4>
+<div class="indentedbox">
+Setting this option prevents this mountpoint from advertising on YP.  The default is 0 so YP
+advertising occurs however you may want to prevent it here if you intend listeners to connect
+to a local relay instead
 </div>
 <h4>burst-size</h4>
 <div class="indentedbox">
