@@ -70,5 +70,9 @@ void timing_sleep(uint64_t sleeptime)
      * says so.  The solaris manpage also says this is a legal
      * value.  If you think differerntly, please provide references.
      */
-    select(0, NULL, NULL, NULL, &sleeper);
+#ifdef WIN32
+	Sleep(sleeptime);
+#else
+    select(1, NULL, NULL, NULL, &sleeper);
+#endif
 }
