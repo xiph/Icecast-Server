@@ -1,10 +1,8 @@
 2.0 CRITICAL - These are the things without which 2.0 cannot be released
 ____________
 
-- make install doesn't install everything. Needs to set up config file to point
-  at appropriate places, install web directory somewhere, put config file
-  somewhere. Should icecast automatically (i.e. without needing -c) look for
-  the config file in /etc/icecast.xml or something?
+- Should icecast automatically (i.e. without needing -c) look for the config
+  file in /etc/icecast.xml or something?
 
 - libshout 2.0 and ices 2.0 releases, also an ices 0.x release that works with
   this. Without source clients, icecast isn't much use...
@@ -15,17 +13,17 @@ ____________
   libraries (this is probably more of an issue with ices2, but it also affects
   icecast)
 
-
-
 BUGS
 ----
 - stats get off?  this needs testing more testing.
 
 - some stuff (like 'genre') isn't making it into the stats dump
 
-- make install - doesn't install configs?
-
 - logging - bytes send and time listening may both be broken?
+
+- slave servers don't work. relay user is not respected by the source (only
+  admin can read /admin/streamlist), and the slave can't parse the xml result
+  of streamlist anyway (it expects a simple mountpoint per line)
 
 FEATURES
 --------
