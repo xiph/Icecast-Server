@@ -24,6 +24,8 @@
 
 #include <pthread.h>
 
+#define THREAD_DEFAULT_STACKSIZE 8192
+
 typedef struct thread_tag {
 	/* the local id for the thread, and it's name */
 	long thread_id;
@@ -78,7 +80,7 @@ typedef struct rwlock_tag {
 	pthread_rwlock_t sys_rwlock;
 } rwlock_t;
 
-#define thread_create(n,x,y,z) thread_create_c(n,x,y,z,__LINE__,__FILE__)
+#define thread_create(n,w,x,y,z) thread_create_c(n,w,x,y,z,__LINE__,__FILE__)
 #define thread_mutex_create(x) thread_mutex_create_c(x,__LINE__,__FILE__)
 #define thread_mutex_lock(x) thread_mutex_lock_c(x,__LINE__,__FILE__)
 #define thread_mutex_unlock(x) thread_mutex_unlock_c(x,__LINE__,__FILE__)

@@ -56,9 +56,6 @@
 #define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2)
 #define LOG_DEBUG5(y, z1, z2, z3, z4, z5) log_write(_logid, 4, CATMODULE "/" __FUNCTION__, y, z1, z2, z3, z4, z5)
 
-/* INTERNAL DATA */
-#define STACKSIZE 8192
-
 /* thread starting structure */
 typedef struct thread_start_tag {
 	/* the real start routine and arg */
@@ -223,7 +220,7 @@ static void _catch_signals(void)
 }
 
 
-long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file)
+long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int stacksize, int detached, int line, char *file)
 {
 	pthread_attr_t attr;
 	int created;
@@ -248,7 +245,7 @@ long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int 
 	start->detached = detached;
 
 	pthread_attr_init(&attr);
-	pthread_attr_setstacksize(&attr, STACKSIZE);
+	pthread_attr_setstacksize(&attr, stacksize);
 
 	created = 0;
 	if (pthread_create(&thread->sys_thread, &attr, _start_routine, start) == 0)
