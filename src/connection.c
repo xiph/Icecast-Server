@@ -125,10 +125,10 @@ static connection_t *_accept_connection(void)
 		return NULL;
 	}
 
-	/* malloc enough room for 123.123.123.123\0 (TODO: ipv6?)*/
-	ip = (char *)malloc(16);
+	/* malloc enough room for a full IP address (including ipv6) */
+	ip = (char *)malloc(40);
 
-	sock = sock_accept(global.serversock, ip, 16);
+	sock = sock_accept(global.serversock, ip, 40);
 	if (sock >= 0) {
 		con = create_connection(sock, ip);
 
