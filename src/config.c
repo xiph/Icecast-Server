@@ -74,6 +74,8 @@ void config_shutdown(void)
         xmlFree(c->base_dir);
 	if (c->log_dir && c->log_dir != CONFIG_DEFAULT_LOG_DIR) 
         xmlFree(c->log_dir);
+    if (c->webroot_dir && s->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR)
+        xmlFree(c->webroot_dir);
 	if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
 	if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
@@ -160,6 +162,7 @@ static void _set_defaults(void)
     _configuration.master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
 	_configuration.base_dir = CONFIG_DEFAULT_BASE_DIR;
 	_configuration.log_dir = CONFIG_DEFAULT_LOG_DIR;
+    _configuration.webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
 	_configuration.access_log = CONFIG_DEFAULT_ACCESS_LOG;
 	_configuration.error_log = CONFIG_DEFAULT_ERROR_LOG;
 	_configuration.loglevel = CONFIG_DEFAULT_LOG_LEVEL;
