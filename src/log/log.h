@@ -9,6 +9,11 @@
 #define LOG_ENOTOPEN -4
 #define LOG_ENOTIMPL -5
 
+#ifdef _WIN32
+#define IO_BUFFER_TYPE _IONBF
+#else
+#define IO_BUFFER_TYPE _IOLBF
+#endif
 
 void log_initialize();
 int log_open_file(FILE *file);

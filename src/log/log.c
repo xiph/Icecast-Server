@@ -103,7 +103,7 @@ int log_open(const char *filename)
     ret = log_open_file(file);
 
 	if(ret >= 0)
-        setvbuf(file, NULL, _IOLBF, 0);
+        setvbuf(file, NULL, IO_BUFFER_TYPE, 0);
 
     return ret;
 }
