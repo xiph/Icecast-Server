@@ -129,6 +129,7 @@ ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count);
 /* Socket read functions */
 int sock_read_bytes(sock_t sock, char *buff, size_t len);
 int sock_read_line(sock_t sock, char *string, const int len);
+int sock_read_pending(sock_t sock, unsigned timeout);
 
 /* server socket functions */
 sock_t sock_get_server_socket(const int port, char *sinterface);
