@@ -152,10 +152,8 @@ source_t *source_find_mount (const char *mount)
         }
 
         source = source_find_mount_raw(mount);
-        if (source == NULL)
-            break; /* fallback to missing mountpoint */
 
-        if (source->running)
+        if (source != NULL && source->running)
             break;
 
         /* source is not running, meaning that the fallback is not configured
@@ -737,7 +735,8 @@ void source_main (source_t *source)
                     }
                     thread_mutex_unlock(&source->queue_mutex);
                     client->burst_sent = 1;
-                    DEBUG1("Added %d buffers to initial client queue", refbuf_queue_length(&(source->queue)));
+                    DEBUG1("Added %d buffers to initial client queue", 
+                            refbuf_queue_length(&(source->queue)));
                 }
             }
 
