@@ -43,7 +43,7 @@ struct iovec
 #endif
 #endif
 
-#ifdef HAVE_INET_PTON
+#if !defined(HAVE_INET_ATON) && defined(HAVE_INET_PTON)
 #define inet_aton(a,b) inet_pton(AF_INET, (a), (b))
 #endif
 
