@@ -488,7 +488,6 @@ static ypdata_t *create_yp_entry (source_t *source)
         yp->server_desc = strdup ("");
         yp->server_genre = strdup ("");
         yp->bitrate = strdup ("");
-        yp->server_desc = strdup ("");
         yp->server_type = strdup ("");
         yp->cluster_password = strdup ("");
         yp->url = strdup ("");
