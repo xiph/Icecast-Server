@@ -1,8 +1,9 @@
-dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/main.c)
 AC_PREREQ(2.50)
+dnl Process this file with autoconf to produce a configure script.
 
 AM_INIT_AUTOMAKE(icecast,2.0-alpha-2)
+AM_CONFIG_HEADER(config.h)
 
 AC_PROG_CC
 AC_CANONICAL_HOST
@@ -10,182 +11,103 @@ AM_PROG_LIBTOOL
 
 dnl Set some options based on environment
 
-SOCKET_LIBS=
-
-case "$ac_cv_host" in
+case "$host" in
     *openbsd*)
     ;;
-    *) AC_DEFINE(_XOPEN_SOURCE, 500, [Define if you have POSIX and XPG specifications])
+    *) AC_DEFINE(_XOPEN_SOURCE, 600, [Define if you have POSIX and XPG specifications])
     ;;
 esac
 if test -z "$GCC"; then
-        case $host in 
+    case $host in 
         *-*-irix*)
                 DEBUG="-g -signed -D_REENTRANT" 
-                CFLAGS="-O2 -w -signed -D_REENTRANT"
+                XIPH_CFLAGS="-O2 -w -signed -D_REENTRANT"
                 PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
-		;;
+                ;;
         *-*-solaris*)
                 DEBUG="-v -g -D_REENTRANT"
-                CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
+                XIPH_CFLAGS="-xO4 -fast -w -fsimple -native -xcg92 -D_REENTRANT"
                 PROFILE="-v -xpg -g -xO4 -fast -native -fsimple -xcg92 -Dsuncc -D_REENTRANT"
-                SOCKET_LIBS="-lnsl -lsocket -lresolv"
-		;;
+                ;;
         *)
                 DEBUG="-g -D_REENTRANT"
-                CFLAGS="-O -D_REENTRANT"
+                XIPH_CFLAGS="-O -D_REENTRANT"
                 PROFILE="-g -p -D_REENTRANT"
-		;;
-        esac
+                ;;
+    esac
 else
-        case $host in 
+    case $host in 
         *-*-linux*)
-                DEBUG="-g -Wall -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
-                CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
-                PROFILE="-Wall -W -pg -g -O20 -ffast-math -fsigned-char -D_REENTRANT -D_GNU_SOURCE"
-		;;
+                DEBUG="-g -Wall -fsigned-char -D_GNU_SOURCE"
+                XIPH_CPPFLAGS="-ffast-math -fsigned-char -D_GNU_SOURCE"
+                PROFILE="-Wall -W -pg -g -ffast-math -fsigned-char -D_GNU_SOURCE"
+                ;;
         sparc-sun-solaris*)
-                DEBUG="-g -Wall -fsigned-char -mv8 -D_REENTRANT"
-                CFLAGS="-O20 -ffast-math -fsigned-char -mv8 -D_REENTRANT"
-                PROFILE="-pg -g -O20 -fsigned-char -mv8 -D_REENTRANT" 
-                SOCKET_LIBS="-lnsl -lsocket -lresolv"
-		;;
-	    *-pc-solaris*)
-                DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
-                CFLAGS="-O20 -ffast-math -fsigned-char -D_REENTRANT"
-                PROFILE="-pg -g -O20 -fsigned-char -D_REENTRANT" 
-                SOCKET_LIBS="-lnsl -lsocket -lresolv"
-		;;
+                AC_DEFINE(__EXTENSIONS__, 1, [define to 1 to get resolve header problem on solaris])
+                DEBUG="-g -Wall -fsigned-char -mv8"
+                XIPH_CPPFLAGS="-ffast-math -fsigned-char -mv8"
+                PROFILE="-pg -g -fsigned-char -mv8" 
+                ;;
+        *-pc-solaris*)
+                DEBUG="-g -Wall -fsigned-char"
+                XIPH_CPPFLAGS="-ffast-math -fsigned-char"
+                PROFILE="-pg -g -fsigned-char" 
+                ;;
         *freebsd*)
                 DEBUG="-g -Wall -fsigned-char"
-                CFLAGS="-O20 -fsigned-char"
-                PROFILE="-O20 -g -pg -fsigned-char" 
-                ogg_prefix="/usr/local"
-                vorbis_prefix="/usr/local"
-		;;
+                XIPH_CPPFLAGS="-fsigned-char"
+                PROFILE="-g -pg -fsigned-char" 
+                ;;
         *)
                 DEBUG="-g -Wall -fsigned-char"
-                CFLAGS="-O20 -Wall -fsigned-char"
-                PROFILE="-O20 -g -pg -Wall -fsigned-char" 
-		;;
-        esac
+                XIPH_CPPFLAGS="-Wall -fsigned-char"
+                PROFILE="-g -pg -Wall -fsigned-char" 
+                ;;
+    esac
 fi
 
 dnl Checks for programs.
 
 dnl Checks for libraries.
 
-dnl IPV6
-AC_SEARCH_LIBS(inet_pton, socket, 
-  [AC_DEFINE([HAVE_INET_PTON], 1, [Define if you have the `inet_pton' function])])
-AC_SEARCH_LIBS(getipnodebyname, nsl,
-  [AC_DEFINE([HAVE_GETIPNODEBYNAME], 1,
-    [Define if you have the `getipnodebyname' function])])
-
 dnl Checks for header files.
 AC_HEADER_STDC
 
-AC_CHECK_HEADER(stdint.h, AC_DEFINE(HAVE_STDINT_H, 1, [Define if you have stdint.h]),,)
 AC_CHECK_HEADER(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
 AC_CHECK_HEADER(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
-AC_CHECK_HEADER(sys/uio.h, AC_DEFINE(HAVE_SYS_UIO_H, 1, [Define if you have sys/uio.h]),,)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_MSG_CHECKING([how to copy va_list])
-    AC_TRY_LINK([#include <stdarg.h>], [va_list ap1, ap2; va_copy(ap1, ap2);],
-            AC_MSG_RESULT([va_copy]),
-            [ AH_TEMPLATE([va_copy], [define if va_copy is not available])
-            AC_TRY_LINK([#include <stdarg.h>], [va_list ap1, ap2; __va_copy(ap1, ap2);],
-                [ AC_DEFINE([va_copy], [__va_copy])
-                AC_MSG_RESULT([__va_copy])],
-                [ AC_DEFINE([va_copy(dest,src)], [memcpy(&dest,&src,sizeof(va_list))])
-                AC_MSG_RESULT([memcpy])]
-                )
-            ])
 
 dnl Check for types
-AC_CHECK_TYPE([socklen_t], int)
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(nanosleep)
-AC_CHECK_FUNCS(poll)
-AC_CHECK_FUNCS(sethostent endhostent)
-AC_CHECK_FUNCS(getnameinfo getaddrinfo inet_aton)
+AC_CHECK_FUNCS(nanosleep poll)
+XIPH_NET
 
 dnl -- configure options --
 
-AC_ARG_WITH(xslt-config,
-  [  --with-xslt-config=PATH  use xslt-config in PATH to find libxslt ],
-  [if ! test -x "$with_xslt_config"
-   then
-     AC_MSG_ERROR([$with_xslt_config cannot be executed])
-   fi
-   XSLTCONFIG="$with_xslt_config"]
-)
-if test -z "$XSLTCONFIG"
-then
-  AC_CHECK_PROGS(XSLTCONFIG, [xslt-config])
-fi
-if test -n "$XSLTCONFIG"
-then
-  XSLT_LIBS="`$XSLTCONFIG --libs`"
-  XSLT_CFLAGS="`$XSLTCONFIG --cflags`"
-  save_LIBS="$LIBS"
-  save_CFLAGS="$CFLAGS"
-  LIBS="$LIBS $XSLT_LIBS"
-  CFLAGS="$CFLAGS $XSLT_CFLAGS"
-  AC_CHECK_FUNC(xsltParseStylesheetFile,, [AC_MSG_ERROR([There was a problem linking with libxslt])])
-  LIBS="$save_LIBS"
-  CFLAGS="$save_CFLAGS"
-  save_LIBS=
-  save_CFLAGS=
-else
-  AC_MSG_ERROR([xslt-config could not be found])
-fi
+XIPH_PATH_XSLT
+XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$XSLT_CFLAGS])
+XIPH_VAR_PREPEND([XIPH_LIBS],[$XSLT_LIBS])
 
-AC_ARG_WITH(xml-config,
-  [  --with-xml-config=PATH  use xml-config in PATH to find libxml ],
-  [if ! test -x "$with_xml_config"
-   then
-     AC_MSG_ERROR([$with_xml_config cannot be executed])
-   fi
-   XMLCONFIG="$with_xml_config"]
-)
-if test -z "$XMLCONFIG"
-then
-  AC_CHECK_PROGS(XMLCONFIG, [xml2-config xml-config])
-fi
-if test -n "$XMLCONFIG"
-then
-  XML_LIBS="`$XMLCONFIG --libs`"
-  XML_CFLAGS="`$XMLCONFIG --cflags`"
-  save_LIBS="$LIBS"
-  save_CFLAGS="$CFLAGS"
-  LIBS="$LIBS $XML_LIBS"
-  CFLAGS="$CFLAGS $XML_CFLAGS"
-  AC_CHECK_FUNC(xmlParseFile,, [AC_MSG_ERROR([There was a problem linking with libxml])])
-  LIBS="$save_LIBS"
-  CFLAGS="$save_CFLAGS"
-  save_LIBS=
-  save_CFLAGS=
-else
-  AC_MSG_ERROR([xml-config could not be found])
-fi
+XIPH_PATH_VORBIS(, AC_MSG_ERROR([must have Ogg Vorbis v1.0 installed!]))
+XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$VORBIS_CFLAGS])
+XIPH_VAR_PREPEND([XIPH_LIBS],[$VORBIS_LIBS])
 
-AM_PATH_OGG(, AC_MSG_ERROR(must have Ogg installed!(Perhaps you need --with-ogg-prefix=/usr/local)))
-AM_PATH_VORBIS(, AC_MSG_ERROR(must have Vorbis installed!(Perhaps you need --with-vorbis-prefix=/usr/local)))
 ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
+XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
+XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
+XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
 
 dnl -- YP support --
 AC_ARG_ENABLE([yp],
-  [  --disable-yp          disable YP directory support])
+        AC_HELP_STRING([--disable-yp],[disable YP directory support]))
 if test "x$enable_yp" != "xno"
 then
-AM_PATH_CURL([
+XIPH_PATH_CURL([
   AC_CHECK_DECL([CURLOPT_NOSIGNAL], [
     AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
-    ICECAST_OBJECTS="$ICECAST_OBJECTS geturl.o yp.o"
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL geturl.o yp.o"
     ], [
     if test "x$enable_yp" != "xyes"
     then
@@ -203,25 +125,22 @@ AM_PATH_CURL([
   fi
   ])
 fi
+XIPH_VAR_APPEND([XIPH_CFLAGS],[$CURL_CFLAGS])
+XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
 
 dnl Make substitutions
 
-AC_SUBST(XSLT_CFLAGS)
-AC_SUBST(XML_CFLAGS)
-AC_SUBST(OGG_CFLAGS)
-AC_SUBST(VORBIS_CFLAGS)
-AC_SUBST(XSLT_LIBS)
-AC_SUBST(XML_LIBS)
-AC_SUBST(OGG_LIBS)
-AC_SUBST(VORBIS_LIBS)
-AC_SUBST(SOCKET_LIBS)
+AC_SUBST(XIPH_CPPFLAGS)
+AC_SUBST(XIPH_CFLAGS)
+AC_SUBST(XIPH_LIBS)
+AC_SUBST(PTHREAD_CPPFLAGS)
+AC_SUBST(PTHREAD_CFLAGS)
+AC_SUBST(PTHREAD_LIBS)
 AC_SUBST(LIBTOOL_DEPS)
-AC_SUBST(OPT)
 AC_SUBST(LIBS)
 AC_SUBST(DEBUG)
 AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
-AC_SUBST(XIPH_CFLAGS)
-AC_SUBST(ICECAST_OBJECTS)
+AC_SUBST(ICECAST_OPTIONAL)
 
 AC_OUTPUT(Makefile conf/Makefile src/Makefile src/avl/Makefile src/httpp/Makefile src/thread/Makefile src/log/Makefile src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile admin/Makefile win32/Makefile win32/res/Makefile)
