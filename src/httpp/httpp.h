@@ -1,6 +1,9 @@
 /* httpp.h
 **
 ** http parsing library
+** 
+** This program is distributed under the GNU General Public License, version 2.
+** A copy of this license is included with this source.
 */
 
 #ifndef __HTTPP_H
