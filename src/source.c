@@ -494,15 +494,18 @@ static void source_init (source_t *source)
             config->hostname, config->port, source->mount);
     config_release_config();
 
-    /* maybe better in connection.c */
-    if ((str = httpp_getvar(source->parser, "ice-public")))
-        source->yp_public = atoi(str);
-    if ((str = httpp_getvar(source->parser, "icy-pub")))
-        source->yp_public = atoi(str);
-    if ((str = httpp_getvar(source->parser, "icy-public")))
-        source->yp_public = atoi(str);
-    if (str == NULL)
-       str = "0";
+    do
+    {
+        if ((str = httpp_getvar(source->parser, "ice-public")))
+            break;
+        if ((str = httpp_getvar(source->parser, "icy-pub")))
+            break;
+        /* handle header from icecast v2 release */
+        if ((str = httpp_getvar(source->parser, "icy-public")))
+            break;
+        str = "0";
+    } while (0);
+    source->yp_public = atoi (str);
     stats_event (source->mount, "public", str);
 
     str = httpp_getvar(source->parser, "ice-audio-info");
