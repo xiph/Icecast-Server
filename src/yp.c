@@ -458,6 +458,7 @@ static ypdata_t *create_yp_entry (source_t *source)
         unsigned len = 512;
         int ret;
         char *url;
+        mount_proxy *mountproxy = NULL;
         ice_config_t *config;
 
         if (yp == NULL)
@@ -485,6 +486,18 @@ static ypdata_t *create_yp_entry (source_t *source)
             s = realloc (url, ++ret);
             if (s) url = s;
             snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, source->mount);
+        }
+
+        mountproxy = config->mounts;
+        while (mountproxy) {
+            if (strcmp (mountproxy->mountname, source->mount) == 0) {
+                if (mountproxy->cluster_password) {
+                   add_yp_info (yp, "cluster_password", 
+                       mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
+                }
+                break;
+            }
+            mountproxy = mountproxy->next;
         }
         config_release_config();
         yp->listen_url = util_url_escape (url);
@@ -811,6 +824,15 @@ static void add_yp_info (ypdata_t *yp, char *stat_name, void *info, int type)
                     free (yp->current_song);
                 yp->current_song = escaped;
                 stats_event (yp->mount, "yp_currently_playing", (char *)info);
+            }
+            break;
+        case YP_CLUSTER_PASSWORD:
+            escaped = util_url_escape(info);
+            if (escaped)
+            {
+                if (yp->cluster_password)
+                    free (yp->cluster_password);
+                yp->cluster_password = escaped;
             }
             break;
     }

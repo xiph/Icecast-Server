@@ -62,6 +62,7 @@ typedef struct _mount_proxy {
     unsigned int source_timeout;  /* source timeout in seconds */
 
     char *auth_type; /* Authentication type */
+    char *cluster_password;
     config_options_t *auth_options; /* Options for this type */
     struct _mount_proxy *next;
 } mount_proxy;

@@ -33,6 +33,7 @@
 	    <td align="center">
 		<a class="nav2" href="listclients.xsl?mount={@mount}">Show Listeners</a> | 
         	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a> | 
+		<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a> |
         	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
 	    </td></tr>
 	</table>
