@@ -362,6 +362,33 @@ int sock_write(sock_t sock, const char *fmt, ...)
     return rc;
 }
 
+#ifdef HAVE_OLD_VSNPRINTF
+int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
+{
+    va_list ap_local;
+    unsigned int len = 1024;
+    char *buff = NULL;
+    int ret;
+
+    /* don't go infinite, but stop at some hugh limit */
+    while (len < 5*1024*1024)
+    {
+        char *tmp = realloc (buff, len);
+        if (tmp == NULL)
+        {
+            free (buff);
+            return -1;
+        }
+        buff = tmp;
+        va_copy (ap_local, ap);
+        ret = vsnprintf (buff, len, fmt, ap_local);
+        if (ret > 0)
+            return sock_write_bytes (sock, buff, ret);
+        len += 8192;
+    }
+    return -1;
+}
+#else
 int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 {
     char buffer [1024], *buff = buffer;
@@ -394,6 +421,7 @@ int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 
     return rc;
 }
+#endif
 
 
 /* function to check if there are any pending reads on
