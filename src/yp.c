@@ -86,9 +86,9 @@ int yp_remove(source_t *source)
     int curl_con = 0;
     int i = 0;
 
-    long current_time = 0;
+    time_t current_time = 0;
 
-    current_time = time(&current_time);
+    current_time = time(NULL);
 
     for (i=0; i<source->num_yp_directories; i++) {
         source->ypdata[i]->yp_last_touch = current_time;
@@ -132,7 +132,7 @@ int yp_touch()
     int curl_con = 0;
     int i = 0;
     int regen_sid = 0;
-    long current_time = 0;
+    time_t  current_time = 0;
     avl_node *node;
     source_t *source;
     char current_song[256];
