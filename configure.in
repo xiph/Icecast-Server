@@ -76,11 +76,11 @@ dnl Checks for programs.
 dnl Checks for libraries.
 
 dnl IPV6
-AC_SEARCH_LIBS(inet_pton, socket, AC_DEFINE(HAVE_IPV6, 1, [Define if you have IPV6 support]))
+AC_SEARCH_LIBS(inet_pton, socket, 
+  [AC_DEFINE([HAVE_INET_PTON], 1, [Define if you have the `inet_pton' function])])
 AC_SEARCH_LIBS(getipnodebyname, nsl,
-  AC_DEFINE(HAVE_GETIPNODEBYNAME, 1, 
-  [Define if you have the getipnodebyname function])
-)
+  [AC_DEFINE([HAVE_GETIPNODEBYNAME], 1,
+    [Define if you have the `getipnodebyname' function])])
 
 dnl Checks for header files.
 AC_HEADER_STDC
@@ -100,7 +100,7 @@ dnl Checks for library functions.
 AC_CHECK_FUNCS(nanosleep)
 AC_CHECK_FUNCS(poll)
 AC_CHECK_FUNCS(sethostent endhostent)
-AC_CHECK_FUNCS(getnameinfo getaddrinfo inet_pton inet_aton)
+AC_CHECK_FUNCS(getnameinfo getaddrinfo inet_aton)
 
 dnl -- configure options --
 
