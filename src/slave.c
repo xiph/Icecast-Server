@@ -163,7 +163,7 @@ int slave_redirect (char *mountpoint, client_t *client)
         location = malloc (len);
         if (location)
         {
-            INFO2 ("redirecting client to slave server"
+            INFO2 ("redirecting client to slave server "
                     "at %s:%d", slave->server, slave->port);
             snprintf (location, len, "http://%s:%d%s", slave->server,
                     slave->port, mountpoint);

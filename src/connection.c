@@ -78,7 +78,7 @@ static mutex_t _connection_mutex;
 static unsigned long _current_id = 0;
 static int _initialized = 0;
 
-static con_queue_t *_queue = NULL;
+static con_queue_t *_queue = NULL, **_queue_tail = &_queue;
 static mutex_t _queue_mutex;
 
 static thread_queue_t *_conhands = NULL;
@@ -260,12 +260,12 @@ static void _add_connection(connection_t *con)
 
     node = (con_queue_t *)malloc(sizeof(con_queue_t));
     
-    thread_mutex_lock(&_queue_mutex);
     node->con = con;
-    node->next = _queue;
-    _queue = node;
+    node->next = NULL;
+    thread_mutex_lock(&_queue_mutex);
+    *_queue_tail = node;
+    _queue_tail = &node->next;
     thread_mutex_unlock(&_queue_mutex);
-
 }
 
 static void _push_thread(thread_queue_t **queue, thread_type *thread_id)
@@ -380,22 +380,18 @@ void connection_accept_loop(void)
 static connection_t *_get_connection(void)
 {
     con_queue_t *node = NULL;
-    con_queue_t *oldnode = NULL;
     connection_t *con = NULL;
+
+    /* common case, no new connections so don't bother taking locks */
+    if (_queue == NULL)
+        return NULL;
 
     thread_mutex_lock(&_queue_mutex);
     if (_queue) {
         node = _queue;
-        while (node->next) {
-            oldnode = node;
-            node = node->next;
-        }
-        
-        /* node is now the last node
-        ** and oldnode is the previous one, or NULL
-        */
-        if (oldnode) oldnode->next = NULL;
-        else (_queue) = NULL;
+        _queue = node->next;
+        if (_queue_tail == &node->next)
+            _queue_tail = &_queue;
     }
     thread_mutex_unlock(&_queue_mutex);
 
@@ -868,8 +864,6 @@ static void *_handle_connection(void *arg)
     client_t *client;
 
     while (global.running == ICE_RUNNING) {
-        memset(header, 0, 4096);
-
         thread_sleep (100000);
         if (global.running != ICE_RUNNING) break;
 
@@ -895,7 +889,8 @@ static void *_handle_connection(void *arg)
             sock_set_blocking(con->sock, SOCK_BLOCK);
 
             /* fill header with the http header */
-            if (util_read_header(con->sock, header, 4096) == 0) {
+            memset(header, 0, sizeof (header));
+            if (util_read_header(con->sock, header, sizeof (header)) == 0) {
                 /* either we didn't get a complete header, or we timed out */
                 connection_close(con);
                 continue;

@@ -685,7 +685,6 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                     process_initial_page (ogg_info, &page);
                     continue;
                 }
-                // printf ("finished with BOS pages\n");
                 ogg_info->headers_completed = 1;
                 /* process the extracted page */
                 refbuf = process_ogg_page (ogg_info, &page);
