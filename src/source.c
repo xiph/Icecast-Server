@@ -345,38 +345,17 @@ void source_move_clients (source_t *source, source_t *dest)
 }
 
 
-void *source_main(void *arg)
+static void source_init (source_t *source)
 {
-    source_t *source = (source_t *)arg;
-    source_t *fallback_source;
-    char buffer[4096];
-    long bytes, sbytes;
-    int ret;
-    client_t *client;
-    avl_node *client_node;
-
-    refbuf_t *refbuf, *abuf;
-    int data_done;
-
+    ice_config_t *config = config_get_config();
+    char *listenurl;
+    int listen_url_size;
 #ifdef USE_YP
     char *s;
     long current_time;
     int    i;
     char *ai;
-#endif
 
-    ice_config_t *config;
-    char *hostname;
-    char *listenurl;
-    int listen_url_size;
-    int port;
-
-    config = config_get_config();
-    
-    hostname = strdup(config->hostname);
-    port = config->port;
-
-#ifdef USE_YP
     for (i=0;i<config->num_yp_directories;i++) {
         if (config->yp_url[i]) {
             source->ypdata[source->num_yp_directories] = yp_create_ypdata();
@@ -388,20 +367,7 @@ void *source_main(void *arg)
             source->num_yp_directories++;
         }
     }
-#endif
     
-    config_release_config();
-
-    /* grab a read lock, to make sure we get a chance to cleanup */
-    thread_rwlock_rlock(source->shutdown_rwlock);
-
-    /* start off the statistics */
-    source->listeners = 0;
-    stats_event_inc(NULL, "sources");
-    stats_event_inc(NULL, "source_total_connections");
-    stats_event(source->mount, "listeners", "0");
-    stats_event(source->mount, "type", source->format->format_description);
-#ifdef USE_YP
     source->audio_info = util_dict_new();
     /* ice-* is icecast, icy-* is shoutcast */
     if ((s = httpp_getvar(source->parser, "ice-url"))) {
@@ -462,12 +428,11 @@ void *source_main(void *arg)
             free(source->ypdata[i]->listen_url);
         }
         /* 6 for max size of port */
-        listen_url_size = strlen("http://") + 
-            strlen(hostname) + 
-            strlen(":") + 6 + strlen(source->mount) + 1;
-        source->ypdata[i]->listen_url = malloc(listen_url_size);
-        sprintf(source->ypdata[i]->listen_url, "http://%s:%d%s", 
-                hostname, port, source->mount);
+        listen_url_size = strlen("http://") + strlen(config->hostname) +
+            strlen(":") + 6 + strlen (source->mount) + 1;
+        source->ypdata[i]->listen_url = malloc (listen_url_size);
+        sprintf (source->ypdata[i]->listen_url, "http://%s:%d%s",
+                config->hostname, config->port, source->mount);
     }
 
     if(source->yp_public) {
@@ -485,20 +450,23 @@ void *source_main(void *arg)
         }
     }
 #endif
+
     /* 6 for max size of port */
-    listen_url_size = strlen("http://") + 
-    strlen(hostname) + strlen(":") + 6 + strlen(source->mount) + 1;
-    
-    listenurl = malloc(listen_url_size);
-    memset(listenurl, '\000', listen_url_size);
-    sprintf(listenurl, "http://%s:%d%s", hostname, port, source->mount);
-    stats_event(source->mount, "listenurl", listenurl);
-    if (hostname) {
-        free(hostname);
-    }
+    listen_url_size = strlen("http://") + strlen(config->hostname) +
+        strlen(":") + 6 + strlen(source->mount) + 1;
+
+    listenurl = malloc (listen_url_size);
+    memset (listenurl, '\000', listen_url_size);
+    snprintf (listenurl, listen_url_size, "http://%s:%d%s",
+            config->hostname, config->port, source->mount);
+    config_release_config();
+
+    stats_event (source->mount, "listenurl", listenurl);
+
     if (listenurl) {
         free(listenurl);
     }
+
     if (source->dumpfilename != NULL)
     {
         source->dumpfile = fopen (source->dumpfilename, "ab");
@@ -509,6 +477,16 @@ void *source_main(void *arg)
         }
     }
 
+    /* grab a read lock, to make sure we get a chance to cleanup */
+    thread_rwlock_rlock (source->shutdown_rwlock);
+
+    /* start off the statistics */
+    source->listeners = 0;
+    stats_event_inc (NULL, "sources");
+    stats_event_inc (NULL, "source_total_connections");
+    stats_event (source->mount, "listeners", "0");
+    stats_event (source->mount, "type", source->format->format_description);
+    
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
@@ -521,7 +499,10 @@ void *source_main(void *arg)
     ** loop or jingle track or whatever the fallback is used for
     */
 
-    if(source->fallback_override && source->fallback_mount) {
+    if (source->fallback_override && source->fallback_mount)
+    {
+        source_t *fallback_source;
+
         avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(source->fallback_mount);
 
@@ -530,6 +511,21 @@ void *source_main(void *arg)
 
         avl_tree_unlock(global.source_tree);
     }
+}
+
+
+void source_main (source_t *source)
+{
+    char buffer[4096];
+    long bytes, sbytes;
+    int ret;
+    client_t *client;
+    avl_node *client_node;
+
+    refbuf_t *refbuf, *abuf;
+    int data_done;
+
+    source_init (source);
 
     while (global.running == ICE_RUNNING && source->running) {
         ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
@@ -782,13 +778,18 @@ done:
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
      */
-    avl_tree_rlock(global.source_tree);
-    fallback_source = source_find_mount (source->fallback_mount);
+    if (source->fallback_mount)
+    {
+        source_t *fallback_source;
 
-    if (fallback_source != NULL)
-        source_move_clients (source, fallback_source);
+        avl_tree_rlock(global.source_tree);
+        fallback_source = source_find_mount (source->fallback_mount);
 
-    avl_tree_unlock (global.source_tree);
+        if (fallback_source != NULL)
+            source_move_clients (source, fallback_source);
+
+        avl_tree_unlock (global.source_tree);
+    }
 
     /* delete this sources stats */
     stats_event_dec(NULL, "sources");
@@ -808,7 +809,7 @@ done:
        therefore reserved */
     source_clear_source (source);
 
-    return NULL;
+    return;
 }
 
 static int _compare_clients(void *compare_arg, void *a, void *b)

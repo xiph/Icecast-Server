@@ -71,7 +71,7 @@ int source_compare_sources(void *arg, void *a, void *b);
 int source_free_source(void *key);
 void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
-void *source_main(void *arg);
+void source_main(source_t *source);
 
 extern mutex_t move_clients_mutex;
 
