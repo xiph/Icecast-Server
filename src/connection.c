@@ -76,11 +76,10 @@ typedef struct _thread_queue_tag {
 } thread_queue_t;
 
 static mutex_t _connection_mutex;
-static unsigned long _current_id = 0;
+static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
-static cond_t _pool_cond;
 
-static con_queue_t *_queue = NULL;
+static volatile con_queue_t *_queue = NULL;
 static mutex_t _queue_mutex;
 
 static thread_queue_t *_conhands = NULL;
@@ -97,7 +96,6 @@ void connection_initialize(void)
     thread_mutex_create(&_queue_mutex);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
-    thread_cond_create(&_pool_cond);
     thread_cond_create(&global.shutdown_cond);
 
     _initialized = 1;
@@ -108,7 +106,6 @@ void connection_shutdown(void)
     if (!_initialized) return;
     
     thread_cond_destroy(&global.shutdown_cond);
-    thread_cond_destroy(&_pool_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_mutex_destroy(&_queue_mutex);
     thread_mutex_destroy(&_connection_mutex);
@@ -264,15 +261,9 @@ static void _add_connection(connection_t *con)
     
     thread_mutex_lock(&_queue_mutex);
     node->con = con;
-    node->next = _queue;
+    node->next = (con_queue_t *)_queue;
     _queue = node;
     thread_mutex_unlock(&_queue_mutex);
-
-}
-
-static void _signal_pool(void)
-{
-    thread_cond_signal(&_pool_cond);
 }
 
 static void _push_thread(thread_queue_t **queue, thread_type *thread_id)
@@ -342,13 +333,12 @@ static void _destroy_pool(void)
 
     i = 0;
 
-    thread_cond_broadcast(&_pool_cond);
     id = _pop_thread(&_conhands);
     while (id != NULL) {
         thread_join(id);
-        _signal_pool();
         id = _pop_thread(&_conhands);
     }
+    INFO0("All connection threads down");
 }
 
 void connection_accept_loop(void)
@@ -372,7 +362,6 @@ void connection_accept_loop(void)
 
         if (con) {
             _add_connection(con);
-            _signal_pool();
         }
     }
 
@@ -392,9 +381,13 @@ static connection_t *_get_connection(void)
     con_queue_t *oldnode = NULL;
     connection_t *con = NULL;
 
+    /* common case, no new connections so don't bother taking locks */
+    if (_queue == NULL)
+        return NULL;
+
     thread_mutex_lock(&_queue_mutex);
     if (_queue) {
-        node = _queue;
+        node = (con_queue_t *)_queue;
         while (node->next) {
             oldnode = node;
             node = node->next;
@@ -423,7 +416,6 @@ void connection_inject_event(int eventnum, void *event_data) {
     con->event = event_data;
 
     _add_connection(con);
-    _signal_pool();
 }
 
 
@@ -508,7 +500,7 @@ int connection_complete_source (source_t *source)
 
         return 0;
     }
-    WARN1("Request to add source when maximum source limit"
+    WARN1("Request to add source when maximum source limit "
             "reached %d", global.sources);
 
     global_unlock();
@@ -681,6 +673,13 @@ static void _handle_source_request(connection_t *con,
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
                 
+    if (uri[0] != '/')
+    {
+        WARN0 ("source mountpoint not starting with /");
+        client_send_401 (client);
+        return;
+    }
+
     if (!connection_check_source_pass(parser, uri)) {
         /* We commonly get this if the source client is using the wrong
          * protocol: attempt to diagnose this and return an error
@@ -708,6 +707,7 @@ static void _handle_source_request(connection_t *con,
     else
     {
         client_send_404 (client, "Mountpoint in use");
+        WARN1 ("Mountpoint %s in use", uri);
     }
 }
 
@@ -964,10 +964,6 @@ static void *_handle_connection(void *arg)
     client_t *client;
 
     while (global.running == ICE_RUNNING) {
-        memset(header, 0, 4096);
-
-        thread_cond_wait(&_pool_cond);
-        if (global.running != ICE_RUNNING) break;
 
         /* grab a connection and set the socket to blocking */
         while ((con = _get_connection())) {
@@ -991,7 +987,8 @@ static void *_handle_connection(void *arg)
             sock_set_blocking(con->sock, SOCK_BLOCK);
 
             /* fill header with the http header */
-            if (util_read_header(con->sock, header, 4096) == 0) {
+            memset(header, 0, sizeof (header));
+            if (util_read_header(con->sock, header, sizeof (header)) == 0) {
                 /* either we didn't get a complete header, or we timed out */
                 connection_close(con);
                 continue;
@@ -1035,6 +1032,7 @@ static void *_handle_connection(void *arg)
                 }
 
                 free(uri);
+                continue;
             } 
             else if(httpp_parse_icy(parser, header, strlen(header))) {
                 /* TODO: Map incoming icy connections to /icy_0, etc. */
@@ -1050,6 +1048,7 @@ static void *_handle_connection(void *arg)
                 avl_tree_unlock(global.source_tree);
 
                 _handle_source_request(con, parser, mount);
+                continue;
             }
             else {
                 ERROR0("HTTP request parsing failed");
@@ -1058,7 +1057,9 @@ static void *_handle_connection(void *arg)
                 continue;
             }
         }
+        thread_sleep (100000);
     }
+    DEBUG0 ("Connection thread done");
 
     return NULL;
 }
