@@ -354,13 +354,13 @@ int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
             if (buff)
             {
                 len = vsnprintf (buff, len, fmt, ap_retry);
-                va_end (ap_retry);
                 if (len > 0)
                     rc = sock_write_bytes (sock, buff, len);
                 free (buff);
             }
         }
     }
+    va_end (ap_retry);
 
     return rc;
 }
