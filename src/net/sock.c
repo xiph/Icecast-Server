@@ -92,6 +92,8 @@ void sock_shutdown(void)
 #ifdef _WIN32
     WSACleanup();
 #endif
+
+    resolver_shutdown();
 }
 
 /* sock_get_localip
