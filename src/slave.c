@@ -169,7 +169,7 @@ static void *start_relay_stream (void *arg)
                 "\r\n",
                 relay->mount, relay->mp3metadata?"Icy-MetaData: 1\r\n":"");
         memset (header, 0, sizeof(header));
-        if (util_read_header (con->sock, header, 4096) == 0)
+        if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
         {
             WARN0("Header read failed");
             break;

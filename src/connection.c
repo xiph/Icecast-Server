@@ -65,6 +65,23 @@
 
 #define CATMODULE "connection"
 
+/* Two different major types of source authentication.
+   Shoutcast style is used only by the Shoutcast DSP
+   and is a crazy version of HTTP.  It looks like :
+     Source Client -> Connects to port + 1
+     Source Client -> sends encoder password (plaintext)\r\n
+     Icecast -> reads encoder password, if ok, sends OK2\r\n, else disconnects
+     Source Client -> reads OK2\r\n, then sends http-type request headers
+                      that contain the stream details (icy-name, etc..)
+     Icecast -> reads headers, stores them
+     Source Client -> starts sending MP3 data
+     Source Client -> periodically updates metadata via admin.cgi call
+
+   Icecast auth style uses HTTP and Basic Authorization.
+*/
+#define SHOUTCAST_SOURCE_AUTH 1
+#define ICECAST_SOURCE_AUTH 0
+
 typedef struct con_queue_tag {
     connection_t *con;
     struct con_queue_tag *next;
@@ -664,7 +681,7 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
 
 
 static void _handle_source_request(connection_t *con, 
-        http_parser_t *parser, char *uri)
+        http_parser_t *parser, char *uri, int auth_style)
 {
     client_t *client;
     source_t *source;
@@ -680,18 +697,23 @@ static void _handle_source_request(connection_t *con,
         return;
     }
 
-    if (!connection_check_source_pass(parser, uri)) {
-        /* We commonly get this if the source client is using the wrong
-         * protocol: attempt to diagnose this and return an error
-         */
-        /* TODO: Do what the above comment says */
-        INFO1("Source (%s) attempted to login with invalid or missing password", uri);
-        client_send_401(client);
-        return;
+    if (auth_style == ICECAST_SOURCE_AUTH) {
+        if (!connection_check_source_pass(parser, uri)) {
+            /* We commonly get this if the source client is using the wrong
+             * protocol: attempt to diagnose this and return an error
+             */
+            /* TODO: Do what the above comment says */
+            INFO1("Source (%s) attempted to login with invalid or missing password", uri);
+            client_send_401(client);
+            return;
+        }
     }
     source = source_reserve (uri);
     if (source)
     {
+        if (auth_style == SHOUTCAST_SOURCE_AUTH) {
+            source->shoutcast_compat = 1;
+        }
         source->client = client;
         source->parser = parser;
         source->con = con;
@@ -796,7 +818,8 @@ static void _handle_get_request(connection_t *con,
     stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
-    if (strncmp(uri, "/admin/", 7) == 0) {
+    if ((strcmp(uri, "/admin.cgi") == 0) ||
+        (strncmp(uri, "/admin/", 7) == 0)) {
         admin_handle_request(client, uri);
         if (uri != passed_uri) free (uri);
         return;
@@ -965,6 +988,74 @@ static void _handle_get_request(connection_t *con,
     if (uri != passed_uri) free (uri);
 }
 
+void _handle_shoutcast_compatible(connection_t *con, char *source_password) {
+    char shoutcast_password[256];
+    char shoutcast_source[256];
+    char *http_compliant;
+    int http_compliant_len = 0;
+    char header[4096];
+    http_parser_t *parser;
+
+    memset(shoutcast_password, 0, sizeof (shoutcast_password));
+    /* Step one of shoutcast auth protocol, read encoder password (1 line) */
+    if (util_read_header(con->sock, shoutcast_password, 
+            sizeof (shoutcast_password), 
+            READ_LINE) == 0) {
+        /* either we didn't get a complete line, or we timed out */
+        connection_close(con);
+        return;
+    }
+    /* Get rid of trailing \n */
+    shoutcast_password[strlen(shoutcast_password)-1] = '\000';
+    if (strcmp(shoutcast_password, source_password)) {
+        ERROR0("Invalid source password");
+        connection_close(con);
+        return;
+    }
+    /* Step two of shoutcast auth protocol, send OK2.  For those
+       interested, OK2 means it supports metadata updates via admin.cgi,
+       and the string "OK" can also be sent, but will indicate to the
+       shoutcast source client to not send metadata updates.
+       I believe icecast 1.x used to send OK. */
+    sock_write(con->sock, "%s\r\n", "OK2");
+
+    memset(header, 0, sizeof (header));
+    /* Step three of shoutcast auth protocol, read HTTP-style
+       request headers and process them.*/
+    if (util_read_header(con->sock, header, sizeof (header), 
+                         READ_ENTIRE_HEADER) == 0) {
+        /* either we didn't get a complete header, or we timed out */
+        connection_close(con);
+        return;
+    }
+    /* Here we create a valid HTTP request based of the information
+       that was passed in via the non-HTTP style protocol above. This
+       means we can use some of our existing code to handle this case */
+    memset(shoutcast_source, 0, sizeof (shoutcast_source));
+    strcpy(shoutcast_source, "SOURCE / HTTP/1.0\r\n");
+    http_compliant_len = strlen(shoutcast_source) + 
+                         strlen(header) + 1;
+    http_compliant = (char *)calloc(1, http_compliant_len);
+    sprintf(http_compliant, "%s%s", shoutcast_source, 
+        header);
+    parser = httpp_create_parser();
+    httpp_initialize(parser, NULL);
+    if (httpp_parse(parser, http_compliant, 
+        strlen(http_compliant))) {
+        _handle_source_request(con, parser, "/", SHOUTCAST_SOURCE_AUTH);
+        free(http_compliant);
+        return;
+    }
+    else {
+        ERROR0("Invalid source request");
+        connection_close(con);
+        free(http_compliant);
+        httpp_destroy(parser);
+        return;
+    }
+    return;
+}
+
 static void *_handle_connection(void *arg)
 {
     char header[4096];
@@ -972,6 +1063,10 @@ static void *_handle_connection(void *arg)
     http_parser_t *parser;
     char *rawuri, *uri;
     client_t *client;
+    int i = 0;
+    int continue_flag = 0;
+    ice_config_t *config;
+    char *source_password;
 
     while (global.running == ICE_RUNNING) {
 
@@ -996,9 +1091,30 @@ static void *_handle_connection(void *arg)
 
             sock_set_blocking(con->sock, SOCK_BLOCK);
 
+            continue_flag = 0;
+            /* Check for special shoutcast compatability processing */
+            for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
+                if(global.serversock[i] == con->serversock) {
+                    config = config_get_config();
+                    if (config->listeners[i].shoutcast_compat) {
+                        source_password = strdup(config->source_password);
+                        config_release_config();
+                        _handle_shoutcast_compatible(con, source_password);
+                        free(source_password);
+                        continue_flag = 1;
+                        break;
+                    }
+                    config_release_config();
+                }
+            }
+            if(continue_flag) {
+                continue;
+            }
+
             /* fill header with the http header */
             memset(header, 0, sizeof (header));
-            if (util_read_header(con->sock, header, sizeof (header)) == 0) {
+            if (util_read_header(con->sock, header, sizeof (header), 
+                                 READ_ENTIRE_HEADER) == 0) {
                 /* either we didn't get a complete header, or we timed out */
                 connection_close(con);
                 continue;
@@ -1027,7 +1143,7 @@ static void *_handle_connection(void *arg)
                 }
 
                 if (parser->req_type == httpp_req_source) {
-                    _handle_source_request(con, parser, uri);
+                    _handle_source_request(con, parser, uri, ICECAST_SOURCE_AUTH);
                 }
                 else if (parser->req_type == httpp_req_stats) {
                     _handle_stats_request(con, parser, uri);
@@ -1044,22 +1160,6 @@ static void *_handle_connection(void *arg)
                 free(uri);
                 continue;
             } 
-            else if(httpp_parse_icy(parser, header, strlen(header))) {
-                /* TODO: Map incoming icy connections to /icy_0, etc. */
-                char mount[20];
-                unsigned i = 0;
-
-                strcpy(mount, "/");
-
-                avl_tree_rlock(global.source_tree);
-                while (source_find_mount (mount) != NULL) {
-                    snprintf (mount, sizeof (mount), "/icy_%u", i++);
-                }
-                avl_tree_unlock(global.source_tree);
-
-                _handle_source_request(con, parser, mount);
-                continue;
-            }
             else {
                 ERROR0("HTTP request parsing failed");
                 connection_close(con);

@@ -321,6 +321,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->port = 0;
     configuration->listeners[0].port = 0;
     configuration->listeners[0].bind_address = NULL;
+    configuration->listeners[0].shoutcast_compat = 0;
     configuration->master_server = NULL;
     configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
@@ -665,6 +666,11 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
             if(configuration->port == 0)
                 configuration->port = atoi(tmp);
             listener->port = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "shoutcast-compat") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            listener->shoutcast_compat = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "bind-address") == 0) {

@@ -54,7 +54,14 @@
 <a href="auth.xsl">Click to Listen</a>
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u">Click to Listen</a>
+	<xsl:choose>
+	<xsl:when test="content-type='video/nsv'">
+	<a href="{@mount}%3Ffile%3Dstream.nsv.m3u">Click to Listen</a>
+	</xsl:when>
+	<xsl:otherwise>
+	<a href="{@mount}.m3u">Click to Listen</a>
+	</xsl:otherwise>
+	</xsl:choose>
 </xsl:otherwise>
 </xsl:choose>
 </td></tr>

@@ -40,6 +40,7 @@
 #include "format_mp3.h"
 
 #include "logging.h"
+#include "stats.h"
 #define CATMODULE "format"
 
 #ifdef WIN32
@@ -57,6 +58,8 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_MP3; 
     else if(strcmp(contenttype, "audio/x-mpeg") == 0)
         return FORMAT_TYPE_MP3; /* Relay-compatibility for some servers */
+    else if(strcmp(contenttype, "video/nsv") == 0)
+        return FORMAT_TYPE_NSV; 
     else
         return FORMAT_ERROR;
 }
@@ -69,6 +72,9 @@ char *format_get_mimetype(format_type_t type)
             break;
         case FORMAT_TYPE_MP3:
             return "audio/mpeg";
+            break;
+        case FORMAT_TYPE_NSV:
+            return "video/nsv";
             break;
         default:
             return NULL;
@@ -86,9 +92,16 @@ int format_get_plugin(format_type_t type, source_t *source)
     case FORMAT_TYPE_MP3:
         ret = format_mp3_get_plugin (source);
         break;
+    case FORMAT_TYPE_NSV:
+        ret = format_mp3_get_plugin (source);
+        source->format->format_description = "NSV Video";
+        source->format->type = FORMAT_TYPE_NSV;
+        break;
     default:
         break;
     }
+    stats_event (source->mount, "content-type", 
+                 format_get_mimetype(source->format->type));
 
     return ret;
 }

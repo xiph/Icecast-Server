@@ -2,11 +2,11 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-EXTRA_DIST = icecast.xml.in
-DISTCLEANFILES = icecast.xml.dist
+EXTRA_DIST = icecast.xml.in icecast_minimal.xml.in icecast_shoutcast_compat.xml.in
+DISTCLEANFILES = icecast.xml.dist icecast_minimal.xml.dist icecast_shoutcast_compat.xml.dist
 
 docdir = $(datadir)/$(PACKAGE)/doc
-doc_DATA = icecast.xml.dist
+doc_DATA = icecast.xml.dist icecast_minimal.xml.dist icecast_shoutcast_compat.xml.dist
 
 install-data-hook:
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
@@ -19,6 +19,12 @@ edit = sed -e 's,@pkgdatadir\@,$(pkgdatadir),g' \
 
 icecast.xml.dist: $(srcdir)/icecast.xml.in
 	$(edit) $(srcdir)/icecast.xml.in > icecast.xml.dist
+
+icecast_minimal.xml.dist: $(srcdir)/icecast_minimal.xml.in
+	$(edit) $(srcdir)/icecast_minimal.xml.in > icecast_minimal.xml.dist
+
+icecast_shoutcast_compat.xml.dist: $(srcdir)/icecast_shoutcast_compat.xml.in
+	$(edit) $(srcdir)/icecast_shoutcast_compat.xml.in > icecast_shoutcast_compat.xml.dist
 
 debug:
 	$(MAKE) all CFLAGS="@DEBUG@"

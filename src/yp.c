@@ -479,12 +479,22 @@ static ypdata_t *create_yp_entry (source_t *source)
         if (url == NULL)
             break;
         config = config_get_config();
-        ret = snprintf (url, len, "http://%s:%d%s", config->hostname, config->port, source->mount);
+        if (source->format->type == FORMAT_TYPE_NSV) {
+            ret = snprintf (url, len, "http://%s:%d%s?stream.nsv", config->hostname, config->port, source->mount);
+        }
+        else {
+            ret = snprintf (url, len, "http://%s:%d%s", config->hostname, config->port, source->mount);
+        }
         if (ret >= (signed)len)
         {
             s = realloc (url, ++ret);
             if (s) url = s;
-            snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, source->mount);
+            if (source->format->type == FORMAT_TYPE_NSV) {
+                snprintf (url, ret, "http://%s:%d%s?file=stream.nsv", config->hostname, config->port, source->mount);
+            }
+            else {
+                snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, source->mount);
+            }
         }
         config_release_config();
         yp->listen_url = util_url_escape (url);

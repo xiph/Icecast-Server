@@ -239,6 +239,7 @@ void source_clear_source (source_t *source)
     source->queue_size_limit = 0;
     source->listeners = 0;
     source->no_mount = 0;
+    source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->yp_public = 0;
     util_dict_free (source->audio_info);
@@ -484,15 +485,20 @@ static void source_init (source_t *source)
     char *listenurl, *str;
     int listen_url_size;
     char *s;
+    char *extra = "";
+
+    if (source->format->type == FORMAT_TYPE_NSV) {
+        extra = "?file=stream.nsv";
+    }
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
-        strlen(":") + 6 + strlen(source->mount) + 1;
+        strlen(":") + 6 + strlen(source->mount) + strlen(extra) + 1;
 
     listenurl = malloc (listen_url_size);
     memset (listenurl, '\000', listen_url_size);
-    snprintf (listenurl, listen_url_size, "http://%s:%d%s",
-            config->hostname, config->port, source->mount);
+    snprintf (listenurl, listen_url_size, "http://%s:%d%s%s",
+            config->hostname, config->port, source->mount, extra);
     config_release_config();
 
     do

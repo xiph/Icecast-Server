@@ -54,6 +54,7 @@ typedef struct source_tag
     struct auth_tag *authenticator;
     int fallback_override;
     int no_mount;
+    int shoutcast_compat;
 
     /* per source burst handling for connecting clients */
     unsigned int burst_size;    /* trigger level for burst on connect */
