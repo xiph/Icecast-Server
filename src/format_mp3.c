@@ -25,6 +25,7 @@
 #ifdef WIN32
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
+#define alloca _alloca
 #endif
 
 #define CATMODULE "format-mp3"
@@ -52,10 +53,6 @@ typedef struct {
    int metadata_age;
    int metadata_offset;
 } mp3_client_data;
-
-#ifdef WIN32
-#define alloca _alloca
-#endif
 
 format_plugin_t *format_mp3_get_plugin(http_parser_t *parser)
 {
