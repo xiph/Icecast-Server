@@ -162,7 +162,7 @@ if test "x$acx_pthread_ok" = xyes; then
         esac
         AC_MSG_RESULT(${flag})
         if test "x$flag" != xno; then
-                PTHREAD_CFLAGS="$flag $PTHREAD_CFLAGS"
+                PTHREAD_CPPFLAGS="$flag $PTHREAD_CPPFLAGS"
         fi
         AC_CHECK_TYPES(pthread_rwlock_t,,,[#include <pthread.h>])
 
@@ -177,6 +177,7 @@ fi
 
 AC_SUBST(PTHREAD_LIBS)
 AC_SUBST(PTHREAD_CFLAGS)
+AC_SUBST(PTHREAD_CPPFLAGS)
 AC_SUBST(PTHREAD_CC)
 
 # Finally, execute ACTION-IF-FOUND/ACTION-IF-NOT-FOUND:
