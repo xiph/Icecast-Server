@@ -290,6 +290,9 @@ static connection_t *_get_connection(void)
 	return con;
 }
 
+/* TODO: Make this return an appropriate error code so that we can use HTTP
+ * codes where appropriate
+ */
 int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
 	source_t *source;
 	char *contenttype;
@@ -306,7 +309,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 	}
 	global.sources++;
 	global_unlock();
-	
+
 	stats_event_inc(NULL, "sources");
 
 	contenttype = httpp_getvar(parser, "content-type");
@@ -324,6 +327,21 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
 		ERROR0("No content-type header, falling back to backwards compatibility mode for icecast 1.x relays. Assuming content is mp3.");
         source = source_create(client, con, parser, mount, format);
 	}
+
+    /* We did a preliminary check earlier, to catch the common case before
+     * we do any unneccesary processing. Now, we do a check that must be
+     * correct - so we have to take a write lock out, since we need to 
+     * add this source if it doesn't already exist.
+     */
+    avl_tree_wlock(global.source_tree);
+	if (source_find_mount(mount) != NULL) {
+		INFO1("Source tried to log in as %s, but mountpoint is already used", 
+                mount);
+		avl_tree_unlock(global.source_tree);
+		goto fail;
+    }
+    /* Keep the tree locked - it gets unlocked in source_main */
+	
     client->respcode = 200;
     bytes = sock_write(client->con->sock, 
             "HTTP/1.0 200 OK\r\n\r\n");
@@ -569,15 +587,15 @@ static void _handle_source_request(connection_t *con,
 
 	avl_tree_rlock(global.source_tree);
 	if (source_find_mount(uri) != NULL) {
+		avl_tree_unlock(global.source_tree);
 		INFO1("Source tried to log in as %s, but mountpoint is already used", uri);
         client_send_404(client, "Mountpoint in use");
-		avl_tree_unlock(global.source_tree);
 		return;
 	}
 	avl_tree_unlock(global.source_tree);
 
 	if (!connection_create_source(client, con, parser, uri)) {
-        client_destroy(client);
+        client_send_404(client, "Mountpoint in use");
 	}
 }
 

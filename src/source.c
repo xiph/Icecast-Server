@@ -48,7 +48,7 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
     src->client = client;
 	src->mount = (char *)strdup(mount);
     src->fallback_mount = NULL;
-	src->format = format_get_plugin(type, src->mount);
+	src->format = format_get_plugin(type, src->mount, parser);
 	src->con = con;
 	src->parser = parser;
 	src->client_tree = avl_tree_new(_compare_clients, NULL);
@@ -129,6 +129,9 @@ int source_free_source(void *key)
 }
 	
 
+/* The caller MUST have a current write lock on global.source_tree when calling
+ * this
+ */
 void *source_main(void *arg)
 {
 	source_t *source = (source_t *)arg;
@@ -154,8 +157,8 @@ void *source_main(void *arg)
 	/* grab a read lock, to make sure we get a chance to cleanup */
 	thread_rwlock_rlock(source->shutdown_rwlock);
 
-	/* get a write lock on the global source tree */
-	avl_tree_wlock(global.source_tree);
+    /* The caller has ensured we have a write lock on the tree... */
+
 	/* insert source onto source tree */
 	avl_insert(global.source_tree, (void *)source);
 	/* release write lock on global source tree */

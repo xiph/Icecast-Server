@@ -180,7 +180,7 @@ static void *_slave_thread(void *arg) {
         relay = config_get_config()->relay;
         while(relay) {
             avl_tree_rlock(global.source_tree);
-            if(!source_find_mount(relay->mount)) {
+            if(!source_find_mount(relay->localmount)) {
                 avl_tree_unlock(global.source_tree);
 
                 create_relay_stream(relay->server, relay->port, relay->mount,
