@@ -1,13 +1,12 @@
 Name:		icecast
-Version:	2.1.0
-Release:	1
+Version:	2.2.0
+Release:	fc1
 Summary:	Xiph Streaming media server that supports multiple audio formats.
-
 Group:		Applications/Multimedia
 License:	GPL
 URL:		http://www.icecast.org/
 Vendor:		Xiph.org Foundation <team@icecast.org>
-Source:     http://www.icecast.org/files/%{name}-%{version}.tar.gz
+Source:     	http://downloads.us.xiph.org/releases/icecast/%{name}-%{version}.tar.gz
 Prefix:		%{_prefix}
 BuildRoot:	%{_tmppath}/%{name}-root
 
@@ -21,6 +20,8 @@ Requires:       libxml2
 BuildRequires:	libxml2-devel
 Requires:       libxslt
 BuildRequires:	libxslt-devel
+Requires:       libtheora
+BuildRequires:	libtheora-devel
 
 %description
 Icecast is a streaming media server which currently supports Ogg Vorbis 
@@ -47,7 +48,7 @@ rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/%{name}
 
 %files
 %defattr(-,root,root)
-%doc README AUTHORS COPYING NEWS TODO
+%doc README AUTHORS COPYING NEWS TODO ChangeLog
 %doc doc/*.html
 %doc doc/*.jpg
 %doc doc/*.css
