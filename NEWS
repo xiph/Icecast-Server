@@ -19,6 +19,12 @@ clients to alternative slave hosts.
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
 
+kh54
+. NULL dereference in yp from previous patch now fixed.
+. When override set on an on-demand relay, then the relay now checks to see
+  if there are any listeners on the fallback mount, if so then it starts up.
+. removed useless per source clients stat, listeners already exists
+
 kh53
 . remove the last remaining stats at stream shutdown.
 . implement hidden attribute for stats, source stats can be toggled between
