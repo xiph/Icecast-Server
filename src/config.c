@@ -98,6 +98,7 @@ void config_clear(ice_config_t *c)
     ice_config_dir_t *dirnode, *nextdirnode;
     relay_server *relay, *nextrelay;
     mount_proxy *mount, *nextmount;
+    aliases *alias, *nextalias;
     int i;
 
     if (c->config_filename)
@@ -159,6 +160,16 @@ void config_clear(ice_config_t *c)
         mount = nextmount;
     }
     thread_mutex_unlock(&(_locks.mounts_lock));
+
+    alias = c->aliases;
+    while(alias) {
+        nextalias = alias->next;
+        xmlFree(alias->source);
+        xmlFree(alias->destination);
+        xmlFree(alias->bind_address);
+        free(alias);
+        alias = nextalias;
+    }
 
     dirnode = c->dir_list;
     while(dirnode) {
@@ -423,6 +434,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         configuration->mounts = mount;
 
     mount->max_listeners = -1;
+    mount->next = NULL;
 
     do {
         if (node == NULL) break;
@@ -473,6 +485,8 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         last->next = relay;
     else
         configuration->relay = relay;
+
+    relay->next = NULL;
 
     do {
         if (node == NULL) break;
@@ -606,6 +620,9 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
+    char *temp;
+    aliases *alias, *current, *last;
+
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
@@ -621,7 +638,39 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
-
+        } else if (strcmp(node->name, "alias") == 0) {
+            alias = malloc(sizeof(aliases));
+            alias->next = NULL;
+            alias->source = xmlGetProp(node, "source");
+            if(alias->source == NULL) {
+                free(alias);
+                continue;
+            }
+            alias->destination = xmlGetProp(node, "dest");
+            if(alias->destination == NULL) {
+                xmlFree(alias->source);
+                free(alias);
+                continue;
+            }
+            temp = NULL;
+            temp = xmlGetProp(node, "port");
+            if(temp != NULL) {
+                alias->port = atoi(temp);
+                xmlFree(temp);
+            }
+            else
+                alias->port = -1;
+            alias->bind_address = xmlGetProp(node, "bind-address");
+            current = configuration->aliases;
+            last = NULL;
+            while(current) {
+                last = current;
+                current = current->next;
+            }
+            if(last)
+                last->next = alias;
+            else
+                configuration->aliases = alias;
         }
     } while ((node = node->next));
 }

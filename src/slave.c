@@ -91,7 +91,7 @@ static void create_relay_stream(char *server, int port,
         WARN2("Failed to relay stream from master server, couldn't connect to http://%s:%d", server, port);
         return;
     }
-    con = create_connection(streamsock, NULL);
+    con = create_connection(streamsock, -1, NULL);
     if(mp3) {
         /* Some mp3 servers are bitchy, send a user-agent string to make them
          * send the right response.

@@ -43,6 +43,14 @@ typedef struct _mount_proxy {
     struct _mount_proxy *next;
 } mount_proxy;
 
+typedef struct _aliases {
+    char *source;
+    char *destination;
+    int port;
+    char *bind_address;
+    struct _aliases *next;
+}aliases;
+
 typedef struct {
     int port;
     char *bind_address;
@@ -89,6 +97,7 @@ typedef struct ice_config_tag
     char *base_dir;
     char *log_dir;
     char *webroot_dir;
+    aliases *aliases;
 
     char *access_log;
     char *error_log;

@@ -83,6 +83,14 @@
              be relative to the new root, not the original root -->
 		<logdir>/usr/local/icecast/logs</logdir>
 		<webroot>/usr/local/icecast/web</webroot>
+
+        <!-- Aliases: treat requests for 'source' path as being for 'dest' path
+             May be made specific to a port or bound address using the "port"
+             and "bind-address" attributes.
+          -->
+        <!--
+        <alias source="/foo" dest="/bar"/>
+          -->
 	</paths>
 
 	<logging>

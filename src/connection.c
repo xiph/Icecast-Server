@@ -109,11 +109,12 @@ static unsigned long _next_connection_id(void)
     return id;
 }
 
-connection_t *create_connection(sock_t sock, char *ip) {
+connection_t *create_connection(sock_t sock, sock_t serversock, char *ip) {
     connection_t *con;
     con = (connection_t *)malloc(sizeof(connection_t));
     memset(con, 0, sizeof(connection_t));
     con->sock = sock;
+    con->serversock = serversock;
     con->con_time = time(NULL);
     con->id = _next_connection_id();
     con->ip = ip;
@@ -203,7 +204,7 @@ static connection_t *_accept_connection(void)
 
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
     if (sock >= 0) {
-        con = create_connection(sock, ip);
+        con = create_connection(sock, serversock, ip);
 
         return con;
     }
@@ -648,6 +649,10 @@ static void _handle_get_request(connection_t *con,
     int fileserve;
     char *host;
     int port;
+    int i;
+    char *serverhost;
+    int serverport;
+    aliases *alias;
     ice_config_t *config;
     int client_limit;
 
@@ -655,6 +660,14 @@ static void _handle_get_request(connection_t *con,
     fileserve = config->fileserve;
     host = config->hostname;
     port = config->port;
+    for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
+        if(global.serversock[i] == con->serversock) {
+            serverhost = config->listeners[i].bind_address;
+            serverport = config->listeners[i].port;
+            break;
+        }
+    }
+    alias = config->aliases;
     client_limit = config->client_limit;
     config_release_config();
 
@@ -668,12 +681,21 @@ static void _handle_get_request(connection_t *con,
     /* there are several types of HTTP GET clients
     ** media clients, which are looking for a source (eg, URI = /stream.ogg)
     ** stats clients, which are looking for /admin/stats.xml
-    ** and director server authorizers, which are looking for /GUID-xxxxxxxx 
+    ** and directory server authorizers, which are looking for /GUID-xxxxxxxx 
     ** (where xxxxxx is the GUID in question) - this isn't implemented yet.
     ** we need to handle the latter two before the former, as the latter two
     ** aren't subject to the limits.
     */
     /* TODO: add GUID-xxxxxx */
+
+    /* Handle aliases */
+    while(alias) {
+        if(strcmp(uri, alias->source) == 0 && (alias->port == -1 || alias->port == serverport) && (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0))) {
+            uri = alias->destination;
+            break;
+        }
+        alias = alias->next;
+    }
 
     /* Dispatch all admin requests */
     if (strncmp(uri, "/admin/", 7) == 0) {

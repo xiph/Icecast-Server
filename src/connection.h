@@ -17,6 +17,7 @@ typedef struct connection_tag
     uint64_t sent_bytes;
 
     int sock;
+    int serversock;
     int error;
 
     char *ip;
@@ -31,7 +32,7 @@ void connection_initialize(void);
 void connection_shutdown(void);
 void connection_accept_loop(void);
 void connection_close(connection_t *con);
-connection_t *create_connection(sock_t sock, char *ip);
+connection_t *create_connection(sock_t sock, sock_t serversock, char *ip);
 int connection_create_source(struct _client_tag *client, connection_t *con, 
         http_parser_t *parser, char *mount);
 
