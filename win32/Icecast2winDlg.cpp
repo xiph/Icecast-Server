@@ -34,7 +34,7 @@ extern "C" {
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define ICECAST_VERSION "2.0alpha1"
+#define ICECAST_VERSION "2.x"
 CEdit	*g_accessControl;
 CEdit	*g_errorControl;
 CIcecast2winDlg	*g_mainDialog;
