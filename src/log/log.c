@@ -95,7 +95,7 @@ int log_open(const char *filename)
 int log_open_with_buffer(const char *filename, int size)
 {
 	/* not implemented */
-	return 0;
+	return LOG_ENOTIMPL;
 }
 
 void log_set_level(int log_id, int level)

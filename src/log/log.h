@@ -5,6 +5,7 @@
 #define LOG_ENOMORELOGS -2
 #define LOG_ECANTOPEN -3
 #define LOG_ENOTOPEN -4
+#define LOG_ENOTIMPL -5
 
 
 void log_initialize();
