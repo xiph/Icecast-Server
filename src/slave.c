@@ -303,6 +303,19 @@ static void *start_relay_stream (void *arg)
         return NULL;
     } while (0);
 
+    if (relay->source->fallback_mount)
+    {
+        source_t *fallback_source;
+
+        avl_tree_rlock(global.source_tree);
+        fallback_source = source_find_mount (relay->source->fallback_mount);
+
+        if (fallback_source != NULL)
+            source_move_clients (relay->source, fallback_source);
+
+        avl_tree_unlock (global.source_tree);
+    }
+
     if (con == NULL && streamsock != SOCK_ERROR)
         sock_close (streamsock);
     if (con)
