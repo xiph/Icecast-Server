@@ -355,6 +355,8 @@ void *source_main(void *arg)
             while (bytes <= 0) {
                 ret = util_timed_wait_for_fd(source->con->sock, timeout*1000);
 
+                if (ret < 0 && sock_recoverable (sock_error()))
+                   continue;
                 if (ret <= 0) { /* timeout expired */
                     WARN1("Disconnecting source: socket timeout (%d s) expired",
                            timeout);
