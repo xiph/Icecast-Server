@@ -1,5 +1,5 @@
 dnl xiph_compiler.m4
-dnl $Id: xiph_compiler.m4,v 1.5 2003/07/17 09:23:44 karl Exp $
+dnl $Id$
 
 dnl XIPH_FUNC_VA_COPY
 dnl Karl Heyes
@@ -166,3 +166,21 @@ EOF
 done
 $1="$xt_filtered $$1"
 ])dnl XIPH_VAR_PREPEND
+
+dnl XIPH_C__FUNC__
+dnl Karl Heyes <karl@xiph.org> 07/2004
+AC_DEFUN([XIPH_C__FUNC__],
+[dnl
+AC_MSG_CHECKING([for __func__])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,[const char *x = __func__;])],
+    [ AC_MSG_RESULT([yes])],
+    [ AH_TEMPLATE([__func__], [Replace __func__ if not supported])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[const char *x = __FUNCTION__;])],
+        [ AC_DEFINE([__func__],[__FUNCTION__])
+        AC_MSG_RESULT([yes])],
+        [ AC_DEFINE([__func__],[""])
+        AC_MSG_RESULT([no])
+        ])
+    ])
+])dnl XIPH_C__FUNC__
+
