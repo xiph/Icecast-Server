@@ -6,6 +6,8 @@
 #define ICE_RUNNING 1
 #define ICE_HALTING 2
 
+#define ICE_DEFAULT_STACKSIZE 8192
+
 typedef struct ice_global_tag
 {
 	int serversock;
