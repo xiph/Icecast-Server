@@ -377,7 +377,7 @@ static void check_relay_stream (relay_server *relay)
             if (source->fallback_mount && source->fallback_override)
             {
                 source_t *fallback;
-                DEBUG2 ("checking %s for fallback override", source->fallback_mount);
+                DEBUG1 ("checking %s for fallback override", source->fallback_mount);
                 avl_tree_rlock (global.source_tree);
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
