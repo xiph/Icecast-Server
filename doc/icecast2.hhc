@@ -10,7 +10,7 @@
 <UL>
 	<LI> <OBJECT type="text/sitemap">
 		<param name="Name" value="Icecast2 - Table of Contents">
-		<param name="Local" value="icecast2_TOC.html">
+		<param name="Local" value="index.html">
 		</OBJECT>
 	<UL>
 		<LI> <OBJECT type="text/sitemap">

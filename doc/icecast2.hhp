@@ -13,11 +13,11 @@ Language=0x409 English (United States)
 Title=Icecast 2
 
 [WINDOWS]
-Icecast 2 Documentation=,"icecast2.hhc","Index.hhk","icecast2_TOC.html",,,,,,0x42520,,0x3006,[26,28,794,605],,,,,,,0
+Icecast 2 Documentation=,"icecast2.hhc","Index.hhk","index.html",,,,,,0x42520,,0x3006,[26,28,794,605],,,,,,,0
 
 
 [FILES]
-icecast2_TOC.html
+index.html
 
 [INFOTYPES]
 
