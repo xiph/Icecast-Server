@@ -3,13 +3,16 @@ dnl Jack Moffitt <jack@icecast.org> 08-06-2001
 dnl Rewritten for libshout 2
 dnl Brendan Cully <brendan@xiph.org> 20030612
 dnl 
-dnl $Id: shout.m4,v 1.10 2003/06/26 19:38:23 brendan Exp $
+dnl $Id: shout.m4,v 1.11 2003/07/01 18:02:19 brendan Exp $
 
 # XIPH_PATH_SHOUT([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
-# Test for libshout, and define SHOUT_CFLAGS and SHOUT_LIBS
+# Test for libshout, and define SHOUT_CPPFLAGS SHOUT_CFLAGS SHOUT_LIBS, and
+# SHOUT_THREADED
 AC_DEFUN([XIPH_PATH_SHOUT],
 [dnl
 xt_have_shout="no"
+SHOUT_THREADED="no"
+SHOUT_CPPFLAGS=""
 SHOUT_CFLAGS=""
 SHOUT_LIBS=""
 
@@ -24,7 +27,8 @@ export PKG_CONFIG_PATH
 AC_PATH_PROG([PKGCONFIG], [pkg-config], [no])
 if test "$PKGCONFIG" != "no" && `$PKGCONFIG --exists shout`
 then
-  SHOUT_CFLAGS=`$PKGCONFIG --cflags shout`
+  SHOUT_CFLAGS=`$PKGCONFIG --variable=cflags_only shout`
+  SHOUT_CPPFLAGS=`$PKGCONFIG --variable=cppflags shout`
   SHOUT_LIBS=`$PKGCONFIG --libs shout`
   xt_have_shout="maybe"
 else
@@ -36,7 +40,8 @@ else
   AC_PATH_PROG([SHOUTCONFIG], [shout-config], [no])
   if test "$SHOUTCONFIG" != "no" && test `$SHOUTCONFIG --package` = "libshout"
   then
-    SHOUT_CFLAGS=`$SHOUTCONFIG --cflags`
+    SHOUT_CPPFLAGS=`$SHOUTCONFIG --cppflags`
+    SHOUT_CFLAGS=`$SHOUTCONFIG --cflags-only`
     SHOUT_LIBS=`$SHOUTCONFIG --libs`
     xt_have_shout="maybe"
   fi
@@ -45,17 +50,20 @@ fi
 # Now try actually using libshout
 if test "$xt_have_shout" != "no"
 then
+  ac_save_CPPFLAGS="$CPPFLAGS"
   ac_save_CFLAGS="$CFLAGS"
   ac_save_LIBS="$LIBS"
+  CPPFLAGS="$CPPFLAGS $SHOUT_CPPFLAGS"
   CFLAGS="$CFLAGS $SHOUT_CFLAGS"
-  LIBS="$LIBS $SHOUT_LIBS"
-  AC_CHECK_HEADER([shout/shout.h], [
-    AC_DEFINE([HAVE_SHOUT_SHOUT_H], 1, [Define if you have <shout/shout.h>])
+  LIBS="$SHOUT_LIBS $LIBS"
+  AC_CHECK_HEADERS([shout/shout.h], [
     AC_CHECK_FUNC([shout_new], [
       ifelse([$1], , :, [$1])
       xt_have_shout="yes"
     ])
+    AC_CHECK_FUNC([thread_initialize], [SHOUT_THREADED="yes"])
   ])
+  CPPFLAGS="$ac_save_CPPFLAGS"
   CFLAGS="$ac_save_CFLAGS"
   LIBS="$ac_save_LIBS"
 fi
