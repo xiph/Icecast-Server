@@ -57,15 +57,6 @@
 #include "sock.h"
 #include "resolver.h"
 
-#if 0
-#ifndef HAVE_VA_COPY
- #ifdef HAVE___VA_COPY
-  #define va_copy(dest,src)    __va_copy(dest, src)
- #else
-  #define va_copy(dest,src)    memcpy(&dest, &src, sizeof (va_list))
- #endif
-#endif
-#endif
 
 /* sock_initialize
 **
