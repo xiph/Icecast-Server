@@ -822,7 +822,7 @@ void stats_sendxml(client_t *client)
 		free(src_nodes);
 		src_nodes = snd;
 	}
-	if (buff) free(buff);
+	if (buff) xmlFree(buff);
 }
 
 static int _compare_stats(void *arg, void *a, void *b)
