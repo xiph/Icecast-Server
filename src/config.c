@@ -644,7 +644,7 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
         } else if (strcmp(node->name, "adminroot") == 0) {
-            if (configuration->adminroot_dir && configuration->adminroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) 
+            if (configuration->adminroot_dir && configuration->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR) 
                 xmlFree(configuration->adminroot_dir);
             configuration->adminroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')

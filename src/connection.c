@@ -726,7 +726,11 @@ static void _handle_get_request(connection_t *con,
         return;
     }
     else if(fileserve && stat(fullpath, &statbuf) == 0 && 
+#ifdef _WIN32
+            (statbuf.st_mode == S_IFREG))
+#else
             S_ISREG(statbuf.st_mode)) 
+#endif
     {
         fserve_client_create(client, fullpath);
         free(fullpath);

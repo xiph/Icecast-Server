@@ -20,6 +20,9 @@
 #include "format_mp3.h"
 
 #include "logging.h"
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
 
 #define CATMODULE "admin"
 
