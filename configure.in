@@ -58,7 +58,7 @@ else
                 PROFILE="-O20 -g -pg -fsigned-char -D_REENTRANT" 
         		LIBS=" $LIBS -pthread"
 		ogg_prefix="/usr/local"
-		vorbis_prefix="/us/local"
+		vorbis_prefix="/usr/local"
 		;;
         *)
                 DEBUG="-g -Wall -fsigned-char -D_REENTRANT"
