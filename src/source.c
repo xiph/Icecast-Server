@@ -23,8 +23,12 @@
 #include "client.h"
 #include "stats.h"
 #include "format.h"
+#include "logging.h"
 
 #include "source.h"
+
+#undef CATMODULE
+#define CATMODULE "source"
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
@@ -148,6 +152,7 @@ void *source_main(void *arg)
 
 		if (bytes <= 0) {
 			printf("DEBUG: got 0 bytes reading data, the source must have disconnected...\n");
+			INFO0("Disconnecting lame source...");
 			break;
 		}
 
