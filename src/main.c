@@ -183,7 +183,7 @@ static int _start_logging(void)
 {
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
-    char pbuf[1024];
+    char buf[1024];
 
     ice_config_t *config = config_get_config_unlocked();
 
@@ -193,24 +193,32 @@ static int _start_logging(void)
     } else {
         errorlog = log_open_file(stderr);
     }
+
+    if (errorlog < 0) {
+        buf[sizeof(buf)-1] = 0;
+        snprintf(buf, sizeof(buf)-1, "FATAL: could not open error logging: %s",
+                strerror(errno));
+        _fatal_error(buf);
+    }
+    log_set_level(errorlog, config->loglevel);
+
     if(strcmp(config->access_log, "-")) {
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         accesslog = log_open(fn_access);
     } else {
         accesslog = log_open_file(stderr);
     }
+
+    if (accesslog < 0) {
+        buf[sizeof(buf)-1] = 0;
+        snprintf(buf, sizeof(buf)-1, "FATAL: could not open access logging: %s",
+                strerror(errno));
+        _fatal_error(buf);
+    }
     
     log_set_level(errorlog, config->loglevel);
     log_set_level(accesslog, 4);
 
-    if (errorlog < 0) {
-        _fatal_error("FATAL: could not open error logging");
-    }
-    if (accesslog < 0) {
-        memset(pbuf, '\000', sizeof(pbuf));
-        snprintf(pbuf, sizeof(pbuf)-1, "FATAL: could not open access logging");
-        _fatal_error(pbuf);
-    }
     if (errorlog >= 0 && accesslog >= 0) return 1;
     
     return 0;
