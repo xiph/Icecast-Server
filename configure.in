@@ -91,6 +91,7 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 
 dnl Check for types
+AC_CHECK_TYPE([socklen_t], int)
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(nanosleep)
