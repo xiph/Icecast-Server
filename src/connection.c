@@ -703,7 +703,8 @@ static void _handle_get_request(connection_t *con,
         free(fullpath);
         return;
     }
-    else if(fileserve && stat(fullpath, &statbuf) == 0) 
+    else if(fileserve && stat(fullpath, &statbuf) == 0 && 
+            S_ISREG(statbuf.st_mode)) 
     {
         fserve_client_create(client, fullpath);
         free(fullpath);
