@@ -2,7 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+
+#ifdef HAVE_POLL
 #include <sys/poll.h>
+#endif
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -45,8 +48,13 @@ static int run_fserv;
 static int fserve_clients;
 static int client_tree_changed=0;
 
+#ifdef HAVE_POLL
 static struct pollfd *ufds = NULL;
 static int ufdssize = 0;
+#else
+static fd_set fds;
+static int fd_max = 0;
+#endif
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
@@ -89,6 +97,7 @@ static void wait_for_fds() {
     int i;
 
     while(run_fserv) {
+#ifdef HAVE_POLL
         if(client_tree_changed) {
             client_tree_changed = 0;
             i = 0;
@@ -105,9 +114,32 @@ static void wait_for_fds() {
             avl_tree_unlock(client_tree);
         }
 
-        if(poll(ufds, ufdssize, 200) > 0) {
+        if(poll(ufds, ufdssize, 200) > 0)
             return;
+#else
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = 200000;
+        if(client_tree_changed) {
+            client_tree_changed = 0;
+            i=0;
+            FD_ZERO(&fds);
+            fd_max = 0;
+            avl_tree_rlock(client_tree);
+            client_node = avl_get_first(client_tree);
+            while(client_node) {
+                client = client_node->key;
+                FD_SET(client->client->con->sock, &fds);
+                if(client->client->con->sock > fd_max)
+                    fd_max = client->client->con->sock;
+                client_node = avl_get_next(client_node);
+            }
+            avl_tree_unlock(client_tree);
         }
+
+        if(select(fd_max+1, NULL, &fds, NULL, &tv) > 0)
+            return;
+#endif
         else {
             avl_tree_rlock(pending_tree);
             client_node = avl_get_first(pending_tree);
@@ -117,7 +149,6 @@ static void wait_for_fds() {
         }
     }
 }
-
 
 void *fserv_thread_function(void *arg)
 {
