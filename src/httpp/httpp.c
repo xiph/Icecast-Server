@@ -296,6 +296,7 @@ int httpp_parse_icy(http_parser_t *parser, char *http_data, unsigned long len)
     httpp_setvar(parser, HTTPP_VAR_URI, "/");
     httpp_setvar(parser, HTTPP_VAR_ICYPASSWORD, line[0]);
     httpp_setvar(parser, HTTPP_VAR_PROTOCOL, "ICY");
+    httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "SOURCE");
     /* This protocol is evil */
     httpp_setvar(parser, HTTPP_VAR_VERSION, "666");
 
