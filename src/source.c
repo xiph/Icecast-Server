@@ -77,6 +77,10 @@ source_t *source_reserve (const char *mount)
 
     do
     {
+        unsigned int listen_url_size;
+        char *listenurl;
+        ice_config_t *config;
+
         avl_tree_wlock (global.source_tree);
         src = source_find_mount_raw (mount);
         if (src)
@@ -98,6 +102,25 @@ source_t *source_reserve (const char *mount)
         thread_mutex_create (src->mount, &src->lock);
 
         avl_insert (global.source_tree, src);
+
+        config = config_get_config();
+
+        /* 6 for max size of port */
+        listen_url_size = strlen("http://") + strlen(config->hostname) +
+            strlen(":") + 6 + strlen(mount) + 1;
+
+        listenurl = malloc (listen_url_size);
+        if (listenurl)
+        {
+            snprintf (listenurl, listen_url_size, "http://%s:%d%s",
+                    config->hostname, config->port, mount);
+
+            stats_event (mount, "listenurl", listenurl);
+
+            free(listenurl);
+        }
+        config_release_config();
+        stats_event (mount, "listeners", "0");
 
     } while (0);
 
@@ -284,6 +307,8 @@ void source_free_source (source_t *source)
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
+    stats_event (source->mount, "listeners", NULL);
+    stats_event (source->mount, NULL, NULL);
 
     /* There should be no listeners on this mount */
     if (source->active_clients)
@@ -651,27 +676,7 @@ static void get_next_buffer (source_t *source)
 
 static void source_init (source_t *source)
 {
-    ice_config_t *config = config_get_config();
-    char *listenurl, *str = NULL;
-    int listen_url_size;
-
-    /* 6 for max size of port */
-    listen_url_size = strlen("http://") + strlen(config->hostname) +
-        strlen(":") + 6 + strlen(source->mount) + 1;
-
-    listenurl = malloc (listen_url_size);
-    if (listenurl)
-    {
-        snprintf (listenurl, listen_url_size, "http://%s:%d%s",
-                config->hostname, config->port, source->mount);
-        config_release_config();
-
-        stats_event (source->mount, "listenurl", listenurl);
-
-        free(listenurl);
-    }
-    else
-        config_release_config();
+    char *str = NULL;
 
     thread_mutex_lock (&source->lock);
     if (source->yp_prevent == 0)
@@ -728,7 +733,6 @@ static void source_init (source_t *source)
     source->listeners = 0;
     stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
-    stats_event (source->mount, "listeners", "0");
     stats_event (source->mount, "type", source->format->format_description);
 
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
@@ -1091,7 +1095,6 @@ static void source_shutdown (source_t *source)
 
     /* delete this sources stats */
     stats_event_dec (NULL, "sources");
-    stats_event (source->mount, "listeners", NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
        therefore reserved */

@@ -155,7 +155,7 @@ stats_t *stats_get_stats()
     return NULL;
 }
 
-void stats_event(char *source, char *name, char *value)
+void stats_event(const char *source, char *name, char *value)
 {
     stats_event_t *node;
     stats_event_t *event;
@@ -183,7 +183,7 @@ void stats_event(char *source, char *name, char *value)
     thread_mutex_unlock(&_global_event_mutex);
 }
 
-void stats_event_args(char *source, char *name, char *format, ...)
+void stats_event_args(const char *source, char *name, char *format, ...)
 {
     char buf[1024];
     va_list val;
