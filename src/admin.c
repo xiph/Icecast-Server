@@ -799,11 +799,7 @@ static void command_metadata(client_t *client, source_t *source)
 
     state = source->format->_state;
 
-    thread_mutex_lock(&(state->lock));
-    free(state->metadata);
-    state->metadata = strdup(value);
-    state->metadata_age++;
-    thread_mutex_unlock(&(state->lock));
+    mp3_set_tag (source->format, "title", value);
 
     DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
         source->mount, value);

@@ -339,7 +339,8 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->num_yp_directories = 0;
     configuration->relay_username = NULL;
     configuration->relay_password = NULL;
-    configuration->burst_on_connect = 1;
+    /* default to a typical prebuffer size used by clients */
+    configuration->burst_size = 65536;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
@@ -463,7 +464,12 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "burst-on-connect") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->burst_on_connect = atoi(tmp);
+            if (atoi(tmp) == 0)
+                configuration->burst_size = 0;
+            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "burst-size") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->burst_size = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
@@ -489,7 +495,9 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     else
         configuration->mounts = mount;
 
+    /* default <mount> settings */
     mount->max_listeners = -1;
+    mount->burst_size = -1;
     mount->next = NULL;
 
     do {
@@ -574,6 +582,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                 mount->source_timeout = atoi (tmp);
                 xmlFree(tmp);
             }
+        } else if (strcmp(node->name, "burst-size") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->burst_size = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
 }

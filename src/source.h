@@ -55,11 +55,22 @@ typedef struct source_tag
     struct auth_tag *authenticator;
     int fallback_override;
     int no_mount;
-    unsigned queue_size_limit;
+
+    /* per source burst handling for connecting clients */
+    unsigned int burst_size;    /* trigger level for burst on connect */
+    unsigned int burst_offset; 
+    refbuf_t *burst_point;
+
+    unsigned int queue_size;
+    unsigned int queue_size_limit;
+
     unsigned timeout;  /* source timeout in seconds */
-    refbuf_queue_t *queue;
-    mutex_t queue_mutex;
-    int burst_on_connect;
+    time_t last_read;
+    int short_delay;
+
+    refbuf_t *stream_data;
+    refbuf_t *stream_data_tail;
+
 } source_t;
 
 source_t *source_reserve (const char *mount);

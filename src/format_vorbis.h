@@ -18,6 +18,6 @@
 #ifndef __FORMAT_VORBIS_H__
 #define __FORMAT_VORBIS_H__
 
-format_plugin_t *format_vorbis_get_plugin(void);
+int format_vorbis_get_plugin(source_t *source);
 
 #endif  /* __FORMAT_VORBIS_H__ */

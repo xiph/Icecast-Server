@@ -75,32 +75,22 @@ char *format_get_mimetype(format_type_t type)
     }
 }
 
-format_plugin_t *format_get_plugin(format_type_t type, char *mount, 
-        http_parser_t *parser)
+int format_get_plugin(format_type_t type, source_t *source)
 {
-    format_plugin_t *plugin;
+    int ret = -1;
 
     switch (type) {
     case FORMAT_TYPE_VORBIS:
-        plugin = format_vorbis_get_plugin();
-        if (plugin) plugin->mount = mount;
+        ret = format_vorbis_get_plugin (source);
         break;
     case FORMAT_TYPE_MP3:
-        plugin = format_mp3_get_plugin(parser);
-        if (plugin) plugin->mount = mount;
+        ret = format_mp3_get_plugin (source);
         break;
     default:
-        plugin = NULL;
         break;
     }
 
-    return plugin;
-}
-
-int format_generic_write_buf_to_client(format_plugin_t *format, 
-        client_t *client, unsigned char *buf, int len)
-{
-    return client_send_bytes (client, buf, len);
+    return ret;
 }
 
 void format_send_general_headers(format_plugin_t *format,

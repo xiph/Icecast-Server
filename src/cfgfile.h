@@ -54,8 +54,10 @@ typedef struct _mount_proxy {
                               clients from the fallback? */
     int no_mount; /* Do we permit direct requests of this mountpoint? (or only
                      indirect, through fallbacks) */
-    unsigned queue_size_limit;
-    unsigned source_timeout;  /* source timeout in seconds */
+    int burst_size; /* amount to send to a new client if possible, -1 take
+                     * from global setting */
+    unsigned int queue_size_limit;
+    unsigned int source_timeout;  /* source timeout in seconds */
 
     char *auth_type; /* Authentication type */
     config_options_t *auth_options; /* Options for this type */
@@ -84,8 +86,9 @@ typedef struct ice_config_tag
 
     int client_limit;
     int source_limit;
-    unsigned queue_size_limit;
+    unsigned int queue_size_limit;
     int threadpool_size;
+    unsigned int burst_size;
     int client_timeout;
     int header_timeout;
     int source_timeout;
@@ -133,7 +136,6 @@ typedef struct ice_config_tag
     char *yp_url[MAX_YP_DIRECTORIES];
     int    yp_url_timeout[MAX_YP_DIRECTORIES];
     int num_yp_directories;
-    int burst_on_connect;
 } ice_config_t;
 
 typedef struct {

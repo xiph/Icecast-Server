@@ -42,17 +42,14 @@ client_t *client_create(connection_t *con, http_parser_t *parser)
 
     client->con = con;
     client->parser = parser;
-    client->queue = NULL;
+    client->refbuf = NULL;
     client->pos = 0;
-    client->burst_sent = 0;
 
     return client;
 }
 
 void client_destroy(client_t *client)
 {
-    refbuf_t *refbuf;
-
     if (client == NULL)
         return;
     /* write log entry if ip is set (some things don't set it, like outgoing 
@@ -64,9 +61,9 @@ void client_destroy(client_t *client)
     connection_close(client->con);
     httpp_destroy(client->parser);
 
-    while ((refbuf = refbuf_queue_remove(&client->queue)))
-        refbuf_release(refbuf);
-
+    /* drop ref counts if need be */
+    if (client->refbuf)
+        refbuf_release (client->refbuf);
     /* we need to free client specific format data (if any) */
     if (client->free_client_data)
         client->free_client_data (client);
@@ -142,5 +139,16 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
     if (ret > 0)
         client->con->sent_bytes += ret;
     return ret;
+}
+
+void client_set_queue (client_t *client, refbuf_t *refbuf)
+{
+    refbuf_t *to_release = client->refbuf;
+
+    client->refbuf = refbuf;
+    refbuf_addref (client->refbuf);
+    client->pos = 0;
+    if (to_release)
+        refbuf_release (to_release);
 }
 

@@ -60,6 +60,7 @@ mutex_t move_clients_mutex;
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
+static void source_shutdown (source_t *source);
 
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
@@ -189,7 +190,6 @@ int source_compare_sources(void *arg, void *a, void *b)
 
 void source_clear_source (source_t *source)
 {
-    refbuf_t *refbuf;
     DEBUG1 ("clearing source \"%s\"", source->mount);
     client_destroy(source->client);
     source->client = NULL;
@@ -228,6 +228,10 @@ void source_clear_source (source_t *source)
     if (source->yp_public)
         yp_remove (source->mount);
 
+    source->burst_point = NULL;
+    source->burst_size = 0;
+    source->burst_offset = 0;
+    source->queue_size = 0;
     source->queue_size_limit = 0;
     source->listeners = 0;
     source->no_mount = 0;
@@ -239,12 +243,18 @@ void source_clear_source (source_t *source)
 
     free(source->dumpfilename);
     source->dumpfilename = NULL;
+
     /* Lets clear out the source queue too */
-    while ((refbuf = refbuf_queue_remove(&source->queue)))
-        refbuf_release(refbuf);
-    source->queue = NULL;
-    source->burst_on_connect = 1;
-    thread_mutex_destroy(&source->queue_mutex);
+    while (source->stream_data)
+    {
+        refbuf_t *p = source->stream_data;
+        source->stream_data = p->next;
+        /* can be referenced by burst handler as well */
+        while (p->_count > 1)
+            refbuf_release (p);
+        refbuf_release (p);
+    }
+    source->stream_data_tail = NULL;
 }
 
 
@@ -332,7 +342,8 @@ void source_move_clients (source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->pending_tree, client, NULL);
 
-            /* TODO: reset client local format data?  */
+            /* switch client to different queue */
+            client_set_queue (client, dest->stream_data_tail);
             avl_insert (dest->pending_tree, (void *)client);
         }
 
@@ -346,7 +357,8 @@ void source_move_clients (source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->client_tree, client, NULL);
 
-            /* TODO: reset client local format data?  */
+            /* switch client to different queue */
+            client_set_queue (client, dest->stream_data_tail);
             avl_insert (dest->pending_tree, (void *)client);
         }
         source->listeners = 0;
@@ -358,6 +370,105 @@ void source_move_clients (source_t *source, source_t *dest)
     avl_tree_unlock (source->pending_tree);
     avl_tree_unlock (dest->pending_tree);
     thread_mutex_unlock (&move_clients_mutex);
+}
+
+/* get some data from the source. The stream data is placed in a refbuf
+ * and sent back, however NULL is also valid as in the case of a short
+ * timeout and there's no data pending.
+ */
+static refbuf_t *get_next_buffer (source_t *source)
+{
+    refbuf_t *refbuf = NULL;
+    int delay = 250;
+
+    if (source->short_delay)
+        delay = 0;
+    while (global.running == ICE_RUNNING && source->running)
+    {
+        int fds;
+        time_t current = time (NULL);
+
+        fds = util_timed_wait_for_fd (source->con->sock, delay);
+
+        if (fds < 0)
+        {
+            if (! sock_recoverable (sock_error()))
+            {
+                WARN0 ("Error while waiting on socket, Disconnecting source");
+                source->running = 0;
+            }
+            break;
+        }
+        if (fds == 0)
+        {
+            if (source->last_read + (time_t)source->timeout < current)
+            {
+                DEBUG3 ("last %ld, timeout %ld, now %ld", source->last_read, source->timeout, current);
+                WARN0 ("Disconnecting source due to socket timeout");
+                source->running = 0;
+            }
+            break;
+        }
+        source->last_read = current;
+        refbuf = source->format->get_buffer (source);
+        if (refbuf)
+            break;
+    }
+
+    return refbuf;
+}
+
+
+/* general send routine per listener.  The deletion_expected tells us whether
+ * the last in the queue is about to disappear, so if this client is still
+ * referring to it after writing then drop the client as it's fallen too far
+ * behind 
+ */ 
+static void send_to_listener (source_t *source, client_t *client, int deletion_expected)
+{
+    int bytes;
+    int loop = 10;   /* max number of iterations in one go */
+    int total_written = 0;
+
+    /* new users need somewhere to start from */
+    if (client->refbuf == NULL)
+    {
+        /* make clients start at the per source burst point on the queue */
+        client_set_queue (client, source->burst_point);
+        if (client->refbuf == NULL)
+           return;
+    }
+
+    while (1)
+    {
+        /* jump out if client connection has died */
+        if (client->con->error)
+            break;
+
+        /* lets not send too much to one client in one go, but don't
+           sleep for too long if more data can be sent */
+        if (total_written > 20000 || loop == 0)
+        {
+            source->short_delay = 1;
+            break;
+        }
+
+        loop--;
+
+        bytes = source->format->write_buf_to_client (source->format, client);
+        if (bytes <= 0)
+            break;  /* can't write any more */
+
+        total_written += bytes;
+    }
+
+    /* the refbuf referenced at head (last in queue) may be marked for deletion
+     * if so, check to see if this client is still referring to it */
+    if (deletion_expected && client->refbuf == source->stream_data)
+    {
+        DEBUG0("Client has fallen too far behind, removing");
+        client->con->error = 1;
+    }
 }
 
 
@@ -375,7 +486,6 @@ static void source_init (source_t *source)
     memset (listenurl, '\000', listen_url_size);
     snprintf (listenurl, listen_url_size, "http://%s:%d%s",
             config->hostname, config->port, source->mount);
-    source->burst_on_connect = config->burst_on_connect;
     config_release_config();
 
     /* maybe better in connection.c */
@@ -423,9 +533,8 @@ static void source_init (source_t *source)
 
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
-    thread_mutex_create(&source->queue_mutex);
-
     DEBUG0("Source creation complete");
+    source->last_read = time (NULL);
     source->running = 1;
 
     /*
@@ -454,212 +563,70 @@ static void source_init (source_t *source)
 
 void source_main (source_t *source)
 {
-    char buffer[4096];
-    long bytes, sbytes;
-    int ret, i;
+    unsigned int listeners;
+    refbuf_t *refbuf;
     client_t *client;
     avl_node *client_node;
-
-    refbuf_t *refbuf, *abuf, *stale_refbuf;
-    int data_done;
 
     source_init (source);
 
     while (global.running == ICE_RUNNING && source->running) {
-        ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
-        if(ret < 0) {
-            WARN0("Bad data from source");
-            break;
-        }
-        if (source->burst_on_connect) {
-            thread_mutex_lock(&source->queue_mutex);
-            /* Add to the source buffer */
-            if (refbuf) {
-                refbuf_addref(refbuf);
-                refbuf_queue_add(&(source->queue), refbuf);
-                /* We derive the size of the source buffer queue based off the 
-                   setting for queue_size_limit (client buffer queue size).  
-                   This is because the source buffer queue size should be a
-                   percentage of the client buffer size (definately cannot
-                   be larger). Why 50% ? Because > 75% does not give the
-                   client enough leeway for lagging on initial connection
-                   and < 25% does not provide a good enough burst on connect. */
-                if (refbuf_queue_length(&(source->queue)) > 
-                    source->queue_size_limit/2) {
-                    stale_refbuf = refbuf_queue_remove(&(source->queue));
-                    refbuf_release(stale_refbuf);
-                }
-            }
-            thread_mutex_unlock(&source->queue_mutex);
-        }
-        bytes = 1; /* Set to > 0 so that the post-loop check won't be tripped */
-        while (refbuf == NULL) {
-            bytes = 0;
-            while (bytes <= 0) {
-                ret = util_timed_wait_for_fd(source->con->sock, source->timeout*1000);
+        int remove_from_q;
 
-                if (ret < 0 && sock_recoverable (sock_error()))
-                   continue;
-                if (ret <= 0) { /* timeout expired */
-                    WARN1("Disconnecting source: socket timeout (%d s) expired",
-                           source->timeout);
-                    bytes = 0;
-                    break;
-                }
+        refbuf = get_next_buffer (source);
 
-                bytes = sock_read_bytes(source->con->sock, buffer, 4096);
-                if (bytes == 0 || 
-                        (bytes < 0 && !sock_recoverable(sock_error()))) 
-                {
-                    DEBUG1("Disconnecting source due to socket read error: %s",
-                            strerror(sock_error()));
-                    break;
-                }
-            }
-            if (bytes <= 0) break;
-            source->client->con->sent_bytes += bytes;
-            ret = source->format->get_buffer(source->format, buffer, bytes, 
-                    &refbuf);
-            if(ret < 0) {
-                WARN0("Bad data from source");
-                goto done;
-            }
-            if (source->burst_on_connect) {
-                /* Add to the source buffer */
-                thread_mutex_lock(&source->queue_mutex);
-                if (refbuf) {
-                    refbuf_addref(refbuf);
-                    refbuf_queue_add(&(source->queue), refbuf);
-                    if (refbuf_queue_length(&(source->queue)) > 
-                        source->queue_size_limit/2) {
-                        stale_refbuf = refbuf_queue_remove(&(source->queue));
-                        refbuf_release(stale_refbuf);
-                    }
-                }
-                thread_mutex_unlock(&source->queue_mutex);
-            }
-        }
+        remove_from_q = 0;
+        source->short_delay = 0;
 
-        if (bytes <= 0) {
-            INFO0("Removing source following disconnection");
-            break;
-        }
-
-        /* we have a refbuf buffer, which a data block to be sent to 
-        ** all clients.  if a client is not able to send the buffer
-        ** immediately, it should store it on its queue for the next
-        ** go around.
-        **
-        ** instead of sending the current block, a client should send
-        ** all data in the queue, plus the current block, until either
-        ** it runs out of data, or it hits a recoverable error like
-        ** EAGAIN.  this will allow a client that got slightly lagged
-        ** to catch back up if it can
-        */
-
-        /* First, stream dumping, if enabled */
-        if(source->dumpfile) {
-            if(fwrite(refbuf->data, 1, refbuf->len, source->dumpfile) !=
-                    refbuf->len) 
+        if (refbuf)
+        {
+            /* append buffer to the in-flight data queue,  */
+            if (source->stream_data == NULL)
             {
-                WARN1("Write to dump file failed, disabling: %s", 
-                        strerror(errno));
-                fclose(source->dumpfile);
-                source->dumpfile = NULL;
+                source->stream_data = refbuf;
+                source->burst_point = refbuf;
             }
-        }
+            if (source->stream_data_tail)
+                source->stream_data_tail->next = refbuf;
+            source->stream_data_tail = refbuf;
+            source->queue_size += refbuf->len;
+            /* new buffer is referenced for burst */
+            refbuf_addref (refbuf);
 
-        /* acquire read lock on client_tree */
-        avl_tree_rlock(source->client_tree);
-
-        client_node = avl_get_first(source->client_tree);
-        while (client_node) {
-            /* acquire read lock on node */
-            avl_node_wlock(client_node);
-
-            client = (client_t *)client_node->key;
-            
-            data_done = 0;
-
-            /* do we have any old buffers? */
-            abuf = refbuf_queue_remove(&client->queue);
-            while (abuf) {
-                bytes = abuf->len - client->pos;
-
-                sbytes = source->format->write_buf_to_client(source->format,
-                        client, &abuf->data[client->pos], bytes);
-                if (sbytes < bytes) {
-                    if (client->con->error) {
-                        refbuf_release (abuf);
-                    }
-                    else {
-                        /* We didn't send the entire buffer. Leave it for
-                         * the moment, handle it in the next iteration.
-                         */
-                        client->pos += sbytes<0?0:sbytes;
-                        refbuf_queue_insert (&client->queue, abuf);
-                    }
-                    data_done = 1;
-                    break;
-                }
-                /* we're done with that refbuf, release it and reset the pos */
-                refbuf_release(abuf);
-                client->pos = 0;
-
-                abuf = refbuf_queue_remove(&client->queue);
-            }
-            
-            /* now send or queue the new data */
-            if (data_done) {
-                refbuf_addref(refbuf);
-                refbuf_queue_add(&client->queue, refbuf);
-            } else {
-                sbytes = source->format->write_buf_to_client(source->format,
-                        client, refbuf->data, refbuf->len);
-                if (client->con->error == 0 && sbytes < refbuf->len) {
-                    /* Didn't send the entire buffer, queue it */
-                    client->pos = sbytes<0?0:sbytes;
-                    refbuf_addref(refbuf);
-                    refbuf_queue_insert(&client->queue, refbuf);
+            /* new data on queue, so check the burst point */
+            source->burst_offset += refbuf->len;
+            if (source->burst_offset > source->burst_size)
+            {
+                if (source->burst_point->next)
+                {
+                    refbuf_release (source->burst_point);
+                    source->burst_point = source->burst_point->next;
+                    source->burst_offset -= source->burst_point->len;
                 }
             }
 
-            /* if the client is too slow, its queue will slowly build up.
-            ** we need to make sure the client is keeping up with the
-            ** data, so we'll kick any client who's queue gets to large.
-            */
-            if (refbuf_queue_length(&client->queue) > source->queue_size_limit) {
-                DEBUG0("Client has fallen too far behind, removing");
-                client->con->error = 1;
-            }
-
-            /* release read lock on node */
-            avl_node_unlock(client_node);
-
-            /* get the next node */
-            client_node = avl_get_next(client_node);
+            /* save stream to file */
+            if (source->dumpfile && source->format->write_buf_to_file)
+                source->format->write_buf_to_file (source, refbuf);
         }
-        /* release read lock on client_tree */
-        avl_tree_unlock(source->client_tree);
-
-        /* Only release the refbuf if we didn't add it to the source queue */
-        if (!source->burst_on_connect) {
-            refbuf_release(refbuf);
-        }
+        /* lets see if we have too much data in the queue, but don't remove it until later */
+        if (source->queue_size > source->queue_size_limit)
+            remove_from_q = 1;
 
         /* acquire write lock on client_tree */
         avl_tree_wlock(source->client_tree);
 
-        /** delete bad clients **/
+        listeners = source->listeners;
         client_node = avl_get_first(source->client_tree);
         while (client_node) {
             client = (client_t *)client_node->key;
+
+            send_to_listener (source, client, remove_from_q);
+
             if (client->con->error) {
                 client_node = avl_get_next(client_node);
                 avl_delete(source->client_tree, (void *)client, _free_client);
                 source->listeners--;
-                stats_event_args(source->mount, "listeners", "%d", 
-                        source->listeners);
                 DEBUG0("Client removed");
                 continue;
             }
@@ -696,33 +663,6 @@ void source_main (source_t *source)
             DEBUG0("Client added");
             stats_event_inc(NULL, "clients");
             stats_event_inc(source->mount, "connections");
-            stats_event_args(source->mount, "listeners", "%d", 
-                    source->listeners);
-
-            /* we have to send cached headers for some data formats
-            ** this is where we queue up the buffers to send
-            */
-            client = (client_t *)client_node->key;
-            if (source->format->has_predata) {
-                client->queue = source->format->get_predata(source->format);
-            }
-            if (source->burst_on_connect) {
-                /* here is where we fill up the new client with refbufs from
-                   the source buffer.  this will allow an initial burst of
-                   audio data to be sent to the client, and allow for a faster
-                   startup time (from listener perspective) for the stream */ 
-                if (!client->burst_sent) {
-                    thread_mutex_lock(&source->queue_mutex);
-                    for (i=0;i<refbuf_queue_size(&(source->queue));i++) {
-                        refbuf_queue_add(&(client->queue),
-                            refbuf_queue_get(&(source->queue), i));
-                    }
-                    thread_mutex_unlock(&source->queue_mutex);
-                    client->burst_sent = 1;
-                    DEBUG1("Added %d buffers to initial client queue", 
-                            refbuf_queue_length(&(source->queue)));
-                }
-            }
 
             client_node = avl_get_next(client_node);
         }
@@ -737,12 +677,47 @@ void source_main (source_t *source)
         /* release write lock on pending_tree */
         avl_tree_unlock(source->pending_tree);
 
+        /* update the stats if need be */
+        if (source->listeners != listeners)
+        {
+            INFO2("listener count on %s now %d", source->mount, source->listeners);
+            stats_event_args (source->mount, "listeners", "%d", source->listeners);
+        }
+
+        /* lets reduce the queue, any lagging clients should of been
+         * terminated by now
+         */
+        if (source->stream_data)
+        {
+            /* normal unreferenced queue data will have a refcount 1, but
+             * burst queue data will be at least 2, active clients will also
+             * increase refcount */
+            while (source->stream_data->_count == 1)
+            {
+                refbuf_t *to_go = source->stream_data;
+
+                if (to_go->next == NULL || source->burst_point == to_go)
+                {
+                    /* this should not happen */
+                    ERROR0 ("queue state is unexpected");
+                    source->running = 0;
+                    break;
+                }
+                source->stream_data = to_go->next;
+                source->queue_size -= to_go->len;
+                refbuf_release (to_go);
+            }
+        }
+
         /* release write lock on client_tree */
         avl_tree_unlock(source->client_tree);
     }
+    source_shutdown (source);
+}
 
-done:
 
+static void source_shutdown (source_t *source)
+{
     source->running = 0;
     INFO1("Source \"%s\" exiting", source->mount);
 
@@ -776,8 +751,6 @@ done:
 
     /* release our hold on the lock so the main thread can continue cleaning up */
     thread_rwlock_unlock(source->shutdown_rwlock);
-
-    return;
 }
 
 static int _compare_clients(void *compare_arg, void *a, void *b)
@@ -816,7 +789,7 @@ static int _free_client(void *key)
 static void _parse_audio_info (source_t *source, const char *s)
 {
     const char *start = s;
-    unsigned len;
+    unsigned int len;
 
     while (start != NULL && *start != '\0')
     {
@@ -878,6 +851,9 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->timeout = mountinfo->source_timeout;
         DEBUG1 ("source timeout to %u", source->timeout);
     }
+    if (mountinfo->burst_size > -1)
+        source->burst_size = mountinfo->burst_size;
+    DEBUG1 ("amount to burst on client connect set to %u", source->burst_size);
 }
 
 

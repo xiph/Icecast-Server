@@ -32,8 +32,9 @@ typedef struct _client_tag
     /* http response code for this client */
     int respcode;
 
-    /* buffer queue */
-    refbuf_queue_t *queue;
+    /* where in the queue the client is */
+    refbuf_t *refbuf;
+
     /* position in first buffer */
     unsigned long pos;
 
@@ -45,7 +46,6 @@ typedef struct _client_tag
 
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
-    int burst_sent;
 } client_t;
 
 client_t *client_create(connection_t *con, http_parser_t *parser);
@@ -56,5 +56,6 @@ void client_send_401(client_t *client);
 void client_send_403(client_t *client);
 void client_send_400(client_t *client, char *message);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
+void client_set_queue (client_t *client, refbuf_t *refbuf);
 
 #endif  /* __CLIENT_H__ */

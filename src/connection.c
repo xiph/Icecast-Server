@@ -465,9 +465,8 @@ int connection_complete_source (source_t *source)
                     "for icecast 1.x relays. Assuming content is mp3.");
             format_type = FORMAT_TYPE_MP3;
         }
-        source->format = format_get_plugin (format_type, source->mount, source->parser);
 
-        if (source->format == NULL)
+        if (format_get_plugin (format_type, source) < 0)
         {
             global_unlock();
             config_release_config();
@@ -483,6 +482,7 @@ int connection_complete_source (source_t *source)
         /* set global settings first */
         source->queue_size_limit = config->queue_size_limit;
         source->timeout = config->source_timeout;
+        source->burst_size = config->burst_size;
 
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
@@ -932,8 +932,7 @@ static void _handle_get_request(connection_t *con,
         global.clients++;
         global_unlock();
                         
-        client->format_data = source->format->create_client_data(
-                source->format, source, client);
+        source->format->create_client_data (source, client);
 
         source->format->client_send_headers(source->format, source, client);
                         
