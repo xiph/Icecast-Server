@@ -18,10 +18,15 @@
 typedef struct _vstate_tag
 {
 	ogg_sync_state oy;
+	ogg_stream_state os;
+	vorbis_info vi;
+	vorbis_comment vc;
+
 	ogg_page og;
 	unsigned long serialno;
 	int header;
 	refbuf_t *headbuf[10];
+	int packets;
 } vstate_t;
 
 void format_vorbis_free_plugin(format_plugin_t *self);
@@ -58,6 +63,9 @@ void format_vorbis_free_plugin(format_plugin_t *self)
 
 	/* free state memory */
 	ogg_sync_clear(&state->oy);
+	ogg_stream_clear(&state->os);
+	vorbis_comment_clear(&state->vc);
+	vorbis_info_clear(&state->vi);
 	
 	for (i = 0; i < 10; i++) {
 		if (state->headbuf[i]) {
@@ -76,7 +84,9 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 {
 	char *buffer;
 	refbuf_t *refbuf;
-	int i;
+	int i, result;
+	ogg_packet op;
+	char *tag;
 	vstate_t *state = (vstate_t *)self->_state;
 
 	if (data) {
@@ -95,28 +105,67 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 		if (state->serialno != ogg_page_serialno(&state->og)) {
 			/* this is a new logical bitstream */
 			state->header = 0;
+			state->packets = 0;
+
+			/* release old headers, stream state, vorbis data */
 			for (i = 0; i < 10; i++) {
 				if (state->headbuf[i]) {
 					refbuf_release(state->headbuf[i]);
 					state->headbuf[i] = NULL;
 				}
 			}
-					
+
 			state->serialno = ogg_page_serialno(&state->og);
+			ogg_stream_init(&state->os, state->serialno);
+			vorbis_info_init(&state->vi);
+			vorbis_comment_init(&state->vc);
 		}
 
 		if (state->header >= 0) {
 			if (ogg_page_granulepos(&state->og) == 0) {
 				state->header++;
 			} else {
-				state->header = 0;
+				/* we're done caching headers */
+				state->header = -1;
+
+				/* put known comments in the stats */
+				tag = vorbis_comment_query(&state->vc, "TITLE", 0);
+				if (tag) stats_event_args(self->mount, "title", tag);
+				else stats_event_args(self->mount, "title", "unknown");
+				tag = vorbis_comment_query(&state->vc, "ARTIST", 0);
+				if (tag) stats_event_args(self->mount, "artist", tag);
+				else stats_event_args(self->mount, "artist", "unknown");
+
+				/* don't need these now */
+				ogg_stream_clear(&state->os);
+				vorbis_comment_clear(&state->vc);
+				vorbis_info_clear(&state->vi);
 			}
 		}
 
-		/* cache first three pages */
-		if (state->header) {
+		/* cache header pages */
+		if (state->header > 0) {
 			refbuf_addref(refbuf);
 			state->headbuf[state->header - 1] = refbuf;
+
+			if (state->packets >= 0 && state->packets < 2) {
+				ogg_stream_pagein(&state->os, &state->og);
+				while (state->packets < 2) {
+					result = ogg_stream_packetout(&state->os, &op);
+					if (result == 0) break; /* need more data */
+					if (result < 0) {
+						state->packets = -1;
+						break;
+					}
+
+					state->packets++;
+
+					if (vorbis_synthesis_headerin(&state->vi, &state->vc, &op) < 0) {
+						state->packets = -1;
+						break;
+					}
+				}
+			}
 		}
 	}
 

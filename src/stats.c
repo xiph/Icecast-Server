@@ -286,7 +286,10 @@ static stats_event_t *_copy_event(stats_event_t *event)
 	else
 		copy->source = NULL;
 	copy->name = (char *)strdup(event->name);
-	copy->value = (char *)strdup(event->value);
+	if (event->value)
+		copy->value = (char *)strdup(event->value);
+	else
+		copy->value = NULL;
 	copy->next = NULL;
 
 	return copy;
@@ -480,7 +483,7 @@ static int _send_event_to_client(stats_event_t *event, connection_t *con)
 	int ret;
 
 	/* send data to the client!!!! */
-	ret = sock_write(con->sock, "EVENT %s %s %s\n", (event->source != NULL) ? event->source : "global", event->name, event->value);
+	ret = sock_write(con->sock, "EVENT %s %s %s\n", (event->source != NULL) ? event->source : "global", event->name, event->value ? event->value : "null");
 
 	return (ret == -1) ? 0 : 1;
 }

@@ -16,6 +16,9 @@ typedef struct _format_plugin_tag
 {
 	format_type_t type;
 
+	/* we need to know the mount to report statistics */
+	char *mount;
+
 	/* set this is the data format has a header that
 	** we must send before regular data
 	*/
@@ -29,7 +32,7 @@ typedef struct _format_plugin_tag
 	void *_state;
 } format_plugin_t;
 
-format_plugin_t *format_get_plugin(format_type_t type);
+format_plugin_t *format_get_plugin(format_type_t type, char *mount);
 
 #endif  /* __FORMAT_H__ */
 

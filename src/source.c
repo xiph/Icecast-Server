@@ -41,10 +41,10 @@ source_t *source_create(connection_t *con, http_parser_t *parser, const char *mo
 	source_t *src;
 
 	src = (source_t *)malloc(sizeof(source_t));
-	src->format = format_get_plugin(type);
+	src->mount = (char *)strdup(mount);
+	src->format = format_get_plugin(type, src->mount);
 	src->con = con;
 	src->parser = parser;
-	src->mount = (char *)strdup(mount);
 	src->client_tree = avl_tree_new(_compare_clients, NULL);
 	src->pending_tree = avl_tree_new(_compare_clients, NULL);
 
@@ -110,6 +110,7 @@ void *source_main(void *arg)
 	int ret, timeout;
 	client_t *client;
 	avl_node *client_node;
+	char *s;
 
 	refbuf_t *refbuf, *abuf;
 	int data_done;
@@ -134,6 +135,14 @@ void *source_main(void *arg)
 
 	/* start off the statistics */
 	stats_event(source->mount, "listeners", "0");
+	if ((s = httpp_getvar(source->parser, "ice-name")))
+		stats_event(source->mount, "name", s);
+	if ((s = httpp_getvar(source->parser, "ice-url")))
+		stats_event(source->mount, "url", s);
+	if ((s = httpp_getvar(source->parser, "ice-bitrate")))
+		stats_event(source->mount, "bitrate", s);
+	if ((s = httpp_getvar(source->parser, "ice-description")))
+		stats_event(source->mount, "description", s);
 
 	while (global.running == ICE_RUNNING) {
 		refbuf = source->format->get_buffer(source->format, NULL, 0);
