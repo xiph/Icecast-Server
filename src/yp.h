@@ -25,8 +25,8 @@ void *yp_touch_thread(void *arg);
 int yp_add(void *psource, int which);
 int yp_touch(void *psource);
 int yp_remove(void *psource);
-ypdata_t *create_ypdata();
-void destroy_ypdata(ypdata_t *ypdata);
+ypdata_t *yp_create_ypdata();
+void yp_destroy_ypdata(ypdata_t *ypdata);
 
 #endif
 

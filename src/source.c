@@ -57,7 +57,7 @@ source_t *source_create(client_t *client, connection_t *con, http_parser_t *pars
 	src->listeners = 0;
 	for (i=0;i<config_get_config()->num_yp_directories;i++) {
 		if (config_get_config()->yp_url[i]) {
-			src->ypdata[src->num_yp_directories] = create_ypdata();
+			src->ypdata[src->num_yp_directories] = yp_create_ypdata();
 			src->ypdata[src->num_yp_directories]->yp_url = config_get_config()->yp_url[i];
 			src->ypdata[src->num_yp_directories]->yp_url_timeout = config_get_config()->yp_url_timeout[i];
 			src->ypdata[src->num_yp_directories]->yp_touch_freq = 0;
@@ -117,9 +117,9 @@ int source_free_source(void *key)
 	avl_tree_free(source->pending_tree, _free_client);
 	avl_tree_free(source->client_tree, _free_client);
 	source->format->free_plugin(source->format);
-	for (i=0;i<source->num_yp_directories;i++) {
-			destroy_ypdata(source->ypdata[i]);
-	}
+    for (i=0; i<source->num_yp_directories; i++) {
+        yp_destroy_ypdata(source->ypdata[i]);
+    }
 	free(source);
 
 	return 1;
