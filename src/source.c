@@ -159,9 +159,6 @@ int source_free_source(void *key)
 }
     
 
-/* The caller MUST have a current write lock on global.source_tree when calling
- * this
- */
 void *source_main(void *arg)
 {
     source_t *source = (source_t *)arg;
@@ -633,10 +630,10 @@ done:
     if(source->dumpfile)
         fclose(source->dumpfile);
 
-    source_free_source(source);
-
     /* release our hold on the lock so the main thread can continue cleaning up */
     thread_rwlock_unlock(source->shutdown_rwlock);
+
+    source_free_source(source);
 
     thread_exit(0);
       
