@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -6,7 +10,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include "config.h"
+#include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"

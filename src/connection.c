@@ -1,4 +1,8 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +31,7 @@
 #include "net/sock.h"
 #include "httpp/httpp.h"
 
-#include "config.h"
+#include "cfgfile.h"
 #include "global.h"
 #include "util.h"
 #include "connection.h"

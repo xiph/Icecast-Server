@@ -1,4 +1,8 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -15,7 +19,7 @@
 #include <errno.h>
 #endif
 
-#include "config.h"
+#include "cfgfile.h"
 #include "sighandler.h"
 
 #include "global.h"

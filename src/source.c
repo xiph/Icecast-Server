@@ -1,4 +1,8 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +30,7 @@
 #include "client.h"
 #include "stats.h"
 #include "logging.h"
-#include "config.h"
+#include "cfgfile.h"
 #include "util.h"
 #ifdef USE_YP
 #include "geturl.h"

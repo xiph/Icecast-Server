@@ -1,5 +1,9 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
-#include "config.h"
+#include "cfgfile.h"
 
 void _dump_config(ice_config_t *config);
 

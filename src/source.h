@@ -1,7 +1,7 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
-#include "config.h"
+#include "cfgfile.h"
 #include "yp.h"
 #include "util.h"
 #include "format.h"

@@ -1,4 +1,8 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,7 +16,7 @@
 #include "format.h"
 #include "geturl.h"
 #include "source.h"
-#include "config.h"
+#include "cfgfile.h"
 
 #include <curl/curl.h>
 #include <curl/types.h>

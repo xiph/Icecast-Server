@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
@@ -10,7 +14,7 @@
 #include "client.h"
 
 #include "os.h"
-#include "config.h"
+#include "cfgfile.h"
 #include "logging.h"
 
 #ifdef _WIN32

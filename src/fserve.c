@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +32,7 @@
 #include "stats.h"
 #include "format.h"
 #include "logging.h"
-#include "config.h"
+#include "cfgfile.h"
 #include "util.h"
 
 #include "fserve.h"

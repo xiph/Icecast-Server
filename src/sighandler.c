@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <signal.h>
 
 #include "thread/thread.h"
@@ -46,8 +50,6 @@ void _sig_hup(int signo)
 
     connection_inject_event(EVENT_CONFIG_READ, NULL);
     
-    /* reopen logfiles (TODO: We don't do this currently) */
-
     /* some OSes require us to reattach the signal handler */
     signal(SIGHUP, _sig_hup);
 }

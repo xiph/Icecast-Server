@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,7 +25,7 @@
 
 #include "net/sock.h"
 
-#include "config.h"
+#include "cfgfile.h"
 #include "util.h"
 #include "os.h"
 #include "refbuf.h"
