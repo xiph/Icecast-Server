@@ -227,6 +227,9 @@ BEGIN
     POPUP " "
     BEGIN
         MENUITEM "Delete From Global Stats",    ID__DELETEFROMGLOBALSTATS
+        MENUITEM "Make this stat the window title", 
+                                                ID__MAKETHISSTATTHEWINDOWTITLE
+
     END
 END
 

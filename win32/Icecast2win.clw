@@ -13,16 +13,16 @@ Class2=CIcecast2winDlg
 Class3=CAboutDlg
 
 ResourceCount=8
-Resource1=IDD_STATSDIALOG
+Resource1=IDD_ABOUTBOX
 Resource2=IDR_MAINFRAME
-Resource3=IDR_MENU2
-Resource4=IDD_SSTATUS
+Resource3=IDD_ICECAST2WIN_DIALOG
+Resource4=IDD_STATSDIALOG
 Class4=CStatus
-Resource5=IDD_ABOUTBOX
+Resource5=IDD_CONFIGDIALOG
 Class5=CConfigTab
 Class6=CStatsTab
-Resource6=IDD_ICECAST2WIN_DIALOG
-Resource7=IDD_CONFIGDIALOG
+Resource6=IDD_SSTATUS
+Resource7=IDR_MENU2
 Resource8=IDR_MENU3
 
 [CLS:CIcecast2winApp]
@@ -36,7 +36,7 @@ Type=0
 HeaderFile=Icecast2winDlg.h
 ImplementationFile=Icecast2winDlg.cpp
 Filter=D
-LastObject=ID__PUTTHISSTATINTHETITLE
+LastObject=ID__MAKETHISSTATTHEWINDOWTITLE
 BaseClass=CResizableDialog
 VirtualFilter=dWC
 
@@ -129,5 +129,6 @@ CommandCount=1
 Type=1
 Class=?
 Command1=ID__DELETEFROMGLOBALSTATS
-CommandCount=1
+Command2=ID__MAKETHISSTATTHEWINDOWTITLE
+CommandCount=2
 

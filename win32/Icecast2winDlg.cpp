@@ -48,12 +48,14 @@ CString gConfigurationSave;
 typedef struct tagElement {
 	CString	name;
 	CString	value;
+	int		titleFlag;
 } Element;
 
 typedef struct tagElementAdditional {
 	CString source;
 	CString	name;
 	CString	value;
+	int		titleFlag;
 } ElementAdditional;
 
 
@@ -95,6 +97,48 @@ void AddToAdditionalGlobalStats(CString source, CString name) {
 	}
 	g_mainDialog->UpdateStatsLists();
 }
+
+void ClearTitleAdditionalGlobalStats(CString source, CString name) {
+	int foundit = 0;
+	int i,j;
+	for (i=0;i<gAdditionalGlobalStats.numStats;i++) {
+		gAdditionalGlobalStats.stats[i].titleFlag = 0;
+	}
+	for (i=0;i<numMainStats;i++) {
+		for (j=0;j<gStats[i].numStats;j++) {
+			if ((gStats[i].source == source) && (gStats[i].stats[j].name == name)) {
+				gStats[i].stats[j].titleFlag = 0;
+			}
+		}
+	}
+	g_mainDialog->UpdateStatsLists();
+}
+void AddToTitleAdditionalGlobalStats(CString source, CString name) {
+	int foundit = 0;
+	int i,j;
+	for (i=0;i<gAdditionalGlobalStats.numStats;i++) {
+		if ((gAdditionalGlobalStats.stats[i].source == source) && (gAdditionalGlobalStats.stats[i].name == name)) {
+			ClearTitleAdditionalGlobalStats(source, name);
+			gAdditionalGlobalStats.stats[i].titleFlag = 1;
+			foundit = 1;
+			break;
+		}
+	}
+	if (!foundit) {
+		for (i=0;i<numMainStats;i++) {
+			for (j=0;j<gStats[i].numStats;j++) {
+				if ((gStats[i].source == source) && (gStats[i].stats[j].name == name)) {
+					ClearTitleAdditionalGlobalStats(source, name);
+					gStats[i].stats[j].titleFlag = 1;
+					foundit = 1;
+					break;
+				}
+			}
+		}
+	}
+	g_mainDialog->UpdateStatsLists();
+}
+
 void RemoveFromAdditionalGlobalStats(CString source, CString name) {
 	int foundit = 0;
 	for (int i=0;i<gAdditionalGlobalStats.numStats;i++) {
@@ -937,6 +981,20 @@ void CIcecast2winDlg::UpdateStatsLists()
 			}
 		}
 	}
+	for (l=0;l < gAdditionalGlobalStats.numStats;l++) {
+		if (gAdditionalGlobalStats.stats[l].titleFlag) {
+			CString	windowTitle = gAdditionalGlobalStats.stats[l].source + " - " + gAdditionalGlobalStats.stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
+			SetWindowText(windowTitle);
+		}
+	}
+	for (l=0;l < numMainStats;l++) {
+		for (int k=0;k < gStats[i].numStats;k++) {
+			if (gStats[i].stats[k].titleFlag) {
+				CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
+				SetWindowText(windowTitle);
+			}
+		}
+	}
 }
 
 char	gAppName[255] = "icecast2";
@@ -1051,4 +1109,10 @@ void CIcecast2winDlg::OnSize(UINT nType, int cx, int cy)
 		m_MainTab.ResizeDialog(2, rect.Width()-border1, rect.Height()-border2);
 	}
 
+}
+
+void CIcecast2winDlg::OnPutthisstatinthetitle() 
+{
+	// TODO: Add your command handler code here
+	
 }

@@ -1,5 +1,5 @@
 <icecast>
-	<location>Jack's House</location>
+	<location>Nowhere</location>
 	<admin>jack@icecast.org</admin>
 
 	<limits>
@@ -22,7 +22,7 @@
 	</directory>
 
 	<hostname>localhost</hostname>
-	<port>8100</port>
+	<port>8000</port>
 	<!--<bind-address>127.0.0.1</bind-address>-->
 
 	<!--<master-server>127.0.0.1</master-server>-->
@@ -30,21 +30,16 @@
 	<!--<master-update-interval>120</master-update-interval>-->
 
         <paths>
-                <webroot>.\webroot</webroot>
                 <basedir>.</basedir>
                 <logdir>.</logdir>
+                <webroot>.\web</webroot>
         </paths>
 
 	<logging>
 		<accesslog>access.log</accesslog>
 		<errorlog>error.log</errorlog>
+		<!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+		<loglevel>4</loglevel>
 	</logging>
-
-    <security>
-        <chroot>0</chroot>
-<!--    <changeowner>
-            <user>nobody</user>
-            <group>nogroup</group>
-        </changeowner>  -->
-    </security>
 </icecast>
+

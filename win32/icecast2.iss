@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=Icecast2_win32_beta8_setup.exe
+OutputBaseFilename=Icecast2_win32_09082002_setup.exe
 WizardImageFile=icecast2logo2.bmp
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51
@@ -22,14 +22,14 @@ WizardImageFile=icecast2logo2.bmp
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; MinVersion: 4,4
 
 [Files]
-Source: "D:\Ed\xiph\icecast\win32\Release\Icecast2.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\icecast\win32\status.xsl"; DestDir: "{app}\webroot"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\icecast\win32\status2.xsl"; DestDir: "{app}\webroot"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\pthreads\pthreadVSE.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\icecast\win32\icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\iconv\lib\iconv.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\libxslt\lib\libxslt.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "D:\Ed\xiph\libxml2\lib\libxml2.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "Release\Icecast2.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\web\status.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
+Source: "..\web\status2.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
+Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 
 [Icons]
 

@@ -16,6 +16,8 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 extern void RemoveFromAdditionalGlobalStats(CString source, CString name);
+extern void AddToTitleAdditionalGlobalStats(CString source, CString name);
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CStatus dialog
@@ -127,6 +129,28 @@ void CStatus::OnRclickGlobalstatList(NMHDR* pNMHDR, LRESULT* pResult)
 				m_GlobalStatList.DeleteItem(nItem);
 			}
 	   }
+		break;
+	case ID__MAKETHISSTATTHEWINDOWTITLE :
+		pos = m_GlobalStatList.GetFirstSelectedItemPosition();
+		if (pos != NULL) {
+			nItem = m_GlobalStatList.GetNextSelectedItem(pos);
+			LVITEM	lvi;
+
+			lvi.mask =  LVIF_TEXT;
+			lvi.iItem = nItem;
+			lvi.iSubItem = 0;
+			lvi.pszText = buffer;
+			lvi.cchTextMax = sizeof(buffer);
+			m_GlobalStatList.GetItem(&lvi);
+			source = buffer;
+			lvi.iSubItem = 1;
+			lvi.pszText = buffer2;
+			lvi.cchTextMax = sizeof(buffer2);
+			m_GlobalStatList.GetItem(&lvi);
+			name = buffer2;
+
+			AddToTitleAdditionalGlobalStats(source, name);
+		}
 		break;
 	default :
 		break;
