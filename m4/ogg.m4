@@ -9,10 +9,18 @@ AC_DEFUN(XIPH_PATH_OGG,
 [dnl 
 dnl Get the cflags and libraries
 dnl
-AC_ARG_WITH(ogg,[  --with-ogg=PFX   Prefix where libogg is installed (optional)], ogg_prefix="$withval", ogg_prefix="")
-AC_ARG_WITH(ogg-libraries,[  --with-ogg-libraries=DIR   Directory where libogg library is installed (optional)], ogg_libraries="$withval", ogg_libraries="")
-AC_ARG_WITH(ogg-includes,[  --with-ogg-includes=DIR   Directory where libogg header files are installed (optional)], ogg_includes="$withval", ogg_includes="")
-AC_ARG_ENABLE(oggtest, [  --disable-oggtest       Do not try to compile and run a test Ogg program],, enable_oggtest=yes)
+AC_ARG_WITH([ogg],
+  [  --with-ogg=PFX           prefix where libogg is installed (optional)],
+  [ogg_prefix="$withval"], [ogg_prefix=""])
+AC_ARG_WITH([ogg-libraries],
+  [  --with-ogg-libraries=DIR directory where libogg library is installed (optional)], [ogg_libraries="$withval"], [ogg_libraries=""])
+AC_ARG_WITH([ogg-includes],
+  [  --with-ogg-includes=DIR  directory where libogg header files are
+                           installed (optional)],
+  [ogg_includes="$withval"], [ogg_includes=""])
+AC_ARG_ENABLE([oggtest],
+  [  --disable-oggtest       do not try to compile and run a test Ogg program],,
+  [enable_oggtest=yes])
 
   if test "x$ogg_libraries" != "x" ; then
     OGG_LIBS="-L$ogg_libraries"
