@@ -36,7 +36,6 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <netdb.h>
-#include <sys/poll.h>
 #else
 #include <winsock2.h>
 #define vsnprintf _vsnprintf
