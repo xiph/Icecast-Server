@@ -54,6 +54,8 @@ typedef struct _mount_proxy {
                               clients from the fallback? */
     int no_mount; /* Do we permit direct requests of this mountpoint? (or only
                      indirect, through fallbacks) */
+    unsigned queue_size_limit;
+    unsigned source_timeout;  /* source timeout in seconds */
 
     char *auth_type; /* Authentication type */
     config_options_t *auth_options; /* Options for this type */

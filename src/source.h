@@ -56,6 +56,8 @@ typedef struct source_tag
     struct auth_tag *authenticator;
     int fallback_override;
     int no_mount;
+    unsigned queue_size_limit;
+    unsigned timeout;  /* source timeout in seconds */
 } source_t;
 
 source_t *source_reserve (const char *mount);

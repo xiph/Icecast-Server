@@ -556,6 +556,19 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                 option = option->next;
             }
         }
+        else if (strcmp(node->name, "queue-size") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->queue_size_limit = atoi (tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "source-timeout") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (tmp)
+            {
+                mount->source_timeout = atoi (tmp);
+                xmlFree(tmp);
+            }
+        }
     } while ((node = node->next));
 }
 
@@ -566,7 +579,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
     relay_server *relay = calloc(1, sizeof(relay_server));
     relay_server *current = configuration->relay;
     relay_server *last=NULL;
-    
+
     while(current) {
         last = current;
         current = current->next;

@@ -461,7 +461,7 @@ int connection_complete_source (source_t *source)
         }
         else
         {
-            WARN0("No content-type header, falling back to backwards compatibility mode"
+            WARN0("No content-type header, falling back to backwards compatibility mode "
                     "for icecast 1.x relays. Assuming content is mp3.");
             format_type = FORMAT_TYPE_MP3;
         }
@@ -479,6 +479,10 @@ int connection_complete_source (source_t *source)
 
         global.sources++;
         global_unlock();
+
+        /* set global settings first */
+        source->queue_size_limit = config->queue_size_limit;
+        source->timeout = config->source_timeout;
 
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,

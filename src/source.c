@@ -351,7 +351,7 @@ void *source_main(void *arg)
     source_t *fallback_source;
     char buffer[4096];
     long bytes, sbytes;
-    int ret, timeout;
+    int ret;
     client_t *client;
     avl_node *client_node;
 
@@ -365,7 +365,6 @@ void *source_main(void *arg)
     char *ai;
 #endif
 
-    long queue_limit;
     ice_config_t *config;
     char *hostname;
     char *listenurl;
@@ -374,8 +373,6 @@ void *source_main(void *arg)
 
     config = config_get_config();
     
-    queue_limit = config->queue_size_limit;
-    timeout = config->source_timeout;
     hostname = strdup(config->hostname);
     port = config->port;
 
@@ -544,13 +541,13 @@ void *source_main(void *arg)
         while (refbuf == NULL) {
             bytes = 0;
             while (bytes <= 0) {
-                ret = util_timed_wait_for_fd(source->con->sock, timeout*1000);
+                ret = util_timed_wait_for_fd(source->con->sock, source->timeout*1000);
 
                 if (ret < 0 && sock_recoverable (sock_error()))
                    continue;
                 if (ret <= 0) { /* timeout expired */
                     WARN1("Disconnecting source: socket timeout (%d s) expired",
-                           timeout);
+                           source->timeout);
                     bytes = 0;
                     break;
                 }
@@ -678,7 +675,7 @@ void *source_main(void *arg)
             ** we need to make sure the client is keeping up with the
             ** data, so we'll kick any client who's queue gets to large.
             */
-            if (refbuf_queue_length(&client->queue) > queue_limit) {
+            if (refbuf_queue_length(&client->queue) > source->queue_size_limit) {
                 DEBUG0("Client has fallen too far behind, removing");
                 client->con->error = 1;
             }
@@ -899,6 +896,16 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         DEBUG1("Dumping stream to %s", mountinfo->dumpfile);
         source->dumpfilename = strdup (mountinfo->dumpfile);
+    }
+    if (mountinfo->queue_size_limit)
+    {
+        source->queue_size_limit = mountinfo->queue_size_limit;
+        DEBUG1 ("queue size to %u", source->queue_size_limit);
+    }
+    if (mountinfo->source_timeout)
+    {
+        source->timeout = mountinfo->source_timeout;
+        DEBUG1 ("source timeout to %u", source->timeout);
     }
 }
 
