@@ -331,12 +331,13 @@ static stats_source_t *_find_source(avl_tree *source_tree, char *source)
 
 static stats_event_t *_copy_event(stats_event_t *event)
 {
-    stats_event_t *copy = (stats_event_t *)malloc(sizeof(stats_event_t));
+    stats_event_t *copy = (stats_event_t *)calloc(1, sizeof(stats_event_t));
     if (event->source) 
         copy->source = (char *)strdup(event->source);
     else
         copy->source = NULL;
-    copy->name = (char *)strdup(event->name);
+    if (event->name)
+        copy->name = (char *)strdup(event->name);
     if (event->value)
         copy->value = (char *)strdup(event->value);
     else
@@ -574,7 +575,10 @@ static int _send_event_to_client(stats_event_t *event, connection_t *con)
     int ret;
 
     /* send data to the client!!!! */
-    ret = sock_write(con->sock, "EVENT %s %s %s\n", (event->source != NULL) ? event->source : "global", event->name, event->value ? event->value : "null");
+    ret = sock_write(con->sock, "EVENT %s %s %s\n",
+            (event->source != NULL) ? event->source : "global",
+            event->name ? event->name : "null",
+            event->value ? event->value : "null");
 
     return (ret == -1) ? 0 : 1;
 }
@@ -688,7 +692,7 @@ void *stats_connection(void *arg)
             _free_event(event);
         } else {
             thread_mutex_unlock(&local_event_mutex);
-            thread_cond_wait(&_event_signal_cond);
+            thread_sleep (500000);
             continue;
         }
                    
