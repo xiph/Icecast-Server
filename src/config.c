@@ -40,10 +40,12 @@
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
 #define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR "/usr/local/icecast/webroot"
+#define CONFIG_DEFAULT_ADMINROOT_DIR "/usr/local/icecast/admin"
 #else
 #define CONFIG_DEFAULT_BASE_DIR ".\\"
 #define CONFIG_DEFAULT_LOG_DIR ".\\logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR ".\\webroot"
+#define CONFIG_DEFAULT_ADMINROOT_DIR ".\\admin"
 #endif
 
 ice_config_t _current_configuration;
@@ -122,6 +124,8 @@ void config_clear(ice_config_t *c)
         xmlFree(c->log_dir);
     if (c->webroot_dir && c->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR)
         xmlFree(c->webroot_dir);
+    if (c->adminroot_dir && c->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR)
+        xmlFree(c->adminroot_dir);
     if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
@@ -284,6 +288,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
     configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
     configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
+    configuration->adminroot_dir = CONFIG_DEFAULT_ADMINROOT_DIR;
     configuration->access_log = CONFIG_DEFAULT_ACCESS_LOG;
     configuration->error_log = CONFIG_DEFAULT_ERROR_LOG;
     configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
@@ -638,6 +643,12 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
+        } else if (strcmp(node->name, "adminroot") == 0) {
+            if (configuration->adminroot_dir && configuration->adminroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) 
+                xmlFree(configuration->adminroot_dir);
+            configuration->adminroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
+                configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (strcmp(node->name, "alias") == 0) {
             alias = malloc(sizeof(aliases));
             alias->next = NULL;

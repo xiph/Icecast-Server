@@ -552,6 +552,8 @@ void *source_main(void *arg)
         client_node = avl_get_first(source->pending_tree);
         while (client_node) {
             avl_insert(source->client_tree, client_node->key);
+            /* listener count may have changed */
+            listeners = source->listeners;
             listeners++;
             DEBUG0("Client added");
             stats_event_inc(NULL, "clients");

@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
 #include "config.h"
 #include "connection.h"
@@ -11,6 +14,7 @@
 #include "global.h"
 #include "event.h"
 #include "stats.h"
+#include "os.h"
 
 #include "format.h"
 #include "format_mp3.h"
@@ -22,61 +26,198 @@
 #define COMMAND_ERROR             (-1)
 
 /* Mount-specific commands */
-#define COMMAND_FALLBACK            1
+#define COMMAND_RAW_FALLBACK        1
 #define COMMAND_METADATA_UPDATE     2
-#define COMMAND_SHOW_LISTENERS      3
-#define COMMAND_MOVE_CLIENTS        4
+#define COMMAND_RAW_SHOW_LISTENERS  3
+#define COMMAND_RAW_MOVE_CLIENTS    4
+
+#define COMMAND_TRANSFORMED_FALLBACK        50
+#define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
+#define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
 
 /* Global commands */
-#define COMMAND_LIST_MOUNTS       101
+#define COMMAND_RAW_LIST_MOUNTS   101
 #define COMMAND_RAW_STATS         102
 #define COMMAND_RAW_LISTSTREAM    103
+#define COMMAND_TRANSFORMED_LIST_MOUNTS   201
+#define COMMAND_TRANSFORMED_STATS         202
+#define COMMAND_TRANSFORMED_LISTSTREAM    203
 
 /* Client management commands */
-#define COMMAND_KILL_CLIENT       201
-#define COMMAND_KILL_SOURCE       202
+#define COMMAND_RAW_KILL_CLIENT   301
+#define COMMAND_RAW_KILL_SOURCE   302
+#define COMMAND_TRANSFORMED_KILL_CLIENT   401
+#define COMMAND_TRANSFORMED_KILL_SOURCE   402
 
+#define FALLBACK_RAW_REQUEST "fallbacks"
+#define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
+#define METADATA_REQUEST "metadata"
+#define LISTCLIENTS_RAW_REQUEST "listclients"
+#define LISTCLIENTS_TRANSFORMED_REQUEST "listclients.xsl"
+#define STATS_RAW_REQUEST "stats"
+#define STATS_TRANSFORMED_REQUEST "stats.xsl"
+#define LISTMOUNTS_RAW_REQUEST "listmounts"
+#define LISTMOUNTS_TRANSFORMED_REQUEST "listmounts.xsl"
+#define STREAMLIST_RAW_REQUEST "streamlist"
+#define STREAMLIST_TRANSFORMED_REQUEST "streamlist.xsl"
+#define MOVECLIENTS_RAW_REQUEST "moveclients"
+#define MOVECLIENTS_TRANSFORMED_REQUEST "moveclients.xsl"
+#define KILLCLIENT_RAW_REQUEST "killclient"
+#define KILLCLIENT_TRANSFORMED_REQUEST "killclient.xsl"
+#define KILLSOURCE_RAW_REQUEST "killsource"
+#define KILLSOURCE_TRANSFORMED_REQUEST "killsource.xsl"
+#define ADMIN_XSL_RESPONSE "response.xsl"
+#define DEFAULT_RAW_REQUEST ""
+#define DEFAULT_TRANSFORMED_REQUEST ""
+
+#define RAW         1
+#define TRANSFORMED 2
 int admin_get_command(char *command)
 {
-    if(!strcmp(command, "fallbacks"))
-        return COMMAND_FALLBACK;
-    else if(!strcmp(command, "metadata"))
+    if(!strcmp(command, FALLBACK_RAW_REQUEST))
+        return COMMAND_RAW_FALLBACK;
+    else if(!strcmp(command, FALLBACK_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_FALLBACK;
+    else if(!strcmp(command, METADATA_REQUEST))
         return COMMAND_METADATA_UPDATE;
-    else if(!strcmp(command, "listclients"))
-        return COMMAND_SHOW_LISTENERS;
-    else if(!strcmp(command, "rawstats"))
+    else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
+        return COMMAND_RAW_SHOW_LISTENERS;
+    else if(!strcmp(command, LISTCLIENTS_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_SHOW_LISTENERS;
+    else if(!strcmp(command, STATS_RAW_REQUEST))
         return COMMAND_RAW_STATS;
+    else if(!strcmp(command, STATS_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, "stats.xml")) /* The old way */
         return COMMAND_RAW_STATS;
-    else if(!strcmp(command, "listmounts"))
-        return COMMAND_LIST_MOUNTS;
-    else if(!strcmp(command, "streamlist"))
+    else if(!strcmp(command, LISTMOUNTS_RAW_REQUEST))
+        return COMMAND_RAW_LIST_MOUNTS;
+    else if(!strcmp(command, LISTMOUNTS_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_LIST_MOUNTS;
+    else if(!strcmp(command, STREAMLIST_RAW_REQUEST))
         return COMMAND_RAW_LISTSTREAM;
-    else if(!strcmp(command, "moveclients"))
-        return COMMAND_MOVE_CLIENTS;
-    else if(!strcmp(command, "killclient"))
-        return COMMAND_KILL_CLIENT;
-    else if(!strcmp(command, "killsource"))
-        return COMMAND_KILL_SOURCE;
+    else if(!strcmp(command, MOVECLIENTS_RAW_REQUEST))
+        return COMMAND_RAW_MOVE_CLIENTS;
+    else if(!strcmp(command, MOVECLIENTS_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_MOVE_CLIENTS;
+    else if(!strcmp(command, KILLCLIENT_RAW_REQUEST))
+        return COMMAND_RAW_KILL_CLIENT;
+    else if(!strcmp(command, KILLCLIENT_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_KILL_CLIENT;
+    else if(!strcmp(command, KILLSOURCE_RAW_REQUEST))
+        return COMMAND_RAW_KILL_SOURCE;
+    else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_KILL_SOURCE;
+    else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_STATS;
+    else if(!strcmp(command, DEFAULT_RAW_REQUEST))
+        return COMMAND_TRANSFORMED_STATS;
     else
         return COMMAND_ERROR;
 }
 
-static void command_fallback(client_t *client, source_t *source);
+static void command_fallback(client_t *client, source_t *source, int response);
 static void command_metadata(client_t *client, source_t *source);
-static void command_show_listeners(client_t *client, source_t *source);
-static void command_move_clients(client_t *client, source_t *source);
-
-static void command_raw_stats(client_t *client);
-static void command_list_mounts(client_t *client, int formatted);
-
-static void command_kill_client(client_t *client, source_t *source);
-static void command_kill_source(client_t *client, source_t *source);
-
+static void command_show_listeners(client_t *client, source_t *source,
+        int response);
+static void command_move_clients(client_t *client, source_t *source,
+        int response);
+static void command_stats(client_t *client, int response);
+static void command_list_mounts(client_t *client, int response);
+static void command_kill_client(client_t *client, source_t *source,
+        int response);
+static void command_kill_source(client_t *client, source_t *source,
+        int response);
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
 static void admin_handle_general_request(client_t *client, int command);
+static void admin_send_response(xmlDocPtr doc, client_t *client, 
+        int response, char *xslt_template);
+static void html_write(client_t *client, char *fmt, ...);
 
+xmlDocPtr admin_build_sourcelist(char *current_source)
+{
+    avl_node *node;
+    source_t *source;
+    xmlNodePtr xmlnode, srcnode;
+    xmlDocPtr doc;
+    char buf[22];
+    int len = 0;
+    time_t now = time(NULL);
+
+    doc = xmlNewDoc("1.0");
+    xmlnode = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    xmlDocSetRootElement(doc, xmlnode);
+
+    if (current_source) {
+        xmlNewChild(xmlnode, NULL, "current_source", current_source);
+    }
+
+    avl_tree_rlock(global.source_tree);
+
+    node = avl_get_first(global.source_tree);
+    while(node) {
+        source = (source_t *)node->key;
+        srcnode = xmlNewChild(xmlnode, NULL, "source", NULL);
+        xmlSetProp(srcnode, "mount", source->mount);
+
+        xmlNewChild(srcnode, NULL, "fallback", 
+                    (source->fallback_mount != NULL)?
+                    source->fallback_mount:"");
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "%d", source->listeners);
+        xmlNewChild(srcnode, NULL, "listeners", buf);
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "%d", now - source->con->con_time);
+        xmlNewChild(srcnode, NULL, "Connected", buf);
+        xmlNewChild(srcnode, NULL, "Format", 
+            source->format->format_description);
+        node = avl_get_next(node);
+    }
+    avl_tree_unlock(global.source_tree);
+    return(doc);
+}
+
+void admin_send_response(xmlDocPtr doc, client_t *client, 
+        int response, char *xslt_template)
+{
+    char *buff = NULL;
+    int len = 0;
+    ice_config_t *config;
+    char *fullpath_xslt_template;
+    int fullpath_xslt_template_len;
+    char *adminwebroot;
+
+    client->respcode = 200;
+    if (response == RAW) {
+        xmlDocDumpMemory(doc, (xmlChar **)&buff, &len);
+        html_write(client, "HTTP/1.0 200 OK\r\n"
+               "Content-Length: %d\r\n"
+               "Content-Type: text/xml\r\n"
+               "\r\n", len);
+        html_write(client, buff);
+    }
+    if (response == TRANSFORMED) {
+        config = config_get_config();
+        adminwebroot = config->adminroot_dir;
+        config_release_config();
+        fullpath_xslt_template_len = strlen(adminwebroot) + 
+            strlen(xslt_template) + 2;
+        fullpath_xslt_template = malloc(fullpath_xslt_template_len);
+        memset(fullpath_xslt_template, '\000', fullpath_xslt_template_len);
+        snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s",
+            adminwebroot, PATH_SEPARATOR, xslt_template);
+        html_write(client, "HTTP/1.0 200 OK\r\n"
+               "Content-Type: text/html\r\n"
+               "\r\n");
+        DEBUG1("Sending XSLT (%s)", fullpath_xslt_template);
+        xslt_transform(doc, fullpath_xslt_template, client);
+        free(fullpath_xslt_template);
+    }
+    if (buff) {
+        xmlFree(buff);
+    }
+}
 void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
@@ -90,6 +231,7 @@ void admin_handle_request(client_t *client, char *uri)
 
     command_string = uri + 7;
 
+    DEBUG1("Got command (%s)", command_string);
     command = admin_get_command(command_string);
 
     if(command < 0) {
@@ -147,13 +289,25 @@ static void admin_handle_general_request(client_t *client, int command)
 {
     switch(command) {
         case COMMAND_RAW_STATS:
-            command_raw_stats(client);
+            command_stats(client, RAW);
             break;
-        case COMMAND_LIST_MOUNTS:
-            command_list_mounts(client, 1);
+        case COMMAND_RAW_LIST_MOUNTS:
+            command_list_mounts(client, RAW);
             break;
         case COMMAND_RAW_LISTSTREAM:
-            command_list_mounts(client, 0);
+            command_list_mounts(client, RAW);
+            break;
+        case COMMAND_TRANSFORMED_STATS:
+            command_stats(client, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_LIST_MOUNTS:
+            command_list_mounts(client, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_LISTSTREAM:
+            command_list_mounts(client, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
+            command_list_mounts(client, TRANSFORMED);
             break;
         default:
             WARN0("General admin request not recognised");
@@ -166,23 +320,38 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         int command)
 {
     switch(command) {
-        case COMMAND_FALLBACK:
-            command_fallback(client, source);
+        case COMMAND_RAW_FALLBACK:
+            command_fallback(client, source, RAW);
             break;
         case COMMAND_METADATA_UPDATE:
             command_metadata(client, source);
             break;
-        case COMMAND_SHOW_LISTENERS:
-            command_show_listeners(client, source);
+        case COMMAND_RAW_SHOW_LISTENERS:
+            command_show_listeners(client, source, RAW);
             break;
-        case COMMAND_MOVE_CLIENTS:
-            command_move_clients(client, source);
+        case COMMAND_RAW_MOVE_CLIENTS:
+            command_move_clients(client, source, RAW);
             break;
-        case COMMAND_KILL_CLIENT:
-            command_kill_client(client, source);
+        case COMMAND_RAW_KILL_CLIENT:
+            command_kill_client(client, source, RAW);
             break;
-        case COMMAND_KILL_SOURCE:
-            command_kill_source(client, source);
+        case COMMAND_RAW_KILL_SOURCE:
+            command_kill_source(client, source, RAW);
+            break;
+        case COMMAND_TRANSFORMED_FALLBACK:
+            command_fallback(client, source, RAW);
+            break;
+        case COMMAND_TRANSFORMED_SHOW_LISTENERS:
+            command_show_listeners(client, source, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
+            command_move_clients(client, source, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_KILL_CLIENT:
+            command_kill_client(client, source, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_KILL_SOURCE:
+            command_kill_source(client, source, TRANSFORMED);
             break;
         default:
             WARN0("Mount request not recognised");
@@ -199,6 +368,8 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             return; \
         } \
     } while(0);
+#define COMMAND_OPTIONAL(client,name,var) \
+    (var) = httpp_get_query_param((client)->parser, (name))
 
 static void html_success(client_t *client, char *message)
 {
@@ -238,14 +409,31 @@ static void html_write(client_t *client, char *fmt, ...)
     if(bytes > 0) client->con->sent_bytes = bytes;
 }
 
-static void command_move_clients(client_t *client, source_t *source)
+static void command_move_clients(client_t *client, source_t *source,
+    int response)
 {
     char *dest_source;
     source_t *dest;
     avl_node *client_node;
     client_t *current;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+    char buf[255];
+    int parameters_passed = 0;
 
-    COMMAND_REQUIRE(client, "destination", dest_source);
+    DEBUG0("Doing optional check");
+    if (COMMAND_OPTIONAL(client, "destination", dest_source)) {
+        parameters_passed = 1;
+    }
+    DEBUG1("Done optional check (%d)", parameters_passed);
+    if (!parameters_passed) {
+        doc = admin_build_sourcelist(source->mount);
+        admin_send_response(doc, client, response, 
+             MOVECLIENTS_TRANSFORMED_REQUEST);
+        xmlFreeDoc(doc);
+        client_destroy(client);
+        return;
+    }
     
     avl_tree_rlock(global.source_tree);
     dest = source_find_mount(dest_source);
@@ -255,6 +443,10 @@ static void command_move_clients(client_t *client, source_t *source)
         client_send_400(client, "No such source");
         return;
     }
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlDocSetRootElement(doc, node);
 
     avl_tree_wlock(source->client_tree);
     client_node = avl_get_first(source->client_tree);
@@ -268,63 +460,115 @@ static void command_move_clients(client_t *client, source_t *source)
         client_node = avl_get_next(client_node);
 
         avl_delete(source->client_tree, current, source_remove_client);
+        source->listeners--;
     }
 
     avl_tree_unlock(source->client_tree);
         
-    html_success(client, "Clients moved");
+    memset(buf, '\000', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "Clients moved from %s to %s", dest_source, 
+        source->mount);
+    xmlNewChild(node, NULL, "message", buf);
+    xmlNewChild(node, NULL, "return", "1");
+
+    admin_send_response(doc, client, response, 
+        ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
 }
 
-static void command_show_listeners(client_t *client, source_t *source)
+static void command_show_listeners(client_t *client, source_t *source,
+    int response)
 {
+    xmlDocPtr doc;
+    xmlNodePtr node, srcnode, listenernode;
     avl_node *client_node;
     client_t *current;
+    char buf[22];
+    int len = 0;
+    char *userAgent = NULL;
     time_t now = time(NULL);
 
-    DEBUG1("Dumping listeners on mountpoint %s", source->mount);
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    srcnode = xmlNewChild(node, NULL, "source", NULL);
+    xmlSetProp(srcnode, "mount", source->mount);
+    xmlDocSetRootElement(doc, node);
 
-    html_head(client);
-
-    html_write(client, 
-            "<table><tr><td>IP</td><td>Connected</td><td>ID</td></tr>");
+    memset(buf, '\000', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%d", source->listeners);
+    xmlNewChild(srcnode, NULL, "Listeners", buf);
 
     avl_tree_rlock(source->client_tree);
 
     client_node = avl_get_first(source->client_tree);
     while(client_node) {
         current = (client_t *)client_node->key;
-
-        html_write(client, "<tr><td>%s</td><td>%d</td><td>%ld</td></tr>",
-                current->con->ip, now-current->con->con_time, current->con->id);
-
+        listenernode = xmlNewChild(srcnode, NULL, "listener", NULL);
+        xmlNewChild(listenernode, NULL, "IP", current->con->ip);
+        userAgent = httpp_getvar(current->parser, "user-agent");
+        if (userAgent) {
+            xmlNewChild(listenernode, NULL, "UserAgent", userAgent);
+        }
+        else {
+            xmlNewChild(listenernode, NULL, "UserAgent", "Unknown");
+        }
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "%d", now - current->con->con_time);
+        xmlNewChild(listenernode, NULL, "Connected", buf);
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "%d", current->con->id);
+        xmlNewChild(listenernode, NULL, "ID", buf);
         client_node = avl_get_next(client_node);
     }
 
     avl_tree_unlock(source->client_tree);
-
-    html_write(client, "</table></body></html>");
-
+    admin_send_response(doc, client, response, 
+        LISTCLIENTS_TRANSFORMED_REQUEST);
+    xmlFreeDoc(doc);
     client_destroy(client);
 }
 
-static void command_kill_source(client_t *client, source_t *source)
+static void command_kill_source(client_t *client, source_t *source,
+    int response)
 {
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlNewChild(node, NULL, "message", "Source Removed");
+    xmlNewChild(node, NULL, "return", "1");
+    xmlDocSetRootElement(doc, node);
+
     source->running = 0;
 
-    html_success(client, "Removing source");
+    admin_send_response(doc, client, response, 
+        ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
 }
 
-static void command_kill_client(client_t *client, source_t *source)
+static void command_kill_client(client_t *client, source_t *source,
+    int response)
 {
     char *idtext;
     int id;
     client_t *listener;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+    char buf[50] = "";
 
     COMMAND_REQUIRE(client, "id", idtext);
 
     id = atoi(idtext);
 
     listener = source_find_client(source, id);
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlDocSetRootElement(doc, node);
+    DEBUG1("Response is %d", response);
 
     if(listener != NULL) {
         INFO1("Admin request: client %d removed", id);
@@ -333,15 +577,25 @@ static void command_kill_client(client_t *client, source_t *source)
          * loop
          */
         listener->con->error = 1;
-
-        html_success(client, "Client removed");
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "Client %d removed", id);
+        xmlNewChild(node, NULL, "message", buf);
+        xmlNewChild(node, NULL, "return", "1");
     }
     else {
-        html_success(client, "Client not found");
+        memset(buf, '\000', sizeof(buf));
+        snprintf(buf, sizeof(buf)-1, "Client %d not found", id);
+        xmlNewChild(node, NULL, "message", buf);
+        xmlNewChild(node, NULL, "return", "0");
     }
+    admin_send_response(doc, client, response, 
+        ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
 }
 
-static void command_fallback(client_t *client, source_t *source)
+static void command_fallback(client_t *client, source_t *source,
+    int response)
 {
     char *fallback;
     char *old;
@@ -387,69 +641,41 @@ static void command_metadata(client_t *client, source_t *source)
     state->metadata_raw = 0;
     thread_mutex_unlock(&(state->lock));
 
-    DEBUG2("Metadata on mountpoint %s changed to \"%s\"", source->mount, value);
+    DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
+        source->mount, value);
     stats_event(source->mount, "title", value);
 
     html_success(client, "Metadata update successful");
 }
 
-static void command_raw_stats(client_t *client) {
+static void command_stats(client_t *client, int response) {
+    xmlDocPtr doc;
+
     DEBUG0("Stats request, sending xml stats");
 
-    stats_sendxml(client);
+    stats_get_xml(&doc);
+    admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
+    xmlFreeDoc(doc);
     client_destroy(client);
     return;
 }
 
-static void command_list_mounts(client_t *client, int formatted) {
+static void command_list_mounts(client_t *client, int response) {
     avl_node *node;
     source_t *source;
     int bytes;
+    xmlDocPtr doc;
+    xmlNodePtr xmlnode, srcnode, datanode;
+    char buf[22];
+    int len = 0;
+    time_t now = time(NULL);
 
     DEBUG0("List mounts request");
 
-    if(formatted) {
-        html_head(client);
+    doc = admin_build_sourcelist(NULL);
 
-        html_write(client, 
-                "<table><tr><td>Mountpoint</td><td>Fallback</td>"
-                "<td>Format</td><td>Listeners</td></tr>");
-    }
-    else {
-        client->respcode = 200;
-        bytes = sock_write(client->con->sock,
-                "HTTP/1.0 200 OK\r\n"
-                "Content-Type: text/html\r\n"
-                "\r\n");
-        if(bytes > 0) client->con->sent_bytes = bytes;
-    }
-
-    avl_tree_rlock(global.source_tree);
-
-    node = avl_get_first(global.source_tree);
-    while(node) {
-        source = (source_t *)node->key;
-
-        if(formatted) {
-            html_write(client, 
-                    "<tr><td>%s</td><td>%s</td><td>%s</td><td>%ld</td></tr>",
-                    source->mount, (source->fallback_mount != NULL)?
-                    source->fallback_mount:"", 
-                    source->format->format_description, source->listeners);
-        }
-        else {
-            bytes = sock_write(client->con->sock, "%s\r\n", source->mount);
-            if(bytes > 0) client->con->sent_bytes += bytes;
-        }
-
-        node = avl_get_next(node);
-    }
-
-    avl_tree_unlock(global.source_tree);
-
-    if(formatted) 
-        html_write(client, "</table></body></html>");
-
+    admin_send_response(doc, client, response, LISTMOUNTS_TRANSFORMED_REQUEST);
+    xmlFreeDoc(doc);
     client_destroy(client);
     return;
 }
