@@ -4,7 +4,6 @@
 #if !defined(AFX_ICECAST2WINDLG_H__23B4DA8B_C9BC_49C8_A62C_37FC6BC5E54A__INCLUDED_)
 #define AFX_ICECAST2WINDLG_H__23B4DA8B_C9BC_49C8_A62C_37FC6BC5E54A__INCLUDED_
 
-#include "ResizableDialog.h"
 #include "TabCtrlSSL.h"
 #include "TabPageSSL.h"
 
@@ -20,7 +19,7 @@
 /////////////////////////////////////////////////////////////////////////////
 // CIcecast2winDlg dialog
 
-class CIcecast2winDlg : public CResizableDialog
+class CIcecast2winDlg : public CDialog
 {
 // Construction
 public:

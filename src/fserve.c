@@ -85,7 +85,7 @@ typedef struct {
 static int _free_client(void *key);
 static int _delete_mapping(void *mapping);
 static void *fserv_thread_function(void *arg);
-static void create_mime_mappings(char *fn);
+static void create_mime_mappings(const char *fn);
 
 void fserve_initialize(void)
 {
@@ -330,6 +330,8 @@ static char *fserve_content_type(char *path)
             return "audio/mpeg";
         else if(!strcmp(ext, "html"))
             return "text/html";
+        else if(!strcmp(ext, "css"))
+            return "text/css";
         else if(!strcmp(ext, "txt"))
             return "text/plain";
         else
@@ -437,7 +439,7 @@ static int _compare_mappings(void *arg, void *a, void *b)
             ((mime_type *)b)->ext);
 }
 
-static void create_mime_mappings(char *fn) {
+static void create_mime_mappings(const char *fn) {
     FILE *mimefile = fopen(fn, "r");
     char line[4096];
     char *type, *ext, *cur;

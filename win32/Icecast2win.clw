@@ -15,7 +15,7 @@ Class3=CAboutDlg
 ResourceCount=10
 Resource1=IDD_SSTATUS
 Resource2=IDR_MAINFRAME
-Resource3=IDD_ABOUTBOX
+Resource3=IDD_STATSDIALOG
 Resource4=IDR_MENU2
 Class4=CStatus
 Resource5=IDR_TRAY
@@ -25,7 +25,7 @@ Resource6=IDR_MENU4
 Resource7=IDD_ICECAST2WIN_DIALOG
 Resource8=IDD_CONFIGDIALOG
 Resource9=IDR_MENU3
-Resource10=IDD_STATSDIALOG
+Resource10=IDD_ABOUTBOX
 
 [CLS:CIcecast2winApp]
 Type=0
@@ -75,7 +75,7 @@ Class=CStatus
 ControlCount=5
 Control1=IDC_FILLER2,static,1342308352
 Control2=IDC_GLOBALSTAT_LIST,SysListView32,1350631425
-Control3=IDC_STATIC_GS,static,1342308353
+Control3=IDC_STATIC_GS,static,1342308352
 Control4=IDC_STATIC_RUN,static,1342308352
 Control5=IDC_RUNNINGFOR,static,1342308352
 
@@ -106,12 +106,11 @@ LastObject=IDC_CONFIG
 [DLG:IDD_STATSDIALOG]
 Type=1
 Class=CStatsTab
-ControlCount=5
+ControlCount=4
 Control1=IDC_STATSLIST,SysListView32,1350631425
 Control2=IDC_SOURCELIST,SysListView32,1350631425
-Control3=IDC_FILLER1,static,1342308352
-Control4=IDC_STATIC_SLS,static,1342308353
-Control5=IDC_STATIC,static,1342308352
+Control3=IDC_STATIC_SLS,static,1342308352
+Control4=IDC_STATIC,static,1342308352
 
 [CLS:CStatsTab]
 Type=0

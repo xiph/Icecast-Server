@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "TabPageSSL.h"
-#include "ResizableDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -18,7 +17,7 @@ CTabPageSSL::CTabPageSSL () {
 }
 
 CTabPageSSL::CTabPageSSL (UINT nIDTemplate, CWnd* pParent /*=NULL*/)
-	: CResizableDialog(nIDTemplate, pParent) {
+	: CDialog(nIDTemplate, pParent) {
 #ifndef _AFX_NO_OCC_SUPPORT
 	AfxEnableControlContainer ();
 #endif // !_AFX_NO_OCC_SUPPORT
@@ -47,7 +46,7 @@ void CTabPageSSL::OnCancel (void) {
 
 BOOL CTabPageSSL::OnCommand (WPARAM wParam, LPARAM lParam) {
 	// Call base class OnCommand to allow message map processing
-	CResizableDialog::OnCommand (wParam, lParam);
+	CDialog::OnCommand (wParam, lParam);
 	//
 	// Forward WM_COMMAND messages to the dialog's parent.
 	//
@@ -58,7 +57,7 @@ BOOL CTabPageSSL::OnNotify (WPARAM wParam, LPARAM lParam, LRESULT* pResult) {
 	//
 	// Forward WM_NOTIFY messages to the dialog's parent.
 	//
-	CResizableDialog::OnNotify (wParam, lParam, pResult);
+	CDialog::OnNotify (wParam, lParam, pResult);
 	return GetParent ()->SendMessage (WM_NOTIFY, wParam, lParam);
 }
 
@@ -72,5 +71,5 @@ BOOL CTabPageSSL::OnCmdMsg (UINT nID, int nCode, void* pExtra,
 		return GetParent ()->OnCmdMsg (nID, nCode, pExtra, pHandlerInfo);
 #endif // !_AFX_NO_OCC_SUPPORT
 
-	return CResizableDialog::OnCmdMsg (nID, nCode, pExtra, pHandlerInfo);
+	return CDialog::OnCmdMsg (nID, nCode, pExtra, pHandlerInfo);
 }

@@ -74,15 +74,14 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
 END
 
-IDD_ICECAST2WIN_DIALOG DIALOGEX 0, 0, 318, 249
+IDD_ICECAST2WIN_DIALOG DIALOGEX 0, 0, 326, 259
 STYLE WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
     WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "icecast2"
 MENU IDR_MENU4
 FONT 8, "MS Sans Serif"
 BEGIN
-    CONTROL         "Tab1",IDC_MAINTAB,"SysTabControl32",0x0,0,48,318,201
+    CONTROL         "Tab1",IDC_MAINTAB,"SysTabControl32",0x0,0,49,326,210
     PUSHBUTTON      "Start Server",IDC_START,17,31,56,14
     CONTROL         "Start Server on Application Startup",IDC_AUTOSTART,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,76,
@@ -92,8 +91,8 @@ BEGIN
                     WS_EX_CLIENTEDGE
     CTEXT           "Server Status",IDC_STATIC_SS,172,23,65,10,
                     SS_CENTERIMAGE
-    CONTROL         150,IDC_STATICBLACK,"Static",SS_BITMAP,116,0,200,20
-    PUSHBUTTON      "Hide To Systray",IDC_HIDESYSTRAY,257,22,58,12
+    CONTROL         150,IDC_STATICBLACK,"Static",SS_BITMAP,116,0,214,20
+    PUSHBUTTON      "Hide To Systray",IDC_HIDESYSTRAY,262,22,58,12
 END
 
 IDD_SSTATUS DIALOG DISCARDABLE  0, 0, 320, 210
@@ -103,10 +102,10 @@ BEGIN
     LTEXT           "",IDC_FILLER2,0,199,319,11
     CONTROL         "List1",IDC_GLOBALSTAT_LIST,"SysListView32",LVS_REPORT | 
                     WS_BORDER | WS_TABSTOP,9,34,300,147
-    CTEXT           "Global Statistics",IDC_STATIC_GS,9,6,300,10
-    LTEXT           "Server Has Been Running For ",IDC_STATIC_RUN,46,184,100,
+    LTEXT           "Global Statistics",IDC_STATIC_GS,9,6,300,10
+    LTEXT           "Server Has Been Running For ",IDC_STATIC_RUN,10,19,109,
                     8
-    LTEXT           "",IDC_RUNNINGFOR,149,184,156,8
+    LTEXT           "",IDC_RUNNINGFOR,121,19,156,8
 END
 
 IDD_CONFIGDIALOG DIALOG DISCARDABLE  0, 0, 320, 210
@@ -122,11 +121,10 @@ STYLE WS_CHILD
 FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "List1",IDC_STATSLIST,"SysListView32",LVS_REPORT | 
-                    WS_BORDER | WS_TABSTOP,142,34,149,160
+                    WS_BORDER | WS_TABSTOP,142,34,163,147
     CONTROL         "List2",IDC_SOURCELIST,"SysListView32",LVS_REPORT | 
-                    WS_BORDER | WS_TABSTOP,9,34,111,159
-    LTEXT           "",IDC_FILLER1,0,199,320,11
-    CTEXT           "Source Level Statistics",IDC_STATIC_SLS,9,7,300,10
+                    WS_BORDER | WS_TABSTOP,9,34,111,147
+    LTEXT           "Source Level Statistics",IDC_STATIC_SLS,9,7,300,10
     LTEXT           "Click source to view statistics",IDC_STATIC,18,25,111,8
 END
 
