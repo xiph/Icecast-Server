@@ -603,13 +603,18 @@ int connection_check_admin_pass(http_parser_t *parser)
     ice_config_t *config = config_get_config();
     char *pass = config->admin_password;
     char *user = config->admin_username;
+    char *protocol;
 
     if(!pass || !user) {
         config_release_config();
         return 0;
     }
 
-    ret = _check_pass_http(parser, user, pass);
+    protocol = httpp_getvar (parser, HTTPP_VAR_PROTOCOL);
+    if (protocol && strcmp (protocol, "ICY") == 0)
+        ret = _check_pass_icy (parser, pass);
+    else 
+        ret = _check_pass_http (parser, user, pass);
     config_release_config();
     return ret;
 }

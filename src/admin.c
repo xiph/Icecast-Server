@@ -301,10 +301,18 @@ void admin_handle_request(client_t *client, char *uri)
 
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
 
-        ice_config_t *config = config_get_config ();
+        ice_config_t *config;
+        char *pass = httpp_get_query_param (client->parser, "pass");
+        if (pass == NULL)
+        {
+            client_send_400 (client, "missing pass parameter");
+            return;
+        }
+        config = config_get_config ();
         httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+        httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
+        httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
         config_release_config ();
-        noauth = 1;
     }
 
     mount = httpp_get_query_param(client->parser, "mount");
@@ -849,20 +857,12 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
     char *action;
     char *value;
-    char *source_pass;
-    char *config_source_pass;
-    ice_config_t *config;
     mp3_state *state;
 
     DEBUG0("Got shoutcast metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
-    COMMAND_REQUIRE(client, "pass", source_pass);
-
-    config = config_get_config();
-    config_source_pass = strdup(config->source_password);
-    config_release_config();
 
     if (source->format->type == FORMAT_TYPE_VORBIS) {
         client_send_400 (client, "Cannot update metadata on vorbis streams");
@@ -873,17 +873,6 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     {
         client_send_400 (client, "No such action");
         return;
-    }
-
-    if (strcmp(source_pass, config_source_pass) != 0)
-    {
-        ERROR0("Invalid source password specified, metadata not updated");
-        client_send_400 (client, "Invalid source password");
-        return;
-    }
-
-    if (config_source_pass) {
-        free(config_source_pass);
     }
 
     state = source->format->_state;
