@@ -86,6 +86,7 @@ typedef struct rwlock_tag {
 #define thread_cond_signal(x) thread_cond_signal_c(x,__LINE__,__FILE__)
 #define thread_cond_broadcast(x) thread_cond_broadcast_c(x,__LINE__,__FILE__)
 #define thread_cond_wait(x) thread_cond_wait_c(x,__LINE__,__FILE__)
+#define thread_cond_timedwait(x,t) thread_cond_wait_c(x,t,__LINE__,__FILE__)
 #define thread_rwlock_create(x) thread_rwlock_create_c(x,__LINE__,__FILE__)
 #define thread_rwlock_rlock(x) thread_rwlock_rlock_c(x,__LINE__,__FILE__)
 #define thread_rwlock_wlock(x) thread_rwlock_wlock_c(x,__LINE__,__FILE__)
@@ -113,6 +114,7 @@ void thread_cond_create_c(cond_t *cond, int line, char *file);
 void thread_cond_signal_c(cond_t *cond, int line, char *file);
 void thread_cond_broadcast_c(cond_t *cond, int line, char *file);
 void thread_cond_wait_c(cond_t *cond, int line, char *file);
+void thread_cond_timedwait_c(cond_t *cond, int millis, int line, char *file);
 void thread_cond_destroy(cond_t *cond);
 void thread_rwlock_create_c(rwlock_t *rwlock, int line, char *file);
 void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, char *file);

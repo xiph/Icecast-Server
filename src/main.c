@@ -23,6 +23,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
+#include "slave.h"
 #include "stats.h"
 #include "logging.h"
 
@@ -56,6 +57,7 @@ static void _shutdown_subsystems(void)
 {
 	refbuf_shutdown();
 	stats_shutdown();
+	slave_shutdown();
 	global_shutdown();
 	connection_shutdown();
 	config_shutdown();
@@ -315,6 +317,9 @@ int main(int argc, char **argv)
 		_shutdown_subsystems();
 		return 1;
 	}
+
+    /* Do this after logging init */
+    slave_initialize();
 
 	INFO0("icecast server started");
 

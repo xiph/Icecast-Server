@@ -373,7 +373,7 @@ done:
 	stats_event_dec(NULL, "sources");
 	stats_event(source->mount, "listeners", NULL);
 
-	printf("DEBUG: souce_main() is now exiting...\n");
+	printf("DEBUG: source_main() is now exiting...\n");
 
 	global_lock();
 	global.sources--;
@@ -394,7 +394,7 @@ done:
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
 	connection_t *cona = (connection_t *)a;
-        connection_t *conb = (connection_t *)b;
+    connection_t *conb = (connection_t *)b;
 
 	if (cona->id < conb->id) return -1;
 	if (cona->id > conb->id) return 1;

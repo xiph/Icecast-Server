@@ -465,12 +465,26 @@ void thread_cond_broadcast_c(cond_t *cond, int line, char *file)
 	pthread_cond_broadcast(&cond->sys_cond);
 }
 
+void thread_cond_timedwait_c(cond_t *cond, int millis, int line, char *file)
+{
+    struct timespec time;
+
+    time.tv_sec = millis/1000;
+    time.tv_nsec = (millis - time.tv_sec*1000)*1000000;
+
+    pthread_mutex_lock(&cond->cond_mutex);
+    pthread_cond_timedwait(&cond->sys_cond, &cond->cond_mutex, &time);
+    pthread_mutex_unlock(&cond->cond_mutex);
+}
+
 void thread_cond_wait_c(cond_t *cond, int line, char *file)
 {
 	pthread_mutex_lock(&cond->cond_mutex);
 	pthread_cond_wait(&cond->sys_cond, &cond->cond_mutex);
 	pthread_mutex_unlock(&cond->cond_mutex);
 }
+
+static int rwlocknum = 0;
 
 void thread_rwlock_create_c(rwlock_t *rwlock, int line, char *file)
 {

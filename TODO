@@ -27,3 +27,7 @@ FEATURES
 - support W3C Extended Logging (http://www.w3.org/TR/WD-logfile.html)
 	toggle between this and Apache Combined Log Format in the config file.
 	default to apache style.
+
+- allow using get_predata() stuff to send an "intro" to any newly-connected
+  user?
+

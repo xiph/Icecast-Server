@@ -33,6 +33,9 @@ typedef struct ice_config_tag
 	char *hostname;
 	int port;
 	char *bind_address;
+	char *master_server;
+	int master_server_port;
+    int master_update_interval;
 
 	char *base_dir;
 	char *log_dir;

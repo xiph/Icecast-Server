@@ -6,6 +6,8 @@
 #define ICE_RUNNING 1
 #define ICE_HALTING 2
 
+#include "thread/thread.h"
+
 typedef struct ice_global_tag
 {
 	int serversock;
@@ -16,6 +18,8 @@ typedef struct ice_global_tag
 	int clients;
 
 	avl_tree *source_tree;
+
+    cond_t shutdown_cond;
 } ice_global_t;
 
 extern ice_global_t global;

@@ -127,6 +127,7 @@ static char *_lookup(const char *what, char *buff, int len)
 		if (host == NULL) {
 			buff = NULL;
 		} else {
+            // still need to be locked here? 
 			temp = inet_ntoa(*(struct in_addr *)host->h_addr);
 			strncpy(buff, temp, len);
 		}

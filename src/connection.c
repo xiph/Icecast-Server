@@ -57,7 +57,7 @@ static mutex_t _queue_mutex;
 
 static thread_queue_t *_conhands = NULL;
 
-static rwlock_t _source_shutdown_rwlock;
+rwlock_t _source_shutdown_rwlock;
 
 static void *_handle_connection(void *arg);
 
@@ -69,6 +69,7 @@ void connection_initialize(void)
 	thread_mutex_create(&_queue_mutex);
 	thread_rwlock_create(&_source_shutdown_rwlock);
 	thread_cond_create(&_pool_cond);
+    thread_cond_create(&global.shutdown_cond);
 
 	_initialized = 1;
 }
@@ -77,22 +78,13 @@ void connection_shutdown(void)
 {
 	if (!_initialized) return;
 	
+    thread_cond_destroy(&global.shutdown_cond);
 	thread_cond_destroy(&_pool_cond);
 	thread_rwlock_destroy(&_source_shutdown_rwlock);
 	thread_mutex_destroy(&_queue_mutex);
 	thread_mutex_destroy(&_connection_mutex);
 
 	_initialized = 0;
-}
-
-static connection_t *_create_connection(void)
-{
-	connection_t *con;
-
-	con = (connection_t *)malloc(sizeof(connection_t));
-	memset(con, 0, sizeof(connection_t));
-
-	return con;
 }
 
 static unsigned long _next_connection_id(void)
@@ -104,6 +96,17 @@ static unsigned long _next_connection_id(void)
 	thread_mutex_unlock(&_connection_mutex);
 
 	return id;
+}
+
+connection_t *create_connection(sock_t sock, char *ip) {
+	connection_t *con;
+	con = (connection_t *)malloc(sizeof(connection_t));
+	memset(con, 0, sizeof(connection_t));
+	con->sock = sock;
+	con->con_time = time(NULL);
+	con->id = _next_connection_id();
+	con->ip = ip;
+	return con;
 }
 
 static connection_t *_accept_connection(void)
@@ -121,12 +124,7 @@ static connection_t *_accept_connection(void)
 
 	sock = sock_accept(global.serversock, ip, 16);
 	if (sock >= 0) {
-		con = _create_connection();
-
-		con->sock = sock;
-		con->con_time = time(NULL);
-		con->id = _next_connection_id();
-		con->ip = ip;
+		con = create_connection(sock, ip);
 
 		return con;
 	}
@@ -246,6 +244,9 @@ void connection_accept_loop(void)
 		}
 	}
 
+    /* Give all the other threads notification to shut down */
+    thread_cond_broadcast(&global.shutdown_cond);
+
 	_destroy_pool();
 
 	/* wait for all the sources to shutdown */
@@ -281,6 +282,44 @@ static connection_t *_get_connection(void)
 	}
 
 	return con;
+}
+
+int connection_create_source(connection_t *con, http_parser_t *parser, char *mount) {
+	source_t *source;
+	char *contenttype;
+	/* check to make sure this source wouldn't
+	** be over the limit
+	*/
+	global_lock();
+	if (global.sources >= config_get_config()->source_limit) {
+		printf("TOO MANY SOURCE, KICKING THIS ONE\n");
+		INFO1("Source (%s) logged in, but there are too many sources", mount);
+		global_unlock();
+		return 0;
+	}
+	global.sources++;
+	global_unlock();
+	
+	stats_event_inc(NULL, "sources");
+
+	contenttype = httpp_getvar(parser, "content-type");
+
+	if (contenttype != NULL) {
+		format_type_t format = format_get_type(contenttype);
+		if (format < 0) {
+			WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
+			return 0;
+		} else {
+			source = source_create(con, parser, mount, format);
+		}
+	} else {
+		WARN0("No content-type header, cannot handle source");
+		return 0;
+	}
+	source->shutdown_rwlock = &_source_shutdown_rwlock;
+	sock_set_blocking(con->sock, SOCK_NONBLOCK);
+	thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
+	return 1;
 }
 
 static void *_handle_connection(void *arg)
@@ -327,8 +366,6 @@ static void *_handle_connection(void *arg)
 				}
 
 				if (parser->req_type == httpp_req_source) {
-					char *contenttype;
-
 					printf("DEBUG: source logging in\n");
 					stats_event_inc(NULL, "source_connections");
 				
@@ -355,47 +392,11 @@ static void *_handle_connection(void *arg)
 					}
 					avl_tree_unlock(global.source_tree);
 
-					/* check to make sure this source wouldn't
-					** be over the limit
-					*/
-					global_lock();
-					if (global.sources >= config_get_config()->source_limit) {
-						printf("TOO MANY SOURCE, KICKING THIS ONE\n");
-						INFO1("Source (%s) logged in, but there are too many sources", httpp_getvar(parser, HTTPP_VAR_URI));
+					if (!connection_create_source(con, parser, httpp_getvar(parser, HTTPP_VAR_URI))) {
 						connection_close(con);
 						httpp_destroy(parser);
-						global_unlock();
-						continue;
-					}
-					global.sources++;
-					global_unlock();
-					
-					stats_event_inc(NULL, "sources");
-
-					contenttype = httpp_getvar(parser, "content-type");
-
-					if (contenttype != NULL) {
-						format_type_t format = format_get_type(contenttype);
-						if (format < 0) {
-							WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
-						    connection_close(con);
-    						httpp_destroy(parser);
-							continue;
-						} else {
-							source = source_create(con, parser, httpp_getvar(parser, HTTPP_VAR_URI), format);
-						}
-					} else {
-						WARN0("No content-type header, cannot handle source");
-						connection_close(con);
-    					httpp_destroy(parser);
-						continue;
 					}
 
-					source->shutdown_rwlock = &_source_shutdown_rwlock;
-
-					sock_set_blocking(con->sock, SOCK_NONBLOCK);
-				
-					thread_create("Source Thread", source_main, (void *)source, THREAD_DETACHED);
 					continue;
 				} else if (parser->req_type == httpp_req_stats) {
 					printf("DEBUG: stats connection...\n");
@@ -436,6 +437,32 @@ static void *_handle_connection(void *arg)
 					if (strcmp(httpp_getvar(parser, HTTPP_VAR_URI), "/stats.xml") == 0) {
 						printf("sending stats.xml\n");
 						stats_sendxml(client);
+						continue;
+					}
+
+					if (strcmp(httpp_getvar(parser, HTTPP_VAR_URI), "/allstreams.txt") == 0) {
+						if (strcmp((httpp_getvar(parser, "ice-password") != NULL) ? httpp_getvar(parser, "ice-password") : "", (config_get_config()->source_password != NULL) ? config_get_config()->source_password : "") != 0) {
+							printf("DEBUG: bad password for allstreams.txt\n");
+							INFO0("Client attempted to fetch allstreams.txt with bad password");
+							if (parser->req_type == httpp_req_get) {
+								client->respcode = 404;
+								bytes = sock_write(client->con->sock, "HTTP/1.0 404 Source Not Found\r\nContent-Type: text/html\r\n\r\n"\
+										   "<b>The source you requested could not be found.</b>\r\n");
+								if (bytes > 0) client->con->sent_bytes = bytes;
+							}
+						} else {
+							avl_node *node;
+							source_t *s;
+							avl_tree_rlock(global.source_tree);
+							node = avl_get_first(global.source_tree);
+							while (node) {
+								s = (source_t *)node->key;
+								sock_write(client->con->sock, "%s\r\n", s->mount);
+								node = avl_get_next(node);
+							}
+							avl_tree_unlock(global.source_tree);
+						}
+						client_destroy(client);
 						continue;
 					}
 					

@@ -3,12 +3,12 @@
 	<admin>jack@icecast.org</admin>
 
 	<limits>
-		<clients>100</clients>
+		<clients>2000</clients>
 		<sources>2</sources>
 		<threadpool>5</threadpool>
 		<client-timeout>30</client-timeout>
 		<header-timeout>15</header-timeout>
-		<source-timeout>10</source-timeout>
+		<source-timeout>100</source-timeout>
 	</limits>
 
 	<source-password>hackme</source-password>
@@ -25,8 +25,12 @@
 	<port>8000</port>
 	<!--<bind-address>127.0.0.1</bind-address>-->
 
+	<!--<master-server>127.0.0.1</master-server>-->
+	<!--<master-server-port>8001</master-server-port>-->
+    <!--<master-update-interval>120</master-update-interval>-->
+
         <paths>
-                <basedir>/usr/local/icecast</basedir>
+                <basedir>/home/msmith/icecast/icecast</basedir>
                 <logdir>/tmp</logdir>
         </paths>
 
@@ -37,9 +41,9 @@
 
     <security>
         <chroot>0</chroot>
-    <!--<changeowner>
-            <user>nobody</user>
+<!--        <changeowner>
+            <user>msmith</user>
             <group>nogroup</group>
-        </changeowner> -->
+        </changeowner>  -->
     </security>
 </icecast>

@@ -23,6 +23,7 @@
 #define CONFIG_DEFAULT_CHUID 0
 #define CONFIG_DEFAULT_USER NULL
 #define CONFIG_DEFAULT_GROUP NULL
+#define CONFIG_MASTER_UPDATE_INTERVAL 120
 
 #ifndef _WIN32
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
@@ -141,6 +142,9 @@ static void _set_defaults(void)
 	_configuration.hostname = (char *)strdup(CONFIG_DEFAULT_HOSTNAME);
 	_configuration.port = CONFIG_DEFAULT_PORT;
 	_configuration.bind_address = NULL;
+	_configuration.master_server = NULL;
+	_configuration.master_server_port = CONFIG_DEFAULT_PORT;
+    _configuration.master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
 	_configuration.base_dir = (char *)strdup(CONFIG_DEFAULT_BASE_DIR);
 	_configuration.log_dir = (char *)strdup(CONFIG_DEFAULT_LOG_DIR);
 	_configuration.access_log = (char *)strdup(CONFIG_DEFAULT_ACCESS_LOG);
@@ -166,8 +170,15 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			if (_configuration.admin) free(_configuration.admin);
 			_configuration.admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "source-password") == 0) {
-			if (_configuration.source_password) free(_configuration.source_password);
-			_configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            char *mount, *pass;
+            if ((mount = (char *)xmlGetProp(node, "mount")) != NULL) {
+                pass = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                /* FIXME: This is a placeholder for per-mount passwords */
+            }
+            else {
+			    if (_configuration.source_password) free(_configuration.source_password);
+			    _configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            }
 		} else if (strcmp(node->name, "hostname") == 0) {
 			if (_configuration.hostname) free(_configuration.hostname);
 			_configuration.hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -178,6 +189,15 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "bind-address") == 0) {
 			if (_configuration.bind_address) free(_configuration.bind_address);
 			_configuration.bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "master-server") == 0) {
+			if (_configuration.master_server) free(_configuration.master_server);
+			_configuration.master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "master-server-port") == 0) {
+			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			_configuration.master_server_port = atoi(tmp);
+        } else if (strcmp(node->name, "master-update-interval") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            _configuration.master_update_interval = atoi(tmp);
 		} else if (strcmp(node->name, "limits") == 0) {
 			_parse_limits(doc, node->xmlChildrenNode);
 		} else if (strcmp(node->name, "directory") == 0) {
