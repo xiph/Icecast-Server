@@ -30,7 +30,7 @@
 #include <theora/theora.h>
 #endif
 #ifdef HAVE_SPEEX
-#include <speex_header.h>
+#include <speex/speex_header.h>
 #endif
 
 #include "refbuf.h"
