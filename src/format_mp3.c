@@ -79,6 +79,8 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
     unsigned char *buf;
     int ret;
     int source_age;
+    char	*fullmetadata = NULL;
+    int	fullmetadata_size = 0;
 
     thread_mutex_lock(&(source_state->lock));
     if(source_state->metadata == NULL) {
@@ -87,11 +89,19 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
         return 0;
     }
 
+    fullmetadata_size = strlen(source_state->metadata) + strlen("StreamTitle='';StreamUrl=''") + 1;
+
+    fullmetadata = alloca(fullmetadata_size);
+
+    memset(fullmetadata, 0, fullmetadata_size);
+
+    sprintf(fullmetadata, "StreamTitle='%s';StreamUrl=''", source_state->metadata);
+
     source_age = source_state->metadata_age;
     send_metadata = source_age != client_state->metadata_age;
 
-    if(send_metadata && strlen(source_state->metadata) > 0)
-        len_byte = strlen(source_state->metadata)/16 + 1 - 
+    if(send_metadata && strlen(fullmetadata) > 0)
+        len_byte = strlen(fullmetadata)/16 + 1 - 
             client_state->metadata_offset;
     else
         len_byte = 0;
@@ -102,8 +112,10 @@ static int send_metadata(client_t *client, mp3_client_data *client_state,
 
     buf[0] = len_byte;
 
-    strncpy(buf+1, source_state->metadata + client_state->metadata_offset, 
-            len-2);
+    if (len > 1) {
+	    strncpy(buf+1, fullmetadata + client_state->metadata_offset, len-2);
+	    DEBUG1("Sending metadata (%s)", buf+1);
+    }
 
     thread_mutex_unlock(&(source_state->lock));
 
@@ -142,8 +154,11 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self,
             if(ret > 0)
                 state->offset += ret;
         }
-        else
+        else {
             ret = send_metadata(client, state, self->_state);
+	    ret = 0;
+	}
+
     }
     else {
         ret = sock_write_bytes(client->con->sock, buf, len);
@@ -202,7 +217,7 @@ static void *format_mp3_create_client_data(format_plugin_t *self,
     data->interval = ICY_METADATA_INTERVAL;
     data->offset = 0;
 
-    metadata = httpp_getvar(source->parser, "icy-metadata");
+    metadata = httpp_getvar(client->parser, "icy-metadata");
     if(metadata)
         data->use_metadata = atoi(metadata)>0?1:0;
 
