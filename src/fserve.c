@@ -130,24 +130,6 @@ static void wait_for_fds() {
     fserve_t *fclient;
 
     while(run_fserv) {
-        if (pending_list)
-        {
-            thread_mutex_lock (&pending_lock);
-
-            fclient = (fserve_t*)pending_list;
-            while (fclient)
-            {
-                fserve_t *to_move = fclient;
-                fclient = fclient->next;
-                to_move->next = active_list;
-                active_list = to_move;
-                client_tree_changed = 1;
-                fserve_clients++;
-                stats_event_inc(NULL, "clients");
-            }
-            pending_list = NULL;
-            thread_mutex_unlock (&pending_lock);
-        }
 #ifdef HAVE_POLL
         unsigned int i = 0;
 
@@ -173,7 +155,6 @@ static void wait_for_fds() {
                     fclient->ready = 1;
                 fclient = fclient->next;
             }
-            return;
         }
 #else
         struct timeval tv;
@@ -203,9 +184,27 @@ static void wait_for_fds() {
                     fclient->ready = 1;
                 fclient = fclient->next;
             }
-            return;
         }
 #endif
+        /* add any new clients here */
+        if (pending_list)
+        {
+            thread_mutex_lock (&pending_lock);
+
+            fclient = (fserve_t*)pending_list;
+            while (fclient)
+            {
+                fserve_t *to_move = fclient;
+                fclient = fclient->next;
+                to_move->next = active_list;
+                active_list = to_move;
+                client_tree_changed = 1;
+                fserve_clients++;
+                stats_event_inc(NULL, "clients");
+            }
+            pending_list = NULL;
+            thread_mutex_unlock (&pending_lock);
+        }
     }
 }
 
