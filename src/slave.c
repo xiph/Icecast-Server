@@ -64,6 +64,7 @@ static void _add_slave_host (const char *server, int port);
 
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
+static int update_settings = 0;
 static volatile unsigned int max_interval = 0;
 static volatile int rescan_relays = 0;
 static rwlock_t slaves_lock;
@@ -373,12 +374,11 @@ static void check_relay_stream (relay_server *relay)
             break;
         if (relay->on_demand)
         {
-            DEBUG0 ("check fallback on-demand relay");
             if (source->fallback_mount && source->fallback_override)
             {
                 source_t *fallback;
+                DEBUG2 ("checking %s for fallback override", source->fallback_mount);
                 avl_tree_rlock (global.source_tree);
-                DEBUG2 ("checking %s override %d", source->fallback_mount, source->fallback_override);
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
                 {
@@ -490,6 +490,7 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
         }
         /* relay is going, drop its stats */
         stats_event (to_free->localmount, NULL, NULL);
+        update_settings = 1;
         to_free = relay_free (to_free);
     }
 
@@ -685,7 +686,11 @@ static void *_slave_thread(void *arg)
             thread_mutex_unlock (&(config_locks()->relay_lock));
         }
         rescan_relays = 0;
-        source_recheck_mounts();
+        if (update_settings)
+        {
+            update_settings = 0;
+            source_recheck_mounts();
+        }
     }
     DEBUG0 ("shutting down current relays");
     relay_check_streams (NULL, global.relays);
