@@ -19,6 +19,15 @@ clients to alternative slave hosts.
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
 
+kh52
+. A lot of resync work with trunk
+. add queue shrinking, reduces queues to either last listener or burst
+. minor race fix, mp3 url update lock.
+. allow for xsl files to show inactive mounts but with active fallbacks
+. Add <hidden> attribute to <mount> to prevent xsl display
+. add <burst-on-connect> flag to maintain compatability with trunk
+. doc updates
+
 kh51
 . make config lock a rwlock instead of mutex, removes unneccesary stalling
   and removes possible (although not reported) deadlock cases

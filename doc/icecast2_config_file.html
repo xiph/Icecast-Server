@@ -343,6 +343,12 @@ listening clients back from the fallback mount.
 This optional setting allows for providing a burst size which overrides the default burst size
 as defined in limits.  The value is in bytes.
 </div>
+<h4>hidden</h4>
+<div class=indentedbox>
+Enable this to prevent this mount from being shown on the xsl pages.  This is mainly
+for cases where a local relay is configured and you do not want the source of the local
+relay to be shown
+</div>
 <h4>authentication</h4>
 <div class=indentedbox>
 This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication <a href="icecast2_listenerauth.html">here</a>.
