@@ -25,15 +25,16 @@
 #include <time.h>
 #include <sys/types.h>
 
+#include <pthread.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/time.h>
 #else
 #include <windows.h>
 #include <winbase.h>
+#include <implement.h>
 #endif
-
-#include <pthread.h>
 
 #include <signal.h>
 
@@ -42,7 +43,7 @@
 #include "avl.h"
 
 #ifdef _WIN32
-#define __FUNCTION__ __FILE__ ":" __LINE__
+#define __FUNCTION__ __FILE__
 #endif
 
 #define CATMODULE "thread"
