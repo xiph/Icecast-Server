@@ -878,12 +878,13 @@ void yp_touch (const char *mount)
 {
     struct yp_server *server = active_yps;
     time_t trigger;
-    ypdata_t *search_list;
+    ypdata_t *search_list = NULL;
 
     thread_rwlock_rlock (&yp_lock);
     /* do update in 3 secs, give stats chance to update */
     trigger = time(NULL) + 3;
-    search_list = server->mounts;
+    if (server)
+        search_list = server->mounts;
     while (server)
     {
         ypdata_t *yp = find_yp_mount (search_list, mount);
