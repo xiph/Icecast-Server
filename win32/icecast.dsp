@@ -41,7 +41,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Releaseicecast"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /W3 /GX /O2 /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -142,6 +142,14 @@ SOURCE=..\src\format_vorbis.c
 # Begin Source File
 
 SOURCE=..\src\format_vorbis.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\fserve.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\fserve.h
 # End Source File
 # Begin Source File
 

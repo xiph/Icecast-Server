@@ -11,6 +11,7 @@
 #include "ConfigTab.h"
 #include "StatsTab.h"
 #include "Status.h"
+#include "TrayNot.h"
 
 #if _MSC_VER > 1000
 #pragma once
@@ -39,6 +40,10 @@ public:
 	CFont labelFont;
 	CBitmap runningBitmap;
 	CBitmap stoppedBitmap;
+	CTrayNot* m_pTray;
+	BOOL m_bHidden;
+	int  m_iconSwap;
+
 
 
 
@@ -101,7 +106,11 @@ protected:
 	afx_msg void OnStart();
 	afx_msg void OnClose();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnPutthisstatinthetitle();
+	afx_msg void OnHidesystray();
+	afx_msg void OnHide();
+	afx_msg void OnBlankRestore();
+	afx_msg LONG OnTrayNotify ( WPARAM wParam, LPARAM lParam );
+	afx_msg void OnDestroy();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

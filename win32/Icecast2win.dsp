@@ -145,6 +145,14 @@ SOURCE=.\TabPageSSL.cpp
 
 SOURCE=.\TabPageSSL.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\Traynot.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\TRAYNOT.H
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -220,10 +228,6 @@ SOURCE=.\Icecast2.ico
 # Begin Source File
 
 SOURCE=.\res\Icecast2.ico
-# End Source File
-# Begin Source File
-
-SOURCE=.\icecast2logo.bmp
 # End Source File
 # Begin Source File
 

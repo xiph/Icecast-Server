@@ -79,7 +79,7 @@ STYLE WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU | WS_THICKFRAME
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "icecast2"
-FONT 8, "MS Sans Serif", 0, 0, 0x1
+FONT 8, "MS Sans Serif"
 BEGIN
     CONTROL         "Tab1",IDC_MAINTAB,"SysTabControl32",0x0,0,48,318,201
     PUSHBUTTON      "Start Server",IDC_START,17,31,56,14
@@ -87,10 +87,12 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,76,
                     29,81,17
     CONTROL         159,IDC_STATIC,"Static",SS_BITMAP,0,0,117,20
-    CONTROL         151,IDC_SERVERSTATUS,"Static",SS_BITMAP,253,28,65,18,
+    CONTROL         151,IDC_SERVERSTATUS,"Static",SS_BITMAP,173,32,65,18,
                     WS_EX_CLIENTEDGE
-    RTEXT           "Server Status",IDC_STATIC_SS,163,28,86,14
+    CTEXT           "Server Status",IDC_STATIC_SS,172,23,65,10,
+                    SS_CENTERIMAGE
     CONTROL         150,IDC_STATICBLACK,"Static",SS_BITMAP,116,0,200,20
+    PUSHBUTTON      "Hide To Systray",IDC_HIDESYSTRAY,257,22,58,12
 END
 
 IDD_SSTATUS DIALOG DISCARDABLE  0, 0, 320, 210
@@ -230,6 +232,14 @@ BEGIN
         MENUITEM "Make this stat the window title", 
                                                 ID__MAKETHISSTATTHEWINDOWTITLE
 
+    END
+END
+
+IDR_TRAY MENU DISCARDABLE 
+BEGIN
+    POPUP "Blank"
+    BEGIN
+        MENUITEM "Restore",                     ID_BLANK_RESTORE
     END
 END
 

@@ -69,6 +69,8 @@ BOOL CIcecast2winApp::InitInstance()
 
 //	SetDialogBkColor(BGCOLOR,TEXTCOLOR); 
 
+	m_pIconList[0] = LoadIcon (MAKEINTRESOURCE(IDR_MAINFRAME));
+
 	int nResponse = dlg.DoModal();
 	if (nResponse == IDOK)
 	{

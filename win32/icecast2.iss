@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=Icecast2_win32_09082002_setup.exe
+OutputBaseFilename=Icecast2_win32_09222002_setup
 WizardImageFile=icecast2logo2.bmp
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51

@@ -42,6 +42,9 @@ bool	g_tailError = false;
 void CollectStats(stats_event_t *event);
 CString gConfigurationSave;
 
+char	gTitleSource[1024] = "";
+char	gTitleName[1024] = "";
+
 #define MAXSTATSPERSOURCE 30
 #define MAXSOURCES 1024
 
@@ -64,6 +67,7 @@ typedef struct tagMainElement {
 	CString	source;
 	long	numStats;
 	Element	stats[MAXSTATSPERSOURCE];
+	int		populated;
 } MainElement;
 
 typedef struct tagMainElementAdditional {
@@ -81,6 +85,7 @@ long	numMainStats;
 extern "C" {
 	int main(int argc, char **argv);
 }
+
 
 void AddToAdditionalGlobalStats(CString source, CString name) {
 	int foundit = 0;
@@ -218,6 +223,7 @@ CIcecast2winDlg::CIcecast2winDlg(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 	// Note that LoadIcon does not require a subsequent DestroyIcon in Win32
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_pTray = NULL;
 }
 
 void CIcecast2winDlg::DoDataExchange(CDataExchange* pDX)
@@ -245,6 +251,10 @@ BEGIN_MESSAGE_MAP(CIcecast2winDlg, CResizableDialog)
 	ON_BN_CLICKED(IDC_START, OnStart)
 	ON_WM_CLOSE()
 	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_HIDESYSTRAY, OnHidesystray)
+	ON_COMMAND(ID_BLANK_RESTORE, OnBlankRestore)
+	ON_MESSAGE(WM_TRAY_NOTIFY, OnTrayNotify)
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -314,7 +324,7 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	
 	runningBitmap.LoadBitmap(IDB_BITMAP6);
 	stoppedBitmap.LoadBitmap(IDB_BITMAP5);
-	m_SS.SetFont(&labelFont, TRUE);
+	//m_SS.SetFont(&labelFont, TRUE);
 
 	UpdateData(FALSE);
 
@@ -530,6 +540,7 @@ void CIcecast2winDlg::OnFileExit()
 {
 	// TODO: Add your command handler code here
 
+
 	DestroyWindow();
 }
 
@@ -615,16 +626,13 @@ void CollectStats(stats_event_t *event)
 		
 	}
 
-
 	int foundit = 0;
 	for (int i=0;i<numMainStats;i++) {
 		if (!strcmp(gStats[i].source, tempSource)) {
 			int foundit2 = 0;
+			gStats[i].populated = 1;
 			for (int j=0;j<gStats[i].numStats;j++) {
-//				if (!strcmp(gStats[i].stats[j].name, tempElement.name)) {
-//					strcpy(gStats[i].stats[j].value, tempElement.value);
 				if (gStats[i].stats[j].name == tempElement.name) {
-					//strcpy(gStats[i].stats[j].value, tempElement.value);
 					gStats[i].stats[j].value = tempElement.value;
 
 					foundit2 = 1;
@@ -642,13 +650,33 @@ void CollectStats(stats_event_t *event)
 	if (!foundit) {
 
 //		strcpy(gStats[numMainStats].source, tempSource);
+		if (strlen(tempSource) == 0) {
+			strcpy(tempSource, "Global Stat");
+		}
 		gStats[numMainStats].source = tempSource;
 		gStats[numMainStats].stats[0].name = tempElement.name;
 		gStats[numMainStats].stats[0].value = tempElement.value;
+		gStats[numMainStats].populated = 1;
 
 //		memcpy(&gStats[numMainStats].stats[0], &tempElement, sizeof(tempElement));
 		gStats[numMainStats].numStats++;
 		numMainStats++;
+	}
+	// Process source disconnects
+	if (event->name != NULL) {
+		if (!strcmp(event->name, "listeners")) {
+			if (event->value == NULL) {
+				// source has disconnected...
+				for (int i=0;i<numMainStats;i++) {
+					if (!strcmp(gStats[i].source, tempSource)) {
+						gStats[i].populated = 0;
+						g_mainDialog->statsTab.m_SourceListCtrl.DeleteAllItems();
+						g_mainDialog->statsTab.m_StatsListCtrl.DeleteAllItems();
+						break;
+					}
+				}
+			}
+		}
 	}
 	g_mainDialog->UpdateStatsLists();
 
@@ -834,164 +862,169 @@ void CIcecast2winDlg::UpdateStatsLists()
 	for (int i=0;i<numMainStats;i++) {
 		int inthere = 0;
 		int k = 0;
-		for (l=0;l < gAdditionalGlobalStats.numStats;l++) {
-			for (int m=0;m < gStats[i].numStats;m++) {
-				if ((gAdditionalGlobalStats.stats[l].source == gStats[i].source) &&
-					(gAdditionalGlobalStats.stats[l].name == gStats[i].stats[m].name)) {
-					gAdditionalGlobalStats.stats[l].value = gStats[i].stats[m].value;
-					break;
-				}
-			}
-		}
-		if (strlen(gStats[i].source) > 0) {
-
-			for (k=0;k < statsTab.m_SourceListCtrl.GetItemCount();k++) {
-
-				statsTab.m_SourceListCtrl.GetItemText(k, 0, item, sizeof(item));
-				if (!strcmp(gStats[i].source, item)) {
-					inthere = 1;
-					break;
-				}
-			}
-			if (!inthere) {
-				if (gStats[i].source != "") {
-					LVITEM	lvi;
-
-					lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
-					lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
-					lvi.iSubItem = 0;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].source;
-					statsTab.m_SourceListCtrl.InsertItem(&lvi);
-				}
-			}
-			int nItemSelected = statsTab.m_SourceListCtrl.GetSelectionMark();
-			if (nItemSelected != -1) {
-				memset(item, '\000', sizeof(item));
-				statsTab.m_SourceListCtrl.GetItemText(nItemSelected, 0, item, sizeof(item));
-				if (!strcmp(gStats[i].source, item)) {
-					for (int l=0;l<gStats[i].numStats;l++) {
-						int inthere2 = 0;
-						char	item2[1024] = "";
-						for (int m=0;m < statsTab.m_StatsListCtrl.GetItemCount();m++) {
-							statsTab.m_StatsListCtrl.GetItemText(m, 0, item2, sizeof(item2));
-							if (!strcmp(gStats[i].stats[l].name, item2)) {
-								LVITEM	lvi;
-
-								lvi.mask =  LVIF_TEXT;
-								lvi.iItem = m;
-								lvi.iSubItem = 1;
-								lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].value;
-								statsTab.m_StatsListCtrl.SetItem(&lvi);
-								inthere2 = 1;
-								break;
-							}
-						}
-						if (!inthere2) {
-							LVITEM	lvi;
-
-							lvi.mask =  LVIF_TEXT;
-							lvi.iItem = statsTab.m_StatsListCtrl.GetItemCount();
-							lvi.iSubItem = 0;
-							lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].name;
-							statsTab.m_StatsListCtrl.InsertItem(&lvi);
-							lvi.iSubItem = 1;
-							lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].value;
-							statsTab.m_StatsListCtrl.SetItem(&lvi);
-						}
-					}
-				}
-			}
+		if (gStats[i].populated) {
 			for (l=0;l < gAdditionalGlobalStats.numStats;l++) {
-				int inthere2 = 0;
-				char	item2[1024] = "";
-				char	item3[1024] = "";
-				CString	itemSource;
-				CString itemName;
-				for (int m=0;m < statusTab.m_GlobalStatList.GetItemCount();m++) {
-					statusTab.m_GlobalStatList.GetItemText(m, 0, item2, sizeof(item2));
-					statusTab.m_GlobalStatList.GetItemText(m, 1, item3, sizeof(item3));
-					itemSource = item2;
-					itemName = item3;
-					if ((gAdditionalGlobalStats.stats[l].source == itemSource) &&
-						(gAdditionalGlobalStats.stats[l].name == itemName)) {
-						LVITEM	lvi;
-
-						lvi.mask =  LVIF_TEXT;
-						lvi.iItem = m;
-						lvi.iSubItem = 2;
-						lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].value;
-						statusTab.m_GlobalStatList.SetItem(&lvi);
-						inthere2 = 1;
+				for (int m=0;m < gStats[i].numStats;m++) {
+					if ((gAdditionalGlobalStats.stats[l].source == gStats[i].source) &&
+						(gAdditionalGlobalStats.stats[l].name == gStats[i].stats[m].name)) {
+						gAdditionalGlobalStats.stats[l].value = gStats[i].stats[m].value;
 						break;
 					}
 				}
-				if (!inthere2) {
-					LVITEM	lvi;
-
-					lvi.mask =  LVIF_TEXT;
-					lvi.iItem = statusTab.m_GlobalStatList.GetItemCount();
-					lvi.iSubItem = 0;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].source;
-					statusTab.m_GlobalStatList.InsertItem(&lvi);
-					lvi.iSubItem = 1;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].name;
-					statusTab.m_GlobalStatList.SetItem(&lvi);
-					lvi.iSubItem = 2;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].value;
-					statusTab.m_GlobalStatList.SetItem(&lvi);
-				}
 			}
-		}
-		else {
+			if (strcmp(gStats[i].source, "Global Stat")) {
+				// If Not Global STat
+				for (k=0;k < statsTab.m_SourceListCtrl.GetItemCount();k++) {
 
-			for (k=0;k < gStats[i].numStats;k++) {
-				inthere = 0;
-				for (l=0;l < statusTab.m_GlobalStatList.GetItemCount();l++) {
-
-					statusTab.m_GlobalStatList.GetItemText(l, 1, item, sizeof(item));
-					if (!strcmp(gStats[i].stats[k].name, item)) {
+					statsTab.m_SourceListCtrl.GetItemText(k, 0, item, sizeof(item));
+					if (!strcmp(gStats[i].source, item)) {
 						inthere = 1;
 						break;
 					}
 				}
 				if (!inthere) {
-					LVITEM	lvi;
+					if (gStats[i].source != "") {
+						LVITEM	lvi;
 
-					lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
-					lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
-					lvi.iSubItem = 0;
-					lvi.pszText = "Global Stat";
-					statusTab.m_GlobalStatList.InsertItem(&lvi);
-					lvi.iSubItem = 1;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].name;
-					statusTab.m_GlobalStatList.SetItem(&lvi);
-					lvi.iSubItem = 2;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
-					statusTab.m_GlobalStatList.SetItem(&lvi);
+						lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
+						lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
+						lvi.iSubItem = 0;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].source;
+						statsTab.m_SourceListCtrl.InsertItem(&lvi);
+					}
 				}
-				else {
-					LVITEM	lvi;
+				int nItemSelected = statsTab.m_SourceListCtrl.GetSelectionMark();
+				if (nItemSelected != -1) {
+					memset(item, '\000', sizeof(item));
+					statsTab.m_SourceListCtrl.GetItemText(nItemSelected, 0, item, sizeof(item));
+					if (!strcmp(gStats[i].source, item)) {
+						for (int l=0;l<gStats[i].numStats;l++) {
+							int inthere2 = 0;
+							char	item2[1024] = "";
+							for (int m=0;m < statsTab.m_StatsListCtrl.GetItemCount();m++) {
+								statsTab.m_StatsListCtrl.GetItemText(m, 0, item2, sizeof(item2));
+								if (!strcmp(gStats[i].stats[l].name, item2)) {
+									LVITEM	lvi;
 
-					lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
-					lvi.iItem = l;
-					lvi.iSubItem = 2;
-					lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
-					statusTab.m_GlobalStatList.SetItem(&lvi);
+									lvi.mask =  LVIF_TEXT;
+									lvi.iItem = m;
+									lvi.iSubItem = 1;
+									lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].value;
+									statsTab.m_StatsListCtrl.SetItem(&lvi);
+									inthere2 = 1;
+									break;
+								}
+							}
+							if (!inthere2) {
+								LVITEM	lvi;
+
+								lvi.mask =  LVIF_TEXT;
+								lvi.iItem = statsTab.m_StatsListCtrl.GetItemCount();
+								lvi.iSubItem = 0;
+								lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].name;
+								statsTab.m_StatsListCtrl.InsertItem(&lvi);
+								lvi.iSubItem = 1;
+								lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[l].value;
+								statsTab.m_StatsListCtrl.SetItem(&lvi);
+							}
+						}
+					}
+				}
+				for (l=0;l < gAdditionalGlobalStats.numStats;l++) {
+					int inthere2 = 0;
+					char	item2[1024] = "";
+					char	item3[1024] = "";
+					CString	itemSource;
+					CString itemName;
+					for (int m=0;m < statusTab.m_GlobalStatList.GetItemCount();m++) {
+						statusTab.m_GlobalStatList.GetItemText(m, 0, item2, sizeof(item2));
+						statusTab.m_GlobalStatList.GetItemText(m, 1, item3, sizeof(item3));
+						itemSource = item2;
+						itemName = item3;
+						if ((gAdditionalGlobalStats.stats[l].source == itemSource) &&
+							(gAdditionalGlobalStats.stats[l].name == itemName)) {
+							LVITEM	lvi;
+
+							lvi.mask =  LVIF_TEXT;
+							lvi.iItem = m;
+							lvi.iSubItem = 2;
+							lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].value;
+							statusTab.m_GlobalStatList.SetItem(&lvi);
+							inthere2 = 1;
+							break;
+						}
+					}
+					if (!inthere2) {
+						LVITEM	lvi;
+
+						lvi.mask =  LVIF_TEXT;
+						lvi.iItem = statusTab.m_GlobalStatList.GetItemCount();
+						lvi.iSubItem = 0;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].source;
+						statusTab.m_GlobalStatList.InsertItem(&lvi);
+						lvi.iSubItem = 1;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].name;
+						statusTab.m_GlobalStatList.SetItem(&lvi);
+						lvi.iSubItem = 2;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gAdditionalGlobalStats.stats[l].value;
+						statusTab.m_GlobalStatList.SetItem(&lvi);
+					}
+					if ((!strcmp(gAdditionalGlobalStats.stats[l].source, gTitleSource)) &&
+						(!strcmp(gAdditionalGlobalStats.stats[l].name, gTitleName))) {
+						gAdditionalGlobalStats.stats[l].titleFlag = 1;
+					}
+
+					if (gAdditionalGlobalStats.stats[l].titleFlag) {
+						CString	windowTitle = gAdditionalGlobalStats.stats[l].source + " - " + gAdditionalGlobalStats.stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
+						SetWindowText(windowTitle);
+					}
 				}
 			}
-		}
-	}
-	for (l=0;l < gAdditionalGlobalStats.numStats;l++) {
-		if (gAdditionalGlobalStats.stats[l].titleFlag) {
-			CString	windowTitle = gAdditionalGlobalStats.stats[l].source + " - " + gAdditionalGlobalStats.stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
-			SetWindowText(windowTitle);
-		}
-	}
-	for (l=0;l < numMainStats;l++) {
-		for (int k=0;k < gStats[i].numStats;k++) {
-			if (gStats[i].stats[k].titleFlag) {
-				CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[l].name + " - " + gAdditionalGlobalStats.stats[l].value;
-				SetWindowText(windowTitle);
+			else {
+				// If Global Stat
+				for (k=0;k < gStats[i].numStats;k++) {
+					inthere = 0;
+					for (l=0;l < statusTab.m_GlobalStatList.GetItemCount();l++) {
+
+						statusTab.m_GlobalStatList.GetItemText(l, 1, item, sizeof(item));
+						if (!strcmp(gStats[i].stats[k].name, item)) {
+							inthere = 1;
+							break;
+						}
+					}
+					if (!inthere) {
+						LVITEM	lvi;
+
+						lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
+						lvi.iItem = statsTab.m_SourceListCtrl.GetItemCount();
+						lvi.iSubItem = 0;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].source;
+						statusTab.m_GlobalStatList.InsertItem(&lvi);
+						lvi.iSubItem = 1;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].name;
+						statusTab.m_GlobalStatList.SetItem(&lvi);
+						lvi.iSubItem = 2;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
+						statusTab.m_GlobalStatList.SetItem(&lvi);
+					}
+					else {
+						LVITEM	lvi;
+
+						lvi.mask =  LVIF_IMAGE | LVIF_TEXT;
+						lvi.iItem = l;
+						lvi.iSubItem = 2;
+						lvi.pszText = (LPTSTR)(LPCTSTR)gStats[i].stats[k].value;
+						statusTab.m_GlobalStatList.SetItem(&lvi);
+					}
+					if ((!strcmp(gStats[i].source, gTitleSource)) &&
+						(!strcmp(gStats[i].stats[k].name, gTitleName))) {
+						gStats[i].stats[k].titleFlag = 1;
+					}
+					if (gStats[i].stats[k].titleFlag) {
+						CString	windowTitle = gStats[i].source + " - " + gStats[i].stats[k].name + " - " + gStats[i].stats[k].value;
+						SetWindowText(windowTitle);
+					}
+				}
 			}
 		}
 	}
@@ -1047,14 +1080,27 @@ void CIcecast2winDlg::config_write()
 		sprintf(buf2, "AdditionalStatsName%d", i);
 		WritePrivateProfileString(gAppName, buf2, gAdditionalGlobalStats.stats[i].name, gConfigFile);
 		gAdditionalGlobalStats.stats[i].name = buf;
+
+		if (gAdditionalGlobalStats.stats[i].titleFlag) {
+			sprintf(buf2, "%s|%s", gAdditionalGlobalStats.stats[i].source, gAdditionalGlobalStats.stats[i].name);
+			WritePrivateProfileString(gAppName, "TitleName", buf2, gConfigFile);
+		}
+	}
+	for (i=0;i<numMainStats;i++) {
+		for (int k=0;k < gStats[i].numStats;k++) {
+			if (gStats[i].stats[k].titleFlag) {
+				sprintf(buf2, "%s|%s", gStats[i].source, gStats[i].stats[k].name);
+				WritePrivateProfileString(gAppName, "TitleName", buf2, gConfigFile);
+			}
+		}
 	}
 
 }
 
 void CIcecast2winDlg::config_read()
 {
-	char	buf2[255] = "";
-	char	buf[255] = "";
+	char	buf2[1024] = "";
+	char	buf[1024] = "";
 	CString	tempString;
 
 	m_colSource0Width = GetPrivateProfileInt(gAppName, "col0SourceWidth", 150, gConfigFile);
@@ -1084,6 +1130,28 @@ void CIcecast2winDlg::config_read()
 		gAdditionalGlobalStats.stats[i].name = buf;
 		gAdditionalGlobalStats.numStats++;
 	}
+	GetPrivateProfileString(gAppName, "TitleName", "", buf, sizeof(buf), gConfigFile);
+
+	/*
+	if (strlen(buf) > 0) {
+		char *p1 = strchr(buf, '|');
+		if (p1) {
+			char tmpSource[1024] = "";
+			char tmpName[1024] = "";
+			memset(tmpSource, '\000', sizeof(tmpSource));
+			memset(tmpName, '\000', sizeof(tmpName));
+			
+
+			strncpy(tmpSource, buf, p1-buf);
+			p1++;
+			strcpy(tmpName, p1);
+
+			
+			strcpy(gTitleSource, tmpSource);
+			strcpy(gTitleName, tmpName);
+		}
+	}
+	*/
 
 }
 
@@ -1111,8 +1179,76 @@ void CIcecast2winDlg::OnSize(UINT nType, int cx, int cy)
 
 }
 
-void CIcecast2winDlg::OnPutthisstatinthetitle() 
+
+LONG CIcecast2winDlg::OnTrayNotify ( WPARAM wParam, LPARAM lParam )
+{
+	switch (lParam) {
+	case WM_RBUTTONDOWN:
+			{
+			CMenu menu ;
+			// Load and Verify Menu
+			VERIFY(menu.LoadMenu(IDR_TRAY));
+			CMenu* pPopup = menu.GetSubMenu (0) ;
+			ASSERT(pPopup != NULL);
+
+			// Get the cursor position
+			POINT pt ;
+			GetCursorPos (&pt) ;
+
+			// Fix Microsofts' BUG!!!!
+			SetForegroundWindow();
+
+			///////////////////////////////////
+			// Display The Menu
+			pPopup->TrackPopupMenu(TPM_LEFTALIGN |
+			TPM_RIGHTBUTTON,pt.x, pt.y, AfxGetMainWnd());
+			break ;
+			}
+	case WM_LBUTTONDBLCLK:
+	//////////////////////////////////
+	// Unhide our Window
+		if (m_bHidden) {
+			ShowWindow (SW_RESTORE);
+		}
+	//OnUnHide() ;
+		break ;
+	}
+
+	return (0) ;
+}
+
+void CIcecast2winDlg::OnHidesystray() 
+{
+	// TODO: Add your control notification handler code here
+	OnHide();
+	theApp.HideApplication();	
+}
+void CIcecast2winDlg::OnHide() 
+{
+	// TODO: Add your control notification handler code here
+	m_pTray = new CTrayNot (this,WM_TRAY_NOTIFY, NULL,theApp.m_pIconList);
+	m_pTray->SetState(0);
+	m_bHidden = TRUE;
+	
+}
+
+void CIcecast2winDlg::OnBlankRestore() 
 {
 	// TODO: Add your command handler code here
+		if (m_bHidden) {
+			ShowWindow (SW_RESTORE);
+		}
+	
+}
+
+void CIcecast2winDlg::OnDestroy() 
+{
+	CResizableDialog::OnDestroy();
+	
+	if (m_pTray) {
+		delete m_pTray ;
+		m_pTray = NULL ;
+	} 
+	// TODO: Add your message handler code here
 	
 }
