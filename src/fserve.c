@@ -315,7 +315,7 @@ static char *fserve_content_type(char *path)
     else {
         /* Fallbacks for a few basic ones */
         if(!strcmp(ext, "ogg"))
-            return "application/x-ogg";
+            return "application/ogg";
         else if(!strcmp(ext, "mp3"))
             return "audio/mpeg";
         else if(!strcmp(ext, "html"))

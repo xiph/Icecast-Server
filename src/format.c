@@ -29,7 +29,9 @@
 format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
-        return FORMAT_TYPE_VORBIS;
+        return FORMAT_TYPE_VORBIS; /* Backwards compatibility */
+    else if(strcmp(contenttype, "application/ogg") == 0)
+        return FORMAT_TYPE_VORBIS; /* Now blessed by IANA */
     else if(strcmp(contenttype, "audio/mpeg") == 0)
         return FORMAT_TYPE_MP3; 
     else
@@ -40,7 +42,7 @@ char *format_get_mimetype(format_type_t type)
 {
     switch(type) {
         case FORMAT_TYPE_VORBIS:
-            return "application/x-ogg";
+            return "application/ogg";
             break;
         case FORMAT_TYPE_MP3:
             return "audio/mpeg";
