@@ -106,6 +106,10 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
     char *tag;
     refbuf_t *refbuf;
     vstate_t *state = (vstate_t *)self->_state;
+#ifdef USE_YP
+    source_t *source;
+    time_t current_time;
+#endif
 
     if (data) {
         /* write the data to the buffer */
@@ -166,6 +170,24 @@ int format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned long le
                 ogg_stream_clear(&state->os);
                 vorbis_comment_clear(&state->vc);
                 vorbis_info_clear(&state->vi);
+#ifdef USE_YP
+                /* If we get an update on the mountpoint, force a
+                   yp touch */
+                avl_tree_rlock(global.source_tree);
+                source = source_find_mount(self->mount);
+                avl_tree_unlock(global.source_tree);
+
+                if (source) {
+                    /* If we get an update on the mountpoint, force a
+                       yp touch */
+                    current_time = time(NULL);
+                    for (i=0; i<source->num_yp_directories; i++) {
+                        source->ypdata[i]->yp_last_touch = current_time -
+                            source->ypdata[i]->yp_touch_interval + 2;
+                    }
+                }
+#endif
+
             }
         }
 
