@@ -112,11 +112,11 @@ void format_send_general_headers(format_plugin_t *format,
                     "%s: %s\r\n", var->name, var->value);
             if(bytes > 0) client->con->sent_bytes += bytes;
 		}
-        bytes = sock_write(client->con->sock,
-                "Server: %s\r\n", ICECAST_VERSION_STRING);
-        if(bytes > 0) client->con->sent_bytes += bytes;
 		node = avl_get_next(node);
 	}
 	avl_tree_unlock(source->parser->vars);
+    bytes = sock_write(client->con->sock,
+            "Server: %s\r\n", ICECAST_VERSION_STRING);
+    if(bytes > 0) client->con->sent_bytes += bytes;
 }
 
