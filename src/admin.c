@@ -165,8 +165,6 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
         xmlNewChild(xmlnode, NULL, "current_source", current_source);
     }
 
-    avl_tree_rlock(global.source_tree);
-
     node = avl_get_first(global.source_tree);
     while(node) {
         source = (source_t *)node->key;
@@ -186,7 +184,6 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
             source->format->format_description);
         node = avl_get_next(node);
     }
-    avl_tree_unlock(global.source_tree);
     return(doc);
 }
 
@@ -700,9 +697,8 @@ static void command_list_mounts(client_t *client, int response) {
     DEBUG0("List mounts request");
 
 
-    if (response == PLAINTEXT) {
-        avl_tree_rlock(global.source_tree);
-
+    if (response == PLAINTEXT)
+    {
         node = avl_get_first(global.source_tree);
 		html_write(client, 
             "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
@@ -711,7 +707,6 @@ static void command_list_mounts(client_t *client, int response) {
             html_write(client, "%s\n", source->mount);
             node = avl_get_next(node);
         }
-        avl_tree_unlock(global.source_tree);
     }
     else {
 
