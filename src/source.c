@@ -232,6 +232,9 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *p = source->stream_data;
         source->stream_data = p->next;
+        /* can be referenced by burst handler as well */
+        while (p->_count > 1)
+            refbuf_release (p);
         refbuf_release (p);
     }
     source->stream_data_tail = NULL;
@@ -357,10 +360,10 @@ void source_move_clients (source_t *source, source_t *dest)
         /* we need to move the client and pending trees */
         while (source->active_clients)
         {
+            /* switch client to different queue */
             client_t *client = source->active_clients;
             source->active_clients = client->next;
-            client->refbuf = dest->stream_data_tail;
-            client->pos = 0;
+            client_set_queue (client, dest->stream_data_tail);
             *dest->pending_clients_tail = client;
             dest->pending_clients_tail = &client->next;
             count++;
@@ -414,11 +417,11 @@ static void find_client_start (source_t *source, client_t *client)
     {
         if (refbuf->sync_point)
         {
+            client_set_queue (client, refbuf);
             break;
         }
         refbuf = refbuf->next;
     }
-    client->refbuf = refbuf;
 }
 
 
@@ -616,13 +619,18 @@ static void get_next_buffer (source_t *source)
                 source->stream_data_tail->next = refbuf;
             source->stream_data_tail = refbuf;
             source->queue_size += refbuf->len;
+            refbuf_addref (refbuf);
 
             /* move the starting point for new listeners */
             source->burst_size += refbuf->len;
             if (source->burst_size > source->burst_size_limit)
             {
-                source->burst_size -= source->burst_point->len;
-                source->burst_point = source->burst_point->next;
+                if (source->burst_point->next)
+                {
+                    refbuf_release (source->burst_point);
+                    source->burst_size -= source->burst_point->len;
+                    source->burst_point = source->burst_point->next;
+                }
             }
 
             /* save stream to file */
@@ -1057,25 +1065,29 @@ void source_main(source_t *source)
             listeners = source->listeners;
         }
 
-        if (remove_from_q)
-        {
-            refbuf_t *to_go = source->stream_data;
+        /* lets reduce the queue, any lagging clients should of been
+         * erminated by now
+         */
 
-            if (to_go->next)
+        if (source->stream_data)
+        {
+            while (source->stream_data->_count == 1)
             {
+                refbuf_t *to_go = source->stream_data;
+
+                if (to_go->next == NULL || source->burst_point == to_go)
+                {
+                    /* this should not happen */
+                    ERROR0 ("queue state is unexpected");
+                    source->running = 0;
+                    break;
+                }
                 source->stream_data = to_go->next;
                 source->queue_size -= to_go->len;
-                if (source->burst_point == to_go)
-                {
-                    source->burst_point = to_go->next;
-                    source->burst_size -= to_go->len;
-                }
                 if (source->format->prerelease)
                     source->format->prerelease (source, to_go);
                 refbuf_release (to_go);
             }
-            else
-                WARN0("possible queue length error");
         }
     }
     source->running = 0;

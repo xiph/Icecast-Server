@@ -72,6 +72,9 @@ void client_destroy(client_t *client)
     connection_close(client->con);
     httpp_destroy(client->parser);
 
+    /* drop ref counts if need be */
+    if (client->refbuf)
+        refbuf_release (client->refbuf);
     if (client->free_client_data)
         client->free_client_data (client);
 
@@ -179,5 +182,16 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
     if (ret > 0)
         client->con->sent_bytes += ret;
     return ret;
+}
+
+void client_set_queue (client_t *client, refbuf_t *refbuf)
+{
+    refbuf_t *to_release = client->refbuf;
+
+    client->refbuf = refbuf;
+    refbuf_addref (client->refbuf);
+    client->pos = 0;
+    if (to_release)
+        refbuf_release (to_release);
 }
 

@@ -287,6 +287,13 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
         return 0;  /* no data yet */
     if (refbuf->next == NULL && client->pos == refbuf->len)
         return 0;
+    /* move to the next buffer if we have finished with the current one */
+    if (refbuf->next && client->pos == refbuf->len)
+    {
+        client_set_queue (client, refbuf->next);
+        refbuf = client->refbuf;
+    }
+
     buf = refbuf->data + client->pos;
     len = refbuf->len - client->pos;
 
@@ -349,12 +356,6 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
             written += ret;
         }
         ret = 0;
-        /* we have now written what we needed to so move to the next buffer */
-        if (refbuf->next)
-        {
-            client->refbuf = refbuf->next;
-            client->pos = 0;
-        }
     } while (0);
 
     if (ret > 0)

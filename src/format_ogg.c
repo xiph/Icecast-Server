@@ -810,18 +810,14 @@ static int write_buf_to_client (format_plugin_t *self, client_t *client)
     struct client_vorbis *client_data = client->format_data;
     int ret, written = 0;
 
-    /* rare but the listener could connect before audio is ready */
-    if (refbuf == NULL)
-        return 0;
     if (refbuf->next == NULL && client->pos == refbuf->len)
         return 0;
 
     if (refbuf->next && client->pos == refbuf->len)
     {
-        client->refbuf = refbuf->next;
-        client->pos = 0;
+        client_set_queue (client, refbuf->next);
+        refbuf = client->refbuf;
     }
-    refbuf = client->refbuf;
     buf = refbuf->data + client->pos;
     len = refbuf->len - client->pos;
     do
