@@ -1,31 +1,42 @@
-<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
-<div class=boxtest>
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Icecast v2.0 Documentation</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+<div class="boxtest">
 <h1>Icecast 2 Basic Setup</h1>
-<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
-<br>
-<br>
-<br>
+<hr id='titlebar' />
+<p>
+<br />
+<br />
+<br />
+</p>
 <h2>Basic Requirements</h2>
 <p>This section will describe the essential requirements in setting up a simple Internet radio station.  It is by no means a complete list but should give you enough to get started.</p>
 <p>There are two major components involved: the streaming server (icecast in this case) and the source client.  The icecast server will be the place where all listeners of your station will connect.  The source client (in general) runs on a separate machine than icecast, but does not necessarily need to.  Source clients send the content to icecast and provide the stream data (encoded audio) that is then relayed out to listeners by icecast.</p>
 <p>It is important to note that not all source clients work with icecast2.  You will need to check to make sure that icecast2 is supported by your chosen source client.</p>
-
-<br>
-<br>
-<br>
+<p>
+<br />
+<br />
+<br />
+</p>
 <h2>The Basics</h2>
 <p>Each icecast server can house multiple broadcasts (or mountpoints) each containing a separate stream of content.  A listener can only listen to a single mountpoint at a time.  This means you can have a single icecast server contain either multiple broadcasts with different content, or possibly the same broadcast but with streams of different bitrates or qualities.  In this case each broadcast or stream is a separate mountpoint.</p>
 <p>At this point, the steps outlined here related to the Unix version or Win32 console version of icecast.  Icecast is also available in a Win32 GUI version, and the steps are similar in setup, but not quite the same.</p>
 <p>The first step in the process is to find and install the icecast2 server itself.  How to do this is not contained within this documentation.  After installation you should have and icecast binary and 3 directories</p>
-<center>
-<table border=1 width=75%>
+<div style="text-align:center;">
+<table border="1" width="75%">
 <tr><td>conf</td><td>Contains the icecast configuration file (icecast.xml) which defines all the configuration parameters for the server.</td></tr>
 <tr><td>admin</td><td>Contains xslt files which are used by the icecast server to provide a web-based front end to the administration capabilities of the server.</td></tr>
 <tr><td>logs</td><td>This is a blank directory which (if specified in the config file) will contain all the logs (there are 2) for icecast.</td></tr>
 </table>
-</center>
-<p>The next step is to edit the icecast.xml file and set the appropriate values.  Most of the default values are fine as provided, and for a basic setup the following entries should be changed :<br><br>
+</div>
+<p>The next step is to edit the icecast.xml file and set the appropriate values.  Most of the default values are fine as provided, and for a basic setup the following entries should be changed :
+<br /><br />
+</p>
 <pre>
 &lt;source-password&gt; - will be used by the source client
 &lt;admin-password&gt; - will be used to access admin features of icecast
@@ -43,17 +54,19 @@ icecast -c /path/to/icecast.xml
 [2003-10-31  13:04:49] INFO main/main.c icecast server started
 </pre>
 <p>You can also verify that it started by visiting the following URL : http://yourip:port/admin/stats.xml.  You should be prompted for a username and password.  Enter the username "admin" and the password you entered for &lt;admin-password&gt;.  If all is well, you should see an small XML tree which represents icecast statistics (more about that later).</p>
-<p>Now that the icecast server is started you must now configure your source client.  The information you will need for the source client is the following : <br>
-<br>
-IP address and Port of the icecast server - both of these come from &lt;listen-socket&gt;<br>
-source password - from &lt;source-password&gt;<br>
+<p>Now that the icecast server is started you must now configure your source client.  The information you will need for the source client is the following : <br />
+<br />
+IP address and Port of the icecast server - both of these come from &lt;listen-socket&gt;<br />
+source password - from &lt;source-password&gt;
+</p>
 <p>Additionally, you will need to choose a mountpoint and specify this in the source client.  Icecast does not need to know about each mount point (although you can configure settings for specific mountpoint - this is covered under Advanced configuration) there are, however, some points to mention regarding mountpoints.  All Ogg Vorbis streams should have mountpoints that end in .ogg (i,e. /mystream.ogg).  This is due to the lazy way most media players infer the type of stream.  MP3 streams usually do not contain an extension (/mystream).  Mount points also should not contain any spaces or odd characters (again due to the lazy way many of the media players are coded).</p>
 <p>Once you have configured your source client, you should be able to connect it to the icecast server.  Verify that it is connected by hitting the stats.xml URL that was mentioned above.</p>
 <p>Now that you have the source connnected, listening to the stream involves simply opening the appropriate following URL in a browser: http://yourip:port/mounpointyouspecified.m3u.  So, for instance, if you attached your source client to an icecast server located at 192.168.1.10:8000 with a mountpoint of /mystream.ogg, then you would open : http://192.168.1.10:8000/mystream.ogg.m3u.  Note that the .m3u extention will serve up a link that opens most media players.  Also it is important to note that m3u need not contain only MP3 stream, it can contain streams of arbitrary content-type and is used by icecast to serve a playlist that represents your broadcast to listening clients.  Alternatively you can open up the stream URL directly within your media player (http://192.168.1.10:8000/mystream.ogg in this case)</p>
-
-<br>
-<br>
-<br>
+<p>
+<br />
+<br />
+<br />
+</p>
 </div>
 </body>
 </html>

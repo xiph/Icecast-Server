@@ -1,14 +1,20 @@
-<LINK REL=STYLESHEET TYPE= "text/css" HREF= "style.css">
-<div class=boxtest>
-<body bgcolor="#efefef" text="#323232" link="#0000ff" vlink="#800080" alink="#ff0000">
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Icecast v2.0 Documentation</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+<div class="boxtest">
 <h1>Icecast 2 FAQ</h1>
-<table width=100%><tr><td bgcolor="#007B79" height="10" align="center"></td></tr></table>
-<br>
-<br>
-<br>
+<hr id='titlebar' />
+<br />
+<br />
+<br />
 <h2>General Questions</h2>
 <h4>What is Icecast?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 <p>
 Icecast, the project, is a collection of programs and libraries for
 streaming audio over the Internet. This includes:
@@ -22,13 +28,13 @@ A source client is an external program which is responsible for sending content 
 </div>
 
 <h4>What is icecast, the program?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 <p>
-icecast streams audio to listeners, and is compatible with Nullsoft’s Shoutcast.
+icecast streams audio to listeners, and is compatible with Nullsoft`s Shoutcast.
 </p>
 </div>
 <h4>What is libshout ?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 <p>
 	From the README:
 </p>
@@ -41,7 +47,7 @@ icecast streams audio to listeners, and is compatible with Nullsoft’s Shoutcast.
 </div>
 
 <h4>What is IceS?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 <p>
 	IceS is a program that sends audio data to an icecast server to broadcast to clients.
 	IceS can either read audio data from disk,
@@ -50,11 +56,11 @@ icecast streams audio to listeners, and is compatible with Nullsoft’s Shoutcast.
 </div>
 
 <h4>How can I view the stream status page?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 		<p>
 			Check your icecast configuration file for an element
 			called &lt;webroot&gt;. This directory contains web stuff.
-			In it, place a file called “status.xsl” that
+			In it, place a file called "status.xsl" that
 			transforms an <acronym>XML</acronym> file containing stream
 			data into a web page
 			(either <acronym>XHTML</acronym> or <acronym>HTML</acronym>).
@@ -67,13 +73,13 @@ icecast streams audio to listeners, and is compatible with Nullsoft’s Shoutcast.
 
 		<p>
 			In addition, the web directory can
-			hold multiple status transforms, if you can’t decide which
+			hold multiple status transforms, if you can't decide which
 			one you want.
 		</p>
 </div>
 
 <h4>What can I use to listen to an Icecast stream?</h4>
-<div class=indentedbox>
+<div class="indentedbox">
 		<p>
 			We maintain a list of Icecast-compatible audio players at
 			http://www.icecast.org/
