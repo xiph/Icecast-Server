@@ -346,12 +346,12 @@ void source_move_clients (source_t *source, source_t *dest)
         long count = 0;
         thread_mutex_lock (&source->lock);
 
-        if (source->format == NULL)
+        if (source->on_demand == 0 && source->format == NULL)
         {
             INFO1 ("source mount %s is not available", source->mount);
             break;
         }
-        if (dest->format)
+        if (source->format && dest->format)
         {
             if (source->format->type != dest->format->type)
             {

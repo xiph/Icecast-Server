@@ -209,6 +209,12 @@ xmlDocPtr admin_build_sourcelist(char *current_source)
     node = avl_get_first(global.source_tree);
     while(node) {
         source = (source_t *)node->key;
+        if (current_source && strcmp (current_source, source->mount) == 0)
+        {
+            node = avl_get_next(node);
+            continue;
+        }
+
         thread_mutex_lock (&source->lock);
         if (source->running || source->on_demand)
         {
@@ -336,7 +342,7 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
-            if (source->running == 0)
+            if (source->running == 0 && source->on_demand == 0)
             {
                 INFO2("Received admin command %s on unavailable mount \"%s\"",
                         command_string, mount);
