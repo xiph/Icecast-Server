@@ -5,6 +5,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
+#include "geturl.h"
 #include "source.h"
 #include "format.h"
 
