@@ -7,9 +7,12 @@
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
         <source-timeout>10</source-timeout>
-        <!-- This will provide a burst of data when a client first connects,
-             thereby significantly reducing the startup time for a listener -->
-        <burst-on-connect>1</burst-on-connect>
+        <!-- If enabled, this will provide a burst of data when a client 
+             first connects, thereby significantly reducing the startup 
+             time for listeners that do substantial buffering. However,
+             it also significantly increases latency, so it's disabled
+             by default -->
+        <burst-on-connect>0</burst-on-connect>
     </limits>
 
     <authentication>
