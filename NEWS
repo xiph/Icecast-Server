@@ -14,11 +14,12 @@ Icecast 2.1 11/04/2004
 -Multi-Level Fallbacks-
  
   Multi-level fallbacks allow for specifications of a series of fallback mounts
-  that you could use, for instance, to set up a series of progressively lower
-  bitrate streams that would be cascaded through.  For instance, a modem user
-  would connect to the highest bitrate stream, and then could be cascaded
-  down to a progressively lower stream until they reach a value they can
-  handle.
+  that you can use to automatically move listeners in the event of a source being
+  disconnected.  In the event of new listeners attaching to the source stream that has
+  been disconnected, they are routed to the fallback mount (if specified).
+  Icecast now has fallback-override capability as well which means that in the event
+  of a source stream failure, listeners are moved to the fallback mount, and then
+  automatically recaptured when the original source stream returns.
 
 -Burst-On-Connect-
 
