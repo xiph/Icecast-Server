@@ -118,6 +118,8 @@ void stats_shutdown()
             free(event->source);
         if(event->value)
             free(event->value);
+        if(event->name)
+            free(event->name);
         next = event->next;
         free(event);
         event = next;
