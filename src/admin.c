@@ -289,7 +289,6 @@ void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
     int command;
-    int noauth = 0;
 
     if(strncmp("/admin/", uri, 7)) {
         ERROR0("Internal error: admin request isn't");
@@ -315,18 +314,12 @@ void admin_handle_request(client_t *client, char *uri)
         source_t *source;
 
         if (command == COMMAND_BUILDM3U) {
-            noauth = 1;
+            client->authenticated = 1;
         }
-        /* This is a mount request, handle it as such */
-        if (!noauth) {
-            if(!connection_check_admin_pass(client->parser)) {
-                if(!connection_check_source_pass(client->parser, mount)) {
-                    INFO1("Bad or missing password on mount modification admin "
-                            "request (command: %s)", command_string);
-                    client_send_401(client);
-                    return;
-                }
-            }
+        /* This is a mount request, but admin user is allowed */
+        if (client->authenticated != 1) {
+            if (connection_check_admin_pass(client->parser))
+                client->authenticated = 1;
         }
         
         avl_tree_rlock(global.source_tree);
@@ -351,6 +344,17 @@ void admin_handle_request(client_t *client, char *uri)
             }
             INFO2("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
+            if (client->authenticated != 1)
+            {
+                if (connection_check_source_pass(client->parser, mount) == 0)
+                {
+                    INFO1("Bad or missing password on mount modification admin "
+                            "request (command: %s)", command_string);
+                    avl_tree_unlock(global.source_tree);
+                    client_send_401(client);
+                    return;
+                }
+            }
             admin_handle_mount_request (client, source, command);
             avl_tree_unlock(global.source_tree);
         }

@@ -170,6 +170,8 @@ void format_vorbis_free_plugin (format_plugin_t *plugin)
         refbuf_release (to_go);
     }
 
+    free (state->url_artist);
+    free (state->url_title);
     ogg_packet_clear (&state->url_comment);
 
     free (state);
