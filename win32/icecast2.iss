@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast2 Alpha 2
+AppVerName=Icecast v2.0
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -21,13 +21,19 @@ WizardImageFile=icecast2logo2.bmp
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; MinVersion: 4,4
 
+[Dirs]
+Name: "{app}\web"
+Name: "{app}\doc"
+Name: "{app}\logs"
+
+
 [Files]
 Source: "Release\Icecast2.exe"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; CopyMode: alwaysoverwrite
 Source: "..\web\status.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
 Source: "..\web\status2.xsl"; DestDir: "{app}\web"; CopyMode: alwaysoverwrite
 Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
-Source: "icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
+Source: "..\conf\icecast.xml"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
 Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; CopyMode: alwaysoverwrite
