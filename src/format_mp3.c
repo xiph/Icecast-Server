@@ -31,6 +31,7 @@
 #ifdef WIN32
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
+#define snprintf _snprintf
 #endif
 
 #define CATMODULE "format-mp3"
