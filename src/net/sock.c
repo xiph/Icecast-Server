@@ -118,7 +118,7 @@ int sock_error(void)
 */
 int sock_recoverable(int error)
 {
-	return (error == EAGAIN || error == EINTR || error == EINPROGRESS || error == EWOULDBLOCK);
+	return (error == 0 || error == EAGAIN || error == EINTR || error == EINPROGRESS || error == EWOULDBLOCK);
 }
 
 /* sock_valid_socket
@@ -433,7 +433,7 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 	/* defaults */
 	memset(&sa, 0, sizeof(sa));
 	sa_family = AF_INET;
-	sa_len = sizeof (struct sockaddr_in);
+	sa_len = sizeof(struct sockaddr_in);
 
 	/* set the interface to bind to if specified */
 	if (sinterface != NULL) {
@@ -449,12 +449,13 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 			sa_len = sizeof (struct sockaddr_in6);
 			((struct sockaddr_in6*)&sa)->sin6_family = AF_INET6;
 			((struct sockaddr_in6*)&sa)->sin6_port = htons(port);
-		} else
+		} else {
 			return SOCK_ERROR;
+		}
 #else
-		if (!inet_aton(ip, &sa.sin_addr))
+		if (!inet_aton(ip, &sa.sin_addr)) {
 			return SOCK_ERROR;
-		else {
+		} else {
 			sa.sin_family = AF_INET;
 			sa.sin_port = htons(port);
 		}
