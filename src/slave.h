@@ -13,6 +13,8 @@
 #ifndef __SLAVE_H__
 #define __SLAVE_H__
 
+#include <thread/thread.h>
+
 typedef struct _relay_server {
     char *server;
     int port;
@@ -22,6 +24,7 @@ typedef struct _relay_server {
     int mp3metadata;
     int running;
     int cleanup;
+    thread_type *thread;
     struct _relay_server *next;
 } relay_server;
 
