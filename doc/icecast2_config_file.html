@@ -169,6 +169,7 @@ This flag turns on the icecast2 fileserver from which static files can be served
     &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
     &lt;master-update-interval&gt;120&lt;/master-update-interval&gt;
     &lt;master-password&gt;hackme&lt;/master-password&gt;
+    &lt;relays-on-demand&gt;0&lt;/relays-on-demand&gt;
 
     &lt;relay&gt;
         &lt;server&gt;127.0.0.1&lt;/server&gt;
@@ -176,6 +177,7 @@ This flag turns on the icecast2 fileserver from which static files can be served
         &lt;mount&gt;example.ogg&lt;/mount&gt;
         &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
+        &lt;on-demand&gt;0&lt;/on-demand&gt;
     &lt;/relay&gt;
 </pre>
 <p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.   
@@ -217,6 +219,12 @@ The interval (in seconds) that the Relay Server will poll the Master Server for 
 <div class=indentedbox>
 This is the admin password on the Master server.  It is used to query the server for a list of mountpoints to relay.
 </div>
+<h4>relays-on-demand</h4>
+<div class=indentedbox>
+Changes the default on-demand setting, so a stream is only relayed if listeners are connected.
+(1=enabled, 0=disabled).
+</div>
+
 <br>
 <h3>Specific Mountpoint Relay</h3>
 The following diagram shows the basics of doing a Specific Mountpoint relay.  Note that Server 1 is configured with the &lt;relay&gt; settings and Server 2 is the server from which Server 1 will pull the specified mountpoint(s) and relay them.  Using a Specific Mountpoint Relay, only those mountpoints specified on Server 1 will be relayed from Server 2.
@@ -246,6 +254,7 @@ A server is configured as a Specific Mountpoint Server relay by specifying a &lt
         &lt;mount&gt;example.ogg&lt;/mount&gt;
         &lt;local-mount&gt;different.ogg&lt;/local-mount&gt;
         &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
+        &lt;on-demand&gt;1&lt;/on-demand&gt;
     &lt;/relay&gt;
 </pre>
 
@@ -270,6 +279,12 @@ The name to use for the local mountpoint.  This is what the mount will be named 
 <div class=indentedbox>
 If you are relaying a Shoutcast stream, you need to specify this indicator to also relay the metadata (song titles) that is part of the Shoutcast stream (1=enabled, 0=disabled).
 </div>
+<h4>on-demand</h4>
+<div class=indentedbox>
+An on-demand relay will only retrieve the stream if there are listeners connected
+(1=enabled, 0=disabled).
+</div>
+
 <br>
 <br>
 <br>
