@@ -44,6 +44,8 @@
 #include <libxml/xmlmemory.h>
 
 #ifdef _WIN32
+/* For getpid() */
+#include <process.h>
 #define snprintf _snprintf
 #define getpid _getpid
 #endif
