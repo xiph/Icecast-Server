@@ -160,6 +160,9 @@ int yp_touch(void *psource)
             else {
             /* specify URL to get */
                 ret = yp_submit_url(curl_con, source->ypdata[i]->yp_url, url, "yp_touch");
+                if (!ret) {
+                    source->ypdata[i]->sid[0] = '\000';
+                }
             }
            if (url) {
                free(url);
