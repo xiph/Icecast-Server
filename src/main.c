@@ -92,11 +92,18 @@ static int _start_logging(void)
 	char fn_access[FILENAME_MAX];
 	ice_config_t *config = config_get_config();
 
-	snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
-	snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
-
-	errorlog = log_open(fn_error);
-	accesslog = log_open(fn_access);
+	if(strcmp(config->error_log, "-")) {
+        snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
+	    errorlog = log_open(fn_error);
+    } else {
+        errorlog = log_open_file(stderr);
+    }
+	if(strcmp(config->access_log, "-")) {
+        snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
+	    accesslog = log_open(fn_access);
+    } else {
+        accesslog = log_open_file(stderr);
+    }
 	
 	log_set_level(errorlog, 4);
 	log_set_level(accesslog, 4);
@@ -176,17 +183,21 @@ static void _ch_root_uid__setup(void)
 
    if(conf->chuid)
    {
-       user = getpwnam(conf->user);
-       group = getgrnam(conf->group);
+       if(conf->user) {
+           user = getpwnam(conf->user);
+           if(user)
+               uid = user->pw_uid;
+           else
+               fprintf(stderr, "Couldn't find user \"%s\" in password file\n", conf->user);
+       }
+       if(conf->group) {
+           group = getgrnam(conf->group);
 
-       if(user)
-           uid = user->pw_uid;
-       else
-           fprintf(stderr, "Couldn't find user \"%s\" in password file\n", conf->user);
-       if(group)
-           gid = group->gr_gid;
-       else
-           fprintf(stderr, "Couldn't find group \"%s\" in groups file\n", conf->group);
+           if(group)
+               gid = group->gr_gid;
+           else
+               fprintf(stderr, "Couldn't find group \"%s\" in groups file\n", conf->group);
+       }
    }
 #endif
 
@@ -220,14 +231,14 @@ static void _ch_root_uid__setup(void)
 
        if(gid != -1) {
            if(!setgid(gid))
-               fprintf(stdout, "Changed groupid to %i.\n", group->gr_gid);
+               fprintf(stdout, "Changed groupid to %i.\n", gid);
            else
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
        }
 
        if(uid != -1) {
            if(!setuid(uid))
-               fprintf(stdout, "Changed userid to %i.\n", user->pw_uid);
+               fprintf(stdout, "Changed userid to %i.\n", uid);
            else
                fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
        }
