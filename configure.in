@@ -96,6 +96,7 @@ AC_CHECK_TYPE([socklen_t], int)
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(nanosleep)
+AC_CHECK_FUNCS(poll)
 AC_CHECK_FUNCS(sethostent endhostent)
 AC_CHECK_FUNCS(getnameinfo getaddrinfo inet_pton)
 
