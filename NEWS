@@ -1,7 +1,5 @@
 Feature differences from SVN trunk
 
-. fast pre-buffering aka burst-on-connect. State a burst size in bytes to
-indicate how much should be sent at listener connect.
 . mp3 accepts artist and title separately on the url.
 . program invocation at stream start and end, per mount based.
 . on-demand relays, activated on first listener, disconnected when listeners 
@@ -17,6 +15,23 @@ Speex, Writ.
 clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
+. per-mount format-specific settings can be stated in mount
+
+kh56
+. provide an alternate sock_write_fmt for old style vsnprintf, this was
+  causing no data (on truncation) to be sent on windows (stats.xml).
+. restructure stats engine, the inc/dec calls could cause incorrect values
+  due to racing with unprocessed events. The maths is done in the engine now
+. due to the stats engine, various changes to stats for mountpoints have
+  happened, most/all cases look ok. stats relays will need double checking
+. added max_listeners stat to each listed mount.
+. added icecast version global stat
+. fixed bug when a on-demand relay as a fallback was being started when
+  it should not of been.
+. allow for clients to fallback from on-demand relays that fail to start
+. The default mp3 interval is now 16000 bytes (inline with trunk) but this
+  can be overridden per-mount with <mp3-metadata-interval> in bytes. Other
+  format-specific settings could be possible.
 
 kh55
 . let the stats relays loop around instead of blocking on conditions, that
