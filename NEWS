@@ -17,18 +17,33 @@ max-listener check
 . per-mount format-specific settings can be stated in mount
 . mp3 metadata interval can be stated/disabled per mount
 
+2.1-kh1
+. Added <intro> tag to <mount> to allow the contents of a nominated file
+  (in the same format as the stream) to be sent to a listener before the actual
+  stream is.  On-demand relays also work with this.
+. fallback-mount can now be used to state a file not just another streaming
+  mountpoint (needs to be same format as the stream), fallback-override works
+  with this.
+. the stats.xsl page lists all stats, status.xsl does not show hidden ones.
+. internal cleanups when processing clients. Drop the use of per-client predata
+  and use usual buffers instead. more even client write distribution.
+. resync with work from 2.1 release and trunk
+    shoutcast style source client, needs verifying
+    NSV streaming.
+    Win32 build cleanups
+
 kh58
 . fix stability bug on vorbis rewrite module (--enable-vorbis-updates)
 . fixes to URL metadata handling. For vorbis streams they didn't update
-the stats/YP, for MP3 they were ignored if the source stream had no metadata
+  the stats/YP, for MP3 they were ignored if the source stream had no metadata
 . fixed small leak in slave host handling
 . resync with various trunk changes (aliasing cleanups, win32 timezone offset,
-log messages, docs, xsl files etc)
+  log messages, docs, xsl files etc)
 . for auth_url ignore case for authentication header
 . updates to slave handling of stats when relays start/stop, mainly relating
-to on-demand relays
+  to on-demand relays
 . expand on the trigger for determining if a relay has changed, it was only
-on local mountpoint before.
+  on local mountpoint before.
 . if an on-demand relay shuts down, don't remove the YP info
 
 kh57
