@@ -344,13 +344,13 @@ void connection_accept_loop(void)
 
     while (global.running == ICE_RUNNING)
     {
-        if (schedule_config_reread)
+        if (global . schedule_config_reread)
         {
             /* reread config file */
             INFO0("Scheduling config reread ...");
 
             connection_inject_event(EVENT_CONFIG_READ, NULL);
-            schedule_config_reread = 0;
+            global . schedule_config_reread = 0;
         }
 
         con = _accept_connection();

@@ -15,16 +15,12 @@
 #include "logging.h"
 #include "event.h"
 
-#include "sighandler.h"
-
 #define CATMODULE "sighandler"
 
 #ifndef _WIN32
 void _sig_hup(int signo);
 void _sig_die(int signo);
 #endif
-
-int schedule_config_reread = 0;
 
 void sighandler_initialize(void)
 {
@@ -40,7 +36,7 @@ void sighandler_initialize(void)
 
 void _sig_hup(int signo)
 {
-    schedule_config_reread = 1;
+    global . schedule_config_reread = 1;
     /* some OSes require us to reattach the signal handler */
     signal(SIGHUP, _sig_hup);
 }
