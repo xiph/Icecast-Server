@@ -12,6 +12,7 @@
 #define CONFIG_DEFAULT_THREADPOOL_SIZE 4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT 30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
+#define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
@@ -119,6 +120,7 @@ static void _set_defaults(void)
 	_configuration.threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
 	_configuration.client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
 	_configuration.header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
+	_configuration.source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
 	_configuration.source_password = (char *)strdup(CONFIG_DEFAULT_SOURCE_PASSWORD);
 	_configuration.touch_freq = CONFIG_DEFAULT_TOUCH_FREQ;
 	_configuration.dir_list = NULL;
@@ -197,6 +199,10 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "header-timeout") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.header_timeout = atoi(tmp);
+			if (tmp) free(tmp);
+		} else if (strcmp(node->name, "source-timeout") == 0) {
+			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+			_configuration.source_timeout = atoi(tmp);
 			if (tmp) free(tmp);
 		}
 	} while ((node = node->next));

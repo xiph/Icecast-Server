@@ -24,6 +24,7 @@
 #include "stats.h"
 #include "format.h"
 #include "logging.h"
+#include "config.h"
 
 #include "source.h"
 
@@ -106,6 +107,7 @@ void *source_main(void *arg)
 	source_t *source = (source_t *)arg;
 	char buffer[4096];
 	long bytes, sbytes;
+	int ret, timeout;
 	client_t *client;
 	avl_node *client_node;
 
@@ -116,6 +118,8 @@ void *source_main(void *arg)
 	struct timeval tv;
 
 	int listeners = 0;
+
+	timeout = config_get_config()->source_timeout;
 
 	/* grab a read lock, to make sure we get a chance to cleanup */
 	thread_rwlock_rlock(source->shutdown_rwlock);
@@ -138,10 +142,15 @@ void *source_main(void *arg)
 			while (bytes <= 0) {
 				FD_ZERO(&rfds);
 				FD_SET(source->con->sock, &rfds);
-				tv.tv_sec = 0;
-				tv.tv_usec = 30000;
 				
-				select(source->con->sock + 1, &rfds, NULL, NULL, &tv);
+				tv.tv_sec = timeout;
+				tv.tv_usec = 0;
+				
+				ret = select(source->con->sock + 1, &rfds, NULL, NULL, &tv);
+				if (ret == 0) { /* timeout expired */
+					bytes = 0;
+					break;
+				}
 
 				bytes = sock_read_bytes(source->con->sock, buffer, 4096);
 				if (bytes == 0 || (bytes < 0 && !sock_recoverable(sock_error()))) break;
