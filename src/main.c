@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <stdio.h>
 #include <string.h>
 
@@ -28,7 +29,9 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
+#ifdef HAVE_CURL
 #include "geturl.h"
+#endif
 
 #include <libxml/xmlmemory.h>
 
@@ -63,12 +66,16 @@ static void _initialize_subsystems(void)
     global_initialize();
     refbuf_initialize();
     xslt_initialize();
+#ifdef HAVE_CURL
     curl_initialize();
+#endif
 }
 
 static void _shutdown_subsystems(void)
 {
+#ifdef HAVE_CURL
     curl_shutdown();
+#endif
     fserve_shutdown();
     xslt_shutdown();
     refbuf_shutdown();

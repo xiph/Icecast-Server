@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -175,4 +176,3 @@ struct curl_memory_struct2 *curl_get_header_result(int which)
 {
     return &(curl_connections[which].header_result);
 }
-

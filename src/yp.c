@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -15,7 +16,7 @@
 
 #define CATMODULE "yp" 
 
-int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, int i)
+static int yp_submit_url(int curl_con, char *yp_url, char *url, char *type, int i)
 {
     int ret = 0;
     int *timeout;

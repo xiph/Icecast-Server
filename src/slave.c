@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /* slave.c
  * by Ciaran Anscomb <ciaran.anscomb@6809.org.uk>
  *
@@ -38,7 +39,6 @@
 #include "client.h"
 #include "stats.h"
 #include "logging.h"
-#include "geturl.h"
 #include "source.h"
 #include "format.h"
 

@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +41,6 @@
 
 #include "yp.h"
 #include "source.h"
-#include "geturl.h"
 #include "format.h"
 #include "format_mp3.h"
 #include "event.h"

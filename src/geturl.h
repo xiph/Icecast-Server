@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #ifndef __GETURL_H__
 #define __GETURL_H__
 
@@ -43,4 +44,3 @@ int curl_get_connection();
 int curl_release_connection(int which);
 
 #endif
-

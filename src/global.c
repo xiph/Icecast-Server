@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <string.h>
 
 #include "thread.h"
@@ -7,7 +8,6 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
-#include "geturl.h"
 #include "source.h"
 #include "format.h"
 

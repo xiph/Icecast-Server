@@ -11,10 +11,12 @@ noinst_HEADERS = config.h os.h logging.h sighandler.h connection.h global.h\
 	 compat.h format_mp3.h fserve.h xslt.h geturl.h yp.h event.h
 icecast_SOURCES = config.c main.c logging.c sighandler.c connection.c global.c\
 	 util.c slave.c source.c stats.c refbuf.c client.c format.c format_vorbis.c\
-	 format_mp3.c xslt.c fserve.c geturl.c yp.c event.c admin.c
+	 format_mp3.c xslt.c fserve.c event.c admin.c
+EXTRA_icecast_SOURCES = geturl.c yp.c
     
-icecast_LDADD = net/libicenet.la thread/libicethread.la httpp/libicehttpp.la\
+icecast_LDADD = $(ICECAST_OBJECTS) net/libicenet.la thread/libicethread.la httpp/libicehttpp.la\
 		log/libicelog.la avl/libiceavl.la timing/libicetiming.la
+icecast_DEPENDENCIES = $(icecast_LDADD)
 
 LIBS = @LIBS@ @XSLT_LIBS@ @SOCKET_LIBS@ @XML_LIBS@ @OGG_LIBS@ @VORBIS_LIBS@ @CURL_LIBS@ @PTHREAD_LIBS@
 CFLAGS = -g @CFLAGS@ @XML_CFLAGS@ @XSLT_CFLAGS@ @OGG_CFLAGS@ @VORBIS_CFLAGS@ @CURL_CFLAGS@ @PTHREAD_CFLAGS@

@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,9 @@
 #include "logging.h"
 #include "config.h"
 #include "util.h"
+#ifdef HAVE_CURL
 #include "geturl.h"
+#endif
 #include "source.h"
 #include "format.h"
 
@@ -51,8 +54,10 @@
 static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static int _parse_audio_info(source_t *source, char *s);
+#ifdef HAVE_CURL
 static void _add_yp_info(source_t *source, char *stat_name, 
             void *info, int type);
+#endif
 
 source_t *source_create(client_t *client, connection_t *con, 
     http_parser_t *parser, const char *mount, format_type_t type, 
@@ -149,9 +154,11 @@ int source_free_source(void *key)
     avl_tree_free(source->pending_tree, _free_client);
     avl_tree_free(source->client_tree, _free_client);
     source->format->free_plugin(source->format);
+#ifdef HAVE_CURL
     for (i=0; i<source->num_yp_directories; i++) {
         yp_destroy_ypdata(source->ypdata[i]);
     }
+#endif
     util_dict_free(source->audio_info);
     free(source);
 
@@ -192,6 +199,7 @@ void *source_main(void *arg)
     hostname = config->hostname;
     port = config->port;
 
+#ifdef HAVE_CURL
     for (i=0;i<config->num_yp_directories;i++) {
         if (config->yp_url[i]) {
             source->ypdata[source->num_yp_directories] = yp_create_ypdata();
@@ -203,7 +211,8 @@ void *source_main(void *arg)
             source->num_yp_directories++;
         }
     }
-
+#endif
+    
     config_release_config();
 
     /* grab a read lock, to make sure we get a chance to cleanup */
@@ -237,8 +246,10 @@ void *source_main(void *arg)
     }
 
     /* start off the statistics */
-    stats_event(source->mount, "listeners", "0");
     source->listeners = 0;
+    stats_event(source->mount, "listeners", "0");
+    stats_event(source->mount, "type", source->format->format_description);
+#ifdef HAVE_CURL
     if ((s = httpp_getvar(source->parser, "ice-name"))) {
         _add_yp_info(source, "server_name", s, YP_SERVER_NAME);
     }
@@ -275,7 +286,6 @@ void *source_main(void *arg)
         strcpy(source->ypdata[i]->server_type, 
                 source->format->format_description);
     }
-    stats_event(source->mount, "type", source->format->format_description);
 
     for (i=0;i<source->num_yp_directories;i++) {
         int listen_url_size;
@@ -310,10 +320,12 @@ void *source_main(void *arg)
             }
         }
     }
+#endif
 
     DEBUG0("Source creation complete");
 
     while (global.running == ICE_RUNNING && source->running) {
+#ifdef HAVE_CURL
         if(!suppress_yp) {
             current_time = time(NULL);
             for (i=0;i<source->num_yp_directories;i++) {
@@ -354,7 +366,7 @@ void *source_main(void *arg)
                 }
             }
         }
-
+#endif
         ret = source->format->get_buffer(source->format, NULL, 0, &refbuf);
         if(ret < 0) {
             WARN0("Bad data from source");
@@ -566,10 +578,13 @@ void *source_main(void *arg)
 done:
 
     DEBUG0("Source exiting");
+
+#ifdef HAVE_CURL
     if(!suppress_yp) {
         yp_remove(source);
     }
-
+#endif
+    
     avl_tree_rlock(global.source_tree);
     fallback_source = source_find_mount(source->fallback_mount);
     avl_tree_unlock(global.source_tree);
@@ -701,6 +716,7 @@ static int _parse_audio_info(source_t *source, char *s)
     return 1;
 }
 
+#ifdef HAVE_CURL
 static void _add_yp_info(source_t *source, char *stat_name, 
             void *info, int type)
 {
@@ -792,3 +808,4 @@ static void _add_yp_info(source_t *source, char *stat_name,
         }
     }
 }
+#endif
