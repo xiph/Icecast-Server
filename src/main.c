@@ -29,6 +29,8 @@
 #include "xslt.h"
 #include "fserve.h"
 
+#include <libxml/xmlmemory.h>
+
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif
@@ -80,6 +82,8 @@ static void _shutdown_subsystems(void)
 	sock_shutdown();
 	thread_shutdown();
 	log_shutdown();
+
+    xmlCleanupParser();
 }
 
 static int _parse_config_file(int argc, char **argv, char *filename, int size)

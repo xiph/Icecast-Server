@@ -84,6 +84,7 @@ void stats_initialize()
 void stats_shutdown()
 {
 	int n;
+    stats_event_t *event, *next;
 
     if(!_stats_running) /* We can't shutdown if we're not running. */
         return;
@@ -110,6 +111,17 @@ void stats_shutdown()
 	thread_mutex_destroy(&_stats_mutex);
 	avl_tree_free(_stats.source_tree, _free_source_stats);
 	avl_tree_free(_stats.global_tree, _free_stats);
+
+    event = _global_event_queue;
+    while(event) {
+        if(event->source)
+            free(event->source);
+        if(event->value)
+            free(event->value);
+        next = event->next;
+        free(event);
+        event = next;
+    }
 }
 
 stats_t *stats_get_stats()
@@ -746,6 +758,7 @@ void stats_get_xml(xmlDocPtr *doc)
 	stats_event_t *queue;
 	xmlNodePtr node, srcnode;
 	source_xml_t *src_nodes = NULL;
+	source_xml_t *next;
 
 	queue = NULL;
 	_dump_stats_to_queue(&queue);
@@ -766,6 +779,13 @@ void stats_get_xml(xmlDocPtr *doc)
 
 		_free_event(event);
 		event = _get_event_from_queue(&queue);
+	}
+
+	while (src_nodes) {
+		next = src_nodes->next;
+		free(src_nodes->mount);
+		free(src_nodes);
+		src_nodes = next;
 	}
 }
 void stats_sendxml(client_t *client)

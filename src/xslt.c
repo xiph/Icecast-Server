@@ -169,8 +169,7 @@ void xslt_transform(xmlDocPtr doc, char *xslfilename, client_t *client)
                 (char *)outputBuffer->buffer->content))
         client->con->sent_bytes += bytes;
     
-
-    xmlFree(outputBuffer);
+    xmlOutputBufferClose(outputBuffer);
     xmlFreeDoc(res);
 }
 

@@ -86,6 +86,8 @@ void config_shutdown(void)
 	if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
     if (c->bind_address) xmlFree(c->bind_address);
+    if (c->master_server) xmlFree(c->master_server);
+    if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
     dirnode = _configuration.dir_list;

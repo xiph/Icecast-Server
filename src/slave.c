@@ -102,6 +102,7 @@ static void *_slave_thread(void *arg) {
         strcat(authheader, password);
         data = util_base64_encode(authheader);
 		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nAuthorization: Basic %s\r\n\r\n", data);
+        free(authheader);
         free(data);
 		while (sock_read_line(mastersock, buf, sizeof(buf))) {
             if(!strlen(buf))
