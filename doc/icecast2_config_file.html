@@ -148,7 +148,7 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
 <pre>
     &lt;hostname&gt;localhost&lt;hostname&gt;
 
-    &lt;-- You can use these two if you only want a single listener --&gt;
+    &lt;-- You can use these two if you only want a single listening socket --&gt;
     &lt;-- &lt;port&gt;8000&lt;/port&gt; --&gt;
     &lt;-- &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt; --&gt;
 
@@ -166,7 +166,7 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;fileserve&gt;1&lt;/fileserve&gt;
     &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
 </pre>
-<p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the hostname parameter will be used to specify the address that will be bound.
+<p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the socket will be bound to all interfaces. Generally, you won't need to set bind-address.
 </p>
 <h4>port</h4>
 <div class="indentedbox">
