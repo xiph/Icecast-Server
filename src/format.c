@@ -19,8 +19,8 @@ format_type_t format_get_type(char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
         return FORMAT_TYPE_VORBIS;
-    else if(strcmp(contenttype, "audio/mpeg") == 0)
-        return FORMAT_TYPE_MP3;
+/*    else if(strcmp(contenttype, "audio/mpeg") == 0)
+        return FORMAT_TYPE_MP3; */
     else
         return -1;
 }
