@@ -459,7 +459,7 @@ int connection_check_admin_pass(http_parser_t *parser)
     if(!pass || !user)
         return 0;
 
-    return _check_pass_http(parser, "admin", pass);
+    return _check_pass_http(parser, user, pass);
 }
 
 int connection_check_source_pass(http_parser_t *parser, char *mount)
