@@ -737,7 +737,7 @@ static void _handle_stats_request(connection_t *con,
 }
 
 static void _handle_get_request(connection_t *con,
-        http_parser_t *parser, char *uri)
+        http_parser_t *parser, char *passed_uri)
 {
     char *fullpath;
     client_t *client;
@@ -754,6 +754,7 @@ static void _handle_get_request(connection_t *con,
     ice_config_t *config;
     int client_limit;
     int ret;
+    char *uri = passed_uri;
 
     config = config_get_config();
     fileserve = config->fileserve;
@@ -768,15 +769,7 @@ static void _handle_get_request(connection_t *con,
     }
     alias = config->aliases;
     client_limit = config->client_limit;
-    config_release_config();
 
-
-    DEBUG0("Client connected");
-
-    /* make a client */
-    client = client_create(con, parser);
-    stats_event_inc(NULL, "client_connections");
-                    
     /* there are several types of HTTP GET clients
     ** media clients, which are looking for a source (eg, URI = /stream.ogg)
     ** stats clients, which are looking for /admin/stats.xml
@@ -790,15 +783,22 @@ static void _handle_get_request(connection_t *con,
     /* Handle aliases */
     while(alias) {
         if(strcmp(uri, alias->source) == 0 && (alias->port == -1 || alias->port == serverport) && (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0))) {
-            uri = alias->destination;
+            uri = strdup (alias->destination);
+            DEBUG2 ("alias has made %s into %s", passed_uri, uri);
             break;
         }
         alias = alias->next;
     }
+    config_release_config();
+
+    /* make a client */
+    client = client_create(con, parser);
+    stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
     if (strncmp(uri, "/admin/", 7) == 0) {
         admin_handle_request(client, uri);
+        if (uri != passed_uri) free (uri);
         return;
     }
 
@@ -822,6 +822,7 @@ static void _handle_get_request(connection_t *con,
             client_send_404(client, "The file you requested could not be found");
         }
         free(fullpath);
+        if (uri != passed_uri) free (uri);
         return;
     }
     else if(fileserve && stat(fullpath, &statbuf) == 0 && 
@@ -833,6 +834,7 @@ static void _handle_get_request(connection_t *con,
     {
         fserve_client_create(client, fullpath);
         free(fullpath);
+        if (uri != passed_uri) free (uri);
         return;
     }
     free(fullpath);
@@ -853,6 +855,7 @@ static void _handle_get_request(connection_t *con,
         if(bytes > 0) client->con->sent_bytes = bytes;
         client_destroy(client);
         free(sourceuri);
+        if (uri != passed_uri) free (uri);
         return;
     }
 
@@ -861,6 +864,7 @@ static void _handle_get_request(connection_t *con,
         global_unlock();
         client_send_404(client,
                 "The server is already full. Try again later.");
+        if (uri != passed_uri) free (uri);
         return;
     }
     global_unlock();
@@ -877,6 +881,7 @@ static void _handle_get_request(connection_t *con,
         if(strcmp(uri, source->mount) == 0 && source->no_mount) {
             avl_tree_unlock(global.source_tree);
             client_send_404(client, "This mount is unavailable.");
+            if (uri != passed_uri) free (uri);
             return;
         }
         if (source->running == 0)
@@ -884,6 +889,7 @@ static void _handle_get_request(connection_t *con,
             avl_tree_unlock(global.source_tree);
             DEBUG0("inactive source, client dropped");
             client_send_404(client, "This mount is unavailable.");
+            if (uri != passed_uri) free (uri);
             return;
         }
 
@@ -903,6 +909,7 @@ static void _handle_get_request(connection_t *con,
                         "incorrect or missing password", uri);
                     client_send_401(client);
                 }
+                if (uri != passed_uri) free (uri);
                 return;
             }
         }
@@ -914,6 +921,7 @@ static void _handle_get_request(connection_t *con,
             avl_tree_unlock(global.source_tree);
             client_send_404(client, 
                     "The server is already full. Try again later.");
+            if (uri != passed_uri) free (uri);
             return;
         }
         /* Early-out for per-source max listeners. This gets checked again
@@ -927,6 +935,7 @@ static void _handle_get_request(connection_t *con,
             avl_tree_unlock(global.source_tree);
             client_send_404(client, 
                     "Too many clients on this mountpoint. Try again later.");
+            if (uri != passed_uri) free (uri);
             return;
         }
         global.clients++;
@@ -953,6 +962,7 @@ static void _handle_get_request(connection_t *con,
         DEBUG0("Source not found for client");
         client_send_404(client, "The source you requested could not be found.");
     }
+    if (uri != passed_uri) free (uri);
 }
 
 static void *_handle_connection(void *arg)
