@@ -1,6 +1,5 @@
 .ahem { display: none }
 body { 
-	font-size:12px; 
 	font-family:'Lucida Grande', Verdana, Geneva, Lucida, sans-serif;
 	background:#000000; 
 	link:#FFFFFF; 
@@ -17,10 +16,10 @@ a:link	{	color: #ff0; }
 a:visited { color: #cc3; }
 a:hover	{	color: #f00; }
 code,pre { 
-	font-size:11px; 
+	font-size:90%; 
 	color:#ffffff;
 	font-family:"Courier New",monospace;
-	background:#999; 
+	background:#777777;
 	padding:0 0.5em 
 }
 td {
