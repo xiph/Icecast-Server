@@ -14,6 +14,7 @@
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
+#define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
@@ -69,6 +70,8 @@ void config_shutdown(void)
         xmlFree(c->admin);
 	if (c->source_password && c->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
         xmlFree(c->source_password);
+	if (c->relay_password && c->relay_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
+        xmlFree(c->relay_password);
 	if (c->hostname && c->hostname != CONFIG_DEFAULT_HOSTNAME) 
         xmlFree(c->hostname);
 	if (c->base_dir && c->base_dir != CONFIG_DEFAULT_BASE_DIR) 
@@ -157,6 +160,7 @@ static void _set_defaults(void)
 	_configuration.header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
 	_configuration.source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
 	_configuration.source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
+	_configuration.relay_password = CONFIG_DEFAULT_RELAY_PASSWORD;
 	_configuration.ice_login = CONFIG_DEFAULT_ICE_LOGIN;
 	_configuration.touch_freq = CONFIG_DEFAULT_TOUCH_FREQ;
 	_configuration.dir_list = NULL;
@@ -166,6 +170,7 @@ static void _set_defaults(void)
 	_configuration.master_server = NULL;
 	_configuration.master_server_port = CONFIG_DEFAULT_PORT;
     _configuration.master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
+	_configuration.master_password = NULL;
 	_configuration.base_dir = CONFIG_DEFAULT_BASE_DIR;
 	_configuration.log_dir = CONFIG_DEFAULT_LOG_DIR;
     _configuration.webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
@@ -202,6 +207,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 			    if (_configuration.source_password && _configuration.source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(_configuration.source_password);
 			    _configuration.source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
+        } else if (strcmp(node->name, "relay-password") == 0) {
+			    if (_configuration.relay_password && _configuration.relay_password != CONFIG_DEFAULT_RELAY_PASSWORD) xmlFree(_configuration.relay_password);
+			    _configuration.relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "icelogin") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.ice_login = atoi(tmp);
@@ -219,6 +227,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node)
 		} else if (strcmp(node->name, "master-server") == 0) {
 			if (_configuration.master_server) xmlFree(_configuration.master_server);
 			_configuration.master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+		} else if (strcmp(node->name, "master-password") == 0) {
+			if (_configuration.master_password) xmlFree(_configuration.master_password);
+			_configuration.master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 		} else if (strcmp(node->name, "master-server-port") == 0) {
 			tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
 			_configuration.master_server_port = atoi(tmp);

@@ -27,6 +27,7 @@ typedef struct ice_config_tag
     int ice_login;
 
 	char *source_password;
+    char *relay_password;
 
 	int touch_freq;
 	ice_config_dir_t *dir_list;
@@ -37,6 +38,7 @@ typedef struct ice_config_tag
 	char *master_server;
 	int master_server_port;
     int master_update_interval;
+    char *master_password;
 
 	char *base_dir;
 	char *log_dir;

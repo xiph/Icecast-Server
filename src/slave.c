@@ -72,6 +72,9 @@ static void *_slave_thread(void *arg) {
 	http_parser_t *parser;
     client_t *client;
     int interval = config_get_config()->master_update_interval;
+    char *authheader, *data;
+    int len;
+    char *username = "relay";
 
 	while (_initialized) {
         if (config_get_config()->master_update_interval > ++interval) {
@@ -86,8 +89,15 @@ static void *_slave_thread(void *arg) {
             WARN0("Relay slave failed to contact master server to fetch stream list");
 			continue;
 		}
-        // FIXME: This is now broken... 
-		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nice-password: %s\r\n\r\n", config_get_config()->source_password);
+
+        len = strlen(username) + strlen(config_get_config()->master_password) + 1;
+        authheader = malloc(len+1);
+        strcpy(authheader, username);
+        strcat(authheader, ":");
+        strcat(authheader, config_get_config()->master_password);
+        data = util_base64_encode(authheader);
+		sock_write(mastersock, "GET /allstreams.txt HTTP/1.0\r\nAuthorization: Basic %s\r\n\r\n", data);
+        free(data);
 		while (sock_read_line(mastersock, buf, sizeof(buf))) {
 			buf[strlen(buf)] = 0;
 			avl_tree_rlock(global.source_tree);

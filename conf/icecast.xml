@@ -12,6 +12,7 @@
 	</limits>
 
 	<source-password>hackme</source-password>
+	<relay-password>hackme</relay-password>
 
 	<directory>
 		<touch-freq>5</touch-freq>
@@ -28,6 +29,7 @@
 	<!--<master-server>127.0.0.1</master-server>-->
 	<!--<master-server-port>8001</master-server-port>-->
     <!--<master-update-interval>120</master-update-interval>-->
+    <!--<master-password>hackme/master-password>-->
 
         <paths>
                 <basedir>/usr/local/icecast</basedir>

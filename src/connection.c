@@ -337,7 +337,7 @@ fail:
     return 0;
 }
 
-static int _check_source_pass_http(http_parser_t *parser)
+static int _check_source_pass_http(http_parser_t *parser, char *correctuser)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
     char *header = httpp_getvar(parser, "authorization");
@@ -368,7 +368,7 @@ static int _check_source_pass_http(http_parser_t *parser)
     username = userpass;
     password = tmp+1;
 
-    if(strcmp(username, "source") || strcmp(password, correctpass)) {
+    if(strcmp(username, correctuser) || strcmp(password, correctpass)) {
         free(userpass);
         return 0;
     }
@@ -393,12 +393,12 @@ static int _check_source_pass_ice(http_parser_t *parser)
         return 1;
 }
 
-static int _check_source_pass(http_parser_t *parser)
+static int _check_source_pass(http_parser_t *parser, char *user)
 {
     if(config_get_config()->ice_login)
         return _check_source_pass_ice(parser);
     else
-        return _check_source_pass_http(parser);
+        return _check_source_pass_http(parser, user);
 }
 
 static void _handle_source_request(connection_t *con, 
@@ -411,8 +411,8 @@ static void _handle_source_request(connection_t *con,
     INFO1("Source logging in at mountpoint \"%s\"", uri);
     stats_event_inc(NULL, "source_connections");
 				
-	if (!_check_source_pass(parser)) {
-		INFO1("Source (%s) attempted to login with bad password", uri);
+	if (!_check_source_pass(parser, "source")) {
+		INFO1("Source (%s) attempted to login with invalid or missing password", uri);
         client_send_401(client);
         return;
 	}
@@ -442,7 +442,7 @@ static void _handle_stats_request(connection_t *con,
 
 	stats_event_inc(NULL, "stats_connections");
 				
-	if (!_check_source_pass(parser)) {
+	if (!_check_source_pass(parser, "stats")) {
         ERROR0("Bad password for stats connection");
 		connection_close(con);
 		httpp_destroy(parser);
@@ -486,8 +486,8 @@ static void _handle_get_request(connection_t *con,
 	*/
 	/* TODO: add GUID-xxxxxx */
 	if (strcmp(uri, "/stats.xml") == 0) {
-	    if (!_check_source_pass(parser)) {
-		    INFO1("Source (%s) attempted to login with bad password", uri);
+	    if (!_check_source_pass(parser, "stats")) {
+		    INFO0("Request for stats.xml with incorrect or no password");
             client_send_401(client);
             return;
     	}
@@ -548,7 +548,7 @@ static void _handle_get_request(connection_t *con,
     }
 
 	if (strcmp(uri, "/allstreams.txt") == 0) {
-		if (!_check_source_pass(parser)) {
+		if (!_check_source_pass(parser, "relay")) {
 			INFO0("Client attempted to fetch allstreams.txt with bad password");
             client_send_401(client);
 		} else {
