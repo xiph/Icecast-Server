@@ -442,7 +442,6 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
     config = config_get_config();
     mountproxy = config->mounts;
     thread_mutex_lock(&(config_locks()->mounts_lock));
-    config_release_config();
 
     while(mountproxy) {
         if(!strcmp(mountproxy->mountname, mount)) {
@@ -459,6 +458,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
         if (format == FORMAT_ERROR) {
             WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
             thread_mutex_unlock(&(config_locks()->mounts_lock));
+            config_release_config();
             goto fail;
         } else {
             source = source_create(client, con, parser, mount, 
@@ -471,6 +471,7 @@ int connection_create_source(client_t *client, connection_t *con, http_parser_t 
         source = source_create(client, con, parser, mount, format, mountinfo);
         thread_mutex_unlock(&(config_locks()->mounts_lock));
     }
+    config_release_config();
 
     source->send_return = 1;
     source->shutdown_rwlock = &_source_shutdown_rwlock;

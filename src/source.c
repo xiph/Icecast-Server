@@ -72,9 +72,9 @@ source_t *source_create(client_t *client, connection_t *con,
     src->yp_public = 0;
 
     if(mountinfo != NULL) {
-        src->fallback_mount = mountinfo->fallback_mount;
+        src->fallback_mount = strdup (mountinfo->fallback_mount);
         src->max_listeners = mountinfo->max_listeners;
-        src->dumpfilename = mountinfo->dumpfile;
+        src->dumpfilename = strdup (mountinfo->dumpfile);
     }
 
     if(src->dumpfilename != NULL) {
@@ -140,6 +140,7 @@ int source_free_source(void *key)
 
     free(source->mount);
     free(source->fallback_mount);
+    free(source->dumpfilename);
     client_destroy(source->client);
     avl_tree_free(source->pending_tree, _free_client);
     avl_tree_free(source->client_tree, _free_client);
