@@ -22,6 +22,11 @@
 
 #include "format_mp3.h"
 
+#ifdef WIN32
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+#endif
+
 #define CATMODULE "format-mp3"
 
 /* Note that this seems to be 8192 in shoutcast - perhaps we want to be the
