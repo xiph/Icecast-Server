@@ -20,6 +20,18 @@ Feature differences from SVN trunk
 . added file intro to streams
 . fallback to file
 
+2.1-kh4
+. cleanup ogg codec build
+. handle ogg header pages better
+. ogg vorbis streams are rebuilt, but mutli ogg codec streams are
+  not, automatically determined now (drop the ogg-rebuild option)
+. more error checking in theora handling
+. unused code removal
+. merge from trunk
+  - add cluster-password
+  - admin page from updating title via url
+
+
 2.1-kh3
 . merge of the 2 ogg modules
   - drop --enable-vorbis-upodates, use <ogg-rebuild> in the <mount> instead
