@@ -33,6 +33,7 @@ typedef struct http_parser_tag {
 	httpp_request_type_e req_type;
 	char *uri;
 	avl_tree *vars;
+    avl_tree *queryvars;
 } http_parser_t;
 
 http_parser_t *httpp_create_parser(void);
@@ -41,6 +42,8 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len);
 int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long len, char *uri);
 void httpp_setvar(http_parser_t *parser, char *name, char *value);
 char *httpp_getvar(http_parser_t *parser, char *name);
+void httpp_set_query_param(http_parser_t *parser, char *name, char *value);
+char *httpp_get_query_param(http_parser_t *parser, char *name);
 void httpp_destroy(http_parser_t *parser);
 void httpp_clear(http_parser_t *parser);
  

@@ -14,4 +14,6 @@ char *util_normalise_uri(char *uri);
 char *util_base64_encode(char *data);
 char *util_base64_decode(unsigned char *input);
 
+char *util_url_escape(char *src);
+
 #endif  /* __UTIL_H__ */

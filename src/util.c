@@ -208,50 +208,43 @@ char *util_get_path_from_normalised_uri(char *uri) {
     return fullpath;
 }
 
-/* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
- * path contains 'disallowed' sequences like foo/../ (which could be used to
- * escape from the webroot) or if it cannot be URI-decoded.
- * Caller should free the path.
- */
-char *util_normalise_uri(char *uri) {
-    int urilen = strlen(uri);
-    unsigned char *path;
-    char *dst;
+char *util_url_escape(char *src)
+{
+    int len = strlen(src);
+    unsigned char *decoded;
     int i;
+    char *dst;
     int done = 0;
 
-    if(uri[0] != '/')
-        return NULL;
+    decoded = calloc(1, len + 1);
 
-    path = calloc(1, urilen + 1);
+    dst = decoded;
 
-    dst = path;
-
-    for(i=0; i < urilen; i++) {
-        switch(uri[i]) {
+    for(i=0; i < len; i++) {
+        switch(src[i]) {
             case '%':
-                if(i+2 >= urilen) {
-                    free(path);
+                if(i+2 >= len) {
+                    free(decoded);
                     return NULL;
                 }
-                if(hex(uri[i+1]) == -1 || hex(uri[i+2]) == -1 ) {
-                    free(path);
+                if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
+                    free(decoded);
                     return NULL;
                 }
 
-                *dst++ = hex(uri[i+1]) * 16  + hex(uri[i+2]);
+                *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
                 i+= 2;
                 break;
             case '#':
                 done = 1;
                 break;
             case 0:
-                ERROR0("Fatal internal logic error in util_get_path_from_uri()");
-                free(path);
+                ERROR0("Fatal internal logic error in util_url_escape()");
+                free(decoded);
                 return NULL;
                 break;
             default:
-                *dst++ = uri[i];
+                *dst++ = src[i];
                 break;
         }
         if(done)
@@ -260,9 +253,30 @@ char *util_normalise_uri(char *uri) {
 
     *dst = 0; /* null terminator */
 
+    return decoded;
+}
+
+/* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
+ * path contains 'disallowed' sequences like foo/../ (which could be used to
+ * escape from the webroot) or if it cannot be URI-decoded.
+ * Caller should free the path.
+ */
+char *util_normalise_uri(char *uri) {
+    char *path;
+
+    if(uri[0] != '/')
+        return NULL;
+
+    path = util_url_escape(uri);
+
+    if(path == NULL) {
+        WARN1("Error decoding URI: %s\n", uri);
+        return NULL;
+    }
+
     /* We now have a full URI-decoded path. Check it for allowability */
     if(verify_path(path))
-        return (char *)path;
+        return path;
     else {
         WARN1("Rejecting invalid path \"%s\"", path);
         free(path);

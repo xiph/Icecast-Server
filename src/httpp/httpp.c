@@ -40,6 +40,7 @@ void httpp_initialize(http_parser_t *parser, http_varlist_t *defaults)
 	parser->req_type = httpp_req_none;
 	parser->uri = NULL;
 	parser->vars = avl_tree_new(_compare_vars, NULL);
+    parser->queryvars = avl_tree_new(_compare_vars, NULL);
 
 	/* now insert the default variables */
 	list = defaults;
@@ -178,6 +179,100 @@ int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long l
 	return 1;
 }
 
+static int hex(char c)
+{
+    if(c >= '0' && c <= '9')
+        return c - '0';
+    else if(c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    else if(c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    else
+        return -1;
+}
+
+static char *url_escape(char *src)
+{
+    int len = strlen(src);
+    unsigned char *decoded;
+    int i;
+    char *dst;
+    int done = 0;
+
+    decoded = calloc(1, len + 1);
+
+    dst = decoded;
+
+    for(i=0; i < len; i++) {
+        switch(src[i]) {
+            case '%':
+                if(i+2 >= len) {
+                    free(decoded);
+                    return NULL;
+                }
+                if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
+                    free(decoded);
+                    return NULL;
+                }
+
+                *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
+                i+= 2;
+                break;
+            case '#':
+                done = 1;
+                break;
+            case 0:
+                free(decoded);
+                return NULL;
+                break;
+            default:
+                *dst++ = src[i];
+                break;
+        }
+        if(done)
+            break;
+    }
+
+    *dst = 0; /* null terminator */
+
+    return decoded;
+}
+
+/** TODO: This is almost certainly buggy in some cases */
+static void parse_query(http_parser_t *parser, char *query)
+{
+    int len;
+    int i=0;
+    char *key = query;
+    char *val=NULL;
+
+    if(!query || !*query)
+        return;
+
+    len = strlen(query);
+
+    while(i<len) {
+        switch(query[i]) {
+            case '&':
+                query[i] = 0;
+                if(val && key) {
+                    httpp_set_query_param(parser, key, val);
+                }
+                key = query+i+1;
+                break;
+            case '=':
+                query[i] = 0;
+                val = query+i+1;
+                break;
+        }
+        i++;
+    }
+
+    if(val && key) {
+        httpp_set_query_param(parser, key, val);
+    }
+}
+
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 {
 	char *data, *tmp;
@@ -247,8 +342,17 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 		parser->req_type = httpp_req_unknown;
 	}
 
-	if (uri != NULL && strlen(uri) > 0)
+	if (uri != NULL && strlen(uri) > 0) 
+    {
+        char *query;
+        if((query = strchr(uri, '?')) != NULL) {
+            *query = 0;
+            query++;
+            parse_query(parser, query);
+        }
+
 		parser->uri = strdup(uri);
+    }
 	else
 		parser->uri = NULL;
 
@@ -335,9 +439,44 @@ char *httpp_getvar(http_parser_t *parser, char *name)
 	http_var_t *found;
 
 	var.name = name;
-        var.value = NULL;
+    var.value = NULL;
 
 	if (avl_get_by_key(parser->vars, (void *)&var, (void **)&found) == 0)
+		return found->value;
+	else
+		return NULL;
+}
+
+void httpp_set_query_param(http_parser_t *parser, char *name, char *value)
+{
+	http_var_t *var;
+
+	if (name == NULL || value == NULL)
+		return;
+
+	var = (http_var_t *)malloc(sizeof(http_var_t));
+	if (var == NULL) return;
+
+	var->name = strdup(name);
+	var->value = url_escape(value);
+
+	if (httpp_get_query_param(parser, name) == NULL) {
+		avl_insert(parser->queryvars, (void *)var);
+	} else {
+		avl_delete(parser->queryvars, (void *)var, _free_vars);
+		avl_insert(parser->queryvars, (void *)var);
+	}
+}
+
+char *httpp_get_query_param(http_parser_t *parser, char *name)
+{
+	http_var_t var;
+	http_var_t *found;
+
+	var.name = name;
+    var.value = NULL;
+
+	if (avl_get_by_key(parser->queryvars, (void *)&var, (void **)&found) == 0)
 		return found->value;
 	else
 		return NULL;
@@ -350,6 +489,7 @@ void httpp_clear(http_parser_t *parser)
 		free(parser->uri);
 	parser->uri = NULL;
 	avl_tree_free(parser->vars, _free_vars);
+	avl_tree_free(parser->queryvars, _free_vars);
 	parser->vars = NULL;
 }
 
