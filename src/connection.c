@@ -426,9 +426,99 @@ void connection_inject_event(int eventnum, void *event_data) {
     _signal_pool();
 }
 
-/* TODO: Make this return an appropriate error code so that we can use HTTP
- * codes where appropriate
+
+/* Called when activating a source. Verifies that the source count is not
+ * exceeded and applies any initial parameters.
  */
+int connection_complete_source (source_t *source)
+{
+    ice_config_t *config = config_get_config();
+
+    global_lock ();
+    DEBUG1 ("sources count is %d", global.sources);
+
+    if (global.sources < config->source_limit)
+    {
+        char *contenttype;
+        mount_proxy *mountproxy = config->mounts;
+        format_type_t format_type;
+
+        /* setup format handler */
+        contenttype = httpp_getvar (source->parser, "content-type");
+        if (contenttype != NULL)
+        {
+            format_type = format_get_type (contenttype);
+
+            if (format_type == FORMAT_ERROR)
+            {
+                global_unlock();
+                config_release_config();
+                if (source->client)
+                    client_send_404 (source->client, "Content-type not supported");
+                WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
+                return -1;
+            }
+        }
+        else
+        {
+            WARN0("No content-type header, falling back to backwards compatibility mode"
+                    "for icecast 1.x relays. Assuming content is mp3.");
+            format_type = FORMAT_TYPE_MP3;
+        }
+        source->format = format_get_plugin (format_type, source->mount, source->parser);
+
+        if (source->format == NULL)
+        {
+            global_unlock();
+            config_release_config();
+            if (source->client)
+                client_send_404 (source->client, "internal format allocation problem");
+            WARN1 ("plugin format failed for \"%s\"", source->mount);
+            return -1;
+        }
+
+        global.sources++;
+        global_unlock();
+
+        /* for relays, we don't yet have a client, however we do require one
+         * to retrieve the stream from.  This is created here, quite late,
+         * because we can't use this client to return an error code/message,
+         * so we only do this once we know we're going to accept the source.
+         */
+        if (source->client == NULL)
+            source->client = client_create (source->con, source->parser);
+
+        sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
+
+        while (mountproxy)
+        {
+            if (strcmp (mountproxy->mountname, source->mount) == 0)
+            {
+                source_apply_mount (source, mountproxy);
+                break;
+            }
+            mountproxy = mountproxy->next;
+        }
+        config_release_config();
+
+        source->shutdown_rwlock = &_source_shutdown_rwlock;
+        DEBUG0 ("source is ready to start");
+
+        return 0;
+    }
+    WARN1("Request to add source when maximum source limit"
+            "reached %d", global.sources);
+
+    global_unlock();
+    config_release_config();
+
+    if (source->client)
+        client_send_404 (source->client, "too many sources connected");
+
+    return -1;
+}
+
+
 int connection_create_source(client_t *client, connection_t *con, http_parser_t *parser, char *mount) {
     source_t *source;
     char *contenttype;

@@ -62,6 +62,10 @@ typedef struct source_tag
 source_t *source_create(client_t *client, connection_t *con, 
         http_parser_t *parser, const char *mount, format_type_t type,
         mount_proxy *mountinfo);
+source_t *source_reserve (const char *mount);
+void *source_client_thread (void *arg);
+void source_apply_mount (source_t *source, mount_proxy *mountinfo);
+void source_clear_source (source_t *source);
 source_t *source_find_mount(const char *mount);
 source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, int id);

@@ -63,6 +63,44 @@ static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static int _parse_audio_info(source_t *source, char *s);
 
+/* Allocate a new source with the stated mountpoint, if one already
+ * exists with that mountpoint in the global source tree then return
+ * NULL.
+ */
+source_t *source_reserve (const char *mount)
+{
+    source_t *src = NULL;
+
+    do
+    {
+        avl_tree_wlock (global.source_tree);
+        src = source_find_mount_raw (mount);
+        if (src)
+        {
+            src = NULL;
+            break;
+        }
+
+        src = calloc (1, sizeof(source_t));
+        if (src == NULL)
+            break;
+
+        src->client_tree = avl_tree_new(_compare_clients, NULL);
+        src->pending_tree = avl_tree_new(_compare_clients, NULL);
+
+        /* make duplicates for strings or similar */
+        src->mount = strdup (mount);
+        src->max_listeners = -1;
+
+        avl_insert (global.source_tree, src);
+
+    } while (0);
+
+    avl_tree_unlock (global.source_tree);
+    return src;
+}
+
+
 source_t *source_create(client_t *client, connection_t *con, 
     http_parser_t *parser, const char *mount, format_type_t type, 
     mount_proxy *mountinfo)
@@ -203,6 +241,62 @@ int source_compare_sources(void *arg, void *a, void *b)
 
     return strcmp(srca->mount, srcb->mount);
 }
+
+
+void source_clear_source (source_t *source)
+{
+#ifdef USE_YP
+     int i;
+#endif
+    DEBUG1 ("clearing source \"%s\"", source->mount);
+    client_destroy(source->client);
+    source->client = NULL;
+
+    /* lets kick off any clients that are left on here */
+    avl_tree_rlock (source->client_tree);
+    while (avl_get_first (source->client_tree))
+    {
+        avl_delete (source->client_tree,
+                avl_get_first (source->client_tree)->key, _free_client);
+    }
+    avl_tree_unlock (source->client_tree);
+
+    avl_tree_rlock (source->pending_tree);
+    while (avl_get_first (source->pending_tree))
+    {
+        avl_delete (source->pending_tree,
+                avl_get_first(source->pending_tree)->key, _free_client);
+    }
+    avl_tree_unlock (source->pending_tree);
+
+    if (source->format && source->format->free_plugin)
+    {
+        source->format->free_plugin (source->format);
+    }
+    source->format = NULL;
+#ifdef USE_YP
+    for (i=0; i<source->num_yp_directories; i++)
+    {
+        yp_destroy_ypdata(source->ypdata[i]);
+        source->ypdata[i] = NULL;
+    }
+    source->num_yp_directories = 0;
+#endif
+    source->listeners = 0;
+    source->no_mount = 0;
+    source->max_listeners = -1;
+    source->yp_public = 0;
+
+    util_dict_free(source->audio_info);
+    source->audio_info = NULL;
+
+    free(source->fallback_mount);
+    source->fallback_mount = NULL;
+
+    free(source->dumpfilename);
+    source->dumpfilename = NULL;
+}
+
 
 int source_free_source(void *key)
 {
@@ -495,6 +589,7 @@ void *source_main(void *arg)
     }
 
     DEBUG0("Source creation complete");
+    source->running = 1;
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -857,3 +952,39 @@ static int _parse_audio_info(source_t *source, char *s)
     }
     return 1;
 }
+
+
+void source_apply_mount (source_t *source, mount_proxy *mountinfo)
+{
+    DEBUG1("Applying mount information for \"%s\"", source->mount);
+    source->max_listeners = mountinfo->max_listeners;
+    source->fallback_override = mountinfo->fallback_override;
+    source->no_mount = mountinfo->no_mount;
+    if (mountinfo->fallback_mount)
+    {
+        source->fallback_mount = strdup (mountinfo->fallback_mount);
+        DEBUG1 ("fallback %s", mountinfo->fallback_mount);
+    }
+    if (mountinfo->auth_type != NULL)
+    {
+        source->authenticator = auth_get_authenticator(
+                mountinfo->auth_type, mountinfo->auth_options);
+    }
+    if (mountinfo->dumpfile)
+    {
+        DEBUG1("Dumping stream to %s", mountinfo->dumpfile);
+        source->dumpfilename = strdup (mountinfo->dumpfile);
+    }
+}
+
+
+void *source_client_thread (void *arg)
+{
+    source_t *source = arg;
+
+    source->send_return = 1;
+    source_main (source);
+    source_free_source (source);
+    return NULL;
+}
+
