@@ -64,6 +64,9 @@ source_t *source_find_mount(const char *mount)
 	avl_node *node;
 	int cmp;
 
+	if (!mount) {
+		return NULL;
+	}
 	/* get the root node */
 	node = global.source_tree->root->right;
 	
