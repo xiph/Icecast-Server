@@ -30,10 +30,6 @@
         <yp-url-timeout>15</yp-url-timeout>
         <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
     </directory>
-    <directory>
-        <yp-url-timeout>15</yp-url-timeout>
-        <yp-url>http://yp.icecast.net/cgi-bin/yp.cgi</yp-url>
-    </directory>
      -->
 
     <hostname>localhost</hostname>
