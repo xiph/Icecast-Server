@@ -20,6 +20,13 @@
 **
 */
 
+#ifdef _mangle
+# define resolver_initialize _mangle(resolver_initialize)
+# define resolver_shutdown _mangle(resolver_shutdown)
+# define resolver_getname _mangle(resolver_getname)
+# define resolver_getip _mangle(resolver_getip)
+#endif
+
 void resolver_initialize(void);
 void resolver_shutdown(void);
 

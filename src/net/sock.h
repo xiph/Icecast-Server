@@ -66,13 +66,41 @@ typedef int sock_t;
 /* sock connect macro */
 #define sock_connect(h, p) sock_connect_wto(h, p, 0)
 
+#ifdef _mangle
+# define sock_initialize _mangle(sock_initialize)
+# define sock_shutdown _mangle(sock_shutdown)
+# define sock_get_localip _mangle(sock_get_localip)
+# define sock_error _mangle(sock_error)
+# define sock_recoverable _mangle(sock_recoverable)
+# define sock_stalled _mangle(sock_stalled)
+# define sock_valid_socket _mangle(sock_valid_socket)
+# define sock_set_blocking _mangle(sock_set_blocking)
+# define sock_set_nolinger _mangle(sock_set_nolinger)
+# define sock_set_nodelay _mangle(sock_set_nodelay)
+# define sock_set_keepalive _mangle(sock_set_keepalive)
+# define sock_close _mangle(sock_close)
+# define sock_connect_wto _mangle(sock_connect_wto)
+# define sock_connect_non_blocking _mangle(sock_connect_non_blocking)
+# define sock_connected _mangle(sock_connected)
+# define sock_write_bytes _mangle(sock_write_bytes)
+# define sock_write _mangle(sock_write)
+# define sock_write_fmt _mangle(sock_write_fmt)
+# define sock_write_string _mangle(sock_write_string)
+# define sock_writev _mangle(sock_writev)
+# define sock_read_bytes _mangle(sock_read_bytes)
+# define sock_read_line _mangle(sock_read_line)
+# define sock_get_server_socket _mangle(sock_get_server_socket)
+# define sock_listen _mangle(sock_listen)
+# define sock_accept _mangle(sock_accept)
+#endif
+
 /* Misc socket functions */
 void sock_initialize(void);
 void sock_shutdown(void);
 char *sock_get_localip(char *buff, int len);
 int sock_error(void);
 int sock_recoverable(int error);
-int sock_stalled (int error);
+int sock_stalled(int error);
 int sock_valid_socket(sock_t sock);
 int sock_set_blocking(sock_t sock, const int block);
 int sock_set_nolinger(sock_t sock);
@@ -82,8 +110,8 @@ int sock_close(sock_t  sock);
 
 /* Connection related socket functions */
 sock_t sock_connect_wto(const char *hostname, const int port, const int timeout);
-int sock_connect_non_blocking (const char *host, const unsigned port);
-int sock_connected (int sock, unsigned timeout);
+int sock_connect_non_blocking(const char *host, const unsigned port);
+int sock_connected(int sock, unsigned timeout);
 
 /* Socket write functions */
 int sock_write_bytes(sock_t sock, const void *buff, const size_t len);

@@ -137,12 +137,15 @@ int sock_stalled (int error)
         error == EALREADY;
 }
 
-int sock_success (int error)
+#if 0
+/* what is this??? */
+static int sock_success (int error)
 {
     return error == 0;
 }
+#endif
 
-int sock_connect_pending (int error)
+static int sock_connect_pending (int error)
 {
     return error == EINPROGRESS || error == EALREADY;
 }
