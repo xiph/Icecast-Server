@@ -32,6 +32,7 @@ typedef struct _format_plugin_tag
 	void *_state;
 } format_plugin_t;
 
+format_type_t format_get_type(char *contenttype);
 format_plugin_t *format_get_plugin(format_type_t type, char *mount);
 
 #endif  /* __FORMAT_H__ */

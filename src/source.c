@@ -178,11 +178,11 @@ void *source_main(void *arg)
 
 		/* we have a refbuf buffer, which a data block to be sent to 
 		** all clients.  if a client is not able to send the buffer
-		** immediately, it should store it on it's queue for the next
+		** immediately, it should store it on its queue for the next
 		** go around.
 		**
 		** instead of sending the current block, a client should send
-		** all data in the cue, plus the current block, until either
+		** all data in the queue, plus the current block, until either
 		** it runs out of data, or it hits a recoverable error like
 		** EAGAIN.  this will allow a client that got slightly lagged
 		** to catch back up if it can

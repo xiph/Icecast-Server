@@ -62,10 +62,11 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 	if (http_data == NULL)
 		return 0;
 
-	/* make a local copy of the data */
-	data = (char *)malloc(len);
+	/* make a local copy of the data, including 0 terminator */
+	data = (char *)malloc(len+1);
 	if (data == NULL) return 0;
 	memcpy(data, http_data, len);
+    data[len] = 0;
 
 	/* first we count how many lines there are 
 	** and set up the line[] array	 
@@ -77,14 +78,12 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
 			data[i] = '\0';
 		if (data[i] == '\n') {
 			lines++;
-			if (i + 1 < len)
-				if (data[i + 1] == '\n' || data[i + 1] == '\r') {
-					data[i] = '\0';
-					break;
-				}
 			data[i] = '\0';
-			if (i < len - 1)
+			if (i + 1 < len) {
+				if (data[i + 1] == '\n' || data[i + 1] == '\r')
+					break;
 				line[lines] = &data[i + 1];
+            }
 		}
 	}
 

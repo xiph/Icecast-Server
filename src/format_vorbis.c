@@ -13,6 +13,7 @@
 
 #include "refbuf.h"
 
+#include "stats.h"
 #include "format.h"
 
 typedef struct _vstate_tag
@@ -122,7 +123,11 @@ refbuf_t *format_vorbis_get_buffer(format_plugin_t *self, char *data, unsigned l
 		}
 
 		if (state->header >= 0) {
-			if (ogg_page_granulepos(&state->og) == 0) {
+            /* FIXME: In some streams (non-vorbis ogg streams), this could get
+             * extras pages beyond the header. We need to collect the pages
+             * here anyway, but they may have to be discarded later.
+             */
+			if (ogg_page_granulepos(&state->og) <= 0) {
 				state->header++;
 			} else {
 				/* we're done caching headers */

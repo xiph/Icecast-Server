@@ -2,7 +2,7 @@
  * Copyright (C) 1995 by Sam Rushing <rushing@nightmare.com>
  */
 
-/* $Id: avl.h,v 1.1 2001/09/10 02:28:03 jack Exp $ */
+/* $Id: avl.h,v 1.2 2002/02/11 09:11:18 msmith Exp $ */
 
 #ifndef __AVL_H
 #define __AVL_H
@@ -10,6 +10,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include "thread.h"
 
 typedef struct avl_node_tag {
   void *		key;

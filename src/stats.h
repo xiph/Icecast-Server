@@ -1,6 +1,10 @@
 #ifndef __STATS_H__
 #define __STATS_H__
 
+#include "connection.h"
+#include "httpp.h"
+#include "client.h"
+
 typedef struct _stats_connection_tag
 {
 	connection_t *con;

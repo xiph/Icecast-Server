@@ -336,6 +336,8 @@ static void *_handle_connection(void *arg)
 			}
 
 			if (parser->req_type == httpp_req_source) {
+                char *contenttype;
+
 				printf("DEBUG: source logging in\n");
 				stats_event_inc(NULL, "source_connections");
 				
@@ -379,7 +381,22 @@ static void *_handle_connection(void *arg)
 
 				stats_event_inc(NULL, "sources");
 
-				source = source_create(con, parser, httpp_getvar(parser, HTTPP_VAR_URI), FORMAT_TYPE_VORBIS);
+                contenttype = httpp_getvar(parser, "content-type");
+
+				if (contenttype != NULL) {
+                    format_type_t format = format_get_type(contenttype);
+                    if(format < 0) {
+                        WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
+                        continue;
+                    }
+                    else
+				        source = source_create(con, parser, httpp_getvar(parser, HTTPP_VAR_URI), format);
+                }
+                else {
+                    WARN0("No content-type header, cannot handle source");
+                    continue;
+                }
+
 				source->shutdown_rwlock = &_source_shutdown_rwlock;
 
 				sock_set_blocking(con->sock, SOCK_NONBLOCK);
