@@ -69,6 +69,7 @@ void config_shutdown(void)
 {
 	ice_config_dir_t *dirnode, *nextdirnode;
     ice_config_t *c = &_configuration;
+    relay_server *relay, *nextrelay;
 
 	if (_config_filename) free(_config_filename);
 
@@ -80,6 +81,10 @@ void config_shutdown(void)
         xmlFree(c->source_password);
 	if (c->relay_password && c->relay_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
         xmlFree(c->relay_password);
+	if (c->admin_username)
+        xmlFree(c->admin_username);
+	if (c->admin_password)
+        xmlFree(c->admin_password);
 	if (c->hostname && c->hostname != CONFIG_DEFAULT_HOSTNAME) 
         xmlFree(c->hostname);
 	if (c->base_dir && c->base_dir != CONFIG_DEFAULT_BASE_DIR) 
@@ -97,6 +102,14 @@ void config_shutdown(void)
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
+    relay = _configuration.relay;
+    while(relay) {
+        nextrelay = relay->next;
+        xmlFree(relay->server);
+        xmlFree(relay->mount);
+        free(relay);
+        relay = nextrelay;
+    }
     dirnode = _configuration.dir_list;
     while(dirnode) {
         nextdirnode = dirnode->next;
