@@ -345,10 +345,28 @@ static void *_handle_connection(void *arg)
 					continue;
 				}
 
+				/* check to make sure this source has
+				** a unique mountpoint
+				*/
+
+				avl_tree_rlock(global.source_tree);
+				if (source_find_mount(httpp_getvar(parser, HTTPP_VAR_URI)) != NULL) {
+					printf("Source attempted to connect with an already used mountpoint.\n");
+					INFO1("Source tried to log in as %s, but is already used", httpp_getvar(parser, HTTPP_VAR_URI));
+					connection_close(con);
+					httpp_destroy(parser);
+					avl_tree_unlock(global.source_tree);
+					continue;
+				}
+				avl_tree_unlock(global.source_tree);
+
+				/* check to make sure this source wouldn't
+				** be over the limit
+				*/
 				global_lock();
 				if (global.sources >= config_get_config()->source_limit) {
 					printf("TOO MANY SOURCE, KICKING THIS ONE\n");
-					INFO1("Source (%d) logged in, but there are too many sources", httpp_getvar(parser, HTTPP_VAR_URI));
+					INFO1("Source (%s) logged in, but there are too many sources", httpp_getvar(parser, HTTPP_VAR_URI));
 					connection_close(con);
 					httpp_destroy(parser);
 					global_unlock();
