@@ -547,7 +547,7 @@ void httpp_destroy(http_parser_t *parser)
 static char *_lowercase(char *str)
 {
     char *p = str;
-    for (; *p |= '\0'; p++)
+    for (; *p != '\0'; p++)
         *p = tolower(*p);
 
     return str;
