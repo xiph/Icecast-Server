@@ -241,6 +241,7 @@ void *source_main(void *arg)
                     DEBUG0("Client has unrecoverable error catching up. Client has probably disconnected");
                     client->con->error = 1;
 					data_done = 1;
+                    refbuf_release(abuf);
 					break;
 				}
 				
