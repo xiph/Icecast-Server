@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; -*- */
 /* format.c
 **
 ** format plugin implementation
@@ -107,11 +108,15 @@ void format_send_general_headers(format_plugin_t *format,
     node = avl_get_first(source->parser->vars);
     while (node) {
         var = (http_var_t *)node->key;
-        if (strcasecmp(var->name, "ice-password") && 
-            strcasecmp(var->name, "icy-metaint") &&
-                (!strncasecmp("ice-", var->name, 4) ||
-                 !strncasecmp("icy-", var->name, 4))) { 
-            bytes = sock_write(client->con->sock, 
+        if (strcasecmp(var->name, "ice-password") &&
+	    strcasecmp(var->name, "icy-metaint") &&
+	    (!strncasecmp("ice-", var->name, 4) ||
+	     !strncasecmp("icy-", var->name, 4))) {
+	    if (source->format->type == FORMAT_TYPE_MP3)
+		bytes = sock_write(client->con->sock, "icy%s:%s\r\n",
+				   var->name + 3, var->value);
+	    else
+		bytes = sock_write(client->con->sock, 
                     "%s: %s\r\n", var->name, var->value);
             if(bytes > 0) client->con->sent_bytes += bytes;
         }
