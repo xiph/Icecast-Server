@@ -263,18 +263,17 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
                "Content-Length: %d\r\n"
                "Content-Type: text/xml\r\n"
                "\r\n", len);
-        html_write(client, buff);
+        html_write(client, "%s", buff);
     }
     if (response == TRANSFORMED) {
         config = config_get_config();
         adminwebroot = config->adminroot_dir;
-        config_release_config();
         fullpath_xslt_template_len = strlen(adminwebroot) + 
             strlen(xslt_template) + 2;
         fullpath_xslt_template = malloc(fullpath_xslt_template_len);
-        memset(fullpath_xslt_template, '\000', fullpath_xslt_template_len);
         snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s",
             adminwebroot, PATH_SEPARATOR, xslt_template);
+        config_release_config();
         html_write(client, "HTTP/1.0 200 OK\r\n"
                "Content-Type: text/html\r\n"
                "\r\n");
