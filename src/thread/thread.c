@@ -220,9 +220,8 @@ static void _catch_signals(void)
 }
 
 
-long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int stacksize, int detached, int line, char *file)
+long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file)
 {
-	pthread_attr_t attr;
 	int created;
 	thread_t *thread;
 	thread_start_t *start;
@@ -244,16 +243,12 @@ long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int 
 	start->thread = thread;
 	start->detached = detached;
 
-	pthread_attr_init(&attr);
-	pthread_attr_setstacksize(&attr, stacksize);
 
 	created = 0;
-	if (pthread_create(&thread->sys_thread, &attr, _start_routine, start) == 0)
+	if (pthread_create(&thread->sys_thread, NULL, _start_routine, start) == 0)
 		created = 1;
 	else
 		LOG_ERROR("Could not create new thread");
-
-	pthread_attr_destroy(&attr);	
 
 	if (created == 0) {
 		LOG_ERROR("System won't let me create more threads, giving up");
