@@ -2,5 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-EXTRA_DIST = listclients.xsl listmounts.xsl moveclients.xsl response.xsl stats.xsl
+admindir = $(pkgdatadir)/admin
+dist_admin_DATA = listclients.xsl listmounts.xsl moveclients.xsl response.xsl \
+	stats.xsl
 

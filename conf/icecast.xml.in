@@ -84,13 +84,13 @@
     <fileserve>1</fileserve>
 
     <paths>
-        <basedir>/usr/local/icecast</basedir>
+        <basedir>@pkgdatadir@</basedir>
 
         <!-- Note that if <chroot> is turned on below, these paths must both
              be relative to the new root, not the original root -->
-        <logdir>/usr/local/icecast/logs</logdir>
-        <webroot>/usr/local/icecast/web</webroot>
-        <adminroot>/usr/local/icecast/admin</adminroot>
+        <logdir>@localstatedir@/@PACKAGE@/logs</logdir>
+        <webroot>@pkgdatadir@/web</webroot>
+        <adminroot>@pkgdatadir@/admin</adminroot>
 
         <!-- Aliases: treat requests for 'source' path as being for 'dest' path
              May be made specific to a port or bound address using the "port"

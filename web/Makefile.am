@@ -2,5 +2,6 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-EXTRA_DIST = status.xsl status2.xsl
+webdir = $(pkgdatadir)/web
+dist_web_DATA = status.xsl status2.xsl
 
