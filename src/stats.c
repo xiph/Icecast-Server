@@ -657,56 +657,6 @@ void *stats_connection(void *arg)
     return NULL;
 }
 
-/* this function is primarily to support gui code needing to get stats updates
-** create a thread with this as the start proc with an arg of the callback function
-** on each stats event the callback will be called with the event
-** and the callback is responsible for copying the data if it needs it after returning
-*/
-void *stats_callback(void *arg)
-{
-    void (*callback)(stats_event_t *event);
-
-    stats_event_t *local_event_queue = NULL;
-    mutex_t local_event_mutex;
-
-    stats_event_t *event;
-
-    callback = arg;
-
-    thread_mutex_lock(&_stats_mutex);
-    _stats_threads++;
-    thread_mutex_unlock(&_stats_mutex);
-
-    thread_mutex_create(&local_event_mutex);
-
-    _atomic_get_and_register(&local_event_queue, &local_event_mutex);
-
-    while (_stats_running) {
-        thread_mutex_lock(&local_event_mutex);
-        event = _get_event_from_queue(&local_event_queue);
-        if (event != NULL) {
-            callback(event);
-            _free_event(event);
-        } else {
-            thread_mutex_unlock(&local_event_mutex);
-            thread_cond_wait(&_event_signal_cond);
-            continue;
-        }
-        
-        thread_mutex_unlock(&local_event_mutex);
-    }
-
-    thread_mutex_destroy(&local_event_mutex);
-
-    thread_mutex_lock(&_stats_mutex);
-    _stats_threads--;
-    thread_mutex_unlock(&_stats_mutex);
-
-    thread_exit(0);
-
-    return NULL;
-}
-
 typedef struct _source_xml_tag {
     char *mount;
     xmlNodePtr node;
