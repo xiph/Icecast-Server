@@ -1,6 +1,5 @@
 Feature differences from SVN trunk
 
-. Use of a single queue allows for integrated handling of bursting data
 . fast pre-buffering aka burst-on-connect. State a burst size in bytes to
 indicate how much should be sent at listener connect.
 . mp3 accepts artist and title separately on the url.
@@ -18,6 +17,15 @@ Speex, Writ.
 clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
 max-listener check
+
+kh55
+. let the stats relays loop around instead of blocking on conditions, that
+  way we don't get out of sync if we miss a wakeup.
+. some NULL checks in stats code were missing.
+. updated xsl transform code, small changes to status.xsl as well
+. add checks for missing / starting mountpoints
+. sync up YP in trunk, this looks to be solid now.
+. small include cleanups
 
 kh54
 . NULL dereference in yp from previous patch now fixed.
