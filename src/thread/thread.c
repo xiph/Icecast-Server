@@ -77,9 +77,6 @@ typedef struct thread_start_tag {
     void *(*start_routine)(void *);
     void *arg;
 
-    /* whether to create the threaded in detached state */
-    int detached;
-
     /* the other stuff we need to make sure this thread is inserted into
     ** the thread tree
     */
@@ -126,7 +123,6 @@ static int _free_mutex(void *key);
 
 static int _compare_threads(void *compare_arg, void *a, void *b);
 static int _free_thread(void *key);
-static int _free_thread_if_detached(void *key);
 
 /* mutex fuctions */
 static void _mutex_create(mutex_t *mutex);
@@ -267,44 +263,58 @@ static void _catch_signals(void)
 thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
         void *arg, int detached, int line, char *file)
 {
-    int created;
-    thread_type *thread;
-    thread_start_t *start;
+    int ok = 1;
+    thread_type *thread = NULL;
+    thread_start_t *start = NULL;
+    pthread_attr_t attr;
 
-    thread = (thread_type *)malloc(sizeof(thread_type));    
-    start = (thread_start_t *)malloc(sizeof(thread_start_t));
-    thread->line = line;
-    thread->file = strdup(file);
+    thread = (thread_type *)calloc(1, sizeof(thread_type));    
+    do {
+        if (thread == NULL)
+            break;
+        start = (thread_start_t *)calloc(1, sizeof(thread_start_t));
+        if (start == NULL)
+            break;
+        if (pthread_attr_init (&attr) < 0)
+            break;
 
-    _mutex_lock(&_threadtree_mutex);    
-    thread->thread_id = _next_thread_id++;
-    _mutex_unlock(&_threadtree_mutex);
+        thread->line = line;
+        thread->file = strdup(file);
 
-    thread->name = strdup(name);
-    thread->create_time = time(NULL);
-    thread->detached = 0;
+        _mutex_lock (&_threadtree_mutex);    
+        thread->thread_id = _next_thread_id++;
+        _mutex_unlock (&_threadtree_mutex);
 
-    start->start_routine = start_routine;
-    start->arg = arg;
-    start->thread = thread;
-    start->detached = detached;
+        thread->name = strdup(name);
+        thread->create_time = time(NULL);
 
-    created = 0;
-    if (pthread_create(&thread->sys_thread, NULL, _start_routine, start) == 0)
-        created = 1;
-#ifdef THREAD_DEBUG
-    else
-        LOG_ERROR("Could not create new thread");
-#endif
+        start->start_routine = start_routine;
+        start->arg = arg;
+        start->thread = thread;
 
-    if (created == 0) {
-#ifdef THREAD_DEBUG
-        LOG_ERROR("System won't let me create more threads, giving up");
-#endif
-        return NULL;
+        pthread_attr_setinheritsched (&attr, PTHREAD_INHERIT_SCHED);
+        if (detached)
+        {
+            pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
+            thread->detached = 1;
+        }
+
+        if (pthread_create (&thread->sys_thread, &attr, _start_routine, start) == 0)
+        {
+            pthread_attr_destroy (&attr);
+            return thread;
+        }
+        else
+            pthread_attr_destroy (&attr);
     }
+    while (0);
 
-    return thread;
+#ifdef THREAD_DEBUG
+    LOG_ERROR("Could not create new thread %s", name);
+#endif
+    if (start) free (start);
+    if (thread) free (thread);
+    return NULL;
 }
 
 /* _mutex_create
@@ -547,7 +557,7 @@ void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, char *file)
     pthread_rwlock_unlock(&rwlock->sys_rwlock);
 }
 
-void thread_exit_c(int val, int line, char *file)
+void thread_exit_c(long val, int line, char *file)
 {
     thread_type *th = thread_self();
 
@@ -574,17 +584,18 @@ void thread_exit_c(int val, int line, char *file)
     }
 #endif
     
-    if (th)    {
+    if (th && th->detached)
+    {
 #ifdef THREAD_DEBUG
         LOG_INFO4("Removing thread %d [%s] started at [%s:%d], reason: 'Thread Exited'", th->thread_id, th->name, th->file, th->line);
 #endif
 
         _mutex_lock(&_threadtree_mutex);
-        avl_delete(_threadtree, th, _free_thread_if_detached);
+        avl_delete(_threadtree, th, _free_thread);
         _mutex_unlock(&_threadtree_mutex);
     }
     
-    pthread_exit((void *)val);
+    pthread_exit ((void*)val);
 }
 
 /* sleep for a number of microseconds */
@@ -625,11 +636,8 @@ static void *_start_routine(void *arg)
     void *(*start_routine)(void *) = start->start_routine;
     void *real_arg = start->arg;
     thread_type *thread = start->thread;
-    int detach = start->detached;
 
     _block_signals();
-
-    free(start);
 
     /* insert thread into thread tree here */
     _mutex_lock(&_threadtree_mutex);
@@ -641,20 +649,17 @@ static void *_start_routine(void *arg)
     LOG_INFO4("Added thread %d [%s] started at [%s:%d]", thread->thread_id, thread->name, thread->file, thread->line);
 #endif
 
-    if (detach) {
-        pthread_detach(thread->sys_thread);
-        thread->detached = 1;
-    }
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcancelstate (PTHREAD_CANCEL_ENABLE, NULL);
+    free (start);
 
-    /* call the real start_routine and start the thread
-    ** this should never exit!
-    */
     (start_routine)(real_arg);
 
-#ifdef THREAD_DEBUG
-    LOG_WARN("Thread x should never exit from here!!!");
-#endif
+    if (thread->detached)
+    {
+        _mutex_lock (&_threadtree_mutex);
+        avl_delete (_threadtree, thread, _free_thread);
+        _mutex_unlock (&_threadtree_mutex);
+    }
 
     return NULL;
 }
@@ -804,22 +809,5 @@ static int _free_thread(void *key)
 
     return 1;
 }
-
-static int _free_thread_if_detached(void *key)
-{
-    thread_type *t = key;
-    if(t->detached)
-        return _free_thread(key);
-    return 1;
-}
-
-
-
-
-
-
-
-
-
 
 

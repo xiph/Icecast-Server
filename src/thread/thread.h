@@ -162,7 +162,7 @@ void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, char *file);
 void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, char *file);
 void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, char *file);
 void thread_rwlock_destroy(rwlock_t *rwlock);
-void thread_exit_c(int val, int line, char *file);
+void thread_exit_c(long val, int line, char *file);
 
 /* sleeping */
 void thread_sleep(unsigned long len);
