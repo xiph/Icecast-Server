@@ -228,6 +228,9 @@ static char *url_escape(char *src)
             *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
             i+= 2;
             break;
+        case '+':
+            *dst++ = ' ';
+            break;
         case '#':
             done = 1;
             break;
@@ -280,43 +283,6 @@ static void parse_query(http_parser_t *parser, char *query)
     if(val && key) {
         httpp_set_query_param(parser, key, val);
     }
-}
-
-/* The old shoutcast procotol. Don't look at this, it's really nasty */
-int httpp_parse_icy(http_parser_t *parser, char *http_data, unsigned long len)
-{
-    char *data;
-    char *line[MAX_HEADERS];
-    int lines;
-
-    if(http_data == NULL)
-        return 0;
-
-    data = malloc(len + 1);
-    memcpy(data, http_data, len);
-    data[len] = 0;
-
-    lines = split_headers(data, len, line);
-
-    /* Now, this protocol looks like:
-     * sourcepassword\n
-     * headers: as normal\n"
-     * \n
-     */
-
-    parser->req_type = httpp_req_source;
-    httpp_setvar(parser, HTTPP_VAR_URI, "/");
-    httpp_setvar(parser, HTTPP_VAR_ICYPASSWORD, line[0]);
-    httpp_setvar(parser, HTTPP_VAR_PROTOCOL, "ICY");
-    httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "SOURCE");
-    /* This protocol is evil */
-    httpp_setvar(parser, HTTPP_VAR_VERSION, "666");
-
-    parse_headers(parser, line, lines);
-
-    free(data);
-    
-    return 1;
 }
 
 int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
