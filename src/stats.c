@@ -59,6 +59,8 @@ static void _free_event(stats_event_t *event);
 
 void stats_initialize()
 {
+	_event_listeners = NULL;
+
 	/* set up global struct */
 	_stats.global_tree = avl_tree_new(_compare_stats, NULL);
 	_stats.source_tree = avl_tree_new(_compare_source_stats, NULL);
