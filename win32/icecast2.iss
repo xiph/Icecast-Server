@@ -41,6 +41,7 @@ Source: "..\web\key.gif"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\status2.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\status.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\style.css"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\auth.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
 
 Source: "..\admin\listclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\listmounts.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
