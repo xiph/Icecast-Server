@@ -507,7 +507,7 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
         return 0;
     }
 
-    protocol = httpp_getvar(parser, "HTTP_VAR_PROTOCOL");
+    protocol = httpp_getvar(parser, HTTPP_VAR_PROTOCOL);
     if(protocol != NULL && !strcmp(protocol, "ICY")) {
         ret = _check_pass_icy(parser, pass);
     }
