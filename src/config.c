@@ -103,6 +103,7 @@ int config_parse_file(const char *filename)
 	
 	_config_filename = (char *)strdup(filename);
 
+    xmlInitParser();
 	doc = xmlParseFile(_config_filename);
 	if (doc == NULL) {
 		return CONFIG_EPARSE;
@@ -111,17 +112,20 @@ int config_parse_file(const char *filename)
 	node = xmlDocGetRootElement(doc);
 	if (node == NULL) {
 		xmlFreeDoc(doc);
+        xmlCleanupParser();
 		return CONFIG_ENOROOT;
 	}
 
 	if (strcmp(node->name, "icecast") != 0) {
 		xmlFreeDoc(doc);
+        xmlCleanupParser();
 		return CONFIG_EBADROOT;
 	}
 
 	_parse_root(doc, node->xmlChildrenNode);
 
 	xmlFreeDoc(doc);
+    xmlCleanupParser();
 
 	return 0;
 }

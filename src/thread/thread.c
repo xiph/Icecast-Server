@@ -228,7 +228,7 @@ static void _catch_signals(void)
 }
 
 
-long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file)
+thread_t *thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int detached, int line, char *file)
 {
 	int created;
 	thread_t *thread;
@@ -259,11 +259,10 @@ long thread_create_c(char *name, void *(*start_routine)(void *), void *arg, int 
 
 	if (created == 0) {
 		LOG_ERROR("System won't let me create more threads, giving up");
-		return -1;
+		return NULL;
 	}
 
-//	return thread->thread_id;
-	return thread->sys_thread;
+	return thread;
 }
 
 /* _mutex_create
@@ -676,12 +675,12 @@ void thread_library_unlock(void)
 	_mutex_unlock(&_library_mutex);
 }
 
-void thread_join(long thread)
+void thread_join(thread_t *thread)
 {
 	void *ret;
 	int i;
 
-	i = pthread_join(thread, &ret);
+	i = pthread_join(thread->sys_thread, &ret);
 }
 
 /* AVL tree functions */

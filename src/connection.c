@@ -45,7 +45,7 @@ typedef struct con_queue_tag {
 } con_queue_t;
 
 typedef struct _thread_queue_tag {
-	long thread_id;
+	thread_t *thread_id;
 	struct _thread_queue_tag *next;
 } thread_queue_t;
 
@@ -158,7 +158,7 @@ static void _signal_pool(void)
 	thread_cond_signal(&_pool_cond);
 }
 
-static void _push_thread(thread_queue_t **queue, long thread_id)
+static void _push_thread(thread_queue_t **queue, thread_t *thread_id)
 {
 	/* create item */
 	thread_queue_t *item = (thread_queue_t *)malloc(sizeof(thread_queue_t));
@@ -176,9 +176,9 @@ static void _push_thread(thread_queue_t **queue, long thread_id)
 	thread_mutex_unlock(&_queue_mutex);
 }
 
-static long _pop_thread(thread_queue_t **queue)
+static thread_t *_pop_thread(thread_queue_t **queue)
 {
-	long id;
+	thread_t *id;
 	thread_queue_t *item;
 
 	thread_mutex_lock(&_queue_mutex);
@@ -186,7 +186,7 @@ static long _pop_thread(thread_queue_t **queue)
 	item = *queue;
 	if (item == NULL) {
 		thread_mutex_unlock(&_queue_mutex);
-		return -1;
+		return NULL;
 	}
 
 	*queue = item->next;
@@ -202,7 +202,8 @@ static long _pop_thread(thread_queue_t **queue)
 static void _build_pool(void)
 {
 	ice_config_t *config;
-	int i, tid;
+	int i;
+    thread_t *tid;
 	char buff[64];
 
 	config = config_get_config();
@@ -216,14 +217,14 @@ static void _build_pool(void)
 
 static void _destroy_pool(void)
 {
-	long id;
+	thread_t *id;
 	int i;
 
 	i = 0;
 
 	thread_cond_broadcast(&_pool_cond);
 	id = _pop_thread(&_conhands);
-	while (id != -1) {
+	while (id != NULL) {
 		thread_join(id);
 		_signal_pool();
 		id = _pop_thread(&_conhands);

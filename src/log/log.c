@@ -180,7 +180,11 @@ void log_write(int log_id, int priority, const char *cat, const char *func,
 	vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
 
 	now = time(NULL);
+
+    /* localtime() isn't threadsafe, localtime_r isn't portable enough... */
+    _lock_logger();
 	strftime(tyme, 128, "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
+    _unlock_logger();
 
 	snprintf(pre, 256, "%s %s%s", prior[priority-1], cat, func);
 
