@@ -404,13 +404,19 @@ static int _check_relay_pass(http_parser_t *parser)
 static int _check_source_pass(http_parser_t *parser)
 {
     char *pass = config_get_config()->source_password;
+    int ret;
     if(!pass)
         pass = "";
 
-    if(config_get_config()->ice_login)
-        return _check_pass_ice(parser, pass);
-    else
-        return _check_pass_http(parser, "source", pass);
+    ret = _check_pass_http(parser, "source", pass);
+    if(!ret && config_get_config()->ice_login)
+    {
+        ret = _check_pass_ice(parser, pass);
+        if(ret)
+            WARN0("Source is using deprecated icecast login");
+    }
+
+    return ret;
 }
 
 static void _handle_source_request(connection_t *con, 
