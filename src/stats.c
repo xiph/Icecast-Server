@@ -33,6 +33,7 @@ typedef struct _event_listener_tag
 
 int _stats_running = 1;
 long _stats_thread_id;
+int _stats_threads = 0;
 
 stats_t _stats;
 mutex_t _stats_mutex;
@@ -79,10 +80,19 @@ void stats_initialize()
 
 void stats_shutdown()
 {
+	int n;
 
 	/* wait for thread to exit */
 	_stats_running = 0;
 	thread_join(_stats_thread_id);
+
+	/* wait for other threads to shut down */
+	do {
+		thread_sleep(300000);
+		thread_mutex_lock(&_stats_mutex);
+		n = _stats_threads;
+		thread_mutex_unlock(&_stats_mutex);
+	} while (n > 0);
 
 	/* free the queues */
 
@@ -579,11 +589,16 @@ void *stats_connection(void *arg)
 	mutex_t local_event_mutex;
 	stats_event_t *event;
 
+	/* increment the thread count */
+	thread_mutex_lock(&_stats_mutex);
+	_stats_threads++;
+	thread_mutex_unlock(&_stats_mutex);
+
 	thread_mutex_create(&local_event_mutex);
 
 	_atomic_get_and_register(&local_event_queue, &local_event_mutex);
 
-	while (global.running == ICE_RUNNING) {
+	while (_stats_running) {
 		thread_mutex_lock(&local_event_mutex);
 		event = _get_event_from_queue(&local_event_queue);
 		if (event != NULL) {
@@ -596,7 +611,6 @@ void *stats_connection(void *arg)
 		} else {
 			thread_mutex_unlock(&local_event_mutex);
 			thread_cond_wait(&_event_signal_cond);
-			if (!_stats_running) break;
 			continue;
 		}
 			       
@@ -604,6 +618,10 @@ void *stats_connection(void *arg)
 	}
 
 	thread_mutex_destroy(&local_event_mutex);
+
+	thread_mutex_lock(&_stats_mutex);
+	_stats_threads--;
+	thread_mutex_unlock(&_stats_mutex);
 
 	thread_exit(0);
 	
@@ -626,11 +644,15 @@ void *stats_callback(void *arg)
 
 	callback = arg;
 
+	thread_mutex_lock(&_stats_mutex);
+	_stats_threads++;
+	thread_mutex_unlock(&_stats_mutex);
+
 	thread_mutex_create(&local_event_mutex);
 
 	_atomic_get_and_register(&local_event_queue, &local_event_mutex);
 
-	while (global.running == ICE_RUNNING) {
+	while (_stats_running) {
 		thread_mutex_lock(&local_event_mutex);
 		event = _get_event_from_queue(&local_event_queue);
 		if (event != NULL) {
@@ -639,7 +661,6 @@ void *stats_callback(void *arg)
 		} else {
 			thread_mutex_unlock(&local_event_mutex);
 			thread_cond_wait(&_event_signal_cond);
-			if (!_stats_running) break;
 			continue;
 		}
 		
@@ -647,6 +668,10 @@ void *stats_callback(void *arg)
 	}
 
 	thread_mutex_destroy(&local_event_mutex);
+
+	thread_mutex_lock(&_stats_mutex);
+	_stats_threads--;
+	thread_mutex_unlock(&_stats_mutex);
 
 	thread_exit(0);
 
