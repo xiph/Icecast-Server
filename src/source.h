@@ -61,9 +61,16 @@ typedef struct source_tag
     int fallback_override;
     int fallback_when_full;
     int no_mount;
-    unsigned queue_size_limit;
-    unsigned timeout;  /* source timeout in seconds */
 
+    /* per source burst handling for connecting clients */
+    unsigned int burst_size;
+    unsigned int burst_size_limit;
+    refbuf_t *burst_point;
+
+    unsigned int queue_size;
+    unsigned int queue_size_limit;
+
+    unsigned timeout;  /* source timeout in seconds */
     int on_demand;
     int on_demand_req;
     int recheck_settings;
@@ -73,12 +80,9 @@ typedef struct source_tag
     char *on_disconnect;
 
     mutex_t lock;
-    unsigned queue_size;
-    unsigned burst_size;
-    unsigned burst_size_limit;
-    refbuf_t *burst_point;
 
-    refbuf_t *stream_data, *stream_data_tail;
+    refbuf_t *stream_data;
+    refbuf_t *stream_data_tail;
 
 } source_t;
 

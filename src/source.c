@@ -59,7 +59,7 @@ mutex_t move_clients_mutex;
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
-static void parse_audio_info (source_t *source, const char *str);
+static void _parse_audio_info (source_t *source, const char *str);
 #ifdef _WIN32
 #define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
 #else
@@ -458,20 +458,24 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
     /* new users need somewhere to start from */
     if (client->refbuf == NULL)
+    {
         find_client_start (source, client);
+        if (client->refbuf == NULL)
+            return 0;
+    }
 
     while (1)
     {
-        /* jump out if client has error'd */
+        /* jump out if client connection has died */
         if (client->con->error)
             break;
 
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
-        if (total_written > 25000 || loop == 0)
+        if (total_written > 20000 || loop == 0)
             break;
 
-        loop--; 
+        loop--;
 
         bytes = source->format->write_buf_to_client (source->format, client);
         if (bytes <= 0)
@@ -484,7 +488,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     }
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
-       if so, check to see if this client is still referring to it */
+     * if so, check to see if this client is still referring to it */
     if (deletion_expected && client->refbuf == source->stream_data)
     {
         DEBUG0("Client has fallen too far behind, removing");
@@ -700,7 +704,7 @@ static void source_init (source_t *source)
     str = httpp_getvar(source->parser, "ice-audio-info");
     if (str)
     {
-        parse_audio_info(source, str);
+        _parse_audio_info (source, str);
         stats_event (source->mount, "audio_info", str);
     }
 
@@ -736,7 +740,7 @@ static void source_init (source_t *source)
 
     /*
     ** Now, if we have a fallback source and override is on, we want
-    ** to steal it's clients, because it means we've come back online
+    ** to steal its clients, because it means we've come back online
     ** after a failure and they should be gotten back from the waiting
     ** loop or jingle track or whatever the fallback is used for
     */
@@ -1066,11 +1070,13 @@ void source_main(source_t *source)
         }
 
         /* lets reduce the queue, any lagging clients should of been
-         * erminated by now
+         * terminated by now
          */
-
         if (source->stream_data)
         {
+            /* normal unreferenced queue data will have a refcount 1, but
+             * burst queue data will be at least 2, active clients will also
+             * increase refcount */
             while (source->stream_data->_count == 1)
             {
                 refbuf_t *to_go = source->stream_data;
@@ -1132,11 +1138,10 @@ int source_free_client (source_t *source, client_t *client)
     return 1;
 }
 
-
-static void parse_audio_info (source_t *source, const char *s)
+static void _parse_audio_info (source_t *source, const char *s)
 {
     const char *start = s;
-    unsigned len;
+    unsigned int len;
 
     while (start != NULL && *start != '\0')
     {
@@ -1145,7 +1150,7 @@ static void parse_audio_info (source_t *source, const char *s)
         else
         {
             len = (int)(s - start);
-            s++; /* skip passed the ';' */ 
+            s++; /* skip passed the ';' */
         }
         if (len)
         {
@@ -1153,7 +1158,7 @@ static void parse_audio_info (source_t *source, const char *s)
             char *esc;
 
             sscanf (start, "%199[^=]=%199[^;\r\n]", name, value);
-            esc = util_url_unescape (value); 
+            esc = util_url_unescape (value);
             if (esc)
             {
                 util_dict_set (source->audio_info, name, esc);

@@ -58,10 +58,10 @@ void event_config_read(void *arg)
     else {
         config_clear(config);
         config_set_config(&new_config);
-        restart_logging (config);
+        restart_logging (config_get_config_unlocked());
         slave_recheck();
-        yp_recheck_config (config);
-        source_update (config);
+        yp_recheck_config (config_get_config_unlocked());
+        source_update (config_get_config_unlocked());
 
         config_release_config();
     }

@@ -25,6 +25,7 @@ typedef struct _refbuf_tag
     int sync_point;
     struct _refbuf_tag *associated;
     struct _refbuf_tag *next;
+
     unsigned long _count;
 } refbuf_t;
 
@@ -34,7 +35,6 @@ void refbuf_shutdown(void);
 refbuf_t *refbuf_new(unsigned long size);
 void refbuf_addref(refbuf_t *self);
 void refbuf_release(refbuf_t *self);
-
 
 #endif  /* __REFBUF_H__ */
 

@@ -1,3 +1,4 @@
+/* -*- c-basic-offset: 4; -*- */
 /* Icecast
  *
  * This program is distributed under the GNU General Public License, version 2.
@@ -10,7 +11,6 @@
  *                      and others (see AUTHORS for details).
  */
 
-/* -*- c-basic-offset: 4; -*- */
 /* format_mp3.c
 **
 ** format plugin for mp3
@@ -67,7 +67,7 @@ static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 typedef struct {
    int use_metadata;
    int metadata_offset;
-   unsigned since_meta_block;
+   unsigned int since_meta_block;
    int in_metadata;
    refbuf_t *associated;
 } mp3_client_data;
@@ -106,6 +106,7 @@ int format_mp3_get_plugin (source_t *source)
         plugin->get_buffer = mp3_get_filter_meta;
     }
     source->format = plugin;
+    thread_mutex_create ("mp3 url lock", &state->url_lock);
 
     return 0;
 }
@@ -114,7 +115,7 @@ int format_mp3_get_plugin (source_t *source)
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
 {
     mp3_state *source_mp3 = plugin->_state;
-    unsigned len;
+    unsigned int len;
     const char meta[] = "StreamTitle='";
     int size = sizeof (meta) + 1;
 
@@ -123,6 +124,8 @@ static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
 
     len = strlen (value)+1;
     size += len;
+    /* protect against multiple updaters */
+    thread_mutex_lock (&source_mp3->url_lock);
     if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
     {
         char *p = strdup (value);
@@ -145,10 +148,11 @@ static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
             source_mp3->update_metadata = 1;
         }
     }
+    thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 
-static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigned meta_len)
+static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigned int meta_len)
 {
     if (metadata)
     {
@@ -185,8 +189,11 @@ static void mp3_set_title (source_t *source)
     int size;
     unsigned char len_byte;
     refbuf_t *p;
-    unsigned len = sizeof(meta) + 2; /* the StreamTitle, quotes, ; and null */
+    unsigned int len = sizeof(meta) + 2; /* the StreamTitle, quotes, ; and null */
     mp3_state *source_mp3 = source->format->_state;
+
+    /* make sure the url data does not disappear from under us */
+    thread_mutex_lock (&source_mp3->url_lock);
 
     /* work out message length */
     if (source_mp3->url_artist)
@@ -198,6 +205,7 @@ static void mp3_set_title (source_t *source)
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
+        thread_mutex_unlock (&source_mp3->url_lock);
         WARN1 ("Metadata too long at %d chars", len);
         return;
     }
@@ -224,6 +232,7 @@ static void mp3_set_title (source_t *source)
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
+    thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 
@@ -281,12 +290,11 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
     mp3_state *source_mp3 = self->_state;
     refbuf_t *refbuf = client->refbuf;
     char *buf;
-    unsigned len;
+    unsigned int len;
 
-    if (refbuf == NULL)
-        return 0;  /* no data yet */
     if (refbuf->next == NULL && client->pos == refbuf->len)
         return 0;
+
     /* move to the next buffer if we have finished with the current one */
     if (refbuf->next && client->pos == refbuf->len)
     {
@@ -312,7 +320,7 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
         /* see if we need to send the current metadata to the client */
         if (client_mp3->use_metadata)
         {
-            unsigned remaining = source_mp3->interval -
+            unsigned int remaining = source_mp3->interval -
                 client_mp3->since_meta_block;
 
             /* sending the metadata block */
@@ -368,6 +376,7 @@ static void format_mp3_free_plugin (format_plugin_t *plugin)
     /* free the plugin instance */
     mp3_state *format_mp3 = plugin->_state;
 
+    thread_mutex_destroy (&format_mp3->url_lock);
     free (format_mp3->url_artist);
     free (format_mp3->url_title);
     refbuf_release (format_mp3->metadata);
@@ -426,7 +435,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     format_plugin_t *plugin = source->format;
     mp3_state *source_mp3 = plugin->_state;
     unsigned char *src;
-    unsigned bytes, mp3_block;
+    unsigned int bytes, mp3_block;
     int ret;
 
     refbuf = refbuf_new (2048);
@@ -501,7 +510,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             source_mp3->build_metadata_offset += bytes;
             break;
         }
-        /* copy all bytes except the last one, that way we *
+        /* copy all bytes except the last one, that way we 
          * know a null byte terminates the message */
         memcpy (source_mp3->build_metadata + source_mp3->build_metadata_offset,
                 src, metadata_remaining-1);

@@ -78,7 +78,7 @@ char *format_get_mimetype(format_type_t type)
 
 int format_get_plugin(format_type_t type, source_t *source)
 {
-    int ret;
+    int ret = -1;
 
     switch (type)
     {
@@ -89,7 +89,6 @@ int format_get_plugin(format_type_t type, source_t *source)
         ret = format_mp3_get_plugin (source);
         break;
     default:
-        ret = -1;
         break;
     }
 

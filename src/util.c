@@ -224,7 +224,8 @@ char *util_get_path_from_normalised_uri(char *uri) {
     webroot = config->webroot_dir;
 
     fullpath = malloc(strlen(uri) + strlen(webroot) + 1);
-    sprintf (fullpath, "%s%s", webroot, uri);
+    if (fullpath)
+        sprintf (fullpath, "%s%s", webroot, uri);
     config_release_config();
 
     return fullpath;
@@ -448,7 +449,7 @@ char *util_base64_decode(unsigned char *input)
         vals[3] = base64decode[*input++];
 
         if(vals[0] < 0 || vals[1] < 0 || vals[2] < -1 || vals[3] < -1) {
-            len -=4;
+            len -= 4;
             continue;
         }
 

@@ -18,18 +18,17 @@
 #ifndef __FORMAT_MP3_H__
 #define __FORMAT_MP3_H__
 
-#include "refbuf.h"
-
 typedef struct {
     /* These are for inline metadata */
     int inline_metadata_interval;
-    unsigned interval;
     int offset;
+    unsigned interval;
     char *url_artist;
     char *url_title;
     int update_metadata;
 
     refbuf_t *metadata;
+    mutex_t url_lock;
 
     unsigned build_metadata_len;
     unsigned build_metadata_offset;

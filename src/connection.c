@@ -682,6 +682,7 @@ static void _handle_source_request(connection_t *con,
     else
     {
         client_send_404 (client, "Mountpoint in use");
+        WARN1 ("Mountpoint %s in use", uri);
     }
 }
 
