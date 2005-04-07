@@ -1125,6 +1125,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
     else
         stats_event (source->mount, "on-demand", NULL);
 
+    stats_event (source->mount, "authenticator", mountinfo->auth->type);
+
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);

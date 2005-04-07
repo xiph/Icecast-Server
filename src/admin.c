@@ -240,6 +240,9 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
         thread_mutex_lock (&source->lock);
         if (source->running || source->on_demand)
         {
+            ice_config_t *config;
+            mount_proxy *mountinfo;
+
             srcnode = xmlNewChild (xmlnode, NULL, "source", NULL);
             xmlSetProp (srcnode, "mount", source->mount);
 
@@ -248,25 +251,23 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
                     source->fallback_mount:"");
             snprintf (buf, sizeof(buf), "%u", source->listeners);
             xmlNewChild (srcnode, NULL, "listeners", buf);
+
+            config = config_get_config();
+            mountinfo = config_find_mount (config, source->mount);
+            if (mountinfo->auth)
+            {
+                xmlNewChild(srcnode, NULL, "authenticator", 
+                        mountinfo->auth->type);
+            }
+            config_release_config();
+
             if (source->running)
             {
-                ice_config_t *config;
-                mount_proxy *mountinfo;
-
                 snprintf (buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
                 xmlNewChild (srcnode, NULL, "Connected", buf);
                 xmlNewChild (srcnode, NULL, "content-type", 
                         source->format->contenttype);
-
-                config = config_get_config();
-                mountinfo = config_find_mount (config, source->mount);
-                if (mountinfo->auth)
-                {
-                    xmlNewChild(srcnode, NULL, "authenticator", 
-                            mountinfo->auth->type);
-                }
-                config_release_config();
             }
         }
         thread_mutex_unlock (&source->lock);
@@ -794,12 +795,11 @@ static void command_manageauth(client_t *client, source_t *source,
     char *password = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
-    mount_proxy *mountinfo = NULL;
+    ice_config_t *config = config_get_config ();
+    mount_proxy *mountinfo = config_find_mount (config, source->mount);
 
     if((COMMAND_OPTIONAL(client, "action", action)))
     {
-        ice_config_t *config = config_get_config ();
-        mountinfo = config_find_mount (config, source->mount);
         if (mountinfo == NULL || mountinfo->auth == NULL)
         {
             WARN1 ("manage auth request for %s but no facility available", source->mount);
@@ -831,7 +831,6 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User deleted");
             }
         }
-        config_release_config ();
     }
 
     doc = xmlNewDoc("1.0");
@@ -848,6 +847,8 @@ static void command_manageauth(client_t *client, source_t *source,
 
     if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
         mountinfo->auth->listuser (mountinfo->auth, srcnode);
+
+    config_release_config ();
 
     admin_send_response(doc, client, response, 
             MANAGEAUTH_TRANSFORMED_REQUEST);
