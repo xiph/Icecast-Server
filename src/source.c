@@ -1019,6 +1019,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->no_mount = mountinfo->no_mount;
     source->hidden = mountinfo->hidden;
 
+    if (mountinfo->auth)
+        stats_event (source->mount, "authenticator", mountinfo->auth->type);
+    else
+        stats_event (source->mount, "authenticator", NULL);
     if (mountinfo->fallback_mount)
     {
         free (source->fallback_mount);
@@ -1127,8 +1131,6 @@ void source_update_settings (ice_config_t *config, source_t *source)
         stats_event (source->mount, "on-demand", "1");
     else
         stats_event (source->mount, "on-demand", NULL);
-
-    stats_event (source->mount, "authenticator", mountinfo->auth->type);
 
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);

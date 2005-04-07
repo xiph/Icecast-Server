@@ -73,6 +73,8 @@ typedef struct {
     char *stream_end;
     char *username;
     char *password;
+    char *auth_header;
+    int  auth_header_len;
     CURL *handle;
     char errormsg [CURL_ERROR_SIZE];
 } auth_url;
@@ -96,8 +98,13 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     unsigned bytes = size * nmemb;
     client_t *client = auth_user->client;
 
-    if (client && strncasecmp (ptr, "icecast-auth-user: 1\r\n", 22) == 0)
-        client->authenticated = 1;
+    if (client)
+    {
+        auth_t *auth = client->auth;
+        auth_url *url = auth->state;
+        if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
+            client->authenticated = 1;
+    }
 
     return (int)bytes;
 }
@@ -303,6 +310,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->stream_end = url_stream_end;
 
     url_info = calloc(1, sizeof(auth_url));
+    url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
 
     while(options) {
         if(!strcmp(options->name, "username"))
@@ -317,6 +325,11 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             url_info->stream_start = strdup (options->value);
         if(!strcmp(options->name, "end"))
             url_info->stream_end = strdup (options->value);
+        if(!strcmp(options->name, "header"))
+        {
+            free (url_info->auth_header);
+            url_info->auth_header = strdup (options->value);
+        }
         options = options->next;
     }
     url_info->handle = curl_easy_init ();
@@ -326,6 +339,9 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         free (authenticator);
         return -1;
     }
+    if (url_info->auth_header)
+        url_info->auth_header_len = strlen (url_info->auth_header);
+
     curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
