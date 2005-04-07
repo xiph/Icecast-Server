@@ -54,6 +54,12 @@ typedef struct auth_tag
     auth_result (*authenticate)(auth_client *aclient);
     auth_result (*release_client)(auth_client *auth_user);
 
+    /* callbacks to specific auth for notifying auth server on source
+     * startup or shutdown
+     */
+    auth_result (*stream_start)(auth_client *auth_user);
+    auth_result (*stream_end)(auth_client *auth_user);
+
     void (*free)(struct auth_tag *self);
     auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
     auth_result (*deleteuser)(struct auth_tag *auth, const char *username);
@@ -74,6 +80,14 @@ void auth_initialise ();
 auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);
 
+/* call to send a url request when source starts */
+void auth_stream_start (const char *mount);
+
+/* call to send a url request when source ends */
+void auth_stream_end (const char *mount);
+
+/* called from auth thread, after the client has successfully authenticated
+ * and requires adding to source or fserve. */
 int auth_postprocess_client (auth_client *auth_user);
 
 #endif

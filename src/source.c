@@ -801,6 +801,8 @@ static void source_init (source_t *source)
         stats_event (source->mount, "audio_info", str);
     }
 
+    auth_stream_start (source->mount);
+
     thread_mutex_unlock (&source->lock);
 
     if (source->on_connect)
@@ -892,6 +894,7 @@ static void source_shutdown (source_t *source)
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
+    auth_stream_end (source->mount);
     if (source->on_disconnect)
         source_run_script (source->on_disconnect, source->mount);
 

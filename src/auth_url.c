@@ -32,6 +32,13 @@
  * client refers to the icecast client identification number, mount refers
  * to the mountpoint (beginning with /) and duration is the amount of time in
  * seconds
+ *
+ * On stream start and end, another url can be issued to help clear any user
+ * info stored at the auth server. Useful for abnormal outage/termination
+ * cases.
+ *
+ * action=start&mount=/live&server=myserver.com
+ * action=end&mount=/live&server=myserver.com
  */
 
 #ifdef HAVE_CONFIG_H
@@ -62,6 +69,8 @@
 typedef struct {
     char *addurl;
     char *removeurl;
+    char *stream_start;
+    char *stream_end;
     char *username;
     char *password;
     CURL *handle;
@@ -87,7 +96,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     unsigned bytes = size * nmemb;
     client_t *client = auth_user->client;
 
-    if (strncasecmp (ptr, "icecast-auth-user: 1\r\n", 22) == 0)
+    if (client && strncasecmp (ptr, "icecast-auth-user: 1\r\n", 22) == 0)
         client->authenticated = 1;
 
     return (int)bytes;
@@ -190,6 +199,80 @@ static auth_result auth_addurl_client (auth_client *auth_user)
 }
 
 
+/* called by auth thread when a source starts, there is no client_t in
+ * this case
+ */
+static auth_result url_stream_start (auth_client *auth_user)
+{
+    char *mount, *server;
+    ice_config_t *config = config_get_config ();
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_t *auth = mountinfo->auth;
+    auth_url *url = auth->state;
+    char *stream_start_url;
+    char post [4096];
+
+    server = util_url_escape (config->hostname);
+    stream_start_url = strdup (url->stream_start);
+    /* we don't want this auth disappearing from under us while
+     * the connection is in progress */
+    mountinfo->auth->refcount++;
+    config_release_config ();
+    mount = util_url_escape (auth_user->mount);
+
+    snprintf (post, sizeof (post),
+            "action=start&mount=%s&server=%s", mount, server);
+    free (server);
+    free (mount);
+
+    curl_easy_setopt (url->handle, CURLOPT_URL, stream_start_url);
+    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+
+    if (curl_easy_perform (url->handle))
+        WARN2 ("auth to server %s failed with %s", stream_start_url, url->errormsg);
+
+    auth_release (auth);
+    free (stream_start_url);
+    return AUTH_OK;
+}
+
+
+static auth_result url_stream_end (auth_client *auth_user)
+{
+    char *mount, *server;
+    ice_config_t *config = config_get_config ();
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_t *auth = mountinfo->auth;
+    auth_url *url = auth->state;
+    char *stream_end_url;
+    char post [4096];
+
+    server = util_url_escape (config->hostname);
+    stream_end_url = strdup (url->stream_end);
+    /* we don't want this auth disappearing from under us while
+     * the connection is in progress */
+    mountinfo->auth->refcount++;
+    config_release_config ();
+    mount = util_url_escape (auth_user->mount);
+
+    snprintf (post, sizeof (post),
+            "action=end&mount=%s&server=%s", mount, server);
+    free (server);
+    free (mount);
+
+    curl_easy_setopt (url->handle, CURLOPT_URL, stream_end_url);
+    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+
+    if (curl_easy_perform (url->handle))
+        WARN2 ("auth to server %s failed with %s", stream_end_url, url->errormsg);
+
+    auth_release (auth);
+    free (stream_end_url);
+    return AUTH_OK;
+}
+
 
 static auth_result auth_url_adduser(auth_t *auth, const char *username, const char *password)
 {
@@ -216,6 +299,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->deleteuser = auth_url_deleteuser;
     authenticator->listuser = auth_url_listuser;
     authenticator->release_client = auth_removeurl_client;
+    authenticator->stream_start = url_stream_start;
+    authenticator->stream_end = url_stream_end;
 
     url_info = calloc(1, sizeof(auth_url));
 
@@ -228,6 +313,10 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             url_info->addurl = strdup (options->value);
         if(!strcmp(options->name, "remove"))
             url_info->removeurl = strdup (options->value);
+        if(!strcmp(options->name, "start"))
+            url_info->stream_start = strdup (options->value);
+        if(!strcmp(options->name, "end"))
+            url_info->stream_end = strdup (options->value);
         options = options->next;
     }
     url_info->handle = curl_easy_init ();

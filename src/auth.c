@@ -483,6 +483,47 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
 }
 
 
+void auth_stream_start (const char *mount)
+{
+    mount_proxy *mountinfo; 
+    ice_config_t *config = config_get_config();
+
+    mountinfo = config_find_mount (config, mount);
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_start)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user)
+        {
+            auth_user->mount = strdup (mount);
+            auth_user->process = mountinfo->auth->stream_start;
+
+            queue_auth_client (auth_user);
+        }
+    }
+    config_release_config ();
+}
+
+void auth_stream_end (const char *mount)
+{
+    mount_proxy *mountinfo; 
+    ice_config_t *config = config_get_config();
+
+    mountinfo = config_find_mount (config, mount);
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_end)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user)
+        {
+            auth_user->mount = strdup (mount);
+            auth_user->process = mountinfo->auth->stream_end;
+
+            queue_auth_client (auth_user);
+        }
+    }
+    config_release_config ();
+}
+
+
 /* these are called at server start and termination */
 
 void auth_initialise ()
