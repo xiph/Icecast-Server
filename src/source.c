@@ -752,21 +752,7 @@ static void source_init (source_t *source)
     } while (0);
     source->yp_public = atoi (str);
     stats_event (source->mount, "public", str);
-
-    str = httpp_getvar(source->parser, "ice-genre");
-    if (str == NULL)
-        str = httpp_getvar(source->parser, "icy-genre");
-    stats_event (source->mount, "genre", str);
-
-    str = httpp_getvar(source->parser, "ice-description");
-    if (str == NULL)
-        str = httpp_getvar(source->parser, "icy-description");
-    stats_event (source->mount, "server_description", str);
-
-    str = httpp_getvar(source->parser, "ice-name");
-    if (str == NULL)
-        str = httpp_getvar(source->parser, "icy-name");
-    stats_event (source->mount, "server_name", str);
+    stats_event (source->mount, "server_type", source->format->contenttype);
 
     if (source->dumpfilename != NULL)
     {
@@ -1009,6 +995,8 @@ static void _parse_audio_info (source_t *source, const char *s)
 
 static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
+    char *str;
+
     if (strcmp (mountinfo->mountname, source->mount) == 0)
         INFO1 ("Applying mount information for \"%s\"", source->mount);
     else
@@ -1018,6 +1006,46 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
     source->hidden = mountinfo->hidden;
+
+    do
+    {
+        str = mountinfo->stream_name;
+        if (str) break;
+        str = httpp_getvar(source->parser, "ice-name");
+        if (str) break;
+        str = httpp_getvar(source->parser, "icy-name");
+    } while (0);
+    stats_event (source->mount, "server_name", str);
+
+    do
+    {
+        str = mountinfo->stream_description;
+        if (str) break;
+        str = httpp_getvar(source->parser, "ice-description");
+        if (str) break;
+        str = httpp_getvar(source->parser, "icy-description");
+    } while (0);
+    stats_event (source->mount, "server_description", str);
+
+    do
+    {
+        str = mountinfo->stream_genre;
+        if (str) break;
+        str = httpp_getvar(source->parser, "ice-genre");
+        if (str) break;
+        str = httpp_getvar(source->parser, "icy-genre");
+    } while (0);
+    stats_event (source->mount, "genre", str);
+
+    do
+    {
+        str = mountinfo->bitrate;
+        if (str) break;
+        str = httpp_getvar(source->parser, "ice-bitrate");
+        if (str) break;
+        str = httpp_getvar(source->parser, "icy-br");
+    } while (0);
+    stats_event (source->mount, "bitrate", str);
 
     if (mountinfo->auth)
         stats_event (source->mount, "authenticator", mountinfo->auth->type);

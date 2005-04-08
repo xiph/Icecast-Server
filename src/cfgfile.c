@@ -642,6 +642,26 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->cluster_password = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-name") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->stream_name = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-description") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->stream_description = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-url") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->stream_url = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "genre") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->stream_genre = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "bitrate") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->bitrate = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
 }

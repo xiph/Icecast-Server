@@ -467,7 +467,8 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
             next_option = &opt->next;
         }
         else
-            WARN1 ("unknown auth setting (%s)", current->name);
+            if (strcmp (current->name, "text") != 0)
+                WARN1 ("unknown auth setting (%s)", current->name);
     }
     auth->type = xmlGetProp (node, "type");
     get_authenticator (auth, options);
