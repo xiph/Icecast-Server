@@ -451,6 +451,9 @@ char *httpp_getvar(http_parser_t *parser, char *name)
     http_var_t *found;
     void *fp;
 
+    if (parser == NULL || name == NULL)
+        return NULL;
+
     fp = &found;
     var.name = name;
     var.value = NULL;
