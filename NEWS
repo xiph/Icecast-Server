@@ -20,9 +20,14 @@ Feature differences from SVN trunk
 TODO
 . update slave host handling to add entry via url, as on-demand relays don't
   connect until there are listeners.
-. auth_url, allow xml specified header instead of hardcoded one
-. auth_url, issue request at source startup/shutdown, so listeners can be
-  cleared from auth server
+
+2.2-kh2
+. optional url requests for source startup/shutdown.
+. 'header' option for listener url auth.  If this header is returned 
+  for the auth request then the listener is authenticated.
+. per-mount override for <stream-name> <stream-description> <stream-url>
+  <genre> and <bitrate>
+. fixes to previous auth update
 
 2.2-kh1
 . Auth update. could have affected a few cases, report any odd issues
