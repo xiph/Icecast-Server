@@ -238,7 +238,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
         }
 
         thread_mutex_lock (&source->lock);
-        if (source->running || source->on_demand)
+        if (source->file_only == 0 && (source->running || source->on_demand))
         {
             ice_config_t *config;
             mount_proxy *mountinfo;
@@ -254,7 +254,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             config = config_get_config();
             mountinfo = config_find_mount (config, source->mount);
-            if (mountinfo->auth)
+            if (mountinfo && mountinfo->auth)
             {
                 xmlNewChild(srcnode, NULL, "authenticator", 
                         mountinfo->auth->type);

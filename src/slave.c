@@ -685,11 +685,13 @@ static void *_slave_thread(void *arg)
     config_release_config();
     source_recheck_mounts();
 
-    while (slave_running)
+    while (1)
     {
         relay_server *cleanup_relays;
 
         thread_sleep (1000000);
+        if (slave_running == 0)
+            break;
         if (rescan_relays == 0 && max_interval > ++interval)
             continue;
 
