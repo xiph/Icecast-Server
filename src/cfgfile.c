@@ -641,27 +641,21 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->burst_size = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "cluster-password") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->cluster_password = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "stream-name") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->stream_name = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "stream-description") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->stream_description = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "stream-url") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->stream_url = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "genre") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->stream_genre = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "bitrate") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->bitrate = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "public") == 0) {
@@ -669,7 +663,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->yp_public = atoi (tmp);
             if(tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "type") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->type = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
