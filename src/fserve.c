@@ -317,15 +317,20 @@ static void *fserv_thread_function(void *arg)
 const char *fserve_content_type (const char *path)
 {
     const char *ext = util_get_extension(path);
-    mime_type exttype = {strdup(ext), NULL};
+    mime_type exttype = { NULL, NULL };
     void *result;
 
+    if (ext == NULL)
+        return "text/html";
+    exttype.ext = strdup (ext);
     if (!avl_get_by_key (mimetypes, &exttype, &result))
     {
         mime_type *mime = result;
+        free (exttype.ext);
         return mime->type;
     }
     else {
+        free (exttype.ext);
         /* Fallbacks for a few basic ones */
         if(!strcmp(ext, "ogg"))
             return "application/ogg";
@@ -337,6 +342,8 @@ const char *fserve_content_type (const char *path)
             return "text/css";
         else if(!strcmp(ext, "txt"))
             return "text/plain";
+        else if(!strcmp(ext, "m3u"))
+            return "audio/x-mpegurl";
         else
             return "application/octet-stream";
     }
@@ -358,10 +365,8 @@ static void fserve_client_destroy(fserve_t *fclient)
 
 int fserve_client_create(client_t *httpclient, const char *path)
 {
-    fserve_t *client = calloc(1, sizeof(fserve_t));
+    fserve_t *client;
     int bytes;
-    int client_limit;
-    ice_config_t *config = config_get_config();
     struct stat file_buf;
     char *range = NULL;
     int64_t new_content_len = 0;
@@ -369,10 +374,6 @@ int fserve_client_create(client_t *httpclient, const char *path)
     int ret = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
-
-    // server limit check should be done earlier
-    client_limit = config->client_limit;
-    config_release_config();
 
     fullpath = util_get_path_from_normalised_uri (path);
     INFO2 ("handle file %s (%s)", path, fullpath);
@@ -405,7 +406,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         if (host == NULL)
         {
-            config = config_get_config();
+            ice_config_t *config = config_get_config();
             host = strdup (config->hostname);
             port = config->port;
             config_release_config();
@@ -449,7 +450,15 @@ int fserve_client_create(client_t *httpclient, const char *path)
         return 0;
     }
 
+    client = calloc (1, sizeof(fserve_t));
+    if (client == NULL)
+    {
+        free (fullpath);
+        client_send_404 (httpclient, "memory exhausted");
+        return 0;
+    }
     client->file = fopen (fullpath, "rb");
+    free (fullpath);
     if (client->file == NULL)
     {
         client_send_404 (httpclient, "File not readable");
