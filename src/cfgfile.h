@@ -78,6 +78,8 @@ typedef struct _mount_proxy {
     char *stream_url;
     char *stream_genre;
     char *bitrate;
+    char *type;
+    int yp_public;
 
     struct _mount_proxy *next;
 } mount_proxy;

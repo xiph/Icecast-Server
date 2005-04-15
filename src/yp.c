@@ -499,7 +499,7 @@ static ypdata_t *create_yp_entry (source_t *source)
     ypdata_t *yp;
     char *s;
 
-    if (source->running == 0 || source->yp_public == 0)
+    if ((source->running == 0  && source->on_demand == 0) || source->yp_public == 0)
         return NULL;
     yp = calloc (1, sizeof (ypdata_t));
     do

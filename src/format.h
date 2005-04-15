@@ -54,7 +54,7 @@ typedef struct _format_plugin_tag
 } format_plugin_t;
 
 format_type_t format_get_type(char *contenttype);
-int format_get_plugin(format_type_t type, struct source_tag *source);
+int format_get_plugin(format_type_t type, struct source_tag *source, http_parser_t *p);
 
 int format_generic_write_to_client (struct source_tag *source, client_t *client);
 void format_send_general_headers(format_plugin_t *format, 

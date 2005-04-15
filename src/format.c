@@ -64,7 +64,7 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_GENERIC;
 }
 
-int format_get_plugin(format_type_t type, source_t *source)
+int format_get_plugin (format_type_t type, source_t *source, http_parser_t *parser)
 {
     int ret = -1;
 
@@ -73,7 +73,7 @@ int format_get_plugin(format_type_t type, source_t *source)
         ret = format_ogg_get_plugin (source);
         break;
     case FORMAT_TYPE_GENERIC:
-        ret = format_mp3_get_plugin (source);
+        ret = format_mp3_get_plugin (source, parser);
         break;
     default:
         break;

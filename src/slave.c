@@ -371,6 +371,8 @@ static void check_relay_stream (relay_server *relay)
             {
                 ice_config_t *config = config_get_config ();
                 source_update_settings (config, relay->source);
+                if (relay->source->yp_public)
+                    yp_add (relay->source);
                 config_release_config ();
                 stats_event (relay->localmount, "listeners", "0");
                 DEBUG0 ("setting on_demand");

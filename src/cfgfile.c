@@ -195,6 +195,7 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->stream_url);
         xmlFree(mount->stream_genre);
         xmlFree(mount->bitrate);
+        xmlFree(mount->type);
         if (mount->cluster_password) {
             xmlFree(mount->cluster_password);
         }
@@ -662,6 +663,14 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "bitrate") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->bitrate = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "public") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->yp_public = atoi (tmp);
+            if(tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "type") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->type = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));

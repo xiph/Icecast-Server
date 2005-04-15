@@ -813,7 +813,7 @@ static void source_init (source_t *source)
     }
     slave_rebuild ();
     thread_mutex_lock (&source->lock);
-    if (source->yp_public)
+    if (source->on_demand == 0 && source->yp_public)
         yp_add (source);
 }
 
@@ -1013,6 +1013,12 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo->bitrate)
         stats_event (source->mount, "bitrate", mountinfo->bitrate);
 
+    if (mountinfo->type)
+        stats_event (source->mount, "server_type", mountinfo->type);
+
+    if (mountinfo->yp_public)
+        source->yp_public = mountinfo->yp_public;
+
     if (mountinfo->auth)
         stats_event (source->mount, "authenticator", mountinfo->auth->type);
     else
@@ -1082,7 +1088,6 @@ void source_update_settings (ice_config_t *config, source_t *source)
 {
     mount_proxy *mountinfo = config_find_mount (config, source->mount);
     char *str;
-    http_parser_t *parser = source->client->parser;
 
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
@@ -1090,50 +1095,54 @@ void source_update_settings (ice_config_t *config, source_t *source)
     source->burst_size = config->burst_size;
     source->dumpfilename = NULL;
     
-    do {
-        str = httpp_getvar(parser, "ice-name");
-        if (str) break;
-        str = httpp_getvar(parser, "icy-name");
-        if (str) break;
-        str = httpp_getvar(parser, "x-audiocast-name");
-    } while (0);
-    stats_event (source->mount, "server_name", str);
+    if  (source->client)
+    {
+        http_parser_t *parser = source->client->parser;
+        do {
+            str = httpp_getvar(parser, "ice-name");
+            if (str) break;
+            str = httpp_getvar(parser, "icy-name");
+            if (str) break;
+            str = httpp_getvar(parser, "x-audiocast-name");
+        } while (0);
+        stats_event (source->mount, "server_name", str);
 
-    do {
-        str = httpp_getvar(parser, "ice-description");
-        if (str) break;
-        str = httpp_getvar(parser, "icy-description");
-        if (str) break;
-        str = httpp_getvar(parser, "x-audiocast-description");
-    } while (0);
-    stats_event (source->mount, "server_description", str);
+        do {
+            str = httpp_getvar(parser, "ice-description");
+            if (str) break;
+            str = httpp_getvar(parser, "icy-description");
+            if (str) break;
+            str = httpp_getvar(parser, "x-audiocast-description");
+        } while (0);
+        stats_event (source->mount, "server_description", str);
 
-    do {
-        str = httpp_getvar(parser, "ice-genre");
-        if (str) break;
-        str = httpp_getvar(parser, "icy-genre");
-        if (str) break;
-        str = httpp_getvar(parser, "x-audiocast-genre");
-    } while (0);
-    stats_event (source->mount, "genre", str);
+        do {
+            str = httpp_getvar(parser, "ice-genre");
+            if (str) break;
+            str = httpp_getvar(parser, "icy-genre");
+            if (str) break;
+            str = httpp_getvar(parser, "x-audiocast-genre");
+        } while (0);
+        stats_event (source->mount, "genre", str);
 
-    do {
-        str = httpp_getvar(parser, "ice-url");
-        if (str) break;
-        str = httpp_getvar(parser, "icy-url");
-        if (str) break;
-        str = httpp_getvar(parser, "x-audiocast-url");
-    } while (0);
-    stats_event (source->mount, "server_url", str);
+        do {
+            str = httpp_getvar(parser, "ice-url");
+            if (str) break;
+            str = httpp_getvar(parser, "icy-url");
+            if (str) break;
+            str = httpp_getvar(parser, "x-audiocast-url");
+        } while (0);
+        stats_event (source->mount, "server_url", str);
 
-    do {
-        str = httpp_getvar(parser, "ice-bitrate");
-        if (str) break;
-        str = httpp_getvar(parser, "icy-br");
-        if (str) break;
-        str = httpp_getvar(parser, "x-audiocast-bitrate");
-    } while (0);
-    stats_event (source->mount, "bitrate", str);
+        do {
+            str = httpp_getvar(parser, "ice-bitrate");
+            if (str) break;
+            str = httpp_getvar(parser, "icy-br");
+            if (str) break;
+            str = httpp_getvar(parser, "x-audiocast-bitrate");
+        } while (0);
+        stats_event (source->mount, "bitrate", str);
+    }
 
     if (mountinfo && source->file_only == 0)
         source_apply_mount (source, mountinfo);

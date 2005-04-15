@@ -431,7 +431,7 @@ void connection_inject_event(int eventnum, void *event_data) {
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, connection_t *con, http_parser_t *parser)
+int connection_complete_source (source_t *source, connection_t *con, http_parser_t *in_parser)
 {
     ice_config_t *config = config_get_config();
 
@@ -442,13 +442,13 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
     {
         char *contenttype;
         format_type_t format_type;
+        http_parser_t *parser = in_parser;
 
         /* setup format handler */
-        if (parser || source->client == NULL)
-            contenttype = httpp_getvar (parser, "content-type");
-        else
-            contenttype = httpp_getvar (source->client->parser, "content-type");
+        if (source->client)
+            parser = source->client->parser;
 
+        contenttype = httpp_getvar (parser, "content-type");
         if (contenttype != NULL)
         {
             format_type = format_get_type (contenttype);
@@ -470,13 +470,14 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             format_type = FORMAT_TYPE_GENERIC;
         }
 
-        if (format_get_plugin (format_type, source) < 0)
+        if (format_get_plugin (format_type, source, parser) < 0)
         {
             global_unlock();
             config_release_config();
             if (source->client)
                 client_send_404 (source->client, "internal format allocation problem");
             WARN1 ("plugin format failed for \"%s\"", source->mount);
+            source->client = NULL;
             return -1;
         }
 
@@ -493,6 +494,7 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             source->client = client_create (con, parser);
             if (source->client == NULL)
             {
+                global_unlock();
                 config_release_config();
                 return -1;
             }

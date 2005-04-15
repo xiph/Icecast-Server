@@ -73,7 +73,7 @@ typedef struct {
    refbuf_t *associated;
 } mp3_client_data;
 
-int format_mp3_get_plugin (source_t *source)
+int format_mp3_get_plugin (source_t *source, http_parser_t *parser)
 {
     char *metadata;
     format_plugin_t *plugin;
@@ -91,7 +91,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar (source->client->parser, "content-type");
+    plugin->contenttype = httpp_getvar (parser, "content-type");
     if (plugin->contenttype == NULL) {
         /* We default to MP3 audio for old clients without content types */
         plugin->contenttype = "audio/mpeg";
@@ -107,7 +107,7 @@ int format_mp3_get_plugin (source_t *source)
     state->metadata = meta;
     state->interval = -1;
 
-    metadata = httpp_getvar (source->client->parser, "icy-metaint");
+    metadata = httpp_getvar (parser, "icy-metaint");
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
