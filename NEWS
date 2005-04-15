@@ -21,6 +21,19 @@ TODO
 . update slave host handling to add entry via url, as on-demand relays don't
   connect until there are listeners.
 
+2.2-kh3
+. fix nasty buffer reference bug which could cause excessive queue usage
+  when using chained theora streams
+. fix to server full message, client count handling is now done by the 
+  client_create/destroy. client_t created in main handler and passed down
+. YP update. The add retrieves the stats not the create, allowing for a
+  delay in setting the stats. fixes 'blank server name' error. on-demand
+  relays can now add to YP before connection.
+. slave thread now checks if shutdown is required after the sleep
+. dropped parser/con from source_t
+. a few NULL pointer fixes from auth change and some small mem leaks fixed
+. don't trigger short delay in fallback file thread
+
 2.2-kh2
 . optional url requests for source startup/shutdown.
 . 'header' option for listener url auth.  If this header is returned 
