@@ -756,7 +756,7 @@ static void _atomic_get_and_register(stats_event_t **queue, mutex_t *mutex)
 
 void *stats_connection(void *arg)
 {
-    stats_connection_t *statcon = (stats_connection_t *)arg;
+    client_t *client = (client_t *)arg;
     stats_event_t *local_event_queue = NULL;
     mutex_t local_event_mutex;
     stats_event_t *event;
@@ -774,7 +774,7 @@ void *stats_connection(void *arg)
         thread_mutex_lock(&local_event_mutex);
         event = _get_event_from_queue(&local_event_queue);
         if (event != NULL) {
-            if (!_send_event_to_client(event, statcon->con)) {
+            if (!_send_event_to_client(event, client->con)) {
                 _free_event(event);
                 thread_mutex_unlock(&local_event_mutex);
                 break;

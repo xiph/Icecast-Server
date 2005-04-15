@@ -409,7 +409,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
         /* we need more data to continue getting pages */
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
-        bytes = sock_read_bytes (source->con->sock, data, 4096);
+        bytes = sock_read_bytes (source->client->con->sock, data, 4096);
         if (bytes < 0)
         {
             if (sock_recoverable (sock_error()))

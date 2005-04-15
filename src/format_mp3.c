@@ -91,7 +91,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+    plugin->contenttype = httpp_getvar (source->client->parser, "content-type");
     if (plugin->contenttype == NULL) {
         /* We default to MP3 audio for old clients without content types */
         plugin->contenttype = "audio/mpeg";
@@ -107,7 +107,7 @@ int format_mp3_get_plugin (source_t *source)
     state->metadata = meta;
     state->interval = -1;
 
-    metadata = httpp_getvar (source->parser, "icy-metaint");
+    metadata = httpp_getvar (source->client->parser, "icy-metaint");
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
@@ -417,7 +417,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
 
     if ((refbuf = refbuf_new (2048)) == NULL)
         return NULL;
-    bytes = sock_read_bytes (source->con->sock, refbuf->data, 2048);
+    bytes = sock_read_bytes (source->client->con->sock, refbuf->data, 2048);
 
     if (bytes == 0)
     {
@@ -464,7 +464,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf = refbuf_new (2048);
     src = refbuf->data;
 
-    ret = sock_read_bytes (source->con->sock, refbuf->data, 2048);
+    ret = sock_read_bytes (source->client->con->sock, refbuf->data, 2048);
 
     if (ret == 0)
     {

@@ -264,7 +264,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             if (source->running)
             {
                 snprintf (buf, sizeof(buf), "%lu",
-                        (unsigned long)(now - source->con->con_time));
+                        (unsigned long)(now - source->client->con->con_time));
                 xmlNewChild (srcnode, NULL, "Connected", buf);
                 xmlNewChild (srcnode, NULL, "content-type", 
                         source->format->contenttype);

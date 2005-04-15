@@ -240,8 +240,8 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr += bytes;
 
     /* iterate through source http headers and send to client */
-    avl_tree_rlock (source->parser->vars);
-    node = avl_get_first (source->parser->vars);
+    avl_tree_rlock (source->client->parser->vars);
+    node = avl_get_first (source->client->parser->vars);
     while (node)
     {
         int next = 1;
@@ -295,7 +295,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
         if (next)
             node = avl_get_next (node);
     }
-    avl_tree_unlock (source->parser->vars);
+    avl_tree_unlock (source->client->parser->vars);
 
     bytes = snprintf (ptr, remaining, "Server: %s\r\n", ICECAST_VERSION_STRING);
     remaining -= bytes;

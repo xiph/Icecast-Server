@@ -671,13 +671,9 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
 }
 
 
-static void _handle_source_request(connection_t *con, 
-        http_parser_t *parser, char *uri, int auth_style)
+static void _handle_source_request (client_t *client, char *uri, int auth_style)
 {
-    client_t *client;
     source_t *source;
-
-    client = client_create(con, parser);
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
 
@@ -688,7 +684,7 @@ static void _handle_source_request(connection_t *con,
         return;
     }
     if (auth_style == ICECAST_SOURCE_AUTH) {
-        if (!connection_check_source_pass(parser, uri))
+        if (connection_check_source_pass (client->parser, uri) == 0)
         {
             /* We commonly get this if the source client is using the wrong
              * protocol: attempt to diagnose this and return an error
@@ -706,8 +702,6 @@ static void _handle_source_request(connection_t *con,
             source->shoutcast_compat = 1;
         }
         source->client = client;
-        source->parser = parser;
-        source->con = con;
         if (connection_complete_source (source, NULL, NULL) < 0)
         {
             source->client = NULL;
@@ -725,35 +719,24 @@ static void _handle_source_request(connection_t *con,
 }
 
 
-static void _handle_stats_request(connection_t *con, 
-        http_parser_t *parser, char *uri)
+static void _handle_stats_request (client_t *client, char *uri)
 {
-    stats_connection_t *stats;
-
     stats_event_inc(NULL, "stats_connections");
                 
-    if (!connection_check_admin_pass(parser))
+    if (connection_check_admin_pass (client->parser) == 0)
     {
+        client_send_401 (client);
         ERROR0("Bad password for stats connection");
-        connection_close(con);
-        httpp_destroy(parser);
         return;
     }
                     
     stats_event_inc(NULL, "stats");
 
-    /* create stats connection and create stats handler thread */
-    stats = (stats_connection_t *)malloc(sizeof(stats_connection_t));
-    stats->parser = parser;
-    stats->con = con;
-                    
-    thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
+    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
 }
 
-static void _handle_get_request(connection_t *con,
-        http_parser_t *parser, char *passed_uri)
+static void _handle_get_request (client_t *client, char *passed_uri)
 {
-    client_t *client;
     int fileserve;
     char *host = NULL;
     int port;
@@ -772,7 +755,7 @@ static void _handle_get_request(connection_t *con,
         host = strdup (config->hostname);
     port = config->port;
     for(i = 0; i < global.server_sockets; i++) {
-        if(global.serversock[i] == con->serversock) {
+        if(global.serversock[i] == client->con->serversock) {
             serverhost = config->listeners[i].bind_address;
             serverport = config->listeners[i].port;
             break;
@@ -802,8 +785,6 @@ static void _handle_get_request(connection_t *con,
     }
     config_release_config();
 
-    /* make a client */
-    client = client_create(con, parser);
     stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
@@ -816,21 +797,6 @@ static void _handle_get_request(connection_t *con,
     }
     free (host);
 
-    global_lock();
-    if (global.clients >= client_limit)
-    {
-        global_unlock();
-        if (slave_redirect (uri, client) == 0)
-        {
-            client_send_404(client,
-                    "The server is already full. Try again later.");
-        }
-        if (uri != passed_uri) free (uri);
-        return;
-    }
-    global.clients++;
-    global_unlock();
-
     add_client (uri, client);
 
     if (uri != passed_uri) free (uri);
@@ -842,6 +808,7 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
     int http_compliant_len = 0;
     char header[4096];
     http_parser_t *parser;
+    client_t *client;
 
     memset(shoutcast_password, 0, sizeof (shoutcast_password));
     /* Step one of shoutcast auth protocol, read encoder password (1 line) */
@@ -884,8 +851,15 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
             "SOURCE %s HTTP/1.0\r\n%s", mount, header);
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
+    client = client_create (con, parser);
+    if (client == NULL)
+    {
+        connection_close (con);
+        httpp_destroy (parser);
+        return;
+    }
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        _handle_source_request(con, parser, mount, SHOUTCAST_SOURCE_AUTH);
+        _handle_source_request (client, mount, SHOUTCAST_SOURCE_AUTH);
         free(http_compliant);
         return;
     }
@@ -981,20 +955,29 @@ static void *_handle_connection(void *arg)
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
                 uri = util_normalise_uri(rawuri);
 
-                if(!uri) {
-                    client = client_create(con, parser);
-                    client_send_404(client, "The path you requested was invalid");
+                if (uri == NULL)
+                {
+                    sock_write(con->sock, "The path you requested was invalid\r\n");
+                    connection_close(con);
+                    httpp_destroy(parser);
+                    continue;
+                }
+                client = client_create (con, parser);
+                if (client == NULL)
+                {
+                    connection_close(con);
+                    httpp_destroy(parser);
                     continue;
                 }
 
                 if (parser->req_type == httpp_req_source) {
-                    _handle_source_request(con, parser, uri, ICECAST_SOURCE_AUTH);
+                    _handle_source_request (client, uri, ICECAST_SOURCE_AUTH);
                 }
                 else if (parser->req_type == httpp_req_stats) {
-                    _handle_stats_request(con, parser, uri);
+                    _handle_stats_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_get) {
-                    _handle_get_request(con, parser, uri);
+                    _handle_get_request (client, uri);
                 }
                 else {
                     ERROR0("Wrong request type from client");

@@ -298,8 +298,6 @@ static void *start_relay_stream (void *arg)
             ERROR1("Error from relay request: %s", httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
             break;
         }
-        src->parser = parser;
-        src->con = con;
         if (connection_complete_source (src, con, parser) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
@@ -340,10 +338,8 @@ static void *start_relay_stream (void *arg)
         sock_close (streamsock);
     if (con)
         connection_close (con);
-    src->con = NULL;
     if (parser)
         httpp_destroy (parser);
-    src->parser = NULL;
     source_clear_source (relay->source);
 
     /* initiate an immediate relay cleanup run */

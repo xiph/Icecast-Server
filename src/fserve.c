@@ -225,7 +225,6 @@ static void wait_for_fds() {
                 active_list = to_move;
                 client_tree_changed = 1;
                 fserve_clients++;
-                stats_event_inc(NULL, "clients");
             }
             pending_list = NULL;
             thread_mutex_unlock (&pending_lock);
@@ -301,10 +300,6 @@ static void *fserv_thread_function(void *arg)
         fserve_t *to_go = (fserve_t *)pending_list;
         pending_list = to_go->next;
 
-        /* Argh! _free_client decrements "clients" in stats, but it hasn't been
-           incremented if the client is still on the pending list. So, fix that
-           up first. Messy. */
-        stats_event_inc(NULL, "clients");
         _free_client (to_go);
     }
     thread_mutex_unlock (&pending_lock);
@@ -468,21 +463,6 @@ int fserve_client_create(client_t *httpclient, const char *path)
     httpclient->pos = BUFSIZE;
     client->content_length = (int64_t)file_buf.st_size;
 
-    global_lock();
-    if(global.clients >= client_limit) {
-        global_unlock();
-        httpclient->respcode = 503;
-        bytes = sock_write(httpclient->con->sock,
-                "HTTP/1.0 503 Service Unavailable\r\n"
-                "Content-Type: text/html\r\n\r\n"
-                "<b>Server is full, try again later.</b>\r\n");
-        if(bytes > 0) httpclient->con->sent_bytes = bytes;
-        fserve_client_destroy(client);
-        return 0;
-    }
-    global.clients++;
-    global_unlock();
-
     range = httpp_getvar (client->client->parser, "range");
 
     do
@@ -565,11 +545,6 @@ static int _free_client(void *key)
     fserve_t *client = (fserve_t *)key;
 
     fserve_client_destroy(client);
-    global_lock();
-    global.clients--;
-    global_unlock();
-    stats_event_dec(NULL, "clients");
-
     
     return 1;
 }

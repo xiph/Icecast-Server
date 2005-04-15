@@ -121,10 +121,6 @@ void auth_client_free (auth_client *auth_user)
     {
         client_t *client = auth_user->client;
 
-        /* failed client, drop global count */
-        global_lock();
-        global.clients--;
-        global_unlock();
         if (client->respcode)
             client_destroy (client);
         else
@@ -264,7 +260,6 @@ int add_client_to_source (source_t *source, client_t *client)
         slave_rescan();
     }
     DEBUG1 ("Added client to pending on %s", source->mount);
-    stats_event_inc (NULL, "clients");
     return 0;
 }
 
