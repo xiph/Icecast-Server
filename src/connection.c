@@ -489,12 +489,11 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
          * because we can't use this client to return an error code/message,
          * so we only do this once we know we're going to accept the source.
          */
-        if (source->client == NULL && con)
+        if (source->client == NULL)
         {
             source->client = client_create (con, parser);
             if (source->client == NULL)
             {
-                global_unlock();
                 config_release_config();
                 return -1;
             }

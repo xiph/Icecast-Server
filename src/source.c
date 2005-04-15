@@ -467,7 +467,8 @@ static void get_next_buffer (source_t *source)
         {
             if (source->active_clients != source->first_normal_client)
             {
-                delay = 0;
+                if (source->client->con)
+                    delay = 0;
                 no_delay_count++;
             }
         }
@@ -1144,7 +1145,7 @@ void source_update_settings (ice_config_t *config, source_t *source)
         stats_event (source->mount, "bitrate", str);
     }
 
-    if (mountinfo && source->file_only == 0)
+    if (mountinfo)
         source_apply_mount (source, mountinfo);
 
     if (source->fallback_mount)
@@ -1224,31 +1225,27 @@ void *source_client_thread (void *arg)
     const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
     int bytes = sizeof (ok_msg)-1;
 
-    if (source->client)
+    if (source->client && source->client->con)
     {
         source->client->respcode = 200;
         bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
+        if (bytes < (int)(sizeof (ok_msg)-1))
+        {
+            global_lock();
+            global.sources--;
+            global_unlock();
+            WARN0 ("Error writing 200 OK message to source client");
+            source_free_source (source);
+            return NULL;
+        }
+        source->client->con->sent_bytes += bytes;
     }
-    if (bytes < (int)sizeof (ok_msg)-1)
-    {
-        global_lock();
-        global.sources--;
-        global_unlock();
-        WARN0 ("Error writing 200 OK message to source client");
-        source_free_source (source);
-    }
-    else
-    {
-        if (source->client)
-            source->client->con->sent_bytes += bytes;
+    stats_event_inc(NULL, "source_client_connections");
+    stats_event (source->mount, "listeners", "0");
+    source_main (source);
+    source_free_source (source);
 
-        stats_event_inc(NULL, "source_client_connections");
-        stats_event (source->mount, "listeners", "0");
-        source_main (source);
-        source_free_source (source);
-
-        slave_rebuild ();
-    }
+    slave_rebuild ();
     return NULL;
 }
 
@@ -1297,6 +1294,7 @@ static void *source_fallback_file (void *arg)
     FILE *file = NULL;
     source_t *source = NULL;
     ice_config_t *config;
+    http_parser_t *parser;
 
     do
     {
@@ -1327,16 +1325,17 @@ static void *source_fallback_file (void *arg)
             break;
         }
         type = fserve_content_type (mount);
-        source->client->parser = httpp_create_parser();
-        httpp_initialize (source->client->parser, NULL);
-        httpp_setvar (source->client->parser, "content-type", type);
+        parser = httpp_create_parser();
+        httpp_initialize (parser, NULL);
+        httpp_setvar (parser, "content-type", type);
+
         source->hidden = 1;
         source->file_only = 1;
         source->yp_prevent = 1;
         source->intro_file = file;
         file = NULL;
 
-        if (connection_complete_source (source, NULL, NULL) < 0)
+        if (connection_complete_source (source, NULL, parser) < 0)
             break;
         source_client_thread (source);
     } while (0);
