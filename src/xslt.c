@@ -82,6 +82,7 @@ void xslt_shutdown() {
             xsltFreeStylesheet(cache[i].stylesheet);
     }
 
+    thread_mutex_destroy (&xsltlock);
     xsltCleanupGlobals();
 }
 

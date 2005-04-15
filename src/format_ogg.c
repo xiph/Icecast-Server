@@ -140,6 +140,8 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     while (codec)
     {
         ogg_codec_t *next = codec->next;
+        if (codec->possible_start)
+            refbuf_release (codec->possible_start);
         codec->codec_free (ogg_info, codec);
         codec = next;
     }

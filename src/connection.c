@@ -431,7 +431,7 @@ void connection_inject_event(int eventnum, void *event_data) {
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source)
+int connection_complete_source (source_t *source, connection_t *con, http_parser_t *parser)
 {
     ice_config_t *config = config_get_config();
 
@@ -444,7 +444,11 @@ int connection_complete_source (source_t *source)
         format_type_t format_type;
 
         /* setup format handler */
-        contenttype = httpp_getvar (source->parser, "content-type");
+        if (parser || source->client == NULL)
+            contenttype = httpp_getvar (parser, "content-type");
+        else
+            contenttype = httpp_getvar (source->client->parser, "content-type");
+
         if (contenttype != NULL)
         {
             format_type = format_get_type (contenttype);
@@ -484,8 +488,15 @@ int connection_complete_source (source_t *source)
          * because we can't use this client to return an error code/message,
          * so we only do this once we know we're going to accept the source.
          */
-        if (source->client == NULL && source->con)
-            source->client = client_create (source->con, source->parser);
+        if (source->client == NULL && con)
+        {
+            source->client = client_create (con, parser);
+            if (source->client == NULL)
+            {
+                config_release_config();
+                return -1;
+            }
+        }
 
         source_update_settings (config, source);
         config_release_config();
@@ -624,7 +635,6 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
     char *protocol;
 
     mount_proxy *mountinfo = config->mounts;
-    thread_mutex_lock(&(config_locks()->mounts_lock));
 
     while(mountinfo) {
         if(!strcmp(mountinfo->mountname, mount)) {
@@ -636,8 +646,6 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
         }
         mountinfo = mountinfo->next;
     }
-
-    thread_mutex_unlock(&(config_locks()->mounts_lock));
 
     if(!pass) {
         WARN0("No source password set, rejecting source");
@@ -700,7 +708,7 @@ static void _handle_source_request(connection_t *con,
         source->client = client;
         source->parser = parser;
         source->con = con;
-        if (connection_complete_source (source) < 0)
+        if (connection_complete_source (source, NULL, NULL) < 0)
         {
             source->client = NULL;
             source_free_source (source);

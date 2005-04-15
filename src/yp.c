@@ -334,22 +334,33 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
     int ret;
     char *value;
 
-    if (yp->bitrate == NULL)
-    {
-        yp->bitrate = stats_get_value (yp->mount, "ice-bitrate");
-        if (yp->bitrate == NULL)
-        {
-            yp->next_update = time(NULL) + 5;
-            WARN1 ("mount \"%s\" bitrate unknown, cannot add to YP", yp->mount);
-            return 0;
-        }
-    }
+    value = stats_get_value (yp->mount, "server_type");
+    add_yp_info (yp, value, YP_SERVER_TYPE);
+    free (value);
+
+    value = stats_get_value (yp->mount, "server_name");
+    add_yp_info (yp, value, YP_SERVER_NAME);
+    free (value);
+
+    value = stats_get_value (yp->mount, "server_url");
+    add_yp_info (yp, value, YP_SERVER_URL);
+    free (value);
+
+    value = stats_get_value (yp->mount, "genre");
+    add_yp_info (yp, value, YP_SERVER_GENRE);
+    free (value);
+
+    value = stats_get_value (yp->mount, "bitrate");
+    add_yp_info (yp, value, YP_BITRATE);
+    free (value);
+
+    value = stats_get_value (yp->mount, "stream_description");
+    add_yp_info (yp, value, YP_SERVER_DESC);
+    free (value);
+
     value = stats_get_value (yp->mount, "subtype");
-    if (value)
-    {
-        add_yp_info (yp, value, YP_SUBTYPE);
-        free (value);
-    }
+    add_yp_info (yp, value, YP_SUBTYPE);
+    free (value);
 
     ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
                     "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
@@ -540,28 +551,6 @@ static ypdata_t *create_yp_entry (source_t *source)
         free (url);
         if (yp->listen_url == NULL)
             break;
-
-        /* ice-* is icecast, icy-* is shoutcast */
-        add_yp_info (yp, source->format->contenttype, YP_SERVER_TYPE);
-
-        s = stats_get_value (yp->mount, "server_name");
-        add_yp_info (yp, s, YP_SERVER_NAME);
-        free (s);
-
-        s = stats_get_value (yp->mount, "server_url");
-        add_yp_info (yp, s, YP_SERVER_URL);
-        free (s);
-
-        s = stats_get_value (yp->mount, "genre");
-        add_yp_info (yp, s, YP_SERVER_GENRE);
-        free (s);
-
-        s = stats_get_value (yp->mount, "bitrate");
-        add_yp_info (yp, s, YP_BITRATE);
-        free (s);
-
-        s = stats_get_value (yp->mount, "stream_description");
-        add_yp_info (yp, s, YP_SERVER_DESC);
 
         s = util_dict_urlencode (source->audio_info, '&');
         if (s)
@@ -901,6 +890,7 @@ void yp_add (source_t *source)
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
+                yp->next_update = time(NULL) + 5;
                 server->pending_mounts = yp;
                 yp_update = 1;
             }

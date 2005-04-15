@@ -300,7 +300,7 @@ static void *start_relay_stream (void *arg)
         }
         src->parser = parser;
         src->con = con;
-        if (connection_complete_source (src) < 0)
+        if (connection_complete_source (src, con, parser) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
             break;
