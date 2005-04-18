@@ -68,6 +68,8 @@ void xslt_initialize()
 {
     memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
     thread_mutex_create(&xsltlock);
+    xmlSubstituteEntitiesDefault(1);
+    xmlLoadExtDtdDefaultValue = 1;
 }
 
 void xslt_shutdown() {
@@ -80,6 +82,7 @@ void xslt_shutdown() {
             xsltFreeStylesheet(cache[i].stylesheet);
     }
 
+    thread_mutex_destroy (&xsltlock);
     xsltCleanupGlobals();
 }
 
@@ -156,9 +159,6 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     size_t count,bytes;
 
     params[0] = NULL;
-
-    xmlSubstituteEntitiesDefault(1);
-    xmlLoadExtDtdDefaultValue = 1;
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);

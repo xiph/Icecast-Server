@@ -228,10 +228,21 @@ void source_clear_source (source_t *source)
     avl_tree_unlock (source->pending_tree);
 
     if (source->format && source->format->free_plugin)
-    {
         source->format->free_plugin (source->format);
-    }
     source->format = NULL;
+
+    /* Lets clear out the source queue too */
+    while (source->stream_data)
+    {
+        refbuf_t *p = source->stream_data;
+        source->stream_data = p->next;
+        /* can be referenced by burst handler as well */
+        while (p->_count > 1)
+            refbuf_release (p);
+        refbuf_release (p);
+    }
+    source->stream_data_tail = NULL;
+
     if (source->yp_public)
         yp_remove (source->mount);
 
@@ -255,18 +266,6 @@ void source_clear_source (source_t *source)
 
     free(source->dumpfilename);
     source->dumpfilename = NULL;
-
-    /* Lets clear out the source queue too */
-    while (source->stream_data)
-    {
-        refbuf_t *p = source->stream_data;
-        source->stream_data = p->next;
-        /* can be referenced by burst handler as well */
-        while (p->_count > 1)
-            refbuf_release (p);
-        refbuf_release (p);
-    }
-    source->stream_data_tail = NULL;
 }
 
 

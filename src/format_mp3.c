@@ -66,7 +66,7 @@ static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 
 
 typedef struct {
-   int use_metadata;
+   unsigned int interval;
    int metadata_offset;
    unsigned int since_meta_block;
    int in_metadata;
@@ -105,14 +105,17 @@ int format_mp3_get_plugin (source_t *source)
     memcpy (meta->data, "\0\0", 2);
     meta->len = 1;
     state->metadata = meta;
-    state->interval = ICY_METADATA_INTERVAL;
+    state->interval = -1;
 
     metadata = httpp_getvar (source->parser, "icy-metaint");
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
-        state->offset = 0;
-        plugin->get_buffer = mp3_get_filter_meta;
+        if (state->inline_metadata_interval > 0)
+        {
+            state->offset = 0;
+            plugin->get_buffer = mp3_get_filter_meta;
+        }
     }
     source->format = plugin;
     thread_mutex_create (&state->url_lock);
@@ -260,15 +263,15 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     /* If there is a change in metadata then send it else
      * send a single zero value byte in its place
      */
-    if (associated == client_mp3->associated)
-    {
-        metadata = "\0";
-        meta_len = 1;
-    }
-    else
+    if (associated && associated != client_mp3->associated)
     {
         metadata = associated->data + client_mp3->metadata_offset;
         meta_len = associated->len - client_mp3->metadata_offset;
+    }
+    else
+    {
+        metadata = "\0";
+        meta_len = 1;
     }
     ret = client_send_bytes (client, metadata, meta_len);
 
@@ -297,7 +300,6 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
-    mp3_state *source_mp3 = self->_state;
     refbuf_t *refbuf = client->refbuf;
     char *buf;
     unsigned int len;
@@ -328,9 +330,9 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
             written += ret;
         }
         /* see if we need to send the current metadata to the client */
-        if (client_mp3->use_metadata)
+        if (client_mp3->interval)
         {
-            unsigned int remaining = source_mp3->interval -
+            unsigned int remaining = client_mp3->interval -
                 client_mp3->since_meta_block;
 
             /* sending the metadata block */
@@ -572,17 +574,24 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 
 static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
-    mp3_client_data *data = calloc(1,sizeof(mp3_client_data));
+    mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     char *metadata;
+    mp3_state *source_mp3 = source->format->_state;
 
-    if (data == NULL)
+    if (client_mp3 == NULL)
         return -1;
 
-    client->format_data = data;
+    client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
     metadata = httpp_getvar(client->parser, "icy-metadata");
-    if(metadata)
-        data->use_metadata = atoi(metadata)>0?1:0;
+    if (metadata && atoi(metadata))
+    {
+        if (source_mp3->interval > 0)
+            client_mp3->interval = source_mp3->interval;
+        else
+            client_mp3->interval = ICY_METADATA_INTERVAL;
+    }
+
 
     return 0;
 }
@@ -632,10 +641,10 @@ static void format_mp3_send_headers(format_plugin_t *self,
     if (bytes > 0)
         client->con->sent_bytes += bytes;
 
-    if (mp3data->use_metadata)
+    if (mp3data->interval)
     {
         int bytes = sock_write(client->con->sock, "icy-metaint:%d\r\n", 
-                ICY_METADATA_INTERVAL);
+                mp3data->interval);
         if(bytes > 0)
             client->con->sent_bytes += bytes;
     }

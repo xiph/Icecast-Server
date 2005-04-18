@@ -22,7 +22,7 @@ typedef struct {
     /* These are for inline metadata */
     int inline_metadata_interval;
     int offset;
-    unsigned interval;
+    int interval;
     char *url_artist;
     char *url_title;
     int update_metadata;

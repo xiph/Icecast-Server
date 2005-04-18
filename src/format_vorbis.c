@@ -200,7 +200,11 @@ static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
     format_ogg_free_headers (ogg_info);
     source_vorbis->get_buffer_page = NULL;
-    source_vorbis->process_packet = process_vorbis_headers;
+    if (source_vorbis->prev_packet)
+        source_vorbis->process_packet = process_vorbis_headers;
+    else
+        source_vorbis->process_packet = NULL;
+
     if (source_vorbis->initial_audio_packet == 0)
         source_vorbis->prev_window = 0;
 
@@ -264,6 +268,8 @@ static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
         if (packet.e_o_s)
         {
             initiate_flush (source_vorbis);
+            free_ogg_packet (source_vorbis->prev_packet);
+            source_vorbis->prev_packet = NULL;
             return 1;
         }
 
@@ -275,6 +281,7 @@ static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
     {
         initiate_flush (source_vorbis);
         source_vorbis->stream_notify = 0;
+        return 1;
     }
     return -1;
 }
@@ -329,7 +336,6 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
  */
 ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 {
-    // ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
     ogg_packet packet;
 

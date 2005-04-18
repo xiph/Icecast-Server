@@ -60,7 +60,7 @@
 #define CATMODULE "slave"
 
 static void *_slave_thread(void *arg);
-thread_type *_slave_thread_id;
+static thread_type *_slave_thread_id;
 static int slave_running = 0;
 volatile static unsigned int max_interval = 0;
 volatile static int rescan_relays = 0;
@@ -305,29 +305,29 @@ update_relay_set (relay_server **current, relay_server *updated)
 
     while (relay)
     {
-         existing_relay = *current;
-         existing_p = current;
+        existing_relay = *current;
+        existing_p = current;
 
-         while (existing_relay)
-         {
-             /* break out if keeping relay */
-             if (strcmp (relay->localmount, existing_relay->localmount) == 0)
-                 break;
-             existing_p = &existing_relay->next;
-             existing_relay = existing_relay->next;
-         }
-         if (existing_relay == NULL)
-         {
-             /* new one, copy and insert */
-             existing_relay = relay_copy (relay);
-         }
-         else
-         {
-             *existing_p = existing_relay->next;
-         }
-         existing_relay->next = new_list;
-         new_list = existing_relay;
-         relay = relay->next;
+        while (existing_relay)
+        {
+            /* break out if keeping relay */
+            if (strcmp (relay->localmount, existing_relay->localmount) == 0)
+                break;
+            existing_p = &existing_relay->next;
+            existing_relay = existing_relay->next;
+        }
+        if (existing_relay == NULL)
+        {
+            /* new one, copy and insert */
+            existing_relay = relay_copy (relay);
+        }
+        else
+        {
+            *existing_p = existing_relay->next;
+        }
+        existing_relay->next = new_list;
+        new_list = existing_relay;
+        relay = relay->next;
     }
     return new_list;
 }
@@ -480,11 +480,13 @@ static void *_slave_thread(void *arg)
     ice_config_t *config;
     unsigned int interval = 0;
 
-    while (slave_running)
+    while (1)
     {
         relay_server *cleanup_relays;
 
         thread_sleep (1000000);
+        if (slave_running == 0)
+            break;
         if (rescan_relays == 0 && max_interval > ++interval)
             continue;
 

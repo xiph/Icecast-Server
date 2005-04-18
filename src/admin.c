@@ -978,7 +978,7 @@ static void command_list_mounts(client_t *client, int response)
         {
             source_t *source = (source_t *)node->key;
             node = avl_get_next(node);
-            if (source->hidden)
+            if (source->hidden || source->running == 0)
                 continue;
             remaining -= ret;
             buf += ret;
