@@ -665,6 +665,9 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "type") == 0) {
             mount->type = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "subtype") == 0) {
+            mount->subtype = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
 }

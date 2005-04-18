@@ -261,6 +261,9 @@ void source_clear_source (source_t *source)
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
+    free(source->fallback_mount);
+    source->fallback_mount = NULL;
+
     free(source->dumpfilename);
     source->dumpfilename = NULL;
 
@@ -287,9 +290,6 @@ void source_free_source (source_t *source)
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
-
-    free(source->fallback_mount);
-    source->fallback_mount = NULL;
 
     /* make sure all YP entries have gone */
     yp_remove (source->mount);
@@ -819,7 +819,6 @@ static void source_init (source_t *source)
 }
 
 
-
 void source_main (source_t *source)
 {
     source_init (source);
@@ -1016,6 +1015,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     if (mountinfo->type)
         stats_event (source->mount, "server_type", mountinfo->type);
+
+    if (mountinfo->subtype)
+        stats_event (source->mount, "subtype", mountinfo->subtype);
 
     if (mountinfo->yp_public)
         source->yp_public = mountinfo->yp_public;

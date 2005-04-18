@@ -111,7 +111,7 @@ int format_mp3_get_plugin (source_t *source, http_parser_t *parser)
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
-        if (state->inline_metadata_interval)
+        if (state->inline_metadata_interval > 0)
         {
             state->offset = 0;
             plugin->get_buffer = mp3_get_filter_meta;
@@ -611,12 +611,12 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     }
 
     metadata = httpp_getvar(client->parser, "icy-metadata");
-    if (metadata && atoi(metadata) && source_mp3->interval)
+    if (metadata && atoi(metadata))
     {
-        if (source_mp3->interval < 0)
-            client_mp3->interval = ICY_METADATA_INTERVAL;
-        else
+        if (source_mp3->interval > 0)
             client_mp3->interval = source_mp3->interval;
+        else
+            client_mp3->interval = ICY_METADATA_INTERVAL;
         bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n",
                 client_mp3->interval);
         if (bytes > 0)
