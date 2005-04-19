@@ -122,18 +122,24 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     auth_t *auth = client->auth;
     auth_url *url = auth->state;
     time_t duration = time(NULL) - client->con->con_time;
-    char *username, *password, *mount;
+    char *username, *password, *mount, *server;
+    ice_config_t *config;
     char post[1024];
 
     if (url->removeurl == NULL)
         return AUTH_OK;
+    config = config_get_config ();
+    server = util_url_escape (config->hostname);
+    config_release_config ();
     username = util_url_escape (client->username);
     password = util_url_escape (client->password);
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=remove&client=%lu&mount=%s&user=%s&pass=%s&duration=%lu",
-            client->con->id, mount, username, password, (long unsigned)duration);
+            "action=remove&server=%sclient=%lu&mount=%s"
+            "&user=%s&pass=%s&duration=%lu",
+            server, client->con->id, mount, username,
+            password, (long unsigned)duration);
     free (mount);
     free (username);
     free (password);
@@ -160,9 +166,16 @@ static auth_result auth_addurl_client (auth_client *auth_user)
     auth_url *url = auth->state;
     int res = 0;
     char *agent, *user_agent, *username, *password;
-    char *mount, *ipaddr;
+    char *mount, *ipaddr, *server;
+    ice_config_t *config;
     char post[1024];
 
+    if (url->addurl == NULL)
+        return AUTH_OK;
+
+    config = config_get_config ();
+    server = util_url_escape (config->hostname);
+    config_release_config ();
     agent = httpp_getvar (client->parser, "user-agent");
     if (agent == NULL)
         agent = "-";
@@ -173,8 +186,10 @@ static auth_result auth_addurl_client (auth_client *auth_user)
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
-            "action=auth&client=%lu&mount=%s&user=%s&pass=%s&ip=%s&agent=%s",
-            client->con->id, mount, username, password, ipaddr, user_agent);
+            "action=auth&server=%s&client=%lu&mount=%s"
+            "&user=%s&pass=%s&ip=%s&agent=%s",
+            server, client->con->id, mount, username,
+            password, ipaddr, user_agent);
     free (mount);
     free (user_agent);
     free (username);
@@ -219,6 +234,11 @@ static auth_result url_stream_start (auth_client *auth_user)
     char *stream_start_url;
     char post [4096];
 
+    if (url->stream_start == NULL)
+    {
+        config_release_config ();
+        return AUTH_OK;
+    }
     server = util_url_escape (config->hostname);
     stream_start_url = strdup (url->stream_start);
     /* we don't want this auth disappearing from under us while
@@ -255,6 +275,11 @@ static auth_result url_stream_end (auth_client *auth_user)
     char *stream_end_url;
     char post [4096];
 
+    if (url->stream_end == NULL)
+    {
+        config_release_config ();
+        return AUTH_OK;
+    }
     server = util_url_escape (config->hostname);
     stream_end_url = strdup (url->stream_end);
     /* we don't want this auth disappearing from under us while

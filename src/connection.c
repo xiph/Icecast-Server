@@ -481,6 +481,9 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             return -1;
         }
 
+        global.sources++;
+        global_unlock();
+
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
          * because we can't use this client to return an error code/message,
@@ -491,14 +494,13 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             source->client = client_create (con, parser);
             if (source->client == NULL)
             {
+                global_lock();
+                global.sources--;
                 global_unlock();
                 config_release_config();
                 return -1;
             }
         }
-
-        global.sources++;
-        global_unlock();
 
         source_update_settings (config, source);
         config_release_config();
