@@ -40,6 +40,8 @@
 #ifdef HAVE_SPEEX
 #include "format_speex.h"
 #endif
+#include "format_midi.h"
+#include "format_flac.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -217,11 +219,18 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
 #endif
+        codec = initial_midi_page (plugin, page);
+        if (codec)
+            break;
+        codec = initial_flac_page (plugin, page);
+        if (codec)
+            break;
 #ifdef HAVE_SPEEX
         codec = initial_speex_page (plugin, page);
         if (codec)
             break;
 #endif
+
         /* any others */
         ERROR0 ("Seen BOS page with unknown type");
         return -1;

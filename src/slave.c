@@ -435,7 +435,10 @@ static void check_relay_stream (relay_server *relay)
     }
 }
 
-/* return 1 if the relay needs to be restarted */
+
+/* compare the 2 relays to see if there are any changes, return 1 if
+ * the relay needs to be restarted, 0 otherwise
+ */
 static int relay_has_changed (relay_server *new, relay_server *old)
 {
     do
@@ -444,9 +447,9 @@ static int relay_has_changed (relay_server *new, relay_server *old)
             break;
         if (strcmp (new->server, old->server) != 0)
             break;
-        if (new->mp3metadata != old->mp3metadata)
-            break;
         if (new->port != old->port)
+            break;
+        if (new->mp3metadata != old->mp3metadata)
             break;
         if (new->on_demand != old->on_demand)
             old->on_demand = new->on_demand;
