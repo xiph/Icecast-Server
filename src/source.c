@@ -228,6 +228,7 @@ void source_clear_source (source_t *source)
         source_free_client (source, client);
     }
     source->pending_clients_tail = &source->pending_clients;
+    source->new_listeners = 0;
     source->first_normal_client = NULL;
 
     if (source->format && source->format->free_plugin)
