@@ -985,8 +985,7 @@ static void *_handle_connection(void *arg)
                 }
                 else {
                     ERROR0("Wrong request type from client");
-                    connection_close(con);
-                    httpp_destroy(parser);
+                    client_send_400 (client, "unknown request");
                 }
 
                 free(uri);
