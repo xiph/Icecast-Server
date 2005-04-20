@@ -87,13 +87,13 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void create_locks() {
     thread_mutex_create(&_locks.relay_lock);
     thread_mutex_create(&_locks.mounts_lock);
-    thread_mutex_create(&_locks.config_lock);
+    thread_rwlock_create(&_locks.config_lock);
 }
 
 static void release_locks() {
     thread_mutex_destroy(&_locks.relay_lock);
     thread_mutex_destroy(&_locks.mounts_lock);
-    thread_mutex_destroy(&_locks.config_lock);
+    thread_rwlock_destroy(&_locks.config_lock);
 }
 
 void config_initialize(void) {
@@ -226,7 +226,7 @@ void config_clear(ice_config_t *c)
     }
 #ifdef USE_YP
     i = 0;
-    while (i < c->num_yp_directories) 
+    while (i < c->num_yp_directories)
     {
         xmlFree (c->yp_url[i]);
         i++;
@@ -291,12 +291,18 @@ ice_config_locks *config_locks(void)
 
 void config_release_config(void)
 {
-    thread_mutex_unlock(&(_locks.config_lock));
+    thread_rwlock_unlock(&(_locks.config_lock));
 }
 
 ice_config_t *config_get_config(void)
 {
-    thread_mutex_lock(&(_locks.config_lock));
+    thread_rwlock_rlock(&(_locks.config_lock));
+    return &_current_configuration;
+}
+
+ice_config_t *config_grab_config(void)
+{
+    thread_rwlock_wlock(&(_locks.config_lock));
     return &_current_configuration;
 }
 
@@ -614,7 +620,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->burst_size = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "cluster-password") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->cluster_password = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
