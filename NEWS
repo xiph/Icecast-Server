@@ -20,6 +20,19 @@ Feature differences from SVN trunk
 TODO
 . update slave host handling to add entry via url, as on-demand relays don't
   connect until there are listeners.
+. get feedback from people on listener auth via url, Stephen Nixon has done
+  some auth scripts that people can use at http://imux.net/icecast/
+
+2.2-kh4
+. Added FLAC/MIDI to Ogg Handler
+. sources count was left increased if client limit was reached
+. A failed on-demand relay left new-listener count increased
+. streamlist.txt is now built from mount list, not source list as source
+  clients could disappear but may have a mount with a fallback specified.
+. update auth_url with some pointer checks, added server= to the post
+  information sent in 'add'
+. missed <subtype> in previous update
+. a bad request from client caused a clients count leak
 
 2.2-kh3
 . fix nasty buffer reference bug which could cause excessive queue usage
