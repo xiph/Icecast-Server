@@ -494,10 +494,14 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             source->client = client_create (con, parser);
             if (source->client == NULL)
             {
+                config_release_config();
                 global_lock();
                 global.sources--;
                 global_unlock();
-                config_release_config();
+                connection_close (source->con);
+                source->con = NULL;
+                httpp_destroy (source->parser);
+                source->parser = NULL;
                 return -1;
             }
         }
@@ -726,14 +730,14 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
 static void _handle_stats_request (client_t *client, char *uri)
 {
     stats_event_inc(NULL, "stats_connections");
-                
+
     if (connection_check_admin_pass (client->parser) == 0)
     {
         client_send_401 (client);
         ERROR0("Bad password for stats connection");
         return;
     }
-                    
+
     stats_event_inc(NULL, "stats");
 
     thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
@@ -749,7 +753,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     int serverport = 0;
     aliases *alias;
     ice_config_t *config;
-    int client_limit;
     char *uri = passed_uri;
 
     DEBUG1("start with %s", passed_uri);
@@ -766,8 +769,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         }
     }
     alias = config->aliases;
-    client_limit = config->client_limit;
-                    
+
     /* there are several types of HTTP GET clients
     ** media clients, which are looking for a source (eg, URI = /stream.ogg)
     ** stats clients, which are looking for /admin/stats.xml
@@ -860,6 +862,7 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
     {
         connection_close (con);
         httpp_destroy (parser);
+        free (http_compliant);
         return;
     }
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
@@ -869,9 +872,8 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
     }
     else {
         ERROR0("Invalid source request");
-        connection_close(con);
-        free(http_compliant);
-        httpp_destroy(parser);
+        client_send_400 (client, "Invalid source request");
+        free (http_compliant);
         return;
     }
     return;
@@ -969,6 +971,9 @@ static void *_handle_connection(void *arg)
                 client = client_create (con, parser);
                 if (client == NULL)
                 {
+                    sock_write (con->sock, "HTTP/1.0 404 File Not Found\r\n"
+                            "Content-Type: text/html\r\n\r\n"
+                            "<b>Connection limit reached</b>");
                     connection_close(con);
                     httpp_destroy(parser);
                     continue;
