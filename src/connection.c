@@ -498,10 +498,8 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
                 global_lock();
                 global.sources--;
                 global_unlock();
-                connection_close (source->con);
-                source->con = NULL;
-                httpp_destroy (source->parser);
-                source->parser = NULL;
+                connection_close (con);
+                httpp_destroy (parser);
                 return -1;
             }
         }

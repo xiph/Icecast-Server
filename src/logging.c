@@ -69,10 +69,10 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     else {
         tempnum2 = time_days*24;
     }
-    
+
     time_hours = (tempnum2 + t->tm_hour - gmt.tm_hour);
     time_tz = time_hours * 60 + t->tm_min - gmt.tm_min;
-    
+
     if (time_tz < 0) {
         sign = '-';
         time_tz = -time_tz;
