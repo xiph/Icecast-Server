@@ -395,12 +395,6 @@ int fserve_client_create(client_t *httpclient, const char *path)
         }
         m3u_file_available = 0;
     }
-    if (S_ISREG (file_buf.st_mode) == 0)
-    {
-        client_send_404 (httpclient, "Not found");
-        free (fullpath);
-        return 0;
-    }
 
     if (m3u_requested && m3u_file_available == 0)
     {
@@ -436,7 +430,6 @@ int fserve_client_create(client_t *httpclient, const char *path)
                     sourceuri
                     );
         }
-        if (bytes > 0) httpclient->con->sent_bytes = bytes;
         client_destroy (httpclient);
         free (sourceuri);
         free (fullpath);
@@ -450,9 +443,15 @@ int fserve_client_create(client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         bytes = sock_write(httpclient->con->sock, 
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-        if(bytes > 0) httpclient->con->sent_bytes = bytes;
         stats_transform_xslt (httpclient, fullpath);
         client_destroy (httpclient);
+        free (fullpath);
+        return 0;
+    }
+    if (S_ISREG (file_buf.st_mode) == 0)
+    {
+        client_send_404 (httpclient, "The file you requested could not be found");
+        INFO1 ("found requested file but there is no handler for it", fullpath);
         free (fullpath);
         return 0;
     }
