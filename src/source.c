@@ -314,6 +314,11 @@ client_t *source_find_client(source_t *source, int id)
  */
 void source_move_clients (source_t *source, source_t *dest)
 {
+    if (strcmp (source->mount, dest->mount) == 0)
+    {
+        WARN1 ("src and dst are the same \"%s\", skipping", source->mount);
+        return;
+    }
     /* we don't want the two write locks to deadlock in here */
     thread_mutex_lock (&move_clients_mutex);
 
