@@ -599,6 +599,25 @@ static void *_stats_thread(void *arg)
 }
 
 /* you must have the _stats_mutex locked here */
+static void _unregister_listener(stats_event_t **queue)
+{
+    event_listener_t **prev = (event_listener_t **)&_event_listeners,
+                     *current = *prev;
+    while (current)
+    {
+        if (current->queue == queue)
+        {
+            *prev = current->next;
+            free (current);
+            break;
+        }
+        prev = &current->next;
+        current = *prev;
+    }
+}
+
+
+/* you must have the _stats_mutex locked here */
 static void _register_listener(stats_event_t **queue, mutex_t *mutex)
 {
     event_listener_t *node;
@@ -761,6 +780,8 @@ void *stats_connection(void *arg)
     mutex_t local_event_mutex;
     stats_event_t *event;
 
+    INFO0 ("stats client starting");
+
     /* increment the thread count */
     thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
@@ -789,11 +810,13 @@ void *stats_connection(void *arg)
         thread_mutex_unlock(&local_event_mutex);
     }
 
-    thread_mutex_destroy(&local_event_mutex);
-
     thread_mutex_lock(&_stats_mutex);
+    _unregister_listener (&local_event_queue);
     _stats_threads--;
     thread_mutex_unlock(&_stats_mutex);
+
+    thread_mutex_destroy(&local_event_mutex);
+    INFO0 ("stats client finished");
 
     return NULL;
 }
