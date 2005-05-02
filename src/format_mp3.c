@@ -62,7 +62,7 @@ static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(source_t *source, client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
-static void format_mp3_apply_settings(struct source_tag *source, struct _mount_proxy *mount);
+static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
 
 typedef struct {
@@ -115,6 +115,7 @@ int format_mp3_get_plugin (source_t *source, http_parser_t *parser)
         {
             state->offset = 0;
             plugin->get_buffer = mp3_get_filter_meta;
+            state->interval = state->inline_metadata_interval;
         }
     }
     source->format = plugin;
@@ -193,12 +194,22 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
 }
 
 
-static void format_mp3_apply_settings (source_t *source, mount_proxy *mount)
+static void format_mp3_apply_settings (client_t *client, format_plugin_t *format, mount_proxy *mount)
 {
-    mp3_state *source_mp3 = source->format->_state;
+    mp3_state *source_mp3 = format->_state;
 
-    source_mp3->interval = -1;
-    if (mount->mp3_meta_interval >= 0)
+    if (mount->mp3_meta_interval < 0)
+    {
+        char *metadata = httpp_getvar (client->parser, "icy-metaint");
+        source_mp3->interval = -1;
+        if (metadata)
+        {
+            int interval = atoi (metadata);
+            if (interval > 0)
+                source_mp3->interval = interval;
+        }
+    }
+    else
         source_mp3->interval = mount->mp3_meta_interval;
     DEBUG2 ("mp3 interval %d, %d", mount->mp3_meta_interval, source_mp3->interval);
 }
@@ -414,18 +425,18 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     int bytes;
     refbuf_t *refbuf;
     mp3_state *source_mp3 = source->format->_state;
+    format_plugin_t *format = source->format;
 
     if ((refbuf = refbuf_new (2048)) == NULL)
         return NULL;
-    bytes = sock_read_bytes (source->client->con->sock, refbuf->data, 2048);
 
-    if (bytes == 0)
+    bytes = client_read_bytes (source->client, refbuf->data, 2048);
+    if (bytes < 0)
     {
-        INFO1 ("End of stream %s", source->mount);
-        source->running = 0;
         refbuf_release (refbuf);
         return NULL;
     }
+    format->read_bytes += bytes;
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
@@ -441,9 +452,6 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     }
     refbuf_release (refbuf);
 
-    if (!sock_recoverable (sock_error()))
-        source->running = 0;
-
     return NULL;
 }
 
@@ -457,6 +465,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf_t *refbuf;
     format_plugin_t *plugin = source->format;
     mp3_state *source_mp3 = plugin->_state;
+    format_plugin_t *format = source->format;
     unsigned char *src;
     unsigned int bytes, mp3_block;
     int ret;
@@ -464,28 +473,17 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf = refbuf_new (2048);
     src = refbuf->data;
 
-    ret = sock_read_bytes (source->client->con->sock, refbuf->data, 2048);
-
-    if (ret == 0)
+    ret = client_read_bytes (source->client, refbuf->data, 2048);
+    if (ret < 0) 
     {
-        INFO1 ("End of stream %s", source->mount);
-        source->running = 0;
         refbuf_release (refbuf);
         return NULL;
     }
+    format->read_bytes += ret;
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
         source_mp3->update_metadata = 0;
-    }
-    if (ret < 0)
-    {
-        refbuf_release (refbuf);
-        if (sock_recoverable (sock_error()))
-            return NULL; /* go back to waiting */
-        INFO0 ("Error on connection from source");
-        source->running = 0;
-        return NULL;
     }
     /* fill the buffer with the read data */
     bytes = (unsigned int)ret;

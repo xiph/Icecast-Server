@@ -40,6 +40,8 @@ typedef struct _format_plugin_tag
     char *mount;
 
     char *contenttype;
+    uint64_t read_bytes;
+    uint64_t sent_bytes;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(struct source_tag *source, client_t *client);
@@ -47,7 +49,7 @@ typedef struct _format_plugin_tag
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
-    void (*apply_settings)(struct source_tag *source, struct _mount_proxy *mount);
+    void (*apply_settings)(client_t *client, struct _format_plugin_tag *format, struct _mount_proxy *mount);
 
     /* for internal state management */
     void *_state;

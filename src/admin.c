@@ -1044,14 +1044,6 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);
-        stats_event(source->mount, "title", value);
-        /* At this point, we assume that the metadata passed in
-           is encoded in UTF-8 */
-        logging_playlist(source->mount, value, source->listeners);
-        /* If we get an update on the mountpoint, force a
-         * yp touch */
-        yp_touch (source->mount);
-
         thread_mutex_unlock (&source->lock);
         html_success(client, "Metadata update successful");
     }

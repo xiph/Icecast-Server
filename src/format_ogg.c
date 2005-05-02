@@ -372,6 +372,7 @@ static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
 static refbuf_t *ogg_get_buffer (source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
+    format_plugin_t *format = source->format;
     char *data = NULL;
     int bytes;
 
@@ -418,23 +419,13 @@ static refbuf_t *ogg_get_buffer (source_t *source)
         /* we need more data to continue getting pages */
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
-        bytes = sock_read_bytes (source->client->con->sock, data, 4096);
+        bytes = client_read_bytes (source->client, data, 4096);
         if (bytes < 0)
         {
-            if (sock_recoverable (sock_error()))
-                return NULL;
-            WARN0 ("source connection has died");
             ogg_sync_wrote (&ogg_info->oy, 0);
-            source->running = 0;
             return NULL;
         }
-        if (bytes == 0)
-        {
-            INFO1 ("End of Stream %s", source->mount);
-            ogg_sync_wrote (&ogg_info->oy, 0);
-            source->running = 0;
-            return NULL;
-        }
+        format->read_bytes += bytes;
         ogg_sync_wrote (&ogg_info->oy, bytes);
     }
 }

@@ -23,6 +23,7 @@
 typedef struct source_tag
 {
     client_t *client;
+    time_t client_stats_update;
     
     char *mount;
 

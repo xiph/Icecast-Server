@@ -121,6 +121,25 @@ void client_destroy(client_t *client)
     free(client);
 }
 
+
+/* helper function for reading data from a client */
+int client_read_bytes (client_t *client, void *buf, unsigned len)
+{
+    int bytes = sock_read_bytes (client->con->sock, buf, len);
+    if (bytes > 0)
+        return bytes;
+
+    if (bytes < 0)
+    {
+        if (sock_recoverable (sock_error()))
+            return -1;
+        WARN0 ("source connection has died");
+    }
+    client->con->error = 1;
+    return -1;
+}
+
+
 void client_send_302(client_t *client, char *location) {
     int bytes;
     bytes = sock_write(client->con->sock, "HTTP/1.0 302 Temporarily Moved\r\n"
@@ -149,7 +168,6 @@ void client_send_404(client_t *client, char *message) {
     bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 404;
     client_destroy(client);
 }

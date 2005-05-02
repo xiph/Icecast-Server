@@ -784,9 +784,11 @@ void *stats_connection(void *arg)
     stats_event_t *event;
 
     INFO0 ("stats client starting");
+
     /* increment the thread count */
     thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
+    stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_create("stats local event", &local_event_mutex);
@@ -815,6 +817,7 @@ void *stats_connection(void *arg)
     thread_mutex_lock(&_stats_mutex);
     _unregister_listener (&local_event_queue);
     _stats_threads--;
+    stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_destroy(&local_event_mutex);

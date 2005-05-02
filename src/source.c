@@ -259,6 +259,7 @@ void source_clear_source (source_t *source)
     source->yp_public = 0;
     source->yp_prevent = 0;
     source->hidden = 0;
+    source->client_stats_update = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
@@ -500,6 +501,14 @@ static void get_next_buffer (source_t *source)
             source_update_settings (config, source);
             config_release_config ();
         }
+        if (current >= source->client_stats_update)
+        {
+            stats_event_args (source->mount, "total_bytes_read",
+                    FORMAT_UINT64, source->format->read_bytes);
+            stats_event_args (source->mount, "total_bytes_sent",
+                    FORMAT_UINT64, source->format->sent_bytes);
+            source->client_stats_update = current + 5;
+        }
         if (fds < 0)
         {
             if (! sock_recoverable (sock_error()))
@@ -527,6 +536,12 @@ static void get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
+        if (source->client->con && source->client->con->error)
+        {
+            INFO1 ("End of Stream %s", source->mount);
+            source->running = 0;
+            continue;
+        }
         if (refbuf)
         {
             /* append buffer to the in-flight data queue,  */
@@ -611,6 +626,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         total_written += bytes;
     }
+    source->format->sent_bytes += total_written;
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
@@ -1089,7 +1105,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->on_disconnect = strdup(mountinfo->on_disconnect);
     }
     if (source->format && source->format->apply_settings)
-        source->format->apply_settings (source, mountinfo);
+        source->format->apply_settings (source->client, source->format, mountinfo);
 }
 
 
@@ -1246,7 +1262,6 @@ void *source_client_thread (void *arg)
             source_free_source (source);
             return NULL;
         }
-        source->client->con->sent_bytes += bytes;
     }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");

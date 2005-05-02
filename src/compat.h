@@ -35,8 +35,10 @@
 
 #ifdef _WIN32
 #define FORMAT_INT64      "%I64d"
+#define FORMAT_UINT64     "%I64u"
 #else
 #define FORMAT_INT64      "%lld"
+#define FORMAT_UINT64     "%llu"
 #endif
 
 #endif /* __COMPAT_H__ */
