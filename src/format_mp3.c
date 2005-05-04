@@ -437,6 +437,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
         return NULL;
     }
     format->read_bytes += bytes;
+    rate_add (format->in_bitrate, bytes, global.time);
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
@@ -480,6 +481,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         return NULL;
     }
     format->read_bytes += ret;
+    rate_add (format->in_bitrate, ret, global.time);
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);

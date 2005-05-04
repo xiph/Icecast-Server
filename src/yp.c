@@ -354,7 +354,7 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info (yp, value, YP_BITRATE);
     free (value);
 
-    value = stats_get_value (yp->mount, "stream_description");
+    value = stats_get_value (yp->mount, "server_description");
     add_yp_info (yp, value, YP_SERVER_DESC);
     free (value);
 
@@ -373,7 +373,7 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
     {
         yp->process = do_yp_touch;
         /* force first touch in 5 secs */
-        yp->next_update = time(NULL) + 5;
+        yp->next_update = global.time + 5;
     }
 
     return 0;
@@ -486,7 +486,7 @@ static void yp_process_server (struct yp_server *server)
     yp = server->mounts;
     while (yp)
     {
-        now = time (NULL);
+        now = global.time;
         process_ypdata (server, yp);
         yp = yp->next;
     }

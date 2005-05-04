@@ -548,6 +548,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount->max_listeners = -1;
     mount->burst_size = -1;
     mount->mp3_meta_interval = -1;
+    mount->yp_public = -1;
     mount->next = NULL;
 
     do {

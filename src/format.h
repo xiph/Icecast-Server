@@ -42,6 +42,8 @@ typedef struct _format_plugin_tag
     char *contenttype;
     uint64_t read_bytes;
     uint64_t sent_bytes;
+    struct rate_calc *in_bitrate;
+    struct rate_calc *out_bitrate;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(struct source_tag *source, client_t *client);
@@ -63,6 +65,8 @@ void format_send_general_headers(format_plugin_t *format,
         struct source_tag *source, client_t *client);
 int format_http_write_to_client (struct source_tag *source, client_t *client);
 int format_intro_write_to_client (struct source_tag *source, client_t *client);
+
+void format_free_plugin (format_plugin_t *format);
 
 #endif  /* __FORMAT_H__ */
 

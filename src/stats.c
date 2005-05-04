@@ -538,8 +538,14 @@ static void *_stats_thread(void *arg)
     stats_event_t *event;
     stats_event_t *copy;
     event_listener_t *listener;
+    time_t now = time (NULL);
+    struct tm local;
+    char buffer[100];
 
     stats_event (NULL, "server", ICECAST_VERSION_STRING);
+    localtime_r (&now, &local);
+    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
+    stats_event (NULL, "server_start", buffer);
 
     /* global currently active stats */
     stats_event (NULL, "clients", "0");

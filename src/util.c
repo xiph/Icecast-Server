@@ -49,6 +49,21 @@
 
 #include "logging.h"
 
+struct rate_calc_node
+{
+    time_t time;
+    long value;
+    struct rate_calc_node *next;
+};
+
+struct rate_calc
+{
+    unsigned int seconds;
+    unsigned int blocks;
+    struct rate_calc_node *current;
+};
+
+
 /* Abstract out an interface to use either poll or select depending on which
  * is available (poll is preferred) to watch a single fd.
  *
@@ -632,3 +647,89 @@ struct tm *localtime_r (const time_t *timep, struct tm *result)
      return result;
 }
 #endif
+
+/* setup a rate block of so many seconds, so that an average can be
+ * determined of that range
+ */
+struct rate_calc *rate_setup (unsigned int seconds)
+{
+    struct rate_calc *calc = calloc (1, sizeof (struct rate_calc));
+    struct rate_calc_node *start;
+    int i;
+
+    if (calc == NULL || seconds == 0)
+    {
+        free (calc);
+        return NULL;
+    }
+    for (i=0 ; i <seconds; i++)
+    {
+        struct rate_calc_node *node = calloc (1, sizeof (*node));
+        if (calc->current)
+            calc->current->next = node;
+        else
+            start = node;
+        calc->current = node;
+    }
+    calc->current->next = start;
+    calc->seconds = seconds;
+    return calc;
+}
+
+
+/* add a value to sampled data, t is used to determine which sample
+ * block the sample goes into.
+ */
+void rate_add (struct rate_calc *calc, long value, time_t t)
+{
+    if (t == 0)
+    {
+        calc->blocks = 0;
+        return;
+    }
+    if (t != calc->current->time)
+    {
+        calc->current = calc->current->next;
+        calc->current->value = 0;
+        calc->current->time = t;
+        if (calc->blocks < calc->seconds)
+            calc->blocks++;
+    }
+    calc->current->value += value;
+}
+
+
+/* return the average sample value over all the blocks except the 
+ * current one, as that may be incomplete
+ */
+long rate_avg (struct rate_calc *calc)
+{
+    struct rate_calc_node *node = calc->current->next;
+    int i = calc->blocks;
+    long total = 0;
+
+    if (i < 2)
+        return 0;
+    i--;
+    for (; i; i--)
+    {
+        total += node->value;
+        node = node->next;
+    }
+    return total / (calc->blocks - 1);
+}
+
+
+void rate_free (struct rate_calc *calc)
+{
+    int i = calc->seconds;
+
+    for (; i; i--)
+    {
+        struct rate_calc_node *to_go = calc->current;
+        calc->current = to_go->next;
+        free (to_go);
+    }
+    free (calc);
+}
+

@@ -231,8 +231,7 @@ void source_clear_source (source_t *source)
     source->new_listeners = 0;
     source->first_normal_client = NULL;
 
-    if (source->format && source->format->free_plugin)
-        source->format->free_plugin (source->format);
+    format_free_plugin (source->format);
     source->format = NULL;
 
     /* flush out the stream data, we don't want any left over */
@@ -256,7 +255,7 @@ void source_clear_source (source_t *source)
     source->no_mount = 0;
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
-    source->yp_public = 0;
+    source->yp_public = -1;
     source->yp_prevent = 0;
     source->hidden = 0;
     source->client_stats_update = 0;
@@ -465,7 +464,7 @@ static void get_next_buffer (source_t *source)
     while (global.running == ICE_RUNNING && source->running)
     {
         int fds = 0;
-        time_t current = time(NULL);
+        time_t current = global.time;
         int delay = 200;
 
         /* service fast clients but jump out once in a while to check on
@@ -503,6 +502,10 @@ static void get_next_buffer (source_t *source)
         }
         if (current >= source->client_stats_update)
         {
+            stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
+                    8 * rate_avg (source->format->out_bitrate));
+            stats_event_args (source->mount, "incoming_bitrate", "%ld", 
+                    8 * rate_avg (source->format->in_bitrate));
             stats_event_args (source->mount, "total_bytes_read",
                     FORMAT_UINT64, source->format->read_bytes);
             stats_event_args (source->mount, "total_bytes_sent",
@@ -532,6 +535,7 @@ static void get_next_buffer (source_t *source)
                 process_listeners (source, 1, 0);
                 continue;
             }
+            rate_add (source->format->in_bitrate, 0, global.time);
             break;
         }
         source->last_read = current;
@@ -626,6 +630,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         total_written += bytes;
     }
+    rate_add (source->format->out_bitrate, total_written, global.time);
     source->format->sent_bytes += total_written;
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
@@ -698,6 +703,8 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     {
         INFO2("listener count on %s now %d", source->mount, source->listeners);
         stats_event_args (source->mount, "listeners", "%d", source->listeners);
+        if (source->listeners == 0)
+            rate_add (source->format->out_bitrate, 0, 0);
         if (source->listeners == 0 && source->on_demand)
             source->running = 0;
     }
@@ -752,27 +759,32 @@ static void process_pending_clients (source_t *source)
 
 static void source_init (source_t *source)
 {
-    char *str = NULL;
+    char *str = "0";
+    char buffer [100];
+    struct tm local;
 
     thread_mutex_lock (&source->lock);
-    do
+    if (source->yp_public < 0)
     {
-        str = "0";
-        if (source->yp_prevent)
-            break;
-        if ((str = httpp_getvar (source->client->parser, "ice-public")))
-            break;
-        if ((str = httpp_getvar (source->client->parser, "icy-pub")))
-            break;
-        if ((str = httpp_getvar (source->client->parser, "x-audiocast-public")))
-            break;
-        /* handle header from icecast v2 release */
-        if ((str = httpp_getvar (source->client->parser, "icy-public")))
-            break;
-        str = "0";
-    } while (0);
-    source->yp_public = atoi (str);
-    stats_event (source->mount, "public", str);
+
+        do
+        {
+            if (source->yp_prevent)
+                break;
+            if ((str = httpp_getvar (source->client->parser, "ice-public")))
+                break;
+            if ((str = httpp_getvar (source->client->parser, "icy-pub")))
+                break;
+            if ((str = httpp_getvar (source->client->parser, "x-audiocast-public")))
+                break;
+            /* handle header from icecast v2 release */
+            if ((str = httpp_getvar (source->client->parser, "icy-public")))
+                break;
+            str = "0";
+        } while (0);
+        source->yp_public = atoi (str);
+        stats_event (source->mount, "public", str);
+    }
     stats_event (source->mount, "server_type", source->format->contenttype);
 
     if (source->dumpfilename != NULL)
@@ -797,7 +809,7 @@ static void source_init (source_t *source)
         sock_set_blocking (source->client->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
-    source->last_read = time (NULL);
+    source->last_read = global.time;
     source->running = 1;
 
     source->audio_info = util_dict_new();
@@ -811,6 +823,10 @@ static void source_init (source_t *source)
     auth_stream_start (source->mount);
 
     thread_mutex_unlock (&source->lock);
+
+    localtime_r (&global.time, &local);
+    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
+    stats_event (source->mount, "stream_start", buffer);
 
     if (source->on_connect)
         source_run_script (source->on_connect, source->mount);
@@ -1019,6 +1035,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->fallback_override = mountinfo->fallback_override;
     source->no_mount = mountinfo->no_mount;
     source->hidden = mountinfo->hidden;
+    source->yp_public = mountinfo->yp_public;
+
+    if (mountinfo->yp_public >= 0)
+        stats_event_args (source->mount, "public", "%d", mountinfo->yp_public);
 
     if (mountinfo->stream_name)
         stats_event (source->mount, "server_name", mountinfo->stream_name);
@@ -1040,9 +1060,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     if (mountinfo->subtype)
         stats_event (source->mount, "subtype", mountinfo->subtype);
-
-    if (mountinfo->yp_public)
-        source->yp_public = mountinfo->yp_public;
 
     if (mountinfo->auth)
         stats_event (source->mount, "authenticator", mountinfo->auth->type);
@@ -1130,7 +1147,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
             if (str) break;
             str = httpp_getvar(parser, "x-audiocast-name");
         } while (0);
-        stats_event (source->mount, "server_name", str);
+        if (str)
+            stats_event (source->mount, "server_name", str);
 
         do {
             str = httpp_getvar(parser, "ice-description");
@@ -1139,7 +1157,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
             if (str) break;
             str = httpp_getvar(parser, "x-audiocast-description");
         } while (0);
-        stats_event (source->mount, "server_description", str);
+        if (str)
+            stats_event (source->mount, "server_description", str);
 
         do {
             str = httpp_getvar(parser, "ice-genre");
@@ -1148,7 +1167,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
             if (str) break;
             str = httpp_getvar(parser, "x-audiocast-genre");
         } while (0);
-        stats_event (source->mount, "genre", str);
+        if (str)
+            stats_event (source->mount, "genre", str);
 
         do {
             str = httpp_getvar(parser, "ice-url");
@@ -1157,7 +1177,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
             if (str) break;
             str = httpp_getvar(parser, "x-audiocast-url");
         } while (0);
-        stats_event (source->mount, "server_url", str);
+        if (str)
+            stats_event (source->mount, "server_url", str);
 
         do {
             str = httpp_getvar(parser, "ice-bitrate");
@@ -1166,7 +1187,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
             if (str) break;
             str = httpp_getvar(parser, "x-audiocast-bitrate");
         } while (0);
-        stats_event (source->mount, "bitrate", str);
+        if (str)
+            stats_event (source->mount, "bitrate", str);
     }
 
     if (mountinfo)

@@ -64,6 +64,17 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_GENERIC;
 }
 
+void format_free_plugin (format_plugin_t *format)
+{
+    if (format == NULL)
+        return;
+    rate_free (format->in_bitrate);
+    rate_free (format->out_bitrate);
+    if (format->free_plugin)
+        format->free_plugin (format);
+}
+
+
 int format_get_plugin (format_type_t type, source_t *source, http_parser_t *parser)
 {
     int ret = -1;
@@ -78,9 +89,8 @@ int format_get_plugin (format_type_t type, source_t *source, http_parser_t *pars
     default:
         break;
     }
-    if (ret < 0)
-        stats_event (source->mount, "content-type",
-                source->format->contenttype);
+    source->format->in_bitrate = rate_setup (10);
+    source->format->out_bitrate = rate_setup (10);
 
     return ret;
 }

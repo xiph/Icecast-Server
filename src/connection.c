@@ -925,7 +925,11 @@ static void *_handle_connection(void *arg)
                     config = config_get_config();
                     if (config->listeners[i].shoutcast_compat) {
                         char *shoutcast_mount = strdup (config->shoutcast_mount);
-                        source_password = strdup(config->source_password);
+                        mount_proxy *mountinfo = config_find_mount (config, config->shoutcast_mount);
+                        if (mountinfo && mountinfo->password)
+                            source_password = strdup (mountinfo->password);
+                        else
+                            source_password = strdup (config->source_password);
                         config_release_config();
                         _handle_shoutcast_compatible(con, shoutcast_mount, source_password);
                         free(source_password);

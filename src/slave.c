@@ -693,6 +693,7 @@ static void *_slave_thread(void *arg)
         thread_sleep (1000000);
         if (slave_running == 0)
             break;
+        time (&global.time);
         if (rescan_relays == 0 && max_interval > ++interval)
             continue;
 
