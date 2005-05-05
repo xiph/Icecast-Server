@@ -23,6 +23,20 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh5
+. Added total read and sent stats for each mount.
+. Added start time for server and each mount
+. Added average bandwidth stats for each mount, incoming and outgoing
+. fixup problem with stats client exiting. wasn't unregistering
+. outgoing mp3 metadata default to incoming if present
+. update to explict stream settings in mount
+. prevent cyclic fallback mounts ie A->B B-A where B is down
+. reduce time syscall call usage
+. lookup mount list password for shoutcast source clients
+. 404 unknown requests
+. removed dead/duplicated code
+. check for non-regular file in fserve
+
 2.2-kh4
 . Added FLAC/MIDI to Ogg Handler
 . sources count was left increased if client limit was reached
