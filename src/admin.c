@@ -973,18 +973,30 @@ static void command_list_mounts(client_t *client, int response)
         int ret = snprintf (buffer, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
-        avl_node *node = avl_get_first(global.source_tree);
-        while (node && ret > 0 && (unsigned)ret < remaining)
+        ice_config_t *config = config_get_config ();
+        mount_proxy *mountinfo = config->mounts;
+        while (mountinfo)
         {
-            source_t *source = (source_t *)node->key;
-            node = avl_get_next(node);
-            if (source->hidden || source->running == 0)
+            mount_proxy *current = mountinfo;
+            source_t *source;
+            mountinfo = mountinfo->next;
+
+            /* now check that a source is available */
+            source = source_find_mount (current->mountname);
+
+            if (source == NULL)
+                continue;
+            if (source->running == 0)
+                continue;
+            if (source->hidden)
                 continue;
             remaining -= ret;
             buf += ret;
-            ret = snprintf (buf, remaining, "%s\n", source->mount);
+            ret = snprintf (buf, remaining, "%s\n", current->mountname);
         }
         avl_tree_unlock (global.source_tree);
+        config_release_config();
+
         /* handle last line */
         if (ret > 0 && (unsigned)ret < remaining)
         {
