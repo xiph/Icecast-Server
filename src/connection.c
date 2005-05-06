@@ -500,7 +500,21 @@ int connection_complete_source (source_t *source)
          * so we only do this once we know we're going to accept the source.
          */
         if (source->client == NULL)
+        {
             source->client = client_create (source->con, source->parser);
+            if (source->client == NULL)
+            {
+                config_release_config();
+                global_lock();
+                global.sources--;
+                global_unlock();
+                connection_close (source->con);
+                source->con = NULL;
+                httpp_destroy (source->parser);
+                source->parser = NULL;
+                return -1;
+            }
+        }
 
         while (mountproxy)
         {
@@ -686,13 +700,9 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
 }
 
 
-static void _handle_source_request(connection_t *con, 
-        http_parser_t *parser, char *uri, int auth_style)
+static void _handle_source_request (client_t *client, char *uri, int auth_style)
 {
-    client_t *client;
     source_t *source;
-
-    client = client_create(con, parser);
 
     INFO1("Source logging in at mountpoint \"%s\"", uri);
 
@@ -702,9 +712,9 @@ static void _handle_source_request(connection_t *con,
         client_send_401 (client);
         return;
     }
-
     if (auth_style == ICECAST_SOURCE_AUTH) {
-        if (!connection_check_source_pass(parser, uri)) {
+        if (connection_check_source_pass (client->parser, uri) == 0)
+        {
             /* We commonly get this if the source client is using the wrong
              * protocol: attempt to diagnose this and return an error
              */
@@ -721,8 +731,8 @@ static void _handle_source_request(connection_t *con,
             source->shoutcast_compat = 1;
         }
         source->client = client;
-        source->parser = parser;
-        source->con = con;
+        source->parser = client->parser;
+        source->con = client->con;
         if (connection_complete_source (source) < 0)
         {
             source->client = NULL;
@@ -740,35 +750,25 @@ static void _handle_source_request(connection_t *con,
 }
 
 
-static void _handle_stats_request(connection_t *con, 
-        http_parser_t *parser, char *uri)
+static void _handle_stats_request (client_t *client, char *uri)
 {
-    stats_connection_t *stats;
-
     stats_event_inc(NULL, "stats_connections");
-                
-    if (!connection_check_admin_pass(parser)) {
+
+    if (connection_check_admin_pass (client->parser) == 0)
+    {
+        client_send_401 (client);
         ERROR0("Bad password for stats connection");
-        connection_close(con);
-        httpp_destroy(parser);
         return;
     }
-                    
+
     stats_event_inc(NULL, "stats");
-                    
-    /* create stats connection and create stats handler thread */
-    stats = (stats_connection_t *)malloc(sizeof(stats_connection_t));
-    stats->parser = parser;
-    stats->con = con;
-                    
-    thread_create("Stats Connection", stats_connection, (void *)stats, THREAD_DETACHED);
+
+    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
 }
 
-static void _handle_get_request(connection_t *con,
-        http_parser_t *parser, char *passed_uri)
+static void _handle_get_request (client_t *client, char *passed_uri)
 {
     char *fullpath;
-    client_t *client;
     int bytes;
     struct stat statbuf;
     source_t *source;
@@ -780,7 +780,6 @@ static void _handle_get_request(connection_t *con,
     int serverport = 0;
     aliases *alias;
     ice_config_t *config;
-    int client_limit;
     int ret;
     char *uri = passed_uri;
 
@@ -790,14 +789,13 @@ static void _handle_get_request(connection_t *con,
         host = strdup (config->hostname);
     port = config->port;
     for(i = 0; i < global.server_sockets; i++) {
-        if(global.serversock[i] == con->serversock) {
+        if(global.serversock[i] == client->con->serversock) {
             serverhost = config->listeners[i].bind_address;
             serverport = config->listeners[i].port;
             break;
         }
     }
     alias = config->aliases;
-    client_limit = config->client_limit;
 
     /* there are several types of HTTP GET clients
     ** media clients, which are looking for a source (eg, URI = /stream.ogg)
@@ -820,8 +818,6 @@ static void _handle_get_request(connection_t *con,
     }
     config_release_config();
 
-    /* make a client */
-    client = client_create(con, parser);
     stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
@@ -894,16 +890,6 @@ static void _handle_get_request(connection_t *con,
     }
     free (host);
 
-    global_lock();
-    if (global.clients >= client_limit) {
-        global_unlock();
-        client_send_404(client,
-                "The server is already full. Try again later.");
-        if (uri != passed_uri) free (uri);
-        return;
-    }
-    global_unlock();
-                    
     avl_tree_rlock(global.source_tree);
     source = source_find_mount(uri);
     if (source) {
@@ -949,21 +935,12 @@ static void _handle_get_request(connection_t *con,
             }
         }
 
-        /* And then check that there's actually room in the server... */
         global_lock();
-        if (global.clients >= client_limit) {
-            global_unlock();
-            avl_tree_unlock(global.source_tree);
-            client_send_404(client, 
-                    "The server is already full. Try again later.");
-            if (uri != passed_uri) free (uri);
-            return;
-        }
         /* Early-out for per-source max listeners. This gets checked again
          * by the source itself, later. This route gives a useful message to
          * the client, also.
          */
-        else if(source->max_listeners != -1 && 
+        if (source->max_listeners != -1 && 
                 source->listeners >= source->max_listeners) 
         {
             global_unlock();
@@ -973,7 +950,6 @@ static void _handle_get_request(connection_t *con,
             if (uri != passed_uri) free (uri);
             return;
         }
-        global.clients++;
         global_unlock();
                         
         source->format->create_client_data (source, client);
@@ -1048,19 +1024,19 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
             "SOURCE %s HTTP/1.0\r\n%s", mount, header);
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
-    if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        _handle_source_request(con, parser, mount, SHOUTCAST_SOURCE_AUTH);
-        free(http_compliant);
-        return;
+    if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
+    {
+        client_t *client = client_create (con, parser);
+        if (client)
+        {
+            _handle_source_request (client, mount, SHOUTCAST_SOURCE_AUTH);
+            free (http_compliant);
+            return;
+        }
     }
-    else {
-        ERROR0("Invalid source request");
-        connection_close(con);
-        free(http_compliant);
-        httpp_destroy(parser);
-        return;
-    }
-    return;
+    connection_close (con);
+    httpp_destroy (parser);
+    free (http_compliant);
 }
 
 static void *_handle_connection(void *arg)
@@ -1145,25 +1121,36 @@ static void *_handle_connection(void *arg)
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
                 uri = util_normalise_uri(rawuri);
 
-                if(!uri) {
-                    client = client_create(con, parser);
-                    client_send_404(client, "The path you requested was invalid");
+                if (uri == NULL)
+                {
+                    sock_write(con->sock, "The path you requested was invalid\r\n");
+                    connection_close(con);
+                    httpp_destroy(parser);
+                    continue;
+                }
+                client = client_create (con, parser);
+                if (client == NULL)
+                {
+                    sock_write (con->sock, "HTTP/1.0 404 File Not Found\r\n"
+                            "Content-Type: text/html\r\n\r\n"
+                            "<b>Connection limit reached</b>");
+                    connection_close(con);
+                    httpp_destroy(parser);
                     continue;
                 }
 
                 if (parser->req_type == httpp_req_source) {
-                    _handle_source_request(con, parser, uri, ICECAST_SOURCE_AUTH);
+                    _handle_source_request (client, uri, ICECAST_SOURCE_AUTH);
                 }
                 else if (parser->req_type == httpp_req_stats) {
-                    _handle_stats_request(con, parser, uri);
+                    _handle_stats_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_get) {
-                    _handle_get_request(con, parser, uri);
+                    _handle_get_request (client, uri);
                 }
                 else {
                     ERROR0("Wrong request type from client");
-                    connection_close(con);
-                    httpp_destroy(parser);
+                    client_send_400 (client, "unknown request");
                 }
 
                 free(uri);

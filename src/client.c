@@ -27,8 +27,10 @@
 #include "avl/avl.h"
 #include "httpp/httpp.h"
 
+#include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
+#include "stats.h"
 
 #include "client.h"
 #include "logging.h"
@@ -38,7 +40,23 @@
 
 client_t *client_create(connection_t *con, http_parser_t *parser)
 {
+    ice_config_t *config = config_get_config ();
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
+    int client_limit = config->client_limit;
+    config_release_config ();
+
+    global_lock();
+    if (global.clients >= client_limit || client == NULL)
+    {
+        client_limit = global.clients;
+        global_unlock();
+        free (client);
+        WARN1 ("server client limit reached (%d clients)", client_limit);
+        return NULL;
+    }
+    global.clients++;
+    stats_event_args (NULL, "clients", "%d", global.clients);
+    global_unlock();
 
     client->con = con;
     client->parser = parser;
@@ -60,6 +78,11 @@ void client_destroy(client_t *client)
     
     connection_close(client->con);
     httpp_destroy(client->parser);
+
+    global_lock ();
+    global.clients--;
+    stats_event_args (NULL, "clients", "%d", global.clients);
+    global_unlock ();
 
     /* drop ref counts if need be */
     if (client->refbuf)

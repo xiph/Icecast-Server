@@ -679,15 +679,18 @@ static stats_event_t *_get_event_from_queue(stats_event_t **queue)
     return event;
 }
 
-static int _send_event_to_client(stats_event_t *event, connection_t *con)
+static int _send_event_to_client(stats_event_t *event, client_t *client)
 {
-    int ret;
+    int ret = -1, len;
+    char buf [200];
 
     /* send data to the client!!!! */
-    ret = sock_write(con->sock, "EVENT %s %s %s\n",
+    len = snprintf (buf, sizeof (buf), "EVENT %s %s %s\n",
             (event->source != NULL) ? event->source : "global",
             event->name ? event->name : "null",
             event->value ? event->value : "null");
+    if (len > 0 && len < sizeof (buf))
+        ret = client_send_bytes (client, buf, len);
 
     return (ret == -1) ? 0 : 1;
 }
@@ -775,7 +778,7 @@ static void _atomic_get_and_register(stats_event_t **queue, mutex_t *mutex)
 
 void *stats_connection(void *arg)
 {
-    stats_connection_t *statcon = (stats_connection_t *)arg;
+    client_t *client = (client_t *)arg;
     stats_event_t *local_event_queue = NULL;
     mutex_t local_event_mutex;
     stats_event_t *event;
@@ -785,6 +788,7 @@ void *stats_connection(void *arg)
     /* increment the thread count */
     thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
+    stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_create(&local_event_mutex);
@@ -795,7 +799,7 @@ void *stats_connection(void *arg)
         thread_mutex_lock(&local_event_mutex);
         event = _get_event_from_queue(&local_event_queue);
         if (event != NULL) {
-            if (!_send_event_to_client(event, statcon->con)) {
+            if (!_send_event_to_client(event, client)) {
                 _free_event(event);
                 thread_mutex_unlock(&local_event_mutex);
                 break;
@@ -813,9 +817,11 @@ void *stats_connection(void *arg)
     thread_mutex_lock(&_stats_mutex);
     _unregister_listener (&local_event_queue);
     _stats_threads--;
+    stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_destroy(&local_event_mutex);
+    client_destroy (client);
     INFO0 ("stats client finished");
 
     return NULL;
