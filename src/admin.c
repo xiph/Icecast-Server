@@ -34,7 +34,6 @@
 #include "xslt.h"
 
 #include "format.h"
-#include "format_mp3.h"
 
 #include "logging.h"
 #include "auth.h"
@@ -920,17 +919,11 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
     char *action;
     char *value;
-    mp3_state *state;
 
     DEBUG0("Got shoutcast metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
-
-    if (source->format->type == FORMAT_TYPE_OGG) {
-        client_send_400 (client, "Cannot update metadata on vorbis streams");
-        return;
-    }
 
     if (strcmp (action, "updinfo") != 0)
     {
@@ -938,15 +931,18 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         return;
     }
 
-    state = source->format->_state;
+    if (source->format && source->format->set_tag)
+    {
+        source->format->set_tag (source->format, "title", value);
 
-    mp3_set_tag (source->format, "title", value);
-
-    DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
-        source->mount, value);
-
-
-    html_success(client, "Metadata update successful");
+        DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
+                source->mount, value);
+        html_success(client, "Metadata update successful");
+    }
+    else
+    {
+        client_send_400 (client, "mountpoint will not accept URL updates");
+    }
 }
 
 static void command_stats(client_t *client, int response) {

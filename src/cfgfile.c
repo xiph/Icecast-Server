@@ -521,6 +521,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     /* default <mount> settings */
     mount->max_listeners = -1;
     mount->burst_size = -1;
+    mount->mp3_meta_interval = -1;
     mount->next = NULL;
 
     do {
@@ -550,6 +551,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         else if (strcmp(node->name, "max-listeners") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_listeners = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "mp3-metadata-interval") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->mp3_meta_interval = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "fallback-override") == 0) {

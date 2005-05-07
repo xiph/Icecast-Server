@@ -60,6 +60,7 @@ typedef struct _mount_proxy {
     int no_yp; /* Do we prevent YP on this mount */
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
+    int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
     char *auth_type; /* Authentication type */
     char *cluster_password;

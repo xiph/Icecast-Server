@@ -912,6 +912,8 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo->burst_size > -1)
         source->burst_size = mountinfo->burst_size;
     DEBUG1 ("amount to burst on client connect set to %u", source->burst_size);
+    if (source->format && source->format->apply_settings)
+        source->format->apply_settings (source->client, source->format, mountinfo);
 }
 
 

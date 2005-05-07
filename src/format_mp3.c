@@ -63,6 +63,8 @@ static int format_mp3_write_buf_to_client(format_plugin_t *self, client_t *clien
 static void format_mp3_send_headers(format_plugin_t *self, 
         source_t *source, client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
+static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
+static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
 
 typedef struct {
@@ -90,6 +92,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->client_send_headers = format_mp3_send_headers;
     plugin->free_plugin = format_mp3_free_plugin;
     plugin->set_tag = mp3_set_tag;
+    plugin->apply_settings = format_mp3_apply_settings;
 
     plugin->contenttype = httpp_getvar (source->parser, "content-type");
     if (plugin->contenttype == NULL) {
@@ -115,6 +118,7 @@ int format_mp3_get_plugin (source_t *source)
         {
             state->offset = 0;
             plugin->get_buffer = mp3_get_filter_meta;
+            state->interval = state->inline_metadata_interval;
         }
     }
     source->format = plugin;
@@ -124,7 +128,7 @@ int format_mp3_get_plugin (source_t *source)
 }
 
 
-void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
+static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
 {
     mp3_state *source_mp3 = plugin->_state;
     unsigned int len;
@@ -193,10 +197,31 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
 }
 
 
+static void format_mp3_apply_settings (client_t *client, format_plugin_t *format, mount_proxy *mount)
+{
+    mp3_state *source_mp3 = format->_state;
+
+    if (mount->mp3_meta_interval <= 0)
+    {
+        char *metadata = httpp_getvar (client->parser, "icy-metaint");
+        source_mp3->interval = -1;
+        if (metadata)
+        {
+            int interval = atoi (metadata);
+            if (interval > 0)
+                source_mp3->interval = interval;
+        }
+    }
+    else
+        source_mp3->interval = mount->mp3_meta_interval;
+    DEBUG2 ("mp3 interval %d, %d", mount->mp3_meta_interval, source_mp3->interval);
+}
+
+
 /* called from the source thread when the metadata has been updated.
  * The artist title are checked and made ready for clients to send
  */
-void mp3_set_title (source_t *source)
+static void mp3_set_title (source_t *source)
 {
     const char meta[] = "StreamTitle='";
     int size;
