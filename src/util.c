@@ -146,7 +146,7 @@ int util_read_header(int sock, char *buff, unsigned long len, int entire)
     return ret;
 }
 
-const char *util_get_extension(const char *path) {
+char *util_get_extension(const char *path) {
     char *ext = strrchr(path, '.');
 
     if(ext == NULL)

@@ -21,12 +21,6 @@
 #include <libxml/tree.h>
 
 
-typedef struct _stats_connection_tag
-{
-    connection_t *con;
-    http_parser_t *parser;
-} stats_connection_t;
-
 typedef struct _stats_node_tag
 {
     char *name;

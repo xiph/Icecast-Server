@@ -818,7 +818,6 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
     int http_compliant_len = 0;
     char header[4096];
     http_parser_t *parser;
-    client_t *client;
 
     memset(shoutcast_password, 0, sizeof (shoutcast_password));
     /* Step one of shoutcast auth protocol, read encoder password (1 line) */
@@ -861,26 +860,19 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
             "SOURCE %s HTTP/1.0\r\n%s", mount, header);
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
-    client = client_create (con, parser);
-    if (client == NULL)
+    if (httpp_parse(parser, http_compliant, strlen(http_compliant)))
     {
-        connection_close (con);
-        httpp_destroy (parser);
-        free (http_compliant);
-        return;
+        client_t *client = client_create (con, parser);
+        if (client)
+        {
+            _handle_source_request (client, mount, SHOUTCAST_SOURCE_AUTH);
+            free (http_compliant);
+            return;
+        }
     }
-    if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        _handle_source_request (client, mount, SHOUTCAST_SOURCE_AUTH);
-        free(http_compliant);
-        return;
-    }
-    else {
-        ERROR0("Invalid source request");
-        client_send_400 (client, "Invalid source request");
-        free (http_compliant);
-        return;
-    }
-    return;
+    connection_close (con);
+    httpp_destroy (parser);
+    free (http_compliant);
 }
 
 static void *_handle_connection(void *arg)
