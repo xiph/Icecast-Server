@@ -589,6 +589,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->max_listeners = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (strcmp(node->name, "mp3-metadata-interval") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->mp3_meta_interval = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "fallback-override") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->fallback_override = atoi(tmp);
@@ -602,11 +607,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         else if (strcmp(node->name, "no-yp") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->no_yp = atoi(tmp);
-            if(tmp) xmlFree(tmp);
-        }
-        else if (strcmp(node->name, "mp3-metadata-interval") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->mp3_meta_interval = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "hidden") == 0) {
@@ -1027,6 +1027,7 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 }
 
 
+/* return the mount details that match the supplied mountpoint */
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
 {
     mount_proxy *mountinfo = config->mounts, *global = NULL;

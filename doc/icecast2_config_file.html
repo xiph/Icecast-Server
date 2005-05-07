@@ -428,6 +428,13 @@ to a local relay instead
 This optional setting allows for providing a burst size which overrides the default burst size
 as defined in limits.  The value is in bytes.
 </div>
+<h4>mp3-metadata-interval</h4>
+<div class="indentedbox">
+This optional setting specifies what interval, in bytes, there is between metadata updates within
+shoutcast compatible streams. This only applies to new listeners connecting on this mountpoint,
+not existing listeners falling back to this mountpoint.  The default is either the hardcoded
+server default or the value passed from a relay.
+</div>
 <h4>hidden</h4>
 <div class="indentedbox">
 Enable this to prevent this mount from being shown on the xsl pages.  This is mainly

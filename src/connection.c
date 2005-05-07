@@ -640,17 +640,14 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
     int ice_login = config->ice_login;
     char *protocol;
 
-    mount_proxy *mountinfo = config->mounts;
+    mount_proxy *mountinfo = config_find_mount (config, mount);
 
-    while(mountinfo) {
-        if(!strcmp(mountinfo->mountname, mount)) {
-            if(mountinfo->password)
-                pass = mountinfo->password;
-            if(mountinfo->username)
-                user = mountinfo->username;
-            break;
-        }
-        mountinfo = mountinfo->next;
+    if (mountinfo)
+    {
+        if (mountinfo->password)
+            pass = mountinfo->password;
+        if (mountinfo->username)
+            user = mountinfo->username;
     }
 
     if(!pass) {
