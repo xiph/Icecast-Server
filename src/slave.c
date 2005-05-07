@@ -292,6 +292,25 @@ static void check_relay_stream (relay_server *relay)
 }
 
 
+/* compare the 2 relays to see if there are any changes, return 1 if
+ * the relay needs to be restarted, 0 otherwise
+ */
+static int relay_has_changed (relay_server *new, relay_server *old)
+{
+    do
+    {
+        if (strcmp (new->mount, old->mount) != 0)
+            break;
+        if (strcmp (new->server, old->server) != 0)
+            break;
+        if (new->port != old->port)
+            break;
+        return 0;
+    } while (0);
+    return 1;
+}
+
+
 /* go through updated looking for relays that are different configured. The
  * returned list contains relays that should be kept running, current contains
  * the list of relays to shutdown
@@ -312,7 +331,8 @@ update_relay_set (relay_server **current, relay_server *updated)
         {
             /* break out if keeping relay */
             if (strcmp (relay->localmount, existing_relay->localmount) == 0)
-                break;
+                if (relay_has_changed (relay, existing_relay) == 0)
+                    break;
             existing_p = &existing_relay->next;
             existing_relay = existing_relay->next;
         }
