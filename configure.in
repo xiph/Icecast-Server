@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.2.0], [icecast@xiph.org])
+AC_INIT([Icecast], [2.2.0-trunk], [icecast@xiph.org])
 
 AC_PREREQ(2.54)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -90,6 +90,16 @@ XIPH_PATH_THEORA([
     ],
     [ AC_MSG_WARN([Theora disabled!])
     ])
+
+XIPH_PATH_SPEEX(
+    [ XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$SPEEX_CFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$SPEEX_LIBS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$SPEEX_LDFLAGS])
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_speex.o"
+    ],
+    [ AC_MSG_WARN([Speex support disabled!])
+    ])
+
 
 ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
 XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
