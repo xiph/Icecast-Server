@@ -979,3 +979,17 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 }
 
 
+/* return the mount details that match the supplied mountpoint */
+mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
+{
+    mount_proxy *mountinfo = config->mounts;
+
+    while (mountinfo)
+    {
+        if (strcmp (mountinfo->mountname, mount) == 0)
+            break;
+        mountinfo = mountinfo->next;
+    }
+    return mountinfo;
+}
+

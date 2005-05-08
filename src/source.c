@@ -147,34 +147,22 @@ source_t *source_find_mount (const char *mount)
     int depth = 0;
 
     config = config_get_config();
-    while (mount != NULL)
+    while (mount && depth < MAX_FALLBACK_DEPTH)
     {
-        /* limit the number of times through, maybe infinite */
-        if (depth > MAX_FALLBACK_DEPTH)
-        {
-            source = NULL;
-            break;
-        }
-
         source = source_find_mount_raw(mount);
 
         if (source != NULL && source->running)
             break;
 
-        /* source is not running, meaning that the fallback is not configured
-           within the source, we need to check the mount list */
-        mountinfo = config->mounts;
+        /* we either have a source which is not active (relay) or no source
+         * at all. Check the mounts list for fallback settings
+         */
+        mountinfo = config_find_mount (config, mount);
         source = NULL;
-        while (mountinfo)
-        {
-            if (strcmp (mountinfo->mountname, mount) == 0)
-                break;
-            mountinfo = mountinfo->next;
-        }
-        if (mountinfo)
-            mount = mountinfo->fallback_mount;
-        else
-            mount = NULL;
+
+        if (mountinfo == NULL)
+            break;
+        mount = mountinfo->fallback_mount;
         depth++;
     }
 

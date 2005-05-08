@@ -449,7 +449,7 @@ int connection_complete_source (source_t *source)
     if (global.sources < config->source_limit)
     {
         char *contenttype;
-        mount_proxy *mountproxy = config->mounts;
+        mount_proxy *mountproxy;
         format_type_t format_type;
 
         /* setup format handler */
@@ -516,15 +516,10 @@ int connection_complete_source (source_t *source)
             }
         }
 
-        while (mountproxy)
-        {
-            if (strcmp (mountproxy->mountname, source->mount) == 0)
-            {
-                source_apply_mount (source, mountproxy);
-                break;
-            }
-            mountproxy = mountproxy->next;
-        }
+        mountproxy = config_find_mount (config, source->mount);
+        if (mountproxy)
+            source_apply_mount (source, mountproxy);
+
         config_release_config();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;
@@ -651,7 +646,7 @@ int connection_check_relay_pass(http_parser_t *parser)
     return ret;
 }
 
-int connection_check_source_pass(http_parser_t *parser, char *mount)
+int connection_check_source_pass(http_parser_t *parser, const char *mount)
 {
     ice_config_t *config = config_get_config();
     char *pass = config->source_password;
@@ -660,21 +655,15 @@ int connection_check_source_pass(http_parser_t *parser, char *mount)
     int ice_login = config->ice_login;
     char *protocol;
 
-    mount_proxy *mountinfo = config->mounts;
-    thread_mutex_lock(&(config_locks()->mounts_lock));
+    mount_proxy *mountinfo = config_find_mount (config, mount);
 
-    while(mountinfo) {
-        if(!strcmp(mountinfo->mountname, mount)) {
-            if(mountinfo->password)
-                pass = mountinfo->password;
-            if(mountinfo->username)
-                user = mountinfo->username;
-            break;
-        }
-        mountinfo = mountinfo->next;
+    if (mountinfo)
+    {
+        if (mountinfo->password)
+            pass = mountinfo->password;
+        if (mountinfo->username)
+            user = mountinfo->username;
     }
-
-    thread_mutex_unlock(&(config_locks()->mounts_lock));
 
     if(!pass) {
         WARN0("No source password set, rejecting source");
@@ -1081,7 +1070,11 @@ static void *_handle_connection(void *arg)
                     config = config_get_config();
                     if (config->listeners[i].shoutcast_compat) {
                         char *shoutcast_mount = strdup (config->shoutcast_mount);
-                        source_password = strdup(config->source_password);
+                        mount_proxy *mountinfo = config_find_mount (config, config->shoutcast_mount);
+                        if (mountinfo && mountinfo->password)
+                            source_password = strdup (mountinfo->password);
+                        else
+                            source_password = strdup (config->source_password);
                         config_release_config();
                         _handle_shoutcast_compatible(con, shoutcast_mount, source_password);
                         free(source_password);
