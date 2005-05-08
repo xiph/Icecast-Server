@@ -10,7 +10,7 @@ noinst_HEADERS = admin.h cfgfile.h os.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h format.h \
     compat.h format_mp3.h fserve.h xslt.h yp.h event.h md5.h \
     auth.h format_ogg.h \
-    format_vorbis.h format_theora.h format_flac.h format_speex.h
+    format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
     util.c slave.c source.c stats.c refbuf.c client.c \
     xslt.c fserve.c event.c admin.c auth.c md5.c \
