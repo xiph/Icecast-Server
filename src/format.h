@@ -40,6 +40,8 @@ typedef struct _format_plugin_tag
     char *mount;
 
     char *contenttype;
+    uint64_t read_bytes;
+    uint64_t sent_bytes;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(struct _format_plugin_tag *format, client_t *client);

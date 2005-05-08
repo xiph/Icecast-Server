@@ -243,6 +243,7 @@ void source_clear_source (source_t *source)
     source->yp_public = 0;
     source->yp_prevent = 0;
     source->hidden = 0;
+    source->client_stats_update = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
 
@@ -411,6 +412,14 @@ static refbuf_t *get_next_buffer (source_t *source)
 
         fds = util_timed_wait_for_fd (source->con->sock, delay);
 
+        if (current >= source->client_stats_update)
+        {
+            stats_event_args (source->mount, "total_bytes_read",
+                    FORMAT_UINT64, source->format->read_bytes);
+            stats_event_args (source->mount, "total_bytes_sent",
+                    FORMAT_UINT64, source->format->sent_bytes);
+            source->client_stats_update = current + 5;
+        }
         if (fds < 0)
         {
             if (! sock_recoverable (sock_error()))
@@ -432,6 +441,12 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
+        if (source->client->con->error)
+        {
+            INFO1 ("End of Stream %s", source->mount);
+            source->running = 0;
+            continue;
+        }
         if (refbuf)
             break;
     }
@@ -481,6 +496,7 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 
         total_written += bytes;
     }
+    source->format->sent_bytes += total_written;
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */

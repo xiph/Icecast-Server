@@ -428,18 +428,18 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     int bytes;
     refbuf_t *refbuf;
     mp3_state *source_mp3 = source->format->_state;
+    format_plugin_t *format = source->format;
 
     if ((refbuf = refbuf_new (2048)) == NULL)
         return NULL;
-    bytes = sock_read_bytes (source->con->sock, refbuf->data, 2048);
 
-    if (bytes == 0)
+    bytes = client_read_bytes (source->client, refbuf->data, 2048);
+    if (bytes < 0)
     {
-        INFO1 ("End of stream %s", source->mount);
-        source->running = 0;
         refbuf_release (refbuf);
         return NULL;
     }
+    format->read_bytes += bytes;
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
@@ -455,9 +455,6 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     }
     refbuf_release (refbuf);
 
-    if (!sock_recoverable (sock_error()))
-        source->running = 0;
-
     return NULL;
 }
 
@@ -471,6 +468,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf_t *refbuf;
     format_plugin_t *plugin = source->format;
     mp3_state *source_mp3 = plugin->_state;
+    format_plugin_t *format = source->format;
     unsigned char *src;
     unsigned int bytes, mp3_block;
     int ret;
@@ -478,28 +476,17 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf = refbuf_new (2048);
     src = refbuf->data;
 
-    ret = sock_read_bytes (source->con->sock, refbuf->data, 2048);
-
-    if (ret == 0)
+    ret = client_read_bytes (source->client, refbuf->data, 2048);
+    if (ret < 0)
     {
-        INFO1 ("End of stream %s", source->mount);
-        source->running = 0;
         refbuf_release (refbuf);
         return NULL;
     }
+    format->read_bytes += ret;
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
         source_mp3->update_metadata = 0;
-    }
-    if (ret < 0)
-    {
-        refbuf_release (refbuf);
-        if (sock_recoverable (sock_error()))
-            return NULL; /* go back to waiting */
-        INFO0 ("Error on connection from source");
-        source->running = 0;
-        return NULL;
     }
     /* fill the buffer with the read data */
     bytes = (unsigned int)ret;
