@@ -22,9 +22,9 @@
 int util_timed_wait_for_fd(int fd, int timeout);
 int util_read_header(int sock, char *buff, unsigned long len, int entire);
 int util_check_valid_extension(char *uri);
-char *util_get_extension(char *path);
+char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
-char *util_get_path_from_normalised_uri(char *uri);
+char *util_get_path_from_normalised_uri(const char *uri);
 char *util_normalise_uri(char *uri);
 char *util_base64_encode(char *data);
 char *util_base64_decode(unsigned char *input);

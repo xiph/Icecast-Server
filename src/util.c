@@ -131,7 +131,7 @@ int util_read_header(int sock, char *buff, unsigned long len, int entire)
     return ret;
 }
 
-char *util_get_extension(char *path) {
+char *util_get_extension(const char *path) {
     char *ext = strrchr(path, '.');
 
     if(ext == NULL)
@@ -225,7 +225,7 @@ char *util_get_path_from_uri(char *uri) {
     }
 }
 
-char *util_get_path_from_normalised_uri(char *uri) {
+char *util_get_path_from_normalised_uri(const char *uri) {
     char *fullpath;
     char *webroot;
     ice_config_t *config = config_get_config();

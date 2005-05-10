@@ -85,7 +85,7 @@ typedef struct {
     char *type;
 } mime_type;
 
-static int _free_client(void *key);
+static void fserve_client_destroy(fserve_t *fclient);
 static int _delete_mapping(void *mapping);
 static void *fserv_thread_function(void *arg);
 static void create_mime_mappings(const char *fn);
@@ -105,6 +105,7 @@ void fserve_initialize(void)
     thread_mutex_create (&pending_lock);
 
     run_fserv = 1;
+    stats_event (NULL, "file_connections", "0");
 
     fserv_thread = thread_create("File Serving Thread", 
             fserv_thread_function, NULL, THREAD_ATTACHED);
@@ -143,7 +144,7 @@ int fserve_client_waiting (void)
         }
     }
     if (!ufds)
-      thread_sleep(200000);
+        thread_sleep(200000);
     else if (poll(ufds, fserve_clients, 200) > 0)
     {
         /* mark any clients that are ready */
@@ -230,7 +231,7 @@ static void wait_for_fds() {
         }
         /* drop out of here is someone is ready */
         if (fserve_client_waiting())
-           break;
+            break;
     }
 }
 
@@ -260,7 +261,7 @@ static void *fserv_thread_function(void *arg)
                         fserve_t *to_go = fclient;
                         fclient = fclient->next;
                         *trail = fclient;
-                        _free_client (to_go);
+                        fserve_client_destroy (to_go);
                         fserve_clients--;
                         client_tree_changed = 1;
                         continue;
@@ -285,7 +286,7 @@ static void *fserv_thread_function(void *arg)
                     fclient = fclient->next;
                     *trail = fclient;
                     fserve_clients--;
-                    _free_client (to_go);
+                    fserve_client_destroy (to_go);
                     client_tree_changed = 1;
                     continue;
                 }
@@ -302,7 +303,7 @@ static void *fserv_thread_function(void *arg)
         fserve_t *to_go = (fserve_t *)pending_list;
         pending_list = to_go->next;
 
-        _free_client (to_go);
+        fserve_client_destroy (to_go);
     }
     thread_mutex_unlock (&pending_lock);
 
@@ -310,13 +311,13 @@ static void *fserv_thread_function(void *arg)
     {
         fserve_t *to_go = active_list;
         active_list = to_go->next;
-        _free_client (to_go);
+        fserve_client_destroy (to_go);
     }
 
     return NULL;
 }
 
-static const char *fserve_content_type(char *path)
+static const char *fserve_content_type(const char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
@@ -358,7 +359,8 @@ static void fserve_client_destroy(fserve_t *client)
     }
 }
 
-int fserve_client_create(client_t *httpclient, char *path)
+
+int fserve_client_create(client_t *httpclient, const char *path)
 {
     fserve_t *client = calloc(1, sizeof(fserve_t));
     int bytes;
@@ -474,6 +476,7 @@ int fserve_client_create(client_t *httpclient, char *path)
         if(bytes > 0) httpclient->con->sent_bytes = bytes;
     }
 
+    stats_event_inc (NULL, "file_connections");
     sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
     sock_set_nodelay(client->client->con->sock);
 
@@ -485,14 +488,6 @@ int fserve_client_create(client_t *httpclient, char *path)
     return 0;
 }
 
-static int _free_client(void *key)
-{
-    fserve_t *client = (fserve_t *)key;
-
-    fserve_client_destroy(client);
-    
-    return 1;
-}
 
 static int _delete_mapping(void *mapping) {
     mime_type *map = mapping;
