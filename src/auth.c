@@ -247,7 +247,8 @@ int add_client_to_source (source_t *source, client_t *client)
     source->pending_clients = client;
     thread_mutex_unlock (&source->lock);
 
-    client->write_to_client = format_http_write_to_client;
+    client->write_to_client = format_generic_write_to_client;
+    client->check_buffer = format_check_http_buffer;
     client->refbuf = refbuf_new (4096);
 
     sock_set_blocking (client->con->sock, SOCK_NONBLOCK);

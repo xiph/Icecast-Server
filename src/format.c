@@ -115,7 +115,7 @@ static int get_intro_data (FILE *intro, client_t *client)
 /* wrapper for the per-format write to client routine. Here we populate
  * the refbuf before calling it
  */
-int format_intro_write_to_client (source_t *source, client_t *client)
+int format_check_intro_buffer (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
 
@@ -135,7 +135,7 @@ int format_intro_write_to_client (source_t *source, client_t *client)
                 client->intro_offset = 0;
                 /* move client to stream */
                 client_set_queue (client, refbuf);
-                client->write_to_client = source->format->write_buf_to_client;
+                client->check_buffer = format_advance_queue;
             }
             else
             {
@@ -147,22 +147,21 @@ int format_intro_write_to_client (source_t *source, client_t *client)
         client->pos = 0;
         client->intro_offset += refbuf->len;
     }
-
-    return source->format->write_buf_to_client (source, client);
+    return 0;
 }
 
 
-int format_http_write_to_client (source_t *source, client_t *client)
+/* call this to verify that the HTTP data has been sent and if so setup
+ * callbacks to the appropriate format functions
+ */
+int format_check_http_buffer (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    const char *buf;
-    unsigned int len;
-    int ret;
 
     if (refbuf == NULL)
     {
-        client->write_to_client = source->format->write_buf_to_client;
-        return 0;
+        ERROR0 ("should be impossible");
+        return -1;
     }
     if (client->respcode == 0)
     {
@@ -173,44 +172,56 @@ int format_http_write_to_client (source_t *source, client_t *client)
         {
             ERROR0 ("internal problem, dropping client");
             client->con->error = 1;
-            return 0;
+            return -1;
         }
     }
 
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
+    if (client->pos == refbuf->len)
+    {
+        client->write_to_client = source->format->write_buf_to_client;
+        if (source->intro_file)
+        {
+            /* client should be sent an intro file */
+            client->check_buffer = format_check_intro_buffer;
+            client->intro_offset = 0;
+        }
+        else
+        {
+            client->check_buffer = format_advance_queue;
+            client_set_queue (client, NULL);
+        }
+        return -1;
+    }
+    return 0;
+}
+
+
+int format_generic_write_to_client (client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+    int ret;
+    const char *buf = refbuf->data + client->pos;
+    unsigned int len = refbuf->len - client->pos;
 
     ret = client_send_bytes (client, buf, len);
 
     if (ret > 0)
         client->pos += ret;
-    if (client->pos == refbuf->len)
-    {
-        if (source->intro_file)
-        {
-            /* client should be sent an intro file */
-            client->write_to_client = format_intro_write_to_client;
-            client->intro_offset = 0;
-        }
-        else
-        {
-            client_set_queue (client, NULL);
-        }
 
-    }
     return ret;
 }
 
 
-int format_generic_write_to_client (source_t *source, client_t *client)
+/* This is the commonly used for source streams, here we just progress to
+ * the next buffer in the queue if there is no more left to be written from 
+ * the existing buffer.
+ */
+int format_advance_queue (source_t *source, client_t *client)
 {
-    int ret;
-    const char *buf;
-    unsigned int len;
     refbuf_t *refbuf = client->refbuf;
 
     if (refbuf->next == NULL && client->pos == refbuf->len)
-        return 0;
+        return -1;
 
     /* move to the next buffer if we have finished with the current one */
     if (refbuf->next && client->pos == refbuf->len)
@@ -218,16 +229,7 @@ int format_generic_write_to_client (source_t *source, client_t *client)
         client_set_queue (client, refbuf->next);
         refbuf = client->refbuf;
     }
-
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
-
-    ret = client_send_bytes (client, buf, len);
-
-    if (ret > 0)
-        client->pos += ret;
-
-    return ret;
+    return 0;
 }
 
 

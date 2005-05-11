@@ -131,11 +131,13 @@ int fserve_client_waiting (void)
     unsigned int i = 0;
 
     /* only rebuild ufds if there are clients added/removed */
-    if(client_tree_changed) {
+    if (client_tree_changed)
+    {
         client_tree_changed = 0;
         ufds = realloc(ufds, fserve_clients * sizeof(struct pollfd));
         fclient = active_list;
-        while (fclient) {
+        while (fclient)
+        {
             ufds[i].fd = fclient->client->con->sock;
             ufds[i].events = POLLOUT;
             ufds[i].revents = 0;
@@ -143,7 +145,6 @@ int fserve_client_waiting (void)
             i++;
         }
     }
-
     if (!ufds)
         thread_sleep(200000);
     else if (poll(ufds, fserve_clients, 200) > 0)
@@ -232,7 +233,7 @@ static void wait_for_fds() {
         }
         /* drop out of here is someone is ready */
         if (fserve_client_waiting())
-           break;
+            break;
     }
 }
 
@@ -276,7 +277,7 @@ static void *fserv_thread_function(void *arg)
                 }
 
                 /* Now try and send current chunk. */
-                sbytes = client->write_to_client (NULL, client);
+                sbytes = format_generic_write_to_client (client);
 
                 if (client->con->error)
                 {
@@ -317,7 +318,7 @@ static void *fserv_thread_function(void *arg)
 
 const char *fserve_content_type (const char *path)
 {
-    const char *ext = util_get_extension(path);
+    char *ext = util_get_extension(path);
     mime_type exttype = { NULL, NULL };
     void *result;
 
@@ -554,6 +555,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
     fserve_client_destroy (client);
     return 0;
 }
+
 
 static int _delete_mapping(void *mapping) {
     mime_type *map = mapping;

@@ -70,7 +70,6 @@ typedef struct source_tag
     int on_demand;
     int on_demand_req;
     int hidden;
-    int file_only;
     int recheck_settings;
 
     time_t last_read;

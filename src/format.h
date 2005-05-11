@@ -46,7 +46,7 @@ typedef struct _format_plugin_tag
     struct rate_calc *out_bitrate;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
-    int (*write_buf_to_client)(struct source_tag *source, client_t *client);
+    int (*write_buf_to_client)(client_t *client);
     void  (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
     int (*create_client_data)(struct source_tag *source, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
@@ -60,11 +60,13 @@ typedef struct _format_plugin_tag
 format_type_t format_get_type(char *contenttype);
 int format_get_plugin(format_type_t type, struct source_tag *source, http_parser_t *p);
 
-int format_generic_write_to_client (struct source_tag *source, client_t *client);
+int format_generic_write_to_client (client_t *client);
+int format_advance_queue (struct source_tag *source, client_t *client);
+int format_check_http_buffer (struct source_tag *source, client_t *client);
+int format_check_intro_buffer (struct source_tag *source, client_t *client);
+
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
-int format_http_write_to_client (struct source_tag *source, client_t *client);
-int format_intro_write_to_client (struct source_tag *source, client_t *client);
 
 void format_free_plugin (format_plugin_t *format);
 

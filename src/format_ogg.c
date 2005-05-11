@@ -58,7 +58,7 @@ static void free_ogg_client_data (client_t *client);
 
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
-static int write_buf_to_client (source_t *source, client_t *client);
+static int write_buf_to_client (client_t *client);
 
 
 struct ogg_client
@@ -499,24 +499,14 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 /* main client write routine for sending ogg data. Each refbuf has a
  * single page so we only need to determine if there are new headers
  */
-static int write_buf_to_client (source_t *source, client_t *client)
+static int write_buf_to_client (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    char *buf;
-    unsigned len;
+    char *buf = refbuf->data + client->pos;
+    unsigned len = refbuf->len - client->pos;
     struct ogg_client *client_data = client->format_data;
     int ret, written = 0;
 
-    if (refbuf->next == NULL && client->pos == refbuf->len)
-        return 0;
-
-    if (refbuf->next && client->pos == refbuf->len)
-    {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
     do
     {
         if (client_data->headers != refbuf->associated)

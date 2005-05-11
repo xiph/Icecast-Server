@@ -59,7 +59,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
-static int format_mp3_write_buf_to_client(source_t *source, client_t *client);
+static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
@@ -318,26 +318,13 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 /* Handler for writing mp3 data to a client, taking into account whether
  * client has requested shoutcast style metadata updates
  */
-static int format_mp3_write_buf_to_client (source_t *source, client_t *client) 
+static int format_mp3_write_buf_to_client (client_t *client) 
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
     refbuf_t *refbuf = client->refbuf;
-    char *buf;
-    unsigned int len;
-
-    if (refbuf->next == NULL && client->pos == refbuf->len)
-        return 0;
-
-    /* move to the next buffer if we have finished with the current one */
-    if (refbuf->next && client->pos == refbuf->len)
-    {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
+    char *buf = refbuf->data + client->pos;
+    unsigned int len = refbuf->len - client->pos;
 
     do
     {
@@ -475,7 +462,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     src = refbuf->data;
 
     ret = client_read_bytes (source->client, refbuf->data, 2048);
-    if (ret < 0) 
+    if (ret < 0)
     {
         refbuf_release (refbuf);
         return NULL;

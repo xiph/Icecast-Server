@@ -238,7 +238,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
         }
 
         thread_mutex_lock (&source->lock);
-        if (source->file_only == 0 && (source->running || source->on_demand))
+        if (source->running || source->on_demand)
         {
             ice_config_t *config;
             mount_proxy *mountinfo;

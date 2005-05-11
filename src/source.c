@@ -317,7 +317,7 @@ client_t *source_find_client(source_t *source, int id)
 
     return client;
 }
-    
+
 
 /* Move clients from source to dest provided dest is running
  * and that the stream format is the same.
@@ -373,7 +373,7 @@ void source_move_clients (source_t *source, source_t *dest)
              * refbuf it's referring to, if it's http headers then we need
              * to write them so don't release it.
              */
-            if (client->write_to_client != format_http_write_to_client)
+            if (client->check_buffer != format_check_http_buffer)
             {
                 client_set_queue (client, NULL);
                 client->write_to_client = NULL;
@@ -440,6 +440,7 @@ static void find_client_start (source_t *source, client_t *client)
     }
 }
 
+
 /* get some data from the source. The stream data is placed in a refbuf
  * and sent back, however NULL is also valid as in the case of a short
  * timeout and there's no data pending.
@@ -461,8 +462,7 @@ static void get_next_buffer (source_t *source)
         {
             if (source->active_clients != source->first_normal_client)
             {
-                if (source->client->con)
-                    delay = 0;
+                delay = 0;
                 no_delay_count++;
             }
         }
@@ -609,7 +609,10 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         loop--;
 
-        bytes = client->write_to_client (source, client);
+        if (client->check_buffer (source, client) < 0)
+            break;
+
+        bytes = client->write_to_client (client);
         if (bytes <= 0)
         {
             ret = 0;
@@ -652,7 +655,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     {
         int fast_client = send_to_listener (source, client, deletion_expected);
 
-        if (fast_client)
+        if (fast_client && client->check_buffer != format_check_intro_buffer)
         {
             client_t *to_go = client;
 
@@ -712,19 +715,8 @@ static void process_pending_clients (source_t *source)
         /*  trap from when clients have been moved */
         if (to_go->write_to_client == NULL)
         {
-            /* trap for client moved to fallback file */
-            if (source->file_only)
-            {
-                to_go->write_to_client = format_intro_write_to_client;
-                client_set_queue (to_go, refbuf_new(4096));
-                to_go->intro_offset = 0;
-                to_go->pos = 4096;
-            }
-            else
-            {
-                to_go->write_to_client = source->format->write_buf_to_client;
-                client_set_queue (to_go, source->stream_data_tail);
-            }
+            ERROR0 ("client was no write function");
+            client->con->error = 1;
         }
 
         to_go->next = source->active_clients;
@@ -1202,8 +1194,6 @@ void source_update_settings (ice_config_t *config, source_t *source)
     else
         stats_event_hidden (source->mount, NULL, 0);
 
-    if (source->file_only)
-        stats_event (source->mount, "file_only", "1");
     if (source->max_listeners == -1)
         stats_event (source->mount, "max_listeners", "unlimited");
     else
@@ -1363,7 +1353,6 @@ static void *source_fallback_file (void *arg)
         httpp_setvar (parser, "content-type", type);
 
         source->hidden = 1;
-        source->file_only = 1;
         source->yp_prevent = 1;
         source->intro_file = file;
         file = NULL;
