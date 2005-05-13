@@ -409,7 +409,7 @@ static int update_from_master(ice_config_t *config)
         relay_server *new_relays = NULL, *cleanup_relays;
         int len, count = 1;
 
-        username = strdup ("relay");
+        username = strdup (config->master_username);
         if (config->master_password)
             password = strdup (config->master_password);
 

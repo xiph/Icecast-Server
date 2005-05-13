@@ -118,6 +118,7 @@ typedef struct ice_config_tag
     char *master_server;
     int master_server_port;
     int master_update_interval;
+    char *master_username;
     char *master_password;
 
     relay_server *relay;

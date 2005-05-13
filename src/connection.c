@@ -634,7 +634,7 @@ int connection_check_relay_pass(http_parser_t *parser)
     int ret;
     ice_config_t *config = config_get_config();
     char *pass = config->relay_password;
-    char *user = "relay";
+    char *user = config->relay_username;
 
     if(!pass || !user) {
         config_release_config();

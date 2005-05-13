@@ -38,6 +38,7 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
+#define CONFIG_DEFAULT_MASTER_USERNAME "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_FILESERVE 1
@@ -163,6 +164,7 @@ void config_clear(ice_config_t *c)
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
     }
     if (c->master_server) xmlFree(c->master_server);
+    if (c->master_username) xmlFree(c->master_username);
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
@@ -341,6 +343,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_server = NULL;
     configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
+    configuration->master_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->master_password = NULL;
     configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
     configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
@@ -355,7 +358,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->user = CONFIG_DEFAULT_USER;
     configuration->group = CONFIG_DEFAULT_GROUP;
     configuration->num_yp_directories = 0;
-    configuration->relay_username = NULL;
+    configuration->relay_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->relay_password = NULL;
     /* default to a typical prebuffer size used by clients */
     configuration->burst_size = 65536;
@@ -414,6 +417,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "master-server") == 0) {
             if (configuration->master_server) xmlFree(configuration->master_server);
             configuration->master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "master-username") == 0) {
+            if (configuration->master_username) xmlFree(configuration->master_username);
+            configuration->master_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "master-password") == 0) {
             if (configuration->master_password) xmlFree(configuration->master_password);
             configuration->master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
