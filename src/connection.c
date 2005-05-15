@@ -333,7 +333,6 @@ static void _build_pool(void)
 
     config = config_get_config();
     threadpool_size = config->threadpool_size;
-    source_update (config);
     config_release_config();
 
     for (i = 0; i < threadpool_size; i++) {
@@ -857,7 +856,7 @@ void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_p
             "SOURCE %s HTTP/1.0\r\n%s", mount, header);
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
-    if (httpp_parse(parser, http_compliant, strlen(http_compliant)))
+    if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
     {
         client_t *client = client_create (con, parser);
         if (client)

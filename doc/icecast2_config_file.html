@@ -95,6 +95,7 @@ This setting applies to all mountpoints.
 <pre>
     &lt;authentication&gt;
         &lt;source-password&gt;hackme&lt;/source-password&gt;
+        &lt;relay-user&gt;relay&lt;/relay-user&gt;
         &lt;relay-password&gt;hackme&lt;/relay-password&gt;
         &lt;admin-user&gt;admin&lt;/admin-user&gt;
         &lt;admin-password&gt;hackme&lt;/admin-password&gt;
@@ -106,9 +107,15 @@ This setting applies to all mountpoints.
 <div class="indentedbox">
 The unencrypted password used by sources to connect to icecast2.  Currently, the username for all source connections must be 'source'.  This is likely to change in the future.
 </div>
+<h4>relay-user</h4>
+<div class="indentedbox">
+Used in the master server as part of the authentication when a slave requests
+the list of streams to relay.  The default username is 'relay'
+</div>
 <h4>relay-password</h4>
 <div class="indentedbox">
-Currently not used.
+Used in the master server as part of the authentication when a slave requests
+the list of streams to relay.
 </div>
 <h4>admin-user</h4>
 <h4>admin-password</h4>
@@ -201,6 +208,7 @@ certain formats.
     &lt;master-server&gt;127.0.0.1&lt;/master-server&gt;
     &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
     &lt;master-update-interval&gt;120&lt;/master-update-interval&gt;
+    &lt;master-username&gt;relay&lt;/master-username&gt;
     &lt;master-password&gt;hackme&lt;/master-password&gt;
     &lt;relays-on-demand&gt;0&lt;/relays-on-demand&gt;
 
@@ -253,14 +261,14 @@ The interval (in seconds) that the Relay Server will poll the Master Server for 
 </div>
 <h4>master-username</h4>
 <div class="indentedbox">
-This is the username to authenticate with the master. The default is "relay". This is used to
-get hold of the streamlist and can be used to authenticate master relays. The master server
-will compare with the relay-user.
+This is the relay username on the master server.  It is used to query the
+server for a list of mountpoints to relay. If not specified then 'relay' is
+used
 </div>
 <h4>master-password</h4>
 <div class="indentedbox">
-As with master-username, this is the password to authenticate with the master server. The
-relay-password on the master server is used for comparison.
+This is the relay password on the Master server.  It is used to query the
+server for a list of mountpoints to relay.
 </div>
 <h4>master-redirect-port</h4>
 <div class="indentedbox">

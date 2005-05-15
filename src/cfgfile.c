@@ -39,6 +39,7 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
 #define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
+#define CONFIG_DEFAULT_MASTER_USERNAME "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_FILESERVE 1
@@ -350,7 +351,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_server = NULL;
     configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
-    configuration->master_username = NULL;
+    configuration->master_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->master_password = NULL;
     configuration->master_relay_auth = 0;
     configuration->master_redirect_port = 0;
@@ -368,7 +369,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->group = CONFIG_DEFAULT_GROUP;
     configuration->num_yp_directories = 0;
     configuration->slaves_count = 0;
-    configuration->relay_username = NULL;
+    configuration->relay_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->relay_password = NULL;
     /* default to a typical prebuffer size used by clients */
     configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;

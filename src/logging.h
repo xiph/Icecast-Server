@@ -89,9 +89,8 @@ extern int playlistlog;
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
 void logging_access(client_t *client);
-void logging_playlist(const char *mount, char *metadata, long listeners);
+void logging_playlist(const char *mount, const char *metadata, long listeners);
 void restart_logging (ice_config_t *config);
 
 #endif  /* __LOGGING_H__ */
-
 

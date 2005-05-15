@@ -114,25 +114,22 @@ relay_server *relay_copy (relay_server *r)
 /* force a recheck of the relays. This will recheck the master server if
  * a this is a slave.
  */
-void slave_recheck (void)
+void slave_recheck_mounts (void)
 {
     max_interval = 0;
+    update_settings = 1;
 }
 
-/* rescan the current relays to see if any need starting or if any
- * relay threads have terminated
+
+/* Request slave thread to check the relay list for changes and to
+ * update the stats for the current streams.
  */
-void slave_rescan (void)
+void slave_rebuild_mounts (void)
 {
+    update_settings = 1;
     rescan_relays = 1;
 }
 
-/* kick off a rescan but force a recheck of the mounts afterwards */
-void slave_rebuild (void)
-{
-    update_settings = 1;
-    slave_rescan ();
-}
 
 void slave_initialize(void)
 {
@@ -312,11 +309,10 @@ static void *start_relay_stream (void *arg)
         {
             /* only keep refreshing YP entries for inactive on-demand relays */
             yp_remove (relay->localmount);
-            update_settings = 1;
         }
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
-        slave_rescan();
+        rescan_relays = 1;
 
         return NULL;
     } while (0);
@@ -344,7 +340,7 @@ static void *start_relay_stream (void *arg)
 
     /* initiate an immediate relay cleanup run */
     relay->cleanup = 1;
-    slave_rescan();
+    rescan_relays = 1;
 
     return NULL;
 }
@@ -375,11 +371,11 @@ static void check_relay_stream (relay_server *relay)
                     yp_add (relay->source);
                 config_release_config ();
                 stats_event (relay->localmount, "listeners", "0");
-                DEBUG0 ("setting on_demand");
+
+                /* on-demand relays can be used as fallback mounts so we need
+                 * to recheck other mountpoints for the xsl pages */
+                slave_rebuild_mounts();
             }
-            /* on-demand relays can be used as fallback mounts so allow
-             * for dependant mountpoints to show up on xsl pages */
-            update_settings = 1;
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
@@ -416,7 +412,6 @@ static void check_relay_stream (relay_server *relay)
     /* the relay thread may of shut down itself */
     if (relay->cleanup && relay->thread)
     {
-        ice_config_t *config;
         DEBUG1 ("waiting for relay thread for \"%s\"", relay->localmount);
         thread_join (relay->thread);
         relay->thread = NULL;
@@ -426,12 +421,11 @@ static void check_relay_stream (relay_server *relay)
 
         if (relay->on_demand)
         {
-            config = config_get_config ();
+            ice_config_t *config = config_get_config ();
             source_update_settings (config, relay->source);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");
         }
-        update_settings = 1;
     }
 }
 
@@ -534,7 +528,7 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
                 DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
                 to_free->source->running = 0;
                 thread_join (to_free->thread);
-                update_settings = 1;
+                slave_rebuild_mounts();
             }
             else
                 stats_event (to_free->localmount, NULL, NULL);
@@ -565,10 +559,7 @@ static int update_from_master(ice_config_t *config)
         int len, count = 1;
         int on_demand, send_auth;
 
-        if (config->master_username)
-            username = strdup (config->master_username);
-        else
-            username = strdup ("relay");
+        username = strdup (config->master_username);
         if (config->master_password)
             password = strdup (config->master_password);
 

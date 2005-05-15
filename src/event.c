@@ -59,12 +59,10 @@ void event_config_read(void *arg)
         config_clear(config);
         config_set_config(&new_config);
         restart_logging (config_get_config_unlocked());
-        slave_recheck();
         yp_recheck_config (config_get_config_unlocked());
-        source_update (config_get_config_unlocked());
 
         config_release_config();
-        source_recheck_mounts();
+        slave_recheck_mounts();
     }
 }
 

@@ -64,6 +64,7 @@ static int _compare_clients(void *compare_arg, void *a, void *b);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
 static void process_listeners (source_t *source, int fast_clients_only, int deletion_expected);
+static int source_free_client (source_t *source, client_t *client);
 #ifdef _WIN32
 #define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
 #else
@@ -415,7 +416,7 @@ void source_move_clients (source_t *source, source_t *dest)
     if (dest->running == 0 && dest->on_demand && count)
     {
         dest->on_demand_req = 1;
-        slave_rescan();
+        slave_rebuild_mounts();
     }
     thread_mutex_unlock (&dest->lock);
     thread_mutex_unlock (&move_clients_mutex);
@@ -482,12 +483,6 @@ static void get_next_buffer (source_t *source)
         /* take the lock */
         thread_mutex_lock (&source->lock);
 
-        if (source->recheck_settings)
-        {
-            ice_config_t *config = config_get_config();
-            source_update_settings (config, source);
-            config_release_config ();
-        }
         if (current >= source->client_stats_update)
         {
             stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
@@ -830,7 +825,7 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
-    slave_rebuild ();
+    slave_rebuild_mounts ();
     thread_mutex_lock (&source->lock);
     if (source->on_demand == 0 && source->yp_public)
         yp_add (source);
@@ -1111,6 +1106,7 @@ void source_update_settings (ice_config_t *config, source_t *source)
     mount_proxy *mountinfo = config_find_mount (config, source->mount);
     char *str;
 
+    thread_mutex_lock (&source->lock);
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
@@ -1212,34 +1208,7 @@ void source_update_settings (ice_config_t *config, source_t *source)
     DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
     DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
-    source->recheck_settings = 0;
-}
-
-
-void source_update (ice_config_t *config)
-{
-    avl_node *node;
-    char limit [20];
-
-    snprintf (limit, sizeof (limit), "%d", config->client_limit);
-    stats_event (NULL, "client_limit", limit);
-    snprintf (limit, sizeof (limit), "%d", config->source_limit);
-    stats_event (NULL, "source_limit", limit);
-
-    avl_tree_rlock (global.source_tree);
-    node = avl_get_first (global.source_tree);
-    while (node)
-    {
-        source_t *source = node->key;
-
-        /* we can't lock the source as we have config locked, so flag the
-         * source for updating */
-        source->recheck_settings = 1;
-
-        node = avl_get_next (node);
-    }
-
-    avl_tree_unlock (global.source_tree);
+    thread_mutex_unlock (&source->lock);
 }
 
 
@@ -1268,7 +1237,7 @@ void *source_client_thread (void *arg)
     source_main (source);
     source_free_source (source);
 
-    slave_rebuild ();
+    slave_rebuild_mounts ();
     return NULL;
 }
 

@@ -160,7 +160,7 @@ void logging_access(client_t *client)
 /* This function will provide a log of metadata for each
    mountpoint.  The metadata *must* be in UTF-8, and thus
    you can assume that the log itself is UTF-8 encoded */
-void logging_playlist(const char *mount, char *metadata, long listeners)
+void logging_playlist(const char *mount, const char *metadata, long listeners)
 {
     char datebuf[128];
     struct tm thetime;
