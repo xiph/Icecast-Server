@@ -293,6 +293,7 @@ client_t *source_find_client(source_t *source, int id)
     return NULL;
 }
 
+
 /* Move clients from source to dest provided dest is running
  * and that the stream format is the same.
  * The only lock that should be held when this is called is the
@@ -376,8 +377,8 @@ void source_move_clients (source_t *source, source_t *dest)
 
 
 /* clients need to be start from somewhere in the queue
- *  * so we will look for a refbuf which has been previous
- *   * marked as a sync point */
+ * so we will look for a refbuf which has been previous
+ * marked as a sync point */
 static void find_client_start (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = source->burst_point;
@@ -600,6 +601,7 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
+    slave_rebuild_mounts ();
     if (source->yp_public) {
         yp_add (source);
     }
@@ -811,6 +813,7 @@ static void source_shutdown (source_t *source)
     thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
+
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
     client_t *clienta = (client_t *)a;
@@ -872,7 +875,7 @@ static void _parse_audio_info (source_t *source, const char *s)
 }
 
 
-void source_apply_mount (source_t *source, mount_proxy *mountinfo)
+static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
     DEBUG1("Applying mount information for \"%s\"", source->mount);
     source->max_listeners = mountinfo->max_listeners;
@@ -882,10 +885,8 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     stats_event_hidden (source->mount, NULL, source->hidden);
 
     if (mountinfo->fallback_mount)
-    {
         source->fallback_mount = strdup (mountinfo->fallback_mount);
-        DEBUG1 ("fallback %s", mountinfo->fallback_mount);
-    }
+
     if (mountinfo->auth_type != NULL)
     {
         source->authenticator = auth_get_authenticator(
@@ -894,30 +895,66 @@ void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     }
     if (mountinfo->dumpfile)
     {
-        DEBUG1("Dumping stream to %s", mountinfo->dumpfile);
+        free (source->dumpfilename);
         source->dumpfilename = strdup (mountinfo->dumpfile);
     }
-    if (mountinfo->queue_size_limit)
-    {
-        source->queue_size_limit = mountinfo->queue_size_limit;
-        DEBUG1 ("queue size to %u", source->queue_size_limit);
-    }
-    if (mountinfo->source_timeout)
-    {
-        source->timeout = mountinfo->source_timeout;
-        DEBUG1 ("source timeout to %u", source->timeout);
-    }
-    if (mountinfo->no_yp)
-    {
-        source->yp_prevent = 1;
-        DEBUG0 ("preventing YP listings");
-    }
 
-    if (mountinfo->burst_size > -1)
-        source->burst_size = mountinfo->burst_size;
-    DEBUG1 ("amount to burst on client connect set to %u", source->burst_size);
+    if (mountinfo->queue_size_limit)
+        source->queue_size_limit = mountinfo->queue_size_limit;
+
+    if (mountinfo->source_timeout)
+        source->timeout = mountinfo->source_timeout;
+
+    if (mountinfo->burst_size >= 0)
+        source->burst_size = (unsigned int)mountinfo->burst_size;
+
+    if (mountinfo->no_yp)
+        source->yp_prevent = 1;
+
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
+}
+
+
+void source_update_settings (ice_config_t *config, source_t *source)
+{
+    mount_proxy *mountinfo = config_find_mount (config, source->mount);
+
+    /* set global settings first */
+    source->queue_size_limit = config->queue_size_limit;
+    source->timeout = config->source_timeout;
+    source->burst_size = config->burst_size;
+    source->dumpfilename = NULL;
+
+    if (mountinfo)
+        source_apply_mount (source, mountinfo);
+
+    if (source->fallback_mount)
+        DEBUG1 ("fallback %s", source->fallback_mount);
+    if (source->dumpfilename)
+        DEBUG1 ("Dumping stream to %s", source->dumpfilename);
+    if (source->yp_prevent)
+        DEBUG0 ("preventing YP listings");
+    if (source->hidden)
+    {
+        stats_event_hidden (source->mount, NULL, 1);
+        DEBUG0 ("hidden from xsl");
+    }
+    else
+        stats_event_hidden (source->mount, NULL, 0);
+
+    if (source->max_listeners == -1)
+        stats_event (source->mount, "max_listeners", "unlimited");
+    else
+    {
+        char buf [10];
+        snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
+        stats_event (source->mount, "max_listeners", buf);
+    }
+    DEBUG1 ("max listeners to %d", source->max_listeners);
+    DEBUG1 ("queue size to %u", source->queue_size_limit);
+    DEBUG1 ("burst size to %u", source->burst_size);
+    DEBUG1 ("source timeout to %u", source->timeout);
 }
 
 
@@ -944,6 +981,62 @@ void *source_client_thread (void *arg)
         source_main (source);
     }
     source_free_source (source);
+    slave_rebuild_mounts ();
+
     return NULL;
+}
+
+
+/* rescan the mount list, so that xsl files are updated to show
+ * unconnected but active fallback mountpoints
+ */
+void source_recheck_mounts (void)
+{
+    ice_config_t *config = config_get_config();
+    mount_proxy *mount = config->mounts;
+
+    avl_tree_rlock (global.source_tree);
+
+    while (mount)
+    {
+        int update_stats = 0;
+        int hidden;
+        source_t *source = source_find_mount (mount->mountname);
+
+        hidden = mount->hidden;
+        if (source)
+        {
+            /* something is active, maybe a fallback */
+            if (strcmp (source->mount, mount->mountname) == 0)
+            {
+                /* this is for inactive relays */
+                if (source->running == 0)
+                    update_stats = 1;
+            }
+            else
+                update_stats = 1;
+        }
+        else
+            stats_event (mount->mountname, NULL, NULL);
+        if (update_stats)
+        {
+            source = source_find_mount_raw (mount->mountname);
+            if (source)
+                source_update_settings (config, source);
+            else
+            {
+                stats_event_hidden (mount->mountname, NULL, hidden);
+                stats_event (mount->mountname, "listeners", "0");
+                if (mount->max_listeners < 0)
+                    stats_event (mount->mountname, "max_listeners", "unlimited");
+                else
+                    stats_event_args (mount->mountname, "max_listeners", "%d", mount->max_listeners);
+            }
+        }
+
+        mount = mount->next;
+    }
+    avl_tree_unlock (global.source_tree);
+    config_release_config();
 }
 

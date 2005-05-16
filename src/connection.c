@@ -449,7 +449,6 @@ int connection_complete_source (source_t *source)
     if (global.sources < config->source_limit)
     {
         char *contenttype;
-        mount_proxy *mountproxy;
         format_type_t format_type;
 
         /* setup format handler */
@@ -516,10 +515,7 @@ int connection_complete_source (source_t *source)
             }
         }
 
-        mountproxy = config_find_mount (config, source->mount);
-        if (mountproxy)
-            source_apply_mount (source, mountproxy);
-
+        source_update_settings (config, source);
         config_release_config();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;

@@ -33,7 +33,8 @@ typedef struct _relay_server {
 
 void slave_initialize(void);
 void slave_shutdown(void);
-void slave_recheck (void);
+void slave_recheck_mounts (void);
+void slave_rebuild_mounts (void);
 relay_server *relay_free (relay_server *relay);
 
 #endif  /* __SLAVE_H__ */

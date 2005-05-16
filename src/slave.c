@@ -62,6 +62,7 @@
 static void *_slave_thread(void *arg);
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
+static int update_settings = 0;
 volatile static unsigned int max_interval = 0;
 volatile static int rescan_relays = 0;
 
@@ -106,16 +107,19 @@ relay_server *relay_copy (relay_server *r)
 /* force a recheck of the relays. This will recheck the master server if
  * a this is a slave.
  */
-void slave_recheck (void)
+void slave_recheck_mounts (void)
 {
     max_interval = 0;
+    update_settings = 1;
 }
 
-/* rescan the current relays to see if any need starting or if any
- * relay threads have terminated
+
+/* Request slave thread to check the relay list for changes and to
+ * update the stats for the current streams.
  */
-void slave_rescan (void)
+void slave_rebuild_mounts (void)
 {
+    update_settings = 1;
     rescan_relays = 1;
 }
 
@@ -233,7 +237,7 @@ static void *start_relay_stream (void *arg)
 
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
-        slave_rescan();
+        rescan_relays = 1;
 
         return NULL;
     } while (0);
@@ -250,7 +254,7 @@ static void *start_relay_stream (void *arg)
 
     /* initiate an immediate relay cleanup run */
     relay->cleanup = 1;
-    slave_rescan();
+    rescan_relays = 1;
 
     return NULL;
 }
@@ -288,6 +292,7 @@ static void check_relay_stream (relay_server *relay)
         relay->thread = NULL;
         relay->cleanup = 0;
         relay->running = 0;
+        update_settings = 1;
     }
 }
 
@@ -304,6 +309,8 @@ static int relay_has_changed (relay_server *new, relay_server *old)
         if (strcmp (new->server, old->server) != 0)
             break;
         if (new->port != old->port)
+            break;
+        if (new->mp3metadata != old->mp3metadata)
             break;
         return 0;
     } while (0);
@@ -383,6 +390,7 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
             DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
             to_free->source->running = 0;
             thread_join (to_free->thread);
+            update_settings = 1;
         }
         to_free = relay_free (to_free);
     }
@@ -541,6 +549,11 @@ static void *_slave_thread(void *arg)
             thread_mutex_unlock (&(config_locks()->relay_lock));
         }
         rescan_relays = 0;
+        if (update_settings)
+        {
+            update_settings = 0;
+            source_recheck_mounts();
+        }
     }
     DEBUG0 ("shutting down current relays");
     relay_check_streams (NULL, global.relays);
