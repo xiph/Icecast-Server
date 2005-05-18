@@ -46,13 +46,15 @@ typedef struct source_tag
     rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
 
+    /* name of a file, whose contents are sent at listener connection */
+    char *intro_filename;
+
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
     unsigned int listeners;
     long max_listeners;
     int yp_public;
-    int yp_prevent;
     int fallback_override;
     int fallback_when_full;
     int no_mount;
@@ -86,7 +88,7 @@ typedef struct source_tag
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
-void source_update_settings (ice_config_t *config, source_t *source);
+void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
 source_t *source_find_mount(const char *mount);
 source_t *source_find_mount_raw(const char *mount);

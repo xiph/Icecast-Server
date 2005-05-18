@@ -121,6 +121,15 @@ void slave_recheck_mounts (void)
 }
 
 
+/* Request slave thread to rescan the existing relays to see if any need
+ * starting up, eg on-demand relays
+ */
+void slave_rescan (void)
+{
+    rescan_relays = 1;
+}
+
+
 /* Request slave thread to check the relay list for changes and to
  * update the stats for the current streams.
  */
@@ -366,15 +375,13 @@ static void check_relay_stream (relay_server *relay)
             if (relay->on_demand)
             {
                 ice_config_t *config = config_get_config ();
-                source_update_settings (config, relay->source);
-                if (relay->source->yp_public)
-                    yp_add (relay->source);
+                mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+                if (mountinfo)
+                    slave_rebuild_mounts();
+                else
+                    source_update_settings (config, relay->source, mountinfo);
                 config_release_config ();
                 stats_event (relay->localmount, "listeners", "0");
-
-                /* on-demand relays can be used as fallback mounts so we need
-                 * to recheck other mountpoints for the xsl pages */
-                slave_rebuild_mounts();
             }
         }
         else
@@ -422,7 +429,8 @@ static void check_relay_stream (relay_server *relay)
         if (relay->on_demand)
         {
             ice_config_t *config = config_get_config ();
-            source_update_settings (config, relay->source);
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+            source_update_settings (config, relay->source, mountinfo);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");
         }

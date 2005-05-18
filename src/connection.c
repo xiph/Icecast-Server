@@ -440,6 +440,7 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
     if (global.sources < config->source_limit)
     {
         char *contenttype;
+        mount_proxy *mountinfo;
         format_type_t format_type;
         http_parser_t *parser = in_parser;
 
@@ -503,7 +504,12 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             }
         }
 
-        source_update_settings (config, source);
+        source->running = 1;
+        mountinfo = config_find_mount (config, source->mount);
+        if (mountinfo)
+            source_recheck_mounts ();
+        else
+            source_update_settings (config, source, mountinfo);
         config_release_config();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;

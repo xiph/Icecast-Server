@@ -244,8 +244,6 @@ void source_clear_source (source_t *source)
     source->no_mount = 0;
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
-    source->yp_public = -1;
-    source->yp_prevent = 0;
     source->hidden = 0;
     source->client_stats_update = 0;
     util_dict_free (source->audio_info);
@@ -509,6 +507,7 @@ static void get_next_buffer (source_t *source)
         {
             if (source->last_read + (time_t)source->timeout < current)
             {
+                DEBUG2 ("last read is %ld, current is %ld", source->last_read, current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->running = 0;
                 break;
@@ -739,27 +738,7 @@ static void source_init (source_t *source)
     struct tm local;
 
     thread_mutex_lock (&source->lock);
-    if (source->yp_public < 0)
-    {
 
-        do
-        {
-            if (source->yp_prevent)
-                break;
-            if ((str = httpp_getvar (source->client->parser, "ice-public")))
-                break;
-            if ((str = httpp_getvar (source->client->parser, "icy-pub")))
-                break;
-            if ((str = httpp_getvar (source->client->parser, "x-audiocast-public")))
-                break;
-            /* handle header from icecast v2 release */
-            if ((str = httpp_getvar (source->client->parser, "icy-public")))
-                break;
-            str = "0";
-        } while (0);
-        source->yp_public = atoi (str);
-        stats_event (source->mount, "public", str);
-    }
     stats_event (source->mount, "server_type", source->format->contenttype);
 
     if (source->dumpfilename != NULL)
@@ -825,10 +804,7 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
-    slave_rebuild_mounts ();
     thread_mutex_lock (&source->lock);
-    if (source->on_demand == 0 && source->yp_public)
-        yp_add (source);
 }
 
 
@@ -999,60 +975,189 @@ static void _parse_audio_info (source_t *source, const char *s)
 }
 
 
+/* Apply the mountinfo details to the source */
 static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
-    if (strcmp (mountinfo->mountname, source->mount) == 0)
+    char *str;
+    int val;
+    http_parser_t *parser = NULL;
+
+    if (mountinfo == NULL || strcmp (mountinfo->mountname, source->mount) == 0)
         INFO1 ("Applying mount information for \"%s\"", source->mount);
     else
         INFO2 ("Applying mount information for \"%s\" from \"%s\"",
                 source->mount, mountinfo->mountname);
-    source->max_listeners = mountinfo->max_listeners;
-    source->fallback_override = mountinfo->fallback_override;
-    source->no_mount = mountinfo->no_mount;
-    source->hidden = mountinfo->hidden;
-    source->yp_public = mountinfo->yp_public;
 
-    if (mountinfo->yp_public >= 0)
-        stats_event_args (source->mount, "public", "%d", mountinfo->yp_public);
+    if (mountinfo)
+    {
+        source->max_listeners = mountinfo->max_listeners;
+        source->fallback_override = mountinfo->fallback_override;
+        source->no_mount = mountinfo->no_mount;
+        source->hidden = mountinfo->hidden;
+    }
 
-    if (mountinfo->stream_name)
-        stats_event (source->mount, "server_name", mountinfo->stream_name);
+    /* if a setting is available in the mount details then use it, else
+     * check the parser details. */
 
-    if (mountinfo->stream_description)
-        stats_event (source->mount, "server_description", mountinfo->stream_description);
+    if (source->client)
+        parser = source->client->parser;
 
-    if (mountinfo->stream_url)
-        stats_event (source->mount, "server_url", mountinfo->stream_url);
+    /* public */
+    if (mountinfo && mountinfo->yp_public >= 0)
+        val = mountinfo->yp_public;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-public");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-pub");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-public");
+            if (str) break;
+            /* handle header from icecast v2 release */
+            str = httpp_getvar (parser, "icy-public");
+            if (str) break;
+            str = "0";
+        } while (0);
+        val = atoi (str);
+    }
+    stats_event_args (source->mount, "public", "%d", val);
+    if (source->yp_public != val)
+    {
+        DEBUG1 ("YP changed to %d", val);
+        if (val)
+            yp_add (source->mount);
+        else
+            yp_remove (source->mount);
+        source->yp_public = val;
+    }
 
-    if (mountinfo->stream_genre)
-        stats_event (source->mount, "genre", mountinfo->stream_genre);
+    /* stream name */
+    if (mountinfo && mountinfo->stream_name)
+        str = mountinfo->stream_name;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-name");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-name");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-name");
+            if (str) break;
+            str = "Unspecified name";
+        } while (0);
+    }
+    stats_event (source->mount, "server_name", str);
 
-    if (mountinfo->bitrate)
-        stats_event (source->mount, "bitrate", mountinfo->bitrate);
+    /* stream description */
+    if (mountinfo && mountinfo->stream_description)
+        str = mountinfo->stream_description;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-description");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-description");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-description");
+            if (str) break;
+            str = "Unspecified description";
+        } while (0);
+    }
+    stats_event (source->mount, "server_description", str);
 
-    if (mountinfo->type)
+    /* stream URL */
+    if (mountinfo && mountinfo->stream_url)
+        str = mountinfo->stream_url;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-url");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-url");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-url");
+            if (str) break;
+        } while (0);
+    }
+    stats_event (source->mount, "server_url", str);
+
+    /* stream genre */
+    if (mountinfo && mountinfo->stream_genre)
+        str = mountinfo->stream_genre;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-genre");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-genre");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-genre");
+            if (str) break;
+            str = "various";
+        } while (0);
+    }
+    stats_event (source->mount, "genre", str);
+
+    /* stream bitrate */
+    if (mountinfo && mountinfo->bitrate)
+        str = mountinfo->bitrate;
+    else
+    {
+        do {
+            str = httpp_getvar (parser, "ice-bitrate");
+            if (str) break;
+            str = httpp_getvar (parser, "icy-br");
+            if (str) break;
+            str = httpp_getvar (parser, "x-audiocast-bitrate");
+        } while (0);
+    }
+    stats_event (source->mount, "bitrate", str);
+
+    /* handle MIME-type */
+    if (mountinfo && mountinfo->type)
         stats_event (source->mount, "server_type", mountinfo->type);
+    else
+        if (source->format)
+            stats_event (source->mount, "server_type", source->format->contenttype);
 
-    if (mountinfo->subtype)
+    if (mountinfo && mountinfo->subtype)
         stats_event (source->mount, "subtype", mountinfo->subtype);
 
-    if (mountinfo->auth)
+    if (mountinfo && mountinfo->auth)
         stats_event (source->mount, "authenticator", mountinfo->auth->type);
     else
         stats_event (source->mount, "authenticator", NULL);
-    if (mountinfo->fallback_mount)
-    {
-        free (source->fallback_mount);
+
+    free (source->fallback_mount);
+    source->fallback_mount = NULL;
+    if (mountinfo && mountinfo->fallback_mount)
         source->fallback_mount = strdup (mountinfo->fallback_mount);
-    }
-    if (mountinfo->dumpfile)
+
+    /* needs a better mechanism, probably via a client_t handle */
+    if (mountinfo && mountinfo->dumpfile)
     {
         free (source->dumpfilename);
         source->dumpfilename = strdup (mountinfo->dumpfile);
     }
+    /* handle changes in intro file setting */
     if (source->intro_file)
+    {
+        int close_it = 0;
+        if (mountinfo)
+        {
+            if (mountinfo->intro_filename && strcmp (mountinfo->intro_filename,
+                        source->intro_filename) != 0)
+                close_it = 1;
+        }
+        else
+            close_it = 1;
         fclose (source->intro_file);
-    if (mountinfo->intro_filename)
+        source->intro_file = NULL;
+        free (source->intro_filename);
+        source->intro_filename = NULL;
+    }
+    if (mountinfo && mountinfo->intro_filename)
     {
         ice_config_t *config = config_get_config_unlocked ();
         unsigned int len  = strlen (config->webroot_dir) +
@@ -1070,118 +1175,58 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         }
     }
 
-    if (mountinfo->queue_size_limit)
+    if (mountinfo && mountinfo->queue_size_limit)
         source->queue_size_limit = mountinfo->queue_size_limit;
 
-    if (mountinfo->source_timeout)
+    if (mountinfo && mountinfo->source_timeout)
         source->timeout = mountinfo->source_timeout;
 
-    if (mountinfo->burst_size >= 0)
+    if (mountinfo && mountinfo->burst_size >= 0)
         source->burst_size = (unsigned int)mountinfo->burst_size;
 
-    if (mountinfo->fallback_when_full)
+    if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
 
-    if (mountinfo->no_yp)
-        source->yp_prevent = 1;
+    free (source->on_connect);
+    source->on_connect = NULL;
+    if (mountinfo && mountinfo->on_connect)
+        source->on_connect = strdup (mountinfo->on_connect);
 
-    if (mountinfo->on_connect)
-    {
-        free (source->on_connect);
-        source->on_connect = strdup(mountinfo->on_connect);
-    }
+    free (source->on_disconnect);
+    source->on_disconnect = NULL;
+    if (mountinfo && mountinfo->on_disconnect)
+        source->on_disconnect = strdup (mountinfo->on_disconnect);
 
-    if (mountinfo->on_disconnect)
-    {
-        free (source->on_disconnect);
-        source->on_disconnect = strdup(mountinfo->on_disconnect);
-    }
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
 }
 
 
-void source_update_settings (ice_config_t *config, source_t *source)
+/* update the specified source with details from the config or mount.
+ * mountinfo can be NULL in which case default settings should be taken
+ */
+void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
-    mount_proxy *mountinfo = config_find_mount (config, source->mount);
-    char *str;
-
     thread_mutex_lock (&source->lock);
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
     source->burst_size = config->burst_size;
-    source->dumpfilename = NULL;
     
-    if  (source->client)
-    {
-        http_parser_t *parser = source->client->parser;
-        do {
-            str = httpp_getvar(parser, "ice-name");
-            if (str) break;
-            str = httpp_getvar(parser, "icy-name");
-            if (str) break;
-            str = httpp_getvar(parser, "x-audiocast-name");
-        } while (0);
-        if (str)
-            stats_event (source->mount, "server_name", str);
-
-        do {
-            str = httpp_getvar(parser, "ice-description");
-            if (str) break;
-            str = httpp_getvar(parser, "icy-description");
-            if (str) break;
-            str = httpp_getvar(parser, "x-audiocast-description");
-        } while (0);
-        if (str)
-            stats_event (source->mount, "server_description", str);
-
-        do {
-            str = httpp_getvar(parser, "ice-genre");
-            if (str) break;
-            str = httpp_getvar(parser, "icy-genre");
-            if (str) break;
-            str = httpp_getvar(parser, "x-audiocast-genre");
-        } while (0);
-        if (str)
-            stats_event (source->mount, "genre", str);
-
-        do {
-            str = httpp_getvar(parser, "ice-url");
-            if (str) break;
-            str = httpp_getvar(parser, "icy-url");
-            if (str) break;
-            str = httpp_getvar(parser, "x-audiocast-url");
-        } while (0);
-        if (str)
-            stats_event (source->mount, "server_url", str);
-
-        do {
-            str = httpp_getvar(parser, "ice-bitrate");
-            if (str) break;
-            str = httpp_getvar(parser, "icy-br");
-            if (str) break;
-            str = httpp_getvar(parser, "x-audiocast-bitrate");
-        } while (0);
-        if (str)
-            stats_event (source->mount, "bitrate", str);
-    }
-
-    if (mountinfo)
-        source_apply_mount (source, mountinfo);
+    source_apply_mount (source, mountinfo);
 
     if (source->fallback_mount)
         DEBUG1 ("fallback %s", source->fallback_mount);
+    if (source->intro_filename)
+        DEBUG1 ("intro file is %s", source->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
-    if (source->yp_prevent)
-        DEBUG0 ("preventing YP listings");
     if (source->on_connect)
         DEBUG1 ("connect script \"%s\"", source->on_connect);
     if (source->on_disconnect)
         DEBUG1 ("disconnect script \"%s\"", source->on_disconnect);
     if (source->on_demand)
-        DEBUG0 ("on-demand set");
+        DEBUG0 ("on_demand set");
     if (source->hidden)
     {
         stats_event_hidden (source->mount, NULL, 1);
@@ -1199,10 +1244,11 @@ void source_update_settings (ice_config_t *config, source_t *source)
         stats_event (source->mount, "max_listeners", buf);
     }
     if (source->on_demand)
-        stats_event (source->mount, "on-demand", "1");
+        stats_event (source->mount, "on_demand", "1");
     else
-        stats_event (source->mount, "on-demand", NULL);
+        stats_event (source->mount, "on_demand", NULL);
 
+    DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("max listeners to %d", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
@@ -1237,7 +1283,7 @@ void *source_client_thread (void *arg)
     source_main (source);
     source_free_source (source);
 
-    slave_rebuild_mounts ();
+    source_recheck_mounts ();
     return NULL;
 }
 
@@ -1322,7 +1368,7 @@ static void *source_fallback_file (void *arg)
         httpp_setvar (parser, "content-type", type);
 
         source->hidden = 1;
-        source->yp_prevent = 1;
+        source->yp_public = 0;
         source->intro_file = file;
         file = NULL;
 
@@ -1349,34 +1395,19 @@ void source_recheck_mounts (void)
 
     while (mount)
     {
-        int update_stats = 0;
-        int hidden;
         source_t *source = source_find_mount (mount->mountname);
 
-        hidden = mount->hidden;
         if (source)
-        {
-            /* something is active, maybe a fallback */
-            if (strcmp (source->mount, mount->mountname) == 0)
-            {
-                /* normally the source thread would deal with this there
-                 * isn't one for inactive on-demand relays */
-                if (source->on_demand && source->running == 0)
-                    update_stats = 1;
-            }
-            else
-                update_stats = 1;
-        }
-        else
-            stats_event (mount->mountname, NULL, NULL);
-        if (update_stats)
         {
             source = source_find_mount_raw (mount->mountname);
             if (source)
-                source_update_settings (config, source);
+            {
+                mount_proxy *mountinfo = config_find_mount (config, source->mount);
+                source_update_settings (config, source, mountinfo);
+            }
             else
             {
-                stats_event_hidden (mount->mountname, NULL, hidden);
+                stats_event_hidden (mount->mountname, NULL, mount->hidden);
                 stats_event (mount->mountname, "listeners", "0");
                 if (mount->max_listeners < 0)
                     stats_event (mount->mountname, "max_listeners", "unlimited");
@@ -1384,6 +1415,9 @@ void source_recheck_mounts (void)
                     stats_event_args (mount->mountname, "max_listeners", "%d", mount->max_listeners);
             }
         }
+        else
+            stats_event (mount->mountname, NULL, NULL);
+
         /* check for fallback to file */
         if (global.running == ICE_RUNNING && mount->fallback_mount)
         {

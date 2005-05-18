@@ -362,6 +362,10 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info (yp, value, YP_SUBTYPE);
     free (value);
 
+    value = stats_get_value (yp->mount, "audio_info");
+    add_yp_info (yp, value, YP_AUDIO_INFO);
+    free (value);
+
     ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
                     "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
                     yp->server_name, yp->server_genre, yp->cluster_password,
@@ -494,13 +498,11 @@ static void yp_process_server (struct yp_server *server)
 
 
 
-static ypdata_t *create_yp_entry (source_t *source)
+static ypdata_t *create_yp_entry (const char *mount)
 {
     ypdata_t *yp;
     char *s;
 
-    if ((source->running == 0  && source->on_demand == 0) || source->yp_public == 0)
-        return NULL;
     yp = calloc (1, sizeof (ypdata_t));
     do
     {
@@ -512,7 +514,7 @@ static ypdata_t *create_yp_entry (source_t *source)
 
         if (yp == NULL)
             break;
-        yp->mount = strdup (source->mount);
+        yp->mount = strdup (mount);
         yp->server_name = strdup ("");
         yp->server_desc = strdup ("");
         yp->server_genre = strdup ("");
@@ -529,34 +531,24 @@ static ypdata_t *create_yp_entry (source_t *source)
         if (url == NULL)
             break;
         config = config_get_config();
-        ret = snprintf (url, len, "http://%s:%d%s", config->hostname, config->port, source->mount);
+        ret = snprintf (url, len, "http://%s:%d%s", config->hostname, config->port, mount);
         if (ret >= (signed)len)
         {
             s = realloc (url, ++ret);
             if (s) url = s;
-            snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, source->mount);
+            snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, mount);
         }
 
-        mountproxy = config->mounts;
-        while (mountproxy) {
-            if (strcmp (mountproxy->mountname, source->mount) == 0) {
-                if (mountproxy->cluster_password) {
-                    add_yp_info (yp, mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
-                }
-                break;
-            }
-            mountproxy = mountproxy->next;
-        }
+        mountproxy = config_find_mount (config, mount);
+        if (mountproxy && mountproxy->cluster_password)
+            add_yp_info (yp, mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
         config_release_config();
+
         yp->listen_url = util_url_escape (url);
         free (url);
         if (yp->listen_url == NULL)
             break;
 
-        s = util_dict_urlencode (source->audio_info, '&');
-        if (s)
-            add_yp_info (yp, s, YP_AUDIO_INFO);
-        free(s);
         return yp;
     } while (0);
 
@@ -606,7 +598,7 @@ static void check_servers ()
 
             source_t *source = node->key;
             thread_mutex_lock (&source->lock);
-            if ((yp = create_yp_entry (source)) != NULL)
+            if ((yp = create_yp_entry (source->mount)) != NULL)
             {
                 DEBUG1 ("Adding existing mount %s", source->mount);
                 yp->server = server;
@@ -864,7 +856,7 @@ static void add_yp_info (ypdata_t *yp, void *info, int type)
 
 
 /* Add YP entries to active servers */
-void yp_add (source_t *source)
+void yp_add (const char *mount)
 {
     struct yp_server *server;
 
@@ -880,14 +872,14 @@ void yp_add (source_t *source)
 
         /* check if YP entry is known about, as source_t is unique this
          * should only apply to the restarting of on-demand relays */
-        yp = find_yp_mount (server->mounts, source->mount);
+        yp = find_yp_mount (server->mounts, mount);
         if (yp == NULL)
         {
             /* add new ypdata to each servers pending yp */
-            yp = create_yp_entry (source);
+            yp = create_yp_entry (mount);
             if (yp)
             {
-                DEBUG2 ("Adding %s to %s", source->mount, server->url);
+                DEBUG2 ("Adding %s to %s", mount, server->url);
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
@@ -897,12 +889,11 @@ void yp_add (source_t *source)
             }
         }
         else
-            DEBUG1 ("YP entry %s already exists", source->mount);
+            DEBUG1 ("YP entry %s already exists", mount);
         server = server->next;
     }
     thread_mutex_unlock (&yp_pending_lock);
     thread_rwlock_unlock (&yp_lock);
-    /* DEBUG1 ("Added %s to YP ", source->mount); */
 }
 
 

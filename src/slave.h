@@ -45,6 +45,7 @@ void slave_initialize(void);
 void slave_shutdown(void);
 void slave_recheck_mounts (void);
 void slave_rebuild_mounts (void);
+void slave_rescan (void);
 int slave_redirect (const char *mountpoint, struct _client_tag *client);
 void slave_host_add (struct _client_tag *client, const char *header);
 void slave_host_remove (struct _client_tag *client);
