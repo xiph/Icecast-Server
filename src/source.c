@@ -1280,6 +1280,7 @@ void *source_client_thread (void *arg)
     }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");
+    stats_event (source->mount, "source_ip", source->client->con->ip);
     source_main (source);
     source_free_source (source);
 

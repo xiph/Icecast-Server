@@ -311,6 +311,7 @@ static void *start_relay_stream (void *arg)
         }
         stats_event_inc(NULL, "source_relay_connections");
         stats_event (relay->localmount, "listeners", "0");
+        stats_event (relay->localmount, "source_ip", relay->server);
 
         source_main (relay->source);
 
@@ -318,6 +319,7 @@ static void *start_relay_stream (void *arg)
         {
             /* only keep refreshing YP entries for inactive on-demand relays */
             yp_remove (relay->localmount);
+            relay->source->yp_public = -1;
         }
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;

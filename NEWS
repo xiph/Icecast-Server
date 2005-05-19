@@ -3,9 +3,7 @@ Feature differences from SVN trunk
 . program invocation at stream start and end, per mount based.
 . on-demand relays, activated on first listener, disconnected when listeners 
   falls to 0. Available for master relays as well.
-. multiple Ogg codec streaming. Current codecs handled are Theora, Vorbis,
-  Speex (Writ to be added back in later).
-. Added URL and command based listener authentication
+. Added URL and command based listener authentication, applies to files as well
 . server xml reload, and reopen logging available via admin url
 . on xml reload, active sources are updated as well
 . When max-listeners reached, a HTTP 302 code can be sent to redirect
@@ -13,7 +11,6 @@ Feature differences from SVN trunk
 . authenticated relays, those that match the relay user/pass, bypass the 
   max-listener check
 . per-mount format-specific settings can be stated in mount
-. mp3 metadata interval can be stated/disabled per mount
 . added file intro to streams
 . fallback to file
 
@@ -22,6 +19,17 @@ TODO
   connect until there are listeners.
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
+
+2.2-kh6
+. sync up with trunk merges
+. various internal updates
+  - better handling of per-mount stream settings
+  - better updating of stats
+  - removed unnecessary code
+. relay username is 'relay' by default
+. shoutcast clients can use per-mount password
+. split client write into client write and advance buffer
+. source IP stat added for relays/source clients
 
 2.2-kh5
 . Added total read and sent stats for each mount.

@@ -654,15 +654,15 @@ struct tm *localtime_r (const time_t *timep, struct tm *result)
 struct rate_calc *rate_setup (unsigned int seconds)
 {
     struct rate_calc *calc = calloc (1, sizeof (struct rate_calc));
-    struct rate_calc_node *start;
-    int i;
+    struct rate_calc_node *start = NULL;
+    unsigned int i;
 
     if (calc == NULL || seconds == 0)
     {
         free (calc);
         return NULL;
     }
-    for (i=0 ; i <seconds; i++)
+    for (i=0 ; i<seconds; i++)
     {
         struct rate_calc_node *node = calloc (1, sizeof (*node));
         if (calc->current)
