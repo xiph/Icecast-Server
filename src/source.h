@@ -37,7 +37,7 @@ typedef struct source_tag
     struct _format_plugin_tag *format;
 
     client_t *active_clients;
-    client_t *first_normal_client;
+    client_t **fast_clients_p;
 
     client_t *pending_clients;
     client_t **pending_clients_tail;

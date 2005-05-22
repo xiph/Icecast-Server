@@ -210,6 +210,7 @@ void source_clear_source (source_t *source)
         source->active_clients = client->next;
         source_free_client (source, client);
     }
+    source->fast_clients_p = &source->active_clients;
     while (source->pending_clients)
     {
         client_t *client = source->pending_clients;
@@ -218,7 +219,6 @@ void source_clear_source (source_t *source)
     }
     source->pending_clients_tail = &source->pending_clients;
     source->new_listeners = 0;
-    source->first_normal_client = NULL;
 
     format_free_plugin (source->format);
     source->format = NULL;
@@ -457,16 +457,14 @@ static void get_next_buffer (source_t *source)
 
         /* service fast clients but jump out once in a while to check on
          * normal clients */
-        if (no_delay_count < 10)
-        {
-            if (source->active_clients != source->first_normal_client)
-            {
-                delay = 0;
-                no_delay_count++;
-            }
-        }
-        else
+        if (no_delay_count == 10)
             return;
+
+        if (*source->fast_clients_p)
+        {
+            delay = 0;
+            no_delay_count++;
+        }
 
         thread_mutex_unlock (&source->lock);
 
@@ -580,7 +578,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     int bytes;
     int loop = 20;   /* max number of iterations in one go */
     int total_written = 0;
-    int ret = 1;
+    int ret = 0;
 
     /* new users need somewhere to start from */
     if (client->refbuf == NULL)
@@ -599,7 +597,10 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
         if (total_written > 20000 || loop == 0)
+        {
+            ret = 1;
             break;
+        }
 
         loop--;
 
@@ -608,10 +609,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         bytes = client->write_to_client (client);
         if (bytes <= 0)
-        {
-            ret = 0;
             break;  /* can't write any more */
-        }
 
         total_written += bytes;
     }
@@ -633,56 +631,53 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
 static void process_listeners (source_t *source, int fast_clients_only, int deletion_expected)
 {
-    client_t *sentinel = NULL, *client, **client_p;
+    client_t *client, **client_p;
+    client_t *fast_clients = NULL, **fast_client_tail = &fast_clients;
     unsigned int listeners = source->listeners;
 
+    /* where do we start from */
     if (fast_clients_only)
-    {
-        sentinel = source->first_normal_client;
-    }
+        client_p = source->fast_clients_p;
+    else
+        client_p = &source->active_clients;
+    client = *client_p;
 
-    source->first_normal_client = source->active_clients;
-
-    client = source->active_clients;
-    client_p = &source->active_clients;
-    while (client && client != sentinel)
+    while (client)
     {
         int fast_client = send_to_listener (source, client, deletion_expected);
 
-        if (fast_client && client->check_buffer != format_check_intro_buffer)
+        if (client->con->error)
         {
             client_t *to_go = client;
 
             *client_p = client->next;
             client = client->next;
 
-            if (source->first_normal_client == to_go)
-            {
-                source->first_normal_client = to_go->next;
-            }
-
-            if (to_go->con->error)
-            {
-                source_free_client (source, to_go);
-                source->listeners--;
-                DEBUG0("Client removed");
-            }
-            else
-            {
-                /* move fast clients to beginning of list */
-                if (client_p == &source->active_clients)
-                    client_p = &to_go->next;
-
-                to_go->next = source->active_clients;
-                source->active_clients = to_go;
-            }
+            source_free_client (source, to_go);
+            source->listeners--;
+            DEBUG0("Client removed");
+            continue;
         }
-        else
+        if (fast_client && client->check_buffer != format_check_intro_buffer)
         {
-            client_p = &client->next;
+            client_t *to_move = client;
+
+            *client_p = client->next;
             client = client->next;
+
+            to_move->next = NULL;
+            *fast_client_tail = to_move;
+            fast_client_tail = &to_move->next;
+            continue;
         }
+        client_p = &client->next;
+        client = *client_p;
     }
+    source->fast_clients_p = client_p;
+    /* place fast clients list at the end */
+    if (fast_clients)
+        *client_p = fast_clients;
+
     /* has the listener count changed */
     if (source->listeners != listeners)
     {
@@ -766,6 +761,7 @@ static void source_init (source_t *source)
     source->last_read = global.time;
     source->running = 1;
 
+    source->fast_clients_p = &source->active_clients;
     source->audio_info = util_dict_new();
     str = httpp_getvar(source->client->parser, "ice-audio-info");
     if (str)
