@@ -249,7 +249,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             xmlNewChild (srcnode, NULL, "fallback", 
                     (source->fallback_mount != NULL)?
                     source->fallback_mount:"");
-            snprintf (buf, sizeof(buf), "%u", source->listeners);
+            snprintf (buf, sizeof(buf), "%lu", source->listeners);
             xmlNewChild (srcnode, NULL, "listeners", buf);
 
             config = config_get_config();
@@ -714,7 +714,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     memset(buf, '\000', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%u", source->listeners);
+    snprintf(buf, sizeof(buf), "%lu", source->listeners);
     xmlNewChild(srcnode, NULL, "Listeners", buf);
 
     current = source->active_clients;

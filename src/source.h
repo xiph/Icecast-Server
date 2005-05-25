@@ -48,11 +48,12 @@ typedef struct source_tag
 
     /* name of a file, whose contents are sent at listener connection */
     char *intro_filename;
+    FILE *intro_file;
 
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-    unsigned int listeners;
+    unsigned long listeners;
     long max_listeners;
     int yp_public;
     int fallback_override;
@@ -74,15 +75,11 @@ typedef struct source_tag
     int hidden;
 
     time_t last_read;
-    char *on_connect;
-    char *on_disconnect;
 
     mutex_t lock;
 
     refbuf_t *stream_data;
     refbuf_t *stream_data_tail;
-
-    FILE *intro_file;
 
 } source_t;
 

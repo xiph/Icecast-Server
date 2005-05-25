@@ -145,14 +145,16 @@ void logging_access(client_t *client)
         user_agent = "-";
 
 #ifdef HAVE_LOGGING_IP
-    log_write_direct (accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %d",
-             client->con->ip,
-             datebuf, reqbuf, client->respcode, client->con->sent_bytes,
-             referrer, user_agent, (int)stayed);
+    log_write_direct (accesslog,
+            "%s - - [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            client->con->ip,
+            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
+            referrer, user_agent, (unsigned long)stayed);
 #else
-    log_write_direct (accesslog, "- - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %d",
-             datebuf, reqbuf, client->respcode, client->con->sent_bytes,
-             referrer, user_agent, (int)stayed);
+    log_write_direct (accesslog,
+            "- - - [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
+            referrer, user_agent, (unsigned long)stayed);
 #endif
 }
 

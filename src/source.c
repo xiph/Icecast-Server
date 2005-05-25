@@ -261,12 +261,6 @@ void source_clear_source (source_t *source)
         source->intro_file = NULL;
     }
 
-    free (source->on_connect);
-    source->on_connect = NULL;
-
-    free (source->on_disconnect);
-    source->on_disconnect = NULL;
-
     source->on_demand_req = 0;
 }
 
@@ -731,6 +725,7 @@ static void source_init (source_t *source)
     char *str = "0";
     char buffer [100];
     struct tm local;
+    mount_proxy *mountinfo;
 
     thread_mutex_lock (&source->lock);
 
@@ -778,8 +773,10 @@ static void source_init (source_t *source)
     strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
     stats_event (source->mount, "stream_start", buffer);
 
-    if (source->on_connect)
-        source_run_script (source->on_connect, source->mount);
+    mountinfo = config_find_mount (config_get_config(), source->mount);
+    if (mountinfo && mountinfo->on_connect)
+        source_run_script (mountinfo->on_connect, source->mount);
+    config_release_config();
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -860,12 +857,16 @@ void source_main (source_t *source)
 
 static void source_shutdown (source_t *source)
 {
+    mount_proxy *mountinfo;
+
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
     auth_stream_end (source->mount);
-    if (source->on_disconnect)
-        source_run_script (source->on_disconnect, source->mount);
+    mountinfo = config_find_mount (config_get_config(), source->mount);
+    if (mountinfo && mountinfo->on_disconnect)
+        source_run_script (mountinfo->on_disconnect, source->mount);
+    config_release_config();
 
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
@@ -1183,16 +1184,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
 
-    free (source->on_connect);
-    source->on_connect = NULL;
-    if (mountinfo && mountinfo->on_connect)
-        source->on_connect = strdup (mountinfo->on_connect);
-
-    free (source->on_disconnect);
-    source->on_disconnect = NULL;
-    if (mountinfo && mountinfo->on_disconnect)
-        source->on_disconnect = strdup (mountinfo->on_disconnect);
-
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
 }
@@ -1217,10 +1208,10 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         DEBUG1 ("intro file is %s", source->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
-    if (source->on_connect)
-        DEBUG1 ("connect script \"%s\"", source->on_connect);
-    if (source->on_disconnect)
-        DEBUG1 ("disconnect script \"%s\"", source->on_disconnect);
+    if (mountinfo && mountinfo->on_connect)
+        DEBUG1 ("connect script \"%s\"", mountinfo->on_connect);
+    if (mountinfo && mountinfo->on_disconnect)
+        DEBUG1 ("disconnect script \"%s\"", mountinfo->on_disconnect);
     if (source->on_demand)
         DEBUG0 ("on_demand set");
     if (source->hidden)
