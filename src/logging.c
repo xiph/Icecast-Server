@@ -80,7 +80,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     else {
         sign = '+';
     }
-    
+
     timezone_string = calloc(1, 7);
     snprintf(timezone_string, 7, " %c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
 
@@ -119,11 +119,11 @@ void logging_access(client_t *client)
 
     now = time(NULL);
 
-	localtime_r (&now, &thetime);
+    localtime_r (&now, &thetime);
     /* build the data */
 #ifdef _WIN32
-	memset(datebuf, '\000', sizeof(datebuf));
-	get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
+    memset(datebuf, '\000', sizeof(datebuf));
+    get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
 #else
     strftime (datebuf, sizeof(datebuf), LOGGING_FORMAT_CLF, &thetime);
 #endif
@@ -144,20 +144,21 @@ void logging_access(client_t *client)
     if (user_agent == NULL)
         user_agent = "-";
 
-    log_write_direct (accesslog, "%s - - [%s] \"%s\" %d %lld \"%s\" \"%s\" %u",
-             client->con->ip,
-             datebuf,
-             reqbuf,
-             client->respcode,
-             client->con->sent_bytes,
-             referrer,
-             user_agent,
-             stayed);
+    log_write_direct (accesslog,
+            "%s - - [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            client->con->ip,
+            datebuf,
+            reqbuf,
+            client->respcode,
+            client->con->sent_bytes,
+            referrer,
+            user_agent,
+            (unsigned long)stayed);
 }
 /* This function will provide a log of metadata for each
    mountpoint.  The metadata *must* be in UTF-8, and thus
    you can assume that the log itself is UTF-8 encoded */
-void logging_playlist(char *mount, char *metadata, long listeners)
+void logging_playlist(const char *mount, const char *metadata, long listeners)
 {
     char datebuf[128];
     struct tm thetime;
