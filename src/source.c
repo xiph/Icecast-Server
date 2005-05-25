@@ -537,16 +537,17 @@ static void get_next_buffer (source_t *source)
 
             /* move the starting point for new listeners */
             source->burst_offset += refbuf->len;
-            if (source->burst_offset > source->burst_size)
+            while (source->burst_offset > source->burst_size)
             {
-                if (source->burst_point->next)
+                refbuf_t *to_release = source->burst_point;
+                if (to_release->next)
                 {
-                    refbuf_t *to_go = source->burst_point;
-
-                    source->burst_offset -= source->burst_point->len;
-                    source->burst_point = source->burst_point->next;
-                    refbuf_release (to_go);
+                    source->burst_offset -= to_release->len;
+                    source->burst_point = to_release->next;
+                    refbuf_release (to_release);
+                    continue;
                 }
+                break;
             }
 
             /* save stream to file */
