@@ -926,7 +926,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
          * the client, also.
          */
         if (source->max_listeners != -1 && 
-                source->listeners >= source->max_listeners) 
+                source->listeners >= (unsigned long)source->max_listeners) 
         {
             global_unlock();
             avl_tree_unlock(global.source_tree);

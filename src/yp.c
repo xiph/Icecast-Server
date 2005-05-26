@@ -515,18 +515,11 @@ static ypdata_t *create_yp_entry (source_t *source)
             snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, source->mount);
         }
 
-        mountproxy = config->mounts;
-        while (mountproxy) {
-            if (strcmp (mountproxy->mountname, source->mount) == 0) {
-                if (mountproxy->cluster_password) {
-                   add_yp_info (yp, "cluster_password", 
-                       mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
-                }
-                break;
-            }
-            mountproxy = mountproxy->next;
-        }
+        mountproxy = config_find_mount (config, source->mount);
+        if (mountproxy && mountproxy->cluster_password)
+            add_yp_info (yp, "cluster_password", mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
         config_release_config();
+
         yp->listen_url = util_url_escape (url);
         free (url);
         if (yp->listen_url == NULL)
@@ -896,6 +889,7 @@ void yp_add (source_t *source)
             yp->server = server;
             yp->touch_interval = server->touch_interval;
             yp->next = server->pending_mounts;
+            yp->next_update = time(NULL) + 5;
             server->pending_mounts = yp;
             yp_update = 1;
         }
@@ -903,7 +897,6 @@ void yp_add (source_t *source)
     }
     thread_mutex_unlock (&yp_pending_lock);
     thread_rwlock_unlock (&yp_lock);
-    /* DEBUG1 ("Added %s to YP ", source->mount); */
 }
 
 

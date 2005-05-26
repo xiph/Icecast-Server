@@ -32,6 +32,7 @@
 #define CONFIG_DEFAULT_CLIENT_LIMIT 256
 #define CONFIG_DEFAULT_SOURCE_LIMIT 16
 #define CONFIG_DEFAULT_QUEUE_SIZE_LIMIT (100*1024)
+#define CONFIG_DEFAULT_BURST_SIZE (64*1024)
 #define CONFIG_DEFAULT_THREADPOOL_SIZE 4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT 30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
@@ -361,7 +362,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->relay_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->relay_password = NULL;
     /* default to a typical prebuffer size used by clients */
-    configuration->burst_size = 65536;
+    configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;
 }
 
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 

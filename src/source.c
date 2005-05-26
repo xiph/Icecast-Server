@@ -434,7 +434,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         {
             if (source->last_read + (time_t)source->timeout < current)
             {
-                DEBUG3 ("last %ld, timeout %ld, now %ld", source->last_read, source->timeout, current);
+                DEBUG3 ("last %ld, timeout %d, now %ld", source->last_read, source->timeout, current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->running = 0;
             }
@@ -655,14 +655,18 @@ void source_main (source_t *source)
 
             /* new data on queue, so check the burst point */
             source->burst_offset += refbuf->len;
-            if (source->burst_offset > source->burst_size)
+            while (source->burst_offset > source->burst_size)
             {
-                if (source->burst_point->next)
+                refbuf_t *to_release = source->burst_point;
+
+                if (to_release->next)
                 {
-                    refbuf_release (source->burst_point);
-                    source->burst_point = source->burst_point->next;
-                    source->burst_offset -= source->burst_point->len;
+                    source->burst_point = to_release->next;
+                    source->burst_offset -= to_release->len;
+                    refbuf_release (to_release);
+                    continue;
                 }
+                break;
             }
 
             /* save stream to file */
@@ -701,7 +705,7 @@ void source_main (source_t *source)
         while (client_node) {
 
             if(source->max_listeners != -1 && 
-                    source->listeners >= source->max_listeners) 
+                    source->listeners >= (unsigned long)source->max_listeners) 
             {
                 /* The common case is caught in the main connection handler,
                  * this deals with rarer cases (mostly concerning fallbacks)
@@ -740,7 +744,7 @@ void source_main (source_t *source)
         /* update the stats if need be */
         if (source->listeners != listeners)
         {
-            INFO2("listener count on %s now %d", source->mount, source->listeners);
+            INFO2("listener count on %s now %ld", source->mount, source->listeners);
             stats_event_args (source->mount, "listeners", "%d", source->listeners);
         }
 
@@ -875,6 +879,7 @@ static void _parse_audio_info (source_t *source, const char *s)
 }
 
 
+/* Apply the mountinfo details to the source */
 static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
     DEBUG1("Applying mount information for \"%s\"", source->mount);
@@ -951,7 +956,8 @@ void source_update_settings (ice_config_t *config, source_t *source)
         snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
-    DEBUG1 ("max listeners to %d", source->max_listeners);
+    DEBUG1 ("public set to %d", source->yp_public);
+    DEBUG1 ("max listeners to %ld", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
@@ -966,22 +972,23 @@ void *source_client_thread (void *arg)
 
     source->client->respcode = 200;
     bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
-    if (bytes < sizeof (ok_msg)-1)
+    if (bytes < (int)(sizeof (ok_msg)-1))
     {
         global_lock();
         global.sources--;
         global_unlock();
         WARN0 ("Error writing 200 OK message to source client");
+        source_free_source (source);
+        return NULL;
     }
-    else
-    {
-        source->client->con->sent_bytes += bytes;
 
-        stats_event_inc(NULL, "source_client_connections");
-        source_main (source);
-    }
+    stats_event_inc(NULL, "source_client_connections");
+    stats_event (source->mount, "listeners", "0");
+
+    source_main (source);
+
     source_free_source (source);
-    slave_rebuild_mounts ();
+    source_recheck_mounts ();
 
     return NULL;
 }

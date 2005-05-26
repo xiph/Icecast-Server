@@ -236,7 +236,7 @@ static int _start_logging(void)
     } else {
         playlistlog = -1;
     }
-    
+
     log_set_level(errorlog, config->loglevel);
     log_set_level(accesslog, 4);
     log_set_level(playlistlog, 4);

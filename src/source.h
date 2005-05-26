@@ -49,7 +49,7 @@ typedef struct source_tag
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-    long listeners;
+    unsigned long listeners;
     long max_listeners;
     int yp_public;
     int yp_prevent;

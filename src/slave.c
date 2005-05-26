@@ -508,6 +508,8 @@ static void *_slave_thread(void *arg)
     ice_config_t *config;
     unsigned int interval = 0;
 
+    source_recheck_mounts();
+
     while (1)
     {
         relay_server *cleanup_relays;

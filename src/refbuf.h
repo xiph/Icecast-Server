@@ -21,7 +21,7 @@
 typedef struct _refbuf_tag
 {
     char *data;
-    long len;
+    unsigned long len;
     int sync_point;
     struct _refbuf_tag *associated;
     struct _refbuf_tag *next;
