@@ -452,7 +452,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
     if (S_ISREG (file_buf.st_mode) == 0)
     {
         client_send_404 (httpclient, "The file you requested could not be found");
-        INFO1 ("found requested file but there is no handler for it", fullpath);
+        WARN1 ("found requested file but there is no handler for it: %s", fullpath);
         free (fullpath);
         return 0;
     }

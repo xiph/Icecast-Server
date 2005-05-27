@@ -70,7 +70,7 @@ typedef struct auth_tag
     int allow_duplicate_users;
 
     void *state;
-    void *type;
+    char *type;
 } auth_t;
 
 void add_client (const char *mount, client_t *client);

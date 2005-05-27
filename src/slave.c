@@ -104,6 +104,7 @@ relay_server *relay_copy (relay_server *r)
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
+        copy->enable = r->enable;
         copy->source = r->source;
         r->source = NULL;
     }
@@ -371,21 +372,7 @@ static void check_relay_stream (relay_server *relay)
         /* new relay, reserve the name */
         relay->source = source_reserve (relay->localmount);
         if (relay->source)
-        {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
-            relay->source->on_demand = relay->on_demand;
-            if (relay->on_demand)
-            {
-                ice_config_t *config = config_get_config ();
-                mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
-                if (mountinfo)
-                    slave_rebuild_mounts();
-                else
-                    source_update_settings (config, relay->source, mountinfo);
-                config_release_config ();
-                stats_event (relay->localmount, "listeners", "0");
-            }
-        }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
     }
@@ -394,8 +381,23 @@ static void check_relay_stream (relay_server *relay)
         source_t *source = relay->source;
         if (relay->source == NULL || relay->running)
             break;
+        if (relay->enable == 0)
+        {
+            stats_event (relay->localmount, NULL, NULL);
+            break;
+        }
         if (relay->on_demand)
         {
+            ice_config_t *config = config_get_config ();
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+
+            if (mountinfo == NULL)
+                source_update_settings (config, relay->source, mountinfo);
+            config_release_config ();
+            slave_rebuild_mounts();
+            stats_event (relay->localmount, "listeners", "0");
+            relay->source->on_demand = relay->on_demand;
+
             if (source->fallback_mount && source->fallback_override)
             {
                 source_t *fallback;
@@ -404,7 +406,7 @@ static void check_relay_stream (relay_server *relay)
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
                 {
-                   DEBUG2 ("fallback running %d with %d listeners", fallback->running, fallback->listeners);
+                   DEBUG2 ("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
                    source->on_demand_req = 1;
                 }
                 avl_tree_unlock (global.source_tree);
@@ -426,8 +428,13 @@ static void check_relay_stream (relay_server *relay)
         relay->thread = NULL;
         relay->cleanup = 0;
         relay->running = 0;
-        relay->source->on_demand = relay->on_demand;
 
+        if (relay->enable == 0)
+        {
+            stats_event (relay->localmount, NULL, NULL);
+            slave_rebuild_mounts();
+            return;
+        }
         if (relay->on_demand)
         {
             ice_config_t *config = config_get_config ();
@@ -743,6 +750,18 @@ static void *_slave_thread(void *arg)
     INFO0 ("Slave thread shutdown complete");
 
     return NULL;
+}
+
+
+relay_server *slave_find_relay (relay_server *relays, const char *mount)
+{
+    while (relays)
+    {
+        if (strcmp (relays->localmount, mount) == 0)
+            break;
+        relays = relays->next;
+    }
+    return relays;
 }
 
 

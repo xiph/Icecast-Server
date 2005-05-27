@@ -67,10 +67,12 @@
 #define COMMAND_RAW_LISTSTREAM              103
 #define COMMAND_PLAINTEXT_LISTSTREAM        104
 #define COMMAND_RAW_ADMIN_FUNCTION          105
+#define COMMAND_RAW_UPDATE_RELAY            106
 #define COMMAND_TRANSFORMED_LIST_MOUNTS     201
 #define COMMAND_TRANSFORMED_STATS           202
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
 #define COMMAND_TRANSFORMED_ADMIN_FUNCTION  204
+#define COMMAND_TRANSFORMED_UPDATE_RELAY    205
 
 /* Client management commands */
 #define COMMAND_RAW_KILL_CLIENT             301
@@ -106,6 +108,8 @@
 #define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
 #define UPDATEMETADATA_RAW_REQUEST "updatemetadata"
 #define UPDATEMETADATA_TRANSFORMED_REQUEST "updatemetadata.xsl"
+#define UPDATE_RELAY_RAW_REQUEST "updaterelay"
+#define UPDATE_RELAY_TRANSFORMED_REQUEST "updaterelay.xsl"
 #define ADM_FUNCTION_RAW_REQUEST "function"
 #define ADM_FUNCTION_TRANSFORMED_REQUEST "function.xsl"
 #define DEFAULT_RAW_REQUEST ""
@@ -168,6 +172,10 @@ int admin_get_command(char *command)
         return COMMAND_TRANSFORMED_UPDATEMETADATA;
     else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
         return COMMAND_BUILDM3U;
+    else if(!strcmp(command, UPDATE_RELAY_RAW_REQUEST))
+        return COMMAND_RAW_UPDATE_RELAY;
+    else if(!strcmp(command, UPDATE_RELAY_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_UPDATE_RELAY;
     else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
         return COMMAND_RAW_ADMIN_FUNCTION;
     else if(!strcmp(command, ADM_FUNCTION_TRANSFORMED_REQUEST))
@@ -200,6 +208,7 @@ static void command_kill_source(client_t *client, source_t *source,
 static void command_updatemetadata(client_t *client, source_t *source,
         int response);
 static void command_admin_function (client_t *client, int response);
+static void command_update_relay (client_t *client, int response);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -456,6 +465,9 @@ static void admin_handle_general_request(client_t *client, int command)
         case COMMAND_RAW_LISTSTREAM:
             command_list_mounts(client, RAW);
             break;
+        case COMMAND_RAW_UPDATE_RELAY:
+            command_update_relay (client, RAW);
+            break;
         case COMMAND_RAW_ADMIN_FUNCTION:
             command_admin_function(client, RAW);
             break;
@@ -473,6 +485,9 @@ static void admin_handle_general_request(client_t *client, int command)
             break;
         case COMMAND_TRANSFORMED_MOVE_CLIENTS:
             command_list_mounts(client, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_UPDATE_RELAY:
+            command_update_relay (client, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_ADMIN_FUNCTION:
             command_admin_function(client, TRANSFORMED);
@@ -689,6 +704,51 @@ static void command_admin_function (client_t *client, int response)
 
     admin_send_response(doc, client, response, 
         ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+    client_destroy(client);
+}
+
+
+static void command_update_relay (client_t *client, int response)
+{
+    char *relay_mount, *enable;
+    const char *msg;
+    relay_server *relay;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    COMMAND_REQUIRE (client, "relay", relay_mount);
+    COMMAND_REQUIRE (client, "enable", enable);
+
+    if (relay_mount == NULL)
+        return;
+
+    thread_mutex_lock (&(config_locks()->relay_lock));
+
+    relay = slave_find_relay (global.relays, relay_mount);
+    if (relay == NULL)
+        relay = slave_find_relay (global.master_relays, relay_mount);
+
+    msg = "no such relay";
+    if (relay)
+    {
+        relay->enable = atoi (enable);
+        msg = "relay has been changed";
+        if (relay->enable == 0)
+        {
+            if (relay->source && relay->source->running == 0)
+                relay->source->on_demand = 0;
+        }
+        slave_rebuild_mounts();
+    }
+    thread_mutex_unlock (&(config_locks()->relay_lock));
+
+    doc = xmlNewDoc("1.0");
+    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    xmlDocSetRootElement(doc, node);
+    xmlNewChild(node, NULL, "message", msg);
+    xmlNewChild(node, NULL, "return", "1");
+    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
     client_destroy(client);
 }

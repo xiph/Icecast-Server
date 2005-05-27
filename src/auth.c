@@ -218,8 +218,8 @@ int add_client_to_source (source_t *source, client_t *client)
         unsigned int total;
         thread_mutex_lock (&source->lock);
         total = source->new_listeners + source->listeners;
-        DEBUG2 ("max on %s is %d", source->mount, source->max_listeners);
-        DEBUG2 ("pending %d, current %d", source->new_listeners, source->listeners);
+        DEBUG2 ("max on %s is %lu", source->mount, source->max_listeners);
+        DEBUG2 ("pending %d, current %lu", source->new_listeners, source->listeners);
         if (source->max_listeners == -1)
             break;
         if (client->is_slave)

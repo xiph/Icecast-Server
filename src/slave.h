@@ -29,6 +29,7 @@ typedef struct _relay_server {
     int on_demand;
     int running;
     int cleanup;
+    int enable;
     thread_type *thread;
     struct _relay_server *next;
 } relay_server;
@@ -46,6 +47,7 @@ void slave_shutdown(void);
 void slave_recheck_mounts (void);
 void slave_rebuild_mounts (void);
 void slave_rescan (void);
+relay_server *slave_find_relay (relay_server *relays, const char *mount);
 int slave_redirect (const char *mountpoint, struct _client_tag *client);
 void slave_host_add (struct _client_tag *client, const char *header);
 void slave_host_remove (struct _client_tag *client);

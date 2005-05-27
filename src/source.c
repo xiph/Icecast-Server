@@ -261,6 +261,7 @@ void source_clear_source (source_t *source)
         source->intro_file = NULL;
     }
 
+    source->on_demand = 0;
     source->on_demand_req = 0;
 }
 
@@ -377,7 +378,7 @@ void source_move_clients (source_t *source, source_t *dest)
             count++;
         }
         if (count != source->listeners)
-            WARN2 ("count %u, listeners %u", count, source->listeners);
+            WARN2 ("count %u, listeners %lu", count, source->listeners);
         count = 0;
         while (source->pending_clients)
         {
@@ -562,10 +563,9 @@ static void get_next_buffer (source_t *source)
 /* general send routine per listener.  The deletion_expected tells us whether
  * the last in the queue is about to disappear, so if this client is still
  * referring to it after writing then drop the client as it's fallen too far
- * behind.
+ * behind
  *
- * return 1 for client should be specially handled, either removed or placed
- *          elsewhere
+ * return 1 for fast client, limiter kicked in
  *        0 for normal case.
  */
 static int send_to_listener (source_t *source, client_t *client, int deletion_expected)
@@ -676,8 +676,8 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     /* has the listener count changed */
     if (source->listeners != listeners)
     {
-        INFO2("listener count on %s now %d", source->mount, source->listeners);
-        stats_event_args (source->mount, "listeners", "%d", source->listeners);
+        INFO2("listener count on %s now %lu", source->mount, source->listeners);
+        stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         if (source->listeners == 0)
             rate_add (source->format->out_bitrate, 0, 0);
         if (source->listeners == 0 && source->on_demand)
@@ -1237,7 +1237,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         stats_event (source->mount, "on_demand", NULL);
 
     DEBUG1 ("public set to %d", source->yp_public);
-    DEBUG1 ("max listeners to %d", source->max_listeners);
+    DEBUG1 ("max listeners to %ld", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
@@ -1269,10 +1269,12 @@ void *source_client_thread (void *arg)
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");
     stats_event (source->mount, "source_ip", source->client->con->ip);
-    source_main (source);
-    source_free_source (source);
 
+    source_main (source);
+
+    source_free_source (source);
     source_recheck_mounts ();
+
     return NULL;
 }
 

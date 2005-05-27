@@ -506,10 +506,9 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
 
         source->running = 1;
         mountinfo = config_find_mount (config, source->mount);
-        if (mountinfo)
-            source_recheck_mounts ();
-        else
+        if (mountinfo == NULL)
             source_update_settings (config, source, mountinfo);
+        source_recheck_mounts ();
         config_release_config();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;

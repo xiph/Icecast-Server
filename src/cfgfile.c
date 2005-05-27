@@ -695,6 +695,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
 
     relay->next = NULL;
     relay->mp3metadata = 1;
+    relay->enable = 1;
     relay->on_demand = configuration->on_demand;
 
     do {
@@ -734,6 +735,11 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         else if (strcmp(node->name, "on-demand") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             relay->on_demand = atoi(tmp);
+            if (tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "enable") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            relay->enable = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
