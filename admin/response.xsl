@@ -13,6 +13,7 @@
 	    <td align="center">
 		<a class="nav" href="listmounts.xsl">List MountPoints</a> | 
         	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
+        	<a class="nav" href="managerelays.xsl">Manage Relays</a> | 
         	<a class="nav" href="stats.xsl">Stats</a> | 
         	<a class="nav" href="/status.xsl">Status Page</a>
 	    </td></tr>

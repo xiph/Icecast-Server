@@ -67,12 +67,12 @@
 #define COMMAND_RAW_LISTSTREAM              103
 #define COMMAND_PLAINTEXT_LISTSTREAM        104
 #define COMMAND_RAW_ADMIN_FUNCTION          105
-#define COMMAND_RAW_UPDATE_RELAY            106
+#define COMMAND_RAW_MANAGE_RELAY            106
 #define COMMAND_TRANSFORMED_LIST_MOUNTS     201
 #define COMMAND_TRANSFORMED_STATS           202
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
 #define COMMAND_TRANSFORMED_ADMIN_FUNCTION  204
-#define COMMAND_TRANSFORMED_UPDATE_RELAY    205
+#define COMMAND_TRANSFORMED_MANAGE_RELAY    205
 
 /* Client management commands */
 #define COMMAND_RAW_KILL_CLIENT             301
@@ -108,8 +108,8 @@
 #define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
 #define UPDATEMETADATA_RAW_REQUEST "updatemetadata"
 #define UPDATEMETADATA_TRANSFORMED_REQUEST "updatemetadata.xsl"
-#define UPDATE_RELAY_RAW_REQUEST "updaterelay"
-#define UPDATE_RELAY_TRANSFORMED_REQUEST "updaterelay.xsl"
+#define MANAGE_RELAY_RAW_REQUEST "managerelays"
+#define MANAGE_RELAY_TRANSFORMED_REQUEST "managerelays.xsl"
 #define ADM_FUNCTION_RAW_REQUEST "function"
 #define ADM_FUNCTION_TRANSFORMED_REQUEST "function.xsl"
 #define DEFAULT_RAW_REQUEST ""
@@ -172,10 +172,10 @@ int admin_get_command(char *command)
         return COMMAND_TRANSFORMED_UPDATEMETADATA;
     else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
         return COMMAND_BUILDM3U;
-    else if(!strcmp(command, UPDATE_RELAY_RAW_REQUEST))
-        return COMMAND_RAW_UPDATE_RELAY;
-    else if(!strcmp(command, UPDATE_RELAY_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_UPDATE_RELAY;
+    else if(!strcmp(command, MANAGE_RELAY_RAW_REQUEST))
+        return COMMAND_RAW_MANAGE_RELAY;
+    else if(!strcmp(command, MANAGE_RELAY_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_MANAGE_RELAY;
     else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
         return COMMAND_RAW_ADMIN_FUNCTION;
     else if(!strcmp(command, ADM_FUNCTION_TRANSFORMED_REQUEST))
@@ -208,7 +208,7 @@ static void command_kill_source(client_t *client, source_t *source,
 static void command_updatemetadata(client_t *client, source_t *source,
         int response);
 static void command_admin_function (client_t *client, int response);
-static void command_update_relay (client_t *client, int response);
+static void command_manage_relay (client_t *client, int response);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
@@ -297,7 +297,8 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
 
     client->respcode = 200;
     if (response == RAW) {
-        xmlDocDumpMemory(doc, &buff, &len);
+        // xmlDocDumpMemory(doc, &buff, &len);
+        xmlDocDumpFormatMemoryEnc (doc, &buff, &len, NULL, 1);
         html_write(client, "HTTP/1.0 200 OK\r\n"
                "Content-Length: %d\r\n"
                "Content-Type: text/xml\r\n"
@@ -465,8 +466,8 @@ static void admin_handle_general_request(client_t *client, int command)
         case COMMAND_RAW_LISTSTREAM:
             command_list_mounts(client, RAW);
             break;
-        case COMMAND_RAW_UPDATE_RELAY:
-            command_update_relay (client, RAW);
+        case COMMAND_RAW_MANAGE_RELAY:
+            command_manage_relay (client, RAW);
             break;
         case COMMAND_RAW_ADMIN_FUNCTION:
             command_admin_function(client, RAW);
@@ -486,8 +487,8 @@ static void admin_handle_general_request(client_t *client, int command)
         case COMMAND_TRANSFORMED_MOVE_CLIENTS:
             command_list_mounts(client, TRANSFORMED);
             break;
-        case COMMAND_TRANSFORMED_UPDATE_RELAY:
-            command_update_relay (client, TRANSFORMED);
+        case COMMAND_TRANSFORMED_MANAGE_RELAY:
+            command_manage_relay (client, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_ADMIN_FUNCTION:
             command_admin_function(client, TRANSFORMED);
@@ -709,7 +710,25 @@ static void command_admin_function (client_t *client, int response)
 }
 
 
-static void command_update_relay (client_t *client, int response)
+static void add_relay_xmlnode (xmlNodePtr node, relay_server *relay, int master)
+{
+    xmlNodePtr relaynode = xmlNewChild (node, NULL, "relay", NULL);
+    char str [20];
+    xmlNewChild (relaynode, NULL, "server", relay->server);
+    xmlNewChild (relaynode, NULL, "mount", relay->mount);
+    snprintf (str, sizeof (str), "%d", relay->port);
+    xmlNewChild (relaynode, NULL, "port", str);
+    xmlNewChild (relaynode, NULL, "localmount", relay->localmount);
+    snprintf (str, sizeof (str), "%d", relay->enable);
+    xmlNewChild (relaynode, NULL, "enable", str);
+    snprintf (str, sizeof (str), "%d", relay->on_demand);
+    xmlNewChild (relaynode, NULL, "on_demand", str);
+    snprintf (str, sizeof (str), "%d", master);
+    xmlNewChild (relaynode, NULL, "master", str);
+}
+
+
+static void command_manage_relay (client_t *client, int response)
 {
     char *relay_mount, *enable;
     const char *msg;
@@ -717,11 +736,27 @@ static void command_update_relay (client_t *client, int response)
     xmlDocPtr doc;
     xmlNodePtr node;
 
-    COMMAND_REQUIRE (client, "relay", relay_mount);
-    COMMAND_REQUIRE (client, "enable", enable);
+    COMMAND_OPTIONAL (client, "relay", relay_mount);
+    COMMAND_OPTIONAL (client, "enable", enable);
 
-    if (relay_mount == NULL)
+    if (relay_mount == NULL || enable == NULL)
+    {
+        doc = xmlNewDoc ("1.0");
+        node = xmlNewDocNode (doc, NULL, "icerelaystats", NULL);
+        xmlDocSetRootElement(doc, node);
+        thread_mutex_lock (&(config_locks()->relay_lock));
+
+        for (relay = global.relays; relay; relay=relay->next)
+            add_relay_xmlnode (node, relay, 0);
+        for (relay = global.master_relays; relay; relay=relay->next)
+            add_relay_xmlnode (node, relay, 1);
+
+        thread_mutex_unlock (&(config_locks()->relay_lock));
+        admin_send_response (doc, client, response, MANAGE_RELAY_TRANSFORMED_REQUEST);
+        xmlFreeDoc (doc);
+        client_destroy (client);
         return;
+    }
 
     thread_mutex_lock (&(config_locks()->relay_lock));
 
