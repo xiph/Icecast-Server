@@ -20,6 +20,21 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh7
+. fix busy poll loop, introduced in kh6, fast clients are now placed at the
+  end of the listeners lists and the starting position is recorded. 
+. use a loop when checking the burst point, that way reducing burst size over
+  HUP works on active streams
+. fix 64bit usage in access.log on win32
+. Add ability for relays to be switched on or off but still reserve the
+  mountpoint.
+  - Added <enable> tag to <relay>, takes a 1 (default) or 0
+  - change with url /admin/managerelay?relay=/localmount&enable=1
+  - added admin page for enabling/disabling relays
+. on-[dis]connect scripts are looked up in the mount list instead of copied
+  to the source
+. type cleanups
+
 2.2-kh6
 . sync up with trunk merges
 . various internal updates
