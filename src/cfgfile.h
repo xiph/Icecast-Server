@@ -61,7 +61,6 @@ typedef struct _mount_proxy {
     int burst_size; /* amount to send to a new client if possible, -1 take
                      * from global setting */
     unsigned int queue_size_limit;
-    int no_yp; /* Do we prevent YP on this mount */
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */

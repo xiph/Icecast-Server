@@ -607,7 +607,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (strcmp(node->name, "no-yp") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->no_yp = atoi(tmp);
+            mount->yp_public = atoi(tmp)==0 ? -1 : 0;
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "hidden") == 0) {
