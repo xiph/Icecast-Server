@@ -57,7 +57,6 @@ typedef struct _mount_proxy {
     int burst_size; /* amount to send to a new client if possible, -1 take
                      * from global setting */
     unsigned int queue_size_limit;
-    int no_yp; /* Do we prevent YP on this mount */
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
@@ -65,6 +64,16 @@ typedef struct _mount_proxy {
     char *auth_type; /* Authentication type */
     char *cluster_password;
     config_options_t *auth_options; /* Options for this type */
+
+    char *stream_name;
+    char *stream_description;
+    char *stream_url;
+    char *stream_genre;
+    char *bitrate;
+    char *type;
+    char *subtype;
+    int yp_public;
+
     struct _mount_proxy *next;
 } mount_proxy;
 

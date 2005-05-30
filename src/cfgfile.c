@@ -191,6 +191,12 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->password);
         xmlFree(mount->dumpfile);
         xmlFree(mount->fallback_mount);
+        xmlFree(mount->stream_name);
+        xmlFree(mount->stream_description);
+        xmlFree(mount->stream_url);
+        xmlFree(mount->stream_genre);
+        xmlFree(mount->bitrate);
+        xmlFree(mount->type);
         if (mount->cluster_password) {
             xmlFree(mount->cluster_password);
         }
@@ -529,6 +535,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount->max_listeners = -1;
     mount->burst_size = -1;
     mount->mp3_meta_interval = -1;
+    mount->yp_public = -1;
     mount->next = NULL;
 
     do {
@@ -577,7 +584,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (strcmp(node->name, "no-yp") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->no_yp = atoi(tmp);
+            mount->yp_public = atoi(tmp) == 0 ? -1 : 0;
             if(tmp) xmlFree(tmp);
         }
         else if (strcmp(node->name, "hidden") == 0) {
@@ -635,9 +642,35 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "cluster-password") == 0) {
             mount->cluster_password = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-name") == 0) {
+            mount->stream_name = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-description") == 0) {
+            mount->stream_description = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "stream-url") == 0) {
+            mount->stream_url = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "genre") == 0) {
+            mount->stream_genre = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "bitrate") == 0) {
+            mount->bitrate = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "public") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->yp_public = atoi (tmp);
+            if(tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "type") == 0) {
+            mount->type = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "subtype") == 0) {
+            mount->subtype = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
 }
+
 
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)

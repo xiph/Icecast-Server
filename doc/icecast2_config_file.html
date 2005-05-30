@@ -347,7 +347,14 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
-        &lt;no-yp&gt;1&lt;/no-yp&gt;
+        &lt;public&gt;1&lt;/public&gt;
+        &lt;stream-name&gt;My audio stream&lt;/stream-name&gt;
+        &lt;stream-description&gt;My audio description&lt;/stream-description&gt;
+        &lt;stream-url&gt;http://some.place.com&lt;/stream-url&gt;
+        &lt;genre&gt;classical&lt;/genre&gt;
+        &lt;bitrate&gt;64&lt;/bitrate&gt;
+        &lt;type&gt;application/ogg&lt;/type&gt;
+        &lt;subtype&gt;vorbis&lt;/subtype&gt;
         &lt;hidden&gt;1&lt;/hidden&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;mp3-metadata-interval&gt;4096&lt;/mp3-metadata-interval&gt;
@@ -358,7 +365,16 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
 
     &lt;/mount&gt;
 </pre>
-<p>This section contains settings which apply only to a specific mountpoint.  Within this section you can reserve a specific mountpoint and set a source username/password for that mountpoint (not yet implemented) as well as specify individual settings which will apply only to the supplied mountpoint.
+<p>This section contains the settings which apply only to a specific mountpoint and applies to
+an incoming stream whether it is a relay or a source client. The purpose of the mount definition
+is to state certain information that can override either global/default settings or settings
+provided from the incoming stream.
+</p>
+<p>A mount does not need to be stated for each incoming source although you may want to
+specific certain settings like the maximum number of listeners or a mountpoint specific
+username/password.  As a general rule, only define what you need to but each mount definition
+needs at least the mount-name.  Changes to most of these will apply across a configuration file
+re-read even on active streams, however some only apply when the stream starts or ends.
 </p>
 <h4>mount-name</h4>
 <div class="indentedbox">
@@ -397,11 +413,67 @@ This multi-level fallback allows clients to cascade several mountpoints.
 When enabled, this allows a connecting source client or relay on this mountpoint to move
 listening clients back from the fallback mount.
 </div>
-<h4>no-yp</h4>
+<h4>no-yp (deprecated)</h4>
 <div class="indentedbox">
-Setting this option prevents this mountpoint from advertising on YP.  The default is 0 so YP
-advertising occurs however you may want to prevent it here if you intend listeners to connect
-to a local relay instead
+    <p>Setting this option prevents this mountpoint from advertising on YP.  The default is 0
+    so YP advertising can occur however you may want to prevent it here if you intend listeners
+    to connect to a local relay instead. Deprecated option, replaced by &lt;public&gt;
+    </p>
+</div>
+<h4>public</h4>
+<div class="indentedbox">
+    <p>The default setting for this is -1 indicating that it is up to the source client or
+    relay to determine if this mountpoint should advertise. A setting of 0 will prevent any
+    advertising and a setting of 1 will force it to advertise. If you do force advertising
+    you may need to set other settings listed below as the YP server can refuse to advertise
+    if there is not enough information provided.
+    </p>
+</div>
+<h4>stream-name</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified name to the stats (and therefore YP) for this
+    mountpoint even if the source client/relay provide one.
+    </p>
+</div>
+<h4>stream-description</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified description to the stats (and therefore YP) for
+    this mountpoint even if the source client/relay provide one.
+    </p>
+</div>
+<h4>stream-url</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified URL to the stats (and therefore YP) for this
+    mountpoint even if the source client/relay provide one.  The URL is generally for 
+    directing people to a website.
+    </p>
+</div>
+<h4>genre</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified genre to the stats (and therefore YP) for this
+    mountpoint even if the source client/relay provide one. This can be anything be using
+    certain key words can help searches in the YP directories.
+    </p>
+</div>
+<h4>bitrate</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified bitrate to the stats (and therefore YP) for this
+    mountpoint even if the source client/relay provide one.  This is stated in kbps.
+    </p>
+</div>
+<h4>type</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified mime type to the stats (and therefore YP) for
+    this mountpoint even if the source client/relay provide one.  It is very unlikely that
+    this will be needed.
+    </p>
+</div>
+<h4>subtype</h4>
+<div class="indentedbox">
+    <p>Setting this will add the specified subtype to the stats (and therefore YP) for
+    this mountpoint. The subtype is really to help the YP server to identify the components
+    of the type. An example setting is vorbis/theora do indicate the codecs in an Ogg stream
+    </p>
 </div>
 <h4>burst-size</h4>
 <div class="indentedbox">
