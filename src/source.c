@@ -617,6 +617,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     {
         INFO2 ("Client %lu (%s) has fallen too far behind, removing",
                 client->con->id, client->con->ip);
+        stats_event_inc (source->mount, "slow_listeners");
         client->con->error = 1;
         ret = 1;
     }
@@ -699,8 +700,8 @@ static void process_pending_clients (source_t *source)
         /*  trap from when clients have been moved */
         if (to_go->write_to_client == NULL)
         {
-            ERROR0 ("client was no write function");
-            client->con->error = 1;
+            to_go->write_to_client = source->format->write_buf_to_client;
+            to_go->check_buffer = format_advance_queue;
         }
 
         to_go->next = source->active_clients;
@@ -749,6 +750,7 @@ static void source_init (source_t *source)
     source->listeners = 0;
     stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
+    stats_event (source->mount, "slow_listeners", "0");
 
     if (source->client->con)
         sock_set_blocking (source->client->con->sock, SOCK_NONBLOCK);
