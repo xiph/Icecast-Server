@@ -746,7 +746,13 @@ static void _handle_stats_request (client_t *client, char *uri)
         return;
     }
 
-    stats_event_inc(NULL, "stats");
+    client->respcode = 200;
+    if (sock_write (client->con->sock, "HTTP/1.0 200 OK\r\n\r\n") < 19)
+    {
+        client_destroy (client);
+        ERROR0 ("failed to write header");
+        return;
+    }
 
     thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
 }
