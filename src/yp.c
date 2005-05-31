@@ -762,95 +762,51 @@ static void add_yp_info (ypdata_t *yp, void *info, int type)
     if (!info)
         return;
 
+    escaped = util_url_escape(info);
+    if (escaped == NULL)
+        return;
+
     switch (type)
     {
         case YP_SERVER_NAME:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->server_name)
-                    free (yp->server_name);
-                yp->server_name = escaped;
-            }
+            free (yp->server_name);
+            yp->server_name = escaped;
             break;
         case YP_SERVER_DESC:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->server_desc)
-                    free (yp->server_desc);
-                yp->server_desc = escaped;
-            }
+            free (yp->server_desc);
+            yp->server_desc = escaped;
             break;
         case YP_SERVER_GENRE:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->server_genre)
-                    free (yp->server_genre);
-                yp->server_genre = escaped;
-            }
+            free (yp->server_genre);
+            yp->server_genre = escaped;
             break;
         case YP_SERVER_URL:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->url)
-                    free (yp->url);
-                yp->url = escaped;
-            }
+            free (yp->url);
+            yp->url = escaped;
             break;
         case YP_BITRATE:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->bitrate)
-                    free (yp->bitrate);
-                yp->bitrate = escaped;
-            }
+            free (yp->bitrate);
+            yp->bitrate = escaped;
             break;
         case YP_AUDIO_INFO:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                free (yp->audio_info);
-                yp->audio_info = escaped;
-            }
+            free (yp->audio_info);
+            yp->audio_info = escaped;
             break;
         case YP_SERVER_TYPE:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->server_type)
-                    free (yp->server_type);
-                yp->server_type = escaped;
-            }
+            free (yp->server_type);
+            yp->server_type = escaped;
             break;
         case YP_CURRENT_SONG:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->current_song)
-                    free (yp->current_song);
-                yp->current_song = escaped;
-            }
+            free (yp->current_song);
+            yp->current_song = escaped;
             break;
         case YP_CLUSTER_PASSWORD:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                if (yp->cluster_password)
-                    free (yp->cluster_password);
-                yp->cluster_password = escaped;
-            }
+            free (yp->cluster_password);
+            yp->cluster_password = escaped;
             break;
         case YP_SUBTYPE:
-            escaped = util_url_escape(info);
-            if (escaped)
-            {
-                free (yp->subtype);
-                yp->subtype = escaped;
-            }
+            free (yp->subtype);
+            yp->subtype = escaped;
             break;
     }
 }

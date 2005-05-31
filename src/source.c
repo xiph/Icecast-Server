@@ -432,7 +432,8 @@ static refbuf_t *get_next_buffer (source_t *source)
         {
             if (source->last_read + (time_t)source->timeout < current)
             {
-                DEBUG3 ("last %ld, timeout %d, now %ld", source->last_read, source->timeout, current);
+                DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
+                        source->timeout, (long)current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->running = 0;
             }
@@ -707,8 +708,8 @@ void source_main (source_t *source)
         /* update the stats if need be */
         if (source->listeners != listeners)
         {
-            INFO2("listener count on %s now %ld", source->mount, source->listeners);
-            stats_event_args (source->mount, "listeners", "%d", source->listeners);
+            INFO2("listener count on %s now %lu", source->mount, source->listeners);
+            stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         }
 
         /* lets reduce the queue, any lagging clients should of been
@@ -1054,7 +1055,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     else
     {
         char buf [10];
-        snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
+        snprintf (buf, sizeof (buf), "%ld", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
     DEBUG1 ("public set to %d", source->yp_public);

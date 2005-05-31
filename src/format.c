@@ -54,10 +54,10 @@ format_type_t format_get_type(char *contenttype)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
         return FORMAT_TYPE_OGG; /* Now blessed by IANA */
-    else 
+    else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3 */
-        return FORMAT_TYPE_GENERIC; 
+        return FORMAT_TYPE_GENERIC;
 }
 
 int format_get_plugin(format_type_t type, source_t *source)
