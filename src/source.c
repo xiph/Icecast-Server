@@ -97,8 +97,6 @@ source_t *source_reserve (const char *mount)
         src->mount = strdup (mount);
         src->max_listeners = -1;
 
-        src->pending_clients_tail = &src->pending_clients;
-
         thread_mutex_create (src->mount, &src->lock);
 
         avl_insert (global.source_tree, src);
@@ -211,14 +209,6 @@ void source_clear_source (source_t *source)
         source_free_client (source, client);
     }
     source->fast_clients_p = &source->active_clients;
-    while (source->pending_clients)
-    {
-        client_t *client = source->pending_clients;
-        source->pending_clients = client->next;
-        source_free_client (source, client);
-    }
-    source->pending_clients_tail = &source->pending_clients;
-    source->new_listeners = 0;
 
     format_free_plugin (source->format);
     source->format = NULL;
@@ -241,6 +231,7 @@ void source_clear_source (source_t *source)
     source->queue_size = 0;
     source->queue_size_limit = 0;
     source->listeners = 0;
+    source->prev_listeners = 0;
     source->no_mount = 0;
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
@@ -281,9 +272,6 @@ void source_free_source (source_t *source)
     if (source->active_clients)
         WARN1("active listeners on mountpoint %s", source->mount);
 
-    if (source->pending_clients)
-        WARN1("pending listeners on mountpoint %s", source->mount);
-
     thread_mutex_destroy (&source->lock);
 
     free (source->mount);
@@ -320,7 +308,7 @@ client_t *source_find_client(source_t *source, int id)
  */
 void source_move_clients (source_t *source, source_t *dest)
 {
-    unsigned int count = 0;
+    unsigned long count = 0;
     if (strcmp (source->mount, dest->mount) == 0)
     {
         WARN1 ("src and dst are the same \"%s\", skipping", source->mount);
@@ -370,36 +358,20 @@ void source_move_clients (source_t *source, source_t *dest)
             if (client->check_buffer != format_check_http_buffer)
             {
                 client_set_queue (client, NULL);
-                client->write_to_client = NULL;
             }
 
-            *dest->pending_clients_tail = client;
-            dest->pending_clients_tail = &client->next;
+            client->next = dest->active_clients;
+            dest->active_clients = client;
             count++;
         }
         if (count != source->listeners)
-            WARN2 ("count %u, listeners %lu", count, source->listeners);
-        count = 0;
-        while (source->pending_clients)
-        {
-            client_t *client = source->pending_clients;
-            source->pending_clients = client->next;
-            /* clients on pending have a unique refbuf containing headers
-             * so no need to change them here */
-            *dest->pending_clients_tail = client;
-            dest->pending_clients_tail = &client->next;
-            count++;
-        }
-        source->pending_clients_tail = &source->pending_clients;
-        if (count != source->new_listeners)
-            WARN2 ("count %u, new listeners %u", count, source->new_listeners);
-        
-        count = source->listeners + source->new_listeners;
-        INFO2 ("passing %d listeners to \"%s\"", count, dest->mount);
+            WARN2 ("count %lu, listeners %lu", count, source->listeners);
 
-        dest->new_listeners += count;
+        INFO2 ("passing %lu listeners to \"%s\"", count, dest->mount);
+
+        dest->listeners += count;
         source->listeners = 0;
-        source->new_listeners = 0;
+        source->listeners = 0;
         stats_event (source->mount, "listeners", "0");
 
     } while (0);
@@ -500,7 +472,8 @@ static void get_next_buffer (source_t *source)
         {
             if (source->last_read + (time_t)source->timeout < current)
             {
-                DEBUG2 ("last read is %ld, current is %ld", source->last_read, current);
+                DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read, 
+                        source->timeout, (long)current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->running = 0;
                 break;
@@ -629,7 +602,6 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 {
     client_t *client, **client_p;
     client_t *fast_clients = NULL, **fast_client_tail = &fast_clients;
-    unsigned int listeners = source->listeners;
 
     /* where do we start from */
     if (fast_clients_only)
@@ -675,49 +647,15 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
         *client_p = fast_clients;
 
     /* has the listener count changed */
-    if (source->listeners != listeners)
+    if (source->listeners != source->prev_listeners)
     {
+        source->prev_listeners = source->listeners;
         INFO2("listener count on %s now %lu", source->mount, source->listeners);
         stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         if (source->listeners == 0)
             rate_add (source->format->out_bitrate, 0, 0);
         if (source->listeners == 0 && source->on_demand)
             source->running = 0;
-    }
-}
-
-
-static void process_pending_clients (source_t *source)
-{
-    unsigned count = 0;
-    client_t *client = source->pending_clients;
-
-    while (client)
-    {
-        client_t *to_go = client;
-
-        client = client->next;
-        /*  trap from when clients have been moved */
-        if (to_go->write_to_client == NULL)
-        {
-            to_go->write_to_client = source->format->write_buf_to_client;
-            to_go->check_buffer = format_advance_queue;
-        }
-
-        to_go->next = source->active_clients;
-        source->active_clients = to_go;
-
-        count++;
-        source->new_listeners--;
-    }
-    source->pending_clients = NULL;
-    source->pending_clients_tail = &source->pending_clients;
-
-    if (count)
-    {
-        DEBUG1("Adding %d client(s)", count);
-        source->listeners += count;
-        stats_event_args (source->mount, "listeners", "%d", source->listeners);
     }
 }
 
@@ -820,10 +758,6 @@ void source_main (source_t *source)
            remove it until later */
         if (source->queue_size > source->queue_size_limit)
             remove_from_q = 1;
-
-        /* add pending clients */
-        if (source->pending_clients)
-            process_pending_clients (source);
 
         process_listeners (source, 0, remove_from_q);
 
@@ -1230,7 +1164,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     else
     {
         char buf [10];
-        snprintf (buf, sizeof (buf), "%lu", source->max_listeners);
+        snprintf (buf, sizeof (buf), "%ld", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
     if (source->on_demand)

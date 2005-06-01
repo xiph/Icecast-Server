@@ -194,13 +194,6 @@ static int check_duplicate_logins (source_t *source, client_t *client)
                 return 0;
             existing = existing->next;
         }
-        existing = source->pending_clients;
-        while (existing)
-        {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
-            existing = existing->next;
-        }
     }
     return 1;
 }
@@ -215,16 +208,14 @@ int add_client_to_source (source_t *source, client_t *client)
     int loop = 10;
     do
     {
-        unsigned int total;
         thread_mutex_lock (&source->lock);
-        total = source->new_listeners + source->listeners;
-        DEBUG2 ("max on %s is %lu", source->mount, source->max_listeners);
-        DEBUG2 ("pending %d, current %lu", source->new_listeners, source->listeners);
+        DEBUG3 ("max on %s is %ld (cur %lu)", source->mount,
+                source->max_listeners, source->listeners);
         if (source->max_listeners == -1)
             break;
         if (client->is_slave)
             break;
-        if (total < (unsigned int)source->max_listeners)
+        if (source->listeners < (unsigned long)source->max_listeners)
             break;
 
         if (loop && source->fallback_when_full && source->fallback_mount)
@@ -241,11 +232,10 @@ int add_client_to_source (source_t *source, client_t *client)
         return -1;
 
     } while (1);
-    /* lets add the client to the pending list */
-    source->new_listeners++;
-    client->next = source->pending_clients;
-    source->pending_clients = client;
-    thread_mutex_unlock (&source->lock);
+    /* lets add the client to the active list */
+    client->next = source->active_clients;
+    source->active_clients = client;
+    source->listeners++;
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
@@ -253,6 +243,8 @@ int add_client_to_source (source_t *source, client_t *client)
 
     sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
     sock_set_nodelay (client->con->sock);
+    thread_mutex_unlock (&source->lock);
+
     if (source->running == 0 && source->on_demand)
     {
         /* enable on-demand relay to start, wake up the slave thread */
