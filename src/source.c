@@ -358,6 +358,7 @@ void source_move_clients (source_t *source, source_t *dest)
             if (client->check_buffer != format_check_http_buffer)
             {
                 client_set_queue (client, NULL);
+                client->check_buffer = format_check_file_buffer;
             }
 
             client->next = dest->active_clients;
@@ -385,25 +386,6 @@ void source_move_clients (source_t *source, source_t *dest)
     }
     thread_mutex_unlock (&dest->lock);
     thread_mutex_unlock (&move_clients_mutex);
-}
-
-
-/* clients need to be start from somewhere in the queue
- * so we will look for a refbuf which has been previous
- * marked as a sync point */
-static void find_client_start (source_t *source, client_t *client)
-{
-    refbuf_t *refbuf = source->burst_point;
-
-    while (refbuf)
-    {
-        if (refbuf->sync_point)
-        {
-            client_set_queue (client, refbuf);
-            break;
-        }
-        refbuf = refbuf->next;
-    }
 }
 
 
@@ -548,14 +530,6 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     int total_written = 0;
     int ret = 0;
 
-    /* new users need somewhere to start from */
-    if (client->refbuf == NULL)
-    {
-        find_client_start (source, client);
-        if (client->refbuf == NULL)
-            return 0;
-    }
-
     while (1)
     {
         /* jump out if client connection has died */
@@ -586,7 +560,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
-    if (deletion_expected && client->refbuf == source->stream_data)
+    if (deletion_expected && client->refbuf && client->refbuf == source->stream_data)
     {
         INFO2 ("Client %lu (%s) has fallen too far behind, removing",
                 client->con->id, client->con->ip);
@@ -626,7 +600,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
             DEBUG0("Client removed");
             continue;
         }
-        if (fast_client && client->check_buffer != format_check_intro_buffer)
+        if (fast_client && client->check_buffer != format_check_file_buffer)
         {
             client_t *to_move = client;
 
@@ -1106,6 +1080,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (source->intro_file == NULL)
                 WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
             free (path);
+            source->intro_filename = strdup (mountinfo->intro_filename);
         }
     }
 
@@ -1131,6 +1106,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
+    /*  skip if source is a fallback to file */
+    if (source->running && source->client->con == NULL)
+        return;
     thread_mutex_lock (&source->lock);
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
@@ -1201,10 +1179,10 @@ void *source_client_thread (void *arg)
             source_free_source (source);
             return NULL;
         }
+        stats_event (source->mount, "source_ip", source->client->con->ip);
     }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");
-    stats_event (source->mount, "source_ip", source->client->con->ip);
 
     source_main (source);
 

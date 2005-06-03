@@ -96,7 +96,43 @@ int format_get_plugin (format_type_t type, source_t *source, http_parser_t *pars
 }
 
 
-static int get_intro_data (FILE *intro, client_t *client)
+/* clients need to be start from somewhere in the queue so we will look for
+ * a refbuf which has been previously marked as a sync point. 
+ */
+static void find_client_start (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = source->burst_point;
+
+    /* we only want to attempt a burst at connection time, not midstream */
+    if (client->intro_offset == -1)
+        refbuf = source->stream_data_tail;
+    else
+    {
+        long size = 0;
+        refbuf = source->burst_point;
+        size = source->burst_size - client->intro_offset;
+        while (size > 0 && refbuf->next)
+        {
+            size -= refbuf->len;
+            refbuf = refbuf->next;
+        }
+    }
+
+    while (refbuf)
+    {
+        if (refbuf->sync_point)
+        {
+            client_set_queue (client, refbuf);
+            client->check_buffer = format_advance_queue;
+            client->intro_offset = -1;
+            break;
+        }
+        refbuf = refbuf->next;
+    }
+}
+
+
+static int get_file_data (FILE *intro, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     int bytes;
@@ -112,40 +148,48 @@ static int get_intro_data (FILE *intro, client_t *client)
 }
 
 
-/* wrapper for the per-format write to client routine. Here we populate
- * the refbuf before calling it
+/* call to check the buffer contents for file reading. move the client
+ * to right place in the queue at end of file else repeat file if queue
+ * is not ready yet.
  */
-int format_check_intro_buffer (source_t *source, client_t *client)
+int format_check_file_buffer (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
 
+    if (refbuf == NULL)
+    {
+        if (source->client->con)
+        {
+            client->intro_offset = -1;
+            find_client_start (source, client);
+            return -1;
+        }
+        /* source -> file fallback, need a refbuf for data */
+        refbuf = refbuf_new (4096);
+        client->refbuf = refbuf;
+        client->pos = refbuf->len;
+        client->intro_offset = 0;
+    }
     if (client->pos == refbuf->len)
     {
-        if (get_intro_data (source->intro_file, client) == 0)
+        if (get_file_data (source->intro_file, client))
+        {
+            client->pos = 0;
+            client->intro_offset += refbuf->len;
+        }
+        else
         {
             if (source->stream_data_tail)
             {
-                refbuf_t *refbuf = source->burst_point;
-                int size = source->burst_size - client->intro_offset;
-                while (size > 0 && refbuf->next)
-                {
-                    size -= refbuf->len;
-                    refbuf = refbuf->next;
-                }
-                client->intro_offset = 0;
-                /* move client to stream */
-                client_set_queue (client, refbuf);
-                client->check_buffer = format_advance_queue;
+                /* better find the right place in queue for this client */
+                client->intro_offset = -1;
+                client_set_queue (client, NULL);
+                find_client_start (source, client);
             }
             else
-            {
-                /* replay intro file */
-                client->intro_offset = 0;
-            }
-            return 0;
+                client->intro_offset = 0;  /* replay intro file */
+            return -1;
         }
-        client->pos = 0;
-        client->intro_offset += refbuf->len;
     }
     return 0;
 }
@@ -159,10 +203,8 @@ int format_check_http_buffer (source_t *source, client_t *client)
     refbuf_t *refbuf = client->refbuf;
 
     if (refbuf == NULL)
-    {
-        ERROR0 ("should be impossible");
         return -1;
-    }
+
     if (client->respcode == 0)
     {
         DEBUG0("processing pending client headers");
@@ -179,17 +221,9 @@ int format_check_http_buffer (source_t *source, client_t *client)
     if (client->pos == refbuf->len)
     {
         client->write_to_client = source->format->write_buf_to_client;
-        if (source->intro_file)
-        {
-            /* client should be sent an intro file */
-            client->check_buffer = format_check_intro_buffer;
-            client->intro_offset = 0;
-        }
-        else
-        {
-            client->check_buffer = format_advance_queue;
-            client_set_queue (client, NULL);
-        }
+        client->check_buffer = format_check_file_buffer;
+        client->intro_offset = 0;
+        client->pos = refbuf->len = 4096;
         return -1;
     }
     return 0;
@@ -219,6 +253,9 @@ int format_generic_write_to_client (client_t *client)
 int format_advance_queue (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
+
+    if (refbuf == NULL)
+        return -1;
 
     if (refbuf->next == NULL && client->pos == refbuf->len)
         return -1;

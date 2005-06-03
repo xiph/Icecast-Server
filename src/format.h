@@ -63,7 +63,7 @@ int format_get_plugin(format_type_t type, struct source_tag *source, http_parser
 int format_generic_write_to_client (client_t *client);
 int format_advance_queue (struct source_tag *source, client_t *client);
 int format_check_http_buffer (struct source_tag *source, client_t *client);
-int format_check_intro_buffer (struct source_tag *source, client_t *client);
+int format_check_file_buffer (struct source_tag *source, client_t *client);
 
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
