@@ -61,14 +61,11 @@ format_type_t format_get_type(char *contenttype);
 char *format_get_mimetype(format_type_t type);
 int format_get_plugin(format_type_t type, struct source_tag *source);
 
+int format_advance_queue (struct source_tag *source, client_t *client);
+int format_check_file_buffer (struct source_tag *source, client_t *client);
+
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
 
 #endif  /* __FORMAT_H__ */
-
-
-
-
-
-
 

@@ -504,21 +504,11 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 static int write_buf_to_client (format_plugin_t *self, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    char *buf;
-    unsigned len;
+    char *buf = refbuf->data + client->pos;
+    unsigned len = refbuf->len - client->pos;
     struct ogg_client *client_data = client->format_data;
     int ret, written = 0;
 
-    if (refbuf->next == NULL && client->pos == refbuf->len)
-        return 0;
-
-    if (refbuf->next && client->pos == refbuf->len)
-    {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
     do
     {
         if (client_data->headers != refbuf->associated)

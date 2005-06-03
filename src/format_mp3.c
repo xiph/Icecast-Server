@@ -326,21 +326,8 @@ static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *clie
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
     refbuf_t *refbuf = client->refbuf;
-    char *buf;
-    unsigned int len;
-
-    if (refbuf->next == NULL && client->pos == refbuf->len)
-        return 0;
-
-    /* move to the next buffer if we have finished with the current one */
-    if (refbuf->next && client->pos == refbuf->len)
-    {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-
-    buf = refbuf->data + client->pos;
-    len = refbuf->len - client->pos;
+    char *buf = refbuf->data + client->pos;
+    unsigned int len = refbuf->len - client->pos;
 
     do
     {

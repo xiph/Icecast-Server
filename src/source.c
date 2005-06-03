@@ -48,6 +48,7 @@
 #include "source.h"
 #include "format.h"
 #include "auth.h"
+#include "os.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -250,6 +251,12 @@ void source_clear_source (source_t *source)
 
     free(source->dumpfilename);
     source->dumpfilename = NULL;
+
+    if (source->intro_file)
+    {
+        fclose (source->intro_file);
+        source->intro_file = NULL;
+    }
 }
 
 
@@ -344,7 +351,8 @@ void source_move_clients (source_t *source, source_t *dest)
             avl_delete (source->pending_tree, client, NULL);
 
             /* switch client to different queue */
-            client_set_queue (client, dest->stream_data_tail);
+            client_set_queue (client, NULL);
+            client->check_buffer = format_check_file_buffer;
             avl_insert (dest->pending_tree, (void *)client);
         }
 
@@ -359,7 +367,8 @@ void source_move_clients (source_t *source, source_t *dest)
             avl_delete (source->client_tree, client, NULL);
 
             /* switch client to different queue */
-            client_set_queue (client, dest->stream_data_tail);
+            client_set_queue (client, NULL);
+            client->check_buffer = format_check_file_buffer;
             avl_insert (dest->pending_tree, (void *)client);
         }
         source->listeners = 0;
@@ -371,25 +380,6 @@ void source_move_clients (source_t *source, source_t *dest)
     avl_tree_unlock (source->pending_tree);
     avl_tree_unlock (dest->pending_tree);
     thread_mutex_unlock (&move_clients_mutex);
-}
-
-
-/* clients need to be start from somewhere in the queue
- * so we will look for a refbuf which has been previous
- * marked as a sync point */
-static void find_client_start (source_t *source, client_t *client)
-{
-    refbuf_t *refbuf = source->burst_point;
-
-    while (refbuf)
-    {
-        if (refbuf->sync_point)
-        {
-            client_set_queue (client, refbuf);
-            break;
-        }
-        refbuf = refbuf->next;
-    }
 }
 
 
@@ -466,14 +456,6 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
     int loop = 10;   /* max number of iterations in one go */
     int total_written = 0;
 
-    /* new users need somewhere to start from */
-    if (client->refbuf == NULL)
-    {
-        find_client_start (source, client);
-        if (client->refbuf == NULL)
-            return;
-    }
-
     while (1)
     {
         /* jump out if client connection has died */
@@ -490,6 +472,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 
         loop--;
 
+        if (client->check_buffer (source, client) < 0)
+            break;
+
         bytes = source->format->write_buf_to_client (source->format, client);
         if (bytes <= 0)
             break;  /* can't write any more */
@@ -500,7 +485,7 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
-    if (deletion_expected && client->refbuf == source->stream_data)
+    if (deletion_expected && client->refbuf && client->refbuf == source->stream_data)
     {
         DEBUG0("Client has fallen too far behind, removing");
         client->con->error = 1;
@@ -1012,6 +997,24 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     else
         source->dumpfilename = NULL;
 
+    if (mountinfo && mountinfo->intro_filename && source->intro_file == NULL)
+    {
+        ice_config_t *config = config_get_config_unlocked ();
+        unsigned int len  = strlen (config->webroot_dir) +
+            strlen (mountinfo->intro_filename) + 2;
+        char *path = malloc (len);
+        if (path)
+        {
+            snprintf (path, len, "%s" PATH_SEPARATOR "%s", config->webroot_dir,
+                    mountinfo->intro_filename);
+
+            source->intro_file = fopen (path, "rb");
+            if (source->intro_file == NULL)
+                WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
+            free (path);
+        }
+    }
+
     if (mountinfo && mountinfo->queue_size_limit)
         source->queue_size_limit = mountinfo->queue_size_limit;
 
@@ -1040,6 +1043,8 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 
     if (source->fallback_mount)
         DEBUG1 ("fallback %s", source->fallback_mount);
+    if (mountinfo && mountinfo->intro_filename)
+        DEBUG1 ("intro file is %s", mountinfo->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
     if (source->hidden)

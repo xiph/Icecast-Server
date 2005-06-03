@@ -952,6 +952,8 @@ static void _handle_get_request (client_t *client, char *passed_uri)
                             
         sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
         sock_set_nodelay(client->con->sock);
+
+        client->check_buffer = format_check_file_buffer;
                         
         avl_tree_wlock(source->pending_tree);
         avl_insert(source->pending_tree, (void *)client);

@@ -190,6 +190,7 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->username);
         xmlFree(mount->password);
         xmlFree(mount->dumpfile);
+        xmlFree(mount->intro_filename);
         xmlFree(mount->fallback_mount);
         xmlFree(mount->stream_name);
         xmlFree(mount->stream_description);
@@ -556,6 +557,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (strcmp(node->name, "dump-file") == 0) {
             mount->dumpfile = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "intro") == 0) {
+            mount->intro_filename = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
         else if (strcmp(node->name, "fallback-mount") == 0) {

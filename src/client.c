@@ -30,6 +30,7 @@
 #include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
+#include "format.h"
 #include "stats.h"
 
 #include "client.h"
@@ -62,6 +63,7 @@ client_t *client_create(connection_t *con, http_parser_t *parser)
     client->parser = parser;
     client->refbuf = NULL;
     client->pos = 0;
+    client->check_buffer = format_advance_queue;
 
     return client;
 }

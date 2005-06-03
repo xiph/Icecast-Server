@@ -345,6 +345,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;password&gt;hackmemore&lt;/password&gt;
         &lt;max-listeners&gt;1&lt;/max-listeners&gt;
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
+        &lt;intro&gt;/intro.ogg&lt;/intro&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
         &lt;public&gt;1&lt;/public&gt;
@@ -396,6 +397,15 @@ An optional value which will set the maximum number of listeners that can be att
 <div class="indentedbox">
 An optional value which will set the filename which will be a dump of the stream coming through on this mountpoint.
 </div>
+<h4>intro</h4>
+<div class="indentedbox">
+    <p>An optional value which will specify the file those contents will be sent to new listeners
+    when they connect but before the normal stream is sent. Make sure the format of the file
+    specified matches the streaming format.  The specified file is appended to webroot before
+    being opened.
+    </p>
+</div>
+
 <h4>fallback-mount</h4>
 <div class="indentedbox">
 This optional value specifies a mountpoint that clients are automatically moved to if the source

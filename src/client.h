@@ -32,6 +32,9 @@ typedef struct _client_tag
     /* http response code for this client */
     int respcode;
 
+     /* is client getting intro data */
+     long intro_offset;
+
     /* where in the queue the client is */
     refbuf_t *refbuf;
 
@@ -46,6 +49,10 @@ typedef struct _client_tag
 
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
+
+    /* function to check if refbuf needs updating */
+    int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
+
 } client_t;
 
 client_t *client_create(connection_t *con, http_parser_t *parser);

@@ -81,6 +81,130 @@ int format_get_plugin(format_type_t type, source_t *source)
     return ret;
 }
 
+
+/* clients need to be start from somewhere in the queue so we will look for
+ * a refbuf which has been previously marked as a sync point. 
+ */
+static void find_client_start (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = source->burst_point;
+
+    /* we only want to attempt a burst at connection time, not midstream */
+    if (client->intro_offset == -1)
+        refbuf = source->stream_data_tail;
+    else
+    {
+        long size = 0;
+        refbuf = source->burst_point;
+        size = source->burst_size - client->intro_offset;
+        while (size > 0 && refbuf->next)
+        {
+            size -= refbuf->len;
+            refbuf = refbuf->next;
+        }
+    }
+
+    while (refbuf)
+    {
+        if (refbuf->sync_point)
+        {
+            client_set_queue (client, refbuf);
+            client->check_buffer = format_advance_queue;
+            client->intro_offset = -1;
+            break;
+        }
+        refbuf = refbuf->next;
+    }
+}
+
+
+static int get_file_data (FILE *intro, client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+    int bytes;
+
+    if (intro == NULL || fseek (intro, client->intro_offset, SEEK_SET) < 0)
+        return 0;
+    bytes = fread (refbuf->data, 1, 4096, intro);
+    if (bytes == 0)
+        return 0;
+
+    refbuf->len = bytes;
+    return 1;
+}
+
+
+/* call to check the buffer contents for file reading. move the client
+ * to right place in the queue at end of file else repeat file if queue
+ * is not ready yet.
+ */
+int format_check_file_buffer (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+
+    if (refbuf == NULL)
+    {
+        if (source->intro_file && client->intro_offset == 0)
+        {
+            refbuf = refbuf_new (4096);
+            client->refbuf = refbuf;
+            client->pos = refbuf->len;
+        }
+        else
+        {
+            find_client_start (source, client);
+            return -1;
+        }
+    }
+    if (client->pos == refbuf->len)
+    {
+        if (get_file_data (source->intro_file, client))
+        {
+            client->pos = 0;
+            client->intro_offset += refbuf->len;
+        }
+        else
+        {
+            if (source->stream_data_tail)
+            {
+                /* better find the right place in queue for this client */
+                client->intro_offset = -1;
+                client_set_queue (client, NULL);
+                find_client_start (source, client);
+            }
+            else
+                client->intro_offset = 0;  /* replay intro file */
+            return -1;
+        }
+    }
+    return 0;
+}
+
+
+/* This is the commonly used for source streams, here we just progress to
+ * the next buffer in the queue if there is no more left to be written from 
+ * the existing buffer.
+ */
+int format_advance_queue (source_t *source, client_t *client)
+{
+    refbuf_t *refbuf = client->refbuf;
+
+    if (refbuf == NULL)
+        return -1;
+
+    if (refbuf->next == NULL && client->pos == refbuf->len)
+        return -1;
+
+    /* move to the next buffer if we have finished with the current one */
+    if (refbuf->next && client->pos == refbuf->len)
+    {
+        client_set_queue (client, refbuf->next);
+        refbuf = client->refbuf;
+    }
+    return 0;
+}
+
+
 void format_send_general_headers(format_plugin_t *format,
         source_t *source, client_t *client)
 {

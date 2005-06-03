@@ -46,6 +46,8 @@ typedef struct source_tag
     rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
 
+    FILE *intro_file;
+
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
