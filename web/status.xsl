@@ -50,6 +50,9 @@
 <xsl:if test="listeners">
 <tr><td>Stream Listeners:</td><td class="streamdata"> <xsl:value-of select="listeners" /></td></tr>
 </xsl:if>
+<xsl:if test="listener_peak">
+<tr><td>Listener Peak:</td><td class="streamdata"> <xsl:value-of select="listener_peak" /></td></tr>
+</xsl:if>
 <xsl:if test="genre">
 <tr><td>Stream Genre:</td><td class="streamdata"> <xsl:value-of select="genre" /></td></tr>
 </xsl:if>

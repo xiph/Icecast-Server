@@ -649,6 +649,7 @@ static void source_init (source_t *source)
     thread_mutex_lock (&source->lock);
 
     stats_event (source->mount, "server_type", source->format->contenttype);
+    stats_event_args (source->mount, "listener_peak", "0");
 
     if (source->dumpfilename != NULL)
     {
@@ -1173,6 +1174,8 @@ void *source_client_thread (void *arg)
 
     if (source->client && source->client->con)
     {
+        const char *agent;
+
         source->client->respcode = 200;
         bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
         if (bytes < (int)(sizeof (ok_msg)-1))
@@ -1185,6 +1188,9 @@ void *source_client_thread (void *arg)
             return NULL;
         }
         stats_event (source->mount, "source_ip", source->client->con->ip);
+        agent = httpp_getvar (source->client->parser, "user-agent");
+        if (agent)
+            stats_event (source->mount, "user_agent", agent);
     }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");

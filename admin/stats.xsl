@@ -54,8 +54,9 @@
 <xsl:for-each select="source">
 <xsl:if test = "listeners!=''"> 
 <h3>
+<a href="{@mount}.m3u">
 <xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-(<xsl:value-of select="@mount" />)
+(<xsl:value-of select="@mount" />)</a>
 <xsl:if test="authenticator"> <a href="manageauth.xsl?mount={@mount}"><img border="0" src="/key.gif"/></a> </xsl:if>
 </h3>
 	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
