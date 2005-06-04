@@ -559,6 +559,7 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "source_relay_connections", "0");
     stats_event (NULL, "source_total_connections", "0");
     stats_event (NULL, "stats_connections", "0");
+    stats_event (NULL, "listener_connections", "0");
 
     INFO0 ("stats thread started");
     while (_stats_running) {

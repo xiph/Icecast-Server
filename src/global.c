@@ -42,6 +42,7 @@ void global_initialize(void)
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
+    global.time = time(NULL);
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
     thread_mutex_create("global", &_global_mutex);
 }

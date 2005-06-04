@@ -236,6 +236,7 @@ int add_client_to_source (source_t *source, client_t *client)
     client->next = source->active_clients;
     source->active_clients = client;
     source->listeners++;
+    stats_event_inc (NULL, "listener_connections");
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
