@@ -625,6 +625,11 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     {
         source->prev_listeners = source->listeners;
         INFO2("listener count on %s now %lu", source->mount, source->listeners);
+        if (source->listeners > source->peak_listeners)
+        {
+            source->peak_listeners = source->listeners;
+            stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+        }
         stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         if (source->listeners == 0)
             rate_add (source->format->out_bitrate, 0, 0);
