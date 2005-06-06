@@ -104,9 +104,8 @@ int format_mp3_get_plugin (source_t *source)
 
     /* initial metadata needs to be blank for sending to clients and for
        comparing with new metadata */
-    meta = refbuf_new (2);
-    memcpy (meta->data, "\0\0", 2);
-    meta->len = 1;
+    meta = refbuf_new (17);
+    memcpy (meta->data, "\001StreamTitle='';", 17);
     state->metadata = meta;
     state->interval = -1;
 
