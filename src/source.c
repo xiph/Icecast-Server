@@ -475,7 +475,7 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
         if (client->check_buffer (source, client) < 0)
             break;
 
-        bytes = source->format->write_buf_to_client (source->format, client);
+        bytes = client->write_to_client (client);
         if (bytes <= 0)
             break;  /* can't write any more */
 
@@ -790,7 +790,11 @@ static int _free_client(void *key)
 {
     client_t *client = (client_t *)key;
 
-    client_destroy(client);
+    /* if no response has been sent then send a 404 */
+    if (client->respcode == 0)
+        client_send_404 (client, "Mount unavailable");
+    else
+        client_destroy(client);
     
     return 1;
 }

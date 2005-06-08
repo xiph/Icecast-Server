@@ -943,18 +943,13 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         }
         global_unlock();
                         
-        source->format->create_client_data (source, client);
-
-        source->format->client_send_headers(source->format, source, client);
-                        
-        bytes = sock_write(client->con->sock, "\r\n");
-        if(bytes > 0) client->con->sent_bytes += bytes;
-                            
         sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
         sock_set_nodelay(client->con->sock);
 
-        client->check_buffer = format_check_file_buffer;
-                        
+        client->write_to_client = format_generic_write_to_client;
+        client->check_buffer = format_check_http_buffer;
+        client->refbuf = refbuf_new (4096);
+
         avl_tree_wlock(source->pending_tree);
         avl_insert(source->pending_tree, (void *)client);
         avl_tree_unlock(source->pending_tree);

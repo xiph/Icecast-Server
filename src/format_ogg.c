@@ -54,13 +54,11 @@ struct _ogg_state_tag;
 
 static void format_ogg_free_plugin (format_plugin_t *plugin);
 static int  create_ogg_client_data(source_t *source, client_t *client);
-static void format_ogg_send_headers(format_plugin_t *self,
-        source_t *source, client_t *client);
 static void free_ogg_client_data (client_t *client);
 
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
-static int write_buf_to_client (format_plugin_t *self, client_t *client);
+static int write_buf_to_client (client_t *client);
 
 
 struct ogg_client
@@ -167,7 +165,6 @@ int format_ogg_get_plugin (source_t *source)
     plugin->write_buf_to_client = write_buf_to_client;
     plugin->write_buf_to_file = write_ogg_to_file;
     plugin->create_client_data = create_ogg_client_data;
-    plugin->client_send_headers = format_ogg_send_headers;
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
     plugin->contenttype = "application/ogg";
@@ -501,7 +498,7 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 /* main client write routine for sending ogg data. Each refbuf has a
  * single page so we only need to determine if there are new headers
  */
-static int write_buf_to_client (format_plugin_t *self, client_t *client)
+static int write_buf_to_client (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     char *buf = refbuf->data + client->pos;
@@ -569,20 +566,4 @@ static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
     write_ogg_data (source, refbuf);
 }
 
-
-static void format_ogg_send_headers(format_plugin_t *self,
-        source_t *source, client_t *client)
-{
-    int bytes;
-
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\n" 
-            "Content-Type: %s\r\n", 
-            source->format->contenttype);
-
-    if(bytes > 0) client->con->sent_bytes += bytes;
-
-    format_send_general_headers(self, source, client);
-}
 

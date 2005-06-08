@@ -50,6 +50,9 @@ typedef struct _client_tag
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
 
+    /* write out data associated with client */
+    int (*write_to_client)(struct _client_tag *client);
+
     /* function to check if refbuf needs updating */
     int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
 

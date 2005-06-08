@@ -59,9 +59,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
-static int format_mp3_write_buf_to_client(format_plugin_t *self, client_t *client);
-static void format_mp3_send_headers(format_plugin_t *self, 
-        source_t *source, client_t *client);
+static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
@@ -89,7 +87,6 @@ int format_mp3_get_plugin (source_t *source)
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
     plugin->write_buf_to_file = write_mp3_to_file;
     plugin->create_client_data = format_mp3_create_client_data;
-    plugin->client_send_headers = format_mp3_send_headers;
     plugin->free_plugin = format_mp3_free_plugin;
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
@@ -320,7 +317,7 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 /* Handler for writing mp3 data to a client, taking into account whether
  * client has requested shoutcast style metadata updates
  */
-static int format_mp3_write_buf_to_client (format_plugin_t *self, client_t *client) 
+static int format_mp3_write_buf_to_client(client_t *client)
 {
     int ret, written = 0;
     mp3_client_data *client_mp3 = client->format_data;
@@ -573,11 +570,23 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
-    char *metadata;
     mp3_state *source_mp3 = source->format->_state;
+    const char *metadata; 
+    /* the +-2 is for overwriting the last set of \r\n */
+    unsigned remaining = 4096 - client->refbuf->len + 2;
+    char *ptr = client->refbuf->data + client->refbuf->len - 2;
+    int bytes;
 
     if (client_mp3 == NULL)
         return -1;
+
+    /* hack for flash player, it wants a length */
+    if (httpp_getvar(client->parser, "x-flash-version"))
+    {
+        bytes = snprintf (ptr, remaining, "Content-Length: 347122319\r\n");
+        remaining -= bytes;
+        ptr += bytes;
+    }
 
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
@@ -588,8 +597,19 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
             client_mp3->interval = source_mp3->interval;
         else
             client_mp3->interval = ICY_METADATA_INTERVAL;
+        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n",
+                client_mp3->interval);
+        if (bytes > 0)
+        {
+            remaining -= bytes;
+            ptr += bytes;
+        }
     }
+    bytes = snprintf (ptr, remaining, "\r\n");
+    remaining -= bytes;
+    ptr += bytes;
 
+    client->refbuf->len = 4096 - remaining;
 
     return 0;
 }
@@ -599,54 +619,6 @@ static void free_mp3_client_data (client_t *client)
 {
     free (client->format_data);
     client->format_data = NULL;
-}
-
-
-static void format_mp3_send_headers(format_plugin_t *self,
-        source_t *source, client_t *client)
-{
-    int bytes;
-    char *content_length;
-
-    mp3_client_data *mp3data = client->format_data;
-    
-    client->respcode = 200;
-
-    /* This little bit of code is for compatability with
-       flash mp3 streaming. Flash requires a content-length
-       in order for it to stream mp3s, and so based off a
-       trial and error effort, the following number was derived.
-       It is the largest content-length that we can send, anything
-       larger causes flash streaming not to work. Note that it
-       is also possible that other flash-based players may not
-       send this request header (x-flash-version), but given the
-       sampleset I had access to, this should suffice. */
-    if (httpp_getvar(client->parser, "x-flash-version")) {
-        content_length = "Content-Length: 347122319\r\n";
-    }
-    else {
-        content_length = "";
-    }
-
-    /* TODO: This may need to be ICY/1.0 for shoutcast-compatibility? */
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 200 OK\r\n" 
-            "Content-Type: %s\r\n"
-            "%s", 
-            source->format->contenttype,
-            content_length);
-
-    if (bytes > 0)
-        client->con->sent_bytes += bytes;
-
-    if (mp3data->interval)
-    {
-        int bytes = sock_write(client->con->sock, "icy-metaint:%d\r\n", 
-                mp3data->interval);
-        if(bytes > 0)
-            client->con->sent_bytes += bytes;
-    }
-    format_send_general_headers(self, source, client);
 }
 
 
