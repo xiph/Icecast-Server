@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 Releaseicecast\icecast.lib ..\..\curl\lib\Release\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib winmm.lib ../../theora/win32/Static_Release/theora_static.lib /nologo /subsystem:windows /machine:I386 /nodefaultlib:"libc.lib" /out:"Release/Icecast2.exe"
+# ADD LINK32 Releaseicecast\icecast.lib ..\..\curl\lib\Release\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib winmm.lib ../../theora/win32/Static_Release/theora_static.lib ../../speex/win32/libspeex/Release/libspeex.lib /nologo /subsystem:windows /machine:I386 /nodefaultlib:"libc.lib" /out:"Release/Icecast2.exe"
 # SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "Icecast2win - Win32 Debug"
@@ -80,7 +80,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 Debugicecast\icecast.lib ..\..\curl\lib\Debug\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static_d.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static_d.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib winmm.lib ../../theora/win32/Static_Debug/theora_static_d.lib /nologo /subsystem:windows /incremental:no /debug /machine:I386 /nodefaultlib:"libcd.lib" /nodefaultlib:"LIBCMTD.lib" /pdbtype:sept
+# ADD LINK32 Debugicecast\icecast.lib ..\..\curl\lib\Debug\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static_d.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static_d.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib winmm.lib ../../theora/win32/Static_Debug/theora_static_d.lib ../../speex/win32/libspeex/Release/libspeex.lib /nologo /subsystem:windows /incremental:no /debug /machine:I386 /nodefaultlib:"libcd.lib" /nodefaultlib:"LIBCMTD.lib" /pdbtype:sept
 # SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
