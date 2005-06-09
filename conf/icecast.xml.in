@@ -3,7 +3,7 @@
         <clients>100</clients>
         <sources>2</sources>
         <threadpool>5</threadpool>
-        <queue-size>102400</queue-size>
+        <queue-size>524288</queue-size>
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
         <source-timeout>10</source-timeout>
