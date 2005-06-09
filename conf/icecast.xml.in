@@ -67,12 +67,19 @@
     <!--<master-server-port>8001</master-server-port>-->
     <!--<master-update-interval>120</master-update-interval>-->
     <!--<master-password>hackme</master-password>-->
+
+    <!-- setting this makes all relays on-demand unless overridden, this is
+         useful for master relays which do not have <relay> definitions here.
+         The default is 0 -->
+    <!--<relays-on-demand>1</relays-on-demand>-->
+
     <!--
     <relay>
         <server>127.0.0.1</server>
         <port>8001</port>
         <mount>/example.ogg</mount>
         <local-mount>/different.ogg</local-mount>
+        <on-demand>0</on-demand>
 
         <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
     </relay>
@@ -91,6 +98,7 @@
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
         <fallback-override>1</fallback-override>
+        <intro>/example_intro.ogg</intro>
         <hidden>1</hidden>
         <no-yp>1</no-yp>
         <authentication type="htpasswd">
