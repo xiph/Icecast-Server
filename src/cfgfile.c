@@ -342,6 +342,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
+    configuration->on_demand = 0;
     configuration->dir_list = NULL;
     configuration->hostname = CONFIG_DEFAULT_HOSTNAME;
     configuration->port = 0;
@@ -407,6 +408,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "fileserve") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->fileserve = atoi(tmp);
+            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "relays-on-demand") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->on_demand = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "hostname") == 0) {
             if (configuration->hostname && configuration->hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(configuration->hostname);
@@ -697,6 +702,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
 
     relay->next = NULL;
     relay->mp3metadata = 1;
+    relay->on_demand = configuration->on_demand;
 
     do {
         if (node == NULL) break;
@@ -731,6 +737,11 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         else if (strcmp(node->name, "password") == 0) {
             relay->password = (char *)xmlNodeListGetString(doc,
                     node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "on-demand") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            relay->on_demand = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
     if (relay->localmount == NULL)

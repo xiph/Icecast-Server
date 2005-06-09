@@ -99,6 +99,7 @@ relay_server *relay_copy (relay_server *r)
             copy->password = xmlStrdup (r->password);
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
+        copy->on_demand = r->on_demand;
     }
     return copy;
 }
@@ -111,6 +112,15 @@ void slave_recheck_mounts (void)
 {
     max_interval = 0;
     update_settings = 1;
+}
+
+
+/* Request slave thread to rescan the existing relays to see if any need
+ * starting up, eg on-demand relays
+ */
+void slave_rescan (void)
+{
+    rescan_relays = 1;
 }
 
 
@@ -235,12 +245,33 @@ static void *start_relay_stream (void *arg)
 
         source_main (relay->source);
 
+        if (relay->on_demand == 0)
+        {
+            /* only keep refreshing YP entries for inactive on-demand relays */
+            yp_remove (relay->localmount);
+            relay->source->yp_public = -1;
+        }
+
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
         rescan_relays = 1;
 
         return NULL;
     } while (0);
+
+    DEBUG1 ("failed relay, fallback to %s", relay->source->fallback_mount);
+    if (relay->source->fallback_mount)
+    {
+        source_t *fallback_source;
+
+        avl_tree_rlock(global.source_tree);
+        fallback_source = source_find_mount (relay->source->fallback_mount);
+
+        if (fallback_source != NULL)
+            source_move_clients (relay->source, fallback_source);
+
+        avl_tree_unlock (global.source_tree);
+    }
 
     if (con == NULL && streamsock != SOCK_ERROR)
         sock_close (streamsock);
@@ -278,13 +309,46 @@ static void check_relay_stream (relay_server *relay)
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
     }
-    if (relay->source && !relay->running)
+    do
     {
+        source_t *source = relay->source;
+        if (relay->source == NULL || relay->running)
+            break;
+        if (relay->on_demand)
+        {
+            ice_config_t *config = config_get_config ();
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+
+            if (mountinfo == NULL)
+                source_update_settings (config, relay->source, mountinfo);
+            config_release_config ();
+            slave_rebuild_mounts();
+            stats_event (relay->localmount, "listeners", "0");
+            relay->source->on_demand = relay->on_demand;
+
+            if (source->fallback_mount && source->fallback_override)
+            {
+                source_t *fallback;
+                DEBUG1 ("checking %s for fallback override", source->fallback_mount);
+                avl_tree_rlock (global.source_tree);
+                fallback = source_find_mount (source->fallback_mount);
+                if (fallback && fallback->running && fallback->listeners)
+                {
+                   DEBUG2 ("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
+                   source->on_demand_req = 1;
+                }
+                avl_tree_unlock (global.source_tree);
+            }
+            if (source->on_demand_req == 0)
+                break;
+        }
+
         relay->thread = thread_create ("Relay Thread", start_relay_stream,
                 relay, THREAD_ATTACHED);
         return;
-    }
-    /* the relay thread may of close down */
+
+    } while(0);
+    /* the relay thread may of shut down itself */
     if (relay->cleanup && relay->thread)
     {
         DEBUG1 ("waiting for relay thread for \"%s\"", relay->localmount);
@@ -292,6 +356,15 @@ static void check_relay_stream (relay_server *relay)
         relay->thread = NULL;
         relay->cleanup = 0;
         relay->running = 0;
+
+        if (relay->on_demand)
+        {
+            ice_config_t *config = config_get_config ();
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+            source_update_settings (config, relay->source, mountinfo);
+            config_release_config ();
+            stats_event (relay->localmount, "listeners", "0");
+        }
     }
 }
 
@@ -311,6 +384,8 @@ static int relay_has_changed (relay_server *new, relay_server *old)
             break;
         if (new->mp3metadata != old->mp3metadata)
             break;
+        if (new->on_demand != old->on_demand)
+            old->on_demand = new->on_demand;
         return 0;
     } while (0);
     return 1;
@@ -421,6 +496,7 @@ static int update_from_master(ice_config_t *config)
         char *authheader, *data;
         relay_server *new_relays = NULL, *cleanup_relays;
         int len, count = 1;
+        int on_demand;
 
         username = strdup (config->master_username);
         if (config->master_password)
@@ -433,6 +509,7 @@ static int update_from_master(ice_config_t *config)
 
         if (password == NULL || master == NULL || port == 0)
             break;
+        on_demand = config->on_demand;
         ret = 1;
         config_release_config();
         mastersock = sock_connect_wto (master, port, 0);
@@ -481,6 +558,7 @@ static int update_from_master(ice_config_t *config)
                 r->mount = xmlStrdup (buf);
                 r->localmount = xmlStrdup (buf);
                 r->mp3metadata = 1;
+                r->on_demand = on_demand;
                 r->next = new_relays;
                 new_relays = r;
             }

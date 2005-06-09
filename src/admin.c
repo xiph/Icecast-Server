@@ -226,7 +226,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             continue;
         }
 
-        if (source->running)
+        if (source->running || source->on_demand)
         {
             srcnode = xmlNewChild(xmlnode, NULL, "source", NULL);
             xmlSetProp(srcnode, "mount", source->mount);
@@ -369,7 +369,7 @@ void admin_handle_request(client_t *client, char *uri)
         }
         else
         {
-            if (source->running == 0)
+            if (source->running == 0 && source->on_demand == 0)
             {
                 avl_tree_unlock (global.source_tree);
                 INFO2("Received admin command %s on unavailable mount \"%s\"",
@@ -590,7 +590,7 @@ static void command_move_clients(client_t *client, source_t *source,
         return;
     }
 
-    if (dest->running == 0)
+    if (dest->running == 0 && dest->on_demand == 0)
     {
         client_send_400 (client, "Destination not running");
         return;
@@ -982,7 +982,7 @@ static void command_list_mounts(client_t *client, int response)
 
             if (source == NULL)
                 continue;
-            if (source->running == 0)
+            if (source->running == 0 && source->on_demand == 0)
                 continue;
             if (source->hidden)
                 continue;

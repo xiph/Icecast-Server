@@ -68,6 +68,8 @@ typedef struct source_tag
     unsigned int queue_size_limit;
 
     unsigned timeout;  /* source timeout in seconds */
+    int on_demand;
+    int on_demand_req;
     int hidden;
     time_t last_read;
     int short_delay;

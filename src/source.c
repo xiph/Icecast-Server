@@ -152,8 +152,11 @@ source_t *source_find_mount (const char *mount)
     {
         source = source_find_mount_raw(mount);
 
-        if (source != NULL && source->running)
-            break;
+        if (source)
+        {
+            if (source->running || source->on_demand)
+                break;
+        }
 
         /* we either have a source which is not active (relay) or no source
          * at all. Check the mounts list for fallback settings
@@ -229,9 +232,6 @@ void source_clear_source (source_t *source)
     }
     source->stream_data_tail = NULL;
 
-    if (source->yp_public)
-        yp_remove (source->mount);
-
     source->burst_point = NULL;
     source->burst_size = 0;
     source->burst_offset = 0;
@@ -257,6 +257,8 @@ void source_clear_source (source_t *source)
         fclose (source->intro_file);
         source->intro_file = NULL;
     }
+
+    source->on_demand_req = 0;
 }
 
 
@@ -270,6 +272,9 @@ void source_free_source (source_t *source)
 
     avl_tree_free(source->pending_tree, _free_client);
     avl_tree_free(source->client_tree, _free_client);
+
+    /* make sure all YP entries have gone */
+    yp_remove (source->mount);
 
     free (source->mount);
     free (source);
@@ -306,6 +311,7 @@ client_t *source_find_client(source_t *source, int id)
  */
 void source_move_clients (source_t *source, source_t *dest)
 {
+    unsigned long count = 0;
     if (strcmp (source->mount, dest->mount) == 0)
     {
         WARN1 ("src and dst are the same \"%s\", skipping", source->mount);
@@ -316,7 +322,7 @@ void source_move_clients (source_t *source, source_t *dest)
 
     /* if the destination is not running then we can't move clients */
 
-    if (dest->running == 0)
+    if (dest->running == 0 && dest->on_demand == 0)
     {
         WARN1 ("destination mount %s not running, unable to move clients ", dest->mount);
         thread_mutex_unlock (&move_clients_mutex);
@@ -331,15 +337,18 @@ void source_move_clients (source_t *source, source_t *dest)
         /* we need to move the client and pending trees */
         avl_tree_wlock (source->pending_tree);
 
-        if (source->format == NULL)
+        if (source->on_demand == 0 && source->format == NULL)
         {
             INFO1 ("source mount %s is not available", source->mount);
             break;
         }
-        if (source->format->type != dest->format->type)
+        if (source->format && dest->format)
         {
-            WARN2 ("stream %s and %s are of different types, ignored", source->mount, dest->mount);
-            break;
+            if (source->format->type != dest->format->type)
+            {
+                WARN2 ("stream %s and %s are of different types, ignored", source->mount, dest->mount);
+                break;
+            }
         }
 
         while (1)
@@ -350,10 +359,18 @@ void source_move_clients (source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->pending_tree, client, NULL);
 
-            /* switch client to different queue */
-            client_set_queue (client, NULL);
-            client->check_buffer = format_check_file_buffer;
+            /* when switching a client to a different queue, be wary of the 
+             * refbuf it's referring to, if it's http headers then we need
+             * to write them so don't release it.
+             */
+            if (client->check_buffer != format_check_http_buffer)
+            {
+                client_set_queue (client, NULL);
+                client->check_buffer = format_check_file_buffer;
+            }
+
             avl_insert (dest->pending_tree, (void *)client);
+            count++;
         }
 
         avl_tree_wlock (source->client_tree);
@@ -366,16 +383,32 @@ void source_move_clients (source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->client_tree, client, NULL);
 
-            /* switch client to different queue */
-            client_set_queue (client, NULL);
-            client->check_buffer = format_check_file_buffer;
+            /* when switching a client to a different queue, be wary of the 
+             * refbuf it's referring to, if it's http headers then we need
+             * to write them so don't release it.
+             */
+            if (client->check_buffer != format_check_http_buffer)
+            {
+                client_set_queue (client, NULL);
+                client->check_buffer = format_check_file_buffer;
+            }
             avl_insert (dest->pending_tree, (void *)client);
+            count++;
         }
+        INFO2 ("passing %lu listeners to \"%s\"", count, dest->mount);
+
         source->listeners = 0;
         stats_event (source->mount, "listeners", "0");
         avl_tree_unlock (source->client_tree);
 
     } while (0);
+
+    /* see if we need to wake up an on-demand relay */
+    if (dest->running == 0 && dest->on_demand && count)
+    {
+        dest->on_demand_req = 1;
+        slave_rebuild_mounts();
+    }
 
     avl_tree_unlock (source->pending_tree);
     avl_tree_unlock (dest->pending_tree);
@@ -695,6 +728,8 @@ void source_main (source_t *source)
         {
             INFO2("listener count on %s now %lu", source->mount, source->listeners);
             stats_event_args (source->mount, "listeners", "%lu", source->listeners);
+            if (source->listeners == 0 && source->on_demand)
+                source->running = 0;
         }
 
         /* lets reduce the queue, any lagging clients should of been
@@ -1051,6 +1086,14 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         DEBUG1 ("intro file is %s", mountinfo->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
+    if (source->on_demand)
+    {
+        DEBUG0 ("on_demand set");
+        stats_event (source->mount, "on_demand", "1");
+    }
+    else
+        stats_event (source->mount, "on_demand", NULL);
+
     if (source->hidden)
     {
         stats_event_hidden (source->mount, NULL, 1);

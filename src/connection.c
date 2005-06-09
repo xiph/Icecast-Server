@@ -896,7 +896,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
             if (uri != passed_uri) free (uri);
             return;
         }
-        if (source->running == 0)
+        if (source->running == 0 && source->on_demand == 0)
         {
             avl_tree_unlock(global.source_tree);
             DEBUG0("inactive source, client dropped");
@@ -953,6 +953,14 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         avl_tree_wlock(source->pending_tree);
         avl_insert(source->pending_tree, (void *)client);
         avl_tree_unlock(source->pending_tree);
+
+        if (source->running == 0 && source->on_demand)
+        {
+            /* enable on-demand relay to start, wake up the slave thread */
+            DEBUG0("kicking off on-demand relay");
+            source->on_demand_req = 1;
+            slave_rescan ();
+        }
     }
                     
     avl_tree_unlock(global.source_tree);

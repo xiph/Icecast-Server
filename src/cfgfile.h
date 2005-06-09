@@ -109,6 +109,7 @@ typedef struct ice_config_tag
     int source_timeout;
     int ice_login;
     int fileserve;
+    int on_demand; /* global setting for all relays */
 
     char *shoutcast_mount;
     char *source_password;
