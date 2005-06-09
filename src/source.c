@@ -521,7 +521,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
      * if so, check to see if this client is still referring to it */
     if (deletion_expected && client->refbuf && client->refbuf == source->stream_data)
     {
-        DEBUG0("Client has fallen too far behind, removing");
+        INFO2 ("Client %lu (%s) has fallen too far behind, removing",
+                client->con->id, client->con->ip);
+        stats_event_inc (source->mount, "slow_listeners");
         client->con->error = 1;
     }
 }
@@ -574,7 +576,7 @@ static void source_init (source_t *source)
     source->listeners = 0;
     stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
-    stats_event (source->mount, "listeners", "0");
+    stats_event (source->mount, "slow_listeners", "0");
 
     sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
@@ -1124,6 +1126,7 @@ void *source_client_thread (void *arg)
     source_t *source = arg;
     const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
     int bytes;
+    const char *agent;
 
     source->client->respcode = 200;
     bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
@@ -1136,6 +1139,10 @@ void *source_client_thread (void *arg)
         source_free_source (source);
         return NULL;
     }
+    stats_event (source->mount, "source_ip", source->client->con->ip);
+    agent = httpp_getvar (source->client->parser, "user-agent");
+    if (agent)
+        stats_event (source->mount, "user_agent", agent);
 
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");

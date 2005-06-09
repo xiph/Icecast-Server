@@ -242,6 +242,7 @@ static void *start_relay_stream (void *arg)
             break;
         }
         stats_event_inc(NULL, "source_relay_connections");
+        stats_event (relay->localmount, "source_ip", relay->server);
 
         source_main (relay->source);
 

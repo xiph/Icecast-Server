@@ -953,6 +953,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         avl_tree_wlock(source->pending_tree);
         avl_insert(source->pending_tree, (void *)client);
         avl_tree_unlock(source->pending_tree);
+        stats_event_inc (NULL, "listener_connections");
 
         if (source->running == 0 && source->on_demand)
         {
