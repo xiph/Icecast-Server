@@ -499,7 +499,8 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
            sleep for too long if more data can be sent */
         if (total_written > 20000 || loop == 0)
         {
-            source->short_delay = 1;
+            if (client->check_buffer != format_check_file_buffer)
+                source->short_delay = 1;
             break;
         }
 
