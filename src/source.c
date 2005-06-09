@@ -156,9 +156,7 @@ source_t *source_find_mount (const char *mount)
         source = source_find_mount_raw(mount);
         if (source)
         {
-            if (source->running)
-                break;
-            if (source->on_demand)
+            if (source->running || source->on_demand)
                 break;
         }
 
@@ -252,7 +250,6 @@ void source_clear_source (source_t *source)
         source->intro_file = NULL;
     }
 
-    source->on_demand = 0;
     source->on_demand_req = 0;
 }
 
@@ -371,7 +368,6 @@ void source_move_clients (source_t *source, source_t *dest)
         INFO2 ("passing %lu listeners to \"%s\"", count, dest->mount);
 
         dest->listeners += count;
-        source->listeners = 0;
         source->listeners = 0;
         stats_event (source->mount, "listeners", "0");
 
@@ -1134,7 +1130,13 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     if (mountinfo && mountinfo->on_disconnect)
         DEBUG1 ("disconnect script \"%s\"", mountinfo->on_disconnect);
     if (source->on_demand)
+    {
         DEBUG0 ("on_demand set");
+        stats_event (source->mount, "on_demand", "1");
+    }
+    else
+        stats_event (source->mount, "on_demand", NULL);
+
     if (source->hidden)
     {
         stats_event_hidden (source->mount, NULL, 1);
@@ -1151,10 +1153,6 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         snprintf (buf, sizeof (buf), "%ld", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
-    if (source->on_demand)
-        stats_event (source->mount, "on_demand", "1");
-    else
-        stats_event (source->mount, "on_demand", NULL);
 
     DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("max listeners to %ld", source->max_listeners);

@@ -297,7 +297,6 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
 
     client->respcode = 200;
     if (response == RAW) {
-        // xmlDocDumpMemory(doc, &buff, &len);
         xmlDocDumpFormatMemoryEnc (doc, &buff, &len, NULL, 1);
         html_write(client, "HTTP/1.0 200 OK\r\n"
                "Content-Length: %d\r\n"

@@ -124,6 +124,7 @@ static void find_client_start (source_t *source, client_t *client)
         {
             client_set_queue (client, refbuf);
             client->check_buffer = format_advance_queue;
+            client->write_to_client = source->format->write_buf_to_client;
             client->intro_offset = -1;
             break;
         }

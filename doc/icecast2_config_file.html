@@ -279,8 +279,9 @@ the hostname setting and this specifies the port to redirect listeners to.
 </div>
 <h4>relays-on-demand</h4>
 <div class="indentedbox">
-Changes the default on-demand setting, so a stream is only relayed if listeners are connected.
-(1=enabled, 0=disabled).
+    <p>Changes the default on-demand setting for relays, so a stream is only relayed if
+    listeners are connected. 1=enabled, 0=disabled (default).
+    </p>
 </div>
 
 <br />
@@ -350,8 +351,9 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
 </div>
 <h4>on-demand</h4>
 <div class="indentedbox">
-An on-demand relay will only retrieve the stream if there are listeners connected
-(1=enabled, 0=disabled).
+    <p>An on-demand relay will only retrieve the stream if there are listeners connected
+    1=enabled, 0=disabled (default is &lt;relays-on-demand&gt;).
+    </p>
 </div>
 <h4>enable</h4>
 <div class="indentedbox">
@@ -463,8 +465,8 @@ listening clients back from the fallback mount.
 </div>
 <h4>no-yp</h4>
 <div class="indentedbox">
-    <p>Setting this option prevents this mountpoint from advertising on YP.  The default is 0 
-    so YP advertising can occur however you may want to prevent it here if you intend listeners 
+    <p>Setting this option prevents this mountpoint from advertising on YP.  The default is 0
+    so YP advertising can occur however you may want to prevent it here if you intend listeners
     to connect to a local relay instead. Deprecated option, replaced by &lt;public&gt;
     </p>
 </div>
@@ -530,22 +532,17 @@ as defined in limits.  The value is in bytes.
 </div>
 <h4>mp3-metadata-interval</h4>
 <div class="indentedbox">
-This optional setting specifies what interval, in bytes, there is between metadata updates within
-shoutcast compatible streams. This only applies to new listeners connecting on this mountpoint,
-not existing listeners falling back to this mountpoint.  The default is either the hardcoded
-server default or the value passed from a relay.
+    <p>This optional setting specifies what interval, in bytes, there is between metadata
+    updates within shoutcast compatible streams. This only applies to new listeners connecting
+    on this mountpoint, not existing listeners falling back to this mountpoint.  The default
+    is either the hardcoded server default or the value passed from a relay.
+    </p>
 </div>
 <h4>hidden</h4>
 <div class="indentedbox">
 Enable this to prevent this mount from being shown on the xsl pages.  This is mainly
 for cases where a local relay is configured and you do not want the source of the local
 relay to be shown
-</div>
-<h4>mp3-metadata-interval</h4>
-<div class="indentedbox">
-Listeners connecting to an mp3 stream can request metadata be sent to them. That metadata
-is sent every so many bytes, this setting allows for overriding the default for this
-mountpoint. A value of 0 means no metadata is sent to the client even if icecast receives it.
 </div>
 <h4>authentication</h4>
 <div class="indentedbox">

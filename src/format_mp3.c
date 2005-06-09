@@ -291,8 +291,17 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     }
     else
     {
-        metadata = "\0";
-        meta_len = 1;
+        if (associated)
+        {
+            metadata = "\0";
+            meta_len = 1;
+        }
+        else
+        {
+            char *meta = "\001StreamTitle='';";
+            metadata = meta + client_mp3->metadata_offset;
+            meta_len = 17 - client_mp3->metadata_offset;
+        }
     }
     ret = client_send_bytes (client, metadata, meta_len);
 
@@ -585,9 +594,6 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
         return -1;
     }
 
-    client->format_data = client_mp3;
-    client->free_client_data = free_mp3_client_data;
-
     /* hack for flash player, it wants a length */
     if (httpp_getvar(client->parser, "x-flash-version"))
     {
@@ -596,6 +602,8 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
         ptr += bytes;
     }
 
+    client->format_data = client_mp3;
+    client->free_client_data = free_mp3_client_data;
     metadata = httpp_getvar(client->parser, "icy-metadata");
     if (metadata && atoi(metadata))
     {
