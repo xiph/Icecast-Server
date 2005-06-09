@@ -22,6 +22,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "auth.h"
 #include "source.h"
@@ -354,6 +356,7 @@ int auth_htpasswd_deleteuser(auth_t *auth, char *username)
     char *sep;
     char *tmpfile = NULL;
     int tmpfile_len = 0;
+    struct stat file_info;
 
     state = auth->state;
     passwdfile = fopen(state->filename, "rb");
@@ -363,10 +366,16 @@ int auth_htpasswd_deleteuser(auth_t *auth, char *username)
                 state->filename, strerror(errno));
         return AUTH_FAILED;
     }
-    tmpfile_len = strlen(state->filename) + 6;
+    tmpfile_len = strlen(state->filename) + 5;
     tmpfile = calloc(1, tmpfile_len);
-    sprintf(tmpfile, ".%s.tmp", state->filename);
-
+    snprintf (tmpfile, tmpfile_len, "%s.tmp", state->filename);
+    if (stat (tmpfile, &file_info) == 0)
+    {
+        WARN1 ("temp file \"%s\" exists, rejecting operation", tmpfile);
+        free (tmpfile);
+        fclose (passwdfile);
+        return AUTH_FAILED;
+    }
     tmp_passwdfile = fopen(tmpfile, "wb");
 
     if(tmp_passwdfile == NULL) {
