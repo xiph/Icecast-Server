@@ -35,6 +35,9 @@
 #include "logging.h"
 #define CATMODULE "auth"
 
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
 
 int auth_is_listener_connected(source_t *source, char *username)
 {
