@@ -291,8 +291,17 @@ static int send_mp3_metadata (client_t *client, refbuf_t *associated)
     }
     else
     {
-        metadata = "\0";
-        meta_len = 1;
+        if (associated)
+        {
+            metadata = "\0";
+            meta_len = 1;
+        }
+        else
+        {
+            char *meta = "\001StreamTitle='';";
+            metadata = meta + client_mp3->metadata_offset;
+            meta_len = 17 - client_mp3->metadata_offset;
+        }
     }
     ret = client_send_bytes (client, metadata, meta_len);
 
