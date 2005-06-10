@@ -533,19 +533,26 @@ static void process_source_event (stats_event_t *event)
 }
 
 
+void stats_event_time (const char *mount, const char *name)
+{
+    time_t now = global.time;
+    struct tm local;
+    char buffer[100];
+
+    localtime_r (&now, &local);
+    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
+    stats_event (mount, name, buffer);
+}
+
+
 static void *_stats_thread(void *arg)
 {
     stats_event_t *event;
     stats_event_t *copy;
     event_listener_t *listener;
-    time_t now = time (NULL);
-    struct tm local;
-    char buffer[100];
 
     stats_event (NULL, "server", ICECAST_VERSION_STRING);
-    localtime_r (&now, &local);
-    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
-    stats_event (NULL, "server_start", buffer);
+    stats_event_time (NULL, "server_start");
 
     /* global currently active stats */
     stats_event (NULL, "clients", "0");

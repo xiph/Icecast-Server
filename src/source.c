@@ -640,14 +640,13 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 static void source_init (source_t *source)
 {
     char *str = "0";
-    char buffer [100];
-    struct tm local;
     mount_proxy *mountinfo;
 
     thread_mutex_lock (&source->lock);
 
     stats_event (source->mount, "server_type", source->format->contenttype);
     stats_event_args (source->mount, "listener_peak", "0");
+    stats_event_time (source->mount, "stream_start");
 
     if (source->dumpfilename != NULL)
     {
@@ -663,7 +662,6 @@ static void source_init (source_t *source)
     thread_rwlock_rlock (source->shutdown_rwlock);
 
     /* start off the statistics */
-    stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
 
@@ -686,10 +684,6 @@ static void source_init (source_t *source)
     auth_stream_start (source->mount);
 
     thread_mutex_unlock (&source->lock);
-
-    localtime_r (&global.time, &local);
-    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
-    stats_event (source->mount, "stream_start", buffer);
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo && mountinfo->on_connect)
@@ -804,7 +798,6 @@ static void source_shutdown (source_t *source)
     }
 
     /* delete this sources stats */
-    stats_event_dec (NULL, "sources");
     stats_event(source->mount, NULL, NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
@@ -815,6 +808,7 @@ static void source_shutdown (source_t *source)
 
     global_lock();
     global.sources--;
+    stats_event_args (NULL, "sources", "%d", global.sources);
     global_unlock();
 
     /* release our hold on the lock so the main thread can continue cleaning up */
@@ -1152,7 +1146,6 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         snprintf (buf, sizeof (buf), "%ld", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
-
     DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("max listeners to %ld", source->max_listeners);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
