@@ -356,6 +356,8 @@ void source_move_clients (source_t *source, source_t *dest)
             {
                 client_set_queue (client, NULL);
                 client->check_buffer = format_check_file_buffer;
+                if (source->client->con == NULL)
+                    client->intro_offset = -1;
             }
 
             client->next = dest->active_clients;
@@ -661,7 +663,6 @@ static void source_init (source_t *source)
     thread_rwlock_rlock (source->shutdown_rwlock);
 
     /* start off the statistics */
-    source->listeners = 0;
     stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
@@ -838,8 +839,6 @@ static int _compare_clients(void *compare_arg, void *a, void *b)
 
 int source_free_client (source_t *source, client_t *client)
 {
-    client_set_queue (client, NULL);
-
     /* if no response has been sent then send a 404 */
     if (client->respcode == 0)
         client_send_404 (client, "Mount unavailable");
@@ -1167,11 +1166,11 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 void *source_client_thread (void *arg)
 {
     source_t *source = arg;
-    const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
-    int bytes = sizeof (ok_msg)-1;
 
     if (source->client && source->client->con)
     {
+        const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
+        int bytes ;
         const char *agent;
 
         source->client->respcode = 200;

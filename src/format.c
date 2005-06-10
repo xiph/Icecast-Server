@@ -159,9 +159,9 @@ int format_check_file_buffer (source_t *source, client_t *client)
 
     if (refbuf == NULL)
     {
+        /* client refers to no data, must be from a move */
         if (source->client->con)
         {
-            client->intro_offset = -1;
             find_client_start (source, client);
             return -1;
         }
@@ -183,7 +183,6 @@ int format_check_file_buffer (source_t *source, client_t *client)
             if (source->stream_data_tail)
             {
                 /* better find the right place in queue for this client */
-                client->intro_offset = -1;
                 client_set_queue (client, NULL);
                 find_client_start (source, client);
             }
