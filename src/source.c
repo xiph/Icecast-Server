@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #else
 #include <winsock2.h>
 #include <windows.h>
@@ -62,6 +63,11 @@ static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
+#ifdef _WIN32
+#define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
+#else
+static void source_run_script (char *command, char *mountpoint);
+#endif
 
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
@@ -534,6 +540,7 @@ static void source_init (source_t *source)
     ice_config_t *config = config_get_config();
     char *listenurl, *str;
     int listen_url_size;
+    mount_proxy *mountinfo;
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
@@ -583,6 +590,11 @@ static void source_init (source_t *source)
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
     source->running = 1;
+
+    mountinfo = config_find_mount (config_get_config(), source->mount);
+    if (mountinfo && mountinfo->on_connect)
+        source_run_script (mountinfo->on_connect, source->mount);
+    config_release_config();
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -769,8 +781,15 @@ void source_main (source_t *source)
 
 static void source_shutdown (source_t *source)
 {
+    mount_proxy *mountinfo;
+
     source->running = 0;
     INFO1("Source \"%s\" exiting", source->mount);
+
+    mountinfo = config_find_mount (config_get_config(), source->mount);
+    if (mountinfo && mountinfo->on_disconnect)
+        source_run_script (mountinfo->on_disconnect, source->mount);
+    config_release_config();
 
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
@@ -1089,6 +1108,10 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         DEBUG1 ("intro file is %s", mountinfo->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
+    if (mountinfo && mountinfo->on_connect)
+        DEBUG1 ("connect script \"%s\"", mountinfo->on_connect);
+    if (mountinfo && mountinfo->on_disconnect)
+        DEBUG1 ("disconnect script \"%s\"", mountinfo->on_disconnect);
     if (source->on_demand)
     {
         DEBUG0 ("on_demand set");
@@ -1154,6 +1177,41 @@ void *source_client_thread (void *arg)
 
     return NULL;
 }
+
+
+#ifndef _WIN32
+static void source_run_script (char *command, char *mountpoint)
+{
+    pid_t pid, external_pid;
+
+    /* do a fork twice so that the command has init as parent */
+    external_pid = fork();
+    switch (external_pid)
+    {
+        case 0:
+            switch (pid = fork ())
+            {
+                case -1:
+                    ERROR2 ("Unable to fork %s (%s)", command, strerror (errno));
+                    break;
+                case 0:  /* child */
+                    DEBUG1 ("Starting command %s", command);
+                    execl (command, command, mountpoint, NULL);
+                    ERROR2 ("Unable to run command %s (%s)", command, strerror (errno));
+                    exit(0);
+                default: /* parent */
+                    break;
+            }
+            exit (0);
+        case -1:
+            ERROR1 ("Unable to fork %s", strerror (errno));
+            break;
+        default: /* parent */
+            waitpid (external_pid, NULL, 0);
+            break;
+    }
+}
+#endif
 
 
 /* rescan the mount list, so that xsl files are updated to show

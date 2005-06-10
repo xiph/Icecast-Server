@@ -380,7 +380,8 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
         &lt;/authentication&gt;
-
+        &lt;on-connect&gt;/home/icecast/bin/source-start&lt;/on-connect&gt;
+        &lt;on-disconnect&gt;/home/icecast/bin/source-end&lt;/on-disconnect&gt;
     &lt;/mount&gt;
 </pre>
 <p>This section contains the settings which apply only to a specific mountpoint and applies to
@@ -523,6 +524,20 @@ relay to be shown
 <h4>authentication</h4>
 <div class="indentedbox">
 This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication <a href="icecast2_listenerauth.html">here</a>.
+</div>
+<h4>on-connect</h4>
+<div class="indentedbox">
+    <p>State a program that is run when the source is started. It is passed a parameter which
+    is the name of the mountpoint that is starting. The processing of the stream does not wait
+    for the script to end. This option is not available on win32
+    </p>
+</div>
+<h4>on-disconnect</h4>
+<div class="indentedbox">
+    <p>State a program that is run when the source ends. It is passed a parameter which is the
+    name of the mountpoint that has ended. The processing of the stream does not wait for the
+    script to end. This option is not available on win32
+    </p>
 </div>
 <p>
 <br />

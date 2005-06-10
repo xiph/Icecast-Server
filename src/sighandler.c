@@ -41,6 +41,7 @@ void sighandler_initialize(void)
     signal(SIGINT, _sig_die);
     signal(SIGTERM, _sig_die);
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
 #endif
 }
 

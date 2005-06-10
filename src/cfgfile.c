@@ -191,6 +191,8 @@ void config_clear(ice_config_t *c)
         xmlFree(mount->password);
         xmlFree(mount->dumpfile);
         xmlFree(mount->intro_filename);
+        xmlFree(mount->on_connect);
+        xmlFree(mount->on_disconnect);
         xmlFree(mount->fallback_mount);
         xmlFree(mount->stream_name);
         xmlFree(mount->stream_description);
@@ -632,6 +634,14 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                 }
                 option = option->next;
             }
+        }
+        else if (strcmp(node->name, "on-connect") == 0) {
+            mount->on_connect = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
+        }
+        else if (strcmp(node->name, "on-disconnect") == 0) {
+            mount->on_disconnect = (char *)xmlNodeListGetString(
+                    doc, node->xmlChildrenNode, 1);
         }
         else if (strcmp(node->name, "queue-size") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

@@ -65,6 +65,8 @@ typedef struct _mount_proxy {
     char *auth_type; /* Authentication type */
     char *cluster_password;
     config_options_t *auth_options; /* Options for this type */
+    char *on_connect;
+    char *on_disconnect;
 
     char *stream_name;
     char *stream_description;

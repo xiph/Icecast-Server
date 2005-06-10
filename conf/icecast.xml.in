@@ -105,6 +105,8 @@
                 <option name="filename" value="myauth"/>
                 <option name="allow_duplicate_users" value="0"/>
         </authentication>
+        <on-connect>/home/icecast/bin/stream-start</on-connect>
+        <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
     </mount>
     -->
 
