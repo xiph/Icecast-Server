@@ -32,6 +32,7 @@
 #ifndef _WIN32
 void _sig_hup(int signo);
 void _sig_die(int signo);
+void _sig_ignore(int signo);
 #endif
 
 void sighandler_initialize(void)
@@ -41,11 +42,15 @@ void sighandler_initialize(void)
     signal(SIGINT, _sig_die);
     signal(SIGTERM, _sig_die);
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGCHLD, SIG_IGN);
+    signal(SIGCHLD, _sig_ignore);
 #endif
 }
 
 #ifndef _WIN32
+void _sig_ignore(int signo)
+{
+    signal(signo, _sig_ignore);
+}
 
 void _sig_hup(int signo)
 {
