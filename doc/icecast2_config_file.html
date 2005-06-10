@@ -434,6 +434,17 @@ mountpoint that is just not available, then those clients will be disconnected.
 If clients are falling back to a mountpoint and the fallback-mount is not actively streaming
 but defines a fallback-mount itself then those clients may be moved there instead.
 This multi-level fallback allows clients to cascade several mountpoints. 
+    <p>A fallback mount can also state a file that is located in webroot.  This is useful for
+    playing a pre-recorded file in the case of a stream going down. It will repeat until either
+    the listener disconnects or a stream comes back available and takes the listeners back.
+    As per usual, the file format should match the stream format, failing to do so may cause
+    problems with playback.
+    </p>
+    <p>Note that the fallback file is not timed so be careful if you intend to relay this.
+    They are fine on slave streams but don't use them on master streams, if you do then the
+    relay will consume stream data at a faster rate and the listeners on the relay would
+    eventually get kicked off.
+    </p>
 </div>
 <h4>fallback-override</h4>
 <div class="indentedbox">

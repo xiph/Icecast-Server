@@ -150,8 +150,16 @@ int format_check_file_buffer (source_t *source, client_t *client)
     if (refbuf == NULL)
     {
         /* client refers to no data, must be from a move */
-        find_client_start (source, client);
-        return -1;
+        if (source->client->con)
+        {
+            find_client_start (source, client);
+            return -1;
+        }
+        /* source -> file fallback, need a refbuf for data */
+        refbuf = refbuf_new (4096);
+        client->refbuf = refbuf;
+        client->pos = refbuf->len;
+        client->intro_offset = 0;
     }
     if (client->pos == refbuf->len)
     {

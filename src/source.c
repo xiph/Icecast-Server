@@ -48,6 +48,7 @@
 #include "util.h"
 #include "source.h"
 #include "format.h"
+#include "fserve.h"
 #include "auth.h"
 #include "os.h"
 
@@ -373,6 +374,8 @@ void source_move_clients (source_t *source, source_t *dest)
             {
                 client_set_queue (client, NULL);
                 client->check_buffer = format_check_file_buffer;
+                if (source->con == NULL)
+                    client->intro_offset = -1;
             }
 
             avl_insert (dest->pending_tree, (void *)client);
@@ -397,6 +400,8 @@ void source_move_clients (source_t *source, source_t *dest)
             {
                 client_set_queue (client, NULL);
                 client->check_buffer = format_check_file_buffer;
+                if (source->con == NULL)
+                    client->intro_offset = -1;
             }
             avl_insert (dest->pending_tree, (void *)client);
             count++;
@@ -435,10 +440,16 @@ static refbuf_t *get_next_buffer (source_t *source)
         delay = 0;
     while (global.running == ICE_RUNNING && source->running)
     {
-        int fds;
+        int fds = 0;
         time_t current = time (NULL);
 
-        fds = util_timed_wait_for_fd (source->con->sock, delay);
+        if (source->client->con)
+            fds = util_timed_wait_for_fd (source->con->sock, delay);
+        else
+        {
+            thread_sleep (delay*1000);
+            source->last_read = current;
+        }
 
         if (current >= source->client_stats_update)
         {
@@ -470,7 +481,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
-        if (source->client->con->error)
+        if (source->client->con && source->client->con->error)
         {
             INFO1 ("End of Stream %s", source->mount);
             source->running = 0;
@@ -585,7 +596,8 @@ static void source_init (source_t *source)
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
 
-    sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
+    if (source->client->con)
+        sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
 
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
@@ -1095,6 +1107,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
+    /*  skip if source is a fallback to file */
+    if (source->running && source->client->con == NULL)
+        return;
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
@@ -1147,26 +1162,29 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 void *source_client_thread (void *arg)
 {
     source_t *source = arg;
-    const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
-    int bytes;
-    const char *agent;
 
-    source->client->respcode = 200;
-    bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
-    if (bytes < (int)(sizeof (ok_msg)-1))
+    if (source->client && source->client->con)
     {
-        global_lock();
-        global.sources--;
-        global_unlock();
-        WARN0 ("Error writing 200 OK message to source client");
-        source_free_source (source);
-        return NULL;
-    }
-    stats_event (source->mount, "source_ip", source->client->con->ip);
-    agent = httpp_getvar (source->client->parser, "user-agent");
-    if (agent)
-        stats_event (source->mount, "user_agent", agent);
+        const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
+        int bytes;
+        const char *agent;
 
+        source->client->respcode = 200;
+        bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
+        if (bytes < (int)(sizeof (ok_msg)-1))
+        {
+            global_lock();
+            global.sources--;
+            global_unlock();
+            WARN0 ("Error writing 200 OK message to source client");
+            source_free_source (source);
+            return NULL;
+        }
+        stats_event (source->mount, "source_ip", source->client->con->ip);
+        agent = httpp_getvar (source->client->parser, "user-agent");
+        if (agent)
+            stats_event (source->mount, "user_agent", agent);
+    }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");
 
@@ -1214,6 +1232,67 @@ static void source_run_script (char *command, char *mountpoint)
 #endif
 
 
+static void *source_fallback_file (void *arg)
+{
+    char *mount = arg;
+    char *type;
+    char *path;
+    unsigned int len;
+    FILE *file = NULL;
+    source_t *source = NULL;
+    ice_config_t *config;
+    http_parser_t *parser;
+
+    do
+    {
+        if (mount == NULL || mount[0] != '/')
+            break;
+        config = config_get_config();
+        len  = strlen (config->webroot_dir) + strlen (mount) + 1;
+        path = malloc (len);
+        if (path)
+            snprintf (path, len, "%s%s", config->webroot_dir, mount);
+        
+        config_release_config ();
+        if (path == NULL)
+            break;
+
+        file = fopen (path, "rb");
+        if (file == NULL)
+        {
+            DEBUG1 ("unable to open file \"%s\"", path);
+            free (path);
+            break;
+        }
+        free (path);
+        source = source_reserve (mount);
+        if (source == NULL)
+        {
+            DEBUG1 ("mountpoint \"%s\" already reserved", mount);
+            break;
+        }
+        type = fserve_content_type (mount);
+        parser = httpp_create_parser();
+        httpp_initialize (parser, NULL);
+        httpp_setvar (parser, "content-type", type);
+
+        source->hidden = 1;
+        source->yp_public = 0;
+        source->intro_file = file;
+        source->parser = parser;
+        file = NULL;
+
+        if (connection_complete_source (source) < 0)
+            break;
+        source_client_thread (source);
+    } while (0);
+    if (file)
+        fclose (file);
+    free (mount);
+    return NULL;
+}
+
+
 /* rescan the mount list, so that xsl files are updated to show
  * unconnected but active fallback mountpoints
  */
@@ -1248,6 +1327,17 @@ void source_recheck_mounts (void)
         }
         else
             stats_event (mount->mountname, NULL, NULL);
+
+        /* check for fallback to file */
+        if (global.running == ICE_RUNNING && mount->fallback_mount)
+        {
+            source_t *fallback = source_find_mount (mount->fallback_mount);
+            if (fallback == NULL)
+            {
+                thread_create ("Fallback file thread", source_fallback_file,
+                        strdup (mount->fallback_mount), THREAD_DETACHED);
+            }
+        }
 
         mount = mount->next;
     }

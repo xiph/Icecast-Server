@@ -75,10 +75,11 @@ void client_destroy(client_t *client)
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */
-    if(client->con->ip)
+    if (client->con && client->con->ip)
         logging_access(client);
     
-    connection_close(client->con);
+    if (client->con)
+        connection_close(client->con);
     httpp_destroy(client->parser);
 
     global_lock ();

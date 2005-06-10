@@ -317,7 +317,7 @@ static void *fserv_thread_function(void *arg)
     return NULL;
 }
 
-static const char *fserve_content_type(const char *path)
+char *fserve_content_type (const char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
