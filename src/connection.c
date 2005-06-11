@@ -487,6 +487,7 @@ int connection_complete_source (source_t *source)
         }
 
         global.sources++;
+        stats_event_args (NULL, "sources", "%d", global.sources);
         global_unlock();
 
         /* for relays, we don't yet have a client, however we do require one

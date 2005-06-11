@@ -546,6 +546,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 }
 
 
+/* Perform any initialisation just before the stream data is processed, the header
+ * info is processed by now and the format details are setup
+ */
 static void source_init (source_t *source)
 {
     ice_config_t *config = config_get_config();
@@ -577,6 +580,8 @@ static void source_init (source_t *source)
         free(listenurl);
     }
 
+    stats_event_args (source->mount, "listener_peak", "0");
+
     if (source->dumpfilename != NULL)
     {
         source->dumpfile = fopen (source->dumpfilename, "ab");
@@ -592,9 +597,10 @@ static void source_init (source_t *source)
 
     /* start off the statistics */
     source->listeners = 0;
-    stats_event_inc (NULL, "sources");
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
+    stats_event (source->mount, "listener_peak", "0");
+    stats_event_time (source->mount, "stream_start");
 
     if (source->client->con)
         sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
@@ -754,6 +760,11 @@ void source_main (source_t *source)
         if (source->listeners != listeners)
         {
             INFO2("listener count on %s now %lu", source->mount, source->listeners);
+            if (source->listeners > source->peak_listeners)
+            {
+                source->peak_listeners = source->listeners;
+                stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+            }
             stats_event_args (source->mount, "listeners", "%lu", source->listeners);
             if (source->listeners == 0 && source->on_demand)
                 source->running = 0;
@@ -820,7 +831,6 @@ static void source_shutdown (source_t *source)
     }
 
     /* delete this sources stats */
-    stats_event_dec(NULL, "sources");
     stats_event(source->mount, NULL, NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
@@ -829,6 +839,7 @@ static void source_shutdown (source_t *source)
 
     global_lock();
     global.sources--;
+    stats_event_args (NULL, "sources", "%d", global.sources);
     global_unlock();
 
     /* release our hold on the lock so the main thread can continue cleaning up */
