@@ -570,6 +570,11 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 }
 
 
+/* run through the queue of listeners, the fast ones are at the back of the
+ * queue so you may want to process only those. If a buffer is going to be
+ * removed from the stream queue then flag it so that listeners can be
+ * dropped if need be.
+ */
 static void process_listeners (source_t *source, int fast_clients_only, int deletion_expected)
 {
     client_t *client, **client_p;
@@ -637,16 +642,15 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 }
 
 
+/* Perform any initialisation before the stream data is processed, the header
+ * info is processed by now and the format details are setup
+ */
 static void source_init (source_t *source)
 {
-    char *str = "0";
+    char *str;
     mount_proxy *mountinfo;
 
     thread_mutex_lock (&source->lock);
-
-    stats_event (source->mount, "server_type", source->format->contenttype);
-    stats_event_args (source->mount, "listener_peak", "0");
-    stats_event_time (source->mount, "stream_start");
 
     if (source->dumpfilename != NULL)
     {
@@ -664,6 +668,9 @@ static void source_init (source_t *source)
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
+    stats_event (source->mount, "server_type", source->format->contenttype);
+    stats_event (source->mount, "listener_peak", "0");
+    stats_event_time (source->mount, "stream_start");
 
     if (source->client->con)
         sock_set_blocking (source->client->con->sock, SOCK_NONBLOCK);

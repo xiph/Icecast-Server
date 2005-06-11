@@ -344,6 +344,10 @@ const char *fserve_content_type (const char *path)
             return "text/css";
         else if(!strcmp(ext, "txt"))
             return "text/plain";
+        else if(!strcmp(ext, "jpg"))
+            return "image/jpeg";
+        else if(!strcmp(ext, "png"))
+            return "image/png";
         else if(!strcmp(ext, "m3u"))
             return "audio/x-mpegurl";
         else
@@ -412,7 +416,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
             host = strdup (config->hostname);
             port = config->port;
             config_release_config();
-            bytes = sock_write (httpclient->con->sock,
+            sock_write (httpclient->con->sock,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
                     "http://%s:%d%s\r\n", 
@@ -423,7 +427,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         }
         else
         {
-            bytes = sock_write (httpclient->con->sock,
+            sock_write (httpclient->con->sock,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
                     "http://%s%s\r\n", 
@@ -442,7 +446,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         /* If the file exists, then transform it, otherwise, write a 404 */
         DEBUG0("Stats request, sending XSL transformed stats");
         httpclient->respcode = 200;
-        bytes = sock_write(httpclient->con->sock, 
+        sock_write(httpclient->con->sock, 
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
         stats_transform_xslt (httpclient, fullpath);
         client_destroy (httpclient);
@@ -476,7 +480,6 @@ int fserve_client_create(client_t *httpclient, const char *path)
     client->ready = 0;
     client_set_queue (httpclient, NULL);
     httpclient->refbuf = refbuf_new (BUFSIZE);
-    httpclient->pos = BUFSIZE;
     client->content_length = (int64_t)file_buf.st_size;
 
     range = httpp_getvar (client->client->parser, "range");
@@ -508,7 +511,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
                 strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
                                    gmtime_r (&now, &result));
                 httpclient->respcode = 206;
-                bytes = sock_write(httpclient->con->sock,
+                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
                     "Content-Length: " FORMAT_INT64 "\r\n"
@@ -527,14 +530,14 @@ int fserve_client_create(client_t *httpclient, const char *path)
         }
         else {
             httpclient->respcode = 200;
-            bytes = sock_write (httpclient->con->sock,
+            bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Length: " FORMAT_INT64 "\r\n"
                     "Content-Type: %s\r\n\r\n",
                     client->content_length,
                     fserve_content_type(path));
         }
-
+        httpclient->refbuf->len = bytes;
         stats_event_inc (NULL, "file_connections");
         sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
         sock_set_nodelay(client->client->con->sock);
@@ -549,9 +552,8 @@ int fserve_client_create(client_t *httpclient, const char *path)
     /* If we run into any issues with the ranges
        we fallback to a normal/non-range request */
     httpclient->respcode = 416;
-    bytes = sock_write(httpclient->con->sock,
+    sock_write (httpclient->con->sock,
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-    if(bytes > 0) httpclient->con->sent_bytes = bytes;
     fserve_client_destroy (client);
     return 0;
 }
@@ -581,8 +583,11 @@ static void create_mime_mappings(const char *fn) {
 
     mimetypes = avl_tree_new(_compare_mappings, NULL);
 
-    if(!mimefile)
+    if (mimefile == NULL)
+    {
+        WARN1 ("Cannot open mime type file %s", fn);
         return;
+    }
 
     while(fgets(line, 4096, mimefile))
     {
