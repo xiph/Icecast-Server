@@ -21,11 +21,8 @@ typedef struct _fserve_t
     client_t *client;
 
     FILE *file;
-    int offset;
     int64_t content_length;
-    int datasize;
     int ready;
-    unsigned char *buf;
     struct _fserve_t *next;
 } fserve_t;
 

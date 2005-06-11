@@ -31,6 +31,7 @@
 #else
 #include <winsock2.h>
 #include <windows.h>
+#define snprintf _snprintf
 #endif
 
 #include "thread/thread.h"
@@ -252,10 +253,13 @@ static void *fserv_thread_function(void *arg)
             /* process this client, if it is ready */
             if (fclient->ready)
             {
+                client_t *client = fclient->client;
+                refbuf_t *refbuf = client->refbuf;
                 fclient->ready = 0;
-                if(fclient->offset >= fclient->datasize) {
+                if (client->pos == refbuf->len)
+                {
                     /* Grab a new chunk */
-                    bytes = fread(fclient->buf, 1, BUFSIZE, fclient->file);
+                    bytes = fread (refbuf->data, 1, BUFSIZE, fclient->file);
                     if (bytes == 0)
                     {
                         fserve_t *to_go = fclient;
@@ -266,21 +270,14 @@ static void *fserv_thread_function(void *arg)
                         client_tree_changed = 1;
                         continue;
                     }
-                    fclient->offset = 0;
-                    fclient->datasize = bytes;
+                    refbuf->len = bytes;
+                    client->pos = 0;
                 }
 
                 /* Now try and send current chunk. */
-                sbytes = client_send_bytes (fclient->client, 
-                        &fclient->buf[fclient->offset], 
-                        fclient->datasize - fclient->offset);
+                sbytes = format_generic_write_to_client (client);
 
-                /* TODO: remove clients if they take too long. */
-                if(sbytes > 0) {
-                    fclient->offset += sbytes;
-                }
-
-                if (fclient->client->con->error)
+                if (client->con->error)
                 {
                     fserve_t *to_go = fclient;
                     fclient = fclient->next;
@@ -340,32 +337,33 @@ char *fserve_content_type (const char *path)
             return "text/css";
         else if(!strcmp(ext, "txt"))
             return "text/plain";
+        else if(!strcmp(ext, "jpg"))
+            return "image/jpeg";
+        else if(!strcmp(ext, "png"))
+            return "image/png";
         else
             return "application/octet-stream";
     }
 }
 
-static void fserve_client_destroy(fserve_t *client)
+static void fserve_client_destroy(fserve_t *fclient)
 {
-    if(client) {
-        if(client->buf)
-            free(client->buf);
-        if(client->file)
-            fclose(client->file);
+    if (fclient)
+    {
+        if (fclient->file)
+            fclose (fclient->file);
 
-        if(client->client)
-            client_destroy(client->client);
-        free(client);
+        if (fclient->client)
+            client_destroy (fclient->client);
+        free (fclient);
     }
 }
 
 
 int fserve_client_create(client_t *httpclient, const char *path)
 {
-    fserve_t *client = calloc(1, sizeof(fserve_t));
+    fserve_t *client;
     int bytes;
-    int client_limit;
-    ice_config_t *config = config_get_config();
     struct stat file_buf;
     char *range = NULL;
     int64_t new_content_len = 0;
@@ -373,24 +371,31 @@ int fserve_client_create(client_t *httpclient, const char *path)
     int rangeproblem = 0;
     int ret = 0;
 
-    client_limit = config->client_limit;
-    config_release_config();
+    if (stat (path, &file_buf) != 0)
+    {
+        client_send_404 (httpclient, "The file you requested could not be found");
+        return 0;
+    }
 
-    client->file = fopen(path, "rb");
-    if(!client->file) {
-        client_send_404(httpclient, "File not readable");
-        return -1;
+    client = calloc (1, sizeof(fserve_t));
+    if (client == NULL) 
+    {
+        client_send_404 (httpclient, "memory exhausted");
+        return 0;
+    }
+    client->file = fopen (path, "rb");
+    if (client->file == NULL)
+    {
+        client_send_404 (httpclient, "File not readable");
+        fserve_client_destroy (client);
+        return 0;
     }
 
     client->client = httpclient;
-    client->offset = 0;
-    client->datasize = 0;
     client->ready = 0;
-    client->content_length = 0;
-    client->buf = malloc(BUFSIZE);
-    if (stat(path, &file_buf) == 0) {
-        client->content_length = (int64_t)file_buf.st_size;
-    }
+    client_set_queue (httpclient, NULL);
+    httpclient->refbuf = refbuf_new (BUFSIZE);
+    client->content_length = (int64_t)file_buf.st_size;
 
     range = httpp_getvar (client->client->parser, "range");
 
@@ -429,7 +434,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
                 strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
                                    gmtime_r(&now, &result));
                 httpclient->respcode = 206;
-                bytes = sock_write(httpclient->con->sock,
+                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
                     "Content-Length: " FORMAT_INT64 "\r\n"
@@ -442,13 +447,11 @@ int fserve_client_create(client_t *httpclient, const char *path)
                     endpos,
                     client->content_length,
                     fserve_content_type(path));
-                if(bytes > 0) httpclient->con->sent_bytes = bytes;
             }
             else {
                 httpclient->respcode = 416;
-                bytes = sock_write(httpclient->con->sock,
+                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-                if(bytes > 0) httpclient->con->sent_bytes = bytes;
                 fserve_client_destroy(client);
                 return -1;
             }
@@ -457,9 +460,8 @@ int fserve_client_create(client_t *httpclient, const char *path)
             /* If we run into any issues with the ranges
                we fallback to a normal/non-range request */
             httpclient->respcode = 416;
-            bytes = sock_write(httpclient->con->sock,
+            bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                 "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-            if(bytes > 0) httpclient->con->sent_bytes = bytes;
             fserve_client_destroy(client);
             return -1;
         }
@@ -467,15 +469,14 @@ int fserve_client_create(client_t *httpclient, const char *path)
     else {
 
         httpclient->respcode = 200;
-        bytes = sock_write(httpclient->con->sock,
+        bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
             "HTTP/1.0 200 OK\r\n"
             "Content-Length: " FORMAT_INT64 "\r\n"
             "Content-Type: %s\r\n\r\n",
             client->content_length,
             fserve_content_type(path));
-        if(bytes > 0) httpclient->con->sent_bytes = bytes;
     }
-
+    httpclient->refbuf->len = bytes;
     stats_event_inc (NULL, "file_connections");
     sock_set_blocking(client->client->con->sock, SOCK_NONBLOCK);
     sock_set_nodelay(client->client->con->sock);
@@ -513,8 +514,11 @@ static void create_mime_mappings(const char *fn) {
 
     mimetypes = avl_tree_new(_compare_mappings, NULL);
 
-    if(!mimefile)
+    if (mimefile == NULL)
+    {
+        WARN1 ("Cannot open mime type file %s", fn);
         return;
+    }
 
     while(fgets(line, 4096, mimefile))
     {
