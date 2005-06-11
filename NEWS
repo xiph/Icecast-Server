@@ -20,6 +20,13 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh10
+. play better with Real/Helix, StreamTitle needs to be sent at least initially.
+. A zero'ing of the listener count occured affecting on-demand relays. A left
+  over from the pending queue drop
+. various small checks added
+. trunk sync-up
+
 2.2-kh9
 . drop the pending list for each source, adds clients to active list directly
 . intro and fallback to file handling fixed again, recent changes caused
