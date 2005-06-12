@@ -88,13 +88,11 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
 static void create_locks() {
     thread_mutex_create(&_locks.relay_lock);
-    thread_mutex_create(&_locks.mounts_lock);
     thread_rwlock_create(&_locks.config_lock);
 }
 
 static void release_locks() {
     thread_mutex_destroy(&_locks.relay_lock);
-    thread_mutex_destroy(&_locks.mounts_lock);
     thread_rwlock_destroy(&_locks.config_lock);
 }
 
@@ -182,7 +180,6 @@ void config_clear(ice_config_t *c)
     }
     thread_mutex_unlock(&(_locks.relay_lock));
 
-    thread_mutex_lock(&(_locks.mounts_lock));
     mount = c->mounts;
     while(mount) {
         nextmount = mount->next;
@@ -217,7 +214,6 @@ void config_clear(ice_config_t *c)
         free(mount);
         mount = nextmount;
     }
-    thread_mutex_unlock(&(_locks.mounts_lock));
 
     alias = c->aliases;
     while(alias) {

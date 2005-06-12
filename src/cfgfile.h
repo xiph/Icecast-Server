@@ -163,7 +163,6 @@ typedef struct ice_config_tag
 typedef struct {
     rwlock_t config_lock;
     mutex_t relay_lock;
-    mutex_t mounts_lock;
 } ice_config_locks;
 
 void config_initialize(void);

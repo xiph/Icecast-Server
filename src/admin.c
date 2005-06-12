@@ -234,13 +234,16 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             xmlNewChild(srcnode, NULL, "fallback", 
                     (source->fallback_mount != NULL)?
                     source->fallback_mount:"");
-            snprintf(buf, sizeof(buf), "%ld", source->listeners);
+            snprintf (buf, sizeof(buf), "%lu", source->listeners);
             xmlNewChild(srcnode, NULL, "listeners", buf);
-            snprintf(buf, sizeof(buf), "%lu",
-                    (unsigned long)(now - source->con->con_time));
-            xmlNewChild(srcnode, NULL, "Connected", buf);
-            xmlNewChild(srcnode, NULL, "content-type", 
-                    source->format->contenttype);
+            if (source->running)
+            {
+                snprintf (buf, sizeof(buf), "%lu",
+                        (unsigned long)(now - source->con->con_time));
+                xmlNewChild (srcnode, NULL, "Connected", buf);
+                xmlNewChild (srcnode, NULL, "content-type", 
+                        source->format->contenttype);
+            }
             if (source->authenticator) {
                 xmlNewChild(srcnode, NULL, "authenticator", 
                     source->authenticator->type);
@@ -596,6 +599,8 @@ static void command_move_clients(client_t *client, source_t *source,
         return;
     }
 
+    INFO2 ("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
+
     doc = xmlNewDoc("1.0");
     node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
     xmlDocSetRootElement(doc, node);
@@ -632,7 +637,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     memset(buf, '\000', sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%ld", source->listeners);
+    snprintf (buf, sizeof(buf), "%lu", source->listeners);
     xmlNewChild(srcnode, NULL, "Listeners", buf);
 
     avl_tree_rlock(source->client_tree);
@@ -882,7 +887,7 @@ static void command_metadata(client_t *client, source_t *source,
         if (song)
         {
             plugin->set_tag (plugin, "song", song);
-            DEBUG2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+            INFO2 ("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
         }
         else
         {
