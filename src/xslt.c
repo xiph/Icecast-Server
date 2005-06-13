@@ -46,6 +46,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "fserve.h"
 
 #define CATMODULE "xslt"
 
@@ -175,7 +176,13 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     thread_mutex_unlock(&xsltlock);
     if (string)
     {
-        client_send_bytes (client, string, len);
+        const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
+        unsigned buf_len = len + strlen (http) + 20;
+
+        client->respcode = 200;
+        client->refbuf = refbuf_new (buf_len);
+        snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
+        fserve_add_client (client, NULL);
         xmlFree (string);
     }
     xmlFreeDoc(res);

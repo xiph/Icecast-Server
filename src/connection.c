@@ -752,7 +752,6 @@ static void _handle_stats_request (client_t *client, char *uri)
 static void _handle_get_request (client_t *client, char *passed_uri)
 {
     int fileserve;
-    char *host = NULL;
     int port;
     int i;
     char *serverhost = NULL;
@@ -764,8 +763,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     DEBUG1("start with %s", passed_uri);
     config = config_get_config();
     fileserve = config->fileserve;
-    if (config->hostname)
-        host = strdup (config->hostname);
     port = config->port;
     for(i = 0; i < global.server_sockets; i++) {
         if(global.serversock[i] == client->con->serversock) {
@@ -804,10 +801,8 @@ static void _handle_get_request (client_t *client, char *passed_uri)
             (strncmp(uri, "/admin/", 7) == 0)) {
         admin_handle_request(client, uri);
         if (uri != passed_uri) free (uri);
-        free (host);
         return;
     }
-    free (host);
 
     add_client (uri, client);
 

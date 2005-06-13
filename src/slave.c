@@ -332,6 +332,7 @@ static void *start_relay_stream (void *arg)
     {
         source_t *fallback_source;
 
+        DEBUG1 ("failed relay, fallback to %s", relay->source->fallback_mount);
         avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount (relay->source->fallback_mount);
 
