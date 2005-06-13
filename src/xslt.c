@@ -163,10 +163,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     if (cur == NULL)
     {
-        const char error[] = "Could not parse XSLT file";
-
         thread_mutex_unlock(&xsltlock);
-        client_send_bytes (client, error, sizeof (error)-1);
+        ERROR1 ("problem reading stylesheet \"%s\"", xslfilename);
+        client_send_404 (client, "Could not parse XSLT file");
         return;
     }
 
