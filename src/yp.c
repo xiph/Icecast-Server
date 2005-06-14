@@ -128,15 +128,15 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             if (yp->sid)
                 sscanf (ptr, "SID: %[^\r\n]", yp->sid);
         }
-        if (strncmp (ptr, "TouchFreq: ", 11) == 0)
-        {
-            unsigned secs;
-            sscanf (ptr, "TouchFreq: %u", &secs);
-            if (secs < 30)
-                secs = 30;
-            DEBUG1 ("server touch interval is %u", secs);
-            yp->touch_interval = secs;
-        }
+    }
+    if (strncmp (ptr, "TouchFreq: ", 11) == 0)
+    {
+        unsigned secs;
+        sscanf (ptr, "TouchFreq: %u", &secs);
+        if (secs < 30)
+            secs = 30;
+        DEBUG1 ("server touch interval is %u", secs);
+        yp->touch_interval = secs;
     }
     return (int)bytes;
 }
@@ -240,6 +240,7 @@ void yp_recheck_config (ice_config_t *config)
             }
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
+            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
             curl_easy_setopt (server->curl, CURLOPT_URL, server->url);
             curl_easy_setopt (server->curl, CURLOPT_HEADERFUNCTION, handle_returned_header);
             curl_easy_setopt (server->curl, CURLOPT_WRITEFUNCTION, handle_returned_data);
