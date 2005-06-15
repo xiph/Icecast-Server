@@ -804,6 +804,15 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
+    if (util_check_valid_extension (uri) == XSLT_CONTENT)
+    {
+        /* If the file exists, then transform it, otherwise, write a 404 */
+        DEBUG0("Stats request, sending XSL transformed stats");
+        stats_transform_xslt (client, uri);
+        if (uri != passed_uri) free (uri);
+        return;
+    }
+
     add_client (uri, client);
 
     if (uri != passed_uri) free (uri);

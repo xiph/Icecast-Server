@@ -35,7 +35,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #define snprintf _snprintf
-#define S_ISREG (mode)  ((mode) & _S_IFREG)
+#define S_ISREG(mode)  ((mode) & _S_IFREG)
 #endif
 
 #include "thread/thread.h"
@@ -376,6 +376,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     int ret = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
+    ice_config_t *config;
     FILE *file;
 
     fullpath = util_get_path_from_normalised_uri (path);
@@ -409,7 +410,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         if (host == NULL)
         {
-            ice_config_t *config = config_get_config();
+            config = config_get_config();
             host = strdup (config->hostname);
             port = config->port;
             config_release_config();
@@ -438,17 +439,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
         return 0;
     }
 
-    if (util_check_valid_extension (fullpath) == XSLT_CONTENT)
-    {
-        /* If the file exists, then transform it, otherwise, write a 404 */
-        DEBUG0("Stats request, sending XSL transformed stats");
-        stats_transform_xslt (httpclient, fullpath);
-        free (fullpath);
-        return 0;
-    }
-
     /* on demand file serving check */
-    ice_config_t *config = config_get_config();
+    config = config_get_config();
     if (config->fileserve == 0)
     {
         DEBUG1 ("on demand file \"%s\" refused", fullpath);
@@ -537,6 +529,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     fserve_content_type(path));
         }
         httpclient->refbuf->len = bytes;
+        httpclient->pos = 0;
 
         stats_event_inc (NULL, "file_connections");
         fserve_add_client (httpclient, file);
@@ -551,7 +544,9 @@ int fserve_client_create (client_t *httpclient, const char *path)
 }
 
 
-/* Add client */
+/* Add client to fserve thread, client needs to have refbuf set and filled
+ * but may provide a NULL file if no data needs to be read
+ */
 int fserve_add_client (client_t *client, FILE *file)
 {
     fserve_t *fclient = calloc (1, sizeof(fserve_t));
