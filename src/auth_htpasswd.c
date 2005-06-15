@@ -33,7 +33,7 @@
 #include "md5.h"
 
 #include "logging.h"
-#define CATMODULE "auth"
+#define CATMODULE "auth_htpasswd"
 
 static auth_result htpasswd_adduser (auth_t *auth, const char *username, const char *password);
 static auth_result htpasswd_deleteuser(auth_t *auth, const char *username);
@@ -88,10 +88,14 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     auth_t *auth = auth_user->client->auth;
     htpasswd_auth_state *state = auth->state;
     client_t *client = auth_user->client;
-    FILE *passwdfile = fopen(state->filename, "rb");
+    FILE *passwdfile;
     char line[MAX_LINE_LEN];
     char *sep;
 
+    if (client->username == NULL || client->password == NULL)
+        return AUTH_FAILED;
+
+    passwdfile = fopen(state->filename, "rb");
     thread_rwlock_rlock(&state->file_rwlock);
     if(passwdfile == NULL) {
         WARN2("Failed to open authentication database \"%s\": %s", 
@@ -155,7 +159,6 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
 
     if(!state->filename) {
         free(state);
-        free(authenticator);
         ERROR0("No filename given in options for authenticator.");
         return -1;
     }

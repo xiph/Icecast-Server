@@ -63,6 +63,9 @@ static auth_result auth_cmd_client (auth_client *auth_user)
     int status, len;
     char str[512];
 
+    if (client->username == NULL || client->password == NULL)
+        return AUTH_FAILED;
+
     if (pipe (fd) == 0)
     {
         pid = fork();

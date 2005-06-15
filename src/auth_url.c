@@ -84,11 +84,14 @@ static void auth_url_clear(auth_t *self)
 {
     auth_url *url = self->state;
     curl_easy_cleanup (url->handle);
-    free(url->username);
-    free(url->password);
-    free(url->removeurl);
-    free(url->addurl);
-    free(url);
+    free (url->username);
+    free (url->password);
+    free (url->removeurl);
+    free (url->addurl);
+    free (url->stream_start);
+    free (url->stream_end);
+    free (url->auth_header);
+    free (url);
 }
 
 
@@ -121,7 +124,7 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     client_t *client = auth_user->client;
     auth_t *auth = client->auth;
     auth_url *url = auth->state;
-    time_t duration = time(NULL) - client->con->con_time;
+    time_t duration = global.time - client->con->con_time;
     char *username, *password, *mount, *server;
     ice_config_t *config;
     char post[1024];
@@ -131,15 +134,29 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     config = config_get_config ();
     server = util_url_escape (config->hostname);
     config_release_config ();
-    username = util_url_escape (client->username);
-    password = util_url_escape (client->password);
-    mount = util_url_escape (auth_user->mount);
+
+    if (client->username)
+        username = util_url_escape (client->username);
+    else
+        username = strdup ("");
+
+    if (client->password)
+        password = util_url_escape (client->password);
+    else
+        password = strdup ("");
+
+    /* get the full uri (with query params if available) */
+    mount = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    if (mount == NULL)
+        mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape (mount);
 
     snprintf (post, sizeof (post),
             "action=remove&server=%sclient=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu",
             server, client->con->id, mount, username,
             password, (long unsigned)duration);
+    free (server);
     free (mount);
     free (username);
     free (password);
@@ -180,9 +197,20 @@ static auth_result auth_addurl_client (auth_client *auth_user)
     if (agent == NULL)
         agent = "-";
     user_agent = util_url_escape (agent);
-    username  = util_url_escape (client->username);
-    password  = util_url_escape (client->password);
-    mount = util_url_escape (auth_user->mount);
+    if (client->username)
+        username  = util_url_escape (client->username);
+    else
+        username = strdup ("");
+    if (client->password)
+        password  = util_url_escape (client->password);
+    else
+        password = strdup ("");
+
+    /* get the full uri (with query params if available) */
+    mount = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    if (mount == NULL)
+        mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape (mount);
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
@@ -190,6 +218,7 @@ static auth_result auth_addurl_client (auth_client *auth_user)
             "&user=%s&pass=%s&ip=%s&agent=%s",
             server, client->con->id, mount, username,
             password, ipaddr, user_agent);
+    free (server);
     free (mount);
     free (user_agent);
     free (username);
@@ -361,7 +390,6 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     if (url_info->handle == NULL)
     {
         free (url_info);
-        free (authenticator);
         return -1;
     }
     if (url_info->auth_header)

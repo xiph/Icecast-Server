@@ -51,37 +51,42 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
     char *userpass, *tmp;
     char *username, *password;
 
-    if (header == NULL || strncmp(header, "Basic ", 6))
+    do
     {
-        INFO0("Authorization not using Basic");
-        return;
-    }
+        if (header == NULL)
+            break;
 
-    userpass = util_base64_decode (header+6);
-    if (userpass == NULL)
-    {
-        WARN1("Base64 decode of Authorization header \"%s\" failed",
-                header+6);
-        return;
-    }
+        if (strncmp(header, "Basic ", 6) == 0)
+        {
+            userpass = util_base64_decode (header+6);
+            if (userpass == NULL)
+            {
+                WARN1("Base64 decode of Authorization header \"%s\" failed",
+                        header+6);
+                return;
+            }
 
-    tmp = strchr(userpass, ':');
-    if (tmp == NULL)
-    { 
-        free (userpass);
-        return;
-    }
+            tmp = strchr(userpass, ':');
+            if (tmp == NULL)
+            { 
+                free (userpass);
+                return;
+            }
 
-    *tmp = 0;
-    username = userpass;
-    password = tmp+1;
+            *tmp = 0;
+            username = userpass;
+            password = tmp+1;
+            client->username = strdup (username);
+            client->password = strdup (password);
+            free (userpass);
+            break;
+        }
+        INFO1 ("unhandled authorization header: %s", header);
+
+    } while (0);
 
     client->auth = mountinfo->auth;
     client->auth->refcount++;
-    client->username = strdup (username);
-    client->password = strdup (password);
-
-    free(userpass);
 }
 
 
@@ -127,6 +132,7 @@ void auth_client_free (auth_client *auth_user)
             client_send_401 (client);
         auth_user->client = NULL;
     }
+    free (auth_user->mount);
     free (auth_user);
 }
 
@@ -330,6 +336,11 @@ void add_client (const char *mount, client_t *client)
         auth_client_setup (mountinfo, client);
         config_release_config ();
 
+        if (client->auth == NULL)
+        {
+            client_send_401 (client);
+            return;
+        }
         /* config lock taken in here */
         if (connection_check_relay_pass(client->parser))
         {
@@ -337,7 +348,7 @@ void add_client (const char *mount, client_t *client)
             INFO0 ("client connected as slave");
         }
         auth_user = calloc (1, sizeof (auth_client));
-        if (auth_user == NULL || client->auth == NULL)
+        if (auth_user == NULL)
         {
             client_send_401 (client);
             return;
