@@ -357,6 +357,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
     if (uri != NULL && strlen(uri) > 0) {
         char *query;
         if((query = strchr(uri, '?')) != NULL) {
+            httpp_setvar(parser, HTTPP_VAR_RAWURI, uri);
             *query = 0;
             query++;
             parse_query(parser, query);
@@ -424,7 +425,7 @@ int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
     return 1;
 }
 
-void httpp_setvar(http_parser_t *parser, char *name, char *value)
+void httpp_setvar(http_parser_t *parser, const char *name, const char *value)
 {
     http_var_t *var;
 
@@ -445,7 +446,7 @@ void httpp_setvar(http_parser_t *parser, char *name, char *value)
     }
 }
 
-char *httpp_getvar(http_parser_t *parser, char *name)
+char *httpp_getvar(http_parser_t *parser, const char *name)
 {
     http_var_t var;
     http_var_t *found;
@@ -455,7 +456,7 @@ char *httpp_getvar(http_parser_t *parser, char *name)
         return NULL;
 
     fp = &found;
-    var.name = name;
+    var.name = (char*)name;
     var.value = NULL;
 
     if (avl_get_by_key(parser->vars, &var, fp) == 0)
