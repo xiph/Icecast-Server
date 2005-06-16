@@ -301,6 +301,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
         client->refbuf = refbuf_new (buf_len);
         snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
         xmlFree(buff);
+        client->respcode = 200;
         fserve_add_client (client, NULL);
     }
     if (response == TRANSFORMED)
@@ -321,6 +322,8 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
         free(fullpath_xslt_template);
     }
 }
+
+
 void admin_handle_request(client_t *client, char *uri)
 {
     char *mount, *command_string;
@@ -1179,7 +1182,8 @@ static void command_list_mounts(client_t *client, int response)
             remaining -= ret;
             buf += ret;
         }
-        sock_write_bytes (client->con->sock, buffer, sizeof (buffer)-remaining);
+        client_send_bytes (client, buffer, sizeof (buffer)-remaining);
+        client_destroy(client);
     }
     else
     {

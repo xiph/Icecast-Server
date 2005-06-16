@@ -176,7 +176,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     if (string)
     {
         const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
-        unsigned buf_len = len + strlen (http) + 20;
+        unsigned buf_len = strlen (http) + 20 + len;
 
         client->respcode = 200;
         client->refbuf = refbuf_new (buf_len);
