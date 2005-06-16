@@ -540,6 +540,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     httpclient->respcode = 416;
     sock_write (httpclient->con->sock,
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
+    client_destroy (httpclient);
     return 0;
 }
 
