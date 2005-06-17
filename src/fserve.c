@@ -399,33 +399,31 @@ int fserve_client_create (client_t *httpclient, const char *path)
         m3u_file_available = 0;
     }
 
+    client_set_queue (httpclient, NULL);
+    httpclient->refbuf = refbuf_new (BUFSIZE);
+
     if (m3u_requested && m3u_file_available == 0)
     {
         char *host = httpp_getvar (httpclient->parser, "host");
         char *sourceuri = strdup (path);
-        char *dot = strrchr(sourceuri, '.');
-        int port = 8000;
+        char *dot = strrchr (sourceuri, '.');
         *dot = 0;
-        DEBUG1 ("host passed is %s", host);
         httpclient->respcode = 200;
         if (host == NULL)
         {
             config = config_get_config();
-            host = strdup (config->hostname);
-            port = config->port;
-            config_release_config();
-            sock_write (httpclient->con->sock,
+            snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
                     "http://%s:%d%s\r\n", 
-                    host, port,
+                    config->hostname, config->port,
                     sourceuri
                     );
-            free (host);
+            config_release_config();
         }
         else
         {
-            sock_write (httpclient->con->sock,
+            snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
                     "http://%s%s\r\n", 
@@ -433,7 +431,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     sourceuri
                     );
         }
-        client_destroy (httpclient);
+        httpclient->refbuf->len = strlen (httpclient->refbuf->data);
+        fserve_add_client (httpclient, NULL);
         free (sourceuri);
         free (fullpath);
         return 0;
@@ -468,8 +467,6 @@ int fserve_client_create (client_t *httpclient, const char *path)
         return 0;
     }
 
-    client_set_queue (httpclient, NULL);
-    httpclient->refbuf = refbuf_new (BUFSIZE);
     content_length = (int64_t)file_buf.st_size;
     range = httpp_getvar (httpclient->parser, "range");
 
