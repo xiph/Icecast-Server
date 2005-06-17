@@ -765,7 +765,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     struct stat statbuf;
     source_t *source;
     int fileserve;
-    char *host = NULL;
     int port;
     int i;
     char *serverhost = NULL;
@@ -777,8 +776,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
 
     config = config_get_config();
     fileserve = config->fileserve;
-    if (config->hostname)
-        host = strdup (config->hostname);
     port = config->port;
     for(i = 0; i < global.server_sockets; i++) {
         if(global.serversock[i] == client->con->serversock) {
@@ -817,7 +814,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         (strncmp(uri, "/admin/", 7) == 0)) {
         admin_handle_request(client, uri);
         if (uri != passed_uri) free (uri);
-        free (host);
         return;
     }
 
@@ -842,45 +838,16 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         }
         free(fullpath);
         if (uri != passed_uri) free (uri);
-        free (host);
         return;
     }
-    else if(fileserve && stat(fullpath, &statbuf) == 0 && 
-#ifdef _WIN32
-            ((statbuf.st_mode) & _S_IFREG))
-#else
-            S_ISREG(statbuf.st_mode)) 
-#endif
+
+    if (fserve_client_create (client, uri))
     {
-        fserve_client_create(client, fullpath);
         free(fullpath);
         if (uri != passed_uri) free (uri);
-        free (host);
         return;
     }
     free(fullpath);
-
-    if(strcmp(util_get_extension(uri), "m3u") == 0) {
-        char *sourceuri = strdup(uri);
-        char *dot = strrchr(sourceuri, '.');
-        *dot = 0;
-        client->respcode = 200;
-        bytes = sock_write(client->con->sock,
-                    "HTTP/1.0 200 OK\r\n"
-                    "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "http://%s:%d%s\r\n", 
-                    host, 
-                    port,
-                    sourceuri
-                    );
-        if(bytes > 0) client->con->sent_bytes = bytes;
-        client_destroy(client);
-        free(sourceuri);
-        if (uri != passed_uri) free (uri);
-        free (host);
-        return;
-    }
-    free (host);
 
     avl_tree_rlock(global.source_tree);
     source = source_find_mount(uri);

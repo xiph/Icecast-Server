@@ -14,14 +14,12 @@
 #define __FSERVE_H__
 
 #include <stdio.h>
-#include "compat.h"
 
 typedef struct _fserve_t
 {
     client_t *client;
 
     FILE *file;
-    int64_t content_length;
     int ready;
     struct _fserve_t *next;
 } fserve_t;
@@ -29,6 +27,7 @@ typedef struct _fserve_t
 void fserve_initialize(void);
 void fserve_shutdown(void);
 int fserve_client_create(client_t *httpclient, const char *path);
+int fserve_add_client (client_t *client, FILE *file);
 char *fserve_content_type (const char *path);
 
 
