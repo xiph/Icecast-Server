@@ -136,7 +136,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
         WARN0 ("source connection has died");
     }
     client->con->error = 1;
-    return -1;
+    return bytes;
 }
 
 

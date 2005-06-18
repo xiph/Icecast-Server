@@ -249,7 +249,6 @@ int add_client_to_source (source_t *source, client_t *client)
     client->refbuf = refbuf_new (4096);
 
     sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
-    sock_set_nodelay (client->con->sock);
     thread_mutex_unlock (&source->lock);
 
     if (source->running == 0 && source->on_demand)

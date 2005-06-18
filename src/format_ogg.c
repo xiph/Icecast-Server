@@ -413,6 +413,8 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                     return complete_buffer (source, refbuf);
                 continue;
             }
+            if (bytes == 0)
+                return NULL;
             /* need more stream data */
             break;
         }

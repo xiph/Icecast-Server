@@ -28,6 +28,8 @@ typedef struct {
     int update_metadata;
 
     refbuf_t *metadata;
+    refbuf_t *read_data;
+    unsigned int read_count;
     mutex_t url_lock;
 
     unsigned build_metadata_len;

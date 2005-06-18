@@ -468,12 +468,6 @@ static void get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
-        if (source->client->con && source->client->con->error)
-        {
-            INFO1 ("End of Stream %s", source->mount);
-            source->running = 0;
-            continue;
-        }
         if (refbuf)
         {
             /* append buffer to the in-flight data queue,  */
@@ -508,6 +502,12 @@ static void get_next_buffer (source_t *source)
             if (source->dumpfile && source->format->write_buf_to_file)
                 source->format->write_buf_to_file (source, refbuf);
         }
+        else
+            if (source->client->con && source->client->con->error)
+            {
+                INFO1 ("End of Stream %s", source->mount);
+                source->running = 0;
+            }
         break;
     }
 }
@@ -524,7 +524,7 @@ static void get_next_buffer (source_t *source)
 static int send_to_listener (source_t *source, client_t *client, int deletion_expected)
 {
     int bytes;
-    int loop = 20;   /* max number of iterations in one go */
+    int loop = 10;   /* max number of iterations in one go */
     int total_written = 0;
     int ret = 0;
 

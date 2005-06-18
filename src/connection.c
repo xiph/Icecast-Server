@@ -804,6 +804,10 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
+    /* Here we are parsing the URI request to see
+    ** if the extension is .xsl, if so, then process
+    ** this request as an XSLT request
+    */
     if (util_check_valid_extension (uri) == XSLT_CONTENT)
     {
         /* If the file exists, then transform it, otherwise, write a 404 */
