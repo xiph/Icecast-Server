@@ -86,7 +86,7 @@ void stats_event_time (const char *mount, const char *name);
 void *stats_connection(void *arg);
 void *stats_callback(void *arg);
 
-void stats_transform_xslt(client_t *client, char *xslpath);
+void stats_transform_xslt(client_t *client, const char *uri);
 void stats_sendxml(client_t *client);
 void stats_get_xml(xmlDocPtr *doc, int show_hidden);
 char *stats_get_value(char *source, char *name);

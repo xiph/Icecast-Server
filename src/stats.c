@@ -35,6 +35,7 @@
 #include "client.h"
 #include "stats.h"
 #include "xslt.h"
+#include "util.h"
 #define CATMODULE "stats"
 #include "logging.h"
 
@@ -703,7 +704,7 @@ static int _send_event_to_client(stats_event_t *event, client_t *client)
             (event->source != NULL) ? event->source : "global",
             event->name ? event->name : "null",
             event->value ? event->value : "null");
-    if (len > 0 && len < sizeof (buf))
+    if (len > 0 && len < (int)sizeof (buf))
         ret = client_send_bytes (client, buf, len);
 
     return (ret == -1) ? 0 : 1;
@@ -886,9 +887,10 @@ static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr ro
     return node->node;
 }
 
-void stats_transform_xslt(client_t *client, char *xslpath)
+void stats_transform_xslt(client_t *client, const char *uri)
 {
     xmlDocPtr doc;
+    char *xslpath = util_get_path_from_normalised_uri (uri);
 
     stats_get_xml(&doc, 0);
 

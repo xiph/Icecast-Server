@@ -19,8 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #endif
@@ -760,9 +758,6 @@ static void _handle_stats_request (client_t *client, char *uri)
 
 static void _handle_get_request (client_t *client, char *passed_uri)
 {
-    char *fullpath;
-    int bytes;
-    struct stat statbuf;
     source_t *source;
     int fileserve;
     int port;
@@ -821,33 +816,20 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     ** if the extension is .xsl, if so, then process
     ** this request as an XSLT request
     */
-    fullpath = util_get_path_from_normalised_uri(uri);
-    if (util_check_valid_extension(fullpath) == XSLT_CONTENT) {
+    if (util_check_valid_extension (uri) == XSLT_CONTENT)
+    {
         /* If the file exists, then transform it, otherwise, write a 404 */
-        if (stat(fullpath, &statbuf) == 0) {
-            DEBUG0("Stats request, sending XSL transformed stats");
-            client->respcode = 200;
-            bytes = sock_write(client->con->sock, 
-                    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-            if(bytes > 0) client->con->sent_bytes = bytes;
-            stats_transform_xslt(client, fullpath);
-            client_destroy(client);
-        }
-        else {
-            client_send_404(client, "The file you requested could not be found");
-        }
-        free(fullpath);
+        DEBUG0("Stats request, sending XSL transformed stats");
+        stats_transform_xslt (client, uri);
         if (uri != passed_uri) free (uri);
         return;
     }
 
     if (fserve_client_create (client, uri))
     {
-        free(fullpath);
         if (uri != passed_uri) free (uri);
         return;
     }
-    free(fullpath);
 
     avl_tree_rlock(global.source_tree);
     source = source_find_mount(uri);

@@ -46,6 +46,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "fserve.h"
 
 #define CATMODULE "xslt"
 
@@ -152,41 +153,37 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
 
 void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
-    xmlOutputBufferPtr outputBuffer;
     xmlDocPtr    res;
     xsltStylesheetPtr cur;
-    const char *params[16 + 1];
-    size_t count,bytes;
-
-    params[0] = NULL;
+    xmlChar *string;
+    int len;
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
 
-    if (cur == NULL) {
+    if (cur == NULL)
+    {
         thread_mutex_unlock(&xsltlock);
-        bytes = sock_write_string(client->con->sock, 
-                (char *)"Could not parse XSLT file");
-        if(bytes > 0) client->con->sent_bytes += bytes;
-        
+        ERROR1 ("problem reading stylesheet \"%s\"", xslfilename);
+        client_send_404 (client, "Could not parse XSLT file");
         return;
     }
 
-    res = xsltApplyStylesheet(cur, doc, params);
+    res = xsltApplyStylesheet(cur, doc, NULL);
 
-    outputBuffer = xmlAllocOutputBuffer(NULL);
-
-    count = xsltSaveResultTo(outputBuffer, res, cur);
+    xsltSaveResultToString (&string, &len, res, cur);
     thread_mutex_unlock(&xsltlock);
+    if (string)
+    {
+        const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
+        unsigned buf_len = strlen (http) + 20 + len;
 
-    /*  Add null byte to end. */
-    bytes = xmlOutputBufferWrite(outputBuffer, 1, "");
-
-    if(sock_write_string(client->con->sock, 
-                (char *)outputBuffer->buffer->content))
-        client->con->sent_bytes += bytes;
-    
-    xmlOutputBufferClose(outputBuffer);
+        client->respcode = 200;
+        client->refbuf = refbuf_new (buf_len);
+        snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
+        fserve_add_client (client, NULL);
+        xmlFree (string);
+    }
     xmlFreeDoc(res);
 }
 
