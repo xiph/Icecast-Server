@@ -1144,14 +1144,18 @@ static void command_list_mounts(client_t *client, int response)
     avl_tree_rlock (global.source_tree);
     if (response == PLAINTEXT)
     {
-        char buffer [4096], *buf = buffer;
-        unsigned int remaining = sizeof (buffer);
-        int ret = snprintf (buffer, remaining,
-                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-
+        char *buf;
+        unsigned int remaining = 4096;
+        int ret;
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
-        while (mountinfo)
+
+        client->refbuf = refbuf_new (remaining);
+        buf = client->refbuf->data;
+        ret = snprintf (buf, remaining,
+                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+
+        while (mountinfo && ret > 0 && ret < remaining)
         {
             mount_proxy *current = mountinfo;
             source_t *source;
@@ -1182,8 +1186,8 @@ static void command_list_mounts(client_t *client, int response)
             remaining -= ret;
             buf += ret;
         }
-        client_send_bytes (client, buffer, sizeof (buffer)-remaining);
-        client_destroy(client);
+        client->refbuf->len = 4096 - remaining;
+        fserve_add_client (client, NULL);
     }
     else
     {
@@ -1194,8 +1198,6 @@ static void command_list_mounts(client_t *client, int response)
                 LISTMOUNTS_TRANSFORMED_REQUEST);
         xmlFreeDoc(doc);
     }
-
-    return;
 }
 
 static void command_updatemetadata(client_t *client, source_t *source,
