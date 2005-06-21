@@ -81,10 +81,10 @@ auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);
 
 /* call to send a url request when source starts */
-void auth_stream_start (const char *mount);
+void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
 
 /* call to send a url request when source ends */
-void auth_stream_end (const char *mount);
+void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
 
 /* called from auth thread, after the client has successfully authenticated
  * and requires adding to source or fserve. */

@@ -483,12 +483,11 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
 }
 
 
-void auth_stream_start (const char *mount)
+/* called when the stream starts, so that authentication engine can do any
+ * cleanup/initialisation.
+ */
+void auth_stream_start (mount_proxy *mountinfo, const char *mount)
 {
-    mount_proxy *mountinfo; 
-    ice_config_t *config = config_get_config();
-
-    mountinfo = config_find_mount (config, mount);
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_start)
     {
         auth_client *auth_user = calloc (1, sizeof (auth_client));
@@ -500,15 +499,14 @@ void auth_stream_start (const char *mount)
             queue_auth_client (auth_user);
         }
     }
-    config_release_config ();
 }
 
-void auth_stream_end (const char *mount)
-{
-    mount_proxy *mountinfo; 
-    ice_config_t *config = config_get_config();
 
-    mountinfo = config_find_mount (config, mount);
+/* Called when the stream ends so that the authentication engine can do
+ * any authentication cleanup
+ */
+void auth_stream_end (mount_proxy *mountinfo, const char *mount)
+{
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_end)
     {
         auth_client *auth_user = calloc (1, sizeof (auth_client));
@@ -520,7 +518,6 @@ void auth_stream_end (const char *mount)
             queue_auth_client (auth_user);
         }
     }
-    config_release_config ();
 }
 
 

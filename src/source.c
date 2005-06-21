@@ -688,13 +688,15 @@ static void source_init (source_t *source)
         stats_event (source->mount, "audio_info", str);
     }
 
-    auth_stream_start (source->mount);
-
     thread_mutex_unlock (&source->lock);
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
-    if (mountinfo && mountinfo->on_connect)
-        source_run_script (mountinfo->on_connect, source->mount);
+    if (mountinfo)
+    {
+        if (mountinfo->on_connect)
+            source_run_script (mountinfo->on_connect, source->mount);
+        auth_stream_start (mountinfo, source->mount);
+    }
     config_release_config();
 
     /*
@@ -777,10 +779,13 @@ static void source_shutdown (source_t *source)
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
-    auth_stream_end (source->mount);
     mountinfo = config_find_mount (config_get_config(), source->mount);
-    if (mountinfo && mountinfo->on_disconnect)
-        source_run_script (mountinfo->on_disconnect, source->mount);
+    if (mountinfo)
+    {
+        if (mountinfo->on_disconnect)
+            source_run_script (mountinfo->on_disconnect, source->mount);
+        auth_stream_end (mountinfo, source->mount);
+    }
     config_release_config();
 
     /* we have de-activated the source now, so no more clients will be
@@ -1110,7 +1115,10 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 {
     /*  skip if source is a fallback to file */
     if (source->running && source->client->con == NULL)
+    {
+        stats_event_hidden (source->mount, NULL, 1);
         return;
+    }
     thread_mutex_lock (&source->lock);
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
