@@ -72,10 +72,15 @@
 <br />
 <table cellpadding="5" cellspacing="0" border="0">
 	<xsl:for-each select="*">
-	<tr>
-		<td width="130"><xsl:value-of select="name()" /></td>
-		<td class="streamdata"><xsl:value-of select="." /></td>
-	</tr>
+      <xsl:choose>
+        <xsl:when test="name()='listener'"></xsl:when>
+        <xsl:otherwise>
+          <tr>
+              <td width="130"><xsl:value-of select="name()" /></td>
+              <td class="streamdata"><xsl:value-of select="." /></td>
+          </tr>
+        </xsl:otherwise>
+      </xsl:choose>
 	</xsl:for-each>
 </table>
 <br />

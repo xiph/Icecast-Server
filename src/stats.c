@@ -30,6 +30,8 @@
 
 #include "connection.h"
 
+#include "source.h"
+#include "admin.h"
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
@@ -934,6 +936,22 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden)
 
         _free_event(event);
         event = _get_event_from_queue(&queue);
+    }
+    if (show_hidden)
+    {
+        /* process each listener */
+        source_xml_t *src = src_nodes;
+        avl_tree_rlock (global.source_tree);
+        while (src)
+        {
+            source_t *source = source_find_mount_raw (src->mount);
+
+            if (source)
+                admin_source_listeners (source, src->node);
+
+            src = src->next;
+        }
+        avl_tree_unlock (global.source_tree);
     }
 
     while (src_nodes) {

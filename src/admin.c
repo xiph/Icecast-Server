@@ -196,7 +196,7 @@ static void command_show_listeners(client_t *client, source_t *source,
         int response);
 static void command_move_clients(client_t *client, source_t *source,
         int response);
-static void command_stats(client_t *client, int response);
+static void command_stats(client_t *client);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
@@ -272,9 +272,12 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             if (source->running)
             {
-                snprintf (buf, sizeof(buf), "%lu",
-                        (unsigned long)(now - source->client->con->con_time));
-                xmlNewChild (srcnode, NULL, "Connected", buf);
+                if (source->client->con)
+                {
+                    snprintf (buf, sizeof(buf), "%lu",
+                            (unsigned long)(now - source->client->con->con_time));
+                    xmlNewChild (srcnode, NULL, "Connected", buf);
+                }
                 xmlNewChild (srcnode, NULL, "content-type", 
                         source->format->contenttype);
             }
@@ -347,13 +350,6 @@ void admin_handle_request(client_t *client, char *uri)
 
     DEBUG1("Got command (%s)", command_string);
     command = admin_get_command(command_string);
-
-    if(command < 0) {
-        ERROR1("Error parsing command string or unrecognised command: %s",
-                command_string);
-        client_send_400(client, "Unrecognised command");
-        return;
-    }
 
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
 
@@ -457,9 +453,6 @@ void admin_handle_request(client_t *client, char *uri)
 static void admin_handle_general_request(client_t *client, int command)
 {
     switch(command) {
-        case COMMAND_RAW_STATS:
-            command_stats(client, RAW);
-            break;
         case COMMAND_RAW_LIST_MOUNTS:
             command_list_mounts(client, RAW);
             break;
@@ -474,9 +467,6 @@ static void admin_handle_general_request(client_t *client, int command)
             break;
         case COMMAND_PLAINTEXT_LISTSTREAM:
             command_list_mounts(client, PLAINTEXT);
-            break;
-        case COMMAND_TRANSFORMED_STATS:
-            command_stats(client, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_LIST_MOUNTS:
             command_list_mounts(client, TRANSFORMED);
@@ -494,9 +484,8 @@ static void admin_handle_general_request(client_t *client, int command)
             command_admin_function(client, TRANSFORMED);
             break;
         default:
-            WARN0("General admin request not recognised");
-            client_send_400(client, "Unknown admin request");
-            return;
+            command_stats (client);
+            break;
     }
 }
 
@@ -774,55 +763,63 @@ static void command_manage_relay (client_t *client, int response)
 }
 
 
+/* populata,e within srcnode, groups of 0 or more listener tags detailing
+ * information about each listener connected on the provide source.
+ */
+void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
+{
+    client_t *listener;
+    char buf[30];
+
+    if (source == NULL)
+        return;
+
+    thread_mutex_lock (&source->lock);
+
+    listener = source->active_clients;
+    while (listener)
+    {
+        char *useragent;
+        xmlNodePtr node = xmlNewChild (srcnode, NULL, "listener", NULL);
+
+        snprintf (buf, sizeof (buf), "%lu", listener->con->id);
+        xmlNewChild (node, NULL, "ID", buf);
+
+        xmlNewChild (node, NULL, "IP", listener->con->ip);
+
+        useragent = httpp_getvar (listener->parser, "user-agent");
+        xmlNewChild (node, NULL, "UserAgent", useragent); 
+
+        snprintf (buf, sizeof (buf), "%lu",
+                (unsigned long)(global.time - listener->con->con_time));
+        xmlNewChild (node, NULL, "Connected", buf);
+        if (listener->username)
+            xmlNewChild (node, NULL, "Username", listener->username);
+
+        listener = listener->next;
+    }
+    thread_mutex_unlock (&source->lock);
+}
+
+
 static void command_show_listeners(client_t *client, source_t *source,
     int response)
 {
     xmlDocPtr doc;
-    xmlNodePtr node, srcnode, listenernode;
-    client_t *current;
+    xmlNodePtr node, srcnode;
     char buf[22];
-    char *userAgent = NULL;
-    time_t now = time(NULL);
 
     doc = xmlNewDoc("1.0");
     node = xmlNewDocNode(doc, NULL, "icestats", NULL);
     srcnode = xmlNewChild(node, NULL, "source", NULL);
 
-    thread_mutex_lock (&source->lock);
-
     xmlSetProp(srcnode, "mount", source->mount);
     xmlDocSetRootElement(doc, node);
 
-    memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf), "%lu", source->listeners);
     xmlNewChild(srcnode, NULL, "Listeners", buf);
 
-    current = source->active_clients;
-    while (current)
-    {
-        listenernode = xmlNewChild(srcnode, NULL, "listener", NULL);
-        xmlNewChild(listenernode, NULL, "IP", current->con->ip);
-        userAgent = httpp_getvar(current->parser, "user-agent");
-        if (userAgent) {
-            xmlNewChild(listenernode, NULL, "UserAgent", userAgent);
-        }
-        else {
-            xmlNewChild(listenernode, NULL, "UserAgent", "Unknown");
-        }
-        memset(buf, '\000', sizeof(buf));
-        snprintf (buf, sizeof(buf), "%lu",
-                (unsigned long)(now - current->con->con_time));
-        xmlNewChild(listenernode, NULL, "Connected", buf);
-        memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%lu", current->con->id);
-        xmlNewChild(listenernode, NULL, "ID", buf);
-        if (current->username)
-            xmlNewChild(listenernode, NULL, "username", current->username);
-
-        current = current->next;
-    }
-
-    thread_mutex_unlock (&source->lock);
+    admin_source_listeners (source, srcnode);
 
     admin_send_response(doc, client, response, 
         LISTCLIENTS_TRANSFORMED_REQUEST);
@@ -1127,13 +1124,28 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     }
 }
 
-static void command_stats(client_t *client, int response) {
+
+/* catch all function for admin requests.  If file has xsl extension then
+ * transform it usinf the available stats, else send the XML tree of the
+ * stats
+ */
+static void command_stats (client_t *client)
+{
+    char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    int response = RAW;
+    char *xslfile = strrchr (uri, '/');
     xmlDocPtr doc;
 
-    DEBUG0("Stats request, sending xml stats");
+    if (xslfile == NULL)
+    {
+        client_send_404 (client, "bad request");
+        return;
+    }
+    if (util_check_valid_extension (uri) == XSLT_CONTENT)
+        response = TRANSFORMED;
 
     stats_get_xml(&doc, 1);
-    admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
+    admin_send_response (doc, client, response, xslfile+1);
     xmlFreeDoc(doc);
     return;
 }
