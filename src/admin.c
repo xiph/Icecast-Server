@@ -269,7 +269,8 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
         xmlDocDumpMemory(doc, &buff, &len);
         buf_len = strlen (http) + len + 20;
         client->refbuf = refbuf_new (buf_len);
-        snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
+        len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
+        client->refbuf->len = len;
         xmlFree(buff);
         client->respcode = 200;
         fserve_add_client (client, NULL);
