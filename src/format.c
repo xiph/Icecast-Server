@@ -100,7 +100,7 @@ static void find_client_start (source_t *source, client_t *client)
     {
         long size = 0;
         refbuf = source->burst_point;
-        size = source->burst_size - client->intro_offset;
+        size = client->intro_offset;
         while (size > 0 && refbuf->next)
         {
             size -= refbuf->len;
