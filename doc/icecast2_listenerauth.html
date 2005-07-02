@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>Icecast v2.0 Documentation</title>
+<title>Icecast v2.2 Documentation</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
@@ -13,17 +13,26 @@
 <br />
 <br />
 <h2>Listener Authentication</h2>
-<p>Listener authentication is a feature of icecast which allows you to secure certain mountpoint so that in order to listen, a listener must provide a username and password.  With this feature a simple pay-for-play operation can be setup.  This section will show you the basics of setting up and maintaining this component.</p>
-
+<p>Listener authentication is a feature of icecast which allows you to secure a certain
+mountpoint such that in order to listen, a listener must pass some verification test.  With
+this feature, a simple pay-for-play operation (eg user/pass), or some filtering based on the
+listener connection can be performed.  This section will show you the basics of setting up
+and maintaining this component.</p>
+<p>To define listener authentication, a group of tags are specified in the &lt;mount&gt;
+group relating to the mountpoint. This means that authentication can apply to listeners of
+source clients or relays.</p>
 <br />
-<br />
+<p>The following authentication mechanisms can apply to listeners</p>
+<ul>
+    <li>HTPASSWD - lookup a named file for a matching username and password</li>
+    <li>URL - issue web requests (eg PHP) to match authentication</li>
+</ul>
 <br />
 <h2>HTPASSWD Listener Authentication</h2>
-<h3>Config File Entries</h3>
 <p>In order to use listener authentication, you MUST configure a mount specific option.  This means that you have to provide a &lt;mount&gt; section in the main icecast config file.  The following is an example :</p>
 <pre>
     &lt;mount&gt;
-        &lt;mount-name&gt;/example-complex.ogg&lt;/mount-name&gt;
+        &lt;mount-name&gt;/example.ogg&lt;/mount-name&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
@@ -33,7 +42,6 @@
 <p>To support listener authentication you MUST provide at a minimum &lt;mount-name&gt; and &lt;authentication&gt;.  The mount-name is the name of the mountpoint that you will use to connect your source client with and authentication configures what type of icecast2 authenticator to use.  Currently, only a single type "htpasswd" is implemented.  New authenticators will be added later.  Each authenticator has a variable number of options that are required and these are specified as shown in the example.  The htpasswd authenticator requires a few parameters.  The first, filename, specifies the name of the file to use to store users and passwords.  Note that this file need not exist (and probably will not exist when you first set it up).  Icecast has built-in support for managing users and passwords via the web admin interface.  More on this later in this section.  The second option, allow_duplicate_users, if set to 0, will prevent multiple connections using the same username.  Setting this value to 1 will enable mutltiple connections from the same username on a given mountpoint.  Note there is no way to specify a "max connections" for a particular user.
 </p>
 <p>Icecast supports a mixture of streams that require listener authentication and those that do not.  Only mounts that are named in the config file can be configured for listener authentication.</p>
-<br />
 <br />
 <br />
 <h3>Configuring Users and Passwords</h3>
@@ -52,9 +60,90 @@
 <p>This page will serve a m3u with the username and password and in most cases should open the correct media player and begin playing your stream</p>
 <br />
 <br />
+<h2>URL</h2>
+<p>Authenticating listeners via the URL method involves icecast, when a listener connects,
+issuing requests to a web server and checking the response headers. If a certain header is
+sent back then the listener connecting is allowed to continue, if not, an error is sent back
+to the listener.</p>
+<p>The URLs specified will invoke some web server scripts like PHP to do any work that they
+may choose to do. All that is required of the scripting language is that POST information can
+be handled and a response header can be sent back. libcurl is used for the requesting so 
+https connections can be used.</p>
+<p>In order to use URL based listener authentication, you MUST configure a mount specific
+option.  This means that you have to provide a &lt;mount&gt; section in the main icecast
+config file.  The following shows the list of options available :</p>
+<pre>
+    &lt;mount&gt;
+        &lt;mount-name&gt;/example.ogg&lt;/mount-name&gt;
+        &lt;authentication type="url"&gt;
+            &lt;option name="start" value="http://myauthserver.com/stream_start.php"/&gt;
+            &lt;option name="end" value="http://myauthserver.com/stream_end.php"/&gt;
+            &lt;option name="add" value="http://myauthserver.com/listener_joined.php"/&gt;
+            &lt;option name="remove" value="http://myauthserver.com/listener_left.php"/&gt;
+            &lt;option name="username" value="user"/&gt;
+            &lt;option name="password" value="pass"/&gt;
+            &lt;option name="header" value="listener-validated: 1"/&gt;
+        &lt;/authentication&gt;
+    &lt;/mount&gt;
+</pre>
+<p>The options are described below in more detail, each of which is optional, but in each
+case, within the POST data, the value for each setting is encoded.</p>
+<h3>start</h3>
+<p>This URL is for informing the auth server of a stream starting. No listener information
+is passed for this, but can be used to initialise any details the auth server may have.
+</p>
+<p>POST details are</p>
+<pre>
+    action=start&amp;mount=/live&amp;server=myserver.com
+</pre>
+<p>Here the details indicate the server name (&lt;hostname&gt;) and mountpoint starting up</p>
+<h3>end</h3>
+<p>This URL is for informing the auth server of a stream finishing, like the start option, no
+listener details are passed.</p>
+<p>POST details are</p>
+<pre>
+    action=end&amp;mount=/live&amp;server=myserver.com
+</pre>
+<p>like the start option, server name and mountpoint are provided</p>
+</p>
+<h3>add</h3>
+<p>This is most likely to be used if anything. When a listener connects, before anything is
+sent back to them, this request is processed.  The default action is to reject a listener
+unless the auth server sends back a response header which is stated in the 'header' option
+</p>
+<p>POST details are</p>
+<pre>
+    action=auth&amp;server=myserver.com&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;ip=127.0.0.1&amp;agent="My player"
+</pre>
+<p>There are more details with this, client is the unique ID for the client within icecast,
+user and pass may be blank but come from the HTTP basic auth that the listener states, ip
+is the listeners IP address and agent is the Useragent from the listeners player.</p>
+<p>The mount here (unlike the start/end options) states the requested url including any
+query parameters, so for instance the requested URL can be /stream.ogg&amp;session=xyz, but
+note that each option data is escaped before being passed via POST
+</p>
+<h3>remove</h3>
+<p>This URL is for when a listener connection closes.</p>
+<p>POST details are</p>
+<pre>
+    action=remove&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;duration=3600
+</pre>
+<p>Again this is similar to the add option, the difference being that a duration is passed
+reflecting the number of seconds the listener was connected for </p>
+<h3>header</h3>
+<p>The response header returned from these requests that allows the authencation to take
+place can be stated here. The default is 
+<pre>icecast-auth-user: 1</pre>
+but it could can anything you wish for instance
+<pre>HTTP 200 OK</pre>
+<br />
 <br />
 <h2>A note about players and authentication</h2>
-<p>We do not have an exaustive list of players that support listener authentication.  We use standard HTTP basic authentication, and in general, many media players support this if they support anything at all.  Winamp and Foobar2000 support HTTP basic authentication on windows, and XMMS supports it on unix platforms.</p>
+<p>We do not have an exaustive list of players that support listener authentication.  We use
+standard HTTP basic authentication, and in general, many media players support this if they
+support anything at all.  Winamp and Foobar2000 support HTTP basic authentication on windows,
+and XMMS supports it on unix platforms.  Winamp/XMMS as least support the passing of query 
+parameters, other players may also do</p>
 </div>
 </body>
 </html>

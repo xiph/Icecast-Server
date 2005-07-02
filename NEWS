@@ -20,6 +20,25 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh12
+. rework connection handler to work on non-blocking sockets. the listener thread
+  handles the http reading, after which it passes it over to the connection
+  thread for parsing.
+. any xsl file can be placed in admin now and can work off the stats data
+. dump listener details to xml for admin requests that get the stats tree
+. make sure that fallback file streams are hidden
+. fix fd leak in error case for file ranges and plaintext list_mounts function
+  like that used for querying a master server
+. use correct offset from burst point for new clients
+. batch up small reads for passthrough streams into slightly larger blocks, so
+  that TCP protocol overhead is kept to a minimum.
+. because of the batching, the max send count per client per iteration is less
+. fixup streamlist.txt to be sent via fserve thread
+. fixup automatic m3u output to be via fserve thread.
+. XML read from HUP is not sent via the connection handler now, instead the
+  slave thread processes it
+. doc update for url listener auth
+
 2.2-kh11
 . xsl/xml pages from adminroot and webroot are now delivered via the file
   serve thread.
