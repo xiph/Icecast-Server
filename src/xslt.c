@@ -179,6 +179,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         unsigned buf_len = strlen (http) + 20 + len;
 
         client->respcode = 200;
+        client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
         snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
         fserve_add_client (client, NULL);

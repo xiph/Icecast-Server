@@ -301,6 +301,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
                "Content-Length: ";
         xmlDocDumpFormatMemoryEnc (doc, &buff, &len, NULL, 1);
         buf_len = strlen (http) + len + 20;
+        client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
         len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
         client->refbuf->len = len;
@@ -1163,6 +1164,7 @@ static void command_list_mounts(client_t *client, int response)
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
 
+        client_set_queue (client, NULL);
         client->refbuf = refbuf_new (remaining);
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,

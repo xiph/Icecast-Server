@@ -100,7 +100,8 @@ void client_destroy(client_t *client)
 
     if (client->con)
         connection_close(client->con);
-    httpp_destroy(client->parser);
+    if (client->parser)
+        httpp_destroy (client->parser);
 
     global_lock ();
     global.clients--;

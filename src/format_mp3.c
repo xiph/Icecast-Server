@@ -409,6 +409,8 @@ static void format_mp3_free_plugin (format_plugin_t *plugin)
     free (format_mp3->url_artist);
     free (format_mp3->url_title);
     refbuf_release (format_mp3->metadata);
+    if (format_mp3->read_data)
+        refbuf_release (format_mp3->read_data);
     free(format_mp3);
     free(plugin);
 }
