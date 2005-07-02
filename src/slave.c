@@ -56,6 +56,7 @@
 #include "logging.h"
 #include "source.h"
 #include "format.h"
+#include "event.h"
 
 #define CATMODULE "slave"
 
@@ -697,6 +698,13 @@ static void *_slave_thread(void *arg)
     while (1)
     {
         relay_server *cleanup_relays;
+
+        /* re-read xml file if requested */
+        if (global . schedule_config_reread)
+        {
+            event_config_read (NULL);
+            global . schedule_config_reread = 0;
+        }
 
         thread_sleep (1000000);
         if (slave_running == 0)

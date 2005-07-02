@@ -175,8 +175,6 @@ static void *auth_run_thread (void *arg)
 }
 
 
-
-
 /* Check whether this client is currently on this mount, the client may be
  * on either the active or pending lists.
  * return 1 if ok to add or 0 to prevent
@@ -246,9 +244,7 @@ int add_client_to_source (source_t *source, client_t *client)
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
-    client->refbuf = refbuf_new (4096);
 
-    sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
     thread_mutex_unlock (&source->lock);
 
     if (source->running == 0 && source->on_demand)
@@ -364,7 +360,7 @@ void add_client (const char *mount, client_t *client)
         int ret = add_authenticated_client (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
-            client_send_504 (client, "stream_full");
+            client_send_404 (client, "stream full");
     }
 }
 

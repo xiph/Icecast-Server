@@ -33,6 +33,7 @@ void event_config_read(void *arg)
     ice_config_t new_config;
     /* reread config file */
 
+    INFO0("Re-reading XML");
     config = config_grab_config(); /* Both to get the lock, and to be able
                                      to find out the config filename */
     ret = config_parse_file(config->config_filename, &new_config);

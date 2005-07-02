@@ -38,9 +38,6 @@ typedef struct connection_tag
     char *ip;
     char *host;
 
-    /* For 'fake' connections */
-    int event_number;
-    void *event;
 } connection_t;
 
 void connection_initialize(void);
@@ -50,8 +47,6 @@ void connection_close(connection_t *con);
 connection_t *create_connection(sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, connection_t *con,
         http_parser_t *parser);
-
-void connection_inject_event(int eventnum, void *event_data);
 
 int connection_check_source_pass(http_parser_t *parser, const char *mount);
 int connection_check_relay_pass(http_parser_t *parser);

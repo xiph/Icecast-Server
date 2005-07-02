@@ -559,9 +559,6 @@ int fserve_add_client (client_t *client, FILE *file)
     fclient->client = client;
     fclient->ready = 0;
 
-    sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
-    sock_set_nodelay (client->con->sock);
-
     thread_mutex_lock (&pending_lock);
     fclient->next = (fserve_t *)pending_list;
     pending_list = fclient;

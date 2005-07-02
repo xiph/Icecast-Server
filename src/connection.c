@@ -80,10 +80,12 @@
 #define SHOUTCAST_SOURCE_AUTH 1
 #define ICECAST_SOURCE_AUTH 0
 
-typedef struct con_queue_tag {
-    connection_t *con;
-    struct con_queue_tag *next;
-} con_queue_t;
+typedef struct client_queue_tag {
+    client_t *client;
+    int offset;
+    int shoutcast;
+    struct client_queue_tag *next;
+} client_queue_t;
 
 typedef struct _thread_queue_tag {
     thread_type *thread_id;
@@ -93,11 +95,12 @@ typedef struct _thread_queue_tag {
 static mutex_t _connection_mutex;
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
+static thread_type *tid;
 
-static volatile con_queue_t *_queue = NULL, **_queue_tail = &_queue;
-static mutex_t _queue_mutex;
-
-static thread_queue_t *_conhands = NULL;
+static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
+static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
+static mutex_t _con_queue_mutex;
+static mutex_t _req_queue_mutex;
 
 rwlock_t _source_shutdown_rwlock;
 
@@ -108,7 +111,8 @@ void connection_initialize(void)
     if (_initialized) return;
     
     thread_mutex_create("connection", &_connection_mutex);
-    thread_mutex_create("connection q", &_queue_mutex);
+    thread_mutex_create("connection q", &_con_queue_mutex);
+    thread_mutex_create("request q", &_req_queue_mutex);
     thread_mutex_create("move_clients", &move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
@@ -122,7 +126,8 @@ void connection_shutdown(void)
     
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
-    thread_mutex_destroy(&_queue_mutex);
+    thread_mutex_destroy(&_con_queue_mutex);
+    thread_mutex_destroy(&_req_queue_mutex);
     thread_mutex_destroy(&_connection_mutex);
     thread_mutex_destroy(&move_clients_mutex);
 
@@ -140,18 +145,18 @@ static unsigned long _next_connection_id(void)
     return id;
 }
 
-connection_t *create_connection(sock_t sock, sock_t serversock, char *ip) {
+connection_t *create_connection(sock_t sock, sock_t serversock, char *ip)
+{
     connection_t *con;
-    con = (connection_t *)malloc(sizeof(connection_t));
-    memset(con, 0, sizeof(connection_t));
-    con->sock = sock;
-    con->serversock = serversock;
-    con->con_time = time(NULL);
-    con->id = _next_connection_id();
-    con->ip = ip;
-
-    con->event_number = EVENT_NO_EVENT;
-    con->event = NULL;
+    con = (connection_t *)calloc(1, sizeof(connection_t));
+    if (con)
+    {
+        con->sock = sock;
+        con->serversock = serversock;
+        con->con_time = global.time;
+        con->id = _next_connection_id();
+        con->ip = ip;
+    }
 
     return con;
 }
@@ -254,8 +259,11 @@ static connection_t *_accept_connection(void)
     ip = (char *)malloc(MAX_ADDR_LEN);
 
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock >= 0) {
+    if (sock >= 0)
+    {
         con = create_connection(sock, serversock, ip);
+        if (con == NULL)
+            free (ip);
 
         return con;
     }
@@ -268,162 +276,179 @@ static connection_t *_accept_connection(void)
     return NULL;
 }
 
-static void _add_connection(connection_t *con)
-{
-    con_queue_t *node;
 
-    node = (con_queue_t *)malloc(sizeof(con_queue_t));
-    
-    node->con = con;
-    node->next = NULL;
-    thread_mutex_lock(&_queue_mutex);
-    *_queue_tail = node;
-    _queue_tail = (volatile con_queue_t **)&node->next;
-    thread_mutex_unlock(&_queue_mutex);
+/* add client to connection queue. At this point some header information
+ * has been collected, so we now pass it onto the connection thread for
+ * further processing
+ */
+static void _add_connection (client_queue_t *node)
+{
+    thread_mutex_lock (&_con_queue_mutex);
+    *_con_queue_tail = node;
+    _con_queue_tail = (volatile client_queue_t **)&node->next;
+    thread_mutex_unlock (&_con_queue_mutex);
 }
 
-static void _push_thread(thread_queue_t **queue, thread_type *thread_id)
+
+/* this returns queued clients for the connection thread. headers are
+ * already provided, but need to be parsed.
+ */
+static client_queue_t *_get_connection(void)
 {
-    /* create item */
-    thread_queue_t *item = (thread_queue_t *)malloc(sizeof(thread_queue_t));
-    item->thread_id = thread_id;
-    item->next = NULL;
+    client_queue_t *node = NULL;
 
-
-    thread_mutex_lock(&_queue_mutex);
-    if (*queue == NULL) {
-        *queue = item;
-    } else {
-        item->next = *queue;
-        *queue = item;
+    /* common case, no new connections so don't bother taking locks */
+    if (_con_queue)
+    {
+        thread_mutex_lock (&_con_queue_mutex);
+        node = (client_queue_t *)_con_queue;
+        _con_queue = node->next;
+        if (_con_queue == NULL)
+            _con_queue_tail = &_con_queue;
+        thread_mutex_unlock (&_con_queue_mutex);
     }
-    thread_mutex_unlock(&_queue_mutex);
+    return node;
 }
 
-static thread_type *_pop_thread(thread_queue_t **queue)
+
+/* run along queue checking for any data that has come in or a timeout */
+static void process_request_queue ()
 {
-    thread_type *id;
-    thread_queue_t *item;
-
-    thread_mutex_lock(&_queue_mutex);
-
-    item = *queue;
-    if (item == NULL) {
-        thread_mutex_unlock(&_queue_mutex);
-        return NULL;
-    }
-
-    *queue = item->next;
-    item->next = NULL;
-    id = item->thread_id;
-    free(item);
-
-    thread_mutex_unlock(&_queue_mutex);
-
-    return id;
-}
-
-static void _build_pool(void)
-{
-    ice_config_t *config;
-    int i;
-    thread_type *tid;
-    char buff[64];
-    int threadpool_size;
-
-    config = config_get_config();
-    threadpool_size = config->threadpool_size;
+    client_queue_t **node_ref = (client_queue_t **)&_req_queue;
+    ice_config_t *config = config_get_config ();
+    int timeout = config->header_timeout;
     config_release_config();
 
-    for (i = 0; i < threadpool_size; i++) {
-        snprintf(buff, 64, "Connection Thread #%d", i);
-        tid = thread_create(buff, _handle_connection, NULL, THREAD_ATTACHED);
-        _push_thread(&_conhands, tid);
+    while (*node_ref)
+    {
+        client_queue_t *node = *node_ref;
+        client_t *client = node->client;
+        int len = client->refbuf->len - node->offset;
+        char *buf = client->refbuf->data + node->offset;
+
+        if (len > 0)
+        {
+            if (client->con->con_time + timeout <= global.time)
+                len = 0;
+            else
+                len = sock_read_bytes (client->con->sock, buf, len);
+        }
+
+        if (len > 0)
+        {
+            int pass_it = 0;
+
+            node->offset += len;
+            client->refbuf->data [node->offset] = '\000';
+            if (node->shoutcast == 1 && strstr (client->refbuf->data, "\r\n") != NULL)
+                pass_it = 1;
+            if (strstr (client->refbuf->data, "\r\n\r\n") != NULL)
+                pass_it = 1;
+            
+            if (pass_it)
+            {
+                if ((client_queue_t **)_req_queue_tail == &(node->next))
+                    _req_queue_tail = (volatile client_queue_t **)node_ref;
+                *node_ref = node->next;
+                node->next = NULL;
+                _add_connection (node);
+            }
+        }
+        else
+        {
+            if (len == 0 || !sock_recoverable (sock_error()))
+            {
+                if ((client_queue_t **)_req_queue_tail == &node->next)
+                    _req_queue_tail = (volatile client_queue_t **)node_ref;
+                *node_ref = node->next;
+                client_destroy (client);
+                free (node);
+            }
+        }
+        node_ref = &node->next;
     }
 }
 
-static void _destroy_pool(void)
+
+/* add node to the queue of requests. This is where the clients are when
+ * initial http details are read.
+ */
+static void _add_request_queue (client_queue_t *node)
 {
-    thread_type *id;
-    int i;
-
-    i = 0;
-
-    id = _pop_thread(&_conhands);
-    while (id != NULL) {
-        thread_join(id);
-        id = _pop_thread(&_conhands);
-    }
-    INFO0("All connection threads down");
+    thread_mutex_lock (&_req_queue_mutex);
+    *_req_queue_tail = node;
+    _req_queue_tail = (volatile client_queue_t **)&node->next;
+    thread_mutex_unlock (&_req_queue_mutex);
 }
+
 
 void connection_accept_loop(void)
 {
     connection_t *con;
 
-    _build_pool();
+    tid = thread_create ("connection thread", _handle_connection, NULL, THREAD_ATTACHED);
 
     while (global.running == ICE_RUNNING)
     {
-        if (global . schedule_config_reread)
-        {
-            /* reread config file */
-            INFO0("Scheduling config reread ...");
-
-            connection_inject_event(EVENT_CONFIG_READ, NULL);
-            global . schedule_config_reread = 0;
-        }
-
         con = _accept_connection();
 
-        if (con) {
-            _add_connection(con);
+        if (con)
+        {
+            client_queue_t *node;
+            ice_config_t *config;
+            int i;
+            client_t *client = client_create (con, NULL);
+
+            if (client == NULL)
+            {
+                sock_write (con->sock, "HTTP/1.0 404 File Not Found\r\n"
+                        "Content-Type: text/html\r\n\r\n"
+                        "<b>Icecast connection limit reached</b>");
+                connection_close (con);
+                continue;
+            }
+
+            /* setup client for reading incoming http */
+            client->refbuf = refbuf_new (4096);
+            client->refbuf->data[4095] = '\000';
+            client->refbuf->len--;  /* make sure we are nul terminated */
+
+            node = calloc (1, sizeof (client_queue_t));
+            if (node == NULL)
+            {
+                client_destroy (client);
+                continue;
+            }
+            node->client = client;
+
+            /* Check for special shoutcast compatability processing */
+            config = config_get_config();
+            for (i = 0; i < global.server_sockets; i++)
+            {
+                if (global.serversock[i] == con->serversock)
+                    if (config->listeners[i].shoutcast_compat)
+                        node->shoutcast = 1;
+            }
+            config_release_config();
+
+            sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
+            sock_set_nodelay (client->con->sock);
+
+            _add_request_queue (node);
+            stats_event_inc (NULL, "connections");
         }
+        process_request_queue ();
     }
 
     /* Give all the other threads notification to shut down */
     thread_cond_broadcast(&global.shutdown_cond);
 
-    _destroy_pool();
+    if (tid)
+        thread_join (tid);
 
     /* wait for all the sources to shutdown */
     thread_rwlock_wlock(&_source_shutdown_rwlock);
     thread_rwlock_unlock(&_source_shutdown_rwlock);
-}
-
-static connection_t *_get_connection(void)
-{
-    con_queue_t *node = NULL;
-    connection_t *con = NULL;
-
-    /* common case, no new connections so don't bother taking locks */
-    if (_queue == NULL)
-        return NULL;
-
-    thread_mutex_lock(&_queue_mutex);
-    if (_queue) {
-        node = (con_queue_t *)_queue;
-        _queue = node->next;
-        if ((con_queue_t**)_queue_tail == &node->next)
-            _queue_tail = &_queue;
-    }
-    thread_mutex_unlock(&_queue_mutex);
-
-    if (node) {
-        con = node->con;
-        free(node);
-    }
-
-    return con;
-}
-
-void connection_inject_event(int eventnum, void *event_data) {
-    connection_t *con = calloc(1, sizeof(connection_t));
-
-    con->event_number = eventnum;
-    con->event = event_data;
-
-    _add_connection(con);
 }
 
 
@@ -822,149 +847,117 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     if (uri != passed_uri) free (uri);
 }
 
-void _handle_shoutcast_compatible(connection_t *con, char *mount, char *source_password) {
-    char shoutcast_password[256];
+static void _handle_shoutcast_compatible (client_queue_t *node)
+{
     char *http_compliant;
     int http_compliant_len = 0;
-    char header[4096];
     http_parser_t *parser;
+    ice_config_t *config = config_get_config ();
+    char *shoutcast_mount;
+    client_t *client = node->client;
 
-    memset(shoutcast_password, 0, sizeof (shoutcast_password));
-    /* Step one of shoutcast auth protocol, read encoder password (1 line) */
-    if (util_read_header(con->sock, shoutcast_password, 
-            sizeof (shoutcast_password), 
-            READ_LINE) == 0) {
-        /* either we didn't get a complete line, or we timed out */
-        connection_close(con);
-        return;
-    }
-    /* Get rid of trailing \n */
-    shoutcast_password[strlen(shoutcast_password)-1] = '\000';
-    if (strcmp(shoutcast_password, source_password)) {
-        ERROR0("Invalid source password");
-        connection_close(con);
-        return;
-    }
-    /* Step two of shoutcast auth protocol, send OK2.  For those
-       interested, OK2 means it supports metadata updates via admin.cgi,
-       and the string "OK" can also be sent, but will indicate to the
-       shoutcast source client to not send metadata updates.
-       I believe icecast 1.x used to send OK. */
-    sock_write(con->sock, "%s\r\n", "OK2");
+    if (node->shoutcast == 1)
+    {
+        char *source_password, *ptr;
+        mount_proxy *mountinfo = config_find_mount (config, config->shoutcast_mount);
 
-    memset(header, 0, sizeof (header));
-    /* Step three of shoutcast auth protocol, read HTTP-style
-       request headers and process them.*/
-    if (util_read_header(con->sock, header, sizeof (header), 
-                         READ_ENTIRE_HEADER) == 0) {
-        /* either we didn't get a complete header, or we timed out */
-        connection_close(con);
+        if (mountinfo && mountinfo->password)
+            source_password = strdup (mountinfo->password);
+        else
+            source_password = strdup (config->source_password);
+        config_release_config();
+        
+        /* Get rid of trailing \r\n */
+        ptr = strstr (client->refbuf->data, "\r\n");
+        if (ptr == NULL)
+        {
+            client_destroy (client);
+            free (source_password);
+            free (node);
+            return;
+        }
+        *ptr = '\0';
+
+        if (strcmp (client->refbuf->data, source_password) == 0)
+        {
+            client->respcode = 200;
+            /* send this non-blocking but if there is only a partial write
+             * then leave to header timeout */
+            sock_write (client->con->sock, "OK2\r\n");
+            memset (client->refbuf->data, 0, client->refbuf->len);
+            node->shoutcast = 2;
+            node->offset = 0;
+            /* we've checked the password, now send it back for reading headers */
+            _add_request_queue (node);
+            free (source_password);
+            return;
+        }
+        client_destroy (client);
+        free (node);
         return;
     }
+    shoutcast_mount = strdup (config->shoutcast_mount);
+    config_release_config();
     /* Here we create a valid HTTP request based of the information
        that was passed in via the non-HTTP style protocol above. This
        means we can use some of our existing code to handle this case */
-    http_compliant_len = strlen(header) + strlen(mount) + 20;
+    http_compliant_len = 20 + strlen (shoutcast_mount) + node->offset;
     http_compliant = (char *)calloc(1, http_compliant_len);
     snprintf (http_compliant, http_compliant_len,
-            "SOURCE %s HTTP/1.0\r\n%s", mount, header);
+            "SOURCE %s HTTP/1.0\r\n%s", shoutcast_mount, client->refbuf->data);
     parser = httpp_create_parser();
-    httpp_initialize(parser, NULL);
+    httpp_initialize (parser, NULL);
     if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
     {
-        client_t *client = client_create (con, parser);
-        if (client)
-        {
-            _handle_source_request (client, mount, SHOUTCAST_SOURCE_AUTH);
-            free (http_compliant);
-            return;
-        }
+        memset (client->refbuf->data, 0, http_compliant_len);
+        client->parser = parser;
+        _handle_source_request (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
-    connection_close (con);
-    httpp_destroy (parser);
+    else
+        client_destroy (client);
     free (http_compliant);
+    free (shoutcast_mount);
+    free (node);
+    return;
 }
 
+
+/* Connection thread. Here we take clients off the connection queue and check
+ * the contents provided. We set up the parser then hand off to the specific
+ * request handler.
+ */
 static void *_handle_connection(void *arg)
 {
-    char header[4096];
-    connection_t *con;
     http_parser_t *parser;
     char *rawuri, *uri;
-    client_t *client;
-    int i = 0;
-    int continue_flag = 0;
-    ice_config_t *config;
-    char *source_password;
 
-    while (global.running == ICE_RUNNING) {
+    while (global.running == ICE_RUNNING)
+    {
+        client_queue_t *node = _get_connection();
 
-        /* grab a connection and set the socket to blocking */
-        while ((con = _get_connection())) {
-
-            /* Handle meta-connections */
-            if(con->event_number > 0) {
-                switch(con->event_number) {
-                    case EVENT_CONFIG_READ:
-                        event_config_read(con->event);
-                        break;
-                    default:
-                        ERROR1("Unknown event number: %d", con->event_number);
-                        break;
-                }
-                free(con);
-                continue;
-            }
-
-            stats_event_inc(NULL, "connections");
-
-            sock_set_blocking(con->sock, SOCK_BLOCK);
-
-            continue_flag = 0;
+        if (node)
+        {
+            client_t *client = node->client;
             /* Check for special shoutcast compatability processing */
-            for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
-                if(global.serversock[i] == con->serversock) {
-                    config = config_get_config();
-                    if (config->listeners[i].shoutcast_compat) {
-                        char *shoutcast_mount = strdup (config->shoutcast_mount);
-                        mount_proxy *mountinfo = config_find_mount (config, config->shoutcast_mount);
-                        if (mountinfo && mountinfo->password)
-                            source_password = strdup (mountinfo->password);
-                        else
-                            source_password = strdup (config->source_password);
-                        config_release_config();
-                        _handle_shoutcast_compatible(con, shoutcast_mount, source_password);
-                        free(source_password);
-                        free (shoutcast_mount);
-                        continue_flag = 1;
-                        break;
-                    }
-                    config_release_config();
-                }
-            }
-            if(continue_flag) {
+            if (node->shoutcast)
+            {
+                _handle_shoutcast_compatible (node);
                 continue;
             }
 
-            /* fill header with the http header */
-            memset(header, 0, sizeof (header));
-            if (util_read_header(con->sock, header, sizeof (header), 
-                        READ_ENTIRE_HEADER) == 0) {
-                /* either we didn't get a complete header, or we timed out */
-                connection_close(con);
-                continue;
-            }
-
+            /* process normal HTTP headers */
             parser = httpp_create_parser();
-            httpp_initialize(parser, NULL);
-            if (httpp_parse(parser, header, strlen(header))) {
-                /* handle the connection or something */
+            httpp_initialize (parser, NULL);
+            client->parser = parser;
+            if (httpp_parse (parser, client->refbuf->data, node->offset))
+            {
+                memset (client->refbuf->data, 0, node->offset);
+                free (node);
                 
                 if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
                     strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
                     ERROR0("Bad HTTP protocol detected");
-                    connection_close(con);
-                    httpp_destroy(parser);
+                    client_destroy (client);
                     continue;
                 }
 
@@ -973,19 +966,7 @@ static void *_handle_connection(void *arg)
 
                 if (uri == NULL)
                 {
-                    sock_write(con->sock, "The path you requested was invalid\r\n");
-                    connection_close(con);
-                    httpp_destroy(parser);
-                    continue;
-                }
-                client = client_create (con, parser);
-                if (client == NULL)
-                {
-                    sock_write (con->sock, "HTTP/1.0 404 File Not Found\r\n"
-                            "Content-Type: text/html\r\n\r\n"
-                            "<b>Connection limit reached</b>");
-                    connection_close(con);
-                    httpp_destroy(parser);
+                    client_destroy (client);
                     continue;
                 }
 
@@ -1004,16 +985,16 @@ static void *_handle_connection(void *arg)
                 }
 
                 free(uri);
-                continue;
             } 
-            else {
+            else
+            {
+                free (node);
                 ERROR0("HTTP request parsing failed");
-                connection_close(con);
-                httpp_destroy(parser);
-                continue;
+                client_destroy (client);
             }
+            continue;
         }
-        thread_sleep (100000);
+        thread_sleep (50000);
     }
     DEBUG0 ("Connection thread done");
 
