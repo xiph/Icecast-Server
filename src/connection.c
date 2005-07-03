@@ -340,10 +340,21 @@ static void process_request_queue ()
 
             node->offset += len;
             client->refbuf->data [node->offset] = '\000';
-            if (node->shoutcast == 1 && strstr (client->refbuf->data, "\r\n") != NULL)
-                pass_it = 1;
-            if (strstr (client->refbuf->data, "\r\n\r\n") != NULL)
-                pass_it = 1;
+            if (node->shoutcast == 1)
+            {
+                /* password line */
+                if (strstr (client->refbuf->data, "\r\n") != NULL)
+                    pass_it = 1;
+                if (strstr (client->refbuf->data, "\n") != NULL)
+                    pass_it = 1;
+            }
+            else
+            {
+                if (strstr (client->refbuf->data, "\r\n\r\n") != NULL)
+                    pass_it = 1;
+                if (strstr (client->refbuf->data, "\n\n") != NULL)
+                    pass_it = 1;
+            }
             
             if (pass_it)
             {
@@ -867,8 +878,11 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             source_password = strdup (config->source_password);
         config_release_config();
         
-        /* Get rid of trailing \r\n */
+        /* Get rid of trailing \r\n or \n after password */
         ptr = strstr (client->refbuf->data, "\r\n");
+        if (ptr == NULL)
+            ptr = strstr (client->refbuf->data, "\n");
+
         if (ptr == NULL)
         {
             client_destroy (client);
