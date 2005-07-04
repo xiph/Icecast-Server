@@ -156,7 +156,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     xmlDocPtr    res;
     xsltStylesheetPtr cur;
     xmlChar *string;
-    int len;
+    int len, problem = 0;
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
@@ -171,18 +171,27 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     res = xsltApplyStylesheet(cur, doc, NULL);
 
-    xsltSaveResultToString (&string, &len, res, cur);
+    if (xsltSaveResultToString (&string, &len, res, cur) < 0)
+        problem = 1;
     thread_mutex_unlock(&xsltlock);
-    if (string)
+    if (problem == 0)
     {
         const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
-        unsigned buf_len = strlen (http) + 20 + len;
+        int buf_len = strlen (http) + 20 + len;
 
+        if (string == NULL)
+            string = xmlStrdup ("");
         client->respcode = 200;
         client->refbuf = refbuf_new (buf_len);
-        snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
+        len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
+        client->refbuf->len = len;
         fserve_add_client (client, NULL);
         xmlFree (string);
+    }
+    else
+    {
+        WARN1 ("problem applying stylesheet \"%s\"", xslfilename);
+        client_send_404 (client, "XSLT problem");
     }
     xmlFreeDoc(res);
 }

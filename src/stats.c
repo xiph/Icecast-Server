@@ -897,6 +897,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     xslt_transform(doc, xslpath, client);
 
     xmlFreeDoc(doc);
+    free (xslpath);
 }
 
 void stats_get_xml(xmlDocPtr *doc, int show_hidden)
