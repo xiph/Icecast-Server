@@ -83,6 +83,7 @@
 typedef struct client_queue_tag {
     client_t *client;
     int offset;
+    int stream_offset;
     int shoutcast;
     struct client_queue_tag *next;
 } client_queue_t;
@@ -336,26 +337,38 @@ static void process_request_queue ()
 
         if (len > 0)
         {
-            int pass_it = 0;
+            int pass_it = 1;
+            char *ptr;
 
             node->offset += len;
             client->refbuf->data [node->offset] = '\000';
-            if (node->shoutcast == 1)
+            do
             {
-                /* password line */
-                if (strstr (client->refbuf->data, "\r\n") != NULL)
-                    pass_it = 1;
-                if (strstr (client->refbuf->data, "\n") != NULL)
-                    pass_it = 1;
-            }
-            else
-            {
-                if (strstr (client->refbuf->data, "\r\n\r\n") != NULL)
-                    pass_it = 1;
-                if (strstr (client->refbuf->data, "\n\n") != NULL)
-                    pass_it = 1;
-            }
-            
+                if (node->shoutcast == 1)
+                {
+                    /* password line */
+                    if (strstr (client->refbuf->data, "\r\n") != NULL)
+                        break;
+                    if (strstr (client->refbuf->data, "\n") != NULL)
+                        break;
+                }
+                /* stream_offset refers to the start of any data sent after the
+                 * http style headers, we don't want to lose those */
+                ptr = strstr (client->refbuf->data, "\r\n\r\n");
+                if (ptr)
+                {
+                    node->stream_offset = (ptr+4) - client->refbuf->data;
+                    break;
+                }
+                ptr = strstr (client->refbuf->data, "\n\n");
+                if (ptr)
+                {
+                    node->stream_offset = (ptr+2) - client->refbuf->data;
+                    break;
+                }
+                pass_it = 0;
+            } while (0);
+
             if (pass_it)
             {
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
@@ -923,7 +936,15 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     httpp_initialize (parser, NULL);
     if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
     {
-        memset (client->refbuf->data, 0, http_compliant_len);
+        /* we may have more than just headers, so prepare for it */
+        if (node->stream_offset == node->offset)
+            client_set_queue (client, NULL);
+        else
+        {
+            char *ptr = client->refbuf->data;
+            client->refbuf->len = node->offset - node->stream_offset;
+            memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+        }
         client->parser = parser;
         _handle_source_request (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
@@ -965,7 +986,15 @@ static void *_handle_connection(void *arg)
             client->parser = parser;
             if (httpp_parse (parser, client->refbuf->data, node->offset))
             {
-                memset (client->refbuf->data, 0, node->offset);
+                /* we may have more than just headers, so prepare for it */
+                if (node->stream_offset == node->offset)
+                    client_set_queue (client, NULL);
+                else
+                {
+                    char *ptr = client->refbuf->data;
+                    client->refbuf->len = node->offset - node->stream_offset;
+                    memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+                }
                 free (node);
                 
                 if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
