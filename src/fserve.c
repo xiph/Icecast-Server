@@ -68,7 +68,7 @@
 #endif
 
 static fserve_t *active_list = NULL;
-volatile static fserve_t *pending_list = NULL;
+static volatile fserve_t *pending_list = NULL;
 
 static mutex_t pending_lock;
 static avl_tree *mimetypes = NULL;
@@ -235,7 +235,7 @@ static void wait_for_fds() {
 static void *fserv_thread_function(void *arg)
 {
     fserve_t *fclient, **trail;
-    int sbytes, bytes;
+    int bytes;
 
     INFO0("file serving thread started");
     while (run_fserv)
@@ -275,7 +275,7 @@ static void *fserv_thread_function(void *arg)
                 }
 
                 /* Now try and send current chunk. */
-                sbytes = format_generic_write_to_client (client);
+                format_generic_write_to_client (client);
 
                 if (client->con->error)
                 {

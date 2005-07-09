@@ -113,14 +113,56 @@ void config_init_configuration(ice_config_t *configuration)
     _set_defaults(configuration);
 }
 
+
+static void config_clear_relay (relay_server *relay)
+{
+    xmlFree (relay->server);
+    xmlFree (relay->mount);
+    xmlFree (relay->localmount);
+    free (relay);
+}
+
+
+static void config_clear_mount (mount_proxy *mount)
+{
+    config_options_t *option;
+
+    xmlFree (mount->mountname);
+    xmlFree (mount->username);
+    xmlFree (mount->password);
+    xmlFree (mount->dumpfile);
+    xmlFree (mount->intro_filename);
+    xmlFree (mount->on_connect);
+    xmlFree (mount->on_disconnect);
+    xmlFree (mount->fallback_mount);
+    xmlFree (mount->stream_name);
+    xmlFree (mount->stream_description);
+    xmlFree (mount->stream_url);
+    xmlFree (mount->stream_genre);
+    xmlFree (mount->bitrate);
+    xmlFree (mount->type);
+    xmlFree (mount->cluster_password);
+
+    xmlFree (mount->auth_type);
+    option = mount->auth_options;
+    while (option)
+    {
+        config_options_t *nextopt = option->next;
+        xmlFree (option->name);
+        xmlFree (option->value);
+        free (option);
+        option = nextopt;
+    }
+    auth_release (mount->auth);
+    free (mount);
+}
+
+
 void config_clear(ice_config_t *c)
 {
     ice_config_dir_t *dirnode, *nextdirnode;
-    relay_server *relay, *nextrelay;
-    mount_proxy *mount, *nextmount;
     aliases *alias, *nextalias;
     int i;
-    config_options_t *option;
 
     if (c->config_filename)
         free(c->config_filename);
@@ -169,53 +211,20 @@ void config_clear(ice_config_t *c)
     if (c->group) xmlFree(c->group);
 
     thread_mutex_lock(&(_locks.relay_lock));
-    relay = c->relay;
-    while(relay) {
-        nextrelay = relay->next;
-        xmlFree(relay->server);
-        xmlFree(relay->mount);
-        xmlFree(relay->localmount);
-        free(relay);
-        relay = nextrelay;
+    while (c->relay)
+    {
+        relay_server *to_go = c->relay;
+        c->relay = to_go->next;
+        config_clear_relay (to_go);
     }
     thread_mutex_unlock(&(_locks.relay_lock));
 
-    mount = c->mounts;
-    while(mount) {
-        nextmount = mount->next;
-        xmlFree(mount->mountname);
-        xmlFree(mount->username);
-        xmlFree(mount->password);
-        xmlFree(mount->dumpfile);
-        xmlFree(mount->intro_filename);
-        xmlFree(mount->on_connect);
-        xmlFree(mount->on_disconnect);
-        xmlFree(mount->fallback_mount);
-        xmlFree(mount->stream_name);
-        xmlFree(mount->stream_description);
-        xmlFree(mount->stream_url);
-        xmlFree(mount->stream_genre);
-        xmlFree(mount->bitrate);
-        xmlFree(mount->type);
-        if (mount->cluster_password) {
-            xmlFree(mount->cluster_password);
-        }
-
-        xmlFree(mount->auth_type);
-        option = mount->auth_options;
-        while(option) {
-            config_options_t *nextopt = option->next;
-            xmlFree(option->name);
-            xmlFree(option->value);
-            free(option);
-            option = nextopt;
-        }
-        auth_release (mount->auth);
-
-        free(mount);
-        mount = nextmount;
+    while (c->mounts)
+    {
+        mount_proxy *to_go = c->mounts;
+        c->mounts = to_go->next;
+        config_clear_mount (to_go);
     }
-
     alias = c->aliases;
     while(alias) {
         nextalias = alias->next;
@@ -535,16 +544,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
     
-    while(current) {
-        last = current;
-        current = current->next;
-    }
-
-    if(last)
-        last->next = mount;
-    else
-        configuration->mounts = mount;
-
     /* default <mount> settings */
     mount->max_listeners = -1;
     mount->burst_size = -1;
@@ -672,6 +671,21 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                     doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
+
+    if (mount->mountname == NULL)
+    {
+        config_clear_mount (mount);
+        return;
+    }
+    while(current) {
+        last = current;
+        current = current->next;
+    }
+
+    if(last)
+        last->next = mount;
+    else
+        configuration->mounts = mount;
 }
 
 
@@ -680,23 +694,12 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
 {
     char *tmp;
     relay_server *relay = calloc(1, sizeof(relay_server));
-    relay_server *current = configuration->relay;
-    relay_server *last=NULL;
-
-    while(current) {
-        last = current;
-        current = current->next;
-    }
-
-    if(last)
-        last->next = relay;
-    else
-        configuration->relay = relay;
 
     relay->next = NULL;
     relay->mp3metadata = 1;
     relay->enable = 1;
     relay->on_demand = configuration->on_demand;
+    relay->port = 8000;
 
     do {
         if (node == NULL) break;
@@ -743,8 +746,20 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
+
+    if (relay->server == NULL)
+    {
+        config_clear_relay (relay);
+        return;
+    }
+    if (relay->mount == NULL)
+        relay->mount = xmlStrdup ("/");
+
     if (relay->localmount == NULL)
         relay->localmount = xmlStrdup (relay->mount);
+
+    relay->next = configuration->relay;
+    configuration->relay = relay;
 }
 
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
@@ -1039,6 +1054,8 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
 {
     mount_proxy *mountinfo = config->mounts, *global = NULL;
 
+    if (mount == NULL)
+        return NULL;
     while (mountinfo)
     {
         if (strcmp (mountinfo->mountname, "all") == 0)
