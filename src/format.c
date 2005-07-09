@@ -167,7 +167,7 @@ int format_check_file_buffer (source_t *source, client_t *client)
         }
         /* source -> file fallback, need a refbuf for data */
         client_set_queue (client, NULL);
-        refbuf = refbuf_new (4096);
+        refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
         client->refbuf = refbuf;
         client->pos = refbuf->len;
         client->intro_offset = 0;

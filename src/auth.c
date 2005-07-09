@@ -38,8 +38,8 @@
 #define CATMODULE "auth"
 
 
-volatile static auth_client *clients_to_auth;
-volatile static int auth_running;
+static volatile auth_client *clients_to_auth;
+static volatile int auth_running;
 static mutex_t auth_lock;
 static thread_type *auth_thread;
 
@@ -244,7 +244,8 @@ int add_client_to_source (source_t *source, client_t *client)
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
-    client->refbuf = refbuf_new (4096);
+    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
+    memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
 
     thread_mutex_unlock (&source->lock);
 

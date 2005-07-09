@@ -433,8 +433,8 @@ void connection_accept_loop(void)
             }
 
             /* setup client for reading incoming http */
-            client->refbuf = refbuf_new (4096);
-            client->refbuf->data[4095] = '\000';
+            client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+            client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
             client->refbuf->len--;  /* make sure we are nul terminated */
 
             node = calloc (1, sizeof (client_queue_t));
@@ -938,7 +938,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     {
         /* we may have more than just headers, so prepare for it */
         if (node->stream_offset == node->offset)
-            client_set_queue (client, NULL);
+            client->refbuf->len = 0;
         else
         {
             char *ptr = client->refbuf->data;
@@ -988,7 +988,7 @@ static void *_handle_connection(void *arg)
             {
                 /* we may have more than just headers, so prepare for it */
                 if (node->stream_offset == node->offset)
-                    client_set_queue (client, NULL);
+                    client->refbuf->len = 0;
                 else
                 {
                     char *ptr = client->refbuf->data;

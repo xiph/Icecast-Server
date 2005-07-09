@@ -128,20 +128,18 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 {
     int bytes;
 
-    if (client->refbuf)
+    if (client->refbuf && client->refbuf->len)
     {
         /* we have data to read from a refbuf first */
         if (client->refbuf->len < len)
             len = client->refbuf->len;
         memcpy (buf, client->refbuf->data, len);
-        if (client->refbuf->len == len)
-            client_set_queue (client, NULL);
-        else
+        if (client->refbuf->len < len)
         {
             char *ptr = client->refbuf->data;
             memmove (ptr, ptr+len, client->refbuf->len - len);
-            client->refbuf->len -= len;
         }
+        client->refbuf->len -= len;
         return len;
     }
     bytes = sock_read_bytes (client->con->sock, buf, len);

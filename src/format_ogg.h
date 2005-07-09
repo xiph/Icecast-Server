@@ -28,6 +28,7 @@ typedef struct ogg_state_tag
     ogg_sync_state oy;
     int error;
 
+    int codec_count;
     struct ogg_codec_tag *codecs;
     char *artist;
     char *title;

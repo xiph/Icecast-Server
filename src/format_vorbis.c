@@ -21,6 +21,7 @@
 #include <ogg/ogg.h>
 #include <vorbis/codec.h>
 #include <memory.h>
+#include <string.h>
 
 #include "refbuf.h"
 #include "source.h"

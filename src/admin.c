@@ -1159,7 +1159,7 @@ static void command_list_mounts(client_t *client, int response)
     if (response == PLAINTEXT)
     {
         char *buf;
-        unsigned int remaining = 4096;
+        int remaining = 4096;
         int ret;
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
@@ -1196,7 +1196,7 @@ static void command_list_mounts(client_t *client, int response)
         config_release_config();
 
         /* handle last line */
-        if (ret > 0 && (unsigned)ret < remaining)
+        if (ret > 0 && ret < remaining)
         {
             remaining -= ret;
             buf += ret;

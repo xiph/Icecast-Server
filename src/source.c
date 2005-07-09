@@ -672,11 +672,9 @@ static void source_init (source_t *source)
     stats_event (source->mount, "listener_peak", "0");
     stats_event_time (source->mount, "stream_start");
 
-    if (source->client->con)
-        sock_set_blocking (source->client->con->sock, SOCK_NONBLOCK);
-
     DEBUG0("Source creation complete");
     source->last_read = global.time;
+    source->prev_listeners = -1;
     source->running = 1;
 
     source->fast_clients_p = &source->active_clients;

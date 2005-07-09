@@ -399,8 +399,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         m3u_file_available = 0;
     }
 
-    client_set_queue (httpclient, NULL);
-    httpclient->refbuf = refbuf_new (BUFSIZE);
+    httpclient->refbuf->len = PER_CLIENT_REFBUF_SIZE;
 
     if (m3u_requested && m3u_file_available == 0)
     {
