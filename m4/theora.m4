@@ -23,7 +23,7 @@ if test "x$with_theora" = "xno"
 then
   AC_MSG_RESULT([Theora support disabled by request])
 else
-  if test "x$theora_prefix" = "x"; then
+  if test "x$theora_prefix" = "x" -o "x$theora_prefix" = "xyes"; then
     if test "x$prefix" = "xNONE"; then
         theora_prefix="/usr/local"
     else

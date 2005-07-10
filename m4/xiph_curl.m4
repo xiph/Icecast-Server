@@ -14,7 +14,7 @@ AC_ARG_WITH(curl-config,
     AC_HELP_STRING([--with-curl-config=curl-config],[Use curl-config to find libcurl]),
     CURL_CONFIG="$withval", [AC_PATH_PROGS(CURL_CONFIG, [curl-config], "")])
 
-if test "x$curl_prefix" != "x"; then
+if test "x$curl_prefix" != "x" -a "x$curl_prefix" != "xyes"; then
     CURL_LIBS="-L$curl_prefix/lib -lcurl"
     CURL_CFLAGS="-I$curl_prefix/include"
 elif test "x$CURL_CONFIG" != "x"; then

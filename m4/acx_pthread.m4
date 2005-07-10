@@ -37,9 +37,10 @@ fi
 
 # Create a list of thread flags to try.  Items starting with a "-" are
 # C compiler flags, and other items are library names, except for "none"
-# which indicates that we try without any flags at all.
+# which indicates that we try without any flags at all, and "pthread-config"
+# which is a program returning the flags for the Pth emulation library.
 
-acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -mthreads pthread --thread-safe -mt"
+acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -mthreads pthread --thread-safe -mt pthread-config"
 
 # The ordering *is* (sometimes) important.  Some notes on the
 # individual items follow:
@@ -58,6 +59,7 @@ acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -m
 #      also defines -D_REENTRANT)
 # pthread: Linux, etcetera
 # --thread-safe: KAI C++
+# pthread-config: use pthread-config program (for GNU Pth library)
 
 case "${host_cpu}-${host_os}" in
         *solaris*)
@@ -70,7 +72,7 @@ case "${host_cpu}-${host_os}" in
         # who knows whether they'll stub that too in a future libc.)  So,
         # we'll just look for -pthreads and -lpthread first:
 
-        acx_pthread_flags="-pthread -pthreads pthread -mt $acx_pthread_flags"
+        acx_pthread_flags="-pthreads pthread -mt $acx_pthread_flags"
         ;;
 esac
 
@@ -85,6 +87,13 @@ for flag in $acx_pthread_flags; do
                 -*)
                 AC_MSG_CHECKING([whether pthreads work with $flag])
                 PTHREAD_CFLAGS="$flag"
+                ;;
+
+                pthread-config)
+                AC_CHECK_PROG(acx_pthread_config, pthread-config, yes, no)
+                if test x"$acx_pthread_config" = xno; then continue; fi
+                PTHREAD_CFLAGS="`pthread-config --cflags`"
+                PTHREAD_LIBS="`pthread-config --ldflags` `pthread-config --libs`"
                 ;;
 
                 *)
@@ -133,36 +142,29 @@ if test "x$acx_pthread_ok" = xyes; then
         save_CFLAGS="$CFLAGS"
         CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 
-        # Detect AIX lossage: threads are created detached by default
-        # and the JOINABLE attribute has a nonstandard name (UNDETACHED).
+        # Detect AIX lossage: JOINABLE attribute is called UNDETACHED.
         AC_MSG_CHECKING([for joinable pthread attribute])
-        AC_TRY_LINK([#include <pthread.h>],
-                    [int attr=PTHREAD_CREATE_JOINABLE;],
-                    ok=PTHREAD_CREATE_JOINABLE, ok=unknown)
-        if test x"$ok" = xunknown; then
-                AC_TRY_LINK([#include <pthread.h>],
-                            [int attr=PTHREAD_CREATE_UNDETACHED;],
-                            ok=PTHREAD_CREATE_UNDETACHED, ok=unknown)
-        fi
-        if test x"$ok" != xPTHREAD_CREATE_JOINABLE; then
-                AC_DEFINE(PTHREAD_CREATE_JOINABLE, $ok,
-                          [Define to the necessary symbol if this constant
-                           uses a non-standard name on your system.])
-        fi
-        AC_MSG_RESULT(${ok})
-        if test x"$ok" = xunknown; then
-                AC_MSG_WARN([we do not know how to create joinable pthreads])
+        attr_name=unknown
+        for attr in PTHREAD_CREATE_JOINABLE PTHREAD_CREATE_UNDETACHED; do
+            AC_TRY_LINK([#include <pthread.h>], [int attr=$attr;],
+                        [attr_name=$attr; break])
+        done
+        AC_MSG_RESULT($attr_name)
+        if test "$attr_name" != PTHREAD_CREATE_JOINABLE; then
+            AC_DEFINE_UNQUOTED(PTHREAD_CREATE_JOINABLE, $attr_name,
+                               [Define to necessary symbol if this constant
+                               uses a non-standard name on your system.])
         fi
 
         AC_MSG_CHECKING([if more special flags are required for pthreads])
         flag=no
         case "${host_cpu}-${host_os}" in
-                *-aix* | *-freebsd*)     flag="-D_THREAD_SAFE";;
-                *solaris* | *-osf* | *-hpux*) flag="-D_REENTRANT";;
+            *-aix* | *-freebsd* | *-darwin*) flag="-D_THREAD_SAFE";;
+            *solaris* | *-osf* | *-hpux*) flag="-D_REENTRANT";;
         esac
         AC_MSG_RESULT(${flag})
         if test "x$flag" != xno; then
-                PTHREAD_CPPFLAGS="$flag $PTHREAD_CPPFLAGS"
+            PTHREAD_CPPFLAGS="$flag $PTHREAD_CPPFLAGS"
         fi
         AC_CHECK_TYPES(pthread_rwlock_t,,,[#include <pthread.h>])
 

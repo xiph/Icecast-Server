@@ -23,7 +23,7 @@ if test "x$with_speex" = "xno"
 then
   AC_MSG_RESULT([Speex support disabled by request])
 else
-  if test "x$speex_prefix" = "x"; then
+  if test "x$speex_prefix" = "x" -o "x$speex_prefix" = "xyes"; then
       if test "x$prefix" = "xNONE"; then
           speex_prefix="/usr/local"
       else

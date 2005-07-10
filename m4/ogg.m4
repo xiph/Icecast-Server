@@ -15,7 +15,7 @@ AC_ARG_WITH(ogg,
     ogg_prefix="$withval",
     ogg_prefix="$OGG_PREFIX"
     )
-if test "x$ogg_prefix" = "x"; then
+if test "x$ogg_prefix" = "x" -o "x$ogg_prefix" = "xyes"; then
     if test "x$prefix" = "xNONE"; then
         ogg_prefix=/usr/local
     else

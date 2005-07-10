@@ -21,7 +21,7 @@ AC_ARG_WITH(vorbis,
     vorbis_prefix="$withval",
     vorbis_prefix="$VORBIS_PREFIX"
     )
-if test "x$vorbis_prefix" = "x"; then
+if test "x$vorbis_prefix" = "x" -o "x$vorbis_prefix" = "xyes"; then
     if test "x$prefix" = "xNONE"; then
         vorbis_prefix="/usr/local"
     else
