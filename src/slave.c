@@ -639,6 +639,7 @@ static int update_from_master(ice_config_t *config)
                 r->localmount = xmlStrdup (buf);
                 r->mp3metadata = 1;
                 r->on_demand = on_demand;
+                r->enable = 1;
                 if (send_auth)
                 {
                     r->username = xmlStrdup (username);
