@@ -95,8 +95,7 @@ static auth_result auth_cmd_client (auth_client *auth_user)
                 {
                     DEBUG1("command exited normally with %d", WEXITSTATUS (status));
                     if (WEXITSTATUS(status) == 0)
-                        if (auth_postprocess_client (auth_user) < 0)
-                            return AUTH_FAILED;
+                        return AUTH_OK;
                 }
                 break;
         }

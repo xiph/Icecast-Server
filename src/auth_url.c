@@ -17,28 +17,35 @@
  * be handled. The request will have POST information about the request in
  * the form of
  *
- * action=auth&client=1&mount=/live&user=fred&pass=mypass&ip=127.0.0.1&agent=""
+ * action=auth&client=1&server=host&port=8000&mount=/live&user=fred&pass=mypass&ip=127.0.0.1&agent=""
  *
  * For a user to be accecpted the following HTTP header needs
- * to be returned
+ * to be returned (the actual string can be specified in the xml file)
  *
  * icecast-auth-user: 1
  *
- * On client disconnection another request is sent to that same URL with the
- * POST information of
+ * A listening client may also be configured as only to stay connected for a
+ * certain length of time. eg The auth server may only allow a 15 minute
+ * playback by sending back.
  *
- * action=remove&client=1&mount=/live&user=fred&pass=mypass&duration=3600
+ * icecast-auth-timelimit: 900
  *
- * client refers to the icecast client identification number, mount refers
- * to the mountpoint (beginning with /) and duration is the amount of time in
- * seconds
+ * On client disconnection another request can be sent to a URL with the POST
+ * information of
+ *
+ * action=remove&server=host&port=8000&client=1&mount=/live&user=fred&pass=mypass&duration=3600
+ *
+ * client refers to the icecast client identification number. mount refers
+ * to the mountpoint (beginning with / and may contain query parameters eg ?&
+ * encoded) and duration is the amount of time in seconds. user and pass
+ * setting can be blank
  *
  * On stream start and end, another url can be issued to help clear any user
  * info stored at the auth server. Useful for abnormal outage/termination
  * cases.
  *
- * action=start&mount=/live&server=myserver.com
- * action=end&mount=/live&server=myserver.com
+ * action=start&mount=/live&server=myserver.com&port=8000
+ * action=end&mount=/live&server=myserver.com&port=8000
  */
 
 #ifdef HAVE_CONFIG_H
@@ -75,6 +82,8 @@ typedef struct {
     char *password;
     char *auth_header;
     int  auth_header_len;
+    char *timelimit_header;
+    int  timelimit_header_len;
     CURL *handle;
     char errormsg [CURL_ERROR_SIZE];
 } auth_url;
@@ -91,6 +100,7 @@ static void auth_url_clear(auth_t *self)
     free (url->stream_start);
     free (url->stream_end);
     free (url->auth_header);
+    free (url->timelimit_header);
     free (url);
 }
 
@@ -107,6 +117,12 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         auth_url *url = auth->state;
         if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
             client->authenticated = 1;
+        if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
+        {
+            unsigned int limit = 0;
+            sscanf (ptr+url->timelimit_header_len, "%u\r\n", &limit);
+            client->con->discon_time = global.time + limit;
+        }
     }
 
     return (int)bytes;
@@ -119,7 +135,7 @@ static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *str
 }
 
 
-static auth_result auth_removeurl_client (auth_client *auth_user)
+static auth_result url_remove_client (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
     auth_t *auth = client->auth;
@@ -127,12 +143,12 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     time_t duration = global.time - client->con->con_time;
     char *username, *password, *mount, *server;
     ice_config_t *config;
+    int port;
     char post[1024];
 
-    if (url->removeurl == NULL)
-        return AUTH_OK;
     config = config_get_config ();
     server = util_url_escape (config->hostname);
+    port = config->port;
     config_release_config ();
 
     if (client->username)
@@ -152,9 +168,9 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     mount = util_url_escape (mount);
 
     snprintf (post, sizeof (post),
-            "action=remove&server=%sclient=%lu&mount=%s"
+            "action=remove&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu",
-            server, client->con->id, mount, username,
+            server, port, client->con->id, mount, username,
             password, (long unsigned)duration);
     free (server);
     free (mount);
@@ -168,20 +184,16 @@ static auth_result auth_removeurl_client (auth_client *auth_user)
     if (curl_easy_perform (url->handle))
         WARN2 ("auth to server %s failed with %s", url->removeurl, url->errormsg);
 
-    /* these are needed so the client is not added back onto the auth list */
-    auth_release (client->auth);
-    client->auth = NULL;
-
     return AUTH_OK;
 }
 
 
-static auth_result auth_addurl_client (auth_client *auth_user)
+static auth_result url_add_client (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
     auth_t *auth = client->auth;
     auth_url *url = auth->state;
-    int res = 0;
+    int res = 0, port;
     char *agent, *user_agent, *username, *password;
     char *mount, *ipaddr, *server;
     ice_config_t *config;
@@ -192,6 +204,7 @@ static auth_result auth_addurl_client (auth_client *auth_user)
 
     config = config_get_config ();
     server = util_url_escape (config->hostname);
+    port = config->port;
     config_release_config ();
     agent = httpp_getvar (client->parser, "user-agent");
     if (agent == NULL)
@@ -214,9 +227,9 @@ static auth_result auth_addurl_client (auth_client *auth_user)
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
-            "action=auth&server=%s&client=%lu&mount=%s"
+            "action=auth&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&ip=%s&agent=%s",
-            server, client->con->id, mount, username,
+            server, port, client->con->id, mount, username,
             password, ipaddr, user_agent);
     free (server);
     free (mount);
@@ -238,14 +251,7 @@ static auth_result auth_addurl_client (auth_client *auth_user)
     }
     /* we received a response, lets see what it is */
     if (client->authenticated)
-    {
-        if (auth_postprocess_client (auth_user) < 0)
-        {
-            /* do cleanup, and exit as the remove does cleanup as well */
-            return AUTH_FAILED;
-        }
         return AUTH_OK;
-    }
     return AUTH_FAILED;
 }
 
@@ -253,7 +259,7 @@ static auth_result auth_addurl_client (auth_client *auth_user)
 /* called by auth thread when a source starts, there is no client_t in
  * this case
  */
-static auth_result url_stream_start (auth_client *auth_user)
+static void url_stream_start (auth_client *auth_user)
 {
     char *mount, *server;
     ice_config_t *config = config_get_config ();
@@ -261,14 +267,16 @@ static auth_result url_stream_start (auth_client *auth_user)
     auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
     char *stream_start_url;
+    int port;
     char post [4096];
 
     if (url->stream_start == NULL)
     {
         config_release_config ();
-        return AUTH_OK;
+        return;
     }
     server = util_url_escape (config->hostname);
+    port = config->port;
     stream_start_url = strdup (url->stream_start);
     /* we don't want this auth disappearing from under us while
      * the connection is in progress */
@@ -277,7 +285,7 @@ static auth_result url_stream_start (auth_client *auth_user)
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=start&mount=%s&server=%s", mount, server);
+            "action=start&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
 
@@ -290,11 +298,11 @@ static auth_result url_stream_start (auth_client *auth_user)
 
     auth_release (auth);
     free (stream_start_url);
-    return AUTH_OK;
+    return;
 }
 
 
-static auth_result url_stream_end (auth_client *auth_user)
+static void url_stream_end (auth_client *auth_user)
 {
     char *mount, *server;
     ice_config_t *config = config_get_config ();
@@ -302,14 +310,16 @@ static auth_result url_stream_end (auth_client *auth_user)
     auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
     char *stream_end_url;
+    int port;
     char post [4096];
 
     if (url->stream_end == NULL)
     {
         config_release_config ();
-        return AUTH_OK;
+        return;
     }
     server = util_url_escape (config->hostname);
+    port = config->port;
     stream_end_url = strdup (url->stream_end);
     /* we don't want this auth disappearing from under us while
      * the connection is in progress */
@@ -318,7 +328,7 @@ static auth_result url_stream_end (auth_client *auth_user)
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=end&mount=%s&server=%s", mount, server);
+            "action=end&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
 
@@ -331,7 +341,7 @@ static auth_result url_stream_end (auth_client *auth_user)
 
     auth_release (auth);
     free (stream_end_url);
-    return AUTH_OK;
+    return;
 }
 
 
@@ -354,17 +364,20 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
 
-    authenticator->authenticate = auth_addurl_client;
+    authenticator->authenticate = url_add_client;
+    authenticator->release_client = url_remove_client;
+
     authenticator->free = auth_url_clear;
     authenticator->adduser = auth_url_adduser;
     authenticator->deleteuser = auth_url_deleteuser;
     authenticator->listuser = auth_url_listuser;
-    authenticator->release_client = auth_removeurl_client;
+
     authenticator->stream_start = url_stream_start;
     authenticator->stream_end = url_stream_end;
 
     url_info = calloc(1, sizeof(auth_url));
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
+    url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
     while(options) {
         if(!strcmp(options->name, "username"))
@@ -384,6 +397,11 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             free (url_info->auth_header);
             url_info->auth_header = strdup (options->value);
         }
+        if (strcmp(options->name, "timelimit-header") == 0)
+        {
+            free (url_info->timelimit_header);
+            url_info->timelimit_header = strdup (options->value);
+        }
         options = options->next;
     }
     url_info->handle = curl_easy_init ();
@@ -394,6 +412,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     }
     if (url_info->auth_header)
         url_info->auth_header_len = strlen (url_info->auth_header);
+    if (url_info->timelimit_header)
+        url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
     curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);

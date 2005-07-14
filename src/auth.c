@@ -137,10 +137,42 @@ void auth_client_free (auth_client *auth_user)
 }
 
 
+/* wrapper function for auth thread to authenticate new listener
+ * connection details
+ */
+static void auth_new_listener (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (client->auth->authenticate)
+    {
+        if (client->auth->authenticate (auth_user) != AUTH_OK)
+            return;
+    }
+    if (auth_postprocess_client (auth_user) < 0)
+        INFO1 ("client %lu failed", client->con->id);
+}
+
+
+/* wrapper function are auth thread to authenticate new listener
+ * connections
+ */
+static void auth_remove_listener (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (client->auth->release_client)
+        client->auth->release_client (auth_user);
+    auth_release (client->auth);
+    client->auth = NULL;
+    return;
+}
+
+
 /* The auth thread main loop. */
 static void *auth_run_thread (void *arg)
 {
-    INFO0 ("Authenication thread started");
+    INFO0 ("Authentication thread started");
     while (1)
     {
         if (clients_to_auth)
@@ -153,13 +185,10 @@ static void *auth_run_thread (void *arg)
             thread_mutex_unlock (&auth_lock);
             auth_user->next = NULL;
 
-            if (auth_user->process == NULL)
+            if (auth_user->process)
+                auth_user->process (auth_user);
+            else
                 ERROR0 ("client auth process not set");
-
-            if (auth_user->process (auth_user) != AUTH_OK)
-            {
-                INFO0 ("client failed");
-            }
 
             auth_client_free (auth_user);
 
@@ -351,7 +380,7 @@ void add_client (const char *mount, client_t *client)
             return;
         }
         auth_user->mount = strdup (mount);
-        auth_user->process = client->auth->authenticate;
+        auth_user->process = auth_new_listener;
         auth_user->client = client;
 
         INFO0 ("adding client for authentication");
@@ -379,7 +408,7 @@ int release_client (client_t *client)
             return 0;
 
         auth_user->mount = strdup (httpp_getvar (client->parser, HTTPP_VAR_URI));
-        auth_user->process = client->auth->release_client;
+        auth_user->process = auth_remove_listener;
         auth_user->client = client;
 
         queue_auth_client (auth_user);

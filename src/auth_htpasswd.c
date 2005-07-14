@@ -123,8 +123,6 @@ static auth_result htpasswd_auth (auth_client *auth_user)
                 fclose(passwdfile);
                 free(hashed_password);
                 thread_rwlock_unlock(&state->file_rwlock);
-                if (auth_postprocess_client (auth_user) < 0)
-                    return AUTH_FAILED;
                 return AUTH_OK;
             }
             free(hashed_password);

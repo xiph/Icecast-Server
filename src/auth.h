@@ -41,7 +41,7 @@ typedef struct auth_client_tag
 {
     char        *mount;
     client_t    *client;
-    auth_result (*process)(struct auth_client_tag *auth_user);
+    void        (*process)(struct auth_client_tag *auth_user);
     struct auth_client_tag *next;
 } auth_client;
 
@@ -57,8 +57,8 @@ typedef struct auth_tag
     /* callbacks to specific auth for notifying auth server on source
      * startup or shutdown
      */
-    auth_result (*stream_start)(auth_client *auth_user);
-    auth_result (*stream_end)(auth_client *auth_user);
+    void (*stream_start)(auth_client *auth_user);
+    void (*stream_end)(auth_client *auth_user);
 
     void (*free)(struct auth_tag *self);
     auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
