@@ -50,7 +50,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Releaseicecast\icecast.lib ..\..\curl\lib\Release\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"Release/icecast2console.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Releaseicecast\icecast.lib ..\..\curl\lib\Release\libcurl.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\ogg_static.lib ..\..\oggvorbis-win32sdk-1.0.1\lib\vorbis_static.lib ..\..\libxml2\lib\libxml2.lib ..\..\libxslt\lib\libxslt.lib ..\..\iconv\lib\iconv.lib ..\..\pthreads\pthreadVSE.lib ws2_32.lib ..\..\speex\win32\libspeex\Release\libspeex.lib ..\..\theora\win32\Static_Release\theora_static.lib /nologo /subsystem:console /machine:I386 /nodefaultlib:"libc" /out:"Release/icecast2console.exe"
+# SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "icecast2 console - Win32 Debug"
 

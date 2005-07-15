@@ -35,6 +35,10 @@
 #include "logging.h"
 #define CATMODULE "auth_htpasswd"
 
+#ifdef WIN32
+#define snprintf _snprintf
+#endif
+
 static auth_result htpasswd_adduser (auth_t *auth, const char *username, const char *password);
 static auth_result htpasswd_deleteuser(auth_t *auth, const char *username);
 static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode);

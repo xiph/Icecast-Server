@@ -432,7 +432,7 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
         if (strcmp (auth->type, "command") == 0)
         {
 #ifdef WIN32
-            ERROR1("Authenticator type: \"%s\" not supported on win32 platform", type);
+            ERROR1("Authenticator type: \"%s\" not supported on win32 platform", auth->type);
             return NULL;
 #else
             auth_get_cmd_auth (auth, options);

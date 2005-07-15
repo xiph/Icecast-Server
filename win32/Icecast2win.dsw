@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "Icecast2win"=.\Icecast2win.dsp - Package Owner=<4>
+Project: "Icecast2win"=".\Icecast2win.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -21,7 +21,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "icecast"=.\icecast.dsp - Package Owner=<4>
+Project: "icecast"=".\icecast.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{

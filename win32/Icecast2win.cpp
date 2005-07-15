@@ -11,6 +11,10 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+/* Hack Hack...Cough Cough */
+extern "C" long _ftol( double ); //defined by VC6 C libs
+extern "C" long _ftol2( double dblSource ) { return _ftol( dblSource ); }
+
 /////////////////////////////////////////////////////////////////////////////
 // CIcecast2winApp
 
