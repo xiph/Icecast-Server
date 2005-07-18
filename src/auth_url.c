@@ -58,8 +58,10 @@
 #include <stdio.h>
 #ifndef _WIN32
 #include <sys/wait.h>
+#include <strings.h>
 #else
 #define snprintf _snprintf
+#define strncasecmp strnicmp
 #endif
 
 #include <curl/curl.h>
@@ -415,6 +417,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     if (url_info->timelimit_header)
         url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
+    curl_easy_setopt (url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
     curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);

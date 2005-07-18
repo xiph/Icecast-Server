@@ -63,14 +63,14 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
             {
                 WARN1("Base64 decode of Authorization header \"%s\" failed",
                         header+6);
-                return;
+                break;
             }
 
             tmp = strchr(userpass, ':');
             if (tmp == NULL)
             { 
                 free (userpass);
-                return;
+                break;
             }
 
             *tmp = 0;
@@ -401,7 +401,7 @@ void add_client (const char *mount, client_t *client)
  */
 int release_client (client_t *client)
 {
-    if (client->auth && client->auth->release_client)
+    if (client->auth)
     {
         auth_client *auth_user = calloc (1, sizeof (auth_client));
         if (auth_user == NULL)
