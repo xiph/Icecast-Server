@@ -12,4 +12,5 @@ dist_web_DATA = status.xsl \
                 icecast.png \
                 key.gif \
                 style.css \
-                auth.xsl
+                auth.xsl \
+                favicon.ico
