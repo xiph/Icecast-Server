@@ -20,6 +20,17 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh14
+. various auth updates. The auth thread main code handling updated.
+  - auth url, various checks added for missing settings, listener timelimit
+  added. Added port to POST and useragent (icecast version). 
+  - auth_htpasswd, uses avl tree to store users, faster compared to disk 
+  and mtime is used to make sure it's in sync.
+. win32 updates, probably more cleanups needed but file references are correct
+  again.
+. some small memory leaks plugged and typos fixed.
+. added the favicon.ico file from the website
+
 2.2-kh13
 . updates the m4 scripts, pthread for solaris/gcc and check for --with-X
 . the ogg reading code could busy loop in certain cases, fixed
