@@ -33,6 +33,10 @@ extern int playlistlog;
 #define __FUNCTION__ strrchr (__FILE__, '\\') ? strrchr (__FILE__, '\\') + 1 : __FILE__
 #endif
 
+#ifdef __SUNPRO_C
+#define __FUNCTION__ __func__
+#endif
+
 #define ERROR0(y) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y)
 #define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y, a)
 #define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y, a, b)
