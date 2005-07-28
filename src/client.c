@@ -32,6 +32,7 @@
 #include "refbuf.h"
 #include "format.h"
 #include "stats.h"
+#include "fserve.h"
 
 #include "client.h"
 #include "logging.h"
@@ -43,33 +44,35 @@
 #include <errno.h>
 #endif
 
-client_t *client_create(connection_t *con, http_parser_t *parser)
+/* should be called with global lock held */
+int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
-    ice_config_t *config = config_get_config ();
+    ice_config_t *config;
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
-    int client_limit = config->client_limit;
+    int ret = -1;
+
+    if (client == NULL)
+        return -1;
+
+    config = config_get_config ();
+
+    global.clients++;
+    if (config->client_limit < global.clients)
+        WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
+    else
+        ret = 0;
+
     config_release_config ();
 
-    global_lock();
-    if (global.clients >= client_limit || client == NULL)
-    {
-        client_limit = global.clients;
-        global_unlock();
-        free (client);
-        WARN1 ("server client limit reached (%d clients)", client_limit);
-        return NULL;
-    }
-    global.clients++;
     stats_event_args (NULL, "clients", "%d", global.clients);
-    global_unlock();
-
     client->con = con;
     client->parser = parser;
-    client->refbuf = NULL;
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
+    *c_ptr = client;
 
-    return client;
+    return ret;
 }
 
 void client_destroy(client_t *client)
@@ -83,7 +86,7 @@ void client_destroy(client_t *client)
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */
-    if (client->respcode)
+    if (client->respcode && client->parser)
         logging_access(client);
 
 #ifdef HAVE_AIO
@@ -158,57 +161,58 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 
 
 void client_send_302(client_t *client, char *location) {
-    int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 302 Temporarily Moved\r\n"
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 302 Temporarily Moved\r\n"
             "Content-Type: text/html\r\n"
             "Location: %s\r\n\r\n"
             "<a href=\"%s\">%s</a>", location, location, location);
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 302;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 
 void client_send_400(client_t *client, char *message) {
-    int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 400 Bad Request\r\n"
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 400 Bad Request\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 400;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 void client_send_404(client_t *client, char *message) {
 
-    int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\n"
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 404 File Not Found\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
     client->respcode = 404;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
-void client_send_504(client_t *client, char *message) {
-    int bytes;
-    client->respcode = 504;
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 504 Server Full\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
-       if (bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
-}
 
 void client_send_401(client_t *client) {
-    int bytes = sock_write(client->con->sock, 
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 401 Authentication Required\r\n"
             "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n"
             "\r\n"
             "You need to authenticate\r\n");
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 401;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
+}
+
+
+void client_send_416(client_t *client)
+{
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
+    client->respcode = 416;
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 

@@ -339,7 +339,7 @@ int auth_postprocess_client (auth_client *auth_user)
     config_release_config();
 
     if (ret < 0)
-        client_send_504 (auth_user->client, "stream full");
+        client_send_401 (auth_user->client);
     auth_user->client = NULL;
 
     return ret;

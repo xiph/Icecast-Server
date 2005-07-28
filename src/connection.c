@@ -421,19 +421,18 @@ void connection_accept_loop(void)
             client_queue_t *node;
             ice_config_t *config;
             int i;
-            client_t *client = client_create (con, NULL);
+            client_t *client = NULL;
 
-            if (client == NULL)
+            global_lock();
+            if (client_create (&client, con, NULL) < 0)
             {
-                sock_write (con->sock, "HTTP/1.0 404 File Not Found\r\n"
-                        "Content-Type: text/html\r\n\r\n"
-                        "<b>Icecast connection limit reached</b>");
-                connection_close (con);
+                global_unlock();
+                client_send_404 (client, "Icecast connection limit reached");
                 continue;
             }
+            global_unlock();
 
             /* setup client for reading incoming http */
-            client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
             client->refbuf->len--;  /* make sure we are nul terminated */
 
@@ -530,10 +529,6 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             return -1;
         }
 
-        global.sources++;
-        stats_event_args (NULL, "sources", "%d", global.sources);
-        global_unlock();
-
         /* for relays, we don't yet have a client, however we do require one
          * to retrieve the stream from.  This is created here, quite late,
          * because we can't use this client to return an error code/message,
@@ -541,18 +536,16 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
          */
         if (source->client == NULL)
         {
-            source->client = client_create (con, parser);
-            if (source->client == NULL)
+            if (client_create (&source->client, con, parser) < 0)
             {
                 config_release_config();
-                global_lock();
-                global.sources--;
                 global_unlock();
-                connection_close (con);
-                httpp_destroy (parser);
                 return -1;
             }
         }
+        global.sources++;
+        stats_event_args (NULL, "sources", "%d", global.sources);
+        global_unlock();
 
         source->running = 1;
         mountinfo = config_find_mount (config, source->mount);
@@ -765,8 +758,13 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             source_free_source (source);
         }
         else
-            thread_create ("Source Thread", source_client_thread,
-                    source, THREAD_DETACHED);
+        {
+            client->respcode = 200;
+            snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                    "HTTP/1.0 200 OK\r\n\r\n");
+            client->refbuf->len = strlen (client->refbuf->data);
+            fserve_add_client_callback (client, source_client_callback, source);
+        }
     }
     else
     {
@@ -788,14 +786,10 @@ static void _handle_stats_request (client_t *client, char *uri)
     }
 
     client->respcode = 200;
-    if (sock_write (client->con->sock, "HTTP/1.0 200 OK\r\n\r\n") < 19)
-    {
-        client_destroy (client);
-        ERROR0 ("failed to write header");
-        return;
-    }
-
-    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 200 OK\r\n\r\n");
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client_callback (client, stats_callback, NULL);
 }
 
 static void _handle_get_request (client_t *client, char *passed_uri)

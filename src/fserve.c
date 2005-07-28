@@ -360,8 +360,11 @@ static void fserve_client_destroy(fserve_t *fclient)
         if (fclient->file)
             fclose (fclient->file);
 
-        if (fclient->client)
-            client_destroy (fclient->client);
+        if (fclient->callback)
+            fclient->callback (fclient->client, fclient->arg);
+        else
+            if (fclient->client)
+                client_destroy (fclient->client);
         free (fclient);
     }
 }
@@ -533,10 +536,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     } while (0);
     /* If we run into any issues with the ranges
        we fallback to a normal/non-range request */
-    httpclient->respcode = 416;
-    sock_write (httpclient->con->sock,
-            "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-    client_destroy (httpclient);
+    client_send_416 (httpclient);
     return 0;
 }
 
@@ -564,6 +564,32 @@ int fserve_add_client (client_t *client, FILE *file)
     thread_mutex_unlock (&pending_lock);
 
     return 0;
+}
+
+
+/* add client to file serving engine, but just write out the buffer contents,
+ * then pass the client to the callback with the provided arg
+ */
+void fserve_add_client_callback (client_t *client, fserve_callback_t callback, void *arg)
+{
+    fserve_t *fclient = calloc (1, sizeof(fserve_t));
+
+    DEBUG0 ("Adding client to file serving engine");
+    if (fclient == NULL)
+    {
+        client_send_404 (client, "memory exhausted");
+        return;
+    }
+    fclient->file = NULL;
+    fclient->client = client;
+    fclient->ready = 0;
+    fclient->callback = callback;
+    fclient->arg = arg;
+
+    thread_mutex_lock (&pending_lock);
+    fclient->next = (fserve_t *)pending_list;
+    pending_list = fclient;
+    thread_mutex_unlock (&pending_lock);
 }
 
 

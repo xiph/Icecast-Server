@@ -844,6 +844,19 @@ void *stats_connection(void *arg)
     return NULL;
 }
 
+
+void stats_callback (client_t *client, void *notused)
+{
+    if (client->con->error)
+    {
+        client_destroy (client);
+        return;
+    }
+    client_set_queue (client, NULL);
+    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
+}
+
+
 typedef struct _source_xml_tag {
     char *mount;
     xmlNodePtr node;
@@ -962,61 +975,7 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden)
         src_nodes = next;
     }
 }
-void stats_sendxml(client_t *client)
-{
-    int bytes;
-    stats_event_t *event;
-    stats_event_t *queue;
-    xmlDocPtr doc;
-    xmlNodePtr node, srcnode;
-    int len;
-    xmlChar *buff = NULL;
-    source_xml_t *snd;
-    source_xml_t *src_nodes = NULL;
 
-    queue = NULL;
-    _dump_stats_to_queue(&queue);
-
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
-    xmlDocSetRootElement(doc, node);
-
-
-    event = _get_event_from_queue(&queue);
-    while (event) {
-        if (event->source == NULL) {
-            xmlNewChild(node, NULL, event->name, event->value);
-        } else {
-            srcnode = _find_xml_node(event->source, &src_nodes, node);
-            xmlNewChild(srcnode, NULL, event->name, event->value);
-        }
-
-        _free_event(event);
-        event = _get_event_from_queue(&queue);
-    }
-
-    xmlDocDumpMemory(doc, &buff, &len);
-    xmlFreeDoc(doc);
-    
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\n"
-               "Content-Length: %d\r\n"
-               "Content-Type: text/xml\r\n"
-               "\r\n", len);
-    if (bytes > 0) client->con->sent_bytes += bytes;
-    else goto send_error;
-
-    bytes = client_send_bytes (client, buff, (unsigned)len);
-
- send_error:
-    while (src_nodes) {
-        snd = src_nodes->next;
-        free(src_nodes->mount);
-        free(src_nodes);
-        src_nodes = snd;
-    }
-    if (buff) xmlFree(buff);
-}
 
 static int _compare_stats(void *arg, void *a, void *b)
 {

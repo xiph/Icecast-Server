@@ -571,12 +571,12 @@ static void html_success(client_t *client, char *message)
     int bytes;
 
     client->respcode = 200;
-    bytes = sock_write(client->con->sock, 
+    bytes = snprintf (client->refbuf->data, client->refbuf->len,
             "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" 
             "<html><head><title>Admin request successful</title></head>"
             "<body><p>%s</p></body></html>", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
+    client->refbuf->len = bytes;
+    fserve_add_client (client, NULL);
 }
 
 
@@ -832,33 +832,29 @@ static void command_buildm3u(client_t *client, source_t *source,
 {
     char *username = NULL;
     char *password = NULL;
-    char *host = NULL;
-    int port = 0;
+    int bytes;
     ice_config_t *config;
 
     COMMAND_REQUIRE(client, "username", username);
     COMMAND_REQUIRE(client, "password", password);
 
-    config = config_get_config();
-    host = strdup(config->hostname);
-    port = config->port;
-    config_release_config();
-
     client->respcode = 200;
-    sock_write(client->con->sock,
+    config = config_get_config();
+    bytes = snprintf (client->refbuf->data, client->refbuf->len,
         "HTTP/1.0 200 OK\r\n"
         "Content-Type: audio/x-mpegurl\r\n"
         "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
         "http://%s:%s@%s:%d%s\r\n",
         username,
         password,
-        host,
-        port,
+        config->hostname,
+        config->port,
         source->mount
     );
+    config_release_config();
 
-    free(host);
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 

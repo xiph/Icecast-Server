@@ -20,7 +20,7 @@
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
-#define MAX_LISTEN_SOCKETS 10
+#define MAX_LISTEN_SOCKETS 50
 
 #include "thread/thread.h"
 #include "slave.h"
