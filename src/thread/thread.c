@@ -36,7 +36,6 @@
 #else
 #include <windows.h>
 #include <winbase.h>
-#include <implement.h>
 #endif
 
 #include <signal.h>
