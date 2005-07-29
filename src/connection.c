@@ -387,6 +387,7 @@ static void process_request_queue ()
                 *node_ref = node->next;
                 client_destroy (client);
                 free (node);
+                continue;
             }
         }
         node_ref = &node->next;
