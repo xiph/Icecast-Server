@@ -44,6 +44,10 @@
 #include <errno.h>
 #endif
 
+#ifdef WIN32
+#define snprintf _snprintf
+#endif
+
 /* should be called with global lock held */
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {

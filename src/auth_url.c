@@ -122,7 +122,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
         {
             unsigned int limit = 0;
-            sscanf (ptr+url->timelimit_header_len, "%u\r\n", &limit);
+            sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
             client->con->discon_time = global.time + limit;
         }
     }
