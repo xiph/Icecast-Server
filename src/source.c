@@ -356,7 +356,7 @@ void source_move_clients (source_t *source, source_t *dest)
             {
                 client_set_queue (client, NULL);
                 client->check_buffer = format_check_file_buffer;
-                if (source->client->con == NULL)
+                if (source->client && source->client->con == NULL)
                     client->intro_offset = -1;
             }
 
