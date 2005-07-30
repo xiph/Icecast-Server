@@ -71,7 +71,6 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
     client->parser = parser;
-    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;

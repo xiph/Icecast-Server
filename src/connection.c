@@ -434,6 +434,7 @@ void connection_accept_loop(void)
             global_unlock();
 
             /* setup client for reading incoming http */
+            client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
             client->refbuf->len--;  /* make sure we are nul terminated */
 
