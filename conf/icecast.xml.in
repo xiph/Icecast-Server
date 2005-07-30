@@ -53,6 +53,7 @@
     <!--
     <listen-socket>
         <port>8001</port>
+        <ssl>1</ssl>
     </listen-socket>
     -->
 
@@ -158,6 +159,7 @@
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
         <!-- <pidfile>@pkgdatadir@/icecast.pid</pidfile> -->
+        <!-- <ssl_certificate>@pkgdatadir@/icecast.pem</ssl_certificate> -->
 
         <!-- Aliases: treat requests for 'source' path as being for 'dest' path
              May be made specific to a port or bound address using the "port"

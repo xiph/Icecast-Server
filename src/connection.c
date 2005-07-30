@@ -33,6 +33,9 @@
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
 #endif
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#endif
 
 #include "os.h"
 
@@ -102,6 +105,10 @@ static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_que
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
 static mutex_t _con_queue_mutex;
 static mutex_t _req_queue_mutex;
+#ifdef HAVE_OPENSSL
+static SSL_CTX *ssl_ctx;
+static int ssl_ok;
+#endif
 
 rwlock_t _source_shutdown_rwlock;
 
@@ -121,10 +128,58 @@ void connection_initialize(void)
     _initialized = 1;
 }
 
+
+static void get_ssl_certificate ()
+{
+#ifdef HAVE_OPENSSL
+    SSL_METHOD *method;
+    ice_config_t *config;
+
+    SSL_load_error_strings();                /* readable error messages */
+    SSL_library_init();                      /* initialize library */
+
+    method = SSLv23_server_method();
+    ssl_ctx = SSL_CTX_new (method);
+
+    ssl_ok = 0;
+    config = config_get_config ();
+    do
+    {
+        if (config->cert_file == NULL)
+            break;
+        if (SSL_CTX_use_certificate_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
+        {
+            WARN1 ("Invalid cert file %s", config->cert_file);
+            break;
+        }
+        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
+        {
+            WARN1 ("Invalid private key file %s", config->cert_file);
+            break;
+        }
+        if (!SSL_CTX_check_private_key (ssl_ctx))
+        {
+            ERROR0 ("Invalid icecast.pem - Private key doesn't"
+                    " match cert public key");
+            break;
+        }
+        ssl_ok = 1;
+    } while (0);
+    config_release_config ();
+    if (ssl_ok == 0)
+#endif
+        INFO0 ("No SSL capability on the configured ports");
+}
+
+
 void connection_shutdown(void)
 {
     if (!_initialized) return;
     
+#ifdef HAVE_OPENSSL
+    SSL_CTX_free (ssl_ctx);
+#endif
+
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_mutex_destroy(&_con_queue_mutex);
@@ -324,7 +379,7 @@ static void process_request_queue ()
     {
         client_queue_t *node = *node_ref;
         client_t *client = node->client;
-        int len = client->refbuf->len - node->offset;
+        int len = PER_CLIENT_REFBUF_SIZE - node->offset;
         char *buf = client->refbuf->data + node->offset;
 
         if (len > 0)
@@ -332,7 +387,7 @@ static void process_request_queue ()
             if (client->con->con_time + timeout <= global.time)
                 len = 0;
             else
-                len = sock_read_bytes (client->con->sock, buf, len);
+                len = client_read_bytes (client, buf, len);
         }
 
         if (len > 0)
@@ -380,7 +435,7 @@ static void process_request_queue ()
         }
         else
         {
-            if (len == 0 || !sock_recoverable (sock_error()))
+            if (len == 0 || client->con->error)
             {
                 if ((client_queue_t **)_req_queue_tail == &node->next)
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
@@ -411,6 +466,7 @@ void connection_accept_loop(void)
 {
     connection_t *con;
 
+    get_ssl_certificate ();
     tid = thread_create ("connection thread", _handle_connection, NULL, THREAD_ATTACHED);
 
     while (global.running == ICE_RUNNING)
@@ -436,7 +492,7 @@ void connection_accept_loop(void)
             /* setup client for reading incoming http */
             client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
-            client->refbuf->len--;  /* make sure we are nul terminated */
+            client->refbuf->len = 0; /* force reader code to ignore buffer */
 
             node = calloc (1, sizeof (client_queue_t));
             if (node == NULL)
@@ -451,11 +507,29 @@ void connection_accept_loop(void)
             for (i = 0; i < global.server_sockets; i++)
             {
                 if (global.serversock[i] == con->serversock)
+                {
                     if (config->listeners[i].shoutcast_compat)
                         node->shoutcast = 1;
+#ifdef HAVE_OPENSSL
+                    if (config->listeners[i].ssl && ssl_ok)
+                    {
+                        client->con->ssl = SSL_new (ssl_ctx);
+                        SSL_set_accept_state (client->con->ssl);
+                        SSL_set_fd (client->con->ssl, client->con->sock);
+                    }
+#endif
+                }
             }
             config_release_config();
 
+#ifdef HAVE_OPENSSL
+            if (node->shoutcast && client->con->ssl)
+            {
+                client_destroy (client);
+                free (node);
+                continue;
+            }
+#endif
             sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
             sock_set_nodelay (client->con->sock);
 
@@ -1045,5 +1119,8 @@ void connection_close(connection_t *con)
     sock_close(con->sock);
     if (con->ip) free(con->ip);
     if (con->host) free(con->host);
+#ifdef HAVE_OPENSSL
+    if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
+#endif
     free(con);
 }

@@ -148,15 +148,34 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
         client->refbuf->len -= len;
         return len;
     }
-    bytes = sock_read_bytes (client->con->sock, buf, len);
+#ifdef HAVE_OPENSSL
+    if (client->con->ssl)
+        bytes = SSL_read (client->con->ssl, buf, len);
+    else
+#endif
+        bytes = sock_read_bytes (client->con->sock, buf, len);
+
     if (bytes > 0)
         return bytes;
 
     if (bytes < 0)
     {
-        if (sock_recoverable (sock_error()))
-            return -1;
-        WARN0 ("source connection has died");
+#ifdef HAVE_OPENSSL
+        if (client->con->ssl)
+        {
+            switch (SSL_get_error (client->con->ssl, bytes))
+            {
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                    return -1;
+            }
+            bytes = -1;
+        }
+        else
+#endif
+            if (sock_recoverable (sock_error()))
+                return -1;
+        WARN0 ("reading from connection has failed");
     }
     client->con->error = 1;
     return bytes;
@@ -241,16 +260,36 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
         return -1;
     ret = aio_return (aiocbp);
     if (ret < 0)
-       sock_set_error (err); /* make sure errno gets set */
+        sock_set_error (err); /* make sure errno gets set */
 
     client->pending_io = 0;
-
 #else
-    int ret = sock_write_bytes (client->con->sock, buf, len);
+    int ret;
+#ifdef HAVE_OPENSSL
+    if (client->con->ssl)
+        ret = SSL_write (client->con->ssl, buf, len);
+    else
+#endif
+        ret = sock_write_bytes (client->con->sock, buf, len);
 #endif
 
-    if (ret < 0 && !sock_recoverable (sock_error()))
+    if (ret < 0)
     {
+#ifdef HAVE_OPENSSL
+        if (client->con->ssl)
+        {
+            switch (SSL_get_error (client->con->ssl, ret))
+            {
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                    return -1;
+            }
+            ret = -1;
+        }
+        else
+#endif
+            if (sock_recoverable (sock_error()))
+                return -1;
         DEBUG0 ("Client connection died");
         client->con->error = 1;
     }

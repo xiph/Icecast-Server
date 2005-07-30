@@ -15,6 +15,9 @@
 
 #include <sys/types.h>
 #include <time.h>
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#endif
 #include "compat.h"
 #include "httpp/httpp.h"
 #include "thread/thread.h"
@@ -35,6 +38,10 @@ typedef struct connection_tag
     int serversock;
     int error;
 
+#ifdef HAVE_OPENSSL
+    /* SSL handler */
+    SSL *ssl;
+#endif
     char *ip;
     char *host;
 

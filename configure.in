@@ -130,6 +130,14 @@ then
 else
     AC_MSG_NOTICE([YP support disabled])
 fi
+XIPH_PATH_OPENSSL([
+    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$OPENSSL_CFLAGS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$OPENSSL_LDFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$OPENSSL_LIBS])
+    ],
+    [ AC_MSG_NOTICE([SSL disabled!])
+    ])
+
 # don't log ip's in the access log
 AC_ARG_ENABLE([log-ip],
         AC_HELP_STRING([--disable-log-ip],[disable logging of IP's in access log]),

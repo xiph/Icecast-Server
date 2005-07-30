@@ -354,6 +354,9 @@ void add_client (const char *mount, client_t *client)
     mount_proxy *mountinfo; 
     ice_config_t *config = config_get_config();
 
+    /* we don't need any more data from the listener, just setup for writing */
+    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
+
     mountinfo = config_find_mount (config, mount);
     if (mountinfo && mountinfo->auth)
     {
