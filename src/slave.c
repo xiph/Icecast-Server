@@ -233,7 +233,7 @@ static void *start_relay_stream (void *arg)
                     relay->server, relay->port, relay->mount);
             break;
         }
-        con = create_connection (streamsock, -1, NULL);
+        con = connection_create (streamsock, -1, NULL);
 
         if (relay->username && relay->password)
         {

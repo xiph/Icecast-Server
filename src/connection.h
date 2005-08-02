@@ -42,6 +42,9 @@ typedef struct connection_tag
     /* SSL handler */
     SSL *ssl;
 #endif
+    int (*send)(struct connection_tag *handle, const char *buf, unsigned int len);
+    int (*read)(struct connection_tag *handle, char *buf, unsigned int len);
+
     char *ip;
     char *host;
 
@@ -51,7 +54,7 @@ void connection_initialize(void);
 void connection_shutdown(void);
 void connection_accept_loop(void);
 void connection_close(connection_t *con);
-connection_t *create_connection(sock_t sock, sock_t serversock, char *ip);
+connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, connection_t *con,
         http_parser_t *parser);
 

@@ -201,7 +201,62 @@ static unsigned long _next_connection_id(void)
     return id;
 }
 
-connection_t *create_connection(sock_t sock, sock_t serversock, char *ip)
+
+#ifdef HAVE_OPENSSL
+static int connection_read_ssl (connection_t *con, char *buf, unsigned len)
+{
+    int bytes = SSL_read (con->ssl, buf, len);
+
+    if (bytes < 0)
+    {
+        switch (SSL_get_error (con->ssl, bytes))
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                return -1;
+        }
+        con->error = 1;
+    }
+    return bytes;
+}
+
+
+static int connection_send_ssl (connection_t *con, const char *buf, unsigned len)
+{
+    int bytes = SSL_write (con->ssl, buf, len);
+
+    if (bytes < 0)
+    {
+        switch (SSL_get_error (con->ssl, bytes))
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                return -1;
+        }
+        con->error = 1;
+    }
+    return bytes;
+}
+#endif
+
+static int connection_read (connection_t *con, char *buf, unsigned len)
+{
+    int bytes = sock_read_bytes (con->sock, buf, len);
+    if (bytes == -1 && !sock_recoverable (sock_error()))
+        con->error = 1;
+    return bytes;
+}
+
+static int connection_send (connection_t *con, const char *buf, unsigned len)
+{
+    int bytes = sock_write_bytes (con->sock, buf, len);
+    if (bytes == -1 && !sock_recoverable (sock_error()))
+        con->error = 1;
+    return bytes;
+}
+
+
+connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 {
     connection_t *con;
     con = (connection_t *)calloc(1, sizeof(connection_t));
@@ -212,10 +267,24 @@ connection_t *create_connection(sock_t sock, sock_t serversock, char *ip)
         con->con_time = global.time;
         con->id = _next_connection_id();
         con->ip = ip;
+        con->read = connection_read;
+        con->send = connection_send;
     }
 
     return con;
 }
+
+/* prepare connection for interacting with SSL
+ */
+void connection_uses_ssl (connection_t *con)
+{
+    con->read = connection_read_ssl;
+    con->send = connection_send_ssl;
+    con->ssl = SSL_new (ssl_ctx);
+    SSL_set_accept_state (con->ssl);
+    SSL_set_fd (con->ssl, con->sock);
+}
+
 
 static int wait_for_serversock(int timeout)
 {
@@ -317,7 +386,7 @@ static connection_t *_accept_connection(void)
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
     if (sock >= 0)
     {
-        con = create_connection(sock, serversock, ip);
+        con = connection_create (sock, serversock, ip);
         if (con == NULL)
             free (ip);
 
@@ -510,26 +579,12 @@ void connection_accept_loop(void)
                 {
                     if (config->listeners[i].shoutcast_compat)
                         node->shoutcast = 1;
-#ifdef HAVE_OPENSSL
                     if (config->listeners[i].ssl && ssl_ok)
-                    {
-                        client->con->ssl = SSL_new (ssl_ctx);
-                        SSL_set_accept_state (client->con->ssl);
-                        SSL_set_fd (client->con->ssl, client->con->sock);
-                    }
-#endif
+                        connection_uses_ssl (client->con);
                 }
             }
             config_release_config();
 
-#ifdef HAVE_OPENSSL
-            if (node->shoutcast && client->con->ssl)
-            {
-                client_destroy (client);
-                free (node);
-                continue;
-            }
-#endif
             sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
             sock_set_nodelay (client->con->sock);
 
