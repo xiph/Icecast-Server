@@ -54,8 +54,8 @@ typedef struct log_tag
 
     char *filename;
     FILE *logfile;
-    unsigned size;
-    unsigned trigger_level;
+    off_t size;
+    off_t trigger_level;
     
     char *buffer;
 } log_t;
@@ -83,11 +83,15 @@ static int _log_open (int id)
 
             if (loglist [id] . logfile)
             {
-                char new_name [255];
+                char new_name [4096];
                 fclose (loglist [id] . logfile);
                 loglist [id] . logfile = NULL;
                 /* simple rename, but could use time providing locking were used */
                 snprintf (new_name,  sizeof(new_name), "%s.old", loglist [id] . filename);
+#ifdef _WIN32
+                if (stat (new_name, &st) == 0)
+                    remove (new_name);
+#endif
                 rename (loglist [id] . filename, new_name);
             }
             loglist [id] . logfile = fopen (loglist [id] . filename, "a");
@@ -115,7 +119,7 @@ void log_initialize()
         loglist[i].in_use = 0;
         loglist[i].level = 2;
         loglist[i].size = 0;
-        loglist[i].trigger_level = 0;
+        loglist[i].trigger_level = 1000000000;
         loglist[i].filename = NULL;
         loglist[i].logfile = NULL;
         loglist[i].buffer = NULL;
