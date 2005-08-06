@@ -448,7 +448,7 @@ static void process_request_queue ()
     {
         client_queue_t *node = *node_ref;
         client_t *client = node->client;
-        int len = PER_CLIENT_REFBUF_SIZE - node->offset;
+        int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
 
         if (len > 0)
