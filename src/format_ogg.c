@@ -150,6 +150,7 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     ogg_info->codecs = NULL;
     ogg_info->current = NULL;
     ogg_info->bos_completed = 0;
+    ogg_info->codec_count = 0;
 }
 
 
@@ -211,6 +212,12 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
     }
     do
     {
+        if (ogg_info->codec_count > 10)
+        {
+            ERROR0 ("many codecs in stream, playing safe, dropping source");
+            ogg_info->error = 1;
+            return -1;
+        }
         codec = initial_vorbis_page (plugin, page);
         if (codec)
             break;
@@ -241,6 +248,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         /* add codec to list */
         codec->next = ogg_info->codecs;
         ogg_info->codecs = codec;
+        ogg_info->codec_count++;
     }
 
     return 0;
@@ -374,14 +382,14 @@ static refbuf_t *ogg_get_buffer (source_t *source)
     ogg_state_t *ogg_info = source->format->_state;
     format_plugin_t *format = source->format;
     char *data = NULL;
-    int bytes;
+    int bytes = 0;
 
     while (1)
     {
         while (1)
         {
             ogg_page page;
-            refbuf_t *refbuf;
+            refbuf_t *refbuf = NULL;
             ogg_codec_t *codec = ogg_info->current;
 
             /* if a codec has just been given a page then process it */
@@ -399,10 +407,12 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                 if (ogg_page_bos (&page))
                 {
                     process_initial_page (source->format, &page);
-                    continue;
                 }
-                ogg_info->bos_completed = 1;
-                refbuf = process_ogg_page (ogg_info, &page);
+                else
+                {
+                    ogg_info->bos_completed = 1;
+                    refbuf = process_ogg_page (ogg_info, &page);
+                }
                 if (ogg_info->error)
                 {
                     ERROR0 ("Problem processing stream");
@@ -420,7 +430,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
         bytes = client_read_bytes (source->client, data, 4096);
-        if (bytes < 0)
+        if (bytes <= 0)
         {
             ogg_sync_wrote (&ogg_info->oy, 0);
             return NULL;

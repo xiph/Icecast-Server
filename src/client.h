@@ -32,8 +32,8 @@ typedef struct _client_tag
     /* http response code for this client */
     int respcode;
 
-     /* is client getting intro data */
-     long intro_offset;
+    /* is client getting intro data */
+    long intro_offset;
 
     /* where in the queue the client is */
     refbuf_t *refbuf;

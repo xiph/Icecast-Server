@@ -40,7 +40,7 @@ typedef struct auth_tag
             source_t *source, char *username, char *password);
     void (*free)(struct auth_tag *self);
     void *state;
-    void *type;
+    char *type;
 } auth_t;
 
 auth_result auth_check_client(source_t *source, client_t *client);

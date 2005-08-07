@@ -610,8 +610,11 @@ static void source_init (source_t *source)
     source->running = 1;
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
-    if (mountinfo && mountinfo->on_connect)
-        source_run_script (mountinfo->on_connect, source->mount);
+    if (mountinfo)
+    {
+        if (mountinfo->on_connect)
+            source_run_script (mountinfo->on_connect, source->mount);
+    }
     config_release_config();
 
     /*
@@ -810,8 +813,11 @@ static void source_shutdown (source_t *source)
     INFO1("Source \"%s\" exiting", source->mount);
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
-    if (mountinfo && mountinfo->on_disconnect)
-        source_run_script (mountinfo->on_disconnect, source->mount);
+    if (mountinfo)
+    {
+        if (mountinfo->on_disconnect)
+            source_run_script (mountinfo->on_disconnect, source->mount);
+    }
     config_release_config();
 
     /* we have de-activated the source now, so no more clients will be

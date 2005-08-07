@@ -768,6 +768,8 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         }
     }
 
+    if (listener == NULL)
+        return;
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;

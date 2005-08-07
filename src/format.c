@@ -156,7 +156,7 @@ int format_check_file_buffer (source_t *source, client_t *client)
             return -1;
         }
         /* source -> file fallback, need a refbuf for data */
-        refbuf = refbuf_new (4096);
+        refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
         client->refbuf = refbuf;
         client->pos = refbuf->len;
         client->intro_offset = 0;

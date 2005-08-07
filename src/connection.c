@@ -898,7 +898,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
 
         client->write_to_client = format_generic_write_to_client;
         client->check_buffer = format_check_http_buffer;
-        client->refbuf = refbuf_new (4096);
+        client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
 
         avl_tree_wlock(source->pending_tree);
         avl_insert(source->pending_tree, (void *)client);
