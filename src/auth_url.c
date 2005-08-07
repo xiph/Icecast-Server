@@ -125,6 +125,16 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
             client->con->discon_time = global.time + limit;
         }
+        if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0)
+        {
+            char *eol;
+            snprintf (url->errormsg, sizeof (url->errormsg), "%s", (char*)ptr+22);
+            eol = strchr (url->errormsg, '\r');
+            if (eol == NULL)
+                eol = strchr (url->errormsg, '\n');
+            if (eol)
+                *eol = '\0';
+        }
     }
 
     return (int)bytes;
@@ -146,7 +156,7 @@ static auth_result url_remove_client (auth_client *auth_user)
     char *username, *password, *mount, *server;
     ice_config_t *config;
     int port;
-    char post[1024];
+    char post [4096];
 
     config = config_get_config ();
     server = util_url_escape (config->hostname);
@@ -199,7 +209,7 @@ static auth_result url_add_client (auth_client *auth_user)
     char *agent, *user_agent, *username, *password;
     char *mount, *ipaddr, *server;
     ice_config_t *config;
-    char post[1024];
+    char post [4096];
 
     if (url->addurl == NULL)
         return AUTH_OK;
@@ -243,6 +253,7 @@ static auth_result url_add_client (auth_client *auth_user)
     curl_easy_setopt (url->handle, CURLOPT_URL, url->addurl);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+    url->errormsg[0] = '\0';
 
     res = curl_easy_perform (url->handle);
 
@@ -254,6 +265,7 @@ static auth_result url_add_client (auth_client *auth_user)
     /* we received a response, lets see what it is */
     if (client->authenticated)
         return AUTH_OK;
+    INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, url->errormsg);
     return AUTH_FAILED;
 }
 
@@ -394,7 +406,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             url_info->stream_start = strdup (options->value);
         if(!strcmp(options->name, "end"))
             url_info->stream_end = strdup (options->value);
-        if(!strcmp(options->name, "header"))
+        if(!strcmp(options->name, "auth_header"))
         {
             free (url_info->auth_header);
             url_info->auth_header = strdup (options->value);

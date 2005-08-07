@@ -67,8 +67,13 @@ sent back then the listener connecting is allowed to continue, if not, an error 
 to the listener.</p>
 <p>The URLs specified will invoke some web server scripts like PHP to do any work that they
 may choose to do. All that is required of the scripting language is that POST information can
-be handled and a response header can be sent back. libcurl is used for the requesting so 
-https connections can be used.</p>
+be handled and response headers can be sent back. libcurl is used for the requesting so 
+https connections may be possible, but be aware of the extra overhead involved.</p>
+<p>The useragent sent in each curl request will represent the icecast server version. The
+response headers will depend on whether the listener is to be accepted.  In the case of
+rejection, a response header <pre>icecast-auth-message: reason </pre> should also be returned
+for placing in the log files.
+</p>
 <p>In order to use URL based listener authentication, you MUST configure a mount specific
 option.  This means that you have to provide a &lt;mount&gt; section in the main icecast
 config file.  The following shows the list of options available :</p>
@@ -82,7 +87,7 @@ config file.  The following shows the list of options available :</p>
             &lt;option name="remove" value="http://myauthserver.com/listener_left.php"/&gt;
             &lt;option name="username" value="user"/&gt;
             &lt;option name="password" value="pass"/&gt;
-            &lt;option name="header" value="icecast-auth-user: 1"/&gt;
+            &lt;option name="auth_header" value="icecast-auth-user: 1"/&gt;
             &lt;option name="timelimit-header" value="icecast-auth-timelimit:"/&gt;
         &lt;/authentication&gt;
     &lt;/mount&gt;
@@ -131,9 +136,9 @@ note that each option data is escaped before being passed via POST
 </pre>
 <p>Again this is similar to the add option, the difference being that a duration is passed
 reflecting the number of seconds the listener was connected for </p>
-<h3>header</h3>
-<p>The response header returned from these requests that allows the authencation to take
-place can be stated here. The default is 
+<h3>auth_header</h3>
+<p>The expected response header to be returned that allows the authencation to take
+place may be specified here. The default is 
 <pre>icecast-auth-user: 1</pre>
 but it could can anything you like, for instance
 <pre>HTTP 200 OK</pre>
@@ -141,7 +146,6 @@ but it could can anything you like, for instance
 <p>Listeners could have a time limit imposed on them, and if this header is sent back with a
 figure (which represents seconds) then that is how long the client will remain connected for.
 </p>
-<br />
 <br />
 <h2>A note about players and authentication</h2>
 <p>We do not have an exaustive list of players that support listener authentication.  We use
