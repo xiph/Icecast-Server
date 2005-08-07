@@ -39,6 +39,7 @@
 
 
 static volatile auth_client *clients_to_auth;
+static volatile unsigned int auth_pending_count;
 static volatile int auth_running;
 static mutex_t auth_lock;
 static thread_type *auth_thread;
@@ -95,6 +96,7 @@ static void queue_auth_client (auth_client *auth_user)
     thread_mutex_lock (&auth_lock);
     auth_user->next = (auth_client *)clients_to_auth;
     clients_to_auth = auth_user;
+    auth_pending_count++;
     thread_mutex_unlock (&auth_lock);
 }
 
@@ -182,6 +184,7 @@ static void *auth_run_thread (void *arg)
             thread_mutex_lock (&auth_lock);
             auth_user = (auth_client*)clients_to_auth;
             clients_to_auth = auth_user->next;
+            auth_pending_count--;
             thread_mutex_unlock (&auth_lock);
             auth_user->next = NULL;
 
@@ -236,7 +239,7 @@ static int check_duplicate_logins (source_t *source, client_t *client)
  * if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-int add_client_to_source (source_t *source, client_t *client)
+static int add_client_to_source (source_t *source, client_t *client)
 {
     int loop = 10;
     do
@@ -285,7 +288,7 @@ int add_client_to_source (source_t *source, client_t *client)
         source->on_demand_req = 1;
         slave_rescan ();
     }
-    DEBUG1 ("Added client to pending on %s", source->mount);
+    DEBUG1 ("Added client to %s", source->mount);
     return 0;
 }
 
@@ -358,10 +361,23 @@ void add_client (const char *mount, client_t *client)
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
 
     mountinfo = config_find_mount (config, mount);
+    if (mountinfo && mountinfo->no_mount)
+    {
+        config_release_config ();
+        client_send_404 (client, "mountpoint unavailable");
+        return;
+    }
     if (mountinfo && mountinfo->auth)
     {
         auth_client *auth_user;
 
+        if (auth_pending_count > 30)
+        {
+            config_release_config ();
+            WARN0 ("too many clients awaiting authentication");
+            client_send_404 (client, "busy, please try again later");
+            return;
+        }
         auth_client_setup (mountinfo, client);
         config_release_config ();
 
@@ -556,6 +572,7 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 void auth_initialise ()
 {
     clients_to_auth = NULL;
+    auth_pending_count = 0;
     auth_running = 1;
     thread_mutex_create ("auth lock", &auth_lock);
     auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);

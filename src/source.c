@@ -230,7 +230,6 @@ void source_clear_source (source_t *source)
     source->queue_size_limit = 0;
     source->listeners = 0;
     source->prev_listeners = 0;
-    source->no_mount = 0;
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->hidden = 0;
@@ -913,7 +912,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         source->max_listeners = mountinfo->max_listeners;
         source->fallback_override = mountinfo->fallback_override;
-        source->no_mount = mountinfo->no_mount;
         source->hidden = mountinfo->hidden;
     }
 

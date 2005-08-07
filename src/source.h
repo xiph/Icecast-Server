@@ -56,7 +56,6 @@ typedef struct source_tag
     int yp_public;
     int fallback_override;
     int fallback_when_full;
-    int no_mount;
     int shoutcast_compat;
 
     /* per source burst handling for connecting clients */
