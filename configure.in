@@ -106,24 +106,27 @@ XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
 XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
 XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
 
-dnl -- YP support --
-AC_ARG_ENABLE([yp],
-        AC_HELP_STRING([--disable-yp],[disable YP directory support]),
-        enable_yp="$enableval",
-        enable_yp="yes")
-if test "x$enable_yp" = "xyes"
-then
 XIPH_PATH_CURL([
     AC_CHECK_DECL([CURLOPT_NOSIGNAL],
-        [ AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
-        ICECAST_OPTIONAL="$ICECAST_OPTIONAL yp.o"
+        [ AC_DEFINE([HAVE_AUTH_URL], 1, [Define to compile in auth URL support code])
+        ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_url.o"
+        enable_curl="yes"
         XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
         XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
         ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required), YP disabled])
         ], [#include <curl/curl.h>
         ])
-    ],[ AC_MSG_NOTICE([libcurl not found, YP disabled])
+    ],[ AC_MSG_NOTICE([libcurl not found])
     ])
+dnl -- YP support --
+AC_ARG_ENABLE([yp],
+        AC_HELP_STRING([--disable-yp],[disable YP directory support]),
+        enable_yp="$enableval",
+        enable_yp="yes")
+if test "x$enable_yp" = "xyes" -a "x$enable_curl" = xyes
+then
+    AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL yp.o"
 else
     AC_MSG_NOTICE([YP support disabled])
 fi

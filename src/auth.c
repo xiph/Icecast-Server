@@ -25,6 +25,7 @@
 
 #include "auth.h"
 #include "auth_htpasswd.h"
+#include "auth_url.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
@@ -423,6 +424,13 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
     do
     {
         DEBUG1 ("type is %s", auth->type);
+#ifdef HAVE_AUTH_URL
+        if (strcmp (auth->type, "url") == 0)
+        {
+            auth_get_url_auth (auth, options);
+            break;
+        }
+#endif
         if (strcmp (auth->type, "htpasswd") == 0)
         {
             auth_get_htpasswd_auth (auth, options);
