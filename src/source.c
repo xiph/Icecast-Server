@@ -245,7 +245,6 @@ void source_clear_source (source_t *source)
     source->queue_size = 0;
     source->queue_size_limit = 0;
     source->listeners = 0;
-    source->no_mount = 0;
     source->shoutcast_compat = 0;
     source->max_listeners = -1;
     source->hidden = 0;
@@ -614,6 +613,7 @@ static void source_init (source_t *source)
     {
         if (mountinfo->on_connect)
             source_run_script (mountinfo->on_connect, source->mount);
+        auth_stream_start (mountinfo, source->mount);
     }
     config_release_config();
 
@@ -817,6 +817,7 @@ static void source_shutdown (source_t *source)
     {
         if (mountinfo->on_disconnect)
             source_run_script (mountinfo->on_disconnect, source->mount);
+        auth_stream_end (mountinfo, source->mount);
     }
     config_release_config();
 
@@ -930,7 +931,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     {
         source->max_listeners = mountinfo->max_listeners;
         source->fallback_override = mountinfo->fallback_override;
-        source->no_mount = mountinfo->no_mount;
         source->hidden = mountinfo->hidden;
     }
 
@@ -1062,6 +1062,11 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->subtype)
         stats_event (source->mount, "subtype", mountinfo->subtype);
 
+    if (mountinfo && mountinfo->auth)
+        stats_event (source->mount, "authenticator", mountinfo->auth->type);
+    else
+        stats_event (source->mount, "authenticator", NULL);
+
     if (mountinfo && mountinfo->fallback_mount)
     {
         char *mount = source->fallback_mount;
@@ -1070,13 +1075,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     }
     else
         source->fallback_mount = NULL;
-
-    if (mountinfo && mountinfo->auth_type != NULL && source->authenticator == NULL)
-    {
-        source->authenticator = auth_get_authenticator(
-                mountinfo->auth_type, mountinfo->auth_options);
-        stats_event(source->mount, "authenticator", mountinfo->auth_type);
-    }
 
     if (mountinfo && mountinfo->dumpfile)
     {

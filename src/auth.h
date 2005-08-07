@@ -17,14 +17,19 @@
 #include <config.h>
 #endif
 
+struct source_tag;
+struct auth_tag;
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "source.h"
+#include "cfgfile.h"
 #include "client.h"
+#include "thread/thread.h"
 
 typedef enum
 {
+    AUTH_UNDEFINED,
     AUTH_OK,
     AUTH_FAILED,
     AUTH_FORBIDDEN,
@@ -33,23 +38,57 @@ typedef enum
     AUTH_USERDELETED,
 } auth_result;
 
+typedef struct auth_client_tag
+{
+    char        *mount;
+    client_t    *client;
+    void        (*process)(struct auth_client_tag *auth_user);
+    struct auth_client_tag *next;
+} auth_client;
+
+
 typedef struct auth_tag
 {
+    char *mount;
+
     /* Authenticate using the given username and password */
-    auth_result (*authenticate)(struct auth_tag *self, 
-            source_t *source, char *username, char *password);
+    auth_result (*authenticate)(auth_client *aclient);
+    auth_result (*release_client)(auth_client *auth_user);
+
+    /* callbacks to specific auth for notifying auth server on source
+     * startup or shutdown
+     */
+    void (*stream_start)(auth_client *auth_user);
+    void (*stream_end)(auth_client *auth_user);
+
     void (*free)(struct auth_tag *self);
+    auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
+    auth_result (*deleteuser)(struct auth_tag *auth, const char *username);
+    auth_result (*listuser)(struct auth_tag *auth, xmlNodePtr srcnode);
+
+    int refcount;
+    int allow_duplicate_users;
+
     void *state;
     char *type;
 } auth_t;
 
-auth_result auth_check_client(source_t *source, client_t *client);
+void add_client (const char *mount, client_t *client);
+int  release_client (client_t *client);
 
-auth_t *auth_get_authenticator(char *type, config_options_t *options);
-void *auth_clear(auth_t *authenticator);
-int auth_get_userlist(source_t *source, xmlNodePtr srcnode);
-int auth_adduser(source_t *source, char *username, char *password);
-int auth_deleteuser(source_t *source, char *username);
+void auth_initialise ();
+auth_t  *auth_get_authenticator (xmlNodePtr node);
+void    auth_release (auth_t *authenticator);
+
+/* call to send a url request when source starts */
+void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
+
+/* call to send a url request when source ends */
+void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
+
+/* called from auth thread, after the client has successfully authenticated
+ * and requires adding to source or fserve. */
+int auth_postprocess_client (auth_client *auth_user);
 
 #endif
 

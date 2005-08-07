@@ -20,9 +20,11 @@
 
 #define MAX_YP_DIRECTORIES 25
 
+struct _mount_proxy;
 
 #include "thread/thread.h"
 #include "avl/avl.h"
+#include "auth.h"
 #include "global.h"
 
 typedef struct ice_config_dir_tag
@@ -63,6 +65,7 @@ typedef struct _mount_proxy {
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
     char *auth_type; /* Authentication type */
+    struct auth_tag *auth;
     char *cluster_password;
     config_options_t *auth_options; /* Options for this type */
     char *on_connect;

@@ -758,7 +758,6 @@ static void _handle_stats_request (client_t *client, char *uri)
 
 static void _handle_get_request (client_t *client, char *passed_uri)
 {
-    source_t *source;
     int fileserve;
     int port;
     int i;
@@ -766,7 +765,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     int serverport = 0;
     aliases *alias;
     ice_config_t *config;
-    int ret;
     char *uri = passed_uri;
 
     config = config_get_config();
@@ -831,95 +829,14 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
-    avl_tree_rlock(global.source_tree);
-    source = source_find_mount(uri);
-    if (source) {
-        DEBUG0("Source found for client");
+    sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
+    sock_set_nodelay(client->con->sock);
 
-        /* The source may not be the requested source - it might have gone
-         * via one or more fallbacks. We only reject it for no-mount if it's
-         * the originally requested source
-         */
-        if(strcmp(uri, source->mount) == 0 && source->no_mount) {
-            avl_tree_unlock(global.source_tree);
-            client_send_404(client, "This mount is unavailable.");
-            if (uri != passed_uri) free (uri);
-            return;
-        }
-        if (source->running == 0 && source->on_demand == 0)
-        {
-            avl_tree_unlock(global.source_tree);
-            DEBUG0("inactive source, client dropped");
-            client_send_404(client, "This mount is unavailable.");
-            if (uri != passed_uri) free (uri);
-            return;
-        }
+    client->write_to_client = format_generic_write_to_client;
+    client->check_buffer = format_check_http_buffer;
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
 
-        /* Check for any required authentication first */
-        if(source->authenticator != NULL) {
-            ret = auth_check_client(source, client);
-            if(ret != AUTH_OK) {
-                avl_tree_unlock(global.source_tree);
-                if (ret == AUTH_FORBIDDEN) {
-                    INFO1("Client attempted to log multiple times to source "
-                        "(\"%s\")", uri);
-                    client_send_403(client);
-                }
-                else {
-                /* If not FORBIDDEN, default to 401 */
-                    INFO1("Client attempted to log in to source (\"%s\")with "
-                        "incorrect or missing password", uri);
-                    client_send_401(client);
-                }
-                if (uri != passed_uri) free (uri);
-                return;
-            }
-        }
-
-        global_lock();
-        /* Early-out for per-source max listeners. This gets checked again
-         * by the source itself, later. This route gives a useful message to
-         * the client, also.
-         */
-        if (source->max_listeners != -1 && 
-                source->listeners >= (unsigned long)source->max_listeners) 
-        {
-            global_unlock();
-            avl_tree_unlock(global.source_tree);
-            client_send_404(client, 
-                    "Too many clients on this mountpoint. Try again later.");
-            if (uri != passed_uri) free (uri);
-            return;
-        }
-        global_unlock();
-                        
-        sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
-        sock_set_nodelay(client->con->sock);
-
-        client->write_to_client = format_generic_write_to_client;
-        client->check_buffer = format_check_http_buffer;
-        client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-
-        avl_tree_wlock(source->pending_tree);
-        avl_insert(source->pending_tree, (void *)client);
-        avl_tree_unlock(source->pending_tree);
-        stats_event_inc (NULL, "listener_connections");
-
-        if (source->running == 0 && source->on_demand)
-        {
-            /* enable on-demand relay to start, wake up the slave thread */
-            DEBUG0("kicking off on-demand relay");
-            source->on_demand_req = 1;
-            slave_rescan ();
-        }
-    }
-                    
-    avl_tree_unlock(global.source_tree);
-                    
-    if (!source) {
-        DEBUG0("Source not found for client");
-        client_send_404(client, "The source you requested could not be found.");
-    }
+    add_client (uri, client);
     if (uri != passed_uri) free (uri);
 }
 

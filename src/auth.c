@@ -22,487 +22,534 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include "auth.h"
+#include "auth_htpasswd.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
+#include "stats.h"
 #include "httpp/httpp.h"
-#include "md5.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
 
-#ifdef _WIN32
-#define snprintf _snprintf
-#endif
 
-int auth_is_listener_connected(source_t *source, char *username)
+static volatile auth_client *clients_to_auth;
+static volatile unsigned int auth_pending_count;
+static volatile int auth_running;
+static mutex_t auth_lock;
+static thread_type *auth_thread;
+
+
+static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
 {
-    client_t *client;
-    avl_node *client_node;
+    /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
+    char *header = httpp_getvar(client->parser, "authorization");
+    char *userpass, *tmp;
+    char *username, *password;
 
-    avl_tree_rlock(source->client_tree);
+    do
+    {
+        if (header == NULL)
+            break;
 
-    client_node = avl_get_first(source->client_tree);
-    while(client_node) {
-        client = (client_t *)client_node->key;
-        if (client->username) {
-            if (!strcmp(client->username, username)) {
-                avl_tree_unlock(source->client_tree);
-                return 1;
+        if (strncmp(header, "Basic ", 6) == 0)
+        {
+            userpass = util_base64_decode (header+6);
+            if (userpass == NULL)
+            {
+                WARN1("Base64 decode of Authorization header \"%s\" failed",
+                        header+6);
+                break;
             }
+
+            tmp = strchr(userpass, ':');
+            if (tmp == NULL)
+            { 
+                free (userpass);
+                break;
+            }
+
+            *tmp = 0;
+            username = userpass;
+            password = tmp+1;
+            client->username = strdup (username);
+            client->password = strdup (password);
+            free (userpass);
+            break;
         }
-        client_node = avl_get_next(client_node);
-    }
+        INFO1 ("unhandled authorization header: %s", header);
 
-    avl_tree_unlock(source->client_tree);
-    return 0;
+    } while (0);
 
+    client->auth = mountinfo->auth;
+    client->auth->refcount++;
 }
 
-auth_result auth_check_client(source_t *source, client_t *client)
+
+static void queue_auth_client (auth_client *auth_user)
 {
-    auth_t *authenticator = source->authenticator;
-    auth_result result;
+    thread_mutex_lock (&auth_lock);
+    auth_user->next = (auth_client *)clients_to_auth;
+    clients_to_auth = auth_user;
+    auth_pending_count++;
+    thread_mutex_unlock (&auth_lock);
+}
 
-    if(authenticator) {
-        /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-        char *header = httpp_getvar(client->parser, "authorization");
-        char *userpass, *tmp;
-        char *username, *password;
-    
-        if(header == NULL)
-            return AUTH_FAILED;
-    
-        if(strncmp(header, "Basic ", 6)) {
-            INFO0("Authorization not using Basic");
-            return 0;
+
+/* release the auth. It is referred to by multiple structures so this is
+ * refcounted and only actual freed after the last use
+ */
+void auth_release (auth_t *authenticator)
+{
+    if (authenticator == NULL)
+        return;
+
+    authenticator->refcount--;
+    if (authenticator->refcount)
+        return;
+
+    if (authenticator->free)
+        authenticator->free (authenticator);
+    free (authenticator->type);
+    free (authenticator);
+}
+
+
+void auth_client_free (auth_client *auth_user)
+{
+    if (auth_user == NULL)
+        return;
+    if (auth_user->client)
+    {
+        client_t *client = auth_user->client;
+
+        if (client->respcode)
+            client_destroy (client);
+        else
+            client_send_401 (client);
+        auth_user->client = NULL;
+    }
+    free (auth_user->mount);
+    free (auth_user);
+}
+
+
+/* wrapper function for auth thread to authenticate new listener
+ * connection details
+ */
+static void auth_new_listener (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (client->auth->authenticate)
+    {
+        if (client->auth->authenticate (auth_user) != AUTH_OK)
+            return;
+    }
+    if (auth_postprocess_client (auth_user) < 0)
+        INFO1 ("client %lu failed", client->con->id);
+}
+
+
+/* wrapper function are auth thread to authenticate new listener
+ * connections
+ */
+static void auth_remove_listener (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (client->auth->release_client)
+        client->auth->release_client (auth_user);
+    auth_release (client->auth);
+    client->auth = NULL;
+    return;
+}
+
+
+/* The auth thread main loop. */
+static void *auth_run_thread (void *arg)
+{
+    INFO0 ("Authentication thread started");
+    while (1)
+    {
+        if (clients_to_auth)
+        {
+            auth_client *auth_user;
+
+            thread_mutex_lock (&auth_lock);
+            auth_user = (auth_client*)clients_to_auth;
+            clients_to_auth = auth_user->next;
+            auth_pending_count--;
+            thread_mutex_unlock (&auth_lock);
+            auth_user->next = NULL;
+
+            if (auth_user->process)
+                auth_user->process (auth_user);
+            else
+                ERROR0 ("client auth process not set");
+
+            auth_client_free (auth_user);
+
+            continue;
         }
-        
-        userpass = util_base64_decode(header+6);
-        if(userpass == NULL) {
-            WARN1("Base64 decode of Authorization header \"%s\" failed",
-                    header+6);
-            return AUTH_FAILED;
+        /* is there a request to shutdown */
+        if (auth_running == 0)
+            break;
+        thread_sleep (150000);
+    }
+    INFO0 ("Authenication thread shutting down");
+    return NULL;
+}
+
+
+/* Check whether this client is currently on this mount, the client may be
+ * on either the active or pending lists.
+ * return 1 if ok to add or 0 to prevent
+ */
+static int check_duplicate_logins (source_t *source, client_t *client)
+{
+    auth_t *auth = client->auth;
+
+    /* allow multiple authenticated relays */
+    if (client->username == NULL)
+        return 1;
+
+    if (auth && auth->allow_duplicate_users == 0)
+    {
+        avl_node *node;
+
+        avl_tree_rlock (source->client_tree);
+        node = avl_get_first (source->client_tree);
+        while (node)
+        {   
+            client_t *client = (client_t *)node->key;
+            if (client->username && strcmp (client->username, client->username) == 0)
+            {
+                avl_tree_unlock (source->client_tree);
+                return 0;
+            }
+            node = avl_get_next (node);
+        }       
+        avl_tree_unlock (source->client_tree);
+
+        avl_tree_rlock (source->pending_tree);
+        node = avl_get_first (source->pending_tree);
+        while (node)
+        {
+            client_t *client = (client_t *)node->key;
+            if (client->username && strcmp (client->username, client->username) == 0)
+            {
+                avl_tree_unlock (source->pending_tree);
+                return 0;
+            }
+            node = avl_get_next (node);
         }
-        
-        tmp = strchr(userpass, ':');
-        if(!tmp) { 
-            free(userpass);
-            return AUTH_FAILED;
+        avl_tree_unlock (source->pending_tree);
+    }
+    return 1;
+}
+
+
+/* if 0 is returned then the client should not be touched, however if -1
+ * is returned then the caller is responsible for handling the client
+ */
+static int add_client_to_source (source_t *source, client_t *client)
+{
+    do
+    {
+        DEBUG3 ("max on %s is %ld (cur %lu)", source->mount,
+                source->max_listeners, source->listeners);
+        if (source->max_listeners == -1)
+            break;
+        if (source->listeners < (unsigned long)source->max_listeners)
+            break;
+
+        /* now we fail the client */
+        return -1;
+
+    } while (1);
+    /* lets add the client to the active list */
+    avl_tree_wlock (source->pending_tree);
+    avl_insert (source->pending_tree, client);
+    avl_tree_unlock (source->pending_tree);
+    stats_event_inc (NULL, "listener_connections");
+
+    client->write_to_client = format_generic_write_to_client;
+    client->check_buffer = format_check_http_buffer;
+    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
+    memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+
+    if (source->running == 0 && source->on_demand)
+    {
+        /* enable on-demand relay to start, wake up the slave thread */
+        DEBUG0("kicking off on-demand relay");
+        source->on_demand_req = 1;
+        slave_rescan ();
+    }
+    DEBUG1 ("Added client to %s", source->mount);
+    return 0;
+}
+
+
+/* Add listener to the pending lists of either the  source or fserve thread.
+ * This can be run from the connection or auth thread context
+ */
+static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, client_t *client)
+{
+    int ret = 0;
+    source_t *source = NULL;
+
+    avl_tree_rlock (global.source_tree);
+    source = source_find_mount (mount);
+
+    if (source)
+    {
+        if (client->auth && check_duplicate_logins (source, client) == 0)
+        {
+            avl_tree_unlock (global.source_tree);
+            return -1;
         }
+        ret = add_client_to_source (source, client);
+        avl_tree_unlock (global.source_tree);
+        if (ret == 0)
+            DEBUG0 ("client authenticated, passed to source");
+    }
+    return ret;
+}
 
-        *tmp = 0;
-        username = userpass;
-        password = tmp+1;
 
-        result = authenticator->authenticate(
-                authenticator, source, username, password);
+int auth_postprocess_client (auth_client *auth_user)
+{
+    int ret;
+    ice_config_t *config = config_get_config();
 
-        if(result == AUTH_OK)
-            client->username = strdup(username);
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_user->client->authenticated = 1;
 
-        free(userpass);
+    ret = add_authenticated_client (auth_user->mount, mountinfo, auth_user->client);
+    config_release_config();
 
-        return result;
+    if (ret < 0)
+        client_send_401 (auth_user->client);
+    auth_user->client = NULL;
+
+    return ret;
+}
+
+
+/* Add a listener. Check for any mount information that states any
+ * authentication to be used.
+ */
+void add_client (const char *mount, client_t *client)
+{
+    mount_proxy *mountinfo; 
+    ice_config_t *config = config_get_config();
+
+    mountinfo = config_find_mount (config, mount);
+    if (mountinfo && mountinfo->no_mount)
+    {
+        config_release_config ();
+        client_send_404 (client, "mountpoint unavailable");
+        return;
+    }
+    if (mountinfo && mountinfo->auth)
+    {
+        auth_client *auth_user;
+
+        if (auth_pending_count > 30)
+        {
+            config_release_config ();
+            WARN0 ("too many clients awaiting authentication");
+            client_send_404 (client, "busy, please try again later");
+            return;
+        }
+        auth_client_setup (mountinfo, client);
+        config_release_config ();
+
+        if (client->auth == NULL)
+        {
+            client_send_401 (client);
+            return;
+        }
+        auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user == NULL)
+        {
+            client_send_401 (client);
+            return;
+        }
+        auth_user->mount = strdup (mount);
+        auth_user->process = auth_new_listener;
+        auth_user->client = client;
+
+        INFO0 ("adding client for authentication");
+        queue_auth_client (auth_user);
     }
     else
-        return AUTH_FAILED;
-}
-
-static auth_t *auth_get_htpasswd_auth(config_options_t *options);
-
-auth_t *auth_get_authenticator(char *type, config_options_t *options)
-{
-    auth_t *auth = NULL;
-    if(!strcmp(type, "htpasswd")) {
-        auth = auth_get_htpasswd_auth(options);
-        auth->type = strdup(type);
+    {
+        int ret = add_authenticated_client (mount, mountinfo, client);
+        config_release_config ();
+        if (ret < 0)
+            client_send_404 (client, "stream full");
     }
-    else {
-        ERROR1("Unrecognised authenticator type: \"%s\"", type);
-        return NULL;
-    }
-
-    if(!auth)
-        ERROR1("Couldn't configure authenticator of type \"%s\"", type);
-    
-    return auth;
 }
 
-typedef struct {
-    char *filename;
-    int allow_duplicate_users;
-    rwlock_t file_rwlock;
-} htpasswd_auth_state;
 
-static void htpasswd_clear(auth_t *self) {
-    htpasswd_auth_state *state = self->state;
-    free(state->filename);
-    thread_rwlock_destroy(&state->file_rwlock);
-    free(state);
-    free(self->type);
-    free(self);
-}
-
-static int get_line(FILE *file, char *buf, int len)
+/* determine whether we need to process this client further. This
+ * involves any auth exit, typically for external auth servers.
+ */
+int release_client (client_t *client)
 {
-    if(fgets(buf, len, file)) {
-        int len = strlen(buf);
-        if(len > 0 && buf[len-1] == '\n') {
-            buf[--len] = 0;
-            if(len > 0 && buf[len-1] == '\r')
-                buf[--len] = 0;
-        }
+    if (client->auth)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user == NULL)
+            return 0;
+
+        auth_user->mount = strdup (httpp_getvar (client->parser, HTTPP_VAR_URI));
+        auth_user->process = auth_remove_listener;
+        auth_user->client = client;
+
+        queue_auth_client (auth_user);
         return 1;
     }
     return 0;
 }
 
-/* md5 hash */
-static char *get_hash(char *data, int len)
+
+static void get_authenticator (auth_t *auth, config_options_t *options)
 {
-    struct MD5Context context;
-    unsigned char digest[16];
-
-    MD5Init(&context);
-
-    MD5Update(&context, data, len);
-
-    MD5Final(digest, &context);
-
-    return util_bin_to_hex(digest, 16);
-}
-
-#define MAX_LINE_LEN 512
-
-/* Not efficient; opens and scans the entire file for every request */
-static auth_result htpasswd_auth(auth_t *auth, source_t *source, char *username, char *password)
-{
-    htpasswd_auth_state *state = auth->state;
-    FILE *passwdfile = NULL;
-    char line[MAX_LINE_LEN];
-    char *sep;
-
-    thread_rwlock_rlock(&state->file_rwlock);
-    if (!state->allow_duplicate_users) {
-        if (auth_is_listener_connected(source, username)) {
-            thread_rwlock_unlock(&state->file_rwlock);
-            return AUTH_FORBIDDEN;
-        }
-    }
-    passwdfile = fopen(state->filename, "rb");
-    if(passwdfile == NULL) {
-        WARN2("Failed to open authentication database \"%s\": %s", 
-                state->filename, strerror(errno));
-        thread_rwlock_unlock(&state->file_rwlock);
-        return AUTH_FAILED;
-    }
-
-    while(get_line(passwdfile, line, MAX_LINE_LEN)) {
-        if(!line[0] || line[0] == '#')
-            continue;
-
-        sep = strchr(line, ':');
-        if(sep == NULL) {
-            DEBUG0("No separator in line");
-            continue;
-        }
-
-        *sep = 0;
-        if(!strcmp(username, line)) {
-            /* Found our user, now: does the hash of password match hash? */
-            char *hash = sep+1;
-            char *hashed_password = get_hash(password, strlen(password));
-            if(!strcmp(hash, hashed_password)) {
-                fclose(passwdfile);
-                free(hashed_password);
-                thread_rwlock_unlock(&state->file_rwlock);
-                return AUTH_OK;
-            }
-            free(hashed_password);
-            /* We don't keep searching through the file */
-            break; 
-        }
-    }
-
-    fclose(passwdfile);
-
-    thread_rwlock_unlock(&state->file_rwlock);
-    return AUTH_FAILED;
-}
-
-static auth_t *auth_get_htpasswd_auth(config_options_t *options)
-{
-    auth_t *authenticator = calloc(1, sizeof(auth_t));
-    htpasswd_auth_state *state;
-
-    authenticator->authenticate = htpasswd_auth;
-    authenticator->free = htpasswd_clear;
-
-    state = calloc(1, sizeof(htpasswd_auth_state));
-
-    state->allow_duplicate_users = 1;
-    while(options) {
-        if(!strcmp(options->name, "filename"))
-            state->filename = strdup(options->value);
-        if(!strcmp(options->name, "allow_duplicate_users"))
-            state->allow_duplicate_users = atoi(options->value);
-        options = options->next;
-    }
-
-    if(!state->filename) {
-        free(state);
-        free(authenticator);
-        ERROR0("No filename given in options for authenticator.");
-        return NULL;
-    }
-
-    authenticator->state = state;
-    DEBUG1("Configured htpasswd authentication using password file %s", 
-            state->filename);
-
-    thread_rwlock_create(&state->file_rwlock);
-
-    return authenticator;
-}
-
-int auth_htpasswd_existing_user(auth_t *auth, char *username)
-{
-    FILE *passwdfile;
-    htpasswd_auth_state *state;
-    int ret = AUTH_OK;
-    char line[MAX_LINE_LEN];
-    char *sep;
-
-    state = auth->state;
-    passwdfile = fopen(state->filename, "rb");
-
-    if(passwdfile == NULL) {
-        WARN2("Failed to open authentication database \"%s\": %s", 
-                state->filename, strerror(errno));
-        return AUTH_FAILED;
-    }
-    while(get_line(passwdfile, line, MAX_LINE_LEN)) {
-        if(!line[0] || line[0] == '#')
-            continue;
-        sep = strchr(line, ':');
-        if(sep == NULL) {
-            DEBUG0("No separator in line");
-            continue;
-        }
-        *sep = 0;
-        if (!strcmp(username, line)) {
-            /* We found the user, break out of the loop */
-            ret = AUTH_USEREXISTS;
+    do
+    {
+        DEBUG1 ("type is %s", auth->type);
+        if (strcmp (auth->type, "htpasswd") == 0)
+        {
+            auth_get_htpasswd_auth (auth, options);
             break;
         }
-    }
+        
+        ERROR1("Unrecognised authenticator type: \"%s\"", auth->type);
+        return;
+    } while (0);
 
-    fclose(passwdfile);
-    return ret;
-
-}
-int auth_htpasswd_adduser(auth_t *auth, char *username, char *password)
-{
-    FILE *passwdfile;
-    char *hashed_password = NULL;
-    htpasswd_auth_state *state;
-
-    if (auth_htpasswd_existing_user(auth, username) == AUTH_USEREXISTS) {
-        return AUTH_USEREXISTS;
-    }
-    state = auth->state;
-    passwdfile = fopen(state->filename, "ab");
-
-    if(passwdfile == NULL) {
-        WARN2("Failed to open authentication database \"%s\": %s", 
-                state->filename, strerror(errno));
-        return AUTH_FAILED;
-    }
-
-    hashed_password = get_hash(password, strlen(password));
-    if (hashed_password) {
-        fprintf(passwdfile, "%s:%s\n", username, hashed_password);
-        free(hashed_password);
-    }
-
-    fclose(passwdfile);
-    return AUTH_USERADDED;
-}
-
-int auth_adduser(source_t *source, char *username, char *password)
-{
-    int ret = 0;
-    htpasswd_auth_state *state;
-
-    if (source->authenticator) {
-        if (!strcmp(source->authenticator->type, "htpasswd")) {
-            state = source->authenticator->state;
-            thread_rwlock_wlock(&state->file_rwlock);
-            ret = auth_htpasswd_adduser(source->authenticator, username, password);
-            thread_rwlock_unlock(&state->file_rwlock);
-        }
-    }
-    return ret;
-}
-
-int auth_htpasswd_deleteuser(auth_t *auth, char *username)
-{
-    FILE *passwdfile;
-    FILE *tmp_passwdfile;
-    htpasswd_auth_state *state;
-    char line[MAX_LINE_LEN];
-    char *sep;
-    char *tmpfile = NULL;
-    int tmpfile_len = 0;
-    struct stat file_info;
-
-    state = auth->state;
-    passwdfile = fopen(state->filename, "rb");
-
-    if(passwdfile == NULL) {
-        WARN2("Failed to open authentication database \"%s\": %s", 
-                state->filename, strerror(errno));
-        return AUTH_FAILED;
-    }
-    tmpfile_len = strlen(state->filename) + 5;
-    tmpfile = calloc(1, tmpfile_len);
-    snprintf (tmpfile, tmpfile_len, "%s.tmp", state->filename);
-    if (stat (tmpfile, &file_info) == 0)
+    auth->refcount = 1;
+    while (options)
     {
-        WARN1 ("temp file \"%s\" exists, rejecting operation", tmpfile);
-        free (tmpfile);
-        fclose (passwdfile);
-        return AUTH_FAILED;
+        if (strcmp(options->name, "allow_duplicate_users") == 0)
+            auth->allow_duplicate_users = atoi (options->value);
+        options = options->next;
     }
-    tmp_passwdfile = fopen(tmpfile, "wb");
-
-    if(tmp_passwdfile == NULL) {
-        WARN2("Failed to open temporary authentication database \"%s\": %s", 
-                tmpfile, strerror(errno));
-        fclose(passwdfile);
-        free(tmpfile);
-        return AUTH_FAILED;
-    }
-
-
-    while(get_line(passwdfile, line, MAX_LINE_LEN)) {
-        if(!line[0] || line[0] == '#')
-            continue;
-
-        sep = strchr(line, ':');
-        if(sep == NULL) {
-            DEBUG0("No separator in line");
-            continue;
-        }
-
-        *sep = 0;
-        if (strcmp(username, line)) {
-            /* We did not match on the user, so copy it to the temp file */
-            /* and put the : back in */
-            *sep = ':';
-            fprintf(tmp_passwdfile, "%s\n", line);
-        }
-    }
-
-    fclose(tmp_passwdfile);
-    fclose(passwdfile);
-
-    /* Now move the contents of the tmp file to the original */
-#ifdef _WIN32
-    /* Windows won't let us rename a file if the destination file
-       exists...so, lets remove the original first */
-    if (remove(state->filename) != 0) {
-        ERROR3("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
-                tmpfile, state->filename, strerror(errno));
-    }
-    else {
-#endif
-        if (rename(tmpfile, state->filename) != 0) {
-            ERROR3("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
-                tmpfile, state->filename, strerror(errno));
-	}
-#ifdef _WIN32
-    }
-#endif
-
-    free(tmpfile);
-
-    return AUTH_USERDELETED;
-}
-int auth_deleteuser(source_t *source, char *username)
-{
-    htpasswd_auth_state *state;
-
-    int ret = 0;
-    if (source->authenticator) {
-        if (!strcmp(source->authenticator->type, "htpasswd")) {
-            state = source->authenticator->state;
-            thread_rwlock_wlock(&state->file_rwlock);
-            ret = auth_htpasswd_deleteuser(source->authenticator, username);
-            thread_rwlock_unlock(&state->file_rwlock);
-        }
-    }
-    return ret;
 }
 
-int auth_get_htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
+
+auth_t *auth_get_authenticator (xmlNodePtr node)
 {
-    htpasswd_auth_state *state;
-    FILE *passwdfile;
-    char line[MAX_LINE_LEN];
-    char *sep;
-    char *passwd;
-    xmlNodePtr newnode;
+    auth_t *auth = calloc (1, sizeof (auth_t));
+    config_options_t *options = NULL, **next_option = &options;
+    xmlNodePtr option;
 
-    state = auth->state;
+    if (auth == NULL)
+        return NULL;
 
-    passwdfile = fopen(state->filename, "rb");
-
-    if(passwdfile == NULL) {
-        WARN2("Failed to open authentication database \"%s\": %s", 
-                state->filename, strerror(errno));
-        return AUTH_FAILED;
-    }
-
-    while(get_line(passwdfile, line, MAX_LINE_LEN)) {
-        if(!line[0] || line[0] == '#')
-            continue;
-
-        sep = strchr(line, ':');
-        if(sep == NULL) {
-            DEBUG0("No separator in line");
-            continue;
+    option = node->xmlChildrenNode;
+    while (option)
+    {
+        xmlNodePtr current = option;
+        option = option->next;
+        if (strcmp (current->name, "option") == 0)
+        {
+            config_options_t *opt = calloc (1, sizeof (config_options_t));
+            opt->name = xmlGetProp (current, "name");
+            if (opt->name == NULL)
+            {
+                free(opt);
+                continue;
+            }
+            opt->value = xmlGetProp (current, "value");
+            if (opt->value == NULL)
+            {
+                xmlFree (opt->name);
+                free (opt);
+                continue;
+            }
+            *next_option = opt;
+            next_option = &opt->next;
         }
-
-        *sep = 0;
-        newnode = xmlNewChild(srcnode, NULL, "User", NULL);
-        xmlNewChild(newnode, NULL, "username", line);
-        passwd = sep+1;
-        xmlNewChild(newnode, NULL, "password", passwd);
+        else
+            if (strcmp (current->name, "text") != 0)
+                WARN1 ("unknown auth setting (%s)", current->name);
     }
-
-    fclose(passwdfile);
-    return AUTH_OK;
+    auth->type = xmlGetProp (node, "type");
+    get_authenticator (auth, options);
+    while (options)
+    {
+        config_options_t *opt = options;
+        options = opt->next;
+        xmlFree (opt->name);
+        xmlFree (opt->value);
+        free (opt);
+    }
+    return auth;
 }
 
-int auth_get_userlist(source_t *source, xmlNodePtr srcnode)
-{
-    int ret = 0;
-    htpasswd_auth_state *state;
 
-    if (source->authenticator) {
-        if (!strcmp(source->authenticator->type, "htpasswd")) {
-            state = source->authenticator->state;
-            thread_rwlock_rlock(&state->file_rwlock);
-            ret = auth_get_htpasswd_userlist(source->authenticator, srcnode);
-            thread_rwlock_unlock(&state->file_rwlock);
+/* called when the stream starts, so that authentication engine can do any
+ * cleanup/initialisation.
+ */
+void auth_stream_start (mount_proxy *mountinfo, const char *mount)
+{
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_start)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user)
+        {
+            auth_user->mount = strdup (mount);
+            auth_user->process = mountinfo->auth->stream_start;
+
+            queue_auth_client (auth_user);
         }
     }
-    return ret;
+}
+
+
+/* Called when the stream ends so that the authentication engine can do
+ * any authentication cleanup
+ */
+void auth_stream_end (mount_proxy *mountinfo, const char *mount)
+{
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_end)
+    {
+        auth_client *auth_user = calloc (1, sizeof (auth_client));
+        if (auth_user)
+        {
+            auth_user->mount = strdup (mount);
+            auth_user->process = mountinfo->auth->stream_end;
+
+            queue_auth_client (auth_user);
+        }
+    }
+}
+
+
+/* these are called at server start and termination */
+
+void auth_initialise ()
+{
+    clients_to_auth = NULL;
+    auth_pending_count = 0;
+    auth_running = 1;
+    thread_mutex_create (&auth_lock);
+    auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);
+}
+
+void auth_shutdown ()
+{
+    if (auth_thread)
+    {
+        auth_running = 0;
+        thread_join (auth_thread);
+        INFO0 ("Auth thread has terminated");
+    }
 }
 

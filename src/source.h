@@ -20,8 +20,6 @@
 
 #include <stdio.h>
 
-struct auth_tag;
-
 typedef struct source_tag
 {
     client_t *client;
@@ -55,9 +53,7 @@ typedef struct source_tag
     unsigned long listeners;
     long max_listeners;
     int yp_public;
-    struct auth_tag *authenticator;
     int fallback_override;
-    int no_mount;
     int shoutcast_compat;
 
     /* per source burst handling for connecting clients */

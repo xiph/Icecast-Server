@@ -505,6 +505,7 @@ int main(int argc, char **argv)
 
     /* Do this after logging init */
     slave_initialize();
+    auth_initialise ();
 
     _server_proc();
 

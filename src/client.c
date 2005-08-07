@@ -72,6 +72,10 @@ void client_destroy(client_t *client)
 {
     if (client == NULL)
         return;
+
+    if (release_client (client))
+        return;
+
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */

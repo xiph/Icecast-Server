@@ -32,6 +32,9 @@ typedef struct _client_tag
     /* http response code for this client */
     int respcode;
 
+    /* auth completed, 0 not yet, 1 passed */
+    int authenticated;
+
     /* is client getting intro data */
     long intro_offset;
 
@@ -41,8 +44,14 @@ typedef struct _client_tag
     /* position in first buffer */
     unsigned long pos;
 
+    /* auth used for this client */
+    struct auth_tag *auth;
+
     /* Client username, if authenticated */
     char *username;
+
+    /* Client password, if authenticated */
+    char *password;
 
     /* Format-handler-specific data for this client */
     void *format_data;
