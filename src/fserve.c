@@ -19,6 +19,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #ifdef HAVE_POLL
 #include <sys/poll.h>
@@ -65,7 +66,7 @@
 #endif
 
 static fserve_t *active_list = NULL;
-volatile static fserve_t *pending_list = NULL;
+static volatile fserve_t *pending_list = NULL;
 
 static mutex_t pending_lock;
 static avl_tree *mimetypes = NULL;
@@ -232,7 +233,7 @@ static void wait_for_fds() {
 static void *fserv_thread_function(void *arg)
 {
     fserve_t *fclient, **trail;
-    int sbytes, bytes;
+    int bytes;
 
     INFO0("file serving thread started");
     while (run_fserv) {
@@ -271,7 +272,7 @@ static void *fserv_thread_function(void *arg)
                 }
 
                 /* Now try and send current chunk. */
-                sbytes = format_generic_write_to_client (client);
+                format_generic_write_to_client (client);
 
                 if (client->con->error)
                 {
@@ -358,7 +359,10 @@ static void fserve_client_destroy(fserve_t *fclient)
 }
 
 
-int fserve_client_create(client_t *httpclient, const char *path)
+/* client has requested a file, so check for it and send the file.  Do not
+ * refer to the client_t afterwards.  return 0 for success, -1 on error.
+ */
+int fserve_client_create (client_t *httpclient, const char *path)
 {
     int bytes;
     struct stat file_buf;
@@ -384,8 +388,10 @@ int fserve_client_create(client_t *httpclient, const char *path)
         /* the m3u can be generated, but send an m3u file if available */
         if (m3u_requested == 0)
         {
+            WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
+            client_send_404 (httpclient, "The file you requested could not be found");
             free (fullpath);
-            return 0;
+            return -1;
         }
         m3u_file_available = 0;
     }
@@ -426,7 +432,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         fserve_add_client (httpclient, NULL);
         free (sourceuri);
         free (fullpath);
-        return 1;
+        return 0;
     }
 
     /* on demand file serving check */
@@ -437,7 +443,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         client_send_404 (httpclient, "The file you requested could not be found");
         config_release_config();
         free (fullpath);
-        return 0;
+        return -1;
     }
     config_release_config();
 
@@ -446,7 +452,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
         client_send_404 (httpclient, "The file you requested could not be found");
         WARN1 ("found requested file but there is no handler for it: %s", fullpath);
         free (fullpath);
-        return 1;
+        return -1;
     }
 
     file = fopen (fullpath, "rb");
@@ -455,7 +461,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
     {
         WARN1 ("Problem accessing file \"%s\"", fullpath);
         client_send_404 (httpclient, "File not readable");
-        return 1;
+        return -1;
     }
 
     content_length = (int64_t)file_buf.st_size;
@@ -515,7 +521,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
                 sock_write (httpclient->con->sock,
                     "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
                 client_destroy (httpclient);
-                return 1;
+                return -1;
             }
         }
         else {
@@ -525,7 +531,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
             sock_write (httpclient->con->sock,
                 "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
             client_destroy (httpclient);
-            return 1;
+            return -1;
         }
     }
     else {
@@ -544,7 +550,7 @@ int fserve_client_create(client_t *httpclient, const char *path)
     stats_event_inc (NULL, "file_connections");
     fserve_add_client (httpclient, file);
 
-    return 1;
+    return 0;
 }
 
 

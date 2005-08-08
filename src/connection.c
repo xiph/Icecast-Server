@@ -823,12 +823,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
-    if (fserve_client_create (client, uri))
-    {
-        if (uri != passed_uri) free (uri);
-        return;
-    }
-
     sock_set_blocking(client->con->sock, SOCK_NONBLOCK);
     sock_set_nodelay(client->con->sock);
 

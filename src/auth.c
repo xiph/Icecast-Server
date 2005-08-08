@@ -31,6 +31,7 @@
 #include "cfgfile.h"
 #include "stats.h"
 #include "httpp/httpp.h"
+#include "fserve.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
@@ -316,6 +317,11 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
         avl_tree_unlock (global.source_tree);
         if (ret == 0)
             DEBUG0 ("client authenticated, passed to source");
+    }
+    else
+    {
+        avl_tree_unlock (global.source_tree);
+        fserve_client_create (client, mount);
     }
     return ret;
 }
