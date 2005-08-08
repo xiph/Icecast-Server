@@ -197,7 +197,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 {
     mp3_state *source_mp3 = format->_state;
 
-    if (mount== NULL || mount->mp3_meta_interval <= 0)
+    if (mount == NULL || mount->mp3_meta_interval <= 0)
     {
         char *metadata = httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = -1;
@@ -414,40 +414,77 @@ static void format_mp3_free_plugin(format_plugin_t *self)
 }
 
 
+/* This does the actual reading, making sure the read data is packaged in
+ * blocks of 1400 bytes (near the common MTU size). This is because many
+ * incoming streams come in small packets which could waste a lot of 
+ * bandwidth with many listeners due to headers and such like.
+ */
+static int complete_read (source_t *source)
+{
+    int bytes;
+    format_plugin_t *format = source->format;
+    mp3_state *source_mp3 = format->_state;
+    char *buf;
+    refbuf_t *refbuf;
+
+#define REFBUF_SIZE 1400
+
+    if (source_mp3->read_data == NULL)
+    {
+        source_mp3->read_data = refbuf_new (REFBUF_SIZE); 
+        source_mp3->read_count = 0;
+    }
+    buf = source_mp3->read_data->data + source_mp3->read_count;
+
+    bytes = client_read_bytes (source->client, buf, REFBUF_SIZE-source_mp3->read_count);
+    if (bytes < 0)
+    {
+        if (source->client->con->error)
+        {
+            refbuf_release (source_mp3->read_data);
+            source_mp3->read_data = NULL;
+        }
+        return 0;
+    }
+    source_mp3->read_count += bytes;
+    refbuf = source_mp3->read_data;
+    refbuf->len = source_mp3->read_count;
+    format->read_bytes += bytes;
+
+    if (source_mp3->read_count < REFBUF_SIZE)
+    {
+        if (source_mp3->read_count == 0)
+        {
+            refbuf_release (source_mp3->read_data);
+            source_mp3->read_data = NULL;
+        }
+        return 0;
+    }
+    return 1;
+}
+
+
 /* read an mp3 stream which does not have shoutcast style metadata */
 static refbuf_t *mp3_get_no_meta (source_t *source)
 {
-    int bytes;
     refbuf_t *refbuf;
     mp3_state *source_mp3 = source->format->_state;
-    format_plugin_t *format = source->format;
 
-    if ((refbuf = refbuf_new (2048)) == NULL)
+    if (complete_read (source) == 0)
         return NULL;
 
-    bytes = client_read_bytes (source->client, refbuf->data, 2048);
-    if (bytes < 0)
-    {
-        refbuf_release (refbuf);
-        return NULL;
-    }
-    format->read_bytes += bytes;
+    refbuf = source_mp3->read_data;
+    source_mp3->read_data = NULL;
+
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
         source_mp3->update_metadata = 0;
     }
-    if (bytes > 0)
-    {
-        refbuf->len  = bytes;
-        refbuf->associated = source_mp3->metadata;
-        refbuf_addref (source_mp3->metadata);
-        refbuf->sync_point = 1;
-        return refbuf;
-    }
-    refbuf_release (refbuf);
-
-    return NULL;
+    refbuf->associated = source_mp3->metadata;
+    refbuf_addref (source_mp3->metadata);
+    refbuf->sync_point = 1;
+    return refbuf;
 }
 
 
@@ -460,28 +497,23 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf_t *refbuf;
     format_plugin_t *plugin = source->format;
     mp3_state *source_mp3 = plugin->_state;
-    format_plugin_t *format = source->format;
     unsigned char *src;
     unsigned int bytes, mp3_block;
-    int ret;
 
-    refbuf = refbuf_new (2048);
+    if (complete_read (source) == 0)
+        return NULL;
+
+    refbuf = source_mp3->read_data;
+    source_mp3->read_data = NULL;
     src = refbuf->data;
 
-    ret = client_read_bytes (source->client, refbuf->data, 2048);
-    if (ret < 0)
-    {
-        refbuf_release (refbuf);
-        return NULL;
-    }
-    format->read_bytes += ret;
     if (source_mp3->update_metadata)
     {
         mp3_set_title (source);
         source_mp3->update_metadata = 0;
     }
     /* fill the buffer with the read data */
-    bytes = (unsigned int)ret;
+    bytes = source_mp3->read_count;
     refbuf->len = 0;
     while (bytes > 0)
     {
@@ -556,6 +588,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
                 ERROR0 ("Incorrect metadata format, ending stream");
                 source->running = 0;
                 refbuf_release (refbuf);
+                refbuf_release (meta);
                 return NULL;
             }
         }
