@@ -240,8 +240,8 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
                     source->fallback_mount:"");
             snprintf (buf, sizeof(buf), "%lu", source->listeners);
             xmlNewChild(srcnode, NULL, "listeners", buf);
-            config = config_get_config();
 
+            config = config_get_config();
             mountinfo = config_find_mount (config, source->mount);
             if (mountinfo && mountinfo->auth)
             {
@@ -252,9 +252,12 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             if (source->running)
             {
-                snprintf (buf, sizeof(buf), "%lu",
-                        (unsigned long)(now - source->con->con_time));
-                xmlNewChild (srcnode, NULL, "Connected", buf);
+                if (source->client->con) 
+                {
+                    snprintf (buf, sizeof(buf), "%lu",
+                            (unsigned long)(now - source->con->con_time));
+                    xmlNewChild (srcnode, NULL, "Connected", buf);
+                }
                 xmlNewChild (srcnode, NULL, "content-type", 
                         source->format->contenttype);
             }

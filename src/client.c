@@ -79,12 +79,13 @@ void client_destroy(client_t *client)
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */
-    if (client->con && client->con->ip)
+    if (client->respcode && client->parser)
         logging_access(client);
     
     if (client->con)
         connection_close(client->con);
-    httpp_destroy(client->parser);
+    if (client->parser)
+        httpp_destroy(client->parser);
 
     global_lock ();
     global.clients--;
@@ -94,11 +95,13 @@ void client_destroy(client_t *client)
     /* drop ref counts if need be */
     if (client->refbuf)
         refbuf_release (client->refbuf);
+
     /* we need to free client specific format data (if any) */
     if (client->free_client_data)
         client->free_client_data (client);
 
     free(client->username);
+    free(client->password);
 
     free(client);
 }

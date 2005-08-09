@@ -85,11 +85,12 @@ typedef struct ypdata_tag
 static rwlock_t yp_lock;
 static mutex_t yp_pending_lock;
 
-volatile static struct yp_server *active_yps = NULL, *pending_yps = NULL;
+static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
 static int yp_running;
 static time_t now;
 static thread_type *yp_thread;
+static volatile unsigned client_limit = 0;
 
 static void *yp_update_thread(void *arg);
 static void add_yp_info (ypdata_t *yp, void *info, int type);
@@ -215,6 +216,7 @@ void yp_recheck_config (ice_config_t *config)
         server->remove = 1;
         server = server->next;
     }
+    client_limit = config->client_limit;
     /* for each yp url in config, check to see if one exists 
        if not, then add it. */
     for (i=0 ; i < config->num_yp_directories; i++)
@@ -387,10 +389,9 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
 
 static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
 {
-    unsigned listeners = 0;
+    unsigned listeners = 0, max_listeners = 1;
     char *val, *artist, *title;
     int ret;
-    char *max_listeners;
 
     artist = (char *)stats_get_value (yp->mount, "artist");
     title = (char *)stats_get_value (yp->mount, "title");
@@ -422,12 +423,15 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         listeners = atoi (val);
         free (val);
     }
-    max_listeners = stats_get_value (yp->mount, "max_listeners");
-    if (max_listeners == NULL || strcmp (max_listeners, "unlimited") == 0)
+    val = stats_get_value (yp->mount, "max_listeners");
+    if (val == NULL || strcmp (val, "unlimited") == 0)
     {
-        free (max_listeners);
-        max_listeners = (char *)stats_get_value (NULL, "client_limit");
+        free (val);
+        max_listeners = client_limit;
     }
+    else
+        max_listeners = atoi (val);
+
     val = stats_get_value (yp->mount, "subtype");
     if (val)
     {
@@ -436,10 +440,9 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     }
 
     ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
-            "&listeners=%u&max_listeners=%s&stype=%s\r\n",
+            "&listeners=%u&max_listeners=%u&stype=%s\r\n",
             yp->sid, yp->current_song, listeners, max_listeners, yp->subtype);
 
-    free (max_listeners);
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
 
