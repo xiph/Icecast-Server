@@ -30,14 +30,13 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#ifndef _WIN32
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 
 #ifdef WIN32
 #define snprintf _snprintf
 #endif
-
 
 #include "thread/thread.h"
 #include "avl/avl.h"
@@ -63,10 +62,7 @@ typedef struct {
     xsltStylesheetPtr  stylesheet;
 } stylesheet_cache_t;
 
-/* Keep it small... */
-#define CACHESIZE 3
-
-#ifdef WIN32
+#ifndef HAVE_XSLTSAVERESULTTOSTRING
 int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr result, xsltStylesheetPtr style) {
     xmlOutputBufferPtr buf;
 
@@ -92,12 +88,15 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 }
 #endif
 
-stylesheet_cache_t cache[CACHESIZE];
-mutex_t xsltlock;
+/* Keep it small... */
+#define CACHESIZE 3
+
+static stylesheet_cache_t cache[CACHESIZE];
+static mutex_t xsltlock;
 
 void xslt_initialize()
 {
-	xmlSubstituteEntitiesDefault(1);
+    xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
 
     memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
