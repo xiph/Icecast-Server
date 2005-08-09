@@ -598,6 +598,7 @@ static void source_init (source_t *source)
     source->listeners = 0;
     stats_event_inc (NULL, "source_total_connections");
     stats_event (source->mount, "slow_listeners", "0");
+    stats_event_args (source->mount, "listeners", "%lu", source->listeners);
     stats_event (source->mount, "listener_peak", "0");
     stats_event_time (source->mount, "stream_start");
 
