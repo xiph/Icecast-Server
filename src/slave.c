@@ -38,6 +38,9 @@
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
 #endif
+#ifdef HAVE_CURL
+#include <curl/curl.h>
+#endif
 
 #include "os.h"
 
@@ -563,112 +566,202 @@ static void relay_check_streams (relay_server *to_start, relay_server *to_free)
 }
 
 
-static int update_from_master(ice_config_t *config)
+#ifdef HAVE_CURL
+struct master_conn_details
 {
-    char *master = NULL, *password = NULL, *username= NULL;
+    char *server;
     int port;
-    sock_t mastersock;
-    int ret = 0;
-    char buf[256];
-    do
+    int ssl_port;
+    int send_auth;
+    int on_demand;
+    int previous;
+    int ok;
+    char *buffer;
+    char *username;
+    char *password;
+    relay_server *new_relays;
+};
+
+
+/* process a single HTTP header from streamlist response */
+static size_t streamlist_header (void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    size_t passed_len = size*nmemb;
+    char *eol = memchr (ptr, '\r', passed_len);
+    struct master_conn_details *master = stream;
+
+    /* drop EOL chars if any */
+    if (eol)
+        *eol = '\0';
+    else
     {
-        char *authheader, *data;
-        relay_server *new_relays = NULL, *cleanup_relays;
-        int len, count = 1;
-        int on_demand, send_auth;
-
-        username = strdup (config->master_username);
-        if (config->master_password)
-            password = strdup (config->master_password);
-
-        if (config->master_server)
-            master = strdup (config->master_server);
-
-        port = config->master_server_port;
-
-        if (password == NULL || master == NULL || port == 0)
-            break;
-        on_demand = config->on_demand;
-        send_auth = config->master_relay_auth;
-        ret = 1;
-        config_release_config();
-        mastersock = sock_connect_wto (master, port, 0);
-
-        if (mastersock == SOCK_ERROR)
+        eol = memchr (ptr, '\n', passed_len);
+        if (eol)
+            *eol = '\0';
+        else
+            return -1;
+    }
+    if (strncmp (ptr, "HTTP", 4) == 0)
+    {
+        int respcode;
+        if (sscanf (ptr, "HTTP%*s %d OK", &respcode) == 1 && respcode == 200)
         {
-            WARN0("Relay slave failed to contact master server to fetch stream list");
+            master->ok = 1;
+        }
+        else
+        {
+            WARN1 ("Failed response from master \"%s\"", (char*)ptr);
+            return -1;
+        }
+    }
+    return passed_len;
+}
+
+
+/* process mountpoint list from master server. This may be called multiple
+ * times so watch for the last line in this block as it may be incomplete
+ */
+static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    struct master_conn_details *master = stream;
+    size_t passed_len = size*nmemb;
+    size_t len = passed_len + master->previous + 1;
+    char *buffer, *buf;
+
+    /* append newly read data to the end of any previous unprocess data */
+    buffer = realloc (master->buffer, len);
+    memcpy (buffer + master->previous, ptr, passed_len);
+    buffer [len] = '\0';
+
+    buf = buffer;
+    while (len)
+    {
+        int offset;
+        char *eol = strchr (buf, '\n');
+        if (eol)
+        {
+            offset = (eol - buf) + 1;
+            *eol = '\0';
+            eol = strchr (buf, '\r');
+            if (eol) *eol = '\0';
+        }
+        else
+        {
+            /* incomplete line, the rest may be in the next read */
+            unsigned rest = strlen (buf);
+            memmove (buffer, buf, rest);
+            master->previous = rest;
             break;
         }
 
-        len = strlen(username) + strlen(password) + 2;
-        authheader = malloc(len);
-        snprintf (authheader, len, "%s:%s", username, password);
-        data = util_base64_encode(authheader);
-        sock_write (mastersock,
-                "GET /admin/streamlist.txt HTTP/1.0\r\n"
-                "Authorization: Basic %s\r\n"
-                "\r\n", data);
-        free(authheader);
-        free(data);
-
-        if (sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
-                strncmp (buf, "HTTP/1.0 200", 12) != 0)
+        DEBUG1 ("read from master \"%s\"", buf);
+        if (strlen (buf))
         {
-            sock_close (mastersock);
-            WARN0 ("Master rejected streamlist request");
-            break;
-        }
-
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
-        {
-            if (!strlen(buf))
-                break;
-        }
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
-        {
-            relay_server *r;
-            if (!strlen(buf))
-                continue;
-            DEBUG2 ("read %d from master \"%s\"", count++, buf);
-            r = calloc (1, sizeof (relay_server));
-            if (r)
+            relay_server *r = calloc (1, sizeof (relay_server));
+            r->server = xmlStrdup (master->server);
+            r->port = master->port;
+            r->mount = xmlStrdup (buf);
+            r->localmount = xmlStrdup (buf);
+            r->mp3metadata = 1;
+            r->on_demand = master->on_demand;
+            r->enable = 1;
+            if (master->send_auth)
             {
-                r->server = xmlStrdup (master);
-                r->port = port;
-                r->mount = xmlStrdup (buf);
-                r->localmount = xmlStrdup (buf);
-                r->mp3metadata = 1;
-                r->on_demand = on_demand;
-                r->enable = 1;
-                if (send_auth)
-                {
-                    r->username = xmlStrdup (username);
-                    r->password = xmlStrdup (password);
-                }
-                r->next = new_relays;
-                new_relays = r;
+                r->username = xmlStrdup (master->username);
+                r->password = xmlStrdup (master->password);
             }
+            r->next = master->new_relays;
+            master->new_relays = r;
         }
-        sock_close (mastersock);
+        buf += offset;
+        len -= offset;
+    }
+    master->buffer = buffer;
+    return passed_len;
+}
+
+
+/* retrieve streamlist from master server. The streamlist can be retrieved
+ * from an SSL port if curl is capable and the config is aware of the port
+ * to use
+ */
+static void *streamlist_thread (void *arg)
+{
+    struct master_conn_details *master = arg;
+    CURL *handle;
+    const char *protocol = "http";
+    int port = master->port;
+    char error [CURL_ERROR_SIZE];
+    char url [300], auth [100];
+
+    if (master->ssl_port)
+    {
+        protocol = "https";
+        port = master->ssl_port;
+    }
+    snprintf (auth, sizeof (auth), "%s:%s", master->username, master->password);
+    snprintf (url, sizeof (url), "%s://%s:%d/admin/streamlist.txt",
+            protocol, master->server, port);
+    handle = curl_easy_init ();
+    curl_easy_setopt (handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
+    curl_easy_setopt (handle, CURLOPT_URL, url);
+    curl_easy_setopt (handle, CURLOPT_HEADERFUNCTION, streamlist_header);
+    curl_easy_setopt (handle, CURLOPT_HEADERDATA, master);
+    curl_easy_setopt (handle, CURLOPT_WRITEFUNCTION, streamlist_data);
+    curl_easy_setopt (handle, CURLOPT_WRITEDATA, master);
+    curl_easy_setopt (handle, CURLOPT_USERPWD, auth);
+    curl_easy_setopt (handle, CURLOPT_ERRORBUFFER, error);
+    curl_easy_setopt (handle, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_easy_setopt (handle, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt (handle, CURLOPT_TIMEOUT, 15L);
+
+    if (curl_easy_perform (handle) != 0)
+        WARN2 ("Failed URL access \"%s\" (%s)", url, error);
+    if (master->ok)
+    {
+        /* process retrieved relays */
+        relay_server *cleanup_relays;
 
         thread_mutex_lock (&(config_locks()->relay_lock));
-        cleanup_relays = update_relays (&global.master_relays, new_relays);
-        
+        cleanup_relays = update_relays (&global.master_relays, master->new_relays);
+
         relay_check_streams (global.master_relays, cleanup_relays);
-        relay_check_streams (NULL, new_relays);
+        relay_check_streams (NULL, master->new_relays);
 
         thread_mutex_unlock (&(config_locks()->relay_lock));
+    }
 
-    } while(0);
+    curl_easy_cleanup (handle);
+    free (master->server);
+    free (master->username);
+    free (master->password);
+    free (master->buffer);
+    free (master);
+    return NULL;
+}
+#endif
 
-    if (master)
-        free (master);
-    if (username)
-        free (username);
-    if (password)
-        free (password);
 
-    return ret;
+static void update_from_master (ice_config_t *config)
+{
+#ifdef HAVE_CURL
+    struct master_conn_details *details = calloc (1, sizeof (*details));
+
+    if (config->master_password == NULL || config->master_server == NULL ||
+            config->master_server_port == 0)
+        return;
+    details->server = strdup (config->master_server);
+    details->port = config->master_server_port; 
+    details->ssl_port = config->master_ssl_port; 
+    details->username = strdup (config->master_username);
+    details->password = strdup (config->master_password);
+    details->send_auth = config->master_relay_auth;
+    details->on_demand = config->on_demand;
+
+    thread_create ("streamlist", streamlist_thread, details, THREAD_DETACHED);
+#else
+    WARN0 ("streamlist request disabled, rebuild with libcurl if required");
+#endif
 }
 
 
@@ -724,9 +817,7 @@ static void *_slave_thread(void *arg)
             max_interval = config->master_update_interval;
             update_master_as_slave (config);
 
-            /* the connection could take some time, so the lock can drop */
-            if (update_from_master (config))
-                config = config_get_config();
+            update_from_master (config);
 
             thread_mutex_lock (&(config_locks()->relay_lock));
 

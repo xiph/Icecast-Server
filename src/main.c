@@ -49,7 +49,6 @@
 #include "xslt.h"
 #include "fserve.h"
 #include "yp.h"
-#include "format.h"
 
 #include <libxml/xmlmemory.h>
 

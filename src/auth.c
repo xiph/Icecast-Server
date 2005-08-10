@@ -324,7 +324,7 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
     else
     {
         avl_tree_unlock (global.source_tree);
-        ret = fserve_client_create (client, mount);
+        fserve_client_create (client, mount);
     }
     return ret;
 }

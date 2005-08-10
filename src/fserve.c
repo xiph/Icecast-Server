@@ -370,6 +370,9 @@ static void fserve_client_destroy(fserve_t *fclient)
 }
 
 
+/* client has requested a file, so check for it and send the file.  Do not
+ * refer to the client_t afterwards.  return 0 for success, -1 on error.
+ */
 int fserve_client_create (client_t *httpclient, const char *path)
 {
     struct stat file_buf;
@@ -397,7 +400,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
             free (fullpath);
-            return 0;
+            return -1;
         }
         m3u_file_available = 0;
     }
@@ -448,7 +451,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         client_send_404 (httpclient, "The file you requested could not be found");
         config_release_config();
         free (fullpath);
-        return 0;
+        return -1;
     }
     config_release_config();
 
@@ -457,7 +460,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         client_send_404 (httpclient, "The file you requested could not be found");
         WARN1 ("found requested file but there is no handler for it: %s", fullpath);
         free (fullpath);
-        return 0;
+        return -1;
     }
 
     file = fopen (fullpath, "rb");
@@ -466,7 +469,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     {
         WARN1 ("Problem accessing file \"%s\"", fullpath);
         client_send_404 (httpclient, "File not readable");
-        return 0;
+        return -1;
     }
 
     content_length = (int64_t)file_buf.st_size;
@@ -537,7 +540,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     /* If we run into any issues with the ranges
        we fallback to a normal/non-range request */
     client_send_416 (httpclient);
-    return 0;
+    return -1;
 }
 
 

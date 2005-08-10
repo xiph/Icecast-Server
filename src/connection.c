@@ -242,6 +242,8 @@ static int connection_send_ssl (connection_t *con, const char *buf, unsigned len
 static int connection_read (connection_t *con, char *buf, unsigned len)
 {
     int bytes = sock_read_bytes (con->sock, buf, len);
+    if (bytes == 0)
+        con->error = 1;
     if (bytes == -1 && !sock_recoverable (sock_error()))
         con->error = 1;
     return bytes;

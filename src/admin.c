@@ -1123,7 +1123,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
 
 /* catch all function for admin requests.  If file has xsl extension then
- * transform it usinf the available stats, else send the XML tree of the
+ * transform it using the available stats, else send the XML tree of the
  * stats
  */
 static void command_stats (client_t *client)

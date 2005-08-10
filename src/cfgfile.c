@@ -463,6 +463,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_relay_auth = atoi(tmp);
             xmlFree (tmp);
+        } else if (strcmp(node->name, "master-ssl-port") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->master_ssl_port = atoi(tmp);
+            xmlFree (tmp);
         } else if (strcmp(node->name, "shoutcast-mount") == 0) {
             if (configuration->shoutcast_mount &&
                     configuration->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)

@@ -38,7 +38,7 @@ typedef struct _client_tag
     /* http response code for this client */
     int respcode;
 
-    /* auth completed, 0 not yet, 1 passed, 2 failed  */
+    /* auth completed, 0 not yet, 1 passed */
     int authenticated;
 
     /* is client getting intro data */

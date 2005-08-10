@@ -140,6 +140,7 @@ typedef struct ice_config_tag
     char *master_username;
     char *master_password;
     int master_relay_auth;
+    int master_ssl_port;
 
     relay_server *relay;
 
