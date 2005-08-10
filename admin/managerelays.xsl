@@ -6,23 +6,36 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body>
-  <center>
-  <table border="0" cellpadding="1" cellspacing="3">
-  <tr>        
-    <td align="center">
-      <a class="nav" href="listmounts.xsl">List MountPoints</a> | 
-      <a class="nav" href="moveclients.xsl">Move Listeners</a> | 
-      <a class="nav" href="managerelays.xsl">Manage Relays</a> |
-      <a class="nav" href="stats.xsl">Stats</a> | 
-      <a class="nav" href="/status.xsl">Status Page</a>
-    </td></tr>
-  </table>
-</center>
-<h2>Manage relays</h2>
+<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<img align="left" src="/images/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
+<br />
+
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
+</div>
+	<table border="0" cellpadding="1" cellspacing="3">
+	<tr>        
+	    <td align="center">
+	        <a class="nav" href="stats.xsl">Admin Home</a> |
+		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
+        	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
+            <a class="nav" href="managerelays.xsl">Manage Relays</a> |
+        	<a class="nav" href="/status.xsl">Index</a>
+	    </td></tr>
+	</table>
+<div class="roundbottom">
+<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
+</div>
+</div>
+<br />
+<br />
+
+
+<h1>Relay Management</h1>
+<div class="roundcont">
+<div class="roundtop">
+<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
 </div>
 <div class="newscontent">
 <xsl:for-each select="relay">
@@ -49,11 +62,10 @@
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 </div>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
 </div>
 </div>
-<div class="poster">
-<img align="left" src="/icecast.png" />Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+<div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
 </body>
 </html>
 </xsl:template>
