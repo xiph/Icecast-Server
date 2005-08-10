@@ -20,6 +20,18 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh16
+. fixed segv when using oddcast DSP
+. master/slave streamlist is now isolated in its own thread, so should not
+  affect the slave thread which among other things does timer updates. libcurl
+  is used so that is required but you can do ssl queries if required
+. new listeners will be rejected if auth queue is backed up
+. Changes to web pages by Dave St John
+. isolated SSL/non-SSL switch to connection_t
+. An older xslt lib can be used (earliest version has not been determined yet)
+. changed 'header' option to 'auth_header' option in auth_url
+. various typos, cleanups for merges with trunk
+
 2.2-kh15
 . fixed 2 segv bugs, one on relay shutdown (on-demand) and another on client
   drop in connection thread.
