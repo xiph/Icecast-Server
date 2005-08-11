@@ -34,6 +34,33 @@
 #include <sys/time.h>
 #endif
 
+#ifdef WIN32
+#define snprintf _snprintf
+int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr result, xsltStylesheetPtr style) {
+    xmlOutputBufferPtr buf;
+
+    *doc_txt_ptr = NULL;
+    *doc_txt_len = 0;
+    if (result->children == NULL)
+	return(0);
+
+	buf = xmlAllocOutputBuffer(NULL);
+
+    if (buf == NULL)
+		return(-1);
+    xsltSaveResultTo(buf, result, style);
+    if (buf->conv != NULL) {
+		*doc_txt_len = buf->conv->use;
+		*doc_txt_ptr = xmlStrndup(buf->conv->content, *doc_txt_len);
+    } else {
+		*doc_txt_len = buf->buffer->use;
+		*doc_txt_ptr = xmlStrndup(buf->buffer->content, *doc_txt_len);
+    }
+    (void)xmlOutputBufferClose(buf);
+    return 0;
+}
+#endif
+
 
 #include "thread/thread.h"
 #include "avl/avl.h"
