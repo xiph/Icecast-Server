@@ -602,9 +602,6 @@ static void source_init (source_t *source)
     stats_event (source->mount, "listener_peak", "0");
     stats_event_time (source->mount, "stream_start");
 
-    if (source->client->con)
-        sock_set_blocking (source->con->sock, SOCK_NONBLOCK);
-
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
     source->running = 1;

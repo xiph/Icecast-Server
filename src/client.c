@@ -39,33 +39,34 @@
 #undef CATMODULE
 #define CATMODULE "client"
 
-client_t *client_create(connection_t *con, http_parser_t *parser)
+/* should be called with global lock held */
+int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
-    ice_config_t *config = config_get_config ();
+    ice_config_t *config;
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
-    int client_limit = config->client_limit;
+    int ret = -1;
+
+    if (client == NULL)
+        return -1;
+
+    config = config_get_config ();
+
+    global.clients++;
+    if (config->client_limit < global.clients)
+        WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
+    else
+        ret = 0;
+
     config_release_config ();
 
-    global_lock();
-    if (global.clients >= client_limit || client == NULL)
-    {
-        client_limit = global.clients;
-        global_unlock();
-        free (client);
-        WARN1 ("server client limit reached (%d clients)", client_limit);
-        return NULL;
-    }
-    global.clients++;
     stats_event_args (NULL, "clients", "%d", global.clients);
-    global_unlock();
-
     client->con = con;
     client->parser = parser;
-    client->refbuf = NULL;
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
+    *c_ptr = client;
 
-    return client;
+    return ret;
 }
 
 void client_destroy(client_t *client)
@@ -110,7 +111,23 @@ void client_destroy(client_t *client)
 /* helper function for reading data from a client */
 int client_read_bytes (client_t *client, void *buf, unsigned len)
 {
-    int bytes = sock_read_bytes (client->con->sock, buf, len);
+    int bytes;
+    
+    if (client->refbuf && client->refbuf->len)
+    {
+        /* we have data to read from a refbuf first */
+        if (client->refbuf->len < len)
+            len = client->refbuf->len;
+        memcpy (buf, client->refbuf->data, len);
+        if (client->refbuf->len < len)
+        {
+            char *ptr = client->refbuf->data;
+            memmove (ptr, ptr+len, client->refbuf->len - len);
+        }
+        client->refbuf->len -= len;
+        return len;
+    }
+    bytes = sock_read_bytes (client->con->sock, buf, len);
     if (bytes > 0)
         return bytes;
 
