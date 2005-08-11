@@ -108,11 +108,9 @@ static void _shutdown_subsystems(void)
     xslt_shutdown();
     refbuf_shutdown();
     slave_shutdown();
+    auth_shutdown();
     yp_shutdown();
     stats_shutdown();
-
-    /* Now that these are done, we can stop the loggers. */
-    _stop_logging();
 
     global_shutdown();
     connection_shutdown();
@@ -120,6 +118,9 @@ static void _shutdown_subsystems(void)
     resolver_shutdown();
     sock_shutdown();
     thread_shutdown();
+
+    /* Now that these are done, we can stop the loggers. */
+    _stop_logging();
     log_shutdown();
 
     xmlCleanupParser();

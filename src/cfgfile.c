@@ -211,6 +211,7 @@ void config_clear(ice_config_t *c)
             option = nextopt;
         }
 
+        auth_release (mount->auth);
         free(mount);
         mount = nextmount;
     }

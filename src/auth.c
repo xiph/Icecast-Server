@@ -114,7 +114,7 @@ void auth_release (auth_t *authenticator)
 
     if (authenticator->free)
         authenticator->free (authenticator);
-    free (authenticator->type);
+    xmlFree (authenticator->type);
     free (authenticator);
 }
 
