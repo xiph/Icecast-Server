@@ -89,7 +89,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     thetime = localtime(&now);
     strftime (buffer, len-7, "%d/%b/%Y:%H:%M:%S", thetime);
     strcat(buffer, timezone_string);
-
+	free(timezone_string);
     return 1;
 }
 #endif
