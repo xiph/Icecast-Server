@@ -17,7 +17,7 @@
 <table border="0" width="100%" id="table1" cellspacing="0" cellpadding="4">
 	<tr>
 		<td bgcolor="#656565">
-	    <a class="nav" href="admin/">Administration</a> |
+	    <a class="nav" href="admin/stats.xsl">Administration</a> |
 		<a class="nav" href="status.xsl">Server Status</a> |
 		<a class="nav" href="server_uptime.xsl">Server Uptime</a> |
 		<a class="nav" href="server_version.xsl">Version Info</a> |</td>

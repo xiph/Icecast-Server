@@ -711,7 +711,7 @@ static void *streamlist_thread (void *arg)
     curl_easy_setopt (handle, CURLOPT_WRITEDATA, master);
     curl_easy_setopt (handle, CURLOPT_USERPWD, auth);
     curl_easy_setopt (handle, CURLOPT_ERRORBUFFER, error);
-    curl_easy_setopt (handle, CURLOPT_SSL_VERIFYPEER, FALSE);
+    curl_easy_setopt (handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt (handle, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt (handle, CURLOPT_TIMEOUT, 15L);
 
