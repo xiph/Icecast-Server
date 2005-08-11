@@ -85,6 +85,7 @@ typedef struct {
 
 static void auth_url_clear(auth_t *self)
 {
+    INFO0 ("Doing auth URL cleanup");
     auth_url *url = self->state;
     curl_easy_cleanup (url->handle);
     free (url->username);
@@ -382,13 +383,13 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             url_info->username = strdup (options->value);
         if(!strcmp(options->name, "password"))
             url_info->password = strdup (options->value);
-        if(!strcmp(options->name, "add"))
+        if(!strcmp(options->name, "listener_add"))
             url_info->addurl = strdup (options->value);
-        if(!strcmp(options->name, "remove"))
+        if(!strcmp(options->name, "listener_remove"))
             url_info->removeurl = strdup (options->value);
-        if(!strcmp(options->name, "start"))
+        if(!strcmp(options->name, "mount_add"))
             url_info->stream_start = strdup (options->value);
-        if(!strcmp(options->name, "end"))
+        if(!strcmp(options->name, "mount_remove"))
             url_info->stream_end = strdup (options->value);
         if(!strcmp(options->name, "auth_header"))
         {
