@@ -85,8 +85,10 @@ typedef struct {
 
 static void auth_url_clear(auth_t *self)
 {
+    auth_url *url;
+
     INFO0 ("Doing auth URL cleanup");
-    auth_url *url = self->state;
+    url = self->state;
     curl_easy_cleanup (url->handle);
     free (url->username);
     free (url->password);
