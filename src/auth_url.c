@@ -24,6 +24,12 @@
  *
  * icecast-auth-user: 1
  *
+ * A listening client may also be configured as only to stay connected for a
+ * certain length of time. eg The auth server may only allow a 15 minute
+ * playback by sending back.
+ *
+ * icecast-auth-timelimit: 900
+ *
  * On client disconnection another request can be sent to a URL with the POST
  * information of
  *
@@ -78,6 +84,8 @@ typedef struct {
     char *password;
     char *auth_header;
     int  auth_header_len;
+    char *timelimit_header;
+    int  timelimit_header_len;
     CURL *handle;
     char errormsg [CURL_ERROR_SIZE];
 } auth_url;
@@ -97,6 +105,7 @@ static void auth_url_clear(auth_t *self)
     free (url->stream_start);
     free (url->stream_end);
     free (url->auth_header);
+    free (url->timelimit_header);
     free (url);
 }
 
@@ -113,6 +122,12 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         auth_url *url = auth->state;
         if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
             client->authenticated = 1;
+        if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
+        {
+            unsigned int limit = 0;
+            sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
+            client->con->discon_time = time(NULL) + limit;
+        }
         if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0)
         {
             char *eol;
@@ -379,6 +394,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 
     url_info = calloc(1, sizeof(auth_url));
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
+    url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
     while(options) {
         if(!strcmp(options->name, "username"))
@@ -398,6 +414,11 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             free (url_info->auth_header);
             url_info->auth_header = strdup (options->value);
         }
+        if (strcmp(options->name, "timelimit-header") == 0)
+        {
+            free (url_info->timelimit_header);
+            url_info->timelimit_header = strdup (options->value);
+        }
         options = options->next;
     }
     url_info->handle = curl_easy_init ();
@@ -408,6 +429,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     }
     if (url_info->auth_header)
         url_info->auth_header_len = strlen (url_info->auth_header);
+    if (url_info->timelimit_header)
+        url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
     curl_easy_setopt (url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
     curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);

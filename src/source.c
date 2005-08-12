@@ -507,6 +507,14 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 
     while (1)
     {
+        /* check for limited listener time */
+        if (client->con->discon_time)
+            if (time(NULL) >= client->con->discon_time)
+            {
+                INFO1 ("time limit reached for client #%lu", client->con->id);
+                client->con->error = 1;
+            }
+
         /* jump out if client connection has died */
         if (client->con->error)
             break;
