@@ -6,15 +6,15 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
-<body bgcolor="black">
+<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 <table border="0" width="100%%">
 <tr>
 <td width="50"></td>
 <td>
-<h2>Authorization Page</h2>
+<img align="left" src="/icecast.png" /><h2><center>Authorization Page</center></h2>
 <div class="roundcont">
 <div class="roundtop">
-<img src="corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" />
 </div>
 <div class="newscontent">
 <xsl:for-each select="source">
@@ -43,14 +43,14 @@
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 </div>
 <div class="roundbottom">
-<img src="corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
 </div>
 </div>
 <br></br><br></br>
 </td>
 <td width="25"></td></tr>
 </table>
-<div class="poster"><img align="left" src="/icecast.png" />Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+<div class="poster">Support icecast development at <a class="nav" target="_blank" href="http://www.icecast.org">www.icecast.org</a></div>
 </body>
 </html>
 </xsl:template>

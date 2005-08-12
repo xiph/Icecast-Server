@@ -38,6 +38,14 @@ h2 {
 	color: #fff;
 	margin-top:3px;
 }
+h1 {
+	font-family: Verdana, sans-serif;
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 100%;
+	color: #fff;
+	margin-top:3px;
+}
 .nav {
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
@@ -116,7 +124,7 @@ td {
 	font-weight: bold;
 	font-size: 110%;
 	color: #f8ef64;
-        border-bottom:  3px dashed #000000;
+        border-bottom:  1px groove #ACACAC;
 }
 .newscontent h4 {
 	margin: 10px 0px;
@@ -189,11 +197,11 @@ td {
 }
 
 .roundtop { 
-	background: url(corner_topright.jpg) no-repeat top right; 
+	background: url(/corner_topright.jpg) no-repeat top right; 
 }
 
 .roundbottom {
-	background: url(corner_bottomright.jpg) no-repeat top right; 
+	background: url(/corner_bottomright.jpg) no-repeat top right; 
 }
 
 img.corner {

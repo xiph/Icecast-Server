@@ -6,20 +6,32 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body>
-	<center>
+<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<img align="left" src="/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
+<br />
+
+<div class="roundcont">
+<div class="roundtop">
+<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+</div>
 	<table border="0" cellpadding="1" cellspacing="3">
 	<tr>        
 	    <td align="center">
-		<a class="nav" href="listmounts.xsl">List MountPoints</a> | 
+	        <a class="nav" href="stats.xsl">Admin Home</a> |
+		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
         	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
-        	<a class="nav" href="stats.xsl">Stats</a> | 
-        	<a class="nav" href="/status.xsl">Status Page</a>
+        	<a class="nav" href="/status.xsl">Index</a>
 	    </td></tr>
 	</table>
-	</center>
+<div class="roundbottom">
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+</div>
+</div>
+<br />
+<br />
+
 <xsl:variable name = "currentmount" ><xsl:value-of select="current_source" /></xsl:variable>
-<h2>Move Clients from (<xsl:value-of select="current_source" />)</h2>
+<h1>Moving Listeners From (<xsl:value-of select="current_source" />)</h1>
 <div class="roundcont">
 <div class="roundtop">
 <img src="/corner_topleft.jpg" class="corner" style="display: none" />
@@ -43,8 +55,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
 </div>
 </div>
-<div class="poster">
-<img align="left" src="/icecast.png" />Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+<div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
 </body>
 </html>
 
