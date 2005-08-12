@@ -764,8 +764,13 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             source_free_source (source);
         }
         else
-            thread_create ("Source Thread", source_client_thread,
-                    source, THREAD_DETACHED);
+        {
+            client->respcode = 200;
+            snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                    "HTTP/1.0 200 OK\r\n\r\n");
+            client->refbuf->len = strlen (client->refbuf->data);
+            fserve_add_client_callback (client, source_client_callback, source);
+        }
     }
     else
     {
@@ -787,14 +792,10 @@ static void _handle_stats_request (client_t *client, char *uri)
     }
 
     client->respcode = 200;
-    if (sock_write (client->con->sock, "HTTP/1.0 200 OK\r\n\r\n") < 19)
-    {
-        client_destroy (client);
-        ERROR0 ("failed to write header");
-        return;
-    }
-
-    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 200 OK\r\n\r\n");
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client_callback (client, stats_callback, NULL);
 }
 
 static void _handle_get_request (client_t *client, char *passed_uri)

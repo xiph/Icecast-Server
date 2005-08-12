@@ -1184,28 +1184,6 @@ void *source_client_thread (void *arg)
 {
     source_t *source = arg;
 
-    if (source->client && source->client->con)
-    {
-        const char ok_msg[] = "HTTP/1.0 200 OK\r\n\r\n";
-        int bytes;
-        const char *agent;
-
-        source->client->respcode = 200;
-        bytes = sock_write_bytes (source->client->con->sock, ok_msg, sizeof (ok_msg)-1);
-        if (bytes < (int)(sizeof (ok_msg)-1))
-        {
-            global_lock();
-            global.sources--;
-            global_unlock();
-            WARN0 ("Error writing 200 OK message to source client");
-            source_free_source (source);
-            return NULL;
-        }
-        stats_event (source->mount, "source_ip", source->client->con->ip);
-        agent = httpp_getvar (source->client->parser, "user-agent");
-        if (agent)
-            stats_event (source->mount, "user_agent", agent);
-    }
     stats_event_inc(NULL, "source_client_connections");
     stats_event (source->mount, "listeners", "0");
 
@@ -1215,6 +1193,30 @@ void *source_client_thread (void *arg)
     source_recheck_mounts ();
 
     return NULL;
+}
+
+
+void source_client_callback (client_t *client, void *arg)
+{
+    const char *agent;
+    source_t *source = arg;
+
+    if (client->con->error)
+    {
+        global_lock();
+        global.sources--;
+        global_unlock();
+        source_free_source (source);
+        client_destroy (client);
+        return;
+    }
+    stats_event (source->mount, "source_ip", source->client->con->ip);
+    agent = httpp_getvar (source->client->parser, "user-agent");
+    if (agent)
+        stats_event (source->mount, "user_agent", agent);
+
+    thread_create ("Source Thread", source_client_thread,
+            source, THREAD_DETACHED);
 }
 
 

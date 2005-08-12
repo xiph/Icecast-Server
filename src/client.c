@@ -32,6 +32,7 @@
 #include "refbuf.h"
 #include "format.h"
 #include "stats.h"
+#include "fserve.h"
 
 #include "client.h"
 #include "logging.h"
@@ -143,46 +144,36 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 
 
 void client_send_400(client_t *client, char *message) {
-    int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 400 Bad Request\r\n"
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 400 Bad Request\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 400;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 void client_send_404(client_t *client, char *message) {
 
-    int bytes;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 404 File Not Found\r\n"
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 404 File Not Found\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 404;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
-void client_send_504(client_t *client, char *message) {
-    int bytes;
-    client->respcode = 504;
-    bytes = sock_write(client->con->sock, 
-            "HTTP/1.0 504 Server Full\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
-       if (bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
-}
 
 void client_send_401(client_t *client) {
-    int bytes = sock_write(client->con->sock, 
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 401 Authentication Required\r\n"
             "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n"
             "\r\n"
             "You need to authenticate\r\n");
-    if(bytes > 0) client->con->sent_bytes = bytes;
     client->respcode = 401;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 void client_send_403(client_t *client) {
