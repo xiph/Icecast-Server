@@ -280,6 +280,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
                "Content-Length: ";
         xmlDocDumpMemory(doc, &buff, &len);
         buf_len = strlen (http) + len + 20;
+        client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
         len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
         client->refbuf->len = len;
@@ -547,15 +548,13 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
 
 static void html_success(client_t *client, char *message)
 {
-    int bytes;
-
     client->respcode = 200;
-    bytes = sock_write(client->con->sock, 
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" 
             "<html><head><title>Admin request successful</title></head>"
             "<body><p>%s</p></body></html>", message);
-    if(bytes > 0) client->con->sent_bytes = bytes;
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 
@@ -679,33 +678,28 @@ static void command_buildm3u(client_t *client, source_t *source,
 {
     char *username = NULL;
     char *password = NULL;
-    char *host = NULL;
-    int port = 0;
     ice_config_t *config;
 
     COMMAND_REQUIRE(client, "username", username);
     COMMAND_REQUIRE(client, "password", password);
 
-    config = config_get_config();
-    host = strdup(config->hostname);
-    port = config->port;
-    config_release_config();
-
     client->respcode = 200;
-    sock_write(client->con->sock,
+    config = config_get_config();
+    snprintf (client->refbuf->data, client->refbuf->len,
         "HTTP/1.0 200 OK\r\n"
         "Content-Type: audio/x-mpegurl\r\n"
         "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
         "http://%s:%s@%s:%d%s\r\n",
         username,
         password,
-        host,
-        port,
+        config->hostname,
+        config->port,
         source->mount
     );
+    config_release_config();
 
-    free(host);
-    client_destroy(client);
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
 }
 
 
@@ -978,12 +972,11 @@ static void command_list_mounts(client_t *client, int response)
     if (response == PLAINTEXT)
     {
         char *buf;
-        unsigned int remaining = 4096;
+        int remaining = PER_CLIENT_REFBUF_SIZE;
         int ret;
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
 
-        client->refbuf = refbuf_new (remaining);
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
@@ -1011,12 +1004,12 @@ static void command_list_mounts(client_t *client, int response)
         config_release_config();
 
         /* handle last line */
-        if (ret > 0 && (unsigned)ret < remaining)
+        if (ret > 0 && ret < remaining)
         {
             remaining -= ret;
             buf += ret;
         }
-        client->refbuf->len = 4096 - remaining;
+        client->refbuf->len = PER_CLIENT_REFBUF_SIZE - remaining;
         fserve_add_client (client, NULL);
     }
     else
