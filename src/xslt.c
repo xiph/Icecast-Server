@@ -30,37 +30,13 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#ifndef _WIN32
+#ifdef  HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 
 #ifdef WIN32
 #define snprintf _snprintf
-int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr result, xsltStylesheetPtr style) {
-    xmlOutputBufferPtr buf;
-
-    *doc_txt_ptr = NULL;
-    *doc_txt_len = 0;
-    if (result->children == NULL)
-	return(0);
-
-	buf = xmlAllocOutputBuffer(NULL);
-
-    if (buf == NULL)
-		return(-1);
-    xsltSaveResultTo(buf, result, style);
-    if (buf->conv != NULL) {
-		*doc_txt_len = buf->conv->use;
-		*doc_txt_ptr = xmlStrndup(buf->conv->content, *doc_txt_len);
-    } else {
-		*doc_txt_len = buf->buffer->use;
-		*doc_txt_ptr = xmlStrndup(buf->buffer->content, *doc_txt_len);
-    }
-    (void)xmlOutputBufferClose(buf);
-    return 0;
-}
 #endif
-
 
 #include "thread/thread.h"
 #include "avl/avl.h"
@@ -86,14 +62,43 @@ typedef struct {
     xsltStylesheetPtr  stylesheet;
 } stylesheet_cache_t;
 
+#ifndef HAVE_XSLTSAVERESULTTOSTRING
+int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr result, xsltStylesheetPtr style) {
+    xmlOutputBufferPtr buf;
+
+    *doc_txt_ptr = NULL;
+    *doc_txt_len = 0;
+    if (result->children == NULL)
+	return(0);
+
+	buf = xmlAllocOutputBuffer(NULL);
+
+    if (buf == NULL)
+		return(-1);
+    xsltSaveResultTo(buf, result, style);
+    if (buf->conv != NULL) {
+		*doc_txt_len = buf->conv->use;
+		*doc_txt_ptr = xmlStrndup(buf->conv->content, *doc_txt_len);
+    } else {
+		*doc_txt_len = buf->buffer->use;
+		*doc_txt_ptr = xmlStrndup(buf->buffer->content, *doc_txt_len);
+    }
+    (void)xmlOutputBufferClose(buf);
+    return 0;
+}
+#endif
+
 /* Keep it small... */
 #define CACHESIZE 3
 
-stylesheet_cache_t cache[CACHESIZE];
-mutex_t xsltlock;
+static stylesheet_cache_t cache[CACHESIZE];
+static mutex_t xsltlock;
 
 void xslt_initialize()
 {
+    xmlSubstituteEntitiesDefault(1);
+    xmlLoadExtDtdDefaultValue = 1;
+
     memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
     thread_mutex_create(&xsltlock);
     xmlSubstituteEntitiesDefault(1);
@@ -209,6 +214,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         if (string == NULL)
             string = xmlStrdup ("");
         client->respcode = 200;
+        client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
         len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
         client->refbuf->len = len;
