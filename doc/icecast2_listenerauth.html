@@ -81,10 +81,10 @@ config file.  The following shows the list of options available :</p>
     &lt;mount&gt;
         &lt;mount-name&gt;/example.ogg&lt;/mount-name&gt;
         &lt;authentication type="url"&gt;
-            &lt;option name="start" value="http://myauthserver.com/stream_start.php"/&gt;
-            &lt;option name="end" value="http://myauthserver.com/stream_end.php"/&gt;
-            &lt;option name="add" value="http://myauthserver.com/listener_joined.php"/&gt;
-            &lt;option name="remove" value="http://myauthserver.com/listener_left.php"/&gt;
+            &lt;option name="mount_add" value="http://myauthserver.com/stream_start.php"/&gt;
+            &lt;option name="mount_remove" value="http://myauthserver.com/stream_end.php"/&gt;
+            &lt;option name="listener_add" value="http://myauthserver.com/listener_joined.php"/&gt;
+            &lt;option name="listener_remove" value="http://myauthserver.com/listener_left.php"/&gt;
             &lt;option name="username" value="user"/&gt;
             &lt;option name="password" value="pass"/&gt;
             &lt;option name="auth_header" value="icecast-auth-user: 1"/&gt;
@@ -115,7 +115,7 @@ listener details are passed.</p>
 <h3>add</h3>
 <p>This is most likely to be used if anything. When a listener connects, before anything is
 sent back to them, this request is processed.  The default action is to reject a listener
-unless the auth server sends back a response header which can be stated in the 'header' option
+unless the auth server sends back a response header which may be stated in the 'header' option
 </p>
 <p>POST details are</p>
 <pre>

@@ -154,6 +154,7 @@ source_t *source_find_mount (const char *mount)
     while (mount && depth < MAX_FALLBACK_DEPTH)
     {
         source = source_find_mount_raw(mount);
+
         if (source)
         {
             if (source->running || source->on_demand)

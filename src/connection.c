@@ -994,7 +994,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     }
 
     add_client (uri, client);
-
     if (uri != passed_uri) free (uri);
 }
 
@@ -1100,6 +1099,7 @@ static void *_handle_connection(void *arg)
         if (node)
         {
             client_t *client = node->client;
+
             /* Check for special shoutcast compatability processing */
             if (node->shoutcast)
             {

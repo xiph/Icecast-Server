@@ -50,6 +50,13 @@
 </xsl:choose>
 (<xsl:value-of select="@mount" />)
 <xsl:if test="authenticator"> <a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> </xsl:if>
+<xsl:if test="artwork">
+  <img border="0" alt="">
+  <xsl:attribute name="src">
+     <xsl:value-of select="artwork"/>
+  </xsl:attribute>
+ </img>
+</xsl:if>
 
 </h3>
 

@@ -115,7 +115,7 @@ void auth_release (auth_t *authenticator)
 
     if (authenticator->free)
         authenticator->free (authenticator);
-    free (authenticator->type);
+    xmlFree (authenticator->type);
     free (authenticator);
 }
 
@@ -441,6 +441,7 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
 {
     do
     {
+        DEBUG1 ("type is %s", auth->type);
 #ifdef HAVE_AUTH_URL
         if (strcmp (auth->type, "url") == 0)
         {

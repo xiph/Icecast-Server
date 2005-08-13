@@ -568,14 +568,12 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
 
 static void html_success(client_t *client, char *message)
 {
-    int bytes;
-
     client->respcode = 200;
-    bytes = snprintf (client->refbuf->data, client->refbuf->len,
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" 
             "<html><head><title>Admin request successful</title></head>"
             "<body><p>%s</p></body></html>", message);
-    client->refbuf->len = bytes;
+    client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
 
@@ -832,7 +830,6 @@ static void command_buildm3u(client_t *client, source_t *source,
 {
     char *username = NULL;
     char *password = NULL;
-    int bytes;
     ice_config_t *config;
 
     COMMAND_REQUIRE(client, "username", username);
@@ -840,7 +837,7 @@ static void command_buildm3u(client_t *client, source_t *source,
 
     client->respcode = 200;
     config = config_get_config();
-    bytes = snprintf (client->refbuf->data, client->refbuf->len,
+    snprintf (client->refbuf->data, client->refbuf->len,
         "HTTP/1.0 200 OK\r\n"
         "Content-Type: audio/x-mpegurl\r\n"
         "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
@@ -1018,8 +1015,7 @@ static void command_fallback(client_t *client, source_t *source,
 static void command_metadata(client_t *client, source_t *source,
     int response)
 {
-    char *action;
-    char *song, *title, *artist;
+    char *song, *title, *artist, *artwork;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1030,61 +1026,58 @@ static void command_metadata(client_t *client, source_t *source,
 
     DEBUG0("Got metadata update request");
 
-    COMMAND_REQUIRE(client, "mode", action);
     COMMAND_OPTIONAL(client, "song", song);
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
-
-    if (strcmp (action, "updinfo") != 0)
-    {
-        xmlNewChild(node, NULL, "message", "No such action");
-        xmlNewChild(node, NULL, "return", "0");
-        admin_send_response(doc, client, response,
-            ADMIN_XSL_RESPONSE);
-        xmlFreeDoc(doc);
-        return;
-    }
+    COMMAND_OPTIONAL(client, "artwork", artwork);
 
     thread_mutex_lock (&source->lock);
 
     plugin = source->format;
 
-    if (plugin && plugin->set_tag)
+    do
     {
-        if (song)
+        if (plugin == NULL)
+            break;
+        if (artwork)
+            stats_event (source->mount, "artwork", artwork);
+        else if (plugin->set_tag)
         {
-            plugin->set_tag (plugin, "song", song);
-            INFO2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+            if (song)
+            {
+                plugin->set_tag (plugin, "song", song);
+                INFO2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+            }
+            else
+            {
+                if (artist && title)
+                {
+                    plugin->set_tag (plugin, "title", title);
+                    plugin->set_tag (plugin, "artist", artist);
+                    INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
+                            source->mount, artist, title);
+                }
+            }
         }
         else
         {
-            if (artist && title)
-            {
-                plugin->set_tag (plugin, "title", title);
-                plugin->set_tag (plugin, "artist", artist);
-                INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
-                        source->mount, artist, title);
-            }
+            break;
         }
-
         thread_mutex_unlock (&source->lock);
-    }
-    else
-    {
-        thread_mutex_unlock (&source->lock);
-        xmlNewChild(node, NULL, "message", 
-            "Mountpoint will not accept URL updates");
+        xmlNewChild(node, NULL, "message", "Metadata update successful");
         xmlNewChild(node, NULL, "return", "1");
         admin_send_response(doc, client, response, 
-            ADMIN_XSL_RESPONSE);
+                ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
         return;
-    }
 
-    xmlNewChild(node, NULL, "message", "Metadata update successful");
+    } while (0);
+    thread_mutex_unlock (&source->lock);
+    xmlNewChild(node, NULL, "message", 
+            "Mountpoint will not accept this URL update");
     xmlNewChild(node, NULL, "return", "1");
     admin_send_response(doc, client, response, 
-        ADMIN_XSL_RESPONSE);
+            ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
 
@@ -1144,7 +1137,6 @@ static void command_stats (client_t *client)
     stats_get_xml(&doc, 1);
     admin_send_response (doc, client, response, xslfile+1);
     xmlFreeDoc(doc);
-    return;
 }
 
 static void command_list_mounts(client_t *client, int response)
@@ -1155,13 +1147,11 @@ static void command_list_mounts(client_t *client, int response)
     if (response == PLAINTEXT)
     {
         char *buf;
-        int remaining = 4096;
+        int remaining = PER_CLIENT_REFBUF_SIZE;
         int ret;
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
 
-        client_set_queue (client, NULL);
-        client->refbuf = refbuf_new (remaining);
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
@@ -1197,7 +1187,7 @@ static void command_list_mounts(client_t *client, int response)
             remaining -= ret;
             buf += ret;
         }
-        client->refbuf->len = 4096 - remaining;
+        client->refbuf->len = PER_CLIENT_REFBUF_SIZE - remaining;
         fserve_add_client (client, NULL);
     }
     else
