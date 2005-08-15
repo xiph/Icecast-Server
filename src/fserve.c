@@ -412,6 +412,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *host = httpp_getvar (httpclient->parser, "host");
         char *sourceuri = strdup (path);
         char *dot = strrchr (sourceuri, '.');
+        char *protocol = "http";
+        char *agent = httpp_getvar (httpclient->parser, "user-agent");
+
+        if (agent && (strstr (agent, "QTS") || strstr (agent, "QuickTime")))
+            protocol = "icy";
+
         *dot = 0;
         httpclient->respcode = 200;
         if (host == NULL)
@@ -420,7 +426,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
             snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "http://%s:%d%s\r\n", 
+                    "%s://%s:%d%s\r\n", 
+                    protocol,
                     config->hostname, config->port,
                     sourceuri
                     );
@@ -431,7 +438,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
             snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "http://%s%s\r\n", 
+                    "%s://%s%s\r\n", 
+                    protocol,
                     host, 
                     sourceuri
                     );
