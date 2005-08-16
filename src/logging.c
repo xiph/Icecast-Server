@@ -188,6 +188,20 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
 }
 
 
+void log_parse_failure (void *ctx, const char *fmt, ...)
+{
+    char line [200];
+    va_list ap;
+    char *eol;
+
+    va_start (ap, fmt);
+    vsnprintf (line, sizeof (line), fmt, ap);
+    eol = strrchr (line, '\n');
+    if (eol) *eol='\0';
+    va_end (ap);
+    log_write (errorlog, 2, (char*)ctx, "", "%s", line);
+}
+
 
 void restart_logging (ice_config_t *config)
 {
