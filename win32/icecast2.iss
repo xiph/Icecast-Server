@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast v2.2.0
+AppVerName=Icecast v2.2.0_08112005
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,8 +13,9 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_2.2.0_setup
+OutputBaseFilename=icecast2_win32_v2.2.0_08112005_setup
 WizardImageFile=icecast2logo2.bmp
+WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
 ; MinVersion=4,3.51
 
@@ -52,7 +53,7 @@ Source: "..\admin\manageauth.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\admin\updatemetadata.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\conf\icecast_full.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\icecast_minimal.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\icecast_shoutcast_compat.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion

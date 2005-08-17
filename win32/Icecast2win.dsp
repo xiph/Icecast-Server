@@ -199,6 +199,10 @@ SOURCE=.\black.bmp
 # End Source File
 # Begin Source File
 
+SOURCE=.\credits.bmp
+# End Source File
+# Begin Source File
+
 SOURCE=.\cursor1.cur
 # End Source File
 # Begin Source File
@@ -224,6 +228,10 @@ SOURCE=.\res\Icecast2.ico
 # Begin Source File
 
 SOURCE=.\icecast2logo2.bmp
+# End Source File
+# Begin Source File
+
+SOURCE=.\icecast2title.bmp
 # End Source File
 # Begin Source File
 

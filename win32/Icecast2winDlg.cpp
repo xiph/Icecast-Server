@@ -258,6 +258,7 @@ BEGIN_MESSAGE_MAP(CIcecast2winDlg, CDialog)
 	ON_WM_DESTROY()
 	ON_COMMAND(ID_FILE_EDITCONFIGURATION, OnFileEditconfiguration)
 	ON_COMMAND(ID_ABOUT_HELP, OnAboutHelp)
+	ON_COMMAND(ID_ABOUT_CREDITS, OnAboutCredits)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -1189,4 +1190,11 @@ void CIcecast2winDlg::OnAboutHelp()
 {
 	// TODO: Add your command handler code here
 	ShellExecute(NULL, "open", "doc\\icecast2.chm", NULL, NULL, SW_SHOWNORMAL);	
+}
+
+void CIcecast2winDlg::OnAboutCredits() 
+{
+	// TODO: Add your command handler code here
+	CAboutDlg	about;
+	about.DoModal();
 }
