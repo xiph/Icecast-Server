@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>Icecast v2.0 Documentation</title>
+<title>Icecast v2.x Documentation</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
@@ -227,7 +227,7 @@ certain formats.
         &lt;on-demand&gt;0&lt;/on-demand&gt;
     &lt;/relay&gt;
 </pre>
-<p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.   
+<p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.
 </p>
 <h3>Master Relay</h3>
 <p>
@@ -238,13 +238,13 @@ The following diagram shows the basics of doing a Master relay.  Note that Serve
       |     |  all mountpoints      |     | /mount1
       |     | &lt;-------------------  |     | /mount2.ogg
       |-----|                       |-----| /mount3
-      Icecast 2                     Icecast 2 
+      Icecast 2                     Icecast 2
       Server 1                      Server 2
       (RELAY SERVER)                (MASTER SERVER)
 
      configured with
      &lt;master-server&gt;
-     settings 
+     settings
 
 </pre>
 <p>
@@ -253,7 +253,7 @@ A server is configured as a Master Server relay by specifying the &lt;master-ser
 
 <h4>master-server</h4>
 <div class="indentedbox">
-This is the IP for the server which contains the mountpoints to be relayed (Master Server).  
+This is the IP for the server which contains the mountpoints to be relayed (Master Server).
 </div>
 <h4>master-server-port</h4>
 <div class="indentedbox">
@@ -296,7 +296,7 @@ The following diagram shows the basics of doing a Specific Mountpoint relay.  No
 
      configured with
      &lt;relay&gt;
-     settings 
+     settings
 
 </pre>
 
@@ -432,12 +432,12 @@ An optional value which will set the filename which will be a dump of the stream
 This optional value specifies a mountpoint that clients are automatically moved to if the source
 shuts down or is not streaming at the time a listener connects.  Only one can be listed in each
 mount and should refer to another mountpoint on the same server that is streaming in the same
-streaming format.<br> 
+streaming format.<br>
 If clients cannot fallback to another mountpoint, due to a missing fallback-mount or it states a
 mountpoint that is just not available, then those clients will be disconnected.
 If clients are falling back to a mountpoint and the fallback-mount is not actively streaming
 but defines a fallback-mount itself then those clients may be moved there instead.
-This multi-level fallback allows clients to cascade several mountpoints. 
+This multi-level fallback allows clients to cascade several mountpoints.
     <p>A fallback mount can also state a file that is located in webroot.  This is useful for
     playing a pre-recorded file in the case of a stream going down. It will repeat until either
     the listener disconnects or a stream comes back available and takes the listeners back.
@@ -486,7 +486,7 @@ listening clients back from the fallback mount.
 <h4>stream-url</h4>
 <div class="indentedbox">
     <p>Setting this will add the specified URL to the stats (and therefore YP) for this
-    mountpoint even if the source client/relay provide one.  The URL is generally for 
+    mountpoint even if the source client/relay provide one.  The URL is generally for
     directing people to a website.
     </p>
 </div>
@@ -579,7 +579,7 @@ This path is used in conjunction with the chroot settings, and specified the bas
 </div>
 <h4>logdir</h4>
 <div class="indentedbox">
-This path specifies the base directory used for logging. Both the error.log and access.log will be created relative to this directory.  
+This path specifies the base directory used for logging. Both the error.log and access.log will be created relative to this directory.
 </div>
 <h4>pidfile</h4>
 <div class="indentedbox">

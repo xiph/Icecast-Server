@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Icecast v2.x Documentation</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+<div class="boxtest">
+<h1>Icecast 2 Changes</h1>
+<hr id='titlebar' />
+<p>
+</p>
+<h2>Version 2.3</h2>
+<h3>New Features</h3>
+<p>
+<li> Streaming support for ogg speex, ogg flac, ogg midi
+<li> intro file support - per mount settable
+<li> on-demand relays, global and per-relay settable
+<li> fallback to file, extends on the intro file handling.
+<li> new mount-level settings
+<ol>
+	<li>public, type/subtype, genre settings, stream description,
+	<li>stream url, stream name, bitrate
+		(override what is sent from the source client)
+	<li>mp3 metadata interval
+	<li>on-[dis]connect scripts can be stated per-mount, invoked at source 
+		start/stop and take 1 arg which is the mountpoint.
+</ol>
+<li> New URL listener authenticator
+	.included is an example php-based application that can be used
+	 in conjunction with the url authenticator to manage a simple 
+         subscription-based broadcast.
+<li> HTPasswd authenticator uses in-memory structures now.
+<li> On demand files now can be fed through an authenticator
+
+<li> Update to admin/web xslt interface
+
+<h3>Fixes</h3>
+<li> real/helix works
+<li> win32 access log correct
+<li> stats client is stable now (curl -X STATS http://admin@host:port/)
+<li> show mountpoints on stats that are inactive but have an active fallback
+<li> more updates over HUP possible
+
+</p>
+</div>
+</body>
+</html>
