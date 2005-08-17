@@ -108,6 +108,17 @@
         <on-connect>/home/icecast/bin/stream-start</on-connect>
         <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
     </mount>
+
+    <mount>
+        <mount-name>/auth_example.ogg</mount-name>
+        <authentication type="url">
+            <option name="mount_add"       value="http://myauthserver.net/notify_mount.php"/>
+            <option name="mount_remove"    value="http://myauthserver.net/notify_mount.php"/>
+            <option name="listener_add"    value="http://myauthserver.net/notify_listener.php"/>
+            <option name="listener_remove" value="http://myauthserver.net/notify_listener.php"/>
+        </authentication>
+    </mount>
+
     -->
 
     <fileserve>1</fileserve>
