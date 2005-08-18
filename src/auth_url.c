@@ -17,7 +17,7 @@
  * be handled. The request will have POST information about the request in
  * the form of
  *
- * action=auth&client=1&server=host&port=8000&mount=/live&user=fred&pass=mypass&ip=127.0.0.1&agent=""
+ * action=listener_add&client=1&server=host&port=8000&mount=/live&user=fred&pass=mypass&ip=127.0.0.1&agent=""
  *
  * For a user to be accecpted the following HTTP header needs
  * to be returned (the actual string can be specified in the xml file)
@@ -33,7 +33,7 @@
  * On client disconnection another request can be sent to a URL with the POST
  * information of
  *
- * action=remove&server=host&port=8000&client=1&mount=/live&user=fred&pass=mypass&duration=3600
+ * action=listener_remove&server=host&port=8000&client=1&mount=/live&user=fred&pass=mypass&duration=3600
  *
  * client refers to the icecast client identification number. mount refers
  * to the mountpoint (beginning with / and may contain query parameters eg ?&
@@ -44,8 +44,8 @@
  * info stored at the auth server. Useful for abnormal outage/termination
  * cases.
  *
- * action=start&mount=/live&server=myserver.com&port=8000
- * action=end&mount=/live&server=myserver.com&port=8000
+ * action=mount_add&mount=/live&server=myserver.com&port=8000
+ * action=mount_remove&mount=/live&server=myserver.com&port=8000
  */
 
 #ifdef HAVE_CONFIG_H
@@ -183,7 +183,7 @@ static auth_result url_remove_client (auth_client *auth_user)
     mount = util_url_escape (mount);
 
     snprintf (post, sizeof (post),
-            "action=remove&server=%s&port=%d&client=%lu&mount=%s"
+            "action=listener_remove&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu",
             server, port, client->con->id, mount, username,
             password, (long unsigned)duration);
@@ -242,7 +242,7 @@ static auth_result url_add_client (auth_client *auth_user)
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
-            "action=auth&server=%s&port=%d&client=%lu&mount=%s"
+            "action=listener_add&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&ip=%s&agent=%s",
             server, port, client->con->id, mount, username,
             password, ipaddr, user_agent);
@@ -302,7 +302,7 @@ static void url_stream_start (auth_client *auth_user)
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=start&mount=%s&server=%s&port=%d", mount, server, port);
+            "action=mount_add&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
 
@@ -345,7 +345,7 @@ static void url_stream_end (auth_client *auth_user)
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=end&mount=%s&server=%s&port=%d", mount, server, port);
+            "action=mount_remove&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
 
@@ -414,7 +414,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             free (url_info->auth_header);
             url_info->auth_header = strdup (options->value);
         }
-        if (strcmp(options->name, "timelimit-header") == 0)
+        if (strcmp(options->name, "timelimit_header") == 0)
         {
             free (url_info->timelimit_header);
             url_info->timelimit_header = strdup (options->value);

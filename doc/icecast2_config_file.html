@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>Icecast v2.0 Documentation</title>
+<title>Icecast v2.x Documentation</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
@@ -173,7 +173,11 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;fileserve&gt;1&lt;/fileserve&gt;
     &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
 </pre>
-<p>This section contains miscellaneous server settings.  Note that multiple listen-socket sections may be configured in order to have icecast2 listen on multiple network interfaces.  If a bind-address is not specified for a particular listen-socket, then the socket will be bound to all interfaces. Generally, you won't need to set bind-address.
+<p>This section contains miscellaneous server settings.  Note that multiple listen-socket
+sections may be configured in order to have icecast2 listen on multiple network interfaces.
+If a bind-address is not specified for a particular listen-socket, then the socket will be
+bound to all interfaces. Generally, you won't need to set bind-address. There is an internal
+limit of 20 listening sockets currently, which may be extended in later releases.
 </p>
 <h4>port</h4>
 <div class="indentedbox">

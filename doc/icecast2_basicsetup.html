@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>Icecast v2.0 Documentation</title>
+<title>Icecast v2.x Documentation</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
@@ -49,10 +49,15 @@
 <pre>
 icecast -c /path/to/icecast.xml
 </pre>
-<p>If no error messages are generated, then check the error.log file for the following message :</p>
+<p>If no error messages are generated, then check the error.log file for the 'server started'
+message, it will look something like :-</p>
 <pre>
-[2003-10-31  13:04:49] INFO main/main.c icecast server started
+[2003-10-31  13:04:49] INFO main/main.c Icecast 2.3.0 server started
 </pre>
+<p>You may notice slight variations to the line above, the time will no doubt be different,
+and on some platforms the main.c is just main, but the key thing here is that the server is
+started, logging is working and the version is shown.
+</p>
 <p>You can also verify that it started by visiting the following URL : http://yourip:port/admin/stats.xml.  You should be prompted for a username and password.  Enter the username "admin" and the password you entered for &lt;admin-password&gt;.  If all is well, you should see an small XML tree which represents icecast statistics (more about that later).</p>
 <p>Now that the icecast server is started you must now configure your source client.  The information you will need for the source client is the following : <br />
 <br />

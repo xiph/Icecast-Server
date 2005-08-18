@@ -2,7 +2,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<title>Icecast v2.2 Documentation</title>
+<title>Icecast v2.x Documentation</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
@@ -27,6 +27,10 @@ source clients or relays.</p>
     <li>HTPASSWD - lookup a named file for a matching username and password</li>
     <li>URL - issue web requests (eg PHP) to match authentication</li>
 </ul>
+<p>The listener authentication within a specified mount in the icecast XML configuration
+can apply to either to a stream from a source client, relay or a webroot based file. They
+do apply to intro files or fallback streams.
+</p>
 <br />
 <h2>HTPASSWD Listener Authentication</h2>
 <p>In order to use listener authentication, you MUST configure a mount specific option.  This means that you have to provide a &lt;mount&gt; section in the main icecast config file.  The following is an example :</p>
@@ -88,38 +92,38 @@ config file.  The following shows the list of options available :</p>
             &lt;option name="username" value="user"/&gt;
             &lt;option name="password" value="pass"/&gt;
             &lt;option name="auth_header" value="icecast-auth-user: 1"/&gt;
-            &lt;option name="timelimit-header" value="icecast-auth-timelimit:"/&gt;
+            &lt;option name="timelimit_header" value="icecast-auth-timelimit:"/&gt;
         &lt;/authentication&gt;
     &lt;/mount&gt;
 </pre>
 <p>The options are described below in more detail, each of which is optional, but in each
 case, within the POST data, the value for each setting is encoded.</p>
-<h3>start</h3>
+<h3>mount_add</h3>
 <p>This URL is for informing the auth server of a stream starting. No listener information
 is passed for this, but can be used to initialise any details the auth server may have.
 </p>
 <p>POST details are</p>
 <pre>
-    action=start&amp;mount=/live&amp;server=myserver.com&amp;port=8000
+    action=mount_add&amp;mount=/live&amp;server=myserver.com&amp;port=8000
 </pre>
 <p>Here the details indicate the server name (&lt;hostname&gt;) and mountpoint starting up</p>
-<h3>end</h3>
+<h3>mount_remove</h3>
 <p>This URL is for informing the auth server of a stream finishing, like the start option, no
 listener details are passed.</p>
 <p>POST details are</p>
 <pre>
-    action=end&amp;mount=/live&amp;server=myserver.com&amp;port=8000
+    action=mount_remove&amp;mount=/live&amp;server=myserver.com&amp;port=8000
 </pre>
 <p>like the start option, server name and mountpoint are provided</p>
 </p>
-<h3>add</h3>
+<h3>listener_add</h3>
 <p>This is most likely to be used if anything. When a listener connects, before anything is
 sent back to them, this request is processed.  The default action is to reject a listener
 unless the auth server sends back a response header which may be stated in the 'header' option
 </p>
 <p>POST details are</p>
 <pre>
-    action=auth&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;ip=127.0.0.1&amp;agent="My%20player"
+    action=listener_add&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;ip=127.0.0.1&amp;agent="My%20player"
 </pre>
 <p>There are more details with this, client is the unique ID for the client within icecast,
 user and pass may be blank but come from the HTTP basic auth that the listener states, ip
@@ -128,11 +132,11 @@ is the listeners IP address and agent is the Useragent from the listeners player
 query parameters, so for instance the requested URL can be /stream.ogg&amp;session=xyz, but
 note that each option data is escaped before being passed via POST
 </p>
-<h3>remove</h3>
+<h3>listener_remove</h3>
 <p>This URL is for when a listener connection closes.</p>
 <p>POST details are</p>
 <pre>
-    action=remove&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;duration=3600
+    action=listener_remove&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;duration=3600
 </pre>
 <p>Again this is similar to the add option, the difference being that a duration is passed
 reflecting the number of seconds the listener was connected for </p>
@@ -142,7 +146,7 @@ place may be specified here. The default is
 <pre>icecast-auth-user: 1</pre>
 but it could can anything you like, for instance
 <pre>HTTP 200 OK</pre>
-<h3>timelimit-header</h3>
+<h3>timelimit_header</h3>
 <p>Listeners could have a time limit imposed on them, and if this header is sent back with a
 figure (which represents seconds) then that is how long the client will remain connected for.
 </p>

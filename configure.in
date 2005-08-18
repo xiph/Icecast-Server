@@ -113,7 +113,7 @@ XIPH_PATH_CURL([
         enable_curl="yes"
         XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
         XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
-        ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required), YP disabled])
+        ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required)])
         ], [#include <curl/curl.h>
         ])
     ],[ AC_MSG_NOTICE([libcurl not found])

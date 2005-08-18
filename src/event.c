@@ -36,6 +36,7 @@ void event_config_read(void *arg)
     INFO0("Re-reading XML");
     config = config_grab_config(); /* Both to get the lock, and to be able
                                      to find out the config filename */
+    xmlSetGenericErrorFunc ("config", log_parse_failure);
     ret = config_parse_file(config->config_filename, &new_config);
     if(ret < 0) {
         ERROR0("Error parsing config, not replacing existing config");

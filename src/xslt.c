@@ -190,6 +190,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     xmlChar *string;
     int len, problem = 0;
 
+    xmlSetGenericErrorFunc ("", log_parse_failure);
+    xsltSetGenericErrorFunc ("", log_parse_failure);
+
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
 

@@ -63,6 +63,9 @@
 #undef CATMODULE
 #define CATMODULE "main"
 
+static int background;
+static char *pidfile = NULL;
+
 static void _fatal_error(char *perr)
 {
 #ifdef WIN32
@@ -132,7 +135,7 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
     int i = 1;
     int config_ok = 0;
 
-
+    background = 0;
     if (argc < 2) return -1;
 
     while (i < argc) {
@@ -151,6 +154,7 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
                 fprintf(stderr, "FATAL: Unable to fork child!");
                 exit(1);
             }
+            background = 1;
 #endif
         }
         if (strcmp(argv[i], "-v") == 0) {
@@ -300,12 +304,26 @@ static int _start_listening(void)
 /* bind the socket and start listening */
 static int _server_proc_init(void)
 {
+    ice_config_t *config;
+
     if (!_setup_sockets())
         return 0;
 
     if (!_start_listening()) {
         _fatal_error("Failed trying to listen on server socket");
         return 0;
+    }
+    config = config_get_config_unlocked();
+    /* recreate the pid file */
+    if (config->pidfile)
+    {
+        FILE *f;
+        pidfile = strdup (config->pidfile);
+        if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
+        {
+            fprintf (f, "%d\n", (int)getpid());
+            fclose (f);
+        }
     }
 
     return 1;
@@ -316,6 +334,12 @@ static void _server_proc(void)
 {
     int i;
 
+    if (background)
+    {
+        fclose (stdin);
+        fclose (stdout);
+        fclose (stderr);
+    }
     connection_accept_loop();
 
     for(i=0; i < MAX_LISTEN_SOCKETS; i++)
@@ -402,8 +426,6 @@ static void _ch_root_uid_setup(void)
 int main(int argc, char **argv)
 {
     int res, ret;
-    ice_config_t *config;
-    char *pidfile = NULL;
     char filename[512];
     char pbuf[1024];
 
@@ -480,19 +502,6 @@ int main(int argc, char **argv)
         _fatal_error("FATAL: Could not start logging");
         _shutdown_subsystems();
         return 1;
-    }
-
-    config = config_get_config_unlocked();
-    /* recreate the pid file */
-    if (config->pidfile)
-    {
-        FILE *f;
-        pidfile = strdup (config->pidfile);
-        if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
-        {
-            fprintf (f, "%d\n", (int)getpid());
-            fclose (f);
-        }
     }
 
     INFO0 (ICECAST_VERSION_STRING " server started");
