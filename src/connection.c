@@ -892,10 +892,14 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         }
         else
         {
+            refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->respcode = 200;
-            snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
                     "HTTP/1.0 200 OK\r\n\r\n");
-            client->refbuf->len = strlen (client->refbuf->data);
+            ok->len = strlen (ok->data);
+            /* we may have unprocessed data read in, so don't overwrite it */
+            ok->associated = client->refbuf;
+            client->refbuf = ok;
             fserve_add_client_callback (client, source_client_callback, source);
         }
     }
