@@ -1200,6 +1200,7 @@ void source_client_callback (client_t *client, void *arg)
 {
     const char *agent;
     source_t *source = arg;
+    refbuf_t *old_data = client->refbuf;
 
     if (client->con->error)
     {
@@ -1210,6 +1211,9 @@ void source_client_callback (client_t *client, void *arg)
         client_destroy (client);
         return;
     }
+    client->refbuf = old_data->associated;
+    old_data->associated = NULL;
+    refbuf_release (old_data);
     stats_event (source->mount, "source_ip", source->client->con->ip);
     agent = httpp_getvar (source->client->parser, "user-agent");
     if (agent)

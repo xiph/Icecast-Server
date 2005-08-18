@@ -120,7 +120,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
         if (client->refbuf->len < len)
             len = client->refbuf->len;
         memcpy (buf, client->refbuf->data, len);
-        if (client->refbuf->len < len)
+        if (len < client->refbuf->len)
         {
             char *ptr = client->refbuf->data;
             memmove (ptr, ptr+len, client->refbuf->len - len);
