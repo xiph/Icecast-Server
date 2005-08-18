@@ -414,7 +414,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             free (url_info->auth_header);
             url_info->auth_header = strdup (options->value);
         }
-        if (strcmp(options->name, "timelimit-header") == 0)
+        if (strcmp(options->name, "timelimit_header") == 0)
         {
             free (url_info->timelimit_header);
             url_info->timelimit_header = strdup (options->value);
