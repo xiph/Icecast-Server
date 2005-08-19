@@ -629,6 +629,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->on_disconnect = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
+        else if (strcmp(node->name, "listening-duration") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->listening_duration = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "queue-size") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->queue_size_limit = atoi (tmp);

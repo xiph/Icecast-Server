@@ -311,6 +311,10 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
             avl_tree_unlock (global.source_tree);
             return -1;
         }
+        /* set a per-mount disconnect time if auth hasn't set one already */
+        if (mountinfo->listening_duration && client->con->discon_time == 0)
+            client->con->discon_time = time(NULL) + mountinfo->listening_duration;
+
         ret = add_client_to_source (source, client);
         avl_tree_unlock (global.source_tree);
         if (ret == 0)
