@@ -16,7 +16,7 @@ ResourceCount=10
 Resource1=IDR_MENU2
 Resource2=IDR_MAINFRAME
 Resource3=IDR_TRAY
-Resource4=IDR_MENU4
+Resource4=IDD_ICECAST2WIN_DIALOG
 Class4=CStatus
 Resource5=IDD_SSTATUS
 Class5=CConfigTab
@@ -25,7 +25,7 @@ Resource6=IDD_CONFIGDIALOG
 Resource7=IDD_STATSDIALOG
 Resource8=IDR_MENU3
 Resource9=IDD_ABOUTBOX
-Resource10=IDD_ICECAST2WIN_DIALOG
+Resource10=IDR_MENU4
 
 [CLS:CIcecast2winApp]
 Type=0

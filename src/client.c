@@ -37,6 +37,10 @@
 #include "client.h"
 #include "logging.h"
 
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
+
 #undef CATMODULE
 #define CATMODULE "client"
 
