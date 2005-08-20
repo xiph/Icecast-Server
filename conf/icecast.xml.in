@@ -104,6 +104,7 @@
         <fallback-override>1</fallback-override>
         <fallback-when-full>1</fallback-when-full>
         <intro>/path/to/stream-intro.ogg</intro>
+        <max-listener-duration>3600</max-listener-duration>
         <hidden>1</hidden>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
