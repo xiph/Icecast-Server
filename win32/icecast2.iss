@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast v2.2.0_08112005
+AppVerName=Icecast v2.3.0_rc1
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.2.0_08112005_setup
+OutputBaseFilename=icecast2_win32_v2.3.0_rc1_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
@@ -33,28 +33,13 @@ Name: "{app}\logs"
 Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; Flags: ignoreversion
-Source: "..\web\corner_bottomleft.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\corner_bottomright.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\corner_topleft.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\corner_topright.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\icecast.png"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\key.gif"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\status2.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\status.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\style.css"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\auth.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
-
-Source: "..\admin\listclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\listmounts.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\moveclients.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\response.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\stats.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\manageauth.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\admin\updatemetadata.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\web\*.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\*.png"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\*.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\*.css"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\admin\*.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\conf\icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\conf\icecast_minimal.xml"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\conf\icecast_shoutcast_compat.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\*.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
