@@ -1,6 +1,6 @@
 Name:		icecast
-Version:	2.2.0
-Release:	fc1
+Version:	2.3.0.rc1
+Release:	0
 Summary:	Xiph Streaming media server that supports multiple audio formats.
 Group:		Applications/Multimedia
 License:	GPL
@@ -22,6 +22,8 @@ Requires:       libxslt
 BuildRequires:	libxslt-devel
 Requires:       libtheora
 BuildRequires:	libtheora-devel
+Requires:       speex
+BuildRequires:	speex-devel
 
 %description
 Icecast is a streaming media server which currently supports Ogg Vorbis 
