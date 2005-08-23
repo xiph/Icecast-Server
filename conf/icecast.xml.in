@@ -98,6 +98,7 @@
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
         <fallback-override>1</fallback-override>
+        <fallback-when-full>1</fallback-when-full>
         <intro>/example_intro.ogg</intro>
         <hidden>1</hidden>
         <no-yp>1</no-yp>

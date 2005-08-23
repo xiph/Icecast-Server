@@ -369,6 +369,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;intro&gt;/intro.ogg&lt;/intro&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
+        &lt;fallback-when-full&gt;1&lt;/fallback-when-full&gt;
         &lt;public&gt;1&lt;/public&gt;
         &lt;stream-name&gt;My audio stream&lt;/stream-name&gt;
         &lt;stream-description&gt;My audio description&lt;/stream-description&gt;
@@ -454,6 +455,12 @@ This multi-level fallback allows clients to cascade several mountpoints.
 <div class="indentedbox">
 When enabled, this allows a connecting source client or relay on this mountpoint to move
 listening clients back from the fallback mount.
+</div>
+<h4>fallback-when-full</h4>
+<div class="indentedbox">
+    <p>When set to 1, this will cause new listeners, when the max listener count for the
+    mountpoint has been reached, to move to the fallback mount if there is one specified.
+    </p>
 </div>
 <h4>no-yp (deprecated)</h4>
 <div class="indentedbox">

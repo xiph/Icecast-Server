@@ -569,6 +569,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->fallback_mount = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
+        else if (strcmp(node->name, "fallback-when-full") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->fallback_when_full = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "max-listeners") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_listeners = atoi(tmp);

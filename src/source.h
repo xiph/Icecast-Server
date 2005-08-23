@@ -54,6 +54,7 @@ typedef struct source_tag
     long max_listeners;
     int yp_public;
     int fallback_override;
+    int fallback_when_full;
     int shoutcast_compat;
 
     /* per source burst handling for connecting clients */

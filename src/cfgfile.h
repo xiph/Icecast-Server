@@ -49,6 +49,8 @@ typedef struct _mount_proxy {
     char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
                        to not dump. */
     char *intro_filename;   /* Send contents of file to client before the stream */
+    int fallback_when_full; /* switch new listener to fallback source
+                               when max listeners reached */
     int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
                           limit here (i.e. only use the global limit) */
     char *fallback_mount; /* Fallback mountname */

@@ -259,6 +259,7 @@ static int check_duplicate_logins (source_t *source, client_t *client)
  */
 static int add_client_to_source (source_t *source, client_t *client)
 {
+    int loop = 10;
     do
     {
         DEBUG3 ("max on %s is %ld (cur %lu)", source->mount,
@@ -268,6 +269,14 @@ static int add_client_to_source (source_t *source, client_t *client)
         if (source->listeners < (unsigned long)source->max_listeners)
             break;
 
+        if (loop && source->fallback_when_full && source->fallback_mount)
+        {
+            source_t *next = source_find_mount (source->fallback_mount);
+            INFO1 ("stream full trying %s", next->mount);
+            source = next;
+            loop--;
+            continue;
+        }
         /* now we fail the client */
         return -1;
 

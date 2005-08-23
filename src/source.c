@@ -1118,6 +1118,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->burst_size >= 0)
         source->burst_size = (unsigned int)mountinfo->burst_size;
 
+    if (mountinfo && mountinfo->fallback_when_full)
+        source->fallback_when_full = mountinfo->fallback_when_full;
+
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
 }
