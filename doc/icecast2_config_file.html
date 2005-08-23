@@ -365,6 +365,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;username&gt;othersource&lt;/username&gt;
         &lt;password&gt;hackmemore&lt;/password&gt;
         &lt;max-listeners&gt;1&lt;/max-listeners&gt;
+        &lt;max-listener-duration&gt;3600&lt;/max-listener-duration&gt;
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
         &lt;intro&gt;/intro.ogg&lt;/intro&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
@@ -415,6 +416,11 @@ An optional value which will set the password that a source must use to connect 
 <h4>max-listeners</h4>
 <div class="indentedbox">
 An optional value which will set the maximum number of listeners that can be attached to this mountpoint.
+</div>
+<h4>max-listener-duration</h4>
+<div class="indentedbox">
+    An optional value which will set the length of time a listener will stay connected to the
+    stream. An auth component may override this.
 </div>
 <h4>dump-file</h4>
 <div class="indentedbox">

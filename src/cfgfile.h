@@ -72,6 +72,7 @@ typedef struct _mount_proxy {
     config_options_t *auth_options; /* Options for this type */
     char *on_connect;
     char *on_disconnect;
+    unsigned int max_listener_duration;
 
     char *stream_name;
     char *stream_description;
