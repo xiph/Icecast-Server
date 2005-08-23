@@ -1241,7 +1241,7 @@ static void source_run_script (char *command, char *mountpoint)
                     break;
                 case 0:  /* child */
                     DEBUG1 ("Starting command %s", command);
-                    execl (command, command, mountpoint, NULL);
+                    execl (command, command, mountpoint, (char *)NULL);
                     ERROR2 ("Unable to run command %s (%s)", command, strerror (errno));
                     exit(0);
                 default: /* parent */
