@@ -1133,7 +1133,10 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 {
     /*  skip if source is a fallback to file */
     if (source->running && source->client == NULL)
+    {
+        stats_event_hidden (source->mount, NULL, 1);
         return;
+    }
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->timeout = config->source_timeout;
@@ -1180,6 +1183,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     DEBUG1 ("queue size to %u", source->queue_size_limit);
     DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
+    DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
 }
 
 
