@@ -237,7 +237,18 @@ static void *start_relay_stream (void *arg)
         }
         src->parser = parser;
         src->con = con;
-        if (connection_complete_source (src) < 0)
+
+        if (client_create (&src->client, con, parser) < 0)
+        {
+            /* make sure only the client_destory frees these */
+            con = NULL;
+            parser = NULL;
+            streamsock = SOCK_ERROR;
+            break;
+        }
+        client_set_queue (src->client, NULL);
+
+        if (connection_complete_source (src, 0) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
             break;

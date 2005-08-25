@@ -434,9 +434,7 @@ void connection_accept_loop(void)
             global_unlock();
 
             /* setup client for reading incoming http */
-            client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
-            client->refbuf->len = 0; /* force reader code to ignore buffer */
 
             node = calloc (1, sizeof (client_queue_t));
             if (node == NULL)
@@ -482,7 +480,7 @@ void connection_accept_loop(void)
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source)
+int connection_complete_source (source_t *source, int response)
 {
     ice_config_t *config = config_get_config();
 
@@ -505,8 +503,11 @@ int connection_complete_source (source_t *source)
             {
                 global_unlock();
                 config_release_config();
-                if (source->client)
+                if (response)
+                {
                     client_send_404 (source->client, "Content-type not supported");
+                    source->client = NULL;
+                }
                 WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
                 return -1;
             }
@@ -522,31 +523,15 @@ int connection_complete_source (source_t *source)
         {
             global_unlock();
             config_release_config();
-            if (source->client)
+            if (response)
+            {
                 client_send_404 (source->client, "internal format allocation problem");
+                source->client = NULL;
+            }
             WARN1 ("plugin format failed for \"%s\"", source->mount);
-            source->client = NULL;
             return -1;
         }
 
-        /* for relays, we don't yet have a client, however we do require one
-         * to retrieve the stream from.  This is created here, quite late,
-         * because we can't use this client to return an error code/message,
-         * so we only do this once we know we're going to accept the source.
-         */
-        if (source->client == NULL)
-        {
-            if (client_create (&source->client, source->con, source->parser) < 0)
-            {
-                config_release_config();
-                global_unlock();
-                connection_close (source->con);
-                source->con = NULL;
-                httpp_destroy (source->parser);
-                source->parser = NULL;
-                return -1;
-            }
-        }
         global.sources++;
         stats_event_args (NULL, "sources", "%d", global.sources);
         global_unlock();
@@ -569,8 +554,11 @@ int connection_complete_source (source_t *source)
     global_unlock();
     config_release_config();
 
-    if (source->client)
+    if (response)
+    {
         client_send_404 (source->client, "too many sources connected");
+        source->client = NULL;
+    }
 
     return -1;
 }
@@ -758,9 +746,8 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         source->client = client;
         source->parser = client->parser;
         source->con = client->con;
-        if (connection_complete_source (source) < 0)
+        if (connection_complete_source (source, 1) < 0)
         {
-            source->client = NULL;
             source_free_source (source);
         }
         else

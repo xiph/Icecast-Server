@@ -442,7 +442,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         int fds = 0;
         time_t current = time (NULL);
 
-        if (source->client->con)
+        if (source->client)
             fds = util_timed_wait_for_fd (source->con->sock, delay);
         else
         {
@@ -1132,7 +1132,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
     /*  skip if source is a fallback to file */
-    if (source->running && source->client->con == NULL)
+    if (source->running && source->client == NULL)
         return;
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
@@ -1312,7 +1312,7 @@ static void *source_fallback_file (void *arg)
         source->parser = parser;
         file = NULL;
 
-        if (connection_complete_source (source) < 0)
+        if (connection_complete_source (source, 0) < 0)
             break;
         source_client_thread (source);
     } while (0);

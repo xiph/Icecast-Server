@@ -44,7 +44,11 @@
 #undef CATMODULE
 #define CATMODULE "client"
 
-/* should be called with global lock held */
+/* create a client_t with the provided connection and parser details. Return
+ * 0 on success, -1 if server limit has been reached.  In either case a
+ * client_t is returned just in case a message needs to be returned. Should
+ * be called with global lock held.
+ */
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
     ice_config_t *config;
@@ -52,7 +56,7 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     int ret = -1;
 
     if (client == NULL)
-        return -1;
+        abort();
 
     config = config_get_config ();
 
@@ -67,6 +71,8 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
     client->parser = parser;
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+    client->refbuf->len = 0; /* force reader code to ignore buffer contents */
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;

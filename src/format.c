@@ -150,7 +150,7 @@ int format_check_file_buffer (source_t *source, client_t *client)
     if (refbuf == NULL)
     {
         /* client refers to no data, must be from a move */
-        if (source->client->con)
+        if (source->client)
         {
             find_client_start (source, client);
             return -1;
