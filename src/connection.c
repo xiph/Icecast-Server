@@ -105,9 +105,9 @@ static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_que
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
 static mutex_t _con_queue_mutex;
 static mutex_t _req_queue_mutex;
+static int ssl_ok;
 #ifdef HAVE_OPENSSL
 static SSL_CTX *ssl_ctx;
-static int ssl_ok;
 #endif
 
 rwlock_t _source_shutdown_rwlock;
@@ -131,6 +131,7 @@ void connection_initialize(void)
 
 static void get_ssl_certificate ()
 {
+    ssl_ok = 0;
 #ifdef HAVE_OPENSSL
     SSL_METHOD *method;
     ice_config_t *config;
@@ -141,7 +142,6 @@ static void get_ssl_certificate ()
     method = SSLv23_server_method();
     ssl_ctx = SSL_CTX_new (method);
 
-    ssl_ok = 0;
     config = config_get_config ();
     do
     {
@@ -280,11 +280,13 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
  */
 void connection_uses_ssl (connection_t *con)
 {
+#ifdef HAVE_OPENSSL
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
     con->ssl = SSL_new (ssl_ctx);
     SSL_set_accept_state (con->ssl);
     SSL_set_fd (con->ssl, con->sock);
+#endif
 }
 
 
@@ -561,9 +563,7 @@ void connection_accept_loop(void)
             global_unlock();
 
             /* setup client for reading incoming http */
-            client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
-            client->refbuf->len = 0; /* force reader code to ignore buffer */
 
             node = calloc (1, sizeof (client_queue_t));
             if (node == NULL)
@@ -611,7 +611,7 @@ void connection_accept_loop(void)
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, connection_t *con, http_parser_t *in_parser)
+int connection_complete_source (source_t *source, connection_t *con, http_parser_t *in_parser, int response)
 {
     ice_config_t *config = config_get_config();
 
@@ -638,8 +638,11 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
             {
                 global_unlock();
                 config_release_config();
-                if (source->client)
+                if (response)
+                {
                     client_send_404 (source->client, "Content-type not supported");
+                    source->client = NULL;
+                }
                 WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
                 return -1;
             }
@@ -655,27 +658,15 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
         {
             global_unlock();
             config_release_config();
-            if (source->client)
+            if (response)
+            {
                 client_send_404 (source->client, "internal format allocation problem");
+                source->client = NULL;
+            }
             WARN1 ("plugin format failed for \"%s\"", source->mount);
-            source->client = NULL;
             return -1;
         }
 
-        /* for relays, we don't yet have a client, however we do require one
-         * to retrieve the stream from.  This is created here, quite late,
-         * because we can't use this client to return an error code/message,
-         * so we only do this once we know we're going to accept the source.
-         */
-        if (source->client == NULL)
-        {
-            if (client_create (&source->client, con, parser) < 0)
-            {
-                config_release_config();
-                global_unlock();
-                return -1;
-            }
-        }
         global.sources++;
         stats_event_args (NULL, "sources", "%d", global.sources);
         global_unlock();
@@ -698,8 +689,11 @@ int connection_complete_source (source_t *source, connection_t *con, http_parser
     global_unlock();
     config_release_config();
 
-    if (source->client)
+    if (response)
+    {
         client_send_404 (source->client, "too many sources connected");
+        source->client = NULL;
+    }
 
     return -1;
 }
@@ -885,9 +879,8 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             source->shoutcast_compat = 1;
         }
         source->client = client;
-        if (connection_complete_source (source, NULL, NULL) < 0)
+        if (connection_complete_source (source, NULL, NULL, 1) < 0)
         {
-            source->client = NULL;
             source_free_source (source);
         }
         else

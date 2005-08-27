@@ -66,6 +66,8 @@ void refbuf_addref(refbuf_t *self)
 
 void refbuf_release(refbuf_t *self)
 {
+    if (self == NULL)
+        return;
     self->_count--;
     if (self->_count == 0) {
         while (self->associated)

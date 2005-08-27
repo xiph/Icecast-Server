@@ -602,7 +602,7 @@ static void check_servers ()
 
             source_t *source = node->key;
             thread_mutex_lock (&source->lock);
-            if ((yp = create_yp_entry (source->mount)) != NULL)
+            if (source->yp_public && (yp = create_yp_entry (source->mount)) != NULL)
             {
                 DEBUG1 ("Adding existing mount %s", source->mount);
                 yp->server = server;

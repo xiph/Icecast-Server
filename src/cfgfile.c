@@ -191,6 +191,8 @@ void config_clear(ice_config_t *c)
         xmlFree(c->webroot_dir);
     if (c->adminroot_dir && c->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR)
         xmlFree(c->adminroot_dir);
+    if (c->cert_file)
+        xmlFree(c->cert_file);
     if (c->pidfile)
         xmlFree(c->pidfile);
     if (c->playlist_log && c->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) 

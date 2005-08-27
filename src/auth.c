@@ -311,9 +311,12 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
             avl_tree_unlock (global.source_tree);
             return -1;
         }
-        /* set a per-mount disconnect time if auth hasn't set one already */
-        if (mountinfo->max_listener_duration && client->con->discon_time == 0)
-            client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
+        if (mountinfo)
+        {
+            /* set a per-mount disconnect time if auth hasn't set one already */
+            if (mountinfo->max_listener_duration && client->con->discon_time == 0)
+                client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
+        }
 
         ret = add_client_to_source (source, client);
         avl_tree_unlock (global.source_tree);
@@ -359,11 +362,17 @@ int auth_postprocess_client (auth_client *auth_user)
 void add_client (const char *mount, client_t *client)
 {
     mount_proxy *mountinfo; 
-    ice_config_t *config = config_get_config();
+    ice_config_t *config;
 
     /* we don't need any more data from the listener, just setup for writing */
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
 
+    if (connection_check_relay_pass(client->parser))
+    {
+        client_as_slave (client);
+        INFO0 ("client connected as slave");
+    }
+    config = config_get_config();
     mountinfo = config_find_mount (config, mount);
     if (mountinfo && mountinfo->no_mount)
     {
@@ -389,12 +398,6 @@ void add_client (const char *mount, client_t *client)
         {
             client_send_401 (client);
             return;
-        }
-        /* config lock taken in here */
-        if (connection_check_relay_pass(client->parser))
-        {
-            client_as_slave (client);
-            INFO0 ("client connected as slave");
         }
         auth_user = calloc (1, sizeof (auth_client));
         if (auth_user == NULL)

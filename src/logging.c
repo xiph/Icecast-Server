@@ -32,6 +32,7 @@
 
 #ifdef _WIN32
 #define snprintf _snprintf
+#define vsnprintf _vsnprintf
 #endif
 
 /* the global log descriptors */

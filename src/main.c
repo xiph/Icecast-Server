@@ -313,6 +313,7 @@ static int _server_proc_init(void)
         _fatal_error("Failed trying to listen on server socket");
         return 0;
     }
+
     config = config_get_config_unlocked();
     /* recreate the pid file */
     if (config->pidfile)

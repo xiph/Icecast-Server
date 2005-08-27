@@ -356,7 +356,7 @@ void source_move_clients (source_t *source, source_t *dest)
             {
                 client_set_queue (client, NULL);
                 client->check_buffer = format_check_file_buffer;
-                if (source->client && source->client->con == NULL)
+                if (source->client == NULL)
                     client->intro_offset = -1;
             }
 
@@ -415,7 +415,7 @@ static void get_next_buffer (source_t *source)
 
         thread_mutex_unlock (&source->lock);
 
-        if (source->client->con)
+        if (source->client)
             fds = util_timed_wait_for_fd (source->client->con->sock, delay);
         else
         {
@@ -687,11 +687,14 @@ static void source_init (source_t *source)
 
     source->fast_clients_p = &source->active_clients;
     source->audio_info = util_dict_new();
-    str = httpp_getvar(source->client->parser, "ice-audio-info");
-    if (str)
+    if (source->client)
     {
-        _parse_audio_info (source, str);
-        stats_event (source->mount, "audio_info", str);
+        str = httpp_getvar(source->client->parser, "ice-audio-info");
+        if (str)
+        {
+            _parse_audio_info (source, str);
+            stats_event (source->mount, "audio_info", str);
+        }
     }
 
     thread_mutex_unlock (&source->lock);
@@ -1119,7 +1122,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
     /*  skip if source is a fallback to file */
-    if (source->running && source->client->con == NULL)
+    if (source->running && source->client == NULL)
     {
         stats_event_hidden (source->mount, NULL, 1);
         return;
@@ -1203,8 +1206,8 @@ void source_client_callback (client_t *client, void *arg)
         global_lock();
         global.sources--;
         global_unlock();
+        source_clear_source (source);
         source_free_source (source);
-        client_destroy (client);
         return;
     }
     client->refbuf = old_data->associated;
@@ -1237,7 +1240,7 @@ static void source_run_script (char *command, char *mountpoint)
                     break;
                 case 0:  /* child */
                     DEBUG1 ("Starting command %s", command);
-                    execl (command, command, mountpoint, NULL);
+                    execl (command, command, mountpoint, (char*)NULL);
                     ERROR2 ("Unable to run command %s (%s)", command, strerror (errno));
                     exit(0);
                 default: /* parent */
@@ -1304,9 +1307,10 @@ static void *source_fallback_file (void *arg)
         source->intro_file = file;
         file = NULL;
 
-        if (connection_complete_source (source, NULL, parser) < 0)
+        if (connection_complete_source (source, NULL, parser, 0) < 0)
             break;
         source_client_thread (source);
+        httpp_destroy (parser);
     } while (0);
     if (file)
         fclose (file);

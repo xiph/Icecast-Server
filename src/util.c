@@ -722,12 +722,18 @@ long rate_avg (struct rate_calc *calc)
 
 void rate_free (struct rate_calc *calc)
 {
-    int i = calc->seconds;
+    struct rate_calc_node *endoflist;
 
-    for (; i; i--)
+    if (calc == NULL)
+        return;
+    endoflist = calc->current;
+    while (calc->current)
     {
         struct rate_calc_node *to_go = calc->current;
-        calc->current = to_go->next;
+        if (to_go->next == endoflist)
+            calc->current = NULL;
+        else
+            calc->current = to_go->next;
         free (to_go);
     }
     free (calc);

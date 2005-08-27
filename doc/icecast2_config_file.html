@@ -381,7 +381,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;username&gt;othersource&lt;/username&gt;
         &lt;password&gt;hackmemore&lt;/password&gt;
         &lt;max-listeners&gt;1&lt;/max-listeners&gt;
-        &lt;listening-duration&gt;3600&lt;/listening-duration&gt;
+        &lt;max-listener-duration&gt;3600&lt;/max-listener-duration&gt;
         &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
         &lt;intro&gt;/intro.ogg&lt;/intro&gt;
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
@@ -480,9 +480,9 @@ listening clients back from the fallback mount.
 </div>
 <h4>fallback-when-full</h4>
 <div class="indentedbox">
-    <p>When set to 1, this will cause new listeners (when the max listener has been reached)
-    to move to the fallback mount if there is one specified.
-    </p>
+    <p>When set to 1, this will cause new listeners, when the max listener count for the
+    mountpoint has been reached, to move to the fallback mount if there is one specified.
+    </p> 
 </div>
 <h4>no-yp</h4>
 <div class="indentedbox">

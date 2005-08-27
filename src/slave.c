@@ -309,7 +309,18 @@ static void *start_relay_stream (void *arg)
             ERROR1("Error from relay request: %s", httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
             break;
         }
-        if (connection_complete_source (src, con, parser) < 0)
+
+        if (client_create (&src->client, con, parser) < 0)
+        {
+            /* make sure only the client_destory frees these */
+            con = NULL;
+            parser = NULL;
+            streamsock = SOCK_ERROR;
+            break;
+        }
+        client_set_queue (src->client, NULL);
+
+        if (connection_complete_source (src, con, parser, 0) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
             break;
@@ -325,6 +336,7 @@ static void *start_relay_stream (void *arg)
             yp_remove (relay->localmount);
             relay->source->yp_public = -1;
         }
+
         /* initiate an immediate relay cleanup run */
         relay->cleanup = 1;
         rescan_relays = 1;
@@ -745,11 +757,12 @@ static void *streamlist_thread (void *arg)
 static void update_from_master (ice_config_t *config)
 {
 #ifdef HAVE_CURL
-    struct master_conn_details *details = calloc (1, sizeof (*details));
+    struct master_conn_details *details;
 
     if (config->master_password == NULL || config->master_server == NULL ||
             config->master_server_port == 0)
         return;
+    details = calloc (1, sizeof (*details));
     details->server = strdup (config->master_server);
     details->port = config->master_server_port; 
     details->ssl_port = config->master_ssl_port; 
