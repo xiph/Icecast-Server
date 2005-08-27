@@ -64,8 +64,8 @@ static void *_slave_thread(void *arg);
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
 static int update_settings = 0;
-volatile static unsigned int max_interval = 0;
-volatile static int rescan_relays = 0;
+static volatile unsigned int max_interval = 0;
+static volatile int rescan_relays = 0;
 
 relay_server *relay_free (relay_server *relay)
 {

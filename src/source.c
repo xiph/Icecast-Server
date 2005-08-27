@@ -1214,8 +1214,8 @@ void source_client_callback (client_t *client, void *arg)
         global_lock();
         global.sources--;
         global_unlock();
+        source_clear_source (source);
         source_free_source (source);
-        client_destroy (client);
         return;
     }
     client->refbuf = old_data->associated;
@@ -1319,6 +1319,7 @@ static void *source_fallback_file (void *arg)
         if (connection_complete_source (source, 0) < 0)
             break;
         source_client_thread (source);
+        httpp_destroy (parser);
     } while (0);
     if (file)
         fclose (file);
