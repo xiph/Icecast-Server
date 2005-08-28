@@ -611,7 +611,7 @@ void connection_accept_loop(void)
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, connection_t *con, http_parser_t *in_parser, int response)
+int connection_complete_source (source_t *source, http_parser_t *in_parser, int response)
 {
     ice_config_t *config = config_get_config();
 
@@ -879,7 +879,7 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             source->shoutcast_compat = 1;
         }
         source->client = client;
-        if (connection_complete_source (source, NULL, NULL, 1) < 0)
+        if (connection_complete_source (source, NULL, 1) < 0)
         {
             source_free_source (source);
         }

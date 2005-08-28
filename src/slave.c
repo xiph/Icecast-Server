@@ -315,12 +315,13 @@ static void *start_relay_stream (void *arg)
             /* make sure only the client_destory frees these */
             con = NULL;
             parser = NULL;
-            streamsock = SOCK_ERROR;
             break;
         }
+        con = NULL;
+        parser = NULL;
         client_set_queue (src->client, NULL);
 
-        if (connection_complete_source (src, con, parser, 0) < 0)
+        if (connection_complete_source (src, NULL, 0) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
             break;
@@ -358,8 +359,6 @@ static void *start_relay_stream (void *arg)
         avl_tree_unlock (global.source_tree);
     }
 
-    if (con == NULL && streamsock != SOCK_ERROR)
-        sock_close (streamsock);
     if (con)
         connection_close (con);
     if (parser)
