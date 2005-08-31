@@ -685,7 +685,7 @@ static void command_buildm3u(client_t *client, source_t *source,
 
     client->respcode = 200;
     config = config_get_config();
-    snprintf (client->refbuf->data, client->refbuf->len,
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
         "HTTP/1.0 200 OK\r\n"
         "Content-Type: audio/x-mpegurl\r\n"
         "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
