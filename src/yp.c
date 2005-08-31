@@ -833,8 +833,7 @@ void yp_add (const char *mount)
     {
         ypdata_t *yp;
 
-        /* check if YP entry is known about, as source_t is unique this
-         * should only apply to the restarting of on-demand relays */
+        /* on-demand relays may already have a YP entry */
         yp = find_yp_mount (server->mounts, mount);
         if (yp == NULL)
         {
