@@ -197,7 +197,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 {
     mp3_state *source_mp3 = format->_state;
 
-    if (mount == NULL || mount->mp3_meta_interval <= 0)
+    if (mount == NULL || mount->mp3_meta_interval < 0)
     {
         char *metadata = httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = -1;
@@ -376,6 +376,9 @@ static int format_mp3_write_buf_to_client(client_t *client)
                 /* change buf and len */
                 buf += remaining;
                 len -= remaining;
+                /* limit how much mp3 we send if using small intervals */
+                if (len > client_mp3->interval)
+                    len = client_mp3->interval;
             }
         }
         /* write any mp3, maybe after the metadata block */
@@ -635,16 +638,19 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     metadata = httpp_getvar(client->parser, "icy-metadata");
     if (metadata && atoi(metadata))
     {
-        if (source_mp3->interval > 0)
+        if (source_mp3->interval >= 0)
             client_mp3->interval = source_mp3->interval;
         else
             client_mp3->interval = ICY_METADATA_INTERVAL;
-        bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n",
-                client_mp3->interval);
-        if (bytes > 0)
+        if (client_mp3->interval)
         {
-            remaining -= bytes;
-            ptr += bytes;
+            bytes = snprintf (ptr, remaining, "icy-metaint:%u\r\n",
+                    client_mp3->interval);
+            if (bytes > 0)
+            {
+                remaining -= bytes;
+                ptr += bytes;
+            }
         }
     }
     bytes = snprintf (ptr, remaining, "\r\n");
