@@ -66,6 +66,7 @@ typedef struct auth_tag
     auth_result (*deleteuser)(struct auth_tag *auth, const char *username);
     auth_result (*listuser)(struct auth_tag *auth, xmlNodePtr srcnode);
 
+    mutex_t lock;
     int refcount;
     int allow_duplicate_users;
 
