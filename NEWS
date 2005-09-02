@@ -20,6 +20,23 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.2-kh17
+. fix double free bug with failed startup of relay
+. added per-mount max-listener-duration setting.
+. updated auth_url, POST update and option names
+. log xml/xsl errors via error log
+. fix hopefully last oddcast/connection thread related bug
+. added artwork=url to metadata update 
+. updated docs (some sync-up with trunk)
+. max client limiter updated
+. sync with trunk
+  - pidfile created before changeowner
+  - close stdin/out/err if using -b 
+  - win32 free bug, unix doesn't seem affected
+  - htpasswd segv bug when auth file is missing
+  - auth.xsl fixup
+  - mp3 metadata cleanup
+
 2.2-kh16
 . fixed segv when using oddcast DSP
 . master/slave streamlist is now isolated in its own thread, so should not

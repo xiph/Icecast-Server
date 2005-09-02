@@ -86,8 +86,10 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
 
     } while (0);
 
+    thread_mutex_lock (&mountinfo->auth->lock);
     client->auth = mountinfo->auth;
     client->auth->refcount++;
+    thread_mutex_unlock (&mountinfo->auth->lock);
 }
 
 
@@ -109,13 +111,19 @@ void auth_release (auth_t *authenticator)
     if (authenticator == NULL)
         return;
 
+    thread_mutex_lock (&authenticator->lock);
     authenticator->refcount--;
     if (authenticator->refcount)
+    {
+        thread_mutex_unlock (&authenticator->lock);
         return;
+    }
 
     if (authenticator->free)
         authenticator->free (authenticator);
     xmlFree (authenticator->type);
+    thread_mutex_unlock (&authenticator->lock);
+    thread_mutex_destroy (&authenticator->lock);
     free (authenticator);
 }
 
@@ -149,7 +157,11 @@ static void auth_new_listener (auth_client *auth_user)
     if (client->auth->authenticate)
     {
         if (client->auth->authenticate (auth_user) != AUTH_OK)
+        {
+            auth_release (client->auth);
+            client->auth = NULL;
             return;
+        }
     }
     if (auth_postprocess_client (auth_user) < 0)
         INFO1 ("client %lu failed", client->con->id);
@@ -525,6 +537,7 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
     }
     auth->type = xmlGetProp (node, "type");
     get_authenticator (auth, options);
+    thread_mutex_create (&auth->lock);
     while (options)
     {
         config_options_t *opt = options;
