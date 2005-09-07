@@ -558,6 +558,8 @@ void connection_accept_loop(void)
             {
                 global_unlock();
                 client_send_404 (client, "Icecast connection limit reached");
+                /* don't be too eager as this is an imposed hard limit */
+                thread_sleep (400000);
                 continue;
             }
             global_unlock();
@@ -881,6 +883,7 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         source->client = client;
         if (connection_complete_source (source, NULL, 1) < 0)
         {
+            source_clear_source (source);
             source_free_source (source);
         }
         else

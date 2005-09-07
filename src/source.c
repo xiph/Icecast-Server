@@ -189,6 +189,8 @@ int source_compare_sources(void *arg, void *a, void *b)
 
 void source_clear_source (source_t *source)
 {
+    int i;
+
     DEBUG1 ("clearing source \"%s\"", source->mount);
     client_destroy(source->client);
     source->client = NULL;
@@ -201,13 +203,16 @@ void source_clear_source (source_t *source)
     }
 
     /* lets drop any clients still connected */
+    i = 0;
     while (source->active_clients)
     {
         client_t *client = source->active_clients;
         source->active_clients = client->next;
         source_free_client (source, client);
+        i++;
     }
     source->fast_clients_p = &source->active_clients;
+    DEBUG1 ("removed %d listeners", i);
 
     format_free_plugin (source->format);
     source->format = NULL;

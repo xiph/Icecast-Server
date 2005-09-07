@@ -415,8 +415,13 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *protocol = "http";
         char *agent = httpp_getvar (httpclient->parser, "user-agent");
 
-        if (agent && (strstr (agent, "QTS") || strstr (agent, "QuickTime")))
-            protocol = "icy";
+        if (agent)
+        {
+            if (strstr (agent, "QTS") || strstr (agent, "QuickTime"))
+                protocol = "icy";
+            if (strchr (agent, ':') == NULL)
+                host = NULL;
+        }
 
         *dot = 0;
         httpclient->respcode = 200;

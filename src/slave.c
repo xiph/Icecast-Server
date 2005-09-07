@@ -310,13 +310,16 @@ static void *start_relay_stream (void *arg)
             break;
         }
 
+        global_lock ();
         if (client_create (&src->client, con, parser) < 0)
         {
+            global_unlock ();
             /* make sure only the client_destory frees these */
             con = NULL;
             parser = NULL;
             break;
         }
+        global_unlock ();
         con = NULL;
         parser = NULL;
         client_set_queue (src->client, NULL);
@@ -642,7 +645,7 @@ static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *strea
     /* append newly read data to the end of any previous unprocess data */
     buffer = realloc (master->buffer, len);
     memcpy (buffer + master->previous, ptr, passed_len);
-    buffer [len] = '\0';
+    buffer [len-1] = '\0';
 
     buf = buffer;
     while (len)

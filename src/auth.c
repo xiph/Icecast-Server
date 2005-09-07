@@ -537,7 +537,7 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
     }
     auth->type = xmlGetProp (node, "type");
     get_authenticator (auth, options);
-    thread_mutex_create (&auth->lock);
+    thread_mutex_create ("auth_t", &auth->lock);
     while (options)
     {
         config_options_t *opt = options;
