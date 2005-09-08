@@ -238,13 +238,16 @@ static void *start_relay_stream (void *arg)
         src->parser = parser;
         src->con = con;
 
+        global_lock ();
         if (client_create (&src->client, con, parser) < 0)
         {
+            global_unlock ();
             /* make sure only the client_destory frees these */
             con = NULL;
             parser = NULL;
             break;
         }
+        global_unlock ();
         con = NULL;
         parser = NULL;
         client_set_queue (src->client, NULL);

@@ -748,6 +748,7 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         source->con = client->con;
         if (connection_complete_source (source, 1) < 0)
         {
+            source_clear_source (source);
             source_free_source (source);
         }
         else
