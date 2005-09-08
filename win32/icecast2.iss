@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast v2.3.0_rc1
+AppVerName=Icecast v2.3.0_rc2
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.0_rc1_setup
+OutputBaseFilename=icecast2_win32_v2.3.0_rc2_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
