@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast v2.3.0_rc2
+AppVerName=Icecast v2.3.0_rc3
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
