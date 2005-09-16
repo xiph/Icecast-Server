@@ -295,16 +295,17 @@ static int add_client_to_source (source_t *source, client_t *client)
         return -1;
 
     } while (1);
-    /* lets add the client to the active list */
-    avl_tree_wlock (source->pending_tree);
-    avl_insert (source->pending_tree, client);
-    avl_tree_unlock (source->pending_tree);
-    stats_event_inc (NULL, "listener_connections");
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
     memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+
+    /* lets add the client to the active list */
+    avl_tree_wlock (source->pending_tree);
+    avl_insert (source->pending_tree, client);
+    avl_tree_unlock (source->pending_tree);
+    stats_event_inc (NULL, "listener_connections");
 
     if (source->running == 0 && source->on_demand)
     {
