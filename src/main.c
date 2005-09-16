@@ -424,7 +424,11 @@ static void _ch_root_uid_setup(void)
 #endif
 }
 
+#ifdef WIN32_SERVICE
+int mainService(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
     int res, ret;
     char filename[512];

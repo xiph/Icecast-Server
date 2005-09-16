@@ -32,6 +32,7 @@ Name: "{app}\logs"
 [Files]
 Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "Release\icecastService.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; Flags: ignoreversion
 Source: "..\web\*.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\*.png"; DestDir: "{app}\web"; Flags: ignoreversion
@@ -51,4 +52,8 @@ Name: "{group}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe";WorkingDir: "{app
 Name: "{userdesktop}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe"; MinVersion: 4,4; Tasks: desktopicon;WorkingDir: "{app}";
 
 [Run]
+Filename: "{app}\icecastService.exe"; Parameters: "install ""{app}""";Description: "Install Icecast as a windows service.";Flags: postinstall
+
+[UninstallRun]
+Filename: "{app}\icecastService.exe"; Parameters: "remove"
 
