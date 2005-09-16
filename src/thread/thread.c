@@ -28,15 +28,12 @@
 #include <time.h>
 #include <sys/types.h>
 
-#include <pthread.h>
-
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/time.h>
 #else
 #include <windows.h>
 #include <winbase.h>
-#include <implement.h>
 #endif
 
 #include <signal.h>
@@ -68,6 +65,7 @@
 #define LOG_INFO5(y, z1, z2, z3, z4, z5) log_write(_logid, 3, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4, z5)
 
 #define LOG_DEBUG(y) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y)
+#define LOG_DEBUG1(y, z1) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1)
 #define LOG_DEBUG2(y, z1, z2) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2)
 #define LOG_DEBUG3(y, z1, z2, z3) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3)
 #define LOG_DEBUG4(y, z1, z2, z3, z4) log_write(_logid, 4, CATMODULE "/", __FUNCTION__, y, z1, z2, z3, z4)
@@ -112,12 +110,9 @@ static int _logid = -1;
 static long _next_mutex_id = 0;
 static avl_tree *_mutextree = NULL;
 
-static mutex_t _threadtree_mutex = { -1, "unset", MUTEX_STATE_UNINIT,
-    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
-static mutex_t _mutextree_mutex = { -1, "unset", MUTEX_STATE_UNINIT,
-    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
-static mutex_t _library_mutex = { -1, NULL, MUTEX_STATE_UNINIT,
-    (unsigned long long)0, NULL, -1, PTHREAD_MUTEX_INITIALIZER};
+static mutex_t _threadtree_mutex;
+static mutex_t _mutextree_mutex;
+static mutex_t _library_mutex;
 
 static int _compare_mutexes(void *compare_arg, void *a, void *b);
 static int _free_mutex(void *key);
@@ -301,6 +296,7 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
         start->arg = arg;
         start->thread = thread;
 
+        pthread_attr_setstacksize (&attr, 512*1024);
         pthread_attr_setinheritsched (&attr, PTHREAD_INHERIT_SCHED);
         if (detached)
         {
@@ -363,10 +359,10 @@ void thread_mutex_destroy (mutex_t *mutex)
     pthread_mutex_destroy(&mutex->sys_mutex);
 
 #ifdef THREAD_DEBUG
-    free (mutex->file);
     _mutex_lock(&_mutextree_mutex);
     avl_delete(_mutextree, mutex, _free_mutex);
     _mutex_unlock(&_mutextree_mutex);
+    free (mutex->name);
 #endif
 }
 
@@ -435,29 +431,46 @@ void thread_cond_wait_c(cond_t *cond, int line, char *file)
     pthread_mutex_unlock(&cond->cond_mutex);
 }
 
-void thread_rwlock_create_c(rwlock_t *rwlock, int line, char *file)
+void thread_rwlock_create_c(const char *name, rwlock_t *rwlock, int line, const char *file)
 {
     pthread_rwlock_init(&rwlock->sys_rwlock, NULL);
+#ifdef THREAD_DEBUG
+    rwlock->name = strdup (name);
+    LOG_DEBUG3 ("rwlock %s created (%s:%d)", rwlock->name, file, line);
+#endif
 }
 
 void thread_rwlock_destroy(rwlock_t *rwlock)
 {
     pthread_rwlock_destroy(&rwlock->sys_rwlock);
+#ifdef THREAD_DEBUG
+    LOG_DEBUG1 ("rwlock %s destroyed", rwlock->name);
+    free (rwlock->name);
+#endif
 }
 
-void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, char *file)
+void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, const char *file)
 {
+#ifdef THREAD_DEBUG
+    LOG_DEBUG3("rLock on %s requested at %s:%d", rwlock->name, file, line);
+#endif
     pthread_rwlock_rdlock(&rwlock->sys_rwlock);
 }
 
-void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, char *file)
+void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, const char *file)
 {
+#ifdef THREAD_DEBUG
+    LOG_DEBUG3("wLock on %s requested at %s:%d", rwlock->name, file, line);
+#endif
     pthread_rwlock_wrlock(&rwlock->sys_rwlock);
 }
 
-void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, char *file)
+void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, const char *file)
 {
     pthread_rwlock_unlock(&rwlock->sys_rwlock);
+#ifdef THREAD_DEBUG
+    LOG_DEBUG3 ("rwlock %s, at %s:%d", rwlock->name, file, line);
+#endif
 }
 
 void thread_exit_c(long val, int line, char *file)
@@ -487,7 +500,7 @@ void thread_exit_c(long val, int line, char *file)
     }
 #endif
 #ifdef __OpenBSD__
-    thread->running = 0;
+    th->running = 0;
 #endif
 
     if (th && th->detached)
@@ -563,7 +576,7 @@ static void *_start_routine(void *arg)
     (start_routine)(real_arg);
 
 #ifdef __OpenBSD__
-    thread->running = 0;
+    th->running = 0;
 #endif
 
     if (thread->detached)
