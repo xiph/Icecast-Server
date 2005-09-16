@@ -412,6 +412,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     free (state->url_artist);
     free (state->url_title);
     refbuf_release (state->metadata);
+    refbuf_release (state->read_data);
     free(state);
     free(self);
 }
