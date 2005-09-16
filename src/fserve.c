@@ -419,9 +419,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
         {
             if (strstr (agent, "QTS") || strstr (agent, "QuickTime"))
                 protocol = "icy";
-            if (strchr (agent, ':') == NULL)
-                host = NULL;
         }
+        /* at least a couple of players (fb2k/winamp) are reported to send a 
+         * host header but without the port number. So if we are missing the
+         * port then lets treat it as if no host line was sent */
+        if (host && strchr (host, ':') == NULL)
+            host = NULL;
 
         *dot = 0;
         httpclient->respcode = 200;

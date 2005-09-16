@@ -613,7 +613,7 @@ void connection_accept_loop(void)
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, http_parser_t *in_parser, int response)
+int connection_complete_source (source_t *source, int response)
 {
     ice_config_t *config = config_get_config();
 
@@ -625,13 +625,9 @@ int connection_complete_source (source_t *source, http_parser_t *in_parser, int 
         char *contenttype;
         mount_proxy *mountinfo;
         format_type_t format_type;
-        http_parser_t *parser = in_parser;
 
         /* setup format handler */
-        if (source->client)
-            parser = source->client->parser;
-
-        contenttype = httpp_getvar (parser, "content-type");
+        contenttype = httpp_getvar (source->parser, "content-type");
         if (contenttype != NULL)
         {
             format_type = format_get_type (contenttype);
@@ -656,7 +652,7 @@ int connection_complete_source (source_t *source, http_parser_t *in_parser, int 
             format_type = FORMAT_TYPE_GENERIC;
         }
 
-        if (format_get_plugin (format_type, source, parser) < 0)
+        if (format_get_plugin (format_type, source) < 0)
         {
             global_unlock();
             config_release_config();
@@ -881,7 +877,8 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             source->shoutcast_compat = 1;
         }
         source->client = client;
-        if (connection_complete_source (source, NULL, 1) < 0)
+        source->parser = client->parser;
+        if (connection_complete_source (source, 1) < 0)
         {
             source_clear_source (source);
             source_free_source (source);

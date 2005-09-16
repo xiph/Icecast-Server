@@ -194,6 +194,7 @@ void source_clear_source (source_t *source)
     DEBUG1 ("clearing source \"%s\"", source->mount);
     client_destroy(source->client);
     source->client = NULL;
+    source->parser = NULL;
 
     if (source->dumpfile)
     {
@@ -1310,9 +1311,10 @@ static void *source_fallback_file (void *arg)
         source->hidden = 1;
         source->yp_public = 0;
         source->intro_file = file;
+        source->parser = parser;
         file = NULL;
 
-        if (connection_complete_source (source, parser, 0) < 0)
+        if (connection_complete_source (source, 0) < 0)
             break;
         source_client_thread (source);
         httpp_destroy (parser);

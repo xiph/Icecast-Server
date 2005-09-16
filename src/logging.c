@@ -95,12 +95,11 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
 }
 #endif
 /* 
-** ADDR USER AUTH DATE REQUEST CODE BYTES REFERER AGENT [TIME]
+** ADDR IDENT USER DATE REQUEST CODE BYTES REFERER AGENT [TIME]
 **
 ** ADDR = client->con->ip
-** USER = -      
-**      we should do this for real once we support authentication
-** AUTH = -
+** IDENT = always - , we don't support it because it's useless
+** USER = client->username
 ** DATE = _make_date(client->con->con_time)
 ** REQUEST = build from client->parser
 ** CODE = client->respcode
@@ -116,7 +115,7 @@ void logging_access(client_t *client)
     struct tm thetime;
     time_t now;
     time_t stayed;
-    char *referrer, *user_agent;
+    char *referrer, *user_agent, *username;
 
     now = global.time;
 
@@ -137,6 +136,11 @@ void logging_access(client_t *client)
 
     stayed = now - client->con->con_time;
 
+    if (client->username == NULL)
+        username = "-"; 
+    else
+        username = client->username;
+
     referrer = httpp_getvar (client->parser, "referer");
     if (referrer == NULL)
         referrer = "-";
@@ -147,8 +151,9 @@ void logging_access(client_t *client)
 
 #ifdef HAVE_LOGGING_IP
     log_write_direct (accesslog,
-            "%s - - [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
             client->con->ip,
+            username,
             datebuf, reqbuf, client->respcode, client->con->sent_bytes,
             referrer, user_agent, (unsigned long)stayed);
 #else

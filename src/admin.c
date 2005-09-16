@@ -272,7 +272,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             if (source->running)
             {
-                if (source->client->con)
+                if (source->client)
                 {
                     snprintf (buf, sizeof(buf), "%lu",
                             (unsigned long)(now - source->client->con->con_time));

@@ -75,7 +75,7 @@ void format_free_plugin (format_plugin_t *format)
 }
 
 
-int format_get_plugin (format_type_t type, source_t *source, http_parser_t *parser)
+int format_get_plugin (format_type_t type, source_t *source)
 {
     int ret = -1;
 
@@ -84,7 +84,7 @@ int format_get_plugin (format_type_t type, source_t *source, http_parser_t *pars
         ret = format_ogg_get_plugin (source);
         break;
     case FORMAT_TYPE_GENERIC:
-        ret = format_mp3_get_plugin (source, parser);
+        ret = format_mp3_get_plugin (source);
         break;
     default:
         break;
@@ -289,8 +289,8 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr += bytes;
 
     /* iterate through source http headers and send to client */
-    avl_tree_rlock (source->client->parser->vars);
-    node = avl_get_first (source->client->parser->vars);
+    avl_tree_rlock (source->parser->vars);
+    node = avl_get_first (source->parser->vars);
     while (node)
     {
         int next = 1;
@@ -317,7 +317,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
         else
         {
             if (strcasecmp (var->name, "ice-password") &&
-                strcasecmp (var->name, "icy-metaint"))
+                    strcasecmp (var->name, "icy-metaint"))
             {
                 if (!strncasecmp ("ice-", var->name, 4))
                 {
@@ -344,7 +344,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
         if (next)
             node = avl_get_next (node);
     }
-    avl_tree_unlock (source->client->parser->vars);
+    avl_tree_unlock (source->parser->vars);
 
     bytes = snprintf (ptr, remaining, "Server: %s\r\n", ICECAST_VERSION_STRING);
     remaining -= bytes;

@@ -280,16 +280,17 @@ static int add_client_to_source (source_t *source, client_t *client)
         return -1;
 
     } while (1);
-    /* lets add the client to the active list */
-    client->next = source->active_clients;
-    source->active_clients = client;
-    source->listeners++;
-    stats_event_inc (NULL, "listener_connections");
 
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
     memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+
+    /* lets add the client to the active list */
+    client->next = source->active_clients;
+    source->active_clients = client;
+    source->listeners++;
+    stats_event_inc (NULL, "listener_connections");
 
     thread_mutex_unlock (&source->lock);
 

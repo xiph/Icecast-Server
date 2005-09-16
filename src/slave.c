@@ -309,6 +309,7 @@ static void *start_relay_stream (void *arg)
             ERROR1("Error from relay request: %s", httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
             break;
         }
+        src->parser = parser;
 
         global_lock ();
         if (client_create (&src->client, con, parser) < 0)
@@ -324,7 +325,7 @@ static void *start_relay_stream (void *arg)
         parser = NULL;
         client_set_queue (src->client, NULL);
 
-        if (connection_complete_source (src, NULL, 0) < 0)
+        if (connection_complete_source (src, 0) < 0)
         {
             DEBUG0("Failed to complete source initialisation");
             break;

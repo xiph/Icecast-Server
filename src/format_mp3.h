@@ -37,6 +37,6 @@ typedef struct {
     char build_metadata[4081];
 } mp3_state;
 
-int format_mp3_get_plugin(struct source_tag *src, http_parser_t *p);
+int format_mp3_get_plugin(struct source_tag *src);
 
 #endif  /* __FORMAT_MP3_H__ */
