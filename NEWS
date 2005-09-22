@@ -43,6 +43,8 @@ Icecast 2.3
 
 - Update to admin/web xslt interface
 
+- Icecast can now be installed as a win32 service
+
 **** Fixes for 2.3.0 ****
 - real/helix works
 - win32 access log correct
