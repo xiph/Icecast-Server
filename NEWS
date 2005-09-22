@@ -1,3 +1,56 @@
+Icecast 2.3 
+-----------------------------------------------------------------------------
+**** New features for 2.3.0 ****
+
+- Streaming support for ogg speex, ogg flac, ogg midi
+
+- intro file support - per mount settable
+   Intro files will play when a listener first connects to a stream.  This
+   is designed for station jingles and the like.  If you don't broadcast 
+   in ogg vorbis, you must make sure the bitrate/samplerate/number of 
+   channels match up to your stream.
+
+- on-demand relays, global and per-relay settable
+   On demand relays only connect to the relayed content when there are
+   listeners attached to the relay.  This can save bandwidth in certain cases.
+
+- fallback to file, extends on the intro file handling.
+   With this feature, you can specify a "fallback file" which will be played
+   in a loop and sent your currently connected listeners in the event of a
+   source client disconnect.  This means your listeners stay connected while
+   you fix your disconnect problem.  Same rules regarding bitrate/samplerate/
+   number of channels apply as with intro files.
+
+- new mount-level settings
+   1. public, type/subtype, genre settings, stream description,
+      stream url, stream name, bitrate (override what is sent from the source
+      client)
+   2. mp3 metadata interval
+   3. on-[dis]connect scripts can be stated per-mount, invoked at source 
+      start/stop and take 1 arg which is the mountpoint.
+
+- New URL listener authenticator.
+   This delegates your listener authorization to an external application.
+   URL calls are made on listener connect/disconnect as well as source
+   connect/disconnect.  It is meant for large broadcasters who have existing
+   authentication systems that need to be integrated into.  Included is 
+   an example php-based application that can be used in conjunction with 
+   the url authenticator to manage a simple subscription-based broadcast.
+
+- HTPasswd authenticator uses in-memory structures now.
+
+- On demand files now can be fed through an authenticator
+
+- Update to admin/web xslt interface
+
+**** Fixes for 2.3.0 ****
+- real/helix works
+- win32 access log correct
+- stats client is stable now (curl -X STATS http://admin@host:port/)
+- show mountpoints on stats that are inactive but have an active fallback
+- more updates over HUP possible
+
+
 Icecast 2.2 
 -----------------------------------------------------------------------------
 ****New features for 2.2 (in no particular order):****
