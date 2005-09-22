@@ -49,6 +49,9 @@ Icecast 2.3
 - stats client is stable now (curl -X STATS http://admin@host:port/)
 - show mountpoints on stats that are inactive but have an active fallback
 - more updates over HUP possible
+- improved stability under heavy load
+- moving clients will no longer sometimes deadlock the server
+- avoid small writes to reduce TCP overhead.
 
 
 Icecast 2.2 
