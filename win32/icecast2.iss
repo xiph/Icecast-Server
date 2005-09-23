@@ -27,12 +27,14 @@ Name: "{app}\web"
 Name: "{app}\admin"
 Name: "{app}\doc"
 Name: "{app}\logs"
+Name: "{app}\examples"
 
 
 [Files]
 Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecastService.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion
 Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; Flags: ignoreversion
 Source: "..\web\*.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\*.png"; DestDir: "{app}\web"; Flags: ignoreversion
