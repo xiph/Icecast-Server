@@ -70,7 +70,7 @@
 <h3>
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="auth.xsl"><img border="0" src="/key.png"/></a> Authentication Required
+<a href="/auth.xsl"><img border="0" src="/key.png"/></a> Authentication Required
 </xsl:when>
 <xsl:otherwise>
 <a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a> Mount Point
