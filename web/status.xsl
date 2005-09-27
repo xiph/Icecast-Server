@@ -41,15 +41,21 @@
 <h3>
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="/auth.xsl"><img border="0" src="/key.png"/></a> Authentication Required
+<a href="/auth.xsl"><img border="0" src="/key.png"/></a>
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a> Mount Point
+<a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a>
 </xsl:otherwise>
 </xsl:choose>
-(<xsl:value-of select="@mount" />)
-<xsl:if test="authenticator"> <a href="/auth.xsl"><img border="0" src="/key.png"/></a> </xsl:if>
-
+Mount Point : (<xsl:value-of select="@mount" />) : 
+<xsl:choose>
+<xsl:when test="authenticator">
+<a href="/auth.xsl">Click to Listen</a>
+</xsl:when>
+<xsl:otherwise>
+<a href="{@mount}.m3u">Click to Listen</a>
+</xsl:otherwise>
+</xsl:choose>
 </h3>
 
 <table border="0" cellpadding="4">
