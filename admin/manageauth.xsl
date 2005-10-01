@@ -57,17 +57,21 @@
 <table cellpadding="2" cellspacing="4" border="0" >
 		<tr>
 				<td ><b>User Id</b></td>
-				<td ><b>Password</b></td>
 				<td ></td>
 		</tr>
 <xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
 <xsl:for-each select="User">
 		<tr>
 				<td><xsl:value-of select="username" /></td>
-				<td><xsl:value-of select="password" /></td>
 				<td><a class="nav2" href="manageauth.xsl?mount={$themount}&amp;username={username}&amp;action=delete">delete</a></td>
 		</tr>
 </xsl:for-each>
+</table>
+<table cellpadding="2" cellspacing="4" border="0" >
+		<tr>
+				<td ><b>User Id</b></td>
+				<td ><b>Password</b></td>
+		</tr>
 		<tr>
 				<td ><input type="text" name="username" /></td>
 				<td ><input type="text" name="password" /></td>
