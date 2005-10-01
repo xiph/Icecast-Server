@@ -340,6 +340,8 @@ static void process_request_queue ()
             int pass_it = 1;
             char *ptr;
 
+            /* handle \n, \r\n and nsvcap which for some strange reason has
+             * EOL as \r\r\n */
             node->offset += len;
             client->refbuf->data [node->offset] = '\000';
             do
@@ -347,6 +349,8 @@ static void process_request_queue ()
                 if (node->shoutcast == 1)
                 {
                     /* password line */
+                    if (strstr (client->refbuf->data, "\r\r\n") != NULL)
+                        break;
                     if (strstr (client->refbuf->data, "\r\n") != NULL)
                         break;
                     if (strstr (client->refbuf->data, "\n") != NULL)
@@ -354,6 +358,12 @@ static void process_request_queue ()
                 }
                 /* stream_offset refers to the start of any data sent after the
                  * http style headers, we don't want to lose those */
+                ptr = strstr (client->refbuf->data, "\r\r\n\r\r\n");
+                if (ptr)
+                {
+                    node->stream_offset = (ptr+6) - client->refbuf->data;
+                    break;
+                }
                 ptr = strstr (client->refbuf->data, "\r\n\r\n");
                 if (ptr)
                 {
@@ -882,14 +892,20 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         config_release_config();
 
         /* Get rid of trailing \r\n or \n after password */
-        ptr = strstr (client->refbuf->data, "\r\n");
+        ptr = strstr (client->refbuf->data, "\r\r\n");
         if (ptr)
-            headers = ptr+2;
+            headers = ptr+3;
         else
         {
-            ptr = strstr (client->refbuf->data, "\n");
+            ptr = strstr (client->refbuf->data, "\r\n");
             if (ptr)
-                headers = ptr+1;
+                headers = ptr+2;
+            else
+            {
+                ptr = strstr (client->refbuf->data, "\n");
+                if (ptr)
+                    headers = ptr+1;
+            }
         }
 
         if (ptr == NULL)
@@ -915,6 +931,8 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             free (source_password);
             return;
         }
+        else
+            INFO1 ("password does not match \"%s\"", client->refbuf->data);
         client_destroy (client);
         free (node);
         return;
