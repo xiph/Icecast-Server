@@ -85,6 +85,14 @@ void client_destroy(client_t *client)
     if (client == NULL)
         return;
 
+    /* release the buffer now, as the buffer could be on the source queue
+     * and may of disappeared after auth completes */
+    if (client->refbuf)
+    {
+        refbuf_release (client->refbuf);
+        client->refbuf = NULL;
+    }
+
     if (release_client (client))
         return;
 
@@ -103,10 +111,6 @@ void client_destroy(client_t *client)
     global.clients--;
     stats_event_args (NULL, "clients", "%d", global.clients);
     global_unlock ();
-
-    /* drop ref counts if need be */
-    if (client->refbuf)
-        refbuf_release (client->refbuf);
 
     /* we need to free client specific format data (if any) */
     if (client->free_client_data)
