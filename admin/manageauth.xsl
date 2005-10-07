@@ -20,7 +20,6 @@
 	        <a class="nav" href="stats.xsl">Admin Home</a> |
 		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
         	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
-            <a class="nav" href="managerelays.xsl">Manage Relays</a> |
         	<a class="nav" href="/status.xsl">Index</a>
 	    </td></tr>
 	</table>
@@ -58,19 +57,24 @@
 <table cellpadding="2" cellspacing="4" border="0" >
 		<tr>
 				<td ><b>User Id</b></td>
-				<td ><b>Password</b></td>
 				<td ></td>
 		</tr>
 <xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
 <xsl:for-each select="User">
 		<tr>
 				<td><xsl:value-of select="username" /></td>
-				<td><xsl:value-of select="password" /></td>
 				<td><a class="nav2" href="manageauth.xsl?mount={$themount}&amp;username={username}&amp;action=delete">delete</a></td>
 		</tr>
 </xsl:for-each>
+</table>
+<br/>
+<table cellpadding="2" cellspacing="4" border="0" >
 		<tr>
+				<td ><b>User Id</b></td>
 				<td ><input type="text" name="username" /></td>
+		</tr>
+		<tr>
+				<td ><b>Password</b></td>
 				<td ><input type="text" name="password" /></td>
 		</tr>
 		<tr>

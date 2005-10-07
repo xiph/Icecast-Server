@@ -71,16 +71,13 @@
 <h3>
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
+<a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a> Mount Point
+<a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a>
 </xsl:otherwise>
 </xsl:choose>
-
-(<xsl:value-of select="@mount" />)
-<xsl:if test="authenticator"><a href="manageauth.xsl?mount={@mount}"><img border="0" src="/images/key.gif"/></a> </xsl:if>
-
+Mount Point : (<xsl:value-of select="@mount" />)
 </h3>
 	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
 	<tr>        
@@ -95,10 +92,15 @@
 <br />
 <table cellpadding="5" cellspacing="0" border="0">
 	<xsl:for-each select="*">
+    <xsl:choose>
+    <xsl:when test="name()='listener'"></xsl:when>
+    <xsl:otherwise>
 	<tr>
 		<td width="130"><xsl:value-of select="name()" /></td>
 		<td class="streamdata"><xsl:value-of select="." /></td>
 	</tr>
+    </xsl:otherwise>
+    </xsl:choose>
 	</xsl:for-each>
 </table>
 </div>

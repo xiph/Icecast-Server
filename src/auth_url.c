@@ -161,6 +161,8 @@ static auth_result url_remove_client (auth_client *auth_user)
     int port;
     char post [4096];
 
+    if (url->removeurl == NULL)
+        return AUTH_OK;
     config = config_get_config ();
     server = util_url_escape (config->hostname);
     port = config->port;

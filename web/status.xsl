@@ -32,8 +32,6 @@
 <!--end index header menu -->
 <!--mount point stats-->
 <xsl:for-each select="source">
-<xsl:choose>
-<xsl:when test="listeners">
 <div class="roundcont">
 <div class="roundtop">
 <img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
@@ -42,22 +40,21 @@
 <h3>
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
+<a href="/auth.xsl"><img border="0" src="/images/key.png"/></a>
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a> Mount Point
+<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a>
 </xsl:otherwise>
 </xsl:choose>
-(<xsl:value-of select="@mount" />)
-<xsl:if test="authenticator"> <a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> </xsl:if>
-<xsl:if test="artwork">
-  <img border="0" alt="" width="100" height="100">
-  <xsl:attribute name="src">
-     <xsl:value-of select="artwork"/>
-  </xsl:attribute>
- </img>
-</xsl:if>
-
+Mount Point : (<xsl:value-of select="@mount" />) :
+<xsl:choose>
+<xsl:when test="authenticator">
+<a href="/auth.xsl">Click to Listen</a>
+</xsl:when>
+<xsl:otherwise>
+<a href="{@mount}.m3u">Click to Listen</a>
+</xsl:otherwise>
+</xsl:choose>
 </h3>
 
 <table border="0" cellpadding="4">
@@ -106,11 +103,6 @@
 </div>
 <br />
 <br />
-</xsl:when>
-<xsl:otherwise>
-<h3><xsl:value-of select="@mount" /> - Not Connected</h3>
-</xsl:otherwise>
-</xsl:choose>
 
 </xsl:for-each>
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
