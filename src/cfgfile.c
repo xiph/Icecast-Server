@@ -113,6 +113,41 @@ void config_init_configuration(ice_config_t *configuration)
     _set_defaults(configuration);
 }
 
+static void config_clear_mount (mount_proxy *mount)
+{
+    config_options_t *option;
+
+    xmlFree (mount->mountname);
+    xmlFree (mount->username);
+    xmlFree (mount->password);
+    xmlFree (mount->dumpfile);
+    xmlFree (mount->intro_filename);
+    xmlFree (mount->on_connect);
+    xmlFree (mount->on_disconnect);
+    xmlFree (mount->fallback_mount);
+    xmlFree (mount->stream_name);
+    xmlFree (mount->stream_description);
+    xmlFree (mount->stream_url);
+    xmlFree (mount->stream_genre);
+    xmlFree (mount->bitrate);
+    xmlFree (mount->type);
+    xmlFree (mount->cluster_password);
+
+    xmlFree (mount->auth_type);
+    option = mount->auth_options;
+    while (option)
+    {
+        config_options_t *nextopt = option->next;
+        xmlFree (option->name);
+        xmlFree (option->value);
+        free (option);
+        option = nextopt;
+    }
+    auth_release (mount->auth);
+    free (mount);
+}
+
+
 void config_clear(ice_config_t *c)
 {
     ice_config_dir_t *dirnode, *nextdirnode;
@@ -120,7 +155,6 @@ void config_clear(ice_config_t *c)
     mount_proxy *mount, *nextmount;
     aliases *alias, *nextalias;
     int i;
-    config_options_t *option;
 
     if (c->config_filename)
         free(c->config_filename);
@@ -183,36 +217,7 @@ void config_clear(ice_config_t *c)
     mount = c->mounts;
     while(mount) {
         nextmount = mount->next;
-        xmlFree(mount->mountname);
-        xmlFree(mount->username);
-        xmlFree(mount->password);
-        xmlFree(mount->dumpfile);
-        xmlFree(mount->intro_filename);
-        xmlFree(mount->on_connect);
-        xmlFree(mount->on_disconnect);
-        xmlFree(mount->fallback_mount);
-        xmlFree(mount->stream_name);
-        xmlFree(mount->stream_description);
-        xmlFree(mount->stream_url);
-        xmlFree(mount->stream_genre);
-        xmlFree(mount->bitrate);
-        xmlFree(mount->type);
-        if (mount->cluster_password) {
-            xmlFree(mount->cluster_password);
-        }
-
-        xmlFree(mount->auth_type);
-        option = mount->auth_options;
-        while(option) {
-            config_options_t *nextopt = option->next;
-            xmlFree(option->name);
-            xmlFree(option->value);
-            free(option);
-            option = nextopt;
-        }
-
-        auth_release (mount->auth);
-        free(mount);
+        config_clear_mount (mount);
         mount = nextmount;
     }
 
@@ -524,16 +529,6 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
     
-    while(current) {
-        last = current;
-        current = current->next;
-    }
-
-    if(last)
-        last->next = mount;
-    else
-        configuration->mounts = mount;
-
     /* default <mount> settings */
     mount->max_listeners = -1;
     mount->burst_size = -1;
@@ -666,6 +661,22 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                     doc, node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
+
+    /* make sure we have at least the mountpoint name */
+    if (mount->mountname == NULL)
+    {
+        config_clear_mount (mount);
+        return;
+    }
+    while(current) {
+        last = current;
+        current = current->next;
+    }
+
+    if(last)
+        last->next = mount;
+    else
+        configuration->mounts = mount;
 }
 
 
