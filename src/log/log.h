@@ -29,6 +29,7 @@ int log_open_with_buffer(const char *filename, int size);
 void log_set_level(int log_id, unsigned level);
 void log_set_trigger(int id, unsigned trigger);
 int  log_set_filename(int id, const char *filename);
+int log_set_archive_timestamp(int id, int value);
 void log_flush(int log_id);
 void log_reopen(int log_id);
 void log_close(int log_id);
