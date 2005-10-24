@@ -948,10 +948,18 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "playlistlog") == 0) {
             if (configuration->playlist_log && configuration->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "logsize") == 0) {
+            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->logsize = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "loglevel") == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = atoi(tmp);
            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "logarchive") == 0) {
+            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->logarchive = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
 }

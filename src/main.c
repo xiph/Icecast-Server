@@ -194,6 +194,9 @@ static int _start_logging(void)
         snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
         errorlog = log_open(fn_error);
         log_to_stderr = 0;
+        if (config->logsize)
+            log_set_trigger (errorlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
     } else {
         errorlog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -213,6 +216,9 @@ static int _start_logging(void)
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         accesslog = log_open(fn_access);
         log_to_stderr = 0;
+        if (config->logsize)
+            log_set_trigger (accesslog, config->logsize);
+        log_set_archive_timestamp(accesslog, config->logarchive);
     } else {
         accesslog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -239,6 +245,9 @@ static int _start_logging(void)
             _fatal_error(buf);
         }
         log_to_stderr = 0;
+        if (config->logsize)
+            log_set_trigger (playlistlog, config->logsize);
+        log_set_archive_timestamp(playlistlog, config->logarchive);
     } else {
         playlistlog = -1;
     }

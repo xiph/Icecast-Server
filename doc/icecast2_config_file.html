@@ -641,6 +641,18 @@ All icecast generated log messages will be written to this file.  If the logleve
 <div class="indentedbox">
 Into this file, a log of all metadata for each mountpoint will be written.  The format of the logfile will most likely change over time as we narrow in on a standard format for this.  Currently, the file is pipe delimited.  This option is optional and can be removed entirely from the config file.
 </div>
+<h4>logsize</h4>
+<div class="indentedbox">
+This value specifies (in Kbytes) the maxmimum size of any of the log files.  When the logfile grows beyond this value,
+icecast will either rename it to logfile.old, or add a timestamp to the archived file (if logarchive is enabled).
+</div>
+<h4>logarchive</h4>
+<div class="indentedbox">
+If this value is set, then icecast will append a timestamp to the end of the logfile name when logsize has been reached.
+If disabled, then the default behavior is to rename the logfile to logfile.old (overwriting any previously saved
+logfiles).  We disable this by default to prevent the filling up of filesystems for people who don't care (or know) that 
+their logs are growing.
+</div>
 <h4>loglevel</h4>
 <div class="indentedbox">
 Indicates what messages are logged by icecast.  Log messages are categorized into one of 4 types, Debug, Info, Warn, and Error.<br /><br />The following mapping can be used to set the appropraite value :

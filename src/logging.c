@@ -217,6 +217,8 @@ void restart_logging (ice_config_t *config)
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
         log_set_filename (errorlog, fn_error);
         log_set_level (errorlog, config->loglevel);
+        log_set_trigger (errorlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
         log_reopen (errorlog);
     }
 
@@ -225,6 +227,8 @@ void restart_logging (ice_config_t *config)
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         log_set_filename (accesslog, fn_error);
+        log_set_trigger (errorlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
         log_reopen (accesslog);
     }
 
@@ -233,6 +237,8 @@ void restart_logging (ice_config_t *config)
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
         log_set_filename (playlistlog, fn_error);
+        log_set_trigger (errorlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
         log_reopen (playlistlog);
     }
 }
