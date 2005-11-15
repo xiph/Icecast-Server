@@ -42,12 +42,14 @@ typedef struct vorbis_codec_tag
 
     int rebuild_comment;
     int stream_notify;
+    int initial_audio_page;
 
     ogg_stream_state new_os;
     int page_samples_trigger;
     ogg_int64_t prev_granulepos;
     ogg_packet *prev_packet;
     ogg_int64_t granulepos;
+    ogg_int64_t initial_page_granulepos;
     ogg_int64_t samples_in_page;
     int prev_window;
     int initial_audio_packet;
@@ -216,10 +218,10 @@ static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
 /* push last packet into stream marked with eos */
 static void initiate_flush (vorbis_codec_t *source_vorbis)
 {
-    DEBUG0 ("adding EOS packet");
     if (source_vorbis->prev_packet)
     {
         /* insert prev_packet with eos */
+        DEBUG0 ("adding EOS packet");
         source_vorbis->prev_packet->e_o_s = 1;
         add_audio_packet (source_vorbis, source_vorbis->prev_packet);
         source_vorbis->prev_packet->e_o_s = 0;
@@ -256,7 +258,25 @@ static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
             add_audio_packet (source_vorbis, prev_packet);
             free_ogg_packet (prev_packet);
-            packet . granulepos = source_vorbis->granulepos;
+
+            /* check for short values on first initial page */
+            if (packet . packetno == 4)
+            {
+                if (source_vorbis->initial_page_granulepos < source_vorbis->granulepos)
+                {
+                    source_vorbis->granulepos -= source_vorbis->initial_page_granulepos;
+                    source_vorbis->samples_in_page = source_vorbis->page_samples_trigger;
+                }
+            }
+            /* check for long values on first page */
+            if (packet.granulepos == source_vorbis->initial_page_granulepos)
+            {
+                if (source_vorbis->initial_page_granulepos > source_vorbis->granulepos)
+                    source_vorbis->granulepos = source_vorbis->initial_page_granulepos;
+            }
+
+            if (packet.e_o_s == 0)
+                packet . granulepos = source_vorbis->granulepos;
         }
         else
         {
@@ -497,7 +517,14 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         return NULL;
     }
     if (codec->headers == 3)
+    {
+        if (source_vorbis->initial_audio_page)
+        {
+            source_vorbis->initial_page_granulepos = ogg_page_granulepos (page);
+            source_vorbis->initial_audio_page = 0;
+        }
         return NULL;
+    }
 
     while (codec->headers < 3)
     {
@@ -530,6 +557,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         /* set queued vorbis pages to contain about 1/2 of a second worth of samples */
         source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 2;
         source_vorbis->process_packet = process_vorbis_headers;
+        source_vorbis->initial_audio_page = 1;
     }
     else
     {
