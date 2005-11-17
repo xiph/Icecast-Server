@@ -389,7 +389,7 @@ void add_client (const char *mount, client_t *client)
     if (mountinfo && mountinfo->no_mount)
     {
         config_release_config ();
-        client_send_404 (client, "mountpoint unavailable");
+        client_send_403 (client, "mountpoint unavailable");
         return;
     }
     if (mountinfo && mountinfo->auth)
@@ -400,7 +400,7 @@ void add_client (const char *mount, client_t *client)
         {
             config_release_config ();
             WARN0 ("too many clients awaiting authentication");
-            client_send_404 (client, "busy, please try again later");
+            client_send_403 (client, "busy, please try again later");
             return;
         }
         auth_client_setup (mountinfo, client);
@@ -429,7 +429,7 @@ void add_client (const char *mount, client_t *client)
         int ret = add_authenticated_client (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
-            client_send_404 (client, "stream full");
+            client_send_403 (client, "max listeners reached");
     }
 }
 
