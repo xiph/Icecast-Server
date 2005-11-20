@@ -1091,7 +1091,12 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     else
         source->dumpfilename = NULL;
 
-    if (mountinfo && mountinfo->intro_filename && source->intro_file == NULL)
+    if (source->intro_file)
+    {
+        fclose (source->intro_file);
+        source->intro_file = NULL;
+    }
+    if (mountinfo && mountinfo->intro_filename)
     {
         ice_config_t *config = config_get_config_unlocked ();
         unsigned int len  = strlen (config->webroot_dir) +
@@ -1099,11 +1104,14 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         char *path = malloc (len);
         if (path)
         {
+            FILE *f;
             snprintf (path, len, "%s" PATH_SEPARATOR "%s", config->webroot_dir,
                     mountinfo->intro_filename);
 
-            source->intro_file = fopen (path, "rb");
-            if (source->intro_file == NULL)
+            f = fopen (path, "rb");
+            if (f)
+                source->intro_file = f;
+            else
                 WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
             free (path);
         }
