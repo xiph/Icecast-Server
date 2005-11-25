@@ -68,9 +68,11 @@ typedef struct auth_tag
     mutex_t lock;
     int refcount;
     int allow_duplicate_users;
+    int drop_existing_listener;
 
     void *state;
     char *type;
+    char *realm;
 } auth_t;
 
 void add_client (const char *mount, client_t *client);

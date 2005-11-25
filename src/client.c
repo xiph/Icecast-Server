@@ -189,6 +189,17 @@ void client_send_400(client_t *client, char *message) {
     fserve_add_client (client, NULL);
 }
 
+void client_send_403(client_t *client, const char *reason)
+{
+    if (reason == NULL)
+        reason = "Forbidden";
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 403 %s\r\n\r\n", reason);
+    client->respcode = 403;
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
+}
+
 void client_send_404(client_t *client, char *message) {
 
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
@@ -201,13 +212,19 @@ void client_send_404(client_t *client, char *message) {
 }
 
 
-void client_send_401(client_t *client) {
+void client_send_401 (client_t *client)
+{
+    const char *send_realm = ICECAST_VERSION_STRING;
+    if (client->auth && client->auth->realm)
+        send_realm = client->auth->realm;
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 401 Authentication Required\r\n"
-            "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n"
+            "WWW-Authenticate: Basic realm=\"%s\"\r\n"
             "\r\n"
-            "You need to authenticate\r\n");
+            "You need to authenticate\r\n", send_realm);
     client->respcode = 401;
+    auth_release (client->auth);
+    client->auth = NULL;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }

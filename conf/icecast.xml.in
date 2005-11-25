@@ -181,6 +181,13 @@
         <errorlog>error.log</errorlog>
         <!-- <playlistlog>playlist.log</playlistlog> -->
       	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+      	<logsize>10000</logsize> <!-- Max size of a logfile -->
+        <!-- If logarchive is enabled (1), then when logsize is reached
+             the logfile will be moved to [error|access|playlist].log.DATESTAMP,
+             otherwise it will be moved to [error|access|playlist].log.old.
+             Default is non-archive mode (i.e. overwrite)
+        -->
+        <!-- <logarchive>1</logarchive> -->
     </logging>
 
     <security>

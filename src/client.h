@@ -89,6 +89,7 @@ void client_send_504(client_t *client, char *message);
 void client_send_416(client_t *client);
 void client_send_404(client_t *client, char *message);
 void client_send_401(client_t *client);
+void client_send_403(client_t *client, const char *reason);
 void client_send_400(client_t *client, char *message);
 void client_send_302(client_t *client, char *location);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);

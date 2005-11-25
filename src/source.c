@@ -1072,19 +1072,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     /* handle changes in intro file setting */
     if (source->intro_file)
     {
-        int close_it = 0;
-        if (mountinfo)
-        {
-            if (mountinfo->intro_filename && strcmp (mountinfo->intro_filename,
-                        source->intro_filename) != 0)
-                close_it = 1;
-        }
-        else
-            close_it = 1;
         fclose (source->intro_file);
         source->intro_file = NULL;
-        free (source->intro_filename);
-        source->intro_filename = NULL;
     }
     if (mountinfo && mountinfo->intro_filename)
     {
@@ -1094,14 +1083,17 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         char *path = malloc (len);
         if (path)
         {
+            FILE *f;
             snprintf (path, len, "%s" PATH_SEPARATOR "%s", config->webroot_dir,
                     mountinfo->intro_filename);
 
-            source->intro_file = fopen (path, "rb");
-            if (source->intro_file == NULL)
+            DEBUG1 ("intro file is %s", mountinfo->intro_filename);
+            f = fopen (path, "rb");
+            if (f)
+                source->intro_file = f;
+            else
                 WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
             free (path);
-            source->intro_filename = strdup (mountinfo->intro_filename);
         }
     }
 
@@ -1143,8 +1135,6 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 
     if (source->fallback_mount)
         DEBUG1 ("fallback %s", source->fallback_mount);
-    if (source->intro_filename)
-        DEBUG1 ("intro file is %s", source->intro_filename);
     if (source->dumpfilename)
         DEBUG1 ("Dumping stream to %s", source->dumpfilename);
     if (mountinfo && mountinfo->on_connect)

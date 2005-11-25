@@ -86,6 +86,7 @@ typedef struct {
     int  auth_header_len;
     char *timelimit_header;
     int  timelimit_header_len;
+    char *userpwd;
     CURL *handle;
     char errormsg [CURL_ERROR_SIZE];
 } auth_url;
@@ -106,7 +107,16 @@ static void auth_url_clear(auth_t *self)
     free (url->stream_end);
     free (url->auth_header);
     free (url->timelimit_header);
+    free (url->userpwd);
     free (url);
+}
+
+
+/* make sure that prompting at the console does not occur */
+static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
+{
+    buffer[0] = '\0';
+    return 0;
 }
 
 
@@ -159,7 +169,7 @@ static auth_result url_remove_client (auth_client *auth_user)
     char *username, *password, *mount, *server;
     ice_config_t *config;
     int port;
-    char post [4096];
+    char *userpwd = NULL, post [4096];
 
     if (url->removeurl == NULL)
         return AUTH_OK;
@@ -194,12 +204,37 @@ static auth_result url_remove_client (auth_client *auth_user)
     free (username);
     free (password);
 
+    if (strchr (url->removeurl, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+        {
+            /* auth'd requests may not have a user/pass, but may use query args */
+            if (client->username && client->password)
+            {
+                int len = strlen (client->username) + strlen (client->password) + 2;
+                userpwd = malloc (len);
+                snprintf (userpwd, len, "%s:%s", client->username, client->password);
+                curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
+            }
+            else
+                curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+        }
+    }
+    else
+    {
+        /* url has user/pass but libcurl may need to clear any existing settings */
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
     curl_easy_setopt (url->handle, CURLOPT_URL, url->removeurl);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
         WARN2 ("auth to server %s failed with %s", url->removeurl, url->errormsg);
+
+    free (userpwd);
 
     return AUTH_OK;
 }
@@ -214,7 +249,7 @@ static auth_result url_add_client (auth_client *auth_user)
     char *agent, *user_agent, *username, *password;
     char *mount, *ipaddr, *server;
     ice_config_t *config;
-    char post [4096];
+    char *userpwd = NULL, post [4096];
 
     if (url->addurl == NULL)
         return AUTH_OK;
@@ -255,12 +290,37 @@ static auth_result url_add_client (auth_client *auth_user)
     free (password);
     free (ipaddr);
 
+    if (strchr (url->addurl, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+        {
+            /* auth'd requests may not have a user/pass, but may use query args */
+            if (client->username && client->password)
+            {
+                int len = strlen (client->username) + strlen (client->password) + 2;
+                userpwd = malloc (len);
+                snprintf (userpwd, len, "%s:%s", client->username, client->password);
+                curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
+            }
+            else
+                curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+        }
+    }
+    else
+    {
+        /* url has user/pass but libcurl may need to clear any existing settings */
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
     curl_easy_setopt (url->handle, CURLOPT_URL, url->addurl);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
     url->errormsg[0] = '\0';
 
     res = curl_easy_perform (url->handle);
+
+    free (userpwd);
 
     if (res)
     {
@@ -308,6 +368,15 @@ static void url_stream_start (auth_client *auth_user)
     free (server);
     free (mount);
 
+    if (strchr (url->stream_start, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
+    else
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
     curl_easy_setopt (url->handle, CURLOPT_URL, stream_start_url);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
@@ -351,7 +420,16 @@ static void url_stream_end (auth_client *auth_user)
     free (server);
     free (mount);
 
-    curl_easy_setopt (url->handle, CURLOPT_URL, stream_end_url);
+    if (strchr (url->stream_end, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
+    else
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    curl_easy_setopt (url->handle, CURLOPT_URL, url->stream_end);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
@@ -440,7 +518,15 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
     curl_easy_setopt (url_info->handle, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt (url_info->handle, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt (url_info->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
     curl_easy_setopt (url_info->handle, CURLOPT_ERRORBUFFER, &url_info->errormsg[0]);
+
+    if (url_info->username && url_info->password)
+    {
+        int len = strlen (url_info->username) + strlen (url_info->password) + 2;
+        url_info->userpwd = malloc (len);
+        snprintf (url_info->userpwd, len, "%s:%s", url_info->username, url_info->password);
+    }
 
     authenticator->state = url_info;
     INFO0("URL based authentication setup");

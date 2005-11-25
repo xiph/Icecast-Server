@@ -122,13 +122,14 @@ void auth_release (auth_t *authenticator)
     if (authenticator->free)
         authenticator->free (authenticator);
     xmlFree (authenticator->type);
+    xmlFree (authenticator->realm);
     thread_mutex_unlock (&authenticator->lock);
     thread_mutex_destroy (&authenticator->lock);
     free (authenticator);
 }
 
 
-void auth_client_free (auth_client *auth_user)
+static void auth_client_free (auth_client *auth_user)
 {
     if (auth_user == NULL)
         return;
@@ -157,11 +158,7 @@ static void auth_new_listener (auth_client *auth_user)
     if (client->auth->authenticate)
     {
         if (client->auth->authenticate (auth_user) != AUTH_OK)
-        {
-            auth_release (client->auth);
-            client->auth = NULL;
             return;
-        }
     }
     if (auth_postprocess_client (auth_user) < 0)
         INFO1 ("client %lu failed", client->con->id);
@@ -179,7 +176,6 @@ static void auth_remove_listener (auth_client *auth_user)
         client->auth->release_client (auth_user);
     auth_release (client->auth);
     client->auth = NULL;
-    return;
 }
 
 
@@ -238,8 +234,17 @@ static int check_duplicate_logins (source_t *source, client_t *client)
         existing = source->active_clients;
         while (existing)
         {
-            if (existing->username && strcmp (existing->username, client->username) == 0)
-                return 0;
+            if (existing->con->error == 0 && existing->username &&
+                    strcmp (existing->username, client->username) == 0)
+            {
+                if (auth->drop_existing_listener)
+                {
+                    existing->con->error = 1;
+                    return 1;
+                }
+                else
+                    return 0;
+            }
             existing = existing->next;
         }
     }
@@ -390,7 +395,7 @@ void add_client (const char *mount, client_t *client)
     if (mountinfo && mountinfo->no_mount)
     {
         config_release_config ();
-        client_send_404 (client, "mountpoint unavailable");
+        client_send_403 (client, "mountpoint unavailable");
         return;
     }
     if (mountinfo && mountinfo->auth)
@@ -401,7 +406,7 @@ void add_client (const char *mount, client_t *client)
         {
             config_release_config ();
             WARN0 ("too many clients awaiting authentication");
-            client_send_404 (client, "busy, please try again later");
+            client_send_403 (client, "busy, please try again later");
             return;
         }
         auth_client_setup (mountinfo, client);
@@ -415,7 +420,8 @@ void add_client (const char *mount, client_t *client)
         auth_user = calloc (1, sizeof (auth_client));
         if (auth_user == NULL)
         {
-            client_send_401 (client);
+            ERROR0 ("memory exhausted");
+            abort ();
             return;
         }
         auth_user->mount = strdup (mount);
@@ -430,7 +436,7 @@ void add_client (const char *mount, client_t *client)
         int ret = add_authenticated_client (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
-            client_send_404 (client, "stream full");
+            client_send_404 (client, "max listeners reached");
     }
 }
 
@@ -440,7 +446,7 @@ void add_client (const char *mount, client_t *client)
  */
 int release_client (client_t *client)
 {
-    if (client->auth)
+    if (client->auth && client->authenticated)
     {
         auth_client *auth_user = calloc (1, sizeof (auth_client));
         if (auth_user == NULL)
@@ -494,6 +500,10 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
     {
         if (strcmp(options->name, "allow_duplicate_users") == 0)
             auth->allow_duplicate_users = atoi (options->value);
+        else if (strcmp(options->name, "realm") == 0)
+            auth->realm = xmlStrdup (options->value);
+        else if (strcmp(options->name, "drop_existing_listener") == 0)
+            auth->drop_existing_listener = atoi (options->value);
         options = options->next;
     }
 }

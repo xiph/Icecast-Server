@@ -967,7 +967,6 @@ static void command_kill_client(client_t *client, source_t *source,
     doc = xmlNewDoc("1.0");
     node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
     xmlDocSetRootElement(doc, node);
-    DEBUG1("Response is %d", response);
 
     if(listener != NULL) {
         INFO1("Admin request: client %d removed", id);
@@ -976,8 +975,7 @@ static void command_kill_client(client_t *client, source_t *source,
          * loop
          */
         listener->con->error = 1;
-        memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "Client %d removed", id);
+        snprintf(buf, sizeof(buf), "Client %d removed", id);
         xmlNewChild(node, NULL, "message", buf);
         xmlNewChild(node, NULL, "return", "1");
     }

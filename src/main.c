@@ -196,6 +196,7 @@ static int _start_logging(void)
         log_to_stderr = 0;
         if (config->logsize)
             log_set_trigger (errorlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
     } else {
         errorlog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -217,6 +218,7 @@ static int _start_logging(void)
         log_to_stderr = 0;
         if (config->logsize)
             log_set_trigger (accesslog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
     } else {
         accesslog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -245,6 +247,7 @@ static int _start_logging(void)
         log_to_stderr = 0;
         if (config->logsize)
             log_set_trigger (playlistlog, config->logsize);
+        log_set_archive_timestamp(errorlog, config->logarchive);
     } else {
         playlistlog = -1;
     }

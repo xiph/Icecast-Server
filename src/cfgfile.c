@@ -513,10 +513,6 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->queue_size_limit = atoi(tmp);
             if (tmp) xmlFree(tmp);
-        } else if (strcmp(node->name, "threadpool") == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->threadpool_size = atoi(tmp);
-            if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "client-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_timeout = atoi(tmp);
@@ -524,6 +520,8 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "header-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->header_timeout = atoi(tmp);
+            if (configuration->header_timeout < 0 || configuration->header_timeout > 60)
+                configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "source-timeout") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -991,6 +989,10 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = atoi(tmp);
            if (tmp) xmlFree(tmp);
+        } else if (strcmp(node->name, "logarchive") == 0) {
+            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->logarchive = atoi(tmp);
+            if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
 }

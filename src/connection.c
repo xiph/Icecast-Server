@@ -574,7 +574,7 @@ void connection_accept_loop(void)
             if (client_create (&client, con, NULL) < 0)
             {
                 global_unlock();
-                client_send_404 (client, "Icecast connection limit reached");
+                client_send_403 (client, "Icecast connection limit reached");
                 /* don't be too eager as this is an imposed hard limit */
                 thread_sleep (400000);
                 continue;
@@ -655,7 +655,7 @@ int connection_complete_source (source_t *source, int response)
                 config_release_config();
                 if (response)
                 {
-                    client_send_404 (source->client, "Content-type not supported");
+                    client_send_403 (source->client, "Content-type not supported");
                     source->client = NULL;
                 }
                 WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
@@ -675,7 +675,7 @@ int connection_complete_source (source_t *source, int response)
             config_release_config();
             if (response)
             {
-                client_send_404 (source->client, "internal format allocation problem");
+                client_send_403 (source->client, "internal format allocation problem");
                 source->client = NULL;
             }
             WARN1 ("plugin format failed for \"%s\"", source->mount);
@@ -706,7 +706,7 @@ int connection_complete_source (source_t *source, int response)
 
     if (response)
     {
-        client_send_404 (source->client, "too many sources connected");
+        client_send_403 (source->client, "too many sources connected");
         source->client = NULL;
     }
 
@@ -915,7 +915,7 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
     }
     else
     {
-        client_send_404 (client, "Mountpoint in use");
+        client_send_403 (client, "Mountpoint in use");
         WARN1 ("Mountpoint %s in use", uri);
     }
 }
