@@ -12,6 +12,22 @@ TODO
 . get feedback from people on listener auth via url, Stephen Nixon has done
   some auth scripts that people can use at http://imux.net/icecast/
 
+2.3-kh2
+. merges from post 2.3 release/feedback
+  - stats speedup, from order O(n^2) to O(1)
+  - log cycle update. can state log size and whether renaming with date extension
+    is to be done
+  - fixup grnaulepos handling in vorbis rebuild. minor audio playback glitch
+  - sync intro file change over HUP handling.
+  - send 403 responses instead of 404 in certain cases.
+. added realm and drop_existing_listener settings to generic auth.
+. auth url didn't handle authetication of the invoked scripts. Now the order
+  we handle auth is
+  - url as   http://user:pass@.../
+  - take auth from options username and password
+  - if listener_add/remove then use username/password from listener
+. fix double free bug in auth
+
 2.3-kh1
 . fix double buffer release when dropping auth'd listeners on source exit
 . don't put client on auth engine if removeurl is not set
