@@ -1,3 +1,139 @@
+2005-11-29 03:06  karl
+
+	* trunk/icecast/src/auth_url.c: update for authentication header
+	  via libcurl. allows for http://user:pass@host.. else the param
+	  specified user/pass. In the case of listener_add/remove use the
+	  client provided user/pass if no others are specified.
+
+2005-11-20 13:53  karl
+
+	* trunk/icecast/src/source.c: allow for the intro file to change
+	  over HUP
+
+2005-11-17 00:54  karl
+
+	* trunk/icecast/src/auth.c, trunk/icecast/src/client.c,
+	  trunk/icecast/src/client.h, trunk/icecast/src/connection.c:
+	  change status code for server/stream full cases (#738), also
+	  some others places where connections are terminated.
+
+2005-11-15 00:36  karl
+
+	* trunk/icecast/src/stats.c: update queue handling for stats. This
+	  was slow when many stats were being queued. These apply to both
+	  web interface requests and stats clients.
+
+2005-11-15 00:29  karl
+
+	* trunk/icecast/src/format_vorbis.c: fixup granulepos on EOS case
+	  when rebuilding vorbis streams. This was causing a short audio
+	  glitch on playback, but was not typically noticed.
+
+2005-10-24 14:51  oddsock
+
+	* trunk/icecast/conf/icecast.xml.in,
+	  trunk/icecast/doc/icecast2_config_file.html,
+	  trunk/icecast/src/cfgfile.c, trunk/icecast/src/cfgfile.h,
+	  trunk/icecast/src/logging.c, trunk/icecast/src/main.c: 2 new
+	  features to icecast logging: - logsize : specify in KB the max
+	  size of any of icecast log files - logarchive : causes icecast
+	  to rename logs with timestamps (for proper archiving)
+
+2005-10-11 13:40  karl
+
+	* trunk/icecast/src/cfgfile.c: avoid adding a mount_t structure if
+	  there is no mount name defined, segv occurs later on
+
+2005-10-06 02:41  karl
+
+	* trunk/icecast/src/client.c: fix bug #717. a race on source exit
+	  could cause memory corruption
+
+2005-10-01 15:59  msmith
+
+	* trunk/icecast/admin/manageauth.xsl: Don't display passwords in
+	  auth management interface; it's useless and shouldn't be
+	  displayed anyway.
+
+2005-10-01 14:08  karl
+
+	* trunk/icecast/src/connection.c: add hack for nsvcap, apparently
+	  EOL is 3 chars
+
+2005-09-30 16:30  pem
+
+	* trunk/icecast/admin/fr_FR/listclients.xsl: Copying the /admin
+	  xslt files into /admin/fr_FR for translation.
+
+2005-09-30 14:39  pem
+
+	* trunk/icecast/admin/fr_FR,
+	  trunk/icecast/admin/fr_FR/Makefile.am,
+	  trunk/icecast/admin/fr_FR/listmounts.xsl,
+	  trunk/icecast/admin/fr_FR/manageauth.xsl,
+	  trunk/icecast/admin/fr_FR/moveclients.xsl,
+	  trunk/icecast/admin/fr_FR/response.xsl,
+	  trunk/icecast/admin/fr_FR/stats.xsl,
+	  trunk/icecast/admin/fr_FR/updatemetadata.xsl:
+
+2005-09-29 15:07  msmith
+
+	* trunk/icecast/doc/icecast2_basicsetup.html: One sentence in
+	  intro to explain mountpoints
+
+2005-09-27 20:26  oddsock
+
+	* trunk/icecast/admin/listclients.xsl,
+	  trunk/icecast/admin/listmounts.xsl,
+	  trunk/icecast/admin/stats.xsl, trunk/icecast/web/status.xsl: a
+	  little better visibility for some features..
+
+2005-09-27 02:47  oddsock
+
+	* trunk/icecast/admin/listclients.xsl,
+	  trunk/icecast/admin/listmounts.xsl: whoops..forgot these
+
+2005-09-27 02:45  oddsock
+
+	* trunk/icecast/admin/stats.xsl, trunk/icecast/web/status.xsl: fix
+	  auth.xsl link
+
+2005-09-26 16:34  karl
+
+	* trunk/icecast/src/connection.c: Fix a bug where a shoutcast
+	  source client (nsvtools) does not wait for the OK response.
+	  Icecast was dropping the connection preventing the stream
+
+2005-09-23 21:31  oddsock
+
+	* trunk/icecast/Makefile.am, trunk/icecast/configure.in,
+	  trunk/icecast/examples/Makefile.am,
+	  trunk/icecast/win32/icecast2.iss: include example application in
+	  distribution
+
+2005-09-23 21:13  oddsock
+
+	* trunk/icecast/Makefile.am: add examples to distribution
+
+2005-09-23 21:11  oddsock
+
+	* trunk/icecast/examples,
+	  trunk/icecast/examples/icecast_auth-1.0.tar.gz: forgot the
+	  example listener auth application...
+
+2005-09-23 14:39  oddsock
+
+	* trunk/icecast/ChangeLog: updated Changelog
+
+2005-09-23 14:23  oddsock
+
+	* trunk/icecast/configure.in, trunk/icecast/icecast.spec,
+	  trunk/icecast/win32/Makefile.am,
+	  trunk/icecast/win32/icecast.dsp,
+	  trunk/icecast/win32/icecast2.iss,
+	  trunk/icecast/win32/icecast2_console.dsp: version bumps for 2.3
+	  forgot a few win32 files in the automake Makefile...
+
 2005-09-22 20:21  oddsock
 
 	* trunk/icecast/NEWS: small addition
