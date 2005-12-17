@@ -50,7 +50,7 @@
 #include "format.h"
 #include "fserve.h"
 #include "auth.h"
-#include "os.h"
+#include "compat.h"
 
 #undef CATMODULE
 #define CATMODULE "source"

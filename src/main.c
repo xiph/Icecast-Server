@@ -39,7 +39,7 @@
 #include "sighandler.h"
 
 #include "global.h"
-#include "os.h"
+#include "compat.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"

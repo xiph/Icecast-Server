@@ -40,7 +40,7 @@
 
 #include "cfgfile.h"
 #include "util.h"
-#include "os.h"
+#include "compat.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"

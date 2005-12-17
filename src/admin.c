@@ -30,7 +30,7 @@
 #include "global.h"
 #include "event.h"
 #include "stats.h"
-#include "os.h"
+#include "compat.h"
 #include "xslt.h"
 #include "fserve.h"
 

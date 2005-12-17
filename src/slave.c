@@ -39,7 +39,7 @@
 #define strncasecmp strnicmp
 #endif
 
-#include "os.h"
+#include "compat.h"
 
 #include "thread/thread.h"
 #include "avl/avl.h"
