@@ -267,7 +267,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     return(doc);
 }
 
-void admin_send_response(xmlDocPtr doc, client_t *client, 
+static void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, char *xslt_template)
 {
     if (response == RAW)

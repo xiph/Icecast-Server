@@ -181,7 +181,7 @@ int format_ogg_get_plugin (source_t *source)
 }
 
 
-void format_ogg_free_plugin (format_plugin_t *plugin)
+static void format_ogg_free_plugin (format_plugin_t *plugin)
 {
     ogg_state_t *state = plugin->_state;
 
