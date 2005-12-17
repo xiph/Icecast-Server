@@ -22,7 +22,7 @@
 #define IO_BUFFER_TYPE _IOLBF
 #endif
 
-void log_initialize();
+void log_initialize(void);
 int log_open_file(FILE *file);
 int log_open(const char *filename);
 int log_open_with_buffer(const char *filename, int size);
@@ -33,7 +33,7 @@ int log_set_archive_timestamp(int id, int value);
 void log_flush(int log_id);
 void log_reopen(int log_id);
 void log_close(int log_id);
-void log_shutdown();
+void log_shutdown(void);
 
 void log_write(int log_id, unsigned priority, const char *cat, const char *func, 
         const char *fmt, ...);

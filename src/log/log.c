@@ -63,10 +63,10 @@ typedef struct log_tag
 
 static log_t loglist[LOG_MAXLOGS];
 
-static int _get_log_id();
+static int _get_log_id(void);
 static void _release_log_id(int log_id);
-static void _lock_logger();
-static void _unlock_logger();
+static void _lock_logger(void);
+static void _unlock_logger(void);
 
 
 static int _log_open (int id, const char *file_timestamp)
@@ -115,7 +115,7 @@ static int _log_open (int id, const char *file_timestamp)
     return 1;
 }
 
-void log_initialize()
+void log_initialize(void)
 {
     int i;
 
@@ -288,7 +288,7 @@ void log_close(int log_id)
     _unlock_logger();
 }
 
-void log_shutdown()
+void log_shutdown(void)
 {
     /* destroy mutexes */
 #ifndef _WIN32
@@ -367,7 +367,7 @@ void log_write_direct(int log_id, const char *fmt, ...)
     fflush(loglist[log_id].logfile);
 }
 
-static int _get_log_id()
+static int _get_log_id(void)
 {
     int i;
     int id = -1;
@@ -399,7 +399,7 @@ static void _release_log_id(int log_id)
     _unlock_logger();
 }
 
-static void _lock_logger()
+static void _lock_logger(void)
 {
 #ifndef _WIN32
     pthread_mutex_lock(&_logger_mutex);
@@ -408,7 +408,7 @@ static void _lock_logger()
 #endif
 }
 
-static void _unlock_logger()
+static void _unlock_logger(void)
 {
 #ifndef _WIN32
     pthread_mutex_unlock(&_logger_mutex);
