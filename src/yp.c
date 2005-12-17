@@ -265,7 +265,7 @@ void yp_recheck_config (ice_config_t *config)
 }
 
 
-void yp_initialize()
+void yp_initialize(void)
 {
     ice_config_t *config = config_get_config();
     thread_rwlock_create (&yp_lock);
@@ -562,7 +562,7 @@ static ypdata_t *create_yp_entry (const char *mount)
 
 
 /* Check for changes in the YP servers configured */
-static void check_servers ()
+static void check_servers (void)
 {
     struct yp_server *server = (struct yp_server *)active_yps,
                      **server_p = (struct yp_server **)&active_yps;
@@ -916,7 +916,7 @@ void yp_touch (const char *mount)
 }
 
 
-void yp_shutdown ()
+void yp_shutdown (void)
 {
     yp_running = 0;
     yp_update = 1;

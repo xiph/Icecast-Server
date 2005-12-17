@@ -313,7 +313,7 @@ static client_queue_t *_get_connection(void)
 
 
 /* run along queue checking for any data that has come in or a timeout */
-static void process_request_queue ()
+static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
     ice_config_t *config = config_get_config ();

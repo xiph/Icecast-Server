@@ -86,12 +86,12 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *c);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
-static void create_locks() {
+static void create_locks(void) {
     thread_mutex_create(&_locks.relay_lock);
     thread_rwlock_create(&_locks.config_lock);
 }
 
-static void release_locks() {
+static void release_locks(void) {
     thread_mutex_destroy(&_locks.relay_lock);
     thread_rwlock_destroy(&_locks.config_lock);
 }

@@ -77,8 +77,8 @@ typedef struct auth_tag
 void add_client (const char *mount, client_t *client);
 int  release_client (client_t *client);
 
-void auth_initialise ();
-void auth_shutdown ();
+void auth_initialise (void);
+void auth_shutdown (void);
 
 auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);

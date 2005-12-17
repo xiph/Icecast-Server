@@ -94,7 +94,7 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 static stylesheet_cache_t cache[CACHESIZE];
 static mutex_t xsltlock;
 
-void xslt_initialize()
+void xslt_initialize(void)
 {
     xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
@@ -105,7 +105,7 @@ void xslt_initialize()
     xmlLoadExtDtdDefaultValue = 1;
 }
 
-void xslt_shutdown() {
+void xslt_shutdown(void) {
     int i;
 
     for(i=0; i < CACHESIZE; i++) {
@@ -119,7 +119,7 @@ void xslt_shutdown() {
     xsltCleanupGlobals();
 }
 
-static int evict_cache_entry() {
+static int evict_cache_entry(void) {
     int i, age=0, oldest=0;
 
     for(i=0; i < CACHESIZE; i++) {

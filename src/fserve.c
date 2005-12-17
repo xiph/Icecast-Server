@@ -201,7 +201,7 @@ int fserve_client_waiting (void)
 }
 #endif
 
-static void wait_for_fds() {
+static void wait_for_fds(void) {
     fserve_t *fclient;
 
     while (run_fserv)

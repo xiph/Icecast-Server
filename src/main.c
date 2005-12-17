@@ -75,7 +75,7 @@ static void _fatal_error(char *perr)
 #endif
 }
 
-static void _print_usage()
+static void _print_usage(void)
 {
     printf(ICECAST_VERSION_STRING "\n\n");
     printf("usage: icecast [-b -v] -c <file>\n");

@@ -35,6 +35,6 @@
 
 
 void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client);
-void xslt_initialize();
-void xslt_shutdown();
+void xslt_initialize(void);
+void xslt_shutdown(void);
 

@@ -32,8 +32,8 @@ void yp_add (const char *mount);
 void yp_remove (const char *mount);
 void yp_touch (const char *mount);
 void yp_recheck_config (ice_config_t *config);
-void yp_initialize();
-void yp_shutdown();
+void yp_initialize(void);
+void yp_shutdown(void);
 
 #else
 

@@ -580,7 +580,7 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 
 /* these are called at server start and termination */
 
-void auth_initialise ()
+void auth_initialise (void)
 {
     clients_to_auth = NULL;
     auth_pending_count = 0;
@@ -589,7 +589,7 @@ void auth_initialise ()
     auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);
 }
 
-void auth_shutdown ()
+void auth_shutdown (void)
 {
     if (auth_thread)
     {

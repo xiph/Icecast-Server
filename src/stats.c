@@ -119,7 +119,7 @@ static void queue_global_event (stats_event_t *event)
     thread_mutex_unlock(&_global_event_mutex);
 }
 
-void stats_initialize()
+void stats_initialize(void)
 {
     _event_listeners = NULL;
 
@@ -139,7 +139,7 @@ void stats_initialize()
     _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, THREAD_ATTACHED);
 }
 
-void stats_shutdown()
+void stats_shutdown(void)
 {
     int n;
 
@@ -182,7 +182,7 @@ void stats_shutdown()
     }
 }
 
-stats_t *stats_get_stats()
+stats_t *stats_get_stats(void)
 {
     /* lock global stats
     
