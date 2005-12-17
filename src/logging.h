@@ -30,33 +30,30 @@ extern int playlistlog;
 */
 
 #ifdef _WIN32
-#define __FUNCTION__ strrchr (__FILE__, '\\') ? strrchr (__FILE__, '\\') + 1 : __FILE__
+#include <string.h>
+#define __func__ strrchr (__FILE__, '\\') ? strrchr (__FILE__, '\\') + 1 : __FILE__
 #endif
 
-#ifdef __SUNPRO_C
-#define __FUNCTION__ __func__
-#endif
+#define ERROR0(y) log_write(errorlog, 1, CATMODULE "/", __func__, y)
+#define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/", __func__, y, a)
+#define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b)
+#define ERROR3(y, a, b, c) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b, c)
 
-#define ERROR0(y) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y)
-#define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y, a)
-#define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y, a, b)
-#define ERROR3(y, a, b, c) log_write(errorlog, 1, CATMODULE "/", __FUNCTION__, y, a, b, c)
+#define WARN0(y) log_write(errorlog, 2, CATMODULE "/", __func__, y)
+#define WARN1(y, a) log_write(errorlog, 2, CATMODULE "/", __func__, y, a)
+#define WARN2(y, a, b) log_write(errorlog, 2, CATMODULE "/", __func__, y, a, b)
+#define WARN3(y, a, b, c) log_write(errorlog, 2, CATMODULE "/", __func__, y, a, b, c)
 
-#define WARN0(y) log_write(errorlog, 2, CATMODULE "/", __FUNCTION__, y)
-#define WARN1(y, a) log_write(errorlog, 2, CATMODULE "/", __FUNCTION__, y, a)
-#define WARN2(y, a, b) log_write(errorlog, 2, CATMODULE "/", __FUNCTION__, y, a, b)
-#define WARN3(y, a, b, c) log_write(errorlog, 2, CATMODULE "/", __FUNCTION__, y, a, b, c)
+#define INFO0(y) log_write(errorlog, 3, CATMODULE "/", __func__, y)
+#define INFO1(y, a) log_write(errorlog, 3, CATMODULE "/", __func__, y, a)
+#define INFO2(y, a, b) log_write(errorlog, 3, CATMODULE "/", __func__, y, a, b)
+#define INFO3(y, a, b, c) log_write(errorlog, 3, CATMODULE "/", __func__, y, a, b, c)
 
-#define INFO0(y) log_write(errorlog, 3, CATMODULE "/", __FUNCTION__, y)
-#define INFO1(y, a) log_write(errorlog, 3, CATMODULE "/", __FUNCTION__, y, a)
-#define INFO2(y, a, b) log_write(errorlog, 3, CATMODULE "/", __FUNCTION__, y, a, b)
-#define INFO3(y, a, b, c) log_write(errorlog, 3, CATMODULE "/", __FUNCTION__, y, a, b, c)
-
-#define DEBUG0(y) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y)
-#define DEBUG1(y, a) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a)
-#define DEBUG2(y, a, b) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b)
-#define DEBUG3(y, a, b, c) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b, c)
-#define DEBUG4(y, a, b, c, d) log_write(errorlog, 4, CATMODULE "/", __FUNCTION__, y, a, b, c, d)
+#define DEBUG0(y) log_write(errorlog, 4, CATMODULE "/", __func__, y)
+#define DEBUG1(y, a) log_write(errorlog, 4, CATMODULE "/", __func__, y, a)
+#define DEBUG2(y, a, b) log_write(errorlog, 4, CATMODULE "/", __func__, y, a, b)
+#define DEBUG3(y, a, b, c) log_write(errorlog, 4, CATMODULE "/", __func__, y, a, b, c)
+#define DEBUG4(y, a, b, c, d) log_write(errorlog, 4, CATMODULE "/", __func__, y, a, b, c, d)
 
 /* CATMODULE is the category or module that logging messages come from.
 ** we set one here in cause someone forgets in the .c file.
