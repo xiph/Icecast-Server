@@ -209,11 +209,12 @@ static void *start_relay_stream (void *arg)
          * we don't send in this header then relay will not have mp3 metadata.
          */
         sock_write(streamsock, "GET %s HTTP/1.0\r\n"
-                "User-Agent: " ICECAST_VERSION_STRING "\r\n"
+                "User-Agent: %s\r\n"
                 "%s"
                 "%s"
                 "\r\n",
                 relay->mount,
+                ICECAST_VERSION_STRING,
                 relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
                 auth_header);
         free (auth_header);
