@@ -39,7 +39,7 @@
 #include "sighandler.h"
 
 #include "global.h"
-#include "os.h"
+#include "compat.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
@@ -75,9 +75,9 @@ static void _fatal_error(char *perr)
 #endif
 }
 
-static void _print_usage()
+static void _print_usage(void)
 {
-    printf(ICECAST_VERSION_STRING "\n\n");
+    printf("%s\n\n", ICECAST_VERSION_STRING);
     printf("usage: icecast [-b -v] -c <file>\n");
     printf("options:\n");
     printf("\t-c <file>\tSpecify configuration file\n");
@@ -514,7 +514,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    INFO0 (ICECAST_VERSION_STRING " server started");
+    INFO1 ("%s server started", ICECAST_VERSION_STRING);
 
     /* REM 3D Graphics */
 

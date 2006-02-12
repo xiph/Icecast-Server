@@ -18,10 +18,13 @@
 #ifndef __REFBUF_H__
 #define __REFBUF_H__
 
+#include <sys/types.h>
+#include "compat.h"
+
 typedef struct _refbuf_tag
 {
     char *data;
-    unsigned long len;
+    size_t len;
     int sync_point;
     struct _refbuf_tag *associated;
     struct _refbuf_tag *next;
@@ -32,7 +35,7 @@ typedef struct _refbuf_tag
 void refbuf_initialize(void);
 void refbuf_shutdown(void);
 
-refbuf_t *refbuf_new(unsigned long size);
+refbuf_t *refbuf_new(size_t size);
 void refbuf_addref(refbuf_t *self);
 void refbuf_release(refbuf_t *self);
 

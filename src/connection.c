@@ -15,16 +15,16 @@
 #include <config.h>
 #endif
 
+#include "compat.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #endif
 
 #ifndef _WIN32
-#include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #else
@@ -33,11 +33,6 @@
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
 #endif
-#ifdef HAVE_OPENSSL
-#include <openssl/ssl.h>
-#endif
-
-#include "os.h"
 
 #include "thread/thread.h"
 #include "avl/avl.h"
@@ -113,6 +108,7 @@ static SSL_CTX *ssl_ctx;
 rwlock_t _source_shutdown_rwlock;
 
 static void *_handle_connection(void *arg);
+static int check_pass(http_parser_t *parser, const char *user, const char *pass);
 
 void connection_initialize(void)
 {
@@ -131,11 +127,13 @@ void connection_initialize(void)
 
 static void get_ssl_certificate ()
 {
-    ssl_ok = 0;
 #ifdef HAVE_OPENSSL
     SSL_METHOD *method;
     ice_config_t *config;
+#endif
+    ssl_ok = 0;
 
+#ifdef HAVE_OPENSSL
     SSL_load_error_strings();                /* readable error messages */
     SSL_library_init();                      /* initialize library */
 
@@ -203,7 +201,7 @@ static unsigned long _next_connection_id(void)
 
 
 #ifdef HAVE_OPENSSL
-static int connection_read_ssl (connection_t *con, char *buf, unsigned len)
+static int connection_read_ssl (connection_t *con, void *buf, size_t len)
 {
     int bytes = SSL_read (con->ssl, buf, len);
 
@@ -221,7 +219,7 @@ static int connection_read_ssl (connection_t *con, char *buf, unsigned len)
 }
 
 
-static int connection_send_ssl (connection_t *con, const char *buf, unsigned len)
+static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
 {
     int bytes = SSL_write (con->ssl, buf, len);
 
@@ -241,7 +239,7 @@ static int connection_send_ssl (connection_t *con, const char *buf, unsigned len
 }
 #endif
 
-static int connection_read (connection_t *con, char *buf, unsigned len)
+static int connection_read (connection_t *con, void *buf, size_t len)
 {
     int bytes = sock_read_bytes (con->sock, buf, len);
     if (bytes == 0)
@@ -251,7 +249,7 @@ static int connection_read (connection_t *con, char *buf, unsigned len)
     return bytes;
 }
 
-static int connection_send (connection_t *con, const char *buf, unsigned len)
+static int connection_send (connection_t *con, const void *buf, size_t len)
 {
     int bytes = sock_write_bytes (con->sock, buf, len);
     if (bytes < 0)
@@ -448,7 +446,7 @@ static client_queue_t *_get_connection(void)
 
 
 /* run along queue checking for any data that has come in or a timeout */
-static void process_request_queue ()
+static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
     ice_config_t *config = config_get_config ();
@@ -715,7 +713,7 @@ int connection_complete_source (source_t *source, int response)
 
 
 static int _check_pass_http(http_parser_t *parser, 
-        char *correctuser, char *correctpass)
+        const char *correctuser, const char *correctpass)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
     char *header = httpp_getvar(parser, "authorization");
@@ -753,7 +751,7 @@ static int _check_pass_http(http_parser_t *parser,
     return 1;
 }
 
-static int _check_pass_icy(http_parser_t *parser, char *correctpass)
+static int _check_pass_icy(http_parser_t *parser, const char *correctpass)
 {
     char *password;
 
@@ -767,7 +765,7 @@ static int _check_pass_icy(http_parser_t *parser, char *correctpass)
         return 1;
 }
 
-static int _check_pass_ice(http_parser_t *parser, char *correctpass)
+static int _check_pass_ice(http_parser_t *parser, const char *correctpass)
 {
     char *password;
 
@@ -820,29 +818,53 @@ int connection_check_relay_pass(http_parser_t *parser)
     return ret;
 }
 
-int connection_check_source_pass(http_parser_t *parser, const char *mount)
+/* return -1 for failed, 0 for authenticated, 1 for pending
+ */
+int connection_check_source_pass (client_t *client, const char *mount)
 {
     ice_config_t *config = config_get_config();
+    mount_proxy *mountinfo;
     char *pass = config->source_password;
     char *user = "source";
-    int ret;
-    int ice_login = config->ice_login;
-    char *protocol;
+    int ret = -1;
 
-    mount_proxy *mountinfo = config_find_mount (config, mount);
-
-    if (mountinfo)
+    if (strncmp (mount, "/admin/", 7) == 0)
     {
-        if (mountinfo->password)
-            pass = mountinfo->password;
-        if (mountinfo->username)
-            user = mountinfo->username;
+        mountinfo = config_find_mount (config, 
+                httpp_get_query_param (client->parser, "mount"));
     }
+    else
+        mountinfo = config_find_mount (config, mount);
+    do
+    {
+        if (mountinfo)
+        {
+            ret = 1;
+            if (auth_stream_authenticate (client, mount, mountinfo) > 0)
+                break;
+            ret = -1;
+            if (mountinfo->password)
+                pass = mountinfo->password;
+            if (mountinfo->username)
+                user = mountinfo->username;
+        }
+        if (check_pass (client->parser, user, pass) > 0)
+            ret = 0;
+    } while (0);
+    config_release_config();
+    return ret;
+}
+
+/* return 0 for failed, 1 for ok
+ */
+static int check_pass (http_parser_t *parser, const char *user, const char *pass)
+{
+    int ret;
+    char *protocol;
 
     if(!pass) {
         WARN0("No source password set, rejecting source");
-        config_release_config();
-        return 0;
+        return -1;
     }
 
     protocol = httpp_getvar(parser, HTTPP_VAR_PROTOCOL);
@@ -851,22 +873,23 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
     }
     else {
         ret = _check_pass_http(parser, user, pass);
-        if(!ret && ice_login)
+        if (!ret)
         {
-            ret = _check_pass_ice(parser, pass);
-            if(ret)
-                WARN0("Source is using deprecated icecast login");
+            ice_config_t *config = config_get_config_unlocked();
+            if (config->ice_login)
+            {
+                ret = _check_pass_ice(parser, pass);
+                if(ret)
+                    WARN0("Source is using deprecated icecast login");
+            }
         }
     }
-    config_release_config();
     return ret;
 }
 
 
-static void _handle_source_request (client_t *client, char *uri, int auth_style)
+static void _handle_source_request (client_t *client, const char *uri)
 {
-    source_t *source;
-
     INFO1("Source logging in at mountpoint \"%s\"", uri);
 
     if (uri[0] != '/')
@@ -875,35 +898,50 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         client_send_401 (client);
         return;
     }
-    if (auth_style == ICECAST_SOURCE_AUTH) {
-        if (connection_check_source_pass (client->parser, uri) == 0)
-        {
+    switch (connection_check_source_pass (client, uri))
+    {
+        case 0: /* authenticated from config file */
+            source_startup (client, uri, ICECAST_SOURCE_AUTH);
+            break;
+
+        case 1: /* auth pending */
+            break;
+
+        default: /* failed */
             /* We commonly get this if the source client is using the wrong
              * protocol: attempt to diagnose this and return an error
              */
             /* TODO: Do what the above comment says */
             INFO1("Source (%s) attempted to login with invalid or missing password", uri);
             client_send_401(client);
-            return;
-        }
+            break;
     }
+}
+
+void source_startup (client_t *client, const char *uri, int auth_style)
+{
+    source_t *source;
     source = source_reserve (uri);
+    
     if (source)
     {
-        if (auth_style == SHOUTCAST_SOURCE_AUTH) {
-            source->shoutcast_compat = 1;
-        }
         source->client = client;
         source->parser = client->parser;
         if (connection_complete_source (source, 1) < 0)
         {
             source_clear_source (source);
             source_free_source (source);
+            return;
+        }
+        client->respcode = 200;
+        if (auth_style == SHOUTCAST_SOURCE_AUTH)
+        {
+            source->shoutcast_compat = 1;
+            source_client_callback (client, source);
         }
         else
         {
             refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-            client->respcode = 200;
             snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
                     "HTTP/1.0 200 OK\r\n\r\n");
             ok->len = strlen (ok->data);
@@ -912,12 +950,10 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
             client->refbuf = ok;
             fserve_add_client_callback (client, source_client_callback, source);
         }
+        return;
     }
-    else
-    {
-        client_send_403 (client, "Mountpoint in use");
-        WARN1 ("Mountpoint %s in use", uri);
-    }
+    client_send_403 (client, "Mountpoint in use");
+    WARN1 ("Mountpoint %s in use", uri);
 }
 
 
@@ -987,9 +1023,8 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
-    if ((strcmp(uri, "/admin.cgi") == 0) ||
-            (strncmp(uri, "/admin/", 7) == 0)) {
-        admin_handle_request(client, uri);
+    if (admin_handle_request (client, uri) == 0)
+    {
         if (uri != passed_uri) free (uri);
         return;
     }
@@ -1100,7 +1135,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
         }
         client->parser = parser;
-        _handle_source_request (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
+        source_startup (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
     else
         client_destroy (client);
@@ -1169,7 +1204,7 @@ static void *_handle_connection(void *arg)
                 }
 
                 if (parser->req_type == httpp_req_source) {
-                    _handle_source_request (client, uri, ICECAST_SOURCE_AUTH);
+                    _handle_source_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_stats) {
                     _handle_stats_request (client, uri);

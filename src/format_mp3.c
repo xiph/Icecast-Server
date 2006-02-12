@@ -164,7 +164,7 @@ static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
 }
 
 
-static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigned int meta_len)
+static void filter_shoutcast_metadata (source_t *source, char *metadata, size_t meta_len)
 {
     if (metadata)
     {
@@ -220,7 +220,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 static void mp3_set_title (source_t *source)
 {
     const char meta[] = "StreamTitle='";
-    int size;
+    size_t size;
     unsigned char len_byte;
     refbuf_t *p;
     unsigned int len = sizeof(meta) + 2; /* the StreamTitle, quotes, ; and null */
@@ -277,7 +277,7 @@ static void mp3_set_title (source_t *source)
 static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 {
     int ret = 0;
-    unsigned char *metadata;
+    char *metadata;
     int meta_len;
     mp3_client_data *client_mp3 = client->format_data;
 
@@ -332,7 +332,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
     mp3_client_data *client_mp3 = client->format_data;
     refbuf_t *refbuf = client->refbuf;
     char *buf = refbuf->data + client->pos;
-    unsigned int len = refbuf->len - client->pos;
+    size_t len = refbuf->len - client->pos;
 
     do
     {
@@ -349,7 +349,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
         /* see if we need to send the current metadata to the client */
         if (client_mp3->interval)
         {
-            unsigned int remaining = client_mp3->interval -
+            size_t remaining = client_mp3->interval -
                 client_mp3->since_meta_block;
 
             /* sending the metadata block */
@@ -510,7 +510,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 
     refbuf = source_mp3->read_data;
     source_mp3->read_data = NULL;
-    src = refbuf->data;
+    src = (unsigned char *)refbuf->data;
 
     if (source_mp3->update_metadata)
     {
@@ -620,7 +620,7 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     mp3_state *source_mp3 = source->format->_state;
     const char *metadata;
     /* the +-2 is for overwriting the last set of \r\n */
-    unsigned remaining = 4096 - client->refbuf->len + 2;
+    size_t  remaining = 4096 - client->refbuf->len + 2;
     char *ptr = client->refbuf->data + client->refbuf->len - 2;
     int bytes;
 
@@ -679,7 +679,7 @@ static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf)
 {
     if (refbuf->len == 0)
         return;
-    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) < (size_t)refbuf->len)
+    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) < refbuf->len)
     {
         WARN0 ("Write to dump file failed, disabling");
         fclose (source->dumpfile);

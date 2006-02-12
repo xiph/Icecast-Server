@@ -121,7 +121,7 @@ static void queue_global_event (stats_event_t *event)
     thread_mutex_unlock(&_global_event_mutex);
 }
 
-void stats_initialize()
+void stats_initialize(void)
 {
     _event_listeners = NULL;
 
@@ -141,7 +141,7 @@ void stats_initialize()
     _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, THREAD_ATTACHED);
 }
 
-void stats_shutdown()
+void stats_shutdown(void)
 {
     int n;
 
@@ -184,7 +184,7 @@ void stats_shutdown()
     }
 }
 
-stats_t *stats_get_stats()
+stats_t *stats_get_stats(void)
 {
     /* lock global stats
     
@@ -549,8 +549,10 @@ static void *_stats_thread(void *arg)
     stats_event_t *event;
     stats_event_t *copy;
     event_listener_t *listener;
+    ice_config_t *config = config_get_config ();
 
-    stats_event (NULL, "server", ICECAST_VERSION_STRING);
+    stats_event (NULL, "server", config->server_id);
+    config_release_config();
     stats_event_time (NULL, "server_start");
 
     /* global currently active stats */

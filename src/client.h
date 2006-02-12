@@ -22,13 +22,14 @@
 #include <aio.h>
 #endif
 
+struct source_tag;
+typedef struct _client_tag client_t;
+
 #include "connection.h"
 #include "refbuf.h"
 #include "httpp/httpp.h"
 
-struct source_tag;
-
-typedef struct _client_tag
+struct _client_tag
 {
     /* the client's connection */
     connection_t *con;
@@ -81,7 +82,7 @@ typedef struct _client_tag
     int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
 
     struct _client_tag *next;
-} client_t;
+};
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);

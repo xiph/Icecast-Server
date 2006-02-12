@@ -203,7 +203,7 @@ int fserve_client_waiting (void)
 }
 #endif
 
-static void wait_for_fds() {
+static void wait_for_fds(void) {
     fserve_t *fclient;
 
     while (run_fserv)
@@ -235,7 +235,7 @@ static void wait_for_fds() {
 static void *fserv_thread_function(void *arg)
 {
     fserve_t *fclient, **trail;
-    int bytes;
+    size_t bytes;
 
     INFO0("file serving thread started");
     while (run_fserv)

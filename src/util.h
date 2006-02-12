@@ -13,6 +13,8 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
+#include "compat.h"
+
 #define XSLT_CONTENT 1
 #define HTML_CONTENT 2
 
@@ -26,12 +28,12 @@ char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
 char *util_get_path_from_normalised_uri(const char *uri);
 char *util_normalise_uri(char *uri);
-char *util_base64_encode(char *data);
-char *util_base64_decode(unsigned char *input);
+char *util_base64_encode(void *data);
+char *util_base64_decode(void *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
 char *util_url_unescape(char *src);
-char *util_url_escape(char *src);
+char *util_url_escape(void *src);
 
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */

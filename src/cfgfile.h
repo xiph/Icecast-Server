@@ -20,6 +20,8 @@
 
 #define MAX_YP_DIRECTORIES 25
 
+#define XMLSTR		(xmlChar *)
+
 struct _mount_proxy;
 
 #include "thread/thread.h"
@@ -147,6 +149,7 @@ typedef struct ice_config_tag
 
     mount_proxy *mounts;
 
+    char *server_id;
     char *base_dir;
     char *log_dir;
     char *pidfile;

@@ -80,6 +80,7 @@ typedef struct {
     char *removeurl;
     char *stream_start;
     char *stream_end;
+    char *stream_auth;
     char *username;
     char *password;
     char *auth_header;
@@ -105,6 +106,7 @@ static void auth_url_clear(auth_t *self)
     free (url->addurl);
     free (url->stream_start);
     free (url->stream_end);
+    free (url->stream_auth);
     free (url->auth_header);
     free (url->timelimit_header);
     free (url->userpwd);
@@ -338,33 +340,17 @@ static auth_result url_add_client (auth_client *auth_user)
 /* called by auth thread when a source starts, there is no client_t in
  * this case
  */
-static void url_stream_start (auth_client *auth_user)
+static void url_stream_start (auth_client *auth_user, auth_t *auth)
 {
     char *mount, *server;
-    ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
-    auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
-    char *stream_start_url;
-    int port;
     char post [4096];
 
-    if (url->stream_start == NULL)
-    {
-        config_release_config ();
-        return;
-    }
-    server = util_url_escape (config->hostname);
-    port = config->port;
-    stream_start_url = strdup (url->stream_start);
-    /* we don't want this auth disappearing from under us while
-     * the connection is in progress */
-    mountinfo->auth->refcount++;
-    config_release_config ();
+    server = util_url_escape (auth_user->hostname);
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=mount_add&mount=%s&server=%s&port=%d", mount, server, port);
+            "action=mount_add&mount=%s&server=%s&port=%d", mount, server, auth_user->port);
     free (server);
     free (mount);
 
@@ -377,46 +363,26 @@ static void url_stream_start (auth_client *auth_user)
     }
     else
         curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
-    curl_easy_setopt (url->handle, CURLOPT_URL, stream_start_url);
+    curl_easy_setopt (url->handle, CURLOPT_URL, url->stream_start);
     curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        WARN2 ("auth to server %s failed with %s", stream_start_url, url->errormsg);
-
-    auth_release (auth);
-    free (stream_start_url);
-    return;
+        WARN2 ("auth to server %s failed with %s", url->stream_start, url->errormsg);
 }
 
 
-static void url_stream_end (auth_client *auth_user)
+static void url_stream_end (auth_client *auth_user, auth_t *auth)
 {
     char *mount, *server;
-    ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
-    auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
-    char *stream_end_url;
-    int port;
     char post [4096];
 
-    if (url->stream_end == NULL)
-    {
-        config_release_config ();
-        return;
-    }
-    server = util_url_escape (config->hostname);
-    port = config->port;
-    stream_end_url = strdup (url->stream_end);
-    /* we don't want this auth disappearing from under us while
-     * the connection is in progress */
-    mountinfo->auth->refcount++;
-    config_release_config ();
+    server = util_url_escape (auth_user->hostname);
     mount = util_url_escape (auth_user->mount);
 
     snprintf (post, sizeof (post),
-            "action=mount_remove&mount=%s&server=%s&port=%d", mount, server, port);
+            "action=mount_remove&mount=%s&server=%s&port=%d", mount, server, auth_user->port);
     free (server);
     free (mount);
 
@@ -434,11 +400,53 @@ static void url_stream_end (auth_client *auth_user)
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        WARN2 ("auth to server %s failed with %s", stream_end_url, url->errormsg);
+        WARN2 ("auth to server %s failed with %s", url->stream_end, url->errormsg);
+}
 
-    auth_release (auth);
-    free (stream_end_url);
-    return;
+
+static void url_stream_auth (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+    auth_url *url = client->auth->state;
+    char *mount, *host, *user, *pass, *ipaddr, *metadata="";
+    char post [4096];
+
+    if (strchr (url->stream_auth, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
+    else
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    curl_easy_setopt (url->handle, CURLOPT_URL, url->stream_auth);
+    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+    if (strncmp (auth_user->mount, "/admin/", 7) == 0)
+    {
+        mount = util_url_escape (httpp_get_query_param (client->parser, "mount"));
+        metadata = "&metadata=1";
+    }
+    else
+        mount = util_url_escape (auth_user->mount);
+    host = util_url_escape (auth_user->hostname);
+    user = util_url_escape (client->username);
+    pass = util_url_escape (client->password);
+    ipaddr = util_url_escape (client->con->ip);
+
+    snprintf (post, sizeof (post),
+            "action=stream_auth&mount=%sip=%s&server=%s&port=%d&user=%s&pass=%s%s",
+            mount, ipaddr, host, auth_user->port, user, pass, metadata);
+    free (ipaddr);
+    free (user);
+    free (pass);
+    free (mount);
+    free (host);
+
+    client->authenticated = 0;
+    if (curl_easy_perform (url->handle))
+        WARN2 ("auth to server %s failed with %s", url->stream_auth, url->errormsg);
 }
 
 
@@ -472,6 +480,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->stream_start = url_stream_start;
     authenticator->stream_end = url_stream_end;
 
+    authenticator->stream_auth = url_stream_auth;
+
     url_info = calloc(1, sizeof(auth_url));
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
     url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
@@ -489,6 +499,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             url_info->stream_start = strdup (options->value);
         if(!strcmp(options->name, "mount_remove"))
             url_info->stream_end = strdup (options->value);
+        if(!strcmp(options->name, "stream_auth"))
+            url_info->stream_auth = strdup (options->value);
         if(!strcmp(options->name, "auth_header"))
         {
             free (url_info->auth_header);
@@ -512,7 +524,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     if (url_info->timelimit_header)
         url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
-    curl_easy_setopt (url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
+    curl_easy_setopt (url_info->handle, CURLOPT_USERAGENT,
+            config_get_config_unlocked()->server_id);
     curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);

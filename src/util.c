@@ -15,7 +15,6 @@
 #endif
 
 #include <sys/types.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -40,7 +39,7 @@
 
 #include "cfgfile.h"
 #include "util.h"
-#include "os.h"
+#include "compat.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
@@ -278,7 +277,7 @@ static char safechars[256] = {
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 };
 
-char *util_url_escape(char *src)
+char *util_url_escape(void *src)
 {
     int len = strlen(src);
     /* Efficiency not a big concern here, keep the code simple/conservative */
@@ -305,7 +304,7 @@ char *util_url_escape(char *src)
 char *util_url_unescape(char *src)
 {
     int len = strlen(src);
-    unsigned char *decoded;
+    void *decoded;
     int i;
     char *dst;
     int done = 0;
@@ -420,8 +419,9 @@ char *util_bin_to_hex(unsigned char *data, int len)
 }
 
 /* This isn't efficient, but it doesn't need to be */
-char *util_base64_encode(char *data)
+char *util_base64_encode(void *ptr)
 {
+    char *data = ptr;
     int len = strlen(data);
     char *out = malloc(len*4/3 + 4);
     char *result = out;
@@ -453,9 +453,10 @@ char *util_base64_encode(char *data)
     return result;
 }
 
-char *util_base64_decode(unsigned char *input)
+char *util_base64_decode(void *ptr)
 {
-    int len = strlen(input);
+    unsigned char *input = ptr;
+    int len = strlen(ptr);
     char *out = malloc(len*3/4 + 5);
     char *result = out;
     signed char vals[4];

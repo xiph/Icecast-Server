@@ -30,9 +30,10 @@
 #include "global.h"
 #include "event.h"
 #include "stats.h"
-#include "os.h"
+#include "compat.h"
 #include "xslt.h"
 #include "fserve.h"
+#include "admin.h"
 
 #include "format.h"
 
@@ -121,8 +122,18 @@
 #define TRANSFORMED 2
 #define PLAINTEXT   3
 
-int admin_get_command(char *command)
+static int admin_get_command (const char *uri)
 {
+    const char *command;
+
+    if (strcmp(uri, "/admin.cgi") == 0)
+    {
+        INFO0("(admin.cgi)");
+        return COMMAND_SHOUTCAST_METADATA_UPDATE;
+    }
+    command = uri + 7;
+    INFO1("(%s)", uri);
+
     if(!strcmp(command, FALLBACK_RAW_REQUEST))
         return COMMAND_RAW_FALLBACK;
     else if(!strcmp(command, FALLBACK_TRANSFORMED_REQUEST))
@@ -131,8 +142,6 @@ int admin_get_command(char *command)
         return COMMAND_RAW_METADATA_UPDATE;
     else if(!strcmp(command, METADATA_TRANSFORMED_REQUEST))
         return COMMAND_TRANSFORMED_METADATA_UPDATE;
-    else if(!strcmp(command, SHOUTCAST_METADATA_REQUEST))
-        return COMMAND_SHOUTCAST_METADATA_UPDATE;
     else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
         return COMMAND_RAW_SHOW_LISTENERS;
     else if(!strcmp(command, LISTCLIENTS_TRANSFORMED_REQUEST))
@@ -213,7 +222,7 @@ static void command_manage_relay (client_t *client, int response);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
-static void admin_handle_general_request(client_t *client, int command);
+static void admin_handle_general_request(client_t *client, const char *command);
 static void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, char *xslt_template);
 
@@ -229,12 +238,12 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     char buf[22];
     time_t now = time(NULL);
 
-    doc = xmlNewDoc("1.0");
-    xmlnode = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    xmlnode = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, xmlnode);
 
     if (mount) {
-        xmlNewChild(xmlnode, NULL, "current_source", mount);
+        xmlNewChild(xmlnode, NULL, XMLSTR("current_source"), mount);
     }
 
     node = avl_get_first(global.source_tree);
@@ -252,7 +261,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             ice_config_t *config;
             mount_proxy *mountinfo;
 
-            srcnode = xmlNewChild (xmlnode, NULL, "source", NULL);
+            srcnode = xmlNewChild (xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp (srcnode, "mount", source->mount);
 
             xmlNewChild (srcnode, NULL, "fallback", 
@@ -288,7 +297,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     return(doc);
 }
 
-void admin_send_response(xmlDocPtr doc, client_t *client, 
+static void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, char *xslt_template)
 {
     if (response == RAW)
@@ -329,37 +338,60 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
 }
 
 
-void admin_handle_request(client_t *client, char *uri)
+void admin_mount_request (client_t *client, const char *uri)
 {
-    char *mount, *command_string;
-    int command;
+    source_t *source;
+    int command = admin_get_command (uri);
+    const char *mount = httpp_get_query_param (client->parser, "mount");
 
-    DEBUG1("Admin request (%s)", uri);
-    if (!((strcmp(uri, "/admin.cgi") == 0) ||
-                (strncmp("/admin/", uri, 7) == 0))) {
-        ERROR0("Internal error: admin request isn't");
-        client_send_401(client);
-        return;
+    avl_tree_rlock(global.source_tree);
+    source = source_find_mount_raw(mount);
+
+    if (source == NULL)
+    {
+        WARN1("Admin command on non-existent source %s", mount);
+        avl_tree_unlock(global.source_tree);
+        client_send_400 (client, "Source does not exist");
     }
-
-    if (strcmp(uri, "/admin.cgi") == 0) {
-        command_string = uri + 1;
+    else
+    {
+        if (source->running == 0 && source->on_demand == 0)
+        {
+            avl_tree_unlock (global.source_tree);
+            INFO1("Received admin command on unavailable mount \"%s\"", mount);
+            client_send_400 (client, "Source is not available");
+            return;
+        }
+        if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
+                source->shoutcast_compat == 0)
+        {
+            avl_tree_unlock (global.source_tree);
+            ERROR0 ("illegal change of metadata on non-shoutcast "
+                    "compatible stream");
+            client_send_400 (client, "illegal metadata call");
+            return;
+        }
+        admin_handle_mount_request (client, source, command);
+        avl_tree_unlock(global.source_tree);
     }
-    else {
-        command_string = uri + 7;
-    }
+}
 
-    DEBUG1("Got command (%s)", command_string);
-    command = admin_get_command(command_string);
 
-    if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
+int admin_handle_request (client_t *client, const char *uri)
+{
+    char *mount;
 
+    if (strcmp (uri, "/admin.cgi") != 0 && strncmp("/admin/", uri, 7) != 0)
+        return -1;
+
+    if (strcmp (uri, "/admin.cgi") == 0)
+    {
         ice_config_t *config;
         char *pass = httpp_get_query_param (client->parser, "pass");
         if (pass == NULL)
         {
             client_send_400 (client, "missing pass parameter");
-            return;
+            return 0;
         }
         config = config_get_config ();
         httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
@@ -368,91 +400,69 @@ void admin_handle_request(client_t *client, char *uri)
         config_release_config ();
     }
 
+    if (connection_check_admin_pass (client->parser))
+        client->authenticated = 1;
+
     mount = httpp_get_query_param(client->parser, "mount");
 
-    if(mount != NULL) {
-        source_t *source;
-
-        if (command == COMMAND_BUILDM3U) {
+    if (mount)
+    {
+        /* certain commands may not need auth */
+        if (strcmp (uri, BUILDM3U_RAW_REQUEST) == 0)
             client->authenticated = 1;
-        }
-        /* This is a mount request, but admin user is allowed */
-        if (client->authenticated != 1)
-        {
-            if (connection_check_admin_pass(client->parser) == 0)
-            {
-                if (connection_check_source_pass(client->parser, mount) == 0)
-                {
-                    INFO1("Bad or missing password on mount modification admin "
-                            "request (command: %s)", command_string);
-                    client_send_401(client);
-                    return;
-                }
-            }
-        }
-        
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount_raw(mount);
 
-        if (source == NULL)
+        /* This is a mount request, but admin user is allowed */
+        if (client->authenticated == 0)
         {
-            WARN2("Admin command %s on non-existent source %s", 
-                    command_string, mount);
-            avl_tree_unlock(global.source_tree);
-            client_send_400 (client, "Source does not exist");
-        }
-        else
-        {
-            if (source->running == 0 && source->on_demand == 0)
+            switch (connection_check_source_pass (client, uri))
             {
-                avl_tree_unlock (global.source_tree);
-                INFO2("Received admin command %s on unavailable mount \"%s\"",
-                        command_string, mount);
-                client_send_400 (client, "Source is not available");
-                return;
+                case 0:
+                    break;
+                default:
+                    INFO1("Bad or missing password on mount modification "
+                            "admin request (%s)", uri);
+                    client_send_401(client);
+                    /* fall through */
+                case 1:
+                    return 0;
             }
-            if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
-                    source->shoutcast_compat == 0)
-            {
-                avl_tree_unlock (global.source_tree);
-                ERROR0 ("illegal change of metadata on non-shoutcast "
-                        "compatible stream");
-                client_send_400 (client, "illegal metadata call");
-                return;
-            }
-            INFO2("Received admin command %s on mount \"%s\"", 
-                    command_string, mount);
-            admin_handle_mount_request (client, source, command);
-            avl_tree_unlock(global.source_tree);
         }
+        admin_mount_request (client, uri);
+        return 0;
     }
-    else {
-        if (command == COMMAND_PLAINTEXT_LISTSTREAM) {
-            /* this request is used by a slave relay to retrieve
-               mounts from the master, so handle this request
-               validating against the relay password */
-            if(!connection_check_relay_pass(client->parser)) {
-                INFO1("Bad or missing password on admin command "
-                      "request (command: %s)", command_string);
-                client_send_401(client);
-                return;
-            }
-        }
-        else {
-            if(!connection_check_admin_pass (client->parser)) {
-                INFO1("Bad or missing password on admin command "
-                      "request (command: %s)", command_string);
-                client_send_401(client);
-                return;
-            }
-        }
-        
-        admin_handle_general_request(client, command);
-    }
+
+    admin_handle_general_request (client, uri);
+    return 0;
 }
 
-static void admin_handle_general_request(client_t *client, int command)
+
+static int check_general_request_auth (client_t *client, int command)
 {
+    if (client->authenticated)
+        return 0;
+    if  (command == COMMAND_PLAINTEXT_LISTSTREAM)
+    {
+        if (connection_check_relay_pass (client->parser))
+        {
+            client->authenticated = 1;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+
+static void admin_handle_general_request(client_t *client, const char *uri)
+{
+    int command = admin_get_command (uri);
+
+    if (check_general_request_auth (client, command) < 0)
+    {
+        INFO1("Bad or missing password on admin command request (%s)", uri);
+        client_send_401 (client);
+        return;
+    }
+
     switch(command) {
         case COMMAND_RAW_LIST_MOUNTS:
             command_list_mounts(client, RAW);
@@ -903,14 +913,14 @@ static void command_manageauth(client_t *client, source_t *source,
         }
     }
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
-    srcnode = xmlNewChild(node, NULL, "source", NULL);
-    xmlSetProp(srcnode, "mount", source->mount);
+    doc = xmlNewDoc(XMLSTR "1.0");
+    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
+    xmlSetProp(srcnode, XMLSTR "mount", XMLSTR(source->mount));
 
     if (message) {
-        msgnode = xmlNewChild(node, NULL, "iceresponse", NULL);
-        xmlNewChild(msgnode, NULL, "message", message);
+        msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
+        xmlNewChild(msgnode, NULL, XMLSTR "message", XMLSTR(message));
     }
 
     xmlDocSetRootElement(doc, node);
@@ -934,10 +944,10 @@ static void command_kill_source(client_t *client, source_t *source,
     xmlDocPtr doc;
     xmlNodePtr node;
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
-    xmlNewChild(node, NULL, "message", "Source Removed");
-    xmlNewChild(node, NULL, "return", "1");
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Source Removed"));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
 
     source->running = 0;
@@ -964,8 +974,8 @@ static void command_kill_client(client_t *client, source_t *source,
     thread_mutex_lock (&source->lock);
     listener = source_find_client(source, id);
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
     if(listener != NULL) {
@@ -976,14 +986,14 @@ static void command_kill_client(client_t *client, source_t *source,
          */
         listener->con->error = 1;
         snprintf(buf, sizeof(buf), "Client %d removed", id);
-        xmlNewChild(node, NULL, "message", buf);
-        xmlNewChild(node, NULL, "return", "1");
+        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     }
     else {
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "Client %d not found", id);
-        xmlNewChild(node, NULL, "message", buf);
-        xmlNewChild(node, NULL, "return", "0");
+        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
     }
     thread_mutex_unlock (&source->lock);
     admin_send_response(doc, client, response, 
@@ -1018,8 +1028,8 @@ static void command_metadata(client_t *client, source_t *source,
     xmlDocPtr doc;
     xmlNodePtr node;
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
     DEBUG0("Got metadata update request");
@@ -1062,8 +1072,8 @@ static void command_metadata(client_t *client, source_t *source,
             break;
         }
         thread_mutex_unlock (&source->lock);
-        xmlNewChild(node, NULL, "message", "Metadata update successful");
-        xmlNewChild(node, NULL, "return", "1");
+        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
+        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
         admin_send_response(doc, client, response, 
                 ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
@@ -1071,9 +1081,9 @@ static void command_metadata(client_t *client, source_t *source,
 
     } while (0);
     thread_mutex_unlock (&source->lock);
-    xmlNewChild(node, NULL, "message", 
-            "Mountpoint will not accept this URL update");
-    xmlNewChild(node, NULL, "return", "1");
+    xmlNewChild(node, NULL, XMLSTR("message"), 
+            XMLSTR("Mountpoint will not accept this URL update"));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     admin_send_response(doc, client, response, 
             ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
@@ -1205,10 +1215,10 @@ static void command_updatemetadata(client_t *client, source_t *source,
     xmlDocPtr doc;
     xmlNodePtr node, srcnode;
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
-    srcnode = xmlNewChild(node, NULL, "source", NULL);
-    xmlSetProp(srcnode, "mount", source->mount);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
+    xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
     xmlDocSetRootElement(doc, node);
 
     admin_send_response(doc, client, response, 

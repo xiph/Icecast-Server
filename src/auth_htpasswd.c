@@ -66,10 +66,10 @@ static void htpasswd_clear(auth_t *self) {
     free(state);
 }
 
-static int get_line(FILE *file, char *buf, int len)
+static int get_line(FILE *file, char *buf, size_t siz)
 {
-    if(fgets(buf, len, file)) {
-        int len = strlen(buf);
+    if(fgets(buf, (int)siz, file)) {
+        size_t len = strlen(buf);
         if(len > 0 && buf[len-1] == '\n') {
             buf[--len] = 0;
             if(len > 0 && buf[len-1] == '\r')
@@ -81,7 +81,7 @@ static int get_line(FILE *file, char *buf, int len)
 }
 
 /* md5 hash */
-static char *get_hash(const char *data, int len)
+static char *get_hash(const char *data, size_t len)
 {
     struct MD5Context context;
     unsigned char digest[16];
@@ -406,9 +406,9 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
     while (node)
     {
         htpasswd_user *user = (htpasswd_user *)node->key;
-        newnode = xmlNewChild (srcnode, NULL, "User", NULL);
-        xmlNewChild(newnode, NULL, "username", user->name);
-        xmlNewChild(newnode, NULL, "password", user->pass);
+        newnode = xmlNewChild (srcnode, NULL, XMLSTR("User"), NULL);
+        xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
+        xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
         node = avl_get_next (node);
     }
     thread_rwlock_unlock (&state->file_rwlock);

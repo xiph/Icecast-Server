@@ -20,9 +20,11 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "compat.h"
 #include "refbuf.h"
 
 void refbuf_initialize(void)
@@ -33,22 +35,19 @@ void refbuf_shutdown(void)
 {
 }
 
-refbuf_t *refbuf_new(unsigned long size)
+refbuf_t *refbuf_new(size_t size)
 {
     refbuf_t *refbuf;
 
     refbuf = (refbuf_t *)malloc(sizeof(refbuf_t));
     if (refbuf == NULL)
-        return NULL;
+        abort();
     refbuf->data = NULL;
     if (size)
     {
         refbuf->data = malloc (size);
         if (refbuf->data == NULL)
-        {
-            free (refbuf);
-            return NULL;
-        }
+            abort();
     }
     refbuf->len = size;
     refbuf->sync_point = 0;

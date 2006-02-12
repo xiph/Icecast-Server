@@ -181,7 +181,7 @@ int format_ogg_get_plugin (source_t *source)
 }
 
 
-void format_ogg_free_plugin (format_plugin_t *plugin)
+static void format_ogg_free_plugin (format_plugin_t *plugin)
 {
     ogg_state_t *state = plugin->_state;
 
@@ -306,8 +306,8 @@ static void update_comments (source_t *source)
     {
         if (codec->name)
         {
-            int len = strlen (codec_names);
-            int remaining = sizeof (codec_names) - len;
+            size_t len = strlen (codec_names);
+            size_t remaining = sizeof (codec_names) - len;
             char *where = codec_names + len;
             char *separator = "/";
             if (len == 0)

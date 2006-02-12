@@ -46,14 +46,14 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
 {
     refbuf_t * refbuf;
 
-    if (ogg_stream_pagein (&codec->os, page) < 0)
-    {
-        ogg_info->error = 1;
-        return NULL;
-    }
     if (codec->headers)
     {
         ogg_packet packet;
+        if (ogg_stream_pagein (&codec->os, page) < 0)
+        {
+            ogg_info->error = 1;
+            return NULL;
+        }
         while (ogg_stream_packetout (&codec->os, &packet))
         {
             int type = packet.packet[0];

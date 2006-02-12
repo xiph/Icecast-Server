@@ -81,7 +81,7 @@ void MD5Init(struct MD5Context *ctx)
  * of bytes.
  */
 void MD5Update(struct MD5Context *ctx, unsigned char const *buf, 
-        unsigned len)
+        size_t len)
 {
     uint32_t t;
 

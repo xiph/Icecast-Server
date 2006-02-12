@@ -64,14 +64,14 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 235, 55
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 375, 163
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "About Icecast2win"
+CAPTION "Icecast Credits"
 FONT 8, "MS Sans Serif"
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
-    LTEXT           "Icecast 2 Win32",IDC_STATIC,40,10,119,8,SS_NOPREFIX
-    DEFPUSHBUTTON   "OK",IDOK,178,7,50,14,WS_GROUP
+    DEFPUSHBUTTON   "OK",IDOK,157,141,50,14,WS_GROUP
+    CONTROL         163,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE | 
+                    SS_SUNKEN | WS_BORDER,7,7,361,145
 END
 
 IDD_ICECAST2WIN_DIALOG DIALOGEX 0, 0, 326, 259
@@ -86,12 +86,11 @@ BEGIN
     CONTROL         "Start Server on Application Startup",IDC_AUTOSTART,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,76,
                     29,81,17
-    CONTROL         159,IDC_STATIC,"Static",SS_BITMAP,0,0,117,20
+    CONTROL         164,IDC_STATIC,"Static",SS_BITMAP,0,0,117,20
     CONTROL         151,IDC_SERVERSTATUS,"Static",SS_BITMAP,173,32,65,18,
                     WS_EX_CLIENTEDGE
     CTEXT           "Server Status",IDC_STATIC_SS,172,23,65,10,
                     SS_CENTERIMAGE
-    CONTROL         150,IDC_STATICBLACK,"Static",SS_BITMAP,116,0,214,20
     PUSHBUTTON      "Hide To Systray",IDC_HIDESYSTRAY,262,22,58,12
 END
 
@@ -183,9 +182,9 @@ BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 228
+        RIGHTMARGIN, 368
         TOPMARGIN, 7
-        BOTTOMMARGIN, 48
+        BOTTOMMARGIN, 155
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -200,6 +199,8 @@ IDB_BITMAP4             BITMAP  DISCARDABLE     "black.bmp"
 IDB_BITMAP5             BITMAP  DISCARDABLE     "stopped.bmp"
 IDB_BITMAP6             BITMAP  DISCARDABLE     "running.bmp"
 IDB_BITMAP7             BITMAP  DISCARDABLE     "icecast2logo2.bmp"
+IDB_BITMAP8             BITMAP  DISCARDABLE     "credits.bmp"
+IDB_BITMAP9             BITMAP  DISCARDABLE     "icecast2title.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

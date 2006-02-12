@@ -3,7 +3,7 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
-Project: "Icecast2win"=".\Icecast2win.dsp" - Package Owner=<4>
+Project: "Icecast2win"=.\Icecast2win.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -17,11 +17,17 @@ Package=<4>
     Begin Project Dependency
     Project_Dep_Name icecast
     End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name icecastService
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name icecast2 console
+    End Project Dependency
 }}}
 
 ###############################################################################
 
-Project: "icecast"=".\icecast.dsp" - Package Owner=<4>
+Project: "icecast"=.\icecast.dsp - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -29,6 +35,36 @@ Package=<5>
 
 Package=<4>
 {{{
+}}}
+
+###############################################################################
+
+Project: "icecast2 console"=.\icecast2_console.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name icecast
+    End Project Dependency
+}}}
+
+###############################################################################
+
+Project: "icecastService"=.\icecastService.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+    Begin Project Dependency
+    Project_Dep_Name icecast
+    End Project Dependency
 }}}
 
 ###############################################################################

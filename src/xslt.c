@@ -94,7 +94,7 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 static stylesheet_cache_t cache[CACHESIZE];
 static mutex_t xsltlock;
 
-void xslt_initialize()
+void xslt_initialize(void)
 {
     xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
@@ -105,7 +105,7 @@ void xslt_initialize()
     xmlLoadExtDtdDefaultValue = 1;
 }
 
-void xslt_shutdown() {
+void xslt_shutdown(void) {
     int i;
 
     for(i=0; i < CACHESIZE; i++) {
@@ -119,7 +119,7 @@ void xslt_shutdown() {
     xsltCleanupGlobals();
 }
 
-static int evict_cache_entry() {
+static int evict_cache_entry(void) {
     int i, age=0, oldest=0;
 
     for(i=0; i < CACHESIZE; i++) {
@@ -160,7 +160,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                     xsltFreeStylesheet(cache[i].stylesheet);
 
                     cache[i].last_modified = file.st_mtime;
-                    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+                    cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
                     cache[i].cache_age = time(NULL);
                 }
                 DEBUG1("Using cached sheet %i", i);
@@ -178,7 +178,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
 
     cache[i].last_modified = file.st_mtime;
     cache[i].filename = strdup(fn);
-    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+    cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
     cache[i].cache_age = time(NULL);
     return cache[i].stylesheet;
 }
@@ -212,10 +212,10 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     if (problem == 0)
     {
         const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
-        int buf_len = strlen (http) + 20 + len;
+        size_t buf_len = strlen (http) + 20 + len;
 
         if (string == NULL)
-            string = xmlStrdup ("");
+            string = xmlCharStrdup ("");
         client->respcode = 200;
         client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);

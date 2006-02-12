@@ -34,12 +34,14 @@ typedef enum
     AUTH_FAILED,
     AUTH_USERADDED,
     AUTH_USEREXISTS,
-    AUTH_USERDELETED,
+    AUTH_USERDELETED
 } auth_result;
 
 typedef struct auth_client_tag
 {
     char        *mount;
+    char        *hostname;
+    int         port;
     client_t    *client;
     void        (*process)(struct auth_client_tag *auth_user);
     struct auth_client_tag *next;
@@ -54,11 +56,14 @@ typedef struct auth_tag
     auth_result (*authenticate)(auth_client *aclient);
     auth_result (*release_client)(auth_client *auth_user);
 
-    /* callbacks to specific auth for notifying auth server on source
-     * startup or shutdown
-     */
-    void (*stream_start)(auth_client *auth_user);
-    void (*stream_end)(auth_client *auth_user);
+    /* auth handler for authenicating a connecting source client */
+    void (*stream_auth)(auth_client *auth_user);
+
+    /* auth handler for source startup, no client passed as it may disappear */
+    void (*stream_start)(auth_client *auth_user, struct auth_tag *auth);
+
+    /* auth handler for source exit, no client passed as it may disappear */
+    void (*stream_end)(auth_client *auth_user, struct auth_tag *auth);
 
     void (*free)(struct auth_tag *self);
     auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
@@ -78,21 +83,28 @@ typedef struct auth_tag
 void add_client (const char *mount, client_t *client);
 int  release_client (client_t *client);
 
-void auth_initialise ();
-void auth_shutdown ();
+void auth_initialise (void);
+void auth_shutdown (void);
 
 auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);
 
 /* call to send a url request when source starts */
-void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
+void auth_stream_start (struct _mount_proxy *mountinfo, struct source_tag *source);
 
 /* call to send a url request when source ends */
-void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
+void auth_stream_end (struct _mount_proxy *mountinfo, struct source_tag *source);
+
+/* */
+int auth_stream_authenticate (client_t *client, const char *mount,
+        struct _mount_proxy *mountinfo);
 
 /* called from auth thread, after the client has successfully authenticated
  * and requires adding to source or fserve. */
-int auth_postprocess_client (auth_client *auth_user);
+int auth_postprocess_listener (auth_client *auth_user);
+
+/* called from auth thread */
+void auth_postprocess_source (auth_client *auth_user);
 
 #endif
 

@@ -28,6 +28,8 @@
 #define IDB_BITMAP7                     159
 #define IDR_TRAY                        160
 #define IDR_MENU4                       161
+#define IDB_BITMAP8                     163
+#define IDB_BITMAP9                     164
 #define IDC_MAINTAB                     1000
 #define IDC_ERROR_EDIT                  1003
 #define IDC_ACCESS_EDIT                 1004
@@ -68,7 +70,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        162
+#define _APS_NEXT_RESOURCE_VALUE        165
 #define _APS_NEXT_COMMAND_VALUE         32785
 #define _APS_NEXT_CONTROL_VALUE         1037
 #define _APS_NEXT_SYMED_VALUE           101

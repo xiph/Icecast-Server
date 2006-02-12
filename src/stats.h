@@ -70,10 +70,10 @@ typedef struct _stats_tag
 
 } stats_t;
 
-void stats_initialize();
-void stats_shutdown();
+void stats_initialize(void);
+void stats_shutdown(void);
 
-stats_t *stats_get_stats();
+stats_t *stats_get_stats(void);
 
 void stats_event(const char *source, const char *name, const char *value);
 void stats_event_args(const char *source, char *name, char *format, ...);

@@ -41,7 +41,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Releaseicecast"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "../../curl/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /I "../../speex/include" /I "../../theora/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_CURL" /D "USE_YP" /D "HAVE_SYS_STAT_H" /D "HAVE_LOCALTIME_R" /D "HAVE_OLD_VSNPRINTF" /D "HAVE_THEORA" /D "HAVE_SPEEX" /D PACKAGE_VERSION=\"icecast_kh_trunk\" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "../../curl/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /I "../../theora/include" /I "../../speex/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "HAVE_CURL" /D "USE_YP" /D "HAVE_SYS_STAT_H" /D PACKAGE_VERSION=\"2.3.1\" /D "HAVE_LOCALTIME_R" /D "HAVE_OLD_VSNPRINTF" /D "HAVE_THEORA" /D "HAVE_SPEEX" /D "HAVE_AUTH_URL" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -64,7 +64,7 @@ LIB32=link.exe -lib
 # PROP Intermediate_Dir "Debugicecast"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "../../curl/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /I "../../speex/include" /I "../../theora/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "_WIN32" /D "HAVE_CURL" /D "USE_YP" /D "HAVE_SYS_STAT_H" /D "HAVE_LOCALTIME_R" /D "HAVE_OLD_VSNPRINTF" /D "HAVE_THEORA" /D "HAVE_SPEEX" /D PACKAGE_VERSION=\"icecast_kh_trunk\" /FD /GZ /c
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "../../curl/include" /I "..\src" /I "..\src/httpp" /I "..\src/thread" /I "..\src/log" /I "..\src/avl" /I "..\src/net" /I "..\src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /I "../../theora/include" /I "../../speex/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "_WIN32" /D "HAVE_CURL" /D "USE_YP" /D "HAVE_SYS_STAT_H" /D PACKAGE_VERSION=\"2.3.1\" /D "HAVE_LOCALTIME_R" /D "HAVE_OLD_VSNPRINTF" /D "HAVE_THEORA" /D "HAVE_SPEEX" /D "HAVE_AUTH_URL" /FD /D /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -105,7 +105,15 @@ SOURCE=..\src\auth_htpasswd.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\auth_htpasswd.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\auth_url.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\auth_url.h
 # End Source File
 # Begin Source File
 
@@ -359,18 +367,6 @@ SOURCE=..\src\yp.h
 # Begin Group "Header Files"
 
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
-# Begin Source File
-
-SOURCE=..\src\auth_cmd.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\auth_htpasswd.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\auth_url.h
-# End Source File
 # Begin Source File
 
 SOURCE=..\src\timing\timing.h

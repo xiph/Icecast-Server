@@ -331,7 +331,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
             vorbis_comment_add_tag (&vc, "artist", ogg_info->artist);
         if (ogg_info->title)
             vorbis_comment_add_tag (&vc, "title", ogg_info->title);
-        vorbis_comment_add (&vc, "server=" ICECAST_VERSION_STRING);
+        vorbis_comment_add_tag (&vc, "server", ICECAST_VERSION_STRING);
         vorbis_commentheader_out (&vc, &header);
 
         ogg_stream_packetin (&source_vorbis->new_os, &header);

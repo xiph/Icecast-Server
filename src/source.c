@@ -50,7 +50,7 @@
 #include "format.h"
 #include "fserve.h"
 #include "auth.h"
-#include "os.h"
+#include "compat.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -192,6 +192,10 @@ void source_clear_source (source_t *source)
     int i;
 
     DEBUG1 ("clearing source \"%s\"", source->mount);
+
+    /* log bytes read in access log */
+    if (source->client && source->format)
+        source->client->con->sent_bytes = source->format->read_bytes;
     client_destroy(source->client);
     source->client = NULL;
     source->parser = NULL;
@@ -710,7 +714,7 @@ static void source_init (source_t *source)
     {
         if (mountinfo->on_connect)
             source_run_script (mountinfo->on_connect, source->mount);
-        auth_stream_start (mountinfo, source->mount);
+        auth_stream_start (mountinfo, source);
     }
     config_release_config();
 
@@ -799,7 +803,7 @@ static void source_shutdown (source_t *source)
     {
         if (mountinfo->on_disconnect)
             source_run_script (mountinfo->on_disconnect, source->mount);
-        auth_stream_end (mountinfo, source->mount);
+        auth_stream_end (mountinfo, source);
     }
     config_release_config();
 

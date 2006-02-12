@@ -33,6 +33,7 @@
 #include "stats.h"
 #include "httpp/httpp.h"
 #include "fserve.h"
+#include "admin.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
@@ -45,15 +46,22 @@ static mutex_t auth_lock;
 static thread_type *auth_thread;
 
 
-static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
+static auth_client *auth_client_setup (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
+    ice_config_t *config = config_get_config_unlocked();
+    auth_client *auth_user = calloc (1, sizeof(auth_client));
+
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-    char *header = httpp_getvar(client->parser, "authorization");
+    char *header;
     char *userpass, *tmp;
     char *username, *password;
 
     do
     {
+        if (client == NULL)
+            break;
+
+        header = httpp_getvar(client->parser, "authorization");
         if (header == NULL)
             break;
 
@@ -82,14 +90,20 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
             free (userpass);
             break;
         }
-        INFO1 ("unhandled authorization header: %s", header);
+        WARN1 ("unhandled authorization header: %s", header);
 
     } while (0);
 
     thread_mutex_lock (&mountinfo->auth->lock);
-    client->auth = mountinfo->auth;
-    client->auth->refcount++;
+    if (client)
+        client->auth = mountinfo->auth;
+    mountinfo->auth->refcount++;
     thread_mutex_unlock (&mountinfo->auth->lock);
+    auth_user->mount = strdup (mount);
+    auth_user->hostname = strdup (config->hostname);
+    auth_user->port = config->port;
+    auth_user->client = client;
+    return auth_user;
 }
 
 
@@ -143,6 +157,7 @@ static void auth_client_free (auth_client *auth_user)
             client_send_401 (client);
         auth_user->client = NULL;
     }
+    free (auth_user->hostname);
     free (auth_user->mount);
     free (auth_user);
 }
@@ -160,13 +175,12 @@ static void auth_new_listener (auth_client *auth_user)
         if (client->auth->authenticate (auth_user) != AUTH_OK)
             return;
     }
-    if (auth_postprocess_client (auth_user) < 0)
+    if (auth_postprocess_listener (auth_user) < 0)
         INFO1 ("client %lu failed", client->con->id);
 }
 
 
-/* wrapper function are auth thread to authenticate new listener
- * connections
+/* wrapper function for auth thread to drop listener connections
  */
 static void auth_remove_listener (auth_client *auth_user)
 {
@@ -176,6 +190,61 @@ static void auth_remove_listener (auth_client *auth_user)
         client->auth->release_client (auth_user);
     auth_release (client->auth);
     client->auth = NULL;
+}
+
+
+/* Called from auth thread to process any request for source client
+ * authentication. Only applies to source clients, not relays.
+ */
+static void stream_auth_callback (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (client->auth->stream_auth)
+        client->auth->stream_auth (auth_user);
+    if (client->authenticated)
+    {
+        auth_release (client->auth);
+        client->auth = NULL;
+        auth_postprocess_source (auth_user);
+        DEBUG0 ("started");
+    }
+    else
+        WARN1 ("Failed auth for source \"%s\"", auth_user->mount);
+}
+
+
+/* Callback from auth thread to handle a stream start event, this applies
+ * to both source clients and relays.
+ */
+static void stream_start_callback (auth_client *auth_user)
+{
+    ice_config_t *config = config_get_config ();
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_t *auth = mountinfo->auth;
+
+    config_release_config();
+
+    if (auth->stream_start)
+        auth->stream_start (auth_user, auth);
+    auth_release (auth);
+}
+
+
+/* Callback from auth thread to handle a stream start event, this applies
+ * to both source clients and relays.
+ */
+static void stream_end_callback (auth_client *auth_user)
+{
+    ice_config_t *config = config_get_config ();
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    auth_t *auth = mountinfo->auth;
+
+    config_release_config();
+
+    if (auth->stream_end)
+        auth->stream_end (auth_user, auth);
+    auth_release (auth);
 }
 
 
@@ -304,7 +373,6 @@ static int add_client_to_source (source_t *source, client_t *client)
         /* enable on-demand relay to start, wake up the slave thread */
         DEBUG0("kicking off on-demand relay");
         source->on_demand_req = 1;
-        slave_rescan ();
     }
     DEBUG1 ("Added client to %s", source->mount);
     return 0;
@@ -314,7 +382,7 @@ static int add_client_to_source (source_t *source, client_t *client)
 /* Add listener to the pending lists of either the  source or fserve thread.
  * This can be run from the connection or auth thread context
  */
-static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, client_t *client)
+static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
     int ret = 0;
     source_t *source = NULL;
@@ -355,7 +423,7 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
 }
 
 
-int auth_postprocess_client (auth_client *auth_user)
+int auth_postprocess_listener (auth_client *auth_user)
 {
     int ret;
     ice_config_t *config = config_get_config();
@@ -363,7 +431,7 @@ int auth_postprocess_client (auth_client *auth_user)
     mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
     auth_user->client->authenticated = 1;
 
-    ret = add_authenticated_client (auth_user->mount, mountinfo, auth_user->client);
+    ret = add_authenticated_listener (auth_user->mount, mountinfo, auth_user->client);
     config_release_config();
 
     if (ret < 0)
@@ -371,6 +439,23 @@ int auth_postprocess_client (auth_client *auth_user)
     auth_user->client = NULL;
 
     return ret;
+}
+
+
+/* Decide whether we need to start a source or just process a source
+ * admin request.
+ */
+void auth_postprocess_source (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+    const char *uri = auth_user->mount;
+
+    DEBUG1 ("checking reference (%s)", uri);
+    auth_user->client = NULL;
+    if (strcmp (uri, "/admin.cgi") != 0 && strncmp("/admin/", uri, 7) != 0)
+        source_startup (client, uri, 0);
+    else
+        admin_mount_request (client, uri);
 }
 
 
@@ -409,31 +494,17 @@ void add_client (const char *mount, client_t *client)
             client_send_403 (client, "busy, please try again later");
             return;
         }
-        auth_client_setup (mountinfo, client);
+        auth_user = auth_client_setup (mount, mountinfo, client);
         config_release_config ();
 
-        if (client->auth == NULL)
-        {
-            client_send_401 (client);
-            return;
-        }
-        auth_user = calloc (1, sizeof (auth_client));
-        if (auth_user == NULL)
-        {
-            ERROR0 ("memory exhausted");
-            abort ();
-            return;
-        }
-        auth_user->mount = strdup (mount);
         auth_user->process = auth_new_listener;
-        auth_user->client = client;
 
         INFO0 ("adding client for authentication");
         queue_auth_client (auth_user);
     }
     else
     {
-        int ret = add_authenticated_client (mount, mountinfo, client);
+        int ret = add_authenticated_listener (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
             client_send_404 (client, "max listeners reached");
@@ -561,47 +632,62 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
 }
 
 
+/* Called when a source client connects and requires authentication via the
+ * authenticator. This is called for both source clients and admin requests
+ * that work on a specified mountpoint.
+ */
+int auth_stream_authenticate (client_t *client, const char *mount, mount_proxy *mountinfo)
+{
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_auth)
+    {
+        auth_client *auth_user = auth_client_setup (mount, mountinfo, client);
+
+        auth_user->process = stream_auth_callback;
+        INFO1 ("request source auth for \"%s\"", mount);
+        queue_auth_client (auth_user);
+        return 1;
+    }
+    return 0;
+}
+
 /* called when the stream starts, so that authentication engine can do any
  * cleanup/initialisation.
  */
-void auth_stream_start (mount_proxy *mountinfo, const char *mount)
+void auth_stream_start (mount_proxy *mountinfo, source_t *source)
 {
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_start)
     {
-        auth_client *auth_user = calloc (1, sizeof (auth_client));
-        if (auth_user)
-        {
-            auth_user->mount = strdup (mount);
-            auth_user->process = mountinfo->auth->stream_start;
+        auth_client *auth_user = auth_client_setup (source->mount,
+                mountinfo, NULL);
+        auth_user->process = stream_start_callback;
+        INFO1 ("request source start for \"%s\"", source->mount);
 
-            queue_auth_client (auth_user);
-        }
+        queue_auth_client (auth_user);
     }
 }
+
 
 
 /* Called when the stream ends so that the authentication engine can do
  * any authentication cleanup
  */
-void auth_stream_end (mount_proxy *mountinfo, const char *mount)
+void auth_stream_end (mount_proxy *mountinfo, source_t *source)
 {
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_end)
     {
-        auth_client *auth_user = calloc (1, sizeof (auth_client));
-        if (auth_user)
-        {
-            auth_user->mount = strdup (mount);
-            auth_user->process = mountinfo->auth->stream_end;
+        auth_client *auth_user = auth_client_setup (source->mount,
+                mountinfo, NULL);
+        auth_user->process = stream_end_callback;
+        INFO1 ("request source end for \"%s\"", source->mount);
 
-            queue_auth_client (auth_user);
-        }
+        queue_auth_client (auth_user);
     }
 }
 
 
 /* these are called at server start and termination */
 
-void auth_initialise ()
+void auth_initialise (void)
 {
     clients_to_auth = NULL;
     auth_pending_count = 0;
@@ -610,7 +696,7 @@ void auth_initialise ()
     auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);
 }
 
-void auth_shutdown ()
+void auth_shutdown (void)
 {
     if (auth_thread)
     {

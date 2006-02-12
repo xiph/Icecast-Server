@@ -113,6 +113,7 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg void OnFileEditconfiguration();
 	afx_msg void OnAboutHelp();
+	afx_msg void OnAboutCredits();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

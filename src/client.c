@@ -55,22 +55,26 @@
  */
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
-    ice_config_t *config;
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
-    int ret = -1;
+    int ret = 0;
 
     if (client == NULL)
         abort();
 
-    config = config_get_config ();
-
     global.clients++;
-    if (config->client_limit < global.clients)
-        WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
-    else
-        ret = 0;
 
-    config_release_config ();
+    /* don't do client limit check if on an SSL socket, as that will be an admin request */
+    if (not_ssl_connection (con))
+    {
+        ice_config_t *config = config_get_config ();
+
+        if (config->client_limit < global.clients)
+        {
+            WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
+            ret = -1;
+        }
+        config_release_config ();
+    }
 
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
@@ -160,7 +164,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     }
     bytes = client->con->read (client->con, buf, len);
 
-    if (client->con->error)
+    if (bytes == -1 && client->con->error)
         WARN0 ("reading from connection has failed");
 
     return bytes;
@@ -214,14 +218,19 @@ void client_send_404(client_t *client, char *message) {
 
 void client_send_401 (client_t *client)
 {
-    const char *send_realm = ICECAST_VERSION_STRING;
+    ice_config_t *config = config_get_config ();
+    const char *send_realm;
     if (client->auth && client->auth->realm)
         send_realm = client->auth->realm;
+    else
+        send_realm = config->server_id;
+
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 401 Authentication Required\r\n"
             "WWW-Authenticate: Basic realm=\"%s\"\r\n"
             "\r\n"
             "You need to authenticate\r\n", send_realm);
+    config_release_config();
     client->respcode = 401;
     auth_release (client->auth);
     client->auth = NULL;

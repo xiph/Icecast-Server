@@ -20,12 +20,34 @@
  * Solaris.
  */
 
+#ifdef _WIN32
+#include <windows.h>
+#include <time.h>
+#else
+#include <unistd.h>
+# ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+# else
+#  ifdef HAVE_SYS_TIME_H
+#   include <sys/time.h>
+#  else
+#   include <time.h>
+#  endif
+# endif
+#endif
+
+
 /* Make sure we define 64 bit types */
 #ifdef _WIN32
+#  define PATH_SEPARATOR "\\"
+#  define size_t unsigned int
+#  define ssize_t int
 #  define int64_t __int64
 #  define uint64_t unsigned __int64
 #  define uint32_t unsigned int
 #else
+#  define PATH_SEPARATOR "/"
 #  if defined(HAVE_STDINT_H)
 #    include <stdint.h>
 #  elif defined(HAVE_INTTYPES_H)

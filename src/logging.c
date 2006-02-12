@@ -25,7 +25,7 @@
 #include "refbuf.h"
 #include "client.h"
 
-#include "os.h"
+#include "compat.h"
 #include "cfgfile.h"
 #include "logging.h"
 #include "util.h"

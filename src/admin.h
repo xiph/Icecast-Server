@@ -13,10 +13,10 @@
 #ifndef __ADMIN_H__
 #define __ADMIN_H__
 
-#include "refbuf.h"
 #include "client.h"
 
-void admin_handle_request(client_t *client, char *uri);
+int  admin_handle_request (client_t *client, const char *uri);
+void admin_mount_request (client_t *client, const char *uri);
 void admin_source_listeners (source_t *source, xmlNodePtr node);
 
 #endif  /* __ADMIN_H__ */

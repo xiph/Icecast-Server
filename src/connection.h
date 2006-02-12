@@ -17,16 +17,20 @@
 #include <time.h>
 #ifdef HAVE_OPENSSL
 #include <openssl/ssl.h>
+#else
+#define SSL void
 #endif
+
+struct source_tag;
+typedef struct connection_tag connection_t;
+
+#include "client.h"
 #include "compat.h"
 #include "httpp/httpp.h"
 #include "thread/thread.h"
 #include "net/sock.h"
 
-struct _client_tag;
-struct source_tag;
-
-typedef struct connection_tag
+struct connection_tag
 {
     unsigned long id;
 
@@ -39,17 +43,21 @@ typedef struct connection_tag
     int error;
 
 #ifdef HAVE_OPENSSL
-    /* SSL handler */
-    SSL *ssl;
+    SSL *ssl;   /* SSL handler */
 #endif
-    int (*send)(struct connection_tag *handle, const char *buf, unsigned int len);
-    int (*read)(struct connection_tag *handle, char *buf, unsigned int len);
+    int (*send)(struct connection_tag *handle, const void *buf, size_t len);
+    int (*read)(struct connection_tag *handle, void *buf, size_t len);
 
     char *ip;
     char *host;
 
-} connection_t;
+};
 
+#ifdef HAVE_OPENSSL
+#define not_ssl_connection(x)    ((x)->ssl==NULL)
+#else
+#define not_ssl_connection(x)    (1)
+#endif
 void connection_initialize(void);
 void connection_shutdown(void);
 void connection_accept_loop(void);
@@ -57,7 +65,7 @@ void connection_close(connection_t *con);
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, int response);
 
-int connection_check_source_pass(http_parser_t *parser, const char *mount);
+int connection_check_source_pass (client_t *client, const char *mount);
 int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 

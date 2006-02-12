@@ -21,6 +21,7 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef HAVE_STRINGS_H
@@ -136,7 +137,7 @@ static void find_client_start (source_t *source, client_t *client)
 static int get_file_data (FILE *intro, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    int bytes;
+    size_t bytes;
 
     if (intro == NULL || fseek (intro, client->intro_offset, SEEK_SET) < 0)
         return 0;
@@ -277,6 +278,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     int bytes;
     int bitrate_filtered = 0;
     avl_node *node;
+    ice_config_t *config;
 
     remaining = client->refbuf->len;
     ptr = client->refbuf->data;
@@ -346,7 +348,9 @@ static int format_prepare_headers (source_t *source, client_t *client)
     }
     avl_tree_unlock (source->parser->vars);
 
-    bytes = snprintf (ptr, remaining, "Server: %s\r\n", ICECAST_VERSION_STRING);
+    config = config_get_config();
+    bytes = snprintf (ptr, remaining, "Server: %s\r\n", config->server_id);
+    config_release_config();
     remaining -= bytes;
     ptr += bytes;
 
