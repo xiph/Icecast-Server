@@ -1227,7 +1227,7 @@ static void *_handle_connection(void *arg)
             }
             continue;
         }
-        thread_sleep (50000);
+        thread_sleep (100000);
     }
     DEBUG0 ("Connection thread done");
 

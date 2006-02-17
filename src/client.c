@@ -119,8 +119,6 @@ void client_destroy(client_t *client)
             ;
     }
 #endif
-    if (client->is_slave)
-        slave_host_remove (client);
 
     if (client->con)
         connection_close(client->con);
@@ -171,12 +169,12 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 }
 
 
-void client_send_302(client_t *client, char *location) {
+void client_send_302(client_t *client, const char *location) {
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 302 Temporarily Moved\r\n"
             "Content-Type: text/html\r\n"
             "Location: %s\r\n\r\n"
-            "<a href=\"%s\">%s</a>", location, location, location);
+            "Moved <a href=\"%s\">here</a>\r\n", location, location);
     client->respcode = 302;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
@@ -294,18 +292,5 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
     client->pos = 0;
     if (to_release)
         refbuf_release (to_release);
-}
-
-void client_as_slave (client_t *client)
-{
-    char *slave_redirect = httpp_getvar (client->parser, "ice-redirect");
-    INFO1 ("client connected as slave from %s", client->con->ip);
-    client->is_slave = 1;
-    if (slave_redirect)
-    {
-        /* this will be something like ip:port */
-        DEBUG1 ("header for auth slave is \"%s\"", slave_redirect);
-        slave_host_add (client, slave_redirect);
-    }
 }
 

@@ -22,14 +22,37 @@
 <br />
 <br />
 <h2>Setting Up A Master-Slave Relay</h2>
-<p>In order to setup a relay of this type both servers (the one you wish to relay and the one doing the relaying) need to be icecast2 servers. The following configuration snippet is used as an example:</p>
+<p>In order to setup a relay of this type both servers (the one you wish to relay and the one
+doing the relaying) need to be icecast2 servers. The following configuration snippet is used
+as an example:</p>
 <pre>
     &lt;master-server&gt;192.168.1.11&lt;/master-server&gt;
     &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
     &lt;master-update-interval&gt;120&lt;/master-update-interval&gt;
+    &lt;master-username&gt;relay&lt;/master-username&gt;
     &lt;master-password&gt;hackme&lt;/master-password&gt;
 </pre>
-In this example, this configuration is setup in the server which will be doing the relaying (slave server).  The master server in this case need not be configured (and actually is unaware of the relaying being performed) as a relay.  When the slave server is started, it will connect to the master server located at 192.168.1.11:8001 and will begin to relay all mountpoints connected to the master server.  Additionally, every master-update-interval (120 seconds in this case) the slave server will poll the master server to see if any new mountpoints have connected, and if so, the slave server will relay those as well.  Note that the names of the mountpoints on the slave server will be identical to those on the master server.
+<p>In this example, this configuration is setup in the server which will be doing the relaying
+(slave server).  The master server in this case need not be configured (and actually is unaware
+of the relaying being performed) as a relay.  When the slave server is started, it will connect
+to the master server located at 192.168.1.11:8001 and will begin to relay all non-hidden
+mountpoints connected to the master server.  Additionally, every master-update-interval (120
+seconds in this case) the slave server will poll the master server to see if any new mountpoints
+have connected, and if so, the slave server will relay those as well.  Note that the names of
+the mountpoints on the slave server will be identical to those on the master server.</p>
+<p>To extend on the idea of load sharing, it is possible for a slave icecast2 to communicate
+certain information to allow for new listeners to be redirected from the master server to the
+slave. In such cases, the master will send to the listener a HTTP 302 response code with a URL
+of the slave server which has been randomly selected.</p>
+</p>To enable this certain settings have to be enabled. In the master</p>
+<pre>
+    &lt;max-redirect-slaves&gt;5&lt;/max-redirect-slaves&gt;
+</pre>
+<p>This limits the redirection mechanism to 5 slaves, the default is 0, preventing any attempts
+to redirect new listeners. In the slave </p>
+<pre>
+    &lt;master-redirect&gt;1&lt;/master-redirect&gt;
+</pre>
 <br />
 <br />
 <br />

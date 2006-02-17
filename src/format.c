@@ -90,8 +90,8 @@ int format_get_plugin (format_type_t type, source_t *source)
     default:
         break;
     }
-    source->format->in_bitrate = rate_setup (10);
-    source->format->out_bitrate = rate_setup (10);
+    source->format->in_bitrate = rate_setup (30);
+    source->format->out_bitrate = rate_setup (30);
 
     return ret;
 }
@@ -104,8 +104,10 @@ static void find_client_start (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = source->burst_point;
 
-    /* we only want to attempt a burst at connection time, not midstream */
-    if (client->intro_offset == -1)
+    /* we only want to attempt a burst at connection time, not midstream
+     * however streams like theora may not have the most recent page marked as
+     * a starting point, so look for one from the burst point */
+    if (client->intro_offset == -1 && source->stream_data_tail->sync_point)
         refbuf = source->stream_data_tail;
     else
     {

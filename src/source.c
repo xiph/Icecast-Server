@@ -436,16 +436,18 @@ static void get_next_buffer (source_t *source)
         /* take the lock */
         thread_mutex_lock (&source->lock);
 
-        if (current >= source->client_stats_update)
+        if (source->client && current >= source->client_stats_update)
         {
             stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
-                    8 * rate_avg (source->format->out_bitrate));
+                    (8 * rate_avg (source->format->out_bitrate))/1000);
             stats_event_args (source->mount, "incoming_bitrate", "%ld", 
-                    8 * rate_avg (source->format->in_bitrate));
+                    (8 * rate_avg (source->format->in_bitrate))/1000);
             stats_event_args (source->mount, "total_bytes_read",
                     FORMAT_UINT64, source->format->read_bytes);
             stats_event_args (source->mount, "total_bytes_sent",
                     FORMAT_UINT64, source->format->sent_bytes);
+            stats_event_args (source->mount, "connected", FORMAT_UINT64,
+                    (uint64_t)(current - source->client->con->con_time));
             source->client_stats_update = current + 5;
         }
         if (fds < 0)

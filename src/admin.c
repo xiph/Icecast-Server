@@ -1160,6 +1160,9 @@ static void command_list_mounts(client_t *client, int response)
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config->mounts;
 
+        /* do any redirector updates */
+        redirector_update (client);
+
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");

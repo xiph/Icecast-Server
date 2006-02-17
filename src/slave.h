@@ -35,22 +35,21 @@ typedef struct _relay_server {
     struct _relay_server *next;
 } relay_server;
 
-typedef struct _slave_host
+typedef struct _redirect_host
 {
     char *server;
     int port;
-    unsigned int count;
-    struct _slave_host *next;
-} slave_host;
+    time_t next_update;
+    struct _redirect_host *next;
+} redirect_host;
 
 void slave_initialize(void);
 void slave_shutdown(void);
 void slave_recheck_mounts (void);
 void slave_rebuild_mounts (void);
 relay_server *slave_find_relay (relay_server *relays, const char *mount);
-int slave_redirect (const char *mountpoint, struct _client_tag *client);
-void slave_host_add (struct _client_tag *client, const char *header);
-void slave_host_remove (struct _client_tag *client);
+int redirect_client (const char *mountpoint, struct _client_tag *client);
+void redirector_update (struct _client_tag *client);
 relay_server *relay_free (relay_server *relay);
 
 #endif  /* __SLAVE_H__ */

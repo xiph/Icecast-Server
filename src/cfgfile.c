@@ -367,7 +367,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_username = (char*)xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->master_password = NULL;
     configuration->master_relay_auth = 0;
-    configuration->master_redirect_port = 0;
     configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
     configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
     configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
@@ -458,10 +457,6 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_server_port = atoi(tmp);
             xmlFree (tmp);
-        } else if (xmlStrcmp(node->name, XMLSTR ("master-redirect-port")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->master_redirect_port = atoi(tmp);
-            xmlFree (tmp);
         } else if (xmlStrcmp(node->name, XMLSTR ("master-update-interval")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_update_interval = atoi(tmp);
@@ -473,6 +468,14 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp(node->name, XMLSTR ("master-ssl-port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->master_ssl_port = atoi(tmp);
+            xmlFree (tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR ("master-redirect")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->master_redirect = atoi(tmp);
+            xmlFree (tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR ("max-redirect-slaves")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->max_redirects = atoi(tmp);
             xmlFree (tmp);
         } else if (xmlStrcmp(node->name, XMLSTR ("shoutcast-mount")) == 0) {
             if (configuration->shoutcast_mount &&
@@ -495,6 +498,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_security(doc, node->xmlChildrenNode, configuration);
         }
     } while ((node = node->next));
+    if (configuration->max_redirects == 0 && configuration->master_redirect)
+        configuration->max_redirects = 1;
 }
 
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, 

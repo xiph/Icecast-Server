@@ -410,7 +410,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
             DEBUG0 ("client authenticated, passed to source");
         else
         {
-            if (slave_redirect (mount, client))
+            if (redirect_client (mount, client))
                 ret = 0;
         }
     }
@@ -472,7 +472,7 @@ void add_client (const char *mount, client_t *client)
 
     if (connection_check_relay_pass(client->parser))
     {
-        client_as_slave (client);
+        client->is_slave = 1;
         INFO0 ("client connected as slave");
     }
     config = config_get_config();

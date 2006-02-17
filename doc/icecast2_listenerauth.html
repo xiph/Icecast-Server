@@ -85,6 +85,7 @@ config file.  The following shows the list of options available :</p>
     &lt;mount&gt;
         &lt;mount-name&gt;/example.ogg&lt;/mount-name&gt;
         &lt;authentication type="url"&gt;
+            &lt;option name="stream_auth" value="http://myauthserver.com/stream_auth.php"/&gt;
             &lt;option name="mount_add" value="http://myauthserver.com/stream_start.php"/&gt;
             &lt;option name="mount_remove" value="http://myauthserver.com/stream_end.php"/&gt;
             &lt;option name="listener_add" value="http://myauthserver.com/listener_joined.php"/&gt;
@@ -98,6 +99,13 @@ config file.  The following shows the list of options available :</p>
 </pre>
 <p>The options are described below in more detail, each of which is optional, but in each
 case, within the POST data, the value for each setting is encoded.</p>
+<h3>stream_auth</h3>
+<p>This URL is for determining whether a source or admin request is allowed to proceed. This
+is only used for source client connections and admin requests which apply to sources.</p>
+<p>POST details are </p>
+<pre>
+    action=stream_auth&amp;mount=&amp;ip=&amp;server=&amp;port=&amp;user=&amp;pass=%s
+</pre>
 <h3>mount_add</h3>
 <p>This URL is for informing the auth server of a stream starting. No listener information
 is passed for this, but can be used to initialise any details the auth server may have.

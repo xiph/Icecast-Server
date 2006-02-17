@@ -9,8 +9,32 @@ Feature differences from SVN trunk
 TODO
 . update slave host handling to add entry via url, as on-demand relays don't
   connect until there are listeners.
-. get feedback from people on listener auth via url, Stephen Nixon has done
-  some auth scripts that people can use at http://imux.net/icecast/
+
+2.3-kh3
+. add source auth via authenticator, affects certain admin access as well.
+  Only url auth using it currently
+. relays now have start timestamps, prevents a possible constant rescanning
+  effect with multiple relay failure case
+. fix memory leak in ogg flac case.
+. update YP, get bitrate from stats (incoming_bitrate), if not provided. Issue
+  yp add after 60 secs, gives time for bitrates to settle.
+. cleanups in auth setup, push more setup code into the core auth handler.
+. when moving listeners, if most recent refbuf is not a sync point then use
+  burst point. Fallback theora streams can be affected by this.
+. drop master-redirect-port, use <port>.
+. set <master-redirect> (in slave) non-zero to send IP/port details in
+  streamlist request, so that new listener redirection from master is possible.
+. set <max-redirect-slaves> (in master) to specify the number of slave servers
+  that can request listener redirection, default 0.
+. prevent avg/total byte stats for fallback to file sources.
+. allow for server id to be defined in xml.
+. add connected stat to source, duration in seconds.
+. increase average stats for bitrate calculation to 30 seconds
+. increase sleep duration in connection thread to 100ms
+. make source clients report read bytes in access.log
+. bypass clients limit check for ssl connections, let admin do stuff
+. various type cleanups, gcc4 show various signed/unsigned issues.
+. sync up with trunk, win32, os.h/compat.h, minor type definitions
 
 2.3-kh2
 . merges from post 2.3 release/feedback

@@ -144,6 +144,8 @@ typedef struct ice_config_tag
     char *master_password;
     int master_relay_auth;
     int master_ssl_port;
+    int master_redirect;
+    int max_redirects;
 
     relay_server *relay;
 
@@ -158,7 +160,6 @@ typedef struct ice_config_tag
     char *adminroot_dir;
     aliases *aliases;
     unsigned slaves_count;
-    int master_redirect_port;
 
     char *access_log;
     char *error_log;

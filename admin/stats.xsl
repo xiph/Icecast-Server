@@ -74,7 +74,7 @@
 <a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a>
+<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a>
 </xsl:otherwise>
 </xsl:choose>
 Mount Point : (<xsl:value-of select="@mount" />)

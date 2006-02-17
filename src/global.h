@@ -44,9 +44,9 @@ typedef struct ice_global_tag
     /* relays retrieved from master */
     struct _relay_server *master_relays;
 
-    /* slave relay list */
-    unsigned int slave_count;
-    struct _slave_host *slaves;
+    /* redirection to slaves */
+    unsigned int redirect_count;
+    struct _redirect_host *redirectors;
 
     cond_t shutdown_cond;
 } ice_global_t;

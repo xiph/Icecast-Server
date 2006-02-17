@@ -91,6 +91,7 @@ static int yp_running;
 static time_t now;
 static thread_type *yp_thread;
 static volatile unsigned client_limit = 0;
+static volatile char *server_version = NULL;
 
 static void *yp_update_thread(void *arg);
 static void add_yp_info (ypdata_t *yp, void *info, int type);
@@ -217,6 +218,8 @@ void yp_recheck_config (ice_config_t *config)
         server = server->next;
     }
     client_limit = config->client_limit;
+    free (server_version);
+    server_version = strdup (config->server_id);
     /* for each yp url in config, check to see if one exists 
        if not, then add it. */
     for (i=0 ; i < config->num_yp_directories; i++)
@@ -242,7 +245,7 @@ void yp_recheck_config (ice_config_t *config)
             }
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
-            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
+            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server_version);
             curl_easy_setopt (server->curl, CURLOPT_URL, server->url);
             curl_easy_setopt (server->curl, CURLOPT_HEADERFUNCTION, handle_returned_header);
             curl_easy_setopt (server->curl, CURLOPT_WRITEFUNCTION, handle_returned_data);
@@ -354,6 +357,8 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
     free (value);
 
     value = stats_get_value (yp->mount, "bitrate");
+    if (value == NULL)
+        value = stats_get_value (yp->mount, "incoming_bitrate");
     add_yp_info (yp, value, YP_BITRATE);
     free (value);
 
@@ -845,7 +850,7 @@ void yp_add (const char *mount)
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
-                yp->next_update = time(NULL) + 5;
+                yp->next_update = global.time + 60;
                 server->pending_mounts = yp;
                 yp_update = 1;
             }
@@ -925,6 +930,8 @@ void yp_shutdown (void)
     if (yp_thread)
         thread_join (yp_thread);
     curl_global_cleanup();
+    free (server_version);
+    server_version = NULL;
     INFO0 ("YP thread down");
 }
 

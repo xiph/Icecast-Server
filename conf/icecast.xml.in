@@ -2,7 +2,6 @@
     <limits>
         <clients>100</clients>
         <sources>2</sources>
-        <threadpool>5</threadpool>
         <queue-size>524288</queue-size>
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
@@ -29,10 +28,6 @@
     <directory>
         <yp-url-timeout>15</yp-url-timeout>
         <yp-url>http://dir.xiph.org/cgi-bin/yp-cgi</yp-url>
-    </directory>
-    <directory>
-        <yp-url-timeout>15</yp-url-timeout>
-        <yp-url>http://www.oddsock.org/cgi-bin/yp-cgi</yp-url>
     </directory>
      -->
 
@@ -69,9 +64,9 @@
     <!--<relays-on-demand>1</relays-on-demand>-->
 
 
-    <!-- Report <hostname> and this port to master server for redirecting
-         clients to this slave -->
-    <!--<master-redirect-port>8000</master-redirect-port>-->
+    <!-- Request the master server to redirect new listeners to this slave
+         the details passed are based on <hostname> and <port> -->
+    <!--<master-redirect>1</master-redirect>-->
 
     <!-- Relays. State connection information, and by default 
          request inline metadata for mp3 streams if available.

@@ -408,7 +408,7 @@ static void url_stream_auth (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
     auth_url *url = client->auth->state;
-    char *mount, *host, *user, *pass, *ipaddr, *metadata="";
+    char *mount, *host, *user, *pass, *ipaddr, *admin="";
     char post [4096];
 
     if (strchr (url->stream_auth, '@') == NULL)
@@ -426,7 +426,7 @@ static void url_stream_auth (auth_client *auth_user)
     if (strncmp (auth_user->mount, "/admin/", 7) == 0)
     {
         mount = util_url_escape (httpp_get_query_param (client->parser, "mount"));
-        metadata = "&metadata=1";
+        admin = "&admin=1";
     }
     else
         mount = util_url_escape (auth_user->mount);
@@ -436,8 +436,8 @@ static void url_stream_auth (auth_client *auth_user)
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
-            "action=stream_auth&mount=%sip=%s&server=%s&port=%d&user=%s&pass=%s%s",
-            mount, ipaddr, host, auth_user->port, user, pass, metadata);
+            "action=stream_auth&mount=%s&ip=%s&server=%s&port=%d&user=%s&pass=%s%s",
+            mount, ipaddr, host, auth_user->port, user, pass, admin);
     free (ipaddr);
     free (user);
     free (pass);
