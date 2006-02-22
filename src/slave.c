@@ -386,7 +386,7 @@ static void check_relay_stream (relay_server *relay)
         if (relay->source)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
-            relay->cleanup = 1;
+            slave_rebuild_mounts();
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);

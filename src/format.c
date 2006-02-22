@@ -111,12 +111,11 @@ static void find_client_start (source_t *source, client_t *client)
         refbuf = source->stream_data_tail;
     else
     {
-        long size = 0;
+        long size = client->intro_offset;
         refbuf = source->burst_point;
-        size = client->intro_offset;
         while (size > 0 && refbuf->next)
         {
-            size -= refbuf->len;
+            size -= (long)refbuf->len;
             refbuf = refbuf->next;
         }
     }

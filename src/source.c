@@ -352,7 +352,7 @@ void source_move_clients (source_t *source, source_t *dest)
             }
         }
 
-        /* we need to move the client and pending trees */
+        /* we need to move the active listeners */
         while (source->active_clients)
         {
             client_t *client = source->active_clients;

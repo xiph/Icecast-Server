@@ -62,7 +62,6 @@
 
 <!--mount point stats-->
 <xsl:for-each select="source">
-<xsl:if test = "listeners!=''"> 
 <div class="roundcont">
 <div class="roundtop">
 <img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
@@ -110,7 +109,6 @@ Mount Point : (<xsl:value-of select="@mount" />)
 </div>
 <br />
 <br />
-</xsl:if>
 </xsl:for-each>
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 

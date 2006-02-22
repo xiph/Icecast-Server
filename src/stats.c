@@ -489,7 +489,7 @@ static void process_source_event (stats_event_t *event)
             /* adding node */
             if (event->value)
             {
-                DEBUG2 ("new node %s (%s)", event->name, event->value);
+                DEBUG3 ("new node on %s \"%s\" (%s)", event->source, event->name, event->value);
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
                 node->name = (char *)strdup(event->name);
                 node->value = (char *)strdup(event->value);
