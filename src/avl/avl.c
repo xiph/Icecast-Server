@@ -70,6 +70,7 @@ avl_tree_new (avl_key_compare_fun_type compare_fun,
   } else {
     avl_node * root = avl_node_new((void *)NULL, (avl_node *) NULL);
     if (!root) {
+      free (t);
       return NULL;
     } else {
       t->root = root;
