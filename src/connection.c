@@ -962,8 +962,10 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         client->parser = parser;
         _handle_source_request (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
-    else
+    else {
+        httpp_destroy (parser);
         client_destroy (client);
+    }
     free (http_compliant);
     free (shoutcast_mount);
     free (node);
