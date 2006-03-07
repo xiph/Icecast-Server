@@ -286,6 +286,12 @@ static int add_client_to_source (source_t *source, client_t *client)
         if (loop && source->fallback_when_full && source->fallback_mount)
         {
             source_t *next = source_find_mount (source->fallback_mount);
+            if (!next) {
+                ERROR1("Fallback '%s' for full source '%s' not found", 
+                        source->mount, source->fallback_mount);
+                return -1;
+            }
+
             INFO1 ("stream full trying %s", next->mount);
             source = next;
             loop--;
