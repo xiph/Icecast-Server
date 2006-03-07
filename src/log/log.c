@@ -198,7 +198,8 @@ int log_set_filename(int id, const char *filename)
 {
     if (id < 0 || id >= LOG_MAXLOGS)
         return LOG_EINSANE;
-    if (!strcmp(filename, "") || loglist [id] . in_use == 0)
+    /* NULL filename is ok, empty filename is not. */
+    if ((filename && !strcmp(filename, "")) || loglist [id] . in_use == 0)
         return LOG_EINSANE;
      _lock_logger();
     if (loglist [id] . filename)
