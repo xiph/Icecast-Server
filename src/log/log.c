@@ -312,8 +312,7 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
     time_t now;
     va_list ap;
 
-    if (log_id < 0) return;
-    if (log_id > LOG_MAXLOGS) return; /* Bad log number */
+    if (log_id < 0 || log_id >= LOG_MAXLOGS) return; /* Bad log number */
     if (loglist[log_id].level < priority) return;
     if (priority > sizeof(prior)/sizeof(prior[0])) return; /* Bad priority */
 
@@ -346,7 +345,7 @@ void log_write_direct(int log_id, const char *fmt, ...)
     char filename_tyme[128];
     time_t now;
 
-    if (log_id < 0) return;
+    if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
     
     va_start(ap, fmt);
 
