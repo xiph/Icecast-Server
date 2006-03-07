@@ -526,21 +526,11 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     fserve_content_type(path));
             }
             else {
-                httpclient->respcode = 416;
-                sock_write (httpclient->con->sock,
-                    "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-                client_destroy (httpclient);
-                return -1;
+                goto fail;
             }
         }
         else {
-            /* If we run into any issues with the ranges
-               we fallback to a normal/non-range request */
-            httpclient->respcode = 416;
-            sock_write (httpclient->con->sock,
-                "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
-            client_destroy (httpclient);
-            return -1;
+            goto fail;
         }
     }
     else {
@@ -560,6 +550,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     fserve_add_client (httpclient, file);
 
     return 0;
+
+fail:
+    fclose (file);
+    httpclient->respcode = 416;
+    sock_write (httpclient->con->sock, 
+            "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
+    client_destroy (httpclient);
+    return -1;
 }
 
 
