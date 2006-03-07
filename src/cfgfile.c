@@ -1039,6 +1039,9 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
         server = NULL;
         addnode = 0;
     }
+    else {
+        free (server);
+    }
     
 }
 
