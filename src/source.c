@@ -585,9 +585,7 @@ static void source_init (source_t *source)
 
     stats_event (source->mount, "listenurl", listenurl);
 
-    if (listenurl) {
-        free(listenurl);
-    }
+    free(listenurl);
 
     if (source->dumpfilename != NULL)
     {
