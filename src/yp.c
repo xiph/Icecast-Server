@@ -812,6 +812,8 @@ static void add_yp_info (ypdata_t *yp, void *info, int type)
             free (yp->subtype);
             yp->subtype = escaped;
             break;
+        default:
+            free (escaped);
     }
 }
 
