@@ -199,6 +199,10 @@ void source_clear_source (source_t *source)
     source->parser = NULL;
     source->con = NULL;
 
+    /* log bytes read in access log */
+    if (source->client && source->format)
+        source->client->con->sent_bytes = source->format->read_bytes;
+
     if (source->dumpfile)
     {
         INFO1 ("Closing dumpfile for %s", source->mount);
