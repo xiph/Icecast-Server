@@ -117,6 +117,10 @@ void connection_initialize(void)
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
+    _req_queue = NULL;
+    _req_queue_tail = &_req_queue;
+    _con_queue = NULL;
+    _con_queue_tail = &_con_queue;
 
     _initialized = 1;
 }
@@ -386,6 +390,7 @@ static void process_request_queue (void)
                 *node_ref = node->next;
                 node->next = NULL;
                 _add_connection (node);
+                continue;
             }
         }
         else
