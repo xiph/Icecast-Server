@@ -318,7 +318,6 @@ static int add_client_to_source (source_t *source, client_t *client)
         /* enable on-demand relay to start, wake up the slave thread */
         DEBUG0("kicking off on-demand relay");
         source->on_demand_req = 1;
-        slave_rescan ();
     }
     DEBUG1 ("Added client to %s", source->mount);
     return 0;

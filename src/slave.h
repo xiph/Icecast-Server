@@ -27,6 +27,7 @@ typedef struct _relay_server {
     int on_demand;
     int running;
     int cleanup;
+    time_t start;
     thread_type *thread;
     struct _relay_server *next;
 } relay_server;
@@ -36,7 +37,6 @@ void slave_initialize(void);
 void slave_shutdown(void);
 void slave_recheck_mounts (void);
 void slave_rebuild_mounts (void);
-void slave_rescan (void);
 relay_server *relay_free (relay_server *relay);
 
 #endif  /* __SLAVE_H__ */

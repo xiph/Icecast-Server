@@ -35,7 +35,7 @@ typedef enum
     AUTH_FORBIDDEN,
     AUTH_USERADDED,
     AUTH_USEREXISTS,
-    AUTH_USERDELETED,
+    AUTH_USERDELETED
 } auth_result;
 
 typedef struct auth_client_tag
