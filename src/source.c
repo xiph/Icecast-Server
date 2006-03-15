@@ -194,6 +194,8 @@ int source_compare_sources(void *arg, void *a, void *b)
 void source_clear_source (source_t *source)
 {
     DEBUG1 ("clearing source \"%s\"", source->mount);
+
+    avl_tree_wlock (source->client_tree);
     client_destroy(source->client);
     source->client = NULL;
     source->parser = NULL;
@@ -211,15 +213,13 @@ void source_clear_source (source_t *source)
     }
 
     /* lets kick off any clients that are left on here */
-    avl_tree_rlock (source->client_tree);
     while (avl_get_first (source->client_tree))
     {
         avl_delete (source->client_tree,
                 avl_get_first (source->client_tree)->key, _free_client);
     }
-    avl_tree_unlock (source->client_tree);
 
-    avl_tree_rlock (source->pending_tree);
+    avl_tree_wlock (source->pending_tree);
     while (avl_get_first (source->pending_tree))
     {
         avl_delete (source->pending_tree,
@@ -269,6 +269,7 @@ void source_clear_source (source_t *source)
     }
 
     source->on_demand_req = 0;
+    avl_tree_unlock (source->client_tree);
 }
 
 
@@ -935,6 +936,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     http_parser_t *parser = NULL;
 
     DEBUG1("Applying mount information for \"%s\"", source->mount);
+    avl_tree_rlock (source->client_tree);
     if (mountinfo)
     {
         source->max_listeners = mountinfo->max_listeners;
@@ -1133,6 +1135,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
+    avl_tree_unlock (source->client_tree);
 }
 
 
