@@ -396,6 +396,29 @@ void source_move_clients (source_t *source, source_t *dest)
     thread_mutex_unlock (&move_clients_mutex);
 }
 
+/* Update stats from source processing, this should be called regulary (every
+ * few seconds) to keep totals up to date.
+ */
+static void update_source_stats (source_t *source)
+{
+    int64_t kbytes_sent = source->bytes_sent_since_update/1024;
+    source->format->sent_bytes += kbytes_sent*1024;
+    source->bytes_sent_since_update %= 1024;
+
+    stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
+            (8 * rate_avg (source->format->out_bitrate))/1000);
+    stats_event_args (source->mount, "incoming_bitrate", "%ld", 
+            (8 * rate_avg (source->format->in_bitrate))/1000);
+    stats_event_args (source->mount, "total_bytes_read",
+            FORMAT_UINT64, source->format->read_bytes);
+    stats_event_args (source->mount, "total_bytes_sent",
+            FORMAT_UINT64, source->format->sent_bytes);
+    if (source->client)
+        stats_event_args (source->mount, "connected", FORMAT_UINT64,
+                (uint64_t)(global.time - source->client->con->con_time));
+    stats_event_add (NULL, "stream_kbytes_sent", kbytes_sent);
+}
+
 
 /* get some data from the source. The stream data is placed in a refbuf
  * and sent back, however NULL is also valid as in the case of a short
@@ -438,16 +461,7 @@ static void get_next_buffer (source_t *source)
 
         if (source->client && current >= source->client_stats_update)
         {
-            stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
-                    (8 * rate_avg (source->format->out_bitrate))/1000);
-            stats_event_args (source->mount, "incoming_bitrate", "%ld", 
-                    (8 * rate_avg (source->format->in_bitrate))/1000);
-            stats_event_args (source->mount, "total_bytes_read",
-                    FORMAT_UINT64, source->format->read_bytes);
-            stats_event_args (source->mount, "total_bytes_sent",
-                    FORMAT_UINT64, source->format->sent_bytes);
-            stats_event_args (source->mount, "connected", FORMAT_UINT64,
-                    (uint64_t)(current - source->client->con->con_time));
+            update_source_stats (source);
             source->client_stats_update = current + 5;
         }
         if (fds < 0)
@@ -537,7 +551,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 {
     int bytes;
     int loop = 10;   /* max number of iterations in one go */
-    int total_written = 0;
+    unsigned int total_written = 0;
     int ret = 0;
 
     while (1)
@@ -574,7 +588,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
         total_written += bytes;
     }
     rate_add (source->format->out_bitrate, total_written, global.time);
-    source->format->sent_bytes += total_written;
+    source->bytes_sent_since_update += total_written;
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
@@ -695,6 +709,7 @@ static void source_init (source_t *source)
     DEBUG0("Source creation complete");
     source->last_read = global.time;
     source->prev_listeners = -1;
+    source->bytes_sent_since_update = 0;
     source->running = 1;
 
     source->fast_clients_p = &source->active_clients;
@@ -800,6 +815,7 @@ static void source_shutdown (source_t *source)
     INFO1("Source \"%s\" exiting", source->mount);
     source->running = 0;
 
+    update_source_stats (source);
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo)
     {

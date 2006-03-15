@@ -28,7 +28,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #else
-#include <winsock2.h>
 #define snprintf _snprintf
 #define strcasecmp stricmp
 #define strncasecmp strnicmp
@@ -120,6 +119,10 @@ void connection_initialize(void)
     thread_mutex_create("move_clients", &move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
+    _req_queue = NULL;
+    _req_queue_tail = &_req_queue;
+    _con_queue = NULL;
+    _con_queue_tail = &_con_queue;
 
     _initialized = 1;
 }
@@ -519,6 +522,7 @@ static void process_request_queue (void)
                 *node_ref = node->next;
                 node->next = NULL;
                 _add_connection (node);
+                continue;
             }
         }
         else
@@ -1138,7 +1142,10 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         source_startup (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
     else
+    {
+        httpp_destroy (parser);
         client_destroy (client);
+    }
     free (http_compliant);
     free (shoutcast_mount);
     free (node);

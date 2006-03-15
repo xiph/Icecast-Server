@@ -70,11 +70,14 @@
 #define COMMAND_PLAINTEXT_LISTSTREAM        104
 #define COMMAND_RAW_ADMIN_FUNCTION          105
 #define COMMAND_RAW_MANAGE_RELAY            106
+#define COMMAND_PLAINTEXT_LISTLOG           107
+
 #define COMMAND_TRANSFORMED_LIST_MOUNTS     201
 #define COMMAND_TRANSFORMED_STATS           202
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
 #define COMMAND_TRANSFORMED_ADMIN_FUNCTION  204
 #define COMMAND_TRANSFORMED_MANAGE_RELAY    205
+#define COMMAND_TRANSFORMED_LISTLOG         206
 
 /* Client management commands */
 #define COMMAND_RAW_KILL_CLIENT             301
@@ -99,6 +102,8 @@
 #define STREAMLIST_RAW_REQUEST "streamlist"
 #define STREAMLIST_TRANSFORMED_REQUEST "streamlist.xsl"
 #define STREAMLIST_PLAINTEXT_REQUEST "streamlist.txt"
+#define LISTLOG_PLAINTEXT_REQUEST "showlog.txt"
+#define LISTLOG_TRANSFORMED_REQUEST "showlog.xsl"
 #define MOVECLIENTS_RAW_REQUEST "moveclients"
 #define MOVECLIENTS_TRANSFORMED_REQUEST "moveclients.xsl"
 #define KILLCLIENT_RAW_REQUEST "killclient"
@@ -160,6 +165,10 @@ static int admin_get_command (const char *uri)
         return COMMAND_RAW_LISTSTREAM;
     else if(!strcmp(command, STREAMLIST_PLAINTEXT_REQUEST))
         return COMMAND_PLAINTEXT_LISTSTREAM;
+    else if(!strcmp(command, LISTLOG_PLAINTEXT_REQUEST))
+        return COMMAND_PLAINTEXT_LISTLOG;
+    else if(!strcmp(command, LISTLOG_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_LISTLOG;
     else if(!strcmp(command, MOVECLIENTS_RAW_REQUEST))
         return COMMAND_RAW_MOVE_CLIENTS;
     else if(!strcmp(command, MOVECLIENTS_TRANSFORMED_REQUEST))
@@ -218,6 +227,7 @@ static void command_kill_source(client_t *client, source_t *source,
 static void command_updatemetadata(client_t *client, source_t *source,
         int response);
 static void command_admin_function (client_t *client, int response);
+static void command_list_log (client_t *client, int response);
 static void command_manage_relay (client_t *client, int response);
 
 static void admin_handle_mount_request(client_t *client, source_t *source,
@@ -478,6 +488,12 @@ static void admin_handle_general_request(client_t *client, const char *uri)
             break;
         case COMMAND_PLAINTEXT_LISTSTREAM:
             command_list_mounts(client, PLAINTEXT);
+            break;
+        case COMMAND_PLAINTEXT_LISTLOG:
+            command_list_log(client, PLAINTEXT);
+            break;
+        case COMMAND_TRANSFORMED_LISTLOG:
+            command_list_log(client, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_LIST_MOUNTS:
             command_list_mounts(client, TRANSFORMED);
@@ -772,7 +788,7 @@ static void command_manage_relay (client_t *client, int response)
 }
 
 
-/* populata,e within srcnode, groups of 0 or more listener tags detailing
+/* populate within srcnode, groups of 0 or more listener tags detailing
  * information about each listener connected on the provide source.
  */
 void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
@@ -1146,6 +1162,63 @@ static void command_stats (client_t *client)
     admin_send_response (doc, client, response, xslfile+1);
     xmlFreeDoc(doc);
 }
+
+
+static void command_list_log (client_t *client, int response)
+{
+    refbuf_t *content;
+    const char *logname = httpp_get_query_param (client->parser, "log");
+    int log = -1;
+
+    if (logname == NULL)
+    {
+        client_send_400 (client, "No log specified");
+        return;
+    }
+
+    if (strcmp (logname, "errorlog") == 0)
+        log = errorlog;
+    else if (strcmp (logname, "accesslog") == 0)
+        log = accesslog;
+    else if (strcmp (logname, "playlistlog") == 0)
+        log = playlistlog;
+    else
+    {
+        WARN1 ("request to show unknown log \"%s\"", logname);
+        client_send_400 (client, "No such log");
+        return;
+    }
+    if (log >= 0)
+    {
+        content = refbuf_new (0);
+        log_contents (log, &content->data, &content->len);
+    }
+    if (response == TRANSFORMED)
+    {
+        xmlNodePtr xmlnode, lognode;
+        xmlDocPtr doc;
+
+        doc = xmlNewDoc(XMLSTR("1.0"));
+        xmlnode = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+        xmlDocSetRootElement(doc, xmlnode);
+        lognode = xmlNewTextChild (xmlnode, NULL, XMLSTR("log"), content->data);
+        refbuf_release (content);
+
+        admin_send_response (doc, client, TRANSFORMED, "showlog.xsl");
+    }
+    else
+    {
+        refbuf_t *http = refbuf_new (100);
+        int len = snprintf (http->data, 100, "%s",
+                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        http->len = len;
+        http->next = content; 
+        client->respcode = 200;
+        client_set_queue (client, http);
+        fserve_add_client (client, NULL);
+    }
+}
+
 
 static void command_list_mounts(client_t *client, int response)
 {

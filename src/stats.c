@@ -44,6 +44,7 @@
 #ifdef _WIN32
 #define vsnprintf _vsnprintf
 #define snprintf _snprintf
+#define atoll _atoi64
 #endif
 
 #define STATS_EVENT_SET     0
@@ -400,24 +401,24 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
     }
     if (event->action != STATS_EVENT_SET)
     {
-        int value = 0;
+        int64_t value = 0;
 
         switch (event->action)
         {
             case STATS_EVENT_INC:
-                value = atoi (node->value)+1;
+                value = atoll (node->value)+1;
                 break;
             case STATS_EVENT_DEC:
-                value = atoi (node->value)-1;
+                value = atoll (node->value)-1;
                 break;
             case STATS_EVENT_ADD:
-                value = atoi (node->value)+atoi (event->value);
+                value = atoll (node->value) + atoll (event->value);
                 break;
             default:
                 break;
         }
-        str = malloc (16);
-        snprintf (str, 16, "%d", value);
+        str = malloc (20);
+        snprintf (str, 20, FORMAT_INT64, value);
         if (event->value == NULL)
             event->value = strdup (str);
     }

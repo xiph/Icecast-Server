@@ -344,6 +344,11 @@ static int add_client_to_source (source_t *source, client_t *client)
         {
             source_t *next = source_find_mount (source->fallback_mount);
             thread_mutex_unlock (&source->lock);
+            if (!next)
+            {
+                ERROR2("Fallback '%s' for full source '%s' not found",
+                        source->mount, source->fallback_mount);
+            }
             INFO1 ("stream full trying %s", next->mount);
             source = next;
             loop--;
@@ -507,7 +512,7 @@ void add_client (const char *mount, client_t *client)
         int ret = add_authenticated_listener (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
-            client_send_404 (client, "max listeners reached");
+            client_send_403 (client, "max listeners reached");
     }
 }
 
@@ -550,7 +555,7 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
         {
 #ifdef WIN32
             ERROR1("Authenticator type: \"%s\" not supported on win32 platform", auth->type);
-            return NULL;
+            return;
 #else
             auth_get_cmd_auth (auth, options);
             break;

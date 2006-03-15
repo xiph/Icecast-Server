@@ -162,8 +162,11 @@ typedef struct ice_config_tag
     unsigned slaves_count;
 
     char *access_log;
+    int access_log_lines;
     char *error_log;
+    int error_log_lines;
     char *playlist_log;
+    int playlist_log_lines;
     int loglevel;
     int logsize;
     int logarchive;

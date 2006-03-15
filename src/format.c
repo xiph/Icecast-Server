@@ -107,7 +107,8 @@ static void find_client_start (source_t *source, client_t *client)
     /* we only want to attempt a burst at connection time, not midstream
      * however streams like theora may not have the most recent page marked as
      * a starting point, so look for one from the burst point */
-    if (client->intro_offset == -1 && source->stream_data_tail->sync_point)
+    if (client->intro_offset == -1 && source->stream_data_tail
+            && source->stream_data_tail->sync_point)
         refbuf = source->stream_data_tail;
     else
     {

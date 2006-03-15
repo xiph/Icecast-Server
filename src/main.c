@@ -255,6 +255,9 @@ static int _start_logging(void)
     log_set_level(errorlog, config->loglevel);
     log_set_level(accesslog, 4);
     log_set_level(playlistlog, 4);
+    log_set_lines_kept (errorlog, config->error_log_lines);
+    log_set_lines_kept (accesslog, config->access_log_lines);
+    log_set_lines_kept (playlistlog, config->playlist_log_lines);
 
     if (errorlog >= 0 && accesslog >= 0) return 1;
     
@@ -433,7 +436,11 @@ static void _ch_root_uid_setup(void)
 #endif
 }
 
+#ifdef WIN32_SERVICE
+int mainService(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
     int res, ret;
     char filename[512];

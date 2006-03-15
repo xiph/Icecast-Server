@@ -262,13 +262,19 @@ static void *fserv_thread_function(void *arg)
                         bytes = 0;
                     if (bytes == 0)
                     {
-                        fserve_t *to_go = fclient;
-                        fclient = fclient->next;
-                        *trail = fclient;
-                        fserve_client_destroy (to_go);
-                        fserve_clients--;
-                        client_tree_changed = 1;
-                        continue;
+                        if (refbuf->next == NULL)
+                        {
+                            fserve_t *to_go = fclient;
+                            fclient = fclient->next;
+                            *trail = fclient;
+                            fserve_client_destroy (to_go);
+                            fserve_clients--;
+                            client_tree_changed = 1;
+                            continue;
+                        }
+                        client_set_queue (client, refbuf->next);
+                        refbuf = client->refbuf;
+                        bytes = refbuf->len;
                     }
                     refbuf->len = bytes;
                     client->pos = 0;
@@ -555,6 +561,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     } while (0);
     /* If we run into any issues with the ranges
        we fallback to a normal/non-range request */
+    fclose (file);
     client_send_416 (httpclient);
     return -1;
 }

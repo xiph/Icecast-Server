@@ -977,6 +977,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
+    configuration->access_log_lines = 100;
+    configuration->error_log_lines = 100;
+    configuration->playlist_log_lines = 10;
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
@@ -984,12 +987,24 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         if (xmlStrcmp(node->name, XMLSTR ("accesslog")) == 0) {
             if (configuration->access_log && configuration->access_log != CONFIG_DEFAULT_ACCESS_LOG) xmlFree(configuration->access_log);
             configuration->access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR ("accesslog_lines")) == 0) {
+           char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           configuration->access_log_lines = atoi(tmp);
+           if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR ("errorlog")) == 0) {
             if (configuration->error_log && configuration->error_log != CONFIG_DEFAULT_ERROR_LOG) xmlFree(configuration->error_log);
             configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR ("errorlog_lines")) == 0) {
+           char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           configuration->error_log_lines = atoi(tmp);
+           if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR ("playlistlog")) == 0) {
             if (configuration->playlist_log && configuration->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR ("playlistlog_lines")) == 0) {
+           char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           configuration->playlist_log_lines = atoi(tmp);
+           if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR ("logsize")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->logsize = atoi(tmp);

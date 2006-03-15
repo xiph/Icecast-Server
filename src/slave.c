@@ -314,6 +314,7 @@ static void *start_relay_stream (void *arg)
             break;
         }
         global_unlock ();
+        sock_set_blocking (streamsock, SOCK_NONBLOCK);
         con = NULL;
         parser = NULL;
         client_set_queue (src->client, NULL);

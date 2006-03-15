@@ -45,7 +45,7 @@ typedef struct vorbis_codec_tag
     int initial_audio_page;
 
     ogg_stream_state new_os;
-    int page_samples_trigger;
+    ogg_int64_t page_samples_trigger;
     ogg_int64_t prev_granulepos;
     ogg_packet *prev_packet;
     ogg_int64_t granulepos;
@@ -555,7 +555,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
     if (ogg_info->codecs->next == NULL)
     {
         /* set queued vorbis pages to contain about 1/2 of a second worth of samples */
-        source_vorbis->page_samples_trigger = source_vorbis->vi.rate / 2;
+        source_vorbis->page_samples_trigger = (ogg_int64_t)(source_vorbis->vi.rate / 2);
         source_vorbis->process_packet = process_vorbis_headers;
         source_vorbis->initial_audio_page = 1;
     }
