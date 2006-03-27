@@ -6,9 +6,19 @@ Feature differences from SVN trunk
 . authenticated relays, those that match the relay user/pass, bypass the 
   max-listener check
 
-TODO
-. update slave host handling to add entry via url, as on-demand relays don't
-  connect until there are listeners.
+
+2.3-kh4
+. fserve thread now looks for a chain of refbufs as well.
+. plug leaks from coverity code analysis. mainly minor but a possible fd leak.
+. log handles caching of N lines.
+. show last N lines of log contents via admin pages
+. change webpages (for the better!), add logs display and reload config.
+. use 64bit handling when using stats _add calls
+. send 403 not 404 for max listeners reached.
+. add server-wide total sent in streams count. 
+. fix possible corruption case with new cients.
+. on listener move, search from burst point if most recent refbuf is not a sync
+  point, currently only theora streams.
 
 2.3-kh3
 . add source auth via authenticator, affects certain admin access as well.

@@ -6,37 +6,36 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<table border="0" width="100%%">
+
+<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+
+<div class="main">
+<h1>Authorization Page</h1>
+<iframe scrolling="no" frameborder="0" width="100%" src="/navbar.html" />
+
+<table border="0" width="100%">
 <tr>
-<td width="50"></td>
 <td>
-<img align="left" src="/images/icecast.png" /><h2><center>Authorization Page</center></h2>
 <div class="roundcont">
 <div class="roundtop">
 <img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
 </div>
+
 <div class="newscontent">
 <xsl:for-each select="source">
-<xsl:choose>
-<xsl:when test="listeners">
 <xsl:if test="authenticator">
-<xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-<h3>(<xsl:value-of select="@mount" />)</h3>
+<h3><xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
+(<xsl:value-of select="@mount" />)</h3>
 <form method="GET" action="/admin/buildm3u">
 <table border="0" cellpadding="4">
-<tr><td>Username : <input type="text" name="username"/></td></tr>
-<tr><td>Password : <input type="password" name="password"/></td></tr>
+<tr><td>Username :</td> <td> <input type="text" name="username"/></td></tr>
+<tr><td>Password :</td> <td> <input type="password" name="password"/></td></tr>
+<tr><td></td></tr>
 <tr><td><input type="Submit" value="Login"/></td></tr>
 </table>
 <input type="hidden" name="mount" value="{@mount}"/>
 </form>
 </xsl:if>
-</xsl:when>
-<xsl:otherwise>
-<h3><xsl:value-of select="@mount" /> - Not Connected</h3>
-</xsl:otherwise>
-</xsl:choose>
 <br></br>
 <br></br>
 </xsl:for-each>
@@ -48,9 +47,12 @@
 </div>
 <br></br><br></br>
 </td>
-<td width="25"></td></tr>
+</tr>
 </table>
-<div class="poster">Support icecast development at <a class="nav" target="_blank" href="http://www.icecast.org">www.icecast.org</a></div>
+<div class="poster">
+Support Icecast development at <a target="_blank" href="http://www.icecast.org">www.icecast.org</a>
+</div>
+</div>
 </body>
 </html>
 </xsl:template>

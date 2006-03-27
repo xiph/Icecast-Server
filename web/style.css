@@ -15,12 +15,6 @@ html, body {
 	padding: 0;
 }
 
-body {
-	margin-left: 50px;
-	margin-right: 25px;
-	background-color: #000;
-}
-
 .xiphnav {
 	font-family: Verdana, sans-serif;
 	font-weight: normal;
@@ -29,14 +23,6 @@ body {
 	border-bottom:  1px solid #000;
 	color: #000;
 	background: #aaa;
-}
-h2 {
-	font-family: Verdana, sans-serif;
-	text-decoration: none;
-	font-weight: bold;
-	font-size: 250%;
-	color: #fff;
-	margin-top:3px;
 }
 h1 {
 	font-family: Verdana, sans-serif;
@@ -51,18 +37,37 @@ h1 {
 	text-decoration: none;
 	font-weight: bold;
 	font-size: 110%;
-	color: #fff;
 }
-.nav:hover {
-	font-family: Verdana, sans-serif;
+.nav a {
+    color: white;
 	text-decoration: none;
-	font-weight: bold;
+    background red;
+}
+.nav a:hover {
 	color: #f8ef64;
 }
 .xiphnav_a {
     text-decoration: none;
     font-weight: normal;
     color: #000;
+}
+.main {
+	font-family: Verdana, sans-serif;
+	background-color: #000;
+	margin-left: 50px;
+	width: 90%;
+}
+.main h1 {
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 300%;
+	color: #fff;
+    padding-top: 30px;
+    padding-bottom: 30px;
+    padding-left: 90px;
+    margin-top: 0px;
+    margin-bottom: 10px;
+    background: url(/images/icecast.png) no-repeat left center;
 }
 .news {
     font-family: Verdana, sans-serif;
@@ -109,9 +114,15 @@ td {
     color: #fff;
 }
 .roundcont {
-	width: 90%;
 	background-color: #656565;
 	color: #fff;
+    padding: 0px;
+    margin: 0px;
+    border-collapse: collapse;
+}
+.roundcont table{
+    border: none;
+    border-collapse: collapse;
 }
 
 .newscontent {
@@ -158,14 +169,12 @@ td {
 }
 .newscontent a {
     font-family: Verdana, sans-serif;
-    text-decoration: underline;
+    text-decoration: none;
     font-weight: bold;
     color: #f8ef64;
 }
 .newscontent a:hover {
     font-family: Verdana, sans-serif;
-    text-decoration: underline;
-    font-weight: bold;
     color: #fff;
 }
 .newscontent a.nav2 {
@@ -186,22 +195,70 @@ td {
 	font-family: Verdana, sans-serif;
 	margin: 0px;
 	margin-top: 50px;
+	padding-top: 10px;
+	padding-bottom: 10px;
 	display: block;
 	text-decoration: none;
 	font-size: 100%;
+    font-weight: bold;
 	color: #f8ef64;
-	border-top:  3px dashed #000;
+	border-top:  4px solid #656565;
 }
-.roundcont p {
-	margin: 10px 50px;
+.poster a {
+	color: white;
+	text-decoration: none;
 }
 
+.nav body {
+    color: white
+    background-color: #656565;
+}
+.nav a {
+    margin: 15px;
+    padding: 0px;
+}
+.nav table {
+    font-size: 110%;
+    text-align: center;
+    border: none;
+}
 .roundtop { 
 	background: url(images/corner_topright.jpg) no-repeat top right; 
 }
 
 .roundbottom {
 	background: url(images/corner_bottomright.jpg) no-repeat top right; 
+}
+
+.logs table {
+    background-color: #656565;
+    color: #fff;
+    font-size: 60%;
+}
+
+.banner td {
+    font-size: 150%;
+    vertical-align: top;
+}
+td.topleft {
+    background: url("images/corner_topleft.jpg") no-repeat top left;
+    height: 15px;
+    width: 15px;
+}
+td.topright {
+    background: url("images/corner_topright.jpg") no-repeat top right;
+    height: 15px;
+    width: 15px;
+}
+td.bottomleft {
+    background: url("images/corner_bottomleft.jpg") no-repeat bottom left;
+    height: 15px;
+    width: 15px;
+}
+td.bottomright {
+    background: url("images/corner_bottomright.jpg") no-repeat bottom right;
+    height: 15px;
+    width: 15px;
 }
 
 img.corner {

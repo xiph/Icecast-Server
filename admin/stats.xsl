@@ -6,31 +6,13 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<img align="left" src="/images/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
+<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+
+<div class="main">
+<h1>Icecast2 Admin</h1>
+<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
+
 <br />
-<!--header menu -->
-<div class="roundcont">
-<div class="roundtop">
-<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
-</div>
-	<table border="0" cellpadding="1" cellspacing="3">
-	<tr>        
-	    <td align="center">
-	        <a class="nav" href="stats.xsl">Admin Home</a> | 
-		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
-        	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
-            <a class="nav" href="managerelays.xsl">Manage Relays</a> |
-        	<a class="nav" href="/status.xsl">Index</a>
-	    </td></tr>
-	</table>
-<div class="roundbottom">
-<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
-</div>
-</div>
-<br />
-<br />
-<!--end header menu -->
 
 <!--global server stats-->
 <div class="roundcont">
@@ -112,9 +94,9 @@ Mount Point : (<xsl:value-of select="@mount" />)
 </xsl:for-each>
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 
-
 <!--end mount point stats-->
 <div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+</div>
 </body>
 </html>
 </xsl:template>

@@ -6,30 +6,11 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<img align="left" src="/images/icecast.png" /><h2><center>Icecast2 Status (Version Info)</center></h2>
-<br />
-<!--index header menu -->
-<div class="roundcont">
-<div class="roundtop">
-<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
-</div>
-<table border="0" width="100%" id="table1" cellspacing="0" cellpadding="4">
-	<tr>
-		<td bgcolor="#656565">
-	    <a class="nav" href="admin/stats.xsl">Administration</a> |
-		<a class="nav" href="status.xsl">Server Status</a> |
-		<a class="nav" href="server_uptime.xsl">Server Uptime</a> |
-		<a class="nav" href="server_version.xsl">Version Info</a> |</td>
-	</tr>
-</table>
-<div class="roundbottom">
-<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
-</div>
-</div>
-<br />
-<br />
-<!--end index header menu -->
+
+<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<div class="main">
+<h1>Icecast2 Status (Version Info)</h1>
+<iframe scrolling="no" frameborder="0" width="100%" height="100" src="/navbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -62,7 +43,7 @@
 </tr>
 <tr>
 	<td width="130">Stream Directory </td>
-	<td class="streamdata"><a class="nav" target="_blank" href="http://dir.xiph.org/index.php/">dir.xiph.org</a></td>
+	<td class="streamdata"><a class="nav" target="_blank" href="http://dir.xiph.org/index.php">dir.xiph.org</a></td>
 </tr>
 <tr>
 	<td width="130">Community</td>
@@ -77,7 +58,11 @@
 <br />
 <br />
 
-<div class="poster">Support icecast development at <a class="nav" target="_blank" href="http://www.icecast.org">www.icecast.org</a></div>
+<div class="poster">
+Support Icecast development at <a target="_blank" href="http://www.icecast.org">www.icecast.org</a>
+</div>
+
+</div>
 </body>
 </html>
 </xsl:template>

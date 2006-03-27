@@ -6,34 +6,12 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<img align="left" src="/images/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
-<br />
+<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
-<div class="roundcont">
-<div class="roundtop">
-<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
-</div>
-	<table border="0" cellpadding="1" cellspacing="3">
-	<tr>        
-	    <td align="center">
-	        <a class="nav" href="stats.xsl">Admin Home</a> |
-		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
-        	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
-            <a class="nav" href="managerelays.xsl">Manage Relays</a> |
-        	<a class="nav" href="/status.xsl">Index</a>
-	    </td></tr>
-	</table>
-<div class="roundbottom">
-<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
-</div>
-</div>
-<br />
-<br />
-
-
-
+<div class="main">
 <h1>Listener Stats</h1>
+<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
+
 <div class="roundcont">
 <div class="roundtop">
 <img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
@@ -92,6 +70,7 @@
 </div>
 </div>
 <div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+</div>
 </body>
 </html>
 </xsl:template>
