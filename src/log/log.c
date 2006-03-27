@@ -46,6 +46,14 @@
 static mutex_t _logger_mutex;
 static int _initialized = 0;
 
+typedef struct _log_entry_t
+{
+   char *line;
+   unsigned int len;
+   struct _log_entry_t *next;
+} log_entry_t;
+
+
 typedef struct log_tag
 {
     int in_use;
@@ -57,6 +65,12 @@ typedef struct log_tag
     off_t size;
     off_t trigger_level;
     int archive_timestamp;
+
+    unsigned long total;
+    unsigned int entries;
+    unsigned int keep_entries;
+    log_entry_t *log_head;
+    log_entry_t **log_tail;
     
     char *buffer;
 } log_t;
@@ -129,6 +143,11 @@ void log_initialize(void)
         loglist[i].filename = NULL;
         loglist[i].logfile = NULL;
         loglist[i].buffer = NULL;
+        loglist[i].total = 0;
+        loglist[i].entries = 0;
+        loglist[i].keep_entries = 0;
+        loglist[i].log_head = NULL;
+        loglist[i].log_tail = &loglist[i].log_head;
     }
 
     /* initialize mutexes */
@@ -178,6 +197,9 @@ int log_open(const char *filename)
         loglist [id] . filename = strdup (filename);
         if (stat (loglist [id] . filename, &st) == 0)
             loglist [id] . size = st.st_size;
+        loglist [id] . entries = 0;
+        loglist [id] . log_head = NULL;
+        loglist [id] . log_tail = &loglist [id] . log_head;
     }
 
     return id;
@@ -227,6 +249,26 @@ int log_open_with_buffer(const char *filename, int size)
 {
     /* not implemented */
     return LOG_ENOTIMPL;
+}
+
+
+void log_set_lines_kept (int log_id, unsigned int count)
+{
+    if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
+    if (loglist[log_id].in_use == 0) return;
+
+    _lock_logger ();
+    loglist[log_id].keep_entries = count;
+    while (loglist[log_id].entries > count)
+    {
+        log_entry_t *to_go = loglist [log_id].log_head;
+        loglist [log_id].log_head = to_go->next;
+        loglist [log_id].total -= to_go->len;
+        free (to_go->line);
+        free (to_go);
+        loglist [log_id].entries--;
+    }
+    _unlock_logger ();
 }
 
 
@@ -286,6 +328,15 @@ void log_close(int log_id)
         fclose (loglist [log_id] . logfile);
         loglist [log_id] . logfile = NULL;
     }
+    while (loglist[log_id].entries)
+    {
+        log_entry_t *to_go = loglist [log_id].log_head;
+        loglist [log_id].log_head = to_go->next;
+        loglist [log_id].total -= to_go->len;
+        free (to_go->line);
+        free (to_go);
+        loglist [log_id].entries--;
+    }
     _unlock_logger();
 }
 
@@ -301,11 +352,74 @@ void log_shutdown(void)
     _initialized = 0;
 }
 
+
+static int create_log_entry (int log_id, const char *pre, const char *line)
+{
+    int len;
+    log_entry_t *entry;
+
+    if (loglist[log_id].keep_entries == 0)
+        return fprintf (loglist[log_id].logfile, "%s%s\n", pre, line); 
+    
+    entry = calloc (1, sizeof (log_entry_t));
+    entry->line = malloc (LOG_MAXLINELEN);
+    len = snprintf (entry->line, LOG_MAXLINELEN, "%s%s\n", pre, line);
+    entry->len = len;
+    loglist [log_id].total += len;
+    fprintf (loglist[log_id].logfile, "%s", entry->line);
+
+    *loglist [log_id].log_tail = entry;
+    loglist [log_id].log_tail = &entry->next;
+
+    if (loglist [log_id].entries >= loglist [log_id].keep_entries)
+    {
+        log_entry_t *to_go = loglist [log_id].log_head;
+        loglist [log_id].log_head = to_go->next;
+        loglist [log_id].total -= to_go->len;
+        free (to_go->line);
+        free (to_go);
+    }
+    else
+        loglist [log_id].entries++;
+    return len;
+}
+
+
+void log_contents (int log_id, char **_contents, unsigned int *_len)
+{
+    int remain;
+    log_entry_t *entry;
+    char *ptr;
+
+    if (log_id < 0) return;
+    if (log_id > LOG_MAXLOGS) return; /* Bad log number */
+
+    _lock_logger ();
+    remain = loglist [log_id].total + 1;
+    *_contents = malloc (remain);
+    *_len = loglist [log_id].total;
+
+    entry = loglist [log_id].log_head;
+    ptr = *_contents;
+    while (entry)
+    {
+        int len = snprintf (ptr, remain, "%s", entry->line);
+        if (len > 0)
+        {
+            ptr += len;
+            remain -= len;
+        }
+        entry = entry->next;
+    }
+    _unlock_logger ();
+}
+
+
 void log_write(int log_id, unsigned priority, const char *cat, const char *func, 
         const char *fmt, ...)
 {
     static char *prior[] = { "EROR", "WARN", "INFO", "DBUG" };
-    char tyme[128];
+    int datelen;
     char filename_tyme[128];
     char pre[256];
     char line[LOG_MAXLINELEN];
@@ -322,14 +436,14 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
     now = time(NULL);
 
     _lock_logger();
-    strftime(tyme, sizeof (tyme), "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
+    datelen = strftime (pre, sizeof (pre), "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
     strftime(filename_tyme, sizeof (filename_tyme), "%Y%m%d_%H%M%S", localtime(&now)); 
 
-    snprintf(pre, sizeof (pre), "%s %s%s", prior[priority-1], cat, func);
+    snprintf (pre+datelen, sizeof (pre)-datelen, " %s %s%s ", prior [priority-1], cat, func);
 
     if (_log_open (log_id, filename_tyme))
     {
-        int len = fprintf (loglist[log_id].logfile, "%s %s %s\n", tyme, pre, line); 
+        int len = create_log_entry (log_id, pre, line);
         if (len > 0)
             loglist[log_id].size += len;
     }
@@ -356,7 +470,7 @@ void log_write_direct(int log_id, const char *fmt, ...)
     strftime(filename_tyme, sizeof (filename_tyme), "%Y%m%d_%H%M%S", localtime(&now)); 
     if (_log_open (log_id, filename_tyme))
     {
-        int len = fprintf(loglist[log_id].logfile, "%s\n", line);
+        int len = create_log_entry (log_id, "", line);
         if (len > 0)
             loglist[log_id].size += len;
     }
