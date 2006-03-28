@@ -11,4 +11,6 @@ dist_web_DATA = status.xsl \
                 server_version.xsl \
                 server_uptime.xsl \
                 uptime_xml.xsl \
+                navbar.html \
+                adminbar.html \
                 favicon.ico
