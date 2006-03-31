@@ -392,7 +392,7 @@ void log_contents (int log_id, char **_contents, unsigned int *_len)
     char *ptr;
 
     if (log_id < 0) return;
-    if (log_id > LOG_MAXLOGS) return; /* Bad log number */
+    if (log_id >= LOG_MAXLOGS) return; /* Bad log number */
 
     _lock_logger ();
     remain = loglist [log_id].total + 1;
