@@ -189,6 +189,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     xsltStylesheetPtr cur;
     xmlChar *string;
     int len, problem = 0;
+    const char *mediatype = NULL;
 
     xmlSetGenericErrorFunc ("", log_parse_failure);
     xsltSetGenericErrorFunc ("", log_parse_failure);
@@ -208,19 +209,34 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     if (xsltSaveResultToString (&string, &len, res, cur) < 0)
         problem = 1;
-    thread_mutex_unlock(&xsltlock);
+
+    /* lets find out the content type to use */
+    if (cur->mediaType)
+        mediatype = (char *)cur->mediaType;
+    else
+    {
+        /* check method for the default, a missing method assumes xml */
+        if (cur->method && xmlStrcmp (cur->method, "html") == 0)
+            mediatype = "text/html";
+        else
+            if (cur->method && xmlStrcmp (cur->method, "text") == 0)
+                mediatype = "text/plain";
+            else
+                mediatype = "text/xml";
+    }
     if (problem == 0)
     {
-        const char *http = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nContent-Length: ";
-        size_t buf_len = strlen (http) + 20 + len;
+        /* the 100 is to allow for the hardcoded headers */
+        unsigned int header_len = strlen (mediatype) + len + 100;
+        refbuf_t *refbuf = refbuf_new (header_len);
 
-        if (string == NULL)
-            string = xmlCharStrdup ("");
+        len = snprintf (refbuf->data, header_len,
+                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
+                mediatype, len, string);
+
         client->respcode = 200;
-        client_set_queue (client, NULL);
-        client->refbuf = refbuf_new (buf_len);
-        len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, string);
-        client->refbuf->len = len;
+        client_set_queue (client, refbuf);
+        refbuf->len = strlen (refbuf->data);
         fserve_add_client (client, NULL);
         xmlFree (string);
     }
@@ -229,6 +245,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         WARN1 ("problem applying stylesheet \"%s\"", xslfilename);
         client_send_404 (client, "XSLT problem");
     }
+    thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);
 }
 

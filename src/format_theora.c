@@ -117,11 +117,11 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     }
     if (header_page)
     {
-        format_ogg_attach_header (ogg_info, page);
+        format_ogg_attach_header (codec, page);
         return NULL;
     }
 
-    refbuf = make_refbuf_with_page (page);
+    refbuf = make_refbuf_with_page (codec, page);
     /* DEBUG3 ("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
 
     if (has_keyframe && codec->possible_start)
@@ -134,8 +134,11 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     {
         if (codec->possible_start)
             refbuf_release (codec->possible_start);
-        refbuf_addref (refbuf);
-        codec->possible_start = refbuf;
+        if (refbuf)
+        {
+            refbuf_addref (refbuf);
+            codec->possible_start = refbuf;
+        }
     }
     theora->prev_granulepos = granulepos;
 
@@ -176,11 +179,15 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
     codec->specific = theora_codec;
     codec->process_page = process_theora_page;
     codec->codec_free = theora_codec_free;
+    codec->parent = ogg_info;
     codec->headers = 1;
+    if (ogg_info->filter_theora)
+        codec->filtered = 1;
     codec->name = "Theora";
 
-    format_ogg_attach_header (ogg_info, page);
-    ogg_info->codec_sync = codec;
+    format_ogg_attach_header (codec, page);
+    if (codec->filtered == 0)
+        ogg_info->codec_sync = codec;
     return codec;
 }
 

@@ -448,7 +448,7 @@ static void check_relay_stream (relay_server *relay)
             slave_rebuild_mounts();
             return;
         }
-        if (relay->on_demand)
+        if (relay->on_demand && relay->source)
         {
             ice_config_t *config = config_get_config ();
             mount_proxy *mountinfo = config_find_mount (config, relay->localmount);

@@ -53,10 +53,10 @@ static refbuf_t *process_speex_page (ogg_state_t *ogg_info,
            codec->headers++;
         }
         /* add header page to associated list */
-        format_ogg_attach_header (ogg_info, page);
+        format_ogg_attach_header (codec, page);
         return NULL;
     }
-    refbuf = make_refbuf_with_page (page);
+    refbuf = make_refbuf_with_page (codec, page);
     return refbuf;
 }
 
@@ -86,7 +86,8 @@ ogg_codec_t *initial_speex_page (format_plugin_t *plugin, ogg_page *page)
     codec->process_page = process_speex_page;
     codec->codec_free = speex_codec_free;
     codec->headers = 1;
-    format_ogg_attach_header (ogg_info, page);
+    codec->parent = ogg_info;
+    format_ogg_attach_header (codec, page);
     free (header);
     return codec;
 }

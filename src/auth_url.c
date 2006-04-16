@@ -132,6 +132,18 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     {
         auth_t *auth = client->auth;
         auth_url *url = auth->state;
+        int retcode = 0;
+
+        if (sscanf (ptr, "HTTP/%*u.%*u %3d %*c", &retcode) == 1)
+        {
+            if (retcode == 403)
+            {
+                char *p = strchr (ptr, ' ') + 1;
+                snprintf (url->errormsg, sizeof(url->errormsg), p);
+                p = strchr (url->errormsg, '\r');
+                if (p) *p='\0';
+            }
+        }
         if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
             client->authenticated = 1;
         if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
@@ -332,6 +344,11 @@ static auth_result url_add_client (auth_client *auth_user)
     /* we received a response, lets see what it is */
     if (client->authenticated)
         return AUTH_OK;
+    if (atoi (url->errormsg) == 403)
+    {
+        client_send_403 (client, url->errormsg+4);
+        auth_user->client = NULL;
+    }
     INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, url->errormsg);
     return AUTH_FAILED;
 }

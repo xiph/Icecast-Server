@@ -182,9 +182,35 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, size_t 
             p = calloc (1, len+1);
             if (p)
             {
+                mp3_state *source_mp3 = source->format->_state;
+
                 memcpy (p, metadata+13, len);
-                logging_playlist (source->mount, p, source->listeners);
-                stats_event (source->mount, "title", p);
+
+                if (source_mp3->charset)
+                {
+                    xmlBufferPtr raw = xmlBufferCreate ();
+                    xmlBufferPtr buf = xmlBufferCreate ();
+
+                    xmlCharEncodingHandlerPtr handle =
+                        xmlFindCharEncodingHandler (source_mp3->charset);
+                    xmlBufferAdd (raw, (const xmlChar *) p, len);
+                    if (xmlCharEncInFunc (handle, buf, raw) > 0)
+                    {
+                        stats_event (source->mount, "title", xmlBufferContent (buf));
+                        logging_playlist (source->mount,
+                                xmlBufferContent (buf), source->listeners);
+                    }
+                    else
+                        logging_playlist (source->mount, p, source->listeners);
+                    xmlFree (raw);
+                    xmlFree (buf);
+                }
+                else
+                {
+                    stats_event (source->mount, "title", p);
+                    logging_playlist (source->mount, p, source->listeners);
+                }
+
                 yp_touch (source->mount);
                 free (p);
             }
@@ -211,6 +237,17 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
     else
         source_mp3->interval = mount->mp3_meta_interval;
     DEBUG1 ("mp3 interval %d", source_mp3->interval);
+
+    if (source_mp3->charset)
+    {
+        xmlFree (source_mp3->charset);
+        source_mp3->charset = NULL;
+    }
+    if (mount)
+    {
+        source_mp3->charset = xmlStrdup (mount->mp3_charset);
+        DEBUG1 ("mp3 charset %s", source_mp3->charset);
+    }
 }
 
 

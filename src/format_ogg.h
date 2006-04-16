@@ -39,6 +39,7 @@ typedef struct ogg_state_tag
     refbuf_t **bos_end;
     int bos_completed;
     long bitrate;
+    int filter_theora;
     struct ogg_codec_tag *current;
     struct ogg_codec_tag *codec_sync;
 } ogg_state_t;
@@ -48,9 +49,11 @@ typedef struct ogg_state_tag
 typedef struct ogg_codec_tag
 {
     struct ogg_codec_tag *next;
+    ogg_state_t *parent;
     ogg_stream_state os;
     unsigned headers;
     const char *name;
+    int filtered;
     void *specific;
     refbuf_t        *possible_start;
     refbuf_t        *page;
@@ -62,8 +65,8 @@ typedef struct ogg_codec_tag
 } ogg_codec_t;
 
 
-refbuf_t *make_refbuf_with_page (ogg_page *page);
-void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page);
+refbuf_t *make_refbuf_with_page (ogg_codec_t *codec, ogg_page *page);
+void format_ogg_attach_header (ogg_codec_t *codec, ogg_page *page);
 void format_ogg_free_headers (ogg_state_t *ogg_info);
 int format_ogg_get_plugin (source_t *source);
 

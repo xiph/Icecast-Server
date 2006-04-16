@@ -158,7 +158,7 @@ static refbuf_t *get_buffer_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
         source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
         source_vorbis->prev_page_samples = ogg_page_granulepos (&page);
 
-        refbuf = make_refbuf_with_page (&page);
+        refbuf = make_refbuf_with_page (codec, &page);
     }
     return refbuf;
 }
@@ -172,7 +172,7 @@ static refbuf_t *get_buffer_header (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
     while (ogg_stream_flush (&source_vorbis->new_os, &page) > 0)
     {
-        format_ogg_attach_header (ogg_info, &page);
+        format_ogg_attach_header (codec, &page);
         headers_flushed = 1;
     }
     if (headers_flushed)
@@ -194,8 +194,7 @@ static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
         source_vorbis->samples_in_page -= (ogg_page_granulepos (&page) - source_vorbis->prev_page_samples);
         source_vorbis->prev_page_samples = ogg_page_granulepos (&page);
 
-        refbuf = make_refbuf_with_page (&page);
-        DEBUG0 ("flushing page");
+        refbuf = make_refbuf_with_page (codec, &page);
         return refbuf;
     }
     ogg_stream_clear (&source_vorbis->new_os);
@@ -357,6 +356,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
  */
 ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 {
+    ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
     ogg_packet packet;
 
@@ -384,6 +384,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
     codec->specific = vorbis;
     codec->codec_free = vorbis_codec_free;
     codec->headers = 1;
+    codec->parent = ogg_info;
     codec->name = "Vorbis";
 
     free_ogg_packet (vorbis->header[0]);
@@ -497,7 +498,7 @@ static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec)
 static refbuf_t *process_vorbis_passthru_page (ogg_state_t *ogg_info,
         ogg_codec_t *codec, ogg_page *page)
 {
-    return make_refbuf_with_page (page);
+    return make_refbuf_with_page (codec, page);
 }
 
 
@@ -534,7 +535,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         if (ogg_stream_packetout (&codec->os, &header) <= 0)
         {
             if (ogg_info->codecs->next)
-                format_ogg_attach_header (ogg_info, page);
+                format_ogg_attach_header (codec, page);
             return NULL;
         }
 
@@ -561,8 +562,8 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
     }
     else
     {
-        format_ogg_attach_header (ogg_info, &source_vorbis->bos_page);
-        format_ogg_attach_header (ogg_info, page);
+        format_ogg_attach_header (codec, &source_vorbis->bos_page);
+        format_ogg_attach_header (codec, page);
         codec->process_page = process_vorbis_passthru_page;
     }
 

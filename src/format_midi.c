@@ -50,7 +50,7 @@ static refbuf_t *process_midi_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         ogg_info->error = 1;
         return NULL;
     }
-    refbuf = make_refbuf_with_page (page);
+    refbuf = make_refbuf_with_page (codec, page);
     return refbuf;
 }
 
@@ -82,9 +82,10 @@ ogg_codec_t *initial_midi_page (format_plugin_t *plugin, ogg_page *page)
         codec->process_page = process_midi_page;
         codec->codec_free = midi_codec_free;
         codec->headers = 1;
+        codec->parent = ogg_info;
         codec->name = "MIDI";
 
-        format_ogg_attach_header (ogg_info, page);
+        format_ogg_attach_header (codec, page);
         return codec;
     } while (0);
 

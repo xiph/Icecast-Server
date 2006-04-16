@@ -66,7 +66,9 @@ typedef struct _mount_proxy {
     unsigned int queue_size_limit;
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
+    char *mp3_charset;  /* character set for metadata */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
+    int filter_theora; /* prevent theora pages getting queued */
 
     char *auth_type; /* Authentication type */
     struct auth_tag *auth;
@@ -100,6 +102,7 @@ typedef struct {
     int port;
     char *bind_address;
     int shoutcast_compat;
+    char *shoutcast_mount;
     int ssl;
 } listener_t;
 

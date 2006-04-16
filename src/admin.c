@@ -394,26 +394,28 @@ int admin_handle_request (client_t *client, const char *uri)
     if (strcmp (uri, "/admin.cgi") != 0 && strncmp("/admin/", uri, 7) != 0)
         return -1;
 
+    mount = httpp_get_query_param(client->parser, "mount");
+
     if (strcmp (uri, "/admin.cgi") == 0)
     {
-        ice_config_t *config;
         char *pass = httpp_get_query_param (client->parser, "pass");
         if (pass == NULL)
         {
             client_send_400 (client, "missing pass parameter");
             return 0;
         }
-        config = config_get_config ();
-        httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+        if (mount)
+        {
+            ice_config_t *config = config_get_config ();
+            httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
+            config_release_config ();
+        }
         httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
         httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
-        config_release_config ();
     }
 
     if (connection_check_admin_pass (client->parser))
         client->authenticated = 1;
-
-    mount = httpp_get_query_param(client->parser, "mount");
 
     if (mount)
     {

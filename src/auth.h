@@ -86,7 +86,7 @@ int  release_client (client_t *client);
 void auth_initialise (void);
 void auth_shutdown (void);
 
-auth_t  *auth_get_authenticator (xmlNodePtr node);
+int auth_get_authenticator (xmlNodePtr node, void *x);
 void    auth_release (auth_t *authenticator);
 
 /* call to send a url request when source starts */

@@ -59,6 +59,8 @@ static void free_ogg_client_data (client_t *client);
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
 static int write_buf_to_client (client_t *client);
+static void apply_ogg_settings (client_t *client,
+        format_plugin_t *format, mount_proxy *mount);
 
 
 struct ogg_client
@@ -70,9 +72,13 @@ struct ogg_client
 };
 
 
-refbuf_t *make_refbuf_with_page (ogg_page *page)
+refbuf_t *make_refbuf_with_page (ogg_codec_t *codec, ogg_page *page)
 {
-    refbuf_t *refbuf = refbuf_new (page->header_len + page->body_len);
+    refbuf_t *refbuf;
+
+    if (codec && codec->filtered)
+        return NULL;
+    refbuf = refbuf_new (page->header_len + page->body_len);
 
     memcpy (refbuf->data, page->header, page->header_len);
     memcpy (refbuf->data+page->header_len, page->body, page->body_len);
@@ -83,9 +89,15 @@ refbuf_t *make_refbuf_with_page (ogg_page *page)
 /* routine for taking the provided page (should be a header page) and
  * placing it on the collection of header pages
  */
-void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
+void format_ogg_attach_header (ogg_codec_t *codec, ogg_page *page)
 {
-    refbuf_t *refbuf = make_refbuf_with_page (page);
+    ogg_state_t *ogg_info = codec->parent;
+    refbuf_t *refbuf;
+    
+    if (codec->filtered)
+        return;
+
+    refbuf = make_refbuf_with_page (codec, page);
 
     if (ogg_page_bos (page))
     {
@@ -168,6 +180,7 @@ int format_ogg_get_plugin (source_t *source)
     plugin->create_client_data = create_ogg_client_data;
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
+    plugin->apply_settings = apply_ogg_settings;
     plugin->contenttype = "application/ogg";
 
     ogg_sync_init (&state->oy);
@@ -194,6 +207,19 @@ static void format_ogg_free_plugin (format_plugin_t *plugin)
     free (state);
 
     free (plugin);
+}
+
+
+static void apply_ogg_settings (client_t *client,
+        format_plugin_t *format, mount_proxy *mount)
+{
+    ogg_state_t *ogg_info = format->_state;
+
+    if (mount == NULL)
+        return;
+    if (mount->filter_theora)
+        ogg_info->filter_theora = 1;
+    DEBUG1 ("filter for theora is %d", ogg_info->filter_theora);
 }
 
 
@@ -249,6 +275,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         codec->next = ogg_info->codecs;
         ogg_info->codecs = codec;
         ogg_info->codec_count++;
+        DEBUG2 ("%s codec has filter mark %d", codec->name, codec->filtered);
     }
 
     return 0;

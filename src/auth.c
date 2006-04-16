@@ -370,6 +370,7 @@ static int add_client_to_source (source_t *source, client_t *client)
     source->active_clients = client;
     source->listeners++;
     stats_event_inc (NULL, "listener_connections");
+    stats_event_inc (source->mount, "listener_connections");
 
     thread_mutex_unlock (&source->lock);
 
@@ -585,15 +586,16 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
 }
 
 
-auth_t *auth_get_authenticator (xmlNodePtr node)
+int auth_get_authenticator (xmlNodePtr node, void *x)
 {
     auth_t *auth = calloc (1, sizeof (auth_t));
     config_options_t *options = NULL, **next_option = &options;
     xmlNodePtr option;
 
     if (auth == NULL)
-        return NULL;
+        return -1;
 
+    *(auth_t**)x = auth;
     option = node->xmlChildrenNode;
     while (option)
     {
@@ -633,7 +635,7 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
         xmlFree (opt->value);
         free (opt);
     }
-    return auth;
+    return 0;
 }
 
 

@@ -82,6 +82,7 @@ typedef struct client_queue_tag {
     int offset;
     int stream_offset;
     int shoutcast;
+    char *shoutcast_mount;
     struct client_queue_tag *next;
 } client_queue_t;
 
@@ -604,6 +605,8 @@ void connection_accept_loop(void)
                         node->shoutcast = 1;
                     if (config->listeners[i].ssl && ssl_ok)
                         connection_uses_ssl (client->con);
+                    if (config->listeners[i].shoutcast_mount)
+                        node->shoutcast_mount = strdup (config->listeners[i].shoutcast_mount);
                 }
             }
             config_release_config();
@@ -1059,10 +1062,17 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     char *shoutcast_mount;
     client_t *client = node->client;
 
+    if (node->shoutcast_mount)
+        shoutcast_mount = node->shoutcast_mount;
+    else
+        shoutcast_mount = config->shoutcast_mount;
+
     if (node->shoutcast == 1)
     {
         char *source_password, *ptr, *headers;
-        mount_proxy *mountinfo = config_find_mount (config, config->shoutcast_mount);
+        mount_proxy *mountinfo;
+
+        mountinfo = config_find_mount (config, shoutcast_mount);
 
         if (mountinfo && mountinfo->password)
             source_password = strdup (mountinfo->password);
@@ -1091,6 +1101,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         {
             client_destroy (client);
             free (source_password);
+            free (node->shoutcast_mount);
             free (node);
             return;
         }
@@ -1113,10 +1124,12 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         else
             INFO1 ("password does not match \"%s\"", client->refbuf->data);
         client_destroy (client);
+        free (node->shoutcast_mount);
         free (node);
         return;
     }
-    shoutcast_mount = strdup (config->shoutcast_mount);
+    /* actually make a copy as we are dropping the config lock */
+    shoutcast_mount = strdup (shoutcast_mount);
     config_release_config();
     /* Here we create a valid HTTP request based of the information
        that was passed in via the non-HTTP style protocol above. This
@@ -1148,6 +1161,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     }
     free (http_compliant);
     free (shoutcast_mount);
+    free (node->shoutcast_mount);
     free (node);
     return;
 }
@@ -1192,6 +1206,14 @@ static void *_handle_connection(void *arg)
                     client->refbuf->len = node->offset - node->stream_offset;
                     memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
                 }
+
+                rawuri = httpp_getvar (parser, HTTPP_VAR_URI);
+
+                /* assign a port-based shoutcast mountpoint if required */
+                if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
+                    httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
+
+                free (node->shoutcast_mount);
                 free (node);
                 
                 if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
@@ -1201,7 +1223,6 @@ static void *_handle_connection(void *arg)
                     continue;
                 }
 
-                rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
                 uri = util_normalise_uri(rawuri);
 
                 if (uri == NULL)
