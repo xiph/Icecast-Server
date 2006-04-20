@@ -240,6 +240,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
 
         /* any others */
         ERROR0 ("Seen BOS page with unknown type");
+        ogg_info->error = 1;
         return -1;
     } while (0);
 
