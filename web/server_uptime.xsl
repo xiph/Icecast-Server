@@ -6,11 +6,11 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
-<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 
 <div class="main">
 <h1>Icecast2 Status (Server Uptime)</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/navbar.html" />
+<iframe frameborder="0" height="50" scrolling="no" src="/navbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">

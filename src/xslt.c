@@ -230,6 +230,8 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         unsigned int header_len = strlen (mediatype) + len + 100;
         refbuf_t *refbuf = refbuf_new (header_len);
 
+        if (string == NULL)
+            string = xmlStrdup ("");
         len = snprintf (refbuf->data, header_len,
                 "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
                 mediatype, len, string);

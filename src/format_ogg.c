@@ -215,11 +215,14 @@ static void apply_ogg_settings (client_t *client,
 {
     ogg_state_t *ogg_info = format->_state;
 
-    if (mount == NULL)
+    if (mount == NULL && format == NULL)
         return;
     if (mount->filter_theora)
         ogg_info->filter_theora = 1;
     DEBUG1 ("filter for theora is %d", ogg_info->filter_theora);
+
+    ogg_info->use_url_metadata = mount->url_ogg_meta;
+    DEBUG1 ("metadata via url is %d", ogg_info->use_url_metadata);
 }
 
 
@@ -266,6 +269,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
 
         /* any others */
         ERROR0 ("Seen BOS page with unknown type");
+        ogg_info->error = 1;
         return -1;
     } while (0);
 

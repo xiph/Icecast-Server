@@ -486,18 +486,10 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
 
-    authenticator->authenticate = url_add_client;
-    authenticator->release_client = url_remove_client;
-
     authenticator->free = auth_url_clear;
     authenticator->adduser = auth_url_adduser;
     authenticator->deleteuser = auth_url_deleteuser;
     authenticator->listuser = auth_url_listuser;
-
-    authenticator->stream_start = url_stream_start;
-    authenticator->stream_end = url_stream_end;
-
-    authenticator->stream_auth = url_stream_auth;
 
     url_info = calloc(1, sizeof(auth_url));
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
@@ -509,15 +501,30 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         if(!strcmp(options->name, "password"))
             url_info->password = strdup (options->value);
         if(!strcmp(options->name, "listener_add"))
+        {
+            authenticator->authenticate = url_add_client;
             url_info->addurl = strdup (options->value);
+        }
         if(!strcmp(options->name, "listener_remove"))
+        {
+            authenticator->release_client = url_remove_client;
             url_info->removeurl = strdup (options->value);
+        }
         if(!strcmp(options->name, "mount_add"))
+        {
+            authenticator->stream_start = url_stream_start;
             url_info->stream_start = strdup (options->value);
+        }
         if(!strcmp(options->name, "mount_remove"))
+        {
+            authenticator->stream_end = url_stream_end;
             url_info->stream_end = strdup (options->value);
+        }
         if(!strcmp(options->name, "stream_auth"))
+        {
+            authenticator->stream_auth = url_stream_auth;
             url_info->stream_auth = strdup (options->value);
+        }
         if(!strcmp(options->name, "auth_header"))
         {
             free (url_info->auth_header);

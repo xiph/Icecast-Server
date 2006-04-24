@@ -13,6 +13,8 @@
 html, body {
 	margin: 0;
 	padding: 0;
+    color: white !important; 
+    background: black;
 }
 
 .xiphnav {
@@ -41,7 +43,6 @@ h1 {
 .nav a {
     color: white;
 	text-decoration: none;
-    background red;
 }
 .nav a:hover {
 	color: #f8ef64;
@@ -68,6 +69,10 @@ h1 {
     margin-top: 0px;
     margin-bottom: 10px;
     background: url(/images/icecast.png) no-repeat left center;
+}
+.main iframe {
+    width: 100%;
+    border: 0;
 }
 .news {
     font-family: Verdana, sans-serif;
@@ -149,23 +154,23 @@ td {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
-	font-weight: none;
+	font-weight: normal;
 	font-size: 90%;
 }
 .newscontent td {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
-	font-weight: none;
+	font-weight: normal;
 	font-size: 90%;
 }
 .newscontent td.streamdata {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
-	font-weight: none;
+	font-weight: normal;
 	font-size: 90%;
-        color: #f8ef64;
+    color: #f8ef64;
 }
 .newscontent a {
     font-family: Verdana, sans-serif;
@@ -210,7 +215,7 @@ td {
 }
 
 .nav body {
-    color: white
+    color: white;
     background-color: #656565;
 }
 .nav a {
@@ -228,12 +233,6 @@ td {
 
 .roundbottom {
 	background: url(images/corner_bottomright.jpg) no-repeat top right; 
-}
-
-.logs table {
-    background-color: #656565;
-    color: #fff;
-    font-size: 90%;
 }
 
 .banner td {
@@ -267,5 +266,3 @@ img.corner {
 	border: none;
 	display: block !important;
 }
-
-

@@ -54,10 +54,6 @@ Total number of concurrent clients supported by the server.  Listeners are consi
 <div class="indentedbox">
 Maximum number of connected sources supported by the server.
 </div>
-<h4>threadpool</h4>
-<div class="indentedbox">
-This is the number of threads that are started to handle client connections.  You may need to increase this value if you are running a high traffic stream.  This recommended value is for a small to medium traffic server.
-</div>
 <h4>queue-size</h4>
 <div class="indentedbox">
 This is the maximum size (in bytes) of a client (listener) queue.  A listener may temporarily lag behind due to network congestion and in this case an internal queue is maintained for each listener.  If the queue grows larger than this config value, then the listener will be removed from the stream.
@@ -76,14 +72,16 @@ If a connected source does not send any data within this timeout period (in seco
 </div>
 <h4>burst-on-connect</h4>
 <div class="indentedbox">
-With this enabled, a connecting client will be sent a burst of audio data from the stream.  This will have the effect of reducing the startup time for the stream from the perspective of the listener.  This is due to the fact that most media players have local buffers that must be filled before the stream begins to play.  This may introduce a small latency in the stream (difference in time between when the source plays a clip and the listener hears a clip).  If this latency is important to you, then you can disable this feature.  The latency is bitrate-dependent, but as an example, for a 128kbps stream, the latency between the source and the player is ~ 1.5 secs WITHOUT burst on connect, and WITH burst on connect the latency is 3 secs.
+This is an alias for burst-size, enabled it's 64k, disabled it's 0. 
 </div>
 <h4>burst-size</h4>
 <div class="indentedbox">
-The burst size is the amount of data (in bytes) to burst to a client at connection time. Like
-burst-on-connect, this is to quickly fill the pre-buffer used by media players. The default
-is 64kbytes which is a typical size used by most clients so changing it is not usually required.
-This setting applies to all mountpoints.
+The burst size is the amount of data (in bytes) to burst to a client at connection time.  This
+is to quickly fill the pre-buffer used by media players. It does this by sending stream data
+that has already been sent so adds latency between the source and player, this isn not a problem
+for most people as the listeners only hear the player component.  The default is 64kbytes which
+is a typical size used by most clients so changing it is not usually required.  This setting
+applies to all mountpoints, unless overridden in the mount settings.
 </div>
 <p>
 <br />
@@ -163,11 +161,12 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     &lt;listen-socket&gt;
         &lt;port&gt;8000&lt;/port&gt;
         &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
+        &lt;shoutcast-mount&gt;/mystream&lt;/shoutcast-mount&gt;
     &lt;/listen-socket&gt;
     &lt;listen-socket&gt;
-        &lt;port&gt;8001&lt;/port&gt;
+        &lt;port&gt;8002&lt;/port&gt;
         &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
-        &lt;shoutcast-compat&gt;1&lt;/shoutcast-compat&gt;
+        &lt;shoutcast-mount&gt;/live&lt;/shoutcast-mount&gt;
     &lt;/listen-socket&gt;
 
     &lt;fileserve&gt;1&lt;/fileserve&gt;
@@ -178,7 +177,12 @@ sections may be configured in order to have icecast2 listen on multiple network 
 If a bind-address is not specified for a particular listen-socket, then the socket will be
 bound to all interfaces. Generally, you won't need to set bind-address. There is an internal
 limit of 20 listening sockets currently, which may be extended in later releases.
+<p>One example where multiple ports are used is when shoutcast source clients are used to 
+stream data to icecast.  Shoutcast source clients use a limited protocol, they require two
+sequential ports. The base port acts like a normal web servre type port used for metadata
+updates but the second has an unusual protocol which has stream data sent to it.
 </p>
+<p>The following list the options for use with a listen-socket
 <h4>port</h4>
 <div class="indentedbox">
 The TCP port that will be used to accept client connections.
@@ -187,16 +191,28 @@ The TCP port that will be used to accept client connections.
 <div class="indentedbox">
 An optional IP address that can be used to bind to a specific network card.  If not supplied, then it will bind to all interfaces.
 </div>
+<h4>shoutcast-mount</h4>
+<div class="indentedbox">
+This option allows for setting the mountpoint for a shoutcast source client to be used by this
+socket and the port number following it, which is automatically allocated for you. Defining
+this within the ports allows for multiple clients to connect at the same time.
+</div>
 <h4>shoutcast-compat</h4>
 <div class="indentedbox">
+This option is deprecated now, use the shoutcast-mount setting mentioned above. This is kept
+for backward compatability.
+<p>
 This optional flag will indicate that this port will operate in 'shoutcast-compatibility' mode.  Due to major differences in the source client connection protocol, if you wish to use any of the shoutcast DJ tools, you will need to configure at least one socket as shoutcast-compatible.  Note that when in this mode, only source clients (and specifically shoutcast source clients) will be able to attach to this port.  All listeners may connect to any of the ports defined without this flag.  Also, for proper Shoutcast DSP compatibility, you must define a listen socket with a port one less than the one defined as 'shoutcast-compat'.  This means if you define 8001 as shoutcast-compat, then you will need to define a listen port of 8000 and it must not also be defined as shoutcast-compat.  See the example config file is the distribution for more info.
 </div>
+<p>The following are general server settings
 <h4>fileserve</h4>
 <div class="indentedbox">
 This flag turns on the icecast2 fileserver from which static files can be served.  All files are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration setting.
 </div>
 <h4>shoutcast-mount</h4>
 <div class="indentedbox">
+This is provided for any shoutcast source clients connecting where no mountpoint is specified
+in the listen-socket section.
 An optional mountpoint to use when shoutcast DSP compatible clients connect. The default is /stream but can
 be overridden here to use an alternative name which may include an extension that some clients require for
 certain formats.
@@ -275,11 +291,21 @@ used
 This is the relay password on the Master server.  It is used to query the
 server for a list of mountpoints to relay.
 </div>
+<h4>master-redirect</h4>
+<div class="indentedbox">
+When running as a slave, enable this to autenticate with the master for redirecting new
+listeners to this slave.
+</div>
 <h4>master-redirect-port</h4>
 <div class="indentedbox">
-When a slave starts a master relay using authentication, then a host and port can also be sent to
-inform the master for the purposes of redirecting clients to the slave. The host is provided by
-the hostname setting and this specifies the port to redirect listeners to.
+When a slave starts a master relay using authentication, then a host and port can also be sent
+to inform the master for the purposes of redirecting clients to the slave. The host is provided
+by the hostname setting and this specifies the port to redirect listeners to.
+</div>
+<h4>max-redirect-slaves</h4>
+<div class="indentedbox">
+When running as a master server, this will limit the maximum number of authenicating slaves
+that we will redirect new listeners to. Default is 0.
 </div>
 <h4>relays-on-demand</h4>
 <div class="indentedbox">
@@ -397,7 +423,9 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;subtype&gt;vorbis&lt;/subtype&gt;
         &lt;hidden&gt;1&lt;/hidden&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
+        &lt;charset&gt;8192&lt;/charset&gt;
         &lt;mp3-metadata-interval&gt;8192&lt;/mp3-metadata-interval&gt;
+        &lt;allow_url_ogg_metadata&gt;1&lt;/allow_url_ogg_metadata&gt;
         &lt;authentication type="htpasswd"&gt;
                 &lt;option name="filename" value="myauth"/&gt;
                 &lt;option name="allow_duplicate_users" value="0"/&gt;
@@ -551,6 +579,13 @@ listening clients back from the fallback mount.
 This optional setting allows for providing a burst size which overrides the default burst size
 as defined in limits.  The value is in bytes.
 </div>
+<h4>charset</h4>
+<div class="indentedbox">
+    <p>Various source clients send metadata in charsets other than UTF8, and fail to say which
+    charset they are using. Here you can define an alternative charset that will convert the
+    metadata to UTF8 for stats/web and YP updates.
+    </p>
+</div>
 <h4>mp3-metadata-interval</h4>
 <div class="indentedbox">
     <p>This optional setting specifies what interval, in bytes, there is between metadata
@@ -558,6 +593,18 @@ as defined in limits.  The value is in bytes.
     on this mountpoint, not existing listeners falling back to this mountpoint.  The default
     is either the hardcoded server default or the value passed from a relay.
     </p>
+</div>
+<h4>allow-url-ogg-metadata</h4>
+<div class="indentedbox">
+    In some cases, metadata is updated from external sources. With Ogg the metadata should be
+    sent via the source client in-stream, but enabling this allows an alternative update
+    mechanism.
+</div>
+<h4>filter-theora</h4>
+<div class="indentedbox">
+    Enabing this will remove a theora logical stream from the ogg stream coming in. This is
+    intended for cases where a source client sends a theora+vorbis stream and a local relay
+    can relay that and filter out the theora part leaving a mountpoint with only vorbis.
 </div>
 <h4>hidden</h4>
 <div class="indentedbox">

@@ -33,6 +33,7 @@ typedef struct ogg_state_tag
     char *artist;
     char *title;
     int log_metadata;
+    int use_url_metadata;
     refbuf_t *file_headers;
     refbuf_t *header_pages;
     refbuf_t *header_pages_tail;

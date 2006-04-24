@@ -1,5 +1,8 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output method="xml" media-type="text/html" indent="yes" encoding="UTF-8"
+    doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+    doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" />
+
 <xsl:template match = "/icestats" >
 <html>
 <head>
@@ -7,26 +10,26 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
-<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 
 <div class="main">
 <h1>Icecast2 Status</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/navbar.html" />
+<iframe frameborder="0" height="50" scrolling="no" src="/navbar.html" />
 
 <!--mount point stats-->
 <xsl:for-each select="source">
 <div class="roundcont">
 <div class="roundtop">
-<img src="/images/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/images/corner_topleft.jpg" class="corner" style="display: none" alt=""/>
 </div>
 <div class="newscontent">
 <h3>
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="/auth.xsl"><img border="0" src="/images/key.png"/></a>
+<a href="/auth.xsl"><img border="0" src="/images/key.png" alt="" /></a>
 </xsl:when>
 <xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a>
+<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png" alt="" /></a>
 </xsl:otherwise>
 </xsl:choose>
 Mount Point : (<xsl:value-of select="@mount" />) :
@@ -81,7 +84,7 @@ Mount Point : (<xsl:value-of select="@mount" />) :
 </table>
 </div>
 <div class="roundbottom">
-<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/images/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
 <br />

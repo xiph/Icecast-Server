@@ -5,7 +5,37 @@ Feature differences from SVN trunk
   clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
   max-listener check
+. mount can filter out theora content, useful for define a local relay of a
+  theora+vorbis stream to have a vorbis only stream from the same source.
+. multiple shoutcast source clients possible.
+. a per-mount charset can be defined, translates to UTF8.
+. stream-auth option for url authenticator.
 
+
+2.3-kh5
+. add media-type to xsl pages, IE has trouble with xhtml
+. add <accesslog-exclude-ext> for defining extensions that do not get reported
+  via the web interface (they are still written in the log file). Whether
+  alternative tags should be used is still undertermined.
+. fix for empty log display via xsl, produced odd chars.
+. auth url avoids calling backend code when settings are not defined.
+. content type fixes for xslt files
+. allow <shoutcast-mount> to appear in <listen-socket>, this defines a per-port
+  based mountpoint allowing multiple shoutcast source clients to connect. This
+  also defines a port+1 listen-socket automatically.
+. xml parsing changed, 'yes' and 'true' can be taken for boolean settings. some
+  removal of deprecated tags but may of missed a tag so report if any are.
+. added <filter-theora> boolean for <mount>, filters theora out of passed stream
+  so listener only gets what is left.
+. add per-mount listener_connections stat
+. add <allow-url-ogg-metadata> bool per-mount, enable to allow url based metadata
+  updates. Default disabled.
+. add charset option to mount options. It allows for conversion to UTF8
+  for the stats/web pages and therefore YP listings and playlist log.
+. minor changes to web pages.
+. allow for 403 response from auth url to pass back to listener, in the case of
+  a 200 response from auth server, allow 403 at start of message to indicate a
+  403 response to listener.
 
 2.3-kh4
 . fserve thread now looks for a chain of refbufs as well.

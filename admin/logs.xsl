@@ -1,16 +1,18 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output method="xml" media-type="text/html" indent="yes" encoding="UTF-8"
+    doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+    doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" />
 <xsl:template match = "/icestats" >
 <html>
 <head>
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 
 <div class="main">
 <h1>Icecast2 logs</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
+<iframe frameborder="0" scrolling="no" height="50" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -18,7 +20,7 @@
 </div>
 <div class="newscontent">
 <h3>Access log</h3>
-<iframe width="100%" height="400" src="showlog.xsl?log=accesslog">
+<iframe frameborder="0" width="100%" height="400" src="showlog.xsl?log=accesslog">
 no frame support however contents can be found <a href="showlog.xsl?log=accesslog">here</a>
 </iframe>
 </div>
@@ -35,7 +37,7 @@ no frame support however contents can be found <a href="showlog.xsl?log=accesslo
 </div>
 <div class="newscontent">
 <h3>Error log</h3>
-<iframe width="100%" height="400" padding="5"  src="showlog.xsl?log=errorlog">
+<iframe frameborder="0" width="100%" height="400" padding="5"  src="showlog.xsl?log=errorlog">
 no frame support however contents can be found <a href="showlog.xsl?log=errorlog">here</a>
 </iframe>
 </div>
@@ -52,7 +54,7 @@ no frame support however contents can be found <a href="showlog.xsl?log=errorlog
 </div>
 <div class="newscontent">
 <h3>Playlist log</h3>
-<iframe width="100%" height="300" src="showlog.xsl?log=playlistlog">
+<iframe frameborder="0" width="100%" height="300" src="showlog.xsl?log=playlistlog">
 no frame support however contents can be found <a href="showlog.xsl?log=playlistlog">here</a>
 </iframe>
 </div>

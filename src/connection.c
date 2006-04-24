@@ -982,6 +982,33 @@ static void _handle_stats_request (client_t *client, char *uri)
     fserve_add_client_callback (client, stats_callback, NULL);
 }
 
+static void check_for_filtering (ice_config_t *config, client_t *client)
+{
+    char *pattern = config->access_log_exclude_ext;
+    char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    char *extension = strrchr (uri, '.');
+    if (extension == NULL || uri == NULL || pattern == NULL)
+        return;
+
+    extension++;
+    while (*pattern)
+    {
+        int len = strcspn (pattern, " ");
+        DEBUG3 ("...pattern is \"%.*s\" (%d)", len, pattern, len);
+        if (strncmp (extension, pattern, len) == 0 && extension[len] == '\0')
+        {
+            DEBUG0 ("found a match");
+            httpp_setvar (client->parser, "__avoid_access_log", "");
+            return;
+        }
+        pattern += len;
+        len = strspn (pattern, " "); /* find next pattern */
+        pattern += len;
+    }
+    DEBUG0 ("no match for pattern");
+}
+
+
 static void _handle_get_request (client_t *client, char *passed_uri)
 {
     int fileserve;
@@ -995,6 +1022,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
 
     DEBUG1("start with %s", passed_uri);
     config = config_get_config();
+    check_for_filtering (config, client);
     fileserve = config->fileserve;
     port = config->port;
     for(i = 0; i < global.server_sockets; i++) {

@@ -55,7 +55,11 @@
     <!--<master-server>127.0.0.1</master-server>-->
     <!--<master-server-port>8001</master-server-port>-->
     <!--<master-update-interval>120</master-update-interval>-->
+
+    <!--<master-username>hackme</master-username>-->
     <!--<master-password>hackme</master-password>-->
+
+    <!-- issue above authentication for relays in slave setup -->
     <!--<master-relay-auth>1</master-relay-auth>-->
 
     <!-- setting this makes all relays on-demand unless overridden, this is
@@ -67,6 +71,10 @@
     <!-- Request the master server to redirect new listeners to this slave
          the details passed are based on <hostname> and <port> -->
     <!--<master-redirect>1</master-redirect>-->
+
+    <!-- The maximum nuber of slaves that can register for new listener 
+    redirection. -->
+    <!--<max-redirect-slaves>10</max-redirect-slaves>-->
 
     <!-- Relays. State connection information, and by default 
          request inline metadata for mp3 streams if available.

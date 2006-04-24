@@ -1,5 +1,8 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output method="xml" media-type="text/html" indent="yes" encoding="UTF-8"
+    doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+    doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" />
+
 <xsl:template match = "/icestats" >
 <html>
 <head>
@@ -7,11 +10,11 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
-<body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 
 <div class="main">
 <h1>Authorization Page</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/navbar.html" />
+<iframe frameborder="0" scrolling="no" height="50" src="/navbar.html" />
 
 <table border="0" width="100%">
 <tr>

@@ -999,7 +999,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified name";
         } while (0);
     }
-    stats_event (source->mount, "server_name", str);
+    if (mountinfo && mountinfo->charset)
+        stats_event_conv (source->mount, "server_name", str, mountinfo->charset);
+    else
+        stats_event (source->mount, "server_name", str);
 
     /* stream description */
     if (mountinfo && mountinfo->stream_description)
@@ -1016,7 +1019,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified description";
         } while (0);
     }
-    stats_event (source->mount, "server_description", str);
+    if (mountinfo && mountinfo->charset)
+        stats_event_conv (source->mount, "server_description", str, mountinfo->charset);
+    else
+        stats_event (source->mount, "server_description", str);
 
     /* stream URL */
     if (mountinfo && mountinfo->stream_url)
@@ -1085,6 +1091,11 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     source->fallback_mount = NULL;
     if (mountinfo && mountinfo->fallback_mount)
         source->fallback_mount = strdup (mountinfo->fallback_mount);
+
+    free (source->charset);
+    source->charset = NULL;
+    if (mountinfo && mountinfo->charset)
+        source->charset = strdup (mountinfo->charset);
 
     /* needs a better mechanism, probably via a client_t handle */
     if (mountinfo && mountinfo->dumpfile)
@@ -1171,6 +1182,9 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     }
     else
         stats_event (source->mount, "on_demand", NULL);
+
+    if (source->charset)
+        DEBUG1 ("charset is %s", source->charset);
 
     if (source->hidden)
     {

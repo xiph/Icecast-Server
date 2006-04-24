@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3-kh4], [karl@xiph.org])
+AC_INIT([Icecast], [2.3-kh5], [karl@xiph.org])
 
 AC_PREREQ(2.54)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -65,7 +65,7 @@ XIPH_C__FUNC__
 dnl Check for types
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(localtime_r poll)
+AC_CHECK_FUNCS(localtime_r poll atoll strtoll)
 AC_SEARCH_LIBS(nanosleep, rt posix4,
         AC_DEFINE(HAVE_NANOSLEEP, 1, [Define if you have nanosleep]))
 XIPH_NET

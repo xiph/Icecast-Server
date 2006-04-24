@@ -115,7 +115,8 @@ void logging_access(client_t *client)
     struct tm thetime;
     time_t now;
     time_t stayed;
-    char *referrer, *user_agent, *username;
+    char *referrer, *user_agent, *username, *ip = "-";
+    int keep = 0;
 
     now = global.time;
 
@@ -150,18 +151,16 @@ void logging_access(client_t *client)
         user_agent = "-";
 
 #ifdef HAVE_LOGGING_IP
-    log_write_direct (accesslog,
-            "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
-            client->con->ip,
-            username,
-            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
-            referrer, user_agent, (unsigned long)stayed);
-#else
-    log_write_direct (accesslog,
-            "- - - [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
-            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
-            referrer, user_agent, (unsigned long)stayed);
+    ip = client->con->ip;
 #endif
+    if (httpp_getvar (client->parser, "__avoid_access_log") == NULL)
+        keep = 1;
+
+    log_write_direct_keep (accesslog, keep,
+            "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            ip, username,
+            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
+            referrer, user_agent, (unsigned long)stayed);
 }
 
 

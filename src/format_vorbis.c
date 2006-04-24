@@ -421,6 +421,10 @@ static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
     vorbis_codec_t *source_vorbis;
     int change = 0;
 
+    /* avoid url updates unless allowed to */
+    if (ogg_info->use_url_metadata == 0)
+        return;
+
     /* avoid updating if multiple codecs in use */
     if (codec && codec->next == NULL)
         source_vorbis = codec->specific;

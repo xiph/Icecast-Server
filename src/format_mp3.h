@@ -25,7 +25,6 @@ typedef struct {
     int interval;
     char *url_artist;
     char *url_title;
-    char *charset;
     int update_metadata;
 
     refbuf_t *metadata;

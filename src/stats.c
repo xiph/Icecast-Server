@@ -46,6 +46,9 @@
 #define snprintf _snprintf
 #define atoll _atoi64
 #endif
+#if !defined HAVE_ATOLL && defined HAVE_STRTOLL
+#define atoll(nptr) strtoll(nptr, (char **)NULL, 10)
+#endif
 
 #define STATS_EVENT_SET     0
 #define STATS_EVENT_INC     1
@@ -206,6 +209,39 @@ void stats_event(const char *source, const char *name, const char *value)
     event = build_event (source, name, value);
     if (event)
         queue_global_event (event);
+}
+
+
+void stats_event_conv(const char *mount, const char *name, const char *value, const char *charset)
+{
+    const char *metadata = value;
+    xmlBufferPtr conv = xmlBufferCreate ();
+
+    if (charset)
+    {
+        xmlBufferPtr raw = xmlBufferCreate ();
+        xmlCharEncodingHandlerPtr handle = xmlFindCharEncodingHandler (charset);
+
+        xmlBufferPtr conv = xmlBufferCreate ();
+        xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
+        if (xmlCharEncInFunc (handle, conv, raw) > 0)
+            metadata = xmlBufferContent (conv);
+        xmlFree (raw);
+    }
+
+    stats_event (mount, name, metadata);
+
+    /* special case for title updates, log converted title */
+    if (mount && strcmp (name, "title") == 0)
+    {
+        char *s = stats_get_value ((char*)mount, "listeners");
+        int listeners = 0;
+        if (s)
+            listeners = atoi (s);
+        free (s);
+        logging_playlist (mount, metadata, listeners);
+    }
+    xmlFree (conv);
 }
 
 /* make stat hidden (non-zero). name can be NULL if it applies to a whole

@@ -76,6 +76,8 @@ void stats_shutdown(void);
 stats_t *stats_get_stats(void);
 
 void stats_event(const char *source, const char *name, const char *value);
+void stats_event_conv(const char *mount, const char *name,
+        const char *value, const char *charset);
 void stats_event_args(const char *source, char *name, char *format, ...);
 void stats_event_inc(const char *source, const char *name);
 void stats_event_add(const char *source, const char *name, unsigned long value);

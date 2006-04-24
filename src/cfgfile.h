@@ -66,9 +66,10 @@ typedef struct _mount_proxy {
     unsigned int queue_size_limit;
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
-    char *mp3_charset;  /* character set for metadata */
+    char *charset;  /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
     int filter_theora; /* prevent theora pages getting queued */
+    int url_ogg_meta; /* enable to allow updates via url requests for ogg */
 
     char *auth_type; /* Authentication type */
     struct auth_tag *auth;
@@ -166,6 +167,7 @@ typedef struct ice_config_tag
 
     char *access_log;
     int access_log_lines;
+    char *access_log_exclude_ext;
     char *error_log;
     int error_log_lines;
     char *playlist_log;

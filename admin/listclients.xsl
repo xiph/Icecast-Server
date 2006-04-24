@@ -1,5 +1,8 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output method="xml" media-type="text/html" indent="yes" encoding="UTF-8"
+    doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+    doctype-public="-//W3C//DTD XHTML 1.0 Transitional//EN" />
+
 <xsl:template match = "/icestats" >
 <html>
 <head>
@@ -22,7 +25,7 @@
 
 <xsl:choose>
 <xsl:when test="authenticator">
-<a href="auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
+<a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
 </xsl:when>
 <xsl:otherwise>
 <a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a> Mount Point
@@ -53,7 +56,7 @@
 <xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
 <xsl:for-each select="listener">
 		<tr>
-				<td align="center"><xsl:value-of select="IP" /><xsl:if test="username"> (<xsl:value-of select="username" />)</xsl:if></td>
+				<td align="center"><xsl:value-of select="IP" /><xsl:if test="Username"> (<xsl:value-of select="Username" />)</xsl:if></td>
 				<td align="center"><xsl:value-of select="Connected" /> seconds</td>
 				<td align="center"><xsl:value-of select="UserAgent" /></td>
 				<td align="center"><a href="killclient.xsl?mount={$themount}&amp;id={ID}">Kick</a></td>

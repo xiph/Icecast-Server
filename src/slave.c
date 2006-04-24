@@ -708,6 +708,7 @@ static void *streamlist_thread (void *arg)
     char error [CURL_ERROR_SIZE];
     char url [1024], auth [100];
 
+    DEBUG0 ("checking master stream list");
     if (master->ssl_port)
     {
         protocol = "https";
@@ -845,7 +846,6 @@ static void *_slave_thread(void *arg)
         /* only update relays lists when required */
         if (max_interval <= interval)
         {
-            DEBUG0 ("checking master stream list");
             config = config_get_config();
 
             if (max_interval == 0)

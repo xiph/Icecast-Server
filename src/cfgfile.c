@@ -515,6 +515,7 @@ static int _parse_chown (xmlNodePtr node, void *arg)
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
+    config->chuid = 1;
     return 0;
 }
 
@@ -539,11 +540,13 @@ static int _parse_logging (xmlNodePtr node, void *arg)
     struct cfg_tag icecast_tags[] =
     {
         { "accesslog",      config_get_str,     &config->access_log },
+        { "accesslog_exclude_ext",
+                            config_get_str,     &config->access_log_exclude_ext },
         { "accesslog_lines",
                             config_get_int,     &config->access_log_lines },
         { "errorlog",       config_get_str,     &config->error_log },
         { "errorlog_lines", config_get_int,     &config->error_log_lines },
-        { "playlistlog",    config_get_str,     &config->access_log },
+        { "playlistlog",    config_get_str,     &config->playlist_log },
         { "playlistlog_lines",
                             config_get_int,     &config->playlist_log_lines },
         { "logsize",        config_get_int,     &config->logsize },
@@ -551,6 +554,10 @@ static int _parse_logging (xmlNodePtr node, void *arg)
         { "logarchive",     config_get_bool,    &config->logarchive },
         { NULL, NULL, NULL }
     };
+
+    config->access_log_lines = 100;
+    config->error_log_lines = 100;
+    config->playlist_log_lines = 10;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
@@ -625,10 +632,11 @@ static int _parse_mount (xmlNodePtr node, void *arg)
                             config_get_bool,    &mount->fallback_when_full },
         { "max-listeners",  config_get_int,     &mount->max_listeners },
         { "filter-theora",  config_get_bool,    &mount->filter_theora },
-        { "mp3-metadata-charset",
-                            config_get_str,     &mount->mp3_charset },
+        { "charset",        config_get_str,     &mount->charset },
         { "mp3-metadata-interval",
                             config_get_int,     &mount->mp3_meta_interval },
+        { "allow-url-ogg-metadata",
+                            config_get_bool,    &mount->url_ogg_meta },
         { "no-mount",       config_get_bool,    &mount->no_mount },
         { "hidden",         config_get_bool,    &mount->hidden },
         { "authentication", auth_get_authenticator,
@@ -657,6 +665,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->burst_size = -1;
     mount->mp3_meta_interval = -1;
     mount->yp_public = -1;
+    mount->url_ogg_meta = 0;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;

@@ -420,7 +420,7 @@ int admin_handle_request (client_t *client, const char *uri)
     if (mount)
     {
         /* certain commands may not need auth */
-        if (strcmp (uri, BUILDM3U_RAW_REQUEST) == 0)
+        if (admin_get_command (uri) == COMMAND_BUILDM3U)
             client->authenticated = 1;
 
         /* This is a mount request, but admin user is allowed */
@@ -1184,17 +1184,16 @@ static void command_list_log (client_t *client, int response)
         log = accesslog;
     else if (strcmp (logname, "playlistlog") == 0)
         log = playlistlog;
-    else
+
+    if (log < 0)
     {
         WARN1 ("request to show unknown log \"%s\"", logname);
-        client_send_400 (client, "No such log");
+        client_send_400 (client, "");
         return;
     }
-    if (log >= 0)
-    {
-        content = refbuf_new (0);
-        log_contents (log, &content->data, &content->len);
-    }
+    content = refbuf_new (0);
+    log_contents (log, &content->data, &content->len);
+
     if (response == TRANSFORMED)
     {
         xmlNodePtr xmlnode, lognode;
@@ -1212,7 +1211,7 @@ static void command_list_log (client_t *client, int response)
     {
         refbuf_t *http = refbuf_new (100);
         int len = snprintf (http->data, 100, "%s",
-                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+                "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n");
         http->len = len;
         http->next = content; 
         client->respcode = 200;
