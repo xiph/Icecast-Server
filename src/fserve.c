@@ -465,13 +465,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     }
 
     file = fopen (fullpath, "rb");
-    free (fullpath);
     if (file == NULL)
     {
         WARN1 ("Problem accessing file \"%s\"", fullpath);
         client_send_404 (httpclient, "File not readable");
+        free (fullpath);
         return -1;
     }
+    free (fullpath);
 
     content_length = (int64_t)file_buf.st_size;
     range = httpp_getvar (httpclient->parser, "range");
