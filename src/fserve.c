@@ -354,6 +354,8 @@ const char *fserve_content_type (const char *path)
             return "image/png";
         else if(!strcmp(ext, "m3u"))
             return "audio/x-mpegurl";
+        else if(!strcmp(ext, "aac"))
+            return "audio/aac";
         else
             return "application/octet-stream";
     }

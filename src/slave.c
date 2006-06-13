@@ -96,13 +96,13 @@ relay_server *relay_copy (relay_server *r)
 
     if (copy)
     {
-        copy->server = xmlCharStrdup (r->server);
-        copy->mount = xmlCharStrdup (r->mount);
-        copy->localmount = xmlStrdup (r->localmount);
+        copy->server = (char *)xmlCharStrdup (r->server);
+        copy->mount = (char *)xmlCharStrdup (r->mount);
+        copy->localmount = (char *)xmlStrdup (XMLSTR(r->localmount));
         if (r->username)
-            copy->username = xmlStrdup (r->username);
+            copy->username = (char *)xmlStrdup (XMLSTR(r->username));
         if (r->password)
-            copy->password = xmlStrdup (r->password);
+            copy->password = (char *)xmlStrdup (XMLSTR(r->password));
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
@@ -410,7 +410,6 @@ static void check_relay_stream (relay_server *relay)
             if (source->fallback_mount && source->fallback_override)
             {
                 source_t *fallback;
-                DEBUG1 ("checking %s for fallback override", source->fallback_mount);
                 avl_tree_rlock (global.source_tree);
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
@@ -672,17 +671,17 @@ static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *strea
         if (strlen (buf))
         {
             relay_server *r = calloc (1, sizeof (relay_server));
-            r->server = xmlStrdup (master->server);
+            r->server = (char *)xmlStrdup (XMLSTR(master->server));
             r->port = master->port;
-            r->mount = xmlStrdup (buf);
-            r->localmount = xmlStrdup (buf);
+            r->mount = (char *)xmlStrdup (XMLSTR(buf));
+            r->localmount = (char *)xmlStrdup (XMLSTR(buf));
             r->mp3metadata = 1;
             r->on_demand = master->on_demand;
             r->enable = 1;
             if (master->send_auth)
             {
-                r->username = xmlStrdup (master->username);
-                r->password = xmlStrdup (master->password);
+                r->username = (char *)xmlStrdup (XMLSTR(master->username));
+                r->password = (char *)xmlStrdup (XMLSTR(master->password));
             }
             r->next = master->new_relays;
             master->new_relays = r;

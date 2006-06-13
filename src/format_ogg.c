@@ -215,7 +215,7 @@ static void apply_ogg_settings (client_t *client,
 {
     ogg_state_t *ogg_info = format->_state;
 
-    if (mount == NULL && format == NULL)
+    if (mount == NULL || format == NULL)
         return;
     if (mount->filter_theora)
         ogg_info->filter_theora = 1;

@@ -90,8 +90,6 @@ int format_get_plugin (format_type_t type, source_t *source)
     default:
         break;
     }
-    source->format->in_bitrate = rate_setup (30);
-    source->format->out_bitrate = rate_setup (30);
 
     return ret;
 }
@@ -112,11 +110,11 @@ static void find_client_start (source_t *source, client_t *client)
         refbuf = source->stream_data_tail;
     else
     {
-        long size = client->intro_offset;
+        size_t size = client->intro_offset;
         refbuf = source->burst_point;
-        while (size > 0 && refbuf->next)
+        while (size > 0 && refbuf && refbuf->next)
         {
-            size -= (long)refbuf->len;
+            size -= refbuf->len;
             refbuf = refbuf->next;
         }
     }
@@ -219,6 +217,9 @@ int format_check_http_buffer (source_t *source, client_t *client)
             client->con->error = 1;
             return -1;
         }
+        stats_event_inc (NULL, "listeners");
+        stats_event_inc (NULL, "listener_connections");
+        stats_event_inc (source->mount, "listener_connections");
     }
 
     if (client->pos == refbuf->len)

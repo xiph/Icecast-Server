@@ -51,6 +51,12 @@ typedef struct source_tag
 
     char *charset;
 
+    int throttle_stream;
+    time_t throttle_termination;
+    int limit_rate;
+    int avg_bitrate_duration;
+    time_t wait_time;
+
     unsigned long peak_listeners;
     unsigned long listeners;
     unsigned long prev_listeners;
@@ -73,6 +79,7 @@ typedef struct source_tag
     int on_demand_req;
     int hidden;
     uint64_t bytes_sent_since_update;
+    int stats_interval;
 
     time_t last_read;
 

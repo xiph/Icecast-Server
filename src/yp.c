@@ -218,7 +218,7 @@ void yp_recheck_config (ice_config_t *config)
         server = server->next;
     }
     client_limit = config->client_limit;
-    free (server_version);
+    free ((char*)server_version);
     server_version = strdup (config->server_id);
     /* for each yp url in config, check to see if one exists 
        if not, then add it. */
@@ -932,7 +932,7 @@ void yp_shutdown (void)
     if (yp_thread)
         thread_join (yp_thread);
     curl_global_cleanup();
-    free (server_version);
+    free ((char*)server_version);
     server_version = NULL;
     INFO0 ("YP thread down");
 }

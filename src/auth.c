@@ -61,6 +61,7 @@ static auth_client *auth_client_setup (const char *mount, mount_proxy *mountinfo
         if (client == NULL)
             break;
 
+        /* process any auth headers if any available */
         header = httpp_getvar(client->parser, "authorization");
         if (header == NULL)
             break;
@@ -348,7 +349,9 @@ static int add_client_to_source (source_t *source, client_t *client)
             {
                 ERROR2("Fallback '%s' for full source '%s' not found",
                         source->mount, source->fallback_mount);
+                return -1;
             }
+
             INFO1 ("stream full trying %s", next->mount);
             source = next;
             loop--;
@@ -369,8 +372,6 @@ static int add_client_to_source (source_t *source, client_t *client)
     client->next = source->active_clients;
     source->active_clients = client;
     source->listeners++;
-    stats_event_inc (NULL, "listener_connections");
-    stats_event_inc (source->mount, "listener_connections");
 
     thread_mutex_unlock (&source->lock);
 
@@ -468,7 +469,7 @@ void auth_postprocess_source (auth_client *auth_user)
 /* Add a listener. Check for any mount information that states any
  * authentication to be used.
  */
-void add_client (const char *mount, client_t *client)
+void auth_add_client (const char *mount, client_t *client)
 {
     mount_proxy *mountinfo; 
     ice_config_t *config;
@@ -521,7 +522,7 @@ void add_client (const char *mount, client_t *client)
 /* determine whether we need to process this client further. This
  * involves any auth exit, typically for external auth servers.
  */
-int release_client (client_t *client)
+int auth_client_release (client_t *client)
 {
     if (client->auth && client->authenticated)
     {
@@ -545,13 +546,16 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
     do
     {
         DEBUG1 ("type is %s", auth->type);
-#ifdef HAVE_AUTH_URL
+
         if (strcmp (auth->type, "url") == 0)
         {
+#ifdef HAVE_AUTH_URL
             auth_get_url_auth (auth, options);
+#else
+            ERROR0 ("Auth URL disabled");
+#endif
             break;
         }
-#endif
         if (strcmp (auth->type, "command") == 0)
         {
 #ifdef WIN32
@@ -578,7 +582,7 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
         if (strcmp(options->name, "allow_duplicate_users") == 0)
             auth->allow_duplicate_users = atoi (options->value);
         else if (strcmp(options->name, "realm") == 0)
-            auth->realm = xmlStrdup (options->value);
+            auth->realm = (char*)xmlStrdup (XMLSTR(options->value));
         else if (strcmp(options->name, "drop_existing_listener") == 0)
             auth->drop_existing_listener = atoi (options->value);
         options = options->next;
@@ -601,16 +605,16 @@ int auth_get_authenticator (xmlNodePtr node, void *x)
     {
         xmlNodePtr current = option;
         option = option->next;
-        if (strcmp (current->name, "option") == 0)
+        if (xmlStrcmp (current->name, XMLSTR("option")) == 0)
         {
             config_options_t *opt = calloc (1, sizeof (config_options_t));
-            opt->name = xmlGetProp (current, "name");
+            opt->name = (char *)xmlGetProp (current, XMLSTR("name"));
             if (opt->name == NULL)
             {
                 free(opt);
                 continue;
             }
-            opt->value = xmlGetProp (current, "value");
+            opt->value = (char *)xmlGetProp (current, XMLSTR("value"));
             if (opt->value == NULL)
             {
                 xmlFree (opt->name);
@@ -621,10 +625,10 @@ int auth_get_authenticator (xmlNodePtr node, void *x)
             next_option = &opt->next;
         }
         else
-            if (strcmp (current->name, "text") != 0)
+            if (xmlStrcmp (current->name, XMLSTR("text")) != 0)
                 WARN1 ("unknown auth setting (%s)", current->name);
     }
-    auth->type = xmlGetProp (node, "type");
+    auth->type = (char *)xmlGetProp (node, XMLSTR("type"));
     get_authenticator (auth, options);
     thread_mutex_create ("auth_t", &auth->lock);
     while (options)
@@ -660,32 +664,29 @@ int auth_stream_authenticate (client_t *client, const char *mount, mount_proxy *
 /* called when the stream starts, so that authentication engine can do any
  * cleanup/initialisation.
  */
-void auth_stream_start (mount_proxy *mountinfo, source_t *source)
+void auth_stream_start (mount_proxy *mountinfo, const char *mount)
 {
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_start)
     {
-        auth_client *auth_user = auth_client_setup (source->mount,
-                mountinfo, NULL);
+        auth_client *auth_user = auth_client_setup (mount, mountinfo, NULL);
         auth_user->process = stream_start_callback;
-        INFO1 ("request source start for \"%s\"", source->mount);
+        INFO1 ("request source start for \"%s\"", mount);
 
         queue_auth_client (auth_user);
     }
 }
 
 
-
 /* Called when the stream ends so that the authentication engine can do
  * any authentication cleanup
  */
-void auth_stream_end (mount_proxy *mountinfo, source_t *source)
+void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 {
     if (mountinfo && mountinfo->auth && mountinfo->auth->stream_end)
     {
-        auth_client *auth_user = auth_client_setup (source->mount,
-                mountinfo, NULL);
+        auth_client *auth_user = auth_client_setup (mount, mountinfo, NULL);
         auth_user->process = stream_end_callback;
-        INFO1 ("request source end for \"%s\"", source->mount);
+        INFO1 ("request source end for \"%s\"", mount);
 
         queue_auth_client (auth_user);
     }

@@ -156,7 +156,11 @@ void logging_access(client_t *client)
     if (httpp_getvar (client->parser, "__avoid_access_log") == NULL)
         keep = 1;
 
+#ifdef HAVE_LOG_DIRECT_KEEP
     log_write_direct_keep (accesslog, keep,
+#else
+    log_write_direct_keep (accesslog,
+#endif
             "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
             ip, username,
             datebuf, reqbuf, client->respcode, client->con->sent_bytes,
@@ -189,7 +193,7 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
 #endif
     /* This format MAY CHANGE OVER TIME.  We are looking into finding a good
        standard format for this, if you have any ideas, please let us know */
-    log_write_direct (playlistlog, "%s|%s|%d|%s",
+    log_write_direct (playlistlog, "%s|%s|%ld|%s",
              datebuf,
              mount,
              listeners,

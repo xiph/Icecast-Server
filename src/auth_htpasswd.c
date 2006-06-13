@@ -88,7 +88,7 @@ static char *get_hash(const char *data, size_t len)
 
     MD5Init(&context);
 
-    MD5Update(&context, data, len);
+    MD5Update(&context, (const unsigned char *)data, len);
 
     MD5Final(digest, &context);
 

@@ -253,7 +253,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     xmlDocSetRootElement(doc, xmlnode);
 
     if (mount) {
-        xmlNewChild(xmlnode, NULL, XMLSTR("current_source"), mount);
+        xmlNewChild(xmlnode, NULL, XMLSTR("current_source"), XMLSTR(mount));
     }
 
     node = avl_get_first(global.source_tree);
@@ -272,20 +272,20 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             mount_proxy *mountinfo;
 
             srcnode = xmlNewChild (xmlnode, NULL, XMLSTR("source"), NULL);
-            xmlSetProp (srcnode, "mount", source->mount);
+            xmlSetProp (srcnode, XMLSTR("mount"), XMLSTR(source->mount));
 
-            xmlNewChild (srcnode, NULL, "fallback", 
+            xmlNewChild (srcnode, NULL, XMLSTR("fallback"), 
                     (source->fallback_mount != NULL)?
-                    source->fallback_mount:"");
+                    XMLSTR(source->fallback_mount):XMLSTR(""));
             snprintf (buf, sizeof(buf), "%lu", source->listeners);
-            xmlNewChild (srcnode, NULL, "listeners", buf);
+            xmlNewChild (srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
             config = config_get_config();
             mountinfo = config_find_mount (config, source->mount);
             if (mountinfo && mountinfo->auth)
             {
-                xmlNewChild(srcnode, NULL, "authenticator", 
-                        mountinfo->auth->type);
+                xmlNewChild(srcnode, NULL, XMLSTR("authenticator"), 
+                        XMLSTR(mountinfo->auth->type));
             }
             config_release_config();
 
@@ -295,10 +295,10 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
                 {
                     snprintf (buf, sizeof(buf), "%lu",
                             (unsigned long)(now - source->client->con->con_time));
-                    xmlNewChild (srcnode, NULL, "Connected", buf);
+                    xmlNewChild (srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
                 }
-                xmlNewChild (srcnode, NULL, "content-type", 
-                        source->format->contenttype);
+                xmlNewChild (srcnode, NULL, XMLSTR("content-type"), 
+                        XMLSTR(source->format->contenttype));
             }
         }
         thread_mutex_unlock (&source->lock);
@@ -649,17 +649,16 @@ static void command_move_clients(client_t *client, source_t *source,
 
     INFO2 ("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
     source_move_clients (source, dest);
 
-    memset(buf, '\000', sizeof(buf));
     snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
             source->mount, dest_source);
-    xmlNewChild(node, NULL, "message", buf);
-    xmlNewChild(node, NULL, "return", "1");
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
     admin_send_response(doc, client, response, 
         ADMIN_XSL_RESPONSE);
@@ -700,12 +699,12 @@ static void command_admin_function (client_t *client, int response)
         client_send_400 (client, "No such handler");
         return;
     }
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
-    xmlNewChild(node, NULL, "message", buf);
-    xmlNewChild(node, NULL, "return", "1");
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
     admin_send_response(doc, client, response, 
         ADMIN_XSL_RESPONSE);
@@ -715,19 +714,19 @@ static void command_admin_function (client_t *client, int response)
 
 static void add_relay_xmlnode (xmlNodePtr node, relay_server *relay, int master)
 {
-    xmlNodePtr relaynode = xmlNewChild (node, NULL, "relay", NULL);
+    xmlNodePtr relaynode = xmlNewChild (node, NULL, XMLSTR("relay"), NULL);
     char str [20];
-    xmlNewChild (relaynode, NULL, "server", relay->server);
-    xmlNewChild (relaynode, NULL, "mount", relay->mount);
+    xmlNewChild (relaynode, NULL, XMLSTR("server"), XMLSTR(relay->server));
+    xmlNewChild (relaynode, NULL, XMLSTR("mount"), XMLSTR(relay->mount));
     snprintf (str, sizeof (str), "%d", relay->port);
-    xmlNewChild (relaynode, NULL, "port", str);
-    xmlNewChild (relaynode, NULL, "localmount", relay->localmount);
+    xmlNewChild (relaynode, NULL, XMLSTR("port"), XMLSTR(str));
+    xmlNewChild (relaynode, NULL, XMLSTR("localmount"), XMLSTR(relay->localmount));
     snprintf (str, sizeof (str), "%d", relay->enable);
-    xmlNewChild (relaynode, NULL, "enable", str);
+    xmlNewChild (relaynode, NULL, XMLSTR("enable"), XMLSTR(str));
     snprintf (str, sizeof (str), "%d", relay->on_demand);
-    xmlNewChild (relaynode, NULL, "on_demand", str);
+    xmlNewChild (relaynode, NULL, XMLSTR("on_demand"), XMLSTR(str));
     snprintf (str, sizeof (str), "%d", master);
-    xmlNewChild (relaynode, NULL, "master", str);
+    xmlNewChild (relaynode, NULL, XMLSTR("master"), XMLSTR(str));
 }
 
 
@@ -744,8 +743,8 @@ static void command_manage_relay (client_t *client, int response)
 
     if (relay_mount == NULL || enable == NULL)
     {
-        doc = xmlNewDoc ("1.0");
-        node = xmlNewDocNode (doc, NULL, "icerelaystats", NULL);
+        doc = xmlNewDoc (XMLSTR("1.0"));
+        node = xmlNewDocNode (doc, NULL, XMLSTR("icerelaystats"), NULL);
         xmlDocSetRootElement(doc, node);
         thread_mutex_lock (&(config_locks()->relay_lock));
 
@@ -780,11 +779,11 @@ static void command_manage_relay (client_t *client, int response)
     }
     thread_mutex_unlock (&(config_locks()->relay_lock));
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "iceresponse", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
-    xmlNewChild(node, NULL, "message", msg);
-    xmlNewChild(node, NULL, "return", "1");
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(msg));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -807,21 +806,21 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
     while (listener)
     {
         char *useragent;
-        xmlNodePtr node = xmlNewChild (srcnode, NULL, "listener", NULL);
+        xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
 
         snprintf (buf, sizeof (buf), "%lu", listener->con->id);
-        xmlNewChild (node, NULL, "ID", buf);
+        xmlNewChild (node, NULL, XMLSTR("ID"), XMLSTR(buf));
 
-        xmlNewChild (node, NULL, "IP", listener->con->ip);
+        xmlNewChild (node, NULL, XMLSTR("IP"), XMLSTR(listener->con->ip));
 
         useragent = httpp_getvar (listener->parser, "user-agent");
-        xmlNewChild (node, NULL, "UserAgent", useragent); 
+        xmlNewChild (node, NULL, XMLSTR("UserAgent"), XMLSTR(useragent)); 
 
         snprintf (buf, sizeof (buf), "%lu",
                 (unsigned long)(global.time - listener->con->con_time));
-        xmlNewChild (node, NULL, "Connected", buf);
+        xmlNewChild (node, NULL, XMLSTR("Connected"), XMLSTR(buf));
         if (listener->username)
-            xmlNewChild (node, NULL, "Username", listener->username);
+            xmlNewChild (node, NULL, XMLSTR("Username"), XMLSTR(listener->username));
 
         listener = listener->next;
     }
@@ -836,15 +835,15 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlNodePtr node, srcnode;
     char buf[22];
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
-    srcnode = xmlNewChild(node, NULL, "source", NULL);
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
 
-    xmlSetProp(srcnode, "mount", source->mount);
+    xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
     xmlDocSetRootElement(doc, node);
 
     snprintf(buf, sizeof(buf), "%lu", source->listeners);
-    xmlNewChild(srcnode, NULL, "Listeners", buf);
+    xmlNewChild(srcnode, NULL, XMLSTR("Listeners"), XMLSTR(buf));
 
     admin_source_listeners (source, srcnode);
 
@@ -1202,7 +1201,7 @@ static void command_list_log (client_t *client, int response)
         doc = xmlNewDoc(XMLSTR("1.0"));
         xmlnode = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
         xmlDocSetRootElement(doc, xmlnode);
-        lognode = xmlNewTextChild (xmlnode, NULL, XMLSTR("log"), content->data);
+        lognode = xmlNewTextChild (xmlnode, NULL, XMLSTR("log"), XMLSTR(content->data));
         refbuf_release (content);
 
         admin_send_response (doc, client, TRANSFORMED, "showlog.xsl");
@@ -1247,6 +1246,8 @@ static void command_list_mounts(client_t *client, int response)
             source_t *source;
             mountinfo = mountinfo->next;
 
+            if (current->hidden)
+                continue;
             /* avoid non-specific mounts */
             if (strcmp (current->mountname, "all") == 0)
                 continue;
@@ -1256,8 +1257,6 @@ static void command_list_mounts(client_t *client, int response)
             if (source == NULL)
                 continue;
             if (source->running == 0 && source->on_demand == 0)
-                continue;
-            if (source->hidden)
                 continue;
             remaining -= ret;
             buf += ret;

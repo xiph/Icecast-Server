@@ -54,8 +54,9 @@
 #define STATS_EVENT_INC     1
 #define STATS_EVENT_DEC     2
 #define STATS_EVENT_ADD     3
-#define STATS_EVENT_REMOVE  4
-#define STATS_EVENT_HIDDEN  5
+#define STATS_EVENT_SUB     4
+#define STATS_EVENT_REMOVE  5
+#define STATS_EVENT_HIDDEN  6
 
 typedef struct _event_queue_tag
 {
@@ -69,6 +70,7 @@ typedef struct _event_listener_tag
 {
     event_queue_t queue;
     mutex_t mutex;
+    int master;
 
     struct _event_listener_tag *next;
 } event_listener_t;
@@ -219,14 +221,18 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
 
     if (charset)
     {
-        xmlBufferPtr raw = xmlBufferCreate ();
         xmlCharEncodingHandlerPtr handle = xmlFindCharEncodingHandler (charset);
 
-        xmlBufferPtr conv = xmlBufferCreate ();
-        xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
-        if (xmlCharEncInFunc (handle, conv, raw) > 0)
-            metadata = xmlBufferContent (conv);
-        xmlFree (raw);
+        if (handle)
+        {
+            xmlBufferPtr raw = xmlBufferCreate ();
+            xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
+            if (xmlCharEncInFunc (handle, conv, raw) > 0)
+                metadata = (char *)xmlBufferContent (conv);
+            xmlFree (raw);
+        }
+        else
+            WARN1 ("No charset found for \"%s\"", charset);
     }
 
     stats_event (mount, name, metadata);
@@ -333,6 +339,19 @@ void stats_event_add(const char *source, const char *name, unsigned long value)
         event->value = malloc (16);
         snprintf (event->value, 16, "%ld", value);
         event->action = STATS_EVENT_ADD;
+        queue_global_event (event);
+    }
+}
+
+void stats_event_sub(const char *source, const char *name, unsigned long value)
+{
+    stats_event_t *event = build_event (source, name, NULL);
+    /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
+    if (event)
+    {
+        event->value = malloc (16);
+        snprintf (event->value, 16, "%ld", value);
+        event->action = STATS_EVENT_SUB;
         queue_global_event (event);
     }
 }
@@ -449,6 +468,9 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
                 break;
             case STATS_EVENT_ADD:
                 value = atoll (node->value) + atoll (event->value);
+                break;
+            case STATS_EVENT_SUB:
+                value = atoll (node->value) - atoll (event->value);
                 break;
             default:
                 break;
@@ -584,7 +606,6 @@ void stats_event_time (const char *mount, const char *name)
 static void *_stats_thread(void *arg)
 {
     stats_event_t *event;
-    stats_event_t *copy;
     event_listener_t *listener;
     ice_config_t *config = config_get_config ();
 
@@ -597,6 +618,7 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "connections", "0");
     stats_event (NULL, "sources", "0");
     stats_event (NULL, "stats", "0");
+    stats_event (NULL, "listeners", "0");
 
     /* global accumulating stats */
     stats_event (NULL, "client_connections", "0");
@@ -627,11 +649,23 @@ static void *_stats_thread(void *arg)
             /* now we have an event that's been processed into the running stats */
             /* this event should get copied to event listeners' queues */
             listener = (event_listener_t *)_event_listeners;
-            while (listener) {
-                copy = _copy_event(event);
-                thread_mutex_lock (&listener->mutex);
-                _add_event_to_queue (copy, &listener->queue);
-                thread_mutex_unlock (&listener->mutex);
+            while (listener)
+            {
+                int send_it = 1;
+                if (listener->master && event->name)
+                {
+                    if (strcmp (event->name, "total_listeners") != 0 &&
+                            strcmp (event->name, "total_max_listeners") != 0)
+                        send_it = 0;
+
+                }
+                if (send_it)
+                {
+                    stats_event_t *copy = _copy_event(event);
+                    thread_mutex_lock (&listener->mutex);
+                    _add_event_to_queue (copy, &listener->queue);
+                    thread_mutex_unlock (&listener->mutex);
+                }
 
                 listener = listener->next;
             }
@@ -825,6 +859,9 @@ void *stats_connection(void *arg)
 
     thread_mutex_create("stats local event", &listener.mutex);
 
+    if (strcmp (httpp_getvar (client->parser, HTTPP_VAR_URI), "/admin/slave") == 0)
+        listener.master = 1;
+
     _register_listener (&listener);
 
     while (_stats_running) {
@@ -897,8 +934,8 @@ static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr ro
     /* build node */
     node = (source_xml_t *)malloc(sizeof(source_xml_t));
     node->mount = strdup(mount);
-    node->node = xmlNewChild(root, NULL, "source", NULL);
-    xmlSetProp(node->node, "mount", mount);
+    node->node = xmlNewChild(root, NULL, XMLSTR("source"), NULL);
+    xmlSetProp(node->node, XMLSTR("mount"), XMLSTR(mount));
     node->next = NULL;
 
     /* add node */
@@ -937,8 +974,8 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden)
     event_queue_init (&queue);
     _dump_stats_to_queue (&queue);
 
-    *doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(*doc, NULL, "icestats", NULL);
+    *doc = xmlNewDoc (XMLSTR("1.0"));
+    node = xmlNewDocNode (*doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(*doc, node);
 
     event = _get_event_from_queue(&queue);
@@ -947,8 +984,8 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden)
         if (event->hidden <= show_hidden)
         {
             xmlChar *name, *value;
-            name = xmlEncodeEntitiesReentrant (*doc, event->name);
-            value = xmlEncodeEntitiesReentrant (*doc, event->value);
+            name = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->name));
+            value = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->value));
             srcnode = node;
             if (event->source) {
                 srcnode = _find_xml_node(event->source, &src_nodes, node);

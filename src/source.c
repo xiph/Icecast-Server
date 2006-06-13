@@ -401,14 +401,14 @@ void source_move_clients (source_t *source, source_t *dest)
  */
 static void update_source_stats (source_t *source)
 {
+    int     incoming_rate = 8 * rate_avg (source->format->in_bitrate);
     int64_t kbytes_sent = source->bytes_sent_since_update/1024;
     source->format->sent_bytes += kbytes_sent*1024;
     source->bytes_sent_since_update %= 1024;
 
     stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
             (8 * rate_avg (source->format->out_bitrate))/1000);
-    stats_event_args (source->mount, "incoming_bitrate", "%ld", 
-            (8 * rate_avg (source->format->in_bitrate))/1000);
+    stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate/1000);
     stats_event_args (source->mount, "total_bytes_read",
             FORMAT_UINT64, source->format->read_bytes);
     stats_event_args (source->mount, "total_bytes_sent",
@@ -417,6 +417,42 @@ static void update_source_stats (source_t *source)
         stats_event_args (source->mount, "connected", FORMAT_UINT64,
                 (uint64_t)(global.time - source->client->con->con_time));
     stats_event_add (NULL, "stream_kbytes_sent", kbytes_sent);
+
+    if (source->running && source->limit_rate)
+    {
+        if (incoming_rate >= source->limit_rate)
+        {
+            /* when throttling, we perform a sleep so that the input is not read as quickly, we
+             * don't do precise timing here as this just makes sure the incoming bitrate is not
+             * excessive. lower bitrate stream have higher sleep counts */
+            float kbits = incoming_rate/8.0;
+            if (kbits < 1200)
+                kbits = 1200;
+            source->throttle_stream = (int)(1000000 / kbits * 1000);
+
+            /* if bitrate is consistently excessive then terminate the stream */
+            if (source->throttle_termination == 0)
+            {
+                source->throttle_termination = global.time + source->avg_bitrate_duration/2;
+                /* DEBUG1 ("throttle termination set at %ld", source->throttle_termination); */
+            }
+            else
+            {
+                if (global.time >= source->throttle_termination)
+                {
+                    source->running = 0;
+                    WARN3 ("%s terminating, exceeding bitrate limits (%dk/%dk)",
+                            source->mount, incoming_rate/1024, source->limit_rate/1024);
+                }
+            }
+        }
+        else
+        {
+            source->throttle_stream = 0;
+            source->throttle_termination = 0;
+        }
+        source->stats_interval = 2;
+    }
 }
 
 
@@ -448,6 +484,9 @@ static void get_next_buffer (source_t *source)
 
         thread_mutex_unlock (&source->lock);
 
+        if (source->throttle_stream > 0)
+            thread_sleep (source->throttle_stream);
+
         if (source->client)
             fds = util_timed_wait_for_fd (source->client->con->sock, delay);
         else
@@ -462,7 +501,7 @@ static void get_next_buffer (source_t *source)
         if (source->client && current >= source->client_stats_update)
         {
             update_source_stats (source);
-            source->client_stats_update = current + 5;
+            source->client_stats_update = current + source->stats_interval;
         }
         if (fds < 0)
         {
@@ -496,6 +535,7 @@ static void get_next_buffer (source_t *source)
         refbuf = source->format->get_buffer (source);
         if (refbuf)
         {
+            stats_event_add (NULL, "stream_kbytes_read", refbuf->len);
             /* append buffer to the in-flight data queue,  */
             if (source->stream_data == NULL)
             {
@@ -634,6 +674,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 
             source_free_client (source, to_go);
             source->listeners--;
+            stats_event_dec (NULL, "listeners");
             DEBUG0("Client removed");
             continue;
         }
@@ -711,7 +752,10 @@ static void source_init (source_t *source)
     source->last_read = global.time;
     source->prev_listeners = -1;
     source->bytes_sent_since_update = 0;
+    source->stats_interval = 5;
     source->running = 1;
+    /* so the first set of average stats after 3 seconds */
+    source->client_stats_update = global.time + 3;
 
     source->fast_clients_p = &source->active_clients;
     source->audio_info = util_dict_new();
@@ -732,7 +776,7 @@ static void source_init (source_t *source)
     {
         if (mountinfo->on_connect)
             source_run_script (mountinfo->on_connect, source->mount);
-        auth_stream_start (mountinfo, source);
+        auth_stream_start (mountinfo, source->mount);
     }
     config_release_config();
 
@@ -755,6 +799,10 @@ static void source_init (source_t *source)
 
         avl_tree_unlock(global.source_tree);
     }
+
+    source->format->in_bitrate = rate_setup (source->avg_bitrate_duration);
+    source->format->out_bitrate = rate_setup (source->avg_bitrate_duration);
+
     thread_mutex_lock (&source->lock);
 }
 
@@ -822,7 +870,7 @@ static void source_shutdown (source_t *source)
     {
         if (mountinfo->on_disconnect)
             source_run_script (mountinfo->on_disconnect, source->mount);
-        auth_stream_end (mountinfo, source);
+        auth_stream_end (mountinfo, source->mount);
     }
     config_release_config();
 
@@ -846,6 +894,9 @@ static void source_shutdown (source_t *source)
 
         avl_tree_unlock (global.source_tree);
     }
+
+    if (source->listeners)
+        stats_event_sub (NULL, "listeners", source->listeners);
 
     /* delete this sources stats */
     stats_event(source->mount, NULL, NULL);
@@ -1097,6 +1148,13 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->charset)
         source->charset = strdup (mountinfo->charset);
 
+    source->limit_rate = 0;
+    if (mountinfo && mountinfo->limit_rate)
+        source->limit_rate = mountinfo->limit_rate;
+
+    if (mountinfo)
+        source->avg_bitrate_duration = mountinfo->avg_bitrate_duration;
+
     /* needs a better mechanism, probably via a client_t handle */
     if (mountinfo && mountinfo->dumpfile)
     {
@@ -1142,6 +1200,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
+
+    source->wait_time = 0;
+    if (mountinfo && mountinfo->wait_time)
+        source->wait_time = (time_t)mountinfo->wait_time;
 
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
@@ -1221,6 +1283,14 @@ void *source_client_thread (void *arg)
 
     source_main (source);
 
+    if (source->wait_time)
+    {
+        INFO2 ("keeping %s reserved for %d seconds", source->mount, source->wait_time);
+        source->wait_time += global.time;
+        while (global.running && source->wait_time >= global.time)
+            thread_sleep (500000);
+    }
+
     source_free_source (source);
     source_recheck_mounts ();
 
@@ -1273,7 +1343,7 @@ static void source_run_script (char *command, char *mountpoint)
                     break;
                 case 0:  /* child */
                     DEBUG1 ("Starting command %s", command);
-                    execl (command, command, mountpoint, (char*)NULL);
+                    execl (command, command, mountpoint, (char *)NULL);
                     ERROR2 ("Unable to run command %s (%s)", command, strerror (errno));
                     exit(0);
                 default: /* parent */
@@ -1339,6 +1409,7 @@ static void *source_fallback_file (void *arg)
         source->yp_public = 0;
         source->intro_file = file;
         source->parser = parser;
+        source->avg_bitrate_duration = 20;
         file = NULL;
 
         if (connection_complete_source (source, 0) < 0)

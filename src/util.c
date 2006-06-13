@@ -52,7 +52,7 @@ struct rate_calc_node
 {
     time_t time;
     long value;
-    struct rate_calc_node *next;
+    struct rate_calc_node *next, *prev;
 };
 
 struct rate_calc
@@ -667,12 +667,17 @@ struct rate_calc *rate_setup (unsigned int seconds)
     {
         struct rate_calc_node *node = calloc (1, sizeof (*node));
         if (calc->current)
+        {
             calc->current->next = node;
+            node->next = start;
+        }
         else
             start = node;
+        node->prev = calc->current;
         calc->current = node;
     }
     calc->current->next = start;
+    start->prev = calc->current;
     calc->seconds = seconds;
     return calc;
 }
@@ -715,7 +720,7 @@ long rate_avg (struct rate_calc *calc)
     for (; i; i--)
     {
         total += node->value;
-        node = node->next;
+        node = node->prev;
     }
     return total / (calc->blocks - 1);
 }

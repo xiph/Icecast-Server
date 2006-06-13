@@ -26,7 +26,7 @@
 #include "client.h"
 #include "logging.h" 
 
-#define CATMODULE "CONFIG"
+#define CATMODULE "cfgfile"
 #define CONFIG_DEFAULT_LOCATION "Earth"
 #define CONFIG_DEFAULT_ADMIN "icemaster@localhost"
 #define CONFIG_DEFAULT_CLIENT_LIMIT 256
@@ -51,8 +51,6 @@
 #define CONFIG_DEFAULT_LOG_LEVEL 4
 #define CONFIG_DEFAULT_CHROOT 0
 #define CONFIG_DEFAULT_CHUID 0
-#define CONFIG_DEFAULT_USER NULL
-#define CONFIG_DEFAULT_GROUP NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL 120
 #define CONFIG_YP_URL_TIMEOUT 10
 
@@ -120,7 +118,7 @@ int config_get_str (xmlNodePtr node, void *x)
         return -1;
     if (p)
         xmlFree (p);
-    *(char **)x = str;
+    *(xmlChar **)x = str;
     return 0;
 }
 
@@ -406,9 +404,9 @@ ice_config_t *config_get_config_unlocked(void)
 
 static void _set_defaults(ice_config_t *configuration)
 {
-    configuration->location = xmlCharStrdup (CONFIG_DEFAULT_LOCATION);
+    configuration->location = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOCATION);
     configuration->server_id = (char *)xmlCharStrdup (ICECAST_VERSION_STRING);
-    configuration->admin = CONFIG_DEFAULT_ADMIN;
+    configuration->admin = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMIN);
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
@@ -416,14 +414,14 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
-    configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
-    configuration->shoutcast_mount = xmlCharStrdup (CONFIG_DEFAULT_SHOUTCAST_MOUNT);
+    configuration->source_password = (char *)xmlCharStrdup (CONFIG_DEFAULT_SOURCE_PASSWORD);
+    configuration->shoutcast_mount = (char *)xmlCharStrdup (CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
     configuration->on_demand = 0;
     configuration->dir_list = NULL;
-    configuration->hostname = xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
+    configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
     configuration->port = 0;
     configuration->listeners[0].port = 0;
     configuration->listeners[0].bind_address = NULL;
@@ -434,18 +432,18 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_username = (char*)xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->master_password = NULL;
     configuration->master_relay_auth = 0;
-    configuration->base_dir = xmlCharStrdup (CONFIG_DEFAULT_BASE_DIR);
-    configuration->log_dir = xmlCharStrdup (CONFIG_DEFAULT_LOG_DIR);
-    configuration->webroot_dir = xmlCharStrdup (CONFIG_DEFAULT_WEBROOT_DIR);
-    configuration->adminroot_dir = xmlCharStrdup (CONFIG_DEFAULT_ADMINROOT_DIR);
-    configuration->playlist_log = xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
-    configuration->access_log = xmlCharStrdup (CONFIG_DEFAULT_ACCESS_LOG);
-    configuration->error_log = xmlCharStrdup (CONFIG_DEFAULT_ERROR_LOG);
+    configuration->base_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_BASE_DIR);
+    configuration->log_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOG_DIR);
+    configuration->webroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_WEBROOT_DIR);
+    configuration->adminroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMINROOT_DIR);
+    configuration->playlist_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
+    configuration->access_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_ACCESS_LOG);
+    configuration->error_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_ERROR_LOG);
     configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
     configuration->chroot = CONFIG_DEFAULT_CHROOT;
     configuration->chuid = CONFIG_DEFAULT_CHUID;
-    configuration->user = CONFIG_DEFAULT_USER;
-    configuration->group = CONFIG_DEFAULT_GROUP;
+    configuration->user = NULL;
+    configuration->group = NULL;
     configuration->num_yp_directories = 0;
     configuration->slaves_count = 0;
     configuration->relay_username = (char *)xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
@@ -461,18 +459,18 @@ static int _parse_alias (xmlNodePtr node, void *arg)
     aliases **cur, *alias = calloc (1, sizeof (aliases));
     xmlChar *temp;
     
-    alias->source = xmlGetProp (node, "source");
-    alias->destination = xmlGetProp (node, "dest");
+    alias->source = (char *)xmlGetProp (node, XMLSTR ("source"));
+    alias->destination = (char *)xmlGetProp (node, XMLSTR ("dest"));
     if (alias->source == NULL || alias->destination == NULL)
     {
-        if (alias->source) xmlFree (alias->source);
-        if (alias->destination) xmlFree (alias->destination);
+        if (alias->source) xmlFree (XMLSTR (alias->source));
+        if (alias->destination) xmlFree (XMLSTR (alias->destination));
         free (alias);
         WARN0 ("incomplete alias definition");
         return -1;
     }
-    alias->bind_address = xmlGetProp (node, "bind-address");
-    temp = xmlGetProp(node, "port");
+    alias->bind_address = (char *)xmlGetProp (node, XMLSTR("bind-address"));
+    temp = xmlGetProp(node, XMLSTR("port"));
     alias->port = -1;
     if (temp)
     {
@@ -631,7 +629,11 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "fallback-when-full",
                             config_get_bool,    &mount->fallback_when_full },
         { "max-listeners",  config_get_int,     &mount->max_listeners },
+        { "wait-time",      config_get_int,     &mount->wait_time },
         { "filter-theora",  config_get_bool,    &mount->filter_theora },
+        { "limit-rate",     config_get_int,     &mount->limit_rate },
+        { "avg-bitrate-duration",
+                            config_get_int,     &mount->avg_bitrate_duration },
         { "charset",        config_get_str,     &mount->charset },
         { "mp3-metadata-interval",
                             config_get_int,     &mount->mp3_meta_interval },
@@ -666,6 +668,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->mp3_meta_interval = -1;
     mount->yp_public = -1;
     mount->url_ogg_meta = 0;
+    mount->avg_bitrate_duration = 60;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
@@ -675,6 +678,8 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         config_clear_mount (mount);
         return -1;
     }
+    if (mount->avg_bitrate_duration < 2)
+        mount->avg_bitrate_duration = 2;
 
     mount->next = config->mounts;
     config->mounts = mount;
@@ -773,8 +778,8 @@ static int _parse_listen_sock (xmlNodePtr node, void *arg)
                 {
                     sc_port->port = listener->port+1;
                     sc_port->shoutcast_compat = 1;
-                    sc_port->bind_address = xmlStrdup (listener->bind_address);
-                    sc_port->shoutcast_mount= xmlStrdup (listener->shoutcast_mount);
+                    sc_port->bind_address = (char*)xmlStrdup (XMLSTR(listener->bind_address));
+                    sc_port->shoutcast_mount= (char*)xmlStrdup (XMLSTR(listener->shoutcast_mount));
                 }
             }
             if (config->port == 0)
@@ -827,6 +832,11 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
 
     if (config->max_redirects == 0 && config->master_redirect)
         config->max_redirects = 1;
+    if (config->listeners[0].port <= 0)
+    {
+        WARN0 ("No listen-socket defintions");
+        return -1;
+    }
     return 0;
 }
 

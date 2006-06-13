@@ -101,7 +101,7 @@ void client_destroy(client_t *client)
         client->refbuf = NULL;
     }
 
-    if (release_client (client))
+    if (auth_client_release (client))
         return;
 
     /* write log entry if ip is set (some things don't set it, like outgoing 
@@ -191,28 +191,6 @@ void client_send_400(client_t *client, char *message) {
     fserve_add_client (client, NULL);
 }
 
-void client_send_403(client_t *client, const char *reason)
-{
-    if (reason == NULL)
-        reason = "Forbidden";
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 403 %s\r\n\r\n", reason);
-    client->respcode = 403;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
-}
-
-void client_send_404(client_t *client, char *message) {
-
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 404 File Not Found\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
-    client->respcode = 404;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
-}
-
 
 void client_send_401 (client_t *client)
 {
@@ -232,6 +210,30 @@ void client_send_401 (client_t *client)
     client->respcode = 401;
     auth_release (client->auth);
     client->auth = NULL;
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
+}
+
+
+void client_send_403(client_t *client, const char *reason)
+{
+    if (reason == NULL)
+        reason = "Forbidden";
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 403 %s\r\n"
+            "Content-Type: text/html\r\n\r\n", reason);
+    client->respcode = 403;
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client (client, NULL);
+}
+
+void client_send_404(client_t *client, char *message) {
+
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 404 File Not Found\r\n"
+            "Content-Type: text/html\r\n\r\n"
+            "<b>%s</b>\r\n", message);
+    client->respcode = 404;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }

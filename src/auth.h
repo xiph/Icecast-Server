@@ -80,8 +80,8 @@ typedef struct auth_tag
     char *realm;
 } auth_t;
 
-void add_client (const char *mount, client_t *client);
-int  release_client (client_t *client);
+void auth_add_client (const char *mount, client_t *client);
+int  auth_client_release (client_t *client);
 
 void auth_initialise (void);
 void auth_shutdown (void);
@@ -90,10 +90,10 @@ int auth_get_authenticator (xmlNodePtr node, void *x);
 void    auth_release (auth_t *authenticator);
 
 /* call to send a url request when source starts */
-void auth_stream_start (struct _mount_proxy *mountinfo, struct source_tag *source);
+void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
 
 /* call to send a url request when source ends */
-void auth_stream_end (struct _mount_proxy *mountinfo, struct source_tag *source);
+void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
 
 /* */
 int auth_stream_authenticate (client_t *client, const char *mount,

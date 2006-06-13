@@ -216,10 +216,10 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     else
     {
         /* check method for the default, a missing method assumes xml */
-        if (cur->method && xmlStrcmp (cur->method, "html") == 0)
+        if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
             mediatype = "text/html";
         else
-            if (cur->method && xmlStrcmp (cur->method, "text") == 0)
+            if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
                 mediatype = "text/plain";
             else
                 mediatype = "text/xml";
@@ -231,7 +231,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         refbuf_t *refbuf = refbuf_new (header_len);
 
         if (string == NULL)
-            string = xmlStrdup ("");
+            string = xmlCharStrdup ("");
         len = snprintf (refbuf->data, header_len,
                 "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
                 mediatype, len, string);

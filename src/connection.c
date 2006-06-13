@@ -994,10 +994,8 @@ static void check_for_filtering (ice_config_t *config, client_t *client)
     while (*pattern)
     {
         int len = strcspn (pattern, " ");
-        DEBUG3 ("...pattern is \"%.*s\" (%d)", len, pattern, len);
         if (strncmp (extension, pattern, len) == 0 && extension[len] == '\0')
         {
-            DEBUG0 ("found a match");
             httpp_setvar (client->parser, "__avoid_access_log", "");
             return;
         }
@@ -1005,7 +1003,6 @@ static void check_for_filtering (ice_config_t *config, client_t *client)
         len = strspn (pattern, " "); /* find next pattern */
         pattern += len;
     }
-    DEBUG0 ("no match for pattern");
 }
 
 
@@ -1077,7 +1074,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
-    add_client (uri, client);
+    auth_add_client (uri, client);
     if (uri != passed_uri) free (uri);
 }
 

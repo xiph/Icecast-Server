@@ -71,6 +71,15 @@ typedef struct _mount_proxy {
     int filter_theora; /* prevent theora pages getting queued */
     int url_ogg_meta; /* enable to allow updates via url requests for ogg */
 
+    /* duration in seconds for sampling the bandwidth */
+    int avg_bitrate_duration;
+
+    /* trigger level at which a timer is used to prevent excessive incoming bandwidth */
+    int limit_rate;
+
+    /* duration (secs) for mountpoint to be kept reserved after source client exits */
+    int wait_time;
+
     char *auth_type; /* Authentication type */
     struct auth_tag *auth;
     char *cluster_password;
