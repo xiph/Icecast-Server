@@ -12,6 +12,24 @@ Feature differences from SVN trunk
 . stream-auth option for url authenticator.
 
 
+2.3-kh6
+. implement <limit-rate> bps in <mount>, the bitrate which triggers a timer for
+  possible source termination, also causes a slow down in reading. default no
+  limit applied.
+. implement <avg-bitrate-duration>, calculate average bitrate of over so many
+  seconds (default 60)
+. add <wait-time> to indicate how long a mountpoint is reserved for after a
+  source client terminates.
+. some internal cleanups
+. stats value cleanups.
+. hardcoded AAC content type missing
+. initial xml setting bug, caused crash with later glibc.
+. streamlist.txt should list inactive mounts if their hidden fallback is active.
+. move listener_connection increases even later so that listeners on failed
+  on-demand relays don't get counted.
+. updates to charset handler, for failure cases
+. kh5a included a fix for a segv that crept in.
+
 2.3-kh5
 . add media-type to xsl pages, IE has trouble with xhtml
 . add <accesslog-exclude-ext> for defining extensions that do not get reported
