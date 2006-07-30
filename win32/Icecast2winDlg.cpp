@@ -43,7 +43,7 @@ CString gConfigurationSave;
 char	gTitleSource[1024] = "";
 char	gTitleName[1024] = "";
 
-#define MAXSTATSPERSOURCE 30
+#define MAXSTATSPERSOURCE 60
 #define MAXSOURCES 1024
 
 typedef struct tagElement {
@@ -567,7 +567,6 @@ void StartStats(void *dummy)
 				cur = cur->next;
 			}
 			xmlFreeDoc(doc);
-			xmlCleanupParser();
 			g_mainDialog->UpdateStatsLists();
 			Sleep(5000);
 		}

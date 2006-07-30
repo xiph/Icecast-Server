@@ -21,6 +21,9 @@
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
+#ifdef HAVE_CURL
+#include <curl/curl.h>
+#endif
 
 #include "thread/thread.h"
 #include "avl/avl.h"
@@ -123,11 +126,19 @@ static void _shutdown_subsystems(void)
     sock_shutdown();
     thread_shutdown();
 
+    DEBUG0 ("library cleanups");
+#ifdef WIN32
+    thread_sleep (500000);
+#else
+    xmlCleanupParser();
+#endif
+#ifdef HAVE_CURL
+    curl_global_cleanup();
+#endif
+
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
     log_shutdown();
-
-    xmlCleanupParser();
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)

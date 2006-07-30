@@ -1149,6 +1149,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         else
             INFO1 ("password does not match \"%s\"", client->refbuf->data);
         client_destroy (client);
+        free (source_password);
         free (node->shoutcast_mount);
         free (node);
         return;

@@ -96,6 +96,7 @@ source_t *source_reserve (const char *mount)
         /* make duplicates for strings or similar */
         src->mount = strdup (mount);
         src->max_listeners = -1;
+        src->avg_bitrate_duration = 60;
 
         thread_mutex_create (src->mount, &src->lock);
 
@@ -254,6 +255,9 @@ void source_clear_source (source_t *source)
     free(source->dumpfilename);
     source->dumpfilename = NULL;
 
+    free (source->charset);
+    source->charset = NULL;
+
     if (source->intro_file)
     {
         fclose (source->intro_file);
@@ -403,8 +407,10 @@ static void update_source_stats (source_t *source)
 {
     int     incoming_rate = 8 * rate_avg (source->format->in_bitrate);
     int64_t kbytes_sent = source->bytes_sent_since_update/1024;
+    int64_t kbytes_read = source->bytes_read_since_update/1024;
     source->format->sent_bytes += kbytes_sent*1024;
     source->bytes_sent_since_update %= 1024;
+    source->bytes_read_since_update %= 1024;
 
     stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
             (8 * rate_avg (source->format->out_bitrate))/1000);
@@ -417,6 +423,7 @@ static void update_source_stats (source_t *source)
         stats_event_args (source->mount, "connected", FORMAT_UINT64,
                 (uint64_t)(global.time - source->client->con->con_time));
     stats_event_add (NULL, "stream_kbytes_sent", kbytes_sent);
+    stats_event_add (NULL, "stream_kbytes_read", kbytes_read);
 
     if (source->running && source->limit_rate)
     {
@@ -451,7 +458,6 @@ static void update_source_stats (source_t *source)
             source->throttle_stream = 0;
             source->throttle_termination = 0;
         }
-        source->stats_interval = 2;
     }
 }
 
@@ -535,7 +541,8 @@ static void get_next_buffer (source_t *source)
         refbuf = source->format->get_buffer (source);
         if (refbuf)
         {
-            stats_event_add (NULL, "stream_kbytes_read", refbuf->len);
+            source->bytes_read_since_update += refbuf->len;
+
             /* append buffer to the in-flight data queue,  */
             if (source->stream_data == NULL)
             {
@@ -1154,6 +1161,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     if (mountinfo)
         source->avg_bitrate_duration = mountinfo->avg_bitrate_duration;
+    else
+        source->avg_bitrate_duration = 60;
 
     /* needs a better mechanism, probably via a client_t handle */
     if (mountinfo && mountinfo->dumpfile)

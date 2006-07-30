@@ -223,6 +223,9 @@ static void apply_ogg_settings (client_t *client,
 
     ogg_info->use_url_metadata = mount->url_ogg_meta;
     DEBUG1 ("metadata via url is %d", ogg_info->use_url_metadata);
+
+    ogg_info->passthrough = mount->ogg_passthrough;
+    DEBUG1 ("oggpassthrough is %d", ogg_info->passthrough);
 }
 
 

@@ -12,6 +12,18 @@ Feature differences from SVN trunk
 . stream-auth option for url authenticator.
 
 
+2.3-kh7
+. fix slow memory leak on metadata updates if <charset> was defined
+. fix minor leak on xml settings.
+. fix segv on 0-value duration in source, minimum is 2 secs (default 60)
+. fix small memory leak on xsl page requests.
+. stats update. kbytes used, and frequency of read kbytes reduced.
+. upate debian directory
+. change vorbis stream rebuilding to flush at 1 sec at the most.
+. minor changes to win32, buffer size issues for stats and xml cleanup
+  causes a crash in libxml2
+. minor log updates
+
 2.3-kh6
 . implement <limit-rate> bps in <mount>, the bitrate which triggers a timer for
   possible source termination, also causes a slow down in reading. default no
@@ -22,6 +34,7 @@ Feature differences from SVN trunk
   source client terminates.
 . some internal cleanups
 . stats value cleanups.
+. possible segv on override case if source is slow to start streaming.
 . hardcoded AAC content type missing
 . initial xml setting bug, caused crash with later glibc.
 . streamlist.txt should list inactive mounts if their hidden fallback is active.

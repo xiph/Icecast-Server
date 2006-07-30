@@ -128,6 +128,7 @@ int config_get_int (xmlNodePtr node, void *x)
     if (str == NULL)
         return -1;
     *(int*)x = strtol ((char*)str, NULL, 0);
+    xmlFree (str);
     return 0;
 }
 
@@ -206,6 +207,8 @@ static void config_clear_mount (mount_proxy *mount)
     xmlFree (mount->stream_genre);
     xmlFree (mount->bitrate);
     xmlFree (mount->type);
+    xmlFree (mount->subtype);
+    xmlFree (mount->charset);
     xmlFree (mount->cluster_password);
 
     xmlFree (mount->auth_type);
@@ -267,10 +270,12 @@ void config_clear(ice_config_t *c)
         xmlFree(c->access_log);
     if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
         xmlFree(c->error_log);
+    xmlFree (c->access_log_exclude_ext);
     if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
         xmlFree(c->shoutcast_mount);
     for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
+        xmlFree (c->listeners[i].shoutcast_mount);
     }
     if (c->master_server) xmlFree(c->master_server);
     if (c->master_username) xmlFree(c->master_username);
@@ -335,7 +340,6 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
 
     if (filename == NULL || strcmp(filename, "") == 0) return CONFIG_EINSANE;
     
-    xmlInitParser();
     doc = xmlParseFile(filename);
     if (doc == NULL) {
         return CONFIG_EPARSE;
@@ -637,6 +641,8 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "charset",        config_get_str,     &mount->charset },
         { "mp3-metadata-interval",
                             config_get_int,     &mount->mp3_meta_interval },
+        { "ogg-passthrough",
+                            config_get_bool,    &mount->ogg_passthrough },
         { "allow-url-ogg-metadata",
                             config_get_bool,    &mount->url_ogg_meta },
         { "no-mount",       config_get_bool,    &mount->no_mount },

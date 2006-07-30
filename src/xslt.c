@@ -96,11 +96,10 @@ static mutex_t xsltlock;
 
 void xslt_initialize(void)
 {
-    xmlSubstituteEntitiesDefault(1);
-    xmlLoadExtDtdDefaultValue = 1;
-
     memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
     thread_mutex_create("xslt", &xsltlock);
+    xmlInitParser();
+    LIBXML_TEST_VERSION
     xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
 }
@@ -236,8 +235,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
                 "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
                 mediatype, len, string);
 
+        client_set_queue (client, NULL);
         client->respcode = 200;
-        client_set_queue (client, refbuf);
+        client->refbuf = refbuf;
         refbuf->len = strlen (refbuf->data);
         fserve_add_client (client, NULL);
         xmlFree (string);

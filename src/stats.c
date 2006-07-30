@@ -71,6 +71,7 @@ typedef struct _event_listener_tag
     event_queue_t queue;
     mutex_t mutex;
     int master;
+    char *source;
 
     struct _event_listener_tag *next;
 } event_listener_t;
@@ -229,7 +230,8 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
             xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
             if (xmlCharEncInFunc (handle, conv, raw) > 0)
                 metadata = (char *)xmlBufferContent (conv);
-            xmlFree (raw);
+            xmlBufferFree (raw);
+            xmlCharEncCloseFunc (handle);
         }
         else
             WARN1 ("No charset found for \"%s\"", charset);
@@ -247,7 +249,7 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
         free (s);
         logging_playlist (mount, metadata, listeners);
     }
-    xmlFree (conv);
+    xmlBufferFree (conv);
 }
 
 /* make stat hidden (non-zero). name can be NULL if it applies to a whole
@@ -477,14 +479,16 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         }
         str = malloc (20);
         snprintf (str, 20, FORMAT_INT64, value);
-        if (event->value == NULL)
-            event->value = strdup (str);
+        free (event->value);
+        event->value = strdup (str);
     }
     else
         str = (char *)strdup (event->value);
     free (node->value);
     node->value = str;
-    DEBUG2 ("update node %s (%s)", node->name, node->value);
+    DEBUG3 ("update node on %s \"%s\" (%s)",
+            event->source ? event->source : "global",
+            node->name, node->value);
 }
 
 
@@ -652,13 +656,11 @@ static void *_stats_thread(void *arg)
             while (listener)
             {
                 int send_it = 1;
-                if (listener->master && event->name)
-                {
-                    if (strcmp (event->name, "total_listeners") != 0 &&
-                            strcmp (event->name, "total_max_listeners") != 0)
-                        send_it = 0;
 
-                }
+                if (event->source && listener->source &&
+                        strcmp (event->source, listener->source) != 0)
+                    send_it = 0;
+
                 if (send_it)
                 {
                     stats_event_t *copy = _copy_event(event);
@@ -677,7 +679,7 @@ static void *_stats_thread(void *arg)
             continue;
         }
 
-        thread_sleep(300000);
+        thread_sleep(400000);
     }
 
     return NULL;
@@ -842,6 +844,15 @@ static void _register_listener (event_listener_t *listener)
     thread_mutex_unlock(&_stats_mutex);
 }
 
+
+static void check_uri (event_listener_t *listener, client_t *client)
+{
+    char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    if (strcmp (mount, "/") != 0)
+        listener->source = mount;
+}
+
+
 void *stats_connection(void *arg)
 {
     client_t *client = (client_t *)arg;
@@ -850,7 +861,10 @@ void *stats_connection(void *arg)
 
     INFO0 ("stats client starting");
 
+    memset (&listener, 0, sizeof (listener));
     event_queue_init (&listener.queue);
+    check_uri (&listener, client);
+
     /* increment the thread count */
     thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
@@ -858,9 +872,6 @@ void *stats_connection(void *arg)
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_create("stats local event", &listener.mutex);
-
-    if (strcmp (httpp_getvar (client->parser, HTTPP_VAR_URI), "/admin/slave") == 0)
-        listener.master = 1;
 
     _register_listener (&listener);
 

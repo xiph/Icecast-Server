@@ -70,6 +70,7 @@ typedef struct _mount_proxy {
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
     int filter_theora; /* prevent theora pages getting queued */
     int url_ogg_meta; /* enable to allow updates via url requests for ogg */
+    int ogg_passthrough; /* enable to prevent the ogg stream being rebuilt */
 
     /* duration in seconds for sampling the bandwidth */
     int avg_bitrate_duration;

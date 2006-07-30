@@ -159,7 +159,7 @@ void logging_access(client_t *client)
 #ifdef HAVE_LOG_DIRECT_KEEP
     log_write_direct_keep (accesslog, keep,
 #else
-    log_write_direct_keep (accesslog,
+    log_write_direct (accesslog,
 #endif
             "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
             ip, username,

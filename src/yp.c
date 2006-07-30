@@ -931,7 +931,6 @@ void yp_shutdown (void)
     yp_update = 1;
     if (yp_thread)
         thread_join (yp_thread);
-    curl_global_cleanup();
     free ((char*)server_version);
     server_version = NULL;
     INFO0 ("YP thread down");

@@ -970,7 +970,7 @@ static void redirector_add (const char *server, int port, int interval)
 
     if (global.redirect_count >= allowed)
     {
-        INFO1 ("redirect to slave limit reached (%d)", global.redirect_count);
+        INFO2 ("redirect to slave limit reached (%d, %d)", global.redirect_count, allowed);
         return;
     }
     redirect = calloc (1, sizeof (redirect_host));
