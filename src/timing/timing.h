@@ -13,7 +13,7 @@
 #include <stdint.h>
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(int64_t)
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
 #endif
