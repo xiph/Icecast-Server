@@ -44,7 +44,7 @@
     listings. -->
     <hostname>localhost</hostname>
 
-    <!-- You can use these two if you only want a single listener -->
+    <!-- You can use these two if you only want a single listening socket -->
     <!--<port>8000</port> -->
     <!--<bind-address>127.0.0.1</bind-address>-->
 
