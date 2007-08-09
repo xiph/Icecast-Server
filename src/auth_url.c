@@ -112,12 +112,14 @@ static void auth_url_clear(auth_t *self)
 }
 
 
+#ifdef CURLOPT_PASSWDFUNCTION
 /* make sure that prompting at the console does not occur */
 static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
 {
     buffer[0] = '\0';
     return 0;
 }
+#endif
 
 
 static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
@@ -518,7 +520,9 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
     curl_easy_setopt (url_info->handle, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt (url_info->handle, CURLOPT_TIMEOUT, 15L);
+#ifdef CURLOPT_PASSWDFUNCTION
     curl_easy_setopt (url_info->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
+#endif
     curl_easy_setopt (url_info->handle, CURLOPT_ERRORBUFFER, &url_info->errormsg[0]);
 
     if (url_info->username && url_info->password)
