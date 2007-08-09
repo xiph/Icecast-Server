@@ -266,18 +266,24 @@ static connection_t *_accept_connection(void)
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
     if (sock >= 0)
     {
+        /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */
+        if (strncmp (ip, "::ffff:", 7) == 0)
+            memmove (ip, ip+7, strlen (ip+7)+1);
+
         con = connection_create (sock, serversock, ip);
-        if (con == NULL)
-            free (ip);
-
-        return con;
+        if (con)
+            return con;
+        sock_close (sock);
     }
-
-    if (!sock_recoverable(sock_error()))
-        WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-    
+    else
+    {
+        if (!sock_recoverable(sock_error()))
+        {
+            WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
+            thread_sleep (500000);
+        }
+    }
     free(ip);
-
     return NULL;
 }
 
