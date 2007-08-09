@@ -60,7 +60,10 @@
 
 /* for older C libraries */
 #ifndef AI_NUMERICSERV
-#define AI_NUMERICSERV 0
+# define AI_NUMERICSERV 0
+#endif
+#ifndef AI_ADDRCONFIG
+# define AI_ADDRCONFIG 0
 #endif
 
 /* sock_initialize
@@ -659,7 +662,7 @@ sock_t sock_get_server_socket (int port, const char *sinterface)
 
         if (bind (sock, ai->ai_addr, ai->ai_addrlen) < 0)
         {
-            close (sock);
+            sock_close (sock);
             continue;
         }
         freeaddrinfo (res);
