@@ -51,6 +51,7 @@ typedef struct source_tag
 
     unsigned long peak_listeners;
     unsigned long listeners;
+    unsigned long prev_listeners;
     long max_listeners;
     int yp_public;
     int fallback_override;

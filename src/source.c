@@ -249,9 +249,10 @@ void source_clear_source (source_t *source)
     source->queue_size = 0;
     source->queue_size_limit = 0;
     source->listeners = 0;
-    source->shoutcast_compat = 0;
     source->max_listeners = -1;
+    source->prev_listeners = 0;
     source->hidden = 0;
+    source->shoutcast_compat = 0;
     source->client_stats_update = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
@@ -615,6 +616,7 @@ static void source_init (source_t *source)
 
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);
+    source->prev_listeners = -1;
     source->running = 1;
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
@@ -650,7 +652,6 @@ static void source_init (source_t *source)
 
 void source_main (source_t *source)
 {
-    unsigned int listeners;
     refbuf_t *refbuf;
     client_t *client;
     avl_node *client_node;
@@ -707,7 +708,6 @@ void source_main (source_t *source)
         /* acquire write lock on client_tree */
         avl_tree_wlock(source->client_tree);
 
-        listeners = source->listeners;
         client_node = avl_get_first(source->client_tree);
         while (client_node) {
             client = (client_t *)client_node->key;
@@ -769,8 +769,9 @@ void source_main (source_t *source)
         avl_tree_unlock(source->pending_tree);
 
         /* update the stats if need be */
-        if (source->listeners != listeners)
+        if (source->listeners != source->prev_listeners)
         {
+            source->prev_listeners = source->listeners;
             INFO2("listener count on %s now %lu", source->mount, source->listeners);
             if (source->listeners > source->peak_listeners)
             {
