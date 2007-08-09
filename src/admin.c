@@ -968,52 +968,24 @@ static void command_list_mounts(client_t *client, int response)
 {
     DEBUG0("List mounts request");
 
-    avl_tree_rlock (global.source_tree);
     if (response == PLAINTEXT)
     {
         char *buf;
         int remaining = PER_CLIENT_REFBUF_SIZE;
         int ret;
-        ice_config_t *config = config_get_config ();
-        mount_proxy *mountinfo = config->mounts;
 
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
 
-        while (mountinfo && ret > 0 && ret < remaining)
-        {
-            mount_proxy *current = mountinfo;
-            source_t *source;
-            mountinfo = mountinfo->next;
+        stats_get_streamlist (client->refbuf->data+ret, remaining-ret);
 
-            /* now check that a source is available */
-            source = source_find_mount (current->mountname);
-
-            if (source == NULL)
-                continue;
-            if (source->running == 0 && source->on_demand == 0)
-                continue;
-            if (source->hidden)
-                continue;
-            remaining -= ret;
-            buf += ret;
-            ret = snprintf (buf, remaining, "%s\n", current->mountname);
-        }
-        avl_tree_unlock (global.source_tree);
-        config_release_config();
-
-        /* handle last line */
-        if (ret > 0 && ret < remaining)
-        {
-            remaining -= ret;
-            buf += ret;
-        }
-        client->refbuf->len = PER_CLIENT_REFBUF_SIZE - remaining;
+        client->refbuf->len = strlen (client->refbuf->data);
         fserve_add_client (client, NULL);
     }
     else
     {
+        avl_tree_rlock (global.source_tree);
         xmlDocPtr doc = admin_build_sourcelist(NULL);
         avl_tree_unlock (global.source_tree);
 

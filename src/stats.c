@@ -1027,3 +1027,38 @@ static void _free_event(stats_event_t *event)
     if (event->value) free(event->value);
     free(event);
 }
+
+
+/* get a list of mountpoints that are in the stats but are not marked as hidden */
+void stats_get_streamlist (char *buffer, size_t remaining)
+{
+    avl_node *node;
+
+    /* now the stats for each source */
+    thread_mutex_lock (&_stats_mutex);
+    node = avl_get_first(_stats.source_tree);
+    while (node)
+    {
+        int ret;
+        stats_source_t *source = (stats_source_t *)node->key;
+
+        if (source->hidden == 0)
+        {
+            if (remaining <= strlen (source->source)+2)
+            {
+                WARN0 ("streamlist was truncated");
+                break;
+            }
+            ret = snprintf (buffer, remaining, "%s\r\n", source->source);
+            if (ret > 0)
+            {
+                buffer += ret;
+                remaining -= ret;
+            }
+        }
+
+        node = avl_get_next(node);
+    }
+    thread_mutex_unlock (&_stats_mutex);
+}
+
