@@ -58,6 +58,11 @@
 #include "sock.h"
 #include "resolver.h"
 
+/* for older C libraries */
+#ifndef AI_NUMERICSERV
+#define AI_NUMERICSERV 0
+#endif
+
 /* sock_initialize
 **
 ** initializes the socket library.  you must call this
@@ -621,7 +626,54 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
     return sock;
 }
 
+
+sock_t sock_get_server_socket (int port, const char *sinterface)
+{
+    struct sockaddr_storage sa;
+    struct addrinfo hints, *res, *ai;
+    char service [10];
+    int sock;
+
+    if (port < 0)
+        return SOCK_ERROR;
+
+    memset (&sa, 0, sizeof(sa));
+    memset (&hints, 0, sizeof(hints));
+
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_NUMERICSERV | AI_NUMERICHOST;
+    hints.ai_socktype = SOCK_STREAM;
+    snprintf (service, sizeof (service), "%d", port);
+
+    if (getaddrinfo (sinterface, service, &hints, &res))
+        return SOCK_ERROR;
+    ai = res;
+    do
+    {
+        int on = 1;
+        sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+        if (sock < 0)
+            continue;
+
+        setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, sizeof(on));
+
+        if (bind (sock, ai->ai_addr, ai->ai_addrlen) < 0)
+        {
+            close (sock);
+            continue;
+        }
+        freeaddrinfo (res);
+        return sock;
+
+    } while ((ai = ai->ai_next));
+
+    freeaddrinfo (res);
+    return SOCK_ERROR;
+}
+
+
 #else
+
 
 int sock_try_connection (int sock, const char *hostname, const unsigned port)
 {
@@ -700,7 +752,6 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
     }
     return sock;
 }
-#endif
 
 
 /* sock_get_server_socket
@@ -709,14 +760,10 @@ sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
 ** interface.  if interface is null, listen on all interfaces.
 ** returns the socket, or SOCK_ERROR on failure
 */
-sock_t sock_get_server_socket(const int port, char *sinterface)
+sock_t sock_get_server_socket(int port, const char *sinterface)
 {
-#ifdef HAVE_INET_PTON
-    struct sockaddr_storage sa;
-#else    
     struct sockaddr_in sa;
-#endif
-    int family, len, error, opt;
+    int error, opt;
     sock_t sock;
     char ip[MAX_ADDR_LEN];
 
@@ -725,57 +772,42 @@ sock_t sock_get_server_socket(const int port, char *sinterface)
 
     /* defaults */
     memset(&sa, 0, sizeof(sa));
-    family = AF_INET;
-    len = sizeof(struct sockaddr_in);
 
     /* set the interface to bind to if specified */
     if (sinterface != NULL) {
         if (!resolver_getip(sinterface, ip, sizeof (ip)))
             return SOCK_ERROR;
 
-#ifdef HAVE_INET_PTON
-        if (inet_pton(AF_INET, ip, &((struct sockaddr_in*)&sa)->sin_addr) > 0) {
-            ((struct sockaddr_in*)&sa)->sin_family = AF_INET;
-            ((struct sockaddr_in*)&sa)->sin_port = htons(port);
-        } else if (inet_pton(AF_INET6, ip, 
-                    &((struct sockaddr_in6*)&sa)->sin6_addr) > 0) {
-            family = AF_INET6;
-            len = sizeof (struct sockaddr_in6);
-            ((struct sockaddr_in6*)&sa)->sin6_family = AF_INET6;
-            ((struct sockaddr_in6*)&sa)->sin6_port = htons(port);
-        } else {
-            return SOCK_ERROR;
-        }
-#else
         if (!inet_aton(ip, &sa.sin_addr)) {
             return SOCK_ERROR;
         } else {
             sa.sin_family = AF_INET;
             sa.sin_port = htons(port);
         }
-#endif
     } else {
-        ((struct sockaddr_in*)&sa)->sin_addr.s_addr = INADDR_ANY;
-        ((struct sockaddr_in*)&sa)->sin_family = AF_INET;
-        ((struct sockaddr_in*)&sa)->sin_port = htons(port);
+        sa.sin_addr.s_addr = INADDR_ANY;
+        sa.sin_family = AF_INET;
+        sa.sin_port = htons(port);
     }
 
     /* get a socket */
-    sock = socket(family, SOCK_STREAM, 0);
+    sock = socket (AF_INET, SOCK_STREAM, 0);
     if (sock == -1)
         return SOCK_ERROR;
 
     /* reuse it if we can */
     opt = 1;
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(int));
-    
+
     /* bind socket to port */
-    error = bind(sock, (struct sockaddr *)&sa, len);
+    error = bind(sock, (struct sockaddr *)&sa, sizeof (struct sockaddr_in));
     if (error == -1)
         return SOCK_ERROR;
 
     return sock;
 }
+
+#endif
 
 int sock_listen(sock_t serversock, int backlog)
 {
@@ -788,9 +820,9 @@ int sock_listen(sock_t serversock, int backlog)
     return (listen(serversock, backlog) == 0);
 }
 
-int sock_accept(sock_t serversock, char *ip, int len)
+int sock_accept(sock_t serversock, char *ip, size_t len)
 {
-#ifdef HAVE_INET_PTON
+#ifdef HAVE_GETNAMEINFO
     struct sockaddr_storage sa;
 #else    
     struct sockaddr_in sa;
@@ -798,24 +830,17 @@ int sock_accept(sock_t serversock, char *ip, int len)
     int ret;
     socklen_t slen;
 
-    if (!sock_valid_socket(serversock))
+    if (ip == NULL || len == 0 || !sock_valid_socket(serversock))
         return SOCK_ERROR;
 
     slen = sizeof(sa);
     ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
-    if (ret >= 0 && ip != NULL) {
-#ifdef HAVE_INET_PTON
-        if(((struct sockaddr_in *)&sa)->sin_family == AF_INET) 
-            inet_ntop(AF_INET, &((struct sockaddr_in *)&sa)->sin_addr,
-                    ip, len);
-        else if(((struct sockaddr_in6 *)&sa)->sin6_family == AF_INET6) 
-            inet_ntop(AF_INET6, &((struct sockaddr_in6 *)&sa)->sin6_addr, 
-                    ip, len);
-        else {
-            strncpy(ip, "ERROR", len-1);
-            ip[len-1] = 0;
-        }
+    if (ret >= 0)
+    {
+#ifdef HAVE_GETNAMEINFO
+        if (getnameinfo ((struct sockaddr *)&sa, slen, ip, len, NULL, 0, NI_NUMERICHOST))
+            snprintf (ip, len, "unknown");
 #else
         /* inet_ntoa is not reentrant, we should protect this */
         strncpy(ip, inet_ntoa(sa.sin_addr), len);

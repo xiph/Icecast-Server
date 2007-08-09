@@ -129,9 +129,9 @@ int sock_read_bytes(sock_t sock, char *buff, const int len);
 int sock_read_line(sock_t sock, char *string, const int len);
 
 /* server socket functions */
-sock_t sock_get_server_socket(const int port, char *sinterface);
+sock_t sock_get_server_socket(int port, const char *sinterface);
 int sock_listen(sock_t serversock, int backlog);
-int sock_accept(sock_t serversock, char *ip, int len);
+int sock_accept(sock_t serversock, char *ip, size_t len);
 
 #ifdef _WIN32
 int inet_aton(const char *s, struct in_addr *a);
