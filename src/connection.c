@@ -311,6 +311,7 @@ static client_queue_t *_get_connection(void)
         if (_con_queue == NULL)
             _con_queue_tail = &_con_queue;
         thread_mutex_unlock (&_con_queue_mutex);
+        node->next = NULL;
     }
     return node;
 }
@@ -385,10 +386,12 @@ static void process_request_queue (void)
 
             if (pass_it)
             {
+                thread_mutex_lock (&_req_queue_mutex);
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
                 node->next = NULL;
+                thread_mutex_unlock (&_req_queue_mutex);
                 _add_connection (node);
                 continue;
             }
@@ -397,9 +400,11 @@ static void process_request_queue (void)
         {
             if (len == 0 || client->con->error)
             {
+                thread_mutex_lock (&_req_queue_mutex);
                 if ((client_queue_t **)_req_queue_tail == &node->next)
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
+                thread_mutex_unlock (&_req_queue_mutex);
                 client_destroy (client);
                 free (node);
                 continue;
@@ -927,7 +932,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             client->respcode = 200;
             /* send this non-blocking but if there is only a partial write
              * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\n");
+            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
             node->offset -= (headers - client->refbuf->data);
             memmove (client->refbuf->data, headers, node->offset+1);
             node->shoutcast = 2;
