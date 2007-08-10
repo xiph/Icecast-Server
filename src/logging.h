@@ -38,6 +38,7 @@ extern int playlistlog;
 #define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/", __func__, y, a)
 #define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b)
 #define ERROR3(y, a, b, c) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b, c)
+#define ERROR4(y, a, b, c, d) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b, c, d)
 
 #define WARN0(y) log_write(errorlog, 2, CATMODULE "/", __func__, y)
 #define WARN1(y, a) log_write(errorlog, 2, CATMODULE "/", __func__, y, a)
