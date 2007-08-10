@@ -93,7 +93,7 @@ static void find_client_start (source_t *source, client_t *client)
 {
     refbuf_t *refbuf = source->burst_point;
 
-    /* we only want to attempt a burst at connection time, not midstream 
+    /* we only want to attempt a burst at connection time, not midstream
      * however streams like theora may not have the most recent page marked as
      * a starting point, so look for one from the burst point */
     if (client->intro_offset == -1 && source->stream_data_tail
@@ -101,10 +101,9 @@ static void find_client_start (source_t *source, client_t *client)
         refbuf = source->stream_data_tail;
     else
     {
-        long size = 0;
+        size_t size = client->intro_offset;
         refbuf = source->burst_point;
-        size = client->intro_offset;
-        while (size > 0 && refbuf->next)
+        while (size > 0 && refbuf && refbuf->next)
         {
             size -= refbuf->len;
             refbuf = refbuf->next;
@@ -129,7 +128,7 @@ static void find_client_start (source_t *source, client_t *client)
 static int get_file_data (FILE *intro, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    int bytes;
+    size_t bytes;
 
     if (intro == NULL || fseek (intro, client->intro_offset, SEEK_SET) < 0)
         return 0;
@@ -209,6 +208,8 @@ int format_check_http_buffer (source_t *source, client_t *client)
             client->con->error = 1;
             return -1;
         }
+        stats_event_inc (NULL, "listener_connections");
+        stats_event_inc (source->mount, "listener_connections");
     }
 
     if (client->pos == refbuf->len)

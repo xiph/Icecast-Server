@@ -311,7 +311,6 @@ static int add_client_to_source (source_t *source, client_t *client)
     avl_tree_wlock (source->pending_tree);
     avl_insert (source->pending_tree, client);
     avl_tree_unlock (source->pending_tree);
-    stats_event_inc (NULL, "listener_connections");
 
     if (source->running == 0 && source->on_demand)
     {
