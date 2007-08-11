@@ -63,7 +63,8 @@
 static void *_slave_thread(void *arg);
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
-static int update_settings = 0;
+static volatile int update_settings = 0;
+static volatile int update_streams = 0;
 static volatile unsigned int max_interval = 0;
 
 relay_server *relay_free (relay_server *relay)
@@ -108,9 +109,10 @@ relay_server *relay_copy (relay_server *r)
 /* force a recheck of the relays. This will recheck the master server if
  * a this is a slave.
  */
-void slave_recheck_mounts (void)
+void slave_recheck_all (void)
 {
     max_interval = 0;
+    update_streams = 1;
     update_settings = 1;
 }
 
@@ -301,7 +303,6 @@ static void *start_relay_stream (void *arg)
     relay_server *relay = arg;
     source_t *src = relay->source;
     client_t *client;
-    ice_config_t *config;
 
     INFO1("Starting relayed source at mountpoint \"%s\"", relay->localmount);
     do
@@ -324,10 +325,6 @@ static void *start_relay_stream (void *arg)
         }
         stats_event_inc(NULL, "source_relay_connections");
         stats_event (relay->localmount, "source_ip", client->con->ip);
-        config = config_get_config();
-        stats_event_args (relay->localmount, "listenurl", "http://%s:%d%s",
-                config->hostname, config->port, relay->localmount);
-        config_release_config();
 
         source_main (relay->source);
 
@@ -341,6 +338,7 @@ static void *start_relay_stream (void *arg)
 
         /* we've finished, now get cleaned up */
         relay->cleanup = 1;
+        slave_rebuild_mounts();
 
         return NULL;
     } while (0);  /* TODO allow looping through multiple servers */
@@ -384,7 +382,13 @@ static void check_relay_stream (relay_server *relay)
         relay->source = source_reserve (relay->localmount);
         if (relay->source)
         {
+            ice_config_t *config;
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
+            config = config_get_config();
+            stats_event_args (relay->localmount, "listenurl", "http://%s:%d%s",
+                    config->hostname, config->port, relay->localmount);
+            config_release_config();
+            stats_event (relay->localmount, "listeners", "0");
             slave_rebuild_mounts();
         }
         else
@@ -547,7 +551,6 @@ static void relay_check_streams (relay_server *to_start,
                 to_free->running = 0;
                 to_free->source->running = 0;
                 thread_join (to_free->thread);
-                slave_rebuild_mounts();
             }
             else
                 stats_event (to_free->localmount, NULL, NULL);
@@ -673,7 +676,10 @@ static void *_slave_thread(void *arg)
     ice_config_t *config;
     unsigned int interval = 0;
 
-    source_recheck_mounts();
+    update_settings = 0;
+    update_streams = 0;
+
+    source_recheck_mounts (1);
 
     while (1)
     {
@@ -723,8 +729,9 @@ static void *_slave_thread(void *arg)
 
         if (update_settings)
         {
+            source_recheck_mounts (update_streams);
             update_settings = 0;
-            source_recheck_mounts();
+            update_streams = 0;
         }
     }
     INFO0 ("shutting down current relays");

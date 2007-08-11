@@ -30,6 +30,7 @@
 
 #include "connection.h"
 
+#include "source.h"
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
@@ -1058,6 +1059,35 @@ void stats_get_streamlist (char *buffer, size_t remaining)
         }
 
         node = avl_get_next(node);
+    }
+    thread_mutex_unlock (&_stats_mutex);
+}
+
+/* This removes any source stats from virtual mountpoints, ie mountpoints
+ * where no source_t exists. This function requires the global sources lock
+ * to be held before calling.
+ */
+void stats_clear_virtual_mounts (void)
+{
+    avl_node *snode;
+
+    thread_mutex_lock (&_stats_mutex);
+    snode = avl_get_first(_stats.source_tree);
+    while (snode)
+    {
+        stats_source_t *src = (stats_source_t *)snode->key;
+        source_t *source = source_find_mount_raw (src->source);
+
+        if (source == NULL)
+        {
+            /* no source_t is reserved so remove them now */
+            snode = avl_get_next (snode);
+            DEBUG1 ("releasing %s stats", src->source);
+            avl_delete (_stats.source_tree, src, _free_source_stats);
+            continue;
+        }
+
+        snode = avl_get_next (snode);
     }
     thread_mutex_unlock (&_stats_mutex);
 }

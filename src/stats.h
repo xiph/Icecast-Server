@@ -75,6 +75,7 @@ void stats_shutdown(void);
 
 stats_t *stats_get_stats(void);
 void stats_get_streamlist (char *buffer, size_t remaining);
+void stats_clear_virtual_mounts (void);
 
 void stats_event(const char *source, const char *name, const char *value);
 void stats_event_args(const char *source, char *name, char *format, ...);

@@ -63,7 +63,7 @@ void event_config_read(void *arg)
         yp_recheck_config (config_get_config_unlocked());
 
         config_release_config();
-        slave_recheck_mounts();
+        slave_recheck_all();
     }
 }
 

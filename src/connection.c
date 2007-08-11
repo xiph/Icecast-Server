@@ -564,10 +564,9 @@ int connection_complete_source (source_t *source, int response)
 
         source->running = 1;
         mountinfo = config_find_mount (config, source->mount);
-        if (mountinfo == NULL)
-            source_update_settings (config, source, mountinfo);
-        source_recheck_mounts ();
+        source_update_settings (config, source, mountinfo);
         config_release_config();
+        slave_rebuild_mounts();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;
         DEBUG0 ("source is ready to start");

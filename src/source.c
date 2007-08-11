@@ -424,10 +424,7 @@ void source_move_clients (source_t *source, source_t *dest)
 
     /* see if we need to wake up an on-demand relay */
     if (dest->running == 0 && dest->on_demand && count)
-    {
         dest->on_demand_req = 1;
-        slave_rebuild_mounts();
-    }
 
     avl_tree_unlock (dest->pending_tree);
     thread_mutex_unlock (&move_clients_mutex);
@@ -1211,7 +1208,7 @@ void *source_client_thread (void *arg)
     source_main (source);
 
     source_free_source (source);
-    source_recheck_mounts ();
+    slave_rebuild_mounts();
 
     return NULL;
 }
@@ -1345,12 +1342,14 @@ static void *source_fallback_file (void *arg)
 /* rescan the mount list, so that xsl files are updated to show
  * unconnected but active fallback mountpoints
  */
-void source_recheck_mounts (void)
+void source_recheck_mounts (int update_all)
 {
     ice_config_t *config = config_get_config();
     mount_proxy *mount = config->mounts;
 
     avl_tree_rlock (global.source_tree);
+
+    stats_clear_virtual_mounts ();
 
     while (mount)
     {
@@ -1359,7 +1358,9 @@ void source_recheck_mounts (void)
         if (source)
         {
             source = source_find_mount_raw (mount->mountname);
-            if (source)
+            stats_event_args (mount->mountname, "listenurl", "http://%s:%d%s",
+                    config->hostname, config->port, mount->mountname);
+            if (source && update_all)
             {
                 mount_proxy *mountinfo = config_find_mount (config, source->mount);
                 source_update_settings (config, source, mountinfo);
