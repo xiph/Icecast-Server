@@ -50,6 +50,7 @@
 #include "logging.h"
 #include "cfgfile.h"
 #include "util.h"
+#include "admin.h"
 #include "compat.h"
 
 #include "fserve.h"
@@ -376,6 +377,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     int ret = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
+    int xspf_requested = 0, xspf_file_available = 1;
     ice_config_t *config;
     FILE *file;
 
@@ -385,11 +387,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
         m3u_requested = 1;
 
+    if (strcmp (util_get_extension (fullpath), "xspf") == 0)
+        xspf_requested = 1;
+
     /* check for the actual file */
     if (stat (fullpath, &file_buf) != 0)
     {
         /* the m3u can be generated, but send an m3u file if available */
-        if (m3u_requested == 0)
+        if (m3u_requested == 0 && xspf_requested == 0)
         {
             WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
@@ -397,6 +402,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             return -1;
         }
         m3u_file_available = 0;
+        xspf_file_available = 0;
     }
 
     httpclient->refbuf->len = PER_CLIENT_REFBUF_SIZE;
@@ -441,6 +447,19 @@ int fserve_client_create (client_t *httpclient, const char *path)
         fserve_add_client (httpclient, NULL);
         free (sourceuri);
         free (fullpath);
+        return 0;
+    }
+    if (xspf_requested && xspf_file_available == 0)
+    {
+        xmlDocPtr doc;
+        char *reference = strdup (path);
+        char *eol = strrchr (reference, '.');
+        if (eol)
+            *eol = '\0';
+        stats_get_xml (&doc, 0, reference);
+        free (reference);
+        admin_send_response (doc, httpclient, TRANSFORMED, "xspf.xsl");
+        xmlFreeDoc(doc);
         return 0;
     }
 

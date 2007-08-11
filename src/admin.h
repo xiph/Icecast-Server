@@ -13,9 +13,18 @@
 #ifndef __ADMIN_H__
 #define __ADMIN_H__
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 #include "refbuf.h"
 #include "client.h"
 
+#define RAW         1
+#define TRANSFORMED 2
+#define PLAINTEXT   3
+
 void admin_handle_request(client_t *client, char *uri);
+void admin_send_response(xmlDocPtr doc, client_t *client, 
+        int response, const char *xslt_template);
 
 #endif  /* __ADMIN_H__ */

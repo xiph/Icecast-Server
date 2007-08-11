@@ -33,6 +33,7 @@
 #include "compat.h"
 #include "xslt.h"
 #include "fserve.h"
+#include "admin.h"
 
 #include "format.h"
 
@@ -108,10 +109,6 @@
 #define DEFAULT_RAW_REQUEST ""
 #define DEFAULT_TRANSFORMED_REQUEST ""
 #define BUILDM3U_RAW_REQUEST "buildm3u"
-
-#define RAW         1
-#define TRANSFORMED 2
-#define PLAINTEXT   3
 
 int admin_get_command(char *command)
 {
@@ -195,8 +192,6 @@ static void command_updatemetadata(client_t *client, source_t *source,
 static void admin_handle_mount_request(client_t *client, source_t *source,
         int command);
 static void admin_handle_general_request(client_t *client, int command);
-static void admin_send_response(xmlDocPtr doc, client_t *client, 
-        int response, char *xslt_template);
 
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
@@ -267,8 +262,8 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     return(doc);
 }
 
-static void admin_send_response(xmlDocPtr doc, client_t *client, 
-        int response, char *xslt_template)
+void admin_send_response (xmlDocPtr doc, client_t *client,
+        int response, const char *xslt_template)
 {
     if (response == RAW)
     {
@@ -958,7 +953,7 @@ static void command_stats(client_t *client, int response) {
 
     DEBUG0("Stats request, sending xml stats");
 
-    stats_get_xml(&doc, 1);
+    stats_get_xml(&doc, 1, NULL);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     return;

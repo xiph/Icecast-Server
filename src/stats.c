@@ -878,7 +878,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     xmlDocPtr doc;
     char *xslpath = util_get_path_from_normalised_uri (uri);
 
-    stats_get_xml(&doc, 0);
+    stats_get_xml(&doc, 0, NULL);
 
     xslt_transform(doc, xslpath, client);
 
@@ -886,7 +886,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     free (xslpath);
 }
 
-void stats_get_xml(xmlDocPtr *doc, int show_hidden)
+void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount)
 {
     stats_event_t *event;
     event_queue_t queue;
@@ -906,16 +906,24 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden)
     {
         if (event->hidden <= show_hidden)
         {
-            xmlChar *name, *value;
-            name = xmlEncodeEntitiesReentrant (*doc, event->name);
-            value = xmlEncodeEntitiesReentrant (*doc, event->value);
-            srcnode = node;
-            if (event->source) {
-                srcnode = _find_xml_node(event->source, &src_nodes, node);
-            }
-            xmlNewChild(srcnode, NULL, name, value);
-            xmlFree (value);
-            xmlFree (name);
+            do
+            {
+                xmlChar *name, *value;
+                name = xmlEncodeEntitiesReentrant (*doc, event->name);
+                value = xmlEncodeEntitiesReentrant (*doc, event->value);
+                srcnode = node;
+                if (event->source)
+                {
+                    if (show_mount && strcmp (event->source, show_mount) != 0)
+                        break;
+                    srcnode = _find_xml_node(event->source, &src_nodes, node);
+                }
+                else
+                    srcnode = node;
+                xmlNewChild(srcnode, NULL, name, value);
+                xmlFree (value);
+                xmlFree (name);
+            } while (0);
         }
 
         _free_event(event);
