@@ -60,12 +60,6 @@
 
 #define BUFSIZE 4096
 
-#ifdef _WIN32
-#define MIMETYPESFILE ".\\mime.types"
-#else
-#define MIMETYPESFILE "/etc/mime.types"
-#endif
-
 static fserve_t *active_list = NULL;
 static volatile fserve_t *pending_list = NULL;
 
@@ -92,13 +86,16 @@ typedef struct {
 static void fserve_client_destroy(fserve_t *fclient);
 static int _delete_mapping(void *mapping);
 static void *fserv_thread_function(void *arg);
-static void create_mime_mappings(const char *fn);
 
 void fserve_initialize(void)
 {
-    create_mime_mappings(MIMETYPESFILE);
+    ice_config_t *config = config_get_config();
 
+    mimetypes = NULL;
     thread_mutex_create (&pending_lock);
+
+    fserve_recheck_mime_types (config);
+    config_release_config();
 
     run_fserv = 1;
     stats_event (NULL, "file_connections", "0");
@@ -115,7 +112,8 @@ void fserve_shutdown(void)
     run_fserv = 0;
     thread_join(fserv_thread);
     INFO0("file serving thread stopped");
-    avl_tree_free(mimetypes, _delete_mapping);
+    if (mimetypes)
+        avl_tree_free (mimetypes, _delete_mapping);
 }
 
 #ifdef HAVE_POLL
@@ -312,38 +310,45 @@ static void *fserv_thread_function(void *arg)
     return NULL;
 }
 
+/* string returned needs to be free'd */
 char *fserve_content_type (const char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
     void *result;
+    char *type;
 
-    if (!avl_get_by_key (mimetypes, &exttype, &result))
+    thread_mutex_lock (&pending_lock);
+    if (mimetypes && !avl_get_by_key (mimetypes, &exttype, &result))
     {
         mime_type *mime = result;
-        return mime->type;
+        type = strdup (mime->type);
     }
     else {
         /* Fallbacks for a few basic ones */
         if(!strcmp(ext, "ogg"))
-            return "application/ogg";
+            type = strdup ("application/ogg");
         else if(!strcmp(ext, "mp3"))
-            return "audio/mpeg";
+            type = strdup ("audio/mpeg");
         else if(!strcmp(ext, "html"))
-            return "text/html";
+            type = strdup ("text/html");
         else if(!strcmp(ext, "css"))
-            return "text/css";
+            type = strdup ("text/css");
         else if(!strcmp(ext, "txt"))
-            return "text/plain";
+            type = strdup ("text/plain");
         else if(!strcmp(ext, "jpg"))
-            return "image/jpeg";
+            type = strdup ("image/jpeg");
         else if(!strcmp(ext, "png"))
-            return "image/png";
+            type = strdup ("image/png");
         else if(!strcmp(ext, "m3u"))
-            return "audio/x-mpegurl";
+            type = strdup ("audio/x-mpegurl");
+        else if(!strcmp(ext, "aac"))
+            type = strdup ("audio/aac");
         else
-            return "application/octet-stream";
+            type = strdup ("application/octet-stream");
     }
+    thread_mutex_unlock (&pending_lock);
+    return type;
 }
 
 static void fserve_client_destroy(fserve_t *fclient)
@@ -524,6 +529,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 int strflen;
                 struct tm result;
                 int64_t endpos = rangenumber+new_content_len-1;
+                char *type;
+
                 if (endpos < 0) {
                     endpos = 0;
                 }
@@ -531,6 +538,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
                                    gmtime_r(&now, &result));
                 httpclient->respcode = 206;
+                type = fserve_content_type (path);
                 bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
@@ -543,7 +551,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     rangenumber,
                     endpos,
                     content_length,
-                    fserve_content_type(path));
+                    type);
+                free (type);
             }
             else {
                 goto fail;
@@ -554,14 +563,15 @@ int fserve_client_create (client_t *httpclient, const char *path)
         }
     }
     else {
-
+        char *type = fserve_content_type(path);
         httpclient->respcode = 200;
         bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
             "HTTP/1.0 200 OK\r\n"
             "Content-Length: " FORMAT_INT64 "\r\n"
             "Content-Type: %s\r\n\r\n",
             content_length,
-            fserve_content_type(path));
+            type);
+        free (type);
     }
     httpclient->refbuf->len = bytes;
     httpclient->pos = 0;
@@ -649,19 +659,24 @@ static int _compare_mappings(void *arg, void *a, void *b)
             ((mime_type *)b)->ext);
 }
 
-static void create_mime_mappings(const char *fn) {
-    FILE *mimefile = fopen(fn, "r");
+void fserve_recheck_mime_types (ice_config_t *config)
+{
+    FILE *mimefile;
     char line[4096];
     char *type, *ext, *cur;
     mime_type *mapping;
+    avl_tree *new_mimetypes;
 
-    mimetypes = avl_tree_new(_compare_mappings, NULL);
-
+    if (config->mimetypes_fn == NULL)
+        return;
+    mimefile = fopen (config->mimetypes_fn, "r");
     if (mimefile == NULL)
     {
-        WARN1 ("Cannot open mime type file %s", fn);
+        WARN1 ("Cannot open mime types file %s", config->mimetypes_fn);
         return;
     }
+
+    new_mimetypes = avl_tree_new(_compare_mappings, NULL);
 
     while(fgets(line, 4096, mimefile))
     {
@@ -698,13 +713,18 @@ static void create_mime_mappings(const char *fn) {
                 mapping = malloc(sizeof(mime_type));
                 mapping->ext = strdup(ext);
                 mapping->type = strdup(type);
-                if(!avl_get_by_key(mimetypes, mapping, &tmp))
-                    avl_delete(mimetypes, mapping, _delete_mapping);
-                avl_insert(mimetypes, mapping);
+                if (!avl_get_by_key (new_mimetypes, mapping, &tmp))
+                    avl_delete (new_mimetypes, mapping, _delete_mapping);
+                avl_insert (new_mimetypes, mapping);
             }
         }
     }
-
     fclose(mimefile);
+
+    thread_mutex_lock (&pending_lock);
+    if (mimetypes)
+        avl_tree_free (mimetypes, _delete_mapping);
+    mimetypes = new_mimetypes;
+    thread_mutex_unlock (&pending_lock);
 }
 

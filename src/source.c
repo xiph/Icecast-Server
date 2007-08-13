@@ -1320,6 +1320,7 @@ static void *source_fallback_file (void *arg)
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
         httpp_setvar (parser, "content-type", type);
+        free (type);
 
         source->hidden = 1;
         source->yp_public = 0;

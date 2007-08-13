@@ -131,6 +131,7 @@ typedef struct ice_config_tag
 
     char *hostname;
     int port;
+    char *mimetypes_fn;
 
     listener_t listeners[MAX_LISTEN_SOCKETS];
 

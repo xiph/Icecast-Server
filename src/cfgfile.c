@@ -61,11 +61,13 @@
 #define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR "/usr/local/icecast/webroot"
 #define CONFIG_DEFAULT_ADMINROOT_DIR "/usr/local/icecast/admin"
+#define MIMETYPESFILE "/etc/mime.types"
 #else
 #define CONFIG_DEFAULT_BASE_DIR ".\\"
 #define CONFIG_DEFAULT_LOG_DIR ".\\logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR ".\\webroot"
 #define CONFIG_DEFAULT_ADMINROOT_DIR ".\\admin"
+#define MIMETYPESFILE ".\\mime.types"
 #endif
 
 static ice_config_t _current_configuration;
@@ -201,6 +203,7 @@ void config_clear(ice_config_t *c)
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
+    xmlFree (c->mimetypes_fn);
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
@@ -349,6 +352,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->on_demand = 0;
     configuration->dir_list = NULL;
     configuration->hostname = CONFIG_DEFAULT_HOSTNAME;
+    configuration->mimetypes_fn = xmlCharStrdup (MIMETYPESFILE);
     configuration->port = 0;
     configuration->listeners[0].port = 0;
     configuration->listeners[0].bind_address = NULL;
@@ -420,6 +424,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "hostname") == 0) {
             if (configuration->hostname && configuration->hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(configuration->hostname);
             configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "mime-types") == 0) {
+            if (configuration->mimetypes_fn) xmlFree(configuration->mimetypes_fn);
+            configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "listen-socket") == 0) {
             _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "port") == 0) {
