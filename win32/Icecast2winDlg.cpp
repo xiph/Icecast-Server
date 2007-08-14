@@ -43,7 +43,7 @@ CString gConfigurationSave;
 char	gTitleSource[1024] = "";
 char	gTitleName[1024] = "";
 
-#define MAXSTATSPERSOURCE 30
+#define MAXSTATSPERSOURCE 60
 #define MAXSOURCES 1024
 
 typedef struct tagElement {
@@ -472,6 +472,8 @@ void AddUpdateStatistic(int sourceIndex, char *name, char *value)
 		}
 	}
 	int numStats = gStats[sourceIndex].numStats;
+    if (numStats >= MAXSTATSPERSOURCE)
+        return;
 	/* If we get here, we haven't found the stat, so add it */
 	gStats[sourceIndex].stats[numStats].name = name;
 	gStats[sourceIndex].stats[numStats].value = value;
@@ -488,6 +490,8 @@ int GetSourceIndex(char *sourceName)
 			return i;
 		}
 	}
+    if (numMainStats >= MAXSOURCES)
+        return 0;
 	/* This means we haven't seen the source, so lets add it */
 	numMainStats++;
 	gStats[numMainStats].source = sourceName;
@@ -537,7 +541,7 @@ void StartStats(void *dummy)
 
 			xmlDocPtr doc;
 
-			stats_get_xml(&doc, 0);
+			stats_get_xml(&doc, 0, NULL);
 			xmlNodePtr cur;
 		    cur = xmlDocGetRootElement(doc); 
 
