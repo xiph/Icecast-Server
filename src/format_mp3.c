@@ -176,7 +176,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             metadata++;
             if (strncmp (metadata, "StreamTitle='", 13))
                 break;
-            if ((end = strstr (metadata, "\';")) == NULL)
+            if ((end = strstr (metadata+13, "\';")) == NULL)
                 break;
             len = (end - metadata) - 13;
             p = calloc (1, len+1);
