@@ -129,7 +129,7 @@ static void parse_headers(http_parser_t *parser, char **line, int lines)
     }
 }
 
-int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long len, char *uri)
+int httpp_parse_response(http_parser_t *parser, const char *http_data, unsigned long len, const char *uri)
 {
     char *data;
     char *line[MAX_HEADERS];
@@ -201,7 +201,7 @@ static int hex(char c)
         return -1;
 }
 
-static char *url_escape(char *src)
+static char *url_escape(const char *src)
 {
     int len = strlen(src);
     unsigned char *decoded;
@@ -211,7 +211,7 @@ static char *url_escape(char *src)
 
     decoded = calloc(1, len + 1);
 
-    dst = decoded;
+    dst = (char *)decoded;
 
     for(i=0; i < len; i++) {
         switch(src[i]) {
@@ -248,7 +248,7 @@ static char *url_escape(char *src)
 
     *dst = 0; /* null terminator */
 
-    return decoded;
+    return (char *)decoded;
 }
 
 /** TODO: This is almost certainly buggy in some cases */
@@ -285,7 +285,7 @@ static void parse_query(http_parser_t *parser, char *query)
     }
 }
 
-int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len)
+int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
 {
     char *data, *tmp;
     char *line[MAX_HEADERS]; /* limited to 32 lines, should be more than enough */
@@ -446,7 +446,7 @@ void httpp_setvar(http_parser_t *parser, const char *name, const char *value)
     }
 }
 
-char *httpp_getvar(http_parser_t *parser, const char *name)
+const char *httpp_getvar(http_parser_t *parser, const char *name)
 {
     http_var_t var;
     http_var_t *found;
@@ -465,7 +465,7 @@ char *httpp_getvar(http_parser_t *parser, const char *name)
         return NULL;
 }
 
-void httpp_set_query_param(http_parser_t *parser, char *name, char *value)
+void httpp_set_query_param(http_parser_t *parser, const char *name, const char *value)
 {
     http_var_t *var;
 
@@ -486,14 +486,14 @@ void httpp_set_query_param(http_parser_t *parser, char *name, char *value)
     }
 }
 
-char *httpp_get_query_param(http_parser_t *parser, char *name)
+const char *httpp_get_query_param(http_parser_t *parser, const char *name)
 {
     http_var_t var;
     http_var_t *found;
     void *fp;
 
     fp = &found;
-    var.name = name;
+    var.name = (char *)name;
     var.value = NULL;
 
     if (avl_get_by_key(parser->queryvars, (void *)&var, fp) == 0)

@@ -58,13 +58,13 @@ typedef struct http_parser_tag {
 
 http_parser_t *httpp_create_parser(void);
 void httpp_initialize(http_parser_t *parser, http_varlist_t *defaults);
-int httpp_parse(http_parser_t *parser, char *http_data, unsigned long len);
-int httpp_parse_icy(http_parser_t *parser, char *http_data, unsigned long len);
-int httpp_parse_response(http_parser_t *parser, char *http_data, unsigned long len, char *uri);
+int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len);
+int httpp_parse_icy(http_parser_t *parser, const char *http_data, unsigned long len);
+int httpp_parse_response(http_parser_t *parser, const char *http_data, unsigned long len, const char *uri);
 void httpp_setvar(http_parser_t *parser, const char *name, const char *value);
-char *httpp_getvar(http_parser_t *parser, const char *name);
-void httpp_set_query_param(http_parser_t *parser, char *name, char *value);
-char *httpp_get_query_param(http_parser_t *parser, char *name);
+const char *httpp_getvar(http_parser_t *parser, const char *name);
+void httpp_set_query_param(http_parser_t *parser, const char *name, const char *value);
+const char *httpp_get_query_param(http_parser_t *parser, const char *name);
 void httpp_destroy(http_parser_t *parser);
 void httpp_clear(http_parser_t *parser);
  
