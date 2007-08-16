@@ -24,6 +24,7 @@
 #include "logging.h"
 #include "slave.h"
 #include "fserve.h"
+#include "stats.h"
 
 #define CATMODULE "event"
 
@@ -60,10 +61,11 @@ void event_config_read(void *arg)
     else {
         config_clear(config);
         config_set_config(&new_config);
-        restart_logging (config_get_config_unlocked());
-        yp_recheck_config (config_get_config_unlocked());
-        fserve_recheck_mime_types (config_get_config_unlocked());
-
+        config = config_get_config_unlocked();
+        restart_logging (config);
+        yp_recheck_config (config);
+        fserve_recheck_mime_types (config);
+        stats_global (config);
         config_release_config();
         slave_recheck_all();
     }

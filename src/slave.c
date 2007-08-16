@@ -679,6 +679,9 @@ static void *_slave_thread(void *arg)
     update_settings = 0;
     update_streams = 0;
 
+    config = config_get_config();
+    stats_global (config);
+    config_release_config();
     source_recheck_mounts (1);
 
     while (1)

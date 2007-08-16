@@ -13,6 +13,7 @@
 #ifndef __STATS_H__
 #define __STATS_H__
 
+#include "cfgfile.h"
 #include "connection.h"
 #include "httpp/httpp.h"
 #include "client.h"
@@ -73,6 +74,7 @@ typedef struct _stats_tag
 void stats_initialize(void);
 void stats_shutdown(void);
 
+void stats_global(ice_config_t *config);
 stats_t *stats_get_stats(void);
 void stats_get_streamlist (char *buffer, size_t remaining);
 void stats_clear_virtual_mounts (void);
@@ -94,8 +96,4 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount);
 char *stats_get_value(char *source, char *name);
 
 #endif  /* __STATS_H__ */
-
-
-
-
 
