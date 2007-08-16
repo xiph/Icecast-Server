@@ -375,7 +375,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 {
     int bytes;
     struct stat file_buf;
-    char *range = NULL;
+    const char *range = NULL;
     int64_t new_content_len = 0;
     int64_t rangenumber = 0, content_length;
     int rangeproblem = 0;
@@ -414,7 +414,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (m3u_requested && m3u_file_available == 0)
     {
-        char *host = httpp_getvar (httpclient->parser, "host");
+        const char *host = httpp_getvar (httpclient->parser, "host");
         char *sourceuri = strdup (path);
         char *dot = strrchr(sourceuri, '.');
 

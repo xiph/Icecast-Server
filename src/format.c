@@ -52,7 +52,7 @@
 static int format_prepare_headers (source_t *source, client_t *client);
 
 
-format_type_t format_get_type(char *contenttype)
+format_type_t format_get_type (const char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */

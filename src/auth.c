@@ -47,7 +47,7 @@ static thread_type *auth_thread;
 static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-    char *header = httpp_getvar(client->parser, "authorization");
+    const char *header = httpp_getvar(client->parser, "authorization");
     char *userpass, *tmp;
     char *username, *password;
 

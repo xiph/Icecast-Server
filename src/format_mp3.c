@@ -61,7 +61,7 @@ static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
-static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value);
+static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *value);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
 
@@ -75,7 +75,7 @@ typedef struct {
 
 int format_mp3_get_plugin (source_t *source)
 {
-    char *metadata;
+    const char *metadata;
     format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
@@ -124,7 +124,7 @@ int format_mp3_get_plugin (source_t *source)
 }
 
 
-static void mp3_set_tag (format_plugin_t *plugin, char *tag, char *value)
+static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *value)
 {
     mp3_state *source_mp3 = plugin->_state;
     unsigned int len;
@@ -199,7 +199,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 
     if (mount == NULL || mount->mp3_meta_interval < 0)
     {
-        char *metadata = httpp_getvar (client->parser, "icy-metaint");
+        const char *metadata = httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = -1;
         if (metadata)
         {

@@ -21,17 +21,17 @@
 
 int util_timed_wait_for_fd(int fd, int timeout);
 int util_read_header(int sock, char *buff, unsigned long len, int entire);
-int util_check_valid_extension(char *uri);
+int util_check_valid_extension(const char *uri);
 char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
 char *util_get_path_from_normalised_uri(const char *uri);
-char *util_normalise_uri(char *uri);
-char *util_base64_encode(char *data);
-char *util_base64_decode(unsigned char *input);
+char *util_normalise_uri(const char *uri);
+char *util_base64_encode(const char *data);
+char *util_base64_decode(const char *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
-char *util_url_unescape(char *src);
-char *util_url_escape(char *src);
+char *util_url_unescape(const char *src);
+char *util_url_escape(const char *src);
 
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */

@@ -564,7 +564,8 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 static void source_init (source_t *source)
 {
     ice_config_t *config = config_get_config();
-    char *listenurl, *str;
+    char *listenurl;
+    const char *str;
     int listen_url_size;
     mount_proxy *mountinfo;
 
@@ -929,7 +930,7 @@ static void _parse_audio_info (source_t *source, const char *s)
 /* Apply the mountinfo details to the source */
 static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 {
-    char *str;
+    const char *str;
     int val;
     http_parser_t *parser = NULL;
 

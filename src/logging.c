@@ -115,7 +115,7 @@ void logging_access(client_t *client)
     struct tm thetime;
     time_t now;
     time_t stayed;
-    char *referrer, *user_agent, *username;
+    const char *referrer, *user_agent, *username;
 
     now = time(NULL);
 

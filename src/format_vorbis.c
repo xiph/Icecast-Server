@@ -67,7 +67,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec);
 static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
                 ogg_codec_t *codec, ogg_page *page);
 static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec);
-static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value);
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value);
 
 
 static void free_ogg_packet (ogg_packet *packet)
@@ -413,7 +413,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 /* called from the admin interface, here we update the artist/title info
  * and schedule a new set of header pages
  */
-static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value)
 {   
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;

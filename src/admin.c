@@ -110,7 +110,7 @@
 #define DEFAULT_TRANSFORMED_REQUEST ""
 #define BUILDM3U_RAW_REQUEST "buildm3u"
 
-int admin_get_command(char *command)
+int admin_get_command(const char *command)
 {
     if(!strcmp(command, FALLBACK_RAW_REQUEST))
         return COMMAND_RAW_FALLBACK;
@@ -303,9 +303,9 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 }
 
 
-void admin_handle_request(client_t *client, char *uri)
+void admin_handle_request(client_t *client, const char *uri)
 {
-    char *mount, *command_string;
+    const char *mount, *command_string;
     int command;
     int noauth = 0;
 
@@ -337,7 +337,7 @@ void admin_handle_request(client_t *client, char *uri)
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
 
         ice_config_t *config;
-        char *pass = httpp_get_query_param (client->parser, "pass");
+        const char *pass = httpp_get_query_param (client->parser, "pass");
         if (pass == NULL)
         {
             client_send_400 (client, "missing pass parameter");
@@ -556,7 +556,7 @@ static void html_success(client_t *client, char *message)
 static void command_move_clients(client_t *client, source_t *source,
     int response)
 {
-    char *dest_source;
+    const char *dest_source;
     source_t *dest;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -623,7 +623,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     avl_node *client_node;
     client_t *current;
     char buf[22];
-    char *userAgent = NULL;
+    const char *userAgent = NULL;
     time_t now = time(NULL);
 
     doc = xmlNewDoc("1.0");
@@ -671,8 +671,8 @@ static void command_show_listeners(client_t *client, source_t *source,
 static void command_buildm3u(client_t *client, source_t *source,
     int response)
 {
-    char *username = NULL;
-    char *password = NULL;
+    const char *username = NULL;
+    const char *password = NULL;
     ice_config_t *config;
 
     COMMAND_REQUIRE(client, "username", username);
@@ -703,9 +703,9 @@ static void command_manageauth(client_t *client, source_t *source,
 {
     xmlDocPtr doc;
     xmlNodePtr node, srcnode, msgnode;
-    char *action = NULL;
-    char *username = NULL;
-    char *password = NULL;
+    const char *action = NULL;
+    const char *username = NULL;
+    const char *password = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
     ice_config_t *config = config_get_config ();
@@ -792,7 +792,7 @@ static void command_kill_source(client_t *client, source_t *source,
 static void command_kill_client(client_t *client, source_t *source,
     int response)
 {
-    char *idtext;
+    const char *idtext;
     int id;
     client_t *listener;
     xmlDocPtr doc;
@@ -836,7 +836,7 @@ static void command_kill_client(client_t *client, source_t *source,
 static void command_fallback(client_t *client, source_t *source,
     int response)
 {
-    char *fallback;
+    const char *fallback;
     char *old;
 
     DEBUG0("Got fallback request");
@@ -853,8 +853,8 @@ static void command_fallback(client_t *client, source_t *source,
 static void command_metadata(client_t *client, source_t *source,
     int response)
 {
-    char *action;
-    char *song, *title, *artist;
+    const char *action;
+    const char *song, *title, *artist;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -920,8 +920,8 @@ static void command_metadata(client_t *client, source_t *source,
 
 static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
-    char *action;
-    char *value;
+    const char *action;
+    const char *value;
 
     DEBUG0("Got shoutcast metadata update request");
 

@@ -140,7 +140,7 @@ char *util_get_extension(const char *path) {
         return ext+1;
 }
 
-int util_check_valid_extension(char *uri) {
+int util_check_valid_extension(const char *uri) {
     int    ret = 0;
     char    *p2;
 
@@ -263,12 +263,12 @@ static char safechars[256] = {
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 };
 
-char *util_url_escape(char *src)
+char *util_url_escape (const char *src)
 {
     int len = strlen(src);
     /* Efficiency not a big concern here, keep the code simple/conservative */
     char *dst = calloc(1, len*3 + 1); 
-    unsigned char *source = src;
+    unsigned char *source = (unsigned char *)src;
     int i,j=0;
 
     for(i=0; i < len; i++) {
@@ -287,10 +287,10 @@ char *util_url_escape(char *src)
     return dst;
 }
 
-char *util_url_unescape(char *src)
+char *util_url_unescape (const char *src)
 {
     int len = strlen(src);
-    unsigned char *decoded;
+    char *decoded;
     int i;
     char *dst;
     int done = 0;
@@ -340,7 +340,7 @@ char *util_url_unescape(char *src)
  * escape from the webroot) or if it cannot be URI-decoded.
  * Caller should free the path.
  */
-char *util_normalise_uri(char *uri) {
+char *util_normalise_uri(const char *uri) {
     char *path;
 
     if(uri[0] != '/')
@@ -405,7 +405,7 @@ char *util_bin_to_hex(unsigned char *data, int len)
 }
 
 /* This isn't efficient, but it doesn't need to be */
-char *util_base64_encode(char *data)
+char *util_base64_encode(const char *data)
 {
     int len = strlen(data);
     char *out = malloc(len*4/3 + 4);
@@ -438,9 +438,10 @@ char *util_base64_encode(char *data)
     return result;
 }
 
-char *util_base64_decode(unsigned char *input)
+char *util_base64_decode(const char *data)
 {
-    int len = strlen(input);
+    const unsigned char *input = (const unsigned char *)data;
+    int len = strlen (data);
     char *out = malloc(len*3/4 + 5);
     char *result = out;
     signed char vals[4];

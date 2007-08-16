@@ -39,7 +39,7 @@ typedef struct _format_plugin_tag
     /* we need to know the mount to report statistics */
     char *mount;
 
-    char *contenttype;
+    const char *contenttype;
     uint64_t read_bytes;
     uint64_t sent_bytes;
 
@@ -47,7 +47,7 @@ typedef struct _format_plugin_tag
     int (*write_buf_to_client)(client_t *client);
     void (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
     int (*create_client_data)(struct source_tag *source, client_t *client);
-    void (*set_tag)(struct _format_plugin_tag *plugin, char *tag, char *value);
+    void (*set_tag)(struct _format_plugin_tag *plugin, const char *tag, const char *value);
     void (*free_plugin)(struct _format_plugin_tag *self);
     void (*apply_settings)(client_t *client, struct _format_plugin_tag *format, struct _mount_proxy *mount);
 
@@ -55,7 +55,7 @@ typedef struct _format_plugin_tag
     void *_state;
 } format_plugin_t;
 
-format_type_t format_get_type(char *contenttype);
+format_type_t format_get_type(const char *contenttype);
 char *format_get_mimetype(format_type_t type);
 int format_get_plugin(format_type_t type, struct source_tag *source);
 

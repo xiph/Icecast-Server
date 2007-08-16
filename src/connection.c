@@ -515,7 +515,7 @@ int connection_complete_source (source_t *source, int response)
 
     if (global.sources < config->source_limit)
     {
-        char *contenttype;
+        const char *contenttype;
         mount_proxy *mountinfo;
         format_type_t format_type;
 
@@ -590,10 +590,10 @@ int connection_complete_source (source_t *source, int response)
 
 
 static int _check_pass_http(http_parser_t *parser, 
-        char *correctuser, char *correctpass)
+        const char *correctuser, const char *correctpass)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-    char *header = httpp_getvar(parser, "authorization");
+    const char *header = httpp_getvar(parser, "authorization");
     char *userpass, *tmp;
     char *username, *password;
 
@@ -628,9 +628,9 @@ static int _check_pass_http(http_parser_t *parser,
     return 1;
 }
 
-static int _check_pass_icy(http_parser_t *parser, char *correctpass)
+static int _check_pass_icy(http_parser_t *parser, const char *correctpass)
 {
-    char *password;
+    const char *password;
 
     password = httpp_getvar(parser, HTTPP_VAR_ICYPASSWORD);
     if(!password)
@@ -642,9 +642,9 @@ static int _check_pass_icy(http_parser_t *parser, char *correctpass)
         return 1;
 }
 
-static int _check_pass_ice(http_parser_t *parser, char *correctpass)
+static int _check_pass_ice(http_parser_t *parser, const char *correctpass)
 {
-    char *password;
+    const char *password;
 
     password = httpp_getvar(parser, "ice-password");
     if(!password)
@@ -662,7 +662,7 @@ int connection_check_admin_pass(http_parser_t *parser)
     ice_config_t *config = config_get_config();
     char *pass = config->admin_password;
     char *user = config->admin_username;
-    char *protocol;
+    const char *protocol;
 
     if(!pass || !user) {
         config_release_config();
@@ -702,7 +702,7 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
     char *user = "source";
     int ret;
     int ice_login = config->ice_login;
-    char *protocol;
+    const char *protocol;
 
     mount_proxy *mountinfo = config_find_mount (config, mount);
 
@@ -995,7 +995,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
 static void *_handle_connection(void *arg)
 {
     http_parser_t *parser;
-    char *rawuri, *uri;
+    const char *rawuri;
 
     while (global.running == ICE_RUNNING) {
 
@@ -1018,6 +1018,8 @@ static void *_handle_connection(void *arg)
             client->parser = parser;
             if (httpp_parse (parser, client->refbuf->data, node->offset))
             {
+                char *uri;
+
                 /* we may have more than just headers, so prepare for it */
                 if (node->stream_offset == node->offset)
                     client->refbuf->len = 0;
