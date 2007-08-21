@@ -882,7 +882,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         return;
     }
 
-    add_client (uri, client);
+    auth_add_listener (uri, client);
     if (uri != passed_uri) free (uri);
 }
 

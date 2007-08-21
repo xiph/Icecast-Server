@@ -37,11 +37,7 @@
 #define CATMODULE "auth"
 
 
-static volatile auth_client *clients_to_auth;
-static volatile unsigned int auth_pending_count;
-static volatile int auth_running;
 static mutex_t auth_lock;
-static thread_type *auth_thread;
 
 
 static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
@@ -88,17 +84,25 @@ static void auth_client_setup (mount_proxy *mountinfo, client_t *client)
     thread_mutex_lock (&mountinfo->auth->lock);
     client->auth = mountinfo->auth;
     client->auth->refcount++;
+    DEBUG2 ("...refcount on auth_t %s is %d", client->auth->mount, client->auth->refcount);
     thread_mutex_unlock (&mountinfo->auth->lock);
 }
 
 
 static void queue_auth_client (auth_client *auth_user)
 {
-    thread_mutex_lock (&auth_lock);
-    auth_user->next = (auth_client *)clients_to_auth;
-    clients_to_auth = auth_user;
-    auth_pending_count++;
-    thread_mutex_unlock (&auth_lock);
+    auth_t *auth;
+
+    if (auth_user == NULL)
+        return;
+    auth = auth_user->client->auth;
+    thread_mutex_lock (&auth->lock);
+    auth_user->next = NULL;
+    *auth->tailp = auth_user;
+    auth->tailp = &auth_user->next;
+    auth->pending_count++;
+    INFO2 ("auth on %s has %d pending", auth->mount, auth->pending_count);
+    thread_mutex_unlock (&auth->lock);
 }
 
 
@@ -112,22 +116,28 @@ void auth_release (auth_t *authenticator)
 
     thread_mutex_lock (&authenticator->lock);
     authenticator->refcount--;
+    DEBUG2 ("...refcount on auth_t %s is now %d", authenticator->mount, authenticator->refcount);
     if (authenticator->refcount)
     {
         thread_mutex_unlock (&authenticator->lock);
         return;
     }
 
+    /* cleanup auth thread attached to this auth */
+    authenticator->running = 0;
+    thread_join (authenticator->thread);
+
     if (authenticator->free)
         authenticator->free (authenticator);
     xmlFree (authenticator->type);
     thread_mutex_unlock (&authenticator->lock);
     thread_mutex_destroy (&authenticator->lock);
+    free (authenticator->mount);
     free (authenticator);
 }
 
 
-void auth_client_free (auth_client *auth_user)
+static void auth_client_free (auth_client *auth_user)
 {
     if (auth_user == NULL)
         return;
@@ -146,6 +156,19 @@ void auth_client_free (auth_client *auth_user)
 }
 
 
+/* verify that the listener is still connected. */
+static int is_listener_connected (client_t *client)
+{
+    int ret = 1;
+    if (client)
+    {
+        if (sock_active (client->con->sock) == 0)
+            ret = 0;
+    }
+    return ret;
+}
+
+
 /* wrapper function for auth thread to authenticate new listener
  * connection details
  */
@@ -153,50 +176,90 @@ static void auth_new_listener (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
 
+    /* make sure there is still a client at this point, a slow backend request
+     * can be avoided if client has disconnected */
+    if (is_listener_connected (client) == 0)
+    {
+        DEBUG0 ("listener is no longer connected");
+        client->respcode = 400;
+        return;
+    }
     if (client->auth->authenticate)
     {
         if (client->auth->authenticate (auth_user) != AUTH_OK)
-        {
-            auth_release (client->auth);
-            client->auth = NULL;
             return;
-        }
     }
-    if (auth_postprocess_client (auth_user) < 0)
+    if (auth_postprocess_listener (auth_user) < 0)
         INFO1 ("client %lu failed", client->con->id);
 }
 
 
-/* wrapper function are auth thread to authenticate new listener
- * connections
+/* wrapper function for auth thread to drop listener connections
  */
 static void auth_remove_listener (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
 
-    if (client->auth->release_client)
-        client->auth->release_client (auth_user);
+    if (client->auth->release_listener)
+        client->auth->release_listener (auth_user);
     auth_release (client->auth);
     client->auth = NULL;
-    return;
+    /* client is going, so auth is not an issue at this point */
+    client->authenticated = 0;
+}
+
+
+/* Callback from auth thread to handle a stream start event, this applies
+ * to both source clients and relays.
+ */
+static void stream_start_callback (auth_client *auth_user)
+{
+    auth_t *auth = auth_user->client->auth;
+
+    if (auth->stream_start)
+        auth->stream_start (auth_user);
+}
+
+
+/* Callback from auth thread to handle a stream start event, this applies
+ * to both source clients and relays.
+ */
+static void stream_end_callback (auth_client *auth_user)
+{
+    auth_t *auth = auth_user->client->auth;
+
+    if (auth->stream_end)
+        auth->stream_end (auth_user);
 }
 
 
 /* The auth thread main loop. */
 static void *auth_run_thread (void *arg)
 {
+    auth_t *auth = arg;
+
     INFO0 ("Authentication thread started");
-    while (1)
+    while (auth->running)
     {
-        if (clients_to_auth)
+        /* usually no clients are waiting, so don't bother taking locks */
+        if (auth->head)
         {
             auth_client *auth_user;
 
-            thread_mutex_lock (&auth_lock);
-            auth_user = (auth_client*)clients_to_auth;
-            clients_to_auth = auth_user->next;
-            auth_pending_count--;
-            thread_mutex_unlock (&auth_lock);
+            /* may become NULL before lock taken */
+            thread_mutex_lock (&auth->lock);
+            auth_user = (auth_client*)auth->head;
+            if (auth_user == NULL)
+            {
+                thread_mutex_unlock (&auth->lock);
+                continue;
+            }
+            DEBUG2 ("%d client(s) pending on %s", auth->pending_count, auth->mount);
+            auth->head = auth_user->next;
+            if (auth->head == NULL)
+                auth->tailp = &auth->head;
+            auth->pending_count--;
+            thread_mutex_unlock (&auth->lock);
             auth_user->next = NULL;
 
             if (auth_user->process)
@@ -208,9 +271,6 @@ static void *auth_run_thread (void *arg)
 
             continue;
         }
-        /* is there a request to shutdown */
-        if (auth_running == 0)
-            break;
         thread_sleep (150000);
     }
     INFO0 ("Authenication thread shutting down");
@@ -271,7 +331,7 @@ static int check_duplicate_logins (source_t *source, client_t *client)
 /* if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-static int add_client_to_source (source_t *source, client_t *client)
+static int add_listener_to_source (source_t *source, client_t *client)
 {
     int loop = 10;
     do
@@ -326,7 +386,7 @@ static int add_client_to_source (source_t *source, client_t *client)
 /* Add listener to the pending lists of either the  source or fserve thread.
  * This can be run from the connection or auth thread context
  */
-static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, client_t *client)
+static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
     int ret = 0;
     source_t *source = NULL;
@@ -348,7 +408,7 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
                 client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
         }
 
-        ret = add_client_to_source (source, client);
+        ret = add_listener_to_source (source, client);
         avl_tree_unlock (global.source_tree);
         if (ret == 0)
             DEBUG0 ("client authenticated, passed to source");
@@ -362,15 +422,16 @@ static int add_authenticated_client (const char *mount, mount_proxy *mountinfo, 
 }
 
 
-int auth_postprocess_client (auth_client *auth_user)
+int auth_postprocess_listener (auth_client *auth_user)
 {
     int ret;
+    client_t *client = auth_user->client;
     ice_config_t *config = config_get_config();
 
     mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
-    auth_user->client->authenticated = 1;
+    client->authenticated = 1;
 
-    ret = add_authenticated_client (auth_user->mount, mountinfo, auth_user->client);
+    ret = add_authenticated_listener (auth_user->mount, mountinfo, client);
     config_release_config();
 
     if (ret < 0)
@@ -384,7 +445,7 @@ int auth_postprocess_client (auth_client *auth_user)
 /* Add a listener. Check for any mount information that states any
  * authentication to be used.
  */
-void add_client (const char *mount, client_t *client)
+void auth_add_listener (const char *mount, client_t *client)
 {
     mount_proxy *mountinfo; 
     ice_config_t *config = config_get_config();
@@ -400,7 +461,7 @@ void add_client (const char *mount, client_t *client)
     {
         auth_client *auth_user;
 
-        if (auth_pending_count > 30)
+        if (mountinfo->auth->pending_count > 100)
         {
             config_release_config ();
             WARN0 ("too many clients awaiting authentication");
@@ -410,11 +471,6 @@ void add_client (const char *mount, client_t *client)
         auth_client_setup (mountinfo, client);
         config_release_config ();
 
-        if (client->auth == NULL)
-        {
-            client_send_401 (client);
-            return;
-        }
         auth_user = calloc (1, sizeof (auth_client));
         if (auth_user == NULL)
         {
@@ -430,7 +486,7 @@ void add_client (const char *mount, client_t *client)
     }
     else
     {
-        int ret = add_authenticated_client (mount, mountinfo, client);
+        int ret = add_authenticated_listener (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
             client_send_403 (client, "max listeners reached");
@@ -441,7 +497,7 @@ void add_client (const char *mount, client_t *client)
 /* determine whether we need to process this client further. This
  * involves any auth exit, typically for external auth servers.
  */
-int release_client (client_t *client)
+int auth_release_listener (client_t *client)
 {
     if (client->auth)
     {
@@ -465,13 +521,16 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
     do
     {
         DEBUG1 ("type is %s", auth->type);
-#ifdef HAVE_AUTH_URL
+
         if (strcmp (auth->type, "url") == 0)
         {
+#ifdef HAVE_AUTH_URL
             auth_get_url_auth (auth, options);
+#else
+            ERROR0 ("Auth URL disabled");
+#endif
             break;
         }
-#endif
         if (strcmp (auth->type, "htpasswd") == 0)
         {
             auth_get_htpasswd_auth (auth, options);
@@ -531,7 +590,12 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
     }
     auth->type = xmlGetProp (node, "type");
     get_authenticator (auth, options);
+    auth->tailp = &auth->head;
     thread_mutex_create (&auth->lock);
+
+    auth->running = 1;
+    auth->thread = thread_create ("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+
     while (options)
     {
         config_options_t *opt = options;
@@ -555,7 +619,7 @@ void auth_stream_start (mount_proxy *mountinfo, const char *mount)
         if (auth_user)
         {
             auth_user->mount = strdup (mount);
-            auth_user->process = mountinfo->auth->stream_start;
+            auth_user->process = stream_start_callback;
 
             queue_auth_client (auth_user);
         }
@@ -574,7 +638,7 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
         if (auth_user)
         {
             auth_user->mount = strdup (mount);
-            auth_user->process = mountinfo->auth->stream_end;
+            auth_user->process = stream_end_callback;
 
             queue_auth_client (auth_user);
         }
@@ -586,20 +650,12 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 
 void auth_initialise (void)
 {
-    clients_to_auth = NULL;
-    auth_pending_count = 0;
-    auth_running = 1;
     thread_mutex_create (&auth_lock);
-    auth_thread = thread_create ("auth thread", auth_run_thread, NULL, THREAD_ATTACHED);
 }
 
 void auth_shutdown (void)
 {
-    if (auth_thread)
-    {
-        auth_running = 0;
-        thread_join (auth_thread);
-        INFO0 ("Auth thread has terminated");
-    }
+    thread_mutex_destroy (&auth_lock);
+    INFO0 ("Auth shutdown");
 }
 

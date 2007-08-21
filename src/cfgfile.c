@@ -675,6 +675,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         config_clear_mount (mount);
         return;
     }
+    if (mount->auth)
+        mount->auth->mount = strdup (mount->mountname);
     while(current) {
         last = current;
         current = current->next;

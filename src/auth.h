@@ -53,29 +53,38 @@ typedef struct auth_tag
 
     /* Authenticate using the given username and password */
     auth_result (*authenticate)(auth_client *aclient);
-    auth_result (*release_client)(auth_client *auth_user);
+    auth_result (*release_listener)(auth_client *auth_user);
 
-    /* callbacks to specific auth for notifying auth server on source
-     * startup or shutdown
-     */
+    /* auth handler for source startup, no client passed as it may disappear */
     void (*stream_start)(auth_client *auth_user);
+
+    /* auth handler for source exit, no client passed as it may disappear */
     void (*stream_end)(auth_client *auth_user);
 
+    /* auth state-specific free call */
     void (*free)(struct auth_tag *self);
+
     auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
     auth_result (*deleteuser)(struct auth_tag *auth, const char *username);
     auth_result (*listuser)(struct auth_tag *auth, xmlNodePtr srcnode);
 
     mutex_t lock;
+    int running;
     int refcount;
     int allow_duplicate_users;
+
+    thread_type *thread;
+
+    /* per-auth queue for clients */
+    auth_client *head, **tailp;
+    int pending_count;
 
     void *state;
     char *type;
 } auth_t;
 
-void add_client (const char *mount, client_t *client);
-int  release_client (client_t *client);
+void auth_add_listener (const char *mount, client_t *client);
+int  auth_release_listener (client_t *client);
 
 void auth_initialise (void);
 void auth_shutdown (void);
@@ -91,7 +100,7 @@ void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
 
 /* called from auth thread, after the client has successfully authenticated
  * and requires adding to source or fserve. */
-int auth_postprocess_client (auth_client *auth_user);
+int auth_postprocess_listener (auth_client *auth_user);
 
 #endif
 

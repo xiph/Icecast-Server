@@ -93,7 +93,7 @@ void client_destroy(client_t *client)
         client->refbuf = NULL;
     }
 
-    if (release_client (client))
+    if (auth_release_listener (client))
         return;
 
     /* write log entry if ip is set (some things don't set it, like outgoing 

@@ -162,7 +162,7 @@ static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *str
 }
 
 
-static auth_result url_remove_client (auth_client *auth_user)
+static auth_result url_remove_listener (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
     auth_t *auth = client->auth;
@@ -242,7 +242,7 @@ static auth_result url_remove_client (auth_client *auth_user)
 }
 
 
-static auth_result url_add_client (auth_client *auth_user)
+static auth_result url_add_listener (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
     auth_t *auth = client->auth;
@@ -463,8 +463,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
 
-    authenticator->authenticate = url_add_client;
-    authenticator->release_client = url_remove_client;
+    authenticator->authenticate = url_add_listener;
+    authenticator->release_listener = url_remove_listener;
 
     authenticator->free = auth_url_clear;
     authenticator->adduser = auth_url_adduser;
