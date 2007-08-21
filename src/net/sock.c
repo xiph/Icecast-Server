@@ -204,6 +204,21 @@ int sock_valid_socket(sock_t sock)
     return (ret == 0);
 }
 
+
+/* determines if the passed socket is still connected */
+int sock_active (sock_t sock)
+{
+    char c;
+    int l;
+
+    l = recv (sock, &c, 1, MSG_PEEK);
+    if (l == 0)
+        return 0;
+    if (l < 0 && sock_recoverable (sock_error()))
+        return 1;
+    return 0;
+}
+
 /* inet_aton
 **
 ** turns an ascii ip address into a binary representation
