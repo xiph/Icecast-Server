@@ -516,7 +516,7 @@ int auth_release_listener (client_t *client)
 }
 
 
-static void get_authenticator (auth_t *auth, config_options_t *options)
+static int get_authenticator (auth_t *auth, config_options_t *options)
 {
     do
     {
@@ -525,29 +525,31 @@ static void get_authenticator (auth_t *auth, config_options_t *options)
         if (strcmp (auth->type, "url") == 0)
         {
 #ifdef HAVE_AUTH_URL
-            auth_get_url_auth (auth, options);
+            if (auth_get_url_auth (auth, options) < 0)
+                return -1;
 #else
             ERROR0 ("Auth URL disabled");
+            return -1;
 #endif
-            break;
         }
         if (strcmp (auth->type, "htpasswd") == 0)
         {
-            auth_get_htpasswd_auth (auth, options);
+            if (auth_get_htpasswd_auth (auth, options) < 0)
+                return -1;
             break;
         }
-        
+
         ERROR1("Unrecognised authenticator type: \"%s\"", auth->type);
-        return;
+        return -1;
     } while (0);
 
-    auth->refcount = 1;
     while (options)
     {
         if (strcmp(options->name, "allow_duplicate_users") == 0)
             auth->allow_duplicate_users = atoi (options->value);
         options = options->next;
     }
+    return 0;
 }
 
 
@@ -589,12 +591,20 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
                 WARN1 ("unknown auth setting (%s)", current->name);
     }
     auth->type = xmlGetProp (node, "type");
-    get_authenticator (auth, options);
-    auth->tailp = &auth->head;
-    thread_mutex_create (&auth->lock);
-
-    auth->running = 1;
-    auth->thread = thread_create ("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+    if (get_authenticator (auth, options) < 0)
+    {
+        xmlFree (auth->type);
+        free (auth);
+        auth = NULL;
+    }
+    else
+    {
+        auth->tailp = &auth->head;
+        thread_mutex_create (&auth->lock);
+        auth->refcount = 1;
+        auth->running = 1;
+        auth->thread = thread_create ("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+    }
 
     while (options)
     {

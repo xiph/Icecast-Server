@@ -17,7 +17,7 @@
 #include <config.h>
 #endif
 
-void auth_get_htpasswd_auth (auth_t *auth, config_options_t *options);
+int auth_get_htpasswd_auth (auth_t *auth, config_options_t *options);
 
 #endif
 
