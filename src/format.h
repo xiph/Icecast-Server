@@ -40,6 +40,7 @@ typedef struct _format_plugin_tag
     char *mount;
 
     const char *contenttype;
+    char *charset;
     uint64_t read_bytes;
     uint64_t sent_bytes;
 

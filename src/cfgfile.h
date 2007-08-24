@@ -64,6 +64,7 @@ typedef struct _mount_proxy {
     unsigned int queue_size_limit;
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
+    char *charset;  /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
     char *auth_type; /* Authentication type */

@@ -133,6 +133,7 @@ static void config_clear_mount (mount_proxy *mount)
     xmlFree (mount->stream_genre);
     xmlFree (mount->bitrate);
     xmlFree (mount->type);
+    xmlFree (mount->charset);
     xmlFree (mount->cluster_password);
 
     xmlFree (mount->auth_type);
@@ -580,6 +581,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_listeners = atoi(tmp);
             if(tmp) xmlFree(tmp);
+        }
+        else if (strcmp(node->name, "charset") == 0) {
+            mount->charset = (char *)xmlNodeListGetString(doc,
+                    node->xmlChildrenNode, 1);
         }
         else if (strcmp(node->name, "mp3-metadata-interval") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

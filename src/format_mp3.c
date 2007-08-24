@@ -184,7 +184,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             {
                 memcpy (p, metadata+13, len);
                 logging_playlist (source->mount, p, source->listeners);
-                stats_event (source->mount, "title", p);
+                stats_event_conv (source->mount, "title", p, source->format->charset);
                 yp_touch (source->mount);
                 free (p);
             }
@@ -197,10 +197,21 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 {
     mp3_state *source_mp3 = format->_state;
 
-    if (mount == NULL || mount->mp3_meta_interval < 0)
+    source_mp3->interval = -1;
+    free (format->charset);
+    format->charset = NULL;
+
+    if (mount)
+    {
+        if (mount->mp3_meta_interval > 0)
+            source_mp3->interval = mount->mp3_meta_interval;
+        if (mount->charset)
+            format->charset = strdup (mount->charset);
+    }
+    if (source_mp3->interval <= 0)
     {
         const char *metadata = httpp_getvar (client->parser, "icy-metaint");
-        source_mp3->interval = -1;
+        source_mp3->interval = ICY_METADATA_INTERVAL;
         if (metadata)
         {
             int interval = atoi (metadata);
@@ -208,9 +219,12 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
                 source_mp3->interval = interval;
         }
     }
-    else
-        source_mp3->interval = mount->mp3_meta_interval;
-    DEBUG1 ("mp3 interval %d", source_mp3->interval);
+
+    if (format->charset == NULL)
+        format->charset = strdup ("ISO8859-1");
+
+    DEBUG1 ("sending metadata interval %d", source_mp3->interval);
+    DEBUG1 ("charset %s", format->charset);
 }
 
 
@@ -277,7 +291,7 @@ static void mp3_set_title (source_t *source)
 static int send_mp3_metadata (client_t *client, refbuf_t *associated)
 {
     int ret = 0;
-    unsigned char *metadata;
+    char *metadata;
     int meta_len;
     mp3_client_data *client_mp3 = client->format_data;
 
@@ -411,6 +425,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     thread_mutex_destroy (&state->url_lock);
     free (state->url_artist);
     free (state->url_title);
+    free (self->charset);
     refbuf_release (state->metadata);
     refbuf_release (state->read_data);
     free(state);
@@ -509,7 +524,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 
     refbuf = source_mp3->read_data;
     source_mp3->read_data = NULL;
-    src = refbuf->data;
+    src = (unsigned char *)refbuf->data;
 
     if (source_mp3->update_metadata)
     {

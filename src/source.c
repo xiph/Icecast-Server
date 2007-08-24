@@ -994,7 +994,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified name";
         } while (0);
     }
-    stats_event (source->mount, "server_name", str);
+    stats_event_conv (source->mount, "server_name", str, source->format->charset);
 
     /* stream description */
     if (mountinfo && mountinfo->stream_description)
@@ -1011,7 +1011,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified description";
         } while (0);
     }
-    stats_event (source->mount, "server_description", str);
+    stats_event_conv (source->mount, "server_description", str, source->format->charset);
 
     /* stream URL */
     if (mountinfo && mountinfo->stream_url)
@@ -1044,7 +1044,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "various";
         } while (0);
     }
-    stats_event (source->mount, "genre", str);
+    stats_event_conv (source->mount, "genre", str, source->format->charset);
 
     /* stream bitrate */
     if (mountinfo && mountinfo->bitrate)

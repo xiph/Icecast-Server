@@ -201,9 +201,53 @@ void stats_event(const char *source, const char *name, const char *value)
 {
     stats_event_t *event;
 
+    if (value && xmlCheckUTF8 ((unsigned char *)value) == 0)
+    {
+        WARN2 ("seen non-UTF8 data, probably incorrect metadata (%s, %s)", name, value);
+        return;
+    }
     event = build_event (source, name, value);
     if (event)
         queue_global_event (event);
+}
+
+
+/* wrapper for stats_event, this takes a charset to convert from */
+void stats_event_conv(const char *mount, const char *name, const char *value, const char *charset)
+{
+    const char *metadata = value;
+    xmlBufferPtr conv = xmlBufferCreate ();
+
+    if (charset)
+    {
+        xmlCharEncodingHandlerPtr handle = xmlFindCharEncodingHandler (charset);
+
+        if (handle)
+        {
+            xmlBufferPtr raw = xmlBufferCreate ();
+            xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
+            if (xmlCharEncInFunc (handle, conv, raw) > 0)
+                metadata = (char *)xmlBufferContent (conv);
+            xmlBufferFree (raw);
+            xmlCharEncCloseFunc (handle);
+        }
+        else
+            WARN1 ("No charset found for \"%s\"", charset);
+    }
+
+    stats_event (mount, name, metadata);
+
+    /* special case for title updates, log converted title */
+    if (mount && strcmp (name, "title") == 0)
+    {
+        char *s = stats_get_value ((char*)mount, "listeners");
+        int listeners = 0;
+        if (s)
+            listeners = atoi (s);
+        free (s);
+        logging_playlist (mount, metadata, listeners);
+    }
+    xmlBufferFree (conv);
 }
 
 /* make stat hidden (non-zero). name can be NULL if it applies to a whole
