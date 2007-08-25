@@ -391,6 +391,17 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     int ret = 0;
     source_t *source = NULL;
 
+    /* Here we are parsing the URI request to see if the extension is .xsl, if
+     * so, then process this request as an XSLT request
+     */
+    if (util_check_valid_extension (mount) == XSLT_CONTENT)
+    {
+        /* If the file exists, then transform it, otherwise, write a 404 */
+        DEBUG0("Stats request, sending XSL transformed stats");
+        stats_transform_xslt (client, mount);
+        return 0;
+    }
+
     avl_tree_rlock (global.source_tree);
     source = source_find_mount (mount);
 
