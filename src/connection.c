@@ -103,6 +103,11 @@ static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_que
 static mutex_t _con_queue_mutex;
 static mutex_t _req_queue_mutex;
 
+static int ssl_ok;
+#ifdef HAVE_OPENSSL
+static SSL_CTX *ssl_ctx;
+#endif
+
 rwlock_t _source_shutdown_rwlock;
 
 static void *_handle_connection(void *arg);
@@ -129,6 +134,10 @@ void connection_shutdown(void)
 {
     if (!_initialized) return;
     
+#ifdef HAVE_OPENSSL
+    SSL_CTX_free (ssl_ctx);
+#endif
+
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_mutex_destroy(&_con_queue_mutex);
@@ -150,6 +159,126 @@ static unsigned long _next_connection_id(void)
     return id;
 }
 
+
+#ifdef HAVE_OPENSSL
+static void get_ssl_certificate ()
+{
+    SSL_METHOD *method;
+    ice_config_t *config;
+    ssl_ok = 0;
+
+    SSL_load_error_strings();                /* readable error messages */
+    SSL_library_init();                      /* initialize library */
+
+    method = SSLv23_server_method();
+    ssl_ctx = SSL_CTX_new (method);
+
+    config = config_get_config ();
+    do
+    {
+        if (config->cert_file == NULL)
+            break;
+        if (SSL_CTX_use_certificate_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
+        {
+            WARN1 ("Invalid cert file %s", config->cert_file);
+            break;
+        }
+        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
+        {
+            WARN1 ("Invalid private key file %s", config->cert_file);
+            break;
+        }
+        if (!SSL_CTX_check_private_key (ssl_ctx))
+        {
+            ERROR0 ("Invalid icecast.pem - Private key doesn't"
+                    " match cert public key");
+            break;
+        }
+        ssl_ok = 1;
+        INFO1 ("SSL certificate found at %s", config->cert_file);
+    } while (0);
+    config_release_config ();
+    if (ssl_ok == 0)
+        INFO0 ("No SSL capability on any configured ports");
+}
+
+
+/* handlers for reading and writing a connection_t when there is ssl
+ * configured on the listening port
+ */
+static int connection_read_ssl (connection_t *con, void *buf, size_t len)
+{
+    int bytes = SSL_read (con->ssl, buf, len);
+
+    if (bytes < 0)
+    {
+        switch (SSL_get_error (con->ssl, bytes))
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                return -1;
+        }
+        con->error = 1;
+    }
+    return bytes;
+}
+
+static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
+{
+    int bytes = SSL_write (con->ssl, buf, len);
+
+    if (bytes < 0)
+    {
+        switch (SSL_get_error (con->ssl, bytes))
+        {
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                return -1;
+        }
+        con->error = 1;
+    }
+    else
+        con->sent_bytes += bytes;
+    return bytes;
+}
+#else
+
+/* SSL not compiled in, so at least log it */
+static void get_ssl_certificate ()
+{
+    ssl_ok = 0;
+    INFO0 ("No SSL capability");
+}
+#endif /* HAVE_OPENSSL */
+
+
+/* handlers (default) for reading and writing a connection_t, no encrpytion
+ * used just straight access to the socket
+ */
+static int connection_read (connection_t *con, void *buf, size_t len)
+{
+    int bytes = sock_read_bytes (con->sock, buf, len);
+    if (bytes == 0)
+        con->error = 1;
+    if (bytes == -1 && !sock_recoverable (sock_error()))
+        con->error = 1;
+    return bytes;
+}
+
+static int connection_send (connection_t *con, const void *buf, size_t len)
+{
+    int bytes = sock_write_bytes (con->sock, buf, len);
+    if (bytes < 0)
+    {
+        if (!sock_recoverable (sock_error()))
+            con->error = 1;
+    }
+    else
+        con->sent_bytes += bytes;
+    return bytes;
+}
+
+
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 {
     connection_t *con;
@@ -161,9 +290,24 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
         con->con_time = time(NULL);
         con->id = _next_connection_id();
         con->ip = ip;
+        con->read = connection_read;
+        con->send = connection_send;
     }
 
     return con;
+}
+
+/* prepare connection for interacting over a SSL connection
+ */
+void connection_uses_ssl (connection_t *con)
+{
+#ifdef HAVE_OPENSSL
+    con->read = connection_read_ssl;
+    con->send = connection_send_ssl;
+    con->ssl = SSL_new (ssl_ctx);
+    SSL_set_accept_state (con->ssl);
+    SSL_set_fd (con->ssl, con->sock);
+#endif
 }
 
 static int wait_for_serversock(int timeout)
@@ -437,6 +581,7 @@ void connection_accept_loop(void)
 {
     connection_t *con;
 
+    get_ssl_certificate ();
     tid = thread_create ("connection thread", _handle_connection, NULL, THREAD_ATTACHED);
 
     while (global.running == ICE_RUNNING)
@@ -478,9 +623,11 @@ void connection_accept_loop(void)
                 {
                     if (config->listeners[i].shoutcast_compat)
                         node->shoutcast = 1;
+                    if (config->listeners[i].ssl && ssl_ok)
+                        connection_uses_ssl (client->con);
                 }
             }
-            config_release_config(); 
+            config_release_config();
 
             sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
             sock_set_nodelay (client->con->sock);
@@ -1069,5 +1216,8 @@ void connection_close(connection_t *con)
     sock_close(con->sock);
     if (con->ip) free(con->ip);
     if (con->host) free(con->host);
+#ifdef HAVE_OPENSSL
+    if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
+#endif
     free(con);
 }

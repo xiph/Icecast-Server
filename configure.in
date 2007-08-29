@@ -129,6 +129,13 @@ then
 else
     AC_MSG_NOTICE([YP support disabled])
 fi
+XIPH_PATH_OPENSSL([
+    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$OPENSSL_CFLAGS])
+    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$OPENSSL_LDFLAGS])
+    XIPH_VAR_PREPEND([XIPH_LIBS],[$OPENSSL_LIBS])
+    ],
+    [ AC_MSG_NOTICE([SSL disabled!])
+    ])
 
 dnl Make substitutions
 

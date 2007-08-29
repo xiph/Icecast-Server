@@ -787,6 +787,11 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
             listener->port = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (strcmp(node->name, "ssl") == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            listener->ssl = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
         else if (strcmp(node->name, "shoutcast-compat") == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             listener->shoutcast_compat = atoi(tmp);
@@ -898,6 +903,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "pidfile") == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
             configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "ssl-certificate") == 0) {
+            if (configuration->cert_file) xmlFree(configuration->cert_file);
+            configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "webroot") == 0) {
             if (configuration->webroot_dir && configuration->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(configuration->webroot_dir);
             configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

@@ -101,7 +101,7 @@ void client_destroy(client_t *client)
      */
     if (client->respcode && client->parser)
         logging_access(client);
-    
+
     if (client->con)
         connection_close(client->con);
     if (client->parser)
@@ -127,7 +127,7 @@ void client_destroy(client_t *client)
 int client_read_bytes (client_t *client, void *buf, unsigned len)
 {
     int bytes;
-    
+
     if (client->refbuf && client->refbuf->len)
     {
         /* we have data to read from a refbuf first */
@@ -142,18 +142,12 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
         client->refbuf->len -= len;
         return len;
     }
-    bytes = sock_read_bytes (client->con->sock, buf, len);
-    if (bytes > 0)
-        return bytes;
+    bytes = client->con->read (client->con, buf, len);
 
-    if (bytes < 0)
-    {
-        if (sock_recoverable (sock_error()))
-            return -1;
-        WARN0 ("source connection has died");
-    }
-    client->con->error = 1;
-    return -1;
+    if (bytes == -1 && client->con->error)
+        DEBUG0 ("reading from connection has failed");
+
+    return bytes;
 }
 
 
@@ -205,14 +199,11 @@ void client_send_403(client_t *client, const char *reason)
 /* helper function for sending the data to a client */
 int client_send_bytes (client_t *client, const void *buf, unsigned len)
 {
-    int ret = sock_write_bytes (client->con->sock, buf, len);
-    if (ret < 0 && !sock_recoverable (sock_error()))
-    {
+    int ret = client->con->send (client->con, buf, len);
+
+    if (client->con->error)
         DEBUG0 ("Client connection died");
-        client->con->error = 1;
-    }
-    if (ret > 0)
-        client->con->sent_bytes += ret;
+
     return ret;
 }
 

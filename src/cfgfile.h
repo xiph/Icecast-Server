@@ -99,6 +99,7 @@ typedef struct {
     int port;
     char *bind_address;
     int shoutcast_compat;
+    int ssl;
 } listener_t;
 
 typedef struct ice_config_tag
@@ -149,6 +150,7 @@ typedef struct ice_config_tag
     char *base_dir;
     char *log_dir;
     char *pidfile;
+    char *cert_file;
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;
