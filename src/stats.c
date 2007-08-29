@@ -87,8 +87,8 @@ static int _compare_source_stats(void *a, void *b, void *arg);
 static int _free_stats(void *key);
 static int _free_source_stats(void *key);
 static void _add_event_to_queue(stats_event_t *event, event_queue_t *queue);
-static stats_node_t *_find_node(avl_tree *tree, char *name);
-static stats_source_t *_find_source(avl_tree *tree, char *source);
+static stats_node_t *_find_node(avl_tree *tree, const char *name);
+static stats_source_t *_find_source(avl_tree *tree, const char *source);
 static void _free_event(stats_event_t *event);
 static stats_event_t *_get_event_from_queue (event_queue_t *queue);
 
@@ -289,7 +289,7 @@ void stats_event_args(const char *source, char *name, char *format, ...)
     stats_event(source, name, buf);
 }
 
-static char *_get_stats(char *source, char *name)
+static char *_get_stats(const char *source, const char *name)
 {
     stats_node_t *stats = NULL;
     stats_source_t *src = NULL;
@@ -313,7 +313,7 @@ static char *_get_stats(char *source, char *name)
     return value;
 }
 
-char *stats_get_value(char *source, char *name)
+char *stats_get_value(const char *source, const char *name)
 {
     return(_get_stats(source, name));
 }
@@ -358,7 +358,7 @@ void stats_event_dec(const char *source, const char *name)
 /* note: you must call this function only when you have exclusive access
 ** to the avl_tree
 */
-static stats_node_t *_find_node(avl_tree *stats_tree, char *name)
+static stats_node_t *_find_node(avl_tree *stats_tree, const char *name)
 {
     stats_node_t *stats;
     avl_node *node;
@@ -385,7 +385,7 @@ static stats_node_t *_find_node(avl_tree *stats_tree, char *name)
 /* note: you must call this function only when you have exclusive access
 ** to the avl_tree
 */
-static stats_source_t *_find_source(avl_tree *source_tree, char *source)
+static stats_source_t *_find_source(avl_tree *source_tree, const char *source)
 {
     stats_source_t *stats;
     avl_node *node;
@@ -626,6 +626,8 @@ static void *_stats_thread(void *arg)
             event = _get_event_from_queue (&_global_event_queue);
             thread_mutex_unlock(&_global_event_mutex);
 
+            if (event == NULL)
+                continue;
             event->next = NULL;
 
             thread_mutex_lock(&_stats_mutex);

@@ -95,7 +95,7 @@ void stats_callback (client_t *client, void *notused);
 void stats_transform_xslt(client_t *client, const char *uri);
 void stats_sendxml(client_t *client);
 void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount);
-char *stats_get_value(char *source, char *name);
+char *stats_get_value(const char *source, const char *name);
 
 #endif  /* __STATS_H__ */
 
