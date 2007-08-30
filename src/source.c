@@ -949,6 +949,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (source->client)
         parser = source->client->parser;
 
+    /* to be done before possible non-utf8 stats */
+    if (source->format && source->format->apply_settings)
+        source->format->apply_settings (source->client, source->format, mountinfo);
+
     /* public */
     if (mountinfo && mountinfo->yp_public >= 0)
         val = mountinfo->yp_public;
@@ -994,7 +998,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified name";
         } while (0);
     }
-    stats_event_conv (source->mount, "server_name", str, source->format->charset);
+    if (str && source->format)
+        stats_event_conv (source->mount, "server_name", str, source->format->charset);
 
     /* stream description */
     if (mountinfo && mountinfo->stream_description)
@@ -1011,7 +1016,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "Unspecified description";
         } while (0);
     }
-    stats_event_conv (source->mount, "server_description", str, source->format->charset);
+    if (str && source->format)
+        stats_event_conv (source->mount, "server_description", str, source->format->charset);
 
     /* stream URL */
     if (mountinfo && mountinfo->stream_url)
@@ -1027,7 +1033,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
         } while (0);
     }
-    stats_event (source->mount, "server_url", str);
+    if (str && source->format)
+        stats_event_conv (source->mount, "server_url", str, source->format->charset);
 
     /* stream genre */
     if (mountinfo && mountinfo->stream_genre)
@@ -1044,7 +1051,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = "various";
         } while (0);
     }
-    stats_event_conv (source->mount, "genre", str, source->format->charset);
+    if (str && source->format)
+        stats_event_conv (source->mount, "genre", str, source->format->charset);
 
     /* stream bitrate */
     if (mountinfo && mountinfo->bitrate)
@@ -1132,8 +1140,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
 
-    if (source->format && source->format->apply_settings)
-        source->format->apply_settings (source->client, source->format, mountinfo);
     avl_tree_unlock (source->client_tree);
 }
 

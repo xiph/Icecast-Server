@@ -48,6 +48,7 @@
 </table>
 <input type="hidden" name="mount" value="{@mount}"/>
 <input type="hidden" name="mode" value="updinfo"/>
+<input type="hidden" name="charset" value="UTF-8"/>
 </form>
 
 <br />

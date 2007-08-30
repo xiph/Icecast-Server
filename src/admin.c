@@ -854,7 +854,7 @@ static void command_metadata(client_t *client, source_t *source,
     int response)
 {
     const char *action;
-    const char *song, *title, *artist;
+    const char *song, *title, *artist, *charset;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -869,6 +869,7 @@ static void command_metadata(client_t *client, source_t *source,
     COMMAND_OPTIONAL(client, "song", song);
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
+    COMMAND_OPTIONAL(client, "charset", charset);
 
     if (strcmp (action, "updinfo") != 0)
     {
@@ -886,15 +887,15 @@ static void command_metadata(client_t *client, source_t *source,
     {
         if (song)
         {
-            plugin->set_tag (plugin, "song", song);
+            plugin->set_tag (plugin, "song", song, charset);
             INFO2 ("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
         }
         else
         {
             if (artist && title)
             {
-                plugin->set_tag (plugin, "title", title);
-                plugin->set_tag (plugin, "artist", artist);
+                plugin->set_tag (plugin, "title", title, charset);
+                plugin->set_tag (plugin, "artist", artist, charset);
                 INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
                         source->mount, artist, title);
             }
@@ -936,7 +937,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
     if (source->format && source->format->set_tag)
     {
-        source->format->set_tag (source->format, "title", value);
+        source->format->set_tag (source->format, "title", value, NULL);
 
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);

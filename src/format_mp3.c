@@ -61,7 +61,7 @@ static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
-static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *value);
+static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
 
@@ -124,42 +124,43 @@ int format_mp3_get_plugin (source_t *source)
 }
 
 
-static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *value)
+static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
 {
     mp3_state *source_mp3 = plugin->_state;
     unsigned int len;
     const char meta[] = "StreamTitle='";
     int size = sizeof (meta) + 1;
+    char *value;
 
-    if (tag==NULL || value == NULL)
+    if (tag==NULL || in_value == NULL)
         return;
+
+    /* protect against multiple updaters */
+    thread_mutex_lock (&source_mp3->url_lock);
+
+    value = util_conv_string (in_value, charset, plugin->charset);
+    if (value == NULL)
+        value = strdup (in_value);
 
     len = strlen (value)+1;
     size += len;
-    /* protect against multiple updaters */
-    thread_mutex_lock (&source_mp3->url_lock);
+
     if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (source_mp3->url_title);
-            free (source_mp3->url_artist);
-            source_mp3->url_artist = NULL;
-            source_mp3->url_title = p;
-            source_mp3->update_metadata = 1;
-        }
+        free (source_mp3->url_title);
+        free (source_mp3->url_artist);
+        source_mp3->url_artist = NULL;
+        source_mp3->url_title = value;
+        source_mp3->update_metadata = 1;
     }
     else if (strcmp (tag, "artist") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (source_mp3->url_artist);
-            source_mp3->url_artist = p;
-            source_mp3->update_metadata = 1;
-        }
+        free (source_mp3->url_artist);
+        source_mp3->url_artist = value;
+        source_mp3->update_metadata = 1;
     }
+    else
+        free (value);
     thread_mutex_unlock (&source_mp3->url_lock);
 }
 

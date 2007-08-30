@@ -633,3 +633,43 @@ struct tm *localtime_r (const time_t *timep, struct tm *result)
      return result;
 }
 #endif
+
+
+/* helper function for converting a passed string in one character set to another
+ * we use libxml2 for this
+ */
+char *util_conv_string (const char *string, const char *in_charset, const char *out_charset)
+{
+    xmlCharEncodingHandlerPtr in, out;
+    char *ret = NULL;
+
+    if (string == NULL || in_charset == NULL || out_charset == NULL)
+        return NULL;
+
+    in  = xmlFindCharEncodingHandler (in_charset);
+    out = xmlFindCharEncodingHandler (out_charset);
+
+    if (in && out)
+    {
+        xmlBufferPtr orig = xmlBufferCreate ();
+        xmlBufferPtr utf8 = xmlBufferCreate ();
+        xmlBufferPtr conv = xmlBufferCreate ();
+
+        INFO2 ("converting metadata from %s to %s", in_charset, out_charset);
+        xmlBufferCCat (orig, string);
+        if (xmlCharEncInFunc (in, utf8, orig) > 0)
+        {
+            xmlCharEncOutFunc (out, conv, NULL);
+            if (xmlCharEncOutFunc (out, conv, utf8) >= 0)
+                ret = strdup ((const char *)xmlBufferContent (conv));
+        }
+        xmlBufferFree (orig);
+        xmlBufferFree (utf8);
+        xmlBufferFree (conv);
+    }
+    xmlCharEncCloseFunc (in);
+    xmlCharEncCloseFunc (out);
+
+    return ret;
+}
+

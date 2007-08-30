@@ -67,7 +67,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec);
 static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
                 ogg_codec_t *codec, ogg_page *page);
 static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec);
-static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value);
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value, const char *charset);
 
 
 static void free_ogg_packet (ogg_packet *packet)
@@ -413,12 +413,13 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 /* called from the admin interface, here we update the artist/title info
  * and schedule a new set of header pages
  */
-static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value)
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
 {   
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;
     int change = 0;
+    char *value;
 
     /* avoid updating if multiple codecs in use */
     if (codec && codec->next == NULL)
@@ -426,43 +427,37 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     else
         return;
 
+    value = util_conv_string (value, charset, "UTF-8");
+    if (value == NULL)
+        value = strdup (in_value);
+
     if (strcmp (tag, "artist") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->artist);
-            ogg_info->artist = p;
-            change = 1;
-        }
+        free (ogg_info->artist);
+        ogg_info->artist = value;
+        change = 1;
     }
     if (strcmp (tag, "title") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->title);
-            ogg_info->title = p;
-            change = 1;
-        }
+        free (ogg_info->title);
+        ogg_info->title = value;
+        change = 1;
     }
     if (strcmp (tag, "song") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->artist);
-            free (ogg_info->title);
-            ogg_info->artist = NULL;
-            ogg_info->title = p;
-            change = 1;
-        }
+        free (ogg_info->artist);
+        free (ogg_info->title);
+        ogg_info->artist = NULL;
+        ogg_info->title = value;
+        change = 1;
     }
     if (change)
     {
         source_vorbis->stream_notify = 1;
         source_vorbis->rebuild_comment = 1;
     }
+    else
+        free (value);
 }
 
 
