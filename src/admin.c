@@ -177,7 +177,7 @@ static void command_show_listeners(client_t *client, source_t *source,
         int response);
 static void command_move_clients(client_t *client, source_t *source,
         int response);
-static void command_stats(client_t *client, int response);
+static void command_stats(client_t *client, const char *mount, int response);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
@@ -435,7 +435,7 @@ static void admin_handle_general_request(client_t *client, int command)
 {
     switch(command) {
         case COMMAND_RAW_STATS:
-            command_stats(client, RAW);
+            command_stats(client, NULL, RAW);
             break;
         case COMMAND_RAW_LIST_MOUNTS:
             command_list_mounts(client, RAW);
@@ -447,7 +447,7 @@ static void admin_handle_general_request(client_t *client, int command)
             command_list_mounts(client, PLAINTEXT);
             break;
         case COMMAND_TRANSFORMED_STATS:
-            command_stats(client, TRANSFORMED);
+            command_stats(client, NULL, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_LIST_MOUNTS:
             command_list_mounts(client, TRANSFORMED);
@@ -469,6 +469,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         int command)
 {
     switch(command) {
+        case COMMAND_RAW_STATS:
+            command_stats(client, source->mount, RAW);
+            break;
         case COMMAND_RAW_FALLBACK:
             command_fallback(client, source, RAW);
             break;
@@ -492,6 +495,9 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         case COMMAND_RAW_KILL_SOURCE:
             command_kill_source(client, source, RAW);
+            break;
+        case COMMAND_TRANSFORMED_STATS:
+            command_stats(client, source->mount, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_FALLBACK:
             command_fallback(client, source, RAW);
@@ -949,12 +955,12 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     }
 }
 
-static void command_stats(client_t *client, int response) {
+static void command_stats(client_t *client, const char *mount, int response) {
     xmlDocPtr doc;
 
     DEBUG0("Stats request, sending xml stats");
 
-    stats_get_xml(&doc, 1, NULL);
+    stats_get_xml(&doc, 1, mount);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     return;
