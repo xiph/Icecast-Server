@@ -271,6 +271,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     int bytes;
     int bitrate_filtered = 0;
     avl_node *node;
+    ice_config_t *config;
 
     remaining = client->refbuf->len;
     ptr = client->refbuf->data;
@@ -340,7 +341,9 @@ static int format_prepare_headers (source_t *source, client_t *client)
     }
     avl_tree_unlock(source->parser->vars);
 
-    bytes = snprintf (ptr, remaining, "Server: %s\r\n", ICECAST_VERSION_STRING);
+    config = config_get_config();
+    bytes = snprintf (ptr, remaining, "Server: %s\r\n", config->server_id);
+    config_release_config();
     remaining -= bytes;
     ptr += bytes;
 

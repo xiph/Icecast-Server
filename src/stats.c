@@ -589,6 +589,7 @@ void stats_event_time (const char *mount, const char *name)
 
 void stats_global (ice_config_t *config)
 {
+    stats_event (NULL, "server_id", config->server_id);
     stats_event (NULL, "host", config->hostname);
     stats_event (NULL, "location", config->location);
     stats_event (NULL, "admin", config->admin);
@@ -601,7 +602,6 @@ static void *_stats_thread(void *arg)
     stats_event_t *copy;
     event_listener_t *listener;
 
-    stats_event (NULL, "server", ICECAST_VERSION_STRING);
     stats_event_time (NULL, "server_start");
 
     /* global currently active stats */

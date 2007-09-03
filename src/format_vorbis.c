@@ -325,13 +325,16 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
     {
         vorbis_comment vc;
         ogg_packet header;
+        ice_config_t *config;
 
         vorbis_comment_init (&vc);
         if (ogg_info->artist) 
             vorbis_comment_add_tag (&vc, "artist", ogg_info->artist);
         if (ogg_info->title)
             vorbis_comment_add_tag (&vc, "title", ogg_info->title);
-        vorbis_comment_add_tag (&vc, "server", ICECAST_VERSION_STRING);
+        config = config_get_config();
+        vorbis_comment_add_tag (&vc, "server", config->server_id);
+        config_release_config();
         vorbis_commentheader_out (&vc, &header);
 
         ogg_stream_packetin (&source_vorbis->new_os, &header);

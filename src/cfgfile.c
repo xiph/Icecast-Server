@@ -337,6 +337,7 @@ ice_config_t *config_get_config_unlocked(void)
 static void _set_defaults(ice_config_t *configuration)
 {
     configuration->location = CONFIG_DEFAULT_LOCATION;
+    configuration->server_id = (char *)xmlCharStrdup (ICECAST_VERSION_STRING);
     configuration->admin = CONFIG_DEFAULT_ADMIN;
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
@@ -397,6 +398,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (strcmp(node->name, "admin") == 0) {
             if (configuration->admin && configuration->admin != CONFIG_DEFAULT_ADMIN) xmlFree(configuration->admin);
             configuration->admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (strcmp(node->name, "server-id") == 0) {
+            xmlFree (configuration->server_id);
+            configuration->server_id = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if(strcmp(node->name, "authentication") == 0) {
             _parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (strcmp(node->name, "source-password") == 0) {

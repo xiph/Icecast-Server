@@ -153,6 +153,8 @@ void slave_shutdown(void)
 static client_t *open_relay_connection (relay_server *relay)
 {
     int redirects = 0;
+    char *server_id = NULL;
+    ice_config_t *config;
     http_parser_t *parser = NULL;
     connection_t *con=NULL;
     char *server = strdup (relay->server);
@@ -160,6 +162,10 @@ static client_t *open_relay_connection (relay_server *relay)
     int port = relay->port;
     char *auth_header;
     char header[4096];
+
+    config = config_get_config ();
+    server_id = strdup (config->server_id);
+    config_release_config ();
 
     /* build any authentication header before connecting */
     if (relay->username && relay->password)
@@ -205,7 +211,7 @@ static client_t *open_relay_connection (relay_server *relay)
                 "%s"
                 "\r\n",
                 mount,
-                ICECAST_VERSION_STRING,
+                server_id,
                 relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
                 auth_header);
         memset (header, 0, sizeof(header));
@@ -277,6 +283,7 @@ static client_t *open_relay_connection (relay_server *relay)
             client_set_queue (client, NULL);
             free (server);
             free (mount);
+            free (server_id);
             free (auth_header);
 
             return client;
@@ -286,6 +293,7 @@ static client_t *open_relay_connection (relay_server *relay)
     /* failed, better clean up */
     free (server);
     free (mount);
+    free (server_id);
     free (auth_header);
     if (con)
         connection_close (con);

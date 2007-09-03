@@ -147,6 +147,7 @@ typedef struct ice_config_tag
 
     mount_proxy *mounts;
 
+    char *server_id;
     char *base_dir;
     char *log_dir;
     char *pidfile;
