@@ -931,8 +931,9 @@ void stats_transform_xslt(client_t *client, const char *uri)
 {
     xmlDocPtr doc;
     char *xslpath = util_get_path_from_normalised_uri (uri);
+    const char *mount = httpp_get_query_param (client->parser, "mount");
 
-    stats_get_xml(&doc, 0, NULL);
+    stats_get_xml(&doc, 0, mount);
 
     xslt_transform(doc, xslpath, client);
 
