@@ -430,7 +430,7 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     else
         return;
 
-    value = util_conv_string (value, charset, "UTF-8");
+    value = util_conv_string (in_value, charset, "UTF-8");
     if (value == NULL)
         value = strdup (in_value);
 
