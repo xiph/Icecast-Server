@@ -711,23 +711,34 @@ static void command_manageauth(client_t *client, source_t *source,
     xmlNodePtr node, srcnode, msgnode;
     const char *action = NULL;
     const char *username = NULL;
-    const char *password = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
     ice_config_t *config = config_get_config ();
     mount_proxy *mountinfo = config_find_mount (config, source->mount);
 
-    if((COMMAND_OPTIONAL(client, "action", action))) {
+    do
+    {
         if (mountinfo == NULL || mountinfo->auth == NULL)
         {
             WARN1 ("manage auth request for %s but no facility available", source->mount);
-            config_release_config ();
-            client_send_404 (client, "no such auth facility");
-            return;
+            break;
         }
-        if (!strcmp(action, "add")) {
-            COMMAND_REQUIRE(client, "username", username);
-            COMMAND_REQUIRE(client, "password", password);
+        COMMAND_OPTIONAL(client, "action", action);
+        COMMAND_OPTIONAL (client, "username", username);
+
+        if (action == NULL)
+            break;
+
+        if (!strcmp(action, "add"))
+        {
+            const char *password = NULL;
+            COMMAND_OPTIONAL (client, "password", password);
+
+            if (username == NULL || password == NULL)
+            {
+                WARN1 ("manage auth request add for %s but no user/pass", source->mount);
+                break;
+            }
             ret = mountinfo->auth->adduser(mountinfo->auth, username, password);
             if (ret == AUTH_FAILED) {
                 message = strdup("User add failed - check the icecast error log");
@@ -739,8 +750,13 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User already exists - not added");
             }
         }
-        if (!strcmp(action, "delete")) {
-            COMMAND_REQUIRE(client, "username", username);
+        if (!strcmp(action, "delete"))
+        {
+            if (username == NULL)
+            {
+                WARN1 ("manage auth request delete for %s but no username", source->mount);
+                break;
+            }
             ret = mountinfo->auth->deleteuser(mountinfo->auth, username);
             if (ret == AUTH_FAILED) {
                 message = strdup("User delete failed - check the icecast error log");
@@ -749,31 +765,33 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User deleted");
             }
         }
-    }
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
-    srcnode = xmlNewChild(node, NULL, "source", NULL);
-    xmlSetProp(srcnode, "mount", source->mount);
+        doc = xmlNewDoc("1.0");
+        node = xmlNewDocNode(doc, NULL, "icestats", NULL);
+        srcnode = xmlNewChild(node, NULL, "source", NULL);
+        xmlSetProp(srcnode, "mount", source->mount);
 
-    if (message) {
-        msgnode = xmlNewChild(node, NULL, "iceresponse", NULL);
-        xmlNewChild(msgnode, NULL, "message", message);
-    }
+        if (message) {
+            msgnode = xmlNewChild(node, NULL, "iceresponse", NULL);
+            xmlNewChild(msgnode, NULL, "message", message);
+        }
 
-    xmlDocSetRootElement(doc, node);
+        xmlDocSetRootElement(doc, node);
 
-    if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
-        mountinfo->auth->listuser (mountinfo->auth, srcnode);
+        if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
+            mountinfo->auth->listuser (mountinfo->auth, srcnode);
+
+        config_release_config ();
+
+        admin_send_response(doc, client, response, 
+                MANAGEAUTH_TRANSFORMED_REQUEST);
+        free (message);
+        xmlFreeDoc(doc);
+        return;
+    } while (0);
 
     config_release_config ();
-
-    admin_send_response(doc, client, response, 
-        MANAGEAUTH_TRANSFORMED_REQUEST);
-    if (message) {
-        free(message);
-    }
-    xmlFreeDoc(doc);
+    client_send_400 (client, "missing parameter");
 }
 
 static void command_kill_source(client_t *client, source_t *source,
