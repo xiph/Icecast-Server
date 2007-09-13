@@ -11,6 +11,7 @@ AM_MAINTAINER_MODE
 AC_PROG_CC
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
+AC_SYS_LARGEFILE
 
 dnl Set some options based on environment
 
