@@ -1005,8 +1005,9 @@ static void command_list_mounts(client_t *client, int response)
     }
     else
     {
+        xmlDocPtr doc;
         avl_tree_rlock (global.source_tree);
-        xmlDocPtr doc = admin_build_sourcelist(NULL);
+        doc = admin_build_sourcelist(NULL);
         avl_tree_unlock (global.source_tree);
 
         admin_send_response(doc, client, response, 

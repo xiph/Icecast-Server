@@ -440,13 +440,13 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
         ogg_info->artist = value;
         change = 1;
     }
-    if (strcmp (tag, "title") == 0)
+    else if (strcmp (tag, "title") == 0)
     {
         free (ogg_info->title);
         ogg_info->title = value;
         change = 1;
     }
-    if (strcmp (tag, "song") == 0)
+    else if (strcmp (tag, "song") == 0)
     {
         free (ogg_info->artist);
         free (ogg_info->title);
