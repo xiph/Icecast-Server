@@ -529,6 +529,11 @@ int auth_release_listener (client_t *client)
 
 static int get_authenticator (auth_t *auth, config_options_t *options)
 {
+    if (auth->type == NULL)
+    {
+        WARN0 ("no authentication type defined");
+        return -1;
+    }
     do
     {
         DEBUG1 ("type is %s", auth->type);
