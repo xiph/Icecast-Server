@@ -183,8 +183,7 @@ static void command_kill_client(client_t *client, source_t *source,
         int response);
 static void command_manageauth(client_t *client, source_t *source,
         int response);
-static void command_buildm3u(client_t *client, source_t *source,
-        int response);
+static void command_buildm3u(client_t *client, const char *mount);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
 static void command_updatemetadata(client_t *client, source_t *source,
@@ -307,7 +306,6 @@ void admin_handle_request(client_t *client, const char *uri)
 {
     const char *mount, *command_string;
     int command;
-    int noauth = 0;
 
     DEBUG1("Admin request (%s)", uri);
     if (!((strcmp(uri, "/admin.cgi") == 0) ||
@@ -355,18 +353,21 @@ void admin_handle_request(client_t *client, const char *uri)
     if(mount != NULL) {
         source_t *source;
 
-        if (command == COMMAND_BUILDM3U) {
-            noauth = 1;
+        /* this request does not require auth but can apply to files on webroot */
+        if (command == COMMAND_BUILDM3U)
+        {
+            command_buildm3u (client, mount);
+            return;
         }
         /* This is a mount request, handle it as such */
-        if (!noauth) {
-            if(!connection_check_admin_pass(client->parser)) {
-                if(!connection_check_source_pass(client->parser, mount)) {
-                    INFO1("Bad or missing password on mount modification admin "
-                          "request (command: %s)", command_string);
-                    client_send_401(client);
-                    return;
-                }
+        if (!connection_check_admin_pass(client->parser))
+        {
+            if (!connection_check_source_pass(client->parser, mount))
+            {
+                INFO1("Bad or missing password on mount modification admin "
+                        "request (command: %s)", command_string);
+                client_send_401(client);
+                return;
             }
         }
         
@@ -526,9 +527,6 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
         case COMMAND_RAW_UPDATEMETADATA:
             command_updatemetadata(client, source, RAW);
             break;
-        case COMMAND_BUILDM3U:
-            command_buildm3u(client, source, RAW);
-            break;
         default:
             WARN0("Mount request not recognised");
             client_send_400(client, "Mount request unknown");
@@ -674,8 +672,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlFreeDoc(doc);
 }
 
-static void command_buildm3u(client_t *client, source_t *source,
-    int response)
+static void command_buildm3u(client_t *client,  const char *mount)
 {
     const char *username = NULL;
     const char *password = NULL;
@@ -695,7 +692,7 @@ static void command_buildm3u(client_t *client, source_t *source,
         password,
         config->hostname,
         config->port,
-        source->mount
+        mount
     );
     config_release_config();
 
