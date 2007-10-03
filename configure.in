@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3.1], [icecast@xiph.org])
+AC_INIT([Icecast], [trunk], [icecast@xiph.org])
 
 AC_PREREQ(2.54)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -18,29 +18,7 @@ dnl Set some options based on environment
 DEBUG="-g"
 if test -z "$GCC"; then
     XIPH_CPPFLAGS="-D_REENTRANT"
-    case $host in 
-        *-*-irix*)
-                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -w -signed"
-                PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
-                ;;
-        *-*-solaris*)
-                XIPH_CFLAGS="-xO4 -xcg92"
-                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -v -w -fsimple -fast"
-                PROFILE="-xpg -g -Dsuncc"
-                ;;
-        *)
-                XIPH_CFLAGS="-O"
-                PROFILE="-g -p"
-                ;;
-    esac
-
-    case "$host" in
-        *openbsd* | *irix*)
-        ;;
-        *) AC_DEFINE([_XOPEN_SOURCE], 600, [Define if you have POSIX and XPG specifications])
-        ;;
-    esac
-
+    PROFILE="-g -p"
 else
     XIPH_CPPFLAGS="-Wall -ffast-math -fsigned-char"
     PROFILE="-pg -g"
