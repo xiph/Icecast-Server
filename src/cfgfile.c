@@ -381,10 +381,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         if (xmlIsBlankNode(node)) continue;
 
         if (strcmp(node->name, "location") == 0) {
-            if (configuration->location && configuration->location != CONFIG_DEFAULT_LOCATION) xmlFree(configuration->location);
+            if (configuration->location) xmlFree(configuration->location);
             configuration->location = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "admin") == 0) {
-            if (configuration->admin && configuration->admin != CONFIG_DEFAULT_ADMIN) xmlFree(configuration->admin);
+            if (configuration->admin) xmlFree(configuration->admin);
             configuration->admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "server-id") == 0) {
             xmlFree (configuration->server_id);
@@ -399,7 +399,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
                 /* FIXME: This is a placeholder for per-mount passwords */
             }
             else {
-                if (configuration->source_password && configuration->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD) xmlFree(configuration->source_password);
+                if (configuration->source_password) xmlFree(configuration->source_password);
                 configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
         } else if (strcmp(node->name, "icelogin") == 0) {
@@ -415,7 +415,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->on_demand = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (strcmp(node->name, "hostname") == 0) {
-            if (configuration->hostname && configuration->hostname != CONFIG_DEFAULT_HOSTNAME) xmlFree(configuration->hostname);
+            if (configuration->hostname) xmlFree(configuration->hostname);
             configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "mime-types") == 0) {
             if (configuration->mimetypes_fn) xmlFree(configuration->mimetypes_fn);
@@ -449,9 +449,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->master_update_interval = atoi(tmp);
             xmlFree (tmp);
         } else if (strcmp(node->name, "shoutcast-mount") == 0) {
-            if (configuration->shoutcast_mount &&
-                    configuration->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
-                xmlFree(configuration->shoutcast_mount);
+            if (configuration->shoutcast_mount) xmlFree(configuration->shoutcast_mount);
             configuration->shoutcast_mount = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "limits") == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
@@ -810,9 +808,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
                 /* FIXME: This is a placeholder for per-mount passwords */
             }
             else {
-                if (configuration->source_password && 
-                        configuration->source_password != 
-                        CONFIG_DEFAULT_SOURCE_PASSWORD) 
+                if (configuration->source_password)
                     xmlFree(configuration->source_password);
                 configuration->source_password = 
                     (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -887,10 +883,10 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         if (xmlIsBlankNode(node)) continue;
 
         if (strcmp(node->name, "basedir") == 0) {
-            if (configuration->base_dir && configuration->base_dir != CONFIG_DEFAULT_BASE_DIR) xmlFree(configuration->base_dir);
+            if (configuration->base_dir) xmlFree(configuration->base_dir);
             configuration->base_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "logdir") == 0) {
-            if (configuration->log_dir && configuration->log_dir != CONFIG_DEFAULT_LOG_DIR) xmlFree(configuration->log_dir);
+            if (configuration->log_dir) xmlFree(configuration->log_dir);
             configuration->log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "pidfile") == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
@@ -899,12 +895,12 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if (configuration->cert_file) xmlFree(configuration->cert_file);
             configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "webroot") == 0) {
-            if (configuration->webroot_dir && configuration->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR) xmlFree(configuration->webroot_dir);
+            if (configuration->webroot_dir) xmlFree(configuration->webroot_dir);
             configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
         } else if (strcmp(node->name, "adminroot") == 0) {
-            if (configuration->adminroot_dir && configuration->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR) 
+            if (configuration->adminroot_dir) 
                 xmlFree(configuration->adminroot_dir);
             configuration->adminroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
@@ -954,13 +950,13 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         if (xmlIsBlankNode(node)) continue;
 
         if (strcmp(node->name, "accesslog") == 0) {
-            if (configuration->access_log && configuration->access_log != CONFIG_DEFAULT_ACCESS_LOG) xmlFree(configuration->access_log);
+            if (configuration->access_log) xmlFree(configuration->access_log);
             configuration->access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "errorlog") == 0) {
-            if (configuration->error_log && configuration->error_log != CONFIG_DEFAULT_ERROR_LOG) xmlFree(configuration->error_log);
+            if (configuration->error_log) xmlFree(configuration->error_log);
             configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "playlistlog") == 0) {
-            if (configuration->playlist_log && configuration->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) xmlFree(configuration->playlist_log);
+            if (configuration->playlist_log) xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (strcmp(node->name, "logsize") == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
