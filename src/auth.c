@@ -561,8 +561,8 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 
     while (options)
     {
-        if (strcmp(options->name, "allow_duplicate_users") == 0)
-            auth->allow_duplicate_users = atoi (options->value);
+        if (strcmp (options->name, "allow_duplicate_users") == 0)
+            auth->allow_duplicate_users = atoi ((char*)options->value);
         options = options->next;
     }
     return 0;
@@ -583,16 +583,16 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
     {
         xmlNodePtr current = option;
         option = option->next;
-        if (strcmp (current->name, "option") == 0)
+        if (xmlStrcmp (current->name, XMLSTR("option")) == 0)
         {
             config_options_t *opt = calloc (1, sizeof (config_options_t));
-            opt->name = xmlGetProp (current, "name");
+            opt->name = (char *)xmlGetProp (current, XMLSTR("name"));
             if (opt->name == NULL)
             {
                 free(opt);
                 continue;
             }
-            opt->value = xmlGetProp (current, "value");
+            opt->value = (char *)xmlGetProp (current, XMLSTR("value"));
             if (opt->value == NULL)
             {
                 xmlFree (opt->name);
@@ -603,10 +603,10 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
             next_option = &opt->next;
         }
         else
-            if (strcmp (current->name, "text") != 0)
+            if (xmlStrcmp (current->name, XMLSTR("text")) != 0)
                 WARN1 ("unknown auth setting (%s)", current->name);
     }
-    auth->type = xmlGetProp (node, "type");
+    auth->type = (char*)xmlGetProp (node, XMLSTR("type"));
     if (get_authenticator (auth, options) < 0)
     {
         xmlFree (auth->type);

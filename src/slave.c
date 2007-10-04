@@ -91,13 +91,13 @@ relay_server *relay_copy (relay_server *r)
 
     if (copy)
     {
-        copy->server = xmlStrdup (r->server);
-        copy->mount = xmlStrdup (r->mount);
-        copy->localmount = xmlStrdup (r->localmount);
+        copy->server = (char *)xmlCharStrdup (r->server);
+        copy->mount = (char *)xmlCharStrdup (r->mount);
+        copy->localmount = (char *)xmlCharStrdup (r->localmount);
         if (r->username)
-            copy->username = xmlStrdup (r->username);
+            copy->username = (char *)xmlCharStrdup (r->username);
         if (r->password)
-            copy->password = xmlStrdup (r->password);
+            copy->password = (char *)xmlCharStrdup (r->password);
         copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
@@ -646,10 +646,10 @@ static int update_from_master(ice_config_t *config)
             r = calloc (1, sizeof (relay_server));
             if (r)
             {
-                r->server = xmlStrdup (master);
+                r->server = (char *)xmlCharStrdup (master);
                 r->port = port;
-                r->mount = xmlStrdup (buf);
-                r->localmount = xmlStrdup (buf);
+                r->mount = (char *)xmlCharStrdup (buf);
+                r->localmount = (char *)xmlCharStrdup (buf);
                 r->mp3metadata = 1;
                 r->on_demand = on_demand;
                 r->next = new_relays;

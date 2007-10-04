@@ -911,8 +911,8 @@ static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr ro
     /* build node */
     node = (source_xml_t *)malloc(sizeof(source_xml_t));
     node->mount = strdup(mount);
-    node->node = xmlNewChild(root, NULL, "source", NULL);
-    xmlSetProp(node->node, "mount", mount);
+    node->node = xmlNewChild (root, NULL, XMLSTR("source"), NULL);
+    xmlSetProp (node->node, XMLSTR("mount"), XMLSTR(mount));
     node->next = NULL;
 
     /* add node */
@@ -952,8 +952,8 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount)
     event_queue_init (&queue);
     _dump_stats_to_queue (&queue);
 
-    *doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(*doc, NULL, "icestats", NULL);
+    *doc = xmlNewDoc (XMLSTR("1.0"));
+    node = xmlNewDocNode(*doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(*doc, node);
 
     event = _get_event_from_queue(&queue);
@@ -964,8 +964,8 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount)
             do
             {
                 xmlChar *name, *value;
-                name = xmlEncodeEntitiesReentrant (*doc, event->name);
-                value = xmlEncodeEntitiesReentrant (*doc, event->value);
+                name = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->name));
+                value = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->value));
                 srcnode = node;
                 if (event->source)
                 {
@@ -975,7 +975,7 @@ void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount)
                 }
                 else
                     srcnode = node;
-                xmlNewChild(srcnode, NULL, name, value);
+                xmlNewChild(srcnode, NULL, XMLSTR(name), XMLSTR(value));
                 xmlFree (value);
                 xmlFree (name);
             } while (0);
@@ -1007,18 +1007,18 @@ void stats_sendxml(client_t *client)
     event_queue_init (&queue);
     _dump_stats_to_queue (&queue);
 
-    doc = xmlNewDoc("1.0");
-    node = xmlNewDocNode(doc, NULL, "icestats", NULL);
+    doc = xmlNewDoc (XMLSTR("1.0"));
+    node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
 
 
     event = _get_event_from_queue(&queue);
     while (event) {
         if (event->source == NULL) {
-            xmlNewChild(node, NULL, event->name, event->value);
+            xmlNewChild (node, NULL, XMLSTR(event->name), XMLSTR(event->value));
         } else {
             srcnode = _find_xml_node(event->source, &src_nodes, node);
-            xmlNewChild(srcnode, NULL, event->name, event->value);
+            xmlNewChild (srcnode, NULL, XMLSTR(event->name), XMLSTR(event->value));
         }
 
         _free_event(event);

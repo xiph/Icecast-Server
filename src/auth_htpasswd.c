@@ -88,7 +88,7 @@ static char *get_hash(const char *data, int len)
 
     MD5Init(&context);
 
-    MD5Update(&context, data, len);
+    MD5Update(&context, (const unsigned char *)data, len);
 
     MD5Final(digest, &context);
 
@@ -406,9 +406,9 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
     while (node)
     {
         htpasswd_user *user = (htpasswd_user *)node->key;
-        newnode = xmlNewChild (srcnode, NULL, "User", NULL);
-        xmlNewChild(newnode, NULL, "username", user->name);
-        xmlNewChild(newnode, NULL, "password", user->pass);
+        newnode = xmlNewChild (srcnode, NULL, XMLSTR("User"), NULL);
+        xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
+        xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
         node = avl_get_next (node);
     }
     thread_rwlock_unlock (&state->file_rwlock);

@@ -169,6 +169,7 @@ static auth_result url_remove_listener (auth_client *auth_user)
     auth_url *url = auth->state;
     time_t duration = time(NULL) - client->con->con_time;
     char *username, *password, *mount, *server;
+    const char *mountreq;
     ice_config_t *config;
     int port;
     char *userpwd = NULL, post [4096];
@@ -191,10 +192,10 @@ static auth_result url_remove_listener (auth_client *auth_user)
         password = strdup ("");
 
     /* get the full uri (with query params if available) */
-    mount = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
-    if (mount == NULL)
-        mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape (mount);
+    mountreq = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    if (mountreq == NULL)
+        mountreq = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape (mountreq);
 
     snprintf (post, sizeof (post),
             "action=listener_remove&server=%s&port=%d&client=%lu&mount=%s"
@@ -248,7 +249,9 @@ static auth_result url_add_listener (auth_client *auth_user)
     auth_t *auth = client->auth;
     auth_url *url = auth->state;
     int res = 0, port;
-    char *agent, *user_agent, *username, *password;
+    const char *agent;
+    char *user_agent, *username, *password;
+    const char *mountreq;
     char *mount, *ipaddr, *server;
     ice_config_t *config;
     char *userpwd = NULL, post [4096];
@@ -274,10 +277,10 @@ static auth_result url_add_listener (auth_client *auth_user)
         password = strdup ("");
 
     /* get the full uri (with query params if available) */
-    mount = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
-    if (mount == NULL)
-        mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape (mount);
+    mountreq = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    if (mountreq == NULL)
+        mountreq = httpp_getvar (client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape (mountreq);
     ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),

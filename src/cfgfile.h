@@ -27,6 +27,8 @@ struct _mount_proxy;
 #include "auth.h"
 #include "global.h"
 
+#define XMLSTR(str) ((xmlChar *)(str)) 
+
 typedef struct ice_config_dir_tag
 {
     char *host;

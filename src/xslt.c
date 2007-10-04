@@ -160,7 +160,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                     xsltFreeStylesheet(cache[i].stylesheet);
 
                     cache[i].last_modified = file.st_mtime;
-                    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+                    cache[i].stylesheet = xsltParseStylesheetFile (XMLSTR(fn));
                     cache[i].cache_age = time(NULL);
                 }
                 DEBUG1("Using cached sheet %i", i);
@@ -178,7 +178,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
 
     cache[i].last_modified = file.st_mtime;
     cache[i].filename = strdup(fn);
-    cache[i].stylesheet = xsltParseStylesheetFile(fn);
+    cache[i].stylesheet = xsltParseStylesheetFile (XMLSTR(fn));
     cache[i].cache_age = time(NULL);
     return cache[i].stylesheet;
 }
@@ -216,10 +216,10 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     else
     {
         /* check method for the default, a missing method assumes xml */
-        if (cur->method && xmlStrcmp (cur->method, "html") == 0)
+        if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
             mediatype = "text/html";
         else
-            if (cur->method && xmlStrcmp (cur->method, "text") == 0)
+            if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
                 mediatype = "text/plain";
             else
                 mediatype = "text/xml";
