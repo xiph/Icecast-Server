@@ -162,12 +162,9 @@ void config_clear(ice_config_t *c)
     if (c->config_filename)
         free(c->config_filename);
 
-    if (c->location && c->location != CONFIG_DEFAULT_LOCATION) 
-        xmlFree(c->location);
-    if (c->admin && c->admin != CONFIG_DEFAULT_ADMIN) 
-        xmlFree(c->admin);
-    if (c->source_password && c->source_password != CONFIG_DEFAULT_SOURCE_PASSWORD)
-        xmlFree(c->source_password);
+    if (c->location) xmlFree(c->location);
+    if (c->admin) xmlFree(c->admin);
+    if (c->source_password) xmlFree(c->source_password);
     if (c->admin_username)
         xmlFree(c->admin_username);
     if (c->admin_password)
@@ -176,26 +173,17 @@ void config_clear(ice_config_t *c)
         xmlFree(c->relay_username);
     if (c->relay_password)
         xmlFree(c->relay_password);
-    if (c->hostname && c->hostname != CONFIG_DEFAULT_HOSTNAME) 
-        xmlFree(c->hostname);
-    if (c->base_dir && c->base_dir != CONFIG_DEFAULT_BASE_DIR) 
-        xmlFree(c->base_dir);
-    if (c->log_dir && c->log_dir != CONFIG_DEFAULT_LOG_DIR) 
-        xmlFree(c->log_dir);
-    if (c->webroot_dir && c->webroot_dir != CONFIG_DEFAULT_WEBROOT_DIR)
-        xmlFree(c->webroot_dir);
-    if (c->adminroot_dir && c->adminroot_dir != CONFIG_DEFAULT_ADMINROOT_DIR)
-        xmlFree(c->adminroot_dir);
+    if (c->hostname) xmlFree(c->hostname);
+    if (c->base_dir) xmlFree(c->base_dir);
+    if (c->log_dir) xmlFree(c->log_dir);
+    if (c->webroot_dir) xmlFree(c->webroot_dir);
+    if (c->adminroot_dir) xmlFree(c->adminroot_dir);
     if (c->pidfile)
         xmlFree(c->pidfile);
-    if (c->playlist_log && c->playlist_log != CONFIG_DEFAULT_PLAYLIST_LOG) 
-        xmlFree(c->playlist_log);
-    if (c->access_log && c->access_log != CONFIG_DEFAULT_ACCESS_LOG) 
-        xmlFree(c->access_log);
-    if (c->error_log && c->error_log != CONFIG_DEFAULT_ERROR_LOG) 
-        xmlFree(c->error_log);
-    if (c->shoutcast_mount && c->shoutcast_mount != CONFIG_DEFAULT_SHOUTCAST_MOUNT)
-        xmlFree(c->shoutcast_mount);
+    if (c->playlist_log) xmlFree(c->playlist_log);
+    if (c->access_log) xmlFree(c->access_log);
+    if (c->error_log) xmlFree(c->error_log);
+    if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
     for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
         if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
     }
@@ -204,7 +192,7 @@ void config_clear(ice_config_t *c)
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
-    xmlFree (c->mimetypes_fn);
+    if (c->mimetypes_fn) xmlFree (c->mimetypes_fn);
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
@@ -336,9 +324,9 @@ ice_config_t *config_get_config_unlocked(void)
 
 static void _set_defaults(ice_config_t *configuration)
 {
-    configuration->location = CONFIG_DEFAULT_LOCATION;
+    configuration->location = xmlCharStrdup (CONFIG_DEFAULT_LOCATION);
     configuration->server_id = (char *)xmlCharStrdup (ICECAST_VERSION_STRING);
-    configuration->admin = CONFIG_DEFAULT_ADMIN;
+    configuration->admin = xmlCharStrdup (CONFIG_DEFAULT_ADMIN);
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
@@ -346,14 +334,14 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
-    configuration->source_password = CONFIG_DEFAULT_SOURCE_PASSWORD;
-    configuration->shoutcast_mount = CONFIG_DEFAULT_SHOUTCAST_MOUNT;
+    configuration->source_password = xmlCharStrdup (CONFIG_DEFAULT_SOURCE_PASSWORD);
+    configuration->shoutcast_mount = xmlCharStrdup (CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
     configuration->on_demand = 0;
     configuration->dir_list = NULL;
-    configuration->hostname = CONFIG_DEFAULT_HOSTNAME;
+    configuration->hostname = xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
     configuration->mimetypes_fn = xmlCharStrdup (MIMETYPESFILE);
     configuration->port = 0;
     configuration->listeners[0].port = 0;
@@ -364,13 +352,13 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
     configuration->master_username = xmlStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->master_password = NULL;
-    configuration->base_dir = CONFIG_DEFAULT_BASE_DIR;
-    configuration->log_dir = CONFIG_DEFAULT_LOG_DIR;
-    configuration->webroot_dir = CONFIG_DEFAULT_WEBROOT_DIR;
-    configuration->adminroot_dir = CONFIG_DEFAULT_ADMINROOT_DIR;
-    configuration->playlist_log = CONFIG_DEFAULT_PLAYLIST_LOG;
-    configuration->access_log = CONFIG_DEFAULT_ACCESS_LOG;
-    configuration->error_log = CONFIG_DEFAULT_ERROR_LOG;
+    configuration->base_dir = xmlCharStrdup (CONFIG_DEFAULT_BASE_DIR);
+    configuration->log_dir = xmlCharStrdup (CONFIG_DEFAULT_LOG_DIR);
+    configuration->webroot_dir = xmlCharStrdup (CONFIG_DEFAULT_WEBROOT_DIR);
+    configuration->adminroot_dir = xmlCharStrdup (CONFIG_DEFAULT_ADMINROOT_DIR);
+    configuration->playlist_log = xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
+    configuration->access_log = xmlCharStrdup (CONFIG_DEFAULT_ACCESS_LOG);
+    configuration->error_log = xmlCharStrdup (CONFIG_DEFAULT_ERROR_LOG);
     configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
     configuration->chroot = CONFIG_DEFAULT_CHROOT;
     configuration->chuid = CONFIG_DEFAULT_CHUID;
