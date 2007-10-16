@@ -150,6 +150,17 @@ static void config_clear_mount (mount_proxy *mount)
     free (mount);
 }
 
+listener_t *config_clear_listener (listener_t *listener)
+{
+    listener_t *next = NULL;
+    if (listener)
+    {
+        next = listener->next;
+        if (listener->bind_address)     xmlFree (listener->bind_address);
+        free (listener);
+    }
+    return next;
+}
 
 void config_clear(ice_config_t *c)
 {
@@ -183,15 +194,15 @@ void config_clear(ice_config_t *c)
     if (c->access_log) xmlFree(c->access_log);
     if (c->error_log) xmlFree(c->error_log);
     if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
-    for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
-        if (c->listeners[i].bind_address) xmlFree(c->listeners[i].bind_address);
-    }
     if (c->master_server) xmlFree(c->master_server);
     if (c->master_username) xmlFree(c->master_username);
     if (c->master_password) xmlFree(c->master_password);
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
     if (c->mimetypes_fn) xmlFree (c->mimetypes_fn);
+
+    while ((c->listen_sock = config_clear_listener (c->listen_sock)))
+        ;
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
@@ -342,10 +353,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->dir_list = NULL;
     configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
     configuration->mimetypes_fn = (char *)xmlCharStrdup (MIMETYPESFILE);
-    configuration->port = 0;
-    configuration->listeners[0].port = 0;
-    configuration->listeners[0].bind_address = NULL;
-    configuration->listeners[0].shoutcast_compat = 0;
+    configuration->port = 8000;
     configuration->master_server = NULL;
     configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
@@ -374,6 +382,10 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
     char *tmp;
+
+    configuration->listen_sock = calloc (1, sizeof (*configuration->listen_sock));
+    configuration->listen_sock->port = 8000;
+    configuration->listen_sock_count = 1;
 
     do {
         if (node == NULL) break;
@@ -424,12 +436,12 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->port = atoi(tmp);
-            configuration->listeners[0].port = atoi(tmp);
+            configuration->listen_sock->port = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("bind-address")) == 0) {
-            if (configuration->listeners[0].bind_address) 
-                xmlFree(configuration->listeners[0].bind_address);
-            configuration->listeners[0].bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (configuration->listen_sock->bind_address) 
+                xmlFree(configuration->listen_sock->bind_address);
+            configuration->listen_sock->bind_address = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("master-server")) == 0) {
             if (configuration->master_server) xmlFree(configuration->master_server);
             configuration->master_server = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -751,19 +763,13 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
-    listener_t *listener = NULL;
-    int i;
     char *tmp;
-
-    for(i=0; i < MAX_LISTEN_SOCKETS; i++) {
-        if(configuration->listeners[i].port <= 0) {
-            listener = &(configuration->listeners[i]);
-            break;
-        }
-    }
+    listener_t *listener = calloc (1, sizeof(listener_t));
 
     if (listener == NULL)
         return;
+    listener->port = 8000;
+
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
@@ -790,6 +796,10 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
                     node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
+
+    listener->next = configuration->listen_sock;
+    configuration->listen_sock = listener;
+    configuration->listen_sock_count++;
 }
 
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
@@ -1066,5 +1076,31 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
         mountinfo = mountinfo->next;
     }
     return mountinfo;
+}
+
+/* Helper function to locate the configuration details of the listening 
+ * socket
+ */
+listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
+{
+    listener_t *listener;
+    int i = 0;
+
+    listener = config->listen_sock;
+    global_lock();
+    while (listener)
+    {
+        if (i < global.server_sockets)
+            listener = NULL;
+        else
+        {
+            if (global.serversock[i] == con->serversock)
+                break;
+            listener = listener->next;
+            i++;
+        }
+    }
+    global_unlock();
+    return listener;
 }
 

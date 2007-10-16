@@ -592,8 +592,8 @@ void connection_accept_loop(void)
         {
             client_queue_t *node;
             ice_config_t *config;
-            int i;
             client_t *client = NULL;
+            listener_t *listener;
 
             global_lock();
             if (client_create (&client, con, NULL) < 0)
@@ -615,17 +615,15 @@ void connection_accept_loop(void)
             }
             node->client = client;
 
-            /* Check for special shoutcast compatability processing */
             config = config_get_config();
-            for (i = 0; i < global.server_sockets; i++)
+            listener = config_get_listen_sock (config, client->con);
+
+            if (listener)
             {
-                if (global.serversock[i] == con->serversock)
-                {
-                    if (config->listeners[i].shoutcast_compat)
-                        node->shoutcast = 1;
-                    if (config->listeners[i].ssl && ssl_ok)
-                        connection_uses_ssl (client->con);
-                }
+                if (listener->shoutcast_compat)
+                    node->shoutcast = 1;
+                if (listener->ssl && ssl_ok)
+                    connection_uses_ssl (client->con);
             }
             config_release_config();
 
@@ -966,22 +964,22 @@ static void _handle_get_request (client_t *client, char *passed_uri)
 {
     int fileserve;
     int port;
-    int i;
     char *serverhost = NULL;
     int serverport = 0;
     aliases *alias;
     ice_config_t *config;
     char *uri = passed_uri;
+    listener_t *listen_sock;
 
     config = config_get_config();
     fileserve = config->fileserve;
     port = config->port;
-    for(i = 0; i < global.server_sockets; i++) {
-        if(global.serversock[i] == client->con->serversock) {
-            serverhost = config->listeners[i].bind_address;
-            serverport = config->listeners[i].port;
-            break;
-        }
+
+    listen_sock = config_get_listen_sock (config, client->con);
+    if (listen_sock)
+    {
+        serverhost = listen_sock->bind_address;
+        serverport = listen_sock->port;
     }
     alias = config->aliases;
 
@@ -1210,6 +1208,80 @@ static void *_handle_connection(void *arg)
 
     return NULL;
 }
+
+
+/* called when listening thread is not checking for incoming connections */
+int connection_setup_sockets (ice_config_t *config)
+{
+    int count = 0;
+    listener_t *listener, **prev;
+
+    global_lock();
+    if (global.serversock)
+    {
+        for (; count < global.server_sockets; count++)
+            sock_close (global.serversock [count]);
+        free (global.serversock);
+        global.serversock = NULL;
+    }
+    if (config == NULL)
+    {
+        global_unlock();
+        return 0;
+    }
+
+    count = 0;
+    global.serversock = calloc (config->listen_sock_count, sizeof (sock_t));
+
+    listener = config->listen_sock; 
+    prev = &config->listen_sock;
+    while (listener)
+    {
+        int successful = 0;
+
+        do
+        {
+            sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
+            if (sock == SOCK_ERROR)
+                break;
+            if (sock_listen (sock, ICE_LISTEN_QUEUE) == SOCK_ERROR)
+            {
+                sock_close (sock);
+                break;
+            }
+            sock_set_blocking (sock, SOCK_NONBLOCK);
+            successful = 1;
+            global.serversock [count] = sock;
+            count++;
+        } while(0);
+        if (successful == 0)
+        {
+            if (listener->bind_address)
+                ERROR2 ("Could not create listener socket on port %d bind %s",
+                        listener->port, listener->bind_address);
+            else
+                ERROR1 ("Could not create listener socket on port %d", listener->port);
+            /* remove failed connection */
+            *prev = config_clear_listener (listener);
+            listener = *prev;
+            continue;
+        }
+        if (listener->bind_address)
+            INFO2 ("listener socket on port %d address %s", listener->port, listener->bind_address);
+        else
+            INFO1 ("listener socket on port %d", listener->port);
+        prev = &listener->next;
+        listener = listener->next;
+    }
+    global.server_sockets = count;
+    global_unlock();
+
+    if (count == 0)
+        ERROR0 ("No listening sockets established");
+
+    return count;
+}
+
 
 void connection_close(connection_t *con)
 {

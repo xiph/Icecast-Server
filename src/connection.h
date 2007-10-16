@@ -27,6 +27,7 @@
 
 struct _client_tag;
 struct source_tag;
+struct ice_config_tag;
 
 typedef struct connection_tag
 {
@@ -54,6 +55,7 @@ typedef struct connection_tag
 void connection_initialize(void);
 void connection_shutdown(void);
 void connection_accept_loop(void);
+int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, int response);

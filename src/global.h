@@ -27,7 +27,7 @@
 
 typedef struct ice_global_tag
 {
-    int serversock[MAX_LISTEN_SOCKETS];
+    int *serversock;
     int server_sockets;
 
     int running;

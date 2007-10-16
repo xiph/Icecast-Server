@@ -35,7 +35,6 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-    memset(global.serversock, 0, sizeof(int)*MAX_LISTEN_SOCKETS);
     global.server_sockets = 0;
     global.relays = NULL;
     global.master_relays = NULL;
