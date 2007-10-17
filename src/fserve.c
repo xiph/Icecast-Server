@@ -33,6 +33,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #define snprintf _snprintf
+#define strncasecmp _strnicmp
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
 #endif
 
@@ -501,8 +502,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
     content_length = (int64_t)file_buf.st_size;
     range = httpp_getvar (httpclient->parser, "range");
 
+    /* full http range handling is currently not done but we deal with the common case */
     if (range != NULL) {
-        ret = sscanf(range, "bytes=" FORMAT_INT64 "-", &rangenumber);
+        ret = 0;
+        if (strncasecmp (range, "bytes=", 6) == 0)
+            ret = sscanf (range+6, FORMAT_INT64 "-", &rangenumber);
+
         if (ret != 1) {
             /* format not correct, so lets just assume
                we start from the beginning */
@@ -542,6 +547,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
+                    "Accept-Ranges: bytes\r\n"
                     "Content-Length: " FORMAT_INT64 "\r\n"
                     "Content-Range: bytes " FORMAT_INT64 \
                     "-" FORMAT_INT64 "/" FORMAT_INT64 "\r\n"
@@ -567,6 +573,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
             "HTTP/1.0 200 OK\r\n"
+            "Accept-Ranges: bytes\r\n"
             "Content-Length: " FORMAT_INT64 "\r\n"
             "Content-Type: %s\r\n\r\n",
             content_length,
