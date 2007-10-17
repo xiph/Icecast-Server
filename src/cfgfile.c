@@ -172,6 +172,7 @@ void config_clear(ice_config_t *c)
 
     free(c->config_filename);
 
+    xmlFree (c->server_id);
     if (c->location) xmlFree(c->location);
     if (c->admin) xmlFree(c->admin);
     if (c->source_password) xmlFree(c->source_password);
@@ -188,6 +189,7 @@ void config_clear(ice_config_t *c)
     if (c->log_dir) xmlFree(c->log_dir);
     if (c->webroot_dir) xmlFree(c->webroot_dir);
     if (c->adminroot_dir) xmlFree(c->adminroot_dir);
+    if (c->cert_file) xmlFree(c->cert_file);
     if (c->pidfile)
         xmlFree(c->pidfile);
     if (c->playlist_log) xmlFree(c->playlist_log);
