@@ -638,16 +638,24 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     unsigned remaining = 4096 - client->refbuf->len + 2;
     char *ptr = client->refbuf->data + client->refbuf->len - 2;
     int bytes;
+    const char *useragent;
 
     if (client_mp3 == NULL)
         return -1;
 
-    /* hack for flash player, it wants a length */
-    if (httpp_getvar(client->parser, "x-flash-version"))
+    /* hack for flash player, it wants a length.  It has also been reported that the useragent
+     * appears as MSIE if run in internet explorer */
+    useragent = httpp_getvar (client->parser, "user-agent");
+    if (httpp_getvar(client->parser, "x-flash-version") ||
+            (useragent && strstr(useragent, "MSIE")))
     {
-        bytes = snprintf (ptr, remaining, "Content-Length: 347122319\r\n");
+        bytes = snprintf (ptr, remaining, "Content-Length: 221183499\r\n");
         remaining -= bytes;
         ptr += bytes;
+        /* avoid browser caching, reported via forum */
+        bytes = snprintf (ptr, remaining, "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n");
+        remaining -= bytes;
+        ptr += bytes; 
     }
 
     client->format_data = client_mp3;

@@ -347,6 +347,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
     remaining -= bytes;
     ptr += bytes;
 
+    /* prevent proxy servers from caching */
+    bytes = snprintf (ptr, remaining, "Cache-Control: no-cache\r\n");
+    remaining -= bytes;
+    ptr += bytes;
+
     bytes = snprintf (ptr, remaining, "\r\n");
     remaining -= bytes;
     ptr += bytes;
