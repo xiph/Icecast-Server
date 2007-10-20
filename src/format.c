@@ -208,6 +208,7 @@ int format_check_http_buffer (source_t *source, client_t *client)
             client->con->error = 1;
             return -1;
         }
+        stats_event_inc (NULL, "listeners");
         stats_event_inc (NULL, "listener_connections");
         stats_event_inc (source->mount, "listener_connections");
     }

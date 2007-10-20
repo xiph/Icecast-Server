@@ -49,8 +49,9 @@
 #define STATS_EVENT_INC     1
 #define STATS_EVENT_DEC     2
 #define STATS_EVENT_ADD     3
-#define STATS_EVENT_REMOVE  4
-#define STATS_EVENT_HIDDEN  5
+#define STATS_EVENT_SUB     4
+#define STATS_EVENT_REMOVE  5
+#define STATS_EVENT_HIDDEN  6
 
 typedef struct _event_queue_tag
 {
@@ -343,6 +344,18 @@ void stats_event_add(const char *source, const char *name, unsigned long value)
     }
 }
 
+void stats_event_sub(const char *source, const char *name, unsigned long value)
+{
+    stats_event_t *event = build_event (source, name, NULL);
+    if (event)
+    {
+        event->value = malloc (16);
+        snprintf (event->value, 16, "%ld", value);
+        event->action = STATS_EVENT_SUB;
+        queue_global_event (event);
+    }
+}
+
 /* decrease the value in the provided stat by 1 */
 void stats_event_dec(const char *source, const char *name)
 {
@@ -609,6 +622,7 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "connections", "0");
     stats_event (NULL, "sources", "0");
     stats_event (NULL, "stats", "0");
+    stats_event (NULL, "listeners", "0");
 
     /* global accumulating stats */
     stats_event (NULL, "client_connections", "0");

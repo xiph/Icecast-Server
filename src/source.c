@@ -212,6 +212,9 @@ void source_clear_source (source_t *source)
         source->dumpfile = NULL;
     }
 
+    if (source->listeners)
+        stats_event_sub (NULL, "listeners", source->listeners);
+
     /* lets kick off any clients that are left on here */
     while (avl_get_first (source->client_tree))
     {
@@ -716,6 +719,7 @@ void source_main (source_t *source)
                 client_node = avl_get_next(client_node);
                 avl_delete(source->client_tree, (void *)client, _free_client);
                 source->listeners--;
+                stats_event_dec (NULL, "listeners");
                 DEBUG0("Client removed");
                 continue;
             }

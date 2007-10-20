@@ -85,6 +85,7 @@ void stats_event_conv(const char *mount, const char *name,
 void stats_event_args(const char *source, char *name, char *format, ...);
 void stats_event_inc(const char *source, const char *name);
 void stats_event_add(const char *source, const char *name, unsigned long value);
+void stats_event_sub(const char *source, const char *name, unsigned long value);
 void stats_event_dec(const char *source, const char *name);
 void stats_event_hidden (const char *source, const char *name, int hidden);
 void stats_event_time (const char *mount, const char *name);
