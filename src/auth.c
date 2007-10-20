@@ -543,6 +543,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 #ifdef HAVE_AUTH_URL
             if (auth_get_url_auth (auth, options) < 0)
                 return -1;
+            break;
 #else
             ERROR0 ("Auth URL disabled");
             return -1;
