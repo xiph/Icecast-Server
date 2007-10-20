@@ -509,7 +509,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     url_info->handle = curl_easy_init ();
     if (url_info->handle == NULL)
     {
-        free (url_info);
+        auth_url_clear (authenticator);
         return -1;
     }
     if (url_info->auth_header)

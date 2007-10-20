@@ -723,6 +723,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         if (xmlIsBlankNode(node)) continue;
 
         if (xmlStrcmp (node->name, XMLSTR("server")) == 0) {
+            if (relay->server) xmlFree (relay->server);
             relay->server = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
@@ -732,10 +733,12 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
+            if (relay->mount) xmlFree (relay->mount);
             relay->mount = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
         else if (xmlStrcmp (node->name, XMLSTR("local-mount")) == 0) {
+            if (relay->localmount) xmlFree (relay->localmount);
             relay->localmount = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
@@ -745,10 +748,12 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("username")) == 0) {
+            if (relay->username) xmlFree (relay->username);
             relay->username = (char *)xmlNodeListGetString(doc,
                     node->xmlChildrenNode, 1);
         }
         else if (xmlStrcmp (node->name, XMLSTR("password")) == 0) {
+            if (relay->password) xmlFree (relay->password);
             relay->password = (char *)xmlNodeListGetString(doc,
                     node->xmlChildrenNode, 1);
         }
