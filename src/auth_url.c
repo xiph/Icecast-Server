@@ -98,6 +98,7 @@ static void auth_url_clear(auth_t *self)
 
     INFO0 ("Doing auth URL cleanup");
     url = self->state;
+    self->state = NULL
     curl_easy_cleanup (url->handle);
     free (url->username);
     free (url->password);
@@ -478,6 +479,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->stream_end = url_stream_end;
 
     url_info = calloc(1, sizeof(auth_url));
+    authenticator->state = url_info;
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
     url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
@@ -535,7 +537,6 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         snprintf (url_info->userpwd, len, "%s:%s", url_info->username, url_info->password);
     }
 
-    authenticator->state = url_info;
     INFO0("URL based authentication setup");
     return 0;
 }
