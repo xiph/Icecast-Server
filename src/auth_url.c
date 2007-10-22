@@ -98,7 +98,7 @@ static void auth_url_clear(auth_t *self)
 
     INFO0 ("Doing auth URL cleanup");
     url = self->state;
-    self->state = NULL
+    self->state = NULL;
     curl_easy_cleanup (url->handle);
     free (url->username);
     free (url->password);
