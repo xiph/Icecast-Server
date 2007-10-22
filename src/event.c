@@ -67,7 +67,7 @@ void event_config_read(void *arg)
         fserve_recheck_mime_types (config);
         stats_global (config);
         config_release_config();
-        slave_recheck_all();
+        slave_update_all_mounts();
     }
 }
 

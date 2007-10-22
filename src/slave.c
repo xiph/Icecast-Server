@@ -64,7 +64,7 @@ static void *_slave_thread(void *arg);
 static thread_type *_slave_thread_id;
 static int slave_running = 0;
 static volatile int update_settings = 0;
-static volatile int update_streams = 0;
+static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
 
 relay_server *relay_free (relay_server *relay)
@@ -107,12 +107,12 @@ relay_server *relay_copy (relay_server *r)
 
 
 /* force a recheck of the relays. This will recheck the master server if
- * a this is a slave.
+ * this is a slave and rebuild all mountpoints in the stats tree
  */
-void slave_recheck_all (void)
+void slave_update_all_mounts (void)
 {
     max_interval = 0;
-    update_streams = 1;
+    update_all_mounts = 1;
     update_settings = 1;
 }
 
@@ -342,6 +342,7 @@ static void *start_relay_stream (void *arg)
             yp_remove (relay->localmount);
             relay->source->yp_public = -1;
             relay->start = time(NULL) + 10; /* prevent busy looping if failing */
+            slave_update_all_mounts();
         }
 
         /* we've finished, now get cleaned up */
@@ -390,14 +391,9 @@ static void check_relay_stream (relay_server *relay)
         relay->source = source_reserve (relay->localmount);
         if (relay->source)
         {
-            ice_config_t *config;
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
-            config = config_get_config();
-            stats_event_args (relay->localmount, "listenurl", "http://%s:%d%s",
-                    config->hostname, config->port, relay->localmount);
-            config_release_config();
-            stats_event (relay->localmount, "listeners", "0");
-            slave_rebuild_mounts();
+            if (relay->on_demand)
+                slave_update_all_mounts();
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
@@ -408,6 +404,7 @@ static void check_relay_stream (relay_server *relay)
         /* skip relay if active, not configured or just not time yet */
         if (relay->source == NULL || relay->running || relay->start > time(NULL))
             break;
+        /* check if an inactive on-demand relay has a fallback that has listeners */
         if (relay->on_demand && source->on_demand_req == 0)
         {
             relay->source->on_demand = relay->on_demand;
@@ -685,7 +682,7 @@ static void *_slave_thread(void *arg)
     unsigned int interval = 0;
 
     update_settings = 0;
-    update_streams = 0;
+    update_all_mounts = 0;
 
     config = config_get_config();
     stats_global (config);
@@ -740,9 +737,9 @@ static void *_slave_thread(void *arg)
 
         if (update_settings)
         {
-            source_recheck_mounts (update_streams);
+            source_recheck_mounts (update_all_mounts);
             update_settings = 0;
-            update_streams = 0;
+            update_all_mounts = 0;
         }
     }
     INFO0 ("shutting down current relays");

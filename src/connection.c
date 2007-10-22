@@ -161,10 +161,9 @@ static unsigned long _next_connection_id(void)
 
 
 #ifdef HAVE_OPENSSL
-static void get_ssl_certificate ()
+static void get_ssl_certificate (ice_config_t *config)
 {
     SSL_METHOD *method;
-    ice_config_t *config;
     ssl_ok = 0;
 
     SSL_load_error_strings();                /* readable error messages */
@@ -173,7 +172,6 @@ static void get_ssl_certificate ()
     method = SSLv23_server_method();
     ssl_ctx = SSL_CTX_new (method);
 
-    config = config_get_config ();
     do
     {
         if (config->cert_file == NULL)
@@ -190,16 +188,14 @@ static void get_ssl_certificate ()
         }
         if (!SSL_CTX_check_private_key (ssl_ctx))
         {
-            ERROR0 ("Invalid icecast.pem - Private key doesn't"
-                    " match cert public key");
+            ERROR1 ("Invalid %s - Private key does not match cert public key", config->cert_file);
             break;
         }
         ssl_ok = 1;
         INFO1 ("SSL certificate found at %s", config->cert_file);
+        return;
     } while (0);
-    config_release_config ();
-    if (ssl_ok == 0)
-        INFO0 ("No SSL capability on any configured ports");
+    INFO0 ("No SSL capability on any configured ports");
 }
 
 
@@ -244,7 +240,7 @@ static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
 #else
 
 /* SSL not compiled in, so at least log it */
-static void get_ssl_certificate ()
+static void get_ssl_certificate (ice_config_t *config)
 {
     ssl_ok = 0;
     INFO0 ("No SSL capability");
@@ -313,7 +309,7 @@ void connection_uses_ssl (connection_t *con)
 static int wait_for_serversock(int timeout)
 {
 #ifdef HAVE_POLL
-    struct pollfd ufds[MAX_LISTEN_SOCKETS];
+    struct pollfd ufds [global.server_sockets];
     int i, ret;
 
     for(i=0; i < global.server_sockets; i++) {
@@ -580,8 +576,12 @@ static void _add_request_queue (client_queue_t *node)
 void connection_accept_loop(void)
 {
     connection_t *con;
+    ice_config_t *config;
 
-    get_ssl_certificate ();
+    config = config_get_config ();
+    get_ssl_certificate (config);
+    config_release_config ();
+
     tid = thread_create ("connection thread", _handle_connection, NULL, THREAD_ATTACHED);
 
     while (global.running == ICE_RUNNING)
@@ -600,6 +600,8 @@ void connection_accept_loop(void)
             {
                 global_unlock();
                 client_send_403 (client, "Icecast connection limit reached");
+                /* don't be too eager as this is an imposed hard limit */
+                thread_sleep (400000);
                 continue;
             }
             global_unlock();

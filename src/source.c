@@ -1164,6 +1164,9 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     source->timeout = config->source_timeout;
     source->burst_size = config->burst_size;
 
+    stats_event_args (source->mount, "listenurl", "http://%s:%d%s",
+            config->hostname, config->port, source->mount);
+
     source_apply_mount (source, mountinfo);
 
     if (source->fallback_mount)
@@ -1180,6 +1183,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     {
         DEBUG0 ("on_demand set");
         stats_event (source->mount, "on_demand", "1");
+        stats_event_args (source->mount, "listeners", "%ld", source->listeners);
     }
     else
         stats_event (source->mount, "on_demand", NULL);
@@ -1187,7 +1191,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     if (source->hidden)
     {
         stats_event_hidden (source->mount, NULL, 1);
-        DEBUG0 ("hidden from xsl");
+        DEBUG0 ("hidden from public");
     }
     else
         stats_event_hidden (source->mount, NULL, 0);
@@ -1316,7 +1320,7 @@ static void *source_fallback_file (void *arg)
         file = fopen (path, "rb");
         if (file == NULL)
         {
-            DEBUG1 ("unable to open file \"%s\"", path);
+            WARN1 ("unable to open file \"%s\"", path);
             free (path);
             break;
         }
@@ -1324,9 +1328,10 @@ static void *source_fallback_file (void *arg)
         source = source_reserve (mount);
         if (source == NULL)
         {
-            DEBUG1 ("mountpoint \"%s\" already reserved", mount);
+            WARN1 ("mountpoint \"%s\" already reserved", mount);
             break;
         }
+        INFO1 ("mountpoint %s is reserved", mount);
         type = fserve_content_type (mount);
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
@@ -1361,7 +1366,8 @@ void source_recheck_mounts (int update_all)
 
     avl_tree_rlock (global.source_tree);
 
-    stats_clear_virtual_mounts ();
+    if (update_all)
+        stats_clear_virtual_mounts ();
 
     while (mount)
     {
@@ -1370,16 +1376,16 @@ void source_recheck_mounts (int update_all)
         if (source)
         {
             source = source_find_mount_raw (mount->mountname);
-            stats_event_args (mount->mountname, "listenurl", "http://%s:%d%s",
-                    config->hostname, config->port, mount->mountname);
-            if (source && update_all)
+            if (source)
             {
                 mount_proxy *mountinfo = config_find_mount (config, source->mount);
                 source_update_settings (config, source, mountinfo);
             }
-            else
+            else if (update_all)
             {
                 stats_event_hidden (mount->mountname, NULL, mount->hidden);
+                stats_event_args (mount->mountname, "listenurl", "http://%s:%d%s",
+                        config->hostname, config->port, mount->mountname);
                 stats_event (mount->mountname, "listeners", "0");
                 if (mount->max_listeners < 0)
                     stats_event (mount->mountname, "max_listeners", "unlimited");
