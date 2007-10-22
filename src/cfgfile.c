@@ -1097,7 +1097,7 @@ listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
     global_lock();
     while (listener)
     {
-        if (i < global.server_sockets)
+        if (i >= global.server_sockets)
             listener = NULL;
         else
         {
