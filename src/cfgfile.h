@@ -156,6 +156,8 @@ typedef struct ice_config_tag
     char *base_dir;
     char *log_dir;
     char *pidfile;
+    char *banfile;
+    char *allowfile;
     char *cert_file;
     char *webroot_dir;
     char *adminroot_dir;

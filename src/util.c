@@ -673,3 +673,18 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
     return ret;
 }
 
+
+int get_line(FILE *file, char *buf, size_t siz)
+{
+    if(fgets(buf, (int)siz, file)) {
+        size_t len = strlen(buf);
+        if(len > 0 && buf[len-1] == '\n') {
+            buf[--len] = 0;
+            if(len > 0 && buf[len-1] == '\r')
+                buf[--len] = 0;
+        }
+        return 1;
+    }
+    return 0;
+}
+

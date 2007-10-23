@@ -66,19 +66,6 @@ static void htpasswd_clear(auth_t *self) {
     free(state);
 }
 
-static int get_line(FILE *file, char *buf, int len)
-{
-    if(fgets(buf, len, file)) {
-        int len = strlen(buf);
-        if(len > 0 && buf[len-1] == '\n') {
-            buf[--len] = 0;
-            if(len > 0 && buf[len-1] == '\r')
-                buf[--len] = 0;
-        }
-        return 1;
-    }
-    return 0;
-}
 
 /* md5 hash */
 static char *get_hash(const char *data, int len)
@@ -94,8 +81,6 @@ static char *get_hash(const char *data, int len)
 
     return util_bin_to_hex(digest, 16);
 }
-
-#define MAX_LINE_LEN 512
 
 
 static int compare_users (void *arg, void *a, void *b)

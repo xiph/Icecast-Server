@@ -19,6 +19,8 @@
 #define READ_ENTIRE_HEADER 1
 #define READ_LINE 0
 
+#define MAX_LINE_LEN 512
+
 int util_timed_wait_for_fd(int fd, int timeout);
 int util_read_header(int sock, char *buff, unsigned long len, int entire);
 int util_check_valid_extension(const char *uri);
@@ -53,4 +55,5 @@ struct tm *localtime_r (const time_t *timep, struct tm *result);
 #endif
 char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 
+int get_line(FILE *file, char *buf, size_t siz);
 #endif  /* __UTIL_H__ */

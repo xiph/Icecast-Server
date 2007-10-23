@@ -192,6 +192,8 @@ void config_clear(ice_config_t *c)
     if (c->cert_file) xmlFree(c->cert_file);
     if (c->pidfile)
         xmlFree(c->pidfile);
+    if (c->banfile) xmlFree(c->banfile);
+    if (c->allowfile) xmlFree(c->allowfile);
     if (c->playlist_log) xmlFree(c->playlist_log);
     if (c->access_log) xmlFree(c->access_log);
     if (c->error_log) xmlFree(c->error_log);
@@ -906,6 +908,12 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("pidfile")) == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
             configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("deny-ip")) == 0) {
+            if (configuration->banfile) xmlFree(configuration->banfile);
+            configuration->banfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("allow-ip")) == 0) {
+            if (configuration->allowfile) xmlFree(configuration->allowfile);
+            configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("ssl-certificate")) == 0) {
             if (configuration->cert_file) xmlFree(configuration->cert_file);
             configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
