@@ -37,8 +37,8 @@ typedef struct connection_tag
     time_t discon_time;
     uint64_t sent_bytes;
 
-    int sock;
-    int serversock;
+    sock_t sock;
+    sock_t serversock;
     int error;
 
 #ifdef HAVE_OPENSSL

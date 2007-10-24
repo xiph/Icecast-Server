@@ -58,7 +58,7 @@
  *           0 if no activity occurs
  *         < 0 for error.
  */
-int util_timed_wait_for_fd(int fd, int timeout)
+int util_timed_wait_for_fd(sock_t fd, int timeout)
 {
 #ifdef HAVE_POLL
     struct pollfd ufds;
@@ -84,7 +84,7 @@ int util_timed_wait_for_fd(int fd, int timeout)
 #endif
 }
 
-int util_read_header(int sock, char *buff, unsigned long len, int entire)
+int util_read_header(sock_t sock, char *buff, unsigned long len, int entire)
 {
     int read_bytes, ret;
     unsigned long pos;

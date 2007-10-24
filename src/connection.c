@@ -438,7 +438,7 @@ void connection_uses_ssl (connection_t *con)
 #endif
 }
 
-static int wait_for_serversock(int timeout)
+static sock_t wait_for_serversock(int timeout)
 {
 #ifdef HAVE_POLL
     struct pollfd ufds [global.server_sockets];
@@ -452,10 +452,10 @@ static int wait_for_serversock(int timeout)
 
     ret = poll(ufds, global.server_sockets, timeout);
     if(ret < 0) {
-        return -2;
+        return SOCK_ERROR;
     }
     else if(ret == 0) {
-        return -1;
+        return SOCK_ERROR;
     }
     else {
         int dst;
@@ -466,35 +466,35 @@ static int wait_for_serversock(int timeout)
             {
                 if (ufds[i].revents & (POLLHUP|POLLERR))
                 {
-                    close (global.serversock[i]);
+                    sock_close (global.serversock[i]);
                     WARN0("Had to close a listening socket");
                 }
-                global.serversock[i] = -1;
+                global.serversock[i] = SOCK_ERROR;
             }
         }
         /* remove any closed sockets */
         for(i=0, dst=0; i < global.server_sockets; i++)
         {
-            if (global.serversock[i] == -1)
+            if (global.serversock[i] == SOCK_ERROR)
                 continue;
             if (i!=dst)
                 global.serversock[dst] = global.serversock[i];
             dst++;
         }
         global.server_sockets = dst;
-        return -1;
+        return SOCK_ERROR;
     }
 #else
     fd_set rfds;
     struct timeval tv, *p=NULL;
     int i, ret;
-    int max = -1;
+    sock_t max = SOCK_ERROR;
 
     FD_ZERO(&rfds);
 
     for(i=0; i < global.server_sockets; i++) {
         FD_SET(global.serversock[i], &rfds);
-        if(global.serversock[i] > max)
+        if (max == SOCK_ERROR || global.serversock[i] > max)
             max = global.serversock[i];
     }
 
@@ -506,36 +506,35 @@ static int wait_for_serversock(int timeout)
 
     ret = select(max+1, &rfds, NULL, NULL, p);
     if(ret < 0) {
-        return -2;
+        return SOCK_ERROR;
     }
     else if(ret == 0) {
-        return -1;
+        return SOCK_ERROR;
     }
     else {
         for(i=0; i < global.server_sockets; i++) {
             if(FD_ISSET(global.serversock[i], &rfds))
                 return global.serversock[i];
         }
-        return -1; /* Should be impossible, stop compiler warnings */
+        return SOCK_ERROR; /* Should be impossible, stop compiler warnings */
     }
 #endif
 }
 
 static connection_t *_accept_connection(void)
 {
-    int sock;
+    sock_t sock, serversock; 
     char *ip;
-    int serversock; 
 
     serversock = wait_for_serversock(100);
-    if(serversock < 0)
+    if (serversock == SOCK_ERROR)
         return NULL;
 
     /* malloc enough room for a full IP address (including ipv6) */
     ip = (char *)malloc(MAX_ADDR_LEN);
 
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock >= 0)
+    if (sock != SOCK_ERROR)
     {
         connection_t *con = NULL;
         /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */

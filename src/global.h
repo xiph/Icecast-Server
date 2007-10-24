@@ -20,14 +20,13 @@
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
-#define MAX_LISTEN_SOCKETS 20
-
 #include "thread/thread.h"
 #include "slave.h"
+#include "net/sock.h"
 
 typedef struct ice_global_tag
 {
-    int *serversock;
+    sock_t *serversock;
     int server_sockets;
 
     int running;
