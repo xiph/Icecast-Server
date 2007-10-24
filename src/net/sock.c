@@ -305,14 +305,14 @@ int sock_close(sock_t sock)
  */
 #ifdef HAVE_WRITEV
 
-ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count)
+ssize_t sock_writev (sock_t sock, const struct iovec *iov, size_t count)
 {
     return writev (sock, iov, count);
 }
 
 #else
 
-ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count)
+ssize_t sock_writev (sock_t sock, const struct iovec *iov, size_t count)
 {
     int i = count, accum = 0, ret;
     const struct iovec *v = iov;
@@ -343,7 +343,7 @@ ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count)
 ** write bytes to the socket
 ** this function will _NOT_ block
 */
-int sock_write_bytes(sock_t sock, const void *buff, const size_t len)
+int sock_write_bytes(sock_t sock, const void *buff, size_t len)
 {
     /* sanity check */
     if (!buff) {
@@ -449,7 +449,7 @@ int sock_write_fmt(sock_t sock, const char *fmt, va_list ap)
 #endif
 
 
-int sock_read_bytes(sock_t sock, char *buff, const int len)
+int sock_read_bytes(sock_t sock, char *buff, size_t len)
 {
 
     /*if (!sock_valid_socket(sock)) return 0; */
@@ -508,7 +508,7 @@ int sock_read_line(sock_t sock, char *buff, const int len)
  * return 0 for try again, interrupted
  * return 1 for ok 
  */
-int sock_connected (int sock, int timeout)
+int sock_connected (sock_t sock, int timeout)
 {
     fd_set wfds;
     int val = SOCK_ERROR;
@@ -548,7 +548,7 @@ int sock_connected (int sock, int timeout)
 
 #ifdef HAVE_GETADDRINFO
 
-int sock_connect_non_blocking (const char *hostname, const unsigned port)
+sock_t sock_connect_non_blocking (const char *hostname, const unsigned port)
 {
     int sock = SOCK_ERROR;
     struct addrinfo *ai, *head, hints;
@@ -592,7 +592,7 @@ int sock_connect_non_blocking (const char *hostname, const unsigned port)
  */
 sock_t sock_connect_wto(const char *hostname, int port, int timeout)
 {
-    int sock = SOCK_ERROR;
+    sock_t sock = SOCK_ERROR;
     struct addrinfo *ai, *head, hints;
     char service[8];
 
@@ -693,7 +693,7 @@ sock_t sock_get_server_socket (int port, const char *sinterface)
 #else
 
 
-int sock_try_connection (int sock, const char *hostname, const unsigned port)
+int sock_try_connection (sock_t sock, const char *hostname, const unsigned port)
 {
     struct sockaddr_in sin, server;
     char ip[MAX_ADDR_LEN];
@@ -724,13 +724,13 @@ int sock_try_connection (int sock, const char *hostname, const unsigned port)
     return connect(sock, (struct sockaddr *)&server, sizeof(server));
 }
 
-int sock_connect_non_blocking (const char *hostname, const unsigned port)
+sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
 {
-    int sock;
+    sock_t sock;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1)
-        return -1;
+    if (sock == SOCK_ERROR)
+        return SOCK_ERROR;
 
     sock_set_blocking (sock, SOCK_NONBLOCK);
     sock_try_connection (sock, hostname, port);
@@ -738,13 +738,13 @@ int sock_connect_non_blocking (const char *hostname, const unsigned port)
     return sock;
 }
 
-sock_t sock_connect_wto(const char *hostname, const int port, const int timeout)
+sock_t sock_connect_wto(const char *hostname, int port, int timeout)
 {
-    int sock;
+    sock_t sock;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1)
-        return -1;
+    if (sock == SOCK_ERROR)
+        return SOCK_ERROR;
 
     if (timeout)
     {
@@ -838,14 +838,14 @@ int sock_listen(sock_t serversock, int backlog)
     return (listen(serversock, backlog) == 0);
 }
 
-int sock_accept(sock_t serversock, char *ip, size_t len)
+sock_t sock_accept(sock_t serversock, char *ip, size_t len)
 {
 #ifdef HAVE_GETNAMEINFO
     struct sockaddr_storage sa;
 #else    
     struct sockaddr_in sa;
 #endif
-    int ret;
+    sock_t ret;
     socklen_t slen;
 
     if (ip == NULL || len == 0 || !sock_valid_socket(serversock))
@@ -854,7 +854,7 @@ int sock_accept(sock_t serversock, char *ip, size_t len)
     slen = sizeof(sa);
     ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
-    if (ret >= 0)
+    if (ret != SOCK_ERROR)
     {
 #ifdef HAVE_GETNAMEINFO
         if (getnameinfo ((struct sockaddr *)&sa, slen, ip, len, NULL, 0, NI_NUMERICHOST))

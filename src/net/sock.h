@@ -56,11 +56,13 @@ struct iovec
 #define MAX_ADDR_LEN 46
 #endif
 
-typedef int sock_t;
+#ifndef sock_t
+#define sock_t int
+#endif
 
 /* The following values are based on unix avoiding errno value clashes */
 #define SOCK_SUCCESS 0
-#define SOCK_ERROR -1
+#define SOCK_ERROR (sock_t)-1
 #define SOCK_TIMEOUT -2
 
 #define SOCK_BLOCK 0
@@ -113,26 +115,26 @@ int sock_set_nodelay(sock_t sock);
 int sock_close(sock_t  sock);
 
 /* Connection related socket functions */
-sock_t sock_connect_wto(const char *hostname, const int port, const int timeout);
-int sock_connect_non_blocking(const char *host, const unsigned port);
-int sock_connected(int sock, int timeout);
+sock_t sock_connect_wto(const char *hostname, int port, int timeout);
+sock_t sock_connect_non_blocking(const char *host, unsigned port);
+int sock_connected(sock_t sock, int timeout);
 
 /* Socket write functions */
-int sock_write_bytes(sock_t sock, const void *buff, const size_t len);
+int sock_write_bytes(sock_t sock, const void *buff, size_t len);
 int sock_write(sock_t sock, const char *fmt, ...);
 int sock_write_fmt(sock_t sock, const char *fmt, va_list ap);
 int sock_write_string(sock_t sock, const char *buff);
-ssize_t sock_writev (int sock, const struct iovec *iov, const size_t count);
+ssize_t sock_writev (sock_t sock, const struct iovec *iov, size_t count);
 
 
 /* Socket read functions */
-int sock_read_bytes(sock_t sock, char *buff, const int len);
+int sock_read_bytes(sock_t sock, char *buff, size_t len);
 int sock_read_line(sock_t sock, char *string, const int len);
 
 /* server socket functions */
 sock_t sock_get_server_socket(int port, const char *sinterface);
 int sock_listen(sock_t serversock, int backlog);
-int sock_accept(sock_t serversock, char *ip, size_t len);
+sock_t sock_accept(sock_t serversock, char *ip, size_t len);
 
 #ifdef _WIN32
 int inet_aton(const char *s, struct in_addr *a);
