@@ -17,7 +17,7 @@
 #include <config.h>
 #endif
 
-int *auth_get_url_auth (auth_t *authenticator, config_options_t *options);
+int auth_get_url_auth (auth_t *authenticator, config_options_t *options);
 
 #endif
 
