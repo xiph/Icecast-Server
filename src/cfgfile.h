@@ -103,6 +103,7 @@ typedef struct _listener_t {
     int port;
     char *bind_address;
     int shoutcast_compat;
+    char *shoutcast_mount;
     int ssl;
 } listener_t;
 

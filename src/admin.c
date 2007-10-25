@@ -335,14 +335,22 @@ void admin_handle_request(client_t *client, const char *uri)
     if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
 
         ice_config_t *config;
+        const char *sc_mount;
         const char *pass = httpp_get_query_param (client->parser, "pass");
+        listener_t *listener;
+
         if (pass == NULL)
         {
             client_send_400 (client, "missing pass parameter");
             return;
         }
         config = config_get_config ();
-        httpp_set_query_param (client->parser, "mount", (char *)config->shoutcast_mount);
+        sc_mount = config->shoutcast_mount;
+        listener = config_get_listen_sock (config, client->con);
+        if (listener && listener->shoutcast_mount)
+            sc_mount = listener->shoutcast_mount;
+
+        httpp_set_query_param (client->parser, "mount", sc_mount);
         httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
         httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
         config_release_config ();

@@ -157,6 +157,7 @@ listener_t *config_clear_listener (listener_t *listener)
     {
         next = listener->next;
         if (listener->bind_address)     xmlFree (listener->bind_address);
+        if (listener->shoutcast_mount)  xmlFree (listener->shoutcast_mount);
         free (listener);
     }
     return next;
@@ -800,7 +801,13 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
             listener->shoutcast_compat = atoi(tmp);
             if(tmp) xmlFree(tmp);
         }
+        else if (xmlStrcmp (node->name, XMLSTR("shoutcast-mount")) == 0) {
+            if (listener->shoutcast_mount) xmlFree (listener->shoutcast_mount);
+            listener->shoutcast_mount = (char *)xmlNodeListGetString(doc, 
+                    node->xmlChildrenNode, 1);
+        }
         else if (xmlStrcmp (node->name, XMLSTR("bind-address")) == 0) {
+            if (listener->bind_address) xmlFree (listener->bind_address);
             listener->bind_address = (char *)xmlNodeListGetString(doc, 
                     node->xmlChildrenNode, 1);
         }
@@ -809,6 +816,19 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
     listener->next = configuration->listen_sock;
     configuration->listen_sock = listener;
     configuration->listen_sock_count++;
+    if (listener->shoutcast_mount)
+    {
+        listener_t *sc_port = calloc (1, sizeof (listener_t));
+        sc_port->port = listener->port+1;
+        sc_port->shoutcast_compat = 1;
+        sc_port->shoutcast_mount = (char*)xmlStrdup (XMLSTR(listener->shoutcast_mount));
+        if (listener->bind_address)
+            sc_port->bind_address = (char*)xmlStrdup (XMLSTR(listener->bind_address));
+
+        sc_port->next = configuration->listen_sock;
+        configuration->listen_sock = sc_port;
+        configuration->listen_sock_count++;
+    }
 }
 
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
