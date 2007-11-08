@@ -42,7 +42,7 @@ typedef struct auth_client_tag
 {
     char        *mount;
     client_t    *client;
-    void        (*process)(struct auth_client_tag *auth_user);
+    void        (*process)(struct auth_tag *auth, struct auth_client_tag *auth_user);
     struct auth_client_tag *next;
 } auth_client;
 
