@@ -40,6 +40,7 @@
 struct yp_server
 {
     char        *url;
+    char        *server_id;
     unsigned    url_timeout;
     unsigned    touch_interval;
     int         remove;
@@ -184,6 +185,7 @@ static void destroy_yp_server (struct yp_server *server)
     if (server->mounts) WARN0 ("active ypdata not freed up");
     if (server->pending_mounts) WARN0 ("pending ypdata not freed up");
     free (server->url);
+    free (server->server_id);
     free (server);
 }
 
@@ -234,6 +236,7 @@ void yp_recheck_config (ice_config_t *config)
                 destroy_yp_server (server);
                 break;
             }
+            server->server_id = strdup ((char *)server_version);
             server->url = strdup (config->yp_url[i]);
             server->url_timeout = config->yp_url_timeout[i];
             server->touch_interval = config->yp_touch_interval[i];
@@ -245,7 +248,7 @@ void yp_recheck_config (ice_config_t *config)
             }
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
-            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server_version);
+            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server->server_id);
             curl_easy_setopt (server->curl, CURLOPT_URL, server->url);
             curl_easy_setopt (server->curl, CURLOPT_HEADERFUNCTION, handle_returned_header);
             curl_easy_setopt (server->curl, CURLOPT_WRITEFUNCTION, handle_returned_data);
@@ -427,13 +430,11 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         free (val);
     }
     val = stats_get_value (yp->mount, "max_listeners");
-    if (val == NULL || strcmp (val, "unlimited") == 0)
-    {
-        free (val);
+    if (val == NULL || strcmp (val, "unlimited") == 0 || atoi(val) < 0)
         max_listeners = client_limit;
-    }
     else
         max_listeners = atoi (val);
+    free (val);
 
     val = stats_get_value (yp->mount, "subtype");
     if (val)
