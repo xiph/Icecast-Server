@@ -467,35 +467,53 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
 
-    authenticator->authenticate = url_add_listener;
-    authenticator->release_listener = url_remove_listener;
-
     authenticator->free = auth_url_clear;
     authenticator->adduser = auth_url_adduser;
     authenticator->deleteuser = auth_url_deleteuser;
     authenticator->listuser = auth_url_listuser;
 
-    authenticator->stream_start = url_stream_start;
-    authenticator->stream_end = url_stream_end;
-
     url_info = calloc(1, sizeof(auth_url));
     authenticator->state = url_info;
+
+    /* default headers */
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
     url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
     while(options) {
         if(!strcmp(options->name, "username"))
+        {
+            free (url_info->username);
             url_info->username = strdup (options->value);
+        }
         if(!strcmp(options->name, "password"))
+        {
+            free (url_info->password);
             url_info->password = strdup (options->value);
+        }
         if(!strcmp(options->name, "listener_add"))
+        {
+            authenticator->authenticate = url_add_listener;
+            free (url_info->addurl);
             url_info->addurl = strdup (options->value);
+        }
         if(!strcmp(options->name, "listener_remove"))
+        {
+            authenticator->release_listener = url_remove_listener;
+            free (url_info->removeurl);
             url_info->removeurl = strdup (options->value);
+        }
         if(!strcmp(options->name, "mount_add"))
+        {
+            authenticator->stream_start = url_stream_start;
+            free (url_info->stream_start);
             url_info->stream_start = strdup (options->value);
+        }
         if(!strcmp(options->name, "mount_remove"))
+        {
+            authenticator->stream_end = url_stream_end;
+            free (url_info->stream_end);
             url_info->stream_end = strdup (options->value);
+        }
         if(!strcmp(options->name, "auth_header"))
         {
             free (url_info->auth_header);
