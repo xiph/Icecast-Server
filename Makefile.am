@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = 1.6 foreign dist-zip
+AUTOMAKE_OPTIONS = foreign dist-zip
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = src conf debian doc web admin win32 examples
