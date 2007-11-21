@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 
-#include <thread/thread.h>
+#include "thread/thread.h"
 
 #include "connection.h"
 #include "refbuf.h"
