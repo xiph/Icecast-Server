@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <time.h>
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #endif
@@ -27,7 +26,6 @@
 #include <sys/stat.h>
 
 #ifndef _WIN32
-#include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #else

@@ -56,6 +56,7 @@
 #ifdef _WIN32
 /* For getpid() */
 #include <process.h>
+#include <windows.h>
 #define snprintf _snprintf
 #define getpid _getpid
 #endif
