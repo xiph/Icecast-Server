@@ -32,6 +32,9 @@
 #else
 #include <winsock2.h>
 #include <windows.h>
+#define fseeko fseek
+#define PRIdMAX "ld"
+#define SCNdMAX "ld"
 #define snprintf _snprintf
 #define strncasecmp _strnicmp
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
@@ -76,7 +79,7 @@ static int client_tree_changed=0;
 static struct pollfd *ufds = NULL;
 #else
 static fd_set fds;
-static int fd_max = -1;
+static sock_t fd_max = SOCK_ERROR;
 #endif
 
 typedef struct {
@@ -164,17 +167,17 @@ int fserve_client_waiting (void)
     if(client_tree_changed) {
         client_tree_changed = 0;
         FD_ZERO(&fds);
-        fd_max = -1;
+        fd_max = SOCK_ERROR;
         fclient = active_list;
         while (fclient) {
             FD_SET (fclient->client->con->sock, &fds);
-            if (fclient->client->con->sock > fd_max)
+            if (fclient->client->con->sock > fd_max || fd_max == SOCK_ERROR)
                 fd_max = fclient->client->con->sock;
             fclient = fclient->next;
         }
     }
     /* hack for windows, select needs at least 1 descriptor */
-    if (fd_max == -1)
+    if (fd_max == SOCK_ERROR)
         thread_sleep (200000);
     else
     {
@@ -377,8 +380,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
     int bytes;
     struct stat file_buf;
     const char *range = NULL;
-    int64_t new_content_len = 0;
-    int64_t rangenumber = 0, content_length;
+    off_t new_content_len = 0;
+    off_t rangenumber = 0, content_length;
     int rangeproblem = 0;
     int ret = 0;
     char *fullpath;
@@ -499,14 +502,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     }
     free (fullpath);
 
-    content_length = (int64_t)file_buf.st_size;
+    content_length = file_buf.st_size;
     range = httpp_getvar (httpclient->parser, "range");
 
     /* full http range handling is currently not done but we deal with the common case */
     if (range != NULL) {
         ret = 0;
         if (strncasecmp (range, "bytes=", 6) == 0)
-            ret = sscanf (range+6, FORMAT_INT64 "-", &rangenumber);
+            ret = sscanf (range+6, "%" SCNdMAX "-", &rangenumber);
 
         if (ret != 1) {
             /* format not correct, so lets just assume
@@ -517,7 +520,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             rangeproblem = 1;
         }
         if (!rangeproblem) {
-            ret = fseek (file, rangenumber, SEEK_SET);
+            ret = fseeko (file, rangenumber, SEEK_SET);
             if (ret != -1) {
                 new_content_len = content_length - rangenumber;
                 if (new_content_len < 0) {
@@ -533,7 +536,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 time_t now;
                 int strflen;
                 struct tm result;
-                int64_t endpos = rangenumber+new_content_len-1;
+                off_t endpos = rangenumber+new_content_len-1;
                 char *type;
 
                 if (endpos < 0) {
@@ -548,9 +551,9 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
                     "Accept-Ranges: bytes\r\n"
-                    "Content-Length: " FORMAT_INT64 "\r\n"
-                    "Content-Range: bytes " FORMAT_INT64 \
-                    "-" FORMAT_INT64 "/" FORMAT_INT64 "\r\n"
+                    "Content-Length: %" PRIdMAX "\r\n"
+                    "Content-Range: bytes %" PRIdMAX \
+                    "-%" PRIdMAX "/%" PRIdMAX "\r\n"
                     "Content-Type: %s\r\n\r\n",
                     currenttime,
                     new_content_len,
@@ -574,7 +577,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
             "HTTP/1.0 200 OK\r\n"
             "Accept-Ranges: bytes\r\n"
-            "Content-Length: " FORMAT_INT64 "\r\n"
+            "Content-Length: %" PRIdMAX "\r\n"
             "Content-Type: %s\r\n\r\n",
             content_length,
             type);

@@ -461,9 +461,9 @@ static refbuf_t *get_next_buffer (source_t *source)
         if (current >= source->client_stats_update)
         {
             stats_event_args (source->mount, "total_bytes_read",
-                    FORMAT_UINT64, source->format->read_bytes);
+                    "%"PRIu64, source->format->read_bytes);
             stats_event_args (source->mount, "total_bytes_sent",
-                    FORMAT_UINT64, source->format->sent_bytes);
+                    "%"PRIu64, source->format->sent_bytes);
             source->client_stats_update = current + 5;
         }
         if (fds < 0)

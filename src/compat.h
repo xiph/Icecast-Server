@@ -43,21 +43,14 @@
 #  define int64_t __int64
 #  define uint64_t unsigned __int64
 #  define uint32_t unsigned int
+#  define PRIu64  "I64u"
 #else
 #  define PATH_SEPARATOR "/"
-#  if defined(HAVE_STDINT_H)
-#    include <stdint.h>
-#  elif defined(HAVE_INTTYPES_H)
+#  if defined(HAVE_INTTYPES_H)
 #    include <inttypes.h>
+#  elif defined(HAVE_STDINT_H)
+#    include <stdint.h>
 #  endif
-#endif
-
-#ifdef _WIN32
-#define FORMAT_INT64      "%I64d"
-#define FORMAT_UINT64     "%I64u"
-#else
-#define FORMAT_INT64      "%lld"
-#define FORMAT_UINT64     "%llu"
 #endif
 
 #endif /* __COMPAT_H__ */
