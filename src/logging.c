@@ -99,7 +99,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
 **
 ** ADDR = client->con->ip
 ** IDENT = always - , we don't support it because it's useless
-** USER = client->username    
+** USER = client->username
 ** DATE = _make_date(client->con->con_time)
 ** REQUEST = build from client->parser
 ** CODE = client->respcode
@@ -186,7 +186,7 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
 #endif
     /* This format MAY CHANGE OVER TIME.  We are looking into finding a good
        standard format for this, if you have any ideas, please let us know */
-    log_write_direct (playlistlog, "%s|%s|%d|%s",
+    log_write_direct (playlistlog, "%s|%s|%ld|%s",
              datebuf,
              mount,
              listeners,
@@ -227,8 +227,8 @@ void restart_logging (ice_config_t *config)
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
         log_set_filename (accesslog, fn_error);
-        log_set_trigger (errorlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_trigger (accesslog, config->logsize);
+        log_set_archive_timestamp (accesslog, config->logarchive);
         log_reopen (accesslog);
     }
 
@@ -237,8 +237,8 @@ void restart_logging (ice_config_t *config)
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
         log_set_filename (playlistlog, fn_error);
-        log_set_trigger (errorlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_trigger (playlistlog, config->logsize);
+        log_set_archive_timestamp (playlistlog, config->logarchive);
         log_reopen (playlistlog);
     }
 }
