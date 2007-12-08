@@ -29,9 +29,6 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
-#define snprintf _snprintf
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
 #endif
 
 #include "net/sock.h"
@@ -57,8 +54,10 @@ struct rate_calc_node
 
 struct rate_calc
 {
+    uint64_t total;
     unsigned int seconds;
     unsigned int blocks;
+    unsigned int recalc_total;
     struct rate_calc_node *current;
 };
 
@@ -72,7 +71,7 @@ struct rate_calc
  *           0 if no activity occurs
  *         < 0 for error.
  */
-int util_timed_wait_for_fd(int fd, int timeout)
+int util_timed_wait_for_fd(sock_t fd, int timeout)
 {
 #ifdef HAVE_POLL
     struct pollfd ufds;
@@ -154,7 +153,7 @@ char *util_get_extension(const char *path) {
         return ext+1;
 }
 
-int util_check_valid_extension(char *uri) {
+int util_check_valid_extension(const char *uri) {
     int    ret = 0;
     char    *p2;
 
@@ -277,12 +276,12 @@ static char safechars[256] = {
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 };
 
-char *util_url_escape(void *src)
+char *util_url_escape (const char *src)
 {
     int len = strlen(src);
     /* Efficiency not a big concern here, keep the code simple/conservative */
     char *dst = calloc(1, len*3 + 1); 
-    unsigned char *source = src;
+    unsigned char *source = (unsigned char *)src;
     int i,j=0;
 
     for(i=0; i < len; i++) {
@@ -301,10 +300,10 @@ char *util_url_escape(void *src)
     return dst;
 }
 
-char *util_url_unescape(char *src)
+char *util_url_unescape (const char *src)
 {
     int len = strlen(src);
-    void *decoded;
+    char *decoded;
     int i;
     char *dst;
     int done = 0;
@@ -354,7 +353,7 @@ char *util_url_unescape(char *src)
  * escape from the webroot) or if it cannot be URI-decoded.
  * Caller should free the path.
  */
-char *util_normalise_uri(char *uri) {
+char *util_normalise_uri(const char *uri) {
     char *path;
 
     if(uri[0] != '/')
@@ -419,9 +418,8 @@ char *util_bin_to_hex(unsigned char *data, int len)
 }
 
 /* This isn't efficient, but it doesn't need to be */
-char *util_base64_encode(void *ptr)
+char *util_base64_encode(const char *data)
 {
-    char *data = ptr;
     int len = strlen(data);
     char *out = malloc(len*4/3 + 4);
     char *result = out;
@@ -453,10 +451,10 @@ char *util_base64_encode(void *ptr)
     return result;
 }
 
-char *util_base64_decode(void *ptr)
+char *util_base64_decode(const char *data)
 {
-    unsigned char *input = ptr;
-    int len = strlen(ptr);
+    const unsigned char *input = (const unsigned char *)data;
+    int len = strlen (data);
     char *out = malloc(len*3/4 + 5);
     char *result = out;
     signed char vals[4];
@@ -649,6 +647,46 @@ struct tm *localtime_r (const time_t *timep, struct tm *result)
 }
 #endif
 
+
+/* helper function for converting a passed string in one character set to another
+ * we use libxml2 for this
+ */
+char *util_conv_string (const char *string, const char *in_charset, const char *out_charset)
+{
+    xmlCharEncodingHandlerPtr in, out;
+    char *ret = NULL;
+
+    if (string == NULL || in_charset == NULL || out_charset == NULL)
+        return NULL;
+
+    in  = xmlFindCharEncodingHandler (in_charset);
+    out = xmlFindCharEncodingHandler (out_charset);
+
+    if (in && out)
+    {
+        xmlBufferPtr orig = xmlBufferCreate ();
+        xmlBufferPtr utf8 = xmlBufferCreate ();
+        xmlBufferPtr conv = xmlBufferCreate ();
+
+        INFO2 ("converting metadata from %s to %s", in_charset, out_charset);
+        xmlBufferCCat (orig, string);
+        if (xmlCharEncInFunc (in, utf8, orig) > 0)
+        {
+            xmlCharEncOutFunc (out, conv, NULL);
+            if (xmlCharEncOutFunc (out, conv, utf8) >= 0)
+                ret = strdup ((const char *)xmlBufferContent (conv));
+        }
+        xmlBufferFree (orig);
+        xmlBufferFree (utf8);
+        xmlBufferFree (conv);
+    }
+    xmlCharEncCloseFunc (in);
+    xmlCharEncCloseFunc (out);
+
+    return ret;
+}
+
+
 /* setup a rate block of so many seconds, so that an average can be
  * determined of that range
  */
@@ -682,6 +720,18 @@ struct rate_calc *rate_setup (unsigned int seconds)
     return calc;
 }
 
+/* */
+static void rate_recalc_total (struct rate_calc *calc)
+{
+    int i;
+    struct rate_calc_node *p = calc->current->prev;
+    calc->total = 0;
+    for (i=calc->blocks-1; i; i--)
+    {
+        calc->total += p->value;
+        p = p->prev;
+    }
+}
 
 /* add a value to sampled data, t is used to determine which sample
  * block the sample goes into.
@@ -695,11 +745,25 @@ void rate_add (struct rate_calc *calc, long value, time_t t)
     }
     if (t != calc->current->time)
     {
-        calc->current = calc->current->next;
+        if (calc->recalc_total)
+        {
+            /* here we keep the number of blocks and recalculate the total */
+            calc->current = calc->current->next;
+            rate_recalc_total (calc);
+            calc->recalc_total--;
+        }
+        else
+        {
+            /* common case */
+            calc->total += calc->current->value;
+            calc->current = calc->current->next;
+            if (calc->blocks == calc->seconds)
+                calc->total -= calc->current->value;
+            else
+                calc->blocks++;
+        }
         calc->current->value = 0;
         calc->current->time = t;
-        if (calc->blocks < calc->seconds)
-            calc->blocks++;
     }
     calc->current->value += value;
 }
@@ -710,19 +774,19 @@ void rate_add (struct rate_calc *calc, long value, time_t t)
  */
 long rate_avg (struct rate_calc *calc)
 {
-    struct rate_calc_node *node = calc->current->next;
-    int i = calc->blocks;
-    long total = 0;
-
-    if (i < 2)
+    if (calc->blocks < 2)
         return 0;
-    i--;
-    for (; i; i--)
+    return (long)(calc->total / (calc->blocks-1));
+}
+
+/* reduce the samples used to calculate average */
+void rate_reduce (struct rate_calc *calc, unsigned long count)
+{
+    if (calc && count < calc->blocks && count >= 2)
     {
-        total += node->value;
-        node = node->prev;
+        calc->recalc_total = count*2;
+        calc->blocks = count;
     }
-    return total / (calc->blocks - 1);
 }
 
 
@@ -743,5 +807,19 @@ void rate_free (struct rate_calc *calc)
         free (to_go);
     }
     free (calc);
+}
+
+int get_line(FILE *file, char *buf, size_t siz)
+{
+    if(fgets(buf, (int)siz, file)) {
+        size_t len = strlen(buf);
+        if(len > 0 && buf[len-1] == '\n') {
+            buf[--len] = 0;
+            if(len > 0 && buf[len-1] == '\r')
+                buf[--len] = 0;
+        }
+        return 1;
+    }
+    return 0;
 }
 

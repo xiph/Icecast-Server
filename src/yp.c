@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 
-#include <thread/thread.h>
+#include "thread/thread.h"
 
 #include "connection.h"
 #include "refbuf.h"
@@ -31,15 +31,12 @@
 #include "cfgfile.h"
 #include "stats.h"
 
-#ifdef WIN32
-#define snprintf _snprintf
-#endif
-
 #define CATMODULE "yp" 
 
 struct yp_server
 {
     char        *url;
+    char        *server_id;
     unsigned    url_timeout;
     unsigned    touch_interval;
     int         remove;
@@ -87,9 +84,8 @@ static mutex_t yp_pending_lock;
 
 static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
-static int yp_running;
 static time_t now;
-static thread_type *yp_thread;
+static volatile thread_type *yp_thread;
 static volatile unsigned client_limit = 0;
 static volatile char *server_version = NULL;
 
@@ -184,6 +180,7 @@ static void destroy_yp_server (struct yp_server *server)
     if (server->mounts) WARN0 ("active ypdata not freed up");
     if (server->pending_mounts) WARN0 ("pending ypdata not freed up");
     free (server->url);
+    free (server->server_id);
     free (server);
 }
 
@@ -234,6 +231,7 @@ void yp_recheck_config (ice_config_t *config)
                 destroy_yp_server (server);
                 break;
             }
+            server->server_id = strdup ((char *)server_version);
             server->url = strdup (config->yp_url[i]);
             server->url_timeout = config->yp_url_timeout[i];
             server->touch_interval = config->yp_touch_interval[i];
@@ -245,7 +243,7 @@ void yp_recheck_config (ice_config_t *config)
             }
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
-            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server_version);
+            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server->server_id);
             curl_easy_setopt (server->curl, CURLOPT_URL, server->url);
             curl_easy_setopt (server->curl, CURLOPT_HEADERFUNCTION, handle_returned_header);
             curl_easy_setopt (server->curl, CURLOPT_WRITEFUNCTION, handle_returned_data);
@@ -275,8 +273,6 @@ void yp_initialize(void)
     thread_mutex_create ("yp", &yp_pending_lock);
     yp_recheck_config (config);
     config_release_config ();
-    yp_thread = thread_create("YP Touch Thread", yp_update_thread,
-                            (void *)NULL, THREAD_ATTACHED);
 }
 
 
@@ -429,13 +425,11 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
         free (val);
     }
     val = stats_get_value (yp->mount, "max_listeners");
-    if (val == NULL || strcmp (val, "unlimited") == 0)
-    {
-        free (val);
+    if (val == NULL || strcmp (val, "unlimited") == 0 || atoi(val) < 0)
         max_listeners = client_limit;
-    }
     else
         max_listeners = atoi (val);
+    free (val);
 
     val = stats_get_value (yp->mount, "subtype");
     if (val)
@@ -669,52 +663,39 @@ static void delete_marked_yp (struct yp_server *server)
 
 static void *yp_update_thread(void *arg)
 {
-    INFO0("YP update thread started");
+    struct yp_server *server;
 
-    yp_running = 1;
-    while (yp_running)
+    /* DEBUG0("YP thread started"); */
+
+    /* do the YP communication */
+    thread_rwlock_rlock (&yp_lock);
+    server = (struct yp_server *)active_yps;
+    while (server)
     {
-        struct yp_server *server;
+        /* DEBUG1 ("trying %s", server->url); */
+        yp_process_server (server);
+        server = server->next;
+    }
+    thread_rwlock_unlock (&yp_lock);
 
-        thread_sleep (200000);
-
-        /* do the YP communication */
-        thread_rwlock_rlock (&yp_lock);
+    /* update the local YP structure */
+    if (yp_update)
+    {
+        thread_rwlock_wlock (&yp_lock);
+        check_servers ();
         server = (struct yp_server *)active_yps;
         while (server)
         {
-            /* DEBUG1 ("trying %s", server->url); */
-            yp_process_server (server);
+            /* DEBUG1 ("Checking yps %s", server->url); */
+            add_pending_yp (server);
+            delete_marked_yp (server);
             server = server->next;
         }
+        yp_update = 0;
         thread_rwlock_unlock (&yp_lock);
-
-        /* update the local YP structure */
-        if (yp_update)
-        {
-            thread_rwlock_wlock (&yp_lock);
-            check_servers ();
-            server = (struct yp_server *)active_yps;
-            while (server)
-            {
-                /* DEBUG1 ("Checking yps %s", server->url); */
-                add_pending_yp (server);
-                delete_marked_yp (server);
-                server = server->next;
-            }
-            yp_update = 0;
-            thread_rwlock_unlock (&yp_lock);
-        }
     }
-    thread_rwlock_destroy (&yp_lock);
-    thread_mutex_destroy (&yp_pending_lock);
-    /* free server and ypdata left */
-    while (active_yps)
-    {
-        struct yp_server *server = (struct yp_server *)active_yps;
-        active_yps = server->next;
-        destroy_yp_server (server);
-    }
+    yp_thread = NULL;
+    /* DEBUG0("YP thread shutdown"); */
 
     return NULL;
 }
@@ -927,12 +908,35 @@ void yp_touch (const char *mount)
 
 void yp_shutdown (void)
 {
-    yp_running = 0;
+    int loop=25;
+
     yp_update = 1;
-    if (yp_thread)
-        thread_join (yp_thread);
-    free ((char*)server_version);
-    server_version = NULL;
+    while (yp_thread && loop)
+    {
+        thread_sleep (200000);
+        loop--;
+    }
+    if (yp_thread == NULL)
+    {
+        thread_rwlock_destroy (&yp_lock);
+        thread_mutex_destroy (&yp_pending_lock);
+
+        /* free server and ypdata left */
+        while (active_yps)
+        {
+            struct yp_server *server = (struct yp_server *)active_yps;
+            active_yps = server->next;
+            destroy_yp_server (server);
+        }
+        free ((char*)server_version);
+        server_version = NULL;
+    }
     INFO0 ("YP thread down");
+}
+
+void yp_thread_startup (void)
+{
+    if (yp_thread == NULL)
+        yp_thread = thread_create ("YP Thread", yp_update_thread, NULL, THREAD_DETACHED);
 }
 

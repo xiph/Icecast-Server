@@ -43,10 +43,6 @@
 #include "format_midi.h"
 #include "format_flac.h"
 
-#ifdef _WIN32
-#define snprintf _snprintf
-#endif
-
 #define CATMODULE "format-ogg"
 #include "logging.h"
 
@@ -226,6 +222,9 @@ static void apply_ogg_settings (client_t *client,
 
     ogg_info->passthrough = mount->ogg_passthrough;
     DEBUG1 ("oggpassthrough is %d", ogg_info->passthrough);
+
+    ogg_info->admin_comments_only = mount->admin_comments_only;
+    DEBUG1 ("admin_comments_only is %d", ogg_info->admin_comments_only);
 }
 
 
@@ -563,7 +562,10 @@ static int write_buf_to_client (client_t *client)
         ret = client_send_bytes (client, buf, len);
 
         if (ret > 0)
+        {
             client->pos += ret;
+            client->lag -= ret;
+        }
 
         if (ret < (int)len)
             break;

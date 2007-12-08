@@ -34,6 +34,7 @@ void yp_touch (const char *mount);
 void yp_recheck_config (ice_config_t *config);
 void yp_initialize(void);
 void yp_shutdown(void);
+void yp_thread_startup (void);
 
 #else
 
@@ -43,6 +44,7 @@ void yp_shutdown(void);
 #define yp_recheck_config(x)    do{}while(0)
 #define yp_initialize()         WARN0("YP server handling has been disabled")
 #define yp_shutdown()           do{}while(0)
+#define yp_thread_startup()     do{}while(0)
 
 #endif /* USE_YP */
 

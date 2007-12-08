@@ -11,8 +11,6 @@
 <body>
 
 <div class="main">
-<h1>Icecast2 logs</h1>
-<iframe frameborder="0" scrolling="no" height="50" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">

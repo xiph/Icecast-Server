@@ -58,7 +58,7 @@ static auth_result auth_cmd_client (auth_client *auth_user)
     int fd[2];
     pid_t pid;
     client_t *client = auth_user->client;
-    auth_t *auth = client->auth;
+    auth_t *auth = auth_user->auth;
     auth_cmd *cmd = auth->state;
     int status, len;
     char str[512];
@@ -118,7 +118,7 @@ static auth_result auth_cmd_listuser (auth_t *auth, xmlNodePtr srcnode)
     return AUTH_FAILED;
 }
 
-void auth_get_cmd_auth (auth_t *authenticator, config_options_t *options)
+int auth_get_cmd_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_cmd *state;
 
@@ -135,7 +135,13 @@ void auth_get_cmd_auth (auth_t *authenticator, config_options_t *options)
             state->filename = strdup(options->value);
         options = options->next;
     }
+    if (state->filename == NULL)
+    {
+        ERROR0 ("No command specified for authentication");
+        return -1;
+    }
     authenticator->state = state;
     INFO0("external command based authentication setup");
+    return 0;
 }
 

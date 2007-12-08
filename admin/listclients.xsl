@@ -12,8 +12,6 @@
 <body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
 <div class="main">
-<h1>Listener Stats</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -46,22 +44,26 @@
 	    </td></tr>
 	</table>
 <br />
-<table cellspacing="1" border="1" bordercolor="#C0C0C0" >
-		<tr>
+<table cellpadding="5" border="1" bordercolor="#C0C0C0" >
+		<thead>
 				<td ><center><b>IP</b></center></td>
-				<td ><center><b>Connected For</b></center></td>
+				<td ><center><b>Connected (seconds)</b></center></td>
+				<td ><center><b>Lag (bytes)</b></center></td>
 				<td ><center><b>User Agent</b></center></td>
 				<td ><center><b>Action</b></center></td>
-		</tr>
+		</thead>
+    <tbody>
 <xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
 <xsl:for-each select="listener">
 		<tr>
-				<td align="center"><xsl:value-of select="IP" /><xsl:if test="Username"> (<xsl:value-of select="Username" />)</xsl:if></td>
-				<td align="center"><xsl:value-of select="Connected" /> seconds</td>
-				<td align="center"><xsl:value-of select="UserAgent" /></td>
-				<td align="center"><a href="killclient.xsl?mount={$themount}&amp;id={ID}">Kick</a></td>
+				<td align="center"><xsl:value-of select="ip" /><xsl:if test="username"> (<xsl:value-of select="username" />)</xsl:if></td>
+				<td align="center"><xsl:value-of select="connected" /></td>
+				<td align="center"><xsl:value-of select="lag" /></td>
+				<td align="center"><xsl:value-of select="useragent" /></td>
+				<td align="center"><a href="killclient.xsl?mount={$themount}&amp;id={@id}">Kick</a></td>
 		</tr>
 </xsl:for-each>
+    </tbody>
 </table>
 <br />
 <br />

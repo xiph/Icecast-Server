@@ -13,6 +13,8 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+#include "config.h"
+
 #define ICE_LISTEN_QUEUE 5
 
 #define ICE_RUNNING 1
@@ -20,15 +22,16 @@
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
-#define MAX_LISTEN_SOCKETS 50
-
 #include "thread/thread.h"
 #include "slave.h"
+#include "timing/timing.h"
+#include "net/sock.h"
 
 typedef struct ice_global_tag
 {
-    int serversock[MAX_LISTEN_SOCKETS];
     int server_sockets;
+    sock_t *serversock;
+    struct _listener_t **server_conn;
 
     int running;
 
@@ -37,6 +40,7 @@ typedef struct ice_global_tag
     int schedule_config_reread;
 
     time_t time;
+    uint64_t time_ms;
 
     avl_tree *source_tree;
     /* for locally defined relays */
@@ -48,6 +52,9 @@ typedef struct ice_global_tag
     unsigned int redirect_count;
     struct _redirect_host *redirectors;
 
+    spin_t spinlock;
+    struct rate_calc *out_bitrate;
+
     cond_t shutdown_cond;
 } ice_global_t;
 
@@ -57,5 +64,8 @@ void global_initialize(void);
 void global_shutdown(void);
 void global_lock(void);
 void global_unlock(void);
+void global_add_bitrates (struct rate_calc *rate, unsigned long value);
+void global_reduce_bitrate_sampling (struct rate_calc *rate);
+unsigned long global_getrate_avg (struct rate_calc *rate);
 
 #endif  /* __GLOBAL_H__ */

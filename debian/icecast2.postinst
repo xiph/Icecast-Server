@@ -24,18 +24,30 @@ if [ -f /etc/icecast.xml ] && grep -q /etc/icecast2/ /etc/default/icecast2; then
     echo "It seems you have an old configuration lying around at"
     echo "/etc/icecast.xml. You will need to manually merge with"
     echo "the current configuration at /etc/icecast2/icecast.xml."
-
+    echo
     echo "See /usr/share/doc/icecast2/examples for new configuration options."
 fi
 
-# Check for an account named 'icecast'
-if ! id icecast >/dev/null 2>&1; then
-    # Create the new system account
-    adduser --system --disabled-password --disabled-login \
-	--home /usr/share/icecast2 --no-create-home --group icecast
+if [ -f /etc/icecast2/icecast.xml ] ; then
+	echo "* Found existing /etc/icecast2/icecast.xml"
+	echo "* Moving /etc/icecast2/icecast.xml to /usr/share/icecast2/etc/icecast2"
+	mv /etc/icecast2/icecast.xml /usr/share/icecast2/etc/icecast2
+	ln -s /usr/share/icecast2/etc/icecast2/icecast.xml /etc/icecast2/icecast.xml 
 fi
 
-chown -R icecast:icecast /var/log/icecast2
+if ! getent group icecast >/dev/null 2>&1; then
+    addgroup --system icecast
+fi
+
+# Check for an account named 'icecast2'
+if ! id icecast2 >/dev/null 2>&1; then
+    # Create the new system account
+    adduser --system --disabled-password --disabled-login \
+	--home /usr/share/icecast2 --no-create-home --ingroup icecast icecast2
+fi
+
+chown -R icecast2: /var/log/icecast2 /etc/icecast2 /usr/share/icecast2
+chmod -R ug=rw,o=,ug+X /etc/icecast2
 
 #DEBHELPER#
 

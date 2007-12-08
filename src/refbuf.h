@@ -23,13 +23,13 @@
 
 typedef struct _refbuf_tag
 {
+    unsigned int len;
+    unsigned int _count;
     char *data;
-    size_t len;
-    int sync_point;
     struct _refbuf_tag *associated;
     struct _refbuf_tag *next;
+    int sync_point;
 
-    unsigned long _count;
 } refbuf_t;
 
 void refbuf_initialize(void);

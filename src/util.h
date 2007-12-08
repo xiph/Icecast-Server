@@ -21,19 +21,22 @@
 #define READ_ENTIRE_HEADER 1
 #define READ_LINE 0
 
-int util_timed_wait_for_fd(int fd, int timeout);
+#define MAX_LINE_LEN 512
+
+
+int util_timed_wait_for_fd(sock_t fd, int timeout);
 int util_read_header(int sock, char *buff, unsigned long len, int entire);
-int util_check_valid_extension(char *uri);
+int util_check_valid_extension(const char *uri);
 char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
 char *util_get_path_from_normalised_uri(const char *uri);
-char *util_normalise_uri(char *uri);
-char *util_base64_encode(void *data);
-char *util_base64_decode(void *input);
+char *util_normalise_uri(const char *uri);
+char *util_base64_encode(const char *data);
+char *util_base64_decode(const char *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
-char *util_url_unescape(char *src);
-char *util_url_escape(void *src);
+char *util_url_unescape(const char *src);
+char *util_url_escape(const char *src);
 
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */
@@ -53,10 +56,14 @@ char *util_dict_urlencode(util_dict *dict, char delim);
 #ifndef HAVE_LOCALTIME_R
 struct tm *localtime_r (const time_t *timep, struct tm *result);
 #endif
+char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 
 struct rate_calc *rate_setup (unsigned int seconds);
 void rate_add (struct rate_calc *calc, long value, time_t t);
 long rate_avg (struct rate_calc *calc);
 void rate_free (struct rate_calc *calc);
+void rate_reduce (struct rate_calc *calc, unsigned long count);
+
+int get_line(FILE *file, char *buf, size_t siz);
 
 #endif  /* __UTIL_H__ */

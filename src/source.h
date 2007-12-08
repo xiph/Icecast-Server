@@ -28,9 +28,6 @@ typedef struct source_tag
     
     char *mount;
 
-    /* If this source drops, try to move all clients to this fallback */
-    char *fallback_mount;
-
     /* set to zero to request the source to shutdown without causing a global
      * shutdown */
     int running;
@@ -49,21 +46,18 @@ typedef struct source_tag
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-    char *charset;
-
     int throttle_stream;
     time_t throttle_termination;
-    int limit_rate;
+    uint64_t limit_rate;
     int avg_bitrate_duration;
     time_t wait_time;
+    long listener_send_trigger;
 
     unsigned long peak_listeners;
     unsigned long listeners;
     unsigned long prev_listeners;
-    long max_listeners;
+
     int yp_public;
-    int fallback_override;
-    int fallback_when_full;
     int shoutcast_compat;
 
     /* per source burst handling for connecting clients */
@@ -73,13 +67,13 @@ typedef struct source_tag
 
     unsigned int queue_size;
     unsigned int queue_size_limit;
+    unsigned int amount_added_to_queue;
 
     unsigned timeout;  /* source timeout in seconds */
     int on_demand;
     int on_demand_req;
-    int hidden;
-    uint64_t bytes_sent_since_update;
-    uint64_t bytes_read_since_update;
+    unsigned long bytes_sent_since_update;
+    unsigned long bytes_read_since_update;
     int stats_interval;
 
     time_t last_read;
@@ -105,7 +99,7 @@ void source_free_source(source_t *source);
 void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
 void source_main(source_t *source);
-void source_recheck_mounts (void);
+void source_recheck_mounts (int update_all);
 
 extern mutex_t move_clients_mutex;
 

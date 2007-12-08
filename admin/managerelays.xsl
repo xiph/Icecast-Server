@@ -12,8 +12,6 @@
 <body>
 
 <div class="main">
-<h1>Relay Management</h1>
-<iframe frameborder="0" scrolling="no" height="50" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -33,10 +31,13 @@
 </xsl:choose>
 </h3>
 <table border="0" cellpadding="4">
-    <tr> <td>server</td> <td class="streamdata"> <xsl:value-of select="server" /></td> </tr>
-    <tr> <td>port</td> <td class="streamdata"> <xsl:value-of select="port" /></td> </tr>
-    <tr> <td>mountpoint</td> <td class="streamdata"> <xsl:value-of select="mount" /></td> </tr>
+    <xsl:for-each select="master">
+        <tr><td>Master</td> <td class="streamdata"> <xsl:value-of select="server" /></td>
+        <td class="streamdata"> <xsl:value-of select="port" /></td>
+        <td class="streamdata"> <xsl:value-of select="mount" /></td></tr>
+    </xsl:for-each>
     <tr> <td>on demand</td> <td class="streamdata"> <xsl:value-of select="on_demand" /></td> </tr>
+    <tr> <td>slave relay</td> <td class="streamdata"> <xsl:value-of select="from_master" /></td> </tr>
 </table>
 <br />
 <br></br>

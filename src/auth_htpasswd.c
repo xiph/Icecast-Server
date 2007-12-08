@@ -35,10 +35,6 @@
 #include "logging.h"
 #define CATMODULE "auth_htpasswd"
 
-#ifdef WIN32
-#define snprintf _snprintf
-#endif
-
 static auth_result htpasswd_adduser (auth_t *auth, const char *username, const char *password);
 static auth_result htpasswd_deleteuser(auth_t *auth, const char *username);
 static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode);
@@ -66,19 +62,6 @@ static void htpasswd_clear(auth_t *self) {
     free(state);
 }
 
-static int get_line(FILE *file, char *buf, size_t siz)
-{
-    if(fgets(buf, (int)siz, file)) {
-        size_t len = strlen(buf);
-        if(len > 0 && buf[len-1] == '\n') {
-            buf[--len] = 0;
-            if(len > 0 && buf[len-1] == '\r')
-                buf[--len] = 0;
-        }
-        return 1;
-    }
-    return 0;
-}
 
 /* md5 hash */
 static char *get_hash(const char *data, size_t len)
@@ -94,8 +77,6 @@ static char *get_hash(const char *data, size_t len)
 
     return util_bin_to_hex(digest, 16);
 }
-
-#define MAX_LINE_LEN 512
 
 
 static int compare_users (void *arg, void *a, void *b)
@@ -191,7 +172,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
 
 static auth_result htpasswd_auth (auth_client *auth_user)
 {
-    auth_t *auth = auth_user->client->auth;
+    auth_t *auth = auth_user->auth;
     htpasswd_auth_state *htpasswd = auth->state;
     client_t *client = auth_user->client;
     htpasswd_user entry;

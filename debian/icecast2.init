@@ -20,7 +20,7 @@ test -x $DAEMON || exit 0
 # Defaults
 CONFIGFILE="/etc/icecast2/icecast.xml"
 CONFIGDEFAULTFILE="/etc/default/icecast2"
-USERID=icecast
+USERID=icecast2
 GROUPID=icecast
 ENABLE="false"
 
@@ -38,7 +38,7 @@ case "$1" in
   start)
 	echo -n "Starting $DESC: "
 	start-stop-daemon --start --quiet --chuid $USERID:$GROUPID \
-		--background --exec $DAEMON -- -c $CONFIGFILE
+		--exec $DAEMON -- -b -c $CONFIGFILE
 	echo "$NAME."
 	;;
   stop)
@@ -53,9 +53,9 @@ case "$1" in
   restart)
 	echo -n "Restarting $DESC: "
 	start-stop-daemon --stop --oknodo --quiet --exec $DAEMON
-	sleep 1
+	sleep 2
 	start-stop-daemon --start --quiet --chuid $USERID:$GROUPID \
-		--background --exec $DAEMON -- -c $CONFIGFILE
+		--exec $DAEMON -- -b -c $CONFIGFILE
 	echo "$NAME."
 	;;
   *)

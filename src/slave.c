@@ -32,17 +32,18 @@
 #include <netinet/in.h>
 #else
 #include <winsock2.h>
-#define snprintf _snprintf
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
 #endif
 #ifdef HAVE_CURL
 #include <curl/curl.h>
+#endif
+#ifdef HAVE_GETRLIMIT
+#include <sys/resource.h>
 #endif
 
 #include "compat.h"
 
 #include "thread/thread.h"
+#include "timing/timing.h"
 #include "avl/avl.h"
 #include "net/sock.h"
 #include "httpp/httpp.h"
@@ -66,25 +67,32 @@ static void redirector_add (const char *server, int port, int interval);
 static redirect_host *find_slave_host (const char *server, int port);
 static void redirector_clearall (void);
 
-static thread_type *_slave_thread_id;
 static int slave_running = 0;
-static int update_settings = 0;
-static volatile unsigned int max_interval = 0;
+static volatile int update_settings = 0;
+static volatile int update_all_mounts = 0;
+static volatile int restart_connection_thread = 0;
+static time_t streamlist_check = 0;
 static rwlock_t slaves_lock;
 
 relay_server *relay_free (relay_server *relay)
 {
     relay_server *next = relay->next;
+
     DEBUG1("freeing relay %s", relay->localmount);
     if (relay->source)
        source_free_source (relay->source);
-    xmlFree (relay->server);
-    xmlFree (relay->mount);
+    while (relay->masters)
+    {
+        relay_server_master *master = relay->masters;
+        relay->masters = master->next;
+        xmlFree (master->ip);
+        xmlFree (master->mount);
+        xmlFree (master->bind);
+        free (master);
+    }
     xmlFree (relay->localmount);
-    if (relay->username)
-        xmlFree (relay->username);
-    if (relay->password)
-        xmlFree (relay->password);
+    if (relay->username) xmlFree (relay->username);
+    if (relay->password) xmlFree (relay->password);
     free (relay);
     return next;
 }
@@ -96,16 +104,29 @@ relay_server *relay_copy (relay_server *r)
 
     if (copy)
     {
-        copy->server = (char *)xmlCharStrdup (r->server);
-        copy->mount = (char *)xmlCharStrdup (r->mount);
+        relay_server_master *from = r->masters, **insert = &copy->masters;
+
+        while (from)
+        {
+            relay_server_master *to = calloc (1, sizeof (relay_server_master));
+            to->ip = (char *)xmlCharStrdup (from->ip);
+            to->mount = (char *)xmlCharStrdup (from->mount);
+            if (from->bind)
+                to->bind = (char *)xmlCharStrdup (from->bind);
+            to->port = from->port;
+            *insert = to;
+            from = from->next;
+            insert = &to->next;
+        }
+
         copy->localmount = (char *)xmlStrdup (XMLSTR(r->localmount));
         if (r->username)
             copy->username = (char *)xmlStrdup (XMLSTR(r->username));
         if (r->password)
             copy->password = (char *)xmlStrdup (XMLSTR(r->password));
-        copy->port = r->port;
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
+        copy->interval = r->interval;
         copy->enable = r->enable;
         copy->source = r->source;
         r->source = NULL;
@@ -115,14 +136,24 @@ relay_server *relay_copy (relay_server *r)
 
 
 /* force a recheck of the relays. This will recheck the master server if
- * a this is a slave.
+ * this is a slave and rebuild all mountpoints in the stats tree
  */
-void slave_recheck_mounts (void)
+void slave_update_all_mounts (void)
 {
-    max_interval = 0;
+    update_all_mounts = 1;
     update_settings = 1;
 }
 
+
+/* called on reload, so drop all redirection and trigger a relay checkup and
+ * rebuild all stat mountpoints
+ */
+void slave_restart (void)
+{
+    restart_connection_thread = 1;
+    redirector_clearall();
+    slave_update_all_mounts ();
+}
 
 /* Request slave thread to check the relay list for changes and to
  * update the stats for the current streams.
@@ -140,11 +171,14 @@ void slave_initialize(void)
 
     thread_rwlock_create (&slaves_lock);
     slave_running = 1;
-    max_interval = 0;
+    streamlist_check = 0;
+    update_settings = 0;
+    update_all_mounts = 0;
+    restart_connection_thread = 0;
 #ifndef HAVE_CURL
-    WARN0 ("streamlist request disabled, rebuild with libcurl if required");
+    ERROR0 ("streamlist request disabled, rebuild with libcurl if required");
 #endif
-    _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
+    _slave_thread (NULL);
 }
 
 
@@ -153,8 +187,6 @@ void slave_shutdown(void)
     if (!slave_running)
         return;
     slave_running = 0;
-    DEBUG0 ("waiting for slave thread");
-    thread_join (_slave_thread_id);
     thread_rwlock_destroy (&slaves_lock);
 }
 
@@ -216,57 +248,65 @@ int redirect_client (const char *mountpoint, client_t *client)
 }
 
 
-/* This does the actual connection for a relay. A thread is
- * started off if a connection can be acquired
+/* Actually open the connection and do some http parsing, handle any 302
+ * responses within here.
  */
-static void *start_relay_stream (void *arg)
+static client_t *open_relay_connection (relay_server *relay, relay_server_master *master)
 {
-    relay_server *relay = arg;
-    sock_t streamsock = SOCK_ERROR;
-    source_t *src = relay->source;
+    int redirects = 0;
+    char *server_id = NULL;
+    ice_config_t *config;
     http_parser_t *parser = NULL;
     connection_t *con=NULL;
+    char *server = strdup (master->ip);
+    char *mount = strdup (master->mount);
+    int port = master->port;
+    char *bind = NULL;
+    char *auth_header;
     char header[4096];
 
-    relay->running = 1;
-    INFO1("Starting relayed source at mountpoint \"%s\"", relay->localmount);
-    do
-    {
-        char *auth_header;
-        char *server_id;
-        ice_config_t *config;
+    config = config_get_config ();
+    server_id = strdup (config->server_id);
+    config_release_config ();
 
-        streamsock = sock_connect_wto (relay->server, relay->port, 10);
+    if (relay->username && relay->password)
+    {
+        char *esc_authorisation;
+        unsigned len = strlen(relay->username) + strlen(relay->password) + 2;
+
+        auth_header = malloc (len);
+        snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
+        esc_authorisation = util_base64_encode(auth_header);
+        free(auth_header);
+        len = strlen (esc_authorisation) + 24;
+        auth_header = malloc (len);
+        snprintf (auth_header, len,
+                "Authorization: Basic %s\r\n", esc_authorisation);
+        free(esc_authorisation);
+    }
+    else
+        auth_header = strdup ("");
+
+    while (redirects < 10)
+    {
+        sock_t streamsock;
+
+        /* policy decision, we assume a source bind even after redirect, possible option */
+        if (master->bind)
+            bind = master->bind;
+
+        if (bind)
+            INFO3 ("connecting to %s:%d, bound to %s", server, port, bind);
+        else
+            INFO2 ("connecting to %s:%d", server, port);
+
+        streamsock = sock_connect_wto_bind (server, port, bind, 10);
         if (streamsock == SOCK_ERROR)
         {
-            WARN3("Failed to relay stream from master server, couldn't connect to http://%s:%d%s",
-                    relay->server, relay->port, relay->mount);
+            WARN2 ("Failed to connect to %s:%d", server, port);
             break;
         }
-        con = connection_create (streamsock, -1, NULL);
-
-        config = config_get_config ();
-        server_id = strdup (config->server_id);
-        if (relay->username && relay->password)
-        {
-            char *esc_authorisation;
-            unsigned len = strlen(relay->username) + strlen(relay->password) + 2;
-
-            auth_header = malloc (len);
-            snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
-            esc_authorisation = util_base64_encode(auth_header);
-            free(auth_header);
-            len = strlen (esc_authorisation) + 24;
-            auth_header = malloc (len);
-            snprintf (auth_header, len,
-                    "Authorization: Basic %s\r\n", esc_authorisation);
-            free(esc_authorisation);
-        }
-        else
-        {
-            auth_header = strdup ("");
-        }
-        config_release_config ();
+        con = connection_create (streamsock, SOCK_ERROR, strdup (server));
 
         /* At this point we may not know if we are relaying an mp3 or vorbis
          * stream, but only send the icy-metadata header if the relay details
@@ -278,93 +318,189 @@ static void *start_relay_stream (void *arg)
                 "%s"
                 "%s"
                 "\r\n",
-                relay->mount,
+                mount,
                 server_id,
                 relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
                 auth_header);
-        free (server_id);
-        free (auth_header);
         memset (header, 0, sizeof(header));
         if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
         {
-            WARN0("Header read failed");
+            ERROR4 ("Header read failed for %s (%s:%d%s)", relay->localmount, server, port, mount);
             break;
         }
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
         if (! httpp_parse_response (parser, header, strlen(header), relay->localmount))
         {
-            ERROR0("Error parsing relay request");
+            ERROR4("Error parsing relay request for %s (%s:%d%s)", relay->localmount,
+                    server, port, mount);
             break;
         }
-        if (httpp_getvar (parser, HTTPP_VAR_ERROR_MESSAGE))
+        if (strcmp (httpp_getvar (parser, HTTPP_VAR_ERROR_CODE), "302") == 0)
         {
-            ERROR1("Error from relay request: %s", httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
-            break;
-        }
-        src->parser = parser;
+            /* better retry the connection again but with different details */
+            const char *uri, *mountpoint;
+            int len;
 
-        global_lock ();
-        if (client_create (&src->client, con, parser) < 0)
-        {
-            global_unlock ();
-            /* make sure only the client_destory frees these */
+            uri = httpp_getvar (parser, "location");
+            INFO1 ("redirect received %s", uri);
+            if (strncmp (uri, "http://", 7) != 0)
+                break;
+            uri += 7;
+            mountpoint = strchr (uri, '/');
+            free (mount);
+            if (mountpoint)
+                mount = strdup (mountpoint);
+            else
+                mount = strdup ("/");
+
+            len = strcspn (uri, ":/");
+            port = 80;
+            if (uri [len] == ':')
+                port = atoi (uri+len+1);
+            free (server);
+            server = calloc (1, len+1);
+            strncpy (server, uri, len);
+            connection_close (con);
+            httpp_destroy (parser);
             con = NULL;
             parser = NULL;
-            break;
         }
-        global_unlock ();
-        sock_set_blocking (streamsock, SOCK_NONBLOCK);
-        con = NULL;
-        parser = NULL;
-        client_set_queue (src->client, NULL);
+        else
+        {
+            client_t *client = NULL;
+
+            if (httpp_getvar (parser, HTTPP_VAR_ERROR_MESSAGE))
+            {
+                ERROR2("Error from relay request: %s (%s)", relay->localmount,
+                        httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
+                break;
+            }
+            global_lock ();
+            if (client_create (&client, con, parser) < 0)
+            {
+                global_unlock ();
+                /* make sure only the client_destory frees these */
+                con = NULL;
+                parser = NULL;
+                client_destroy (client);
+                break;
+            }
+            global_unlock ();
+            sock_set_blocking (streamsock, SOCK_NONBLOCK);
+            client_set_queue (client, NULL);
+            free (server);
+            free (mount);
+            free (server_id);
+            free (auth_header);
+
+            return client;
+        }
+        redirects++;
+    }
+    /* failed, better clean up */
+    free (server);
+    free (mount);
+    free (server_id);
+    free (auth_header);
+    if (con)
+        connection_close (con);
+    if (parser)
+        httpp_destroy (parser);
+    return NULL;
+}
+
+
+/* This does the actual connection for a relay. A thread is
+ * started off if a connection can be acquired
+ */
+static void *start_relay_stream (void *arg)
+{
+    relay_server *relay = arg;
+    source_t *src = relay->source;
+    relay_server_master *master = relay->masters;
+    client_t *client = NULL;
+    mount_proxy *mountinfo;
+    ice_config_t *config;
+
+    INFO1("Starting relayed source at mountpoint \"%s\"", relay->localmount);
+    thread_mutex_lock (&src->lock);
+    do
+    {
+        if (master)
+        {
+            thread_mutex_unlock (&src->lock);
+            client = open_relay_connection (relay, master);
+            thread_mutex_lock (&src->lock);
+
+            if (client == NULL)
+                continue;
+
+            src->client = client;
+            src->parser = client->parser;
+        }
 
         if (connection_complete_source (src, 0) < 0)
         {
-            DEBUG0("Failed to complete source initialisation");
-            break;
+            INFO0("Failed to complete source initialisation");
+            client_destroy (client);
+            src->client = NULL;
+            continue;
         }
-        stats_event_inc(NULL, "source_relay_connections");
-        stats_event (relay->localmount, "source_ip", relay->server);
+        if (client)
+        {
+            stats_event_inc (NULL, "source_relay_connections");
+            stats_event (relay->localmount, "source_ip", client->con->ip);
+        }
 
         source_main (relay->source);
 
         if (relay->on_demand == 0)
         {
+            /* try next server if configured */
+            if (global.running == ICE_RUNNING && relay->running && master->next)
+                continue;
+
             /* only keep refreshing YP entries for inactive on-demand relays */
             yp_remove (relay->localmount);
             relay->source->yp_public = -1;
             relay->start = global.time + 10; /* prevent busy looping if failing */
+            slave_update_all_mounts();
         }
 
         /* we've finished, now get cleaned up */
+        thread_mutex_unlock (&src->lock);
         relay->cleanup = 1;
+        slave_rebuild_mounts();
 
         return NULL;
-    } while (0);
+    } while ((master = master->next));
 
-    if (relay->source->fallback_mount)
+    /* source should be locked here */
+    config = config_get_config();
+    mountinfo = config_find_mount (config, src->mount);
+    if (mountinfo && mountinfo->fallback_mount)
     {
         source_t *fallback_source;
 
-        DEBUG1 ("failed relay, fallback to %s", relay->source->fallback_mount);
+        INFO1 ("failed relay, fallback to %s", mountinfo->fallback_mount);
         avl_tree_rlock(global.source_tree);
-        fallback_source = source_find_mount (relay->source->fallback_mount);
-
-        if (fallback_source != NULL)
-            source_move_clients (relay->source, fallback_source);
-
+        fallback_source = source_find_mount (mountinfo->fallback_mount);
+        if (fallback_source)
+        {
+            thread_mutex_unlock (&src->lock);
+            source_move_clients (src, fallback_source);
+            thread_mutex_lock (&src->lock);
+        }
         avl_tree_unlock (global.source_tree);
     }
+    config_release_config();
 
-    if (con)
-        connection_close (con);
-    if (parser)
-        httpp_destroy (parser);
     source_clear_source (relay->source);
+    thread_mutex_unlock (&src->lock);
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
-    relay->start = global.time + max_interval;
+    relay->start = global.time + relay->interval;
     relay->cleanup = 1;
 
     return NULL;
@@ -387,7 +523,8 @@ static void check_relay_stream (relay_server *relay)
         if (relay->source)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
-            slave_rebuild_mounts();
+            if (relay->on_demand)
+                slave_update_all_mounts();
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
@@ -403,27 +540,33 @@ static void check_relay_stream (relay_server *relay)
             stats_event (relay->localmount, NULL, NULL);
             break;
         }
+        /* check if an inactive on-demand relay has a fallback that has listeners */
         if (relay->on_demand && source->on_demand_req == 0)
         {
-            relay->source->on_demand = relay->on_demand;
+            ice_config_t *config = config_get_config ();
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
 
-            if (source->fallback_mount && source->fallback_override)
+            source->on_demand = relay->on_demand;
+
+            if (mountinfo && mountinfo->fallback_mount && mountinfo->fallback_override)
             {
                 source_t *fallback;
                 avl_tree_rlock (global.source_tree);
-                fallback = source_find_mount (source->fallback_mount);
+                fallback = source_find_mount (mountinfo->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
                 {
-                   DEBUG2 ("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
+                   DEBUG1 ("fallback running with %lu listeners", fallback->listeners);
                    source->on_demand_req = 1;
                 }
                 avl_tree_unlock (global.source_tree);
             }
+            config_release_config();
             if (source->on_demand_req == 0)
                 break;
         }
 
         relay->start = global.time + 5;
+        relay->running = 1;
         relay->thread = thread_create ("Relay Thread", start_relay_stream,
                 relay, THREAD_ATTACHED);
         return;
@@ -444,14 +587,15 @@ static void check_relay_stream (relay_server *relay)
         if (relay->enable == 0)
         {
             stats_event (relay->localmount, NULL, NULL);
-            slave_rebuild_mounts();
             return;
         }
         if (relay->on_demand && relay->source)
         {
             ice_config_t *config = config_get_config ();
             mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+            thread_mutex_lock (&relay->source->lock);
             source_update_settings (config, relay->source, mountinfo);
+            thread_mutex_unlock (&relay->source->lock);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");
         }
@@ -466,11 +610,20 @@ static int relay_has_changed (relay_server *new, relay_server *old)
 {
     do
     {
-        if (strcmp (new->mount, old->mount) != 0)
-            break;
-        if (strcmp (new->server, old->server) != 0)
-            break;
-        if (new->port != old->port)
+        relay_server_master *oldmaster = old->masters, *newmaster = new->masters;
+
+        while (oldmaster && newmaster)
+        {
+            if (strcmp (newmaster->mount, oldmaster->mount) != 0)
+                break;
+            if (strcmp (newmaster->ip, oldmaster->ip) != 0)
+                break;
+            if (newmaster->port != oldmaster->port)
+                break;
+            oldmaster = oldmaster->next;
+            newmaster = newmaster->next;
+        }
+        if (oldmaster || newmaster)
             break;
         if (new->mp3metadata != old->mp3metadata)
             break;
@@ -556,9 +709,9 @@ static void relay_check_streams (relay_server *to_start,
             {
                 /* relay has been removed from xml, shut down active relay */
                 DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
+                to_free->running = 0;
                 to_free->source->running = 0;
                 thread_join (to_free->thread);
-                slave_rebuild_mounts();
             }
             else
                 stats_event (to_free->localmount, NULL, NULL);
@@ -587,9 +740,11 @@ struct master_conn_details
     int on_demand;
     int previous;
     int ok;
+    int max_interval;
     char *buffer;
     char *username;
     char *password;
+    char *bind;
     char *server_id;
     char *args;
     relay_server *new_relays;
@@ -671,12 +826,17 @@ static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *strea
         if (strlen (buf))
         {
             relay_server *r = calloc (1, sizeof (relay_server));
-            r->server = (char *)xmlStrdup (XMLSTR(master->server));
-            r->port = master->port;
-            r->mount = (char *)xmlStrdup (XMLSTR(buf));
+            relay_server_master *m = calloc (1, sizeof (relay_server_master));
+            m->ip = (char *)xmlStrdup (XMLSTR(master->server));
+            m->port = master->port;
+            if (master->bind)
+                m->bind = (char *)xmlStrdup (XMLSTR(master->bind));
+            m->mount = (char *)xmlStrdup (XMLSTR(buf));
+            r->masters = m;
             r->localmount = (char *)xmlStrdup (XMLSTR(buf));
             r->mp3metadata = 1;
             r->on_demand = master->on_demand;
+            r->interval = master->max_interval;
             r->enable = 1;
             if (master->send_auth)
             {
@@ -727,7 +887,9 @@ static void *streamlist_thread (void *arg)
     curl_easy_setopt (handle, CURLOPT_ERRORBUFFER, error);
     curl_easy_setopt (handle, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt (handle, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt (handle, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt (handle, CURLOPT_TIMEOUT, 10L);
+    if (master->bind)
+        curl_easy_setopt (handle, CURLOPT_INTERFACE, master->bind);
 
     if (curl_easy_perform (handle) != 0)
         WARN2 ("Failed URL access \"%s\" (%s)", url, error);
@@ -773,8 +935,10 @@ static void update_from_master (ice_config_t *config)
     details->username = strdup (config->master_username);
     details->password = strdup (config->master_password);
     details->send_auth = config->master_relay_auth;
+    details->bind = (config->master_bind) ? strdup (config->master_bind) : NULL;
     details->on_demand = config->on_demand;
     details->server_id = strdup (config->server_id);
+    details->max_interval = config->master_update_interval;
     if (config->master_redirect)
     {
         details->args = malloc (4096);
@@ -794,10 +958,7 @@ static void update_master_as_slave (ice_config_t *config)
     redirect_host *redirect;
 
     if (config->master_server == NULL || config->master_redirect == 0 || config->max_redirects == 0)
-    {
-        redirector_clearall();
-        return;
-    }
+         return;
 
     thread_rwlock_wlock (&slaves_lock);
     redirect = find_slave_host (config->master_server, config->master_server_port);
@@ -807,50 +968,76 @@ static void update_master_as_slave (ice_config_t *config)
         redirector_add (config->master_server, config->master_server_port, 0);
     }
     else
-        redirect->next_update += max_interval;
+        redirect->next_update += config->master_update_interval;
     thread_rwlock_unlock (&slaves_lock);
 }
 
-
-static void *_slave_thread(void *arg)
+static void slave_startup (void)
 {
     ice_config_t *config;
-    unsigned int interval = 0;
+
+#ifdef HAVE_GETRLIMIT
+    struct rlimit rlimit;
+    if (getrlimit (RLIMIT_NOFILE, &rlimit) == 0)
+    {
+        INFO2 ("max file descriptors %ld (hard limit %ld)",
+                (long)rlimit.rlim_cur, (long)rlimit.rlim_max);
+    }
+#endif
+
+    update_settings = 0;
+    update_all_mounts = 0;
 
     config = config_get_config();
     update_master_as_slave (config);
+    stats_global (config);
     config_release_config();
-    source_recheck_mounts();
+
+    source_recheck_mounts (1);
+    connection_thread_startup();
+}
+
+static void *_slave_thread(void *arg)
+{
+    slave_startup();
 
     while (1)
     {
         relay_server *cleanup_relays = NULL;
         int skip_timer = 0;
+        uint64_t prev_time_ms = timing_get_time();
 
-        /* re-read xml file if requested */
-        if (global . schedule_config_reread)
+        do
         {
-            event_config_read (NULL);
-            global . schedule_config_reread = 0;
-        }
+            /* re-read xml file if requested */
+            if (global . schedule_config_reread)
+            {
+                event_config_read ();
+                global . schedule_config_reread = 0;
+            }
 
-        thread_sleep (1000000);
-        if (slave_running == 0)
+            if (global.running != ICE_RUNNING)
+                break;
+
+            thread_sleep (100000);
+            global.time_ms = timing_get_time ();
+            global.time = (long)(global.time_ms/(uint64_t)1000);
+
+            global_add_bitrates (global.out_bitrate, 0L);
+        } while (global.time_ms - prev_time_ms < 1000);
+        prev_time_ms = global.time_ms;
+
+        if (global.running != ICE_RUNNING)
             break;
-        time (&global.time);
-        ++interval;
 
-        thread_mutex_lock (&(config_locks()->relay_lock));
-
-        /* only update relays lists when required */
-        if (max_interval <= interval)
+        /* only update relays lists from master when required */
+        if (streamlist_check <= global.time)
         {
-            config = config_get_config();
+            ice_config_t *config = config_get_config();
 
-            if (max_interval == 0)
+            if (streamlist_check == 0)
                 skip_timer = 1;
-            interval = 0;
-            max_interval = config->master_update_interval;
+            streamlist_check = global.time + config->master_update_interval;
             update_master_as_slave (config);
 
             update_from_master (config);
@@ -859,20 +1046,30 @@ static void *_slave_thread(void *arg)
 
             config_release_config();
         }
-        relay_check_streams (global.master_relays, NULL, skip_timer);
         relay_check_streams (global.relays, cleanup_relays, skip_timer);
-        thread_mutex_unlock (&(config_locks()->relay_lock));
+        relay_check_streams (global.master_relays, NULL, skip_timer);
 
         if (update_settings)
         {
+            source_recheck_mounts (update_all_mounts);
             update_settings = 0;
-            source_recheck_mounts();
+            update_all_mounts = 0;
+            if (restart_connection_thread)
+            {
+                connection_thread_startup();
+                restart_connection_thread = 0;
+            }
         }
+        /* trigger any YP processing */
+        yp_thread_startup();
     }
+    connection_thread_shutdown();
     INFO0 ("shutting down current relays");
     relay_check_streams (NULL, global.relays, 0);
     relay_check_streams (NULL, global.master_relays, 0);
     redirector_clearall();
+    /* send any removals to the YP servers */
+    yp_thread_startup();
 
     INFO0 ("Slave thread shutdown complete");
 
@@ -901,6 +1098,7 @@ static void redirector_clearall (void)
     {
         redirect_host *current = global.redirectors;
         global.redirectors = current->next;
+        INFO2 ("removing %s:%d", current->server, current->port);
         free (current->server);
         free (current);
     }
@@ -914,7 +1112,7 @@ void redirector_update (client_t *client)
 {
     redirect_host *redirect;
     const char *rserver = httpp_get_query_param (client->parser, "rserver");
-    char *value;
+    const char *value;
     int rport, interval;
 
     if (rserver==NULL) return;
@@ -963,7 +1161,7 @@ static redirect_host *find_slave_host (const char *server, int port)
 static void redirector_add (const char *server, int port, int interval)
 {
     ice_config_t *config = config_get_config();
-    int allowed = config->max_redirects;
+    unsigned int allowed = config->max_redirects;
     redirect_host *redirect;
 
     config_release_config();

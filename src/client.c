@@ -41,10 +41,6 @@
 #include <errno.h>
 #endif
 
-#ifdef _WIN32
-#define snprintf _snprintf
-#endif
-
 #undef CATMODULE
 #define CATMODULE "client"
 
@@ -62,6 +58,19 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
         abort();
 
     global.clients++;
+
+    if (con->serversock != SOCK_ERROR)
+    {
+        int i;
+        for (i=0; i < global.server_sockets; i++)
+        {
+            if (global.serversock[i] == con->serversock)
+            {
+                client->server_conn = global.server_conn[i];
+                client->server_conn->refcount++;
+            }
+        }
+    }
 
     /* don't do client limit check if on an SSL socket, as that will be an admin request */
     if (not_ssl_connection (con))
@@ -84,9 +93,9 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
-
     return ret;
 }
+
 
 void client_destroy(client_t *client)
 {
@@ -101,8 +110,8 @@ void client_destroy(client_t *client)
         client->refbuf = NULL;
     }
 
-    if (auth_client_release (client))
-        return;
+    if  (client->authenticated)
+        DEBUG1 ("client still in auth \"%s\"", httpp_getvar (client->parser, HTTPP_VAR_URI));
 
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
@@ -128,6 +137,7 @@ void client_destroy(client_t *client)
     global_lock ();
     global.clients--;
     stats_event_args (NULL, "clients", "%d", global.clients);
+    config_clear_listener (client->server_conn);
     global_unlock ();
 
     /* we need to free client specific format data (if any) */
@@ -163,13 +173,14 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     bytes = client->con->read (client->con, buf, len);
 
     if (bytes == -1 && client->con->error)
-        WARN0 ("reading from connection has failed");
+        DEBUG0 ("reading from connection has failed");
 
     return bytes;
 }
 
 
-void client_send_302(client_t *client, const char *location) {
+void client_send_302(client_t *client, const char *location)
+{
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 302 Temporarily Moved\r\n"
             "Content-Type: text/html\r\n"
@@ -192,24 +203,20 @@ void client_send_400(client_t *client, char *message) {
 }
 
 
-void client_send_401 (client_t *client)
+void client_send_401 (client_t *client, const char *realm)
 {
     ice_config_t *config = config_get_config ();
-    const char *send_realm;
-    if (client->auth && client->auth->realm)
-        send_realm = client->auth->realm;
-    else
-        send_realm = config->server_id;
+
+    if (realm == NULL)
+        realm = config->server_id;
 
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 401 Authentication Required\r\n"
             "WWW-Authenticate: Basic realm=\"%s\"\r\n"
             "\r\n"
-            "You need to authenticate\r\n", send_realm);
+            "You need to authenticate\r\n", realm);
     config_release_config();
     client->respcode = 401;
-    auth_release (client->auth);
-    client->auth = NULL;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
@@ -227,10 +234,25 @@ void client_send_403(client_t *client, const char *reason)
     fserve_add_client (client, NULL);
 }
 
-void client_send_404(client_t *client, char *message) {
+void client_send_403redirect (client_t *client, const char *mount, const char *reason)
+{
+    if (redirect_client (mount, client))
+        return;
+    DEBUG0 ("dropping client");
+    client_send_403 (client, reason);
+}
 
+void client_send_404(client_t *client, const char *message)
+{
+    if (client->respcode)
+    {
+        client_destroy (client);
+        return;
+    }
+    if (message == NULL)
+        message = "Not Available";
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 404 File Not Found\r\n"
+            "HTTP/1.0 404 Not Available\r\n"
             "Content-Type: text/html\r\n\r\n"
             "<b>%s</b>\r\n", message);
     client->respcode = 404;

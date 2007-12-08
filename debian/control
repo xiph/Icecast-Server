@@ -1,22 +1,20 @@
 Source: icecast2
 Section: sound
 Priority: optional
-Maintainer: Keegan Quinn <ice@thebasement.org>
-Build-Depends: cdbs, debhelper (>> 4.1.0), dh-buildinfo, libogg-dev (>> 1.0.0), libvorbis-dev (>> 1.0.0), libxslt1-dev, libxml2-dev
-Uploaders: Jonas Smedegaard <dr@jones.dk>
-Standards-Version: 3.6.0
+Maintainer: Rama <rama@r23.cc>
+Build-Depends: cdbs, autotools-dev, debhelper (>> 4.1.0), dh-buildinfo, libogg-dev (>> 1.0.0), libvorbis-dev (>> 1.0.0), libxslt-dev, libxml2-dev, libcurl3-dev | libcurl-dev, libtheora-dev (>= 0.0.0.alpha6)
+Standards-Version: 3.6.1
 
 Package: icecast2
 Architecture: any
 Depends: ${shlibs:Depends}
 Recommends: ices2
-Description: streaming Ogg Vorbis/MP3 media server
- Icecast is an audio broadcasting system.  It can stream music in both
- MPEG 1 Layer 3 (MP3) and Ogg Vorbis formats, supports multiple
- streams on a single port through the use of "mountpoints," includes
- web-based status and management interfaces, and has many other
- advanced features.
+Description: Ogg Vorbis and MP3 streaming media server
+ Icecast is a streaming media server which currently supports Ogg 
+ Vorbis and MP3 audio streams. It can be used to create an Internet 
+ radio station or a privately running jukebox and many things in 
+ between. It is very versatile in that new formats can be added 
+ relatively easily and supports open standards for communication and 
+ interaction.
  .
- Many standard audio players can connect and listen to Icecast-hosted
- streams, since it's based on Nullsoft's Shoutcast protocol and HTTP.
-
+ Website: http://www.icecast.org/

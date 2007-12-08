@@ -13,8 +13,6 @@
 <body>
 
 <div class="main">
-<h1>Icecast2 Status</h1>
-<iframe frameborder="0" height="50" scrolling="no" src="/navbar.html" />
 
 <!--mount point stats-->
 <xsl:for-each select="source">

@@ -39,173 +39,9 @@
 
 #include "logging.h"
 #include "auth.h"
-#ifdef _WIN32
-#define snprintf _snprintf
-#endif
 
 #define CATMODULE "admin"
 
-#define COMMAND_ERROR             (-1)
-
-/* Mount-specific commands */
-#define COMMAND_RAW_FALLBACK        1
-#define COMMAND_RAW_METADATA_UPDATE 2
-#define COMMAND_RAW_SHOW_LISTENERS  3
-#define COMMAND_RAW_MOVE_CLIENTS    4
-#define COMMAND_RAW_MANAGEAUTH      5
-#define COMMAND_SHOUTCAST_METADATA_UPDATE   6
-#define COMMAND_RAW_UPDATEMETADATA  7
-
-#define COMMAND_TRANSFORMED_FALLBACK        50
-#define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
-#define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
-#define COMMAND_TRANSFORMED_MANAGEAUTH      55
-#define COMMAND_TRANSFORMED_UPDATEMETADATA  56
-#define COMMAND_TRANSFORMED_METADATA_UPDATE 57
-
-/* Global commands */
-#define COMMAND_RAW_LIST_MOUNTS             101
-#define COMMAND_RAW_STATS                   102
-#define COMMAND_RAW_LISTSTREAM              103
-#define COMMAND_PLAINTEXT_LISTSTREAM        104
-#define COMMAND_RAW_ADMIN_FUNCTION          105
-#define COMMAND_RAW_MANAGE_RELAY            106
-#define COMMAND_PLAINTEXT_LISTLOG           107
-
-#define COMMAND_TRANSFORMED_LIST_MOUNTS     201
-#define COMMAND_TRANSFORMED_STATS           202
-#define COMMAND_TRANSFORMED_LISTSTREAM      203
-#define COMMAND_TRANSFORMED_ADMIN_FUNCTION  204
-#define COMMAND_TRANSFORMED_MANAGE_RELAY    205
-#define COMMAND_TRANSFORMED_LISTLOG         206
-
-/* Client management commands */
-#define COMMAND_RAW_KILL_CLIENT             301
-#define COMMAND_RAW_KILL_SOURCE             302
-#define COMMAND_TRANSFORMED_KILL_CLIENT     401
-#define COMMAND_TRANSFORMED_KILL_SOURCE     402
-
-/* Admin commands requiring no auth */
-#define COMMAND_BUILDM3U                    501
-
-#define FALLBACK_RAW_REQUEST "fallbacks"
-#define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
-#define SHOUTCAST_METADATA_REQUEST "admin.cgi"
-#define METADATA_RAW_REQUEST "metadata"
-#define METADATA_TRANSFORMED_REQUEST "metadata.xsl"
-#define LISTCLIENTS_RAW_REQUEST "listclients"
-#define LISTCLIENTS_TRANSFORMED_REQUEST "listclients.xsl"
-#define STATS_RAW_REQUEST "stats"
-#define STATS_TRANSFORMED_REQUEST "stats.xsl"
-#define LISTMOUNTS_RAW_REQUEST "listmounts"
-#define LISTMOUNTS_TRANSFORMED_REQUEST "listmounts.xsl"
-#define STREAMLIST_RAW_REQUEST "streamlist"
-#define STREAMLIST_TRANSFORMED_REQUEST "streamlist.xsl"
-#define STREAMLIST_PLAINTEXT_REQUEST "streamlist.txt"
-#define LISTLOG_PLAINTEXT_REQUEST "showlog.txt"
-#define LISTLOG_TRANSFORMED_REQUEST "showlog.xsl"
-#define MOVECLIENTS_RAW_REQUEST "moveclients"
-#define MOVECLIENTS_TRANSFORMED_REQUEST "moveclients.xsl"
-#define KILLCLIENT_RAW_REQUEST "killclient"
-#define KILLCLIENT_TRANSFORMED_REQUEST "killclient.xsl"
-#define KILLSOURCE_RAW_REQUEST "killsource"
-#define KILLSOURCE_TRANSFORMED_REQUEST "killsource.xsl"
-#define ADMIN_XSL_RESPONSE "response.xsl"
-#define MANAGEAUTH_RAW_REQUEST "manageauth"
-#define MANAGEAUTH_TRANSFORMED_REQUEST "manageauth.xsl"
-#define UPDATEMETADATA_RAW_REQUEST "updatemetadata"
-#define UPDATEMETADATA_TRANSFORMED_REQUEST "updatemetadata.xsl"
-#define MANAGE_RELAY_RAW_REQUEST "managerelays"
-#define MANAGE_RELAY_TRANSFORMED_REQUEST "managerelays.xsl"
-#define ADM_FUNCTION_RAW_REQUEST "function"
-#define ADM_FUNCTION_TRANSFORMED_REQUEST "function.xsl"
-#define DEFAULT_RAW_REQUEST ""
-#define DEFAULT_TRANSFORMED_REQUEST ""
-#define BUILDM3U_RAW_REQUEST "buildm3u"
-
-#define RAW         1
-#define TRANSFORMED 2
-#define PLAINTEXT   3
-
-static int admin_get_command (const char *uri)
-{
-    const char *command;
-
-    if (strcmp(uri, "/admin.cgi") == 0)
-    {
-        INFO0("(admin.cgi)");
-        return COMMAND_SHOUTCAST_METADATA_UPDATE;
-    }
-    command = uri + 7;
-    INFO1("(%s)", uri);
-
-    if(!strcmp(command, FALLBACK_RAW_REQUEST))
-        return COMMAND_RAW_FALLBACK;
-    else if(!strcmp(command, FALLBACK_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_FALLBACK;
-    else if(!strcmp(command, METADATA_RAW_REQUEST))
-        return COMMAND_RAW_METADATA_UPDATE;
-    else if(!strcmp(command, METADATA_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_METADATA_UPDATE;
-    else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
-        return COMMAND_RAW_SHOW_LISTENERS;
-    else if(!strcmp(command, LISTCLIENTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_SHOW_LISTENERS;
-    else if(!strcmp(command, STATS_RAW_REQUEST))
-        return COMMAND_RAW_STATS;
-    else if(!strcmp(command, STATS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else if(!strcmp(command, "stats.xml")) /* The old way */
-        return COMMAND_RAW_STATS;
-    else if(!strcmp(command, LISTMOUNTS_RAW_REQUEST))
-        return COMMAND_RAW_LIST_MOUNTS;
-    else if(!strcmp(command, LISTMOUNTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_LIST_MOUNTS;
-    else if(!strcmp(command, STREAMLIST_RAW_REQUEST))
-        return COMMAND_RAW_LISTSTREAM;
-    else if(!strcmp(command, STREAMLIST_PLAINTEXT_REQUEST))
-        return COMMAND_PLAINTEXT_LISTSTREAM;
-    else if(!strcmp(command, LISTLOG_PLAINTEXT_REQUEST))
-        return COMMAND_PLAINTEXT_LISTLOG;
-    else if(!strcmp(command, LISTLOG_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_LISTLOG;
-    else if(!strcmp(command, MOVECLIENTS_RAW_REQUEST))
-        return COMMAND_RAW_MOVE_CLIENTS;
-    else if(!strcmp(command, MOVECLIENTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MOVE_CLIENTS;
-    else if(!strcmp(command, KILLCLIENT_RAW_REQUEST))
-        return COMMAND_RAW_KILL_CLIENT;
-    else if(!strcmp(command, KILLCLIENT_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_KILL_CLIENT;
-    else if(!strcmp(command, KILLSOURCE_RAW_REQUEST))
-        return COMMAND_RAW_KILL_SOURCE;
-    else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_KILL_SOURCE;
-    else if(!strcmp(command, MANAGEAUTH_RAW_REQUEST))
-        return COMMAND_RAW_MANAGEAUTH;
-    else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MANAGEAUTH;
-    else if(!strcmp(command, UPDATEMETADATA_RAW_REQUEST))
-        return COMMAND_RAW_UPDATEMETADATA;
-    else if(!strcmp(command, UPDATEMETADATA_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_UPDATEMETADATA;
-    else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
-        return COMMAND_BUILDM3U;
-    else if(!strcmp(command, MANAGE_RELAY_RAW_REQUEST))
-        return COMMAND_RAW_MANAGE_RELAY;
-    else if(!strcmp(command, MANAGE_RELAY_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MANAGE_RELAY;
-    else if(!strcmp(command, ADM_FUNCTION_RAW_REQUEST))
-        return COMMAND_RAW_ADMIN_FUNCTION;
-    else if(!strcmp(command, ADM_FUNCTION_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_ADMIN_FUNCTION;
-    else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else if(!strcmp(command, DEFAULT_RAW_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else
-        return COMMAND_ERROR;
-}
 
 static void command_fallback(client_t *client, source_t *source, int response);
 static void command_metadata(client_t *client, source_t *source, int response);
@@ -214,14 +50,14 @@ static void command_show_listeners(client_t *client, source_t *source,
         int response);
 static void command_move_clients(client_t *client, source_t *source,
         int response);
-static void command_stats(client_t *client);
+static void command_stats(client_t *client, const char *filename);
+static void command_stats_mount (client_t *client, source_t *source, int response);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
 static void command_manageauth(client_t *client, source_t *source,
         int response);
-static void command_buildm3u(client_t *client, source_t *source,
-        int response);
+static void command_buildm3u(client_t *client, const char *mount);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
 static void command_updatemetadata(client_t *client, source_t *source,
@@ -230,11 +66,63 @@ static void command_admin_function (client_t *client, int response);
 static void command_list_log (client_t *client, int response);
 static void command_manage_relay (client_t *client, int response);
 
-static void admin_handle_mount_request(client_t *client, source_t *source,
-        int command);
 static void admin_handle_general_request(client_t *client, const char *command);
-static void admin_send_response(xmlDocPtr doc, client_t *client, 
-        int response, char *xslt_template);
+
+
+struct admin_command
+{
+    const char *request;
+    admin_response_type response;
+    union {
+        void *x; /* not used but helps on initialisations */
+        void (*source)(client_t *client, source_t *source, int response);
+        void (*general)(client_t *client, int response);
+    } handle;
+};
+
+
+
+static struct admin_command admin_general[] =
+{
+    { "managerelays",       RAW,    { command_manage_relay } },
+    { "manageauth",         RAW,    { command_manageauth } },
+    { "listmounts",         RAW,    { command_list_mounts } },
+    { "function",           RAW,    { command_admin_function } },
+    { "streamlist.txt",     TEXT,   { command_list_mounts } },
+    { "showlog.txt",        TEXT,   { command_list_log } },
+    { "showlog.xsl",        XSLT,   { command_list_log } },
+    { "managerelays.xsl",   XSLT,   { command_manage_relay } },
+    { "manageauth.xsl",     XSLT,   { command_manageauth } },
+    { "listmounts.xsl",     XSLT,   { command_list_mounts } },
+    { "moveclients.xsl",    XSLT,   { command_list_mounts } },
+    { "function.xsl",       XSLT,   { command_admin_function } },
+    { "response.xsl",       XSLT },
+    { NULL }
+};
+
+
+
+static struct admin_command admin_mount[] =
+{
+    { "fallbacks",          RAW,    { command_fallback } },
+    { "metadata",           RAW,    { command_metadata } },
+    { "listclients",        RAW,    { command_show_listeners } },
+    { "updatemetadata",     RAW,    { command_updatemetadata } },
+    { "killclient",         RAW,    { command_kill_client } },
+    { "moveclients",        RAW,    { command_move_clients } },
+    { "killsource",         RAW,    { command_kill_source } },
+    { "stats",              RAW,    { command_stats_mount } },
+    { "manageauth",         RAW,    { command_manageauth } },
+    { "admin.cgi",          RAW,    { command_shoutcast_metadata } },
+    { "metadata.xsl",       XSLT,   { command_metadata } },
+    { "listclients.xsl",    XSLT,   { command_show_listeners } },
+    { "updatemetadata.xsl", XSLT,   { command_updatemetadata } },
+    { "killclient.xsl",     XSLT,   { command_kill_client } },
+    { "moveclients.xsl",    XSLT,   { command_move_clients } },
+    { "killsource.xsl",     XSLT,   { command_kill_source } },
+    { "manageauth.xsl",     XSLT,   { command_manageauth } },
+    { NULL }
+};
 
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
@@ -274,18 +162,21 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             srcnode = xmlNewChild (xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp (srcnode, XMLSTR("mount"), XMLSTR(source->mount));
 
-            xmlNewChild (srcnode, NULL, XMLSTR("fallback"), 
-                    (source->fallback_mount != NULL)?
-                    XMLSTR(source->fallback_mount):XMLSTR(""));
             snprintf (buf, sizeof(buf), "%lu", source->listeners);
             xmlNewChild (srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
             config = config_get_config();
             mountinfo = config_find_mount (config, source->mount);
-            if (mountinfo && mountinfo->auth)
+            if (mountinfo)
             {
-                xmlNewChild(srcnode, NULL, XMLSTR("authenticator"), 
-                        XMLSTR(mountinfo->auth->type));
+                if (mountinfo->auth)
+                {
+                    xmlNewChild (srcnode, NULL, XMLSTR("authenticator"), 
+                            XMLSTR(mountinfo->auth->type));
+                }
+                if (mountinfo->fallback_mount)
+                    xmlNewChild (srcnode, NULL, XMLSTR("fallback"), 
+                            XMLSTR(mountinfo->fallback_mount));
             }
             config_release_config();
 
@@ -307,8 +198,8 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
     return(doc);
 }
 
-static void admin_send_response(xmlDocPtr doc, client_t *client, 
-        int response, char *xslt_template)
+void admin_send_response(xmlDocPtr doc, client_t *client, 
+        admin_response_type response, const char *xslt_template)
 {
     if (response == RAW)
     {
@@ -328,7 +219,7 @@ static void admin_send_response(xmlDocPtr doc, client_t *client,
         client->respcode = 200;
         fserve_add_client (client, NULL);
     }
-    if (response == TRANSFORMED)
+    if (response == XSLT)
     {
         char *fullpath_xslt_template;
         int fullpath_xslt_template_len;
@@ -348,11 +239,41 @@ static void admin_send_response(xmlDocPtr doc, client_t *client,
 }
 
 
+static struct admin_command *find_admin_command (struct admin_command *list, const char *uri)
+{
+    for (; list->request; list++)
+    {
+        if (strcmp (list->request, uri) == 0)
+            break;
+    }
+    if (list->request == NULL)
+    {
+        list = NULL;
+        if (strcmp (uri, "stats.xml") != 0)
+            DEBUG1("request (%s) not a builtin", uri);
+    }
+    return list;
+}
+
 void admin_mount_request (client_t *client, const char *uri)
 {
     source_t *source;
-    int command = admin_get_command (uri);
     const char *mount = httpp_get_query_param (client->parser, "mount");
+
+    struct admin_command *cmd = find_admin_command (admin_mount, uri);
+
+    if (cmd == NULL)
+    {
+        command_stats (client, uri);
+        return;
+    }
+
+    if (cmd == NULL || cmd->handle.source == NULL)
+    {
+        INFO0("mount request not recognised");
+        client_send_400 (client, "unknown request");
+        return;
+    }
 
     avl_tree_rlock(global.source_tree);
     source = source_find_mount_raw(mount);
@@ -372,16 +293,7 @@ void admin_mount_request (client_t *client, const char *uri)
             client_send_400 (client, "Source is not available");
             return;
         }
-        if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
-                source->shoutcast_compat == 0)
-        {
-            avl_tree_unlock (global.source_tree);
-            ERROR0 ("illegal change of metadata on non-shoutcast "
-                    "compatible stream");
-            client_send_400 (client, "illegal metadata call");
-            return;
-        }
-        admin_handle_mount_request (client, source, command);
+        cmd->handle.source (client, source, cmd->response);
         avl_tree_unlock(global.source_tree);
     }
 }
@@ -389,7 +301,7 @@ void admin_mount_request (client_t *client, const char *uri)
 
 int admin_handle_request (client_t *client, const char *uri)
 {
-    char *mount;
+    const char *mount;
 
     if (strcmp (uri, "/admin.cgi") != 0 && strncmp("/admin/", uri, 7) != 0)
         return -1;
@@ -398,42 +310,49 @@ int admin_handle_request (client_t *client, const char *uri)
 
     if (strcmp (uri, "/admin.cgi") == 0)
     {
-        char *pass = httpp_get_query_param (client->parser, "pass");
+        const char *pass = httpp_get_query_param (client->parser, "pass");
         if (pass == NULL)
         {
             client_send_400 (client, "missing pass parameter");
             return 0;
         }
-        if (mount)
+        uri++;
+        if (mount == NULL)
         {
-            ice_config_t *config = config_get_config ();
-            httpp_set_query_param (client->parser, "mount", config->shoutcast_mount);
-            config_release_config ();
+            if (client->server_conn && client->server_conn->shoutcast_mount)
+                httpp_set_query_param (client->parser, "mount",
+                        client->server_conn->shoutcast_mount);
+            mount = httpp_get_query_param (client->parser, "mount");
         }
         httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
         httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
     }
+    else
+        uri += 7;
 
     if (connection_check_admin_pass (client->parser))
         client->authenticated = 1;
 
     if (mount)
     {
-        /* certain commands may not need auth */
-        if (admin_get_command (uri) == COMMAND_BUILDM3U)
-            client->authenticated = 1;
+        /* no auth/stream required for this */
+        if (strcmp (uri, "buildm3u") == 0)
+        {
+            command_buildm3u (client, mount);
+            return 0;
+        }
 
         /* This is a mount request, but admin user is allowed */
         if (client->authenticated == 0)
         {
-            switch (connection_check_source_pass (client, uri))
+            switch (connection_check_source_pass (client, mount))
             {
                 case 0:
                     break;
                 default:
                     INFO1("Bad or missing password on mount modification "
                             "admin request (%s)", uri);
-                    client_send_401(client);
+                    client_send_401 (client, NULL);
                     /* fall through */
                 case 1:
                     return 0;
@@ -443,145 +362,45 @@ int admin_handle_request (client_t *client, const char *uri)
         return 0;
     }
 
+    /* no auth/stream required for this */
+    if (strcmp (uri, "streamlist.txt") == 0)
+    {
+        if (connection_check_relay_pass (client->parser))
+            client->authenticated = 1;
+    }
+
     admin_handle_general_request (client, uri);
     return 0;
 }
 
 
-static int check_general_request_auth (client_t *client, int command)
-{
-    if (client->authenticated)
-        return 0;
-    if  (command == COMMAND_PLAINTEXT_LISTSTREAM)
-    {
-        if (connection_check_relay_pass (client->parser))
-        {
-            client->authenticated = 1;
-            return 0;
-        }
-    }
-    return -1;
-}
-
 
 static void admin_handle_general_request(client_t *client, const char *uri)
 {
-    int command = admin_get_command (uri);
+    struct admin_command *cmd;
 
-    if (check_general_request_auth (client, command) < 0)
+    if (client->authenticated == 0)
     {
         INFO1("Bad or missing password on admin command request (%s)", uri);
-        client_send_401 (client);
+        client_send_401 (client, NULL);
         return;
     }
 
-    switch(command) {
-        case COMMAND_RAW_LIST_MOUNTS:
-            command_list_mounts(client, RAW);
-            break;
-        case COMMAND_RAW_LISTSTREAM:
-            command_list_mounts(client, RAW);
-            break;
-        case COMMAND_RAW_MANAGE_RELAY:
-            command_manage_relay (client, RAW);
-            break;
-        case COMMAND_RAW_ADMIN_FUNCTION:
-            command_admin_function(client, RAW);
-            break;
-        case COMMAND_PLAINTEXT_LISTSTREAM:
-            command_list_mounts(client, PLAINTEXT);
-            break;
-        case COMMAND_PLAINTEXT_LISTLOG:
-            command_list_log(client, PLAINTEXT);
-            break;
-        case COMMAND_TRANSFORMED_LISTLOG:
-            command_list_log(client, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_LIST_MOUNTS:
-            command_list_mounts(client, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_LISTSTREAM:
-            command_list_mounts(client, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
-            command_list_mounts(client, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_MANAGE_RELAY:
-            command_manage_relay (client, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_ADMIN_FUNCTION:
-            command_admin_function(client, TRANSFORMED);
-            break;
-        default:
-            command_stats (client);
-            break;
+    cmd = find_admin_command (admin_general, uri);
+    if (cmd == NULL)
+    {
+        INFO1 ("processing file %s", uri);
+        command_stats (client, uri);
+        return;
     }
+    if (cmd->handle.general == NULL)
+    {
+        client_send_400 (client, "unknown request");
+        return;
+    }
+    cmd->handle.general (client, cmd->response);
 }
 
-static void admin_handle_mount_request(client_t *client, source_t *source, 
-        int command)
-{
-    switch(command) {
-        case COMMAND_RAW_FALLBACK:
-            command_fallback(client, source, RAW);
-            break;
-        case COMMAND_RAW_METADATA_UPDATE:
-            command_metadata(client, source, RAW);
-            break;
-        case COMMAND_TRANSFORMED_METADATA_UPDATE:
-            command_metadata(client, source, TRANSFORMED);
-            break;
-        case COMMAND_SHOUTCAST_METADATA_UPDATE:
-            command_shoutcast_metadata(client, source);
-            break;
-        case COMMAND_RAW_SHOW_LISTENERS:
-            command_show_listeners(client, source, RAW);
-            break;
-        case COMMAND_RAW_MOVE_CLIENTS:
-            command_move_clients(client, source, RAW);
-            break;
-        case COMMAND_RAW_KILL_CLIENT:
-            command_kill_client(client, source, RAW);
-            break;
-        case COMMAND_RAW_KILL_SOURCE:
-            command_kill_source(client, source, RAW);
-            break;
-        case COMMAND_TRANSFORMED_FALLBACK:
-            command_fallback(client, source, RAW);
-            break;
-        case COMMAND_TRANSFORMED_SHOW_LISTENERS:
-            command_show_listeners(client, source, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
-            command_move_clients(client, source, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_KILL_CLIENT:
-            command_kill_client(client, source, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_KILL_SOURCE:
-            command_kill_source(client, source, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_MANAGEAUTH:
-            command_manageauth(client, source, TRANSFORMED);
-            break;
-        case COMMAND_RAW_MANAGEAUTH:
-            command_manageauth(client, source, RAW);
-            break;
-        case COMMAND_TRANSFORMED_UPDATEMETADATA:
-            command_updatemetadata(client, source, TRANSFORMED);
-            break;
-        case COMMAND_RAW_UPDATEMETADATA:
-            command_updatemetadata(client, source, RAW);
-            break;
-        case COMMAND_BUILDM3U:
-            command_buildm3u(client, source, RAW);
-            break;
-        default:
-            WARN0("Mount request not recognised");
-            client_send_400(client, "Mount request unknown");
-            break;
-    }
-}
 
 #define COMMAND_REQUIRE(client,name,var) \
     do { \
@@ -609,7 +428,7 @@ static void html_success(client_t *client, char *message)
 static void command_move_clients(client_t *client, source_t *source,
     int response)
 {
-    char *dest_source;
+    const char *dest_source;
     source_t *dest;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -621,8 +440,7 @@ static void command_move_clients(client_t *client, source_t *source,
     }
     if (!parameters_passed) {
         doc = admin_build_sourcelist(source->mount);
-        admin_send_response(doc, client, response, 
-             MOVECLIENTS_TRANSFORMED_REQUEST);
+        admin_send_response(doc, client, response, "moveclients.xsl");
         xmlFreeDoc(doc);
         return;
     }
@@ -660,8 +478,7 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
-    admin_send_response(doc, client, response, 
-        ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
 }
 
@@ -678,11 +495,11 @@ static int admin_function (const char *function, char *buf, unsigned int len)
     }
     if (strcmp (function, "updatecfg") == 0)
     {
-        event_config_read(NULL);
-        snprintf (buf, len, "Updating from configuration file");
+        global . schedule_config_reread = 1;
+        snprintf (buf, len, "Requesting reread of configuration file");
         return 0;
     }
-    return 1;
+    return -1;
 }
 
 
@@ -690,7 +507,7 @@ static void command_admin_function (client_t *client, int response)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
-    char *perform;
+    const char *perform;
     char buf[256];
 
     COMMAND_REQUIRE (client, "perform", perform);
@@ -706,33 +523,39 @@ static void command_admin_function (client_t *client, int response)
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
-    admin_send_response(doc, client, response, 
-        ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
 }
 
 
-static void add_relay_xmlnode (xmlNodePtr node, relay_server *relay, int master)
+static void add_relay_xmlnode (xmlNodePtr node, relay_server *relay, int from_master)
 {
     xmlNodePtr relaynode = xmlNewChild (node, NULL, XMLSTR("relay"), NULL);
-    char str [20];
-    xmlNewChild (relaynode, NULL, XMLSTR("server"), XMLSTR(relay->server));
-    xmlNewChild (relaynode, NULL, XMLSTR("mount"), XMLSTR(relay->mount));
-    snprintf (str, sizeof (str), "%d", relay->port);
-    xmlNewChild (relaynode, NULL, XMLSTR("port"), XMLSTR(str));
+    relay_server_master *master = relay->masters;
+    char str [50];
+
     xmlNewChild (relaynode, NULL, XMLSTR("localmount"), XMLSTR(relay->localmount));
     snprintf (str, sizeof (str), "%d", relay->enable);
     xmlNewChild (relaynode, NULL, XMLSTR("enable"), XMLSTR(str));
     snprintf (str, sizeof (str), "%d", relay->on_demand);
     xmlNewChild (relaynode, NULL, XMLSTR("on_demand"), XMLSTR(str));
-    snprintf (str, sizeof (str), "%d", master);
-    xmlNewChild (relaynode, NULL, XMLSTR("master"), XMLSTR(str));
+    snprintf (str, sizeof (str), "%d", from_master);
+    xmlNewChild (relaynode, NULL, XMLSTR("from_master"), XMLSTR(str));
+    while (master)
+    {
+        xmlNodePtr masternode = xmlNewChild (relaynode, NULL, XMLSTR("master"), NULL);
+        xmlNewChild (masternode, NULL, XMLSTR("server"), XMLSTR(master->ip));
+        xmlNewChild (masternode, NULL, XMLSTR("mount"), XMLSTR(master->mount));
+        snprintf (str, sizeof (str), "%d", master->port);
+        xmlNewChild (masternode, NULL, XMLSTR("port"), XMLSTR(str));
+        master = master->next;
+    }
 }
 
 
 static void command_manage_relay (client_t *client, int response)
 {
-    char *relay_mount, *enable;
+    const char *relay_mount, *enable;
     const char *msg;
     relay_server *relay;
     xmlDocPtr doc;
@@ -754,7 +577,7 @@ static void command_manage_relay (client_t *client, int response)
             add_relay_xmlnode (node, relay, 1);
 
         thread_mutex_unlock (&(config_locks()->relay_lock));
-        admin_send_response (doc, client, response, MANAGE_RELAY_TRANSFORMED_REQUEST);
+        admin_send_response (doc, client, response, "managerelays.xsl");
         xmlFreeDoc (doc);
         return;
     }
@@ -775,7 +598,7 @@ static void command_manage_relay (client_t *client, int response)
             if (relay->source && relay->source->running == 0)
                 relay->source->on_demand = 0;
         }
-        slave_rebuild_mounts();
+        slave_update_all_mounts();
     }
     thread_mutex_unlock (&(config_locks()->relay_lock));
 
@@ -784,8 +607,34 @@ static void command_manage_relay (client_t *client, int response)
     xmlDocSetRootElement(doc, node);
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(msg));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
+}
+
+
+static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
+{
+    const char *useragent;
+    char buf[30];
+
+    xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
+
+    snprintf (buf, sizeof (buf), "%lu", listener->con->id);
+    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
+
+    xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->con->ip));
+
+    useragent = httpp_getvar (listener->parser, "user-agent");
+    xmlNewChild (node, NULL, XMLSTR("useragent"), XMLSTR(useragent)); 
+
+    snprintf (buf, sizeof (buf), "%u", listener->lag);
+    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
+
+    snprintf (buf, sizeof (buf), "%lu",
+            (unsigned long)(global.time - listener->con->con_time));
+    xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+    if (listener->username)
+        xmlNewChild (node, NULL, XMLSTR("username"), XMLSTR(listener->username));
 }
 
 
@@ -795,7 +644,6 @@ static void command_manage_relay (client_t *client, int response)
 void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
 {
     client_t *listener;
-    char buf[30];
 
     if (source == NULL)
         return;
@@ -805,23 +653,7 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
     listener = source->active_clients;
     while (listener)
     {
-        char *useragent;
-        xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
-
-        snprintf (buf, sizeof (buf), "%lu", listener->con->id);
-        xmlNewChild (node, NULL, XMLSTR("ID"), XMLSTR(buf));
-
-        xmlNewChild (node, NULL, XMLSTR("IP"), XMLSTR(listener->con->ip));
-
-        useragent = httpp_getvar (listener->parser, "user-agent");
-        xmlNewChild (node, NULL, XMLSTR("UserAgent"), XMLSTR(useragent)); 
-
-        snprintf (buf, sizeof (buf), "%lu",
-                (unsigned long)(global.time - listener->con->con_time));
-        xmlNewChild (node, NULL, XMLSTR("Connected"), XMLSTR(buf));
-        if (listener->username)
-            xmlNewChild (node, NULL, XMLSTR("Username"), XMLSTR(listener->username));
-
+        add_listener_node (srcnode, listener);
         listener = listener->next;
     }
     thread_mutex_unlock (&source->lock);
@@ -833,6 +665,8 @@ static void command_show_listeners(client_t *client, source_t *source,
 {
     xmlDocPtr doc;
     xmlNodePtr node, srcnode;
+    unsigned long id = -1;
+    const char *ID_str = NULL;
     char buf[22];
 
     doc = xmlNewDoc(XMLSTR("1.0"));
@@ -843,20 +677,40 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     snprintf(buf, sizeof(buf), "%lu", source->listeners);
-    xmlNewChild(srcnode, NULL, XMLSTR("Listeners"), XMLSTR(buf));
+    xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
-    admin_source_listeners (source, srcnode);
+    COMMAND_OPTIONAL(client, "id", ID_str);
+    if (ID_str)
+        id = atoi (ID_str);
 
-    admin_send_response(doc, client, response, 
-        LISTCLIENTS_TRANSFORMED_REQUEST);
+    if (id == -1)
+        admin_source_listeners (source, srcnode);
+    else
+    {
+        client_t *listener;
+        thread_mutex_lock (&source->lock);
+
+        listener = source->active_clients;
+        while (listener)
+        {
+            if (listener->con->id == id)
+            {
+                add_listener_node (srcnode, listener);
+                break;
+            }
+            listener = listener->next;
+        }
+        thread_mutex_unlock (&source->lock);
+    }
+
+    admin_send_response(doc, client, response, "listclients.xsl");
     xmlFreeDoc(doc);
 }
 
-static void command_buildm3u(client_t *client, source_t *source,
-    int response)
+static void command_buildm3u (client_t *client, const char *mount)
 {
-    char *username = NULL;
-    char *password = NULL;
+    const char *username = NULL;
+    const char *password = NULL;
     ice_config_t *config;
 
     COMMAND_REQUIRE(client, "username", username);
@@ -873,7 +727,7 @@ static void command_buildm3u(client_t *client, source_t *source,
         password,
         config->hostname,
         config->port,
-        source->mount
+        mount
     );
     config_release_config();
 
@@ -887,26 +741,36 @@ static void command_manageauth(client_t *client, source_t *source,
 {
     xmlDocPtr doc;
     xmlNodePtr node, srcnode, msgnode;
-    char *action = NULL;
-    char *username = NULL;
-    char *password = NULL;
+    const char *action = NULL;
+    const char *username = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
     ice_config_t *config = config_get_config ();
     mount_proxy *mountinfo = config_find_mount (config, source->mount);
 
-    if((COMMAND_OPTIONAL(client, "action", action)))
-    {
+    do
+    { 
         if (mountinfo == NULL || mountinfo->auth == NULL)
         {
             WARN1 ("manage auth request for %s but no facility available", source->mount);
-            config_release_config ();
-            client_send_404 (client, "no such auth facility");
-            return;
+            break;
         }
-        if (!strcmp(action, "add")) {
-            COMMAND_REQUIRE(client, "username", username);
-            COMMAND_REQUIRE(client, "password", password);
+        COMMAND_OPTIONAL (client, "action", action);
+        COMMAND_OPTIONAL (client, "username", username);
+
+        if (action == NULL)
+            break;
+
+        if (!strcmp(action, "add"))
+        {
+            const char *password = NULL;
+            COMMAND_OPTIONAL (client, "password", password);
+
+            if (username == NULL || password == NULL)
+            {
+                WARN1 ("manage auth request add for %s but no user/pass", source->mount);
+                break;
+            }
             ret = mountinfo->auth->adduser(mountinfo->auth, username, password);
             if (ret == AUTH_FAILED) {
                 message = strdup("User add failed - check the icecast error log");
@@ -918,8 +782,13 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User already exists - not added");
             }
         }
-        if (!strcmp(action, "delete")) {
-            COMMAND_REQUIRE(client, "username", username);
+        if (!strcmp(action, "delete"))
+        {
+            if (username == NULL)
+            {
+                WARN1 ("manage auth request delete for %s but no username", source->mount);
+                break;
+            }
             ret = mountinfo->auth->deleteuser(mountinfo->auth, username);
             if (ret == AUTH_FAILED) {
                 message = strdup("User delete failed - check the icecast error log");
@@ -928,31 +797,32 @@ static void command_manageauth(client_t *client, source_t *source,
                 message = strdup("User deleted");
             }
         }
-    }
 
-    doc = xmlNewDoc(XMLSTR "1.0");
-    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
-    srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
-    xmlSetProp(srcnode, XMLSTR "mount", XMLSTR(source->mount));
+        doc = xmlNewDoc(XMLSTR "1.0");
+        node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+        srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
+        xmlSetProp(srcnode, XMLSTR "mount", XMLSTR(source->mount));
 
-    if (message) {
-        msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
-        xmlNewChild(msgnode, NULL, XMLSTR "message", XMLSTR(message));
-    }
+        if (message) {
+            msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
+            xmlNewChild(msgnode, NULL, XMLSTR "message", XMLSTR(message));
+        }
 
-    xmlDocSetRootElement(doc, node);
+        xmlDocSetRootElement(doc, node);
 
-    if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
-        mountinfo->auth->listuser (mountinfo->auth, srcnode);
+        if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
+            mountinfo->auth->listuser (mountinfo->auth, srcnode);
+
+        config_release_config ();
+
+        admin_send_response(doc, client, response, "manageauth.xsl");
+        free (message);
+        xmlFreeDoc(doc);
+        return;
+    } while (0);
 
     config_release_config ();
-
-    admin_send_response(doc, client, response, 
-            MANAGEAUTH_TRANSFORMED_REQUEST);
-    if (message) {
-        free(message);
-    }
-    xmlFreeDoc(doc);
+    client_send_400 (client, "missing parameter");
 }
 
 static void command_kill_source(client_t *client, source_t *source,
@@ -969,15 +839,14 @@ static void command_kill_source(client_t *client, source_t *source,
 
     source->running = 0;
 
-    admin_send_response(doc, client, response, 
-        ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
 }
 
 static void command_kill_client(client_t *client, source_t *source,
     int response)
 {
-    char *idtext;
+    const char *idtext;
     int id;
     client_t *listener;
     xmlDocPtr doc;
@@ -1013,34 +882,26 @@ static void command_kill_client(client_t *client, source_t *source,
         xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
     }
     thread_mutex_unlock (&source->lock);
-    admin_send_response(doc, client, response, 
-        ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
 }
 
 static void command_fallback(client_t *client, source_t *source,
     int response)
 {
-    char *fallback;
-    char *old;
+    const char *fallback;
 
     DEBUG0("Got fallback request");
 
     COMMAND_REQUIRE(client, "fallback", fallback);
 
-    thread_mutex_lock (&source->lock);
-    old = source->fallback_mount;
-    source->fallback_mount = strdup(fallback);
-    free(old);
-    thread_mutex_unlock (&source->lock);
-
-    html_success(client, "Fallback configured");
+    client_send_400 (client, "not implemented");
 }
 
 static void command_metadata(client_t *client, source_t *source,
     int response)
 {
-    char *song, *title, *artist, *artwork;
+    const char *song, *title, *artist, *artwork, *charset;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1055,6 +916,7 @@ static void command_metadata(client_t *client, source_t *source,
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
     COMMAND_OPTIONAL(client, "artwork", artwork);
+    COMMAND_OPTIONAL(client, "charset", charset);
 
     thread_mutex_lock (&source->lock);
 
@@ -1070,15 +932,15 @@ static void command_metadata(client_t *client, source_t *source,
         {
             if (song)
             {
-                plugin->set_tag (plugin, "song", song);
+                plugin->set_tag (plugin, "song", song, charset);
                 INFO2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
             }
             else
             {
                 if (artist && title)
                 {
-                    plugin->set_tag (plugin, "title", title);
-                    plugin->set_tag (plugin, "artist", artist);
+                    plugin->set_tag (plugin, "title", title, charset);
+                    plugin->set_tag (plugin, "artist", artist, charset);
                     INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
                             source->mount, artist, title);
                 }
@@ -1091,8 +953,7 @@ static void command_metadata(client_t *client, source_t *source,
         thread_mutex_unlock (&source->lock);
         xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
         xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-        admin_send_response(doc, client, response, 
-                ADMIN_XSL_RESPONSE);
+        admin_send_response(doc, client, response, "response.xsl");
         xmlFreeDoc(doc);
         return;
 
@@ -1101,15 +962,14 @@ static void command_metadata(client_t *client, source_t *source,
     xmlNewChild(node, NULL, XMLSTR("message"), 
             XMLSTR("Mountpoint will not accept this URL update"));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    admin_send_response(doc, client, response, 
-            ADMIN_XSL_RESPONSE);
+    admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
 }
 
 static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
-    char *action;
-    char *value;
+    const char *action;
+    const char *value;
 
     DEBUG0("Got shoutcast metadata update request");
 
@@ -1123,9 +983,17 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         return;
     }
 
+    if (source->shoutcast_compat == 0)
+    {
+        ERROR0 ("illegal change of metadata on non-shoutcast compatible stream");
+        client_send_400 (client, "illegal metadata call");
+        return;
+    }
+
     if (source->format && source->format->set_tag)
     {
-        source->format->set_tag (source->format, "title", value);
+        httpp_set_query_param (client->parser, "mount", client->server_conn->shoutcast_mount);
+        source->format->set_tag (source->format, "title", value, NULL);
 
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);
@@ -1140,27 +1008,28 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 }
 
 
+static void command_stats_mount (client_t *client, source_t *source, int response)
+{
+    command_stats (client, NULL);
+}
 /* catch all function for admin requests.  If file has xsl extension then
  * transform it using the available stats, else send the XML tree of the
  * stats
  */
-static void command_stats (client_t *client)
+static void command_stats (client_t *client, const char *filename)
 {
-    char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    int response = RAW;
-    char *xslfile = strrchr (uri, '/');
+    admin_response_type response = RAW;
+    const char *show_mount = NULL;
     xmlDocPtr doc;
 
-    if (xslfile == NULL)
-    {
-        client_send_404 (client, "bad request");
-        return;
-    }
-    if (util_check_valid_extension (uri) == XSLT_CONTENT)
-        response = TRANSFORMED;
+    if (filename)
+        if (util_check_valid_extension (filename) == XSLT_CONTENT)
+            response = XSLT;
 
-    stats_get_xml(&doc, 1);
-    admin_send_response (doc, client, response, xslfile+1);
+    show_mount = httpp_get_query_param (client->parser, "mount");
+
+    stats_get_xml(&doc, 1, show_mount);
+    admin_send_response (doc, client, response, filename);
     xmlFreeDoc(doc);
 }
 
@@ -1193,7 +1062,7 @@ static void command_list_log (client_t *client, int response)
     content = refbuf_new (0);
     log_contents (log, &content->data, &content->len);
 
-    if (response == TRANSFORMED)
+    if (response == XSLT)
     {
         xmlNodePtr xmlnode, lognode;
         xmlDocPtr doc;
@@ -1204,7 +1073,8 @@ static void command_list_log (client_t *client, int response)
         lognode = xmlNewTextChild (xmlnode, NULL, XMLSTR("log"), XMLSTR(content->data));
         refbuf_release (content);
 
-        admin_send_response (doc, client, TRANSFORMED, "showlog.xsl");
+        admin_send_response (doc, client, XSLT, "showlog.xsl");
+        xmlFreeDoc(doc);
     }
     else
     {
@@ -1224,63 +1094,31 @@ static void command_list_mounts(client_t *client, int response)
 {
     DEBUG0("List mounts request");
 
-    avl_tree_rlock (global.source_tree);
-    if (response == PLAINTEXT)
+    if (response == TEXT)
     {
         char *buf;
         int remaining = PER_CLIENT_REFBUF_SIZE;
         int ret;
-        ice_config_t *config = config_get_config ();
-        mount_proxy *mountinfo = config->mounts;
-
-        /* do any redirector updates */
         redirector_update (client);
 
         buf = client->refbuf->data;
         ret = snprintf (buf, remaining,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        client->respcode = 200;
 
-        while (mountinfo && ret > 0 && ret < remaining)
-        {
-            mount_proxy *current = mountinfo;
-            source_t *source;
-            mountinfo = mountinfo->next;
+        stats_get_streamlist (buf+ret, remaining-ret);
 
-            if (current->hidden)
-                continue;
-            /* avoid non-specific mounts */
-            if (strcmp (current->mountname, "all") == 0)
-                continue;
-            /* now check that a source is available */
-            source = source_find_mount (current->mountname);
-
-            if (source == NULL)
-                continue;
-            if (source->running == 0 && source->on_demand == 0)
-                continue;
-            remaining -= ret;
-            buf += ret;
-            ret = snprintf (buf, remaining, "%s\n", current->mountname);
-        }
-        avl_tree_unlock (global.source_tree);
-        config_release_config();
-
-        /* handle last line */
-        if (ret > 0 && ret < remaining)
-        {
-            remaining -= ret;
-            buf += ret;
-        }
-        client->refbuf->len = PER_CLIENT_REFBUF_SIZE - remaining;
+        client->refbuf->len = strlen (client->refbuf->data);
         fserve_add_client (client, NULL);
     }
     else
     {
-        xmlDocPtr doc = admin_build_sourcelist(NULL);
+        xmlDocPtr doc;
+        avl_tree_rlock (global.source_tree);
+        doc = admin_build_sourcelist(NULL);
         avl_tree_unlock (global.source_tree);
 
-        admin_send_response(doc, client, response, 
-                LISTMOUNTS_TRANSFORMED_REQUEST);
+        admin_send_response(doc, client, response, "listmounts.xsl");
         xmlFreeDoc(doc);
     }
 }
@@ -1298,7 +1136,7 @@ static void command_updatemetadata(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     admin_send_response(doc, client, response, 
-        UPDATEMETADATA_TRANSFORMED_REQUEST);
+        "updatemetadata.xsl");
     xmlFreeDoc(doc);
 }
 

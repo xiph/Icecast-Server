@@ -17,7 +17,7 @@
 #include <config.h>
 #endif
 
-void auth_get_cmd_auth (auth_t *, config_options_t *options);
+int auth_get_cmd_auth (auth_t *, config_options_t *options);
 
 #endif
 

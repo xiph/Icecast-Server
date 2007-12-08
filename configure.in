@@ -1,6 +1,6 @@
-AC_INIT([Icecast], [2.3-kh7], [karl@xiph.org])
+AC_INIT([Icecast], [2.3-kh27], [karl@xiph.org])
 
-AC_PREREQ(2.54)
+AC_PREREQ(2.59)
 AC_CONFIG_SRCDIR(src/main.c)
 dnl Process this file with autoconf to produce a configure script.
 
@@ -11,36 +11,14 @@ AM_MAINTAINER_MODE
 AC_PROG_CC
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
+AC_SYS_LARGEFILE
 
 dnl Set some options based on environment
 
 DEBUG="-g"
 if test -z "$GCC"; then
     XIPH_CPPFLAGS="-D_REENTRANT"
-    case $host in 
-        *-*-irix*)
-                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -w -signed"
-                PROFILE="-p -g3 -O2 -signed -D_REENTRANT"
-                ;;
-        *-*-solaris*)
-                XIPH_CFLAGS="-xO4 -xcg92"
-                XIPH_CPPFLAGS="$XIPH_CPPFLAGS -v -w -fsimple -fast"
-                PROFILE="-xpg -g -Dsuncc"
-                ;;
-        *)
-                XIPH_CFLAGS="-O"
-                PROFILE="-g -p"
-                ;;
-    esac
-
-    case "$host" in
-        # for system header breakage
-        *bsd* | *irix*)
-        ;;
-        *) AC_DEFINE([_XOPEN_SOURCE], 600, [Define if you have POSIX and XPG specifications])
-        ;;
-    esac
-
+    PROFILE="-g -p"
 else
     XIPH_CPPFLAGS="-Wall -ffast-math -fsigned-char"
     PROFILE="-pg -g"
@@ -55,7 +33,7 @@ dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_CHECK_HEADERS([alloca.h])
+AC_CHECK_HEADERS([alloca.h fnmatch.h])
 AC_CHECK_HEADERS(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
 AC_CHECK_HEADERS(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
 
@@ -63,9 +41,10 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__
 
 dnl Check for types
+AC_TYPE_OFF_T
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(localtime_r poll atoll strtoll)
+AC_CHECK_FUNCS([localtime_r poll atoll strtoll getrlimit])
 AC_SEARCH_LIBS(nanosleep, rt posix4,
         AC_DEFINE(HAVE_NANOSLEEP, 1, [Define if you have nanosleep]))
 XIPH_NET
@@ -140,17 +119,8 @@ XIPH_PATH_OPENSSL([
     [ AC_MSG_NOTICE([SSL disabled!])
     ])
 
-# don't log ip's in the access log
-AC_ARG_ENABLE([log-ip],
-        AC_HELP_STRING([--disable-log-ip],[disable logging of IP's in access log]),
-        enable_logging_ip="$enableval",
-        enable_logging_ip="yes"
-        )
-if test x$enable_logging_ip = xyes; then
-        AC_DEFINE([HAVE_LOGGING_IP],,[Define to log IP to access log])
-fi
-
 ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_cmd.o"
+AC_DEFINE([MIMETYPESFILE],"/etc/mime.types", [Default location of mime types file])
 
 dnl Make substitutions
 

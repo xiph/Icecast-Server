@@ -67,7 +67,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec);
 static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
                 ogg_codec_t *codec, ogg_page *page);
 static refbuf_t *process_vorbis (ogg_state_t *ogg_info, ogg_codec_t *codec);
-static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value);
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *value, const char *charset);
 
 
 static void free_ogg_packet (ogg_packet *packet)
@@ -324,13 +324,16 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
     {
         vorbis_comment vc;
         ogg_packet header;
+        ice_config_t *config;
 
         vorbis_comment_init (&vc);
         if (ogg_info->artist) 
             vorbis_comment_add_tag (&vc, "artist", ogg_info->artist);
         if (ogg_info->title)
             vorbis_comment_add_tag (&vc, "title", ogg_info->title);
-        vorbis_comment_add_tag (&vc, "server", ICECAST_VERSION_STRING);
+        config = config_get_config();
+        vorbis_comment_add_tag (&vc, "server", config->server_id);
+        config_release_config();
         vorbis_commentheader_out (&vc, &header);
 
         ogg_stream_packetin (&source_vorbis->new_os, &header);
@@ -414,12 +417,13 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 /* called from the admin interface, here we update the artist/title info
  * and schedule a new set of header pages
  */
-static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
+static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
 {   
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;
     int change = 0;
+    char *value;
 
     /* avoid url updates unless allowed to */
     if (ogg_info->use_url_metadata == 0)
@@ -431,43 +435,37 @@ static void vorbis_set_tag (format_plugin_t *plugin, char *tag, char *value)
     else
         return;
 
+    value = util_conv_string (in_value, charset, "UTF-8");
+    if (value == NULL)
+        value = strdup (in_value);
+
     if (strcmp (tag, "artist") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->artist);
-            ogg_info->artist = p;
-            change = 1;
-        }
+        free (ogg_info->artist);
+        ogg_info->artist = value;
+        change = 1;
     }
-    if (strcmp (tag, "title") == 0)
+    else if (strcmp (tag, "title") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->title);
-            ogg_info->title = p;
-            change = 1;
-        }
+        free (ogg_info->title);
+        ogg_info->title = value;
+        change = 1;
     }
-    if (strcmp (tag, "song") == 0)
+    else if (strcmp (tag, "song") == 0)
     {
-        char *p = strdup (value);
-        if (p)
-        {
-            free (ogg_info->artist);
-            free (ogg_info->title);
-            ogg_info->artist = NULL;
-            ogg_info->title = p;
-            change = 1;
-        }
+        free (ogg_info->artist);
+        free (ogg_info->title);
+        ogg_info->artist = NULL;
+        ogg_info->title = value;
+        change = 1;
     }
     if (change)
     {
         source_vorbis->stream_notify = 1;
         source_vorbis->rebuild_comment = 1;
     }
+    else
+        free (value);
 }
 
 
@@ -561,6 +559,8 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
     {
         /* set queued vorbis pages to contain about 1 second worth of samples */
         source_vorbis->page_samples_trigger = (ogg_int64_t)(source_vorbis->vi.rate);
+        if (ogg_info->admin_comments_only)
+            source_vorbis->rebuild_comment = 1;
         source_vorbis->process_packet = process_vorbis_headers;
         source_vorbis->initial_audio_page = 1;
     }
@@ -571,19 +571,22 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         codec->process_page = process_vorbis_passthru_page;
     }
 
-    free (ogg_info->title);
-    comment = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
-    if (comment)
-        ogg_info->title = strdup (comment);
-    else
-        ogg_info->title = NULL;
+    if (ogg_info->admin_comments_only == 0)
+    {
+        free (ogg_info->title);
+        comment = vorbis_comment_query (&source_vorbis->vc, "TITLE", 0);
+        if (comment)
+            ogg_info->title = strdup (comment);
+        else
+            ogg_info->title = NULL;
 
-    free (ogg_info->artist);
-    comment = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
-    if (comment)
-        ogg_info->artist = strdup (comment);
-    else
-        ogg_info->artist = NULL;
+        free (ogg_info->artist);
+        comment = vorbis_comment_query (&source_vorbis->vc, "ARTIST", 0);
+        if (comment)
+            ogg_info->artist = strdup (comment);
+        else
+            ogg_info->artist = NULL;
+    }
     ogg_info->log_metadata = 1;
 
     stats_event_args (ogg_info->mount, "audio_samplerate", "%ld", (long)source_vorbis->vi.rate);

@@ -23,11 +23,14 @@
 #define XMLSTR		(xmlChar *)
 
 struct _mount_proxy;
+struct ice_config_tag;
+typedef struct _listener_t listener_t;
 
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "auth.h"
 #include "global.h"
+#include "connection.h"
 
 typedef struct ice_config_dir_tag
 {
@@ -51,8 +54,15 @@ typedef struct _mount_proxy {
     char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
                        to not dump. */
     char *intro_filename;   /* Send contents of file to client before the stream */
+
+    /* whether to allow matching files to work with http ranges */
+    int file_seekable;
+
     int fallback_when_full; /* switch new listener to fallback source
                                when max listeners reached */
+    /* Max bandwidth (kbps)  for this mountpoint only. -1 (default) is not specified */
+    int64_t max_bandwidth;
+
     int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
                           limit here (i.e. only use the global limit) */
     char *fallback_mount; /* Fallback mountname */
@@ -68,15 +78,17 @@ typedef struct _mount_proxy {
     unsigned int source_timeout;  /* source timeout in seconds */
     char *charset;  /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
+    int queue_block_size; /* for non-ogg streams, try to create blocks of this size */
     int filter_theora; /* prevent theora pages getting queued */
     int url_ogg_meta; /* enable to allow updates via url requests for ogg */
     int ogg_passthrough; /* enable to prevent the ogg stream being rebuilt */
+    int admin_comments_only; /* enable to only show comments set from the admin page */
 
     /* duration in seconds for sampling the bandwidth */
     int avg_bitrate_duration;
 
     /* trigger level at which a timer is used to prevent excessive incoming bandwidth */
-    int limit_rate;
+    int64_t limit_rate;
 
     /* duration (secs) for mountpoint to be kept reserved after source client exits */
     int wait_time;
@@ -109,13 +121,16 @@ typedef struct _aliases {
     struct _aliases *next;
 }aliases;
 
-typedef struct {
+struct _listener_t 
+{
+    struct _listener_t *next;
+    int refcount;
     int port;
     char *bind_address;
     int shoutcast_compat;
     char *shoutcast_mount;
     int ssl;
-} listener_t;
+};
 
 typedef struct ice_config_tag
 {
@@ -133,6 +148,7 @@ typedef struct ice_config_tag
     int header_timeout;
     int source_timeout;
     int ice_login;
+    int64_t max_bandwidth;
     int fileserve;
     int on_demand; /* global setting for all relays */
 
@@ -148,12 +164,15 @@ typedef struct ice_config_tag
 
     char *hostname;
     int port;
+    char *mimetypes_fn;
 
-    listener_t listeners[MAX_LISTEN_SOCKETS];
+    listener_t *listen_sock;
+    unsigned int listen_sock_count;
 
     char *master_server;
     int master_server_port;
     int master_update_interval;
+    char *master_bind;
     char *master_username;
     char *master_password;
     int master_relay_auth;
@@ -169,6 +188,9 @@ typedef struct ice_config_tag
     char *base_dir;
     char *log_dir;
     char *pidfile;
+    char *banfile;
+    char *allowfile;
+    char *agentfile;
     char *cert_file;
     char *webroot_dir;
     char *adminroot_dir;
@@ -176,6 +198,7 @@ typedef struct ice_config_tag
     unsigned slaves_count;
 
     char *access_log;
+    int access_log_ip;
     int access_log_lines;
     char *access_log_exclude_ext;
     char *error_log;
@@ -208,8 +231,10 @@ int config_parse_file(const char *filename, ice_config_t *configuration);
 int config_initial_parse_file(const char *filename);
 int config_parse_cmdline(int arg, char **argv);
 void config_set_config(ice_config_t *config);
+listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount);
+listener_t *config_get_listen_sock (ice_config_t *config, sock_t serversock);
 
 int config_rehash(void);
 

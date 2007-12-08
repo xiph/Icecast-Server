@@ -36,6 +36,9 @@ struct _client_tag
     /* the client's http headers */
     http_parser_t *parser;
 
+    /* reference to incoming connection details */
+    listener_t *server_conn;
+
     /* http response code for this client */
     int respcode;
 
@@ -49,13 +52,13 @@ struct _client_tag
     refbuf_t *refbuf;
 
     /* position in first buffer */
-    unsigned long pos;
+    unsigned int pos;
+
+    /* byte count in queue */
+    unsigned int lag;
 
     /* client is a slave server */
     int is_slave;
-
-    /* auth used for this client */
-    struct auth_tag *auth;
 
     /* Client username, if authenticated */
     char *username;
@@ -88,9 +91,10 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
 void client_send_504(client_t *client, char *message);
 void client_send_416(client_t *client);
-void client_send_404(client_t *client, char *message);
-void client_send_401(client_t *client);
+void client_send_404(client_t *client, const char *message);
+void client_send_401(client_t *client, const char *realm);
 void client_send_403(client_t *client, const char *reason);
+void client_send_403redirect (client_t *client, const char *mount, const char *reason);
 void client_send_400(client_t *client, char *message);
 void client_send_302(client_t *client, const char *location);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);

@@ -59,8 +59,6 @@
 #ifdef _WIN32
 /* For getpid() */
 #include <process.h>
-#define snprintf _snprintf
-#define getpid _getpid
 #endif
 
 #undef CATMODULE
@@ -275,69 +273,15 @@ static int _start_logging(void)
     return 0;
 }
 
-static int _setup_sockets(void)
-{
-    ice_config_t *config;
-    int i = 0;
-    int ret = 0;
-    int successful = 0;
-    char pbuf[1024];
-
-    config = config_get_config_unlocked();
-
-    for(i = 0; i < MAX_LISTEN_SOCKETS; i++) {
-        if(config->listeners[i].port <= 0)
-            break;
-
-        global.serversock[i] = sock_get_server_socket(
-                config->listeners[i].port, config->listeners[i].bind_address);
-
-        if (global.serversock[i] == SOCK_ERROR) {
-            memset(pbuf, '\000', sizeof(pbuf));
-            snprintf(pbuf, sizeof(pbuf)-1, 
-                "Could not create listener socket on port %d", 
-                config->listeners[i].port);
-            _fatal_error(pbuf);
-            return 0;
-        }
-        else {
-            ret = 1;
-            successful++;
-        }
-    }
-
-    global.server_sockets = successful;
-    
-    return ret;
-}
-
-static int _start_listening(void)
-{
-    int i;
-    for(i=0; i < global.server_sockets; i++) {
-        if (sock_listen(global.serversock[i], ICE_LISTEN_QUEUE) == SOCK_ERROR)
-            return 0;
-
-        sock_set_blocking(global.serversock[i], SOCK_NONBLOCK);
-    }
-
-    return 1;
-}
 
 /* bind the socket and start listening */
 static int _server_proc_init(void)
 {
-    ice_config_t *config;
+    ice_config_t *config = config_get_config_unlocked();
 
-    if (!_setup_sockets())
-        return 0;
+    if (config->chuid)
+        connection_setup_sockets (config);
 
-    if (!_start_listening()) {
-        _fatal_error("Failed trying to listen on server socket");
-        return 0;
-    }
-
-    config = config_get_config_unlocked();
     /* recreate the pid file */
     if (config->pidfile)
     {
@@ -356,18 +300,16 @@ static int _server_proc_init(void)
 /* this is the heart of the beast */
 static void _server_proc(void)
 {
-    int i;
-
     if (background)
     {
         fclose (stdin);
         fclose (stdout);
         fclose (stderr);
     }
-    connection_accept_loop();
+    slave_initialize();
 
-    for(i=0; i < MAX_LISTEN_SOCKETS; i++)
-        sock_close(global.serversock[i]);
+    connection_thread_shutdown();
+    connection_setup_sockets (NULL);
 }
 
 /* chroot the process. Watch out - we need to do this before starting other
@@ -543,7 +485,6 @@ int main(int argc, char **argv)
     yp_initialize();
 
     /* Do this after logging init */
-    slave_initialize();
     auth_initialise ();
 
     _server_proc();

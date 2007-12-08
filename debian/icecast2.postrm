@@ -6,14 +6,15 @@ set -e
 case "$1" in
     purge)
 	rm -rf /var/log/icecast2
+	rm -rf /usr/share/icecast2/log
 
-	if id icecast >/dev/null 2>&1; then
-	    deluser icecast
+	if id icecast2 >/dev/null 2>&1; then
+		deluser icecast2
 	fi
 
 	# Remove group only if empty
 	if getent group icecast | awk -F: ' { print $4 } ' | egrep -cq '^$'; then
-	    groupdel icecast
+		groupdel icecast || echo "Error occured removing group icecast, please do it manually."
 	fi
 	;;
     remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)

@@ -1,34 +1,27 @@
 #!/usr/bin/make -f
+# -*- mode: makefile; coding: utf-8 -*-
+# Copyright © 2004 Jonas Smedegaard <dr@jones.dk>
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
+include debian/cdbs/1/rules/buildinfo.mk
 
-DEB_INSTALL_CHANGELOGS_ALL = NEWS
 DEB_CONFIGURE_SYSCONFDIR = /etc/icecast2
+DEB_CONFIGURE_EXTRA_FLAGS = --program-transform-name="s/icecast$$/icecast2/"
 DEB_MAKE_INVOKE += PACKAGE=icecast2 docdir=/usr/share/doc/icecast2 pkgdatadir=/usr/share/icecast2
+DEB_INSTALL_DIRS_icecast2 = var/log/icecast2
+DEB_INSTALL_MANPAGES_icecast2 = debian/icecast2.1
 
-binary-post-install/icecast2::
-	# Debian has a central copy of the GPL, no need to distribute again
+# Debian has a central copy of the GPL, no need to distribute again
+common-binary-post-install-arch::
 	rm -f $(DEB_DESTDIR)/usr/share/doc/icecast2/COPYING
 
-	# Live peacefully with icecast 1
-	mv $(DEB_DESTDIR)/usr/bin/icecast $(DEB_DESTDIR)/usr/bin/icecast2
-
-	# Move XSLT templates to /etc and replace with symlinks
-	for file in `cd $(DEB_DESTDIR)/usr/share && find icecast2 -type f -name *.xsl`; do \
-		mkdir -p $(DEB_DESTDIR)/etc/`dirname $$file`; \
-		mv $(DEB_DESTDIR)/usr/share/$$file $(DEB_DESTDIR)/etc/$$file; \
-		ln -s /etc/$$file $(DEB_DESTDIR)/usr/share/$$file; \
+# Move XSLT templates and CSS files to /etc and replace with symlinks
+common-binary-post-install-arch::
+	for file in `cd $(DEB_DESTDIR)/usr/share && find icecast2 -type d \( -name admin -or -name web \)`; do \
+		ln -s /usr/share/$$file $(DEB_DESTDIR)/etc/$$file; \
 	done
-
-	# NEWS is ChangeLog - avoid original name
-	rm -f $(DEB_DESTDIR)/usr/share/doc/icecast2/NEWS
-
-	mkdir -p $(CURDIR)/debian/icecast2/var/log/icecast2
-
-	# Store build information
-	dh_buildinfo
-
-clean::
-	# Upstream forgot to clean this one it seems...
-	rm -f conf/icecast.xml.dist
-
+	mkdir $(DEB_DESTDIR)/usr/share/icecast2/log
+	chown icecast2:icecast $(DEB_DESTDIR)/usr/share/icecast2/log
+	mkdir -p $(DEB_DESTDIR)/usr/share/icecast2/etc/icecast2
+	#mv $(DEB_DESTDIR)/etc/icecast2/icecast.xml $(DEB_DESTDIR)/usr/share/icecast2/etc/icecast2
+	#ln -s /usr/share/icecast2/etc/icecast2/icecast.xml $(DEB_DESTDIR)/etc/icecast2/icecast.xml 

@@ -39,7 +39,7 @@ refbuf_t *refbuf_new(size_t size)
 {
     refbuf_t *refbuf;
 
-    refbuf = (refbuf_t *)malloc(sizeof(refbuf_t));
+    refbuf = (refbuf_t *)calloc(1, sizeof(refbuf_t));
     if (refbuf == NULL)
         abort();
     refbuf->data = NULL;
@@ -60,6 +60,8 @@ refbuf_t *refbuf_new(size_t size)
 
 void refbuf_addref(refbuf_t *self)
 {
+    if (self == NULL)
+        return;
     self->_count++;
 }
 

@@ -13,10 +13,23 @@
 #ifndef __ADMIN_H__
 #define __ADMIN_H__
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
+#include "source.h"
 #include "client.h"
+
+typedef enum {
+    NONE,
+    RAW,
+    XSLT,
+    TEXT
+} admin_response_type;
 
 int  admin_handle_request (client_t *client, const char *uri);
 void admin_mount_request (client_t *client, const char *uri);
 void admin_source_listeners (source_t *source, xmlNodePtr node);
+void admin_send_response(xmlDocPtr doc, client_t *client, 
+        admin_response_type response, const char *xslt_template);
 
 #endif  /* __ADMIN_H__ */

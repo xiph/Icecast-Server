@@ -30,10 +30,6 @@
 #include "logging.h"
 #include "util.h"
 
-#ifdef _WIN32
-#define snprintf _snprintf
-#define vsnprintf _vsnprintf
-#endif
 
 /* the global log descriptors */
 int errorlog = 0;
@@ -115,8 +111,11 @@ void logging_access(client_t *client)
     struct tm thetime;
     time_t now;
     time_t stayed;
-    char *referrer, *user_agent, *username, *ip = "-";
+    const char *referrer, *user_agent, *username, *ip = "-";
+#ifdef HAVE_LOG_DIRECT_KEEP
     int keep = 0;
+#endif
+    ice_config_t *config;
 
     now = global.time;
 
@@ -150,18 +149,19 @@ void logging_access(client_t *client)
     if (user_agent == NULL)
         user_agent = "-";
 
-#ifdef HAVE_LOGGING_IP
-    ip = client->con->ip;
-#endif
+    config = config_get_config();
+    if (config->access_log_ip)
+        ip = client->con->ip;
+    config_release_config ();
+#ifdef HAVE_LOG_DIRECT_KEEP
     if (httpp_getvar (client->parser, "__avoid_access_log") == NULL)
         keep = 1;
 
-#ifdef HAVE_LOG_DIRECT_KEEP
     log_write_direct_keep (accesslog, keep,
 #else
     log_write_direct (accesslog,
 #endif
-            "%s - %s [%s] \"%s\" %d " FORMAT_UINT64 " \"%s\" \"%s\" %lu",
+            "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
             ip, username,
             datebuf, reqbuf, client->respcode, client->con->sent_bytes,
             referrer, user_agent, (unsigned long)stayed);
@@ -237,7 +237,7 @@ void restart_logging (ice_config_t *config)
         log_set_filename (accesslog, fn_error);
         log_set_trigger (accesslog, config->logsize);
         log_set_lines_kept (accesslog, config->access_log_lines);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_archive_timestamp (accesslog, config->logarchive);
         log_reopen (accesslog);
     }
 
@@ -248,7 +248,7 @@ void restart_logging (ice_config_t *config)
         log_set_filename (playlistlog, fn_error);
         log_set_trigger (playlistlog, config->logsize);
         log_set_lines_kept (playlistlog, config->playlist_log_lines);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_archive_timestamp (playlistlog, config->logarchive);
         log_reopen (playlistlog);
     }
 }

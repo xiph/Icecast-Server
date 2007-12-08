@@ -34,10 +34,6 @@
 #include <sys/time.h>
 #endif
 
-#ifdef WIN32
-#define snprintf _snprintf
-#endif
-
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "httpp/httpp.h"
@@ -226,17 +222,17 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     if (problem == 0)
     {
         /* the 100 is to allow for the hardcoded headers */
-        unsigned int header_len = strlen (mediatype) + len + 100;
-        refbuf_t *refbuf = refbuf_new (header_len);
+        unsigned int full_len = strlen (mediatype) + len + 100;
+        refbuf_t *refbuf = refbuf_new (full_len);
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        len = snprintf (refbuf->data, header_len,
+        snprintf (refbuf->data, full_len,
                 "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
                 mediatype, len, string);
 
-        client_set_queue (client, NULL);
         client->respcode = 200;
+        client_set_queue (client, NULL);
         client->refbuf = refbuf;
         refbuf->len = strlen (refbuf->data);
         fserve_add_client (client, NULL);

@@ -12,8 +12,6 @@
 
 <body>
 <div class="main">
-<h1>Icecast2 Status (Version Info)</h1>
-<iframe frameborder="0" scrolling="no" height="50" src="/navbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -22,15 +20,28 @@
 <div class="newscontent">
 <h3>Information</h3>
 <table border="0" cellpadding="4">
+
 <xsl:for-each select="/icestats">
-<xsl:for-each select="server">
-<xsl:if test = "name()!='source'"> 
 <tr>
-	<td width="130">Build</td>
-	<td class="streamdata"><xsl:value-of select="." /></td>
+    <td width="130">Location</td>
+    <td class="streamdata"><xsl:value-of select="location" /></td>
 </tr>
-</xsl:if>
-</xsl:for-each>
+<tr>
+    <td width="130">Admin</td>
+    <td class="streamdata"><xsl:value-of select="admin" /></td>
+</tr>
+<tr>
+	<td width="130">Host</td>
+    <td class="streamdata"><xsl:value-of select="host" /></td>
+</tr>
+<tr>
+	<td width="130">Version</td>
+	<td class="streamdata"><xsl:value-of select="server_id" /></td>
+</tr>
+<tr>
+	<td width="130">Started</td>
+	<td class="streamdata"><xsl:value-of select="server_start" /></td>
+</tr>
 </xsl:for-each>
 <tr>
 	<td width="130">Download</td>

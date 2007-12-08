@@ -2,30 +2,32 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/style.css" />
+    <title>Icecast Streaming Media Server</title>
   </head>
 
   <body>
-    <!--index header menu -->
+    <div class="nav">
+    <h1>Icecast2</h1>
     <center>
     <table class="roundcont">
       <tr>
         <td class="topleft"></td>
         <td rowspan="2" class="nav">
           <table>
-            <tr>
-              <td>
-                <a href="/admin/stats.xsl" target="_parent">Admin</a>
-                <a href="/status.xsl" target="_parent">Server Status</a>
-                <a href="/server_uptime.xsl" target="_parent">Server Uptime</a>
-                <a href="/server_version.xsl" target="_parent">Server Info</a>
-              </td>
+              <tr>
+                  <td>
+                      <a target="_parent" href="/admin.html">Admin</a>
+                      <a target="content" href="/status.xsl">Status</a>
+                      <a target="content" href="/server_version.xsl">Info</a>
+                      <a target="content" href="http://dir.xiph.org/">Stream Directory</a>
+                  </td>
             </tr>
           </table>
         </td>
         <td class="topright"></td>
       </tr>
       <tr>
-        <td class="bottomleft"></td> 
+        <td class="bottomleft"></td>
         <td class="bottomright"></td>
       </tr>
     </table>

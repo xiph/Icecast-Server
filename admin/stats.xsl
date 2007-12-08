@@ -12,8 +12,6 @@
 <body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
 <div class="main">
-<h1>Icecast2 Admin</h1>
-<iframe frameborder="0" scrolling="no" height="50" src="/adminbar.html" />
 
 <br />
 

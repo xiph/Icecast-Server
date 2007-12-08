@@ -27,8 +27,8 @@
 #ifdef HAVE_STRINGS_H
 # include <strings.h>
 #endif
-#include <time.h>
 
+#include "compat.h"
 #include "connection.h"
 #include "refbuf.h"
 
@@ -44,16 +44,10 @@
 #include "stats.h"
 #define CATMODULE "format"
 
-#ifdef WIN32
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
-#define snprintf _snprintf
-#endif
-
 static int format_prepare_headers (source_t *source, client_t *client);
 
 
-format_type_t format_get_type(char *contenttype)
+format_type_t format_get_type(const char *contenttype)
 {
     if(strcmp(contenttype, "application/x-ogg") == 0)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
@@ -71,6 +65,7 @@ void format_free_plugin (format_plugin_t *format)
         return;
     rate_free (format->in_bitrate);
     rate_free (format->out_bitrate);
+    free (format->charset);
     if (format->free_plugin)
         format->free_plugin (format);
 }
@@ -107,14 +102,19 @@ static void find_client_start (source_t *source, client_t *client)
      * a starting point, so look for one from the burst point */
     if (client->intro_offset == -1 && source->stream_data_tail
             && source->stream_data_tail->sync_point)
+    {
         refbuf = source->stream_data_tail;
+        client->lag = refbuf->len;
+    }
     else
     {
         size_t size = client->intro_offset;
         refbuf = source->burst_point;
+        client->lag = source->burst_offset;
         while (size > 0 && refbuf && refbuf->next)
         {
             size -= refbuf->len;
+            client->lag -= refbuf->len;
             refbuf = refbuf->next;
         }
     }
@@ -171,6 +171,7 @@ int format_check_file_buffer (source_t *source, client_t *client)
         client->refbuf = refbuf;
         client->pos = refbuf->len;
         client->intro_offset = 0;
+        client->lag = 0;
     }
     if (client->pos == refbuf->len)
     {
@@ -210,13 +211,13 @@ int format_check_http_buffer (source_t *source, client_t *client)
     {
         DEBUG0("processing pending client headers");
 
-        client->respcode = 200;
         if (format_prepare_headers (source, client) < 0)
         {
             ERROR0 ("internal problem, dropping client");
             client->con->error = 1;
             return -1;
         }
+        client->respcode = 200;
         stats_event_inc (NULL, "listeners");
         stats_event_inc (NULL, "listener_connections");
         stats_event_inc (source->mount, "listener_connections");
@@ -354,6 +355,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
     config = config_get_config();
     bytes = snprintf (ptr, remaining, "Server: %s\r\n", config->server_id);
     config_release_config();
+    remaining -= bytes;
+    ptr += bytes;
+
+    /* prevent proxy servers from caching */
+    bytes = snprintf (ptr, remaining, "Cache-Control: no-cache\r\n");
     remaining -= bytes;
     ptr += bytes;
 

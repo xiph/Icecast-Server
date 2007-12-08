@@ -13,8 +13,6 @@
 <body>
 
 <div class="main">
-<h1>Authorization Page</h1>
-<iframe frameborder="0" scrolling="no" height="50" src="/navbar.html" />
 
 <table border="0" width="100%">
 <tr>

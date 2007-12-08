@@ -10,7 +10,7 @@
 CONFIGFILE="/etc/icecast2/icecast.xml"
 
 # Name or ID of the user and group the daemon should run under
-USERID=icecast
+USERID=icecast2
 GROUPID=icecast
 
 # Edit /etc/icecast2/icecast.xml and change at least the passwords.

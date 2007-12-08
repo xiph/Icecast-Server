@@ -12,8 +12,6 @@
 <body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
 <div class="main">
-<h1>Manage Listeners</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">

@@ -23,10 +23,12 @@
 #include "client.h"
 #include "logging.h"
 #include "slave.h"
+#include "fserve.h"
+#include "stats.h"
 
 #define CATMODULE "event"
 
-void event_config_read(void *arg)
+void event_config_read (void)
 {
     int ret;
     ice_config_t *config;
@@ -36,7 +38,7 @@ void event_config_read(void *arg)
     INFO0("Re-reading XML");
     config = config_grab_config(); /* Both to get the lock, and to be able
                                      to find out the config filename */
-    xmlSetGenericErrorFunc ("config", log_parse_failure);
+    xmlSetGenericErrorFunc (config->config_filename, log_parse_failure);
     ret = config_parse_file(config->config_filename, &new_config);
     if(ret < 0) {
         ERROR0("Error parsing config, not replacing existing config");
@@ -60,11 +62,14 @@ void event_config_read(void *arg)
     else {
         config_clear(config);
         config_set_config(&new_config);
-        restart_logging (config_get_config_unlocked());
-        yp_recheck_config (config_get_config_unlocked());
-
+        config = config_get_config_unlocked();
+        restart_logging (config);
+        yp_recheck_config (config);
+        fserve_recheck_mime_types (config);
+        stats_global (config);
         config_release_config();
-        slave_recheck_mounts();
+        connection_thread_shutdown();
+        slave_restart();
     }
 }
 

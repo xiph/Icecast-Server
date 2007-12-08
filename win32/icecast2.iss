@@ -2,18 +2,18 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 [Setup]
-AppName=Icecast2 Win32
-AppVerName=Icecast v2.3.1
+AppName=Icecast2-KH
+AppVerName=Icecast v2.3.1-kh27
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
-DefaultDirName={pf}\Icecast2 Win32
-DefaultGroupName=Icecast2 Win32
+DefaultDirName={pf}\Icecast2 Win32 KH
+DefaultGroupName=Icecast2 Win32 KH
 AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.1_setup
+OutputBaseFilename=icecast2_win32_v2.3.1-kh27_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
@@ -35,18 +35,22 @@ Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Release\icecastService.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion
-Source: "..\doc\icecast2.chm"; DestDir: "{app}\doc"; Flags: ignoreversion
+Source: "..\doc\*"; DestDir: "{app}\doc"; Flags: ignoreversion
 Source: "..\web\*.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\*.png"; DestDir: "{app}\web"; Flags: ignoreversion
-Source: "..\web\*.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\*.html"; DestDir: "{app}\web"; Flags: ignoreversion
+Source: "..\web\images\*.png"; DestDir: "{app}\web\images"; Flags: ignoreversion
+Source: "..\web\images\*.jpg"; DestDir: "{app}\web\images"; Flags: ignoreversion
 Source: "..\web\*.css"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\admin\*.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
-Source: "..\..\pthreads\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\conf\*.xml"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\iconv\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\libxslt\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\libxml2\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\curl\lib\Release\libcurl.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\conf\*.dist"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\examples\icecast_shoutcast_compat.xml"; DestDir: "{app}"; DestName: "icecast.xml"; Flags: ignoreversion
+Source: "c:\xiph\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\libcurl.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\libeay32.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\ssleay32.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 

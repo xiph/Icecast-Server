@@ -12,8 +12,6 @@
 <body bhcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
 <div class="main">
-<h1>Update Metadata</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -32,6 +30,7 @@
 </table>
 <input type="hidden" name="mount" value="{@mount}"/>
 <input type="hidden" name="mode" value="updinfo"/>
+<input type="hidden" name="charset" value="UTF-8"/>
 </form>
 
 <br />

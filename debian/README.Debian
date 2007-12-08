@@ -1,12 +1,48 @@
 icecast2 for Debian
 -------------------
 
+In relation to the comment below by Jonas Smedegaard and chroot issues,
+I've modified the debian package so that it will install xsl pages as
+well as icecast.xml under /usr/share/icecast2, and symlink from there
+to /etc/icecast2.
+I've no idea why it would be necessary to symlink admin/ and web/ into
+/etc/icecast2, but the config file icecast.xml should be there at least
+as it's a standard location for config files.
+However the *real* file now lives in /usr/share/icecast2/etc/icecast2/icecast.xml
+because it must be available to the server when it runs in a jail (chroot)
+otherwise config reload won't work as /etc/icecast2 would normally be outside
+the jail.
+
+The only issue pending of solution is the resolver within the jail,
+which will be required mostly for the YP servers name resolution.
+I'm researching this right now.
+
+ -- Rama <rama@r23.cc>  Sun, 2 Jul 2006 10:24:43 +0200
+
+In the Debian packaging the configuration files have been symlinked from
+the upstream location below /usr/share to /etc. This is needed to
+satisfy FHS (/usr/share are for static content only).
+If running icecast2 in a chroot environment, beware that the symlinks to
+/etc will break. A possible (untestet!) solution might be to manually
+put the configuration files back below /usr/share - and revert the hack
+again before updating the package!
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 20 May 2004 21:04:27 +0200
+
+
 It is recommended to run icecast under a dedicated user account, which only
 has access to write the log files.  The Debian package creates such an
-account, named 'icecast', and uses it by default, but you are free to
+account, named 'icecast2', and uses it by default, but you are free to
 reconfigure it and remove the account.
 
 Edit /etc/default/icecast2 to change the init-script configuration.
 
- -- Keegan Quinn <ice@thebasement.org>
+It is possible (but discouraged for security reasons) to bind to a
+priviledged port (like standard web port 80). Edit /etc/init.d/icecast2
+to not change userid and instead set the correct userid and group in
+/etc/icecast2/icecast2.xml. Beware that this way you rely on the
+icecast2 binary to properly drop priviledges (instead of the much more
+thoroughly audited start-stop-daemon). Thanks to Jürgen A. Erhard
+<jae@jerhard.org> for the tip.
 
+ -- Keegan Quinn <ice@thebasement.org>

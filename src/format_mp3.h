@@ -26,10 +26,11 @@ typedef struct {
     char *url_artist;
     char *url_title;
     int update_metadata;
+    int queue_block_size;
 
     refbuf_t *metadata;
     refbuf_t *read_data;
-    unsigned int read_count;
+    int read_count;
     mutex_t url_lock;
 
     unsigned build_metadata_len;

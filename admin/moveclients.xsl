@@ -12,8 +12,6 @@
 <body bgcolor="#000" topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
 
 <div class="main">
-<h1>Moving Listeners From (<xsl:value-of select="current_source" />)</h1>
-<iframe scrolling="no" frameborder="0" width="100%" src="/adminbar.html" />
 
 <xsl:variable name = "currentmount" ><xsl:value-of select="current_source" /></xsl:variable>
 <div class="roundcont">

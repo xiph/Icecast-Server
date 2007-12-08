@@ -17,13 +17,13 @@
 #include <time.h>
 #ifdef HAVE_OPENSSL
 #include <openssl/ssl.h>
-#else
-#define SSL void
+#include <openssl/err.h>
 #endif
 
 struct source_tag;
 typedef struct connection_tag connection_t;
 
+#include "cfgfile.h"
 #include "client.h"
 #include "compat.h"
 #include "httpp/httpp.h"
@@ -38,8 +38,8 @@ struct connection_tag
     time_t discon_time;
     uint64_t sent_bytes;
 
-    int sock;
-    int serversock;
+    sock_t sock;
+    sock_t serversock;
     int error;
 
 #ifdef HAVE_OPENSSL
@@ -50,7 +50,6 @@ struct connection_tag
 
     char *ip;
     char *host;
-
 };
 
 #ifdef HAVE_OPENSSL
@@ -60,15 +59,20 @@ struct connection_tag
 #endif
 void connection_initialize(void);
 void connection_shutdown(void);
-void connection_accept_loop(void);
+void connection_thread_startup();
+void connection_thread_shutdown();
+int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, int response);
+void connection_uses_ssl (connection_t *con);
+void connection_thread_shutdown_req (void);
 
 int connection_check_source_pass (client_t *client, const char *mount);
 int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 
 extern rwlock_t _source_shutdown_rwlock;
+extern int connection_running;
 
 #endif  /* __CONNECTION_H__ */

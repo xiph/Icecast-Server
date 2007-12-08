@@ -134,11 +134,8 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     {
         if (codec->possible_start)
             refbuf_release (codec->possible_start);
-        if (refbuf)
-        {
-            refbuf_addref (refbuf);
-            codec->possible_start = refbuf;
-        }
+        refbuf_addref (refbuf);
+        codec->possible_start = refbuf;
     }
     theora->prev_granulepos = granulepos;
 

@@ -11,7 +11,8 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     compat.h fserve.h xslt.h yp.h event.h md5.h \
     auth.h auth_htpasswd.h auth_cmd.h auth_url.h \
     format.h format_ogg.h format_mp3.h \
-    format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h
+    format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
+	fnmatch_loop.c
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
     util.c slave.c source.c stats.c refbuf.c client.c \
     xslt.c fserve.c event.c admin.c md5.c \
@@ -19,8 +20,8 @@ icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c 
     auth.c auth_htpasswd.c
 EXTRA_icecast_SOURCES = yp.c \
     auth_url.c auth_cmd.c \
-    format_vorbis.c format_theora.c format_speex.c
-    
+    format_vorbis.c format_theora.c format_speex.c fnmatch.c
+
 icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
     httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la timing/libicetiming.la
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@

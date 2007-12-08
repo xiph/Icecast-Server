@@ -1,4 +1,7 @@
 <icecast>
+    <location>UK</location>
+    <admin>webmaster@localhost</admin>
+
     <limits>
         <clients>100</clients>
         <sources>2</sources>
@@ -10,6 +13,9 @@
              specific on how much to burst. Most people won't need to
              change from the default 64k. Applies to all mountpoints  -->
         <burst-size>65535</burst-size>
+        <!--
+        <max-bandwidth>100M</max-bandwidth>
+        -->
     </limits>
 
     <authentication>
@@ -36,14 +42,14 @@
     listings. -->
     <hostname>localhost</hostname>
 
-    <!-- You can use these two if you only want a single listener -->
+    <!-- port to use when talking to YP etc -->
     <!--<port>8000</port> -->
-    <!--<bind-address>127.0.0.1</bind-address>-->
 
     <!-- You may have multiple <listener> elements -->
     <listen-socket>
         <port>8000</port>
         <!-- <bind-address>127.0.0.1</bind-address> -->
+        <!-- use <shoutcast-mount> in here to implicitly define port n+1 -->
     </listen-socket>
     <!--
     <listen-socket>
@@ -72,8 +78,7 @@
          the details passed are based on <hostname> and <port> -->
     <!--<master-redirect>1</master-redirect>-->
 
-    <!-- The maximum nuber of slaves that can register for new listener 
-    redirection. -->
+    <!-- The maximum nuber of slaves that can register for new listener redirection. -->
     <!--<max-redirect-slaves>10</max-redirect-slaves>-->
 
     <!-- Relays. State connection information, and by default 
@@ -87,20 +92,41 @@
         <mount>/example.ogg</mount>
         <local-mount>/different.ogg</local-mount>
         <on-demand>1</on-demand>
+        <retry-delay>30</retry-delay>
 
         <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
+    </relay>
+    -->
+    <!-- Allow multiple master servers to be specified, tries each one in turn.
+    <relay>
+        <local-mount>/stream.mp3</local-mount>
+        <master>
+            <server>a.b.c.d</server>
+            <port>8000</port>
+            <mount>/a</mount>
+        </master>
+        <master>
+            <server>a.b.c.d</server>
+            <port>80</port>
+            <mount>/</mount>
+        </master>
     </relay>
     -->
 
     <!-- Only define a <mount> section if you want to use advanced options,
          like alternative usernames or passwords
+         With a master/slave setup you need to define a mount in the master
+         or else the server will assume that the stream is not to be made
+         available to the slave.
     <mount>
-        <mount-name>/example-complex.ogg</mount-name>
+        <mount-name>/*.ogg</mount-name>
 
         <username>othersource</username>
         <password>hackmemore</password>
 
         <max-listeners>1</max-listeners>
+        <max-bandwidth>1000k</max-bandwidth>
+        <file-seekable>0</file-seekable>
         <dump-file>/tmp/dump-example1.ogg</dump-file>
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
@@ -115,6 +141,7 @@
         </authentication>
         <on-connect>/home/icecast/bin/stream-start</on-connect>
         <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
+        <file-seekable>0</file-seekable>
     </mount>
     -->
     <!-- other auth possibilities include running a command
@@ -134,13 +161,14 @@
         remove is passed id, mount, user, pass, duration
 
         <authentication type="url">
-
-             state username/password if url requires it
-
              <option name="username" value="admin"/>
              <option name="password" value="hackme"/>
-             <option name="add"    value="http://myauthserver.com/scripts/add_listener.php"/>
-             <option name="remove" value="http://myauthserver.com/scripts/del_listener.php"/>
+             <option name="handlers"        value="3" />
+             <option name="stream_auth"    value="http://myauthserver.com/scripts/auth_mount.php"/>
+             <option name="mount_add"    value="http://myauthserver.com/scripts/add_mount.php"/>
+             <option name="mount_remove" value="http://myauthserver.com/scripts/del_mount.php"/>
+             <option name="listener_add"    value="http://myauthserver.com/scripts/add_listener.php"/>
+             <option name="listener_remove" value="http://myauthserver.com/scripts/del_listener.php"/>
         </authentication>
     </mount -->
 
@@ -163,7 +191,13 @@
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
         <!-- <pidfile>@pkgdatadir@/icecast.pid</pidfile> -->
-        <!-- <ssl_certificate>@pkgdatadir@/icecast.pem</ssl_certificate> -->
+        <!-- <ssl-certificate>@pkgdatadir@/icecast.pem</ssl-certificate> -->
+        <!-- <deny-ip>/path/to/file-with-IPs</deny-ip> -->
+        <!-- <allow-ip>/path/to/file-with-IPs</allow-ip> -->
+        <!-- <deny-agents>/path/to/file-with-useragents</deny-agents> -->
+
+        <!-- location of mime types files used for file serving -->
+        <!-- <mime-types>/etc/mime.types</mime-types> -->
 
         <!-- Aliases: treat requests for 'source' path as being for 'dest' path
              May be made specific to a port or bound address using the "port"
@@ -176,14 +210,15 @@
              this example will redirect all requests for http://server:port/ to
              the status page
           -->
-        <alias source="/" dest="/status.xsl"/>
+        <alias source="/" dest="/index.html"/>
     </paths>
 
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
+        <!-- <accesslog_ip>0<accesslog_ip> -->
         <!-- <playlistlog>playlist.log</playlistlog> -->
-      	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
       	<logsize>10000</logsize> <!-- Max size of a logfile -->
         <!-- If logarchive is enabled (1), then when logsize is reached
              the logfile will be moved to [error|access|playlist].log.DATESTAMP,

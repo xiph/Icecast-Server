@@ -33,16 +33,19 @@ extern int playlistlog;
 #define ERROR1(y, a) log_write(errorlog, 1, CATMODULE "/", __func__, y, a)
 #define ERROR2(y, a, b) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b)
 #define ERROR3(y, a, b, c) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b, c)
+#define ERROR4(y, a, b, c, d) log_write(errorlog, 1, CATMODULE "/", __func__, y, a, b, c, d)
 
 #define WARN0(y) log_write(errorlog, 2, CATMODULE "/", __func__, y)
 #define WARN1(y, a) log_write(errorlog, 2, CATMODULE "/", __func__, y, a)
 #define WARN2(y, a, b) log_write(errorlog, 2, CATMODULE "/", __func__, y, a, b)
 #define WARN3(y, a, b, c) log_write(errorlog, 2, CATMODULE "/", __func__, y, a, b, c)
+#define WARN4(y, a, b, c, d) log_write(errorlog, 2, CATMODULE "/", __func__, y, a, b, c, d)
 
 #define INFO0(y) log_write(errorlog, 3, CATMODULE "/", __func__, y)
 #define INFO1(y, a) log_write(errorlog, 3, CATMODULE "/", __func__, y, a)
 #define INFO2(y, a, b) log_write(errorlog, 3, CATMODULE "/", __func__, y, a, b)
 #define INFO3(y, a, b, c) log_write(errorlog, 3, CATMODULE "/", __func__, y, a, b, c)
+#define INFO4(y, a, b, c, d) log_write(errorlog, 3, CATMODULE "/", __func__, y, a, b, c, d)
 
 #define DEBUG0(y) log_write(errorlog, 4, CATMODULE "/", __func__, y)
 #define DEBUG1(y, a) log_write(errorlog, 4, CATMODULE "/", __func__, y, a)
