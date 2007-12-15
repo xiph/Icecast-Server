@@ -42,7 +42,7 @@ typedef struct _client_tag
     refbuf_t *refbuf;
 
     /* position in first buffer */
-    unsigned long pos;
+    unsigned int pos;
 
     /* auth used for this client */
     struct auth_tag *auth;

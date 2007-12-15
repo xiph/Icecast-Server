@@ -26,7 +26,9 @@
 #ifdef HAVE_STRINGS_H
 # include <strings.h>
 #endif
-#include <time.h>
+#ifdef HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 
 #include "connection.h"
 #include "refbuf.h"
@@ -136,7 +138,7 @@ static int get_file_data (FILE *intro, client_t *client)
     if (bytes == 0)
         return 0;
 
-    refbuf->len = bytes;
+    refbuf->len = (unsigned int)bytes;
     return 1;
 }
 

@@ -236,7 +236,7 @@ static void wait_for_fds(void) {
 static void *fserv_thread_function(void *arg)
 {
     fserve_t *fclient, **trail;
-    int bytes;
+    size_t bytes;
 
     INFO0("file serving thread started");
     while (run_fserv) {
@@ -270,7 +270,7 @@ static void *fserv_thread_function(void *arg)
                         client_tree_changed = 1;
                         continue;
                     }
-                    refbuf->len = bytes;
+                    refbuf->len = (unsigned int)bytes;
                     client->pos = 0;
                 }
 

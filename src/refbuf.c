@@ -33,7 +33,7 @@ void refbuf_shutdown(void)
 {
 }
 
-refbuf_t *refbuf_new(unsigned long size)
+refbuf_t *refbuf_new(unsigned int size)
 {
     refbuf_t *refbuf;
 
