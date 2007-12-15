@@ -418,13 +418,14 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 
     if (source)
     {
-        if (check_duplicate_logins (source, client, mountinfo->auth) == 0)
-        {
-            avl_tree_unlock (global.source_tree);
-            return -1;
-        }
         if (mountinfo)
         {
+            if (check_duplicate_logins (source, client, mountinfo->auth) == 0)
+            {
+                avl_tree_unlock (global.source_tree);
+                return -1;
+            }
+
             /* set a per-mount disconnect time if auth hasn't set one already */
             if (mountinfo->max_listener_duration && client->con->discon_time == 0)
                 client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
