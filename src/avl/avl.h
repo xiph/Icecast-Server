@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #ifndef NO_THREAD
-#include <thread/thread.h>
+#include "thread/thread.h"
 #else
 #define thread_rwlock_create(x) do{}while(0)
 #define thread_rwlock_destroy(x) do{}while(0)
@@ -31,7 +31,7 @@ typedef struct avl_node_tag {
    * factor: 00==-1, 01==0, 10==+1.
    * The rest of the bits are used for <rank>
    */
-  unsigned long        rank_and_balance;
+  unsigned int        rank_and_balance;
 #ifndef NO_THREAD
   rwlock_t rwlock;
 #endif
@@ -92,8 +92,8 @@ typedef int (*avl_key_printer_fun_type)    (char *, void *);
 
 typedef struct _avl_tree {
   avl_node *            root;
-  unsigned long            height;
-  unsigned long            length;
+  unsigned int          height;
+  unsigned int          length;
   avl_key_compare_fun_type    compare_fun;
   void *             compare_arg;
 #ifndef NO_THREAD
