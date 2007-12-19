@@ -1,5 +1,5 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output omit-xml-declaration="no" method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:template match = "/icestats" >
 <html>
 <head>
@@ -38,22 +38,22 @@
 <h3>Version Information</h3>
 <table border="0" cellpadding="4">
 <xsl:for-each select="/icestats">
-<xsl:for-each select="server">
-<xsl:if test = "name()!='source'"> 
 <tr>
-	<td width="130">Build</td>
-	<td class="streamdata"><xsl:value-of select="." /></td>
+	<td width="130">Location</td>
+	<td class="streamdata"><xsl:value-of select="location" /></td>
 </tr>
-</xsl:if>
-</xsl:for-each>
-<xsl:for-each select="server_start">
-<xsl:if test = "name()!='source'"> 
 <tr>
-	<td width="130">Server Uptime</td>
-	<td class="streamdata"><xsl:value-of select="." /></td>
+	<td width="130">Admin</td>
+	<td class="streamdata"><xsl:value-of select="admin" /></td>
 </tr>
-</xsl:if>
-</xsl:for-each>
+<tr>
+    <td width="130">Host</td>
+    <td class="streamdata"><xsl:value-of select="host" /></td>
+</tr>
+<tr>
+    <td width="130">Version</td>
+    <td class="streamdata"><xsl:value-of select="server_id" /></td>
+</tr>
 </xsl:for-each>
 <tr>
 	<td width="130">Download</td>
