@@ -483,6 +483,14 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_security(doc, node->xmlChildrenNode, configuration);
         }
     } while ((node = node->next));
+
+    /* drop the first listening socket details if more than one is defined, as we only
+     * have port or listen-socket not both */
+    if (configuration->listen_sock_count > 1)
+    {
+        configuration->listen_sock = config_clear_listener (configuration->listen_sock);
+        configuration->listen_sock_count--;
+    }
 }
 
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, 
@@ -813,8 +821,10 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         }
     } while ((node = node->next));
 
-    listener->next = configuration->listen_sock;
-    configuration->listen_sock = listener;
+    /* we know there's at least one of these, so add this new one after the first
+     * that way it can be removed easily later on */
+    listener->next = configuration->listen_sock->next;
+    configuration->listen_sock->next = listener;
     configuration->listen_sock_count++;
     if (listener->shoutcast_mount)
     {
@@ -825,8 +835,8 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         if (listener->bind_address)
             sc_port->bind_address = (char*)xmlStrdup (XMLSTR(listener->bind_address));
 
-        sc_port->next = configuration->listen_sock;
-        configuration->listen_sock = sc_port;
+        sc_port->next = listener->next;
+        listener->next = sc_port;
         configuration->listen_sock_count++;
     }
 }
