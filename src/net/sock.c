@@ -548,7 +548,7 @@ int sock_connected (sock_t sock, int timeout)
 
 #ifdef HAVE_GETADDRINFO
 
-sock_t sock_connect_non_blocking (const char *hostname, const unsigned port)
+sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
 {
     int sock = SOCK_ERROR;
     struct addrinfo *ai, *head, hints;
@@ -674,6 +674,8 @@ sock_t sock_get_server_socket (int port, const char *sinterface)
             continue;
 
         setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, sizeof(on));
+        on = 0;
+        setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof on);
 
         if (bind (sock, ai->ai_addr, ai->ai_addrlen) < 0)
         {
@@ -693,7 +695,7 @@ sock_t sock_get_server_socket (int port, const char *sinterface)
 #else
 
 
-int sock_try_connection (sock_t sock, const char *hostname, const unsigned port)
+int sock_try_connection (sock_t sock, const char *hostname, unsigned int port)
 {
     struct sockaddr_in sin, server;
     char ip[MAX_ADDR_LEN];
