@@ -358,7 +358,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->dir_list = NULL;
     configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
     configuration->mimetypes_fn = (char *)xmlCharStrdup (MIMETYPESFILE);
-    configuration->port = 8000;
     configuration->master_server = NULL;
     configuration->master_server_port = 0;
     configuration->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
@@ -491,6 +490,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         configuration->listen_sock = config_clear_listener (configuration->listen_sock);
         configuration->listen_sock_count--;
     }
+    if (configuration->port == 0)
+        configuration->port = 8000;
 }
 
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, 
