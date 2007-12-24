@@ -665,6 +665,7 @@ static void *yp_update_thread(void *arg)
 {
     struct yp_server *server;
 
+    yp_thread = thread_self();
     /* DEBUG0("YP thread started"); */
 
     /* do the YP communication */
@@ -937,6 +938,6 @@ void yp_shutdown (void)
 void yp_thread_startup (void)
 {
     if (yp_thread == NULL)
-        yp_thread = thread_create ("YP Thread", yp_update_thread, NULL, THREAD_DETACHED);
+        thread_create ("YP Thread", yp_update_thread, NULL, THREAD_DETACHED);
 }
 

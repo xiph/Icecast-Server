@@ -43,6 +43,7 @@ static spin_t auth_lock;
 static volatile int thread_id;
 
 static void *auth_run_thread (void *arg);
+static int auth_postprocess_listener (auth_client *auth_user);
 
 
 void auth_check_http (client_t *client)
@@ -222,8 +223,14 @@ static void auth_new_listener (auth_client *auth_user)
     }
     if (auth_user->auth->authenticate)
     {
-        if (auth_user->auth->authenticate (auth_user) != AUTH_OK)
-            return;
+        switch (auth_user->auth->authenticate (auth_user))
+        {
+            case AUTH_OK:
+            case AUTH_FAILED:
+                break;
+            default:
+                return;
+        }
     }
     if (auth_postprocess_listener (auth_user) < 0)
         INFO1 ("client %lu failed", client->con->id);
@@ -556,15 +563,31 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 }
 
 
-int auth_postprocess_listener (auth_client *auth_user)
+static int auth_postprocess_listener (auth_client *auth_user)
 {
     int ret;
     client_t *client = auth_user->client;
-    ice_config_t *config = config_get_config();
+    auth_t *auth = auth_user->auth;
+    ice_config_t *config;
+    mount_proxy *mountinfo;
+    const char *mount = auth_user->mount;
 
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    if (client == NULL)
+        return 0;
 
-    ret = add_authenticated_listener (auth_user->mount, mountinfo, client);
+    if (client->authenticated == 0)
+    {
+        /* auth failed so check to placing listeners elsewhere */
+        if (auth_user->rejected_mount)
+            mount = auth_user->rejected_mount;
+        else if (auth->rejected_mount)
+            mount = auth->rejected_mount;
+        else
+            return 0;
+    }
+    config = config_get_config();
+    mountinfo = config_find_mount (config, mount);
+    ret = add_authenticated_listener (mount, mountinfo, client);
     config_release_config();
 
     auth_user->client = NULL;
@@ -715,6 +738,8 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             auth->realm = (char*)xmlStrdup (XMLSTR(options->value));
         else if (strcmp(options->name, "drop_existing_listener") == 0)
             auth->drop_existing_listener = atoi (options->value);
+        else if (strcmp (options->name, "rejected_mount") == 0)
+            auth->rejected_mount = (char*)xmlStrdup (XMLSTR(options->value));
         else if (strcmp(options->name, "handlers") == 0)
             auth->handlers = atoi (options->value);
         options = options->next;

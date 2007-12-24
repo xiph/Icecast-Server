@@ -16,6 +16,21 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3-kh29
+. some small code re-organisation in kh28 caused auth htpasswd to fail new
+listeners
+. work around FBSD issue with listening on IPv4/IPv6 sockets
+
+2.3-kh28
+. race fix in yp thread startup.
+. manageauth userlist page was blank due to a NULL check, fixed.
+. add rejected_mount auth option to redirect unathenticated listeners to an
+  alternative mountpoint. eg subscription stream redirected to low bitrate
+. Allow for url auth to handle 'Mountpoint: ' header for redirecting listeners
+  if they are to be rejected to an alternative mountpoint on the same server.
+  This is as opposed to the Location: header which gets a player to redirect,
+  maybe to an alternative server.
+
 2.3-kh27
 . fix potential fserve thread race
 . merge listener inline shoutcast metadata into previous block write. It is

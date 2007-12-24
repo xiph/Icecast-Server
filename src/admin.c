@@ -759,7 +759,7 @@ static void command_manageauth(client_t *client, source_t *source,
         COMMAND_OPTIONAL (client, "username", username);
 
         if (action == NULL)
-            break;
+            action = "list";
 
         if (!strcmp(action, "add"))
         {

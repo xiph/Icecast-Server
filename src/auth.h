@@ -42,10 +42,11 @@ typedef struct auth_client_tag
     char        *mount;
     char        *hostname;
     int         port;
+    int         handler;
     client_t    *client;
     struct auth_tag *auth;
+    char        *rejected_mount;
     void        *thread_data;
-    int         handler;
     void        (*process)(struct auth_client_tag *auth_user);
     struct auth_client_tag *next;
 } auth_client;
@@ -96,6 +97,9 @@ typedef struct auth_tag
     int drop_existing_listener;
     int handlers;
 
+    /* mountpoint to send unauthenticated listeners */
+    char *rejected_mount;
+
     /* runtime allocated array of thread handlers for this auth */
     auth_thread_t *handles;
 
@@ -126,10 +130,6 @@ void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
 /* */
 int auth_stream_authenticate (client_t *client, const char *mount,
         struct _mount_proxy *mountinfo);
-
-/* called from auth thread, after the client has successfully authenticated
- * and requires adding to source or fserve. */
-int auth_postprocess_listener (auth_client *auth_user);
 
 /* called from auth thread */
 void auth_postprocess_source (auth_client *auth_user);

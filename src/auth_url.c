@@ -186,6 +186,12 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             atd->location = malloc (len+1);
             snprintf (atd->location, len+1, "%s", (char *)ptr+10);
         }
+        if (strncasecmp (ptr, "Mountpoint: ", 12) == 0)
+        {
+            int len = strcspn ((char*)ptr+12, "\r\n");
+            auth_user->rejected_mount = malloc (len+1);
+            snprintf (auth_user->rejected_mount, len+1, "%s", (char *)ptr+12);
+        }
     }
 
     return (int)bytes;

@@ -1251,18 +1251,15 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
-    source->timeout = config->source_timeout;
-
-    /*  handle fallback to file specially */
+    /*  skip if source is a fallback to file */
     if (source->running && source->client == NULL)
     {
         stats_event_hidden (source->mount, NULL, 1);
-        if (mountinfo && mountinfo->source_timeout > 0)
-            source->timeout = mountinfo->source_timeout;
         return;
     }
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
+    source->timeout = config->source_timeout;
     source->burst_size = config->burst_size;
 
     stats_event_args (source->mount, "listenurl", "http://%s:%d%s",
@@ -1454,7 +1451,6 @@ static void *source_fallback_file (void *arg)
         source->parser = parser;
         source->avg_bitrate_duration = 20;
         source->listener_send_trigger = 4096;
-        source->on_demand = 1;
         file = NULL;
 
         if (connection_complete_source (source, 0) < 0)
