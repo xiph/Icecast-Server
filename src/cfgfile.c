@@ -119,30 +119,30 @@ static void config_clear_mount (mount_proxy *mount)
 {
     config_options_t *option;
 
-    xmlFree (mount->mountname);
-    xmlFree (mount->username);
-    xmlFree (mount->password);
-    xmlFree (mount->dumpfile);
-    xmlFree (mount->intro_filename);
-    xmlFree (mount->on_connect);
-    xmlFree (mount->on_disconnect);
-    xmlFree (mount->fallback_mount);
-    xmlFree (mount->stream_name);
-    xmlFree (mount->stream_description);
-    xmlFree (mount->stream_url);
-    xmlFree (mount->stream_genre);
-    xmlFree (mount->bitrate);
-    xmlFree (mount->type);
-    xmlFree (mount->charset);
-    xmlFree (mount->cluster_password);
+    if (mount->mountname)       xmlFree (mount->mountname);
+    if (mount->username)        xmlFree (mount->username);
+    if (mount->password)        xmlFree (mount->password);
+    if (mount->dumpfile)        xmlFree (mount->dumpfile);
+    if (mount->intro_filename)  xmlFree (mount->intro_filename);
+    if (mount->on_connect)      xmlFree (mount->on_connect);
+    if (mount->on_disconnect)   xmlFree (mount->on_disconnect);
+    if (mount->fallback_mount)  xmlFree (mount->fallback_mount);
+    if (mount->stream_name)     xmlFree (mount->stream_name);
+    if (mount->stream_description)  xmlFree (mount->stream_description);
+    if (mount->stream_url)      xmlFree (mount->stream_url);
+    if (mount->stream_genre)    xmlFree (mount->stream_genre);
+    if (mount->bitrate)         xmlFree (mount->bitrate);
+    if (mount->type)            xmlFree (mount->type);
+    if (mount->charset)         xmlFree (mount->charset);
+    if (mount->cluster_password)    xmlFree (mount->cluster_password);
 
-    xmlFree (mount->auth_type);
+    if (mount->auth_type)       xmlFree (mount->auth_type);
     option = mount->auth_options;
     while (option)
     {
         config_options_t *nextopt = option->next;
-        xmlFree (option->name);
-        xmlFree (option->value);
+        if (option->name)   xmlFree (option->name);
+        if (option->value)  xmlFree (option->value);
         free (option);
         option = nextopt;
     }
@@ -729,6 +729,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
     relay->next = NULL;
     relay->mp3metadata = 1;
     relay->on_demand = configuration->on_demand;
+    relay->mount = (char *)xmlCharStrdup ("/");
 
     do {
         if (node == NULL) break;
