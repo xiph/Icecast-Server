@@ -83,7 +83,7 @@ static void _lock_logger(void);
 static void _unlock_logger(void);
 
 
-static int _log_open (int id, const char *file_timestamp)
+static int _log_open (int id)
 {
     if (loglist [id] . in_use == 0)
         return 0;
@@ -102,8 +102,13 @@ static int _log_open (int id, const char *file_timestamp)
                 fclose (loglist [id] . logfile);
                 loglist [id] . logfile = NULL;
                 /* simple rename, but could use time providing locking were used */
-                if (loglist[id].archive_timestamp && file_timestamp) {
-                    snprintf (new_name,  sizeof(new_name), "%s.%s", loglist[id].filename, file_timestamp);
+                if (loglist[id].archive_timestamp)
+                {
+                    char timestamp [128];
+                    time_t now = time(NULL);
+
+                    strftime (timestamp, sizeof (timestamp), "%Y%m%d_%H%M%S", localtime (&now));
+                    snprintf (new_name,  sizeof(new_name), "%s.%s", loglist[id].filename, timestamp);
                 }
                 else {
                     snprintf (new_name,  sizeof(new_name), "%s.old", loglist [id] . filename);
@@ -397,6 +402,7 @@ void log_contents (int log_id, char **_contents, unsigned int *_len)
     _lock_logger ();
     remain = loglist [log_id].total + 1;
     *_contents = malloc (remain);
+    **_contents= '\0';
     *_len = loglist [log_id].total;
 
     entry = loglist [log_id].log_head;
@@ -420,10 +426,9 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
 {
     static char *prior[] = { "EROR", "WARN", "INFO", "DBUG" };
     int datelen;
-    char filename_tyme[128];
+    time_t now;
     char pre[256];
     char line[LOG_MAXLINELEN];
-    time_t now;
     va_list ap;
 
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return; /* Bad log number */
@@ -437,11 +442,10 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
 
     _lock_logger();
     datelen = strftime (pre, sizeof (pre), "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
-    strftime(filename_tyme, sizeof (filename_tyme), "%Y%m%d_%H%M%S", localtime(&now)); 
 
     snprintf (pre+datelen, sizeof (pre)-datelen, " %s %s%s ", prior [priority-1], cat, func);
 
-    if (_log_open (log_id, filename_tyme))
+    if (_log_open (log_id))
     {
         int len = create_log_entry (log_id, pre, line);
         if (len > 0)
@@ -456,7 +460,6 @@ void log_write_direct(int log_id, const char *fmt, ...)
 {
     char line[LOG_MAXLINELEN];
     va_list ap;
-    char filename_tyme[128];
     time_t now;
 
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
@@ -467,8 +470,7 @@ void log_write_direct(int log_id, const char *fmt, ...)
 
     _lock_logger();
     vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
-    strftime(filename_tyme, sizeof (filename_tyme), "%Y%m%d_%H%M%S", localtime(&now)); 
-    if (_log_open (log_id, filename_tyme))
+    if (_log_open (log_id))
     {
         int len = create_log_entry (log_id, "", line);
         if (len > 0)
