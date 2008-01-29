@@ -16,7 +16,7 @@ This section will describe each section of the config file and is grouped into t
 <ul>
 <li><a href="#limits">Limits</a></li>
 <li><a href="#authentication">Authentication</a></li>
-<li><a href="#yp">YP Directory Settings</a></li>
+<li><a href="#yp">Stream Directory Settings</a></li>
 <li><a href="#misc">Misc Server settings</a></li>
 <li><a href="#relay">Relay settings</a></li>
 <li><a href="#mount">Mount Specific settings</a></li>
@@ -35,7 +35,6 @@ This section will describe each section of the config file and is grouped into t
     &lt;limits&gt;
         &lt;clients&gt;100&lt;/clients&gt;
         &lt;sources&gt;2&lt;/sources&gt;
-        &lt;threadpool&gt;5&lt;/threadpool&gt;
         &lt;queue-size&gt;102400&lt;/queue-size&gt;
         &lt;client-timeout&gt;30&lt;/client-timeout&gt;
         &lt;header-timeout&gt;15&lt;/header-timeout&gt;
@@ -48,19 +47,21 @@ This section will describe each section of the config file and is grouped into t
 </p>
 <h4>clients</h4>
 <div class="indentedbox">
-Total number of concurrent clients supported by the server.  Listeners are considered clients, but so is accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max *concurrent* connections for the entire server (not per mountpoint).
+Total number of concurrent clients supported by the server.  Listeners are considered clients, but so are accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max *concurrent* connections for the entire server (not per mountpoint).
 </div>
 <h4>sources</h4>
 <div class="indentedbox">
-Maximum number of connected sources supported by the server.
-</div>
-<h4>threadpool</h4>
-<div class="indentedbox">
-This is the number of threads that are started to handle client connections.  You may need to increase this value if you are running a high traffic stream.  This recommended value is for a small to medium traffic server.
+Maximum number of connected sources supported by the server. This includes active relays and source clients
 </div>
 <h4>queue-size</h4>
 <div class="indentedbox">
-This is the maximum size (in bytes) of a client (listener) queue.  A listener may temporarily lag behind due to network congestion and in this case an internal queue is maintained for each listener.  If the queue grows larger than this config value, then the listener will be removed from the stream.
+    This is the maximum size (in bytes) of the stream queue.  A listener may temporarily lag behind
+    due to network congestion and in this case an internal queue is maintained for the listeners. 
+    If the queue grows larger than this config value, then it is truncated and any listeners found
+    will be removed from the stream.<br />
+    This will be the default setting for the streams which is 512k unless overridden here. You can
+    override this in the individual mount settings which can be useful if you have a mixture of high
+    bandwidth video and low bitrate audio streams.
 </div>
 <h4>client-timeout</h4>
 <div class="indentedbox">
@@ -76,14 +77,15 @@ If a connected source does not send any data within this timeout period (in seco
 </div>
 <h4>burst-on-connect</h4>
 <div class="indentedbox">
-With this enabled, a connecting client will be sent a burst of audio data from the stream.  This will have the effect of reducing the startup time for the stream from the perspective of the listener.  This is due to the fact that most media players have local buffers that must be filled before the stream begins to play.  This may introduce a small latency in the stream (difference in time between when the source plays a clip and the listener hears a clip).  If this latency is important to you, then you can disable this feature.  The latency is bitrate-dependent, but as an example, for a 128kbps stream, the latency between the source and the player is ~ 1.5 secs WITHOUT burst on connect, and WITH burst on connect the latency is 3 secs.
+    This setting is really just an alias for burst-size. When enabled the burst-size is 64 kbytes
+    and disabled the burst-size is 0 kbytes. This option is deprecated, use burst-size instead.
 </div>
 <h4>burst-size</h4>
 <div class="indentedbox">
 The burst size is the amount of data (in bytes) to burst to a client at connection time. Like
 burst-on-connect, this is to quickly fill the pre-buffer used by media players. The default
-is 64kbytes which is a typical size used by most clients so changing it is not usually required.
-This setting applies to all mountpoints.
+is 64 kbytes which is a typical size used by most clients so changing it is not usually required.
+This setting applies to all mountpoints unless overridden in the mount settings.
 </div>
 <p>
 <br />
@@ -101,11 +103,13 @@ This setting applies to all mountpoints.
         &lt;admin-password&gt;hackme&lt;/admin-password&gt;
     &lt;/authentication&gt;
 </pre>
-<p>This section contains all the users and passwords used for administration purposes or to connect sources and relays.
+<p>This section contains all the usernames and passwords used for administration purposes or to connect sources and relays.
 </p>
 <h4>source-password</h4>
 <div class="indentedbox">
-The unencrypted password used by sources to connect to icecast2.  Currently, the username for all source connections must be 'source'.  This is likely to change in the future.
+    The unencrypted password used by sources to connect to icecast2.  The default username
+    for all source connections is 'source' but this option allows to specify a default
+    password.  This and the username can be changed in the individual mount sections.
 </div>
 <h4>relay-user</h4>
 <div class="indentedbox">
@@ -128,7 +132,7 @@ The username/password used for all administration functions.  This includes retr
 <br />
 </p>
 <a name="yp"></a>
-<h2>YP Directory Settings</h2>
+<h2>Stream Directory Settings</h2>
 <pre>
     &lt;directory&gt;
         &lt;yp-url-timeout&gt;15&lt;/yp-url-timeout&gt;
@@ -152,32 +156,79 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
 </p>
 <a name="misc"></a>
 <h2>Misc Server Settings</h2>
+<p>Server wide settings.</p>
 <pre>
     &lt;hostname&gt;localhost&lt;hostname&gt;
+    &lt;fileserve&gt;1&lt;/fileserve&gt;
+    &lt;server-id&gt;icecast 2.3&lt;/server-id&gt;
+</pre>
 
-    &lt;-- You can use these two if you only want a single listening socket --&gt;
-    &lt;-- &lt;port&gt;8000&lt;/port&gt; --&gt;
-    &lt;-- &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt; --&gt;
+<h4>hostname</h4>
+<div class="indentedbox">
+    This is the DNS name or IP address that will be used for the stream directory lookups or
+    possibily the playlist generation if a Host header is not provided. While localhost is shown
+    as an example, in fact you will want something that your listeners can use.
+</div>
+<h4>fileserve</h4>
+<div class="indentedbox">
+    This flag turns on the icecast2 fileserver from which static files can be served.  All files
+    are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration
+    setting. By default the setting is enabled so that requests for the images on the status
+    page are retrievable.
+</div>
+<h4>server-id</h4>
+<div class="indentedbox">
+    This optional setting allows for the administrator of the server to override the default
+    server identification. The default is icecast followed by a version number and most will
+    not care to change it however this setting will change that.
+</div>
+
+<p>The following shows how you can specify the listening settings for the server.</p><p>The
+first shows an example of a common and simple way to define a listening socket
+<pre>
+    &lt;listen-socket&gt;
+        &lt;port&gt;8000&lt;/port&gt;
+    &lt;/listen-socket&gt;
+</pre>
+<p>Using this as a basis we can extend this with an &lt;bind-address&gt; setting to limit which
+address icecast will listen on. Most will not need to use bind-address and often get confused
+by using it when there is no need. Another possibility is to use an &lt;ssl&gt; boolean setting
+which informs icecast that a secured connection is to be used. A common use for using a secure
+connection would be for admin page access.</p>
+<p>The following shows how we can extend a single listen-socket to work with shoutcast style
+source clients. There are two issues shoutcast source clients have over icecast source clients,
+one is the lack of mountpoint and the second is the requirement of two ports. Both of these
+issues are handled by a simple addition in the listen-socket.</p>
+<pre>
+    &lt;listen-socket&gt;
+        &lt;port&gt;8000&lt;/port&gt;
+        &lt;shoutcast-mount&gt;/live.mp3&lt;/shoutcast-mount&gt;
+    &lt;/listen-socket&gt;
+</pre>
+<p>As before the port specified is allocated but this time the shoutcast-mount implicity defines
+a second listening socket whose port number is always one higher than the port defined, this also
+informs icecast of which mountpoint the shoutcast source client on this socket will be using.
+Using this approach you can allow multiple shoutcast source clients to connect at the same time.
+<p>The following is just to show the longer approach to defining shoutcast compatability.</p>
+<pre>
+    &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
 
     &lt;-- You may have multiple &lt;listen-socket&gt; elements --&gt;
     &lt;listen-socket&gt;
         &lt;port&gt;8000&lt;/port&gt;
-        &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
-    &lt;/listen-socket&gt;
-    &lt;listen-socket&gt;
-        &lt;port&gt;8001&lt;/port&gt;
-        &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
-        &lt;shoutcast-compat&gt;1&lt;/shoutcast-compat&gt;
     &lt;/listen-socket&gt;
 
-    &lt;fileserve&gt;1&lt;/fileserve&gt;
-    &lt;shoutcast-mount&gt;/live.nsv&lt;/shoutcast-mount&gt;
+    &lt;listen-socket&gt;
+        &lt;port&gt;8001&lt;/port&gt;
+        &lt;shoutcast-compat&gt;1&lt;/shoutcast-compat&gt;
+    &lt;/listen-socket&gt;
 </pre>
-<p>This section contains miscellaneous server settings.  Note that multiple listen-socket
-sections may be configured in order to have icecast2 listen on multiple network interfaces.
+
+<p>Note that multiple listen-socket sections may be configured in order to have icecast2 listen
+on multiple network interfaces or multiple ports.
 If a bind-address is not specified for a particular listen-socket, then the socket will be
-bound to all interfaces. Generally, you won't need to set bind-address. There is an internal
-limit of 20 listening sockets currently, which may be extended in later releases.
+bound to all interfaces (including IPv6 if available). For most people, the bind-address option
+will not be required and often confuses people.
 </p>
 <h4>port</h4>
 <div class="indentedbox">
@@ -187,19 +238,21 @@ The TCP port that will be used to accept client connections.
 <div class="indentedbox">
 An optional IP address that can be used to bind to a specific network card.  If not supplied, then it will bind to all interfaces.
 </div>
+<h4>shoutcast-mount</h4>
+<div class="indentedbox">
+    An optional mountpoint setting to be used when shoutcast DSP compatible clients connect. The
+    default global setting is /stream but can be overridden here to use an alternative name which
+    may include an extension that some clients require for certain formats.<br /><br />
+    Defining this within a listen-socket group tells icecast that this port and the subsequent
+    port are to be used for shoutcast compatible source clients. This is an alternative to the
+    shoutcast-compat approach as this implicitly defines the second listening socket and allows
+    for specifying multiple sockets using different mountpoints for shoutcast source
+    clients. The shoutcast-mount outside of a listen-socket group is the global setting of the
+    mountpoint to use.
+</div>
 <h4>shoutcast-compat</h4>
 <div class="indentedbox">
 This optional flag will indicate that this port will operate in 'shoutcast-compatibility' mode.  Due to major differences in the source client connection protocol, if you wish to use any of the shoutcast DJ tools, you will need to configure at least one socket as shoutcast-compatible.  Note that when in this mode, only source clients (and specifically shoutcast source clients) will be able to attach to this port.  All listeners may connect to any of the ports defined without this flag.  Also, for proper Shoutcast DSP compatibility, you must define a listen socket with a port one less than the one defined as 'shoutcast-compat'.  This means if you define 8001 as shoutcast-compat, then you will need to define a listen port of 8000 and it must not also be defined as shoutcast-compat.  See the example config file in the distribution for more info.
-</div>
-<h4>fileserve</h4>
-<div class="indentedbox">
-This flag turns on the icecast2 fileserver from which static files can be served.  All files are served relative to the path specified in the &lt;paths&gt;&lt;webroot&gt; configuration setting.
-</div>
-<h4>shoutcast-mount</h4>
-<div class="indentedbox">
-An optional mountpoint to use when shoutcast DSP compatible clients connect. The default is /stream but can
-be overridden here to use an alternative name which may include an extension that some clients require for
-certain formats.
 </div>
 <p>
 <br />
@@ -207,7 +260,16 @@ certain formats.
 <br />
 </p>
 <a name="relay"></a>
-<h2>Relay Settings</h2>
+<h2>Relaying Streams</h2>
+
+<p>This section contains the servers relay settings. The relays are implemented using a pull system where
+the receiving server connects as if its a listener to the sending server.  There are two types of relay
+setups: a "Master server relay" or a "Specific Mountpoint relay." 
+</p>
+<h3>Master Relay</h3>
+<p>
+A Master server relay is only supported between icecast2 servers and is used to relay a number of
+mountpoints from a remote icecast2 server.
 <pre>
     &lt;master-server&gt;127.0.0.1&lt;/master-server&gt;
     &lt;master-server-port&gt;8001&lt;/master-server-port&gt;
@@ -215,38 +277,14 @@ certain formats.
     &lt;master-username&gt;relay&lt;/master-username&gt;
     &lt;master-password&gt;hackme&lt;/master-password&gt;
     &lt;relays-on-demand&gt;0&lt;/relays-on-demand&gt;
-
-    &lt;relay&gt;
-        &lt;server&gt;127.0.0.1&lt;/server&gt;
-        &lt;port&gt;8001&lt;/port&gt;
-        &lt;mount&gt;/example.ogg&lt;/mount&gt;
-        &lt;local-mount&gt;/different.ogg&lt;/local-mount&gt;
-        &lt;username&gt;joe&lt;/username&gt;
-        &lt;password&gt;soap&lt;/password&gt;
-        &lt;relay-shoutcast-metadata&gt;0&lt;/relay-shoutcast-metadata&gt;
-        &lt;on-demand&gt;0&lt;/on-demand&gt;
-    &lt;/relay&gt;
 </pre>
-<p>This section contains the server's relay settings. There are two types of relays: a "Master server relay" or a "Specific Mountpoint relay."  A Master server relay is only supported between icecast2 servers and is used to relays all mountpoints on a remote icecast2 server.
-</p>
-<h3>Master Relay</h3>
-<p>
-The following diagram shows the basics of doing a Master relay.  Note that Server 1 is configured with the &lt;master-server&gt;, &lt;master-server-port&gt;, etc settings and Server 2 is the server from which Server 1 will pull all attached mountpoints and relay them.  Using a Master Server relay, ALL mountpoints on Server 2 will be relayed.  If only specific mountpoints need to be relayed, then you must configure Server 1 as a "Specific Mountpoint Relay".  Both Master server relays and Specific Mountpoint relays begin their "relaying" when the Server is started.
-</p>
-<pre>
-      |-----|                       |-----|
-      |     |  all mountpoints      |     | /mount1
-      |     | &lt;-------------------  |     | /mount2.ogg
-      |-----|                       |-----| /mount3
-      Icecast 2                     Icecast 2
-      Server 1                      Server 2
-      (RELAY SERVER)                (MASTER SERVER)
-
-     configured with
-     &lt;master-server&gt;
-     settings
-
-</pre>
+<br />
+<p>The following diagram shows the basics of using a Master relay.  Please note that the slave is
+configured with the &lt;master-server&gt;, &lt;master-server-port&gt;, etc settings and the
+master is the icecast server from which the slave will pull mountpoints and relay them.   Using a
+Master server relay, all non-hidden mountpoints on the master can be relayed using this mechanism. </p>
+<br />
+<img src="masterslave.png">
 <p>
 A server is configured as a Master Server relay by specifying the &lt;master-server&gt;, &lt;master-server-port&gt;,&lt;master-update-interval&gt;,&lt;master-password&gt; values in the config file.  The server that is being relayed does not need any special configuration.
 </p>
@@ -276,33 +314,29 @@ server for a list of mountpoints to relay.
 </div>
 <h4>relays-on-demand</h4>
 <div class="indentedbox">
-    <p>Changes the default on-demand setting for relays, so a stream is only relayed if
-    listeners are connected. 1=enabled, 0=disabled (default).
-    </p>
+Global on-demand setting for relays. Because you do not have individual relay options when using a
+master server relay, you still may want those relays to only pull the stream when there is at least
+one listener on the slave. The typical case here is to avoid surplus bandwidth costs when no one is
+listening.
 </div>
 
 <br />
 <h3>Specific Mountpoint Relay</h3>
-The following diagram shows the basics of doing a Specific Mountpoint relay.  Note that Server 1 is configured with the &lt;relay&gt; settings and Server 2 is the server from which Server 1 will pull the specified mountpoint(s) and relay them.  Using a Specific Mountpoint Relay, only those mountpoints specified on Server 1 will be relayed from Server 2.
+<p>
+If only specific mountpoints need to be relayed, then you can configure Icecast with a "Specific
+Mountpoint Relay". 
+</p>
+The following diagram shows the basics of using a Specific Mountpoint relay.  Note that the relaying
+Icecast is configured with the &lt;relay&gt; settings and will pull the specified mountpoint(s) and
+relay them to the listeners.  Using a Specific Mountpoint Relay, only those mountpoints specified
+will be relayed.
 
-<pre>
-      |-----|                       |-----|
-      |     |      /mount3          |     | /mount1
-      |     | &lt;-------------------  |     | /mount2.ogg
-      |-----|                       |-----| /mount3
-      Icecast 2                     Icecast 2/Shoutcast/Icecast
-      Server 1                      Server 2
-      (RELAY SERVER)                (REMOTE SERVER)
-
-     configured with
-     &lt;relay&gt;
-     settings
-
-</pre>
-
+<br /><br />
+<img src="relay.png">
+<p>
 Specific Mountpoint Relays can be configured to relay from an Icecast 2 server, as well as Icecast 1.x and Shoutcast.
 A server is configured as a Specific Mountpoint Server relay by specifying a &lt;relay&gt; XML chunk in the config file for each mountpoint to be relayed.  The server that is being relayed does not need any special configuration.
-
+</p>
 <pre>
     &lt;relay&gt;
         &lt;server&gt;127.0.0.1&lt;/server&gt;
@@ -327,11 +361,13 @@ This is the TCP Port for the server which contains the mountpoint to be relayed.
 </div>
 <h4>mount</h4>
 <div class="indentedbox">
-The mountpoint located on the remote server.  If you are relaying a shoutcast stream, this must be '/'.
+    The mountpoint located on the remote server.  If you are relaying a shoutcast stream, this
+    should be a '/' or '/;name'. 
 </div>
 <h4>local-mount</h4>
 <div class="indentedbox">
-The name to use for the local mountpoint.  This is what the mount will be named on the RELAY SERVER.
+    The name to use for the local mountpoint.  This is what the mount will be named on the relaying
+    server. By default the remote mountpoint name is used.
 </div>
 <h4>username</h4>
 <div class="indentedbox">
@@ -343,13 +379,15 @@ The source of the relay may require authentication itself, if so state the passw
 </div>
 <h4>relay-shoutcast-metadata</h4>
 <div class="indentedbox">
-If you are relaying a Shoutcast stream, you need to specify this indicator to also relay the metadata (song titles) that is part of the Shoutcast stream (1=enabled, 0=disabled).
+    If you are relaying a Shoutcast stream, you may want to specify this indicator to also relay
+    the metadata (song titles) that are part of the Shoutcast data stream (1=enabled, 0=disabled).
+    By default this is enabled but it is up to the remote server on whether it sends any.
 </div>
 <h4>on-demand</h4>
 <div class="indentedbox">
-    <p>An on-demand relay will only retrieve the stream if there are listeners connected
-    1=enabled, 0=disabled (default is &lt;relays-on-demand&gt;).
-    </p>
+    <p>An on-demand relay will only retrieve the stream if there are listeners requesting the
+    stream.  1=enabled, 0=disabled (default is &lt;relays-on-demand&gt;). This is useful in cases
+    where you want to limit bandwidth costs when no one is listening. </p>
 </div>
 
 <p>
@@ -371,6 +409,7 @@ If you are relaying a Shoutcast stream, you need to specify this indicator to al
         &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
         &lt;fallback-override&gt;1&lt;/fallback-override&gt;
         &lt;fallback-when-full&gt;1&lt;/fallback-when-full&gt;
+        &lt;charset&gt;ISO8859-1&lt;/charset&gt;
         &lt;public&gt;1&lt;/public&gt;
         &lt;stream-name&gt;My audio stream&lt;/stream-name&gt;
         &lt;stream-description&gt;My audio description&lt;/stream-description&gt;
@@ -474,6 +513,19 @@ listening clients back from the fallback mount.
     so YP advertising can occur however you may want to prevent it here if you intend listeners
     to connect to a local relay instead. Deprecated option, replaced by &lt;public&gt;
     </p>
+</div>
+<h4>charset</h4>
+<div class="indentedbox">
+    <p>For non-Ogg streams like MP3, the metadata that is inserted into the stream often has no
+    defined character set. We have traditionally assumed UTF8 as it allows for multiple language
+    sets on the web pages and stream directory, however many source clients for MP3 type streams
+    have assumed Latin1 (ISO 8859-1) or leave it to whatever character set is in use on the
+    source client system.</p>
+    <p>This character mismatch has been known to cause a problem as the stats engine and stream
+    directory servers want UTF8 so now we assume Latin1 for non-Ogg streams (to handle the common
+    case) but you can specify an alternative character set with this option.
+    <p>The source clients can also specify a charset= parameter to the metadata update URL if
+    they so wish.</p>
 </div>
 <h4>public</h4>
 <div class="indentedbox">
@@ -581,6 +633,8 @@ This specifies that the named mount point will require listener authentication. 
         &lt;pidfile&gt;./icecast.pid&lt;/pidfile&gt;
         &lt;webroot&gt;./web&lt;/webroot&gt;
         &lt;adminroot&gt;./admin&lt;/adminroot&gt;
+        &lt;allow-ip&gt;/path/to/ip_allowlist&lt;/allow-ip&gt;
+        &lt;deny-ip&gt;/path_to_ip_denylist&lt;/deny-ip&gt;
         &lt;alias source="/foo" dest="/bar"/&gt;
     &lt;/paths&gt;
 </pre>
@@ -605,6 +659,18 @@ This path specifies the base directory used for all static file requests.  This 
 <h4>adminroot</h4>
 <div class="indentedbox">
 This path specifies the base directory used for all admin requests.  More specifically, this is used to hold the XSLT scripts used for the web-based admin interface.  The admin directory contained within the icecast distribution contains these files.
+</div>
+<h4>allow-ip</h4>
+<div class="indentedbox">
+    If specified, this specifies the location of a file that contains a list of IP addresses that
+    will be allowed to connect to icecast. This could be useful in cases where a master only
+    feeds known slaves. The format of the file is simple, one IP per line.
+</div>
+<h4>deny-ip</h4>
+<div class="indentedbox">
+    If specified, this specifies the location of a file that contains a list of IP addressess that
+    will be dropped immediately. This is mainly for problem clients when you have no access to any
+    firewall configuration. The format of the file is simple, one IP per line.
 </div>
 <h4>alias source="/foo" dest="/bar"</h4>
 <div class="indentedbox">

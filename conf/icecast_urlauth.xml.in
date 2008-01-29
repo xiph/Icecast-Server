@@ -3,12 +3,10 @@
     <limits>
         <clients>100</clients>
         <sources>2</sources>
-        <threadpool>5</threadpool>
         <queue-size>524288</queue-size>
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
         <source-timeout>10</source-timeout>
-        <burst-on-connect>1</burst-on-connect>
         <burst-size>65535</burst-size>
     </limits>
     <authentication>
@@ -41,7 +39,7 @@
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
-      	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
     </logging>
     <security>
         <chroot>0</chroot>
