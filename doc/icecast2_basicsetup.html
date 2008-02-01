@@ -34,17 +34,23 @@
 <tr><td>logs</td><td>This is a blank directory which (if specified in the config file) will contain all the logs (there are 2) for icecast.</td></tr>
 </table>
 </div>
-<p>The next step is to edit the icecast.xml file and set the appropriate values.  Most of the default values are fine as provided, and for a basic setup the following entries should be changed :
+<p>The next step is to edit the icecast.xml file and set the appropriate values.  Most of the
+specified values in the samples are fine, for a basic setup the following entries should be
+specified, and if neccessary, changed to suite your situation :
 <br /><br />
 </p>
 <pre>
-&lt;source-password&gt; - will be used by the source client
-&lt;admin-password&gt; - will be used to access admin features of icecast
+&lt;hostname&gt; - DNS name or IP address used for stream directory listings.
+&lt;source-password&gt; - will be used for the source client authentication
+&lt;admin-password&gt; - will be used for authenticating admin features of icecast
 &lt;listen-socket&gt; (both port and bind-address)
 &lt;logdir&gt; - directory where log files will be placed
-&lt;webroot&gt; - any static content can be placed here (file serving root)
+&lt;webroot&gt; - directory for non admin content (file serving root), status page is provided
 &lt;adminroot&gt; - directory containing admin xslt files
 </pre>
+<p>Most will not need to change adminroot/webroot as those are only read by icecast but icecast
+needs to create files in the logdir which MAY mean you want to be more selective. The other
+settings above will need to be provided by the icecast administrator </p>
 <p>Once the configuration file is modified, you should be able to start the server with the following command</p>
 <pre>
 icecast -c /path/to/icecast.xml
