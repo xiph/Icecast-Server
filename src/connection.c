@@ -711,7 +711,7 @@ void *connection_thread (void *arg)
 {
     connection_t *con;
     ice_config_t *config;
-    int duration = 200;
+    int duration = 300;
 
     connection_running = 1;
     INFO0 ("connection thread started");
@@ -759,7 +759,6 @@ void *connection_thread (void *arg)
             if (duration > 5)
             {
                 duration = 5;
-                continue;
             }
         }
         else

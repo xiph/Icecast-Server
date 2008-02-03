@@ -502,13 +502,9 @@ static void url_stream_auth (auth_client *auth_user)
     curl_easy_setopt (atd->curl, CURLOPT_URL, url->stream_auth);
     curl_easy_setopt (atd->curl, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (atd->curl, CURLOPT_WRITEHEADER, auth_user);
-    if (strncmp (auth_user->mount, "/admin/", 7) == 0)
-    {
-        mount = util_url_escape (httpp_get_query_param (client->parser, "mount"));
+    if (strcmp (auth_user->mount, httpp_getvar (client->parser, HTTPP_VAR_URI)) != 0)
         admin = "&admin=1";
-    }
-    else
-        mount = util_url_escape (auth_user->mount);
+    mount = util_url_escape (auth_user->mount);
     host = util_url_escape (auth_user->hostname);
     user = util_url_escape (client->username);
     pass = util_url_escape (client->password);

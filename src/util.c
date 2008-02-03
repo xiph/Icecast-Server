@@ -278,11 +278,16 @@ static char safechars[256] = {
 
 char *util_url_escape (const char *src)
 {
-    int len = strlen(src);
+    int len, i, j=0;
+    char *dst;
+    unsigned char *source;
+
+    if (src == NULL)
+        return strdup ("");
+    len = strlen(src);
     /* Efficiency not a big concern here, keep the code simple/conservative */
-    char *dst = calloc(1, len*3 + 1); 
-    unsigned char *source = (unsigned char *)src;
-    int i,j=0;
+    dst = calloc(1, len*3 + 1); 
+    source = (unsigned char *)src;
 
     for(i=0; i < len; i++) {
         if(safechars[source[i]]) {
@@ -774,7 +779,7 @@ void rate_add (struct rate_calc *calc, long value, time_t t)
  */
 long rate_avg (struct rate_calc *calc)
 {
-    if (calc->blocks < 2)
+    if (calc == NULL || calc->blocks < 2)
         return 0;
     return (long)(calc->total / (calc->blocks-1));
 }

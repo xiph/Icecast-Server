@@ -857,6 +857,26 @@ static int _parse_limits (xmlNodePtr node, void *arg)
     return 0;
 }
 
+static int _parse_master (xmlNodePtr node, void *arg)
+{
+    ice_config_t *config = arg;
+
+    struct cfg_tag icecast_tags[] =
+    {
+        { "server",             config_get_str,     &config->master_server },
+        { "port",               config_get_int,     &config->master_server_port },
+        { "ssl-port",           config_get_int,     &config->master_ssl_port },
+        { "username",           config_get_str,     &config->master_username },
+        { "password",           config_get_str,     &config->master_password },
+        { "bind",               config_get_str,     &config->master_bind },
+        { "update-interval",    config_get_int,     &config->master_update_interval },
+        { "relay-auth",         config_get_bool,    &config->master_relay_auth },
+        { "redirect",           config_get_bool,    &config->master_redirect },
+        { NULL, NULL, NULL },
+    };
+}
+
+
 static int _parse_listen_sock (xmlNodePtr node, void *arg)
 {
     ice_config_t *config = arg;
@@ -936,6 +956,7 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
         { "limits",             _parse_limits,      config },
         { "relay",              _parse_relay,       config },
         { "mount",              _parse_mount,       config },
+        { "master",             _parse_master,      config },
         { "directory",          _parse_directory,   config },
         { "paths",              _parse_paths,       config },
         { "logging",            _parse_logging,     config },

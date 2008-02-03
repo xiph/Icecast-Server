@@ -573,7 +573,7 @@ static int auth_postprocess_listener (auth_client *auth_user)
     const char *mount = auth_user->mount;
 
     if (client == NULL)
-        return 0;
+        return -1;
 
     if (client->authenticated == 0)
     {
@@ -583,7 +583,7 @@ static int auth_postprocess_listener (auth_client *auth_user)
         else if (auth->rejected_mount)
             mount = auth->rejected_mount;
         else
-            return 0;
+            return -1;
     }
     config = config_get_config();
     mountinfo = config_find_mount (config, mount);
@@ -602,14 +602,20 @@ static int auth_postprocess_listener (auth_client *auth_user)
 void auth_postprocess_source (auth_client *auth_user)
 {
     client_t *client = auth_user->client;
-    const char *uri = auth_user->mount;
+    const char *mount = auth_user->mount;
+    const char *req = httpp_getvar (client->parser, HTTPP_VAR_URI);
 
-    DEBUG1 ("checking reference (%s)", uri);
     auth_user->client = NULL;
-    if (strcmp (uri, "/admin.cgi") != 0 && strncmp("/admin/", uri, 7) != 0)
-        source_startup (client, uri, 0);
+    if (strcmp (req, "/admin.cgi") == 0 || strncmp ("/admin/metadata", req, 15) == 0)
+    {
+        DEBUG2 ("metadata request (%s, %s)", req, mount);
+        admin_mount_request (client, "metadata");
+    }
     else
-        admin_mount_request (client, uri);
+    {
+        DEBUG1 ("on mountpoint %s", mount);
+        source_startup (client, mount, 0);
+    }
 }
 
 

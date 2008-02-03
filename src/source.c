@@ -807,7 +807,6 @@ static void source_init (source_t *source)
     source->prev_listeners = -1;
     source->bytes_sent_since_update = 0;
     source->stats_interval = 5;
-    source->running = 1;
     /* so the first set of average stats after 3 seconds */
     source->client_stats_update = global.time + 3;
 
@@ -862,6 +861,7 @@ static void source_init (source_t *source)
 
     source->format->in_bitrate = rate_setup (source->avg_bitrate_duration+1);
     source->format->out_bitrate = rate_setup (source->avg_bitrate_duration+1);
+    source->running = 1;
 }
 
 
