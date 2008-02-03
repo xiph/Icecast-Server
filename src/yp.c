@@ -77,7 +77,7 @@ typedef struct ypdata_tag
     time_t      next_update;
     unsigned    touch_interval;
     char        *error_msg;
-    unsigned    (*process)(struct ypdata_tag *yp, char *s, unsigned len);
+    int    (*process)(struct ypdata_tag *yp, char *s, unsigned len);
 
     struct ypdata_tag *next;
 } ypdata_t;
@@ -96,9 +96,9 @@ static volatile char *server_version = NULL;
 
 static void *yp_update_thread(void *arg);
 static void add_yp_info (ypdata_t *yp, void *info, int type);
-static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len);
-static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len);
-static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len);
+static int do_yp_remove (ypdata_t *yp, char *s, unsigned len);
+static int do_yp_add (ypdata_t *yp, char *s, unsigned len);
+static int do_yp_touch (ypdata_t *yp, char *s, unsigned len);
 static void yp_destroy_ypdata(ypdata_t *ypdata);
 
 
@@ -284,7 +284,9 @@ void yp_initialize(void)
 
 
 
-/* handler for curl, checks if successful handling occurred */
+/* handler for curl, checks if successful handling occurred
+ * return 0 for ok, -1 for this entry failed, -2 for server fail
+ */
 static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
 {
     int curlcode;
@@ -298,9 +300,9 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     if (curlcode)
     {
         yp->process = do_yp_add;
-        yp->next_update += 300;
+        yp->next_update += 900;
         ERROR2 ("connection to %s failed with \"%s\"", server->url, server->curl_error);
-        return -1;
+        return -2;
     }
     if (yp->cmd_ok == 0)
     {
@@ -317,16 +319,18 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
 
 
 /* routines for building and issues requests to the YP server */
-static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len)
+static int do_yp_remove (ypdata_t *yp, char *s, unsigned len)
 {
+    int ret = 0;
+
     if (yp->sid)
     {
-        int ret = snprintf (s, len, "action=remove&sid=%s", yp->sid);
+        ret = snprintf (s, len, "action=remove&sid=%s", yp->sid);
         if (ret >= (signed)len)
             return ret+1;
 
         INFO1 ("clearing up YP entry for %s", yp->mount);
-        send_to_yp ("remove", yp, s);
+        ret = send_to_yp ("remove", yp, s);
         free (yp->sid);
         yp->sid = NULL;
     }
@@ -334,11 +338,11 @@ static unsigned do_yp_remove (ypdata_t *yp, char *s, unsigned len)
     yp->remove = 1;
     yp->process = do_yp_add;
 
-    return 0;
+    return ret;
 }
 
 
-static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
+static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
 {
     int ret;
     char *value;
@@ -382,18 +386,19 @@ static unsigned do_yp_add (ypdata_t *yp, char *s, unsigned len)
                     yp->server_type, yp->subtype, yp->bitrate, yp->audio_info);
     if (ret >= (signed)len)
         return ret+1;
-    if (send_to_yp ("add", yp, s) == 0)
+    ret = send_to_yp ("add", yp, s);
+    if (ret == 0)
     {
         yp->process = do_yp_touch;
         /* force first touch in 5 secs */
         yp->next_update = time(NULL) + 5;
     }
 
-    return 0;
+    return ret;
 }
 
 
-static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
+static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
 {
     unsigned listeners = 0, max_listeners = 1;
     char *val, *artist, *title;
@@ -450,27 +455,26 @@ static unsigned do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
 
-    send_to_yp ("touch", yp, s);
-    return 0;
+    return send_to_yp ("touch", yp, s);
 }
 
 
 
-static void process_ypdata (struct yp_server *server, ypdata_t *yp)
+static int process_ypdata (struct yp_server *server, ypdata_t *yp)
 {
     unsigned len = 512;
     char *s = NULL, *tmp;
 
     if (now < yp->next_update)
-        return;
+        return 0;
     yp->next_update = now + yp->touch_interval;
 
     /* loop just in case the memory area isn't big enough */
     while (1)
     {
-        unsigned ret;
+        int ret;
         if ((tmp = realloc (s, len)) == NULL)
-            return;
+            return 0;
         s = tmp;
 
         if (yp->release)
@@ -483,23 +487,35 @@ static void process_ypdata (struct yp_server *server, ypdata_t *yp)
         if (ret == 0)
         {
            free (s);
-           return;
+           return ret;
         }
         len = ret;
     }
+    return 0;
 }
 
 
 static void yp_process_server (struct yp_server *server)
 {
     ypdata_t *yp;
+    int state = 0;
 
     /* DEBUG1("processing yp server %s", server->url); */
     yp = server->mounts;
     while (yp)
     {
         now = time (NULL);
-        process_ypdata (server, yp);
+        /* if one of the streams shows that the server cannot be contacted then mark the
+         * other entries for an update later. Assume YP server is dead and skip it for now
+         */
+        if (state == -2)
+        {
+            DEBUG2 ("skiping %s on %s", yp->mount, server->url);
+            yp->process = do_yp_add;
+            yp->next_update += 900;
+        }
+        else
+            state = process_ypdata (server, yp);
         yp = yp->next;
     }
 }
