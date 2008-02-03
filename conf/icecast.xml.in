@@ -44,14 +44,11 @@
     listings. -->
     <hostname>localhost</hostname>
 
-    <!-- You can use these two if you only want a single listening socket -->
-    <!--<port>8000</port> -->
-    <!--<bind-address>127.0.0.1</bind-address>-->
-
     <!-- You may have multiple <listener> elements -->
     <listen-socket>
         <port>8000</port>
         <!-- <bind-address>127.0.0.1</bind-address> -->
+        <!-- <shoutcast-mount>/stream</shoutcast-mount> -->
     </listen-socket>
     <!--
     <listen-socket>
@@ -155,7 +152,7 @@
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
         <!-- <playlistlog>playlist.log</playlistlog> -->
-      	<loglevel>4</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
       	<logsize>10000</logsize> <!-- Max size of a logfile -->
         <!-- If logarchive is enabled (1), then when logsize is reached
              the logfile will be moved to [error|access|playlist].log.DATESTAMP,
