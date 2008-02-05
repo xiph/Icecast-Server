@@ -30,6 +30,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifdef HAVE_POLL
+#include <poll.h>
+#endif
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
@@ -508,6 +511,26 @@ int sock_read_line(sock_t sock, char *buff, const int len)
  * return 0 for try again, interrupted
  * return 1 for ok 
  */
+#ifdef HAVE_POLL
+int sock_connected (sock_t sock, int timeout)
+{
+    struct pollfd check;
+
+    check.fd = sock;
+    check.events = POLLOUT;
+    switch (poll (&check, 1, timeout*1000))
+    {
+        case 0: return SOCK_TIMEOUT;
+        case -1:
+            if (sock_recoverable (sock_error()))
+                return 0;
+            return SOCK_ERROR;
+        default: return 1;
+    }                                           
+}
+
+#else
+
 int sock_connected (sock_t sock, int timeout)
 {
     fd_set wfds;
@@ -545,6 +568,7 @@ int sock_connected (sock_t sock, int timeout)
             return SOCK_ERROR;
     }
 }
+#endif
 
 #ifdef HAVE_GETADDRINFO
 
