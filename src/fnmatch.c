@@ -30,19 +30,16 @@
 
 #include <fnmatch.h>
 
-#if 0
-#ifdef HAVE_FNMATCH_H
-#include <fnmatch.h>
-#endif
 #ifdef HAVE_FNMATCH__H
 #include "fnmatch_.h"
 #endif
 
+/* ugly hack needed in some win32 build cases */
 #ifdef WIN32
 int __mb_cur_max;
 unsigned short* _pctype;
 #endif
-#endif
+
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>
 #endif

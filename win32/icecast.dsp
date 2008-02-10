@@ -37,11 +37,11 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Releaseicecast"
-# PROP Intermediate_Dir "Releaseicecast"
+# PROP Output_Dir "lib_release"
+# PROP Intermediate_Dir "lib_release"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I ".." /I "..\src" /D "NDEBUG" /D "_LIB" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Zd /O2 /I ".." /I "..\src" /D "NDEBUG" /D "_LIB" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -60,11 +60,11 @@ LIB32=link.exe -lib
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debugicecast"
-# PROP Intermediate_Dir "Debugicecast"
+# PROP Output_Dir "lib_debug"
+# PROP Intermediate_Dir "lib_debug"
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MT /W3 /Gm /GX /ZI /Od /I ".." /I "..\src" /D "_DEBUG" /D "_LIB" /D "WIN32" /D "_MBCS" /D HAVE_CONFIG_H=1 /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I ".." /I "..\src" /D "_DEBUG" /D "_LIB" /D "WIN32" /D "_MBCS" /D HAVE_CONFIG_H=1 /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -284,10 +284,6 @@ SOURCE=..\src\logging.c
 # Begin Source File
 
 SOURCE=..\src\logging.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\main.c
 # End Source File
 # Begin Source File
 

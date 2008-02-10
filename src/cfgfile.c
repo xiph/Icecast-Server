@@ -874,6 +874,11 @@ static int _parse_master (xmlNodePtr node, void *arg)
         { "redirect",           config_get_bool,    &config->master_redirect },
         { NULL, NULL, NULL },
     };
+
+    if (parse_xml_tags (node, icecast_tags))
+        return -1;
+
+    return 0;
 }
 
 

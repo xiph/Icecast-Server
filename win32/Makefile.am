@@ -12,5 +12,5 @@ EXTRA_DIST = ConfigTab.cpp ConfigTab.h Icecast2win.clw Icecast2win.cpp \
     colors.h icecast.dsp icecast.ico icecast2.iss icecast2logo2.bmp\
     resource.h running.bmp stopped.bmp TRAYNOT.h Traynot.cpp \
     icecast2_console.dsw icecast2_console.dsp credits.bmp icecast2title.bmp \
-    icecastService.cpp icecastService.dsp config.h.vc6 fnmatch.h
+    icecastService.cpp icecastService.dsp fnmatch.h
 

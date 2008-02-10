@@ -38,12 +38,12 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 5
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release"
-# PROP Intermediate_Dir "Release"
+# PROP Output_Dir "win_release"
+# PROP Intermediate_Dir "win_release"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I ".." /I "..\src" /D "NDEBUG" /D "_WINDOWS" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Zi /O2 /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I ".." /I "..\src" /D "NDEBUG" /D "_WINDOWS" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -53,8 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /machine:I386
-# ADD LINK32 Releaseicecast\icecast.lib libcurl.lib ogg_static_d.lib vorbis_static.lib theora_static_d.lib libspeex.lib libxml2.lib libxslt.lib iconv.lib pthreadVSE.lib ws2_32.lib winmm.lib ssleay32MT.lib /nologo /subsystem:windows /machine:I386 /nodefaultlib:"libc.lib" /nodefaultlib:"libcd.lib" /nodefaultlib:"libcmtd.lib" /out:"Release/Icecast2.exe"
-# SUBTRACT LINK32 /pdb:none
+# ADD LINK32 libspeex.lib theora_static_d.lib ogg_static_d.lib vorbis_static_d.lib pthreadVSE.lib ssleay32MT.lib libcurl.lib libxml2.lib libxslt.lib iconv.lib ws2_32.lib winmm.lib /nologo /subsystem:windows /machine:I386 /nodefaultlib:"libcd.lib" /nodefaultlib:"libcmtd.lib"
 
 !ELSEIF  "$(CFG)" == "Icecast2win - Win32 Debug"
 
@@ -63,25 +62,25 @@ LINK32=link.exe
 # PROP BASE Output_Dir "Debug"
 # PROP BASE Intermediate_Dir "Debug"
 # PROP BASE Target_Dir ""
-# PROP Use_MFC 6
+# PROP Use_MFC 5
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug"
-# PROP Intermediate_Dir "Debug"
+# PROP Output_Dir "win_debug"
+# PROP Intermediate_Dir "win_debug"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I ".." /I "..\src" /D "_DEBUG" /D "_WIN32" /D "_AFXDLL" /D "_WINDOWS" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I ".." /I "..\src" /D "_DEBUG" /D "_WIN32" /D "_WINDOWS" /D HAVE_CONFIG_H=1 /D "WIN32" /D "_MBCS" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
+# ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 Debugicecast\icecast.lib libcurl.lib ogg_static_d.lib vorbis_static.lib theora_static_d.lib libspeex.lib libxml2.lib libxslt.lib iconv.lib pthreadVSE.lib ws2_32.lib winmm.lib ssleay32MT.lib /nologo /subsystem:windows /incremental:no /debug /machine:I386 /nodefaultlib:"libcd.lib" /nodefaultlib:"libcmt.lib" /nodefaultlib:"libcmtd.lib" /pdbtype:sept
-# SUBTRACT LINK32 /pdb:none
+# ADD LINK32 libspeex.lib theora_static_d.lib ogg_static_d.lib vorbis_static_d.lib pthreadVSE.lib ssleay32MT.lib libcurl.lib libxml2.lib libxslt.lib iconv.lib ws2_32.lib winmm.lib /nologo /subsystem:windows /debug /machine:I386 /nodefaultlib:"libcd.lib" /pdbtype:sept
+# SUBTRACT LINK32 /verbose
 
 !ENDIF 
 
@@ -107,6 +106,10 @@ SOURCE=.\Icecast2win.rc
 # Begin Source File
 
 SOURCE=.\Icecast2winDlg.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=\xiph\icecast\branches\kh\icecast\src\main.c
 # End Source File
 # Begin Source File
 

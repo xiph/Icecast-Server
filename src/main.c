@@ -104,13 +104,21 @@ static void _initialize_subsystems(void)
     connection_initialize();
     global_initialize();
     refbuf_initialize();
+#if !defined(WIN32) || defined(WIN32_SERVICE)
+    /* win32 GUI needs to do the initialise before here */
     xslt_initialize();
+    curl_global_init (CURL_GLOBAL_ALL);
+#endif
 }
 
 static void _shutdown_subsystems(void)
 {
     fserve_shutdown();
+#if !defined(WIN32) || defined(WIN32_SERVICE)
+    /* If we do the following cleanup on the win32 GUI then the app will crash when libxml2 is
+     * initialised again as the process doesn't terminate */
     xslt_shutdown();
+#endif
     refbuf_shutdown();
     slave_shutdown();
     auth_shutdown();
@@ -125,11 +133,6 @@ static void _shutdown_subsystems(void)
     thread_shutdown();
 
     DEBUG0 ("library cleanups");
-#ifdef WIN32
-    thread_sleep (500000);
-#else
-    xmlCleanupParser();
-#endif
 #ifdef HAVE_CURL
     curl_global_cleanup();
 #endif
@@ -227,7 +230,7 @@ static int _start_logging(void)
         log_to_stderr = 0;
         if (config->logsize)
             log_set_trigger (accesslog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_archive_timestamp(accesslog, config->logarchive);
     } else {
         accesslog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -256,7 +259,7 @@ static int _start_logging(void)
         log_to_stderr = 0;
         if (config->logsize)
             log_set_trigger (playlistlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_archive_timestamp(playlistlog, config->logarchive);
     } else {
         playlistlog = -1;
     }

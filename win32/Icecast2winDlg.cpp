@@ -10,6 +10,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <stdlib.h>
+#include <curl/curl.h>
 
 extern "C" {
 #include "thread.h"
@@ -22,6 +23,7 @@ extern "C" {
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "xslt.h"
 }
 
 #include <afxinet.h>
@@ -337,6 +339,8 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	sprintf(version, "Icecast2 Version %s", ICECAST_VERSION);
 	SetWindowText(version);
 
+    xslt_initialize();
+    curl_global_init (CURL_GLOBAL_ALL);
 
 	if (m_Autostart) {
 		OnStart();

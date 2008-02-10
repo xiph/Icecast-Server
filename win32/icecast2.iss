@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2-KH
-AppVerName=Icecast v2.3.1-kh29
+AppVerName=Icecast v2.3.1-kh32
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.1-kh29_setup
+OutputBaseFilename=icecast2_win32_v2.3.1-kh32_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
@@ -31,9 +31,9 @@ Name: "{app}\examples"
 
 
 [Files]
-Source: "Release\Icecast2.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Release\icecast2console.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "Release\icecastService.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "win_release\icecast2win.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "console_release\icecast2_console.exe"; DestDir: "{app}"; DestName: "icecast2console.exe"; Flags: ignoreversion
+Source: "service_Release\icecastService.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\examples\*"; DestDir: "{app}\examples"; Flags: ignoreversion
 Source: "..\doc\*"; DestDir: "{app}\doc"; Flags: ignoreversion
 Source: "..\web\*.xsl"; DestDir: "{app}\web"; Flags: ignoreversion
@@ -51,11 +51,12 @@ Source: "c:\xiph\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\libcurl.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\libeay32.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\ssleay32.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "c:\xiph\lib\zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 
-Name: "{group}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe";WorkingDir: "{app}";
-Name: "{userdesktop}\Icecast2 Win32"; Filename: "{app}\Icecast2.exe"; MinVersion: 4,4; Tasks: desktopicon;WorkingDir: "{app}";
+Name: "{group}\Icecast2 Win32"; Filename: "{app}\icecast2win.exe";WorkingDir: "{app}";
+Name: "{userdesktop}\Icecast2 Win32"; Filename: "{app}\icecast2win.exe"; MinVersion: 4,4; Tasks: desktopicon;WorkingDir: "{app}";
 
 [Run]
 Filename: "{app}\icecastService.exe"; Parameters: "install ""{app}""";Description: "Install Icecast as a windows service.";Flags: postinstall

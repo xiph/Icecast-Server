@@ -111,6 +111,7 @@ void xslt_shutdown(void) {
     }
 
     thread_mutex_destroy (&xsltlock);
+    xmlCleanupParser();
     xsltCleanupGlobals();
 }
 
