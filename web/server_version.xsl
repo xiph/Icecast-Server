@@ -69,7 +69,7 @@
 </tr>
 <tr>
 	<td width="130">Stream Directory </td>
-	<td class="streamdata"><a class="nav" target="_blank" href="http://dir.xiph.org/index.php/">dir.xiph.org</a></td>
+	<td class="streamdata"><a class="nav" target="_blank" href="http://dir.xiph.org/index.php">dir.xiph.org</a></td>
 </tr>
 <tr>
 	<td width="130">Community</td>
