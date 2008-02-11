@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D PACKAGE_VERSION=\"trunk\" /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "../src" /I "../src/httpp" /I "../src/thread" /I "../src/log" /I "../src/avl" /I "../src/net" /I "src/timings" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D PACKAGE_VERSION=\"trunk\" /D "USE_YP" /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -70,7 +70,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /Yu"stdafx.h" /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "../src" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_WIN32" /D PACKAGE_VERSION=\"trunk\" /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "../src" /I "../" /I "../../libxslt/include" /I "../../iconv/include" /I "../../libxml2/include" /I "../../pthreads" /I "../../oggvorbis-win32sdk-1.0.1/include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_WIN32" /D PACKAGE_VERSION=\"trunk\" /D "USE_YP" /FD /GZ /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
