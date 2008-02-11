@@ -10,18 +10,20 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <stdlib.h>
+#include <curl/curl.h>
 
 extern "C" {
-#include "thread.h"
-#include "avl.h"
-#include "log.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "log/log.h"
 #include "global.h"
-#include "httpp.h"
-#include "sock.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
 #include "stats.h"
+#include "xslt.h"
 }
 
 #include <afxinet.h>
@@ -337,6 +339,8 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	sprintf(version, "Icecast2 Version %s", ICECAST_VERSION);
 	SetWindowText(version);
 
+    xslt_initialize();
+    curl_global_init (CURL_GLOBAL_ALL);
 
 	if (m_Autostart) {
 		OnStart();
@@ -571,7 +575,6 @@ void StartStats(void *dummy)
 				cur = cur->next;
 			}
 			xmlFreeDoc(doc);
-			xmlCleanupParser();
 			g_mainDialog->UpdateStatsLists();
 			Sleep(5000);
 		}

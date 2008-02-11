@@ -3,12 +3,12 @@
 #include <errno.h>
 #include <direct.h>
 extern "C" {
-#include "thread.h"
-#include "avl.h"
-#include "log.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "log/log.h"
 #include "global.h"
-#include "httpp.h"
-#include "sock.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
@@ -35,10 +35,30 @@ void installService(char *path)
 	if (path) {
 		char	fullPath[8096*2] = "";
 
-		sprintf(fullPath, "\"%s\\icecastService.exe\" \"%s\"", path, path);
+		_snprintf(fullPath, sizeof (fullPath), "\"%s\\icecastService.exe\" \"%s\"", path, path);
 		SC_HANDLE handle = OpenSCManager( NULL, NULL, SC_MANAGER_ALL_ACCESS );
+		if (handle == NULL)
+		{
+			LPVOID lpMsgBuf;
+			FormatMessage( 
+					FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+					FORMAT_MESSAGE_FROM_SYSTEM | 
+					FORMAT_MESSAGE_IGNORE_INSERTS,
+					NULL,
+					GetLastError(),
+					MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+					(LPTSTR) &lpMsgBuf,
+					0,
+					NULL 
+					);
+
+			printf ("OpenSCManager: %s\n", (LPCTSTR)lpMsgBuf);
+			LocalFree( lpMsgBuf );
+			return;
+		}
+
 		SC_HANDLE service = CreateService(
-			handle,
+				handle,
 			"Icecast",
 			"Icecast Media Server",
 			GENERIC_READ | GENERIC_EXECUTE,
@@ -52,17 +72,62 @@ void installService(char *path)
 			NULL,
 			NULL
 		);
+		if (handle == NULL)
+		{
+			LPVOID lpMsgBuf;
+			FormatMessage( 
+					FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+					FORMAT_MESSAGE_FROM_SYSTEM | 
+					FORMAT_MESSAGE_IGNORE_INSERTS,
+					NULL,
+					GetLastError(),
+					MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+					(LPTSTR) &lpMsgBuf,
+					0,
+					NULL 
+					);
+
+			printf ("CreateService: %s\n", (LPCTSTR)lpMsgBuf);
+			LocalFree( lpMsgBuf );
+			CloseServiceHandle (handle);
+			return;
+		}
+
 		printf("Service Installed\n");
+		CloseServiceHandle (service);
+		CloseServiceHandle (handle);
 	}
 }
 void removeService()
 {
 	SC_HANDLE handle = OpenSCManager( NULL, NULL, SC_MANAGER_ALL_ACCESS );
+	if (handle == NULL)
+	{
+		LPVOID lpMsgBuf;
+		FormatMessage( 
+				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+				FORMAT_MESSAGE_FROM_SYSTEM | 
+				FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL,
+				GetLastError(),
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+				(LPTSTR) &lpMsgBuf,
+				0,
+				NULL 
+				);
+
+		printf ("OpenSCManager: %s\n", (LPCTSTR)lpMsgBuf);
+		LocalFree( lpMsgBuf );
+		return;
+	}
+
 	SC_HANDLE service = OpenService(handle, "Icecast", DELETE);
 	if (service) {
 		DeleteService(service);
+		printf("Service Removed\n");
 	}
-	printf("Service Removed\n");
+	else
+		printf("Service not found\n");
 }
 void ControlHandler(DWORD request) 
 { 

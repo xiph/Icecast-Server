@@ -21,6 +21,9 @@
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
+#ifdef HAVE_CURL
+#include <curl/curl.h>
+#endif
 
 #include "thread/thread.h"
 #include "avl/avl.h"
@@ -104,13 +107,21 @@ static void _initialize_subsystems(void)
     connection_initialize();
     global_initialize();
     refbuf_initialize();
+#if !defined(WIN32) || defined(WIN32_SERVICE)
+    /* win32 GUI needs to do the initialise before here */
     xslt_initialize();
+    curl_global_init (CURL_GLOBAL_ALL);
+#endif
 }
 
 static void _shutdown_subsystems(void)
 {
     fserve_shutdown();
+#if !defined(WIN32) || defined(WIN32_SERVICE)
+    /* If we do the following cleanup on the win32 GUI then the app will crash when libxml2 is
+     * initialised again as the process doesn't terminate */
     xslt_shutdown();
+#endif
     refbuf_shutdown();
     slave_shutdown();
     auth_shutdown();
@@ -124,11 +135,13 @@ static void _shutdown_subsystems(void)
     sock_shutdown();
     thread_shutdown();
 
+#ifdef HAVE_CURL
+    curl_global_cleanup();
+#endif
+
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
     log_shutdown();
-
-    xmlCleanupParser();
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)

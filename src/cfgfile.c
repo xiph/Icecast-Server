@@ -270,7 +270,6 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
 
     if (filename == NULL || strcmp(filename, "") == 0) return CONFIG_EINSANE;
     
-    xmlInitParser();
     doc = xmlParseFile(filename);
     if (doc == NULL) {
         return CONFIG_EPARSE;
