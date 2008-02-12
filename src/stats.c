@@ -237,17 +237,6 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
     }
 
     stats_event (mount, name, metadata);
-
-    /* special case for title updates, log converted title */
-    if (mount && strcmp (name, "title") == 0)
-    {
-        char *s = stats_get_value ((char*)mount, "listeners");
-        int listeners = 0;
-        if (s)
-            listeners = atoi (s);
-        free (s);
-        logging_playlist (mount, metadata, listeners);
-    }
     xmlBufferFree (conv);
 }
 
