@@ -699,7 +699,9 @@ sock_t sock_get_server_socket (int port, const char *sinterface)
 
         setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (const void *)&on, sizeof(on));
         on = 0;
+#ifdef IPV6_V6ONLY
         setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof on);
+#endif
 
         if (bind (sock, ai->ai_addr, ai->ai_addrlen) < 0)
         {
