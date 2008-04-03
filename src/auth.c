@@ -382,7 +382,7 @@ static int check_duplicate_logins (source_t *source, client_t *client, auth_t *a
 
 
 /* Add client to source if it finds one. If a 0 is returned then the client should not be
- * touched, if the return value is -1 then the it failed to add and should not be touched.
+ * touched, if the return value is -1 then it failed to add and should not be touched.
  * If it's a -2 value then the client is still around for any further processing.
  */
 static int add_listener_to_source (const char *mount, mount_proxy *mountinfo, client_t *client)
@@ -424,6 +424,11 @@ static int add_listener_to_source (const char *mount, mount_proxy *mountinfo, cl
         /* ok, we found a source and it is locked */
         if (client->is_slave)
         {
+            if (source->client == NULL && source->on_demand == 0)
+            {
+                client_send_403 (client, "Slave relay reading from time unregulated stream");
+                return -1;
+            }
             INFO0 ("client is from a slave, bypassing limits");
             break;
         }
@@ -532,6 +537,22 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 {
     int ret = 0;
 
+    /* check whether we are processing a streamlist request for slaves */
+    if (strcmp (mount, "/admin/streams") == 0)
+    {
+        if (client->authenticated == 0)
+        {
+            client_send_401 (client, NULL);
+            return 0;
+        }
+        mount = httpp_get_query_param (client->parser, "mount");
+        if (mount == NULL)
+        {
+            command_list_mounts (client, TEXT);
+            return 0;
+        }
+        mountinfo = config_find_mount (config_get_config_unlocked(), mount);
+    }
     client->authenticated = 1;
 
     /* Here we are parsing the URI request to see if the extension is .xsl, if
@@ -630,9 +651,10 @@ void auth_add_listener (const char *mount, client_t *client)
     /* we don't need any more data from the listener, just setup for writing */
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
 
-    if (connection_check_relay_pass(client->parser))
+    if (connection_check_relay_pass (client->parser))
     {
         client->is_slave = 1;
+        client->authenticated = 1;
         INFO0 ("client connected as slave");
     }
     config = config_get_config();
@@ -643,7 +665,7 @@ void auth_add_listener (const char *mount, client_t *client)
         client_send_403 (client, "mountpoint unavailable");
         return;
     }
-    if (mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
+    if (client->authenticated == 0 && mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
     {
         auth_client *auth_user;
 

@@ -1118,7 +1118,7 @@ void stats_get_streamlist (char *buffer, size_t remaining)
 
         if (source->hidden == 0)
         {
-            if (remaining <= strlen (source->source)+2)
+            if (remaining <= strlen (source->source)+3)
             {
                 WARN0 ("streamlist was truncated");
                 break;
@@ -1135,6 +1135,51 @@ void stats_get_streamlist (char *buffer, size_t remaining)
     }
     thread_mutex_unlock (&_stats_mutex);
 }
+
+
+
+/* get a list of refbufs which contain urls for slaves to use for relaying */
+refbuf_t *stats_get_streams (void)
+{
+    avl_node *node;
+    int remaining = 4096;
+    refbuf_t *start = refbuf_new (remaining), *cur = start;
+    const char *pre = "/admin/streams?mount=";
+    char *buffer = cur->data;
+
+    /* now the stats for each source */
+    thread_mutex_lock (&_stats_mutex);
+    node = avl_get_first(_stats.source_tree);
+    while (node)
+    {
+        int ret;
+        stats_source_t *source = (stats_source_t *)node->key;
+
+        if (source->hidden == 0)
+        {
+            if (remaining <= strlen (source->source) + strlen (pre) + 3)
+            {
+                cur->len = 4096 - remaining;
+                cur->next = refbuf_new (4096);
+                remaining = 4096;
+                cur = cur->next;
+                buffer = cur->data;
+            }
+            ret = snprintf (buffer, remaining, "%s%s\r\n", pre, source->source);
+            if (ret > 0)
+            {
+                buffer += ret;
+                remaining -= ret;
+            }
+        }
+        node = avl_get_next(node);
+    }
+    thread_mutex_unlock (&_stats_mutex);
+    cur->len = 4096 - remaining;
+    return start;
+}
+
+
 
 /* This removes any source stats from virtual mountpoints, ie mountpoints
  * where no source_t exists. This function requires the global sources lock

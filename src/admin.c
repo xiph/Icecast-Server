@@ -52,7 +52,6 @@ static void command_move_clients(client_t *client, source_t *source,
         int response);
 static void command_stats(client_t *client, const char *filename);
 static void command_stats_mount (client_t *client, source_t *source, int response);
-static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
 static void command_manageauth(client_t *client, source_t *source,
@@ -333,6 +332,19 @@ int admin_handle_request (client_t *client, const char *uri)
     if (connection_check_admin_pass (client->parser))
         client->authenticated = 1;
 
+    /* special case for slaves requesting a streamlist for authenticated relaying */
+    if (strcmp (uri, "streams") == 0)
+    {
+        client->is_slave = 1;
+        auth_add_listener ("/admin/streams", client);
+        return 0;
+    }
+    if (strcmp (uri, "streamlist.txt") == 0)
+    {
+        if (connection_check_relay_pass (client->parser))
+            client->authenticated = 1;
+    }
+
     if (mount)
     {
         /* no auth/stream required for this */
@@ -360,13 +372,6 @@ int admin_handle_request (client_t *client, const char *uri)
         }
         admin_mount_request (client, uri);
         return 0;
-    }
-
-    /* no auth/stream required for this */
-    if (strcmp (uri, "streamlist.txt") == 0)
-    {
-        if (connection_check_relay_pass (client->parser))
-            client->authenticated = 1;
     }
 
     admin_handle_general_request (client, uri);
@@ -1090,7 +1095,7 @@ static void command_list_log (client_t *client, int response)
 }
 
 
-static void command_list_mounts(client_t *client, int response)
+void command_list_mounts(client_t *client, int response)
 {
     DEBUG0("List mounts request");
 
@@ -1099,6 +1104,7 @@ static void command_list_mounts(client_t *client, int response)
         char *buf;
         int remaining = PER_CLIENT_REFBUF_SIZE;
         int ret;
+
         redirector_update (client);
 
         buf = client->refbuf->data;
@@ -1106,7 +1112,10 @@ static void command_list_mounts(client_t *client, int response)
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
         client->respcode = 200;
 
-        stats_get_streamlist (buf+ret, remaining-ret);
+        if (strcmp (httpp_getvar (client->parser, HTTPP_VAR_URI), "/admin/streams") == 0)
+            client->refbuf->next = stats_get_streams ();
+        else
+            stats_get_streamlist (buf+ret, remaining-ret);
 
         client->refbuf->len = strlen (client->refbuf->data);
         fserve_add_client (client, NULL);

@@ -87,7 +87,7 @@ struct _client_tag
     struct _client_tag *next;
 };
 
-int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
+client_t *client_create (connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
 void client_send_504(client_t *client, char *message);
 void client_send_416(client_t *client);
@@ -97,8 +97,8 @@ void client_send_403(client_t *client, const char *reason);
 void client_send_403redirect (client_t *client, const char *mount, const char *reason);
 void client_send_400(client_t *client, char *message);
 void client_send_302(client_t *client, const char *location);
-int client_send_bytes (client_t *client, const void *buf, unsigned len);
-int client_read_bytes (client_t *client, void *buf, unsigned len);
+int  client_send_bytes (client_t *client, const void *buf, unsigned len);
+int  client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
 
 #endif  /* __CLIENT_H__ */

@@ -26,6 +26,7 @@ typedef enum {
     TEXT
 } admin_response_type;
 
+void command_list_mounts(client_t *client, int response);
 int  admin_handle_request (client_t *client, const char *uri);
 void admin_mount_request (client_t *client, const char *uri);
 void admin_source_listeners (source_t *source, xmlNodePtr node);

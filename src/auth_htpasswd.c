@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 
 #include "auth.h"
+#include "auth_htpasswd.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"

@@ -112,7 +112,9 @@ static SSL_CTX *ssl_ctx;
 #endif
 
 /* filtering client connection based on IP */
-cache_file_contents banned_ip, allowed_ip, useragents;
+cache_file_contents banned_ip, allowed_ip;
+/* filtering listener connection based on useragent */
+cache_file_contents useragents;
 
 int connection_running = 0;
 rwlock_t _source_shutdown_rwlock;
@@ -732,14 +734,7 @@ void *connection_thread (void *arg)
             client_t *client = NULL;
 
             global_lock();
-            if (client_create (&client, con, NULL) < 0)
-            {
-                global_unlock();
-                client_send_403 (client, "Icecast connection limit reached");
-                /* don't be too eager as this is an imposed hard limit */
-                thread_sleep (400000);
-                continue;
-            }
+            client = client_create (con, NULL);
             global_unlock();
 
             if (client->server_conn->ssl && ssl_ok)
@@ -778,8 +773,11 @@ void *connection_thread (void *arg)
 
 void connection_thread_startup ()
 {
-    if (conn_tid == NULL)
-        conn_tid = thread_create ("connection", connection_thread, NULL, THREAD_ATTACHED);
+    connection_running = 0;
+    while (conn_tid)
+        thread_sleep (100001);
+
+    conn_tid = thread_create ("connection", connection_thread, NULL, THREAD_ATTACHED);
 }
 
 void connection_thread_shutdown ()
@@ -1171,6 +1169,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     aliases *alias;
     ice_config_t *config;
     char *uri = passed_uri;
+    int client_limit_reached = 0;
 
     DEBUG1 ("start with %s", passed_uri);
     config = config_get_config();
@@ -1202,6 +1201,11 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         }
         alias = alias->next;
     }
+    if (global.clients > config->client_limit)
+    {
+        client_limit_reached = 1;
+        WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
+    }
     config_release_config();
 
     stats_event_inc(NULL, "client_connections");
@@ -1212,7 +1216,11 @@ static void _handle_get_request (client_t *client, char *passed_uri)
         if (uri != passed_uri) free (uri);
         return;
     }
-    auth_add_listener (uri, client);
+    /* drop non-admin GET requests here if clients limit reached */
+    if (client_limit_reached)
+        client_send_403 (client, "Too many clients connected");
+    else
+        auth_add_listener (uri, client);
     if (uri != passed_uri) free (uri);
 }
 

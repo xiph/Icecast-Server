@@ -359,6 +359,8 @@ void source_move_clients (source_t *source, source_t *dest)
 
     do
     {
+        client_t *leave_list = NULL;
+
         thread_mutex_lock (&source->lock);
 
         if (source->on_demand == 0 && source->format == NULL)
@@ -381,6 +383,13 @@ void source_move_clients (source_t *source, source_t *dest)
             client_t *client = source->active_clients;
             source->active_clients = client->next;
 
+            /* don't move known slave relays to streams which are not timed (fallback file) */
+            if (dest->client == NULL && client->is_slave)
+            {
+                client->next = leave_list;
+                leave_list = client;
+                continue;
+            }
             /* when switching a client to a different queue, be wary of the 
              * refbuf it's referring to, if it's http headers then we need
              * to write them so don't release it.
@@ -397,14 +406,12 @@ void source_move_clients (source_t *source, source_t *dest)
             dest->active_clients = client;
             count++;
         }
-        if (count != source->listeners)
-            WARN2 ("count %lu, listeners %lu", count, source->listeners);
-
+        source->active_clients = leave_list;
         INFO2 ("passing %lu listeners to \"%s\"", count, dest->mount);
 
         dest->listeners += count;
-        source->listeners = 0;
-        stats_event (source->mount, "listeners", "0");
+        source->listeners -= count;
+        stats_event_args (source->mount, "listeners", "%lu", source->listeners);
 
     } while (0);
 
@@ -700,6 +707,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
 {
     client_t *client, **client_p;
     client_t *fast_clients = NULL, **fast_client_tail = &fast_clients;
+    unsigned long listener_count = 0;
 
     /* where do we start from */
     if (fast_clients_only)
@@ -731,6 +739,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
             DEBUG0("Client removed");
             continue;
         }
+        listener_count++;
         if (fast_client && client->check_buffer != format_check_file_buffer)
         {
             client_t *to_move = client;
@@ -750,6 +759,10 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
     /* place fast clients list at the end */
     if (fast_clients)
         *client_p = fast_clients;
+
+    /* consistency check, these should match */
+    if (fast_clients_only == 0 && listener_count != source->listeners)
+        ERROR3 ("mount %s has %lu, %lu", source->mount, listener_count, source->listeners);
 
     /* has the listener count changed */
     if (source->listeners != source->prev_listeners)

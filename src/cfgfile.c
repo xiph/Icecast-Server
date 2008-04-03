@@ -869,12 +869,13 @@ static int _parse_master (xmlNodePtr node, void *arg)
         { "username",           config_get_str,     &config->master_username },
         { "password",           config_get_str,     &config->master_password },
         { "bind",               config_get_str,     &config->master_bind },
-        { "update-interval",    config_get_int,     &config->master_update_interval },
+        { "interval",           config_get_int,     &config->master_update_interval },
         { "relay-auth",         config_get_bool,    &config->master_relay_auth },
         { "redirect",           config_get_bool,    &config->master_redirect },
         { NULL, NULL, NULL },
     };
 
+    config->master_relay_auth = 1;
     if (parse_xml_tags (node, icecast_tags))
         return -1;
 

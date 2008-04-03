@@ -77,6 +77,7 @@ void stats_shutdown(void);
 void stats_global(ice_config_t *config);
 stats_t *stats_get_stats(void);
 void stats_get_streamlist (char *buffer, size_t remaining);
+refbuf_t *stats_get_streams (void);
 void stats_clear_virtual_mounts (void);
 
 void stats_event(const char *source, const char *name, const char *value);

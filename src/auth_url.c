@@ -30,6 +30,12 @@
  *
  * icecast-auth-timelimit: 900
  *
+ * A listening client may be a slave relay and as such you may want it to avoid
+ * certain checks like max listeners. Send this header back if to wish icecast
+ * to treat the client as a slave relay.
+ *
+ * icecast-slave: 1
+ *
  * On client disconnection another request can be sent to a URL with the POST
  * information of
  *
@@ -170,6 +176,9 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
             client->con->discon_time = global.time + limit;
         }
+        if (strncasecmp (ptr, "icecast-slave: 1", 16) == 0)
+            client->is_slave =1;
+
         if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0)
         {
             char *eol;

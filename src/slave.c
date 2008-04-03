@@ -62,6 +62,15 @@
 
 #define CATMODULE "slave"
 
+typedef struct _redirect_host
+{
+    struct _redirect_host *next;
+    time_t next_update;
+    char *server;
+    int port;
+} redirect_host;
+
+
 static void *_slave_thread(void *arg);
 static void redirector_add (const char *server, int port, int interval);
 static redirect_host *find_slave_host (const char *server, int port);
@@ -73,6 +82,8 @@ static volatile int update_all_mounts = 0;
 static volatile int restart_connection_thread = 0;
 static time_t streamlist_check = 0;
 static rwlock_t slaves_lock;
+
+redirect_host *redirectors;
 
 relay_server *relay_free (relay_server *relay)
 {
@@ -175,6 +186,7 @@ void slave_initialize(void)
     update_settings = 0;
     update_all_mounts = 0;
     restart_connection_thread = 0;
+    redirectors = NULL;
 #ifndef HAVE_CURL
     ERROR0 ("streamlist request disabled, rebuild with libcurl if required");
 #endif
@@ -204,8 +216,8 @@ int redirect_client (const char *mountpoint, client_t *client)
         return 0;
     }
     which=(int) (((float)global.redirect_count)*rand()/(RAND_MAX+1.0)) + 1;
-    checking = global.redirectors;
-    trail = &global.redirectors;
+    checking = redirectors;
+    trail = &redirectors;
 
     DEBUG2 ("random selection %d (out of %d)", which, global.redirect_count);
     while (checking)
@@ -231,7 +243,7 @@ int redirect_client (const char *mountpoint, client_t *client)
             /* add enough for "http://" the port ':' and nul */
             int len = strlen (mountpoint) + strlen (checking->server) + 13;
 
-            INFO2 ("redirecting client to slave server "
+            INFO2 ("redirecting listener to slave server "
                     "at %s:%d", checking->server, checking->port);
             location = malloc (len);
             snprintf (location, len, "http://%s:%d%s", checking->server,
@@ -320,7 +332,7 @@ static client_t *open_relay_connection (relay_server *relay, relay_server_master
                 "\r\n",
                 mount,
                 server_id,
-                relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
+                relay->mp3metadata ? "Icy-MetaData: 1\r\n" : "",
                 auth_header);
         memset (header, 0, sizeof(header));
         if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
@@ -377,15 +389,7 @@ static client_t *open_relay_connection (relay_server *relay, relay_server_master
                 break;
             }
             global_lock ();
-            if (client_create (&client, con, parser) < 0)
-            {
-                global_unlock ();
-                /* make sure only the client_destory frees these */
-                con = NULL;
-                parser = NULL;
-                client_destroy (client);
-                break;
-            }
+            client = client_create (con, parser);
             global_unlock ();
             sock_set_blocking (streamsock, SOCK_NONBLOCK);
             client_set_queue (client, NULL);
@@ -524,7 +528,10 @@ static void check_relay_stream (relay_server *relay)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
+            {
+                relay->start = global.time;
                 slave_update_all_mounts();
+            }
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
@@ -548,17 +555,30 @@ static void check_relay_stream (relay_server *relay)
 
             source->on_demand = relay->on_demand;
 
-            if (mountinfo && mountinfo->fallback_mount && mountinfo->fallback_override)
+            if (mountinfo)
             {
-                source_t *fallback;
-                avl_tree_rlock (global.source_tree);
-                fallback = source_find_mount (mountinfo->fallback_mount);
-                if (fallback && fallback->running && fallback->listeners)
+                if (mountinfo->fallback_mount && mountinfo->fallback_override)
                 {
-                   DEBUG1 ("fallback running with %lu listeners", fallback->listeners);
-                   source->on_demand_req = 1;
+                    source_t *fallback;
+                    avl_tree_rlock (global.source_tree);
+                    fallback = source_find_mount (mountinfo->fallback_mount);
+                    if (fallback && fallback->running && fallback->listeners)
+                    {
+                        DEBUG1 ("fallback running with %lu listeners", fallback->listeners);
+                        source->on_demand_req = 1;
+                    }
+                    avl_tree_unlock (global.source_tree);
                 }
-                avl_tree_unlock (global.source_tree);
+            }
+            else
+            {
+                if (relay->start)
+                {
+                    thread_mutex_lock (&relay->source->lock);
+                    source_update_settings (config, relay->source, mountinfo);
+                    thread_mutex_unlock (&relay->source->lock);
+                    relay->start = 0;
+                }
             }
             config_release_config();
             if (source->on_demand_req == 0)
@@ -598,6 +618,7 @@ static void check_relay_stream (relay_server *relay)
             thread_mutex_unlock (&relay->source->lock);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");
+            relay->start = global.time;
         }
     }
 }
@@ -827,13 +848,17 @@ static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *strea
         {
             relay_server *r = calloc (1, sizeof (relay_server));
             relay_server_master *m = calloc (1, sizeof (relay_server_master));
+
             m->ip = (char *)xmlStrdup (XMLSTR(master->server));
             m->port = master->port;
             if (master->bind)
                 m->bind = (char *)xmlStrdup (XMLSTR(master->bind));
             m->mount = (char *)xmlStrdup (XMLSTR(buf));
             r->masters = m;
-            r->localmount = (char *)xmlStrdup (XMLSTR(buf));
+            if (strncmp (buf, "/admin/streams?mount=/", 22) == 0)
+                r->localmount = (char *)xmlStrdup (XMLSTR(buf+21));
+            else
+                r->localmount = (char *)xmlStrdup (XMLSTR(buf));
             r->mp3metadata = 1;
             r->on_demand = master->on_demand;
             r->interval = master->max_interval;
@@ -874,7 +899,7 @@ static void *streamlist_thread (void *arg)
         port = master->ssl_port;
     }
     snprintf (auth, sizeof (auth), "%s:%s", master->username, master->password);
-    snprintf (url, sizeof (url), "%s://%s:%d/admin/streamlist.txt%s",
+    snprintf (url, sizeof (url), "%s://%s:%d/admin/streams%s",
             protocol, master->server, port, master->args);
     handle = curl_easy_init ();
     curl_easy_setopt (handle, CURLOPT_USERAGENT, master->server_id);
@@ -892,7 +917,14 @@ static void *streamlist_thread (void *arg)
         curl_easy_setopt (handle, CURLOPT_INTERFACE, master->bind);
 
     if (curl_easy_perform (handle) != 0)
-        WARN2 ("Failed URL access \"%s\" (%s)", url, error);
+    {
+        /* fall back to traditional request */
+        snprintf (url, sizeof (url), "%s://%s:%d/admin/streamlist.txt%s",
+                protocol, master->server, port, master->args);
+        curl_easy_setopt (handle, CURLOPT_URL, url);
+        if (curl_easy_perform (handle) != 0)
+            WARN2 ("Failed URL access \"%s\" (%s)", url, error);
+    }
     if (master->ok)
     {
         /* process retrieved relays */
@@ -1094,10 +1126,10 @@ relay_server *slave_find_relay (relay_server *relays, const char *mount)
 static void redirector_clearall (void)
 {
     thread_rwlock_wlock (&slaves_lock);
-    while (global.redirectors)
+    while (redirectors)
     {
-        redirect_host *current = global.redirectors;
-        global.redirectors = current->next;
+        redirect_host *current = redirectors;
+        redirectors = current->next;
         INFO2 ("removing %s:%d", current->server, current->port);
         free (current->server);
         free (current);
@@ -1113,7 +1145,7 @@ void redirector_update (client_t *client)
     redirect_host *redirect;
     const char *rserver = httpp_get_query_param (client->parser, "rserver");
     const char *value;
-    int rport, interval;
+    int rport = 0, interval = 0;
 
     if (rserver==NULL) return;
     value = httpp_get_query_param (client->parser, "rport");
@@ -1124,7 +1156,6 @@ void redirector_update (client_t *client)
     if (value == NULL) return;
     interval = atoi (value);
     if (interval < 5) return;
-
 
     thread_rwlock_wlock (&slaves_lock);
     redirect = find_slave_host (rserver, rport);
@@ -1147,7 +1178,7 @@ void redirector_update (client_t *client)
  */
 static redirect_host *find_slave_host (const char *server, int port)
 {
-    redirect_host *redirect = global.redirectors;
+    redirect_host *redirect = redirectors;
     while (redirect)
     {
         if (strcmp (redirect->server, server) == 0 && redirect->port == port)
@@ -1180,8 +1211,8 @@ static void redirector_add (const char *server, int port, int interval)
         redirect->next_update = (time_t)0;
     else
         redirect->next_update = global.time + interval;
-    redirect->next = global.redirectors;
-    global.redirectors = redirect;
+    redirect->next = redirectors;
+    redirectors = redirect;
     global.redirect_count++;
     INFO3 ("slave (%d) at %s:%d added", global.redirect_count,
             redirect->server, redirect->port);

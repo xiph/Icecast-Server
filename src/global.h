@@ -50,7 +50,6 @@ typedef struct ice_global_tag
 
     /* redirection to slaves */
     unsigned int redirect_count;
-    struct _redirect_host *redirectors;
 
     spin_t spinlock;
     struct rate_calc *out_bitrate;

@@ -45,14 +45,11 @@
 #define CATMODULE "client"
 
 /* create a client_t with the provided connection and parser details. Return
- * 0 on success, -1 if server limit has been reached.  In either case a
- * client_t is returned just in case a message needs to be returned. Should
- * be called with global lock held.
+ * client_t ready for use.  Should be called with global lock held.
  */
-int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
+client_t *client_create (connection_t *con, http_parser_t *parser)
 {
     client_t *client = (client_t *)calloc(1, sizeof(client_t));
-    int ret = 0;
 
     if (client == NULL)
         abort();
@@ -71,20 +68,6 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
             }
         }
     }
-
-    /* don't do client limit check if on an SSL socket, as that will be an admin request */
-    if (not_ssl_connection (con))
-    {
-        ice_config_t *config = config_get_config ();
-
-        if (config->client_limit < global.clients)
-        {
-            WARN2 ("server client limit reached (%d/%d)", config->client_limit, global.clients);
-            ret = -1;
-        }
-        config_release_config ();
-    }
-
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
     client->parser = parser;
@@ -92,8 +75,7 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->refbuf->len = 0; /* force reader code to ignore buffer contents */
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
-    *c_ptr = client;
-    return ret;
+    return client;
 }
 
 

@@ -15,6 +15,26 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3-kh33
+. master/slave update.
+  slave mode only issues a streamlist.txt request if the /admin/slaves request
+  fails.  /admin/slaves also acts as an mountpoint for the slave relays by
+  passing a mount= arg and auth.
+  You can now define a <mount> for /admin/slaves to define how slave
+  authentication is done eg url (listener_add) or htpasswd.
+  Once authenticated, the slave can bypass any limits like max listeners etc.
+  The slave also allows for defining a <master> tag block instead of <master-*>
+  tags allowed are <username> <password> <server> <port> <redirect> <bind>
+  auth url can take an "icecast-slave: 1" header, which makes client act as a
+  slave and bypass mount limits.
+. build fixups for OpenBSD and cases where IPV6_V6ONLY is missing
+. move 'clients' limit check to after admin request check, means admin commands
+  can work even if the limit is reached. removes a lock taken as well.
+. drop connections to known slave relays if we find that the destination source
+  is a fallback to file, as this would cause high bandwidth usage.
+. stats fix for inactive on-demand relay stats without a mount definition.
+. added some minor consistency checks.
+
 2.3-kh32
 . crash fix for a failing on-demand relay.
 . incorrect logfile settings for timestamp setting, for playlist and access.log

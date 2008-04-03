@@ -42,13 +42,6 @@ typedef struct _relay_server {
     struct _relay_server *next;
 } relay_server;
 
-typedef struct _redirect_host
-{
-    char *server;
-    int port;
-    time_t next_update;
-    struct _redirect_host *next;
-} redirect_host;
 
 void slave_initialize(void);
 void slave_shutdown(void);
