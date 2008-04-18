@@ -255,6 +255,8 @@ void yp_recheck_config (ice_config_t *config)
             curl_easy_setopt (server->curl, CURLOPT_WRITEDATA, server->curl);
             curl_easy_setopt (server->curl, CURLOPT_TIMEOUT, server->url_timeout);
             curl_easy_setopt (server->curl, CURLOPT_NOSIGNAL, 1L);
+            curl_easy_setopt (server->curl, CURLOPT_FOLLOWLOCATION, 1L);
+            curl_easy_setopt (server->curl, CURLOPT_MAXREDIRS, 3L);
             curl_easy_setopt (server->curl, CURLOPT_ERRORBUFFER, &(server->curl_error[0]));
             server->next = (struct yp_server *)pending_yps;
             pending_yps = server;
@@ -285,7 +287,8 @@ void yp_initialize(void)
 
 
 /* handler for curl, checks if successful handling occurred
- * return 0 for ok, -1 for this entry failed, -2 for server fail
+ * return 0 for ok, -1 for this entry failed, -2 for server fail.
+ * On failure case, update and process are modified
  */
 static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
 {
@@ -300,7 +303,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     if (curlcode)
     {
         yp->process = do_yp_add;
-        yp->next_update += 900;
+        yp->next_update += 1200;
         ERROR2 ("connection to %s failed with \"%s\"", server->url, server->curl_error);
         return -2;
     }
@@ -308,9 +311,19 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     {
         if (yp->error_msg == NULL)
             yp->error_msg = strdup ("no response from server");
+        if (yp->process == do_yp_add)
+        {
+            ERROR3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
+            yp->next_update += 7200;
+        }
+        else
+        {
+            INFO3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
+            yp->next_update += 1200;
+        }
         yp->process = do_yp_add;
-        yp->next_update += 300;
-        ERROR3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
+        free (yp->sid);
+        yp->sid = NULL;
         return -1;
     }
     DEBUG2 ("YP %s at %s succeeded", cmd, server->url);
@@ -334,9 +347,9 @@ static int do_yp_remove (ypdata_t *yp, char *s, unsigned len)
         free (yp->sid);
         yp->sid = NULL;
     }
-    yp_update = 1;
     yp->remove = 1;
     yp->process = do_yp_add;
+    yp_update = 1;
 
     return ret;
 }
@@ -455,7 +468,12 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
 
-    return send_to_yp ("touch", yp, s);
+    if (send_to_yp ("touch", yp, s) == 0)
+    {
+        yp->next_update = now + yp->touch_interval;
+        return 0;
+    }
+    return -1;
 }
 
 
@@ -467,7 +485,6 @@ static int process_ypdata (struct yp_server *server, ypdata_t *yp)
 
     if (now < yp->next_update)
         return 0;
-    yp->next_update = now + yp->touch_interval;
 
     /* loop just in case the memory area isn't big enough */
     while (1)
