@@ -58,16 +58,17 @@ AC_TRY_LINK_FUNC(ogg_stream_init, [xt_lib_vorbis=ok],
             )
         ])
 
-AC_MSG_RESULT([$xt_lib_vorbis])
 if test "x$xt_lib_vorbis" = "xok"; then
 #
 # Now check if the installed Vorbis is sufficiently new.
 #
-AC_CHECK_TYPES([struct ovectl_ratemanage_arg],,
-        [xt_lib_vorbis="old version found"], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
 #include <vorbis/codec.h>
 #include <vorbis/vorbisenc.h>
-        ])
+        ], [
+struct ovectl_ratemanage_arg a;
+])],,[xt_lib_vorbis="old version found"])
+AC_MSG_RESULT([$xt_lib_vorbis])
 fi
 CPPFLAGS="$xt_save_CPPFLAGS"
 LIBS="$xt_save_LIBS"

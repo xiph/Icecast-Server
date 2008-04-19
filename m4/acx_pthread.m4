@@ -57,6 +57,7 @@ acx_pthread_flags="pthreads none -Kthread -kthread lthread -pthread -pthreads -m
 # -mt: Sun Workshop C (may only link SunOS threads [-lthread], but it
 #      doesn't hurt to check since this sometimes defines pthreads too;
 #      also defines -D_REENTRANT)
+#      ... -mt is also the pthreads flag for HP/aCC
 # pthread: Linux, etcetera
 # --thread-safe: KAI C++
 # pthread-config: use pthread-config program (for GNU Pth library)
@@ -66,13 +67,13 @@ case "${host_cpu}-${host_os}" in
 
         # On Solaris (at least, for some versions), libc contains stubbed
         # (non-functional) versions of the pthreads routines, so link-based
-        # tests will erroneously succeed.  (We need to link with -pthread or
+        # tests will erroneously succeed.  (We need to link with -pthreads/-mt/
         # -lpthread.)  (The stubs are missing pthread_cleanup_push, or rather
         # a function called by this macro, so we could check for that, but
         # who knows whether they'll stub that too in a future libc.)  So,
         # we'll just look for -pthreads and -lpthread first:
 
-        acx_pthread_flags="-pthreads pthread -mt $acx_pthread_flags"
+        acx_pthread_flags="-pthreads pthread -mt -pthread $acx_pthread_flags"
         ;;
 esac
 
@@ -146,14 +147,14 @@ if test "x$acx_pthread_ok" = xyes; then
         AC_MSG_CHECKING([for joinable pthread attribute])
         attr_name=unknown
         for attr in PTHREAD_CREATE_JOINABLE PTHREAD_CREATE_UNDETACHED; do
-            AC_TRY_LINK([#include <pthread.h>], [int attr=$attr;],
+            AC_TRY_LINK([#include <pthread.h>], [int attr=$attr; return attr;],
                         [attr_name=$attr; break])
         done
         AC_MSG_RESULT($attr_name)
         if test "$attr_name" != PTHREAD_CREATE_JOINABLE; then
             AC_DEFINE_UNQUOTED(PTHREAD_CREATE_JOINABLE, $attr_name,
                                [Define to necessary symbol if this constant
-                               uses a non-standard name on your system.])
+                                uses a non-standard name on your system.])
         fi
 
         AC_MSG_CHECKING([if more special flags are required for pthreads])
@@ -166,13 +167,17 @@ if test "x$acx_pthread_ok" = xyes; then
         if test "x$flag" != xno; then
             PTHREAD_CPPFLAGS="$flag $PTHREAD_CPPFLAGS"
         fi
-        AC_CHECK_TYPES(pthread_rwlock_t,,,[#include <pthread.h>])
 
+        AC_CHECK_FUNCS([pthread_spin_lock])
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"
 
-        # More AIX lossage: must compile with cc_r
-        AC_CHECK_PROG(PTHREAD_CC, cc_r, cc_r, ${CC})
+        # More AIX lossage: must compile with xlc_r or cc_r
+        if test x"$GCC" != xyes; then
+          AC_CHECK_PROGS(PTHREAD_CC, xlc_r cc_r, ${CC})
+        else
+          PTHREAD_CC=$CC
+        fi
 else
         PTHREAD_CC="$CC"
 fi

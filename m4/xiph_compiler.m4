@@ -178,9 +178,9 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,[const char *x = __func__;])],
     [ AH_TEMPLATE([__func__], [Replace __func__ if not supported])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[const char *x = __FUNCTION__;])],
         [ AC_DEFINE([__func__],[__FUNCTION__])
-        AC_MSG_RESULT([yes])],
-        [ AC_DEFINE([__func__],[""])
-        AC_MSG_RESULT([no])
+        AC_MSG_RESULT([Using __FUNCTION__])],
+        [ AC_DEFINE([__func__],["__FILE__"])
+        AC_MSG_RESULT([using __FILE__])
         ])
     ])
 ])dnl XIPH_C__FUNC__
