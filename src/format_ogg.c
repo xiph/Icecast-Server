@@ -42,6 +42,8 @@
 #endif
 #include "format_midi.h"
 #include "format_flac.h"
+#include "format_kate.h"
+#include "format_skeleton.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -237,6 +239,12 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
 #endif
+        codec = initial_kate_page (plugin, page);
+        if (codec)
+            break;
+        codec = initial_skeleton_page (plugin, page);
+        if (codec)
+            break;
 
         /* any others */
         ERROR0 ("Seen BOS page with unknown type");

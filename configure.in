@@ -81,6 +81,19 @@ XIPH_PATH_SPEEX(
     [ AC_MSG_WARN([Speex support disabled!])
     ])
 
+AC_CHECK_LIB(kate, kate_decode_init,[have_kate=yes],[have_kate=no], -logg)
+if test "x$have_kate" == "xyes"
+then
+  AC_CHECK_LIB(oggkate, kate_ogg_decode_headerin,[have_kate=yes],[have_kate=no],-lkate -logg)
+  if test "x$have_kate" == "xyes"
+  then
+    KATE_LIBS="-loggkate -lkate -logg"
+    AC_DEFINE([HAVE_KATE],[1],[Define if you have libkate])
+  fi
+fi
+dnl we still use format_kate as it doesn't need libkate to work
+#ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_kate.o"
+
 ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
 XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
 XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
@@ -133,6 +146,8 @@ AC_SUBST(DEBUG)
 AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
 AC_SUBST(ICECAST_OPTIONAL)
+AC_SUBST(HAVE_KATE)
+AC_SUBST(KATE_LIBS)
 
 AC_OUTPUT([Makefile conf/Makefile debian/Makefile src/Makefile src/avl/Makefile
 src/httpp/Makefile src/thread/Makefile src/log/Makefile
