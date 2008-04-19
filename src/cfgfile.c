@@ -728,6 +728,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
     relay->next = NULL;
     relay->mp3metadata = 1;
     relay->on_demand = configuration->on_demand;
+    relay->server = (char *)xmlCharStrdup ("127.0.0.1");
     relay->mount = (char *)xmlCharStrdup ("/");
 
     do {

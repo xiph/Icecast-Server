@@ -406,7 +406,6 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
         /* force first touch in 5 secs */
         yp->next_update = time(NULL) + 5;
     }
-
     return ret;
 }
 
@@ -480,7 +479,7 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
 
 static int process_ypdata (struct yp_server *server, ypdata_t *yp)
 {
-    unsigned len = 512;
+    unsigned len = 1024;
     char *s = NULL, *tmp;
 
     if (now < yp->next_update)
@@ -501,7 +500,7 @@ static int process_ypdata (struct yp_server *server, ypdata_t *yp)
         }
 
         ret = yp->process (yp, s, len);
-        if (ret == 0)
+        if (ret <= 0)
         {
            free (s);
            return ret;
@@ -882,7 +881,7 @@ void yp_add (const char *mount)
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
-                yp->next_update = time(NULL) + 5;
+                yp->next_update = time(NULL) + 60;
                 server->pending_mounts = yp;
                 yp_update = 1;
             }
