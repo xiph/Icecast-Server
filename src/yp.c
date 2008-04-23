@@ -316,10 +316,19 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
             ERROR3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
             yp->next_update += 7200;
         }
-        else
+        if (yp->process == do_yp_touch)
         {
+            /* At this point the touch request failed, either because they rejected our session
+             * or the server isn't accessible. This means we have to wait before doing another
+             * add request. We have a minimum delay but we could allow the directory server to
+             * give us a wait time using the TouchFreq header. This time could be given in such
+             * cases as a firewall block or incorrect listenurl.
+             */
+            if (yp->touch_interval < 1200)
+                yp->next_update += 1200;
+            else
+                yp->next_update += yp->touch_interval;
             INFO3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
-            yp->next_update += 1200;
         }
         yp->process = do_yp_add;
         free (yp->sid);
@@ -904,9 +913,18 @@ void yp_remove (const char *mount)
     thread_rwlock_rlock (&yp_lock);
     while (server)
     {
-        ypdata_t *yp = find_yp_mount (server->mounts, mount);
-        if (yp)
+        ypdata_t *list = server->mounts;
+
+        while (1)
         {
+            ypdata_t *yp = find_yp_mount (list, mount);
+            if (yp == NULL)
+                break;
+            if (yp->release || yp->remove)
+            {
+                list = yp->next;
+                continue;   /* search again these are old entries */
+            }
             DEBUG2 ("release %s on YP %s", mount, server->url);
             yp->release = 1;
             yp->next_update = 0;

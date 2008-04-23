@@ -989,7 +989,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     /* stream name */
     if (mountinfo && mountinfo->stream_name)
-        str = mountinfo->stream_name;
+        stats_event (source->mount, "server_name", mountinfo->stream_name);
     else
     {
         do {
@@ -1001,13 +1001,13 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
             str = "Unspecified name";
         } while (0);
+        if (source->format)
+            stats_event_conv (source->mount, "server_name", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "server_name", str, source->format->charset);
 
     /* stream description */
     if (mountinfo && mountinfo->stream_description)
-        str = mountinfo->stream_description;
+        stats_event (source->mount, "server_description", mountinfo->stream_description);
     else
     {
         do {
@@ -1019,13 +1019,13 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
             str = "Unspecified description";
         } while (0);
+        if (source->format)
+            stats_event_conv (source->mount, "server_description", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "server_description", str, source->format->charset);
 
     /* stream URL */
     if (mountinfo && mountinfo->stream_url)
-        str = mountinfo->stream_url;
+        stats_event (source->mount, "server_url", mountinfo->stream_url);
     else
     {
         do {
@@ -1036,13 +1036,13 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = httpp_getvar (parser, "x-audiocast-url");
             if (str) break;
         } while (0);
+        if (str && source->format)
+            stats_event_conv (source->mount, "server_url", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "server_url", str, source->format->charset);
 
     /* stream genre */
     if (mountinfo && mountinfo->stream_genre)
-        str = mountinfo->stream_genre;
+        stats_event (source->mount, "genre", mountinfo->stream_genre);
     else
     {
         do {
@@ -1054,9 +1054,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
             str = "various";
         } while (0);
+        if (source->format)
+            stats_event_conv (source->mount, "genre", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "genre", str, source->format->charset);
 
     /* stream bitrate */
     if (mountinfo && mountinfo->bitrate)
