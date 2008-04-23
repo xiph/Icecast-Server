@@ -170,7 +170,9 @@ int format_ogg_get_plugin (source_t *source)
     plugin->create_client_data = create_ogg_client_data;
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
-    plugin->contenttype = "application/ogg";
+    if (strcmp (httpp_getvar (source->parser, "content-type"), "application/x-ogg") == 0)
+        httpp_setvar (source->parser, "content-type", "application/ogg");
+    plugin->contenttype = httpp_getvar (source->parser, "content-type");
 
     ogg_sync_init (&state->oy);
 

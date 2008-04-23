@@ -60,6 +60,10 @@ format_type_t format_get_type (const char *contenttype)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
         return FORMAT_TYPE_OGG; /* Now blessed by IANA */
+    else if(strcmp(contenttype, "audio/ogg") == 0)
+        return FORMAT_TYPE_OGG;
+    else if(strcmp(contenttype, "video/ogg") == 0)
+        return FORMAT_TYPE_OGG;
     else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3 */
@@ -203,13 +207,13 @@ int format_check_http_buffer (source_t *source, client_t *client)
     {
         DEBUG0("processing pending client headers");
 
-        client->respcode = 200;
         if (format_prepare_headers (source, client) < 0)
         {
             ERROR0 ("internal problem, dropping client");
             client->con->error = 1;
             return -1;
         }
+        client->respcode = 200;
         stats_event_inc (NULL, "listeners");
         stats_event_inc (NULL, "listener_connections");
         stats_event_inc (source->mount, "listener_connections");
