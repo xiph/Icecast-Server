@@ -185,6 +185,11 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     if (client->username == NULL || client->password == NULL)
         return AUTH_FAILED;
 
+    if (htpasswd->filename == NULL)
+    {
+        ERROR0("No filename given in options for authenticator.");
+        return AUTH_FAILED;
+    }
     htpasswd_recheckfile (htpasswd);
 
     thread_rwlock_rlock (&htpasswd->file_rwlock);
@@ -225,19 +230,20 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
 
     while(options) {
         if(!strcmp(options->name, "filename"))
+        {
+            free (state->filename);
             state->filename = strdup(options->value);
+        }
         options = options->next;
     }
 
-    if(!state->filename) {
-        free(state);
+    if (state->filename)
+        INFO1("Configured htpasswd authentication using password file \"%s\"", 
+                state->filename);
+    else
         ERROR0("No filename given in options for authenticator.");
-        return -1;
-    }
 
     authenticator->state = state;
-    DEBUG1("Configured htpasswd authentication using password file %s", 
-            state->filename);
 
     thread_rwlock_create(&state->file_rwlock);
     htpasswd_recheckfile (state);

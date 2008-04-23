@@ -195,15 +195,25 @@ static void auth_new_listener (auth_t *auth, auth_client *auth_user)
     {
         DEBUG0 ("listener is no longer connected");
         client->respcode = 400;
+        auth_release (client->auth);
+        client->auth = NULL;
         return;
     }
     if (auth->authenticate)
     {
         if (auth->authenticate (auth_user) != AUTH_OK)
+        {
+            auth_release (client->auth);
+            client->auth = NULL;
             return;
+        }
     }
     if (auth_postprocess_listener (auth_user) < 0)
+    {
+        auth_release (client->auth);
+        client->auth = NULL;
         INFO1 ("client %lu failed", client->con->id);
+    }
 }
 
 
