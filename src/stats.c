@@ -1096,10 +1096,13 @@ static void _free_event(stats_event_t *event)
 }
 
 
-/* get a list of mountpoints that are in the stats but are not marked as hidden */
-void stats_get_streamlist (char *buffer, size_t remaining)
+refbuf_t *stats_get_streams (void)
 {
+#define STREAMLIST_BLKSIZE  4096
     avl_node *node;
+    int remaining = STREAMLIST_BLKSIZE;
+    refbuf_t *start = refbuf_new (remaining), *cur = start;
+    char *buffer = cur->data;
 
     /* now the stats for each source */
     thread_mutex_lock (&_stats_mutex);
@@ -1111,10 +1114,13 @@ void stats_get_streamlist (char *buffer, size_t remaining)
 
         if (source->hidden == 0)
         {
-            if (remaining <= strlen (source->source)+2)
+            if (remaining <= strlen (source->source) + 3)
             {
-                WARN0 ("streamlist was truncated");
-                break;
+                cur->len = STREAMLIST_BLKSIZE - remaining;
+                cur->next = refbuf_new (STREAMLIST_BLKSIZE);
+                remaining = STREAMLIST_BLKSIZE;
+                cur = cur->next;
+                buffer = cur->data;
             }
             ret = snprintf (buffer, remaining, "%s\r\n", source->source);
             if (ret > 0)
@@ -1123,11 +1129,14 @@ void stats_get_streamlist (char *buffer, size_t remaining)
                 remaining -= ret;
             }
         }
-
         node = avl_get_next(node);
     }
     thread_mutex_unlock (&_stats_mutex);
+    cur->len = STREAMLIST_BLKSIZE - remaining;
+    return start;
 }
+
+
 
 /* This removes any source stats from virtual mountpoints, ie mountpoints
  * where no source_t exists. This function requires the global sources lock

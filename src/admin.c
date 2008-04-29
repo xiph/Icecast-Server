@@ -995,17 +995,12 @@ static void command_list_mounts(client_t *client, int response)
 
     if (response == PLAINTEXT)
     {
-        char *buf;
-        int remaining = PER_CLIENT_REFBUF_SIZE;
-        int ret;
-
-        buf = client->refbuf->data;
-        ret = snprintf (buf, remaining,
+        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
-
-        stats_get_streamlist (client->refbuf->data+ret, remaining-ret);
-
         client->refbuf->len = strlen (client->refbuf->data);
+        client->respcode = 200;
+
+        client->refbuf->next = stats_get_streams ();
         fserve_add_client (client, NULL);
     }
     else
