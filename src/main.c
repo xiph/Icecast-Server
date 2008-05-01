@@ -104,10 +104,15 @@ static void _initialize_subsystems(void)
     connection_initialize();
     global_initialize();
     refbuf_initialize();
+
+    stats_initialize();
+    fserve_initialize();
 #if !defined(WIN32) || defined(WIN32_SERVICE)
     /* win32 GUI needs to do the initialise before here */
     xslt_initialize();
+#ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
+#endif
 #endif
 }
 
@@ -415,7 +420,6 @@ int main(int argc, char **argv)
         ret = config_initial_parse_file(filename);
         config_release_config();
         if (ret < 0) {
-            memset(pbuf, '\000', sizeof(pbuf));
             snprintf(pbuf, sizeof(pbuf)-1, 
                 "FATAL: error parsing config file (%s)", filename);
             _fatal_error(pbuf);
@@ -452,9 +456,6 @@ int main(int argc, char **argv)
     }
 
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
-
-    stats_initialize(); /* We have to do this later on because of threading */
-    fserve_initialize(); /* This too */
 
 #ifdef CHUID 
     /* We'll only have getuid() if we also have setuid(), it's reasonable to

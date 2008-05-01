@@ -7,20 +7,35 @@ Feature differences from SVN trunk
 . When max-listeners reached, a HTTP 302 code can be sent to redirect
   clients to alternative slave hosts. 
 . authenticated relays, those that match the relay user/pass, bypass the 
-  max-listener/bandwidth check
+  max-listener/bandwidth check. slaves can use a different auth to listeners
 . mount can filter out theora content, useful for defining a local relay
   of a theora+vorbis stream to have a vorbis only stream from the same source.
-. stream-auth/handlers option for url authenticator.
+. stream-auth/handlers options for url authenticator.
 
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3-kh34
+. Added Kate/Skeleton codec handling within Ogg streams. patch by ogg.k.ogg.k
+. small changes for stream directory handling, mostly for error cases. 
+. added /admin/reset?mount=/mountpoint&setting=x to reset stats for that mountpoint.
+  without setting= all resetable stats are reset. x can specify peak,read or send
+  or a combination of them (comma deliminated)
+. /admin/streamlist.txt uses the same routine as /admin/streams so does not have 
+  a limit on how much is sent back.
+. updated win32 code, windows service should be ok again. service name now
+  includes version to help multiple installs but windows may require a reboot
+  between removing a service and installing that same service again.
+. fix possible crash on reload of xml with bad tags
+. small update of web pages
+. added per-mount stat for total mbytes sent
+
 2.3-kh33
 . master/slave update.
-  slave mode only issues a streamlist.txt request if the /admin/slaves request
-  fails.  /admin/slaves also acts as an mountpoint for the slave relays by
+  slave mode only issues a streamlist.txt request if the /admin/streams request
+  fails.  /admin/streams also acts as an mountpoint for the slave relays by
   passing a mount= arg and auth.
-  You can now define a <mount> for /admin/slaves to define how slave
+  You can now define a <mount> for /admin/streams to define how slave
   authentication is done eg url (listener_add) or htpasswd.
   Once authenticated, the slave can bypass any limits like max listeners etc.
   The slave also allows for defining a <master> tag block instead of <master-*>

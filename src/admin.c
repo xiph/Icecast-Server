@@ -54,6 +54,7 @@ static void command_stats(client_t *client, const char *filename);
 static void command_stats_mount (client_t *client, source_t *source, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
+static void command_reset_stats (client_t *client, source_t *source, int response);
 static void command_manageauth(client_t *client, source_t *source,
         int response);
 static void command_buildm3u(client_t *client, const char *mount);
@@ -113,6 +114,7 @@ static struct admin_command admin_mount[] =
     { "stats",              RAW,    { command_stats_mount } },
     { "manageauth",         RAW,    { command_manageauth } },
     { "admin.cgi",          RAW,    { command_shoutcast_metadata } },
+    { "resetstats",         XSLT,   { command_reset_stats } },
     { "metadata.xsl",       XSLT,   { command_metadata } },
     { "listclients.xsl",    XSLT,   { command_show_listeners } },
     { "updatemetadata.xsl", XSLT,   { command_updatemetadata } },
@@ -665,6 +667,46 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
 }
 
 
+static void command_reset_stats (client_t *client, source_t *source, int response)
+{
+    const char *msg = "Failed to reset values";
+    const char *name = httpp_get_query_param (client->parser, "setting");
+    int all = 0, ok = 0;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    if (name == NULL)
+        all = 1;
+    if (all || strstr (name, "peak"))
+    {
+        source->peak_listeners = source->listeners;
+        source->prev_listeners = source->peak_listeners+1;
+        ok = 1;
+    }
+    if (all || strstr (name, "read"))
+        if (source->format)
+        {
+            source->format->read_bytes = 0;
+            ok = 1;
+        }
+    if (all || strstr (name, "sent"))
+        if (source->format)
+        {
+            source->format->sent_bytes = 0;
+            ok = 1;
+        }
+
+    if (ok)
+        msg = "have reset settings";
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    xmlDocSetRootElement(doc, node);
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(msg));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    admin_send_response(doc, client, response, "response.xsl");
+    xmlFreeDoc(doc);
+}
+
 static void command_show_listeners(client_t *client, source_t *source,
     int response)
 {
@@ -1101,23 +1143,17 @@ void command_list_mounts(client_t *client, int response)
 
     if (response == TEXT)
     {
-        char *buf;
-        int remaining = PER_CLIENT_REFBUF_SIZE;
-        int ret;
-
         redirector_update (client);
 
-        buf = client->refbuf->data;
-        ret = snprintf (buf, remaining,
+        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
                 "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
 
         if (strcmp (httpp_getvar (client->parser, HTTPP_VAR_URI), "/admin/streams") == 0)
-            client->refbuf->next = stats_get_streams ();
+            client->refbuf->next = stats_get_streams (1);
         else
-            stats_get_streamlist (buf+ret, remaining-ret);
-
-        client->refbuf->len = strlen (client->refbuf->data);
+            client->refbuf->next = stats_get_streams (0);
         fserve_add_client (client, NULL);
     }
     else

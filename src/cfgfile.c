@@ -174,7 +174,7 @@ int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
                 ret = argp->retrieve (node, argp->storage);
                 if (ret > 0)
                 {
-                    xmlParserWarning(stderr, "skipping element \"%s\" parsing \"%s\"\n", node->name, parent->name);
+                    xmlParserWarning (NULL, "skipping element \"%s\" parsing \"%s\"\n", node->name, parent->name);
                     ret = 0;
                 }
                 break;

@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3-kh33], [karl@xiph.org])
+AC_INIT([Icecast], [2.3-kh34], [karl@xiph.org])
 
 AC_PREREQ(2.59)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -82,6 +82,19 @@ XIPH_PATH_SPEEX(
     [ AC_MSG_WARN([Speex support disabled!])
     ])
 
+AC_CHECK_LIB(kate, kate_decode_init,[have_kate=yes],[have_kate=no], -logg)
+if test "x$have_kate" == "xyes"
+then
+  AC_CHECK_LIB(oggkate, kate_ogg_decode_headerin,[have_kate=yes],[have_kate=no],-lkate -logg)
+  if test "x$have_kate" == "xyes"
+  then
+    KATE_LIBS="-loggkate -lkate -logg"
+    AC_DEFINE([HAVE_KATE],[1],[Define if you have libkate])
+  fi
+fi
+dnl we still use format_kate as it doesn't need libkate to work
+#ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_kate.o"
+
 ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
 XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
 XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
@@ -90,6 +103,7 @@ XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
 XIPH_PATH_CURL([
     AC_CHECK_DECL([CURLOPT_NOSIGNAL],
         [ AC_DEFINE([HAVE_AUTH_URL], 1, [Define to compile in auth URL support code])
+        AC_CHECK_FUNCS([curl_global_init])
         ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_url.o"
         enable_curl="yes"
         XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
@@ -137,6 +151,8 @@ AC_SUBST(DEBUG)
 AC_SUBST(CFLAGS)
 AC_SUBST(PROFILE)
 AC_SUBST(ICECAST_OPTIONAL)
+AC_SUBST(HAVE_KATE)
+AC_SUBST(KATE_LIBS)
 
 AC_OUTPUT([Makefile conf/Makefile debian/Makefile src/Makefile src/avl/Makefile
 src/httpp/Makefile src/thread/Makefile src/log/Makefile

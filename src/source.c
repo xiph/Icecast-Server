@@ -434,9 +434,6 @@ static void update_source_stats (source_t *source)
     unsigned long kbytes_read = source->bytes_read_since_update/1024;
 
     source->format->sent_bytes += kbytes_sent*1024;
-    source->bytes_sent_since_update %= 1024;
-    source->bytes_read_since_update %= 1024;
-
     stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
             (8 * rate_avg (source->format->out_bitrate))/1000);
     stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate/1000);
@@ -444,11 +441,16 @@ static void update_source_stats (source_t *source)
             "%"PRIu64, source->format->read_bytes);
     stats_event_args (source->mount, "total_bytes_sent",
             "%"PRIu64, source->format->sent_bytes);
+    stats_event_args (source->mount, "total_mbytes_sent",
+            "%"PRIu64, source->format->sent_bytes/(1024*1024));
     if (source->client)
         stats_event_args (source->mount, "connected", "%"PRIu64,
                 (uint64_t)(global.time - source->client->con->con_time));
     stats_event_add (NULL, "stream_kbytes_sent", kbytes_sent);
     stats_event_add (NULL, "stream_kbytes_read", kbytes_read);
+
+    source->bytes_sent_since_update %= 1024;
+    source->bytes_read_since_update %= 1024;
 
     if (source->running && source->limit_rate)
     {
@@ -1058,6 +1060,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         INFO2 ("Applying mount information for \"%s\" from \"%s\"",
                 source->mount, mountinfo->mountname);
 
+    stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+
     /* if a setting is available in the mount details then use it, else
      * check the parser details. */
 
@@ -1118,7 +1122,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     /* stream description */
     if (mountinfo && mountinfo->stream_description)
-        str = mountinfo->stream_description;
+        stats_event (source->mount, "server_description", mountinfo->stream_description);
     else
     {
         do {
@@ -1128,15 +1132,14 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
             str = httpp_getvar (parser, "x-audiocast-description");
             if (str) break;
-            str = "Unspecified description";
         } while (0);
+        if (str && source->format)
+            stats_event_conv (source->mount, "server_description", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "server_description", str, source->format->charset);
 
     /* stream URL */
     if (mountinfo && mountinfo->stream_url)
-        str = mountinfo->stream_url;
+        stats_event (source->mount, "server_url", mountinfo->stream_url);
     else
     {
         do {
@@ -1147,13 +1150,13 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             str = httpp_getvar (parser, "x-audiocast-url");
             if (str) break;
         } while (0);
+        if (str && source->format)
+            stats_event_conv (source->mount, "server_url", str, source->format->charset);
     }
-    if (str && source->format)
-        stats_event_conv (source->mount, "server_url", str, source->format->charset);
 
     /* stream genre */
     if (mountinfo && mountinfo->stream_genre)
-        str = mountinfo->stream_genre;
+        stats_event (source->mount, "genre", mountinfo->stream_genre);
     else
     {
         do {
@@ -1165,11 +1168,9 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (str) break;
             str = "various";
         } while (0);
+        if (source->format)
+            stats_event_conv (source->mount, "genre", str, source->format->charset);
     }
-    if (source->format)
-        stats_event_conv (source->mount, "genre", str, source->format->charset);
-    else
-        stats_event (source->mount, "genre", str);
 
     /* stream bitrate */
     if (mountinfo && mountinfo->bitrate)

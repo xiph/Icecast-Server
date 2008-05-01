@@ -42,6 +42,8 @@
 #endif
 #include "format_midi.h"
 #include "format_flac.h"
+#include "format_kate.h"
+#include "format_skeleton.h"
 
 #define CATMODULE "format-ogg"
 #include "logging.h"
@@ -177,7 +179,9 @@ int format_ogg_get_plugin (source_t *source)
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
     plugin->apply_settings = apply_ogg_settings;
-    plugin->contenttype = "application/ogg";
+    if (strcmp (httpp_getvar (source->parser, "content-type"), "application/x-ogg") == 0)
+        httpp_setvar (source->parser, "content-type", "application/ogg");
+    plugin->contenttype = httpp_getvar (source->parser, "content-type");;
 
     ogg_sync_init (&state->oy);
 
@@ -268,6 +272,12 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
 #endif
+        codec = initial_kate_page (plugin, page);
+        if (codec)
+            break;
+        codec = initial_skeleton_page (plugin, page);
+        if (codec)
+            break;
 
         /* any others */
         ERROR0 ("Seen BOS page with unknown type");
