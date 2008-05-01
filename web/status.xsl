@@ -21,25 +21,23 @@
 <img src="/images/corner_topleft.jpg" class="corner" style="display: none" alt=""/>
 </div>
 <div class="newscontent">
-<h3>
-<xsl:choose>
-<xsl:when test="authenticator">
-<a href="/auth.xsl"><img border="0" src="/images/key.png" alt="" /></a>
-</xsl:when>
-<xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png" alt="" /></a>
-</xsl:otherwise>
-</xsl:choose>
-Mount Point : (<xsl:value-of select="@mount" />) :
-<xsl:choose>
-<xsl:when test="authenticator">
-<a href="/auth.xsl">Click to Listen</a>
-</xsl:when>
-<xsl:otherwise>
-<a href="{@mount}.m3u">Click to Listen</a>
-</xsl:otherwise>
-</xsl:choose>
-</h3>
+    <div class="streamheader">
+        <table cellspacing="0" cellpadding="0">
+            <colgroup align="left" />
+            <colgroup align="right" width="300" />
+            <tr>
+                <td><h3>Mount Point <xsl:value-of select="@mount" /></h3></td>
+                <xsl:choose>
+                    <xsl:when test="authenticator">
+                        <td align="right"><a class="auth" href="/auth.xsl">Login</a></td>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <td align="right"> <a href="{@mount}.m3u">M3U</a> <a href="{@mount}.xspf">XSPF</a></td>
+                    </xsl:otherwise>
+                </xsl:choose>
+        </tr></table>
+    </div>
+
 
 <table border="0" cellpadding="4">
 <xsl:if test="server_name">
@@ -48,8 +46,12 @@ Mount Point : (<xsl:value-of select="@mount" />) :
 <xsl:if test="server_description">
 <tr><td>Stream Description:</td><td class="streamdata"> <xsl:value-of select="server_description" /></td></tr>
 </xsl:if>
+<xsl:if test="server_type">
 <tr><td>Content Type:</td><td class="streamdata"><xsl:value-of select="server_type" /></td></tr>
-<tr><td>Mount Uptime:</td><td class="streamdata"><xsl:value-of select="stream_start" /></td></tr>
+</xsl:if>
+<xsl:if test="stream_start">
+<tr><td>Mount Start:</td><td class="streamdata"><xsl:value-of select="stream_start" /></td></tr>
+</xsl:if>
 <xsl:if test="bitrate">
 <tr><td>Bitrate:</td><td class="streamdata"> <xsl:value-of select="bitrate" /></td></tr>
 </xsl:if>

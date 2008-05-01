@@ -139,14 +139,18 @@ td {
 .newscontent {
 	margin: 0 20px;
 }
-.newscontent h3 {
-	margin: 10px 0px;
+h3 {
+	margin: 0px;
+    padding: 0px;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
 	font-weight: bold;
 	font-size: 110%;
 	color: #f8ef64;
-        border-bottom:  1px groove #ACACAC;
+}
+.newscontent h3 {
+    margin-bottom: 10px;
+    border-bottom: 1px groove #ACACAC;
 }
 .newscontent h4 {
 	margin: 10px 0px;
@@ -178,6 +182,33 @@ td {
 	font-size: 90%;
     color: #f8ef64;
 }
+.streamheader table {
+    width: 100%;
+    margin-bottom: 10px;
+    border-bottom: 1px groove #ACACAC;
+}
+.streamheader td {
+    margin: 0px;
+    padding: 6px 0px;
+    border: 0px solid cyan;
+}
+.streamheader h3 {
+    margin: 0px;
+    border: 0px solid blue;
+    vertical-align: lower;
+}
+.streamheader a {
+    padding: 8px 5px 3px 30px;
+    text-decoration: none;
+    margin: 0px 0px 0px 20px;
+    background: transparent url("/images/tunein.png") no-repeat left center;
+}
+.streamheader a.auth {
+    margin: 0px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    background: transparent url("/images/key.png") no-repeat left center;
+}
 .newscontent a {
     font-family: Verdana, sans-serif;
     text-decoration: none;
@@ -192,6 +223,7 @@ td {
     font-family: Verdana, sans-serif;
     text-decoration: none;
     font-weight: bold;
+    padding: 2px 9px;
     background: #444;
     color: #f8ef64;
 }
@@ -204,8 +236,7 @@ td {
 }
 .poster {
 	font-family: Verdana, sans-serif;
-	margin: 0px;
-	margin-top: 50px;
+    margin: 50px 0px 20px 0px;
 	padding-top: 10px;
 	padding-bottom: 10px;
 	display: block;
@@ -213,7 +244,7 @@ td {
 	font-size: 100%;
     font-weight: bold;
 	color: #f8ef64;
-	border-top:  4px solid #656565;
+	border-top: 1px groove #ACACAC;
 }
 .poster a {
 	color: white;

@@ -13,6 +13,9 @@
 /* Define to 1 if you have the <curl/curl.h> header file. */
 #define HAVE_CURL_CURL_H 1
 
+/* Define t o1 if you have the 'curl_global_init' function */
+#define HAVE_CURL_GLOBAL_INIT 1
+
 /* Define to 1 if you have the `inet_aton' function. */
 #define HAVE_INET_ATON 1
 
@@ -92,13 +95,13 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3-kh32"
+#define VERSION "2.3-kh34"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING PACKAGE_NAME PACKAGE_VERSION
+#define PACKAGE_STRING PACKAGE_NAME " " PACKAGE_VERSION
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "icecast"

@@ -19,27 +19,29 @@
 </div>
 <div class="newscontent">
 <xsl:for-each select="source">
-<h3>
+    <div class="streamheader">
+        <table cellspacing="0" cellpadding="0">
+            <colgroup align="left" />
+            <colgroup align="right" width="300" />
+            <tr>
+                <td><h3>Mount Point <xsl:value-of select="@mount" /></h3></td>
+                <xsl:choose>
+                    <xsl:when test="authenticator">
+                        <td align="right"><a class="auth" href="/auth.xsl">Login</a></td>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <td align="right"> <a href="{@mount}.m3u">M3U</a> <a href="{@mount}.xspf">XSPF</a></td>
+                    </xsl:otherwise>
+                </xsl:choose>
+        </tr></table>
+    </div>
 
-<xsl:choose>
-<xsl:when test="authenticator">
-<a href="/auth.xsl"><img border="0" src="/images/key.png"/></a> Authentication Required
-</xsl:when>
-<xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/images/tunein.png"/></a> Mount Point
-</xsl:otherwise>
-</xsl:choose>
-<xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-(<xsl:value-of select="@mount" />)
-<xsl:if test="authenticator"><a href="manageauth.xsl?mount={@mount}"><img border="0" src="/images/key.png"/></a> </xsl:if>
-
-</h3>
 	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
 	<tr>        
 	    <td align="center">
-			<a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a> | 
-        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a> | 
-			<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a> |
+			<a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
+        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a>
+			<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a>
         	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
 	    </td></tr>
 	</table>
