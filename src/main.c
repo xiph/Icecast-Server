@@ -110,7 +110,9 @@ static void _initialize_subsystems(void)
 #if !defined(WIN32) || defined(WIN32_SERVICE)
     /* win32 GUI needs to do the initialise before here */
     xslt_initialize();
+#ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
+#endif
 #endif
 }
 
