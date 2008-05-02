@@ -303,7 +303,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     if (curlcode)
     {
         yp->process = do_yp_add;
-        yp->next_update += 1200;
+        yp->next_update = now + 1200;
         ERROR2 ("connection to %s failed with \"%s\"", server->url, server->curl_error);
         return -2;
     }
@@ -314,7 +314,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
         if (yp->process == do_yp_add)
         {
             ERROR3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
-            yp->next_update += 7200;
+            yp->next_update = now + 7200;
         }
         if (yp->process == do_yp_touch)
         {
@@ -325,9 +325,9 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
              * cases as a firewall block or incorrect listenurl.
              */
             if (yp->touch_interval < 1200)
-                yp->next_update += 1200;
+                yp->next_update = now + 1200;
             else
-                yp->next_update += yp->touch_interval;
+                yp->next_update = now + yp->touch_interval;
             INFO3 ("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
         }
         yp->process = do_yp_add;
