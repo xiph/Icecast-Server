@@ -7,7 +7,7 @@
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
 <body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<img align="left" src="/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
+<h2>Icecast2 Admin</h2>
 <br />
 <!--header menu -->
 <div class="roundcont">
@@ -17,9 +17,9 @@
 	<table border="0" cellpadding="1" cellspacing="3">
 	<tr>        
 	    <td align="center">
-	        <a class="nav" href="stats.xsl">Admin Home</a> | 
-		    <a class="nav" href="listmounts.xsl">List Mountpoints</a> | 
-        	<a class="nav" href="moveclients.xsl">Move Listeners</a> | 
+	        <a class="nav" href="stats.xsl">Admin Home</a>
+		    <a class="nav" href="listmounts.xsl">List Mountpoints</a>
+        	<a class="nav" href="moveclients.xsl">Move Listeners</a>
         	<a class="nav" href="/status.xsl">Index</a>
 	    </td></tr>
 	</table>
@@ -67,25 +67,32 @@
 <img src="/corner_topleft.jpg" class="corner" style="display: none" />
 </div>
 <div class="newscontent">
-<h3>
-<xsl:choose>
-<xsl:when test="authenticator">
-<a href="/auth.xsl"><img border="0" src="/key.png"/></a>
-</xsl:when>
-<xsl:otherwise>
-<a href="{@mount}.m3u"><img border="0" src="/tunein.png"/></a>
-</xsl:otherwise>
-</xsl:choose>
-Mount Point : (<xsl:value-of select="@mount" />)
-</h3>
+    <div class="streamheader">
+        <table cellspacing="0" cellpadding="0" >
+            <colgroup align="left" />
+            <colgroup align="right" width="300" />
+            <tr>
+                <td><h3>Mount Point <xsl:value-of select="@mount" /></h3></td>
+                <xsl:choose>
+                    <xsl:when test="authenticator">
+                        <td align="right"><a class="auth" href="/auth.xsl">Login</a></td>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <td align="right">
+                            <a href="{@mount}.m3u">M3U</a>
+                            <a href="{@mount}.xspf">XSPF</a></td>
+                    </xsl:otherwise>
+                </xsl:choose>
+        </tr></table>
+    </div>
 	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
 	<tr>        
 	    <td align="center">
-		    <a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a> | 
-        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move MountPoints</a> | 
-        	<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a> |
+		    <a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
+        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move MountPoints</a>
+        	<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a>
         	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
-                <xsl:if test="authenticator"> | <a class="nav2" href="manageauth.xsl?mount={@mount}">Manage Authentication</a></xsl:if>
+                <xsl:if test="authenticator"><a class="nav2" href="manageauth.xsl?mount={@mount}">Manage Authentication</a></xsl:if>
 	    </td></tr>
 	</table>
 <br />

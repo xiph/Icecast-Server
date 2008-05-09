@@ -7,7 +7,7 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
-<img align="left" src="/icecast.png" /><h2><center>Icecast2 Status (Version Info)</center></h2>
+<h2>Server Information</h2>
 <br />
 <!--index header menu -->
 <div class="roundcont">
@@ -17,8 +17,8 @@
 <table border="0" width="100%" id="table1" cellspacing="0" cellpadding="4">
 	<tr>
 		<td bgcolor="#656565">
-	    <a class="nav" href="admin/">Administration</a> |
-		<a class="nav" href="status.xsl">Server Status</a> |
+	    <a class="nav" href="admin/">Administration</a>
+		<a class="nav" href="status.xsl">Server Status</a>
 		<a class="nav" href="server_version.xsl">Version</a></td>
 	</tr>
 </table>
@@ -35,7 +35,7 @@
 <img src="/corner_topleft.jpg" class="corner" style="display: none" />
 </div>
 <div class="newscontent">
-<h3>Version Information</h3>
+<h3>Server Information</h3>
 <table border="0" cellpadding="4">
 <xsl:for-each select="/icestats">
 <tr>

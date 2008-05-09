@@ -1,5 +1,5 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output omit-xml-declaration="no" method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:template match = "/icestats" >
 <html>
 <head>
@@ -11,7 +11,7 @@
 <tr>
 <td width="50"></td>
 <td>
-<img align="left" src="/icecast.png" /><h2><center>Authorization Page</center></h2>
+<h2>Authorization Page</h2>
 <div class="roundcont">
 <div class="roundtop">
 <img src="/corner_topleft.jpg" class="corner" style="display: none" />
