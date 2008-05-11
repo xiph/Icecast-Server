@@ -918,6 +918,8 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
+    if (configuration->yp_url [configuration->num_yp_directories] == NULL)
+        return;
     configuration->num_yp_directories++;
 }
 
