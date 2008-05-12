@@ -89,15 +89,7 @@ SOURCE=..\src\admin.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\admin.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\auth.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\auth.h
 # End Source File
 # Begin Source File
 
@@ -105,15 +97,7 @@ SOURCE=..\src\auth_htpasswd.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\auth_htpasswd.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\auth_url.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\auth_url.h
 # End Source File
 # Begin Source File
 
@@ -121,15 +105,7 @@ SOURCE=..\src\avl\avl.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\avl\avl.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\cfgfile.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\cfgfile.h
 # End Source File
 # Begin Source File
 
@@ -137,19 +113,7 @@ SOURCE=..\src\client.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\client.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\compat.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\connection.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\connection.h
 # End Source File
 # Begin Source File
 
@@ -157,15 +121,7 @@ SOURCE=..\src\event.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\event.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\format.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\format.h
 # End Source File
 # Begin Source File
 
@@ -173,7 +129,7 @@ SOURCE=..\src\format_flac.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\format_flac.h
+SOURCE=..\src\format_kate.c
 # End Source File
 # Begin Source File
 
@@ -181,15 +137,7 @@ SOURCE=..\src\format_midi.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\format_midi.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\format_mp3.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\format_mp3.h
 # End Source File
 # Begin Source File
 
@@ -197,7 +145,7 @@ SOURCE=..\src\format_ogg.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\format_ogg.h
+SOURCE=..\src\format_skeleton.c
 # End Source File
 # Begin Source File
 
@@ -205,15 +153,7 @@ SOURCE=..\src\format_speex.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\format_speex.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\format_theora.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\format_theora.h
 # End Source File
 # Begin Source File
 
@@ -221,15 +161,7 @@ SOURCE=..\src\format_vorbis.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\format_vorbis.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\fserve.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\fserve.h
 # End Source File
 # Begin Source File
 
@@ -237,15 +169,7 @@ SOURCE=..\src\global.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\global.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\httpp\httpp.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\httpp\httpp.h
 # End Source File
 # Begin Source File
 
@@ -253,23 +177,11 @@ SOURCE=..\src\log\log.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\log\log.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\logging.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\logging.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\md5.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\md5.h
 # End Source File
 # Begin Source File
 
@@ -281,23 +193,11 @@ SOURCE=..\src\refbuf.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\refbuf.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\net\resolver.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\net\resolver.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\sighandler.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\sighandler.h
 # End Source File
 # Begin Source File
 
@@ -309,15 +209,7 @@ SOURCE=..\src\net\sock.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\net\sock.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\source.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\source.h
 # End Source File
 # Begin Source File
 
@@ -325,15 +217,7 @@ SOURCE=..\src\stats.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\stats.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\thread\thread.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\thread\thread.h
 # End Source File
 # Begin Source File
 
@@ -345,19 +229,11 @@ SOURCE=..\src\util.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\util.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\xslt.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\yp.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\src\yp.h
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -365,11 +241,151 @@ SOURCE=..\src\yp.h
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=..\src\admin.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\auth.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\auth_htpasswd.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\auth_url.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\avl\avl.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\cfgfile.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\client.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\compat.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\connection.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\event.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_flac.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_kate.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_midi.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_mp3.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_ogg.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_skeleton.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_speex.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_theora.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\format_vorbis.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\fserve.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\global.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\httpp\httpp.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\log\log.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\logging.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\md5.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\refbuf.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\net\resolver.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\sighandler.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\net\sock.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\source.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\stats.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\thread\thread.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\timing\timing.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\util.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\xslt.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\yp.h
 # End Source File
 # End Group
 # End Target

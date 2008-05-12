@@ -1100,7 +1100,7 @@ refbuf_t *stats_get_streams (void)
 {
 #define STREAMLIST_BLKSIZE  4096
     avl_node *node;
-    int remaining = STREAMLIST_BLKSIZE;
+    unsigned int remaining = STREAMLIST_BLKSIZE;
     refbuf_t *start = refbuf_new (remaining), *cur = start;
     char *buffer = cur->data;
 

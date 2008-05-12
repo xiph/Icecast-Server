@@ -33,18 +33,10 @@ typedef struct source_tag source_t;
 #include "logging.h"
 
 
-typedef struct _skeleton_codec_tag
-{
-} skeleton_codec_t;
-
-
 static void skeleton_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    skeleton_codec_t *skeleton = codec->specific;
-
     DEBUG0 ("freeing skeleton codec");
     ogg_stream_clear (&codec->os);
-    free (skeleton);
     free (codec);
 }
 
@@ -82,11 +74,8 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
     ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
     ogg_packet packet;
 
-    skeleton_codec_t *skeleton_codec = calloc (1, sizeof (skeleton_codec_t));
-
     ogg_stream_init (&codec->os, ogg_page_serialno (page));
     ogg_stream_pagein (&codec->os, page);
-
 
     ogg_stream_packetout (&codec->os, &packet);
 
@@ -95,13 +84,11 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
     if ((packet.bytes<8) || memcmp(packet.packet, "fishead\0", 8))
     {
         ogg_stream_clear (&codec->os);
-        free (skeleton_codec);
         free (codec);
         return NULL;
     }
 
     INFO0 ("seen initial skeleton header");
-    codec->specific = skeleton_codec;
     codec->process_page = process_skeleton_page;
     codec->codec_free = skeleton_codec_free;
     codec->headers = 1;
