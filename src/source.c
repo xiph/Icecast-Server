@@ -940,6 +940,8 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     DEBUG1("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
+    stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+
     if (mountinfo)
     {
         source->max_listeners = mountinfo->max_listeners;

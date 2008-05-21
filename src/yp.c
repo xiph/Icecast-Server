@@ -246,6 +246,8 @@ void yp_recheck_config (ice_config_t *config)
                 destroy_yp_server (server);
                 break;
             }
+            if (server->url_timeout > 10 || server->url_timeout < 1)
+                server->url_timeout = 6;
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
             curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server->server_id);
@@ -386,6 +388,8 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     free (value);
 
     value = stats_get_value (yp->mount, "bitrate");
+    if (value == NULL)
+        value = stats_get_value (yp->mount, "ice-bitrate");
     add_yp_info (yp, value, YP_BITRATE);
     free (value);
 
