@@ -1,3 +1,117 @@
+Icecast 2.3.2
+-----------------------------------------------------------------------------
+- Character set support.
+Most non-Ogg streams (eg MP3) send metadata as Latin1 but it could be in other
+character sets.  As icecast uses UTF-8, we need to convert to UTF-8 so that web
+pages and stream directories render correctly,
+  . Allow a per-mount <charset> setting.  For when source clients do not
+  indicate which character set is in use.
+  . a charset= parameter to the metadata request.
+  . Default for non-Ogg content is now Latin-1 (aka ISO-8859-1),  Ogg content
+  still use UTF-8.
+
+- Authentication
+  . Each mountpoint authentication is isolated so one mount authentication does
+  not slow another mountpoint authentication down.
+  . XSL pages can require authentication.
+  . Add some sanity checks for incorrect settings.
+
+- Listening socket update
+  . Allow multiple ports to be allocated which allow multiple shoutcast source
+  clients to stream on the same icecast instance.
+  . No internal limit on the number of listen-sockets that can be used.
+  . Allow for a listen-socket to be marked SSL capable. While any client could
+  connect on these, the idea is really for /admin requests.
+  . allow for a <listen-socket> to bind to ipv4 and ipv6. BSDs may require to
+  the use of bind-address.
+
+- XSL update
+  . XSL pages include an xspf link for non-auth streams.
+  . XSL pages in both webroot and adminroot can take a mount= arg to limit
+  which stats are transformed.
+  . XSL files can specify the content-type to return to the client. It is no
+  longer fixed to html
+
+- Updates for stream directory handling.
+  . A stream is not registered with the directory until after the first minute
+  has passed. some streams have been stuck in a connect/disconnect loop.
+  . Increase retry time on failure, if the stream add is rejected then it will
+  be down to a misconfiguration so a long retry delay is performed.
+  . A YP server that is not responding is ignored for a while
+
+- Updates for Win32
+  . Build cleanups,
+  . Newer versions of dependency libs (libxml2/libxslt/libcurl etc)
+  . buffer overflow fixes when many streams are active
+
+- Accept/Ban IP support.
+Now takes filenames for explicitly accepting or denying requests from specified
+IP addresses.  Useful in cases where firewall access is not available.  The
+files, if defined, are re-read automatically if updated.
+
+- A Mountpoint is exported to the slaves even if no mount section is defined for
+it. You can still use the hidden setting to prevent that from happening.
+
+- Relays handle redirection (HTTP 302) if one is received at startup.
+
+- Automatically generate XSPF playlist like we do with M3U, the mountpoint
+extension is .xspf 
+
+- Header updates for proxy handling and certain clients like some shoutcast
+source clients and flash players.
+
+- Added Kate/Skeleton codecs to Ogg handler.
+
+- Various stats cleanups. Added some global stats (server ID, email contact etc).
+
+- Documentation updates.
+
+- The streamlist passed from master to slave had a limited length, so if there
+were many streams then some could of been left out.
+
+- Relay startup/shutdown is cleaner.
+
+- several build cleanups.
+
+- several resource leaks and race conditions fixed
+
+
+Icecast 2.3.1
+-----------------------------------------------------------------------------
+
+- new tag <logsize> in <logging> state the trigger size (in KB) for cycling the
+log files.
+
+- new tag <logarchive> in <logging> enable (1) if you want to use a timestamp
+for an extension when cycling logs. 
+
+- Handling of certain shoutcast source clients is fixed, this typically
+affected NSV source clients
+
+- A race in source shutdown when listeners are authenticated could lead to
+server crash
+
+- An audio glitch was possible in playback of vorbis streams when a new logical
+stream started (eg metadata update).
+
+- stats speedup. Processing large numbers of stats was slow. Typically only
+seen when using lots of streams on the same server.
+
+- 404 responses were being sent back in some places, now 403 is sent back.
+
+- Auth URL now handles the authentication to scripts better.
+  The order in which username/password are selected is
+  1. url is http://user:pass@host:port/....
+  2. <param name="username"> and <param name="password">
+  3. with listener_add/remove, listener supplied username/password is used.
+
+- A streams intro file can now be changed, using HUP, on active streams.
+
+- mount without a name crashed the server
+
+- Various documentation updates
+
+
 Icecast 2.3 
 -----------------------------------------------------------------------------
 **** New features for 2.3.0 ****

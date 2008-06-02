@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2 Win32
-AppVerName=Icecast trunk
+AppVerName=Icecast 2.3.2
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_trunk_setup
+OutputBaseFilename=icecast2_win32_2.3.2_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
@@ -42,7 +42,7 @@ Source: "..\web\*.jpg"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\web\*.css"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\admin\*.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "c:\xiph\lib\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
-;Source: "..\conf\*.xml"; DestDir: "{app}"; Flags: ignoreversion
+Source: "icecast.xml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\iconv.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\libxslt.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "c:\xiph\lib\libxml2.dll"; DestDir: "{app}"; Flags: ignoreversion
