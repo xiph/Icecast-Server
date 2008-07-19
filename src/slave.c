@@ -367,6 +367,7 @@ static void *start_relay_stream (void *arg)
     source_clear_source (relay->source);
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
+    relay->source->on_demand = 0;
     relay->start = time(NULL) + max_interval;
     relay->cleanup = 1;
 
@@ -391,7 +392,15 @@ static void check_relay_stream (relay_server *relay)
         {
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
+            {
+                ice_config_t *config = config_get_config ();
+                mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+                if (mountinfo == NULL)
+                    source_update_settings (config, relay->source, mountinfo);
+                config_release_config ();
+                stats_event (relay->localmount, "listeners", "0");
                 slave_update_all_mounts();
+            }
         }
         else
             WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
