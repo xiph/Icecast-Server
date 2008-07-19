@@ -54,7 +54,9 @@ avl_node_new (void *        key,
     node->rank_and_balance = 0;
     AVL_SET_BALANCE (node, 0);
     AVL_SET_RANK (node, 1);
+#ifdef HAVE_AVL_NODE_LOCK
     thread_rwlock_create(&node->rwlock);
+#endif
     return node;
   }
 }         
@@ -95,7 +97,9 @@ avl_tree_free_helper (avl_node * node, avl_free_key_fun_type free_key_fun)
   if (node->right) {
     avl_tree_free_helper (node->right, free_key_fun);
   }
+#ifdef HAVE_AVL_NODE_LOCK
   thread_rwlock_destroy (&node->rwlock);
+#endif
   free (node);
 }
   
@@ -106,7 +110,9 @@ avl_tree_free (avl_tree * tree, avl_free_key_fun_type free_key_fun)
     avl_tree_free_helper (tree->root->right, free_key_fun);
   }
   if (tree->root) {
+#ifdef HAVE_AVL_NODE_LOCK
     thread_rwlock_destroy(&tree->root->rwlock);
+#endif
     free (tree->root);
   }
   thread_rwlock_destroy(&tree->rwlock);
@@ -450,7 +456,9 @@ int avl_delete(avl_tree *tree, void *key, avl_free_key_fun_type free_key_fun)
   /* return the key and node to storage */
   if (free_key_fun)
       free_key_fun (x->key);
+#ifdef HAVE_AVL_NODE_LOCK
   thread_rwlock_destroy (&x->rwlock);
+#endif
   free (x);
 
   while (shorter && p->parent) {
@@ -1168,6 +1176,7 @@ void avl_tree_unlock(avl_tree *tree)
     thread_rwlock_unlock(&tree->rwlock);
 }
 
+#ifdef HAVE_AVL_NODE_LOCK
 void avl_node_rlock(avl_node *node)
 {
     thread_rwlock_rlock(&node->rwlock);
@@ -1182,3 +1191,4 @@ void avl_node_unlock(avl_node *node)
 {
     thread_rwlock_unlock(&node->rwlock);
 }
+#endif

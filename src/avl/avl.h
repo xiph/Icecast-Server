@@ -32,7 +32,7 @@ typedef struct avl_node_tag {
    * The rest of the bits are used for <rank>
    */
   unsigned int        rank_and_balance;
-#ifndef NO_THREAD
+#if !defined(NO_THREAD) && defined(HAVE_AVL_NODE_LOCK)
   rwlock_t rwlock;
 #endif
 } avl_node;
