@@ -470,7 +470,10 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         str = (char *)strdup (event->value);
     free (node->value);
     node->value = str;
-    DEBUG2 ("update node %s (%s)", node->name, node->value);
+    if (event->source)
+        DEBUG3 ("update \"%s\" %s (%s)", event->source, node->name, node->value);
+    else
+        DEBUG2 ("update global %s (%s)", node->name, node->value);
 }
 
 
