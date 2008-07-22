@@ -29,12 +29,14 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#define SCN_OFF_T SCNdMAX
+#define PRI_OFF_T PRIdMAX
 #else
 #include <winsock2.h>
 #include <windows.h>
 #define fseeko fseek
-#define PRIdMAX "ld"
-#define SCNdMAX "ld"
+#define SCN_OFF_T "ld"
+#define PRI_OFF_T "ld"
 #define snprintf _snprintf
 #define strncasecmp _strnicmp
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
@@ -70,8 +72,7 @@ static volatile fserve_t *pending_list = NULL;
 static mutex_t pending_lock;
 static avl_tree *mimetypes = NULL;
 
-static thread_type *fserv_thread;
-static int run_fserv = 0;
+static volatile int run_fserv = 0;
 static unsigned int fserve_clients;
 static int client_tree_changed=0;
 
@@ -101,23 +102,34 @@ void fserve_initialize(void)
     fserve_recheck_mime_types (config);
     config_release_config();
 
-    run_fserv = 1;
     stats_event (NULL, "file_connections", "0");
-
-    fserv_thread = thread_create("File Serving Thread", 
-            fserv_thread_function, NULL, THREAD_ATTACHED);
+    INFO0("file serving started");
 }
 
 void fserve_shutdown(void)
 {
-    if(!run_fserv)
-        return;
-
+    thread_mutex_lock (&pending_lock);
     run_fserv = 0;
-    thread_join(fserv_thread);
-    INFO0("file serving thread stopped");
+    while (pending_list)
+    {
+        fserve_t *to_go = (fserve_t *)pending_list;
+        pending_list = to_go->next;
+
+        fserve_client_destroy (to_go);
+    }
+    while (active_list)
+    {
+        fserve_t *to_go = active_list;
+        active_list = to_go->next;
+        fserve_client_destroy (to_go);
+    }
+
     if (mimetypes)
         avl_tree_free (mimetypes, _delete_mapping);
+
+    thread_mutex_unlock (&pending_lock);
+    thread_mutex_destroy (&pending_lock);
+    INFO0("file serving stopped");
 }
 
 #ifdef HAVE_POLL
@@ -142,7 +154,12 @@ int fserve_client_waiting (void)
         }
     }
     if (!ufds)
-        thread_sleep(200000);
+    {
+        thread_mutex_lock (&pending_lock);
+        run_fserv = 0;
+        thread_mutex_unlock (&pending_lock);
+        return -1;
+    }
     else if (poll(ufds, fserve_clients, 200) > 0)
     {
         /* mark any clients that are ready */
@@ -178,7 +195,12 @@ int fserve_client_waiting (void)
     }
     /* hack for windows, select needs at least 1 descriptor */
     if (fd_max == SOCK_ERROR)
-        thread_sleep (200000);
+    {
+        thread_mutex_lock (&pending_lock);
+        run_fserv = 0;
+        thread_mutex_unlock (&pending_lock);
+        return -1;
+    }
     else
     {
         struct timeval tv;
@@ -204,8 +226,10 @@ int fserve_client_waiting (void)
 }
 #endif
 
-static void wait_for_fds(void) {
+static int wait_for_fds(void)
+{
     fserve_t *fclient;
+    int ret;
 
     while (run_fserv)
     {
@@ -228,9 +252,11 @@ static void wait_for_fds(void) {
             thread_mutex_unlock (&pending_lock);
         }
         /* drop out of here if someone is ready */
-        if (fserve_client_waiting())
-            break;
+        ret = fserve_client_waiting();
+        if (ret)
+            return ret;
     }
+    return -1;
 }
 
 static void *fserv_thread_function(void *arg)
@@ -238,9 +264,10 @@ static void *fserv_thread_function(void *arg)
     fserve_t *fclient, **trail;
     size_t bytes;
 
-    INFO0("file serving thread started");
-    while (run_fserv) {
-        wait_for_fds();
+    while (1)
+    {
+        if (wait_for_fds() < 0)
+            break;
 
         fclient = active_list;
         trail = &active_list;
@@ -515,7 +542,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (range != NULL) {
         ret = 0;
         if (strncasecmp (range, "bytes=", 6) == 0)
-            ret = sscanf (range+6, "%" SCNdMAX "-", &rangenumber);
+            ret = sscanf (range+6, "%" SCN_OFF_T "-", &rangenumber);
 
         if (ret != 1) {
             /* format not correct, so lets just assume
@@ -557,9 +584,9 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
                     "Accept-Ranges: bytes\r\n"
-                    "Content-Length: %" PRIdMAX "\r\n"
-                    "Content-Range: bytes %" PRIdMAX \
-                    "-%" PRIdMAX "/%" PRIdMAX "\r\n"
+                    "Content-Length: %" PRI_OFF_T "\r\n"
+                    "Content-Range: bytes %" PRI_OFF_T \
+                    "-%" PRI_OFF_T "/%" PRI_OFF_T "\r\n"
                     "Content-Type: %s\r\n\r\n",
                     currenttime,
                     new_content_len,
@@ -583,7 +610,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
             "HTTP/1.0 200 OK\r\n"
             "Accept-Ranges: bytes\r\n"
-            "Content-Length: %" PRIdMAX "\r\n"
+            "Content-Length: %" PRI_OFF_T "\r\n"
             "Content-Type: %s\r\n\r\n",
             content_length,
             type);
@@ -607,6 +634,24 @@ fail:
 }
 
 
+/* Routine to actually add pre-configured client structure to pending list and
+ * then to start off the file serving thread if it is not already running
+ */
+static void fserve_add_pending (fserve_t *fclient)
+{
+    thread_mutex_lock (&pending_lock);
+    fclient->next = (fserve_t *)pending_list;
+    pending_list = fclient;
+    if (run_fserv == 0)
+    {
+        run_fserv = 1;
+        DEBUG0 ("fserve handler waking up");
+        thread_create("File Serving Thread", fserv_thread_function, NULL, THREAD_DETACHED);
+    }
+    thread_mutex_unlock (&pending_lock);
+}
+
+
 /* Add client to fserve thread, client needs to have refbuf set and filled
  * but may provide a NULL file if no data needs to be read
  */
@@ -623,11 +668,7 @@ int fserve_add_client (client_t *client, FILE *file)
     fclient->file = file;
     fclient->client = client;
     fclient->ready = 0;
-
-    thread_mutex_lock (&pending_lock);
-    fclient->next = (fserve_t *)pending_list;
-    pending_list = fclient;
-    thread_mutex_unlock (&pending_lock);
+    fserve_add_pending (fclient);
 
     return 0;
 }
@@ -652,10 +693,7 @@ void fserve_add_client_callback (client_t *client, fserve_callback_t callback, v
     fclient->callback = callback;
     fclient->arg = arg;
 
-    thread_mutex_lock (&pending_lock);
-    fclient->next = (fserve_t *)pending_list;
-    pending_list = fclient;
-    thread_mutex_unlock (&pending_lock);
+    fserve_add_pending (fclient);
 }
 
 
