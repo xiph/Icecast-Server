@@ -106,13 +106,9 @@ typedef struct
 static mutex_t _connection_mutex;
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
-static thread_type *tid;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
-static mutex_t _con_queue_mutex;
-static mutex_t _req_queue_mutex;
-
 static int ssl_ok;
 #ifdef HAVE_OPENSSL
 static SSL_CTX *ssl_ctx;
@@ -123,7 +119,7 @@ cache_file_contents banned_ip, allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
-static void *_handle_connection(void *arg);
+static void _handle_connection(void);
 
 static int compare_ip (void *arg, void *a, void *b)
 {
@@ -146,8 +142,6 @@ void connection_initialize(void)
     if (_initialized) return;
     
     thread_mutex_create(&_connection_mutex);
-    thread_mutex_create(&_con_queue_mutex);
-    thread_mutex_create(&_req_queue_mutex);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
@@ -177,8 +171,6 @@ void connection_shutdown(void)
  
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
-    thread_mutex_destroy(&_con_queue_mutex);
-    thread_mutex_destroy(&_req_queue_mutex);
     thread_mutex_destroy(&_connection_mutex);
     thread_mutex_destroy(&move_clients_mutex);
 
@@ -521,12 +513,12 @@ static sock_t wait_for_serversock(int timeout)
 #endif
 }
 
-static connection_t *_accept_connection(void)
+static connection_t *_accept_connection(int duration)
 {
-    sock_t sock, serversock; 
+    sock_t sock, serversock;
     char *ip;
 
-    serversock = wait_for_serversock(100);
+    serversock = wait_for_serversock (duration);
     if (serversock == SOCK_ERROR)
         return NULL;
 
@@ -566,10 +558,8 @@ static connection_t *_accept_connection(void)
  */
 static void _add_connection (client_queue_t *node)
 {
-    thread_mutex_lock (&_con_queue_mutex);
     *_con_queue_tail = node;
     _con_queue_tail = (volatile client_queue_t **)&node->next;
-    thread_mutex_unlock (&_con_queue_mutex);
 }
 
 
@@ -583,12 +573,10 @@ static client_queue_t *_get_connection(void)
     /* common case, no new connections so don't bother taking locks */
     if (_con_queue)
     {
-        thread_mutex_lock (&_con_queue_mutex);
         node = (client_queue_t *)_con_queue;
         _con_queue = node->next;
         if (_con_queue == NULL)
             _con_queue_tail = &_con_queue;
-        thread_mutex_unlock (&_con_queue_mutex);
         node->next = NULL;
     }
     return node;
@@ -664,12 +652,10 @@ static void process_request_queue (void)
 
             if (pass_it)
             {
-                thread_mutex_lock (&_req_queue_mutex);
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
                 node->next = NULL;
-                thread_mutex_unlock (&_req_queue_mutex);
                 _add_connection (node);
                 continue;
             }
@@ -678,11 +664,9 @@ static void process_request_queue (void)
         {
             if (len == 0 || client->con->error)
             {
-                thread_mutex_lock (&_req_queue_mutex);
                 if ((client_queue_t **)_req_queue_tail == &node->next)
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
-                thread_mutex_unlock (&_req_queue_mutex);
                 client_destroy (client);
                 free (node);
                 continue;
@@ -690,6 +674,7 @@ static void process_request_queue (void)
         }
         node_ref = &node->next;
     }
+    _handle_connection();
 }
 
 
@@ -698,27 +683,24 @@ static void process_request_queue (void)
  */
 static void _add_request_queue (client_queue_t *node)
 {
-    thread_mutex_lock (&_req_queue_mutex);
     *_req_queue_tail = node;
     _req_queue_tail = (volatile client_queue_t **)&node->next;
-    thread_mutex_unlock (&_req_queue_mutex);
 }
 
 
-void connection_accept_loop(void)
+void connection_accept_loop (void)
 {
     connection_t *con;
     ice_config_t *config;
+    int duration = 300;
 
     config = config_get_config ();
     get_ssl_certificate (config);
     config_release_config ();
 
-    tid = thread_create ("connection thread", _handle_connection, NULL, THREAD_ATTACHED);
-
     while (global.running == ICE_RUNNING)
     {
-        con = _accept_connection();
+        con = _accept_connection (duration);
 
         if (con)
         {
@@ -768,15 +750,18 @@ void connection_accept_loop(void)
 
             _add_request_queue (node);
             stats_event_inc (NULL, "connections");
+            duration = 5;
+        }
+        else
+        {
+            if (_req_queue == NULL)
+                duration = 300; /* use longer timeouts when nothing waiting */
         }
         process_request_queue ();
     }
 
     /* Give all the other threads notification to shut down */
     thread_cond_broadcast(&global.shutdown_cond);
-
-    if (tid)
-        thread_join (tid);
 
     /* wait for all the sources to shutdown */
     thread_rwlock_wlock(&_source_shutdown_rwlock);
@@ -1267,21 +1252,21 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
  * the contents provided. We set up the parser then hand off to the specific
  * request handler.
  */
-static void *_handle_connection(void *arg)
+static void _handle_connection(void)
 {
     http_parser_t *parser;
     const char *rawuri;
+    client_queue_t *node;
 
-    while (global.running == ICE_RUNNING) {
-
-        client_queue_t *node = _get_connection();
-
+    while (1)
+    {
+        node = _get_connection();
         if (node)
         {
             client_t *client = node->client;
 
             /* Check for special shoutcast compatability processing */
-            if (node->shoutcast) 
+            if (node->shoutcast)
             {
                 _handle_shoutcast_compatible (node);
                 continue;
@@ -1313,7 +1298,7 @@ static void *_handle_connection(void *arg)
 
                 free (node->shoutcast_mount);
                 free (node);
-                
+
                 if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
                     strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
                     ERROR0("Bad HTTP protocol detected");
@@ -1353,11 +1338,8 @@ static void *_handle_connection(void *arg)
             }
             continue;
         }
-        thread_sleep (50000);
+        break;
     }
-    DEBUG0 ("Connection thread done");
-
-    return NULL;
 }
 
 
