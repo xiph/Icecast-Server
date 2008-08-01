@@ -44,7 +44,8 @@
 #if !defined HAVE_ATOLL && defined HAVE_STRTOLL
 #define atoll(nptr) strtoll(nptr, (char **)NULL, 10)
 #endif
-static void stats_global_calc (void);
+
+#define VAL_BUFSIZE 20
 
 #define STATS_EVENT_SET     0
 #define STATS_EVENT_INC     1
@@ -53,6 +54,31 @@ static void stats_global_calc (void);
 #define STATS_EVENT_SUB     4
 #define STATS_EVENT_REMOVE  5
 #define STATS_EVENT_HIDDEN  6
+
+typedef struct _stats_node_tag
+{
+    char *name;
+    char *value;
+    int hidden;
+} stats_node_t;
+
+typedef struct _stats_event_tag
+{
+    char *source;
+    char *name;
+    char *value;
+    int  hidden;
+    int  action;
+
+    struct _stats_event_tag *next;
+} stats_event_t;
+
+typedef struct _stats_source_tag
+{
+    char *source;
+    int  hidden;
+    avl_tree *stats_tree;
+} stats_source_t;
 
 typedef struct _event_queue_tag
 {
@@ -73,19 +99,14 @@ typedef struct _event_listener_tag
 } event_listener_t;
 
 static volatile int _stats_running = 0;
-static thread_type *_stats_thread_id;
 static volatile int _stats_threads = 0;
 
 static stats_t _stats;
 static mutex_t _stats_mutex;
 
-static event_queue_t _global_event_queue;
-spin_t _global_event_mutex;
-
 static volatile event_listener_t *_event_listeners;
 
 
-static void *_stats_thread(void *arg);
 static int _compare_stats(void *a, void *b, void *arg);
 static int _compare_source_stats(void *a, void *b, void *arg);
 static int _free_stats(void *key);
@@ -95,34 +116,21 @@ static stats_node_t *_find_node(avl_tree *tree, const char *name);
 static stats_source_t *_find_source(avl_tree *tree, const char *source);
 static void _free_event(stats_event_t *event);
 static stats_event_t *_get_event_from_queue (event_queue_t *queue);
+static void process_event (stats_event_t *event);
 
 
 /* simple helper function for creating an event */
-static stats_event_t *build_event (const char *source, const char *name, const char *value)
+static void build_event (stats_event_t *event, const char *source, const char *name, const char *value)
 {
-    stats_event_t *event;
-
-    event = (stats_event_t *)calloc(1, sizeof(stats_event_t));
-    if (event)
-    {
-        if (source)
-            event->source = (char *)strdup(source);
-        if (name)
-            event->name = (char *)strdup(name);
-        if (value)
-            event->value = (char *)strdup(value);
-        else
-            event->action = STATS_EVENT_REMOVE;
-    }
-    return event;
+    event->source = (char *)source;
+    event->name = (char *)name;
+    event->value = (char *)value;
+    if (value)
+        event->action = 0;
+    else
+        event->action = STATS_EVENT_REMOVE;
 }
 
-static void queue_global_event (stats_event_t *event)
-{
-    thread_spin_lock(&_global_event_mutex);
-    _add_event_to_queue (event, &_global_event_queue);
-    thread_spin_unlock(&_global_event_mutex);
-}
 
 void stats_initialize(void)
 {
@@ -135,13 +143,26 @@ void stats_initialize(void)
     /* set up global mutex */
     thread_mutex_create("stats", &_stats_mutex);
 
-    /* set up stats queues */
-    event_queue_init (&_global_event_queue);
-    thread_spin_create("stats_global_event", &_global_event_mutex);
-
     /* fire off the stats thread */
     _stats_running = 1;
-    _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, THREAD_ATTACHED);
+
+    stats_event_time (NULL, "server_start");
+
+    /* global currently active stats */
+    stats_event (NULL, "clients", "0");
+    stats_event (NULL, "connections", "0");
+    stats_event (NULL, "sources", "0");
+    stats_event (NULL, "stats", "0");
+    stats_event (NULL, "listeners", "0");
+
+    /* global accumulating stats */
+    stats_event (NULL, "client_connections", "0");
+    stats_event (NULL, "source_client_connections", "0");
+    stats_event (NULL, "source_relay_connections", "0");
+    stats_event (NULL, "source_total_connections", "0");
+    stats_event (NULL, "stats_connections", "0");
+    stats_event (NULL, "listener_connections", "0");
+    stats_event (NULL, "outgoing_kbitrate", "0");
 }
 
 void stats_shutdown(void)
@@ -153,7 +174,6 @@ void stats_shutdown(void)
 
     /* wait for thread to exit */
     _stats_running = 0;
-    thread_join(_stats_thread_id);
 
     /* wait for other threads to shut down */
     do {
@@ -166,25 +186,9 @@ void stats_shutdown(void)
 
     /* free the queues */
 
-    /* destroy the queue mutexes */
-    thread_spin_destroy(&_global_event_mutex);
-
     thread_mutex_destroy(&_stats_mutex);
     avl_tree_free(_stats.source_tree, _free_source_stats);
     avl_tree_free(_stats.global_tree, _free_stats);
-
-    while (1)
-    {
-        stats_event_t *event = _get_event_from_queue (&_global_event_queue);
-        if (event == NULL) break;
-        if(event->source)
-            free(event->source);
-        if(event->value)
-            free(event->value);
-        if(event->name)
-            free(event->name);
-        free(event);
-    }
 }
 
 stats_t *stats_get_stats(void)
@@ -203,16 +207,15 @@ stats_t *stats_get_stats(void)
 /* simple name=tag stat create/update */
 void stats_event(const char *source, const char *name, const char *value)
 {
-    stats_event_t *event;
+    stats_event_t event;
 
     if (value && xmlCheckUTF8 ((unsigned char *)value) == 0)
     {
         WARN2 ("seen non-UTF8 data, probably incorrect metadata (%s, %s)", name, value);
         return;
     }
-    event = build_event (source, name, value);
-    if (event)
-        queue_global_event (event);
+    build_event (&event, source, name, (char *)value);
+    process_event (&event);
 }
 
 
@@ -258,17 +261,14 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
  * source stats tree. */
 void stats_event_hidden (const char *source, const char *name, int hidden)
 {
-    stats_event_t *event;
     const char *str = NULL;
+    stats_event_t event;
 
     if (hidden)
         str = "";
-    event = build_event (source, name, str);
-    if (event)
-    {
-        event->action = STATS_EVENT_HIDDEN;
-        queue_global_event (event);
-    }
+    build_event (&event, source, name, NULL);
+    event.action = STATS_EVENT_HIDDEN;
+    process_event (&event);
 }
 
 /* printf style formatting for stat create/update */
@@ -325,51 +325,46 @@ char *stats_get_value(const char *source, const char *name)
 /* increase the value in the provided stat by 1 */
 void stats_event_inc(const char *source, const char *name)
 {
-    stats_event_t *event = build_event (source, name, NULL);
+    stats_event_t event;
+    char buffer[VAL_BUFSIZE];
+    build_event (&event, source, name, buffer);
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
-    if (event)
-    {
-        event->action = STATS_EVENT_INC;
-        queue_global_event (event);
-    }
+    event.action = STATS_EVENT_INC;
+    process_event (&event);
 }
 
 void stats_event_add(const char *source, const char *name, unsigned long value)
 {
-    stats_event_t *event = build_event (source, name, NULL);
+    stats_event_t event;
+    char buffer [VAL_BUFSIZE];
+
+    build_event (&event, source, name, buffer);
+    snprintf (buffer, VAL_BUFSIZE, "%ld", value);
+    event.action = STATS_EVENT_ADD;
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
-    if (event)
-    {
-        event->value = malloc (16);
-        snprintf (event->value, 16, "%ld", value);
-        event->action = STATS_EVENT_ADD;
-        queue_global_event (event);
-    }
+    process_event (&event);
 }
 
 void stats_event_sub(const char *source, const char *name, unsigned long value)
 {
-    stats_event_t *event = build_event (source, name, NULL);
+    stats_event_t event;
+    char buffer[VAL_BUFSIZE];
+    build_event (&event, source, name, buffer);
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
-    if (event)
-    {
-        event->value = malloc (16);
-        snprintf (event->value, 16, "%ld", value);
-        event->action = STATS_EVENT_SUB;
-        queue_global_event (event);
-    }
+    snprintf (buffer, VAL_BUFSIZE, "%ld", value);
+    event.action = STATS_EVENT_SUB;
+    process_event (&event);
 }
 
 /* decrease the value in the provided stat by 1 */
 void stats_event_dec(const char *source, const char *name)
 {
+    stats_event_t event;
+    char buffer[VAL_BUFSIZE];
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
-    stats_event_t *event = build_event (source, name, NULL);
-    if (event)
-    {
-        event->action = STATS_EVENT_DEC;
-        queue_global_event (event);
-    }
+    build_event (&event, source, name, buffer);
+    event.action = STATS_EVENT_DEC;
+    process_event (&event);
 }
 
 /* note: you must call this function only when you have exclusive access
@@ -448,8 +443,8 @@ static stats_event_t *_copy_event(stats_event_t *event)
 /* helper to apply specialised changes to a stats node */
 static void modify_node_event (stats_node_t *node, stats_event_t *event)
 {
-    char *str;
-
+    if (node == NULL || event == NULL)
+        return;
     if (event->action == STATS_EVENT_HIDDEN)
     {
         if (event->value)
@@ -479,15 +474,10 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
             default:
                 break;
         }
-        str = malloc (20);
-        snprintf (str, 20, "%" PRId64, value);
-        free (event->value);
-        event->value = strdup (str);
+        snprintf (event->value, VAL_BUFSIZE, "%" PRId64, value);
     }
-    else
-        str = (char *)strdup (event->value);
     free (node->value);
-    node->value = str;
+    node->value = strdup (event->value);
 }
 
 
@@ -604,7 +594,7 @@ void stats_event_time (const char *mount, const char *name)
     char buffer[100];
 
     localtime_r (&now, &local);
-    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
+    strftime (buffer, sizeof (buffer), ICECAST_TIME_FMT, &local);
     stats_event (mount, name, buffer);
 }
 
@@ -640,64 +630,26 @@ void stats_global (ice_config_t *config)
     stats_event (NULL, "admin", config->admin);
 }
 
-
-static void *_stats_thread(void *arg)
+static void process_event_unlocked (stats_event_t *event)
 {
-    stats_event_t *event;
+    /* check if we are dealing with a global or source event */
+    if (event->source == NULL)
+        process_global_event (event);
+    else
+        process_source_event (event);
 
-    stats_event_time (NULL, "server_start");
+    /* now we have an event that's been processed into the running stats */
+    /* this event should get copied to event listeners' queues */
+    stats_listener_send (event);
+}
 
-    /* global currently active stats */
-    stats_event (NULL, "clients", "0");
-    stats_event (NULL, "connections", "0");
-    stats_event (NULL, "sources", "0");
-    stats_event (NULL, "stats", "0");
-    stats_event (NULL, "listeners", "0");
-
-    /* global accumulating stats */
-    stats_event (NULL, "client_connections", "0");
-    stats_event (NULL, "source_client_connections", "0");
-    stats_event (NULL, "source_relay_connections", "0");
-    stats_event (NULL, "source_total_connections", "0");
-    stats_event (NULL, "stats_connections", "0");
-    stats_event (NULL, "listener_connections", "0");
-    stats_event (NULL, "outgoing_kbitrate", "0");
-
-    INFO0 ("stats thread started");
-    while (_stats_running) {
-        if (_global_event_queue.head != NULL) {
-            /* grab the next event from the queue */
-            thread_spin_lock(&_global_event_mutex);
-            event = _get_event_from_queue (&_global_event_queue);
-            thread_spin_unlock(&_global_event_mutex);
-
-            if (event == NULL)
-                continue;
-            event->next = NULL;
-
-            thread_mutex_lock(&_stats_mutex);
-
-            /* check if we are dealing with a global or source event */
-            if (event->source == NULL)
-                process_global_event (event);
-            else
-                process_source_event (event);
-
-            /* now we have an event that's been processed into the running stats */
-            /* this event should get copied to event listeners' queues */
-            stats_listener_send (event);
-
-            /* now we need to destroy the event */
-            _free_event(event);
-
-            thread_mutex_unlock(&_stats_mutex);
-            continue;
-        }
-        thread_sleep(500000);
-        stats_global_calc();
-    }
-
-    return NULL;
+static void process_event (stats_event_t *event)
+{
+    if (event == NULL)
+        return;
+    thread_mutex_lock (&_stats_mutex);
+    process_event_unlocked (event);
+    thread_mutex_unlock (&_stats_mutex);
 }
 
 /* you must have the _stats_mutex locked here */
@@ -705,6 +657,9 @@ static void _unregister_listener(event_listener_t *listener)
 {
     event_listener_t **prev = (event_listener_t **)&_event_listeners,
                      *current = *prev;
+    stats_event_t stats_count, *event;
+    char buffer [VAL_BUFSIZE];
+
     while (current)
     {
         if (current == listener)
@@ -715,6 +670,15 @@ static void _unregister_listener(event_listener_t *listener)
         prev = &current->next;
         current = *prev;
     }
+
+    /* remove this listener before sending this change */
+    build_event (&stats_count, NULL, "stats_connections", buffer);
+    stats_count.action = STATS_EVENT_DEC;
+    process_event_unlocked (&stats_count);
+
+    /* flush any extra that sneaked on at the last moment */
+    while ((event = _get_event_from_queue (&listener->queue)) != NULL)
+        _free_event (event);
 }
 
 
@@ -823,8 +787,12 @@ static void _register_listener (event_listener_t *listener)
     avl_node *node2;
     stats_event_t *event;
     stats_source_t *source;
+    stats_event_t stats_count;
+    char buffer[20];
 
-    thread_mutex_lock(&_stats_mutex);
+    build_event (&stats_count, NULL, "stats_connections", buffer);
+    stats_count.action = STATS_EVENT_INC;
+    process_event_unlocked (&stats_count);
 
     /* first we fill our queue with the current stats */
     
@@ -855,10 +823,7 @@ static void _register_listener (event_listener_t *listener)
     /* now we register to receive future event notices */
     listener->next = (event_listener_t *)_event_listeners;
     _event_listeners = listener;
-
-    thread_mutex_unlock(&_stats_mutex);
 }
-
 
 static void check_uri (event_listener_t *listener, client_t *client)
 {
@@ -883,12 +848,10 @@ void *stats_connection(void *arg)
     /* increment the thread count */
     thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
-    stats_event_args (NULL, "stats", "%d", _stats_threads);
-    thread_mutex_unlock(&_stats_mutex);
-
     thread_mutex_create("stats local event", &listener.mutex);
 
     _register_listener (&listener);
+    thread_mutex_unlock(&_stats_mutex);
 
     while (_stats_running) {
         thread_mutex_lock (&listener.mutex);
@@ -908,7 +871,6 @@ void *stats_connection(void *arg)
     thread_mutex_lock(&_stats_mutex);
     _unregister_listener (&listener);
     _stats_threads--;
-    stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
     thread_mutex_destroy (&listener.mutex);
@@ -939,7 +901,7 @@ typedef struct _source_xml_tag {
     struct _source_xml_tag *next;
 } source_xml_t;
 
-static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr root)
+static xmlNodePtr _find_xml_node(const char *mount, source_xml_t **list, xmlNodePtr root)
 {
     source_xml_t *node, *node2;
     int found = 0;
@@ -1185,30 +1147,21 @@ void stats_clear_virtual_mounts (void)
 }
 
 
-static void stats_global_calc (void)
+void stats_global_calc (void)
 {
     stats_event_t event;
-    stats_node_t *node;
-    char buffer [20];
+    char buffer [VAL_BUFSIZE];
     static time_t next_update = 0;
 
     if (global.time < next_update)
         return;
     next_update = global.time + 1;
-    event.source = NULL;
-    event.name = "outgoing_kbitrate";
-    event.value = buffer;
-    event.action = STATS_EVENT_SET;
+    build_event (&event, NULL, "outgoing_kbitrate", buffer);
 
     thread_mutex_lock (&_stats_mutex);
-    node = _find_node(_stats.global_tree, event.name);
-    if (node)
-    {
-        snprintf (buffer, sizeof(buffer), "%" PRIu64,
+    snprintf (buffer, sizeof(buffer), "%" PRIu64,
             (int64_t)(global_getrate_avg (global.out_bitrate) * 8 / 1000.0 + 0.5));
-        modify_node_event (node, &event);
-        stats_listener_send (&event);
-    }
+    process_event_unlocked (&event);
     thread_mutex_unlock (&_stats_mutex);
 }
 

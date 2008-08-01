@@ -15,6 +15,16 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh1
+. remove stats thread. Stats clients still have their own thread and queue.
+. fix low bandwidth theora stream problem.
+. failing on-demand relays were not being recovered as they should of.
+. encode xml entity data for clients useragent/username
+. reduce memory usage in avl nodes, seems to benefit win32 more because of the
+  unused lock handling
+. minor patch for kate detection applied. ogg.k.ogg.k
+. minor type cleanup for off_t in fserve
+
 2.3-kh34
 . Added Kate/Skeleton codec handling within Ogg streams. patch by ogg.k.ogg.k
 . small changes for stream directory handling, mostly for error cases. 

@@ -504,6 +504,7 @@ static void *start_relay_stream (void *arg)
     thread_mutex_unlock (&src->lock);
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
+    relay->source->on_demand = 0;
     relay->start = global.time + relay->interval;
     relay->cleanup = 1;
 
@@ -1094,6 +1095,7 @@ static void *_slave_thread(void *arg)
         }
         /* trigger any YP processing */
         yp_thread_startup();
+        stats_global_calc();
     }
     connection_thread_shutdown();
     INFO0 ("shutting down current relays");

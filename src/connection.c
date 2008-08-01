@@ -1120,8 +1120,6 @@ void source_startup (client_t *client, const char *uri, int auth_style)
 
 static void _handle_stats_request (client_t *client, char *uri)
 {
-    stats_event_inc(NULL, "stats_connections");
-
     if (connection_check_admin_pass (client->parser) == 0)
     {
         client_send_401 (client, NULL);

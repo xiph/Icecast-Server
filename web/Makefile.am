@@ -11,6 +11,6 @@ dist_web_DATA = status.xsl \
                 server_version.xsl \
                 adminbar.html \
                 statusbar.html \
-				admin.html \
-				index.html \
+                admin.html \
+                index.html \
                 favicon.ico

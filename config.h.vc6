@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3-kh34"
+#define VERSION "2.3.2-kh1"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -139,6 +139,8 @@ typedef unsigned int socklen_t;
 #define fseeko fseek
 #define PRIdMAX "ld"
 #define SCNdMAX "ld"
+#define SCN_OFF_T "ld"
+#define PRI_OFF_T "ld"
 
 #define PRId64	"I64d"
 #define PRIu64	"I64u"
@@ -156,4 +158,7 @@ typedef unsigned int socklen_t;
 #define HAVE_SYS_TIMEB_H 1
 
 #define sock_t SOCKET
+
+/* time format for strftime */
+#define ICECAST_TIME_FMT "%a, %d %b %Y %H:%M:%S"
 

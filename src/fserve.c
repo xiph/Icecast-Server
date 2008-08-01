@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#define SCN_OFF_T SCNdMAX
+#define PRI_OFF_T PRIdMAX
 #else
 #include <winsock2.h>
 #include <windows.h>
@@ -546,7 +548,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         {
             ret = 0;
             if (strncasecmp (range, "bytes=", 6) == 0)
-                ret = sscanf (range+6, "%" SCNdMAX "-", &rangenumber);
+                ret = sscanf (range+6, "%" SCN_OFF_T "-", &rangenumber);
 
             if (ret == 1 && rangenumber>=0 && rangenumber < content_length)
             {
@@ -576,10 +578,10 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     "HTTP/1.1 206 Partial Content\r\n"
                     "Date: %s\r\n"
                     "Accept-Ranges: bytes\r\n"
-                    "Content-Length: %" PRIdMAX "\r\n"
-                    "Content-Range: bytes %" PRIdMAX
-                    "-%" PRIdMAX 
-                    "/%" PRIdMAX "\r\n"
+                    "Content-Length: %" PRI_OFF_T "\r\n"
+                    "Content-Range: bytes %" PRI_OFF_T
+                    "-%" PRI_OFF_T 
+                    "/%" PRI_OFF_T "\r\n"
                     "Content-Type: %s\r\n\r\n",
                     currenttime,
                     new_content_len,
@@ -607,7 +609,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                         "HTTP/1.0 200 OK\r\n"
                         "Accept-Ranges: bytes\r\n"
                         "Content-Type: %s\r\n"
-                        "Content-Length: %" PRIdMAX "\r\n"
+                        "Content-Length: %" PRI_OFF_T "\r\n"
                         "\r\n",
                         type,
                         content_length);

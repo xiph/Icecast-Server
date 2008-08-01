@@ -124,12 +124,6 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     refbuf = make_refbuf_with_page (codec, page);
     /* DEBUG3 ("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
 
-    if (has_keyframe && codec->possible_start)
-    {
-        codec->possible_start->sync_point = 1;
-        refbuf_release (codec->possible_start);
-        codec->possible_start = NULL;
-    }
     if (granulepos != theora->prev_granulepos || granulepos == 0)
     {
         if (codec->possible_start)
@@ -138,6 +132,12 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
         codec->possible_start = refbuf;
     }
     theora->prev_granulepos = granulepos;
+    if (has_keyframe && codec->possible_start)
+    {
+        codec->possible_start->sync_point = 1;
+        refbuf_release (codec->possible_start);
+        codec->possible_start = NULL;
+    }
 
     return refbuf;
 }

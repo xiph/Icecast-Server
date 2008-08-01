@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3-kh34], [karl@xiph.org])
+AC_INIT([Icecast], [2.3.2-kh1], [karl@xiph.org])
 
 AC_PREREQ(2.59)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -135,6 +135,7 @@ XIPH_PATH_OPENSSL([
 
 ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_cmd.o"
 AC_DEFINE([MIMETYPESFILE],"/etc/mime.types", [Default location of mime types file])
+AC_DEFINE([ICECAST_TIME_FMT],["%a, %d %b %Y %H:%M:%S %z"], [time format for strftime])
 
 dnl Make substitutions
 

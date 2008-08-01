@@ -209,7 +209,7 @@ ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
     }
 #else
     /* we don't have libkate, so we examine the packet magic by hand */
-    if ((packet.bytes<9) || memcmp(packet.packet, "\x80kate\0\0\0\0", 9))
+    if ((packet.bytes<8) || memcmp(packet.packet, "\x80kate\0\0\0", 8))
     {
         ogg_stream_clear (&codec->os);
         free (kate_codec);

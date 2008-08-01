@@ -22,31 +22,6 @@
 #include <libxml/tree.h>
 
 
-typedef struct _stats_node_tag
-{
-    char *name;
-    char *value;
-    int hidden;
-} stats_node_t;
-
-typedef struct _stats_event_tag
-{
-    char *source;
-    char *name;
-    char *value;
-    int  hidden;
-    int  action;
-
-    struct _stats_event_tag *next;
-} stats_event_t;
-
-typedef struct _stats_source_tag
-{
-    char *source;
-    int  hidden;
-    avl_tree *stats_tree;
-} stats_source_t;
-
 typedef struct _stats_tag
 {
     avl_tree *global_tree;
@@ -93,6 +68,7 @@ void stats_event_time (const char *mount, const char *name);
 
 void *stats_connection(void *arg);
 void stats_callback (client_t *client, void *notused);
+void stats_global_calc(void);
 
 void stats_transform_xslt(client_t *client, const char *uri);
 void stats_sendxml(client_t *client);

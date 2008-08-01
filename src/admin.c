@@ -632,7 +632,12 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->con->ip));
 
     useragent = httpp_getvar (listener->parser, "user-agent");
-    xmlNewChild (node, NULL, XMLSTR("useragent"), XMLSTR(useragent)); 
+    if (useragent)
+    {
+        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
+        xmlNewChild (node, NULL, XMLSTR("useragent"), str); 
+        xmlFree (str);
+    }
 
     snprintf (buf, sizeof (buf), "%u", listener->lag);
     xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
@@ -641,7 +646,11 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
             (unsigned long)(global.time - listener->con->con_time));
     xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
     if (listener->username)
-        xmlNewChild (node, NULL, XMLSTR("username"), XMLSTR(listener->username));
+    {
+        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
+        xmlNewChild (node, NULL, XMLSTR("username"), str);
+        xmlFree (str);
+    }
 }
 
 
