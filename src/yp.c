@@ -944,12 +944,9 @@ void yp_remove (const char *mount)
 void yp_touch (const char *mount)
 {
     struct yp_server *server = (struct yp_server *)active_yps;
-    time_t trigger;
     ypdata_t *search_list = NULL;
 
     thread_rwlock_rlock (&yp_lock);
-    /* do update in 3 secs, give stats chance to update */
-    trigger = time(NULL) + 3;
     if (server)
         search_list = server->mounts;
 
@@ -964,9 +961,9 @@ void yp_touch (const char *mount)
                 search_list = yp->next;
                 continue;
             }
-            /* only force if touch */
-            if (yp->process == do_yp_touch)
-                yp->next_update = trigger;
+            /* don't update the directory if there is a touch scheduled soon */
+            if (yp->process == do_yp_touch && now + yp->touch_interval - yp->next_update > 60)
+                yp->next_update = now + 3;
         }
         server = server->next;
         if (server)
