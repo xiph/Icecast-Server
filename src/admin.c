@@ -887,6 +887,7 @@ static void command_metadata(client_t *client, source_t *source,
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
+    int same_ip = 1;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("iceresponse"), NULL);
@@ -911,8 +912,11 @@ static void command_metadata(client_t *client, source_t *source,
     }
 
     plugin = source->format;
+    if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
+        if (response == RAW && connection_check_admin_pass (client->parser) == 0)
+            same_ip = 0;
 
-    if (plugin && plugin->set_tag)
+    if (same_ip && plugin && plugin->set_tag)
     {
         if (song)
         {
@@ -952,6 +956,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
     const char *action;
     const char *value;
+    int same_ip = 1;
 
     DEBUG0("Got shoutcast metadata update request");
 
@@ -963,8 +968,11 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         client_send_400 (client, "No such action");
         return;
     }
+    if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
+        if (connection_check_admin_pass (client->parser) == 0)
+            same_ip = 0;
 
-    if (source->format && source->format->set_tag)
+    if (same_ip && source->format && source->format->set_tag)
     {
         source->format->set_tag (source->format, "title", value, NULL);
 
