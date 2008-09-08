@@ -123,7 +123,7 @@ static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
 #endif
 
 
-static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
 {
     auth_client *auth_user = stream;
     unsigned bytes = size * nmemb;
@@ -157,7 +157,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
 }
 
 /* capture returned data, but don't do anything with it */
-static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
 {
     return (int)(size*nmemb);
 }
@@ -479,6 +479,9 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
     url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
+    /* force auth thread to call function. this makes sure the auth_t is attached to client */
+    authenticator->authenticate = url_add_listener;
+
     while(options) {
         if(!strcmp(options->name, "username"))
         {
@@ -492,7 +495,6 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         }
         if(!strcmp(options->name, "listener_add"))
         {
-            authenticator->authenticate = url_add_listener;
             free (url_info->addurl);
             url_info->addurl = strdup (options->value);
         }

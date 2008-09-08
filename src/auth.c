@@ -489,7 +489,7 @@ void auth_add_listener (const char *mount, client_t *client)
         client_send_403 (client, "mountpoint unavailable");
         return;
     }
-    if (mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
+    if (mountinfo && mountinfo->auth)
     {
         auth_client *auth_user;
 
