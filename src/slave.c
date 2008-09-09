@@ -609,7 +609,7 @@ static int update_from_master(ice_config_t *config)
         on_demand = config->on_demand;
         ret = 1;
         config_release_config();
-        mastersock = sock_connect_wto (master, port, 0);
+        mastersock = sock_connect_wto (master, port, 10);
 
         if (mastersock == SOCK_ERROR)
         {

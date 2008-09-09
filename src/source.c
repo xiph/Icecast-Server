@@ -1225,7 +1225,7 @@ void *source_client_thread (void *arg)
     source_main (source);
 
     source_free_source (source);
-    slave_rebuild_mounts();
+    slave_update_all_mounts();
 
     return NULL;
 }

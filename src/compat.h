@@ -53,5 +53,10 @@
 #  endif
 #endif
 
+/* some defaults if not provided above */
+#ifndef SCNdMAX
+#  define SCNdMAX "lld"
+#endif
+
 #endif /* __COMPAT_H__ */
 
