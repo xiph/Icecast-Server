@@ -93,8 +93,7 @@ static void queue_auth_client (auth_client *auth_user, mount_proxy *mountinfo)
 {
     auth_t *auth;
 
-    if (auth_user == NULL || (mountinfo == NULL && auth_user->client
-                && auth_user->client->auth == NULL))
+    if (auth_user == NULL)
         return;
     auth_user->next = NULL;
     if (mountinfo)
@@ -107,6 +106,11 @@ static void queue_auth_client (auth_client *auth_user, mount_proxy *mountinfo)
     }
     else
     {
+        if (auth_user->client == NULL || auth_user->client->auth == NULL)
+        {
+            WARN1 ("internal state is incorrect for %p", auth_user->client);
+            return;
+        }
         auth = auth_user->client->auth;
         thread_mutex_lock (&auth->lock);
     }
