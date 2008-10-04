@@ -254,6 +254,8 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *to_go = p;
         p = to_go->next;
+        if (to_go->_count > 1)
+            WARN1 ("buffer is %d", to_go->_count);
         refbuf_release (to_go);
     }
     /* the source holds 2 references on the very latest so that one
@@ -434,9 +436,9 @@ static void update_source_stats (source_t *source)
     unsigned long kbytes_read = source->bytes_read_since_update/1024;
 
     source->format->sent_bytes += kbytes_sent*1024;
-    stats_event_args (source->mount, "outgoing_bitrate", "%ld", 
+    stats_event_args (source->mount, "outgoing_kbitrate", "%ld",
             (8 * rate_avg (source->format->out_bitrate))/1000);
-    stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate/1000);
+    stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate);
     stats_event_args (source->mount, "total_bytes_read",
             "%"PRIu64, source->format->read_bytes);
     stats_event_args (source->mount, "total_bytes_sent",
@@ -682,7 +684,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         total_written += bytes;
     }
-    rate_add (source->format->out_bitrate, total_written, global.time);
+    rate_add (source->format->out_bitrate, total_written, global.time_ms);
     source->bytes_sent_since_update += total_written;
 
     global_add_bitrates (global.out_bitrate, total_written);
@@ -778,7 +780,7 @@ static void process_listeners (source_t *source, int fast_clients_only, int dele
         }
         stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         if (source->listeners == 0)
-            rate_add (source->format->out_bitrate, 0, 0);
+            rate_reduce (source->format->out_bitrate, 0);
         /* change of listener numbers, so reduce scope of global sampling */
         global_reduce_bitrate_sampling (global.out_bitrate);
         /* do we need to shutdown an on-demand relay */
@@ -874,8 +876,8 @@ static void source_init (source_t *source)
 
     thread_mutex_lock (&source->lock);
 
-    source->format->in_bitrate = rate_setup (source->avg_bitrate_duration+1);
-    source->format->out_bitrate = rate_setup (source->avg_bitrate_duration+1);
+    source->format->in_bitrate = rate_setup (source->avg_bitrate_duration+1, 1);
+    source->format->out_bitrate = rate_setup (120, 1000);
     source->running = 1;
 }
 
@@ -1212,10 +1214,17 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->avg_bitrate_duration = 60;
 
     /* needs a better mechanism, probably via a client_t handle */
+    free (source->dumpfilename);
+    source->dumpfilename = NULL;
     if (mountinfo && mountinfo->dumpfile)
     {
-        free (source->dumpfilename);
-        source->dumpfilename = strdup (mountinfo->dumpfile);
+        time_t now = time(NULL);
+        struct tm local;
+        char buffer[PATH_MAX];
+
+        localtime_r (&now, &local);
+        strftime (buffer, sizeof (buffer), mountinfo->dumpfile, &local);
+        source->dumpfilename = strdup (buffer);
     }
     /* handle changes in intro file setting */
     if (source->intro_file)
@@ -1268,7 +1277,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     /*  skip if source is a fallback to file */
     if (source->running && source->client == NULL)
     {
-        stats_event_hidden (source->mount, NULL, 1);
+        stats_event_hidden (source->mount, NULL, NULL, STATS_HIDDEN);
         return;
     }
     /* set global settings first */
@@ -1294,13 +1303,6 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 
     if (mountinfo)
     {
-        if (mountinfo->hidden)
-        {
-            stats_event_hidden (source->mount, NULL, 1);
-            DEBUG0 ("hidden from public");
-        }
-        else
-            stats_event_hidden (source->mount, NULL, 0);
         if (mountinfo->on_connect)
             DEBUG1 ("connect script \"%s\"", mountinfo->on_connect);
         if (mountinfo->on_disconnect)
@@ -1309,12 +1311,21 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
             DEBUG1 ("fallback_when_full to %u", mountinfo->fallback_when_full);
         DEBUG1 ("max listeners to %d", mountinfo->max_listeners);
         stats_event_args (source->mount, "max_listeners", "%d", mountinfo->max_listeners);
+        stats_event_hidden (source->mount, "cluster_password", mountinfo->cluster_password, STATS_SLAVE);
+        if (mountinfo->hidden)
+        {
+            stats_event_hidden (source->mount, NULL, NULL, STATS_HIDDEN);
+            DEBUG0 ("hidden from public");
+        }
+        else
+            stats_event_hidden (source->mount, NULL, NULL, STATS_PUBLIC);
     }
     else
     {
         DEBUG0 ("max listeners is not specified");
         stats_event (source->mount, "max_listeners", "unlimited");
-        stats_event_hidden (source->mount, NULL, 0);
+        stats_event_hidden (source->mount, "cluster_password", NULL, STATS_SLAVE);
+        stats_event_hidden (source->mount, NULL, NULL, STATS_PUBLIC);
     }
     DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
@@ -1459,7 +1470,7 @@ static void *source_fallback_file (void *arg)
         httpp_setvar (parser, "content-type", type);
         free (type);
 
-        stats_event_hidden (source->mount, NULL, 1);
+        stats_event_hidden (source->mount, NULL, NULL, STATS_HIDDEN);
         source->yp_public = 0;
         source->intro_file = file;
         source->parser = parser;
@@ -1522,7 +1533,7 @@ void source_recheck_mounts (int update_all)
             }
             else if (update_all)
             {
-                stats_event_hidden (mount->mountname, NULL, mount->hidden);
+                stats_event_hidden (mount->mountname, NULL, NULL, mount->hidden?STATS_HIDDEN:0);
                 stats_event_args (mount->mountname, "listenurl", "http://%s:%d%s",
                         config->hostname, config->port, mount->mountname);
                 stats_event (mount->mountname, "listeners", "0");

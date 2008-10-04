@@ -363,10 +363,6 @@ SOURCE=..\src\md5.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\src\os.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\src\refbuf.h
 # End Source File
 # Begin Source File

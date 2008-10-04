@@ -13,7 +13,7 @@
 /* Define to 1 if you have the <curl/curl.h> header file. */
 #define HAVE_CURL_CURL_H 1
 
-/* Define t o1 if you have the 'curl_global_init' function */
+/* Define to 1 if you have the 'curl_global_init' function */
 #define HAVE_CURL_GLOBAL_INIT 1
 
 /* Define to 1 if you have the `inet_aton' function. */
@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh1"
+#define VERSION "2.3.2-kh2"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -162,3 +162,4 @@ typedef unsigned int socklen_t;
 /* time format for strftime */
 #define ICECAST_TIME_FMT "%a, %d %b %Y %H:%M:%S"
 
+#define PATH_MAX MAX_PATH

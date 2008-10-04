@@ -7,7 +7,7 @@
 <head>
 <title>Icecast log files</title>
 </head>
-<body style="color: white; font-size: 90%">
+<body bgcolor="#656565" style="color: white; font-size: 90%">
 <table>
 <tr><td><pre> 
 <xsl:for-each select="/icestats"> <xsl:for-each select="log"> <xsl:value-of select="." /> </xsl:for-each></xsl:for-each>

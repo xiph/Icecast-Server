@@ -484,12 +484,12 @@ static int complete_read (source_t *source)
             }
             return 0;
         }
+        rate_add (format->in_bitrate, bytes, global.time);
     }
     source_mp3->read_count += bytes;
     refbuf = source_mp3->read_data;
     refbuf->len = source_mp3->read_count;
     format->read_bytes += bytes;
-    rate_add (format->in_bitrate, bytes, global.time);
 
     if (source_mp3->read_count < source_mp3->queue_block_size)
     {
@@ -586,7 +586,6 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
                     sizeof (source_mp3->build_metadata));
             source_mp3->build_metadata_offset = 0;
             source_mp3->build_metadata_len = 1 + (*src * 16);
-            rate_add (plugin->in_bitrate, source_mp3->build_metadata_len, global.time);
         }
 
         /* do we have all of the metatdata block */

@@ -65,6 +65,7 @@ typedef struct ogg_codec_tag
     refbuf_t *(*process_page)(ogg_state_t *ogg_info,
             struct ogg_codec_tag *codec, ogg_page *page);
     void (*codec_free)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec);
+    int  (*get_image)(client_t *client, struct ogg_codec_tag *codec);
 } ogg_codec_t;
 
 

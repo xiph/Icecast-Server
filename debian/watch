@@ -1,3 +1,0 @@
-# Run the "uscan" command to check for upstream updates and more.
-version=2
-http://downloads.us.xiph.org/releases/icecast/icecast-([\d+\.]+|\d+)(\.tar|\.tgz)(\.gz|\.bz2|) 2.2.0 uupdate

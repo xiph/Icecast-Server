@@ -58,6 +58,7 @@ static void command_reset_stats (client_t *client, source_t *source, int respons
 static void command_manageauth(client_t *client, source_t *source,
         int response);
 static void command_buildm3u(client_t *client, const char *mount);
+static void command_show_image (client_t *client, const char* mount);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
 static void command_updatemetadata(client_t *client, source_t *source,
@@ -353,6 +354,11 @@ int admin_handle_request (client_t *client, const char *uri)
         if (strcmp (uri, "buildm3u") == 0)
         {
             command_buildm3u (client, mount);
+            return 0;
+        }
+        if (strcmp (uri, "showimage") == 0)
+        {
+            command_show_image (client, mount);
             return 0;
         }
 
@@ -763,6 +769,29 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlFreeDoc(doc);
 }
 
+static void command_show_image (client_t *client, const char *mount)
+{
+    source_t *source;
+
+    avl_tree_rlock (global.source_tree);
+    source = source_find_mount_raw (mount);
+    if (source && source->format && source->format->get_image)
+    {
+        thread_mutex_lock (&source->lock);
+        avl_tree_unlock (global.source_tree);
+        if (source->format->get_image (client, source->format) == 0)
+        {
+            thread_mutex_unlock (&source->lock);
+            fserve_add_client (client, NULL);
+            return;
+        }
+        thread_mutex_unlock (&source->lock);
+    }
+    else
+        avl_tree_unlock (global.source_tree);
+    client_send_404 (client, "No image available");
+}
+
 static void command_buildm3u (client_t *client, const char *mount)
 {
     const char *username = NULL;
@@ -961,6 +990,7 @@ static void command_metadata(client_t *client, source_t *source,
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
+    int same_ip = 1;
 
     doc = xmlNewDoc(XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
@@ -977,10 +1007,13 @@ static void command_metadata(client_t *client, source_t *source,
     thread_mutex_lock (&source->lock);
 
     plugin = source->format;
+    if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
+        if (response == RAW && connection_check_admin_pass (client->parser) == 0)
+            same_ip = 0;
 
     do
     {
-        if (plugin == NULL)
+        if (same_ip == 0 && plugin == NULL)
             break;
         if (artwork)
             stats_event (source->mount, "artwork", artwork);
@@ -1026,6 +1059,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 {
     const char *action;
     const char *value;
+    int same_ip = 1;
 
     DEBUG0("Got shoutcast metadata update request");
 
@@ -1045,6 +1079,10 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         client_send_400 (client, "illegal metadata call");
         return;
     }
+
+    if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
+        if (connection_check_admin_pass (client->parser) == 0)
+            same_ip = 0;
 
     if (source->format && source->format->set_tag)
     {
@@ -1084,7 +1122,7 @@ static void command_stats (client_t *client, const char *filename)
 
     show_mount = httpp_get_query_param (client->parser, "mount");
 
-    stats_get_xml(&doc, 1, show_mount);
+    stats_get_xml(&doc, STATS_ALL, show_mount);
     admin_send_response (doc, client, response, filename);
     xmlFreeDoc(doc);
 }

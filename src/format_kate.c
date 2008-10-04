@@ -38,12 +38,12 @@ typedef struct source_tag source_t;
 
 typedef struct _kate_codec_tag
 {
-    int             headers_done;
+    unsigned int    headers_done;
 #ifdef HAVE_KATE
     kate_info       ki;
     kate_comment    kc;
 #endif
-    int             num_headers;
+    unsigned int    num_headers;
     int             granule_shift;
     ogg_int64_t     last_iframe;
     ogg_int64_t     prev_granulepos;

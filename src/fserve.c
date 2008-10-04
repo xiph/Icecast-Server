@@ -296,8 +296,9 @@ static void *fserv_thread_function(void *arg)
                             client_tree_changed = 1;
                             continue;
                         }
-                        client_set_queue (client, refbuf->next);
-                        refbuf = client->refbuf;
+                        refbuf = refbuf->next;
+                        refbuf_release (client->refbuf);
+                        client->refbuf = refbuf;
                         bytes = refbuf->len;
                     }
                     refbuf->len = bytes;

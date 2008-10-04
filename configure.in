@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3.2-kh1], [karl@xiph.org])
+AC_INIT([Icecast], [2.3.2-kh2], [karl@xiph.org])
 
 AC_PREREQ(2.59)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -155,7 +155,7 @@ AC_SUBST(ICECAST_OPTIONAL)
 AC_SUBST(HAVE_KATE)
 AC_SUBST(KATE_LIBS)
 
-AC_OUTPUT([Makefile conf/Makefile debian/Makefile src/Makefile src/avl/Makefile
+AC_OUTPUT([Makefile conf/Makefile src/Makefile src/avl/Makefile
 src/httpp/Makefile src/thread/Makefile src/log/Makefile
 src/net/Makefile src/timing/Makefile doc/Makefile web/Makefile web/images/Makefile
 admin/Makefile win32/Makefile win32/res/Makefile])

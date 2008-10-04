@@ -21,36 +21,17 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-
-typedef struct _stats_tag
-{
-    avl_tree *global_tree;
-
-    /* global stats
-    start_time
-    total_users
-    max_users
-    total_sources
-    max_sources
-    total_user_connections
-    total_source_connections
-    */
-
-    avl_tree *source_tree;
-
-    /* stats by source, and for stats
-    start_time
-    total_users
-    max_users
-    */
-
-} stats_t;
+#define STATS_HIDDEN   1
+#define STATS_SLAVE    2
+#define STATS_GENERAL  4
+#define STATS_COUNTERS 8
+#define STATS_PUBLIC   (STATS_GENERAL|STATS_COUNTERS)
+#define STATS_ALL      ~0
 
 void stats_initialize(void);
 void stats_shutdown(void);
 
 void stats_global(ice_config_t *config);
-stats_t *stats_get_stats(void);
 void stats_get_streamlist (char *buffer, size_t remaining);
 refbuf_t *stats_get_streams (int prepend);
 void stats_clear_virtual_mounts (void);
@@ -63,11 +44,11 @@ void stats_event_inc(const char *source, const char *name);
 void stats_event_add(const char *source, const char *name, unsigned long value);
 void stats_event_sub(const char *source, const char *name, unsigned long value);
 void stats_event_dec(const char *source, const char *name);
-void stats_event_hidden (const char *source, const char *name, int hidden);
+void stats_event_hidden (const char *source, const char *name, const char *value, int hidden);
 void stats_event_time (const char *mount, const char *name);
 
 void *stats_connection(void *arg);
-void stats_callback (client_t *client, void *notused);
+void stats_callback (client_t *client, void *mount);
 void stats_global_calc(void);
 
 void stats_transform_xslt(client_t *client, const char *uri);

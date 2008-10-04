@@ -1129,7 +1129,7 @@ static void _handle_stats_request (client_t *client, char *uri)
 
     client->respcode = 200;
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 200 OK\r\n\r\n");
+            "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client_callback (client, stats_callback, NULL);
 }

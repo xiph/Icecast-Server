@@ -15,6 +15,21 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh2
+. more stats work. Clients are now processed as needed instead of a dedicated
+  thread per stats client. 
+. don't allow raw metadata updates if not from the same IP address as the source
+  client unless it is from the admin user. For some reason some source client
+  issue updates even though they are rejected.
+. missing lock on streamlist master/slave update, could cause memory corruption.
+. update to average bitrate handling.
+. allow strftime expansion on dump filename, applies at the time the stream has
+  started
+. removed debian directory, it's not maintained really so leave it to the debian
+  people to deal with it themselves.
+. experimental theora keyframe as png patch added. not built by default
+. minor memory leak plugged in fserve
+
 2.3.2-kh1
 . remove stats thread. Stats clients still have their own thread and queue.
 . fix low bandwidth theora stream problem.

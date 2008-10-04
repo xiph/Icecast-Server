@@ -47,18 +47,18 @@
 
 struct rate_calc_node
 {
-    time_t time;
+    uint64_t index;
     long value;
-    struct rate_calc_node *next, *prev;
+    struct rate_calc_node *next;
 };
 
 struct rate_calc
 {
     uint64_t total;
-    unsigned int seconds;
-    unsigned int blocks;
-    unsigned int recalc_total;
     struct rate_calc_node *current;
+    unsigned int samples;
+    unsigned int ssec;
+    unsigned int blocks;
 };
 
 
@@ -695,102 +695,90 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
 /* setup a rate block of so many seconds, so that an average can be
  * determined of that range
  */
-struct rate_calc *rate_setup (unsigned int seconds)
+struct rate_calc *rate_setup (unsigned int samples, unsigned int ssec)
 {
     struct rate_calc *calc = calloc (1, sizeof (struct rate_calc));
-    struct rate_calc_node *start = NULL;
-    unsigned int i;
 
-    if (calc == NULL || seconds == 0)
+    if (calc == NULL || samples < 2 || ssec == 0)
     {
         free (calc);
         return NULL;
     }
-    for (i=0 ; i<seconds; i++)
-    {
-        struct rate_calc_node *node = calloc (1, sizeof (*node));
-        if (calc->current)
-        {
-            calc->current->next = node;
-            node->next = start;
-        }
-        else
-            start = node;
-        node->prev = calc->current;
-        calc->current = node;
-    }
-    calc->current->next = start;
-    start->prev = calc->current;
-    calc->seconds = seconds;
+    calc->samples = samples;
+    calc->ssec = ssec;
     return calc;
 }
 
-/* */
-static void rate_recalc_total (struct rate_calc *calc)
-{
-    int i;
-    struct rate_calc_node *p = calc->current->prev;
-    calc->total = 0;
-    for (i=calc->blocks-1; i; i--)
-    {
-        calc->total += p->value;
-        p = p->prev;
-    }
-}
 
 /* add a value to sampled data, t is used to determine which sample
  * block the sample goes into.
  */
-void rate_add (struct rate_calc *calc, long value, time_t t)
+void rate_add (struct rate_calc *calc, long value, uint64_t sid) 
 {
-    if (t == 0)
+    if (calc->current == NULL || sid != calc->current->index)
     {
-        calc->blocks = 0;
-        return;
-    }
-    if (t != calc->current->time)
-    {
-        if (calc->recalc_total)
+        if (calc->blocks == calc->samples)
         {
-            /* here we keep the number of blocks and recalculate the total */
+            calc->total += calc->current->value;
             calc->current = calc->current->next;
-            rate_recalc_total (calc);
-            calc->recalc_total--;
+            calc->total -= calc->current->value;
+            calc->current->value = value;
+            calc->current->index = sid;
+            return;
         }
         else
         {
-            /* common case */
-            calc->total += calc->current->value;
-            calc->current = calc->current->next;
-            if (calc->blocks == calc->seconds)
-                calc->total -= calc->current->value;
+            struct rate_calc_node *node = calloc (1, sizeof (*node));
+            node->index = sid;
+            calc->blocks++;
+            if (calc->current)
+            {
+                node->next = calc->current->next;
+                calc->current->next = node;
+                calc->total += calc->current->value;
+            }
             else
-                calc->blocks++;
+            {
+                node->next = node;
+            }
+            calc->current = node;
         }
-        calc->current->value = 0;
-        calc->current->time = t;
     }
     calc->current->value += value;
 }
-
 
 /* return the average sample value over all the blocks except the 
  * current one, as that may be incomplete
  */
 long rate_avg (struct rate_calc *calc)
 {
+    uint64_t range;
+
     if (calc == NULL || calc->blocks < 2)
         return 0;
-    return (long)(calc->total / (calc->blocks-1));
+    range = (calc->current->index - calc->current->next->index) / calc->ssec;
+    if (range < 1)
+        range = 1;
+    return (long)(calc->total / range);
 }
 
 /* reduce the samples used to calculate average */
-void rate_reduce (struct rate_calc *calc, unsigned long count)
+void rate_reduce (struct rate_calc *calc, unsigned int count)
 {
-    if (calc && count < calc->blocks && count >= 2)
+    if (calc && count < calc->blocks)
     {
-        calc->recalc_total = count*2;
-        calc->blocks = count;
+        struct rate_calc_node *list = calc->current->next;
+        for (; calc->blocks > count; calc->blocks--)
+        {
+            struct rate_calc_node *to_go = list;
+            list = to_go->next;
+            calc->total -= to_go->value;
+            free (to_go);
+        }
+        if (calc->blocks)
+            calc->current->next = list;
+        else
+            calc->current = NULL;
     }
 }
 

@@ -132,6 +132,14 @@ struct _listener_t
     int ssl;
 };
 
+typedef struct
+{
+    char *hostname;
+    int  port;
+    char *username;
+    char *password;
+} ice_master_details;
+
 typedef struct ice_config_tag
 {
     char *config_filename;
@@ -168,6 +176,8 @@ typedef struct ice_config_tag
 
     listener_t *listen_sock;
     unsigned int listen_sock_count;
+
+    ice_master_details *master;
 
     char *master_server;
     int master_server_port;

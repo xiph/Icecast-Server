@@ -54,6 +54,7 @@ static void format_ogg_free_plugin (format_plugin_t *plugin);
 static int  create_ogg_client_data(source_t *source, client_t *client);
 static void free_ogg_client_data (client_t *client);
 
+static int get_image (client_t *client, struct _format_plugin_tag *format);
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
 static int write_buf_to_client (client_t *client);
@@ -152,8 +153,7 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     while (codec)
     {
         ogg_codec_t *next = codec->next;
-        if (codec->possible_start)
-            refbuf_release (codec->possible_start);
+        refbuf_release (codec->possible_start);
         codec->codec_free (ogg_info, codec);
         codec = next;
     }
@@ -177,6 +177,7 @@ int format_ogg_get_plugin (source_t *source)
     plugin->write_buf_to_file = write_ogg_to_file;
     plugin->create_client_data = create_ogg_client_data;
     plugin->free_plugin = format_ogg_free_plugin;
+    plugin->get_image = get_image;
     plugin->set_tag = NULL;
     plugin->apply_settings = apply_ogg_settings;
     if (strcmp (httpp_getvar (source->parser, "content-type"), "application/x-ogg") == 0)
@@ -623,4 +624,25 @@ static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
     write_ogg_data (source, refbuf);
 }
 
+static int get_image (client_t *client, struct _format_plugin_tag *format)
+{
+    const char *serialp = httpp_get_query_param (client->parser, "serial");
+    ogg_state_t *ogg_info = format->_state;
+    ogg_codec_t *codec = ogg_info->codecs;
+    long serial;
 
+    if (serialp)
+        serial = atoll (serialp);
+    while (codec)
+    {
+        if (serialp == NULL || serial == codec->os.serialno)
+        {
+            int ret = 0;
+            if (codec->get_image)
+                ret = codec->get_image (client, codec);
+            return ret;
+        }
+        codec = codec->next;
+    }
+    return 0;
+}

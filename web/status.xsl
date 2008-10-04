@@ -79,6 +79,17 @@
 <xsl:if test="server_url">
 <tr><td>Stream URL:</td><td class="streamdata"> <a target="_blank" href="{server_url}"><xsl:value-of select="server_url" /></a></td></tr>
 </xsl:if>
+<xsl:if test="video_preview">
+<xsl:choose>
+<xsl:when test="authenticator">
+<tr><td>Preview:</td><td class="videopreview"> <a href="auth.xsl"><img src="{video_preview}" border="1" align="left" height="400" width="300" alt="frame preview" title="click to start watching the video!" /></a></td></tr>
+</xsl:when>
+<xsl:otherwise>
+<tr><td>Preview:</td><td class="videopreview"> <a href="{@mount}.m3u"><img src="{video_preview}" border="1" align="left" height="200"  alt="frame preview" title="click to start watching the video!" /></a></td></tr>
+</xsl:otherwise>
+</xsl:choose>
+</xsl:if>
+
 <tr><td>Current Song:</td><td class="streamdata"> 
 <xsl:if test="artist"><xsl:value-of select="artist" /> - </xsl:if><xsl:value-of select="title" /></td></tr>
 </table>

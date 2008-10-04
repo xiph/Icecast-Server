@@ -108,6 +108,8 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
     char *sep;
     char line [MAX_LINE_LEN];
 
+    if (htpasswd->filename == NULL)
+        return;
     if (stat (htpasswd->filename, &file_stat) < 0)
     {
         WARN1 ("failed to check status of %s", htpasswd->filename);

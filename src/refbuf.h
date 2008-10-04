@@ -35,7 +35,7 @@ typedef struct _refbuf_tag
 void refbuf_initialize(void);
 void refbuf_shutdown(void);
 
-refbuf_t *refbuf_new(size_t size);
+refbuf_t *refbuf_new(unsigned int size);
 void refbuf_addref(refbuf_t *self);
 void refbuf_release(refbuf_t *self);
 

@@ -53,6 +53,7 @@ typedef struct _format_plugin_tag
     void (*set_tag)(struct _format_plugin_tag *plugin, const char *tag, const char *value, const char *charset);
     void (*free_plugin)(struct _format_plugin_tag *self);
     void (*apply_settings)(client_t *client, struct _format_plugin_tag *format, struct _mount_proxy *mount);
+    int (*get_image)(client_t *client, struct _format_plugin_tag *format);
 
     /* for internal state management */
     void *_state;

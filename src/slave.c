@@ -1075,12 +1075,17 @@ static void *_slave_thread(void *arg)
 
             update_from_master (config);
 
+            thread_mutex_lock (&(config_locks()->relay_lock));
             cleanup_relays = update_relays (&global.relays, config->relay);
 
             config_release_config();
         }
+        else
+            thread_mutex_lock (&(config_locks()->relay_lock));
+
         relay_check_streams (global.relays, cleanup_relays, skip_timer);
         relay_check_streams (global.master_relays, NULL, skip_timer);
+        thread_mutex_unlock (&(config_locks()->relay_lock));
 
         if (update_settings)
         {

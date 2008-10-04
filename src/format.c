@@ -378,4 +378,3 @@ static int format_prepare_headers (source_t *source, client_t *client)
     return 0;
 }
 
-
