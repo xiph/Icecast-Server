@@ -326,25 +326,7 @@ static void *fserv_thread_function(void *arg)
             fclient = fclient->next;
         }
     }
-
-    /* Shutdown path */
-    thread_mutex_lock (&pending_lock);
-    while (pending_list)
-    {
-        fserve_t *to_go = (fserve_t *)pending_list;
-        pending_list = to_go->next;
-
-        fserve_client_destroy (to_go);
-    }
-    thread_mutex_unlock (&pending_lock);
-
-    while (active_list)
-    {
-        fserve_t *to_go = active_list;
-        active_list = to_go->next;
-        fserve_client_destroy (to_go);
-    }
-
+    DEBUG0 ("fserve handler exit");
     return NULL;
 }
 
