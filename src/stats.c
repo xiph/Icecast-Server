@@ -746,40 +746,49 @@ static int _send_event_to_client(stats_event_t *event, client_t *client)
     return 0;
 }
 
-void _dump_stats_to_queue (event_queue_t *queue)
+
+static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden)
 {
-    avl_node *node;
-    avl_node *node2;
-    stats_event_t *event;
-    stats_source_t *source;
+    avl_node *avlnode;
+    xmlNodePtr ret = NULL;
 
     thread_mutex_lock(&_stats_mutex);
-    /* first we fill our queue with the current stats */
-    /* start with the global stats */
-    node = avl_get_first(_stats.global_tree);
-    while (node) {
-        event = _make_event_from_node((stats_node_t *)node->key, NULL);
-        _add_event_to_queue(event, queue);
-
-        node = avl_get_next(node);
+    /* general stats first */
+    avlnode = avl_get_first(_stats.global_tree);
+    while (avlnode)
+    {
+        stats_node_t *stat = avlnode->key;
+        if (stat->hidden <=  hidden)
+            xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+        avlnode = avl_get_next (avlnode);
     }
+    /* now per mount stats */
+    avlnode = avl_get_first(_stats.source_tree);
+    while (avlnode)
+    {
+        stats_source_t *source = (stats_source_t *)avlnode->key;
+        if (source->hidden <= hidden &&
+                (show_mount == NULL || strcmp (show_mount, source->source) == 0))
+        {
+            avl_node *avlnode2 = avl_get_first (source->stats_tree);
+            xmlNodePtr xmlnode = xmlNewTextChild (root, NULL, XMLSTR("source"), NULL);
 
-    /* now the stats for each source */
-    node = avl_get_first(_stats.source_tree);
-    while (node) {
-        source = (stats_source_t *)node->key;
-        node2 = avl_get_first(source->stats_tree);
-        while (node2) {
-            event = _make_event_from_node((stats_node_t *)node2->key, source->source);
-            _add_event_to_queue(event, queue);
-
-            node2 = avl_get_next(node2);
+            xmlSetProp (xmlnode, XMLSTR("mount"), XMLSTR(source->source));
+            if (ret == NULL)
+                ret = xmlnode;
+            while (avlnode2)
+            {
+                stats_node_t *stat = avlnode2->key;
+                xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                avlnode2 = avl_get_next (avlnode2);
+            }
         }
-        
-        node = avl_get_next(node);
+        avlnode = avl_get_next (avlnode);
     }
     thread_mutex_unlock(&_stats_mutex);
+    return ret;
 }
+
 
 /* factoring out code for stats loops
 ** this function copies all stats to queue, and registers 
@@ -895,43 +904,6 @@ typedef struct _source_xml_tag {
     struct _source_xml_tag *next;
 } source_xml_t;
 
-static xmlNodePtr _find_xml_node(char *mount, source_xml_t **list, xmlNodePtr root)
-{
-    source_xml_t *node, *node2;
-    int found = 0;
-
-    /* search for existing node */
-    node = *list;
-    while (node) {
-        if (strcmp(node->mount, mount) == 0) {
-            found = 1;
-            break;
-        }
-        node = node->next;
-    }
-
-    if (found) return node->node;
-
-    /* if we didn't find it, we must build it and add it to the list */
-
-    /* build node */
-    node = (source_xml_t *)malloc(sizeof(source_xml_t));
-    node->mount = strdup(mount);
-    node->node = xmlNewChild (root, NULL, XMLSTR("source"), NULL);
-    xmlSetProp (node->node, XMLSTR("mount"), XMLSTR(mount));
-    node->next = NULL;
-
-    /* add node */
-    if (*list == NULL) {
-        *list = node;
-    } else {
-        node2 = *list;
-        while (node2->next) node2 = node2->next;
-        node2->next = node;
-    }
-
-    return node->node;
-}
 
 void stats_transform_xslt(client_t *client, const char *uri)
 {
@@ -939,7 +911,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     char *xslpath = util_get_path_from_normalised_uri (uri);
     const char *mount = httpp_get_query_param (client->parser, "mount");
 
-    stats_get_xml(&doc, 0, mount);
+    doc = stats_get_xml (0, mount);
 
     xslt_transform(doc, xslpath, client);
 
@@ -947,112 +919,20 @@ void stats_transform_xslt(client_t *client, const char *uri)
     free (xslpath);
 }
 
-void stats_get_xml(xmlDocPtr *doc, int show_hidden, const char *show_mount)
+xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
 {
-    stats_event_t *event;
-    event_queue_t queue;
-    xmlNodePtr node, srcnode;
-    source_xml_t *src_nodes = NULL;
-    source_xml_t *next;
-
-    event_queue_init (&queue);
-    _dump_stats_to_queue (&queue);
-
-    *doc = xmlNewDoc (XMLSTR("1.0"));
-    node = xmlNewDocNode(*doc, NULL, XMLSTR("icestats"), NULL);
-    xmlDocSetRootElement(*doc, node);
-
-    event = _get_event_from_queue(&queue);
-    while (event)
-    {
-        if (event->hidden <= show_hidden)
-        {
-            do
-            {
-                xmlChar *name, *value;
-                name = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->name));
-                value = xmlEncodeEntitiesReentrant (*doc, XMLSTR(event->value));
-                srcnode = node;
-                if (event->source)
-                {
-                    if (show_mount && strcmp (event->source, show_mount) != 0)
-                        break;
-                    srcnode = _find_xml_node(event->source, &src_nodes, node);
-                }
-                else
-                    srcnode = node;
-                xmlNewChild(srcnode, NULL, XMLSTR(name), XMLSTR(value));
-                xmlFree (value);
-                xmlFree (name);
-            } while (0);
-        }
-
-        _free_event(event);
-        event = _get_event_from_queue(&queue);
-    }
-
-    while (src_nodes) {
-        next = src_nodes->next;
-        free(src_nodes->mount);
-        free(src_nodes);
-        src_nodes = next;
-    }
-}
-void stats_sendxml(client_t *client)
-{
-    int bytes;
-    stats_event_t *event;
-    event_queue_t queue;
     xmlDocPtr doc;
-    xmlNodePtr node, srcnode;
-    int len;
-    xmlChar *buff = NULL;
-    source_xml_t *snd;
-    source_xml_t *src_nodes = NULL;
-
-    event_queue_init (&queue);
-    _dump_stats_to_queue (&queue);
+    xmlNodePtr node;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
 
+    node = _dump_stats_to_doc (node, show_mount, show_hidden);
 
-    event = _get_event_from_queue(&queue);
-    while (event) {
-        if (event->source == NULL) {
-            xmlNewChild (node, NULL, XMLSTR(event->name), XMLSTR(event->value));
-        } else {
-            srcnode = _find_xml_node(event->source, &src_nodes, node);
-            xmlNewChild (srcnode, NULL, XMLSTR(event->name), XMLSTR(event->value));
-        }
-
-        _free_event(event);
-        event = _get_event_from_queue(&queue);
-    }
-
-    xmlDocDumpMemory(doc, &buff, &len);
-    xmlFreeDoc(doc);
-    
-    client->respcode = 200;
-    bytes = sock_write(client->con->sock, "HTTP/1.0 200 OK\r\n"
-               "Content-Length: %d\r\n"
-               "Content-Type: text/xml\r\n"
-               "\r\n", len);
-    if (bytes > 0) client->con->sent_bytes += bytes;
-    else goto send_error;
-
-    bytes = client_send_bytes (client, buff, (unsigned)len);
-
- send_error:
-    while (src_nodes) {
-        snd = src_nodes->next;
-        free(src_nodes->mount);
-        free(src_nodes);
-        src_nodes = snd;
-    }
-    if (buff) xmlFree(buff);
+    return doc;
 }
+
 
 static int _compare_stats(void *arg, void *a, void *b)
 {

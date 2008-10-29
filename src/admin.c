@@ -991,7 +991,7 @@ static void command_stats(client_t *client, const char *mount, int response) {
 
     DEBUG0("Stats request, sending xml stats");
 
-    stats_get_xml(&doc, 1, mount);
+    doc = stats_get_xml(1, mount);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     return;
