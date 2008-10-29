@@ -140,6 +140,33 @@ typedef struct
     char *password;
 } ice_master_details;
 
+typedef struct
+{
+    char *name;
+    int log_ip;
+    int archive;
+    int display;
+    int trigger_size;
+    char *exclude_ext;
+} access_log;
+
+typedef struct
+{
+    char *name;
+    int archive;
+    int display;
+    int trigger_size;
+    int level;
+} error_log;
+
+typedef struct
+{
+    char *name;
+    int archive;
+    int display;
+    int trigger_size;
+} playlist_log;
+
 typedef struct ice_config_tag
 {
     char *config_filename;
@@ -207,17 +234,9 @@ typedef struct ice_config_tag
     aliases *aliases;
     unsigned slaves_count;
 
-    char *access_log;
-    int access_log_ip;
-    int access_log_lines;
-    char *access_log_exclude_ext;
-    char *error_log;
-    int error_log_lines;
-    char *playlist_log;
-    int playlist_log_lines;
-    int loglevel;
-    int logsize;
-    int logarchive;
+    access_log      access_log;
+    error_log       error_log;
+    playlist_log    playlist_log;
 
     int chroot;
     int chuid;

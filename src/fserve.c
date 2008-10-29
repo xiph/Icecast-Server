@@ -500,7 +500,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *eol = strrchr (reference, '.');
         if (eol)
             *eol = '\0';
-        stats_get_xml (&doc, 0, reference);
+        doc = stats_get_xml (0, reference);
         free (reference);
         admin_send_response (doc, httpclient, XSLT, "xspf.xsl");
         xmlFreeDoc(doc);

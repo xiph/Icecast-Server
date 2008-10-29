@@ -59,6 +59,7 @@ typedef struct source_tag
 
     int yp_public;
     int shoutcast_compat;
+    int log_id;
 
     /* per source burst handling for connecting clients */
     unsigned int burst_size;    /* trigger level for burst on connect */

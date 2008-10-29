@@ -100,72 +100,84 @@ struct cfg_tag
  */
 int config_get_bool (xmlNodePtr node, void *x)
 {   
-    char *str = (char *)xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
-    if (str == NULL)
-        return 1;
-    if (strcasecmp (str, "true") == 0)
-        *(int*)x = 1;
-    else
-        if (strcasecmp (str, "yes") == 0)
+    if (xmlNodeIsText (node))
+    {
+        char *str = (char *)xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
+        if (str == NULL)
+            return 1;
+        if (strcasecmp (str, "true") == 0)
             *(int*)x = 1;
         else
-            *(int*)x = strtol (str, NULL, 0)==0 ? 0 : 1;
-    xmlFree (str);
+            if (strcasecmp (str, "yes") == 0)
+                *(int*)x = 1;
+            else
+                *(int*)x = strtol (str, NULL, 0)==0 ? 0 : 1;
+        xmlFree (str);
+    }
     return 0;
 }
 
 int config_get_str (xmlNodePtr node, void *x)
 {
-    xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
-    xmlChar *p = *(xmlChar**)x;
-    if (str == NULL)
-        return 1;
-    if (p)
-        xmlFree (p);
-    *(xmlChar **)x = str;
+    if (xmlIsBlankNode (node) == 0)
+    {
+        xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
+        xmlChar *p = *(xmlChar**)x;
+        if (str == NULL)
+            return 1;
+        if (p)
+            xmlFree (p);
+        *(xmlChar **)x = str;
+    }
     return 0;
 }
 
 int config_get_int (xmlNodePtr node, void *x)
 {
-    xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
-    if (str == NULL)
-        return 1;
-    *(int*)x = strtol ((char*)str, NULL, 0);
-    xmlFree (str);
+    if (xmlIsBlankNode (node) == 0)
+    {
+        xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
+        if (str == NULL)
+            return 1;
+        *(int*)x = strtol ((char*)str, NULL, 0);
+        xmlFree (str);
+    }
     return 0;
 }
 
 int config_get_bitrate (xmlNodePtr node, void *x)
 {
-    xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
-    int64_t *p = (int64_t*)x;
-    char metric = '\0';
+    if (xmlIsBlankNode (node) == 0)
+    {
+        xmlChar *str = xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
+        int64_t *p = (int64_t*)x;
+        char metric = '\0';
 
-    if (str == NULL)
-        return 1;
-    sscanf ((char*)str, "%"SCNd64 "%c", p, &metric);
-    if (metric == 'k' || metric == 'K')
-        (*p) *= 1024;
-    if (metric == 'm' || metric == 'M')
-        (*p) *= 1024*1024;
-    xmlFree (str);
+        if (str == NULL)
+            return 1;
+        sscanf ((char*)str, "%"SCNd64 "%c", p, &metric);
+        if (metric == 'k' || metric == 'K')
+            (*p) *= 1024;
+        if (metric == 'm' || metric == 'M')
+            (*p) *= 1024*1024;
+        xmlFree (str);
+    }
     return 0;
 }
 
 
 int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
 {
-    int ret = 0;
+    int ret = 0, seen_element = 0;
     xmlNodePtr node = parent->xmlChildrenNode;
 
     for (; node != NULL && ret == 0; node = node->next)
     {
         const struct cfg_tag *argp;
 
-        if (xmlIsBlankNode (node) || strcmp ((char*)node->name, "comment") == 0 ||
-                strcmp ((char*)node->name, "text") == 0)
+        if (xmlIsBlankNode (node) || node->type != XML_ELEMENT_NODE)
             continue;
+        seen_element = 1;
         argp = args;
         while (argp->name)
         {
@@ -174,6 +186,12 @@ int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
                 ret = argp->retrieve (node, argp->storage);
                 if (ret > 0)
                 {
+                    if (ret == 2)
+                    {
+                        argp++;
+                        ret = 0;
+                        continue;
+                    }
                     xmlParserWarning (NULL, "skipping element \"%s\" parsing \"%s\"\n", node->name, parent->name);
                     ret = 0;
                 }
@@ -184,6 +202,8 @@ int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
         if (argp->name == NULL)
             WARN2 ("unknown element \"%s\" parsing \"%s\"", node->name, parent->name);
     }
+    if (ret == 0 && seen_element == 0)
+        return 2;
     return ret;
 }
 
@@ -301,10 +321,10 @@ void config_clear(ice_config_t *c)
     if (c->banfile) xmlFree(c->banfile);
     if (c->allowfile) xmlFree (c->allowfile);
     if (c->agentfile) xmlFree (c->agentfile);
-    if (c->playlist_log) xmlFree(c->playlist_log);
-    if (c->access_log) xmlFree(c->access_log);
-    if (c->error_log) xmlFree(c->error_log);
-    if (c->access_log_exclude_ext) xmlFree (c->access_log_exclude_ext);
+    if (c->playlist_log.name) xmlFree(c->playlist_log.name);
+    if (c->access_log.name) xmlFree(c->access_log.name);
+    if (c->error_log.name) xmlFree(c->error_log.name);
+    if (c->access_log.exclude_ext) xmlFree (c->access_log.exclude_ext);
     if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
 
     while ((c->listen_sock = config_clear_listener (c->listen_sock)))
@@ -471,11 +491,11 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->log_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOG_DIR);
     configuration->webroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_WEBROOT_DIR);
     configuration->adminroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMINROOT_DIR);
-    configuration->playlist_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
-    configuration->access_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_ACCESS_LOG);
-    configuration->access_log_ip = 1;
-    configuration->error_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_ERROR_LOG);
-    configuration->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
+    configuration->playlist_log.name = (char *)xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
+    configuration->access_log.name = (char *)xmlCharStrdup (CONFIG_DEFAULT_ACCESS_LOG);
+    configuration->access_log.log_ip = 1;
+    configuration->error_log.name = (char *)xmlCharStrdup (CONFIG_DEFAULT_ERROR_LOG);
+    configuration->error_log.level = CONFIG_DEFAULT_LOG_LEVEL;
     configuration->chroot = CONFIG_DEFAULT_CHROOT;
     configuration->chuid = CONFIG_DEFAULT_CHUID;
     configuration->user = NULL;
@@ -568,34 +588,93 @@ static int _parse_security (xmlNodePtr node, void *arg)
     return 0;
 }
 
-static int _parse_logging (xmlNodePtr node, void *arg)
+static int _parse_accesslog (xmlNodePtr node, void *arg)
 {
-    ice_config_t *config = arg;
+    access_log *log = arg;
     struct cfg_tag icecast_tags[] =
     {
-        { "accesslog",      config_get_str,     &config->access_log },
-        { "accesslog_ip",   config_get_bool,    &config->access_log_ip },
-        { "accesslog_exclude_ext",
-                            config_get_str,     &config->access_log_exclude_ext },
-        { "accesslog_lines",
-                            config_get_int,     &config->access_log_lines },
-        { "errorlog",       config_get_str,     &config->error_log },
-        { "errorlog_lines", config_get_int,     &config->error_log_lines },
-        { "playlistlog",    config_get_str,     &config->playlist_log },
-        { "playlistlog_lines",
-                            config_get_int,     &config->playlist_log_lines },
-        { "logsize",        config_get_int,     &config->logsize },
-        { "loglevel",       config_get_int,     &config->loglevel },
-        { "logarchive",     config_get_bool,    &config->logarchive },
+        { "name",           config_get_str,     &log->name },
+        { "ip",             config_get_bool,    &log->log_ip },
+        { "archive",        config_get_bool,    &log->archive },
+        { "exclude_ext",    config_get_str,     &log->exclude_ext },
+        { "display",        config_get_int,     &log->display },
         { NULL, NULL, NULL }
     };
 
-    config->access_log_lines = 100;
-    config->error_log_lines = 100;
-    config->playlist_log_lines = 10;
+    return parse_xml_tags (node, icecast_tags);
+}
+
+static int _parse_errorlog (xmlNodePtr node, void *arg)
+{
+    error_log *log = arg;
+    struct cfg_tag icecast_tags[] =
+    {
+        { "name",           config_get_str,     &log->name },
+        { "archive",        config_get_bool,    &log->archive },
+        { "display",        config_get_int,     &log->display },
+        { "level",          config_get_int,     &log->level },
+        { NULL, NULL, NULL }
+    };
+
+    return parse_xml_tags (node, icecast_tags);
+}
+
+static int _parse_playlistlog (xmlNodePtr node, void *arg)
+{
+    playlist_log *log = arg;
+    struct cfg_tag icecast_tags[] =
+    {
+        { "name",           config_get_str,     &log->name },
+        { "archive",        config_get_bool,    &log->archive },
+        { "display",        config_get_int,     &log->display },
+        { NULL, NULL, NULL }
+    };
+
+    return parse_xml_tags (node, icecast_tags);
+}
+
+static int _parse_logging (xmlNodePtr node, void *arg)
+{
+    ice_config_t *config = arg;
+    int old_trigger_size = -1, old_archive = -1;
+    struct cfg_tag icecast_tags[] =
+    {
+        { "accesslog",      _parse_accesslog,   &config->access_log },
+        { "errorlog",       _parse_errorlog,    &config->error_log },
+        { "playlistlog",    _parse_playlistlog, &config->playlist_log },
+        { "accesslog",      config_get_str,     &config->access_log.name },
+        { "accesslog_ip",   config_get_bool,    &config->access_log.log_ip },
+        { "accesslog_exclude_ext",
+                            config_get_str,     &config->access_log.exclude_ext },
+        { "accesslog_lines",
+                            config_get_int,     &config->access_log.display },
+        { "errorlog",       config_get_str,     &config->error_log },
+        { "errorlog_lines", config_get_int,     &config->error_log.display },
+        { "loglevel",       config_get_int,     &config->error_log.level },
+        { "playlistlog",    config_get_str,     &config->playlist_log },
+        { "playlistlog_lines",
+                            config_get_int,     &config->playlist_log.display },
+        { "logsize",        config_get_int,     &old_trigger_size },
+        { "logarchive",     config_get_bool,    &old_archive },
+        { NULL, NULL, NULL }
+    };
+
+    config->access_log.display = 100;
+    config->error_log.display = 100;
+    config->playlist_log.display = 10;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
+    if (old_trigger_size > 0)
+    {
+        config->error_log.trigger_size  = old_trigger_size;
+        config->access_log.trigger_size = old_trigger_size;
+    }
+    if (old_archive > 0)
+    {
+        config->error_log.archive  = old_archive;
+        config->access_log.archive = old_archive;
+    }
     return 0;
 }
 

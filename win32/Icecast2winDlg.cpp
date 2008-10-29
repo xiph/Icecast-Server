@@ -545,7 +545,7 @@ void StartStats(void *dummy)
 
 			xmlDocPtr doc;
 
-			stats_get_xml(&doc, 0, NULL);
+			doc = stats_get_xml(0, NULL);
 			xmlNodePtr cur;
 		    cur = xmlDocGetRootElement(doc); 
 

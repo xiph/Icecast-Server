@@ -1137,7 +1137,7 @@ static void _handle_stats_request (client_t *client, char *uri)
 static void check_for_filtering (ice_config_t *config, client_t *client)
 {
     const char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    char *pattern = config->access_log_exclude_ext;
+    char *pattern = config->access_log.exclude_ext;
     char *extension = strrchr (uri, '.');
 
     if (extension == NULL || uri == NULL || pattern == NULL)

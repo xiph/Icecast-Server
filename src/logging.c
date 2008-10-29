@@ -150,7 +150,7 @@ void logging_access(client_t *client)
         user_agent = "-";
 
     config = config_get_config();
-    if (config->access_log_ip)
+    if (config->access_log.log_ip)
         ip = client->con->ip;
     config_release_config ();
 #ifdef HAVE_LOG_DIRECT_KEEP
@@ -218,37 +218,37 @@ void log_parse_failure (void *ctx, const char *fmt, ...)
 
 void restart_logging (ice_config_t *config)
 {
-    if (strcmp (config->error_log, "-"))
+    if (strcmp (config->error_log.name, "-"))
     {
         char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log.name);
         log_set_filename (errorlog, fn_error);
-        log_set_level (errorlog, config->loglevel);
-        log_set_trigger (errorlog, config->logsize);
-        log_set_lines_kept (errorlog, config->error_log_lines);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        log_set_level (errorlog, config->error_log.level);
+        log_set_trigger (errorlog, config->error_log.trigger_size);
+        log_set_lines_kept (errorlog, config->error_log.display);
+        log_set_archive_timestamp(errorlog, config->error_log.archive);
         log_reopen (errorlog);
     }
 
-    if (strcmp (config->access_log, "-"))
+    if (strcmp (config->access_log.name, "-"))
     {
         char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log.name);
         log_set_filename (accesslog, fn_error);
-        log_set_trigger (accesslog, config->logsize);
-        log_set_lines_kept (accesslog, config->access_log_lines);
-        log_set_archive_timestamp (accesslog, config->logarchive);
+        log_set_trigger (accesslog, config->access_log.trigger_size);
+        log_set_lines_kept (accesslog, config->access_log.display);
+        log_set_archive_timestamp (accesslog, config->access_log.archive);
         log_reopen (accesslog);
     }
 
-    if (config->playlist_log)
+    if (config->playlist_log.name)
     {
         char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
+        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log.name);
         log_set_filename (playlistlog, fn_error);
-        log_set_trigger (playlistlog, config->logsize);
-        log_set_lines_kept (playlistlog, config->playlist_log_lines);
-        log_set_archive_timestamp (playlistlog, config->logarchive);
+        log_set_trigger (playlistlog, config->playlist_log.trigger_size);
+        log_set_lines_kept (playlistlog, config->playlist_log.display);
+        log_set_archive_timestamp (playlistlog, config->playlist_log.archive);
         log_reopen (playlistlog);
     }
 }

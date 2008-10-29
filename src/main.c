@@ -207,13 +207,13 @@ static int _start_logging(void)
 
     ice_config_t *config = config_get_config_unlocked();
 
-    if(strcmp(config->error_log, "-")) {
-        snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
+    if(strcmp(config->error_log.name, "-")) {
+        snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log.name);
         errorlog = log_open(fn_error);
         log_to_stderr = 0;
-        if (config->logsize)
-            log_set_trigger (errorlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+        if (config->error_log.trigger_size)
+            log_set_trigger (errorlog, config->error_log.trigger_size);
+        log_set_archive_timestamp(errorlog, config->error_log.archive);
     } else {
         errorlog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -227,15 +227,15 @@ static int _start_logging(void)
                 strerror(errno));
         _fatal_error(buf);
     }
-    log_set_level(errorlog, config->loglevel);
+    log_set_level(errorlog, config->error_log.level);
 
-    if(strcmp(config->access_log, "-")) {
-        snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
+    if(strcmp(config->access_log.name, "-")) {
+        snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log.name);
         accesslog = log_open(fn_access);
         log_to_stderr = 0;
-        if (config->logsize)
-            log_set_trigger (accesslog, config->logsize);
-        log_set_archive_timestamp(accesslog, config->logarchive);
+        if (config->access_log.trigger_size)
+            log_set_trigger (accesslog, config->access_log.trigger_size);
+        log_set_archive_timestamp(accesslog, config->access_log.archive);
     } else {
         accesslog = log_open_file(stderr);
         log_to_stderr = 1;
@@ -250,8 +250,8 @@ static int _start_logging(void)
         _fatal_error(buf);
     }
 
-    if(config->playlist_log) {
-        snprintf(fn_playlist, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
+    if(config->playlist_log.name) {
+        snprintf(fn_playlist, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log.name);
         playlistlog = log_open(fn_playlist);
         if (playlistlog < 0) {
             buf[sizeof(buf)-1] = 0;
@@ -262,19 +262,19 @@ static int _start_logging(void)
             _fatal_error(buf);
         }
         log_to_stderr = 0;
-        if (config->logsize)
-            log_set_trigger (playlistlog, config->logsize);
-        log_set_archive_timestamp(playlistlog, config->logarchive);
+        if (config->playlist_log.trigger_size)
+            log_set_trigger (playlistlog, config->playlist_log.trigger_size);
+        log_set_archive_timestamp(playlistlog, config->playlist_log.archive);
     } else {
         playlistlog = -1;
     }
 
-    log_set_level(errorlog, config->loglevel);
+    log_set_level(errorlog, config->error_log.level);
     log_set_level(accesslog, 4);
     log_set_level(playlistlog, 4);
-    log_set_lines_kept (errorlog, config->error_log_lines);
-    log_set_lines_kept (accesslog, config->access_log_lines);
-    log_set_lines_kept (playlistlog, config->playlist_log_lines);
+    log_set_lines_kept (errorlog, config->error_log.display);
+    log_set_lines_kept (accesslog, config->access_log.display);
+    log_set_lines_kept (playlistlog, config->playlist_log.display);
 
     if (errorlog >= 0 && accesslog >= 0) return 1;
     

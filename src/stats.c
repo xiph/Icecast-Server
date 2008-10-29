@@ -914,7 +914,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     char *xslpath = util_get_path_from_normalised_uri (uri);
     const char *mount = httpp_get_query_param (client->parser, "mount");
 
-    stats_get_xml(&doc, STATS_PUBLIC, mount);
+    doc = stats_get_xml (STATS_PUBLIC, mount);
 
     xslt_transform(doc, xslpath, client);
 
@@ -922,18 +922,19 @@ void stats_transform_xslt(client_t *client, const char *uri)
     free (xslpath);
 }
 
-void stats_get_xml(xmlDocPtr *doc, int hidden, const char *show_mount)
+xmlDocPtr stats_get_xml (int hidden, const char *show_mount)
 {
+    xmlDocPtr doc;
     xmlNodePtr node;
 
-    *doc = xmlNewDoc (XMLSTR("1.0"));
-    node = xmlNewDocNode (*doc, NULL, XMLSTR("icestats"), NULL);
-    xmlDocSetRootElement(*doc, node);
+    doc = xmlNewDoc (XMLSTR("1.0"));
+    node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
+    xmlDocSetRootElement(doc, node);
 
     node = _dump_stats_to_doc (node, show_mount, hidden);
 
     if (show_mount && node)
-	{
+    {
 		source_t *source;
         /* show each listener */
         avl_tree_rlock (global.source_tree);
@@ -944,6 +945,7 @@ void stats_get_xml(xmlDocPtr *doc, int hidden, const char *show_mount)
 
         avl_tree_unlock (global.source_tree);
     }
+    return doc;
 }
 
 static int _compare_stats(void *arg, void *a, void *b)
@@ -1008,7 +1010,7 @@ refbuf_t *stats_get_streams (int prepend)
         int ret;
         stats_source_t *source = (stats_source_t *)node->key;
 
-        if (source->hidden == 0)
+        if (source->hidden & STATS_SLAVE)
         {
             if (remaining <= strlen (source->source) + prelen + 3)
             {

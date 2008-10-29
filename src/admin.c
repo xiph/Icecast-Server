@@ -1122,7 +1122,7 @@ static void command_stats (client_t *client, const char *filename)
 
     show_mount = httpp_get_query_param (client->parser, "mount");
 
-    stats_get_xml(&doc, STATS_ALL, show_mount);
+    doc = stats_get_xml (STATS_ALL, show_mount);
     admin_send_response (doc, client, response, filename);
     xmlFreeDoc(doc);
 }

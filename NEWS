@@ -15,6 +15,16 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh3
+. fixed master not informing slaves of streams bug. caused by missed setting in
+  the kh2 stats update
+. more xml checks for badly formed xml files.
+. log files can now be sections not just a single filename ie <errorlog> can
+  contain <name> <archive> <display> and <level>, accesslog can contain <name>
+  <ip> and <archive>, playlistlog can contain <name> <archive> <display>. In each
+  case, name is a filename, archive is a true/false setting for using timestamps
+  on a reopened file, display is the number of lines to show in the admin page.
+
 2.3.2-kh2
 . more stats work. Clients are now processed as needed instead of a dedicated
   thread per stats client. 
