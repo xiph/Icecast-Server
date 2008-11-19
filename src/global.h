@@ -15,7 +15,7 @@
 
 #include "config.h"
 
-#define ICE_LISTEN_QUEUE 5
+#define ICE_LISTEN_QUEUE 10
 
 #define ICE_RUNNING 1
 #define ICE_HALTING 2

@@ -100,7 +100,7 @@ struct cfg_tag
  */
 int config_get_bool (xmlNodePtr node, void *x)
 {   
-    if (xmlNodeIsText (node))
+    if (xmlIsBlankNode (node) == 0)
     {
         char *str = (char *)xmlNodeListGetString (node->doc, node->xmlChildrenNode, 1);
         if (str == NULL)
@@ -972,6 +972,7 @@ static int _parse_listen_sock (xmlNodePtr node, void *arg)
         { "port",               config_get_int,     &listener->port },
         { "shoutcast-compat",   config_get_bool,    &listener->shoutcast_compat },
         { "bind-address",       config_get_str,     &listener->bind_address },
+        { "queue-len",          config_get_int,     &listener->qlen },
         { "ssl",                config_get_bool,    &listener->ssl },
         { "shoutcast-mount",    config_get_str,     &listener->shoutcast_mount },
         { NULL, NULL, NULL },
@@ -979,12 +980,15 @@ static int _parse_listen_sock (xmlNodePtr node, void *arg)
 
     listener->refcount = 1;
     listener->port = 8000;
+    listener->qlen = ICE_LISTEN_QUEUE;
     if (parse_xml_tags (node, icecast_tags))
     {
         config_clear_listener (listener);
         return -1;
     }
 
+    if (listener->qlen < 1)
+        listener->qlen = ICE_LISTEN_QUEUE;
     listener->next = config->listen_sock;
     config->listen_sock = listener;
     config->listen_sock_count++;
@@ -994,6 +998,7 @@ static int _parse_listen_sock (xmlNodePtr node, void *arg)
         listener_t *sc_port = calloc (1, sizeof (listener_t));
         sc_port->refcount = 1;
         sc_port->port = listener->port+1;
+        sc_port->qlen = listener->qlen;
         sc_port->shoutcast_compat = 1;
         sc_port->shoutcast_mount = (char*)xmlStrdup (XMLSTR(listener->shoutcast_mount));
         if (listener->bind_address)

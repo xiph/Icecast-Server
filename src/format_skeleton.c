@@ -91,6 +91,7 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
     INFO0 ("seen initial skeleton header");
     codec->process_page = process_skeleton_page;
     codec->codec_free = skeleton_codec_free;
+    codec->parent = ogg_info;
     codec->headers = 1;
     codec->name = "Skeleton";
 

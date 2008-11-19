@@ -1122,16 +1122,12 @@ static void _handle_stats_request (client_t *client, char *uri)
 {
     if (connection_check_admin_pass (client->parser) == 0)
     {
-        client_send_401 (client, NULL);
-        ERROR0("Bad password for stats connection");
+        auth_add_listener (uri, client);
         return;
     }
 
-    client->respcode = 200;
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client_callback (client, stats_callback, NULL);
+    client->authenticated = 1;
+    stats_add_listener (client, STATS_ALL);
 }
 
 static void check_for_filtering (ice_config_t *config, client_t *client)
@@ -1488,7 +1484,7 @@ int connection_setup_sockets (ice_config_t *config)
             sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
             if (sock == SOCK_ERROR)
                 break;
-            if (sock_listen (sock, ICE_LISTEN_QUEUE) == SOCK_ERROR)
+            if (sock_listen (sock, listener->qlen) == SOCK_ERROR)
             {
                 sock_close (sock);
                 break;

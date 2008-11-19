@@ -127,8 +127,9 @@ struct _listener_t
     int refcount;
     int port;
     char *bind_address;
-    int shoutcast_compat;
     char *shoutcast_mount;
+    int qlen;
+    int shoutcast_compat;
     int ssl;
 };
 

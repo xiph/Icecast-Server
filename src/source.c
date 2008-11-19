@@ -18,6 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_LIMITS_H
+#include <limits.h>
+#endif
 #include <sys/types.h>
 #include <ogg/ogg.h>
 #include <errno.h>
@@ -813,11 +816,15 @@ static void source_init (source_t *source)
 
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
-    stats_event (source->mount, "slow_listeners", "0");
-    stats_event (source->mount, "listener_connections", "0");
+    stats_event_hidden (source->mount, "slow_listeners", "0", STATS_COUNTERS);
+    stats_event_hidden (source->mount, "listener_connections", "0", STATS_COUNTERS);
     stats_event (source->mount, "server_type", source->format->contenttype);
+    stats_event_hidden (source->mount, "listener_peak", "0", STATS_COUNTERS);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
     stats_event_time (source->mount, "stream_start");
+    stats_event_hidden (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
+    stats_event_hidden (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
+    stats_event_hidden (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
 
     DEBUG0("Source creation complete");
     source->last_read = global.time;
@@ -1311,14 +1318,14 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
             DEBUG1 ("fallback_when_full to %u", mountinfo->fallback_when_full);
         DEBUG1 ("max listeners to %d", mountinfo->max_listeners);
         stats_event_args (source->mount, "max_listeners", "%d", mountinfo->max_listeners);
-        stats_event_hidden (source->mount, "cluster_password", mountinfo->cluster_password, STATS_SLAVE);
+        stats_event_hidden (source->mount, "cluster_password", mountinfo->cluster_password, STATS_SLAVE|STATS_HIDDEN);
         if (mountinfo->hidden)
         {
             stats_event_hidden (source->mount, NULL, NULL, STATS_HIDDEN);
             DEBUG0 ("hidden from public");
         }
         else
-            stats_event_hidden (source->mount, NULL, NULL, STATS_PUBLIC);
+            stats_event_hidden (source->mount, NULL, NULL, 0);
     }
     else
     {

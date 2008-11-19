@@ -48,7 +48,7 @@ void stats_event_hidden (const char *source, const char *name, const char *value
 void stats_event_time (const char *mount, const char *name);
 
 void *stats_connection(void *arg);
-void stats_callback (client_t *client, void *mount);
+void stats_add_listener (client_t *client, int hidden_level);
 void stats_global_calc(void);
 
 void stats_transform_xslt(client_t *client, const char *uri);

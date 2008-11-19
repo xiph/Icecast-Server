@@ -121,13 +121,13 @@ int format_mp3_get_plugin (source_t *source)
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
 {
     mp3_state *source_mp3 = plugin->_state;
-    unsigned int len;
-    const char meta[] = "StreamTitle='";
-    int size = sizeof (meta) + 1;
     char *value;
 
     if (tag==NULL || in_value == NULL)
+    {
+        source_mp3->update_metadata = 1;
         return;
+    }
 
     /* protect against multiple updaters */
     thread_mutex_lock (&source_mp3->url_lock);
@@ -136,22 +136,20 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     if (value == NULL)
         value = strdup (in_value);
 
-    len = strlen (value)+1;
-    size += len;
-
     if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
     {
         free (source_mp3->url_title);
-        free (source_mp3->url_artist);
-        source_mp3->url_artist = NULL;
         source_mp3->url_title = value;
-        source_mp3->update_metadata = 1;
     }
     else if (strcmp (tag, "artist") == 0)
     {
         free (source_mp3->url_artist);
         source_mp3->url_artist = value;
-        source_mp3->update_metadata = 1;
+    }
+    else if (strcmp (tag, "url") == 0)
+    {
+        free (source_mp3->url);
+        source_mp3->url = value;
     }
     else
         free (value);
@@ -232,6 +230,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 static void mp3_set_title (source_t *source)
 {
     const char meta[] = "StreamTitle='";
+    const char streamurl[] = "StreamUrl='";
     size_t size;
     unsigned char len_byte;
     refbuf_t *p;
@@ -248,6 +247,8 @@ static void mp3_set_title (source_t *source)
         len += strlen (source_mp3->url_title);
     if (source_mp3->url_artist && source_mp3->url_title)
         len += 3;
+    if (source_mp3->url)
+        len += strlen (source_mp3->url) + strlen (streamurl) + 2;
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
@@ -265,19 +266,32 @@ static void mp3_set_title (source_t *source)
     if (p)
     {
         mp3_state *source_mp3 = source->format->_state;
+        int r;
 
         memset (p->data, '\0', size);
         if (source_mp3->url_artist && source_mp3->url_title)
-            snprintf (p->data, size, "%c%s%s - %s';", len_byte, meta,
+            r = snprintf (p->data, size, "%c%s%s - %s';", len_byte, meta,
                     source_mp3->url_artist, source_mp3->url_title);
         else
-            snprintf (p->data, size, "%c%s%s';", len_byte, meta,
+            r = snprintf (p->data, size, "%c%s%s';", len_byte, meta,
                     source_mp3->url_title);
+        DEBUG2 ("r is %d, url %s", r, source_mp3->url);
+        if (r > 0 && source_mp3->url)
+        {
+            snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
+            DEBUG2 ("val %d %d", p->data[r-1], p->data[r]);
+        }
         DEBUG1 ("shoutcast metadata block setup with %s", p->data+1);
         filter_shoutcast_metadata (source, p->data, size);
 
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
+        free (source_mp3->url);
+        source_mp3->url = NULL;
+        free (source_mp3->url_title);
+        source_mp3->url_title = NULL;
+        free (source_mp3->url_artist);
+        source_mp3->url_artist = NULL;
     }
     thread_mutex_unlock (&source_mp3->url_lock);
 }
@@ -445,6 +459,7 @@ static void format_mp3_free_plugin (format_plugin_t *plugin)
     thread_mutex_destroy (&format_mp3->url_lock);
     free (format_mp3->url_artist);
     free (format_mp3->url_title);
+    free (format_mp3->url);
     refbuf_release (format_mp3->metadata);
     refbuf_release (format_mp3->read_data);
     free(format_mp3);

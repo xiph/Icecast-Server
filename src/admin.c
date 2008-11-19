@@ -986,7 +986,7 @@ static void command_fallback(client_t *client, source_t *source,
 static void command_metadata(client_t *client, source_t *source,
     int response)
 {
-    const char *song, *title, *artist, *artwork, *charset;
+    const char *song, *title, *artist, *artwork, *charset, *url;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1001,6 +1001,7 @@ static void command_metadata(client_t *client, source_t *source,
     COMMAND_OPTIONAL(client, "song", song);
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
+    COMMAND_OPTIONAL(client, "url", url);
     COMMAND_OPTIONAL(client, "artwork", artwork);
     COMMAND_OPTIONAL(client, "charset", charset);
 
@@ -1013,12 +1014,17 @@ static void command_metadata(client_t *client, source_t *source,
 
     do
     {
-        if (same_ip == 0 && plugin == NULL)
+        if (same_ip == 0 || plugin == NULL)
             break;
         if (artwork)
             stats_event (source->mount, "artwork", artwork);
-        else if (plugin->set_tag)
+        if (plugin->set_tag)
         {
+            if (url)
+            {
+                plugin->set_tag (plugin, "url", url, charset);
+                INFO2 ("Metadata url on %s set to \"%s\"", source->mount, url);
+            }
             if (song)
             {
                 plugin->set_tag (plugin, "song", song, charset);
@@ -1034,6 +1040,8 @@ static void command_metadata(client_t *client, source_t *source,
                             source->mount, artist, title);
                 }
             }
+            /* updates are now done, let them be pushed into the stream */
+            plugin->set_tag (plugin, NULL, NULL, NULL);
         }
         else
         {

@@ -15,6 +15,26 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh6
+. some source stats were not being reported on the xsl pages.
+. win32 access log timestamps should now to correct.
+
+2.3.2-kh5
+. stats fixes, crash case in stats handling, and hidden attribute was not honoured
+  on xsl pages with recent stats changes.
+. if requesting /admin/streams via stats method then allow auth via relay user/pass
+  or mountpoint auth. receives only stats for slaves
+. allow url= tag on metadata update for non-ogg streams, adds StreamUrl.
+. fixed possible crash with skeleton stream handling
+. actually prevent metadata updates if there is a stream already running from a
+  different IP.
+. fix build bug on FBSD7
+. allow optional queue-len tag in listen-socket, default is 10
+
+2.3.2-kh4
+. Where's the brown paper bag. boolean settings in the xml were being ignored due
+  to an incorrect test. 
+
 2.3.2-kh3
 . fixed master not informing slaves of streams bug. caused by missed setting in
   the kh2 stats update

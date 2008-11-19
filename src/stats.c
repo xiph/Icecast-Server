@@ -38,6 +38,7 @@
 #include "stats.h"
 #include "xslt.h"
 #include "util.h"
+#include "fserve.h"
 #define CATMODULE "stats"
 #include "logging.h"
 
@@ -172,6 +173,8 @@ void stats_initialize(void)
     stats_event_hidden (NULL, "stats_connections", "0", STATS_COUNTERS);
     stats_event_hidden (NULL, "listener_connections", "0", STATS_COUNTERS);
     stats_event_hidden (NULL, "outgoing_kbitrate", "0", STATS_COUNTERS);
+    stats_event_hidden (NULL, "stream_kbytes_sent", "0", STATS_COUNTERS);
+    stats_event_hidden (NULL, "stream_kbytes_read", "0", STATS_COUNTERS);
 }
 
 void stats_shutdown(void)
@@ -248,7 +251,10 @@ void stats_event_hidden (const char *source, const char *name, const char *value
 
     build_event (&event, source, name, value);
     event.hidden = hidden;
-    event.action |= STATS_EVENT_HIDDEN;
+    if (value)
+        event.action |= STATS_EVENT_HIDDEN;
+    else
+        event.action = STATS_EVENT_HIDDEN;
     process_event (&event);
 }
 
@@ -435,8 +441,11 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         }
         snprintf (event->value, VAL_BUFSIZE, "%" PRId64, value);
     }
-    free (node->value);
-    node->value = strdup (event->value);
+    if (node->value)
+    {
+        free (node->value);
+        node->value = strdup (event->value);
+    }
 }
 
 
@@ -511,7 +520,7 @@ static void process_source_event (stats_event_t *event)
                 node->name = (char *)strdup(event->name);
                 node->value = (char *)strdup(event->value);
                 node->hidden = event->hidden;
-                if (snode->hidden | STATS_HIDDEN)
+                if (snode->hidden & STATS_HIDDEN)
                     node->hidden |= STATS_HIDDEN;
 
                 stats_listener_send (node->hidden, "EVENT %s %s %s\n", event->source, event->name, event->value);
@@ -766,7 +775,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     while (avlnode)
     {
         stats_source_t *source = (stats_source_t *)avlnode->key;
-        if (source->hidden & hidden &&
+        if (((hidden&STATS_HIDDEN) || (source->hidden&STATS_HIDDEN) == (hidden&STATS_HIDDEN)) &&
                 (show_mount == NULL || strcmp (show_mount, source->source) == 0))
         {
             avl_node *avlnode2 = avl_get_first (source->stats_tree);
@@ -778,7 +787,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             while (avlnode2)
             {
                 stats_node_t *stat = avlnode2->key;
-                xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                if ((hidden&STATS_HIDDEN) || (stat->hidden&STATS_HIDDEN) == (hidden&STATS_HIDDEN))
+                    xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
                 avlnode2 = avl_get_next (avlnode2);
             }
         }
@@ -877,36 +887,31 @@ static void _register_listener (event_listener_t *listener)
     _stats.event_listeners = listener;
 }
 
-static void check_uri (event_listener_t *listener, const char *mount)
+
+static void stats_callback (client_t *client, void *arg)
 {
-    listener->hidden_level = STATS_PUBLIC;
-    if (strncmp (mount, "/admin/", 7) == 0)
-    {
-        if (strcmp (mount+7, "streams") == 0)
-            listener->hidden_level = STATS_SLAVE|STATS_GENERAL;
-    }
-    /* else
-     * check for reserved mountpoint, show hidden source stats */
-}
-
-
-
-void stats_callback (client_t *client, void *arg)
-{
-    event_listener_t * listener;
-    const char *mount = arg;
+    event_listener_t *listener = arg;
 
     client_set_queue (client, NULL);
-    listener = calloc (1, sizeof (event_listener_t));
-    listener->client = client;
-    listener->queue_recent_p = &listener->queue;
-    check_uri (listener, mount);
 
     thread_mutex_lock(&_stats_mutex);
     _register_listener (listener);
     thread_mutex_unlock(&_stats_mutex);
 }
 
+void stats_add_listener (client_t *client, int hidden_level)
+{
+    event_listener_t *listener = calloc (1, sizeof (event_listener_t));
+    listener->hidden_level = hidden_level;
+    listener->client = client;
+    listener->queue_recent_p = &listener->queue;
+
+    client->respcode = 200;
+    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+            "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
+    client->refbuf->len = strlen (client->refbuf->data);
+    fserve_add_client_callback (client, stats_callback, listener);
+}
 
 void stats_transform_xslt(client_t *client, const char *uri)
 {

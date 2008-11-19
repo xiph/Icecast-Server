@@ -537,12 +537,14 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 {
     int ret = 0;
 
+    client->authenticated = 1;
+
     /* check whether we are processing a streamlist request for slaves */
     if (strcmp (mount, "/admin/streams") == 0)
     {
-        if (client->authenticated == 0)
+        if (client->parser->req_type == httpp_req_stats)
         {
-            client_send_401 (client, NULL);
+            stats_add_listener (client, STATS_SLAVE|STATS_GENERAL);
             return 0;
         }
         mount = httpp_get_query_param (client->parser, "mount");
@@ -553,7 +555,6 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         }
         mountinfo = config_find_mount (config_get_config_unlocked(), mount);
     }
-    client->authenticated = 1;
 
     /* Here we are parsing the URI request to see if the extension is .xsl, if
      * so, then process this request as an XSLT request
