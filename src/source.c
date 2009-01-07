@@ -311,8 +311,6 @@ void source_free_source (source_t *source)
 
     free (source->mount);
     free (source);
-
-    return;
 }
 
 
@@ -811,9 +809,6 @@ static void source_init (source_t *source)
         }
     }
 
-    /* grab a read lock, to make sure we get a chance to cleanup */
-    thread_rwlock_rlock (source->shutdown_rwlock);
-
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
     stats_event_hidden (source->mount, "slow_listeners", "0", STATS_COUNTERS);
@@ -968,10 +963,13 @@ static void source_shutdown (source_t *source)
          */
         if (mountinfo->fallback_mount)
         {
+            char *mount = strdup (mountinfo->fallback_mount);
             source_t *fallback_source;
 
+            config_release_config();
             avl_tree_rlock (global.source_tree);
-            fallback_source = source_find_mount (mountinfo->fallback_mount);
+            fallback_source = source_find_mount (mount);
+            free (mount);
 
             if (fallback_source != NULL)
             {
@@ -984,7 +982,8 @@ static void source_shutdown (source_t *source)
             avl_tree_unlock (global.source_tree);
         }
     }
-    config_release_config();
+    else
+        config_release_config();
 
     /* delete this sources stats */
     stats_event(source->mount, NULL, NULL);
@@ -999,9 +998,6 @@ static void source_shutdown (source_t *source)
     global.sources--;
     stats_event_args (NULL, "sources", "%d", global.sources);
     global_unlock();
-
-    /* release our hold on the lock so the main thread can continue cleaning up */
-    thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
 

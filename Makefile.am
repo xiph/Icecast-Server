@@ -14,7 +14,7 @@ docdir = $(datadir)/doc/$(PACKAGE)
 doc_DATA = README AUTHORS COPYING NEWS TODO
 
 debug:
-	$(MAKE) all CFLAGS="@DEBUG@"
+	$(MAKE) all CFLAGS="-Wno-unused-parameter @DEBUG@"
 
 profile:
 	$(MAKE) all CFLAGS="@PROFILE@"

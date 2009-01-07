@@ -327,8 +327,10 @@ void config_clear(ice_config_t *c)
     if (c->access_log.exclude_ext) xmlFree (c->access_log.exclude_ext);
     if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
 
+    global_lock();
     while ((c->listen_sock = config_clear_listener (c->listen_sock)))
         ;
+    global_unlock();
 
     if (c->master_server) xmlFree(c->master_server);
     if (c->master_username) xmlFree(c->master_username);

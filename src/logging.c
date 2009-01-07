@@ -112,10 +112,10 @@ void logging_access(client_t *client)
     time_t now;
     time_t stayed;
     const char *referrer, *user_agent, *username, *ip = "-";
-#ifdef HAVE_LOG_DIRECT_KEEP
-    int keep = 0;
-#endif
     ice_config_t *config;
+
+    if (httpp_getvar (client->parser, "__avoid_access_log"))
+        return;
 
     now = global.time;
 
@@ -153,14 +153,7 @@ void logging_access(client_t *client)
     if (config->access_log.log_ip)
         ip = client->con->ip;
     config_release_config ();
-#ifdef HAVE_LOG_DIRECT_KEEP
-    if (httpp_getvar (client->parser, "__avoid_access_log") == NULL)
-        keep = 1;
-
-    log_write_direct_keep (accesslog, keep,
-#else
     log_write_direct (accesslog,
-#endif
             "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
             ip, username,
             datebuf, reqbuf, client->respcode, client->con->sent_bytes,

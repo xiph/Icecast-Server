@@ -96,7 +96,6 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
     codec->name = "Skeleton";
 
     format_ogg_attach_header (codec, page);
-    ogg_info->codec_sync = codec;
     return codec;
 }
 

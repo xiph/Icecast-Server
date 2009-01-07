@@ -180,7 +180,6 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
  */
 ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
 {
-    ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
     ogg_packet packet;
 
@@ -226,7 +225,6 @@ ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
     codec->name = "Kate";
 
     format_ogg_attach_header (codec, page);
-    ogg_info->codec_sync = codec;
     return codec;
 }
 

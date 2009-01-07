@@ -76,7 +76,7 @@ static void redirector_add (const char *server, int port, int interval);
 static redirect_host *find_slave_host (const char *server, int port);
 static void redirector_clearall (void);
 
-static int slave_running = 0;
+int slave_running = 0;
 static volatile int update_settings = 0;
 static volatile int update_all_mounts = 0;
 static volatile int restart_connection_thread = 0;
@@ -191,6 +191,8 @@ void slave_initialize(void)
     ERROR0 ("streamlist request disabled, rebuild with libcurl if required");
 #endif
     _slave_thread (NULL);
+    slave_running = 0;
+    thread_rwlock_destroy (&slaves_lock);
 }
 
 
@@ -199,7 +201,6 @@ void slave_shutdown(void)
     if (!slave_running)
         return;
     slave_running = 0;
-    thread_rwlock_destroy (&slaves_lock);
 }
 
 
@@ -391,7 +392,7 @@ static client_t *open_relay_connection (relay_server *relay, relay_server_master
             global_lock ();
             client = client_create (con, parser);
             global_unlock ();
-            sock_set_blocking (streamsock, SOCK_NONBLOCK);
+            sock_set_blocking (streamsock, 0);
             client_set_queue (client, NULL);
             free (server);
             free (mount);
@@ -1066,16 +1067,19 @@ static void *_slave_thread(void *arg)
         /* only update relays lists from master when required */
         if (streamlist_check <= global.time)
         {
-            ice_config_t *config = config_get_config();
+            ice_config_t *config;
 
             if (streamlist_check == 0)
                 skip_timer = 1;
+
+            thread_mutex_lock (&(config_locks()->relay_lock));
+            config = config_get_config();
+
             streamlist_check = global.time + config->master_update_interval;
             update_master_as_slave (config);
 
             update_from_master (config);
 
-            thread_mutex_lock (&(config_locks()->relay_lock));
             cleanup_relays = update_relays (&global.relays, config->relay);
 
             config_release_config();
@@ -1106,6 +1110,8 @@ static void *_slave_thread(void *arg)
     INFO0 ("shutting down current relays");
     relay_check_streams (NULL, global.relays, 0);
     relay_check_streams (NULL, global.master_relays, 0);
+    global.relays = NULL;
+    global.master_relays = NULL;
     redirector_clearall();
     /* send any removals to the YP servers */
     yp_thread_startup();

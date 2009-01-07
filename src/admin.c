@@ -1096,6 +1096,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     {
         httpp_set_query_param (client->parser, "mount", client->server_conn->shoutcast_mount);
         source->format->set_tag (source->format, "title", value, NULL);
+        source->format->set_tag (source->format, NULL, NULL, NULL);
 
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);

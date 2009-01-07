@@ -117,7 +117,6 @@ cache_file_contents banned_ip, allowed_ip;
 cache_file_contents useragents;
 
 int connection_running = 0;
-rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
 static int check_pass(http_parser_t *parser, const char *user, const char *pass);
@@ -157,7 +156,6 @@ void connection_initialize(void)
 {
     thread_spin_create("connection", &_connection_mutex);
     thread_mutex_create("move_clients", &move_clients_mutex);
-    thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
     _req_queue = NULL;
     _req_queue_tail = &_req_queue;
@@ -185,7 +183,6 @@ void connection_shutdown(void)
     if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
 
     thread_cond_destroy(&global.shutdown_cond);
-    thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy(&_connection_mutex);
     thread_mutex_destroy(&move_clients_mutex);
 }
@@ -702,8 +699,11 @@ static client_queue_t *_create_req_node (client_t *client)
     if (client->server_conn->shoutcast_compat)
         node->shoutcast = 1;
 
-    sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
-    sock_set_nodelay (client->con->sock);
+    if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
+    {
+        WARN0 ("failed to set tcp options on client connection, dropping");
+        client->con->error = 1;
+    }
 
     return node;
 }
@@ -858,7 +858,6 @@ int connection_complete_source (source_t *source, int response)
         config_release_config();
         slave_rebuild_mounts();
 
-        source->shutdown_rwlock = &_source_shutdown_rwlock;
         DEBUG0 ("source is ready to start");
 
         return 0;
@@ -1489,7 +1488,7 @@ int connection_setup_sockets (ice_config_t *config)
                 sock_close (sock);
                 break;
             }
-            sock_set_blocking (sock, SOCK_NONBLOCK);
+            sock_set_blocking (sock, 0);
             successful = 1;
             global.serversock [count] = sock;
             global.server_conn [count] = listener;

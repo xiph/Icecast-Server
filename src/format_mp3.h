@@ -26,6 +26,7 @@ typedef struct {
     char *url_artist;
     char *url_title;
     char *url;
+    char *inline_url;
     int update_metadata;
     int queue_block_size;
 

@@ -31,6 +31,7 @@ public:
 	//{{AFX_VIRTUAL(CIcecast2winApp)
 	public:
 	virtual BOOL InitInstance();
+	virtual int ExitInstance();
 	//}}AFX_VIRTUAL
 
 // Implementation

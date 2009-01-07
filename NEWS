@@ -15,6 +15,19 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh8
+. fix memory corruption which affected ogg streams.
+. fix for unsupported FBSD/win32 spin locking options. abort on initialisation failure.
+. win32 fix from kh7 causing stalling source threads. fallout from kh7 build failure
+
+2.3.2-kh7
+. merge fix for bug report on trunk for skeleton
+. fix for build failure with recent glibc
+. fix for admin.cgi metdata updates not applying (kh5 bug).
+. minor locking cleanup
+. win32 fixes. server restart could cause relay details to become corrupted
+. win32 update. updated libxml2/libxslt
+
 2.3.2-kh6
 . some source stats were not being reported on the xsl pages.
 . win32 access log timestamps should now to correct.

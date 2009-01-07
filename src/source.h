@@ -37,7 +37,6 @@ typedef struct source_tag
     client_t *active_clients;
     client_t **fast_clients_p;
 
-    rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
 
     /* name of a file, whose contents are sent at listener connection */

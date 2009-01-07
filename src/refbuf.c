@@ -20,12 +20,15 @@
 #include <config.h>
 #endif
 
-#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "compat.h"
 #include "refbuf.h"
+
+#define CATMODULE "refbuf"
+
+#include "logging.h"
+
 
 void refbuf_initialize(void)
 {
@@ -65,18 +68,29 @@ void refbuf_addref(refbuf_t *self)
     self->_count++;
 }
 
+static void refbuf_release_associated (refbuf_t *ref)
+{
+    if (ref == NULL)
+        return;
+    while (ref && ref->_count == 1)
+    {
+        refbuf_t *to_go = ref;
+        ref = to_go->next;
+        to_go->next = NULL;
+        refbuf_release (to_go);
+    }
+}
+
 void refbuf_release(refbuf_t *self)
 {
     if (self == NULL)
         return;
     self->_count--;
-    if (self->_count == 0) {
-        while (self->associated)
-        {
-            refbuf_t *ref = self->associated;
-            self->associated = ref->next;
-            refbuf_release (ref);
-        }
+    if (self->_count == 0)
+    {
+        refbuf_release_associated (self->associated);
+        if (self->next)
+            DEBUG0 ("next not null");
         free(self->data);
         free(self);
     }

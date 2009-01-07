@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh6"
+#define VERSION "2.3.2-kh8"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -163,3 +163,5 @@ typedef unsigned int socklen_t;
 #define ICECAST_TIME_FMT "%a, %d %b %Y %H:%M:%S"
 
 #define PATH_MAX MAX_PATH
+#define HAVE_FTIME 1
+#define HAVE_SYS_TIMEB_H 1

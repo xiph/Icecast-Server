@@ -36,9 +36,9 @@
 
     <fileserve>1</fileserve>
     <paths>
-        <logdir>@localstatedir@/log/@PACKAGE@</logdir>
-        <webroot>@pkgdatadir@/web</webroot>
-        <adminroot>@pkgdatadir@/admin</adminroot>
+        <logdir>./log/</logdir>
+        <webroot>./web</webroot>
+        <adminroot>./admin</adminroot>
     </paths>
     <logging>
         <accesslog>access.log</accesslog>

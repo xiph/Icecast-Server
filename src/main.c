@@ -94,7 +94,7 @@ static void _stop_logging(void)
     log_close(playlistlog);
 }
 
-static void _initialize_subsystems(void)
+void _initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
@@ -107,32 +107,24 @@ static void _initialize_subsystems(void)
 
     stats_initialize();
     fserve_initialize();
-#if !defined(WIN32) || defined(WIN32_SERVICE)
-    /* win32 GUI needs to do the initialise before here */
     xslt_initialize();
 #ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
 #endif
-#endif
 }
 
-static void _shutdown_subsystems(void)
+void _shutdown_subsystems(void)
 {
     fserve_shutdown();
-#if !defined(WIN32) || defined(WIN32_SERVICE)
-    /* If we do the following cleanup on the win32 GUI then the app will crash when libxml2 is
-     * initialised again as the process doesn't terminate */
-    xslt_shutdown();
-#endif
     refbuf_shutdown();
     slave_shutdown();
     auth_shutdown();
     yp_shutdown();
     stats_shutdown();
 
-    global_shutdown();
     connection_shutdown();
     config_shutdown();
+    global_shutdown();
     resolver_shutdown();
     sock_shutdown();
     thread_shutdown();
@@ -145,6 +137,7 @@ static void _shutdown_subsystems(void)
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
     log_shutdown();
+    xslt_shutdown();
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)
@@ -412,9 +405,10 @@ int main(int argc, char **argv)
     */
     res = _parse_config_opts(argc, argv, filename, 512);
     if (res == 1) {
+#if !defined(_WIN32) || defined(_CONSOLE)
         /* startup all the modules */
         _initialize_subsystems();
-
+#endif
         /* parse the config file */
         config_get_config();
         ret = config_initial_parse_file(filename);
@@ -494,9 +488,9 @@ int main(int argc, char **argv)
     _server_proc();
 
     INFO0("Shutting down");
-
+#if !defined(_WIN32) || defined(_CONSOLE)
     _shutdown_subsystems();
-
+#endif
     if (pidfile)
     {
         remove (pidfile);
