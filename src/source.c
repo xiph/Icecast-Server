@@ -239,6 +239,7 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *p = source->stream_data;
         source->stream_data = p->next;
+        p->next = NULL;
         /* can be referenced by burst handler as well */
         while (p->_count > 1)
             refbuf_release (p);
@@ -806,6 +807,7 @@ void source_main (source_t *source)
                 }
                 source->stream_data = to_go->next;
                 source->queue_size -= to_go->len;
+                to_go->next = NULL;
                 refbuf_release (to_go);
             }
         }

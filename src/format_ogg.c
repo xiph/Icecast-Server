@@ -120,6 +120,7 @@ void format_ogg_free_headers (ogg_state_t *ogg_info)
     {
         refbuf_t *to_release = header;
         header = header->next;
+        to_release->next = NULL;
         refbuf_release (to_release);
     }
     ogg_info->header_pages = NULL;
