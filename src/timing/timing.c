@@ -27,7 +27,7 @@
 #include <sys/select.h>
 #endif
 
-#ifdef __MINGW32__
+#ifdef HAVE_SYS_TIMEB_H
 #include <sys/timeb.h>
 #endif
 
@@ -40,21 +40,19 @@
  */
 uint64_t timing_get_time(void)
 {
-#ifdef _WIN32
-#ifdef __MINGW32__
-  struct timeb t;
-
-  ftime(&t);
-  return t.time * 1000 + t.millitm;
-#else
-    return timeGetTime();
-#endif
-#else 
+#ifdef HAVE_GETTIMEOFDAY
     struct timeval mtv;
 
     gettimeofday(&mtv, NULL);
 
     return (uint64_t)(mtv.tv_sec) * 1000 + (uint64_t)(mtv.tv_usec) / 1000;
+#elif HAVE_FTIME
+  struct timeb t;
+
+  ftime(&t);
+  return t.time * 1000 + t.millitm;
+#else
+#error need time query handler
 #endif
 }
 

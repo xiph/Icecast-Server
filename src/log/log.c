@@ -360,17 +360,16 @@ void log_shutdown(void)
 
 static int create_log_entry (int log_id, const char *pre, const char *line)
 {
-    int len;
     log_entry_t *entry;
 
     if (loglist[log_id].keep_entries == 0)
         return fprintf (loglist[log_id].logfile, "%s%s\n", pre, line); 
     
     entry = calloc (1, sizeof (log_entry_t));
-    entry->line = malloc (LOG_MAXLINELEN);
-    len = snprintf (entry->line, LOG_MAXLINELEN, "%s%s\n", pre, line);
-    entry->len = len;
-    loglist [log_id].total += len;
+    entry->len = strlen (pre) + strlen (line) + 2;
+    entry->line = malloc (entry->len);
+    snprintf (entry->line, entry->len, "%s%s\n", pre, line);
+    loglist [log_id].total += entry->len;
     fprintf (loglist[log_id].logfile, "%s", entry->line);
 
     *loglist [log_id].log_tail = entry;
@@ -386,7 +385,7 @@ static int create_log_entry (int log_id, const char *pre, const char *line)
     }
     else
         loglist [log_id].entries++;
-    return len;
+    return entry->len;
 }
 
 
@@ -458,9 +457,9 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
 
 void log_write_direct(int log_id, const char *fmt, ...)
 {
-    char line[LOG_MAXLINELEN];
     va_list ap;
     time_t now;
+    char line[LOG_MAXLINELEN];
 
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return;
     
