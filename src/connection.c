@@ -723,6 +723,13 @@ void connection_accept_loop (void)
             /* setup client for reading incoming http */
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
 
+            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
+            {
+                WARN0 ("failed to set tcp options on client connection, dropping");
+                client_destroy (client);
+                continue;
+            }
+
             node = calloc (1, sizeof (client_queue_t));
             if (node == NULL)
             {
@@ -744,9 +751,6 @@ void connection_accept_loop (void)
                     node->shoutcast_mount = strdup (listener->shoutcast_mount);
             }
             config_release_config();
-
-            sock_set_blocking (client->con->sock, SOCK_NONBLOCK);
-            sock_set_nodelay (client->con->sock);
 
             _add_request_queue (node);
             stats_event_inc (NULL, "connections");
@@ -1394,7 +1398,7 @@ int connection_setup_sockets (ice_config_t *config)
                 sock_close (sock);
                 break;
             }
-            sock_set_blocking (sock, SOCK_NONBLOCK);
+            sock_set_blocking (sock, 0);
             successful = 1;
             global.serversock [count] = sock;
             count++;

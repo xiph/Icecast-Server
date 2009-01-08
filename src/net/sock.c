@@ -131,7 +131,7 @@ int sock_error(void)
 #endif
 }
 
-static void sock_set_error(int val)
+void sock_set_error(int val)
 {
 #ifdef _WIN32
      WSASetLastError (val);
@@ -242,12 +242,12 @@ int inet_aton(const char *s, struct in_addr *a)
 #endif /* _WIN32 */
 
 /* sock_set_blocking
-**
-** set the sock blocking or nonblocking
-** SOCK_BLOCK for blocking
-** SOCK_NONBLOCK for nonblocking
-*/
-int sock_set_blocking(sock_t sock, const int block)
+ *
+ * set the sock blocking or nonblocking
+ * 1 for blocking
+ * 0 for nonblocking
+ */
+int sock_set_blocking(sock_t sock, int block)
 {
 #ifdef _WIN32
 #ifdef __MINGW32__
@@ -263,7 +263,7 @@ int sock_set_blocking(sock_t sock, const int block)
 #ifdef _WIN32
     return ioctlsocket(sock, FIONBIO, &varblock);
 #else
-    return fcntl(sock, F_SETFL, (block == SOCK_BLOCK) ? 0 : O_NONBLOCK);
+    return fcntl(sock, F_SETFL, (block) ? 0 : O_NONBLOCK);
 #endif
 }
 
@@ -570,6 +570,11 @@ int sock_connected (sock_t sock, int timeout)
 }
 #endif
 
+sock_t sock_connect_wto (const char *hostname, int port, int timeout)
+{
+    return sock_connect_wto_bind(hostname, port, NULL, timeout);
+}
+
 #ifdef HAVE_GETADDRINFO
 
 sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
@@ -593,7 +598,7 @@ sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
         if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) 
                 > -1)
         {
-            sock_set_blocking (sock, SOCK_NONBLOCK);
+            sock_set_blocking (sock, 0);
             if (connect(sock, ai->ai_addr, ai->ai_addrlen) < 0 && 
                     !sock_connect_pending(sock_error()))
             {
@@ -614,10 +619,10 @@ sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
  * timeout is 0 or less then we will wait until the OS gives up on the connect
  * The socket is returned
  */
-sock_t sock_connect_wto(const char *hostname, int port, int timeout)
+sock_t sock_connect_wto_bind (const char *hostname, int port, const char *bnd, int timeout)
 {
     sock_t sock = SOCK_ERROR;
-    struct addrinfo *ai, *head, hints;
+    struct addrinfo *ai, *head, *b_head=NULL, hints;
     char service[8];
 
     memset (&hints, 0, sizeof (hints));
@@ -634,7 +639,23 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
         if ((sock = socket (ai->ai_family, ai->ai_socktype, ai->ai_protocol)) >= 0)
         {
             if (timeout > 0)
-                sock_set_blocking (sock, SOCK_NONBLOCK);
+                sock_set_blocking (sock, 0);
+
+            if (bnd)
+            {
+                struct addrinfo b_hints;
+                memset (&b_hints, 0, sizeof(b_hints));
+                b_hints.ai_family = ai->ai_family;
+                b_hints.ai_socktype = ai->ai_socktype;
+                b_hints.ai_protocol = ai->ai_protocol;
+                if (getaddrinfo (bnd, NULL, &b_hints, &b_head) ||
+                        bind (sock, b_head->ai_addr, b_head->ai_addrlen) < 0)
+                {
+                    sock_close (sock);
+                    sock = SOCK_ERROR;
+                    break;
+                }
+            }
 
             if (connect (sock, ai->ai_addr, ai->ai_addrlen) == 0)
                 break;
@@ -650,7 +671,7 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
                     if (connected == 1) /* connected */
                     {
                         if (timeout >= 0)
-                            sock_set_blocking(sock, SOCK_BLOCK);
+                            sock_set_blocking(sock, 1);
                         break;
                     }
                 }
@@ -662,8 +683,9 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
         }
         ai = ai->ai_next;
     }
-    if (head)
-        freeaddrinfo (head);
+    if (b_head)
+        freeaddrinfo (b_head);
+    freeaddrinfo (head);
 
     return sock;
 }
@@ -747,7 +769,7 @@ int sock_try_connection (sock_t sock, const char *hostname, unsigned int port)
     memcpy(&server.sin_addr, &sin.sin_addr, sizeof(struct sockaddr_in));
 
     server.sin_family = AF_INET;
-    server.sin_port = htons(port);
+    server.sin_port = htons((short)port);
 
     return connect(sock, (struct sockaddr *)&server, sizeof(server));
 }
@@ -760,13 +782,13 @@ sock_t sock_connect_non_blocking (const char *hostname, unsigned port)
     if (sock == SOCK_ERROR)
         return SOCK_ERROR;
 
-    sock_set_blocking (sock, SOCK_NONBLOCK);
+    sock_set_blocking (sock, 0);
     sock_try_connection (sock, hostname, port);
     
     return sock;
 }
 
-sock_t sock_connect_wto(const char *hostname, int port, int timeout)
+sock_t sock_connect_wto_bind (const char *hostname, int port, const char *bnd, int timeout)
 {
     sock_t sock;
 
@@ -774,9 +796,24 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
     if (sock == SOCK_ERROR)
         return SOCK_ERROR;
 
+    if (bnd)
+    {
+        struct sockaddr_in sa;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.sin_family = AF_INET;
+
+        if (inet_aton (bnd, &sa.sin_addr) == 0 ||
+            bind (sock, (struct sockaddr *)&sa, sizeof(sa)) < 0)
+        {
+            sock_close (sock);
+            return SOCK_ERROR;
+        }
+    }
+
     if (timeout)
     {
-        sock_set_blocking (sock, SOCK_NONBLOCK);
+        sock_set_blocking (sock, 0);
         if (sock_try_connection (sock, hostname, port) < 0)
         {
             int ret = sock_connected (sock, timeout);
@@ -786,7 +823,7 @@ sock_t sock_connect_wto(const char *hostname, int port, int timeout)
                 return SOCK_ERROR;
             }
         }
-        sock_set_blocking(sock, SOCK_BLOCK);
+        sock_set_blocking(sock, 1);
     }
     else
     {
@@ -828,12 +865,12 @@ sock_t sock_get_server_socket(int port, const char *sinterface)
             return SOCK_ERROR;
         } else {
             sa.sin_family = AF_INET;
-            sa.sin_port = htons(port);
+            sa.sin_port = htons((short)port);
         }
     } else {
         sa.sin_addr.s_addr = INADDR_ANY;
         sa.sin_family = AF_INET;
-        sa.sin_port = htons(port);
+        sa.sin_port = htons((short)port);
     }
 
     /* get a socket */
