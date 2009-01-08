@@ -285,7 +285,7 @@ static int _start_listening(void)
         if (sock_listen(global.serversock[i], ICE_LISTEN_QUEUE) == SOCK_ERROR)
             return 0;
 
-        sock_set_blocking(global.serversock[i], SOCK_NONBLOCK);
+        sock_set_blocking(global.serversock[i], 0);
     }
 
     return 1;
