@@ -33,7 +33,7 @@ dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_CHECK_HEADERS([alloca.h])
+AC_CHECK_HEADERS([alloca.h sys/timeb.h])
 AC_CHECK_HEADERS(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
 AC_CHECK_HEADERS(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
 
@@ -43,7 +43,7 @@ XIPH_C__FUNC__
 dnl Check for types
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(localtime_r poll)
+AC_CHECK_FUNCS(localtime_r poll gettimeofday ftime)
 AC_SEARCH_LIBS(nanosleep, rt posix4, AC_DEFINE(HAVE_NANOSLEEP, 1,
     [Define if you have nanosleep]))
 XIPH_NET
