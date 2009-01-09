@@ -66,10 +66,10 @@
 
 #define BUFSIZE 4096
 
-static fserve_t *active_list = NULL;
-static volatile fserve_t *pending_list = NULL;
+fserve_t *active_list = NULL;
+fserve_t *pending_list = NULL;
 
-static mutex_t pending_lock;
+static spin_t pending_lock;
 static avl_tree *mimetypes = NULL;
 
 static volatile int run_fserv = 0;
@@ -97,7 +97,9 @@ void fserve_initialize(void)
     ice_config_t *config = config_get_config();
 
     mimetypes = NULL;
-    thread_mutex_create (&pending_lock);
+    active_list = NULL;
+    pending_list = NULL;
+    thread_spin_create (&pending_lock);
 
     fserve_recheck_mime_types (config);
     config_release_config();
@@ -108,7 +110,7 @@ void fserve_initialize(void)
 
 void fserve_shutdown(void)
 {
-    thread_mutex_lock (&pending_lock);
+    thread_spin_lock (&pending_lock);
     run_fserv = 0;
     while (pending_list)
     {
@@ -127,8 +129,8 @@ void fserve_shutdown(void)
     if (mimetypes)
         avl_tree_free (mimetypes, _delete_mapping);
 
-    thread_mutex_unlock (&pending_lock);
-    thread_mutex_destroy (&pending_lock);
+    thread_spin_unlock (&pending_lock);
+    thread_spin_destroy (&pending_lock);
     INFO0("file serving stopped");
 }
 
@@ -155,9 +157,9 @@ int fserve_client_waiting (void)
     }
     if (!ufds)
     {
-        thread_mutex_lock (&pending_lock);
+        thread_spin_lock (&pending_lock);
         run_fserv = 0;
-        thread_mutex_unlock (&pending_lock);
+        thread_spin_unlock (&pending_lock);
         return -1;
     }
     else if (poll(ufds, fserve_clients, 200) > 0)
@@ -196,9 +198,9 @@ int fserve_client_waiting (void)
     /* hack for windows, select needs at least 1 descriptor */
     if (fd_max == SOCK_ERROR)
     {
-        thread_mutex_lock (&pending_lock);
+        thread_spin_lock (&pending_lock);
         run_fserv = 0;
-        thread_mutex_unlock (&pending_lock);
+        thread_spin_unlock (&pending_lock);
         return -1;
     }
     else
@@ -236,7 +238,7 @@ static int wait_for_fds(void)
         /* add any new clients here */
         if (pending_list)
         {
-            thread_mutex_lock (&pending_lock);
+            thread_spin_lock (&pending_lock);
 
             fclient = (fserve_t*)pending_list;
             while (fclient)
@@ -249,7 +251,7 @@ static int wait_for_fds(void)
                 fserve_clients++;
             }
             pending_list = NULL;
-            thread_mutex_unlock (&pending_lock);
+            thread_spin_unlock (&pending_lock);
         }
         /* drop out of here if someone is ready */
         ret = fserve_client_waiting();
@@ -338,7 +340,7 @@ char *fserve_content_type (const char *path)
     void *result;
     char *type;
 
-    thread_mutex_lock (&pending_lock);
+    thread_spin_lock (&pending_lock);
     if (mimetypes && !avl_get_by_key (mimetypes, &exttype, &result))
     {
         mime_type *mime = result;
@@ -367,7 +369,7 @@ char *fserve_content_type (const char *path)
         else
             type = strdup ("application/octet-stream");
     }
-    thread_mutex_unlock (&pending_lock);
+    thread_spin_unlock (&pending_lock);
     return type;
 }
 
@@ -622,7 +624,7 @@ fail:
  */
 static void fserve_add_pending (fserve_t *fclient)
 {
-    thread_mutex_lock (&pending_lock);
+    thread_spin_lock (&pending_lock);
     fclient->next = (fserve_t *)pending_list;
     pending_list = fclient;
     if (run_fserv == 0)
@@ -631,7 +633,7 @@ static void fserve_add_pending (fserve_t *fclient)
         DEBUG0 ("fserve handler waking up");
         thread_create("File Serving Thread", fserv_thread_function, NULL, THREAD_DETACHED);
     }
-    thread_mutex_unlock (&pending_lock);
+    thread_spin_unlock (&pending_lock);
 }
 
 
@@ -758,10 +760,10 @@ void fserve_recheck_mime_types (ice_config_t *config)
     }
     fclose(mimefile);
 
-    thread_mutex_lock (&pending_lock);
+    thread_spin_lock (&pending_lock);
     if (mimetypes)
         avl_tree_free (mimetypes, _delete_mapping);
     mimetypes = new_mimetypes;
-    thread_mutex_unlock (&pending_lock);
+    thread_spin_unlock (&pending_lock);
 }
 

@@ -89,6 +89,24 @@ typedef struct {
     pthread_rwlock_t sys_rwlock;
 } rwlock_t;
 
+#ifdef HAVE_PTHREAD_SPIN_LOCK
+typedef struct
+{
+    pthread_spinlock_t lock;
+} spin_t;
+
+void thread_spin_create (spin_t *spin);
+void thread_spin_destroy (spin_t *spin);
+void thread_spin_lock (spin_t *spin);
+void thread_spin_unlock (spin_t *spin);
+#else
+typedef mutex_t spin_t;
+#define thread_spin_create(x)  thread_mutex_create(x)
+#define thread_spin_destroy(x)   thread_mutex_destroy(x)
+#define thread_spin_lock(x)      thread_mutex_lock(x)
+#define thread_spin_unlock(x)    thread_mutex_unlock(x)
+#endif
+
 #define thread_create(n,x,y,z) thread_create_c(n,x,y,z,__LINE__,__FILE__)
 #define thread_mutex_create(x) thread_mutex_create_c(x,__LINE__,__FILE__)
 #define thread_mutex_lock(x) thread_mutex_lock_c(x,__LINE__,__FILE__)

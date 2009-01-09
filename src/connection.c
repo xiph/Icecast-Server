@@ -103,7 +103,7 @@ typedef struct
     avl_tree *contents;
 } cache_file_contents;
 
-static mutex_t _connection_mutex;
+static spin_t _connection_lock;
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
 
@@ -141,7 +141,7 @@ void connection_initialize(void)
 {
     if (_initialized) return;
     
-    thread_mutex_create(&_connection_mutex);
+    thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
@@ -171,7 +171,7 @@ void connection_shutdown(void)
  
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
-    thread_mutex_destroy(&_connection_mutex);
+    thread_spin_destroy (&_connection_lock);
     thread_mutex_destroy(&move_clients_mutex);
 
     _initialized = 0;
@@ -181,9 +181,9 @@ static unsigned long _next_connection_id(void)
 {
     unsigned long id;
 
-    thread_mutex_lock(&_connection_mutex);
+    thread_spin_lock (&_connection_lock);
     id = _current_id++;
-    thread_mutex_unlock(&_connection_mutex);
+    thread_spin_unlock (&_connection_lock);
 
     return id;
 }
