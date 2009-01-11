@@ -1136,7 +1136,6 @@ listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
     int i = 0;
 
     listener = config->listen_sock;
-    global_lock();
     while (listener)
     {
         if (i >= global.server_sockets)
@@ -1149,7 +1148,6 @@ listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
             i++;
         }
     }
-    global_unlock();
     return listener;
 }
 

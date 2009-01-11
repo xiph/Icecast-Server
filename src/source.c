@@ -195,7 +195,7 @@ void source_clear_source (source_t *source)
 {
     DEBUG1 ("clearing source \"%s\"", source->mount);
 
-    avl_tree_wlock (source->client_tree);
+    avl_tree_wlock (source->pending_tree);
     client_destroy(source->client);
     source->client = NULL;
     source->parser = NULL;
@@ -216,19 +216,19 @@ void source_clear_source (source_t *source)
         stats_event_sub (NULL, "listeners", source->listeners);
 
     /* lets kick off any clients that are left on here */
+    avl_tree_wlock (source->client_tree);
     while (avl_get_first (source->client_tree))
     {
         avl_delete (source->client_tree,
                 avl_get_first (source->client_tree)->key, _free_client);
     }
+    avl_tree_unlock (source->client_tree);
 
-    avl_tree_wlock (source->pending_tree);
     while (avl_get_first (source->pending_tree))
     {
         avl_delete (source->pending_tree,
                 avl_get_first(source->pending_tree)->key, _free_client);
     }
-    avl_tree_unlock (source->pending_tree);
 
     if (source->format && source->format->free_plugin)
         source->format->free_plugin (source->format);
@@ -274,7 +274,7 @@ void source_clear_source (source_t *source)
     }
 
     source->on_demand_req = 0;
-    avl_tree_unlock (source->client_tree);
+    avl_tree_unlock (source->pending_tree);
 }
 
 
@@ -338,22 +338,23 @@ void source_move_clients (source_t *source, source_t *dest)
 
     /* if the destination is not running then we can't move clients */
 
+    avl_tree_wlock (dest->pending_tree);
     if (dest->running == 0 && dest->on_demand == 0)
     {
         WARN1 ("destination mount %s not running, unable to move clients ", dest->mount);
+        avl_tree_unlock (dest->pending_tree);
         thread_mutex_unlock (&move_clients_mutex);
         return;
     }
 
-    avl_tree_wlock (dest->pending_tree);
     do
     {
         client_t *client;
 
         /* we need to move the client and pending trees - we must take the
          * locks in this order to avoid deadlocks */
-        avl_tree_wlock (source->client_tree);
         avl_tree_wlock (source->pending_tree);
+        avl_tree_wlock (source->client_tree);
 
         if (source->on_demand == 0 && source->format == NULL)
         {
@@ -707,6 +708,9 @@ void source_main (source_t *source)
         if (source->queue_size > source->queue_size_limit)
             remove_from_q = 1;
 
+        /* acquire write lock on pending_tree */
+        avl_tree_wlock(source->pending_tree);
+
         /* acquire write lock on client_tree */
         avl_tree_wlock(source->client_tree);
 
@@ -726,9 +730,6 @@ void source_main (source_t *source)
             }
             client_node = avl_get_next(client_node);
         }
-
-        /* acquire write lock on pending_tree */
-        avl_tree_wlock(source->pending_tree);
 
         /** add pending clients **/
         client_node = avl_get_first(source->pending_tree);
@@ -1365,10 +1366,12 @@ static void *source_fallback_file (void *arg)
  */
 void source_recheck_mounts (int update_all)
 {
-    ice_config_t *config = config_get_config();
-    mount_proxy *mount = config->mounts;
+    ice_config_t *config;
+    mount_proxy *mount;
 
     avl_tree_rlock (global.source_tree);
+    config = config_get_config();
+    mount = config->mounts;
 
     if (update_all)
         stats_clear_virtual_mounts ();

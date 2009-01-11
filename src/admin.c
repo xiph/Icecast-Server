@@ -344,9 +344,11 @@ void admin_handle_request(client_t *client, const char *uri)
             client_send_400 (client, "missing pass parameter");
             return;
         }
+        global_lock();
         config = config_get_config ();
         sc_mount = config->shoutcast_mount;
         listener = config_get_listen_sock (config, client->con);
+
         if (listener && listener->shoutcast_mount)
             sc_mount = listener->shoutcast_mount;
 
@@ -354,6 +356,7 @@ void admin_handle_request(client_t *client, const char *uri)
         httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
         httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
         config_release_config ();
+        global_unlock();
     }
 
     mount = httpp_get_query_param(client->parser, "mount");

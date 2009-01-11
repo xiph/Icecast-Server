@@ -718,13 +718,13 @@ void connection_accept_loop (void)
                 thread_sleep (400000);
                 continue;
             }
-            global_unlock();
 
             /* setup client for reading incoming http */
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
 
             if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
             {
+                global_unlock();
                 WARN0 ("failed to set tcp options on client connection, dropping");
                 client_destroy (client);
                 continue;
@@ -733,6 +733,7 @@ void connection_accept_loop (void)
             node = calloc (1, sizeof (client_queue_t));
             if (node == NULL)
             {
+                global_unlock();
                 client_destroy (client);
                 continue;
             }
@@ -750,6 +751,7 @@ void connection_accept_loop (void)
                 if (listener->shoutcast_mount)
                     node->shoutcast_mount = strdup (listener->shoutcast_mount);
             }
+            global_unlock();
             config_release_config();
 
             _add_request_queue (node);
@@ -778,11 +780,12 @@ void connection_accept_loop (void)
  */
 int connection_complete_source (source_t *source, int response)
 {
-    ice_config_t *config = config_get_config();
+    ice_config_t *config;
 
     global_lock ();
     DEBUG1 ("sources count is %d", global.sources);
 
+    config = config_get_config();
     if (global.sources < config->source_limit)
     {
         const char *contenttype;
@@ -797,8 +800,8 @@ int connection_complete_source (source_t *source, int response)
 
             if (format_type == FORMAT_ERROR)
             {
-                global_unlock();
                 config_release_config();
+                global_unlock();
                 if (response)
                 {
                     client_send_403 (source->client, "Content-type not supported");
