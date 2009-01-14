@@ -32,12 +32,13 @@
 #include "stats.h"
 #include "httpp/httpp.h"
 #include "fserve.h"
+#include "admin.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
 
 
-static mutex_t auth_lock;
+static void auth_postprocess_source (auth_client *auth_user);
 
 
 static auth_client *auth_client_setup (const char *mount, client_t *client)
@@ -233,6 +234,25 @@ static void auth_remove_listener (auth_t *auth, auth_client *auth_user)
     client->auth = NULL;
     /* client is going, so auth is not an issue at this point */
     client->authenticated = 0;
+}
+
+
+/* Called from auth thread to process any request for source client
+ * authentication. Only applies to source clients, not relays.
+ */
+static void stream_auth_callback (auth_t *auth, auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+
+    if (auth->stream_auth)
+        auth->stream_auth (auth_user);
+
+    auth_release (auth);
+    client->auth = NULL;
+    if (client->authenticated)
+        auth_postprocess_source (auth_user);
+    else
+        WARN1 ("Failed auth for source \"%s\"", auth_user->mount);
 }
 
 
@@ -478,6 +498,30 @@ int auth_postprocess_listener (auth_client *auth_user)
 }
 
 
+/* Decide whether we need to start a source or just process a source
+ * admin request.
+ */
+void auth_postprocess_source (auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+    const char *mount = auth_user->mount;
+    const char *req = httpp_getvar (client->parser, HTTPP_VAR_URI);
+
+    auth_user->client = NULL;
+    client->authenticated = 1;
+    if (strcmp (req, "/admin.cgi") == 0 || strncmp ("/admin/metadata", req, 15) == 0)
+    {
+        DEBUG2 ("metadata request (%s, %s)", req, mount);
+        admin_handle_request (client, "/admin/metadata");
+    }
+    else
+    {
+        DEBUG1 ("on mountpoint %s", mount);
+        source_startup (client, mount, 0);
+    }
+}
+
+
 /* Add a listener. Check for any mount information that states any
  * authentication to be used.
  */
@@ -654,6 +698,25 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
 }
 
 
+/* Called when a source client connects and requires authentication via the
+ * authenticator. This is called for both source clients and admin requests
+ * that work on a specified mountpoint.
+ */
+int auth_stream_authenticate (client_t *client, const char *mount, mount_proxy *mountinfo)
+{
+    if (mountinfo && mountinfo->auth && mountinfo->auth->stream_auth)
+    {
+        auth_client *auth_user = auth_client_setup (mount, client);
+
+        auth_user->process = stream_auth_callback;
+        INFO1 ("request source auth for \"%s\"", mount);
+        queue_auth_client (auth_user, mountinfo);
+        return 1;
+    }
+    return 0;
+}
+
+
 /* called when the stream starts, so that authentication engine can do any
  * cleanup/initialisation.
  */
@@ -696,12 +759,10 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 
 void auth_initialise (void)
 {
-    thread_mutex_create (&auth_lock);
 }
 
 void auth_shutdown (void)
 {
-    thread_mutex_destroy (&auth_lock);
     INFO0 ("Auth shutdown");
 }
 

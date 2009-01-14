@@ -122,6 +122,36 @@ void client_destroy(client_t *client)
     free(client);
 }
 
+/* return -1 for failed, 0 for authenticated, 1 for pending
+ */
+int client_check_source_auth (client_t *client, const char *mount)
+{
+    ice_config_t *config = config_get_config();
+    char *pass = config->source_password;
+    char *user = "source";
+    int ret = -1;
+    mount_proxy *mountinfo = config_find_mount (config, mount);
+
+    do
+    {
+        if (mountinfo)
+        {
+            ret = 1;
+            if (auth_stream_authenticate (client, mount, mountinfo) > 0)
+                break;
+            ret = -1;
+            if (mountinfo->password)
+                pass = mountinfo->password;
+            if (mountinfo->username)
+                user = mountinfo->username;
+        }
+        if (connection_check_pass (client->parser, user, pass) > 0)
+            ret = 0;
+    } while (0);
+    config_release_config();
+    return ret;
+}
+
 
 /* helper function for reading data from a client */
 int client_read_bytes (client_t *client, void *buf, unsigned len)

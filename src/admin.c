@@ -371,17 +371,22 @@ void admin_handle_request(client_t *client, const char *uri)
             return;
         }
         /* This is a mount request, handle it as such */
-        if (!connection_check_admin_pass(client->parser))
+        if (client->authenticated == 0 && !connection_check_admin_pass(client->parser))
         {
-            if (!connection_check_source_pass(client->parser, mount))
+            switch (client_check_source_auth (client, mount))
             {
-                INFO1("Bad or missing password on mount modification admin "
-                        "request (command: %s)", command_string);
-                client_send_401(client);
-                return;
+                case 0:
+                    break;
+                default:
+                    INFO1("Bad or missing password on mount modification admin "
+                            "request (command: %s)", command_string);
+                    client_send_401(client);
+                    /* fall through */
+                case 1:
+                    return;
             }
         }
-        
+
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(mount);
 

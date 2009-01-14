@@ -55,6 +55,9 @@ typedef struct auth_tag
     auth_result (*authenticate)(auth_client *aclient);
     auth_result (*release_listener)(auth_client *auth_user);
 
+    /* auth handler for authenicating a connecting source client */
+    void (*stream_auth)(auth_client *auth_user);
+
     /* auth handler for source startup, no client passed as it may disappear */
     void (*stream_start)(auth_client *auth_user);
 
@@ -92,11 +95,14 @@ void auth_shutdown (void);
 auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);
 
-/* call to send a url request when source starts */
+/* call to trigger an event when a stream starts */
 void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
 
-/* call to send a url request when source ends */
+/* call to trigger an event when a stream ends */
 void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
+
+/* call to trigger an event to authenticate a source client */
+int auth_stream_authenticate (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
 
 /* called from auth thread, after the client has successfully authenticated
  * and requires adding to source or fserve. */

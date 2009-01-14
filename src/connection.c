@@ -968,29 +968,17 @@ int connection_check_relay_pass(http_parser_t *parser)
     return ret;
 }
 
-int connection_check_source_pass(http_parser_t *parser, const char *mount)
+
+/* return 0 for failed, 1 for ok
+ */
+int connection_check_pass (http_parser_t *parser, const char *user, const char *pass)
 {
-    ice_config_t *config = config_get_config();
-    char *pass = config->source_password;
-    char *user = "source";
     int ret;
-    int ice_login = config->ice_login;
     const char *protocol;
-
-    mount_proxy *mountinfo = config_find_mount (config, mount);
-
-    if (mountinfo)
-    {
-        if (mountinfo->password)
-            pass = mountinfo->password;
-        if (mountinfo->username)
-            user = mountinfo->username;
-    }
 
     if(!pass) {
         WARN0("No source password set, rejecting source");
-        config_release_config();
-        return 0;
+        return -1;
     }
 
     protocol = httpp_getvar(parser, HTTPP_VAR_PROTOCOL);
@@ -999,22 +987,24 @@ int connection_check_source_pass(http_parser_t *parser, const char *mount)
     }
     else {
         ret = _check_pass_http(parser, user, pass);
-        if(!ret && ice_login)
+        if (!ret)
         {
-            ret = _check_pass_ice(parser, pass);
-            if(ret)
-                WARN0("Source is using deprecated icecast login");
+            ice_config_t *config = config_get_config_unlocked();
+            if (config->ice_login)
+            {
+                ret = _check_pass_ice(parser, pass);
+                if(ret)
+                    WARN0("Source is using deprecated icecast login");
+            }
         }
     }
-    config_release_config();
     return ret;
 }
 
 
-static void _handle_source_request (client_t *client, char *uri, int auth_style)
+/* only called for native icecast source clients */
+static void _handle_source_request (client_t *client, const char *uri)
 {
-    source_t *source;
-
     INFO1("Source logging in at mountpoint \"%s\"", uri);
 
     if (uri[0] != '/')
@@ -1023,24 +1013,30 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         client_send_401 (client);
         return;
     }
-    if (auth_style == ICECAST_SOURCE_AUTH) {
-        if (connection_check_source_pass (client->parser, uri) == 0)
-        {
-            /* We commonly get this if the source client is using the wrong
-             * protocol: attempt to diagnose this and return an error
-             */
-            /* TODO: Do what the above comment says */
+    switch (client_check_source_auth (client, uri))
+    {
+        case 0: /* authenticated from config file */
+            source_startup (client, uri, ICECAST_SOURCE_AUTH);
+            break;
+
+        case 1: /* auth pending */
+            break;
+
+        default: /* failed */
             INFO1("Source (%s) attempted to login with invalid or missing password", uri);
             client_send_401(client);
-            return;
-        }
+            break;
     }
+}
+
+
+void source_startup (client_t *client, const char *uri, int auth_style)
+{
+    source_t *source;
     source = source_reserve (uri);
+
     if (source)
     {
-        if (auth_style == SHOUTCAST_SOURCE_AUTH) {
-            source->shoutcast_compat = 1;
-        }
         source->client = client;
         source->parser = client->parser;
         source->con = client->con;
@@ -1048,6 +1044,13 @@ static void _handle_source_request (client_t *client, char *uri, int auth_style)
         {
             source_clear_source (source);
             source_free_source (source);
+            return;
+        }
+        client->respcode = 200;
+        if (auth_style == SHOUTCAST_SOURCE_AUTH)
+        {
+            source->shoutcast_compat = 1;
+            source_client_callback (client, source);
         }
         else
         {
@@ -1241,7 +1244,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
         }
         client->parser = parser;
-        _handle_source_request (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
+        source_startup (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
     }
     else {
         httpp_destroy (parser);
@@ -1322,7 +1325,7 @@ static void _handle_connection(void)
                 }
 
                 if (parser->req_type == httpp_req_source) {
-                    _handle_source_request (client, uri, ICECAST_SOURCE_AUTH);
+                    _handle_source_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_stats) {
                     _handle_stats_request (client, uri);

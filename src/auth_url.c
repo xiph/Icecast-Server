@@ -46,6 +46,15 @@
  *
  * action=mount_add&mount=/live&server=myserver.com&port=8000
  * action=mount_remove&mount=/live&server=myserver.com&port=8000
+ *
+ * On source client connection, a request can be made to trigger a URL request
+ * to verify the details externally. Post info is
+ *
+ * action=stream_auth&mount=/stream&ip=IP&server=SERVER&port=8000&user=fred&pass=pass
+ *
+ * As admin requests can come in for a stream (eg metadata update) these requests
+ * can be issued while stream is active. For these &admin=1 is added to the POST
+ * details.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -80,6 +89,7 @@ typedef struct {
     char *removeurl;
     char *stream_start;
     char *stream_end;
+    char *stream_auth;
     char *username;
     char *password;
     char *auth_header;
@@ -447,6 +457,52 @@ static void url_stream_end (auth_client *auth_user)
     return;
 }
 
+static void url_stream_auth (auth_client *auth_user)
+{
+    ice_config_t *config;
+    int port;
+    client_t *client = auth_user->client;
+    auth_url *url = client->auth->state;
+    char *mount, *host, *user, *pass, *ipaddr, *admin="";
+    char post [4096];
+
+    if (strchr (url->stream_auth, '@') == NULL)
+    {
+        if (url->userpwd)
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
+        else
+            curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    }
+    else
+        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+    curl_easy_setopt (url->handle, CURLOPT_URL, url->stream_auth);
+    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+    if (strcmp (auth_user->mount, httpp_getvar (client->parser, HTTPP_VAR_URI)) != 0)
+        admin = "&admin=1";
+    mount = util_url_escape (auth_user->mount);
+    config = config_get_config ();
+    host = util_url_escape (config->hostname);
+    port = config->port;
+    config_release_config ();
+    user = util_url_escape (client->username);
+    pass = util_url_escape (client->password);
+    ipaddr = util_url_escape (client->con->ip);
+
+    snprintf (post, sizeof (post),
+            "action=stream_auth&mount=%s&ip=%s&server=%s&port=%d&user=%s&pass=%s%s",
+            mount, ipaddr, host, port, user, pass, admin);
+    free (ipaddr);
+    free (user);
+    free (pass);
+    free (mount);
+    free (host);
+
+    client->authenticated = 0;
+    if (curl_easy_perform (url->handle))
+        WARN2 ("auth to server %s failed with %s", url->stream_auth, url->errormsg);
+}
+
 
 static auth_result auth_url_adduser(auth_t *auth, const char *username, const char *password)
 {
@@ -515,6 +571,12 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             authenticator->stream_end = url_stream_end;
             free (url_info->stream_end);
             url_info->stream_end = strdup (options->value);
+        }
+        if(!strcmp(options->name, "stream_auth"))
+        {
+            authenticator->stream_auth = url_stream_auth;
+            free (url_info->stream_auth);
+            url_info->stream_auth = strdup (options->value);
         }
         if(!strcmp(options->name, "auth_header"))
         {
