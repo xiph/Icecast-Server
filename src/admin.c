@@ -941,6 +941,8 @@ static void command_metadata(client_t *client, source_t *source,
                         source->mount, artist, title);
             }
         }
+        /* updates are now done, let them be pushed into the stream */
+        plugin->set_tag (plugin, NULL, NULL, NULL);
     }
     else
     {
@@ -983,6 +985,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     if (same_ip && source->format && source->format->set_tag)
     {
         source->format->set_tag (source->format, "title", value, NULL);
+        source->format->set_tag (source->format, NULL, NULL, NULL);
 
         DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);

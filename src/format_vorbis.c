@@ -421,7 +421,6 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;
-    int change = 0;
     char *value;
 
     /* avoid updating if multiple codecs in use */
@@ -429,6 +428,13 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
         source_vorbis = codec->specific;
     else
         return;
+
+    if (tag == NULL)
+    {
+        source_vorbis->stream_notify = 1;
+        source_vorbis->rebuild_comment = 1;
+        return;
+    }
 
     value = util_conv_string (in_value, charset, "UTF-8");
     if (value == NULL)
@@ -438,26 +444,16 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     {
         free (ogg_info->artist);
         ogg_info->artist = value;
-        change = 1;
     }
     else if (strcmp (tag, "title") == 0)
     {
         free (ogg_info->title);
         ogg_info->title = value;
-        change = 1;
     }
     else if (strcmp (tag, "song") == 0)
     {
-        free (ogg_info->artist);
         free (ogg_info->title);
-        ogg_info->artist = NULL;
         ogg_info->title = value;
-        change = 1;
-    }
-    if (change)
-    {
-        source_vorbis->stream_notify = 1;
-        source_vorbis->rebuild_comment = 1;
     }
     else
         free (value);

@@ -25,11 +25,13 @@ typedef struct {
     int interval;
     char *url_artist;
     char *url_title;
+    char *url;
+    char *inline_url;
     int update_metadata;
 
     refbuf_t *metadata;
     refbuf_t *read_data;
-    unsigned int read_count;
+    int read_count;
     mutex_t url_lock;
 
     unsigned build_metadata_len;

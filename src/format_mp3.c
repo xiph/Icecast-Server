@@ -127,37 +127,39 @@ int format_mp3_get_plugin (source_t *source)
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
 {
     mp3_state *source_mp3 = plugin->_state;
-    unsigned int len;
-    const char meta[] = "StreamTitle='";
-    int size = sizeof (meta) + 1;
-    char *value;
-
-    if (tag==NULL || in_value == NULL)
-        return;
+    char *value = NULL;
 
     /* protect against multiple updaters */
     thread_mutex_lock (&source_mp3->url_lock);
 
-    value = util_conv_string (in_value, charset, plugin->charset);
-    if (value == NULL)
-        value = strdup (in_value);
+    if (tag==NULL)
+    {
+        source_mp3->update_metadata = 1;
+        thread_mutex_unlock (&source_mp3->url_lock);
+        return;
+    }
 
-    len = strlen (value)+1;
-    size += len;
+    if (in_value)
+    {
+        value = util_conv_string (in_value, charset, plugin->charset);
+        if (value == NULL)
+            value = strdup (in_value);
+    }
 
     if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
     {
         free (source_mp3->url_title);
-        free (source_mp3->url_artist);
-        source_mp3->url_artist = NULL;
         source_mp3->url_title = value;
-        source_mp3->update_metadata = 1;
     }
     else if (strcmp (tag, "artist") == 0)
     {
         free (source_mp3->url_artist);
         source_mp3->url_artist = value;
-        source_mp3->update_metadata = 1;
+    }
+    else if (strcmp (tag, "url") == 0)
+    {
+        free (source_mp3->url);
+        source_mp3->url = value;
     }
     else
         free (value);
@@ -234,11 +236,12 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
  */
 static void mp3_set_title (source_t *source)
 {
-    const char meta[] = "StreamTitle='";
-    int size;
+    const char streamtitle[] = "StreamTitle='";
+    const char streamurl[] = "StreamUrl='";
+    size_t size;
     unsigned char len_byte;
     refbuf_t *p;
-    unsigned int len = sizeof(meta) + 2; /* the StreamTitle, quotes, ; and null */
+    unsigned int len = sizeof(streamtitle) + 2; /* the StreamTitle, quotes, ; and null */
     mp3_state *source_mp3 = source->format->_state;
 
     /* make sure the url data does not disappear from under us */
@@ -251,6 +254,14 @@ static void mp3_set_title (source_t *source)
         len += strlen (source_mp3->url_title);
     if (source_mp3->url_artist && source_mp3->url_title)
         len += 3;
+    if (source_mp3->inline_url)
+    {
+        char *end = strstr (source_mp3->inline_url, "';");
+        if (end)
+            len += end - source_mp3->inline_url+2;
+    }
+    else if (source_mp3->url)
+        len += strlen (source_mp3->url) + strlen (streamurl) + 2;
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
@@ -268,14 +279,29 @@ static void mp3_set_title (source_t *source)
     if (p)
     {
         mp3_state *source_mp3 = source->format->_state;
+        int r;
 
         memset (p->data, '\0', size);
         if (source_mp3->url_artist && source_mp3->url_title)
-            snprintf (p->data, size, "%c%s%s - %s';", len_byte, meta,
+            r = snprintf (p->data, size, "%c%s%s - %s';", len_byte, streamtitle,
                     source_mp3->url_artist, source_mp3->url_title);
         else
-            snprintf (p->data, size, "%c%s%s';", len_byte, meta,
+            r = snprintf (p->data, size, "%c%s%s';", len_byte, streamtitle,
                     source_mp3->url_title);
+        if (r > 0)
+        {
+            if (source_mp3->inline_url)
+            {
+                char *end = strstr (source_mp3->inline_url, "';");
+                int urllen = size;
+                if (end) urllen = end - source_mp3->inline_url + 2;
+                if (size-r > urllen)
+                    snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->inline_url+11);
+            }
+            else if (source_mp3->url)
+                snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
+        }
+        DEBUG1 ("shoutcast metadata block setup with %s", p->data+1);
         filter_shoutcast_metadata (source, p->data, size);
 
         refbuf_release (source_mp3->metadata);
@@ -289,7 +315,7 @@ static void mp3_set_title (source_t *source)
  * which is 0 or greater.  Check the client in_metadata value afterwards
  * to see if all metadata has been sent
  */
-static int send_mp3_metadata (client_t *client, refbuf_t *associated)
+static int send_stream_metadata (client_t *client, refbuf_t *associated)
 {
     int ret = 0;
     char *metadata;
@@ -355,7 +381,7 @@ static int format_mp3_write_buf_to_client(client_t *client)
         if (client_mp3->in_metadata)
         {
             refbuf_t *associated = refbuf->associated;
-            ret = send_mp3_metadata (client, associated);
+            ret = send_stream_metadata (client, associated);
 
             if (client_mp3->in_metadata)
                 break;
@@ -367,7 +393,7 @@ static int format_mp3_write_buf_to_client(client_t *client)
             unsigned int remaining = client_mp3->interval -
                 client_mp3->since_meta_block;
 
-            /* sending the metadata block */
+            /* leading up to sending the metadata block */
             if (remaining <= len)
             {
                 /* send any mp3 before the metadata block */
@@ -384,11 +410,10 @@ static int format_mp3_write_buf_to_client(client_t *client)
                         break;
                     written += ret;
                 }
-                ret = send_mp3_metadata (client, refbuf->associated);
+                ret = send_stream_metadata (client, refbuf->associated);
                 if (client_mp3->in_metadata)
                     break;
                 written += ret;
-                /* change buf and len */
                 buf += remaining;
                 len -= remaining;
                 /* limit how much mp3 we send if using small intervals */
@@ -602,6 +627,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
                         source_mp3->build_metadata_len);
                 refbuf_release (source_mp3->metadata);
                 source_mp3->metadata = meta;
+                source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");
             }
             else
             {
@@ -633,7 +659,7 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
-    const char *metadata; 
+    const char *metadata;
     /* the +-2 is for overwriting the last set of \r\n */
     unsigned remaining = 4096 - client->refbuf->len + 2;
     char *ptr = client->refbuf->data + client->refbuf->len - 2;
