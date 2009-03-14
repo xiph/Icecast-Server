@@ -403,7 +403,14 @@ static void check_relay_stream (relay_server *relay)
             }
         }
         else
-            WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
+        {
+            if (relay->start == 0)
+            {
+                WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
+                relay->start = 1;
+            }
+            return;
+        }
     }
     do
     {
