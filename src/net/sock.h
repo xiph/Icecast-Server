@@ -95,6 +95,7 @@ struct iovec
 # define sock_read_line _mangle(sock_read_line)
 # define sock_get_server_socket _mangle(sock_get_server_socket)
 # define sock_listen _mangle(sock_listen)
+# define sock_set_send_buffer _mangle(sock_set_send_buffer)
 # define sock_accept _mangle(sock_accept)
 #endif
 
@@ -107,10 +108,11 @@ int sock_recoverable(int error);
 int sock_stalled(int error);
 int sock_valid_socket(sock_t sock);
 int sock_active (sock_t sock);
-int sock_set_blocking(sock_t sock, const int block);
+int sock_set_blocking(sock_t sock, int block);
 int sock_set_nolinger(sock_t sock);
 int sock_set_keepalive(sock_t sock);
 int sock_set_nodelay(sock_t sock);
+void sock_set_send_buffer (sock_t sock, int win_size);
 void sock_set_error(int val);
 int sock_close(sock_t  sock);
 

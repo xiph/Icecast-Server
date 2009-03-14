@@ -1404,6 +1404,9 @@ int connection_setup_sockets (ice_config_t *config)
                 sock_close (sock);
                 break;
             }
+            /* some win32 setups do not do TCP win scaling well, so allow an override */
+            if (listener->so_sndbuf)
+                sock_set_send_buffer (sock, listener->so_sndbuf);
             sock_set_blocking (sock, 0);
             successful = 1;
             global.serversock [count] = sock;

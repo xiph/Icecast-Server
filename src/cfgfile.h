@@ -101,6 +101,7 @@ typedef struct _aliases {
 typedef struct _listener_t {
     struct _listener_t *next;
     int port;
+    int so_sndbuf;
     char *bind_address;
     int shoutcast_compat;
     char *shoutcast_mount;

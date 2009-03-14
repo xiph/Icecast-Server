@@ -821,6 +821,11 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
             listener->bind_address = (char *)xmlNodeListGetString(doc, 
                     node->xmlChildrenNode, 1);
         }
+        else if (xmlStrcmp (node->name, XMLSTR("so-sndbuf")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            listener->so_sndbuf = atoi(tmp);
+            if(tmp) xmlFree(tmp);
+        }
     } while ((node = node->next));
 
     /* we know there's at least one of these, so add this new one after the first

@@ -217,7 +217,7 @@ int sock_active (sock_t sock)
     l = recv (sock, &c, 1, MSG_PEEK);
     if (l == 0)
         return 0;
-    if (l < 0 && sock_recoverable (sock_error()))
+    if (l == SOCK_ERROR && sock_recoverable (sock_error()))
         return 1;
     return 0;
 }
@@ -251,9 +251,9 @@ int sock_set_blocking(sock_t sock, int block)
 {
 #ifdef _WIN32
 #ifdef __MINGW32__
-    u_long varblock = block;
+    u_long varblock = 1;
 #else
-    int varblock = block;
+    int varblock = 1;
 #endif
 #endif
 
@@ -261,6 +261,7 @@ int sock_set_blocking(sock_t sock, int block)
         return SOCK_ERROR;
 
 #ifdef _WIN32
+    if (block) varblock = 0;
     return ioctlsocket(sock, FIONBIO, &varblock);
 #else
     return fcntl(sock, F_SETFL, (block) ? 0 : O_NONBLOCK);
@@ -891,6 +892,11 @@ sock_t sock_get_server_socket(int port, const char *sinterface)
 }
 
 #endif
+
+void sock_set_send_buffer (sock_t sock, int win_size)
+{
+    setsockopt (sock, SOL_SOCKET, SO_SNDBUF, (char *) &win_size, sizeof(win_size));
+}
 
 int sock_listen(sock_t serversock, int backlog)
 {
