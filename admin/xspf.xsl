@@ -1,5 +1,5 @@
 <!--
-    XSPF xslt stylesheet for Icecast 2.3.1 and above
+    XSPF xslt stylesheet for Icecast 2.3.2 and above
     Copyright (C) 2007 Thomas B. Ruecker, tbr@ruecker-itk.de
 
     This program is free software; you can redistribute it and/or
