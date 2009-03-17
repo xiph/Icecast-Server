@@ -775,6 +775,10 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
             relay->on_demand = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
+        else if (xmlStrcmp (node->name, XMLSTR("bind")) == 0) {
+            if (relay->bind) xmlFree (relay->bind);
+            relay->bind = (char *)xmlNodeListGetString (doc, node->xmlChildrenNode, 1);
+        }
     } while ((node = node->next));
     if (relay->localmount == NULL)
         relay->localmount = (char *)xmlStrdup (XMLSTR(relay->mount));

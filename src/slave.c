@@ -190,7 +190,7 @@ static client_t *open_relay_connection (relay_server *relay)
 
         INFO2 ("connecting to %s:%d", server, port);
 
-        streamsock = sock_connect_wto (server, port, 10);
+        streamsock = sock_connect_wto_bind (server, port, relay->bind, 10);
         if (streamsock == SOCK_ERROR)
         {
             WARN2 ("Failed to connect to %s:%d", server, port);
