@@ -302,6 +302,7 @@ static void *fserv_thread_function(void *arg)
                             continue;
                         }
                         refbuf = refbuf->next;
+                        client->refbuf->next = NULL;
                         refbuf_release (client->refbuf);
                         client->refbuf = refbuf;
                         bytes = refbuf->len;
