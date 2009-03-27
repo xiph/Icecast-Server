@@ -224,7 +224,7 @@ int redirect_client (const char *mountpoint, client_t *client)
     while (checking)
     {
         DEBUG2 ("...%s:%d", checking->server, checking->port);
-        if (checking->next_update && checking->next_update+10 < global.time)
+        if (checking->next_update && checking->next_update+10 < time(NULL))
         {
             /* no streamist request, expire slave for now */
             *trail = checking->next;
@@ -469,7 +469,7 @@ static void *start_relay_stream (void *arg)
             /* only keep refreshing YP entries for inactive on-demand relays */
             yp_remove (relay->localmount);
             relay->source->yp_public = -1;
-            relay->start = global.time + 10; /* prevent busy looping if failing */
+            relay->start = time(NULL) + 10; /* prevent busy looping if failing */
             slave_update_all_mounts();
         }
 
@@ -506,7 +506,7 @@ static void *start_relay_stream (void *arg)
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
     relay->source->on_demand = 0;
-    relay->start = global.time + relay->interval;
+    relay->start = time(NULL) + relay->interval;
     relay->cleanup = 1;
 
     return NULL;
@@ -531,18 +531,25 @@ static void check_relay_stream (relay_server *relay)
             DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
             {
-                relay->start = global.time;
+                relay->start = time(NULL);
                 slave_update_all_mounts();
             }
         }
         else
-            WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
+        {
+            if (relay->start == 0)
+            {
+                WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
+                relay->start = 1;
+            }
+            return;
+        }
     }
     do
     {
         source_t *source = relay->source;
         /* skip relay if active, not configured or just not time yet */
-        if (relay->source == NULL || relay->running || relay->start > global.time)
+        if (relay->source == NULL || relay->running || relay->start > time(NULL))
             break;
         if (relay->enable == 0)
         {
@@ -587,7 +594,7 @@ static void check_relay_stream (relay_server *relay)
                 break;
         }
 
-        relay->start = global.time + 5;
+        relay->start = time(NULL) + 5;
         relay->running = 1;
         relay->thread = thread_create ("Relay Thread", start_relay_stream,
                 relay, THREAD_ATTACHED);
@@ -620,7 +627,7 @@ static void check_relay_stream (relay_server *relay)
             thread_mutex_unlock (&relay->source->lock);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");
-            relay->start = global.time;
+            relay->start = time(NULL);
         }
     }
 }
@@ -1039,33 +1046,22 @@ static void *_slave_thread(void *arg)
     {
         relay_server *cleanup_relays = NULL;
         int skip_timer = 0;
-        uint64_t prev_time_ms = timing_get_time();
 
-        do
+        /* re-read xml file if requested */
+        if (global . schedule_config_reread)
         {
-            /* re-read xml file if requested */
-            if (global . schedule_config_reread)
-            {
-                event_config_read ();
-                global . schedule_config_reread = 0;
-            }
+            event_config_read ();
+            global . schedule_config_reread = 0;
+        }
 
-            if (global.running != ICE_RUNNING)
-                break;
-
-            thread_sleep (100000);
-            global.time_ms = timing_get_time ();
-            global.time = (long)(global.time_ms/(uint64_t)1000);
-
-            global_add_bitrates (global.out_bitrate, 0L);
-        } while (global.time_ms - prev_time_ms < 1000);
-        prev_time_ms = global.time_ms;
+        thread_sleep (1000000);
+        global_add_bitrates (global.out_bitrate, 0L);
 
         if (global.running != ICE_RUNNING)
             break;
 
         /* only update relays lists from master when required */
-        if (streamlist_check <= global.time)
+        if (streamlist_check <= time(NULL))
         {
             ice_config_t *config;
 
@@ -1075,7 +1071,7 @@ static void *_slave_thread(void *arg)
             thread_mutex_lock (&(config_locks()->relay_lock));
             config = config_get_config();
 
-            streamlist_check = global.time + config->master_update_interval;
+            streamlist_check = time(NULL) + config->master_update_interval;
             update_master_as_slave (config);
 
             update_from_master (config);
@@ -1179,7 +1175,7 @@ void redirector_update (client_t *client)
     else
     {
         DEBUG2 ("touch update on %s:%d", redirect->server, redirect->port);
-        redirect->next_update = global.time + interval;
+        redirect->next_update = time(NULL) + interval;
     }
     thread_rwlock_unlock (&slaves_lock);
 }
@@ -1223,7 +1219,7 @@ static void redirector_add (const char *server, int port, int interval)
     if (interval == 0)
         redirect->next_update = (time_t)0;
     else
-        redirect->next_update = global.time + interval;
+        redirect->next_update = time(NULL) + interval;
     redirect->next = redirectors;
     redirectors = redirect;
     global.redirect_count++;

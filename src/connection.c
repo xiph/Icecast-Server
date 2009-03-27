@@ -76,8 +76,6 @@
 
    Icecast auth style uses HTTP and Basic Authorization.
 */
-#define SHOUTCAST_SOURCE_AUTH 1
-#define ICECAST_SOURCE_AUTH 0
 
 typedef struct client_queue_tag {
     client_t *client;
@@ -100,7 +98,8 @@ typedef struct
     avl_tree *contents;
 } cache_file_contents;
 
-static spin_t _connection_mutex;
+static time_t now;
+static spin_t _connection_lock;
 static volatile unsigned long _current_id = 0;
 static volatile thread_type *conn_tid;
 
@@ -117,9 +116,9 @@ cache_file_contents banned_ip, allowed_ip;
 cache_file_contents useragents;
 
 int connection_running = 0;
+rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
-static int check_pass(http_parser_t *parser, const char *user, const char *pass);
 
 static int compare_line (void *arg, void *a, void *b)
 {
@@ -154,8 +153,9 @@ static int free_filtered_line (void*x)
 
 void connection_initialize(void)
 {
-    thread_spin_create("connection", &_connection_mutex);
-    thread_mutex_create("move_clients", &move_clients_mutex);
+    thread_spin_create (&_connection_lock);
+    thread_mutex_create(&move_clients_mutex);
+    thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
     _req_queue = NULL;
     _req_queue_tail = &_req_queue;
@@ -183,7 +183,10 @@ void connection_shutdown(void)
     if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
 
     thread_cond_destroy(&global.shutdown_cond);
-    thread_spin_destroy(&_connection_mutex);
+    thread_rwlock_wlock(&_source_shutdown_rwlock);
+    thread_rwlock_unlock(&_source_shutdown_rwlock);
+    thread_rwlock_destroy(&_source_shutdown_rwlock);
+    thread_spin_destroy (&_connection_lock);
     thread_mutex_destroy(&move_clients_mutex);
 }
 
@@ -191,9 +194,9 @@ static unsigned long _next_connection_id(void)
 {
     unsigned long id;
 
-    thread_spin_lock(&_connection_mutex);
+    thread_spin_lock (&_connection_lock);
     id = _current_id++;
-    thread_spin_unlock(&_connection_mutex);
+    thread_spin_unlock (&_connection_lock);
 
     return id;
 }
@@ -314,7 +317,7 @@ static int connection_send (connection_t *con, const void *buf, size_t len)
  */
 static void recheck_cached_file (cache_file_contents *cache)
 {
-    if (global.time >= cache->file_recheck)
+    if (now >= cache->file_recheck)
     {
         struct stat file_stat;
         FILE *file = NULL;
@@ -322,7 +325,7 @@ static void recheck_cached_file (cache_file_contents *cache)
         avl_tree *new_ips;
         char line [MAX_LINE_LEN];
 
-        cache->file_recheck = global.time + 10;
+        cache->file_recheck = now + 10;
         if (cache->filename == NULL)
         {
             if (cache->contents)
@@ -413,7 +416,7 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
         con->serversock = serversock;
         con->read = connection_read;
         con->send = connection_send;
-        con->con_time = global.time;
+        con->con_time = time(NULL);
         con->id = _next_connection_id();
         con->ip = ip;
     }
@@ -525,6 +528,7 @@ static connection_t *_accept_connection(int duration)
     if (serversock == SOCK_ERROR)
         return NULL;
 
+    now = time(NULL);
     /* malloc enough room for a full IP address (including ipv6) */
     ip = (char *)malloc(MAX_ADDR_LEN);
 
@@ -603,7 +607,7 @@ static void process_request_queue (void)
 
         if (len > 0)
         {
-            if (client->con->con_time + timeout <= global.time)
+            if (client->con->con_time + timeout <= now)
                 len = 0;
             else
                 len = client_read_bytes (client, buf, len);
@@ -620,6 +624,10 @@ static void process_request_queue (void)
             client->refbuf->data [node->offset] = '\000';
             do
             {
+                /* ugly hack for flash policy files */
+                if (node->offset == 23 && memcmp (client->refbuf->data, "<policy-file-request/>", 23) == 0)
+                    break;
+
                 if (node->shoutcast == 1)
                 {
                     /* password line */
@@ -699,12 +707,6 @@ static client_queue_t *_create_req_node (client_t *client)
     if (client->server_conn->shoutcast_compat)
         node->shoutcast = 1;
 
-    if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
-    {
-        WARN0 ("failed to set tcp options on client connection, dropping");
-        client->con->error = 1;
-    }
-
     return node;
 }
 
@@ -742,6 +744,13 @@ void *connection_thread (void *arg)
 
             /* setup client for reading incoming http */
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
+
+            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
+            {
+                WARN0 ("failed to set tcp options on client connection, dropping");
+                client_destroy (client);
+                continue;
+            }
 
             node = _create_req_node (client);
             if (node == NULL)
@@ -858,6 +867,7 @@ int connection_complete_source (source_t *source, int response)
         config_release_config();
         slave_rebuild_mounts();
 
+        source->shutdown_rwlock = &_source_shutdown_rwlock;
         DEBUG0 ("source is ready to start");
 
         return 0;
@@ -984,40 +994,10 @@ int connection_check_relay_pass(http_parser_t *parser)
     return ret;
 }
 
-/* return -1 for failed, 0 for authenticated, 1 for pending
- */
-int connection_check_source_pass (client_t *client, const char *mount)
-{
-    ice_config_t *config = config_get_config();
-    mount_proxy *mountinfo;
-    char *pass = config->source_password;
-    char *user = "source";
-    int ret = -1;
-
-    mountinfo = config_find_mount (config, mount);
-    do
-    {
-        if (mountinfo)
-        {
-            ret = 1;
-            if (auth_stream_authenticate (client, mount, mountinfo) > 0)
-                break;
-            ret = -1;
-            if (mountinfo->password)
-                pass = mountinfo->password;
-            if (mountinfo->username)
-                user = mountinfo->username;
-        }
-        if (check_pass (client->parser, user, pass) > 0)
-            ret = 0;
-    } while (0);
-    config_release_config();
-    return ret;
-}
 
 /* return 0 for failed, 1 for ok
  */
-static int check_pass (http_parser_t *parser, const char *user, const char *pass)
+int connection_check_pass (http_parser_t *parser, const char *user, const char *pass)
 {
     int ret;
     const char *protocol;
@@ -1058,62 +1038,20 @@ static void _handle_source_request (client_t *client, const char *uri)
         client_send_401 (client, NULL);
         return;
     }
-    switch (connection_check_source_pass (client, uri))
+    switch (auth_check_source (client, uri))
     {
         case 0: /* authenticated from config file */
-            source_startup (client, uri, ICECAST_SOURCE_AUTH);
+            source_startup (client, uri);
             break;
 
         case 1: /* auth pending */
             break;
 
         default: /* failed */
-            /* We commonly get this if the source client is using the wrong
-             * protocol: attempt to diagnose this and return an error
-             */
-            /* TODO: Do what the above comment says */
             INFO1("Source (%s) attempted to login with invalid or missing password", uri);
             client_send_401 (client, NULL);
             break;
     }
-}
-
-void source_startup (client_t *client, const char *uri, int auth_style)
-{
-    source_t *source;
-    source = source_reserve (uri);
-    
-    if (source)
-    {
-        source->client = client;
-        source->parser = client->parser;
-        if (connection_complete_source (source, 1) < 0)
-        {
-            source_clear_source (source);
-            source_free_source (source);
-            return;
-        }
-        client->respcode = 200;
-        if (auth_style == SHOUTCAST_SOURCE_AUTH)
-        {
-            source->shoutcast_compat = 1;
-            source_client_callback (client, source);
-        }
-        else
-        {
-            refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-            snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
-                    "HTTP/1.0 200 OK\r\n\r\n");
-            ok->len = strlen (ok->data);
-            /* we may have unprocessed data read in, so don't overwrite it */
-            ok->associated = client->refbuf;
-            client->refbuf = ok;
-            fserve_add_client_callback (client, source_client_callback, source);
-        }
-        return;
-    }
-    client_send_403 (client, "Mountpoint in use");
-    WARN1 ("Mountpoint %s in use", uri);
 }
 
 
@@ -1219,104 +1157,40 @@ static void _handle_get_request (client_t *client, char *passed_uri)
 
 static void _handle_shoutcast_compatible (client_queue_t *node)
 {
-    char *http_compliant;
-    int http_compliant_len = 0;
-    http_parser_t *parser;
     ice_config_t *config = config_get_config ();
     client_t *client = node->client;
     listener_t *server_conn = client->server_conn;
 
-    if (node->shoutcast == 1)
-    {
-        char *source_password, *ptr, *headers;
-        mount_proxy *mountinfo = config_find_mount (config, server_conn->shoutcast_mount);
+    char *user = "source", *ptr, *headers, *esc_header;
+    mount_proxy *mountinfo = config_find_mount (config, server_conn->shoutcast_mount);
+    refbuf_t *r;
+    int len;
+    char auth [256];
 
-        if (mountinfo && mountinfo->password)
-            source_password = strdup (mountinfo->password);
-        else
-            source_password = strdup (config->source_password);
-        config_release_config();
+    if (mountinfo && mountinfo->username)
+        user = mountinfo->username;
 
-        /* Get rid of trailing \r\n or \n after password */
-        ptr = strstr (client->refbuf->data, "\r\r\n");
-        if (ptr)
-            headers = ptr+3;
-        else
-        {
-            ptr = strstr (client->refbuf->data, "\r\n");
-            if (ptr)
-                headers = ptr+2;
-            else
-            {
-                ptr = strstr (client->refbuf->data, "\n");
-                if (ptr)
-                    headers = ptr+1;
-            }
-        }
-
-        if (ptr == NULL)
-        {
-            client_destroy (client);
-            free (source_password);
-            free (node);
-            return;
-        }
-        *ptr = '\0';
-
-        if (strcmp (client->refbuf->data, source_password) == 0)
-        {
-            client->respcode = 200;
-            /* send this non-blocking but if there is only a partial write
-             * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
-            node->offset -= (headers - client->refbuf->data);
-            memmove (client->refbuf->data, headers, node->offset+1);
-            node->shoutcast = 2;
-            /* we've checked the password, now send it back for reading headers */
-            _add_request_queue (node);
-            free (source_password);
-            return;
-        }
-        else
-            INFO1 ("password does not match \"%s\"", client->refbuf->data);
-        client_destroy (client);
-        free (source_password);
-        free (node);
-        return;
-    }
-    /* actually make a copy as we are dropping the config lock */
+    ptr = client->refbuf->data;
+    len = strcspn (ptr, "\r\n");
+    snprintf (auth, sizeof auth, "%s:%.*s", user, len, ptr);
     config_release_config();
-    /* Here we create a valid HTTP request based of the information
-       that was passed in via the non-HTTP style protocol above. This
-       means we can use some of our existing code to handle this case */
-    http_compliant_len = 20 + strlen (server_conn->shoutcast_mount) + node->offset;
-    http_compliant = (char *)calloc(1, http_compliant_len);
-    snprintf (http_compliant, http_compliant_len,
-            "SOURCE %s HTTP/1.0\r\n%s", server_conn->shoutcast_mount, client->refbuf->data);
-    parser = httpp_create_parser();
-    httpp_initialize (parser, NULL);
-    if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
-    {
-        /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset == node->offset)
-            client->refbuf->len = 0;
-        else
-        {
-            char *ptr = client->refbuf->data;
-            client->refbuf->len = node->offset - node->stream_offset;
-            memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
-        }
-        client->parser = parser;
-        source_startup (client, server_conn->shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
-    }
-    else
-    {
-        httpp_destroy (parser);
-        client_destroy (client);
-    }
-    free (http_compliant);
-    free (node);
-    return;
+    ptr += len;
+    headers = ptr + strspn (ptr, "\r\n");
+
+    esc_header = util_base64_encode (auth);
+    sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
+    /* build a buffer in a way that an icecast2 source client would present as */
+    r = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+    snprintf (r->data, PER_CLIENT_REFBUF_SIZE,
+            "SOURCE %s HTTP/1.0\r\n" "Authorization: Basic %s\r\n%s",
+            server_conn->shoutcast_mount, esc_header, headers);
+    free (esc_header);
+    refbuf_release (client->refbuf);
+    client->refbuf = r;
+    r->len = 0;
+    node->shoutcast = 0;
+    node->offset = strlen (r->data);
+    _add_request_queue (node);
 }
 
 
@@ -1337,6 +1211,13 @@ static void _handle_connection (void)
         {
             client_t *client = node->client;
 
+            if (node->offset == 23 && memcmp (client->refbuf->data, "<policy-file-request/>", 23) == 0)
+            {
+                client->respcode = 200;
+                fserve_client_create (client, "/flashpolicy");
+                free (node);
+                continue;
+            }
             /* Check for special shoutcast compatability processing */
             if (node->shoutcast)
             {

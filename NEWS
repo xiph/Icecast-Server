@@ -10,10 +10,23 @@ Feature differences from SVN trunk
   max-listener/bandwidth check. slaves can use a different auth to listeners
 . mount can filter out theora content, useful for defining a local relay
   of a theora+vorbis stream to have a vorbis only stream from the same source.
-. stream-auth/handlers options for url authenticator.
+. handlers options for url authenticator.
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+
+2.3.2-kh9
+. allow shoutcast source client auth work via stream_auth url
+. allow for a flash policy file.
+. internal cleanup to help merging into trunk
+. fix vorbis metadata update via url, broken in recent releases. cleanup some metadata
+  updating/logging
+. drop vorbis stream rebuilding back to flush evert half second, in sync with trunk
+. stop false reports of 'not null' in debug logging. no other effect on server
+. limit how often the relay mountpoint "already exists" logs.
+. minor tweaking to the average bitrate calculation
+. remove the internal global time caching, although prevent several time calls if in
+  succession.
 
 2.3.2-kh8
 . fix memory corruption which affected ogg streams.

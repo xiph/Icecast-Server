@@ -23,13 +23,12 @@
 
 #define MAX_LINE_LEN 512
 
-
 int util_timed_wait_for_fd(sock_t fd, int timeout);
-int util_read_header(int sock, char *buff, unsigned long len, int entire);
+int util_read_header(sock_t sock, char *buff, unsigned long len, int entire);
 int util_check_valid_extension(const char *uri);
 char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
-char *util_get_path_from_normalised_uri(const char *uri);
+char *util_get_path_from_normalised_uri(const char *uri, int use_admin);
 char *util_normalise_uri(const char *uri);
 char *util_base64_encode(const char *data);
 char *util_base64_decode(const char *input);

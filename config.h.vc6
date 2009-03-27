@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh8"
+#define VERSION "2.3.2-kh9"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION

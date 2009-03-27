@@ -101,16 +101,6 @@ void client_destroy(client_t *client)
     if (client->respcode && client->parser)
         logging_access(client);
 
-#ifdef HAVE_AIO
-    if (aio_cancel (client->con->sock, NULL) == AIO_NOTCANCELED)
-    {
-        const struct aiocb *list = &client->aio;
-        INFO0 ("having to wait for aio cancellation");
-        while (aio_suspend (&list, 1, NULL) < 0)
-            ;
-    }
-#endif
-
     if (client->con)
         connection_close(client->con);
     if (client->parser)

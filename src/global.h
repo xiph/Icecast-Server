@@ -39,9 +39,6 @@ typedef struct ice_global_tag
     int clients;
     int schedule_config_reread;
 
-    time_t time;
-    uint64_t time_ms;
-
     avl_tree *source_tree;
     /* for locally defined relays */
     struct _relay_server *relays;

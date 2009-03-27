@@ -93,7 +93,7 @@ static mutex_t xsltlock;
 void xslt_initialize(void)
 {
     memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
-    thread_mutex_create("xslt", &xsltlock);
+    thread_mutex_create(&xsltlock);
     xmlInitParser();
     LIBXML_TEST_VERSION
     xmlSubstituteEntitiesDefault(1);

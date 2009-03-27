@@ -272,7 +272,7 @@ void yp_initialize(void)
 {
     ice_config_t *config = config_get_config();
     thread_rwlock_create (&yp_lock);
-    thread_mutex_create ("yp", &yp_pending_lock);
+    thread_mutex_create (&yp_pending_lock);
     yp_recheck_config (config);
     config_release_config ();
 }
@@ -408,7 +408,7 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     {
         yp->process = do_yp_touch;
         /* force first touch in 5 secs */
-        yp->next_update = global.time + 5;
+        yp->next_update = time(NULL) + 5;
     }
     return ret;
 }
@@ -524,7 +524,7 @@ static void yp_process_server (struct yp_server *server)
     yp = server->mounts;
     while (yp)
     {
-        now = global.time;
+        now = time(NULL);
         /* if one of the streams shows that the server cannot be contacted then mark the
          * other entries for an update later. Assume YP server is dead and skip it for now
          */
@@ -875,7 +875,7 @@ void yp_add (const char *mount)
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
-                yp->next_update = global.time + 60;
+                yp->next_update = time(NULL) + 60;
                 server->pending_mounts = yp;
                 yp_update = 1;
             }

@@ -114,6 +114,7 @@ typedef struct auth_tag
 
 void auth_add_listener (const char *mount, client_t *client);
 int  auth_release_listener (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
+int  auth_check_source (client_t *client, const char *mount);
 
 void auth_initialise (void);
 void auth_shutdown (void);
@@ -121,18 +122,14 @@ void auth_shutdown (void);
 int auth_get_authenticator (xmlNodePtr node, void *x);
 void    auth_release (auth_t *authenticator);
 
-/* call to send a url request when source starts */
+/* call to trigger an event when a stream starts */
 void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
 
-/* call to send a url request when source ends */
+/* call to trigger an event when a stream ends */
 void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
 
-/* */
-int auth_stream_authenticate (client_t *client, const char *mount,
-        struct _mount_proxy *mountinfo);
-
-/* called from auth thread */
-void auth_postprocess_source (auth_client *auth_user);
+/* call to trigger an event to authenticate a source client */
+int auth_stream_authenticate (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
 
 void auth_check_http (client_t *client);
 

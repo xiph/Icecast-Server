@@ -82,6 +82,7 @@ struct admin_command
 };
 
 
+static time_t now;
 
 static struct admin_command admin_general[] =
 {
@@ -365,7 +366,7 @@ int admin_handle_request (client_t *client, const char *uri)
         /* This is a mount request, but admin user is allowed */
         if (client->authenticated == 0)
         {
-            switch (connection_check_source_pass (client, mount))
+            switch (auth_check_source (client, mount))
             {
                 case 0:
                     break;
@@ -649,7 +650,7 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
 
     snprintf (buf, sizeof (buf), "%lu",
-            (unsigned long)(global.time - listener->con->con_time));
+            (unsigned long)(now - listener->con->con_time));
     xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
     if (listener->username)
     {
@@ -672,6 +673,7 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
 
     thread_mutex_lock (&source->lock);
 
+    now = time(NULL);
     listener = source->active_clients;
     while (listener)
     {
@@ -752,6 +754,7 @@ static void command_show_listeners(client_t *client, source_t *source,
         client_t *listener;
         thread_mutex_lock (&source->lock);
 
+        now = time(NULL);
         listener = source->active_clients;
         while (listener)
         {
@@ -1028,17 +1031,17 @@ static void command_metadata(client_t *client, source_t *source,
             if (song)
             {
                 plugin->set_tag (plugin, "song", song, charset);
-                INFO2("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+                INFO2("Metadata song on mountpoint %s changed to \"%s\"", source->mount, song);
             }
-            else
+            if (artist)
             {
-                if (artist && title)
-                {
-                    plugin->set_tag (plugin, "title", title, charset);
-                    plugin->set_tag (plugin, "artist", artist, charset);
-                    INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
-                            source->mount, artist, title);
-                }
+                plugin->set_tag (plugin, "artist", artist, charset);
+                INFO2 ("Metadata artist on mountpoint %s changed to \"%s\"", source->mount, artist);
+            }
+            if (title)
+            {
+                plugin->set_tag (plugin, "title", title, charset);
+                INFO2 ("Metadata title on mountpoint %s changed to \"%s\"", source->mount, title);
             }
             /* updates are now done, let them be pushed into the stream */
             plugin->set_tag (plugin, NULL, NULL, NULL);
@@ -1092,7 +1095,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         if (connection_check_admin_pass (client->parser) == 0)
             same_ip = 0;
 
-    if (source->format && source->format->set_tag)
+    if (same_ip && source->format && source->format->set_tag)
     {
         httpp_set_query_param (client->parser, "mount", client->server_conn->shoutcast_mount);
         source->format->set_tag (source->format, "title", value, NULL);

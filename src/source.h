@@ -37,6 +37,7 @@ typedef struct source_tag
     client_t *active_clients;
     client_t **fast_clients_p;
 
+    rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
 
     /* name of a file, whose contents are sent at listener connection */
@@ -87,7 +88,7 @@ typedef struct source_tag
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
-void source_startup (client_t *client, const char *uri, int auth_style);
+void source_startup (client_t *client, const char *uri);
 void source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);

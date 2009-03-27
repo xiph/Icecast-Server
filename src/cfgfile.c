@@ -76,7 +76,7 @@ static void _set_defaults(ice_config_t *c);
 static int  _parse_root (xmlNodePtr node, ice_config_t *config);
 
 static void create_locks(void) {
-    thread_mutex_create("relay", &_locks.relay_lock);
+    thread_mutex_create(&_locks.relay_lock);
     thread_rwlock_create(&_locks.config_lock);
 }
 

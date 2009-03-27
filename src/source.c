@@ -99,7 +99,7 @@ source_t *source_reserve (const char *mount)
         src->avg_bitrate_duration = 60;
         src->listener_send_trigger = 10000;
 
-        thread_mutex_create (src->mount, &src->lock);
+        thread_mutex_create (&src->lock);
 
         avl_insert (global.source_tree, src);
 
@@ -248,6 +248,7 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *to_go = p;
         p = to_go->next;
+        to_go->next = NULL;
         refbuf_release (to_go);
     }
     source->burst_point = NULL;
@@ -257,6 +258,7 @@ void source_clear_source (source_t *source)
     {
         refbuf_t *to_go = p;
         p = to_go->next;
+        to_go->next = NULL;
         if (to_go->_count > 1)
             WARN1 ("buffer is %d", to_go->_count);
         refbuf_release (to_go);
@@ -435,6 +437,7 @@ static void update_source_stats (source_t *source)
     unsigned long incoming_rate = 8 * rate_avg (source->format->in_bitrate);
     unsigned long kbytes_sent = source->bytes_sent_since_update/1024;
     unsigned long kbytes_read = source->bytes_read_since_update/1024;
+    time_t now = time(NULL);
 
     source->format->sent_bytes += kbytes_sent*1024;
     stats_event_args (source->mount, "outgoing_kbitrate", "%ld",
@@ -448,7 +451,7 @@ static void update_source_stats (source_t *source)
             "%"PRIu64, source->format->sent_bytes/(1024*1024));
     if (source->client)
         stats_event_args (source->mount, "connected", "%"PRIu64,
-                (uint64_t)(global.time - source->client->con->con_time));
+                (uint64_t)(now - source->client->con->con_time));
     stats_event_add (NULL, "stream_kbytes_sent", kbytes_sent);
     stats_event_add (NULL, "stream_kbytes_read", kbytes_read);
 
@@ -470,12 +473,12 @@ static void update_source_stats (source_t *source)
             /* if bitrate is consistently excessive then terminate the stream */
             if (source->throttle_termination == 0)
             {
-                source->throttle_termination = global.time + source->avg_bitrate_duration/2;
+                source->throttle_termination = now + source->avg_bitrate_duration/2;
                 /* DEBUG1 ("throttle termination set at %ld", source->throttle_termination); */
             }
             else
             {
-                if (global.time >= source->throttle_termination)
+                if (now >= source->throttle_termination)
                 {
                     source->running = 0;
                     WARN3 ("%s terminating, exceeding bitrate limits (%dk/%dk)",
@@ -504,7 +507,7 @@ static void get_next_buffer (source_t *source)
     while (global.running == ICE_RUNNING && source->running)
     {
         int fds = 0;
-        time_t current = global.time;
+        time_t current = time(NULL);
         int delay = 200;
 
         source->amount_added_to_queue = 0;
@@ -566,7 +569,7 @@ static void get_next_buffer (source_t *source)
                 process_listeners (source, 1, 0);
                 continue;
             }
-            rate_add (source->format->in_bitrate, 0, global.time);
+            rate_add (source->format->in_bitrate, 0, current);
             break;
         }
         source->last_read = current;
@@ -645,7 +648,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     int ret = 0;
 
     /* check for limited listener time */
-    if (client->con->discon_time && global.time >= client->con->discon_time)
+    if (client->con->discon_time && time(NULL) >= client->con->discon_time)
     {
         INFO1 ("time limit reached for client #%lu", client->con->id);
         client->con->error = 1;
@@ -685,7 +688,7 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
 
         total_written += bytes;
     }
-    rate_add (source->format->out_bitrate, total_written, global.time_ms);
+    rate_add (source->format->out_bitrate, total_written, timing_get_time());
     source->bytes_sent_since_update += total_written;
 
     global_add_bitrates (global.out_bitrate, total_written);
@@ -809,6 +812,9 @@ static void source_init (source_t *source)
         }
     }
 
+    /* grab a read lock, to make sure we get a chance to cleanup */
+    thread_rwlock_rlock (source->shutdown_rwlock);
+
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
     stats_event_hidden (source->mount, "slow_listeners", "0", STATS_COUNTERS);
@@ -822,12 +828,12 @@ static void source_init (source_t *source)
     stats_event_hidden (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
 
     DEBUG0("Source creation complete");
-    source->last_read = global.time;
+    source->last_read = time(NULL);
     source->prev_listeners = -1;
     source->bytes_sent_since_update = 0;
     source->stats_interval = 5;
     /* so the first set of average stats after 3 seconds */
-    source->client_stats_update = global.time + 3;
+    source->client_stats_update = source->last_read + 3;
 
     source->fast_clients_p = &source->active_clients;
     source->audio_info = util_dict_new();
@@ -932,6 +938,7 @@ void source_main (source_t *source)
                 }
                 source->stream_data = to_go->next;
                 source->queue_size -= to_go->len;
+                to_go->next = NULL;
                 refbuf_release (to_go);
             }
         }
@@ -998,6 +1005,9 @@ static void source_shutdown (source_t *source)
     global.sources--;
     stats_event_args (NULL, "sources", "%d", global.sources);
     global_unlock();
+
+    /* release our hold on the lock so the main thread can continue cleaning up */
+    thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
 
@@ -1076,6 +1086,10 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     /* to be done before possible non-utf8 stats */
     if (source->format && source->format->apply_settings)
         source->format->apply_settings (source->client, source->format, mountinfo);
+
+    str = httpp_getvar (parser, "user-agent");
+    if (str && source->format)
+        stats_event_conv (source->mount, "user_agent", str, source->format->charset);
 
     /* public */
     if (mountinfo && mountinfo->yp_public >= 0)
@@ -1348,11 +1362,11 @@ void *source_client_thread (void *arg)
 
     if (source->wait_time)
     {
-        time_t release = source->wait_time + global.time;
+        time_t release = source->wait_time + time(NULL);
         INFO2 ("keeping %s reserved for %d seconds", source->mount, source->wait_time);
         thread_mutex_unlock (&source->lock);
-        while (global.running && release >= global.time)
-            thread_sleep (300000);
+        while (global.running && release >= time(NULL))
+            thread_sleep (1000000);
     }
     else
         thread_mutex_unlock (&source->lock);
@@ -1366,7 +1380,6 @@ void *source_client_thread (void *arg)
 
 void source_client_callback (client_t *client, void *arg)
 {
-    const char *agent;
     source_t *source = arg;
     refbuf_t *old_data = client->refbuf;
 
@@ -1383,9 +1396,6 @@ void source_client_callback (client_t *client, void *arg)
     old_data->associated = NULL;
     refbuf_release (old_data);
     stats_event (source->mount, "source_ip", source->client->con->ip);
-    agent = httpp_getvar (source->client->parser, "user-agent");
-    if (agent)
-        stats_event (source->mount, "user_agent", agent);
 
     thread_create ("Source Thread", source_client_thread,
             source, THREAD_DETACHED);
@@ -1565,4 +1575,46 @@ void source_recheck_mounts (int update_all)
     avl_tree_unlock (global.source_tree);
     config_release_config();
 }
+
+
+void source_startup (client_t *client, const char *uri)
+{
+    source_t *source;
+    source = source_reserve (uri);
+
+    if (source)
+    {
+        source->client = client;
+        source->parser = client->parser;
+        if (connection_complete_source (source, 1) < 0)
+        {
+            source_clear_source (source);
+            source_free_source (source);
+            return;
+        }
+        client->respcode = 200;
+        if (client->server_conn->shoutcast_compat)
+        {
+            source->shoutcast_compat = 1;
+            source_client_callback (client, source);
+        }
+        else
+        {
+            refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+            snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
+                    "HTTP/1.0 200 OK\r\n\r\n");
+            ok->len = strlen (ok->data);
+            /* we may have unprocessed data read in, so don't overwrite it */
+            ok->associated = client->refbuf;
+            client->refbuf = ok;
+            fserve_add_client_callback (client, source_client_callback, source);
+        }
+    }
+    else
+    {
+        client_send_403 (client, "Mountpoint in use");
+        WARN1 ("Mountpoint %s in use", uri);
+    }
+}
+
 

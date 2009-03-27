@@ -352,6 +352,10 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         }
     }
 
+#ifdef HAVE_FSYNC
+    fflush (tmp_passwdfile);
+    fsync (fileno (tmp_passwdfile));
+#endif
     fclose(tmp_passwdfile);
     fclose(passwdfile);
 

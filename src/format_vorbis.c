@@ -422,7 +422,6 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;
-    int change = 0;
     char *value;
 
     /* avoid url updates unless allowed to */
@@ -435,6 +434,13 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     else
         return;
 
+    if (tag == NULL)
+    {
+        source_vorbis->stream_notify = 1;
+        source_vorbis->rebuild_comment = 1;
+        return;
+    }
+
     value = util_conv_string (in_value, charset, "UTF-8");
     if (value == NULL)
         value = strdup (in_value);
@@ -443,26 +449,16 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     {
         free (ogg_info->artist);
         ogg_info->artist = value;
-        change = 1;
     }
     else if (strcmp (tag, "title") == 0)
     {
         free (ogg_info->title);
         ogg_info->title = value;
-        change = 1;
     }
     else if (strcmp (tag, "song") == 0)
     {
-        free (ogg_info->artist);
         free (ogg_info->title);
-        ogg_info->artist = NULL;
         ogg_info->title = value;
-        change = 1;
-    }
-    if (change)
-    {
-        source_vorbis->stream_notify = 1;
-        source_vorbis->rebuild_comment = 1;
     }
     else
         free (value);
@@ -557,8 +553,8 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
     /* if vorbis is the only codec then allow rebuilding of the streams */
     if (ogg_info->codecs->next == NULL && ogg_info->passthrough == 0)
     {
-        /* set queued vorbis pages to contain about 1 second worth of samples */
-        source_vorbis->page_samples_trigger = (ogg_int64_t)(source_vorbis->vi.rate);
+        /* set queued vorbis pages to contain about 1/2 second worth of samples */
+        source_vorbis->page_samples_trigger = (ogg_int64_t)(source_vorbis->vi.rate/2);
         if (ogg_info->admin_comments_only)
             source_vorbis->rebuild_comment = 1;
         source_vorbis->process_packet = process_vorbis_headers;

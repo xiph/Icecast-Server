@@ -97,7 +97,7 @@ int util_timed_wait_for_fd(sock_t fd, int timeout)
 #endif
 }
 
-int util_read_header(int sock, char *buff, unsigned long len, int entire)
+int util_read_header(sock_t sock, char *buff, unsigned long len, int entire)
 {
     int read_bytes, ret;
     unsigned long pos;
@@ -232,22 +232,26 @@ char *util_get_path_from_uri(char *uri) {
     if(!path)
         return NULL;
     else {
-        fullpath = util_get_path_from_normalised_uri(path);
+        fullpath = util_get_path_from_normalised_uri(path, 0);
         free(path);
         return fullpath;
     }
 }
 
-char *util_get_path_from_normalised_uri(const char *uri) {
+char *util_get_path_from_normalised_uri(const char *uri, int use_admin)
+{
     char *fullpath;
-    char *webroot;
+    char *root;
     ice_config_t *config = config_get_config();
 
-    webroot = config->webroot_dir;
+    if (use_admin)
+        root = config->adminroot_dir;
+    else
+        root = config->webroot_dir;
 
-    fullpath = malloc(strlen(uri) + strlen(webroot) + 1);
+    fullpath = malloc(strlen(uri) + strlen(root) + 1);
     if (fullpath)
-        sprintf (fullpath, "%s%s", webroot, uri);
+        sprintf (fullpath, "%s%s", root, uri);
     config_release_config();
 
     return fullpath;
@@ -715,11 +719,11 @@ struct rate_calc *rate_setup (unsigned int samples, unsigned int ssec)
  */
 void rate_add (struct rate_calc *calc, long value, uint64_t sid) 
 {
+    calc->total += value;
     if (calc->current == NULL || sid != calc->current->index)
     {
         if (calc->blocks == calc->samples)
         {
-            calc->total += calc->current->value;
             calc->current = calc->current->next;
             calc->total -= calc->current->value;
             calc->current->value = value;
@@ -735,7 +739,6 @@ void rate_add (struct rate_calc *calc, long value, uint64_t sid)
             {
                 node->next = calc->current->next;
                 calc->current->next = node;
-                calc->total += calc->current->value;
             }
             else
             {
@@ -756,10 +759,10 @@ long rate_avg (struct rate_calc *calc)
 
     if (calc == NULL || calc->blocks < 2)
         return 0;
-    range = (calc->current->index - calc->current->next->index) / calc->ssec;
+    range = (calc->current->index - calc->current->next->index);
     if (range < 1)
         range = 1;
-    return (long)(calc->total / range);
+    return (long)(calc->total / range * calc->ssec);
 }
 
 /* reduce the samples used to calculate average */

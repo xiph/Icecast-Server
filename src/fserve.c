@@ -94,7 +94,9 @@ void fserve_initialize(void)
     ice_config_t *config = config_get_config();
 
     mimetypes = NULL;
-    thread_spin_create ("fserve pending", &pending_lock);
+    active_list = NULL;
+    pending_list = NULL;
+    thread_spin_create (&pending_lock);
 
     fserve_recheck_mime_types (config);
     config_release_config();
@@ -297,6 +299,7 @@ static void *fserv_thread_function(void *arg)
                             continue;
                         }
                         refbuf = refbuf->next;
+                        client->refbuf->next = NULL;
                         refbuf_release (client->refbuf);
                         client->refbuf = refbuf;
                         bytes = refbuf->len;
@@ -323,7 +326,6 @@ static void *fserv_thread_function(void *arg)
             fclient = fclient->next;
         }
     }
-
     DEBUG0 ("fserve handler exit");
     return NULL;
 }
@@ -409,14 +411,17 @@ int fserve_client_create (client_t *httpclient, const char *path)
     const char *range = NULL;
     off_t new_content_len = 0;
     off_t rangenumber = 0, content_length;
-    int ret = 0;
+    int ret = 0, use_admin = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
     int xspf_requested = 0, xspf_file_available = 1;
     ice_config_t *config;
     FILE *file;
 
-    fullpath = util_get_path_from_normalised_uri (path);
+    if (httpclient->parser == NULL) /* special case for specific non-http content */
+        use_admin = 1;
+
+    fullpath = util_get_path_from_normalised_uri (path, use_admin);
     INFO2 ("checking for file %s (%s)", path, fullpath);
 
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
@@ -595,7 +600,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             else
                 break;
         }
-        else
+        else if (httpclient->parser)
         {
             char *type = fserve_content_type (path);
             httpclient->respcode = 200;
@@ -644,6 +649,7 @@ static void fserve_add_pending (fserve_t *fclient)
     thread_spin_unlock (&pending_lock);
 }
 
+
 /* Add client to fserve thread, client needs to have refbuf set and filled
  * but may provide a NULL file if no data needs to be read
  */
@@ -654,7 +660,7 @@ static int fserve_add_client_mount (client_t *client, const char *mount, FILE *f
     DEBUG0 ("Adding client to file serving engine");
     if (fclient == NULL)
     {
-        client_send_404 (client, "memory exhausted");
+        client_destroy (client);
         return -1;
     }
     fclient->file = file;

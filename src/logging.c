@@ -44,7 +44,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     char    sign;
     char    *timezone_string;
     struct tm gmt;
-    time_t time1 = global.time;
+    time_t time1 = time(NULL);
     int time_days, time_hours, time_tz;
     int tempnum1, tempnum2;
     struct tm *thetime;
@@ -81,7 +81,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     timezone_string = calloc(1, 7);
     snprintf(timezone_string, 7, " %c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
 
-    now = global.time;
+    now = time(NULL);
 
     thetime = localtime(&now);
     strftime (buffer, len-7, "%d/%b/%Y:%H:%M:%S", thetime);
@@ -117,7 +117,7 @@ void logging_access(client_t *client)
     if (httpp_getvar (client->parser, "__avoid_access_log"))
         return;
 
-    now = global.time;
+    now = time(NULL);
 
     localtime_r (&now, &thetime);
     /* build the data */
@@ -174,7 +174,7 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
         return;
     }
 
-    now = global.time;
+    now = time(NULL);
 
     localtime_r (&now, &thetime);
     /* build the data */

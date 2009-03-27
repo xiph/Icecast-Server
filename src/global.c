@@ -41,10 +41,9 @@ void global_initialize(void)
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
-    global.time = time(NULL);
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
-    thread_mutex_create("global", &_global_mutex);
-    thread_spin_create ("xyz", &global.spinlock);
+    thread_mutex_create(&_global_mutex);
+    thread_spin_create (&global.spinlock);
     global.out_bitrate = rate_setup (151, 1000);
 }
 
@@ -70,7 +69,7 @@ void global_unlock(void)
 void global_add_bitrates (struct rate_calc *rate, unsigned long value)
 {
     thread_spin_lock (&global.spinlock);
-    rate_add (rate, value, global.time_ms);
+    rate_add (rate, value, timing_get_time());
     thread_spin_unlock (&global.spinlock);
 }
 

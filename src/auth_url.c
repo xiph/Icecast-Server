@@ -174,7 +174,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         {
             unsigned int limit = 0;
             sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
-            client->con->discon_time = global.time + limit;
+            client->con->discon_time = time(NULL) + limit;
         }
         if (strncasecmp (ptr, "icecast-slave: 1", 16) == 0)
             client->is_slave =1;
@@ -218,7 +218,7 @@ static auth_result url_remove_listener (auth_client *auth_user)
     client_t *client = auth_user->client;
     auth_url *url = auth_user->auth->state;
     auth_thread_data *atd = auth_user->thread_data;
-    time_t duration = global.time - client->con->con_time;
+    time_t duration = time(NULL) - client->con->con_time;
     char *username, *password, *mount, *server, *ipaddr;
     const char *qargs;
     char *userpwd = NULL, post [4096];

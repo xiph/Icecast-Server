@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2-KH
-AppVerName=Icecast v2.3.2-kh8
+AppVerName=Icecast v2.3.2-kh9
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.2-kh8_setup
+OutputBaseFilename=icecast2_win32_v2.3.2-kh9_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 ; uncomment the following line if you want your installation to run on NT 3.51 too.
@@ -42,6 +42,7 @@ Source: "..\web\images\*.png"; DestDir: "{app}\web\images"; Flags: ignoreversion
 Source: "..\web\images\*.jpg"; DestDir: "{app}\web\images"; Flags: ignoreversion
 Source: "..\web\*.css"; DestDir: "{app}\web"; Flags: ignoreversion
 Source: "..\admin\*.xsl"; DestDir: "{app}\admin"; Flags: ignoreversion
+Source: "..\admin\flashpolicy"; DestDir: "{app}\admin"; Flags: ignoreversion
 Source: "c:\xiph\lib\pthreadVSE.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\conf\*.dist"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\examples\icecast_shoutcast_compat.xml"; DestDir: "{app}"; DestName: "icecast.xml"; Flags: ignoreversion

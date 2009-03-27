@@ -152,7 +152,7 @@ void stats_initialize(void)
     _stats.listeners_removed = NULL;
 
     /* set up global mutex */
-    thread_mutex_create("stats", &_stats_mutex);
+    thread_mutex_create(&_stats_mutex);
 
     _stats_running = 1;
 
@@ -229,17 +229,6 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
     }
 
     stats_event (mount, name, metadata);
-
-    /* special case for title updates, log converted title */
-    if (mount && strcmp (name, "title") == 0)
-    {
-        char *s = stats_get_value ((char*)mount, "listeners");
-        int listeners = 0;
-        if (s)
-            listeners = atoi (s);
-        free (s);
-        logging_playlist (mount, metadata, listeners);
-    }
     xmlBufferFree (conv);
 }
 
@@ -582,7 +571,7 @@ static void process_source_event (stats_event_t *event)
 
 void stats_event_time (const char *mount, const char *name)
 {
-    time_t now = global.time;
+    time_t now = time(NULL);
     struct tm local;
     char buffer[100];
 
@@ -916,7 +905,7 @@ void stats_add_listener (client_t *client, int hidden_level)
 void stats_transform_xslt(client_t *client, const char *uri)
 {
     xmlDocPtr doc;
-    char *xslpath = util_get_path_from_normalised_uri (uri);
+    char *xslpath = util_get_path_from_normalised_uri (uri, 0);
     const char *mount = httpp_get_query_param (client->parser, "mount");
 
     doc = stats_get_xml (STATS_PUBLIC, mount);
@@ -1074,14 +1063,9 @@ void stats_clear_virtual_mounts (void)
 void stats_global_calc (void)
 {
     event_listener_t *listener;
-    static time_t next_update = 0;
     stats_event_t event;
     char buffer [VAL_BUFSIZE];
 
-    if (global.time < next_update)
-        return;
-
-    next_update = global.time + 2;
     build_event (&event, NULL, "outgoing_kbitrate", buffer);
     event.hidden = STATS_COUNTERS|STATS_HIDDEN;
 

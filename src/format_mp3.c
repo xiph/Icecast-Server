@@ -76,6 +76,7 @@ int format_mp3_get_plugin (source_t *source)
 
     plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
 
+    plugin->mount = source->mount;
     plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
@@ -112,7 +113,7 @@ int format_mp3_get_plugin (source_t *source)
         }
     }
     source->format = plugin;
-    thread_mutex_create ("mp3 url lock", &state->url_lock);
+    thread_mutex_create (&state->url_lock);
 
     return 0;
 }
@@ -142,13 +143,22 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
 
     if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
     {
+        if (*tag == 's')
+        {
+            /* song typically includes artist */
+            free (source_mp3->url_artist);
+            source_mp3->url_artist = NULL;
+            stats_event (plugin->mount, "artist", NULL);
+        }
         free (source_mp3->url_title);
         source_mp3->url_title = value;
+        stats_event (plugin->mount, "title", value);
     }
     else if (strcmp (tag, "artist") == 0)
     {
         free (source_mp3->url_artist);
         source_mp3->url_artist = value;
+        stats_event (plugin->mount, "artist", value);
     }
     else if (strcmp (tag, "url") == 0)
     {
@@ -161,33 +171,27 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
 }
 
 
-static void filter_shoutcast_metadata (source_t *source, char *metadata, size_t meta_len)
+static char *filter_shoutcast_metadata (source_t *source, char *metadata, size_t meta_len)
 {
-    if (metadata)
+    char *p = NULL;
+    char *end;
+    int len;
+
+    do
     {
-        char *end, *p;
-        int len;
-
-        do
-        {
-            metadata++;
-            if (strncmp (metadata, "StreamTitle='", 13))
-                break;
-            if ((end = strstr (metadata+13, "\';")) == NULL)
-                break;
-            len = (end - metadata) - 13;
-            p = calloc (1, len+1);
-            if (p)
-            {
-                memcpy (p, metadata+13, len);
-
-                stats_event_conv (source->mount, "title", p, source->format->charset);
-
-                yp_touch (source->mount);
-                free (p);
-            }
-        } while (0);
-    }
+        if (metadata == NULL)
+            break;
+        metadata++;
+        if (strncmp (metadata, "StreamTitle='", 13))
+            break;
+        if ((end = strstr (metadata+13, "\';")) == NULL)
+            break;
+        len = (end - metadata) - 13;
+        p = calloc (1, len+1);
+        if (p)
+            memcpy (p, metadata+13, len);
+    } while (0);
+    return p;
 }
 
 
@@ -277,6 +281,7 @@ static void mp3_set_title (source_t *source)
     {
         mp3_state *source_mp3 = source->format->_state;
         int r;
+        char *title;
 
         memset (p->data, '\0', size);
         if (source_mp3->url_artist && source_mp3->url_title)
@@ -299,7 +304,10 @@ static void mp3_set_title (source_t *source)
                 snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
         }
         DEBUG1 ("shoutcast metadata block setup with %s", p->data+1);
-        filter_shoutcast_metadata (source, p->data, size);
+        title = filter_shoutcast_metadata (source, p->data, size);
+        logging_playlist (source->mount, title, source->listeners);
+        yp_touch (source->mount);
+        free (title);
 
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
@@ -510,7 +518,7 @@ static int complete_read (source_t *source)
             }
             return 0;
         }
-        rate_add (format->in_bitrate, bytes, global.time);
+        rate_add (format->in_bitrate, bytes, time(NULL));
     }
     source_mp3->read_count += bytes;
     refbuf = source_mp3->read_data;
@@ -644,8 +652,12 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             DEBUG1("shoutcast metadata %.4080s", meta->data+1);
             if (strncmp (meta->data+1, "StreamTitle=", 12) == 0)
             {
-                filter_shoutcast_metadata (source, source_mp3->build_metadata,
-                        source_mp3->build_metadata_len);
+                char *title = filter_shoutcast_metadata (source,
+                        source_mp3->build_metadata, source_mp3->build_metadata_len);
+                logging_playlist (source->mount, title, source->listeners);
+                stats_event_conv (source->mount, "title", title, source->format->charset);
+                yp_touch (source->mount);
+                free (title);
                 refbuf_release (source_mp3->metadata);
                 source_mp3->metadata = meta;
                 source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");

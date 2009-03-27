@@ -39,11 +39,11 @@
 #define CATMODULE "auth"
 
 
-static spin_t auth_lock;
 static volatile int thread_id;
 
 static void *auth_run_thread (void *arg);
-static int auth_postprocess_listener (auth_client *auth_user);
+static int  auth_postprocess_listener (auth_client *auth_user);
+static void auth_postprocess_source (auth_client *auth_user);
 
 
 void auth_check_http (client_t *client)
@@ -463,7 +463,7 @@ static int add_listener_to_source (const char *mount, mount_proxy *mountinfo, cl
 
         /* set a per-mount disconnect time if auth hasn't set one already */
         if (mountinfo->max_listener_duration && client->con->discon_time == 0)
-            client->con->discon_time = global.time + mountinfo->max_listener_duration;
+            client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
 
         INFO3 ("max on %s is %ld (cur %lu)", source->mount,
                 mountinfo->max_listeners, source->listeners);
@@ -636,7 +636,7 @@ void auth_postprocess_source (auth_client *auth_user)
     else
     {
         DEBUG1 ("on mountpoint %s", mount);
-        source_startup (client, mount, 0);
+        source_startup (client, mount);
     }
 }
 
@@ -827,7 +827,7 @@ int auth_get_authenticator (xmlNodePtr node, void *x)
     else
     {
         auth->tailp = &auth->head;
-        thread_mutex_create ("auth_t", &auth->lock);
+        thread_mutex_create (&auth->lock);
 
         /* allocate N threads */
         auth->handles = calloc (auth->handlers, sizeof (auth_thread_t));
@@ -906,17 +906,46 @@ void auth_stream_end (mount_proxy *mountinfo, const char *mount)
 }
 
 
+/* return -1 for failed, 0 for authenticated, 1 for pending
+ */
+int auth_check_source (client_t *client, const char *mount)
+{
+    ice_config_t *config = config_get_config();
+    char *pass = config->source_password;
+    char *user = "source";
+    int ret = -1;
+    mount_proxy *mountinfo = config_find_mount (config, mount);
+
+    do
+    {
+        if (mountinfo)
+        {
+            ret = 1;
+            if (auth_stream_authenticate (client, mount, mountinfo) > 0)
+                break;
+            ret = -1;
+            if (mountinfo->password)
+                pass = mountinfo->password;
+            if (mountinfo->username)
+                user = mountinfo->username;
+        }
+        if (connection_check_pass (client->parser, user, pass) > 0)
+            ret = 0;
+    } while (0);
+    config_release_config();
+    return ret;
+}
+
+
 /* these are called at server start and termination */
 
 void auth_initialise (void)
 {
-    thread_spin_create ("auth lock", &auth_lock);
     thread_id = 0;
 }
 
 void auth_shutdown (void)
 {
-    thread_spin_destroy (&auth_lock);
     INFO0 ("Auth shutdown");
 }
 

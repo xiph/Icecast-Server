@@ -24,7 +24,6 @@ struct source_tag;
 typedef struct connection_tag connection_t;
 
 #include "cfgfile.h"
-#include "client.h"
 #include "compat.h"
 #include "httpp/httpp.h"
 #include "thread/thread.h"
@@ -68,7 +67,7 @@ int connection_complete_source (struct source_tag *source, int response);
 void connection_uses_ssl (connection_t *con);
 void connection_thread_shutdown_req (void);
 
-int connection_check_source_pass (client_t *client, const char *mount);
+int connection_check_pass (http_parser_t *parser, const char *user, const char *pass);
 int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 
