@@ -165,8 +165,8 @@ void thread_initialize(void)
     log_set_level(_logid, 4);
 #endif
 
-    thread_mutex_create("threadtree", &_threadtree_mutex);
-    thread_mutex_create("thread lib", &_library_mutex);    
+    thread_mutex_create(&_threadtree_mutex);
+    thread_mutex_create(&_library_mutex);    
 
     /* initialize the thread tree and insert the main thread */
 
@@ -199,6 +199,7 @@ void thread_shutdown(void)
         avl_tree_free(_mutextree, _free_mutex);
 #endif
         avl_tree_free(_threadtree, _free_thread);
+        _threadtree = NULL;
     }
 
 #ifdef THREAD_DEBUG
@@ -339,12 +340,13 @@ static void _mutex_create(mutex_t *mutex)
     pthread_mutex_init(&mutex->sys_mutex, NULL);
 }
 
-void thread_mutex_create_c(const char *name, mutex_t *mutex, int line, const char *file)
+void thread_mutex_create_c(mutex_t *mutex, int line, const char *file)
 {
     _mutex_create(mutex);
 
 #ifdef THREAD_DEBUG
-    mutex->name = strdup (name);
+    mutex->name = malloc (strlen (name)+20);
+    sprintf (mutex->name, "%s:%d", file, line);
     _mutex_lock(&_mutextree_mutex);
     mutex->mutex_id = _next_mutex_id++;
     avl_insert(_mutextree, (void *)mutex);
@@ -376,6 +378,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
     mutex->lock_start = get_count();
     mutex->file = strdup (file);
     mutex->line = line;
+    LOG_DEBUG3("Lock on %s acquired at %s:%d", mutex->name, file, line);
 #endif /* THREAD_DEBUG */
 }
 
@@ -446,6 +449,7 @@ void thread_rwlock_destroy(rwlock_t *rwlock)
 #ifdef THREAD_DEBUG
     LOG_DEBUG1 ("rwlock %s destroyed", rwlock->name);
     free (rwlock->name);
+    rwlock->name = NULL;
 #endif
 }
 
@@ -455,6 +459,9 @@ void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, const char *file)
     LOG_DEBUG3("rLock on %s requested at %s:%d", rwlock->name, file, line);
 #endif
     pthread_rwlock_rdlock(&rwlock->sys_rwlock);
+#ifdef THREAD_DEBUG
+    LOG_DEBUG3("rLock on %s acquired at %s:%d", rwlock->name, file, line);
+#endif
 }
 
 void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, const char *file)
@@ -463,13 +470,16 @@ void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, const char *file)
     LOG_DEBUG3("wLock on %s requested at %s:%d", rwlock->name, file, line);
 #endif
     pthread_rwlock_wrlock(&rwlock->sys_rwlock);
+#ifdef THREAD_DEBUG
+    LOG_DEBUG3("wLock on %s acquired at %s:%d", rwlock->name, file, line);
+#endif
 }
 
 void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, const char *file)
 {
     pthread_rwlock_unlock(&rwlock->sys_rwlock);
 #ifdef THREAD_DEBUG
-    LOG_DEBUG3 ("rwlock %s, at %s:%d", rwlock->name, file, line);
+    LOG_DEBUG3 ("unlock %s, at %s:%d", rwlock->name, file, line);
 #endif
 }
 
@@ -576,7 +586,7 @@ static void *_start_routine(void *arg)
     (start_routine)(real_arg);
 
 #ifdef __OpenBSD__
-    th->running = 0;
+    thread->running = 0;
 #endif
 
     if (thread->detached)
@@ -740,4 +750,30 @@ static int _free_thread(void *key)
     return 1;
 }
 
+
+#ifdef HAVE_PTHREAD_SPIN_LOCK
+void thread_spin_create (spin_t *spin)
+{
+    int x = pthread_spin_init (&spin->lock, PTHREAD_PROCESS_PRIVATE);
+    if (x)
+        abort();
+}
+
+void thread_spin_destroy (spin_t *spin)
+{
+    pthread_spin_destroy (&spin->lock);
+}
+
+void thread_spin_lock (spin_t *spin)
+{
+    int x = pthread_spin_lock (&spin->lock);
+    if (x != 0)
+        abort();
+}
+
+void thread_spin_unlock (spin_t *spin)
+{
+    pthread_spin_unlock (&spin->lock);
+}
+#endif
 
