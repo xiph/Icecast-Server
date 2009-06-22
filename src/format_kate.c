@@ -152,25 +152,6 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
     refbuf = make_refbuf_with_page (codec, page);
     /* DEBUG3 ("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
 
-    if (codec->possible_start)
-    {
-        /* we don't bother trying to know where we can start, we'll just
-           start whenever we have to, video's more important and in the majority
-           of the cases it's ok if we lose an event we're seeking in the middle
-           of, as we won't have display artifacts as we'd have with video */
-        codec->possible_start->sync_point = 1;
-        refbuf_release (codec->possible_start);
-        codec->possible_start = NULL;
-    }
-    if (granulepos != kate->prev_granulepos || granulepos == 0)
-    {
-        if (codec->possible_start)
-            refbuf_release (codec->possible_start);
-        refbuf_addref (refbuf);
-        codec->possible_start = refbuf;
-    }
-    kate->prev_granulepos = granulepos;
-
     return refbuf;
 }
 

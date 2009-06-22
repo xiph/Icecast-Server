@@ -18,13 +18,10 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-#ifdef HAVE_AIO
-#include <aio.h>
-#endif
-
 struct source_tag;
 typedef struct _client_tag client_t;
 
+#include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "httpp/httpp.h"

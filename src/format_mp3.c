@@ -206,14 +206,14 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 
     if (mount)
     {
-        if (mount->mp3_meta_interval > 0)
+        if (mount->mp3_meta_interval >= 0)
             source_mp3->interval = mount->mp3_meta_interval;
         if (mount->charset)
             format->charset = strdup (mount->charset);
         if (mount->queue_block_size)
             source_mp3->queue_block_size = mount->queue_block_size;
     }
-    if (source_mp3->interval <= 0)
+    if (source_mp3->interval < 0)
     {
         const char *metadata = httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = ICY_METADATA_INTERVAL;
@@ -467,7 +467,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
 
     if (ret > 0)
         written += ret;
-    return written;
+    return written == 0 ? -1 : written;
 }
 
 static void format_mp3_free_plugin (format_plugin_t *plugin)
@@ -505,7 +505,6 @@ static int complete_read (source_t *source)
         source_mp3->read_count = 0;
     }
     buf = source_mp3->read_data->data + source_mp3->read_count;
-
     if (source_mp3->read_count < source_mp3->queue_block_size)
     {
         bytes = client_read_bytes (source->client, buf, source_mp3->queue_block_size-source_mp3->read_count);

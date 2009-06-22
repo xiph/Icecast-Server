@@ -36,10 +36,7 @@
 
 #include "client.h"
 #include "logging.h"
-
-#ifdef HAVE_AIO
-#include <errno.h>
-#endif
+#include "slave.h"
 
 #undef CATMODULE
 #define CATMODULE "client"
@@ -210,9 +207,9 @@ void client_send_403redirect (client_t *client, const char *mount, const char *r
 {
     if (redirect_client (mount, client))
         return;
-    DEBUG0 ("dropping client");
     client_send_403 (client, reason);
 }
+
 
 void client_send_404(client_t *client, const char *message)
 {

@@ -34,6 +34,7 @@
 #include "xslt.h"
 #include "fserve.h"
 #include "admin.h"
+#include "slave.h"
 
 #include "format.h"
 
@@ -157,7 +158,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
         }
 
         thread_mutex_lock (&source->lock);
-        if (source->running || source->on_demand)
+        if (source_available (source))
         {
             ice_config_t *config;
             mount_proxy *mountinfo;
@@ -446,8 +447,8 @@ static void command_move_clients(client_t *client, source_t *source,
     source_t *dest;
     xmlDocPtr doc;
     xmlNodePtr node;
-    char buf[255];
     int parameters_passed = 0;
+    char buf[255];
 
     if((COMMAND_OPTIONAL(client, "destination", dest_source))) {
         parameters_passed = 1;

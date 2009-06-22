@@ -38,6 +38,13 @@
 #include "logging.h"
 #define CATMODULE "auth"
 
+struct _auth_thread_t
+{
+    thread_type *thread;
+    void *data;
+    unsigned int id;
+    struct auth_tag *auth;
+};
 
 static volatile int thread_id;
 
@@ -161,8 +168,8 @@ void auth_release (auth_t *authenticator)
     }
     free (authenticator->handles);
 
-    if (authenticator->free)
-        authenticator->free (authenticator);
+    if (authenticator->release)
+        authenticator->release (authenticator);
     xmlFree (authenticator->type);
     xmlFree (authenticator->realm);
     thread_mutex_unlock (&authenticator->lock);
@@ -233,7 +240,7 @@ static void auth_new_listener (auth_client *auth_user)
         }
     }
     if (auth_postprocess_listener (auth_user) < 0)
-        INFO1 ("client %lu failed", client->con->id);
+        INFO0 ("listener connection failed");
 }
 
 
@@ -346,189 +353,6 @@ static void *auth_run_thread (void *arg)
 }
 
 
-/* Check whether this listener is on this source. This is only called when
- * there is auth. This may flag an existing listener to terminate.
- * return 1 if ok to add or 0 to prevent
- */
-static int check_duplicate_logins (source_t *source, client_t *client, auth_t *auth)
-{
-    client_t *existing;
-
-    if (auth == NULL || auth->allow_duplicate_users)
-        return 1;
-
-    /* allow multiple authenticated relays */
-    if (client->username == NULL || client->is_slave)
-        return 1;
-
-    existing = source->active_clients;
-    while (existing)
-    {
-        if (existing->con->error == 0 && existing->username &&
-                strcmp (existing->username, client->username) == 0)
-        {
-            if (auth->drop_existing_listener)
-            {
-                existing->con->error = 1;
-                return 1;
-            }
-            else
-                return 0;
-        }
-        existing = existing->next;
-    }
-    return 1;
-}
-
-
-/* Add client to source if it finds one. If a 0 is returned then the client should not be
- * touched, if the return value is -1 then it failed to add and should not be touched.
- * If it's a -2 value then the client is still around for any further processing.
- */
-static int add_listener_to_source (const char *mount, mount_proxy *mountinfo, client_t *client)
-{
-    int loop = 10;
-    int within_limits;
-    source_t *source;
-    mount_proxy *minfo = mountinfo;
-    const char *passed_mount = mount;
-    ice_config_t *config = config_get_config_unlocked();
-
-    do
-    {
-        int64_t stream_bitrate = 0;
-
-        do
-        {
-            source = source_find_mount_raw (mount);
-            if (loop == 0)
-            {
-                WARN0 ("preventing a fallback loop");
-                client_send_403 (client, "Fallback through too many mountpoints");
-                return -1;
-            }
-            if (source)
-            {
-                thread_mutex_lock (&source->lock);
-                if (source->running || source->on_demand)
-                    break;
-                thread_mutex_unlock (&source->lock);
-            }
-            if (minfo == NULL || minfo->fallback_mount == NULL)
-                return -2;
-            mount = minfo->fallback_mount;
-            minfo = config_find_mount (config_get_config_unlocked(), mount);
-            loop--;
-        } while (1);
-
-        /* ok, we found a source and it is locked */
-        if (client->is_slave)
-        {
-            if (source->client == NULL && source->on_demand == 0)
-            {
-                client_send_403 (client, "Slave relay reading from time unregulated stream");
-                return -1;
-            }
-            INFO0 ("client is from a slave, bypassing limits");
-            break;
-        }
-        if (source->format)
-        {
-            stream_bitrate  = 8 * rate_avg (source->format->in_bitrate);
-
-            if (config->max_bandwidth)
-            {
-                int64_t global_rate = (int64_t)8 * global_getrate_avg (global.out_bitrate);
-
-                DEBUG1 ("server outgoing bitrate is %" PRId64, global_rate);
-                if (global_rate + stream_bitrate > config->max_bandwidth)
-                {
-                    thread_mutex_unlock (&source->lock);
-                    INFO0 ("server-wide outgoing bandwidth limit reached");
-                    client_send_403redirect (client, passed_mount, "server bandwidth reached");
-                    return -1;
-                }
-            }
-        }
-
-        if (mountinfo == NULL)
-            break; /* allow adding listeners, no mount limits imposed */
-
-        if (check_duplicate_logins (source, client, mountinfo->auth) == 0)
-        {
-            thread_mutex_unlock (&source->lock);
-            client_send_403 (client, "Account already in use");
-            return -1;
-        }
-
-        /* set a per-mount disconnect time if auth hasn't set one already */
-        if (mountinfo->max_listener_duration && client->con->discon_time == 0)
-            client->con->discon_time = time(NULL) + mountinfo->max_listener_duration;
-
-        INFO3 ("max on %s is %ld (cur %lu)", source->mount,
-                mountinfo->max_listeners, source->listeners);
-
-        within_limits = 1;
-        if (mountinfo->max_bandwidth > -1 && stream_bitrate)
-        {
-            DEBUG3 ("checking bandwidth limits for %s (%" PRId64 ", %" PRId64 ")",
-                    mountinfo->mountname, stream_bitrate, mountinfo->max_bandwidth);
-            if ((source->listeners+1) * stream_bitrate > mountinfo->max_bandwidth)
-            {
-                INFO1 ("bandwidth limit reached on %s", source->mount);
-                within_limits = 0;
-            }
-        }
-        if (within_limits)
-        {
-            if (mountinfo->max_listeners == -1)
-                break;
-
-            if (source->listeners < (unsigned long)mountinfo->max_listeners)
-                break;
-            INFO1 ("max listener count reached on %s", source->mount);
-        }
-
-        /* minfo starts off as mountinfo put cascades through fallbacks */
-        if (minfo && minfo->fallback_when_full && minfo->fallback_mount)
-        {
-            thread_mutex_unlock (&source->lock);
-            mount = minfo->fallback_mount;
-            INFO1 ("stream full trying %s", mount);
-            loop--;
-            continue;
-        }
-
-        /* now we fail the client */
-        thread_mutex_unlock (&source->lock);
-        client_send_403redirect (client, passed_mount, "max listeners reached");
-        return -1;
-
-    } while (1);
-
-    client->write_to_client = format_generic_write_to_client;
-    client->check_buffer = format_check_http_buffer;
-    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
-    memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
-
-    /* lets add the client to the active list */
-    client->next = source->active_clients;
-    source->active_clients = client;
-    source->listeners++;
-
-    thread_mutex_unlock (&source->lock);
-
-    if (source->running == 0 && source->on_demand)
-    {
-        /* enable on-demand relay to start, wake up the slave thread */
-        DEBUG0("kicking off on-demand relay");
-        source->on_demand_req = 1;
-    }
-    DEBUG1 ("Added client to %s", source->mount);
-    return 0;
-}
-
-
 /* Add listener to the pending lists of either the source or fserve thread. This can be run
  * from the connection or auth thread context. return -1 to indicate that client has been
  * terminated, 0 for receiving content.
@@ -568,7 +392,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     }
 
     avl_tree_rlock (global.source_tree);
-    ret = add_listener_to_source (mount, mountinfo, client);
+    ret = source_add_listener (mount, mountinfo, client);
     avl_tree_unlock (global.source_tree);
 
     if (ret == -2)
@@ -611,7 +435,6 @@ static int auth_postprocess_listener (auth_client *auth_user)
     mountinfo = config_find_mount (config, mount);
     ret = add_authenticated_listener (mount, mountinfo, client);
     config_release_config();
-
     auth_user->client = NULL;
 
     return ret;

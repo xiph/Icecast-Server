@@ -86,6 +86,8 @@ typedef struct source_tag
 
 } source_t;
 
+#define source_available(x)     ((x)->running || (x)->on_demand)
+
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
 void source_startup (client_t *client, const char *uri);
@@ -101,6 +103,7 @@ void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
+int  source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client);
 
 extern mutex_t move_clients_mutex;
 

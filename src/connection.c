@@ -51,6 +51,7 @@
 #include "xslt.h"
 #include "fserve.h"
 #include "sighandler.h"
+#include "slave.h"
 
 #include "yp.h"
 #include "source.h"
@@ -85,10 +86,6 @@ typedef struct client_queue_tag {
     struct client_queue_tag *next;
 } client_queue_t;
 
-typedef struct _thread_queue_tag {
-    thread_type *thread_id;
-    struct _thread_queue_tag *next;
-} thread_queue_t;
 
 typedef struct
 {
@@ -1031,7 +1028,6 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
 static void _handle_source_request (client_t *client, const char *uri)
 {
     INFO1("Source logging in at mountpoint \"%s\"", uri);
-
     if (uri[0] != '/')
     {
         WARN0 ("source mountpoint not starting with /");
@@ -1369,6 +1365,9 @@ int connection_setup_sockets (ice_config_t *config)
                 sock_close (sock);
                 break;
             }
+            /* some win32 setups do not do TCP win scaling well, so allow an override */
+            if (listener->so_sndbuf)
+                sock_set_send_buffer (sock, listener->so_sndbuf);
             sock_set_blocking (sock, 0);
             successful = 1;
             global.serversock [count] = sock;
@@ -1416,3 +1415,4 @@ void connection_close(connection_t *con)
 #endif
     free(con);
 }
+

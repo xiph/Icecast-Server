@@ -19,11 +19,11 @@
 
 struct source_tag;
 struct auth_tag;
+typedef struct _auth_thread_t auth_thread_t;
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "cfgfile.h"
 #include "client.h"
 #include "thread/thread.h"
 
@@ -52,14 +52,6 @@ typedef struct auth_client_tag
 } auth_client;
 
 
-typedef struct _auth_thread_t
-{
-    thread_type *thread;
-    void *data;
-    unsigned int id;
-    struct auth_tag *auth;
-} auth_thread_t;
-
 typedef struct auth_tag
 {
     char *mount;
@@ -78,7 +70,7 @@ typedef struct auth_tag
     void (*stream_end)(auth_client *auth_user);
 
     /* auth state-specific free call */
-    void (*free)(struct auth_tag *self);
+    void (*release)(struct auth_tag *self);
 
     /* call to allocate any per auth thread data */
     void *(*alloc_thread_data)(struct auth_tag *self);

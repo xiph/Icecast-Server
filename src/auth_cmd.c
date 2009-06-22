@@ -123,7 +123,7 @@ int auth_get_cmd_auth (auth_t *authenticator, config_options_t *options)
     auth_cmd *state;
 
     authenticator->authenticate = auth_cmd_client;
-    authenticator->free = cmd_clear;
+    authenticator->release = cmd_clear;
     authenticator->adduser = auth_cmd_adduser;
     authenticator->deleteuser = auth_cmd_deleteuser;
     authenticator->listuser = auth_cmd_listuser;

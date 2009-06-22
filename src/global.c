@@ -19,7 +19,7 @@
 
 #include "thread/thread.h"
 #include "avl/avl.h"
-#include "httpp/httpp.h"
+#include "timing/timing.h"
 
 #include "connection.h"
 #include "refbuf.h"

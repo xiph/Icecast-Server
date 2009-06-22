@@ -19,7 +19,6 @@
 #define __REFBUF_H__
 
 #include <sys/types.h>
-#include "compat.h"
 
 typedef struct _refbuf_tag
 {

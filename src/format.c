@@ -44,8 +44,6 @@
 #include "stats.h"
 #define CATMODULE "format"
 
-static int format_prepare_headers (source_t *source, client_t *client);
-
 
 format_type_t format_get_type(const char *contenttype)
 {
@@ -94,146 +92,25 @@ int format_get_plugin (format_type_t type, source_t *source)
 }
 
 
-/* clients need to be start from somewhere in the queue so we will look for
- * a refbuf which has been previously marked as a sync point. 
- */
-static void find_client_start (source_t *source, client_t *client)
-{
-    refbuf_t *refbuf = source->burst_point;
-
-    /* we only want to attempt a burst at connection time, not midstream
-     * however streams like theora may not have the most recent page marked as
-     * a starting point, so look for one from the burst point */
-    if (client->intro_offset == -1 && source->stream_data_tail
-            && source->stream_data_tail->sync_point)
-    {
-        refbuf = source->stream_data_tail;
-        client->lag = refbuf->len;
-    }
-    else
-    {
-        size_t size = client->intro_offset;
-        refbuf = source->burst_point;
-        client->lag = source->burst_offset;
-        while (size > 0 && refbuf && refbuf->next)
-        {
-            size -= refbuf->len;
-            client->lag -= refbuf->len;
-            refbuf = refbuf->next;
-        }
-    }
-
-    while (refbuf)
-    {
-        if (refbuf->sync_point)
-        {
-            client_set_queue (client, refbuf);
-            client->check_buffer = format_advance_queue;
-            client->write_to_client = source->format->write_buf_to_client;
-            client->intro_offset = -1;
-            break;
-        }
-        refbuf = refbuf->next;
-    }
-}
-
-
-static int get_file_data (FILE *intro, client_t *client)
-{
-    refbuf_t *refbuf = client->refbuf;
-    size_t bytes;
-
-    if (intro == NULL || fseek (intro, client->intro_offset, SEEK_SET) < 0)
-        return 0;
-    bytes = fread (refbuf->data, 1, 4096, intro);
-    if (bytes == 0)
-        return 0;
-
-    refbuf->len = bytes;
-    return 1;
-}
-
-
-/* call to check the buffer contents for file reading. move the client
- * to right place in the queue at end of file else repeat file if queue
- * is not ready yet.
- */
-int format_check_file_buffer (source_t *source, client_t *client)
+int format_file_read (client_t *client, FILE *intro)
 {
     refbuf_t *refbuf = client->refbuf;
 
-    if (refbuf == NULL)
-    {
-        /* client refers to no data, must be from a move */
-        if (source->client)
-        {
-            find_client_start (source, client);
-            return -1;
-        }
-        /* source -> file fallback, need a refbuf for data */
-        refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-        client->refbuf = refbuf;
-        client->pos = refbuf->len;
-        client->intro_offset = 0;
-        client->lag = 0;
-    }
+    if (intro == NULL)
+        return -1;
     if (client->pos == refbuf->len)
     {
-        if (get_file_data (source->intro_file, client))
-        {
-            client->pos = 0;
-            client->intro_offset += refbuf->len;
-        }
-        else
-        {
-            if (source->stream_data_tail)
-            {
-                /* better find the right place in queue for this client */
-                client_set_queue (client, NULL);
-                find_client_start (source, client);
-            }
-            else
-                client->intro_offset = 0;  /* replay intro file */
+        size_t bytes;
+
+        if (fseek (intro, client->intro_offset, SEEK_SET) < 0)
             return -1;
-        }
-    }
-    return 0;
-}
-
-
-/* call this to verify that the HTTP data has been sent and if so setup
- * callbacks to the appropriate format functions
- */
-int format_check_http_buffer (source_t *source, client_t *client)
-{
-    refbuf_t *refbuf = client->refbuf;
-
-    if (refbuf == NULL)
-        return -1;
-
-    if (client->respcode == 0)
-    {
-        DEBUG0("processing pending client headers");
-
-        if (format_prepare_headers (source, client) < 0)
-        {
-            ERROR0 ("internal problem, dropping client");
-            client->con->error = 1;
+        bytes = fread (refbuf->data, 1, PER_CLIENT_REFBUF_SIZE, intro);
+        if (bytes == 0)
             return -1;
-        }
-        client->respcode = 200;
-        stats_event_inc (NULL, "listeners");
-        stats_event_inc (NULL, "listener_connections");
-        stats_event_inc (source->mount, "listener_connections");
-    }
 
-    if (client->pos == refbuf->len)
-    {
-        client->write_to_client = source->format->write_buf_to_client;
-        client->check_buffer = format_check_file_buffer;
-        client->intro_offset = 0;
-        client->pos = refbuf->len = 4096;
-        return -1;
+        client->intro_offset += bytes;
+        refbuf->len = bytes;
+        client->pos = 0;
     }
     return 0;
 }
@@ -246,6 +123,8 @@ int format_generic_write_to_client (client_t *client)
     const char *buf = refbuf->data + client->pos;
     unsigned int len = refbuf->len - client->pos;
 
+    if (len > 4096) /* make sure we don't send huge amounts in one go */
+        len = 4096;
     ret = client_send_bytes (client, buf, len);
 
     if (ret > 0)
@@ -279,7 +158,7 @@ int format_advance_queue (source_t *source, client_t *client)
 }
 
 
-static int format_prepare_headers (source_t *source, client_t *client)
+int format_prepare_headers (source_t *source, client_t *client)
 {
     unsigned remaining;
     char *ptr;
@@ -288,6 +167,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     avl_node *node;
     ice_config_t *config;
 
+    DEBUG0 ("processing listener headers");
     remaining = client->refbuf->len;
     ptr = client->refbuf->data;
     client->respcode = 200;
@@ -374,7 +254,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     client->refbuf->len -= remaining;
     if (source->format->create_client_data)
         if (source->format->create_client_data (source, client) < 0)
-            return -1;
-    return 0;
+            bytes = -1;
+    return bytes;
 }
 

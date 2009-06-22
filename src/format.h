@@ -20,7 +20,6 @@
 
 #include "client.h"
 #include "refbuf.h"
-#include "httpp/httpp.h"
 
 struct source_tag;
 struct _mount_proxy;
@@ -64,8 +63,9 @@ int format_get_plugin(format_type_t type, struct source_tag *source);
 
 int format_generic_write_to_client (client_t *client);
 int format_advance_queue (struct source_tag *source, client_t *client);
-int format_check_http_buffer (struct source_tag *source, client_t *client);
-int format_check_file_buffer (struct source_tag *source, client_t *client);
+
+int format_file_read (client_t *client, FILE *fp);
+int format_prepare_headers (struct source_tag *source, client_t *client);
 
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);

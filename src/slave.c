@@ -309,14 +309,14 @@ static client_t *open_relay_connection (relay_server *relay, relay_server_master
             bind = master->bind;
 
         if (bind)
-            INFO3 ("connecting to %s:%d, bound to %s", server, port, bind);
+            INFO4 ("connecting to %s:%d for %s, bound to %s", server, port, relay->localmount, bind);
         else
-            INFO2 ("connecting to %s:%d", server, port);
+            INFO3 ("connecting to %s:%d for %s", server, port, relay->localmount);
 
         streamsock = sock_connect_wto_bind (server, port, bind, 10);
         if (streamsock == SOCK_ERROR)
         {
-            WARN2 ("Failed to connect to %s:%d", server, port);
+            WARN3 ("Failed to connect to %s:%d for %s", server, port, relay->localmount);
             break;
         }
         con = connection_create (streamsock, SOCK_ERROR, strdup (server));

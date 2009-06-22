@@ -26,11 +26,9 @@ struct _mount_proxy;
 struct ice_config_tag;
 typedef struct _listener_t listener_t;
 
-#include "thread/thread.h"
 #include "avl/avl.h"
 #include "auth.h"
 #include "global.h"
-#include "connection.h"
 
 typedef struct ice_config_dir_tag
 {
@@ -131,7 +129,36 @@ struct _listener_t
     int qlen;
     int shoutcast_compat;
     int ssl;
+    int so_sndbuf;
 };
+
+typedef struct _relay_server_master
+{
+    struct _relay_server_master *next;
+    char *ip;
+    char *bind;
+    char *mount;
+    int port;
+} relay_server_master;
+
+typedef struct _relay_server
+{
+    relay_server_master *masters;
+    char *username;
+    char *password;
+    char *localmount;
+    struct source_tag *source;
+    int interval;
+    int mp3metadata;
+    int on_demand;
+    int running;
+    int cleanup;
+    int enable;
+    time_t start;
+    thread_type *thread;
+    struct _relay_server *next;
+} relay_server;
+
 
 typedef struct
 {
@@ -264,7 +291,6 @@ void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount);
-listener_t *config_get_listen_sock (ice_config_t *config, sock_t serversock);
 
 int config_rehash(void);
 

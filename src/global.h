@@ -23,8 +23,6 @@
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
 #include "thread/thread.h"
-#include "slave.h"
-#include "timing/timing.h"
 #include "net/sock.h"
 
 typedef struct ice_global_tag

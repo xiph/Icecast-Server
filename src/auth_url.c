@@ -381,7 +381,7 @@ static auth_result url_add_listener (auth_client *auth_user)
     if (res)
     {
         WARN2 ("auth to server %s failed with %s", url->addurl, atd->errormsg);
-        client_send_403 (client, "Unable to contact auth server");
+        client_send_403 (client, "Authentication not possible");
         auth_user->client = NULL;
         return AUTH_FAILED;
     }
@@ -586,7 +586,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
 
-    authenticator->free = auth_url_clear;
+    authenticator->release = auth_url_clear;
     authenticator->adduser = auth_url_adduser;
     authenticator->deleteuser = auth_url_deleteuser;
     authenticator->listuser = auth_url_listuser;

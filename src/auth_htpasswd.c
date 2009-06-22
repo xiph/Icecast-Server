@@ -181,8 +181,25 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     htpasswd_user entry;
     void *result;
 
-    if (client->username == NULL || client->password == NULL)
+    do {
+        const char *val;
+
+        if (client->username && client->password)
+            break;
+        free (client->username);
+        val = httpp_get_query_param (client->parser, "user");
+        if (val)
+        {
+            client->username = strdup (val);
+            val = httpp_get_query_param (client->parser, "pass");
+            if (val)
+            {
+                client->password = strdup (val);
+                break;
+            }
+        }
         return AUTH_FAILED;
+    } while (0);
 
     htpasswd_recheckfile (htpasswd);
 
@@ -216,7 +233,7 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     htpasswd_auth_state *state;
 
     authenticator->authenticate = htpasswd_auth;
-    authenticator->free = htpasswd_clear;
+    authenticator->release = htpasswd_clear;
     authenticator->adduser = htpasswd_adduser;
     authenticator->deleteuser = htpasswd_deleteuser;
     authenticator->listuser = htpasswd_userlist;

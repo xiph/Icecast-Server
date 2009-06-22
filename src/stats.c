@@ -511,7 +511,6 @@ static void process_source_event (stats_event_t *event)
                 node->hidden = event->hidden;
                 if (snode->hidden & STATS_HIDDEN)
                     node->hidden |= STATS_HIDDEN;
-
                 stats_listener_send (node->hidden, "EVENT %s %s %s\n", event->source, event->name, event->value);
                 avl_insert(snode->stats_tree, (void *)node);
             }
@@ -525,6 +524,7 @@ static void process_source_event (stats_event_t *event)
             return;
         }
         modify_node_event (node, event);
+        stats_listener_send (node->hidden, "EVENT %s %s %s\n", event->source, node->name, node->value);
         return;
     }
     /* change source hidden status */
@@ -561,11 +561,7 @@ static void process_source_event (stats_event_t *event)
         return;
     }
     if (event->action == STATS_EVENT_REMOVE)
-    {
-        DEBUG1 ("delete source node %s", event->source);
-        stats_listener_send (snode->hidden, "DELETE %s\n", event->source);
         avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
-    }
 }
 
 
@@ -698,6 +694,8 @@ static int _append_to_bufferv (refbuf_t *refbuf, int max_len, const char *fmt, v
     va_list vl;
 
     va_copy (vl, ap);
+    if (len <= 0)
+        return -1;
     ret = vsnprintf (buf, len, fmt, vl);
     if (ret < 0 || ret >= len)
         return -1;
@@ -719,9 +717,12 @@ static int _append_to_buffer (refbuf_t *refbuf, int max_len, const char *fmt, ..
 
 static void _add_node_to_stats_client (event_listener_t *listener, refbuf_t *refbuf)
 {
-    *listener->queue_recent_p = refbuf;
-    listener->queue_recent_p = &refbuf->next;
-    listener->content_len += refbuf->len;
+    if (refbuf->len) 
+    {
+        *listener->queue_recent_p = refbuf;
+        listener->queue_recent_p = &refbuf->next;
+        listener->content_len += refbuf->len;
+    }
 }
 
 
@@ -803,69 +804,61 @@ static void _register_listener (event_listener_t *listener)
     stats_count.action = STATS_EVENT_INC;
     process_event_unlocked (&stats_count);
 
-    while (size < 50000)    /* use a large limit */
+    /* first we fill our queue with the current stats */
+    refbuf = refbuf_new (size);
+    refbuf->len = 0;
+
+    /* the global stats */
+    node = avl_get_first(_stats.global_tree);
+    while (node)
     {
-        /* first we fill our queue with the current stats */
-        refbuf = refbuf_new (size);
-        refbuf->len = 0;
+        stats_node_t *stat = node->key;
 
-        /* starts with the http response header */
-        if (_append_to_buffer (refbuf, size, "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n") < 0)
+        if (stat->hidden & listener->hidden_level)
         {
-            refbuf_release (refbuf);
-            break;
-        }
-        /* now the global stats */
-        node = avl_get_first(_stats.global_tree);
-        while (node)
-        {
-            stats_node_t *stat = node->key;
-
-            node = avl_get_next(node);
-            if ((stat->hidden & listener->hidden_level) == 0)
-                continue;
             if (_append_to_buffer (refbuf, size, "EVENT global %s %s\n", stat->name, stat->value) < 0)
             {
-                size += 8192;
-                refbuf_release (refbuf);
-                break;
+                _add_node_to_stats_client (listener, refbuf);
+                refbuf = refbuf_new (size);
+                refbuf->len = 0;
+                continue;
             }
         }
-        if (node) continue; /* catch buffer full case */
-
-        /* now the stats for each source */
-        node = avl_get_first(_stats.source_tree);
-        while (node)
+        node = avl_get_next(node);
+    }
+    /* now the stats for each source */
+    node = avl_get_first(_stats.source_tree);
+    while (node)
+    {
+        avl_node *node2;
+        stats_source_t *snode = (stats_source_t *)node->key;
+        if (snode->hidden & listener->hidden_level)
         {
-            avl_node *node2;
-            stats_source_t *snode = (stats_source_t *)node->key;
-            node = avl_get_next(node);
-            if ((snode->hidden & listener->hidden_level) == 0)
-                continue;
             if (_append_to_buffer (refbuf, size, "NEW %s\n", snode->source) < 0)
             {
-                size += 8192;
-                refbuf_release (refbuf);
-                break;
-            }
-            node2 = avl_get_first(snode->stats_tree);
-            while (node2)
-            {
-                stats_node_t *stat = node2->key;
-                node2 = avl_get_next(node2);
-
-                if ((stat->hidden & listener->hidden_level) == 0)
-                    continue;
-                if (_append_to_buffer (refbuf, size, "EVENT %s %s %s\n", snode->source, stat->name, stat->value) < 0)
-                {
-                    size += 8192;
-                    refbuf_release (refbuf);
-                    break;
-                }
+                _add_node_to_stats_client (listener, refbuf);
+                refbuf = refbuf_new (size);
+                refbuf->len = 0;
+                continue;
             }
         }
-        if (node) continue; /* catch buffer full case */
-        break;
+        node = avl_get_next(node);
+        node2 = avl_get_first(snode->stats_tree);
+        while (node2)
+        {
+            stats_node_t *stat = node2->key;
+            if (stat->hidden & listener->hidden_level)
+            {
+                if (_append_to_buffer (refbuf, size, "EVENT %s %s %s\n", snode->source, stat->name, stat->value) < 0)
+                {
+                    _add_node_to_stats_client (listener, refbuf);
+                    refbuf = refbuf_new (size);
+                    refbuf->len = 0;
+                    continue;
+                }
+            }
+            node2 = avl_get_next (node2);
+        }
     }
 
     client_set_queue (listener->client, refbuf);
@@ -896,7 +889,9 @@ void stats_add_listener (client_t *client, int hidden_level)
     listener->queue_recent_p = &listener->queue;
 
     client->respcode = 200;
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+    client_set_queue (client, NULL);
+    client->refbuf = refbuf_new (100);
+    snprintf (client->refbuf->data, 100,
             "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client_callback (client, stats_callback, listener);
@@ -971,6 +966,8 @@ static int _free_stats(void *key)
 static int _free_source_stats(void *key)
 {
     stats_source_t *node = (stats_source_t *)key;
+    stats_listener_send (node->hidden, "DELETE %s\n", node->source);
+    DEBUG1 ("delete source node %s", node->source);
     avl_tree_free(node->stats_tree, _free_stats);
     free(node->source);
     free(node);
@@ -1049,7 +1046,6 @@ void stats_clear_virtual_mounts (void)
         {
             /* no source_t is reserved so remove them now */
             snode = avl_get_next (snode);
-            DEBUG1 ("releasing %s stats", src->source);
             avl_delete (_stats.source_tree, src, _free_source_stats);
             continue;
         }

@@ -26,7 +26,6 @@ typedef struct connection_tag connection_t;
 #include "cfgfile.h"
 #include "compat.h"
 #include "httpp/httpp.h"
-#include "thread/thread.h"
 #include "net/sock.h"
 
 struct connection_tag
