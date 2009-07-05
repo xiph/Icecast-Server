@@ -392,7 +392,7 @@ static void fserve_client_destroy(fserve_t *fclient)
                 ice_config_t *config = config_get_config ();
                 mount_proxy *mountinfo = config_find_mount (config, fclient->mount);
 
-                fclient->client->authenticated = 0;
+                fclient->client->flags &= ~CLIENT_AUTHENTICATED;
                 auth_release_listener (fclient->client, fclient->mount, mountinfo);
                 config_release_config();
             }

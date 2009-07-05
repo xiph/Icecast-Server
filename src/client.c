@@ -37,6 +37,7 @@
 #include "client.h"
 #include "logging.h"
 #include "slave.h"
+#include "global.h"
 
 #undef CATMODULE
 #define CATMODULE "client"
@@ -89,7 +90,7 @@ void client_destroy(client_t *client)
         client->refbuf = NULL;
     }
 
-    if  (client->authenticated)
+    if (client->flags & CLIENT_AUTHENTICATED)
         DEBUG1 ("client still in auth \"%s\"", httpp_getvar (client->parser, HTTPP_VAR_URI));
 
     /* write log entry if ip is set (some things don't set it, like outgoing 
@@ -221,7 +222,7 @@ void client_send_404(client_t *client, const char *message)
     if (message == NULL)
         message = "Not Available";
     if (client->refbuf == NULL)
-        client->refbuf = refbuf_new (4096);
+        client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 404 Not Available\r\n"
             "Content-Type: text/html\r\n\r\n"

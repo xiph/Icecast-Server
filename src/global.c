@@ -44,6 +44,7 @@ void global_initialize(void)
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
     thread_mutex_create(&_global_mutex);
     thread_spin_create (&global.spinlock);
+    thread_rwlock_create (&global.shutdown_lock);
     global.out_bitrate = rate_setup (151, 1000);
 }
 
@@ -51,6 +52,7 @@ void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
     thread_spin_destroy (&global.spinlock);
+    thread_rwlock_destroy (&global.shutdown_lock);
     avl_tree_free(global.source_tree, NULL);
     rate_free (global.out_bitrate);
     global.out_bitrate = NULL;
@@ -76,7 +78,7 @@ void global_add_bitrates (struct rate_calc *rate, unsigned long value)
 void global_reduce_bitrate_sampling (struct rate_calc *rate)
 {
     thread_spin_lock (&global.spinlock);
-    rate_reduce (rate, 5);
+    rate_reduce (rate, 0);
     thread_spin_unlock (&global.spinlock);
 }
 

@@ -103,14 +103,14 @@ void format_ogg_attach_header (ogg_codec_t *codec, ogg_page *page)
         DEBUG0 ("attaching BOS page");
         if (*ogg_info->bos_end == NULL)
             ogg_info->header_pages_tail = refbuf;
-        refbuf->next = *ogg_info->bos_end;
+        refbuf->associated = *ogg_info->bos_end;
         *ogg_info->bos_end = refbuf;
-        ogg_info->bos_end = &refbuf->next;
+        ogg_info->bos_end = &refbuf->associated;
         return;
     }
     DEBUG0 ("attaching header page");
     if (ogg_info->header_pages_tail)
-        ogg_info->header_pages_tail->next = refbuf;
+        ogg_info->header_pages_tail->associated = refbuf;
     ogg_info->header_pages_tail = refbuf;
 
     if (ogg_info->header_pages == NULL)
@@ -120,17 +120,9 @@ void format_ogg_attach_header (ogg_codec_t *codec, ogg_page *page)
 
 void format_ogg_free_headers (ogg_state_t *ogg_info)
 {
-    refbuf_t *header;
-
     /* release the header pages first */
     DEBUG0 ("releasing header pages");
-    header = ogg_info->header_pages;
-    while (header)
-    {
-        refbuf_t *to_release = header;
-        header = header->next;
-        refbuf_release (to_release);
-    }
+    refbuf_release (ogg_info->header_pages);
     ogg_info->header_pages = NULL;
     ogg_info->header_pages_tail = NULL;
     ogg_info->bos_end = &ogg_info->header_pages;
@@ -371,14 +363,9 @@ static void update_comments (source_t *source)
 static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
 {
     ogg_state_t *ogg_info = source->format->_state;
-    refbuf_t *header = ogg_info->header_pages;
 
-    while (header)
-    {
-        refbuf_addref (header);
-        header = header->next;
-    }
     refbuf->associated = ogg_info->header_pages;
+    refbuf_addref (refbuf->associated);
 
     if (ogg_info->log_metadata)
     {
@@ -388,7 +375,7 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
     /* listeners can start anywhere unless the codecs themselves are
      * marking starting points */
     if (ogg_info->codec_sync == NULL)
-        refbuf->sync_point = 1;
+        refbuf->flags |= SOURCE_BLOCK_SYNC;
     return refbuf;
 }
 
@@ -539,7 +526,7 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
         client_data->pos += ret;
         if (client_data->pos == refbuf->len)
         {
-            refbuf = refbuf->next;
+            refbuf = refbuf->associated;
             client_data->header_page = refbuf;
             client_data->pos = 0;
         }

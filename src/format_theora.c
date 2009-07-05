@@ -21,8 +21,7 @@
 #include <ogg/ogg.h>
 #include <theora/theora.h>
 
-typedef struct source_tag source_t;
-
+#include "source.h"
 #include "refbuf.h"
 #include "format_ogg.h"
 #include "format_theora.h"
@@ -423,7 +422,7 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     theora->prev_granulepos = granulepos;
     if (has_keyframe && codec->possible_start)
     {
-        codec->possible_start->sync_point = 1;
+        codec->possible_start->flags |= SOURCE_BLOCK_SYNC;
         refbuf_release (codec->possible_start);
         codec->possible_start = NULL;
     }

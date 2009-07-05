@@ -30,6 +30,7 @@
 #include "source.h"
 #include "cfgfile.h"
 #include "stats.h"
+#include "global.h"
 
 #define CATMODULE "yp" 
 

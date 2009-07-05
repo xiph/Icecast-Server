@@ -53,7 +53,6 @@ refbuf_t *refbuf_new (unsigned int size)
             abort();
     }
     refbuf->len = size;
-    refbuf->sync_point = 0;
     refbuf->_count = 1;
     refbuf->next = NULL;
     refbuf->associated = NULL;
@@ -72,11 +71,12 @@ static void refbuf_release_associated (refbuf_t *ref)
 {
     if (ref == NULL)
         return;
-    while (ref && ref->_count == 1)
+    while (ref)
     {
         refbuf_t *to_go = ref;
         ref = to_go->next;
-        to_go->next = NULL;
+        if (to_go->_count == 1)
+            to_go->next = NULL;
         refbuf_release (to_go);
     }
 }

@@ -38,6 +38,8 @@ typedef struct ice_global_tag
     int schedule_config_reread;
 
     avl_tree *source_tree;
+    rwlock_t shutdown_lock;
+
     /* for locally defined relays */
     struct _relay_server *relays;
     /* relays retrieved from master */

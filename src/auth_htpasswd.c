@@ -215,7 +215,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
         if (strcmp (found->pass, hashed_pw) == 0)
         {
             free (hashed_pw);
-            client->authenticated = 1;
+            client->flags |= CLIENT_AUTHENTICATED;
             return AUTH_OK;
         }
         free (hashed_pw);

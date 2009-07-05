@@ -70,7 +70,6 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
 int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 
-extern rwlock_t _source_shutdown_rwlock;
 extern int connection_running;
 
 #endif  /* __CONNECTION_H__ */

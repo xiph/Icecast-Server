@@ -60,12 +60,15 @@ static void format_mp3_apply_settings(client_t *client, format_plugin_t *format,
 
 
 typedef struct {
-   unsigned int interval;
-   int metadata_offset;
-   unsigned int since_meta_block;
-   int in_metadata;
    refbuf_t *associated;
+   unsigned short interval;
+   short metadata_offset;
+   unsigned short since_meta_block;
 } mp3_client_data;
+
+/* client format flags */
+#define CLIENT_IN_METADATA          CLIENT_FORMAT_BIT
+
 
 int format_mp3_get_plugin (source_t *source)
 {
@@ -367,7 +370,7 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
             if (ret < (int)remaining + meta_len)
             {
                 client_mp3->metadata_offset += (ret - remaining);
-                client_mp3->in_metadata = 1;
+                client->flags |= CLIENT_IN_METADATA;
             }
             else
                 client_mp3->associated = associated;
@@ -381,9 +384,8 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
             client_mp3->since_meta_block += ret;
             client->pos += ret;
             client->lag -= ret;
-            return ret;
         }
-        return 0;
+        return ret > 0 ? ret : 0;
     }
     ret = client_send_bytes (client, metadata, meta_len);
 
@@ -391,17 +393,15 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
     {
         client_mp3->associated = associated;
         client_mp3->metadata_offset = 0;
-        client_mp3->in_metadata = 0;
+        client->flags &= ~CLIENT_IN_METADATA;
         client_mp3->since_meta_block = 0;
         return ret;
     }
     if (ret > 0)
         client_mp3->metadata_offset += ret;
-    else
-        ret = 0;
-    client_mp3->in_metadata = 1;
+    client->flags |= CLIENT_IN_METADATA;
 
-    return ret;
+    return ret > 0 ? ret : 0;
 }
 
 
@@ -419,11 +419,11 @@ static int format_mp3_write_buf_to_client (client_t *client)
     do
     {
         /* send any unwritten metadata to the client */
-        if (client_mp3->in_metadata)
+        if (client->flags & CLIENT_IN_METADATA)
         {
             ret = send_stream_metadata (client, refbuf, 0);
 
-            if (client_mp3->in_metadata)
+            if (client->flags & CLIENT_IN_METADATA)
                 break;
             written += ret;
         }
@@ -437,7 +437,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
             if (remaining <= len)
             {
                 ret = send_stream_metadata (client, refbuf, remaining);
-                if (client_mp3->in_metadata)
+                if (client->flags & CLIENT_IN_METADATA)
                     break;
                 written += ret;
                 buf += remaining;
@@ -509,14 +509,7 @@ static int complete_read (source_t *source)
     {
         bytes = client_read_bytes (source->client, buf, source_mp3->queue_block_size-source_mp3->read_count);
         if (bytes < 0)
-        {
-            if (source->client->con->error)
-            {
-                refbuf_release (source_mp3->read_data);
-                source_mp3->read_data = NULL;
-            }
             return 0;
-        }
         rate_add (format->in_bitrate, bytes, time(NULL));
     }
     source_mp3->read_count += bytes;
@@ -525,14 +518,7 @@ static int complete_read (source_t *source)
     format->read_bytes += bytes;
 
     if (source_mp3->read_count < source_mp3->queue_block_size)
-    {
-        if (source_mp3->read_count == 0)
-        {
-            refbuf_release (source_mp3->read_data);
-            source_mp3->read_data = NULL;
-        }
         return 0;
-    }
     return 1;
 }
 
@@ -556,7 +542,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     }
     refbuf->associated = source_mp3->metadata;
     refbuf_addref (source_mp3->metadata);
-    refbuf->sync_point = 1;
+    refbuf->flags |= SOURCE_BLOCK_SYNC;
     return refbuf;
 }
 
@@ -681,7 +667,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     }
     refbuf->associated = source_mp3->metadata;
     refbuf_addref (source_mp3->metadata);
-    refbuf->sync_point = 1;
+    refbuf->flags |= SOURCE_BLOCK_SYNC;
 
     return refbuf;
 }
@@ -748,6 +734,9 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
 static void free_mp3_client_data (client_t *client)
 {
+    mp3_client_data *client_mp3 = client->format_data;
+
+    refbuf_release (client_mp3->associated);
     free (client->format_data);
     client->format_data = NULL;
 }

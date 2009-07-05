@@ -28,6 +28,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h" 
+#include "global.h"
 
 #define CATMODULE "cfgfile"
 #define CONFIG_DEFAULT_LOCATION "Earth"
@@ -36,7 +37,6 @@
 #define CONFIG_DEFAULT_SOURCE_LIMIT 16
 #define CONFIG_DEFAULT_QUEUE_SIZE_LIMIT (500*1024)
 #define CONFIG_DEFAULT_BURST_SIZE (64*1024)
-#define CONFIG_DEFAULT_THREADPOOL_SIZE 4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT 30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
@@ -469,7 +469,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
-    configuration->threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;

@@ -113,7 +113,6 @@ cache_file_contents banned_ip, allowed_ip;
 cache_file_contents useragents;
 
 int connection_running = 0;
-rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
 
@@ -152,8 +151,6 @@ void connection_initialize(void)
 {
     thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
-    thread_rwlock_create(&_source_shutdown_rwlock);
-    thread_cond_create(&global.shutdown_cond);
     _req_queue = NULL;
     _req_queue_tail = &_req_queue;
     _con_queue = NULL;
@@ -179,10 +176,6 @@ void connection_shutdown(void)
     if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_line);
     if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
 
-    thread_cond_destroy(&global.shutdown_cond);
-    thread_rwlock_wlock(&_source_shutdown_rwlock);
-    thread_rwlock_unlock(&_source_shutdown_rwlock);
-    thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy (&_connection_lock);
     thread_mutex_destroy(&move_clients_mutex);
 }
@@ -860,12 +853,12 @@ int connection_complete_source (source_t *source, int response)
 
         source->running = 1;
         mountinfo = config_find_mount (config, source->mount);
+        thread_mutex_lock (&source->lock);
         source_update_settings (config, source, mountinfo);
+        INFO1 ("source %s is ready to start", source->mount);
+        thread_mutex_unlock (&source->lock);
         config_release_config();
         slave_rebuild_mounts();
-
-        source->shutdown_rwlock = &_source_shutdown_rwlock;
-        DEBUG0 ("source is ready to start");
 
         return 0;
     }
@@ -1059,7 +1052,7 @@ static void _handle_stats_request (client_t *client, char *uri)
         return;
     }
 
-    client->authenticated = 1;
+    client->flags |= CLIENT_AUTHENTICATED;
     stats_add_listener (client, STATS_ALL);
 }
 

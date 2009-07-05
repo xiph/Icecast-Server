@@ -34,6 +34,7 @@
 #include "httpp/httpp.h"
 #include "fserve.h"
 #include "admin.h"
+#include "global.h"
 
 #include "logging.h"
 #define CATMODULE "auth"
@@ -254,7 +255,7 @@ static void auth_remove_listener (auth_client *auth_user)
     auth_release (auth_user->auth);
     auth_user->auth = NULL;
     /* client is going, so auth is not an issue at this point */
-    auth_user->client->authenticated = 0;
+    auth_user->client->flags &= ~CLIENT_AUTHENTICATED;
     client_send_404 (auth_user->client, "Failed relay");
     auth_user->client = NULL;
 }
@@ -270,7 +271,7 @@ static void stream_auth_callback (auth_client *auth_user)
     if (auth_user->auth->stream_auth)
         auth_user->auth->stream_auth (auth_user);
 
-    if (client->authenticated)
+    if (client->flags & CLIENT_AUTHENTICATED)
         auth_postprocess_source (auth_user);
     else
         WARN1 ("Failed auth for source \"%s\"", auth_user->mount);
@@ -361,7 +362,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 {
     int ret = 0;
 
-    client->authenticated = 1;
+    client->flags |= CLIENT_AUTHENTICATED;
 
     /* check whether we are processing a streamlist request for slaves */
     if (strcmp (mount, "/admin/streams") == 0)
@@ -421,9 +422,9 @@ static int auth_postprocess_listener (auth_client *auth_user)
     if (client == NULL)
         return -1;
 
-    if (client->authenticated == 0)
+    if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
-        /* auth failed so check to placing listeners elsewhere */
+        /* auth failed so do we place the listener elsewhere */
         if (auth_user->rejected_mount)
             mount = auth_user->rejected_mount;
         else if (auth->rejected_mount)
@@ -477,8 +478,7 @@ void auth_add_listener (const char *mount, client_t *client)
 
     if (connection_check_relay_pass (client->parser))
     {
-        client->is_slave = 1;
-        client->authenticated = 1;
+        client->flags |= (CLIENT_IS_SLAVE|CLIENT_AUTHENTICATED);
         INFO0 ("client connected as slave");
     }
     config = config_get_config();
@@ -489,7 +489,7 @@ void auth_add_listener (const char *mount, client_t *client)
         client_send_403 (client, "mountpoint unavailable");
         return;
     }
-    if (client->authenticated == 0 && mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
+    if ((client->flags & CLIENT_AUTHENTICATED) == 0 && mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
     {
         auth_client *auth_user;
 
@@ -518,7 +518,7 @@ void auth_add_listener (const char *mount, client_t *client)
  */
 int auth_release_listener (client_t *client, const char *mount, mount_proxy *mountinfo)
 {
-    if (client->authenticated)
+    if (client->flags & CLIENT_AUTHENTICATED)
     {
         /* drop any queue reference here, we do not want a race between the source thread
          * and the auth/fserve thread */
@@ -531,7 +531,7 @@ int auth_release_listener (client_t *client, const char *mount, mount_proxy *mou
             queue_auth_client (auth_user, mountinfo);
             return 1;
         }
-        client->authenticated = 0;
+        client->flags &= ~CLIENT_AUTHENTICATED;
     }
     client_send_404 (client, NULL);
     return 0;

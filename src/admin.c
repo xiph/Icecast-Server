@@ -184,7 +184,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             }
             config_release_config();
 
-            if (source->running)
+            if (source_running (source))
             {
                 if (source->client)
                 {
@@ -290,7 +290,7 @@ void admin_mount_request (client_t *client, const char *uri)
     }
     else
     {
-        if (source->running == 0 && source->on_demand == 0)
+        if (source_available (source) == 0)
         {
             avl_tree_unlock (global.source_tree);
             INFO1("Received admin command on unavailable mount \"%s\"", mount);
@@ -335,19 +335,19 @@ int admin_handle_request (client_t *client, const char *uri)
         uri += 7;
 
     if (connection_check_admin_pass (client->parser))
-        client->authenticated = 1;
+        client->flags |= CLIENT_AUTHENTICATED;
 
     /* special case for slaves requesting a streamlist for authenticated relaying */
     if (strcmp (uri, "streams") == 0)
     {
-        client->is_slave = 1;
+        client->flags |= CLIENT_IS_SLAVE;
         auth_add_listener ("/admin/streams", client);
         return 0;
     }
     if (strcmp (uri, "streamlist.txt") == 0)
     {
         if (connection_check_relay_pass (client->parser))
-            client->authenticated = 1;
+            client->flags |= CLIENT_AUTHENTICATED;
     }
 
     if (mount)
@@ -365,7 +365,7 @@ int admin_handle_request (client_t *client, const char *uri)
         }
 
         /* This is a mount request, but admin user is allowed */
-        if (client->authenticated == 0)
+        if ((client->flags & CLIENT_AUTHENTICATED) == 0)
         {
             switch (auth_check_source (client, mount))
             {
@@ -394,7 +394,7 @@ static void admin_handle_general_request(client_t *client, const char *uri)
 {
     struct admin_command *cmd;
 
-    if (client->authenticated == 0)
+    if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
         INFO1("Bad or missing password on admin command request (%s)", uri);
         client_send_401 (client, NULL);
@@ -610,7 +610,7 @@ static void command_manage_relay (client_t *client, int response)
         msg = "relay has been changed";
         if (relay->enable == 0)
         {
-            if (relay->source && relay->source->running == 0)
+            if (relay->source && source_running (relay->source) == 0)
                 relay->source->on_demand = 0;
         }
         slave_update_all_mounts();

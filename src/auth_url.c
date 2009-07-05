@@ -169,7 +169,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             }
         }
         if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
-            client->authenticated = 1;
+            client->flags |= CLIENT_AUTHENTICATED;
         if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
         {
             unsigned int limit = 0;
@@ -177,7 +177,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             client->con->discon_time = time(NULL) + limit;
         }
         if (strncasecmp (ptr, "icecast-slave: 1", 16) == 0)
-            client->is_slave =1;
+            client->flags |= CLIENT_IS_SLAVE;
 
         if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0)
         {
@@ -394,7 +394,7 @@ static auth_result url_add_listener (auth_client *auth_user)
         return AUTH_FAILED;
     }
     /* we received a response, lets see what it is */
-    if (client->authenticated)
+    if (client->flags & CLIENT_AUTHENTICATED)
         return AUTH_OK;
     if (atoi (atd->errormsg) == 403)
     {
@@ -528,7 +528,7 @@ static void url_stream_auth (auth_client *auth_user)
     free (mount);
     free (host);
 
-    client->authenticated = 0;
+    client->flags &= ~CLIENT_AUTHENTICATED;
     if (curl_easy_perform (atd->curl))
         WARN2 ("auth to server %s failed with %s", url->stream_auth, atd->errormsg);
 }

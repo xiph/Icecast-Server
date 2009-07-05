@@ -27,7 +27,7 @@ typedef struct _refbuf_tag
     char *data;
     struct _refbuf_tag *associated;
     struct _refbuf_tag *next;
-    int sync_point;
+    unsigned int flags;
 
 } refbuf_t;
 

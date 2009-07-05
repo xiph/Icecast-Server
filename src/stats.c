@@ -84,7 +84,6 @@ typedef struct _stats_source_tag
 typedef struct _event_listener_tag
 {
     client_t *client;
-    int master;
     int hidden_level;
     char *source;
 
@@ -197,7 +196,8 @@ void stats_event(const char *source, const char *name, const char *value)
 
     if (value && xmlCheckUTF8 ((unsigned char *)value) == 0)
     {
-        WARN2 ("seen non-UTF8 data, probably incorrect metadata (%s, %s)", name, value);
+        WARN3 ("seen non-UTF8 data (%s), probably incorrect metadata (%s, %s)",
+                source?source:"global", name, value);
         return;
     }
     build_event (&event, source, name, (char *)value);
@@ -435,6 +435,7 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
         free (node->value);
         node->value = strdup (event->value);
     }
+    DEBUG3 ("update \"%s\" %s (%s)", event->source?event->source:"global", node->name, node->value);
 }
 
 
@@ -459,7 +460,6 @@ static void process_global_event (stats_event_t *event)
     {
         modify_node_event (node, event);
         stats_listener_send (node->hidden, "EVENT global %s %s\n", node->name, node->value);
-        DEBUG2 ("update node on global \"%s\" (%s)", node->name, node->value);
     }
     else
     {
@@ -717,7 +717,7 @@ static int _append_to_buffer (refbuf_t *refbuf, int max_len, const char *fmt, ..
 
 static void _add_node_to_stats_client (event_listener_t *listener, refbuf_t *refbuf)
 {
-    if (refbuf->len) 
+    if (refbuf->len)
     {
         *listener->queue_recent_p = refbuf;
         listener->queue_recent_p = &refbuf->next;

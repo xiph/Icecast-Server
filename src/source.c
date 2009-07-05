@@ -207,7 +207,7 @@ void source_clear_source (source_t *source)
     /* log bytes read in access log */
     if (source->client)
     {
-        source->client->authenticated = 0;
+        source->client->flags &= ~CLIENT_AUTHENTICATED;
         if (source->format)
             source->client->con->sent_bytes = source->format->read_bytes;
     }
@@ -393,7 +393,7 @@ void source_move_clients (source_t *source, source_t *dest)
             source->active_clients = client->next;
 
             /* don't move known slave relays to streams which are not timed (fallback file) */
-            if (dest->client == NULL && client->is_slave)
+            if (dest->client == NULL && (client->flags & CLIENT_IS_SLAVE))
             {
                 client->next = leave_list;
                 leave_list = client;
@@ -648,8 +648,7 @@ static int locate_start_on_queue (source_t *source, client_t *client)
     if (source->stream_data_tail == NULL)
         return -1;
     refbuf = source->stream_data_tail;
-    DEBUG0 ("in here");
-    if (client->intro_offset == -1 && refbuf->sync_point)
+    if (client->intro_offset == -1 && (refbuf->flags & SOURCE_BLOCK_SYNC))
     {
         refbuf = source->stream_data_tail;
         lag = refbuf->len;
@@ -671,7 +670,7 @@ static int locate_start_on_queue (source_t *source, client_t *client)
 
     while (refbuf)
     {
-        if (refbuf->sync_point)
+        if (refbuf->flags & SOURCE_BLOCK_SYNC)
         {
             client_set_queue (client, refbuf);
             client->check_buffer = format_advance_queue;
@@ -731,8 +730,6 @@ static int http_source_listener (source_t *source, client_t *client)
 
     if (client->respcode == 0)
     {
-        DEBUG0("processing pending listener headers");
-
         if (format_prepare_headers (source, client) < 0)
         {
             ERROR0 ("internal problem, dropping client");
@@ -769,7 +766,6 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     int bytes;
     int loop = 8;   /* max number of iterations in one go */
     long total_written = 0;
-    int ret = 0;
 
     /* check for limited listener time */
     if (client->con->discon_time && time(NULL) >= client->con->discon_time)
@@ -782,26 +778,19 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
     if (source->amount_added_to_queue)
         client->lag += source->amount_added_to_queue;
 
-    while (1)
+    while (loop)
     {
         /* jump out if client connection has died */
         if (client->con->error)
             break;
 
-        if (loop == 0)
-        {
-            ret = 0;
-            break;
-        }
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
         if (total_written > source->listener_send_trigger)
         {
-            ret = 1;
+            loop = 0;
             break;
         }
-
-        loop--;
 
         if (client->check_buffer (source, client) < 0)
             break;
@@ -811,11 +800,14 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
             break;  /* can't write any more */
 
         total_written += bytes;
+        loop--;
     }
-    rate_add (source->format->out_bitrate, total_written, timing_get_time());
-    source->bytes_sent_since_update += total_written;
-
-    global_add_bitrates (global.out_bitrate, total_written);
+    if (total_written)
+    {
+        rate_add (source->format->out_bitrate, total_written, timing_get_time());
+        global_add_bitrates (global.out_bitrate, total_written);
+        source->bytes_sent_since_update += total_written;
+    }
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
@@ -824,9 +816,10 @@ static int send_to_listener (source_t *source, client_t *client, int deletion_ex
         INFO2 ("Client %lu (%s) has fallen too far behind, removing",
                 client->con->id, client->con->ip);
         stats_event_inc (source->mount, "slow_listeners");
+        client_set_queue (client, NULL);
         client->con->error = 1;
     }
-    return ret;
+    return loop ? 0 : 1;
 }
 
 
@@ -937,7 +930,7 @@ static void source_init (source_t *source)
     }
 
     /* grab a read lock, to make sure we get a chance to cleanup */
-    thread_rwlock_rlock (source->shutdown_rwlock);
+    thread_rwlock_rlock (&global.shutdown_lock);
 
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
@@ -1131,7 +1124,7 @@ static void source_shutdown (source_t *source)
     global_unlock();
 
     /* release our hold on the lock so the main thread can continue cleaning up */
-    thread_rwlock_unlock(source->shutdown_rwlock);
+    thread_rwlock_unlock (&global.shutdown_lock);
 }
 
 
@@ -1173,7 +1166,7 @@ static void _parse_audio_info (source_t *source, const char *s)
             esc = util_url_unescape (value);
             if (esc)
             {
-                if (source->running)
+                if (source_running (source))
                 {
                     util_dict_set (source->audio_info, name, esc);
                     stats_event (source->mount, name, esc);
@@ -1716,7 +1709,7 @@ static int check_duplicate_logins (source_t *source, client_t *client, auth_t *a
         return 1;
 
     /* allow multiple authenticated relays */
-    if (client->username == NULL || client->is_slave)
+    if (client->username == NULL || (client->flags & CLIENT_IS_SLAVE))
         return 1;
 
     existing = source->active_clients;
@@ -1780,7 +1773,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
         } while (1);
 
         /* ok, we found a source and it is locked */
-        if (client->is_slave)
+        if (client->flags & CLIENT_IS_SLAVE)
         {
             if (source->client == NULL && source->on_demand == 0)
             {

@@ -1054,7 +1054,6 @@ static void *_slave_thread(void *arg)
             global . schedule_config_reread = 0;
         }
 
-        thread_sleep (1000000);
         global_add_bitrates (global.out_bitrate, 0L);
 
         if (global.running != ICE_RUNNING)
@@ -1101,6 +1100,7 @@ static void *_slave_thread(void *arg)
         /* trigger any YP processing */
         yp_thread_startup();
         stats_global_calc();
+        thread_sleep (1000000);
     }
     connection_thread_shutdown();
     INFO0 ("shutting down current relays");
@@ -1112,6 +1112,8 @@ static void *_slave_thread(void *arg)
     /* send any removals to the YP servers */
     yp_thread_startup();
 
+    thread_rwlock_wlock (&global.shutdown_lock);
+    thread_rwlock_unlock (&global.shutdown_lock);
     INFO0 ("Slave thread shutdown complete");
 
     return NULL;
