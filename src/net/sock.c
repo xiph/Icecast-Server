@@ -516,17 +516,27 @@ int sock_read_line(sock_t sock, char *buff, const int len)
 int sock_connected (sock_t sock, int timeout)
 {
     struct pollfd check;
+    int val = SOCK_ERROR;
+    socklen_t size = sizeof val;
 
     check.fd = sock;
     check.events = POLLOUT;
     switch (poll (&check, 1, timeout*1000))
     {
         case 0: return SOCK_TIMEOUT;
+        default:
+            /* on windows getsockopt.val is defined as char* */
+            if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*) &val, &size) == 0)
+            {
+                if (val == 0)
+                    return 1;
+                sock_set_error (val);
+            }
+            /* fall through */
         case -1:
             if (sock_recoverable (sock_error()))
                 return 0;
             return SOCK_ERROR;
-        default: return 1;
     }                                           
 }
 
