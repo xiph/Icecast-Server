@@ -36,6 +36,10 @@
 #include <winbase.h>
 #endif
 
+#ifdef HAVE_FTIME
+#include <sys/timeb.h>
+#endif
+
 #include <signal.h>
 
 #include <timing/timing.h>
