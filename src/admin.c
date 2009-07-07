@@ -83,7 +83,6 @@ struct admin_command
 };
 
 
-static time_t now;
 
 static struct admin_command admin_general[] =
 {
@@ -221,7 +220,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
         client->refbuf->len = len;
         xmlFree(buff);
         client->respcode = 200;
-        fserve_add_client (client, NULL);
+        fserve_setup_client (client, NULL);
     }
     if (response == XSLT)
     {
@@ -436,7 +435,7 @@ static void html_success(client_t *client, char *message)
             "<html><head><title>Admin request successful</title></head>"
             "<body><p>%s</p></body></html>", message);
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -444,7 +443,6 @@ static void command_move_clients(client_t *client, source_t *source,
     int response)
 {
     const char *dest_source;
-    source_t *dest;
     xmlDocPtr doc;
     xmlNodePtr node;
     int parameters_passed = 0;
@@ -459,34 +457,14 @@ static void command_move_clients(client_t *client, source_t *source,
         xmlFreeDoc(doc);
         return;
     }
-
-    dest = source_find_mount (dest_source);
-
-    if (dest == NULL)
-    {
-        client_send_400 (client, "No such destination");
-        return;
-    }
-
-    if (strcmp (dest->mount, source->mount) == 0)
-    {
-        client_send_400 (client, "supplied mountpoints are identical");
-        return;
-    }
-
-    if (dest->running == 0 && dest->on_demand == 0)
-    {
-        client_send_400 (client, "Destination not running");
-        return;
-    }
-
-    INFO2 ("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
+    INFO2 ("source is \"%s\", destination is \"%s\"", source->mount, dest_source);
 
     doc = xmlNewDoc(XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
-    source_move_clients (source, dest);
+    source_set_fallback (source, dest_source);
+    source->flags |= SOURCE_TEMPORARY_FALLBACK;
 
     snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
             source->mount, dest_source);
@@ -611,7 +589,7 @@ static void command_manage_relay (client_t *client, int response)
         if (relay->enable == 0)
         {
             if (relay->source && source_running (relay->source) == 0)
-                relay->source->on_demand = 0;
+                relay->source->flags &= ~SOURCE_ON_DEMAND;
         }
         slave_update_all_mounts();
     }
@@ -631,6 +609,7 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
 {
     const char *useragent;
     char buf[30];
+    source_t *source = listener->shared_data;
 
     xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
 
@@ -647,12 +626,15 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
         xmlFree (str);
     }
 
-    snprintf (buf, sizeof (buf), "%u", listener->lag);
+    snprintf (buf, sizeof (buf), "%ld", (long)(source->client->queue_pos - listener->queue_pos));
     xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
 
-    snprintf (buf, sizeof (buf), "%lu",
-            (unsigned long)(now - listener->con->con_time));
-    xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+    if (listener->worker)
+    {
+        snprintf (buf, sizeof (buf), "%lu",
+                (unsigned long)(listener->worker->current_time.tv_sec - listener->con->con_time));
+        xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+    }
     if (listener->username)
     {
         xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
@@ -674,8 +656,7 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
 
     thread_mutex_lock (&source->lock);
 
-    now = time(NULL);
-    listener = source->active_clients;
+    listener = source->client_list;
     while (listener)
     {
         add_listener_node (srcnode, listener);
@@ -755,8 +736,7 @@ static void command_show_listeners(client_t *client, source_t *source,
         client_t *listener;
         thread_mutex_lock (&source->lock);
 
-        now = time(NULL);
-        listener = source->active_clients;
+        listener = source->client_list;
         while (listener)
         {
             if (listener->con->id == id)
@@ -786,7 +766,7 @@ static void command_show_image (client_t *client, const char *mount)
         if (source->format->get_image (client, source->format) == 0)
         {
             thread_mutex_unlock (&source->lock);
-            fserve_add_client (client, NULL);
+            fserve_setup_client (client, NULL);
             return;
         }
         thread_mutex_unlock (&source->lock);
@@ -821,7 +801,7 @@ static void command_buildm3u (client_t *client, const char *mount)
     config_release_config();
 
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -926,7 +906,7 @@ static void command_kill_source(client_t *client, source_t *source,
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
 
-    source->running = 0;
+    source->flags &= ~SOURCE_RUNNING;
 
     admin_send_response(doc, client, response, "response.xsl");
     xmlFreeDoc(doc);
@@ -1085,7 +1065,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         return;
     }
 
-    if (source->shoutcast_compat == 0)
+    if ((source->flags & SOURCE_SHOUTCAST_COMPAT) == 0)
     {
         ERROR0 ("illegal change of metadata on non-shoutcast compatible stream");
         client_send_400 (client, "illegal metadata call");
@@ -1192,7 +1172,7 @@ static void command_list_log (client_t *client, int response)
         http->next = content; 
         client->respcode = 200;
         client_set_queue (client, http);
-        fserve_add_client (client, NULL);
+        fserve_setup_client (client, NULL);
     }
 }
 
@@ -1214,7 +1194,7 @@ void command_list_mounts(client_t *client, int response)
             client->refbuf->next = stats_get_streams (1);
         else
             client->refbuf->next = stats_get_streams (0);
-        fserve_add_client (client, NULL);
+        fserve_setup_client (client, NULL);
     }
     else
     {

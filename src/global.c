@@ -68,10 +68,10 @@ void global_unlock(void)
     thread_mutex_unlock(&_global_mutex);
 }
 
-void global_add_bitrates (struct rate_calc *rate, unsigned long value)
+void global_add_bitrates (struct rate_calc *rate, unsigned long value, uint64_t milli)
 {
     thread_spin_lock (&global.spinlock);
-    rate_add (rate, value, timing_get_time());
+    rate_add (rate, value, milli);
     thread_spin_unlock (&global.spinlock);
 }
 

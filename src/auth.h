@@ -19,6 +19,7 @@
 
 struct source_tag;
 struct auth_tag;
+struct _fbinfo;
 typedef struct _auth_thread_t auth_thread_t;
 
 #include <libxml/xmlmemory.h>
@@ -106,6 +107,7 @@ typedef struct auth_tag
 
 void auth_add_listener (const char *mount, client_t *client);
 int  auth_release_listener (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
+void move_listener (client_t *client, struct _fbinfo *finfo);
 int  auth_check_source (client_t *client, const char *mount);
 
 void auth_initialise (void);

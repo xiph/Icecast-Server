@@ -67,6 +67,7 @@ void event_config_read (void)
         yp_recheck_config (config);
         fserve_recheck_mime_types (config);
         stats_global (config);
+        workers_adjust (config->workers_count);
         config_release_config();
         connection_thread_shutdown();
         slave_restart();

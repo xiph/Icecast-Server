@@ -47,6 +47,9 @@
 #endif
 
 #define VAL_BUFSIZE 20
+#define STATS_BLOCK_NORMAL  01
+
+#define STATS_LARGE  CLIENT_FORMAT_BIT
 
 #define STATS_EVENT_SET     0
 #define STATS_EVENT_INC     1
@@ -83,12 +86,11 @@ typedef struct _stats_source_tag
 
 typedef struct _event_listener_tag
 {
-    client_t *client;
     int hidden_level;
     char *source;
 
     /* queue for unwritten stats to stats clients */
-    refbuf_t *queue, **queue_recent_p;
+    refbuf_t **queue_recent_p;
     unsigned int content_len;
 
     struct _event_listener_tag *next;
@@ -577,32 +579,71 @@ void stats_event_time (const char *mount, const char *name)
 }
 
 
-static void stats_listeners_send (event_listener_t *listener)
+static int stats_listeners_send (client_t *client)
 {
-    int loop = 6;
-    int ret;
-    client_t *client = listener->client;
+    int loop = 8;
+    int ret = 0;
+    event_listener_t *listener = client->shared_data;
 
+    if (client->con->error)
+        return -1;
+    if (client->flags & STATS_LARGE)
+        loop = 4;
+    else
+        if (listener->content_len > 50000)
+        {
+            WARN1 ("dropping stats client, %ld in queue", listener->content_len);
+            return -1;
+        }
+    client->schedule_ms = client->worker->time_ms + 100;
+    thread_mutex_lock(&_stats_mutex);
     while (loop)
     {
-        if (format_advance_queue (NULL, client) < 0)
+        refbuf_t *refbuf = client->refbuf;
+
+        if (refbuf == NULL)
             break;
+        if ((client->flags & STATS_LARGE) && (refbuf->flags & STATS_BLOCK_NORMAL))
+            client->flags &= ~STATS_LARGE;
+
         ret = format_generic_write_to_client (client);
-        if (ret < 0)
-            break;
-        listener->content_len -= ret;
+        if (ret > 0)
+            listener->content_len -= ret;
+        if (client->pos == refbuf->len)
+        {
+            client->refbuf = refbuf->next;
+            refbuf->next = NULL;
+            refbuf_release (refbuf);
+            client->pos = 0;
+            if (client->refbuf == NULL)
+            {
+                listener->queue_recent_p = &client->refbuf;
+                break;
+            }
+        }
+        else if (ret < 4096)
+            break; /* short write, so stop for now */
         loop--;
     }
+    thread_mutex_unlock(&_stats_mutex);
+    if (loop == 0)
+        client->schedule_ms -= 100;
+    return 0;
 }
 
-static void clear_stats_queue (event_listener_t *listener)
+
+static void clear_stats_queue (client_t *client)
 {
-    while (listener->queue && listener->queue->_count == 1)
+    refbuf_t *refbuf = client->refbuf;
+    while (refbuf)
     {
-        refbuf_t *to_go = listener->queue;
-        listener->queue = to_go->next;
+        refbuf_t *to_go = refbuf;
+        refbuf = to_go->next;
+        if (to_go->_count != 1) DEBUG1 ("odd count for stats %d", to_go->_count);
+        to_go->next = NULL;
         refbuf_release (to_go);
     }
+    client->refbuf = NULL;
 }
 
 
@@ -616,34 +657,8 @@ static void stats_listener_send (int hidden_level, const char *fmt, ...)
 
     while (listener)
     {
-        client_t *client = listener->client;
-
         if (listener->hidden_level & hidden_level)
-        {
             _add_stats_to_stats_client (listener, fmt, ap);
-        }
-        stats_listeners_send (listener);
-        if (client->con->error || listener->content_len > 10000)
-        {
-            stats_event_t stats_count;
-            char buffer [20];
-
-            *trail = listener->next;
-
-            build_event (&stats_count, NULL, "stats_connections", buffer);
-            stats_count.action = STATS_EVENT_DEC;
-            process_event_unlocked (&stats_count);
-
-            /* moved this listener so that final cleanup can be done outside of lock */
-            listener->next = _stats.listeners_removed;
-            _stats.listeners_removed = listener;
-
-            listener = *trail;
-            continue;
-        }
-        /* reduce queue if unsued */
-        clear_stats_queue (listener);
-
         trail = &listener->next;
         listener = listener->next;
     }
@@ -736,6 +751,7 @@ static void _add_stats_to_stats_client (event_listener_t *listener,const char *f
 
         if (_append_to_bufferv (refbuf, size, fmt, ap) == 0)
         {
+            refbuf->flags |= STATS_BLOCK_NORMAL;
             _add_node_to_stats_client (listener, refbuf);
             return;
         }
@@ -860,8 +876,6 @@ static void _register_listener (event_listener_t *listener)
             node2 = avl_get_next (node2);
         }
     }
-
-    client_set_queue (listener->client, refbuf);
     _add_node_to_stats_client (listener, refbuf);
 
     /* now we register to receive future event notices */
@@ -870,31 +884,60 @@ static void _register_listener (event_listener_t *listener)
 }
 
 
-static void stats_callback (client_t *client, void *arg)
+static void stats_client_release (client_t *client)
 {
-    event_listener_t *listener = arg;
+    event_listener_t *listener = _stats.event_listeners,
+                     **trail = &_stats.event_listeners;
+    while (listener)
+    {
+        if (listener == client->shared_data)
+        {
+            stats_event_t stats_count;
+            char buffer [20];
 
-    client_set_queue (client, NULL);
-
-    thread_mutex_lock(&_stats_mutex);
-    _register_listener (listener);
-    thread_mutex_unlock(&_stats_mutex);
+            *trail = listener->next;
+            clear_stats_queue (client);
+            free (listener->source);
+            free (listener);
+            client_destroy (client);
+            build_event (&stats_count, NULL, "stats_connections", buffer);
+            stats_count.action = STATS_EVENT_DEC;
+            process_event_unlocked (&stats_count);
+            return;
+        }
+        trail = &listener->next;
+        listener = listener->next;
+    }
 }
+
+
+struct _client_functions stats_client_send_ops =
+{
+    stats_listeners_send,
+    stats_client_release
+};
 
 void stats_add_listener (client_t *client, int hidden_level)
 {
     event_listener_t *listener = calloc (1, sizeof (event_listener_t));
     listener->hidden_level = hidden_level;
-    listener->client = client;
-    listener->queue_recent_p = &listener->queue;
 
     client->respcode = 200;
+    client->ops = &stats_client_send_ops;
+    client->shared_data = listener;
     client_set_queue (client, NULL);
+    client->flags |= CLIENT_ACTIVE;
     client->refbuf = refbuf_new (100);
     snprintf (client->refbuf->data, 100,
             "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client_callback (client, stats_callback, listener);
+    listener->content_len = client->refbuf->len;
+    listener->queue_recent_p = &client->refbuf->next;
+
+    client->flags |= STATS_LARGE;
+    thread_mutex_lock(&_stats_mutex);
+    _register_listener (listener);
+    thread_mutex_unlock(&_stats_mutex);
 }
 
 void stats_transform_xslt(client_t *client, const char *uri)
@@ -1073,15 +1116,5 @@ void stats_global_calc (void)
     listener = _stats.listeners_removed;
     _stats.listeners_removed = NULL;
     thread_mutex_unlock (&_stats_mutex);
-
-    /* flush out any closed stats clients */
-    while (listener)
-    {
-        event_listener_t *to_go = listener;
-        listener = listener->next;
-        client_destroy (to_go->client);
-        clear_stats_queue (to_go);
-        free (to_go);
-    }
 }
 

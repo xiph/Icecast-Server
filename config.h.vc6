@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh9"
+#define VERSION "2.3.2-kh10"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -128,6 +128,7 @@ typedef unsigned int socklen_t;
 /* define if compiler does not handle __attribute__ keyword */
 #define __attribute__(x)
 
+#define HAVE_STRCASECMP 1
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 

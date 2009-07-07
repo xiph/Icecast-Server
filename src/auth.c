@@ -189,9 +189,9 @@ static void auth_client_free (auth_client *auth_user)
         client_t *client = auth_user->client;
 
         if (client->respcode)
-            client_destroy (client);
-        else
-            client_send_401 (client, auth_user->auth->realm);
+            client->con->error = 1;
+        client_send_401 (client, auth_user->auth->realm);
+        client->flags |= CLIENT_ACTIVE;
         auth_user->client = NULL;
     }
     auth_release (auth_user->auth);
@@ -354,6 +354,29 @@ static void *auth_run_thread (void *arg)
 }
 
 
+void move_listener (client_t *client, struct _fbinfo *finfo)
+{
+    source_t *source;
+
+    DEBUG1 ("moving listener to %s", finfo->mount);
+    avl_tree_rlock (global.source_tree);
+    source = source_find_mount (finfo->mount);
+
+    if (source && source_available (source))
+    {
+        thread_mutex_lock (&source->lock);
+        avl_tree_unlock (global.source_tree);
+        source_setup_listener (source, client);
+        thread_mutex_unlock (&source->lock);
+    }
+    else
+    {
+        avl_tree_unlock (global.source_tree);
+        fserve_setup_client_fb (client, finfo);
+    }
+}
+
+
 /* Add listener to the pending lists of either the source or fserve thread. This can be run
  * from the connection or auth thread context. return -1 to indicate that client has been
  * terminated, 0 for receiving content.
@@ -402,7 +425,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         {
             DEBUG1 ("disable seek on file matching %s", mountinfo->mountname);
             httpp_deletevar (client->parser, "range");
-            httpp_setvar (client->parser, HTTPP_VAR_NO_CONTENT_LENGTH, "yes");
+            client->flags |= CLIENT_NO_CONTENT_LENGTH;
         }
         ret = fserve_client_create (client, mount);
     }
@@ -430,7 +453,10 @@ static int auth_postprocess_listener (auth_client *auth_user)
         else if (auth->rejected_mount)
             mount = auth->rejected_mount;
         else
+        {
+            client->flags |= CLIENT_ACTIVE;
             return -1;
+        }
     }
     config = config_get_config();
     mountinfo = config_find_mount (config, mount);
@@ -462,6 +488,7 @@ void auth_postprocess_source (auth_client *auth_user)
         DEBUG1 ("on mountpoint %s", mount);
         source_startup (client, mount);
     }
+    client->flags |= CLIENT_ACTIVE;
 }
 
 
@@ -472,9 +499,6 @@ void auth_add_listener (const char *mount, client_t *client)
 {
     mount_proxy *mountinfo; 
     ice_config_t *config;
-
-    /* we don't need any more data from the listener, just setup for writing */
-    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
 
     if (connection_check_relay_pass (client->parser))
     {
@@ -502,6 +526,7 @@ void auth_add_listener (const char *mount, client_t *client)
         }
         auth_user = auth_client_setup (mount, client);
         auth_user->process = auth_new_listener;
+        client->flags &= ~CLIENT_ACTIVE;
         INFO0 ("adding client for authentication");
         queue_auth_client (auth_user, mountinfo);
     }
@@ -690,6 +715,7 @@ int auth_stream_authenticate (client_t *client, const char *mount, mount_proxy *
 
         auth_user->process = stream_auth_callback;
         INFO1 ("request source auth for \"%s\"", mount);
+        client->flags &= ~CLIENT_ACTIVE;
         queue_auth_client (auth_user, mountinfo);
         return 1;
     }

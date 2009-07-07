@@ -21,7 +21,7 @@ void slave_restart (void);
 void slave_update_all_mounts (void);
 void slave_rebuild_mounts (void);
 relay_server *slave_find_relay (relay_server *relays, const char *mount);
-int  redirect_client (const char *mountpoint, struct _client_tag *client);
+int  redirect_client (const char *mountpoint, client_t *client);
 void redirector_update (struct _client_tag *client);
 relay_server *relay_free (relay_server *relay);
 

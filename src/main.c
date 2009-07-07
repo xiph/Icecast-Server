@@ -124,10 +124,8 @@ void _shutdown_subsystems(void)
 
     connection_shutdown();
     config_shutdown();
-    global_shutdown();
     resolver_shutdown();
     sock_shutdown();
-    thread_shutdown();
 
     DEBUG0 ("library cleanups");
 #ifdef HAVE_CURL
@@ -138,6 +136,8 @@ void _shutdown_subsystems(void)
     _stop_logging();
     log_shutdown();
     xslt_shutdown();
+    thread_shutdown();
+    global_shutdown();
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)

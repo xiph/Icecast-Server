@@ -71,7 +71,7 @@
 	<tr>        
 	    <td align="center">
 		    <a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
-        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move MountPoints</a>
+        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a>
         	<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a>
         	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
                 <xsl:if test="authenticator"><a class="nav2" href="manageauth.xsl?mount={@mount}">Manage Authentication</a></xsl:if>

@@ -375,6 +375,10 @@ SOURCE=..\src\sighandler.h
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\slave.h
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\net\sock.h
 # End Source File
 # Begin Source File

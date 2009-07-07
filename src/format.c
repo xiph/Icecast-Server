@@ -134,30 +134,6 @@ int format_generic_write_to_client (client_t *client)
 }
 
 
-/* This is the commonly used for source streams, here we just progress to
- * the next buffer in the queue if there is no more left to be written from 
- * the existing buffer.
- */
-int format_advance_queue (source_t *source, client_t *client)
-{
-    refbuf_t *refbuf = client->refbuf;
-
-    if (refbuf == NULL)
-        return -1;
-
-    if (refbuf->next == NULL && client->pos == refbuf->len)
-        return -1;
-
-    /* move to the next buffer if we have finished with the current one */
-    if (refbuf->next && client->pos == refbuf->len)
-    {
-        client_set_queue (client, refbuf->next);
-        refbuf = client->refbuf;
-    }
-    return 0;
-}
-
-
 int format_prepare_headers (source_t *source, client_t *client)
 {
     unsigned remaining;

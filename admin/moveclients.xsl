@@ -23,8 +23,8 @@
 <xsl:for-each select="source">
 	<table border="0" cellpadding="6" cellspacing="5" >
 	<tr>        
-		<td>Move from (<xsl:copy-of select="$currentmount" />) to (<xsl:value-of select="@mount" />)</td>
-		<td><xsl:value-of select="listeners" /> Listeners</td>
+		<td>Move from <xsl:copy-of select="$currentmount" /> to <xsl:value-of select="@mount" /></td>
+		<td>(<xsl:value-of select="listeners" /> Listeners)</td>
 		<td><a class="nav2" href="moveclients.xsl?mount={$currentmount}&amp;destination={@mount}">Move Clients</a></td>
 	</tr>        
 	</table>

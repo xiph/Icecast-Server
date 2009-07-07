@@ -17,25 +17,23 @@
 #include "yp.h"
 #include "util.h"
 #include "format.h"
+#include "fserve.h"
 
 #include <stdio.h>
 
 typedef struct source_tag
 {
+    char *mount;
+    unsigned int flags;
+    int listener_send_trigger;
+
     client_t *client;
     http_parser_t *parser;
     time_t client_stats_update;
-    
-    char *mount;
-
-    /* set to zero to request the source to shutdown without causing a global
-     * shutdown */
-    int running;
 
     struct _format_plugin_tag *format;
 
-    client_t *active_clients;
-    client_t **fast_clients_p;
+    client_t *client_list;
 
     util_dict *audio_info;
 
@@ -45,19 +43,18 @@ typedef struct source_tag
     char *dumpfilename; /* Name of a file to dump incoming stream to */
     FILE *dumpfile;
 
-    int throttle_stream;
-    time_t throttle_termination;
-    uint64_t limit_rate;
-    int avg_bitrate_duration;
-    time_t wait_time;
-    long listener_send_trigger;
+    fbinfo fallback;
 
+    int skip_duration;
+    long limit_rate;
+    time_t wait_time;
+
+    unsigned long termination_count;
     unsigned long peak_listeners;
     unsigned long listeners;
     unsigned long prev_listeners;
 
     int yp_public;
-    int shoutcast_compat;
     int log_id;
 
     /* per source burst handling for connecting clients */
@@ -67,11 +64,8 @@ typedef struct source_tag
 
     unsigned int queue_size;
     unsigned int queue_size_limit;
-    unsigned int amount_added_to_queue;
 
     unsigned timeout;  /* source timeout in seconds */
-    int on_demand;
-    int on_demand_req;
     unsigned long bytes_sent_since_update;
     unsigned long bytes_read_since_update;
     int stats_interval;
@@ -85,13 +79,20 @@ typedef struct source_tag
 
 } source_t;
 
-#define source_available(x)     ((x)->running || (x)->on_demand)
-#define source_running(x)       ((x)->running)
+#define SOURCE_RUNNING              001
+#define SOURCE_ON_DEMAND            002
+#define SOURCE_ON_DEMAND_REQ        004
+#define SOURCE_SHOUTCAST_COMPAT     010
+#define SOURCE_TERMINATING          020
+#define SOURCE_TEMPORARY_FALLBACK   040
+
+#define source_available(x)     ((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND))
+#define source_running(x)       ((x)->flags & SOURCE_RUNNING)
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
-void source_startup (client_t *client, const char *uri);
-void source_client_callback (client_t *client, void *source);
+int  source_startup (client_t *client, const char *uri);
+int  source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
 source_t *source_find_mount(const char *mount);
@@ -104,8 +105,15 @@ int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
 int  source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client);
+void source_read (source_t *source);
+void source_setup_listener (source_t *source, client_t *client);
+void source_init (source_t *source);
+void source_shutdown (source_t *source, int with_fallback);
+void source_set_fallback (source_t *source, const char *dest_mount);
+void source_set_override (const char *mount, const char *dest);
 
-extern mutex_t move_clients_mutex;
+#define SOURCE_BLOCK_SYNC           01
+#define SOURCE_BLOCK_RELEASE        02
 
 #define SOURCE_BLOCK_SYNC           01
 

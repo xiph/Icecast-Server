@@ -28,6 +28,7 @@ typedef struct _listener_t listener_t;
 
 #include "avl/avl.h"
 #include "auth.h"
+#include "compat.h"
 
 typedef struct ice_config_dir_tag
 {
@@ -84,8 +85,7 @@ typedef struct _mount_proxy {
     /* duration in seconds for sampling the bandwidth */
     int avg_bitrate_duration;
 
-    /* trigger level at which a timer is used to prevent excessive incoming bandwidth */
-    int64_t limit_rate;
+    long limit_rate;
 
     /* duration (secs) for mountpoint to be kept reserved after source client exits */
     int wait_time;
@@ -154,7 +154,6 @@ typedef struct _relay_server
     int cleanup;
     int enable;
     time_t start;
-    thread_type *thread;
     struct _relay_server *next;
 } relay_server;
 
@@ -204,6 +203,7 @@ typedef struct ice_config_tag
     int client_limit;
     int source_limit;
     unsigned int queue_size_limit;
+    int workers_count;
     unsigned int burst_size;
     int client_timeout;
     int header_timeout;

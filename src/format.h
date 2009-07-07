@@ -62,7 +62,6 @@ format_type_t format_get_type(const char *contenttype);
 int format_get_plugin(format_type_t type, struct source_tag *source);
 
 int format_generic_write_to_client (client_t *client);
-int format_advance_queue (struct source_tag *source, client_t *client);
 
 int format_file_read (client_t *client, FILE *fp);
 int format_prepare_headers (struct source_tag *source, client_t *client);

@@ -469,6 +469,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
+    configuration->workers_count = 1;
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
@@ -927,6 +928,7 @@ static int _parse_limits (xmlNodePtr node, void *arg)
         { "sources",        config_get_int,    &config->source_limit },
         { "queue-size",     config_get_int,    &config->queue_size_limit },
         { "burst-size",     config_get_int,    &config->burst_size },
+        { "workers",        config_get_int,    &config->workers_count },
         { "client-timeout", config_get_int,    &config->client_timeout },
         { "header-timeout", config_get_int,    &config->header_timeout },
         { "source-timeout", config_get_int,    &config->source_timeout },
@@ -934,6 +936,8 @@ static int _parse_limits (xmlNodePtr node, void *arg)
     };
     if (parse_xml_tags (node, icecast_tags))
         return -1;
+    if (config->workers_count < 1)   config->workers_count = 1;
+    if (config->workers_count > 400) config->workers_count = 400;
     return 0;
 }
 

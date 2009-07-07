@@ -18,26 +18,28 @@
 
 typedef void (*fserve_callback_t)(client_t *, void *);
 
-typedef struct _fserve_t
+typedef struct _fbinfo
 {
-    client_t *client;
-
-    FILE *file;
-    int ready;
-    void (*callback)(client_t *, void *);
-    void *arg;
+    int flags;
+    unsigned int limit;
     char *mount;
-    struct _fserve_t *next;
-} fserve_t;
+    char *fallback;
+} fbinfo;
+
+#define FS_NORMAL               01
+#define FS_FALLBACK             02
+#define FS_USE_ADMIN            04
+#define FS_JINGLE               010
 
 void fserve_initialize(void);
 void fserve_shutdown(void);
 int fserve_client_create(client_t *httpclient, const char *path);
-int fserve_add_client (client_t *client, FILE *file);
-void fserve_add_client_callback (client_t *client, fserve_callback_t callback, void *arg);
 char *fserve_content_type (const char *path);
 void fserve_recheck_mime_types (ice_config_t *config);
 
+void fserve_setup_client (client_t *client, const char *mount);
+void fserve_setup_client_fb (client_t *client, fbinfo *finfo);
+void fserve_set_override (const char *mount, const char *dest);
 
 #endif
 

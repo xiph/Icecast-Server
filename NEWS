@@ -15,6 +15,34 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh10
+. big internal thread change. instead of one thread per stream, we now have a fixed number
+  of worker threads, each processing a set of clients (sources/relays/listeners etc).
+  - no source or fserve threads now. auth still has thread(s) as the API for libcurl
+    is blocking
+  - worker threads with no clients sleep for long durations.
+  - defaults to 1 worker thread, overridden by <workers> in <limits>
+  - listeners get moved to the worker thread running the source, helps caching
+  - sources get moved to a less busy thread if it would help
+  - each client has a timestamp to indicate when it wants service. The sleep duration
+    for the worker is based on the next client to be serviced.
+. if fallback to file is specified and the requested mount is not active then a 404
+  response is returned instead of the file contents.
+. fserve engine can handle bandwidth limiting per client. Fallback to file uses this
+  by using the average incoming bitrate of the source stream as the target limit.
+. file serving uses an internal cache of open files, so that 1000 listerners do not
+  suddenly open 1000 files if a fallback to file occurs.
+. move listeners admin request can specify another source or file.
+. relay changes
+  - the client structure is always allocated now, instead of when the relay is started.
+  - listeners stay on relay if switching to another relay master. Only when they all
+    have failed does the fallback apply.
+. post-kh9 fixes
+  - fix for possible race with rejected new listeners going through auth
+  - make mp3-metadata-interval 0 work again
+  - auth htpasswd checks for details provided like user:pass@host:port/mount and if not
+    then checks as host:port/mount?user=a&pass=b
+
 2.3.2-kh9
 . allow shoutcast source client auth work via stream_auth url
 . allow for a flash policy file.

@@ -236,7 +236,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         client_set_queue (client, NULL);
         client->refbuf = refbuf;
         refbuf->len = strlen (refbuf->data);
-        fserve_add_client (client, NULL);
+        fserve_setup_client (client, NULL);
         xmlFree (string);
     }
     else

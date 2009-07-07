@@ -376,6 +376,7 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
      * marking starting points */
     if (ogg_info->codec_sync == NULL)
         refbuf->flags |= SOURCE_BLOCK_SYNC;
+    source->client->queue_pos += refbuf->len;
     return refbuf;
 }
 
@@ -447,7 +448,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                 if (ogg_info->error)
                 {
                     ERROR0 ("Problem processing stream");
-                    source->running = 0;
+                    source->flags &= ~SOURCE_RUNNING;
                     return NULL;
                 }
                 if (refbuf)
@@ -461,13 +462,15 @@ static refbuf_t *ogg_get_buffer (source_t *source)
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
         bytes = client_read_bytes (source->client, data, 4096);
+        if (bytes < 4096)
+            source->client->schedule_ms = source->client->worker->time_ms + source->skip_duration;
         if (bytes <= 0)
         {
             ogg_sync_wrote (&ogg_info->oy, 0);
             return NULL;
         }
         format->read_bytes += bytes;
-        rate_add (format->in_bitrate, bytes, time(NULL));
+        rate_add (format->in_bitrate, bytes, source->client->worker->current_time.tv_sec);
         ogg_sync_wrote (&ogg_info->oy, bytes);
     }
 }
@@ -562,7 +565,7 @@ static int write_buf_to_client (client_t *client)
         if (ret > 0)
         {
             client->pos += ret;
-            client->lag -= ret;
+            client->queue_pos += ret;
         }
 
         if (ret < (int)len)

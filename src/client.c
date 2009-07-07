@@ -26,6 +26,7 @@
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "httpp/httpp.h"
+#include "timing/timing.h"
 
 #include "cfgfile.h"
 #include "connection.h"
@@ -42,6 +43,8 @@
 #undef CATMODULE
 #define CATMODULE "client"
 
+int worker_count;
+
 /* create a client_t with the provided connection and parser details. Return
  * client_t ready for use.  Should be called with global lock held.
  */
@@ -54,7 +57,7 @@ client_t *client_create (connection_t *con, http_parser_t *parser)
 
     global.clients++;
 
-    if (con->serversock != SOCK_ERROR)
+    if (con && con->serversock != SOCK_ERROR)
     {
         int i;
         for (i=0; i < global.server_sockets; i++)
@@ -69,10 +72,7 @@ client_t *client_create (connection_t *con, http_parser_t *parser)
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
     client->parser = parser;
-    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-    client->refbuf->len = 0; /* force reader code to ignore buffer contents */
     client->pos = 0;
-    client->write_to_client = format_generic_write_to_client;
     return client;
 }
 
@@ -126,19 +126,14 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 {
     int bytes;
 
-    if (client->refbuf && client->refbuf->len)
+    if (client->refbuf && client->pos < client->refbuf->len)
     {
-        /* we have data to read from a refbuf first */
-        if (client->refbuf->len < len)
-            len = client->refbuf->len;
-        memcpy (buf, client->refbuf->data, len);
-        if (len < client->refbuf->len)
-        {
-            char *ptr = client->refbuf->data;
-            memmove (ptr, ptr+len, client->refbuf->len - len);
-        }
-        client->refbuf->len -= len;
-        return len;
+        unsigned remaining = client->refbuf->len - client->pos;
+        if (remaining > len)
+            remaining = len;
+        memcpy (buf, client->refbuf->data + client->pos, remaining);
+        client->pos += remaining;
+        return remaining;
     }
     bytes = client->con->read (client->con, buf, len);
 
@@ -158,7 +153,7 @@ void client_send_302(client_t *client, const char *location)
             "Moved <a href=\"%s\">here</a>\r\n", location, location);
     client->respcode = 302;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -169,7 +164,7 @@ void client_send_400(client_t *client, char *message) {
             "<b>%s</b>\r\n", message);
     client->respcode = 400;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -180,7 +175,9 @@ void client_send_401 (client_t *client, const char *realm)
     if (realm == NULL)
         realm = config->server_id;
 
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+    refbuf_release (client->refbuf);
+    client->refbuf = refbuf_new (500);
+    snprintf (client->refbuf->data, 500,
             "HTTP/1.0 401 Authentication Required\r\n"
             "WWW-Authenticate: Basic realm=\"%s\"\r\n"
             "\r\n"
@@ -188,7 +185,7 @@ void client_send_401 (client_t *client, const char *realm)
     config_release_config();
     client->respcode = 401;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -201,7 +198,7 @@ void client_send_403(client_t *client, const char *reason)
             "Content-Type: text/html\r\n\r\n", reason);
     client->respcode = 403;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 void client_send_403redirect (client_t *client, const char *mount, const char *reason)
@@ -214,22 +211,25 @@ void client_send_403redirect (client_t *client, const char *mount, const char *r
 
 void client_send_404(client_t *client, const char *message)
 {
-    if (client->respcode)
+    if (client->worker == NULL)   /* client is not on any worker now */
     {
         client_destroy (client);
         return;
     }
-    if (message == NULL)
-        message = "Not Available";
-    if (client->refbuf == NULL)
+    client_set_queue (client, NULL);
+    if (client->respcode == 0)
+    {
+        if (message == NULL)
+            message = "Not Available";
         client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 404 Not Available\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
-    client->respcode = 404;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                "HTTP/1.0 404 Not Available\r\n"
+                "Content-Type: text/html\r\n\r\n"
+                "<b>%s</b>\r\n", message);
+        client->respcode = 404;
+        client->refbuf->len = strlen (client->refbuf->data);
+    }
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -239,7 +239,7 @@ void client_send_416(client_t *client)
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     client->respcode = 416;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    fserve_setup_client (client, NULL);
 }
 
 
@@ -288,5 +288,219 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
     client->pos = 0;
     if (to_release)
         refbuf_release (to_release);
+}
+
+
+worker_t *find_least_busy_handler (void)
+{
+    worker_t *handler, *min = NULL;
+
+    if (workers)
+    {
+        min = workers;
+        handler = workers->next;
+        DEBUG2 ("handler %p has %d clients", min, min->count);
+        while (handler)
+        {
+            DEBUG2 ("handler %p has %d clients", handler, handler->count);
+            if (handler->count < min->count)
+                min = handler;
+            handler = handler->next;
+        }
+    }
+    return min;
+}
+
+
+void client_change_worker (client_t *client, worker_t *dest_worker)
+{
+    worker_t *this_worker = client->worker;
+
+    // make sure this client list is ok
+    *this_worker->current_p = client->next_on_worker;
+    this_worker->count--;
+    thread_mutex_unlock (&this_worker->lock);
+
+    thread_mutex_lock (&dest_worker->lock);
+    if (dest_worker->running)
+    {
+        client->worker = dest_worker;
+        client->next_on_worker = dest_worker->clients;
+        dest_worker->clients = client;
+        dest_worker->count++;
+        client->flags |= CLIENT_HAS_CHANGED_THREAD;
+        // make client inactive so that the destination thread does not run it straight away
+        client->flags &= ~CLIENT_ACTIVE;
+    }
+    thread_mutex_unlock (&dest_worker->lock);
+    thread_mutex_lock (&this_worker->lock);
+}
+
+
+void client_add_worker (client_t *client)
+{
+    worker_t *handler;
+
+    thread_rwlock_rlock (&workers_lock);
+    /* add client to the handler with the least number of clients */
+    handler = find_least_busy_handler();
+    thread_mutex_lock (&handler->lock);
+    thread_rwlock_unlock (&workers_lock);
+
+    client->schedule_ms = handler->time_ms;
+    client->next_on_worker = handler->clients;
+    handler->clients = client;
+    client->worker = handler;
+    ++handler->count;
+    if (handler->wakeup_ms - handler->time_ms > 15)
+        thread_cond_signal (&handler->cond); /* wake thread if required */
+    thread_mutex_unlock (&handler->lock);
+}
+
+
+void *worker (void *arg)
+{
+    worker_t *handler = arg;
+    client_t *client, **prevp;
+    long prev_count = -1;
+    struct timespec wakeup_time;
+
+    handler->running = 1;
+    thread_mutex_lock (&handler->lock);
+    thread_get_timespec (&handler->current_time);
+    handler->time_ms = THREAD_TIME_MS (&handler->current_time);
+    wakeup_time = handler->current_time;
+
+    prevp = &handler->clients;
+    while (handler->running)
+    {
+        if (prev_count != handler->count)
+        {
+            DEBUG2 ("%p now has %d clients", handler, handler->count);
+            prev_count = handler->count;
+        }
+        thread_cond_timedwait (&handler->cond, &handler->lock, &wakeup_time);
+        thread_get_timespec (&handler->current_time);
+        handler->time_ms = THREAD_TIME_MS (&handler->current_time);
+        handler->wakeup_ms = handler->time_ms + 60000;
+        client = handler->clients;
+        prevp = &handler->clients;
+        while (client)
+        {
+            /* process client details but skip those that are not ready yet */
+            if (client->flags & CLIENT_ACTIVE)
+            {
+                if (client->schedule_ms <= handler->time_ms+15)
+                {
+                    int ret;
+
+                    handler->current_p = prevp;
+                    ret = client->ops->process (client);
+
+                    /* special handler, client has moved away to another worker */
+                    if (client->flags & CLIENT_HAS_CHANGED_THREAD)
+                    {
+                        client->flags &= ~CLIENT_HAS_CHANGED_THREAD;
+                        client->flags |= CLIENT_ACTIVE;
+                        client = *prevp;
+                        continue;
+                    }
+                    if (ret < 0)
+                    {
+                        client_t *to_go = client;
+                        *prevp = to_go->next_on_worker;
+                        client->next_on_worker = NULL;
+                        client->worker = NULL;
+                        handler->count--;
+                        if (client->ops->release)
+                            client->ops->release (client);
+                        client = *prevp;
+                        continue;
+                    }
+                }
+                if (client->schedule_ms < handler->wakeup_ms)
+                    handler->wakeup_ms = client->schedule_ms;
+            }
+            prevp = &client->next_on_worker;
+            client = *prevp;
+        }
+        handler->wakeup_ms += 10;  /* allow a small sleep */
+        wakeup_time.tv_sec = handler->wakeup_ms/1000;
+        wakeup_time.tv_nsec = (handler->wakeup_ms%1000) *1000000;
+    }
+    thread_mutex_unlock (&handler->lock);
+    INFO0 ("shutting down");
+    return NULL;
+}
+
+
+static void worker_start (void)
+{
+    worker_t *handler = calloc (1, sizeof(worker_t));
+
+    thread_mutex_create (&handler->lock);
+    thread_cond_create (&handler->cond);
+    thread_rwlock_wlock (&workers_lock);
+    handler->next = workers;
+    workers = handler;
+    worker_count++;
+    handler->thread = thread_create ("worker", worker, handler, THREAD_ATTACHED);
+    thread_rwlock_unlock (&workers_lock);
+}
+
+static void worker_stop (void)
+{
+    worker_t *handler = workers;
+    client_t *clients = NULL;
+
+    if (handler == NULL)
+        return;
+    thread_rwlock_wlock (&workers_lock);
+    workers = handler->next;
+    worker_count--;
+    thread_rwlock_unlock (&workers_lock);
+    handler->running = 0;
+
+    thread_mutex_lock (&handler->lock);
+    clients = handler->clients;
+    handler->clients = NULL;
+    handler->count = 0;
+    thread_cond_signal (&handler->cond);
+    thread_mutex_unlock (&handler->lock);
+    // move clients to another handler
+    if (worker_count > 1 && clients)
+    {
+        client_t *endp  = clients;
+        int count = 0;
+
+        thread_mutex_lock (&workers->lock);
+        while (endp->next_on_worker)
+        {
+            endp = endp->next_on_worker;
+            count++;
+        }
+        endp->next_on_worker = workers->clients;
+        workers->clients = clients;
+        workers->count += count;
+        thread_mutex_unlock (&workers->lock);
+    }
+    if (handler->count)
+        WARN1 ("%d clients left", handler->count);
+
+    thread_join (handler->thread);
+    thread_mutex_destroy (&handler->lock);
+    thread_cond_destroy (&handler->cond);
+    free (handler);
+}
+
+void workers_adjust (int new_count)
+{
+    while (worker_count != new_count)
+    {
+        if (worker_count < new_count)
+            worker_start ();
+        else
+            worker_stop ();
+    }
 }
 
