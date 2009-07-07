@@ -11,15 +11,22 @@
 
 #include <stdlib.h>
 #include <sys/types.h>
-#ifdef HAVE_STDINT_H
-# include <stdint.h>
-#endif
 
 #ifdef _WIN32
 #include <windows.h>
 #include <mmsystem.h>
 #else
-#include <sys/time.h>
+#ifdef TIME_WITH_SYS_TIME
+#  include <sys/time.h>
+#  include <time.h>
+#else
+#  ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#  else
+#    include <time.h>
+#  endif
+#endif
+
 #include <unistd.h>
 #endif
 
@@ -47,14 +54,15 @@ uint64_t timing_get_time(void)
 
     return (uint64_t)(mtv.tv_sec) * 1000 + (uint64_t)(mtv.tv_usec) / 1000;
 #elif HAVE_FTIME
-  struct timeb t;
+    struct timeb t;
 
-  ftime(&t);
-  return t.time * 1000 + t.millitm;
+    ftime(&t);
+    return t.time * 1000 + t.millitm;
 #else
 #error need time query handler
 #endif
 }
+
 
 void timing_sleep(uint64_t sleeptime)
 {

@@ -22,7 +22,7 @@
 #include <avl/avl.h>
 #include "httpp.h"
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(HAVE_STRCASECMP)
 #define strcasecmp stricmp
 #endif
 
@@ -358,6 +358,7 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
         char *query;
         if((query = strchr(uri, '?')) != NULL) {
             httpp_setvar(parser, HTTPP_VAR_RAWURI, uri);
+            httpp_setvar(parser, HTTPP_VAR_QUERYARGS, query);
             *query = 0;
             query++;
             parse_query(parser, query);
@@ -423,6 +424,17 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
     free(data);
 
     return 1;
+}
+
+void httpp_deletevar(http_parser_t *parser, const char *name)
+{
+    http_var_t var;
+
+    if (parser == NULL || name == NULL)
+        return;
+    var.name = (char*)name;
+    var.value = NULL;
+    avl_delete(parser->vars, (void *)&var, _free_vars);
 }
 
 void httpp_setvar(http_parser_t *parser, const char *name, const char *value)

@@ -15,6 +15,7 @@
 #define HTTPP_VAR_VERSION "__version"
 #define HTTPP_VAR_URI "__uri"
 #define HTTPP_VAR_RAWURI "__rawuri"
+#define HTTPP_VAR_QUERYARGS " __queryargs"
 #define HTTPP_VAR_REQ_TYPE "__req_type"
 #define HTTPP_VAR_ERROR_MESSAGE "__errormessage"
 #define HTTPP_VAR_ERROR_CODE "__errorcode"
@@ -62,6 +63,7 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
 int httpp_parse_icy(http_parser_t *parser, const char *http_data, unsigned long len);
 int httpp_parse_response(http_parser_t *parser, const char *http_data, unsigned long len, const char *uri);
 void httpp_setvar(http_parser_t *parser, const char *name, const char *value);
+void httpp_deletevar(http_parser_t *parser, const char *name);
 const char *httpp_getvar(http_parser_t *parser, const char *name);
 void httpp_set_query_param(http_parser_t *parser, const char *name, const char *value);
 const char *httpp_get_query_param(http_parser_t *parser, const char *name);
