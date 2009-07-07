@@ -76,7 +76,7 @@ typedef struct {
     char *name;
 #endif
 
-    pthread_mutex_t cond_mutex;
+    int set;
     pthread_cond_t sys_cond;
 } cond_t;
 
@@ -126,7 +126,7 @@ typedef mutex_t spin_t;
 #define thread_cond_signal(x) thread_cond_signal_c(x,__LINE__,__FILE__)
 #define thread_cond_broadcast(x) thread_cond_broadcast_c(x,__LINE__,__FILE__)
 #define thread_cond_wait(x) thread_cond_wait_c(x,__LINE__,__FILE__)
-#define thread_cond_timedwait(x,t) thread_cond_wait_c(x,t,__LINE__,__FILE__)
+#define thread_cond_timedwait(x,m,t) thread_cond_timedwait_c(x,m,t,__LINE__,__FILE__)
 #define thread_rwlock_create(x) thread_rwlock_create_c(__FILE__,(x),__LINE__,__FILE__)
 #define thread_rwlock_rlock(x) thread_rwlock_rlock_c(x,__LINE__,__FILE__)
 #define thread_rwlock_wlock(x) thread_rwlock_wlock_c(x,__LINE__,__FILE__)
@@ -183,8 +183,8 @@ void thread_mutex_destroy(mutex_t *mutex);
 void thread_cond_create_c(cond_t *cond, int line, char *file);
 void thread_cond_signal_c(cond_t *cond, int line, char *file);
 void thread_cond_broadcast_c(cond_t *cond, int line, char *file);
-void thread_cond_wait_c(cond_t *cond, int line, char *file);
-void thread_cond_timedwait_c(cond_t *cond, int millis, int line, char *file);
+void thread_cond_wait_c(cond_t *cond, mutex_t *mutex, int line, char *file);
+void thread_cond_timedwait_c(cond_t *cond, mutex_t *mutex, struct timespec *ts, int line, char *file);
 void thread_cond_destroy(cond_t *cond);
 void thread_rwlock_create_c(const char *name, rwlock_t *rwlock, int line, const char *file);
 void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, const char *file);
@@ -209,5 +209,11 @@ void thread_rename(const char *name);
 
 /* waits until thread_exit is called for another thread */
 void thread_join(thread_type *thread);
+
+void thread_get_timespec (struct timespec *now);
+void thread_time_add_ms (struct timespec *now, unsigned long value);
+
+#define THREAD_TIME_MS(X) ((X)->tv_sec*1000+(X)->tv_nsec/1000000)
+#define THREAD_TIME_SEC(X) ((X)->tv_sec)
 
 #endif  /* __THREAD_H__ */

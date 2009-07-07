@@ -38,6 +38,7 @@
 
 #include <signal.h>
 
+#include <timing/timing.h>
 #include <thread/thread.h>
 #include <avl/avl.h>
 #ifdef THREAD_DEBUG
@@ -88,6 +89,7 @@ typedef struct thread_start_tag {
 static long _next_thread_id = 0;
 static int _initialized = 0;
 static avl_tree *_threadtree = NULL;
+static int abort_on_mutex_timeout;
 
 
 #ifdef THREAD_DEBUG
@@ -185,6 +187,9 @@ void thread_initialize(void)
 
     _catch_signals();
 
+    abort_on_mutex_timeout = 0;
+    if (getenv ("ICE_MUTEX_ABORT"))
+        abort_on_mutex_timeout = 1;
     _initialized = 1;
 }
 
@@ -345,7 +350,7 @@ void thread_mutex_create_c(mutex_t *mutex, int line, const char *file)
     _mutex_create(mutex);
 
 #ifdef THREAD_DEBUG
-    mutex->name = malloc (strlen (name)+20);
+    mutex->name = malloc (strlen (file)+20);
     sprintf (mutex->name, "%s:%d", file, line);
     _mutex_lock(&_mutextree_mutex);
     mutex->mutex_id = _next_mutex_id++;
@@ -364,7 +369,6 @@ void thread_mutex_destroy (mutex_t *mutex)
     _mutex_lock(&_mutextree_mutex);
     avl_delete(_mutextree, mutex, _free_mutex);
     _mutex_unlock(&_mutextree_mutex);
-    free (mutex->name);
 #endif
 }
 
@@ -396,17 +400,16 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 void thread_cond_create_c(cond_t *cond, int line, char *file)
 {
     pthread_cond_init(&cond->sys_cond, NULL);
-    pthread_mutex_init(&cond->cond_mutex, NULL);
 }
 
 void thread_cond_destroy(cond_t *cond)
 {
-    pthread_mutex_destroy(&cond->cond_mutex);
     pthread_cond_destroy(&cond->sys_cond);
 }
 
 void thread_cond_signal_c(cond_t *cond, int line, char *file)
 {
+    cond->set = 1;
     pthread_cond_signal(&cond->sys_cond);
 }
 
@@ -415,23 +418,20 @@ void thread_cond_broadcast_c(cond_t *cond, int line, char *file)
     pthread_cond_broadcast(&cond->sys_cond);
 }
 
-void thread_cond_timedwait_c(cond_t *cond, int millis, int line, char *file)
+void thread_cond_timedwait_c(cond_t *cond, mutex_t *mutex, struct timespec *ts, int line, char *file)
 {
-    struct timespec time;
+    int rc = 0;
 
-    time.tv_sec = millis/1000;
-    time.tv_nsec = (millis - time.tv_sec*1000)*1000000;
-
-    pthread_mutex_lock(&cond->cond_mutex);
-    pthread_cond_timedwait(&cond->sys_cond, &cond->cond_mutex, &time);
-    pthread_mutex_unlock(&cond->cond_mutex);
+    cond->set = 0;
+    while (cond->set == 0 && rc == 0)
+        rc = pthread_cond_timedwait(&cond->sys_cond, &mutex->sys_mutex, ts);
+    if (rc == 0 && cond->set == 1)
+        cond->set = 0;
 }
 
-void thread_cond_wait_c(cond_t *cond, int line, char *file)
+void thread_cond_wait_c(cond_t *cond, mutex_t *mutex,int line, char *file)
 {
-    pthread_mutex_lock(&cond->cond_mutex);
-    pthread_cond_wait(&cond->sys_cond, &cond->cond_mutex);
-    pthread_mutex_unlock(&cond->cond_mutex);
+    pthread_cond_wait(&cond->sys_cond, &mutex->sys_mutex);
 }
 
 void thread_rwlock_create_c(const char *name, rwlock_t *rwlock, int line, const char *file)
@@ -518,11 +518,10 @@ void thread_exit_c(long val, int line, char *file)
 #ifdef THREAD_DEBUG
         LOG_DEBUG4("Removing thread %d [%s] started at [%s:%d]", th->thread_id,
                 th->name, th->file, th->line);
-
+#endif
         _mutex_lock(&_threadtree_mutex);
         avl_delete(_threadtree, th, _free_thread);
         _mutex_unlock(&_threadtree_mutex);
-#endif
     }
 
     pthread_exit ((void*)val);
@@ -649,6 +648,17 @@ void thread_rename(const char *name)
 
 static void _mutex_lock(mutex_t *mutex) 
 {
+    if (abort_on_mutex_timeout)
+    {
+        struct timespec now;
+        int rc;
+        thread_get_timespec (&now);
+        now.tv_sec += 4;
+        rc = pthread_mutex_timedlock (&mutex->sys_mutex, &now);
+        if (rc == ETIMEDOUT)
+            abort();
+        return;
+    }
     pthread_mutex_lock(&mutex->sys_mutex);
 }
 
@@ -776,4 +786,46 @@ void thread_spin_unlock (spin_t *spin)
     pthread_spin_unlock (&spin->lock);
 }
 #endif
+
+
+#ifdef HAVE_CLOCK_GETTIME
+void thread_get_timespec (struct timespec *now)
+{
+    clock_gettime (CLOCK_REALTIME, now);
+}
+#elif HAVE_GETTIMEOFDAY
+void thread_get_timespec (struct timespec *now)
+{
+    struct timeval mtv;
+
+    gettimeofday (&mtv, NULL);
+    now->tv_sec = mtv.tv_sec;
+    now->tv_nsec = mtv.tv_usec*1000;
+}
+#elif HAVE_FTIME
+void thread_get_timespec (struct timespec *now)
+{
+    struct timeb t;
+
+    ftime (&t);
+    now->tv_sec = t.time;
+    now->tv_nsec = t.millitm * 1000000;
+}
+#endif
+
+
+void thread_time_add_ms (struct timespec *ts, unsigned long value)
+{
+    if (value > 999)
+    {
+        ts->tv_sec += value/1000;
+        value %= 1000;
+    }
+    ts->tv_nsec += (value*1000000);
+    if (ts->tv_nsec > 999999999)
+    {
+        ts->tv_sec++;
+        ts->tv_nsec -= 1000000000;
+    }
+}
 
