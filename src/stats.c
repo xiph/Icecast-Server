@@ -458,7 +458,11 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
             case STATS_EVENT_ADD:
                 value = atoi (node->value)+atoi (event->value);
                 break;
+            case STATS_EVENT_SUB:
+                value = atoll (node->value) - atoll (event->value);
+                break;
             default:
+                WARN2 ("unhandled event (%d) for %s", event->action, event->source);
                 break;
         }
         str = malloc (16);

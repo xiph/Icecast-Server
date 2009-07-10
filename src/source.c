@@ -193,6 +193,8 @@ int source_compare_sources(void *arg, void *a, void *b)
 
 void source_clear_source (source_t *source)
 {
+    int c;
+
     DEBUG1 ("clearing source \"%s\"", source->mount);
 
     avl_tree_wlock (source->pending_tree);
@@ -212,15 +214,26 @@ void source_clear_source (source_t *source)
         source->dumpfile = NULL;
     }
 
-    if (source->listeners)
-        stats_event_sub (NULL, "listeners", source->listeners);
-
     /* lets kick off any clients that are left on here */
     avl_tree_wlock (source->client_tree);
-    while (avl_get_first (source->client_tree))
+    c=0;
+    while (1)
     {
-        avl_delete (source->client_tree,
-                avl_get_first (source->client_tree)->key, _free_client);
+        avl_node *node = avl_get_first (source->client_tree);
+        if (node)
+        {
+            client_t *client = node->key;
+            if (client->respcode == 200)
+                c++; /* only count clients that have had some processing */
+            avl_delete (source->client_tree, client, _free_client);
+            continue;
+        }
+        break;
+    }
+    if (c)
+    {
+        stats_event_sub (NULL, "listeners", source->listeners);
+        INFO2 ("%d active listeners on %s released", c, source->mount);
     }
     avl_tree_unlock (source->client_tree);
 
@@ -722,9 +735,10 @@ void source_main (source_t *source)
 
             if (client->con->error) {
                 client_node = avl_get_next(client_node);
+                if (client->respcode == 200)
+                    stats_event_dec (NULL, "listeners");
                 avl_delete(source->client_tree, (void *)client, _free_client);
                 source->listeners--;
-                stats_event_dec (NULL, "listeners");
                 DEBUG0("Client removed");
                 continue;
             }
