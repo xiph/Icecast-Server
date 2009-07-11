@@ -205,11 +205,13 @@ static client_t *open_relay_connection (relay_server *relay)
          */
         sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                 "User-Agent: %s\r\n"
+                "Host: %s\r\n"
                 "%s"
                 "%s"
                 "\r\n",
                 mount,
                 server_id,
+                server,
                 relay->mp3metadata?"Icy-MetaData: 1\r\n":"",
                 auth_header);
         memset (header, 0, sizeof(header));
