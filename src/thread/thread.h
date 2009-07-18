@@ -213,7 +213,7 @@ void thread_join(thread_type *thread);
 void thread_get_timespec (struct timespec *now);
 void thread_time_add_ms (struct timespec *now, unsigned long value);
 
-#define THREAD_TIME_MS(X) ((X)->tv_sec*1000+(X)->tv_nsec/1000000)
+#define THREAD_TIME_MS(X) ((X)->tv_sec*(uint64_t)1000+(X)->tv_nsec/1000000)
 #define THREAD_TIME_SEC(X) ((X)->tv_sec)
 
 #endif  /* __THREAD_H__ */
