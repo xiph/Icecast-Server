@@ -115,8 +115,6 @@ void source_set_override (const char *mount, const char *dest);
 #define SOURCE_BLOCK_SYNC           01
 #define SOURCE_BLOCK_RELEASE        02
 
-#define SOURCE_BLOCK_SYNC           01
-
 #endif
 
 

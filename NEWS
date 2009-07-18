@@ -1,5 +1,6 @@
 Feature differences from SVN trunk
 
+. define a fixed number of worker threads (default 1) for processing clients
 . allow for wildcards (*[] expansion) in mount-name and ban/allow files
 . can limit mountpoint by outgoing bandwidth as well as a max listeners count
 . can drop new listeners if server-wide bitrate is above a limit
@@ -14,6 +15,12 @@ Feature differences from SVN trunk
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+
+2.3.2-kh11
+. busy looping caused by truncation on 32bit setups
+. avoid possible deadlock between file release and open
+. relay client handles were not being cleaned up fully.
+. send Host: header on relay connects.
 
 2.3.2-kh10
 . big internal thread change. instead of one thread per stream, we now have a fixed number

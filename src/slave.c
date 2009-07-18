@@ -77,6 +77,7 @@ static redirect_host *find_slave_host (const char *server, int port);
 static void redirector_clearall (void);
 static int  relay_startup (client_t *client);
 static int  relay_read (client_t *client);
+static void relay_release (client_t *client);
 
 int slave_running = 0;
 int worker_count;
@@ -96,13 +97,13 @@ rwlock_t workers_lock;
 struct _client_functions relay_client_ops =
 {
     relay_read,
-    client_destroy
+    relay_release
 };
 
 struct _client_functions relay_startup_ops =
 {
     relay_startup,
-    client_destroy
+    relay_release
 };
 
 
@@ -355,11 +356,13 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
          */
         sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                 "User-Agent: %s\r\n"
+                "Host: %s\r\n"
                 "%s"
                 "%s"
                 "\r\n",
                 mount,
                 server_id,
+                server,
                 relay->mp3metadata ? "Icy-MetaData: 1\r\n" : "",
                 auth_header);
         memset (header, 0, sizeof(header));
@@ -720,10 +723,12 @@ static void relay_check_streams (relay_server *to_start,
 
         if (release->source && release->source->client)
         {
+            release->cleanup = 1;
+            release->start = 0;
             if (release->running)
             {
-                /* relay has been removed from xml, shut down active relay */
-                DEBUG1 ("source shutdown request on \"%s\"", release->localmount);
+                /* relay has been removed from xml/streamlist, shut down active relay */
+                INFO1 ("source shutdown request on \"%s\"", release->localmount);
                 release->running = 0;
                 release->source->flags &= ~SOURCE_RUNNING;
             }
@@ -1223,7 +1228,7 @@ static int relay_read (client_t *client)
     thread_mutex_lock (&source->lock);
     if (source_running (source))
     {
-        if (relay->enable == 0)
+        if (relay->enable == 0 || relay->cleanup)
             source->flags &= ~SOURCE_RUNNING;
         if (relay->on_demand && source->listeners == 0)
             source->flags &= ~SOURCE_RUNNING;
@@ -1267,8 +1272,15 @@ static int relay_read (client_t *client)
     stats_event (relay->localmount, NULL, NULL);
     global_reduce_bitrate_sampling (global.out_bitrate);
     thread_rwlock_unlock (&global.shutdown_lock);
-    relay_free (relay);
     return -1;
+}
+
+
+static void relay_release (client_t *client)
+{
+    relay_server *relay = client->shared_data;
+    relay_free (relay);
+    client_destroy (client);
 }
 
 
@@ -1276,7 +1288,7 @@ static int relay_startup (client_t *client)
 {
     relay_server *relay = client->shared_data;
 
-    if (global.running != ICE_RUNNING)
+    if (global.running != ICE_RUNNING || relay->cleanup)
         return -1;
     if (relay->enable == 0 || relay->start > client->worker->current_time.tv_sec)
     {

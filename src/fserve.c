@@ -492,9 +492,16 @@ static void fh_release (fh_node *fh)
         thread_mutex_unlock (&fh->lock);
         return;
     }
-    avl_tree_wlock (fh_cache);
+    /* now we will probably remove the fh, but to prevent a deadlock with
+     * open_fh, we drop the node lock and acquire the tree and node locks
+     * in that order and only remove if the refcount is still 0 */
     thread_mutex_unlock (&fh->lock);
-    avl_delete (fh_cache, fh, _delete_fh);
+    avl_tree_wlock (fh_cache);
+    thread_mutex_lock (&fh->lock);
+    if (fh->refcount)
+        thread_mutex_unlock (&fh->lock);
+    else
+        avl_delete (fh_cache, fh, _delete_fh);
     avl_tree_unlock (fh_cache);
 }
 
