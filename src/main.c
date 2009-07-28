@@ -15,8 +15,14 @@
 #include <config.h>
 #endif
 
+#ifdef WIN32_SERVICE
+#define _WIN32_WINNT 0x0400
+#include <windows.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
@@ -35,7 +41,6 @@
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
-#include <errno.h>
 #endif
 
 #include "cfgfile.h"
@@ -69,7 +74,9 @@ static char *pidfile = NULL;
 
 static void _fatal_error(char *perr)
 {
-#ifdef WIN32
+#ifdef WIN32_SERVICE
+    MessageBox(NULL, perr, "Error", MB_SERVICE_NOTIFICATION);
+#elif defined(WIN32)
     MessageBox(NULL, perr, "Error", MB_OK);
 #else
     fprintf(stdout, "%s\n", perr);
@@ -115,13 +122,13 @@ void _initialize_subsystems(void)
 
 void _shutdown_subsystems(void)
 {
-    fserve_shutdown();
     refbuf_shutdown();
     slave_shutdown();
     auth_shutdown();
     yp_shutdown();
     stats_shutdown();
 
+    fserve_shutdown();
     connection_shutdown();
     config_shutdown();
     resolver_shutdown();
@@ -431,12 +438,14 @@ int main(int argc, char **argv)
                 _fatal_error("XML config parsing error");
                 break;
             }
+#if !defined(_WIN32) || defined(_CONSOLE)
             _shutdown_subsystems();
-            return 1;
+#endif
+            return -1;
         }
     } else if (res == -1) {
         _print_usage();
-        return 1;
+        return -1;
     }
     
     /* override config file options with commandline options */
@@ -446,7 +455,7 @@ int main(int argc, char **argv)
     if(!_server_proc_init()) {
         _fatal_error("Server startup failed. Exiting");
         _shutdown_subsystems();
-        return 1;
+        return -1;
     }
 
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
@@ -469,7 +478,7 @@ int main(int argc, char **argv)
     if (!_start_logging()) {
         _fatal_error("FATAL: Could not start logging");
         _shutdown_subsystems();
-        return 1;
+        return -1;
     }
 
     INFO1 ("%s server started", ICECAST_VERSION_STRING);

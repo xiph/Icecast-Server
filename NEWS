@@ -16,6 +16,14 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh12
+. xml based relays could cause a crash on server exit or xml reload
+. avoid memory/fd leak on active relay restart.
+. cleaner worker thread shutdown.
+. win32 update. Prevent Esc closing the GUI. Make the service work better and
+  is now able to take an alternative xml as parameter. Update libogg in the
+  build to 1.1.4 and refer to the current directory for dependent DLLs.
+
 2.3.2-kh11
 . busy looping caused by truncation on 32bit setups
 . avoid possible deadlock between file release and open

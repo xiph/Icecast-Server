@@ -47,14 +47,14 @@
 
 struct rate_calc_node
 {
-    uint64_t index;
-    long value;
+    int64_t index;
+    uint64_t value;
     struct rate_calc_node *next;
 };
 
 struct rate_calc
 {
-    uint64_t total;
+    int64_t total;
     struct rate_calc_node *current;
     unsigned int samples;
     unsigned int ssec;
@@ -755,7 +755,7 @@ void rate_add (struct rate_calc *calc, long value, uint64_t sid)
  */
 long rate_avg (struct rate_calc *calc)
 {
-    uint64_t range;
+    float range;
 
     if (calc == NULL || calc->blocks < 2)
         return 0;

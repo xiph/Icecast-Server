@@ -228,7 +228,6 @@ void slave_shutdown(void)
     thread_rwlock_destroy (&slaves_lock);
     thread_rwlock_destroy (&workers_lock);
     thread_spin_destroy (&relay_start_lock);
-    slave_running = 0;
 }
 
 
@@ -550,6 +549,7 @@ static void *start_relay_stream (void *arg)
     config_release_config();
 
     INFO2 ("listener count still on %s is %d", src->mount, src->listeners);
+    source_clear_listeners (src);
     source_clear_source (src);
     relay->start = client->worker->current_time.tv_sec + relay->interval;
     client->schedule_ms = timing_get_time() + 1000;
@@ -725,6 +725,7 @@ static void relay_check_streams (relay_server *to_start,
         {
             release->cleanup = 1;
             release->start = 0;
+            release->source->client->schedule_ms = 0;
             if (release->running)
             {
                 /* relay has been removed from xml/streamlist, shut down active relay */
@@ -1253,8 +1254,15 @@ static int relay_read (client_t *client)
         client->ops = &relay_startup_ops;
         relay->running = 0;
         global_reduce_bitrate_sampling (global.out_bitrate);
-        thread_mutex_unlock (&source->lock);
+        if (client->con)
+            connection_close (client->con);
+        client->con = NULL;
+        if (client->parser)
+            httpp_destroy (client->parser);
+        client->parser = NULL;
+        source_clear_source (source);
         thread_rwlock_unlock (&global.shutdown_lock);
+        slave_update_all_mounts();
         return 0;
     }
     if ((source->flags & SOURCE_TERMINATING) == 0)
@@ -1272,6 +1280,7 @@ static int relay_read (client_t *client)
     stats_event (relay->localmount, NULL, NULL);
     global_reduce_bitrate_sampling (global.out_bitrate);
     thread_rwlock_unlock (&global.shutdown_lock);
+    slave_update_all_mounts();
     return -1;
 }
 
@@ -1288,7 +1297,7 @@ static int relay_startup (client_t *client)
 {
     relay_server *relay = client->shared_data;
 
-    if (global.running != ICE_RUNNING || relay->cleanup)
+    if (relay->cleanup)
         return -1;
     if (relay->enable == 0 || relay->start > client->worker->current_time.tv_sec)
     {
@@ -1300,17 +1309,17 @@ static int relay_startup (client_t *client)
     {
         source_t *src = relay->source;
         src->flags |= SOURCE_ON_DEMAND;
-        if (src->listeners == 0)
-        {
-            client->schedule_ms = client->worker->time_ms + 1000;
-            return 0;
-        }
         if (client->worker->current_time.tv_sec % 10 == 0)
         {
             mount_proxy * mountinfo = config_find_mount (config_get_config(), src->mount);
             if (mountinfo && mountinfo->fallback_mount)
                 source_set_override (mountinfo->fallback_mount, src->mount);
             config_release_config();
+        }
+        if (src->listeners == 0)
+        {
+            client->schedule_ms = client->worker->time_ms + 1000;
+            return 0;
         }
         DEBUG1 ("Detected listeners on relay %s", relay->localmount);
     }

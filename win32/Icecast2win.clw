@@ -12,7 +12,7 @@ Class1=CIcecast2winApp
 Class2=CIcecast2winDlg
 Class3=CAboutDlg
 
-ResourceCount=10
+ResourceCount=19
 Resource1=IDR_MENU2
 Resource2=IDR_MAINFRAME
 Resource3=IDR_TRAY
@@ -26,6 +26,15 @@ Resource7=IDD_STATSDIALOG
 Resource8=IDR_MENU3
 Resource9=IDD_ABOUTBOX
 Resource10=IDR_MENU4
+Resource11=IDD_SSTATUS (English (U.S.))
+Resource12=IDD_CONFIGDIALOG (English (U.S.))
+Resource13=IDD_STATSDIALOG (English (U.S.))
+Resource14=IDR_MENU2 (English (U.S.))
+Resource15=IDR_MENU3 (English (U.S.))
+Resource16=IDR_TRAY (English (U.S.))
+Resource17=IDD_ABOUTBOX (English (U.S.))
+Resource18=IDD_ICECAST2WIN_DIALOG (English (U.S.))
+Resource19=IDR_MENU4 (English (U.S.))
 
 [CLS:CIcecast2winApp]
 Type=0
@@ -141,6 +150,78 @@ CommandCount=1
 [MNU:IDR_MENU4]
 Type=1
 Class=CIcecast2winDlg
+Command1=ID_FILE_EXIT
+Command2=ID_FILE_EDITCONFIGURATION
+Command3=ID_ABOUT_HELP
+Command4=ID_ABOUT_CREDITS
+CommandCount=4
+
+[DLG:IDD_ABOUTBOX (English (U.S.))]
+Type=1
+Class=?
+ControlCount=2
+Control1=IDOK,button,1342373889
+Control2=IDC_STATIC,static,1350572046
+
+[DLG:IDD_ICECAST2WIN_DIALOG (English (U.S.))]
+Type=1
+Class=?
+ControlCount=7
+Control1=IDC_MAINTAB,SysTabControl32,1342177280
+Control2=IDC_START,button,1342242816
+Control3=IDC_AUTOSTART,button,1342251011
+Control4=IDC_STATIC,static,1342177294
+Control5=IDC_SERVERSTATUS,static,1342177294
+Control6=IDC_STATIC_SS,static,1342308865
+Control7=IDC_HIDESYSTRAY,button,1342242816
+
+[DLG:IDD_SSTATUS (English (U.S.))]
+Type=1
+Class=?
+ControlCount=5
+Control1=IDC_FILLER2,static,1342308352
+Control2=IDC_GLOBALSTAT_LIST,SysListView32,1350631425
+Control3=IDC_STATIC_GS,static,1342308352
+Control4=IDC_STATIC_RUN,static,1342308352
+Control5=IDC_RUNNINGFOR,static,1342308352
+
+[DLG:IDD_CONFIGDIALOG (English (U.S.))]
+Type=1
+Class=?
+ControlCount=1
+Control1=IDC_CONFIG,edit,1352732868
+
+[DLG:IDD_STATSDIALOG (English (U.S.))]
+Type=1
+Class=?
+ControlCount=4
+Control1=IDC_STATSLIST,SysListView32,1350631425
+Control2=IDC_SOURCELIST,SysListView32,1350631425
+Control3=IDC_STATIC_SLS,static,1342308352
+Control4=IDC_STATIC,static,1342308352
+
+[MNU:IDR_MENU2 (English (U.S.))]
+Type=1
+Class=?
+Command1=ID_POPUP_ADDTOGLOBALSTATLIST
+CommandCount=1
+
+[MNU:IDR_MENU3 (English (U.S.))]
+Type=1
+Class=?
+Command1=ID__DELETEFROMGLOBALSTATS
+Command2=ID__MAKETHISSTATTHEWINDOWTITLE
+CommandCount=2
+
+[MNU:IDR_TRAY (English (U.S.))]
+Type=1
+Class=?
+Command1=ID_BLANK_RESTORE
+CommandCount=1
+
+[MNU:IDR_MENU4 (English (U.S.))]
+Type=1
+Class=?
 Command1=ID_FILE_EXIT
 Command2=ID_FILE_EDITCONFIGURATION
 Command3=ID_ABOUT_HELP

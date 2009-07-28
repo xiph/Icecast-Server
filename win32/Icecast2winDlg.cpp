@@ -549,7 +549,7 @@ void StartStats(void *dummy)
 		    if (cur == NULL) {
 				MessageBox(NULL, "empty XML document", "Error", MB_OK);
 				xmlFreeDoc(doc);
-				return;
+				break;
 			}
 
 			cur = cur->xmlChildrenNode;
@@ -1202,3 +1202,8 @@ void CIcecast2winDlg::OnAboutCredits()
 	CAboutDlg	about;
 	about.DoModal();
 }
+
+void CIcecast2winDlg::OnCancel()
+{
+}
+

@@ -94,6 +94,7 @@ void *source_client_thread (void *arg);
 int  source_startup (client_t *client, const char *uri);
 int  source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
+void source_clear_listeners (source_t *source);
 void source_clear_source (source_t *source);
 source_t *source_find_mount(const char *mount);
 source_t *source_find_mount_raw(const char *mount);

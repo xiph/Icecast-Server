@@ -372,8 +372,10 @@ void *worker (void *arg)
     wakeup_time = handler->current_time;
 
     prevp = &handler->clients;
-    while (handler->running)
+    while (1)
     {
+        if (handler->running == 0 && handler->count == 0)
+            break;
         if (prev_count != handler->count)
         {
             DEBUG2 ("%p now has %d clients", handler, handler->count);
@@ -425,8 +427,9 @@ void *worker (void *arg)
             client = *prevp;
         }
         handler->wakeup_ms += 10;  /* allow a small sleep */
-        wakeup_time.tv_sec = handler->wakeup_ms/1000;
-        wakeup_time.tv_nsec = (handler->wakeup_ms%1000) *1000000;
+
+        wakeup_time.tv_sec =  (long)(handler->wakeup_ms/1000);
+        wakeup_time.tv_nsec = (long)((handler->wakeup_ms - (wakeup_time.tv_sec*1000))*1000000);
     }
     thread_mutex_unlock (&handler->lock);
     INFO0 ("shutting down");
@@ -459,34 +462,41 @@ static void worker_stop (void)
     workers = handler->next;
     worker_count--;
     thread_rwlock_unlock (&workers_lock);
-    handler->running = 0;
 
+    thread_mutex_lock (&handler->lock);
+    handler->running = 0;
+    thread_cond_signal (&handler->cond);
+    thread_mutex_unlock (&handler->lock);
+
+    thread_sleep (10000);
     thread_mutex_lock (&handler->lock);
     clients = handler->clients;
     handler->clients = NULL;
     handler->count = 0;
     thread_cond_signal (&handler->cond);
     thread_mutex_unlock (&handler->lock);
-    // move clients to another handler
-    if (worker_count > 1 && clients)
+    if (clients)
     {
-        client_t *endp  = clients;
-        int count = 0;
-
-        thread_mutex_lock (&workers->lock);
-        while (endp->next_on_worker)
+        if (worker_count == 0)
+            WARN0 ("clients left unprocessed");
+        else
         {
-            endp = endp->next_on_worker;
-            count++;
-        }
-        endp->next_on_worker = workers->clients;
-        workers->clients = clients;
-        workers->count += count;
-        thread_mutex_unlock (&workers->lock);
-    }
-    if (handler->count)
-        WARN1 ("%d clients left", handler->count);
+            // move clients to another worker
+            client_t *endp  = clients;
+            int count = 0;
 
+            thread_mutex_lock (&workers->lock);
+            while (endp->next_on_worker)
+            {
+                endp = endp->next_on_worker;
+                count++;
+            }
+            endp->next_on_worker = workers->clients;
+            workers->clients = clients;
+            workers->count += count;
+            thread_mutex_unlock (&workers->lock);
+        }
+    }
     thread_join (handler->thread);
     thread_mutex_destroy (&handler->lock);
     thread_cond_destroy (&handler->cond);

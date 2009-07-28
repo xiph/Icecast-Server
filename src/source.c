@@ -229,21 +229,11 @@ int source_compare_sources(void *arg, void *a, void *b)
 }
 
 
-void source_clear_source (source_t *source)
+void source_clear_listeners (source_t *source)
 {
-    int i, do_twice = 0;
+    int i;
     ice_config_t *config;
     mount_proxy *mountinfo;
-    refbuf_t *p;
-
-    DEBUG1 ("clearing source \"%s\"", source->mount);
-
-    if (source->dumpfile)
-    {
-        INFO1 ("Closing dumpfile for %s", source->mount);
-        fclose (source->dumpfile);
-        source->dumpfile = NULL;
-    }
 
     /* lets drop any listeners still connected */
     DEBUG2 ("source %s has %d clients to release", source->mount, source->listeners);
@@ -267,6 +257,24 @@ void source_clear_source (source_t *source)
     {
         stats_event_sub (NULL, "listeners", i);
         stats_event_sub (source->mount, "listeners", i);
+    }
+    source->listeners = 0;
+    source->prev_listeners = 0;
+}
+
+
+void source_clear_source (source_t *source)
+{
+    int do_twice = 0;
+    refbuf_t *p;
+
+    DEBUG1 ("clearing source \"%s\"", source->mount);
+
+    if (source->dumpfile)
+    {
+        INFO1 ("Closing dumpfile for %s", source->mount);
+        fclose (source->dumpfile);
+        source->dumpfile = NULL;
     }
 
     format_free_plugin (source->format);
@@ -301,8 +309,6 @@ void source_clear_source (source_t *source)
     source->burst_offset = 0;
     source->queue_size = 0;
     source->queue_size_limit = 0;
-    source->listeners = 0;
-    source->prev_listeners = 0;
     source->client_stats_update = 0;
     util_dict_free (source->audio_info);
     source->audio_info = NULL;
@@ -326,6 +332,7 @@ void source_clear_source (source_t *source)
 static int _free_source (void *p)
 {
     source_t *source = p;
+    source_clear_listeners (source);
     source_clear_source (source);
 
     /* make sure all YP entries have gone */
@@ -598,7 +605,6 @@ static int source_client_read (client_t *client)
             client->ops = &source_client_halt_ops;
             free (source->fallback.mount);
             source->fallback.mount = NULL;
-            stats_event (source->mount, NULL, NULL);
         }
         thread_mutex_unlock (&source->lock);
     }
@@ -992,6 +998,7 @@ void source_shutdown (source_t *source, int with_fallback)
     global.sources--;
     stats_event_args (NULL, "sources", "%d", global.sources);
     global_unlock();
+    stats_event (source->mount, NULL, NULL);
 }
 
 
