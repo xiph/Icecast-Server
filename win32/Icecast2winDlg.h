@@ -95,6 +95,7 @@ protected:
 	// Generated message map functions
 	//{{AFX_MSG(CIcecast2winDlg)
 	virtual BOOL OnInitDialog();
+	virtual void OnCancel();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();

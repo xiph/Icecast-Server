@@ -1205,3 +1205,8 @@ void CIcecast2winDlg::OnAboutCredits()
 	CAboutDlg	about;
 	about.DoModal();
 }
+
+void CIcecast2winDlg::OnCancel()
+{
+}
+
