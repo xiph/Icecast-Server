@@ -17,6 +17,16 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+
+#ifdef WIN32
+#define _WIN32_WINNT 0x0400
+/* For getpid() */
+#include <process.h>
+#include <windows.h>
+#define snprintf _snprintf
+#define getpid _getpid
+#endif
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
@@ -35,7 +45,6 @@
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
-#include <errno.h>
 #endif
 
 #include "cfgfile.h"
@@ -56,14 +65,6 @@
 
 #include <libxml/xmlmemory.h>
 
-#ifdef _WIN32
-/* For getpid() */
-#include <process.h>
-#include <windows.h>
-#define snprintf _snprintf
-#define getpid _getpid
-#endif
-
 #undef CATMODULE
 #define CATMODULE "main"
 
@@ -72,7 +73,9 @@ static char *pidfile = NULL;
 
 static void _fatal_error(char *perr)
 {
-#ifdef WIN32
+#ifdef WIN32_SERVICE
+    MessageBox(NULL, perr, "Error", MB_SERVICE_NOTIFICATION);
+#elif defined(WIN32)
     MessageBox(NULL, perr, "Error", MB_OK);
 #else
     fprintf(stdout, "%s\n", perr);
@@ -97,7 +100,7 @@ static void _stop_logging(void)
     log_close(playlistlog);
 }
 
-static void _initialize_subsystems(void)
+void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
@@ -107,23 +110,16 @@ static void _initialize_subsystems(void)
     connection_initialize();
     global_initialize();
     refbuf_initialize();
-#if !defined(WIN32) || defined(WIN32_SERVICE)
-    /* win32 GUI needs to do the initialise before here */
+
     xslt_initialize();
 #ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
 #endif
-#endif
 }
 
-static void _shutdown_subsystems(void)
+void shutdown_subsystems(void)
 {
     fserve_shutdown();
-#if !defined(WIN32) || defined(WIN32_SERVICE)
-    /* If we do the following cleanup on the win32 GUI then the app will crash when libxml2 is
-     * initialised again as the process doesn't terminate */
-    xslt_shutdown();
-#endif
     refbuf_shutdown();
     slave_shutdown();
     auth_shutdown();
@@ -144,6 +140,7 @@ static void _shutdown_subsystems(void)
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
     log_shutdown();
+    xslt_shutdown();
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)
@@ -425,9 +422,10 @@ int main(int argc, char **argv)
     */
     res = _parse_config_opts(argc, argv, filename, 512);
     if (res == 1) {
+#if !defined(_WIN32) || defined(_CONSOLE)
         /* startup all the modules */
-        _initialize_subsystems();
-
+        initialize_subsystems();
+#endif
         /* parse the config file */
         config_get_config();
         ret = config_initial_parse_file(filename);
@@ -451,7 +449,9 @@ int main(int argc, char **argv)
                 _fatal_error("XML config parsing error");
                 break;
             }
-            _shutdown_subsystems();
+#if !defined(_WIN32) || defined(_CONSOLE)
+            shutdown_subsystems();
+#endif
             return 1;
         }
     } else if (res == -1) {
@@ -465,7 +465,7 @@ int main(int argc, char **argv)
     /* Bind socket, before we change userid */
     if(!_server_proc_init()) {
         _fatal_error("Server startup failed. Exiting");
-        _shutdown_subsystems();
+        shutdown_subsystems();
         return 1;
     }
 
@@ -481,7 +481,7 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
-        _shutdown_subsystems();
+        shutdown_subsystems();
         return 1;
     }
 #endif
@@ -491,7 +491,7 @@ int main(int argc, char **argv)
 
     if (!_start_logging()) {
         _fatal_error("FATAL: Could not start logging");
-        _shutdown_subsystems();
+        shutdown_subsystems();
         return 1;
     }
 
@@ -512,9 +512,9 @@ int main(int argc, char **argv)
     _server_proc();
 
     INFO0("Shutting down");
-
-    _shutdown_subsystems();
-
+#if !defined(_WIN32) || defined(_CONSOLE)
+    shutdown_subsystems();
+#endif
     if (pidfile)
     {
         remove (pidfile);

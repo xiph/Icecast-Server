@@ -44,6 +44,7 @@
 #  define uint64_t unsigned __int64
 #  define uint32_t unsigned int
 #  define PRIu64  "I64u"
+#  define PRId64  "I64d"
 #else
 #  define PATH_SEPARATOR "/"
 #  if defined(HAVE_INTTYPES_H)

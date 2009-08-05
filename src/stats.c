@@ -41,6 +41,7 @@
 #include "logging.h"
 
 #ifdef _WIN32
+#define atoll _atoi64
 #define vsnprintf _vsnprintf
 #define snprintf _snprintf
 #endif
@@ -445,7 +446,7 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
     }
     if (event->action != STATS_EVENT_SET)
     {
-        int value = 0;
+        int64_t value = 0;
 
         switch (event->action)
         {
@@ -466,7 +467,7 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
                 break;
         }
         str = malloc (16);
-        snprintf (str, 16, "%d", value);
+        snprintf (str, 16, "%" PRId64, value);
         if (event->value == NULL)
             event->value = strdup (str);
     }

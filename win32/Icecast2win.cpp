@@ -5,6 +5,11 @@
 #include "Icecast2win.h"
 #include "Icecast2winDlg.h"
 
+extern "C" {
+#include "xslt.h"
+void initialize_subsystems(void);
+void shutdown_subsystems(void);
+}
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -49,6 +54,7 @@ BOOL CIcecast2winApp::InitInstance()
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
 
+    initialize_subsystems();
 	if (strlen(m_lpCmdLine) > 0) {
 		strcpy(m_configFile, m_lpCmdLine);
 	}
@@ -86,4 +92,10 @@ BOOL CIcecast2winApp::InitInstance()
 	// Since the dialog has been closed, return FALSE so that we exit the
 	//  application, rather than start the application's message pump.
 	return FALSE;
+}
+
+int CIcecast2winApp::ExitInstance()
+{
+    shutdown_subsystems();
+    return CWinApp::ExitInstance();
 }

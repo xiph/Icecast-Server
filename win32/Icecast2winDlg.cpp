@@ -339,9 +339,6 @@ BOOL CIcecast2winDlg::OnInitDialog()
 	sprintf(version, "Icecast2 Version %s", ICECAST_VERSION);
 	SetWindowText(version);
 
-    xslt_initialize();
-    curl_global_init (CURL_GLOBAL_ALL);
-
 	if (m_Autostart) {
 		OnStart();
 	}
