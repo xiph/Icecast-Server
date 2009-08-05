@@ -206,12 +206,12 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 
     if (mount)
     {
-        if (mount->mp3_meta_interval > 0)
+        if (mount->mp3_meta_interval >= 0)
             source_mp3->interval = mount->mp3_meta_interval;
         if (mount->charset)
             format->charset = strdup (mount->charset);
     }
-    if (source_mp3->interval <= 0)
+    if (source_mp3->interval < 0)
     {
         const char *metadata = httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = ICY_METADATA_INTERVAL;
