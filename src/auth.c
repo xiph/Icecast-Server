@@ -189,7 +189,7 @@ static void auth_client_free (auth_client *auth_user)
         client_t *client = auth_user->client;
 
         if (client->respcode)
-            client->con->error = 1;
+            client->connection.error = 1;
         client_send_401 (client, auth_user->auth->realm);
         client->flags |= CLIENT_ACTIVE;
         auth_user->client = NULL;
@@ -207,7 +207,7 @@ static int is_listener_connected (client_t *client)
     int ret = 1;
     if (client)
     {
-        if (sock_active (client->con->sock) == 0)
+        if (sock_active (client->connection.sock) == 0)
             ret = 0;
     }
     return ret;
@@ -338,7 +338,19 @@ static void *auth_run_thread (void *arg)
             auth_user->handler = handler->id;
 
             if (auth_user->process)
+            {
+                worker_t *worker = NULL;
+                if (auth_user->client)
+                    worker = auth_user->client->worker;
                 auth_user->process (auth_user);
+                if (worker)
+                {
+                    /* wakeup worker for new client */
+                    thread_mutex_lock (&worker->lock);
+                    thread_cond_signal (&worker->cond);
+                    thread_mutex_unlock (&worker->lock);
+                }
+            }
             else
                 ERROR0 ("client auth process not set");
 
@@ -360,20 +372,27 @@ void move_listener (client_t *client, struct _fbinfo *finfo)
 
     DEBUG1 ("moving listener to %s", finfo->mount);
     avl_tree_rlock (global.source_tree);
-    source = source_find_mount (finfo->mount);
 
-    if (source && source_available (source))
+    source = source_find_mount (finfo->mount);
+    while (source)
     {
         thread_mutex_lock (&source->lock);
-        avl_tree_unlock (global.source_tree);
-        source_setup_listener (source, client);
-        thread_mutex_unlock (&source->lock);
+        if (source_available (source))
+        {
+            avl_tree_unlock (global.source_tree);
+            source_setup_listener (source, client);
+            thread_mutex_unlock (&source->lock);
+            return;
+        }
+        if (source->fallback.mount)
+        {
+            source_t *prev = source;
+            source = source_find_mount (prev->fallback.mount);
+            thread_mutex_unlock (&prev->lock);
+        }
     }
-    else
-    {
-        avl_tree_unlock (global.source_tree);
-        fserve_setup_client_fb (client, finfo);
-    }
+    avl_tree_unlock (global.source_tree);
+    fserve_setup_client_fb (client, finfo);
 }
 
 
@@ -441,10 +460,12 @@ static int auth_postprocess_listener (auth_client *auth_user)
     ice_config_t *config;
     mount_proxy *mountinfo;
     const char *mount = auth_user->mount;
+    worker_t *worker;
 
     if (client == NULL)
         return -1;
 
+    worker = client->worker;
     if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
         /* auth failed so do we place the listener elsewhere */
@@ -557,6 +578,8 @@ int auth_release_listener (client_t *client, const char *mount, mount_proxy *mou
             return 1;
         }
         client->flags &= ~CLIENT_AUTHENTICATED;
+        client_destroy (client);
+        return 1;
     }
     client_send_404 (client, NULL);
     return 0;

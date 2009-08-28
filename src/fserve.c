@@ -109,11 +109,11 @@ void fserve_shutdown(void)
         avl_tree_free (mimetypes, _delete_mapping);
     if (fh_cache)
     {
-        int count = 100;
+        int count = 20;
         while (fh_cache->length && count)
         {
             DEBUG1 ("waiting for %u entries to clear", fh_cache->length);
-            thread_sleep (20000);
+            thread_sleep (100000);
             count--;
         }
         avl_tree_free (fh_cache, _delete_fh);
@@ -189,7 +189,11 @@ static int _delete_fh (void *mapping)
     fh_node *fh = mapping;
     if (fh->refcount)
         WARN2 ("handle for %s has refcount %d", fh->finfo.mount, fh->refcount);
-    thread_mutex_destroy (&fh->lock);
+    else
+    {
+        thread_mutex_unlock (&fh->lock);
+        thread_mutex_destroy (&fh->lock);
+    }
     if (fh->fp)
         fclose (fh->fp);
     free (fh->finfo.mount);
@@ -571,13 +575,13 @@ static void fserve_move_listener (client_t *client)
 static int prefile_send (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    int loop = 3, bytes;
+    int loop = 6, bytes, written = 0;
 
     while (loop)
     {
         fh_node *fh = client->shared_data;
         loop--;
-        if (fserve_running == 0 || client->con->error)
+        if (fserve_running == 0 || client->connection.error)
             return -1;
         if (refbuf == NULL || client->pos == refbuf->len)
         {
@@ -620,14 +624,15 @@ static int prefile_send (client_t *client)
         bytes = format_generic_write_to_client (client);
         if (bytes < 0)
         {
-            client->schedule_ms = client->worker->time_ms + 150;
+            client->schedule_ms = client->worker->time_ms + 300;
             return 0;
         }
+        written += bytes;
         global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
-        if (bytes < 4096)
+        if (written > 30000)
             break;
     }
-    client->schedule_ms = client->worker->time_ms + (loop ? 50 : 15);
+    client->schedule_ms = client->worker->time_ms + 150;
     return 0;
 }
 
@@ -635,15 +640,16 @@ static int prefile_send (client_t *client)
 static int file_send (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    int loop = 5, bytes;
+    int loop = 6, bytes, written = 0;
     fh_node *fh = client->shared_data;
 
-    if (client->con->discon_time && client->worker->current_time.tv_sec >= client->con->discon_time)
+    if (client->connection.discon_time &&
+            client->worker->current_time.tv_sec >= client->connection.discon_time)
         return -1;
     while (loop)
     {
         loop--;
-        if (fserve_running == 0 || client->con->error)
+        if (fserve_running == 0 || client->connection.error)
             return -1;
         if (fh->finfo.limit)
         {
@@ -681,12 +687,18 @@ static int file_send (client_t *client)
         }
         bytes = client->check_buffer (client);
         if (bytes < 0)
+        {
+            client->schedule_ms = client->worker->time_ms + 300;
             return 0;
+        }
+        written += bytes;
         global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
         if (fh->finfo.limit)
             rate_add (client->out_bitrate, bytes, client->worker->time_ms);
+        if (written > 30000)
+            break;
     }
-    client->schedule_ms = client->worker->time_ms + 10;
+    client->schedule_ms = client->worker->time_ms + 150;
     return 1;
 }
 
@@ -709,8 +721,17 @@ void fserve_setup_client_fb (client_t *client, fbinfo *finfo)
     {
         client->check_buffer = format_generic_write_to_client;
     }
+    client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
     client->intro_offset = 0;
-    client->flags |= CLIENT_ACTIVE;
+    if (client->flags & CLIENT_ACTIVE)
+        client->schedule_ms = client->worker->time_ms;
+    else
+    {
+        client->flags |= CLIENT_ACTIVE;
+        thread_mutex_lock (&client->worker->lock);
+        thread_cond_signal (&client->worker->cond);
+        thread_mutex_unlock (&client->worker->lock);
+    }
 }
 
 

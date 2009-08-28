@@ -64,7 +64,7 @@ int format_get_plugin(format_type_t type, struct source_tag *source);
 int format_generic_write_to_client (client_t *client);
 
 int format_file_read (client_t *client, FILE *fp);
-int format_prepare_headers (struct source_tag *source, client_t *client);
+int format_general_headers (struct source_tag *source, client_t *client);
 
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);

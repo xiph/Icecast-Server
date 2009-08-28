@@ -134,7 +134,7 @@ void logging_access(client_t *client)
             httpp_getvar (client->parser, HTTPP_VAR_PROTOCOL),
             httpp_getvar (client->parser, HTTPP_VAR_VERSION));
 
-    stayed = now - client->con->con_time;
+    stayed = now - client->connection.con_time;
 
     if (client->username == NULL)
         username = "-"; 
@@ -151,12 +151,12 @@ void logging_access(client_t *client)
 
     config = config_get_config();
     if (config->access_log.log_ip)
-        ip = client->con->ip;
+        ip = client->connection.ip;
     config_release_config ();
     log_write_direct (accesslog,
             "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
             ip, username,
-            datebuf, reqbuf, client->respcode, client->con->sent_bytes,
+            datebuf, reqbuf, client->respcode, client->connection.sent_bytes,
             referrer, user_agent, (unsigned long)stayed);
 }
 

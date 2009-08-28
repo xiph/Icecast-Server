@@ -78,7 +78,7 @@ void global_add_bitrates (struct rate_calc *rate, unsigned long value, uint64_t 
 void global_reduce_bitrate_sampling (struct rate_calc *rate)
 {
     thread_spin_lock (&global.spinlock);
-    rate_reduce (rate, 0);
+    rate_reduce (rate, 2);
     thread_spin_unlock (&global.spinlock);
 }
 

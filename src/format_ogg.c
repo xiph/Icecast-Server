@@ -462,8 +462,6 @@ static refbuf_t *ogg_get_buffer (source_t *source)
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
         bytes = client_read_bytes (source->client, data, 4096);
-        if (bytes < 4096)
-            source->client->schedule_ms = source->client->worker->time_ms + source->skip_duration;
         if (bytes <= 0)
         {
             ogg_sync_wrote (&ogg_info->oy, 0);
@@ -486,7 +484,7 @@ static int create_ogg_client_data (source_t *source, client_t *client)
         client_data->headers_sent = 1;
         client->format_data = client_data;
         client->free_client_data = free_ogg_client_data;
-        ret = 0;
+        ret = format_general_headers (source, client);
     }
     return ret;
 }
@@ -575,8 +573,11 @@ static int write_buf_to_client (client_t *client)
         ret = 0;
     } while (0);
 
-    if (ret > 0)
-       written += ret;
+    if (ret > 0) /* short write */
+    {
+        client->schedule_ms += 250;
+        written += ret;
+    }
     return written;
 }
 

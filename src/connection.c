@@ -31,6 +31,7 @@
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #endif
 
 #include "compat.h"
@@ -96,7 +97,7 @@ typedef struct
 static time_t now;
 static spin_t _connection_lock;
 static volatile unsigned long _current_id = 0;
-static volatile thread_type *conn_tid;
+thread_type *conn_tid;
 
 static int ssl_ok;
 #ifdef HAVE_OPENSSL
@@ -249,7 +250,7 @@ static void get_ssl_certificate (ice_config_t *config)
 /* handlers for reading and writing a connection_t when there is ssl
  * configured on the listening port
  */
-static int connection_read_ssl (connection_t *con, void *buf, size_t len)
+int connection_read_ssl (connection_t *con, void *buf, size_t len)
 {
     int bytes = SSL_read (con->ssl, buf, len);
 
@@ -266,7 +267,7 @@ static int connection_read_ssl (connection_t *con, void *buf, size_t len)
     return bytes;
 }
 
-static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
+int connection_send_ssl (connection_t *con, const void *buf, size_t len)
 {
     int bytes = SSL_write (con->ssl, buf, len);
 
@@ -298,7 +299,7 @@ static void get_ssl_certificate (ice_config_t *config)
 /* handlers (default) for reading and writing a connection_t, no encrpytion
  * used just straight access to the socket
  */
-static int connection_read (connection_t *con, void *buf, size_t len)
+int connection_read (connection_t *con, void *buf, size_t len)
 {
     int bytes = sock_read_bytes (con->sock, buf, len);
     if (bytes == 0)
@@ -308,7 +309,7 @@ static int connection_read (connection_t *con, void *buf, size_t len)
     return bytes;
 }
 
-static int connection_send (connection_t *con, const void *buf, size_t len)
+int connection_send (connection_t *con, const void *buf, size_t len)
 {
     int bytes = sock_write_bytes (con->sock, buf, len);
     if (bytes < 0)
@@ -416,30 +417,49 @@ static int accept_ip_address (char *ip)
 }
 
 
-connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
+int connection_init (connection_t *con, sock_t sock)
 {
-    connection_t *con;
-    con = (connection_t *)calloc(1, sizeof(connection_t));
     if (con)
     {
-        con->sock = sock;
-        con->serversock = serversock;
-        con->read = connection_read;
-        con->send = connection_send;
+        struct sockaddr_storage sa;
+        socklen_t slen = sizeof (sa);
+
         con->con_time = time(NULL);
         con->id = _next_connection_id();
-        con->ip = ip;
+        con->discon_time = con->con_time + header_timeout;
+        con->sock = sock;
+        if (sock == SOCK_ERROR)
+            return 0;
+        if (getpeername (sock, (struct sockaddr *)&sa, &slen) == 0)
+        {
+            char *ip;
+#ifdef HAVE_GETNAMEINFO
+            char buffer [200] = "unknown";
+            getnameinfo ((struct sockaddr *)&sa, slen, buffer, 200, NULL, 0, NI_NUMERICHOST);
+            ip = strdup (buffer);
+#else
+            int len = 30;
+            ip = malloc (len);
+            strncpy (ip, inet_ntoa (sa.sin_addr), len);
+#endif
+            if (accept_ip_address (ip))
+            {
+                con->ip = ip;
+                return 0;
+            }
+            free (ip);
+        }
+        memset (con, 0, sizeof (connection_t));
     }
-    return con;
+    return -1;
 }
+
 
 /* prepare connection for interacting over a SSL connection
  */
 void connection_uses_ssl (connection_t *con)
 {
 #ifdef HAVE_OPENSSL
-    con->read = connection_read_ssl;
-    con->send = connection_send_ssl;
     con->ssl = SSL_new (ssl_ctx);
     SSL_set_accept_state (con->ssl);
     SSL_set_fd (con->ssl, con->sock);
@@ -529,42 +549,57 @@ static sock_t wait_for_serversock(int timeout)
 #endif
 }
 
-static connection_t *_accept_connection(int duration)
-{
-    sock_t sock, serversock;
-    char *ip;
 
-    serversock = wait_for_serversock (duration);
+static client_t *accept_client (int duration)
+{
+    client_t *client;
+    sock_t sock, serversock = wait_for_serversock (duration);
+
     if (serversock == SOCK_ERROR)
         return NULL;
 
-    now = time(NULL);
-    /* malloc enough room for a full IP address (including ipv6) */
-    ip = (char *)malloc(MAX_ADDR_LEN);
-
-    sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock != SOCK_ERROR)
+    sock = sock_accept (serversock, NULL, 0);
+    if (sock == SOCK_ERROR)
     {
-        connection_t *con = NULL;
-        /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */
-        if (strncmp (ip, "::ffff:", 7) == 0)
-            memmove (ip, ip+7, strlen (ip+7)+1);
-
-        if (accept_ip_address (ip))
-            con = connection_create (sock, serversock, ip);
-        if (con)
-            return con;
-        sock_close (sock);
+        if (sock_recoverable (sock_error()))
+            return NULL;
+        WARN2 ("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
+        thread_sleep (500000);
+        return NULL;
     }
-    else
+    global_lock ();
+    client = client_create (sock);
+    if (client)
     {
-        if (!sock_recoverable(sock_error()))
+        connection_t *con = &client->connection;
+        int i;
+        for (i=0; i < global.server_sockets; i++)
         {
-            WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-            thread_sleep (500000);
+            if (global.serversock[i] == serversock)
+            {
+                client->server_conn = global.server_conn[i];
+                client->server_conn->refcount++;
+                if (client->server_conn->ssl && ssl_ok)
+                    connection_uses_ssl (con);
+                if (client->server_conn->shoutcast_compat)
+                    client->ops = &shoutcast_source_ops;
+                else
+                    client->ops = &http_request_ops;
+                break;
+            }
         }
+        global_unlock ();
+        stats_event_inc (NULL, "connections");
+        if (sock_set_blocking (con->sock, 0) || sock_set_nodelay (con->sock))
+        {
+            WARN0 ("failed to set tcp options on client connection, dropping");
+            client_destroy (client);
+            client = NULL;
+        }
+        return client;
     }
-    free (ip);
+    global_unlock ();
+    sock_close (sock);
     return NULL;
 }
 
@@ -577,7 +612,8 @@ static int shoutcast_source_client (client_t *client)
 {
     do
     {
-        if (client->con->error || client->con->discon_time <= client->worker->current_time.tv_sec)
+        connection_t *con = &client->connection;
+        if (con->error || con->discon_time <= client->worker->current_time.tv_sec)
             break;
 
         if (client->shared_data)  /* need to get password first */
@@ -593,7 +629,7 @@ static int shoutcast_source_client (client_t *client)
                 break;
 
             ret = client_read_bytes (client, buf, remaining);
-            if (ret == 0 || client->con->error)
+            if (ret == 0 || con->error)
                 break;
             if (ret < 0)
                 return 0;
@@ -650,7 +686,7 @@ static int http_client_request (client_t *client)
     refbuf_t *refbuf = client->shared_data;
     int remaining = PER_CLIENT_REFBUF_SIZE - 1 - refbuf->len, ret = -1;
 
-    if (remaining && client->con->discon_time > client->worker->current_time.tv_sec)
+    if (remaining && client->connection.discon_time > client->worker->current_time.tv_sec)
     {
         char *buf = refbuf->data + refbuf->len;
 
@@ -701,7 +737,7 @@ static int http_client_request (client_t *client)
             } while (0);
             client->refbuf = client->shared_data;
             client->shared_data = NULL;
-            client->con->discon_time = 0;
+            client->connection.discon_time = 0;
             client->parser = httpp_create_parser();
             httpp_initialize (client->parser, NULL);
             if (httpp_parse (client->parser, refbuf->data, refbuf->len))
@@ -751,7 +787,7 @@ static int http_client_request (client_t *client)
             /* invalid http request */
             return -1;
         }
-        if (ret && client->con->error == 0)
+        if (ret && client->connection.error == 0)
         {
             client->schedule_ms = client->worker->time_ms + 100;
             return 0;
@@ -763,9 +799,8 @@ static int http_client_request (client_t *client)
 }
 
 
-void *connection_thread (void *arg)
+static void *connection_thread (void *arg)
 {
-    connection_t *con;
     ice_config_t *config;
 
     connection_running = 1;
@@ -780,37 +815,9 @@ void *connection_thread (void *arg)
 
     while (connection_running)
     {
-        con = _accept_connection (333);
-
-        if (con)
+        client_t *client = accept_client (333);
+        if (client)
         {
-            client_t *client = NULL;
-            refbuf_t *r;
-
-            global_lock();
-            client = client_create (con, NULL);
-            global_unlock();
-
-            if (client->server_conn->ssl && ssl_ok)
-                connection_uses_ssl (client->con);
-
-            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
-            {
-                WARN0 ("failed to set tcp options on client connection, dropping");
-                client_destroy (client);
-                continue;
-            }
-
-            if (client->server_conn->shoutcast_compat)
-                client->ops = &shoutcast_source_ops;
-            else
-                client->ops = &http_request_ops;
-            r = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-            r->len = 0;
-            client->shared_data = r;
-            client->flags |= CLIENT_ACTIVE;
-            client->con->discon_time = time(NULL) + header_timeout;
-
             /* do a small delay here so the client has chance to send the request after
              * getting a connect. This also prevents excessively large number of new
              * listeners from joining at the same time */
@@ -840,11 +847,10 @@ void connection_thread_shutdown ()
 {
     if (conn_tid)
     {
-        thread_type *tid = (thread_type*)conn_tid;;
-        conn_tid = NULL;
-        INFO0("shutting down connection thread");
         connection_running = 0;
-        thread_join (tid);
+        INFO0("shutting down connection thread");
+        thread_join (conn_tid);
+        conn_tid = NULL;
     }
 }
 
@@ -1315,12 +1321,14 @@ int connection_setup_sockets (ice_config_t *config)
 
 void connection_close(connection_t *con)
 {
-    sock_close(con->sock);
-    if (con->ip) free(con->ip);
-    if (con->host) free(con->host);
+    if (con->con_time)
+    {
+        sock_close(con->sock);
+        free(con->ip);
 #ifdef HAVE_OPENSSL
-    if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
+        if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
 #endif
-    free(con);
+        memset (con, 0, sizeof (connection_t));
+    }
 }
 

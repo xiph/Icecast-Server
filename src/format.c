@@ -96,12 +96,29 @@ int format_file_read (client_t *client, FILE *intro)
 {
     refbuf_t *refbuf = client->refbuf;
 
-    if (intro == NULL)
+    if (refbuf == NULL)
         return -1;
     if (client->pos == refbuf->len)
     {
         size_t bytes;
 
+        if (client->flags & CLIENT_HAS_INTRO_CONTENT)
+        {
+            if (refbuf->next)
+            {
+                client->refbuf = refbuf->next;
+                refbuf->next = NULL;
+                refbuf_release (refbuf);
+                client->pos = 0;
+                return 0;
+            }
+            client_set_queue (client, NULL);
+            client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
+            client->intro_offset = client->connection.sent_bytes;
+            return -1;
+        }
+        if (intro == NULL)
+            return -1;
         if (fseek (intro, client->intro_offset, SEEK_SET) < 0)
             return -1;
         bytes = fread (refbuf->data, 1, PER_CLIENT_REFBUF_SIZE, intro);
@@ -123,7 +140,7 @@ int format_generic_write_to_client (client_t *client)
     const char *buf = refbuf->data + client->pos;
     unsigned int len = refbuf->len - client->pos;
 
-    if (len > 4096) /* make sure we don't send huge amounts in one go */
+    if (len > 5000) /* make sure we don't send huge amounts in one go */
         len = 4096;
     ret = client_send_bytes (client, buf, len);
 
@@ -134,25 +151,23 @@ int format_generic_write_to_client (client_t *client)
 }
 
 
-int format_prepare_headers (source_t *source, client_t *client)
+int format_general_headers (source_t *source, client_t *client)
 {
-    unsigned remaining;
-    char *ptr;
+    unsigned remaining = 4096 - client->refbuf->len;
+    char *ptr = client->refbuf->data + client->refbuf->len;
     int bytes;
     int bitrate_filtered = 0;
     avl_node *node;
     ice_config_t *config;
 
-    DEBUG0 ("processing listener headers");
-    remaining = client->refbuf->len;
-    ptr = client->refbuf->data;
-    client->respcode = 200;
-
-    bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-            "Content-Type: %s\r\n", source->format->contenttype);
-
-    remaining -= bytes;
-    ptr += bytes;
+    if (client->respcode == 0)
+    {
+        bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
+                "Content-Type: %s\r\n", source->format->contenttype);
+        remaining -= bytes;
+        ptr += bytes;
+        client->respcode = 200;
+    }
 
     /* iterate through source http headers and send to client */
     avl_tree_rlock (source->parser->vars);
@@ -227,10 +242,7 @@ int format_prepare_headers (source_t *source, client_t *client)
     remaining -= bytes;
     ptr += bytes;
 
-    client->refbuf->len -= remaining;
-    if (source->format->create_client_data)
-        if (source->format->create_client_data (source, client) < 0)
-            bytes = -1;
-    return bytes;
+    client->refbuf->len = 4096 - remaining;
+    return 0;
 }
 

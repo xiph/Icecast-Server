@@ -21,9 +21,9 @@
 #endif
 
 struct source_tag;
+struct ice_config_tag;
 typedef struct connection_tag connection_t;
 
-#include "cfgfile.h"
 #include "compat.h"
 #include "httpp/httpp.h"
 #include "net/sock.h"
@@ -37,17 +37,13 @@ struct connection_tag
     uint64_t sent_bytes;
 
     sock_t sock;
-    sock_t serversock;
     int error;
 
 #ifdef HAVE_OPENSSL
     SSL *ssl;   /* SSL handler */
 #endif
-    int (*send)(struct connection_tag *handle, const void *buf, size_t len);
-    int (*read)(struct connection_tag *handle, void *buf, size_t len);
 
     char *ip;
-    char *host;
 };
 
 #ifdef HAVE_OPENSSL
@@ -61,9 +57,15 @@ void connection_thread_startup();
 void connection_thread_shutdown();
 int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
-connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
+int  connection_init (connection_t *con, sock_t sock);
 int connection_complete_source (struct source_tag *source, int response);
 void connection_uses_ssl (connection_t *con);
+#ifdef HAVE_OPENSSL
+int  connection_read_ssl (connection_t *con, void *buf, size_t len);
+int  connection_send_ssl (connection_t *con, const void *buf, size_t len);
+#endif
+int  connection_read (connection_t *con, void *buf, size_t len);
+int  connection_send (connection_t *con, const void *buf, size_t len);
 void connection_thread_shutdown_req (void);
 
 int connection_check_pass (http_parser_t *parser, const char *user, const char *pass);

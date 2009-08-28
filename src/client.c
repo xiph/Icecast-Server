@@ -45,34 +45,28 @@
 
 int worker_count;
 
-/* create a client_t with the provided connection and parser details. Return
- * client_t ready for use.  Should be called with global lock held.
+/* Return client_t ready for use. The provided socket can be SOCK_ERROR to
+ * allocate a dummy client_t.  Must be called with global lock held.
  */
-client_t *client_create (connection_t *con, http_parser_t *parser)
+client_t *client_create (sock_t sock)
 {
-    client_t *client = (client_t *)calloc(1, sizeof(client_t));
+    client_t *client = calloc (1, sizeof (client_t));
 
-    if (client == NULL)
-        abort();
-
-    global.clients++;
-
-    if (con && con->serversock != SOCK_ERROR)
+    if (sock != SOCK_ERROR)
     {
-        int i;
-        for (i=0; i < global.server_sockets; i++)
+        refbuf_t *r;
+        if (connection_init (&client->connection, sock) < 0)
         {
-            if (global.serversock[i] == con->serversock)
-            {
-                client->server_conn = global.server_conn[i];
-                client->server_conn->refcount++;
-            }
+            free (client);
+            return NULL;
         }
+        r = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+        r->len = 0;
+        client->shared_data = r;
+        client->flags |= CLIENT_ACTIVE;
     }
+    global.clients++;
     stats_event_args (NULL, "clients", "%d", global.clients);
-    client->con = con;
-    client->parser = parser;
-    client->pos = 0;
     return client;
 }
 
@@ -82,6 +76,11 @@ void client_destroy(client_t *client)
     if (client == NULL)
         return;
 
+    if (client->worker)
+    {
+        WARN0 ("client still on worker thread");
+        return;
+    }
     /* release the buffer now, as the buffer could be on the source queue
      * and may of disappeared after auth completes */
     if (client->refbuf)
@@ -99,8 +98,7 @@ void client_destroy(client_t *client)
     if (client->respcode && client->parser)
         logging_access(client);
 
-    if (client->con)
-        connection_close(client->con);
+    connection_close (&client->connection);
     if (client->parser)
         httpp_destroy (client->parser);
 
@@ -124,6 +122,7 @@ void client_destroy(client_t *client)
 /* helper function for reading data from a client */
 int client_read_bytes (client_t *client, void *buf, unsigned len)
 {
+    int (*con_read)(struct connection_tag *handle, void *buf, size_t len) = connection_read;
     int bytes;
 
     if (client->refbuf && client->pos < client->refbuf->len)
@@ -135,9 +134,13 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
         client->pos += remaining;
         return remaining;
     }
-    bytes = client->con->read (client->con, buf, len);
+#ifdef HAVE_OPENSSL
+    if (client->connection.ssl)
+        con_read = connection_read_ssl;
+#endif
+    bytes = con_read (&client->connection, buf, len);
 
-    if (bytes == -1 && client->con->error)
+    if (bytes == -1 && client->connection.error)
         DEBUG0 ("reading from connection has failed");
 
     return bytes;
@@ -146,6 +149,8 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 
 void client_send_302(client_t *client, const char *location)
 {
+    client_set_queue (client, NULL);
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 302 Temporarily Moved\r\n"
             "Content-Type: text/html\r\n"
@@ -158,6 +163,8 @@ void client_send_302(client_t *client, const char *location)
 
 
 void client_send_400(client_t *client, char *message) {
+    client_set_queue (client, NULL);
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 400 Bad Request\r\n"
             "Content-Type: text/html\r\n\r\n"
@@ -175,7 +182,7 @@ void client_send_401 (client_t *client, const char *realm)
     if (realm == NULL)
         realm = config->server_id;
 
-    refbuf_release (client->refbuf);
+    client_set_queue (client, NULL);
     client->refbuf = refbuf_new (500);
     snprintf (client->refbuf->data, 500,
             "HTTP/1.0 401 Authentication Required\r\n"
@@ -193,6 +200,8 @@ void client_send_403(client_t *client, const char *reason)
 {
     if (reason == NULL)
         reason = "Forbidden";
+    client_set_queue (client, NULL);
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 403 %s\r\n"
             "Content-Type: text/html\r\n\r\n", reason);
@@ -228,13 +237,15 @@ void client_send_404(client_t *client, const char *message)
                 "<b>%s</b>\r\n", message);
         client->respcode = 404;
         client->refbuf->len = strlen (client->refbuf->data);
+        fserve_setup_client (client, NULL);
     }
-    fserve_setup_client (client, NULL);
 }
 
 
 void client_send_416(client_t *client)
 {
+    client_set_queue (client, NULL);
+    client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     client->respcode = 416;
@@ -246,42 +257,37 @@ void client_send_416(client_t *client)
 /* helper function for sending the data to a client */
 int client_send_bytes (client_t *client, const void *buf, unsigned len)
 {
-#ifdef HAVE_AIO
-    int ret, err;
-    struct aiocb *aiocbp = &client->aio;
+    int (*con_send)(struct connection_tag *handle, const void *buf, size_t len) = connection_send;
+    int ret;
+#ifdef HAVE_OPENSSL
+    if (client->connection.ssl)
+        con_send = connection_send_ssl;
+#endif
+    ret = con_send (&client->connection, buf, len);
 
-    if (client->pending_io == 0)
-    {
-        memset (aiocbp, 0 , sizeof (struct aiocb));
-        aiocbp->aio_fildes = client->con->sock;
-        aiocbp->aio_buf = (void*)buf; /* only read from */
-        aiocbp->aio_nbytes = len;
-
-        if (aio_write (aiocbp) < 0)
-            return -1;
-        client->pending_io = 1;
-    }
-    if ((err = aio_error (aiocbp)) == EINPROGRESS)
-        return -1;
-    ret = aio_return (aiocbp);
-    if (ret < 0)
-        sock_set_error (err); /* make sure errno gets set */
-
-    client->pending_io = 0;
-#else
-    int ret = client->con->send (client->con, buf, len);
-
-    if (client->con->error)
+    if (client->connection.error)
         DEBUG0 ("Client connection died");
 
     return ret;
-#endif
 }
 
 void client_set_queue (client_t *client, refbuf_t *refbuf)
 {
     refbuf_t *to_release = client->refbuf;
 
+    if (to_release && client->flags & CLIENT_HAS_INTRO_CONTENT)
+    {
+        refbuf_t *intro = to_release->next;
+        while (intro)
+        {
+            refbuf_t *r = intro->next;
+            intro->next = NULL;
+            refbuf_release (intro);
+            intro = r;
+        }
+        to_release->next = NULL;
+        client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
+    }
     client->refbuf = refbuf;
     if (refbuf)
         refbuf_addref (client->refbuf);
@@ -293,12 +299,11 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
 
 worker_t *find_least_busy_handler (void)
 {
-    worker_t *handler, *min = NULL;
+    worker_t *min = workers;
 
-    if (workers)
+    if (workers && workers->next)
     {
-        min = workers;
-        handler = workers->next;
+        worker_t *handler = workers->next;
         DEBUG2 ("handler %p has %d clients", min, min->count);
         while (handler)
         {
@@ -320,13 +325,14 @@ void client_change_worker (client_t *client, worker_t *dest_worker)
     *this_worker->current_p = client->next_on_worker;
     this_worker->count--;
     thread_mutex_unlock (&this_worker->lock);
+    client->next_on_worker = NULL;
 
     thread_mutex_lock (&dest_worker->lock);
     if (dest_worker->running)
     {
         client->worker = dest_worker;
-        client->next_on_worker = dest_worker->clients;
-        dest_worker->clients = client;
+        *dest_worker->last_p = client;
+        dest_worker->last_p = &client->next_on_worker;
         dest_worker->count++;
         client->flags |= CLIENT_HAS_CHANGED_THREAD;
         // make client inactive so that the destination thread does not run it straight away
@@ -348,8 +354,8 @@ void client_add_worker (client_t *client)
     thread_rwlock_unlock (&workers_lock);
 
     client->schedule_ms = handler->time_ms;
-    client->next_on_worker = handler->clients;
-    handler->clients = client;
+    *handler->last_p = client;
+    handler->last_p = &client->next_on_worker;
     client->worker = handler;
     ++handler->count;
     if (handler->wakeup_ms - handler->time_ms > 15)
@@ -405,6 +411,8 @@ void *worker (void *arg)
                         client->flags &= ~CLIENT_HAS_CHANGED_THREAD;
                         client->flags |= CLIENT_ACTIVE;
                         client = *prevp;
+                        if (client == NULL)
+                            handler->last_p = prevp;
                         continue;
                     }
                     if (ret < 0)
@@ -417,6 +425,8 @@ void *worker (void *arg)
                         if (client->ops->release)
                             client->ops->release (client);
                         client = *prevp;
+                        if (client == NULL)
+                            handler->last_p = prevp;
                         continue;
                     }
                 }
@@ -444,6 +454,7 @@ static void worker_start (void)
     thread_mutex_create (&handler->lock);
     thread_cond_create (&handler->cond);
     thread_rwlock_wlock (&workers_lock);
+    handler->last_p = &handler->clients;
     handler->next = workers;
     workers = handler;
     worker_count++;
@@ -454,7 +465,8 @@ static void worker_start (void)
 static void worker_stop (void)
 {
     worker_t *handler = workers;
-    client_t *clients = NULL;
+    client_t *clients = NULL, **last;
+    int count;
 
     if (handler == NULL)
         return;
@@ -471,8 +483,8 @@ static void worker_stop (void)
     thread_sleep (10000);
     thread_mutex_lock (&handler->lock);
     clients = handler->clients;
-    handler->clients = NULL;
-    handler->count = 0;
+    last = handler->last_p;
+    count = handler->count;
     thread_cond_signal (&handler->cond);
     thread_mutex_unlock (&handler->lock);
     if (clients)
@@ -481,18 +493,9 @@ static void worker_stop (void)
             WARN0 ("clients left unprocessed");
         else
         {
-            // move clients to another worker
-            client_t *endp  = clients;
-            int count = 0;
-
             thread_mutex_lock (&workers->lock);
-            while (endp->next_on_worker)
-            {
-                endp = endp->next_on_worker;
-                count++;
-            }
-            endp->next_on_worker = workers->clients;
-            workers->clients = clients;
+            *workers->last_p = clients;
+            workers->last_p = last;
             workers->count += count;
             thread_mutex_unlock (&workers->lock);
         }

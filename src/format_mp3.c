@@ -382,14 +382,14 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
             {
                 client_mp3->metadata_offset += (ret - remaining);
                 client->flags |= CLIENT_IN_METADATA;
-                client->schedule_ms += 100;
+                client->schedule_ms += 300;
             }
             client_mp3->since_meta_block = 0;
             client->pos += remaining;
             client->queue_pos += remaining;
             return ret;
         }
-        client->schedule_ms += 100;
+        client->schedule_ms += 300;
         if (ret > 0)
         {
             client_mp3->since_meta_block += ret;
@@ -409,7 +409,7 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
     }
     if (ret > 0)
         client_mp3->metadata_offset += ret;
-    client->schedule_ms += 100;
+    client->schedule_ms += 300;
     client->flags |= CLIENT_IN_METADATA;
 
     return ret > 0 ? ret : 0;
@@ -476,6 +476,8 @@ static int format_mp3_write_buf_to_client (client_t *client)
         ret = 0;
     } while (0);
 
+    if (ret < 0)
+        client->schedule_ms += 250;
     if (ret > 0)
         written += ret;
     return written == 0 ? -1 : written;
@@ -521,8 +523,6 @@ static int complete_read (source_t *source)
     {
         int read_in = source_mp3->queue_block_size - source_mp3->read_count;
         bytes = client_read_bytes (client, buf, read_in);
-        if (bytes < read_in)
-            client->schedule_ms = client->worker->time_ms + source->skip_duration;
         if (bytes < 0)
             return 0;
         rate_add (format->in_bitrate, bytes, client->worker->current_time.tv_sec);
@@ -695,9 +695,8 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
     const char *metadata;
-    /* the +-2 is for overwriting the last set of \r\n */
-    size_t  remaining = 4096 - client->refbuf->len + 2;
-    char *ptr = client->refbuf->data + client->refbuf->len - 2;
+    size_t  remaining = 4096;
+    char *ptr = client->refbuf->data;
     int bytes;
     const char *useragent;
 
@@ -721,6 +720,15 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
+    client->refbuf->len = 4096 - remaining;
+
+    if (format_general_headers (source, client) < 0)
+        return -1;
+
+    remaining = 4096 - client->refbuf->len + 2;
+    ptr = client->refbuf->data + client->refbuf->len - 2;
+
+    /* check for shoutcast style metadata inserts */
     metadata = httpp_getvar(client->parser, "icy-metadata");
     if (metadata && atoi(metadata))
     {

@@ -15,14 +15,16 @@
 #include <config.h>
 #endif
 
-#ifdef WIN32_SERVICE
-#define _WIN32_WINNT 0x0400
-#include <windows.h>
-#endif
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+#ifdef WIN32
+#define _WIN32_WINNT 0x0400
+/* For getpid() */
+#include <process.h>
+#include <windows.h>
+#endif
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
@@ -60,11 +62,6 @@
 #include "auth.h"
 
 #include <libxml/xmlmemory.h>
-
-#ifdef _WIN32
-/* For getpid() */
-#include <process.h>
-#endif
 
 #undef CATMODULE
 #define CATMODULE "main"
@@ -113,7 +110,6 @@ void _initialize_subsystems(void)
     refbuf_initialize();
 
     stats_initialize();
-    fserve_initialize();
     xslt_initialize();
 #ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
@@ -122,15 +118,15 @@ void _initialize_subsystems(void)
 
 void _shutdown_subsystems(void)
 {
-    refbuf_shutdown();
+    fserve_shutdown();
     slave_shutdown();
     auth_shutdown();
     yp_shutdown();
     stats_shutdown();
 
-    fserve_shutdown();
     connection_shutdown();
     config_shutdown();
+    refbuf_shutdown();
     resolver_shutdown();
     sock_shutdown();
 
@@ -316,7 +312,6 @@ static void _server_proc(void)
     }
     slave_initialize();
 
-    connection_thread_shutdown();
     connection_setup_sockets (NULL);
 }
 
@@ -459,6 +454,7 @@ int main(int argc, char **argv)
     }
 
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
+    fserve_initialize();
 
 #ifdef CHUID 
     /* We'll only have getuid() if we also have setuid(), it's reasonable to

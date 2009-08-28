@@ -35,7 +35,7 @@ struct _worker_t
     mutex_t lock;
     cond_t cond;
     client_t *clients;
-    client_t **current_p;
+    client_t **current_p, **last_p;
     thread_type *thread;
     struct timespec current_time;
     uint64_t time_ms;
@@ -69,8 +69,9 @@ struct _client_tag
 
     client_t *next_on_worker;
 
-    /* the client's connection */
-    connection_t *con;
+    /* the clients connection */
+    connection_t connection;
+
     /* the client's http headers */
     http_parser_t *parser;
 
@@ -116,7 +117,7 @@ struct _client_tag
     client_t *next;  /* for use with grouping similar clients */
 };
 
-client_t *client_create (connection_t *con, http_parser_t *parser);
+client_t *client_create (sock_t sock);
 void client_destroy(client_t *client);
 void client_send_504(client_t *client, char *message);
 void client_send_416(client_t *client);
@@ -142,6 +143,7 @@ void workers_adjust (int new_count);
 #define CLIENT_IS_SLAVE             (004)
 #define CLIENT_HAS_CHANGED_THREAD   (010)
 #define CLIENT_NO_CONTENT_LENGTH    (020)
+#define CLIENT_HAS_INTRO_CONTENT    (040)
 #define CLIENT_FORMAT_BIT           (01000)
 
 #endif  /* __CLIENT_H__ */

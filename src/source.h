@@ -86,13 +86,12 @@ typedef struct source_tag
 #define SOURCE_TERMINATING          020
 #define SOURCE_TEMPORARY_FALLBACK   040
 
-#define source_available(x)     ((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND))
+#define source_available(x)     (((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) && (x)->fallback.mount == NULL)
 #define source_running(x)       ((x)->flags & SOURCE_RUNNING)
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
 int  source_startup (client_t *client, const char *uri);
-int  source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_listeners (source_t *source);
 void source_clear_source (source_t *source);

@@ -297,7 +297,7 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
     char *server_id = NULL;
     ice_config_t *config;
     http_parser_t *parser = NULL;
-    connection_t *con=NULL;
+    connection_t *con = &client->connection;
     char *server = strdup (master->ip);
     char *mount = strdup (master->mount);
     int port = master->port;
@@ -346,7 +346,7 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
             WARN3 ("Failed to connect to %s:%d for %s", server, port, relay->localmount);
             break;
         }
-        con = connection_create (streamsock, SOCK_ERROR, strdup (server));
+        connection_init (con, streamsock);
 
         /* At this point we may not know if we are relaying an mp3 or vorbis
          * stream, but only send the icy-metadata header if the relay details
@@ -405,7 +405,6 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
             strncpy (server, uri, len);
             connection_close (con);
             httpp_destroy (parser);
-            con = NULL;
             parser = NULL;
         }
         else
@@ -417,7 +416,6 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
                 break;
             }
             sock_set_blocking (streamsock, 0);
-            client->con = con;
             client->parser = parser;
             client_set_queue (client, NULL);
             free (server);
@@ -434,8 +432,7 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
     free (mount);
     free (server_id);
     free (auth_header);
-    if (con)
-        connection_close (con);
+    connection_close (con);
     if (parser)
         httpp_destroy (parser);
     return -1;
@@ -495,9 +492,7 @@ static void *start_relay_stream (void *arg)
     else
         yp_remove (relay->localmount);
 
-    if (client->con)
-        connection_close (client->con);
-    client->con = NULL;
+    connection_close (&client->connection);
     if (client->parser)
         httpp_destroy (client->parser);
     client->parser = NULL;
@@ -551,6 +546,7 @@ static void *start_relay_stream (void *arg)
     INFO2 ("listener count still on %s is %d", src->mount, src->listeners);
     source_clear_listeners (src);
     source_clear_source (src);
+    thread_mutex_unlock (&src->lock);
     relay->start = client->worker->current_time.tv_sec + relay->interval;
     client->schedule_ms = timing_get_time() + 1000;
     client->flags |= CLIENT_ACTIVE;
@@ -595,7 +591,7 @@ static void check_relay_stream (relay_server *relay)
     {
         client_t *client;
         global_lock();
-        client = client_create (NULL, NULL);
+        client = client_create (SOCK_ERROR);
         global_unlock();
         source->client = client;
         client->shared_data = relay;
@@ -1254,13 +1250,12 @@ static int relay_read (client_t *client)
         client->ops = &relay_startup_ops;
         relay->running = 0;
         global_reduce_bitrate_sampling (global.out_bitrate);
-        if (client->con)
-            connection_close (client->con);
-        client->con = NULL;
+        connection_close (&client->connection);
         if (client->parser)
             httpp_destroy (client->parser);
         client->parser = NULL;
         source_clear_source (source);
+        thread_mutex_unlock (&source->lock);
         thread_rwlock_unlock (&global.shutdown_lock);
         slave_update_all_mounts();
         return 0;
@@ -1299,6 +1294,8 @@ static int relay_startup (client_t *client)
 
     if (relay->cleanup)
         return -1;
+    if (global.running != ICE_RUNNING)
+        return 0; /* wait for cleanup */
     if (relay->enable == 0 || relay->start > client->worker->current_time.tv_sec)
     {
         client->schedule_ms = client->worker->time_ms + 1000;

@@ -585,7 +585,7 @@ static int stats_listeners_send (client_t *client)
     int ret = 0;
     event_listener_t *listener = client->shared_data;
 
-    if (client->con->error)
+    if (client->connection.error)
         return -1;
     if (client->flags & STATS_LARGE)
         loop = 4;
