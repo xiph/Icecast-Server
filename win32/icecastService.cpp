@@ -33,10 +33,10 @@ extern "C" int mainService(int argc, char **argv);
 void installService (const char *path)
 {
 	if (path) {
-        TCHAR buffer [MAX_PATH] = "\"";
-        int len = GetModuleFileName (NULL, buffer+1, sizeof (buffer)-1);
+        TCHAR fullPath [MAX_PATH] = "\"";
+        int len = GetModuleFileName (NULL, fullPath+1, sizeof (fullPath)-1);
 
-		_snprintf (buffer+len+1, sizeof (buffer)-len, "\" \"%s\"", path);
+		_snprintf (fullPath+len+1, sizeof (fullPath)-len, "\" \"%s\"", path);
 
 		SC_HANDLE manager = OpenSCManager( NULL, NULL, SC_MANAGER_ALL_ACCESS );
 		if (manager == NULL)
@@ -53,7 +53,7 @@ void installService (const char *path)
 			SERVICE_WIN32_OWN_PROCESS,
 			SERVICE_AUTO_START,
 			SERVICE_ERROR_IGNORE,
-			buffer,
+			fullPath,
 			NULL,
 			NULL,
 			NULL,
@@ -115,8 +115,6 @@ void ControlHandler(DWORD request)
 void ServiceMain(int argc, char** argv) 
 { 
     ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS; 
-    ServiceStatus.dwCurrentState = SERVICE_START_PENDING; 
-    ServiceStatus.dwControlsAccepted = 0;
     ServiceStatus.dwWin32ExitCode = 0; 
     ServiceStatus.dwServiceSpecificExitCode = 0; 
     ServiceStatus.dwCheckPoint = 0;

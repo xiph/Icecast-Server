@@ -102,8 +102,8 @@ struct _client_tag
     /* the worker the client is attached to */
     worker_t *worker;
 
-    /* for cases where we want to limit data rates */
-    struct rate_calc *out_bitrate;
+    time_t timer_start;
+    uint64_t counter;
 
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);

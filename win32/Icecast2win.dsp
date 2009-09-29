@@ -79,8 +79,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 /nologo /subsystem:windows /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 libspeex.lib theora_static_d.lib ogg.lib vorbis_static.lib pthreadVSE.lib ssleay32MT.lib libcurl.lib libxml2.lib libxslt.lib iconv.lib ws2_32.lib winmm.lib /nologo /version:2.3 /subsystem:windows /incremental:no /debug /machine:I386 /nodefaultlib:"libcd.lib libcmt.lib" /pdbtype:sept
-# SUBTRACT LINK32 /verbose
+# ADD LINK32 libspeex.lib theora_static_d.lib ogg.lib vorbis_static.lib pthreadVSE.lib ssleay32MT.lib libcurl.lib libxml2.lib libxslt.lib iconv.lib ws2_32.lib winmm.lib /nologo /version:2.3 /subsystem:windows /debug /machine:I386 /nodefaultlib:"libcd.lib libcmt.lib" /pdbtype:sept
+# SUBTRACT LINK32 /verbose /incremental:no /force
 
 !ENDIF 
 

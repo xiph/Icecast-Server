@@ -123,7 +123,7 @@ static void auth_url_clear(auth_t *self)
 {
     auth_url *url;
 
-    INFO0 ("Doing auth URL cleanup");
+    INFO1 ("Doing auth URL cleanup for %s", self->mount);
     url = self->state;
     self->state = NULL;
     free (url->username);
@@ -157,13 +157,18 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     client_t *client = auth_user->client;
     auth_thread_data *atd = auth_user->thread_data;
 
+    if (bytes <= 1) // we should have the EOL at least
+        return bytes;
     if (client)
     {
         auth_t *auth = auth_user->auth;
         auth_url *url = auth->state;
         int retcode = 0;
+        char *p = ptr;
 
-        if (sscanf (ptr, "HTTP/%*u.%*u %3d %*c", &retcode) == 1)
+        /* replace the EOL with a nul char, libcurl may not provide a nul */
+        p[bytes-2] = '\0';
+        if (sscanf (ptr, "HTTP%*c%*u.%*u %3d %*c", &retcode) == 1)
         {
             if (retcode == 403)
             {
@@ -174,7 +179,21 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             }
         }
         if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
+        {
             client->flags |= CLIENT_AUTHENTICATED;
+            p = strchr (ptr, ':');
+            if (p)
+            {
+                ++p;
+                if (strstr (p, "withintro"))
+                    client->flags |= CLIENT_HAS_INTRO_CONTENT;
+                if (strstr (p, "0"))
+                {
+                    WARN0 ("auth header returned with 0 value");
+                    client->flags &= ~CLIENT_AUTHENTICATED;
+                }
+            }
+        }
         if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
         {
             unsigned int limit = 0;
@@ -219,12 +238,12 @@ static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *str
     unsigned bytes = size * nmemb;
     client_t *client = auth_user->client;
 
-    if (client && client->respcode == 0)
+    if (client && client->respcode == 0 &&
+         client->flags & CLIENT_HAS_INTRO_CONTENT)
     {
         refbuf_t *n, *r = client->refbuf;
         struct build_intro_contents *x = (void*)r->data;
 
-        client->flags |= CLIENT_HAS_INTRO_CONTENT;
         n = refbuf_new (bytes);
         memcpy (n->data, ptr, bytes);
         *x->tailp = n;
@@ -426,14 +445,26 @@ static auth_result url_add_listener (auth_client *auth_user)
     {
         if (client->flags & CLIENT_HAS_INTRO_CONTENT)
             client->refbuf->next = x->head;
+        if (x->head == NULL)
+            client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
+
         return AUTH_OK;
     }
-    if (atoi (atd->errormsg) == 403)
+    /* better cleanup memory */
+    while (x->head)
     {
-        client_send_403 (client, atd->errormsg+4);
-        auth_user->client = NULL;
+        refbuf_t *n = x->head;
+        x->head = n->next;
+        n->next = NULL;
+        refbuf_release (n);
     }
-    INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, atd->errormsg);
+    auth_user->client = NULL;
+    if (atoi (atd->errormsg) == 403)
+        client_send_403 (client, atd->errormsg+4);
+    else
+        client_send_401 (client, auth_user->auth->realm);
+    if (atd->errormsg[0])
+        INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, atd->errormsg);
     return AUTH_FAILED;
 }
 
@@ -612,7 +643,7 @@ static void release_thread_data (auth_t *auth, void *thread_data)
     curl_easy_cleanup (atd->curl);
     free (atd->server_id);
     free (atd);
-    INFO1 ("...handler destroyed for %s", auth->mount);
+    DEBUG1 ("...handler destroyed for %s", auth->mount);
 }
 
 
@@ -628,7 +659,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->release_thread_data = release_thread_data;
 
     url_info = calloc(1, sizeof(auth_url));
-    url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
+    url_info->auth_header = strdup ("icecast-auth-user:");
     url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
 
     while(options) {

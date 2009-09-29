@@ -836,6 +836,7 @@ static int _relay_master (xmlNodePtr node, void *arg)
         { "port",           config_get_int,     &master->port },
         { "mount",          config_get_str,     &master->mount },
         { "bind",           config_get_str,     &master->bind },
+        { "timeout",        config_get_int,     &master->timeout },
         { NULL, NULL, NULL },
     };
 
@@ -845,9 +846,15 @@ static int _relay_master (xmlNodePtr node, void *arg)
     if (relay->masters->bind)
         master->bind = (char *)xmlCharStrdup (relay->masters->bind);
     master->port = relay->masters->port;
+    master->timeout = relay->masters->timeout;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
+
+    if (master->port < 1 || master->port > 65535)
+        master->port = 8000;
+    if (master->timeout < 1 || master->timeout > 60)
+        master->timeout = 4;
 
     /* place new details at the end of the list */
     last = relay->masters;
@@ -873,6 +880,7 @@ static int _parse_relay (xmlNodePtr node, void *arg)
         { "bind",           config_get_str,     &master->bind },
         { "port",           config_get_int,     &master->port },
         { "mount",          config_get_str,     &master->mount },
+        { "timeout",        config_get_int,     &master->timeout },
         { "local-mount",    config_get_str,     &relay->localmount },
         { "on-demand",      config_get_bool,    &relay->on_demand },
         { "retry-delay",    config_get_int,     &relay->interval },
@@ -893,6 +901,7 @@ static int _parse_relay (xmlNodePtr node, void *arg)
     master->port = config->port;
     master->ip = (char *)xmlCharStrdup ("127.0.0.1");
     master->mount = (char*)xmlCharStrdup ("/");
+    master->timeout = 4;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;

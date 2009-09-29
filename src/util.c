@@ -713,27 +713,45 @@ struct rate_calc *rate_setup (unsigned int samples, unsigned int ssec)
     return calc;
 }
 
+static void rate_purge_entries (struct rate_calc *calc, uint64_t cutoff)
+{
+    struct rate_calc_node *node = calc->current->next;
+    int count = calc->blocks;
+
+    while (count && node->index <= cutoff)
+    {
+        struct rate_calc_node *to_go = node;
+        node = calc->current->next = node->next;
+        calc->total -= to_go->value;
+        free (to_go);
+        count--;
+    }
+    calc->blocks = count;
+}
 
 /* add a value to sampled data, t is used to determine which sample
  * block the sample goes into.
  */
 void rate_add (struct rate_calc *calc, long value, uint64_t sid) 
 {
+    uint64_t cutoff = sid - calc->samples;
+
+    if (value == 0 && calc->current && calc->current->value == 0)
+    {
+        calc->current->index = sid; /* update the timestamp if 0 already present */
+        rate_purge_entries (calc, cutoff);
+        return;
+    }
     calc->total += value;
     if (calc->current == NULL || sid != calc->current->index)
     {
-        if (calc->blocks == calc->samples)
+        struct rate_calc_node *node = calc->current ? calc->current->next : NULL;
+        if (node == NULL || node->index > cutoff)
         {
-            calc->current = calc->current->next;
-            calc->total -= calc->current->value;
-            calc->current->value = value;
-            calc->current->index = sid;
-            return;
-        }
-        else
-        {
-            struct rate_calc_node *node = calloc (1, sizeof (*node));
+            node = calloc (1, sizeof (*node));
+
             node->index = sid;
+            node->value = value;
             calc->blocks++;
             if (calc->current)
             {
@@ -741,11 +759,18 @@ void rate_add (struct rate_calc *calc, long value, uint64_t sid)
                 calc->current->next = node;
             }
             else
-            {
                 node->next = node;
-            }
             calc->current = node;
         }
+        else
+        {
+            calc->total -= node->value;
+            node->index = sid;
+            node->value = value;
+            calc->current = node;
+        }
+        rate_purge_entries (calc, cutoff);
+        return;
     }
     calc->current->value += value;
 }
@@ -759,29 +784,18 @@ long rate_avg (struct rate_calc *calc)
 
     if (calc == NULL || calc->blocks < 2)
         return 0;
-    range = (calc->current->index - calc->current->next->index);
+    range = (calc->current->index - calc->current->next->index) + 1;
     if (range < 1)
         range = 1;
     return (long)(calc->total / range * calc->ssec);
 }
 
 /* reduce the samples used to calculate average */
-void rate_reduce (struct rate_calc *calc, unsigned int count)
+void rate_reduce (struct rate_calc *calc, unsigned int range)
 {
-    if (calc && count < calc->blocks)
+    if (calc && range && calc->blocks > 1)
     {
-        struct rate_calc_node *list = calc->current->next;
-        for (; calc->blocks > count; calc->blocks--)
-        {
-            struct rate_calc_node *to_go = list;
-            list = to_go->next;
-            calc->total -= to_go->value;
-            free (to_go);
-        }
-        if (calc->blocks)
-            calc->current->next = list;
-        else
-            calc->current = NULL;
+        rate_purge_entries (calc, calc->current->index - range);
     }
 }
 

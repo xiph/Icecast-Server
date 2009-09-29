@@ -41,6 +41,10 @@ typedef struct ice_global_tag
     avl_tree *source_tree;
     rwlock_t shutdown_lock;
 
+#ifdef MY_ALLOC
+    avl_tree *alloc_tree;
+#endif
+
     /* for locally defined relays */
     struct _relay_server *relays;
     /* relays retrieved from master */
@@ -54,6 +58,27 @@ typedef struct ice_global_tag
 
     cond_t shutdown_cond;
 } ice_global_t;
+
+#ifdef MY_ALLOC
+#define calloc(x,y) my_calloc(__func__,__LINE__,x,y)
+#define malloc(x) my_calloc(__func__,__LINE__,1,x)
+#define realloc(x,y) my_realloc(__func__,__LINE__,x,y)
+#define free(x) my_free(x)
+#define strdup(x) my_strdup(__func__,__LINE__,x)
+char *my_strdup (const char *file, int line, const char *s);
+void *my_calloc (const char *file, int line, size_t num, size_t size);
+void *my_realloc (const char *file, int line, void *ptr, size_t size);
+void my_free (void *freeblock);
+int compare_allocs(void *arg, void *a, void *b);
+int free_alloc_node(void *key);
+
+typedef struct {
+    char name[54];
+    int count;
+    int allocated;
+} alloc_node;
+
+#endif
 
 extern ice_global_t global;
 

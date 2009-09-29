@@ -76,6 +76,9 @@ typedef struct {
     mutex_t lock;
     int refcount;
     FILE *fp;
+    time_t stats_update;
+    format_plugin_t *format;
+    client_t *clients;
 } fh_node;
 
 int fserve_running;
@@ -179,8 +182,6 @@ static int _compare_fh(void *arg, void *a, void *b)
     if (r) return r;
     r = (int)x->finfo.flags - y->finfo.flags;
     if (r) return r;
-    if (x->finfo.flags & FS_JINGLE)
-        return strcmp (x->finfo.fallback, y->finfo.fallback);
     return 0;
 }
 
@@ -196,6 +197,12 @@ static int _delete_fh (void *mapping)
     }
     if (fh->fp)
         fclose (fh->fp);
+    stats_event (fh->finfo.mount, NULL, NULL);
+    if (fh->format)
+    {
+        format_plugin_clear (fh->format);
+        free (fh->format);
+    }
     free (fh->finfo.mount);
     free (fh->finfo.fallback);
     free (fh);
@@ -203,8 +210,26 @@ static int _delete_fh (void *mapping)
     return 1;
 }
 
+
+static void remove_from_fh (fh_node *fh, client_t *client)
+{
+    client_t **p = &fh->clients;
+    while (*p)
+    {
+        if (*p == client)
+        {
+            *p = client->next;
+            return;
+        }
+        p = &(*p)->next;
+    }
+    if (fh->finfo.mount)
+        DEBUG0 ("unable to find client");
+}
+
+
 /* find/create handle and return it with the structure in a locked state */
-static fh_node *open_fh (fbinfo *finfo)
+static fh_node *open_fh (fbinfo *finfo, client_t *client)
 {
     fh_node *fh, *result;
 
@@ -218,6 +243,21 @@ static fh_node *open_fh (fbinfo *finfo)
         free (fh);
         thread_mutex_lock (&result->lock);
         result->refcount++;
+        if (client)
+        {
+            if (finfo->mount && (finfo->flags & FS_FALLBACK))
+                stats_event_args (result->finfo.mount, "listeners", "%ld", result->refcount);
+            client->next = result->clients;
+            result->clients = client;
+            if (result->format)
+            {
+                if (result->format->create_client_data && client->format_data == NULL)
+                {
+                    result->format->create_client_data (result->format, client);
+                    client->check_buffer = result->format->write_buf_to_client;
+                }
+            }
+        }
         DEBUG2 ("refcount now %d for %s", result->refcount, result->finfo.mount);
         avl_tree_unlock (fh_cache);
         return result;
@@ -227,15 +267,60 @@ static fh_node *open_fh (fbinfo *finfo)
     if (fh->finfo.mount[0])
     {
         char *fullpath= util_get_path_from_normalised_uri (fh->finfo.mount, fh->finfo.flags&FS_USE_ADMIN);
-        DEBUG1 ("lookup of \"%s\"", finfo->mount);
+        if (client)
+        {
+            if (finfo->flags & FS_FALLBACK)
+                DEBUG1 ("lookup of fallback file \"%s\"", finfo->mount);
+            else
+                DEBUG1 ("lookup of \"%s\"", finfo->mount);
+        }
         fh->fp = fopen (fullpath, "rb");
         if (fh->fp == NULL)
-            WARN1 ("Failed to open \"%s\"", fullpath);
+        {
+            if (client)
+                WARN1 ("Failed to open \"%s\"", fullpath);
+            if (finfo->flags & FS_FALLBACK)
+            {
+                avl_tree_unlock (fh_cache);
+                free (fullpath);
+                free (fh);
+                return NULL;
+            }
+        }
+        if (client && finfo->flags & FS_FALLBACK)
+        {
+            char *contenttype = fserve_content_type (fullpath);
+
+            stats_event_hidden (finfo->mount, "file", fullpath, STATS_HIDDEN);
+            fh->format = calloc (1, sizeof (format_plugin_t));
+            fh->format->type = format_get_type (contenttype);
+            free (contenttype);
+            fh->format->mount = fh->finfo.mount;
+            if (format_get_plugin (fh->format) < 0)
+            {
+                avl_tree_unlock (fh_cache);
+                free (fullpath);
+                free (fh);
+                return NULL;
+            }
+            if (fh->format->create_client_data && client->format_data == NULL)
+            {
+                fh->format->create_client_data (fh->format, client);
+                client->check_buffer = fh->format->write_buf_to_client;
+            }
+        }
         free (fullpath);
     }
     thread_mutex_create (&fh->lock);
     thread_mutex_lock (&fh->lock);
     fh->refcount = 1;
+    if (client)
+    {
+        if (finfo->mount && (finfo->flags & FS_FALLBACK))
+            stats_event_hidden (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
+        fh->clients = client;
+        client->next = NULL;
+    }
     fh->finfo.mount = strdup (finfo->mount);
     if (finfo->fallback)
         fh->finfo.fallback = strdup (finfo->fallback);
@@ -245,16 +330,103 @@ static fh_node *open_fh (fbinfo *finfo)
 }
 
 
+static int fill_http_headers (client_t *client, const char *path, struct stat *file_buf)
+{
+    char *type;
+    off_t content_length = 0;
+    const char *range = httpp_getvar (client->parser, "range");
+    refbuf_t *ref = client->refbuf;
+
+
+    if (file_buf)
+        content_length = file_buf->st_size;
+    /* full http range handling is currently not done but we deal with the common case */
+    if (range)
+    {
+        off_t new_content_len = 0, rangenumber = 0;
+        int ret = 0;
+
+        if (strncasecmp (range, "bytes=", 6) == 0)
+            ret = sscanf (range+6, "%" SCN_OFF_T "-", &rangenumber);
+
+        if (ret == 1 && rangenumber>=0 && rangenumber < content_length)
+        {
+            /* Date: is required on all HTTP1.1 responses */
+            char currenttime[50];
+            time_t now;
+            int strflen;
+            struct tm result;
+            off_t endpos;
+            fh_node * fh = client->shared_data;
+
+            ret = fseeko (fh->fp, rangenumber, SEEK_SET);
+            if (ret == -1)
+                return -1;
+
+            client->intro_offset = rangenumber;
+            new_content_len = content_length - rangenumber;
+            endpos = rangenumber + new_content_len - 1;
+            if (endpos < 0)
+                endpos = 0;
+
+            now = client->worker->current_time.tv_sec;
+            strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
+                    gmtime_r (&now, &result));
+            client->respcode = 206;
+            type = fserve_content_type (path);
+            snprintf (ref->data, BUFSIZE,
+                    "HTTP/1.1 206 Partial Content\r\n"
+                    "Date: %s\r\n"
+                    "Accept-Ranges: bytes\r\n"
+                    "Content-Length: %" PRI_OFF_T "\r\n"
+                    "Content-Range: bytes %" PRI_OFF_T
+                    "-%" PRI_OFF_T 
+                    "/%" PRI_OFF_T "\r\n"
+                    "Content-Type: %s\r\n\r\n",
+                    currenttime,
+                    new_content_len,
+                    rangenumber,
+                    endpos,
+                    content_length,
+                    type);
+        }
+        else
+            return -1;
+    }
+    else
+    {
+        type = fserve_content_type (path);
+        client->respcode = 200;
+        if (content_length)
+            snprintf (ref->data, BUFSIZE,
+                    "HTTP/1.0 200 OK\r\n"
+                    "Accept-Ranges: bytes\r\n"
+                    "Content-Type: %s\r\n"
+                    "Content-Length: %" PRI_OFF_T "\r\n"
+                    "\r\n",
+                    type,
+                    content_length);
+        else
+            snprintf (ref->data, BUFSIZE,
+                    "HTTP/1.0 200 OK\r\n"
+                    "Content-Type: %s\r\n"
+                    "\r\n",
+                    type);
+    }
+    free (type);
+    client->refbuf->len = strlen (ref->data);
+    client->pos = 0;
+    ref->flags |= WRITE_BLOCK_GENERIC;
+    return 0;
+}
+
+
 /* client has requested a file, so check for it and send the file.  Do not
  * refer to the client_t afterwards.  return 0 for success, -1 on error.
  */
 int fserve_client_create (client_t *httpclient, const char *path)
 {
     struct stat file_buf;
-    const char *range = NULL;
-    off_t new_content_len = 0;
-    off_t rangenumber = 0, content_length;
-    int ret = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
     int xspf_requested = 0, xspf_file_available = 1;
@@ -378,7 +550,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     finfo.fallback = NULL;
     finfo.limit = 0;
 
-    fh = open_fh (&finfo);
+    fh = open_fh (&finfo, httpclient);
     if (fh == NULL)
     {
         WARN1 ("Problem accessing file \"%s\"", fullpath);
@@ -388,101 +560,19 @@ int fserve_client_create (client_t *httpclient, const char *path)
     }
     free (fullpath);
 
-    content_length = file_buf.st_size;
-    range = httpp_getvar (httpclient->parser, "range");
-
-    do
+    httpclient->intro_offset = 0;
+    httpclient->shared_data = fh;
+    if (fill_http_headers (httpclient, path, &file_buf) < 0)
     {
-        int bytes;
-
-        httpclient->intro_offset = 0;
-        /* full http range handling is currently not done but we deal with the common case */
-        if (range)
-        {
-            ret = 0;
-            if (strncasecmp (range, "bytes=", 6) == 0)
-                ret = sscanf (range+6, "%" SCN_OFF_T "-", &rangenumber);
-
-            if (ret == 1 && rangenumber>=0 && rangenumber < content_length)
-            {
-                /* Date: is required on all HTTP1.1 responses */
-                char currenttime[50];
-                time_t now;
-                int strflen;
-                struct tm result;
-                off_t endpos;
-                char *type;
-
-                ret = fseeko (fh->fp, rangenumber, SEEK_SET);
-                if (ret == -1)
-                    break;
-
-                httpclient->intro_offset = rangenumber;
-                new_content_len = content_length - rangenumber;
-                endpos = rangenumber + new_content_len - 1;
-                if (endpos < 0)
-                    endpos = 0;
-                
-                time(&now);
-                strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
-                                   gmtime_r (&now, &result));
-                httpclient->respcode = 206;
-                type = fserve_content_type (path);
-                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
-                    "HTTP/1.1 206 Partial Content\r\n"
-                    "Date: %s\r\n"
-                    "Accept-Ranges: bytes\r\n"
-                    "Content-Length: %" PRI_OFF_T "\r\n"
-                    "Content-Range: bytes %" PRI_OFF_T
-                    "-%" PRI_OFF_T 
-                    "/%" PRI_OFF_T "\r\n"
-                    "Content-Type: %s\r\n\r\n",
-                    currenttime,
-                    new_content_len,
-                    rangenumber,
-                    endpos,
-                    content_length,
-                    type);
-                free (type);
-            }
-            else
-                break;
-        }
-        else
-        {
-            char *type = fserve_content_type (path);
-            httpclient->respcode = 200;
-            if (httpclient->flags & CLIENT_NO_CONTENT_LENGTH)
-                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
-                        "HTTP/1.0 200 OK\r\n"
-                        "Content-Type: %s\r\n"
-                        "\r\n",
-                        type);
-            else
-                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
-                        "HTTP/1.0 200 OK\r\n"
-                        "Accept-Ranges: bytes\r\n"
-                        "Content-Type: %s\r\n"
-                        "Content-Length: %" PRI_OFF_T "\r\n"
-                        "\r\n",
-                        type,
-                        content_length);
-            free (type);
-        }
-        httpclient->refbuf->len = bytes;
-        httpclient->pos = 0;
-        httpclient->shared_data = fh;
-
-        stats_event_inc (NULL, "file_connections");
         thread_mutex_unlock (&fh->lock);
-        fserve_setup_client_fb (httpclient, NULL);
-        return 0;
-    } while (0);
+        client_send_416 (httpclient);
+        return -1;
+    }
+
+    stats_event_inc (NULL, "file_connections");
     thread_mutex_unlock (&fh->lock);
-    /* If we run into any issues with the ranges
-       we fallback to a normal/non-range request */
-    client_send_416 (httpclient);
-    return -1;
+    fserve_setup_client_fb (httpclient, NULL);
+    return 0;
 }
 
 // fh must be locked before calling this
@@ -509,12 +599,20 @@ static void fh_release (fh_node *fh)
     avl_tree_unlock (fh_cache);
 }
 
+
 static void file_release (client_t *client)
 {
     fh_node *fh = client->shared_data;
     const char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
 
-    rate_free (client->out_bitrate);
+    if (fh)
+    {
+        thread_mutex_lock (&fh->lock);
+        if (fh->finfo.flags & (FS_FALLBACK|FS_JINGLE))
+            stats_event_dec (NULL, "listeners");
+        remove_from_fh (fh, client);
+        fh_release (fh);
+    }
     if (client->respcode == 200)
     {
         ice_config_t *config = config_get_config ();
@@ -528,25 +626,19 @@ static void file_release (client_t *client)
         client_destroy (client);
     }
     global_reduce_bitrate_sampling (global.out_bitrate);
-    if (fh)
-    {
-        thread_mutex_lock (&fh->lock);
-        if (fh->finfo.flags & (FS_FALLBACK|FS_JINGLE))
-            stats_event_dec (NULL, "listeners");
-        fh_release (fh);
-    }
 }
+
+
+struct _client_functions buffer_content_ops =
+{
+    prefile_send,
+    file_release
+};
 
 
 struct _client_functions file_content_ops =
 {
     file_send,
-    file_release
-};
-
-struct _client_functions buffer_content_ops =
-{
-    prefile_send,
     file_release
 };
 
@@ -558,10 +650,9 @@ static void fserve_move_listener (client_t *client)
 
     refbuf_release (client->refbuf);
     client->refbuf = NULL;
-    rate_free (client->out_bitrate);
-    client->out_bitrate = NULL;
     client->shared_data = NULL;
     thread_mutex_lock (&fh->lock);
+    remove_from_fh (fh, client);
     f.flags = fh->finfo.flags;
     f.limit = fh->finfo.limit;
     f.mount = fh->finfo.fallback;
@@ -571,6 +662,7 @@ static void fserve_move_listener (client_t *client)
     fh_release (fh);
 }
 
+struct _client_functions throttled_file_content_ops;
 
 static int prefile_send (client_t *client)
 {
@@ -596,13 +688,18 @@ static int prefile_send (client_t *client)
                 {
                     if (fh->fp) // is there a file to read from
                     {
-                        int len = fh->finfo.limit ? 1400 : 4096;
-                        refbuf_t *r = refbuf_new (len);
+                        int len = 8192;
+                        if (fh->finfo.flags & FS_FALLBACK)
+                        {
+                            len = 1400;
+                            client->ops = &throttled_file_content_ops;
+                        }
+                        else
+                            client->ops = &file_content_ops;
                         refbuf_release (client->refbuf);
-                        client->refbuf = r;
+                        client->refbuf = refbuf_new(len);
                         client->pos = len;
-                        client->ops = &file_content_ops;
-                        return 1;
+                        return 0;
                     }
                 }
                 if (client->respcode)
@@ -621,7 +718,10 @@ static int prefile_send (client_t *client)
             }
             client->pos = 0;
         }
-        bytes = format_generic_write_to_client (client);
+        if (refbuf->flags & WRITE_BLOCK_GENERIC)
+            bytes = format_generic_write_to_client (client);
+        else 
+            bytes = client->check_buffer (client);
         if (bytes < 0)
         {
             client->schedule_ms = client->worker->time_ms + 300;
@@ -636,102 +736,172 @@ static int prefile_send (client_t *client)
     return 0;
 }
 
+static int read_file (client_t *client, int blksize)
+{
+    refbuf_t *refbuf = client->refbuf;
+    fh_node *fh = client->shared_data;
+    int bytes = 0;
 
+    switch (fseeko (fh->fp, client->intro_offset, SEEK_SET))
+    {
+        case -1:
+            client->connection.error = 1;
+            break;
+        default:
+            bytes = fread (refbuf->data, 1, blksize, fh->fp);
+            if (bytes > 0)
+            {
+                refbuf->len = bytes;
+                client->intro_offset += bytes;
+            }
+    }
+    return bytes;
+}
+
+
+/* fast send routine */
 static int file_send (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
-    int loop = 6, bytes, written = 0;
+    int loop = 6, bytes, written = 0, ret = 0;
     fh_node *fh = client->shared_data;
+    time_t now = client->worker->current_time.tv_sec;
 
-    if (client->connection.discon_time &&
-            client->worker->current_time.tv_sec >= client->connection.discon_time)
-        return -1;
-    while (loop)
+    client->schedule_ms = client->worker->time_ms;
+    while (loop && written < 30000)
     {
         loop--;
         if (fserve_running == 0 || client->connection.error)
             return -1;
-        if (fh->finfo.limit)
-        {
-            long rate = rate_avg (client->out_bitrate);
-            if (rate == 0) loop = 0;
-            if (fh->finfo.limit < rate)
-            {
-                rate_add (client->out_bitrate, 0, client->worker->time_ms);
-                client->schedule_ms = client->worker->time_ms + 150;
-                return 0;
-            }
-        }
+        if (client->connection.discon_time && now >= client->connection.discon_time)
+            return -1;
         if (client->pos == refbuf->len)
         {
-            bytes = 0;
-            if (fh->finfo.fallback)
-            {
-                fserve_move_listener (client);
-                return 0;
-            }
-            if (fh->fp)
-            {
-                thread_mutex_lock (&fh->lock);
-                if (fseeko (fh->fp, client->intro_offset, SEEK_SET) == 0 &&
-                        (bytes = fread (refbuf->data, 1, refbuf->len, fh->fp)) > 0)
-                {
-                    refbuf->len = bytes;
-                    client->intro_offset += bytes;
-                }
-                thread_mutex_unlock (&fh->lock);
-            }
-            if (bytes == 0)
+            thread_mutex_lock (&fh->lock);
+            ret = read_file (client, 8192);
+            thread_mutex_unlock (&fh->lock);
+            if (ret == 0)
                 return -1;
             client->pos = 0;
         }
         bytes = client->check_buffer (client);
         if (bytes < 0)
-        {
-            client->schedule_ms = client->worker->time_ms + 300;
-            return 0;
-        }
-        written += bytes;
-        global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
-        if (fh->finfo.limit)
-            rate_add (client->out_bitrate, bytes, client->worker->time_ms);
-        if (written > 30000)
             break;
+        written += bytes;
+        client->schedule_ms += 3;
     }
-    client->schedule_ms = client->worker->time_ms + 150;
-    return 1;
+    return 0;
 }
 
 
-void fserve_setup_client_fb (client_t *client, fbinfo *finfo)
+/* send routine for files sent at a target bitrate, eg fallback files. */
+static int throttled_file_send (client_t *client)
 {
-    client->ops = &buffer_content_ops;
+    refbuf_t *refbuf = client->refbuf;
+    int  bytes;
+    fh_node *fh = client->shared_data;
+    time_t now = client->worker->current_time.tv_sec;
+    unsigned long secs = now - client->timer_start; 
+    unsigned int  rate = secs ? ((client->counter+1400)/secs) : 0;
+
+    if (fserve_running == 0 || client->connection.error)
+        return -1;
+    if (client->connection.discon_time && now >= client->connection.discon_time)
+        return -1;
+    if (fh->finfo.fallback)
+    {
+        fserve_move_listener (client);
+        return 0;
+    }
+    thread_mutex_lock (&fh->lock);
+    if (rate >= fh->finfo.limit)
+    {
+        client->schedule_ms = client->worker->time_ms + (1000*(rate - fh->finfo.limit))/fh->finfo.limit;
+        rate_add (fh->format->out_bitrate, 0, client->worker->time_ms);
+        thread_mutex_unlock (&fh->lock);
+        global_add_bitrates (global.out_bitrate, 0, client->worker->time_ms);
+        return 0;
+    }
+    if (fh->stats_update <= now)
+    {
+        stats_event_args (fh->finfo.mount, "outgoing_kbitrate", "%ld",
+                            (8 * rate_avg (fh->format->out_bitrate))/1024);
+        fh->stats_update = now + 5;
+    }
+    if (client->pos == refbuf->len)
+    {
+        if (read_file (client, 1400) == 0)
+        {
+            /* loop fallback file  */
+            thread_mutex_unlock (&fh->lock);
+            client->intro_offset = 0;
+            client->schedule_ms = client->worker->time_ms + 150;
+            return 0;
+        }
+        client->pos = 0;
+    }
+    bytes = client->check_buffer (client);
+    if (bytes < 0)
+        bytes = 0;
+    rate_add (fh->format->out_bitrate, bytes, client->worker->time_ms);
+    thread_mutex_unlock (&fh->lock);
+    global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
+    client->counter += bytes;
+    client->schedule_ms = client->worker->time_ms + (1000/(fh->finfo.limit/1400*2));
+    return 0;
+}
+
+
+struct _client_functions throttled_file_content_ops =
+{
+    throttled_file_send,
+    file_release
+};
+
+
+/* return 0 for success, 1 for fallback invalid */
+int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
+{
     if (finfo)
     {
-        fh_node *fh = open_fh (finfo);
+        fh_node *fh;
+        if (finfo->flags & FS_FALLBACK && finfo->limit == 0)
+            return 1;
+        fh = open_fh (finfo, client);
+        if (fh == NULL)
+            return 1;
         client->shared_data = fh;
-        if (fh)
+
+        if (fh->finfo.limit)
         {
-            if (fh->finfo.limit)
-                client->out_bitrate = rate_setup (50,1000);
-            thread_mutex_unlock (&fh->lock);
+            client->timer_start = client->worker->current_time.tv_sec;
+            if (client->connection.sent_bytes == 0)
+                client->timer_start -= 2;
+            client->counter = 0;
+            fh->stats_update = client->timer_start + 5;
+            fh->format->out_bitrate = rate_setup (10000, 1000);
+            global_reduce_bitrate_sampling (global.out_bitrate);
         }
+        thread_mutex_unlock (&fh->lock);
+        if (client->respcode == 0)
+            fill_http_headers (client, finfo->mount, NULL);
     }
     else
-    {
         client->check_buffer = format_generic_write_to_client;
-    }
+
+    client->ops = &buffer_content_ops;
     client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
     client->intro_offset = 0;
     if (client->flags & CLIENT_ACTIVE)
         client->schedule_ms = client->worker->time_ms;
     else
     {
-        client->flags |= CLIENT_ACTIVE;
         thread_mutex_lock (&client->worker->lock);
+        client->flags |= CLIENT_ACTIVE;
         thread_cond_signal (&client->worker->cond);
         thread_mutex_unlock (&client->worker->lock);
     }
+    return 0;
 }
 
 
@@ -761,6 +931,7 @@ void fserve_set_override (const char *mount, const char *dest)
         char *tmp = result->finfo.fallback;
         result->finfo.fallback = strdup (dest);
         free (tmp);
+        INFO2 ("move clients from %s to %s", mount, dest);
     }
     avl_tree_unlock (fh_cache);
 }
@@ -852,38 +1023,141 @@ void fserve_recheck_mime_types (ice_config_t *config)
 }
 
 
-#if 0
-/* generate xml list containing listener details for clients attached via the file
- * serving engine.
- */
-xmlDocPtr command_show_listeners(client_t *client, source_t *source,
-        int response)
+void fserve_kill_client (client_t *client, const char *mount, int response)
 {
+    int c = 2, id;
+    fbinfo finfo;
+    xmlDocPtr doc;
+    xmlNodePtr node;
+    const char *idtext, *v = "0";
+    char buf[50];
+
+    finfo.flags = FS_NORMAL;
+    finfo.mount = (char*)mount;
+    finfo.limit = 0;
+    finfo.fallback = NULL;
+
+    idtext = httpp_get_query_param (client->parser, "id");
+    if (idtext == NULL)
+    {
+        client_send_400 (client, "missing parameter id");
+        return;
+    }
+    id = atoi(idtext);
+
+    doc = xmlNewDoc(XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    xmlDocSetRootElement(doc, node);
+    snprintf (buf, sizeof(buf), "Client %d not found", id);
+
+    while (c)
+    {
+        fh_node *fh = open_fh (&finfo, NULL);
+        if (fh)
+        {
+            client_t *listener = fh->clients;
+
+            while (listener)
+            {
+                if (listener->connection.id == id)
+                {
+                    listener->connection.error = 1;
+                    snprintf (buf, sizeof(buf), "Client %d removed", id);
+                    v = "1";
+                    break;
+                }
+                listener = listener->next;
+            }
+            fh_release (fh);
+            break;
+        }
+        c--;
+        finfo.flags = FS_FALLBACK;
+    }
+    xmlNewChild (node, NULL, XMLSTR("message"), XMLSTR(buf));
+    xmlNewChild (node, NULL, XMLSTR("return"), XMLSTR(v));
+    admin_send_response (doc, client, response, "response.xsl");
+    xmlFreeDoc(doc);
+}
+
+
+void fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners)
+{
+    int c = 2;
+    unsigned int entries = 0;
+    const char *type = httpp_get_query_param (client->parser, "type");
+    fbinfo finfo;
     xmlDocPtr doc;
     xmlNodePtr node, srcnode;
-    unsigned long id = -1;
-    char *ID_str = NULL;
-    char buf[22];
+    char buf[100];
+
+    finfo.flags = FS_NORMAL;
+    if (type && strcmp (type, "fallback") == 0)
+    {
+        finfo.flags = FS_FALLBACK;
+        c = 1;
+    }
+    finfo.mount = (char*)mount;
+    finfo.limit = 0;
+    finfo.fallback = NULL;
 
     doc = xmlNewDoc(XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
+    srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
+    xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(mount));
 
+    while (c)
     {
-        client_t *listener;
-        thread_mutex_lock (&source->lock);
-
-        listener = source->active_clients;
-        while (listener)
+        fh_node *fh = open_fh (&finfo, NULL);
+        if (fh)
         {
-            add_listener_node (srcnode, listener);
-            listener = listener->next;
-        }
-        thread_mutex_unlock (&source->lock);
-    }
+            client_t *listener = fh->clients;
 
-    admin_send_response(doc, client, response, "listclients.xsl");
+            while (listener)
+            {
+                if (show_listeners)
+                {
+                    xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
+                    const char *useragent;
+                    snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
+                    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
+
+                    xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
+                    useragent = httpp_getvar (listener->parser, "user-agent");
+                    if (useragent)
+                    {
+                        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
+                        xmlNewChild (node, NULL, XMLSTR("useragent"), str);
+                        xmlFree (str);
+                    }
+                    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR( "0"));
+                    snprintf (buf, sizeof (buf), "%lu",
+                            (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
+                    xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+                    if (listener->username)
+                    {
+                        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
+                        xmlNewChild (node, NULL, XMLSTR("username"), str);
+                        xmlFree (str);
+                    }
+                }
+
+                entries++;
+                listener = listener->next;
+            }
+            fh_release (fh);
+        }
+        c--;
+        finfo.flags = FS_FALLBACK;
+    }
+    if (entries)
+    {
+        snprintf (buf, sizeof(buf), "%u", entries);
+        xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
+        admin_send_response (doc, client, response, "listclients.xsl");
+    }
+    else
+        client_send_400 (client, "mount does not exist");
     xmlFreeDoc(doc);
 }
-
-#endif

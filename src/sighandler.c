@@ -61,8 +61,6 @@ void _sig_hup(int signo)
 
 void _sig_die(int signo)
 {
-    INFO1("Caught signal %d, shutting down...", signo);
-
     /* inform the server to start shutting down */
     global.running = ICE_HALTING;
 }

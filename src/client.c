@@ -464,13 +464,14 @@ static void worker_start (void)
 
 static void worker_stop (void)
 {
-    worker_t *handler = workers;
+    worker_t *handler;
     client_t *clients = NULL, **last;
     int count;
 
-    if (handler == NULL)
+    if (workers == NULL)
         return;
     thread_rwlock_wlock (&workers_lock);
+    handler = workers;
     workers = handler->next;
     worker_count--;
     thread_rwlock_unlock (&workers_lock);

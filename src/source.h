@@ -102,6 +102,7 @@ int source_compare_sources(void *arg, void *a, void *b);
 void source_free_source(source_t *source);
 void source_move_clients (source_t *source, source_t *dest);
 int source_remove_client(void *key);
+void source_listener_detach (client_t *client);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
 int  source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client);

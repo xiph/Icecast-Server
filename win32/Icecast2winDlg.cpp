@@ -13,12 +13,12 @@
 #include <curl/curl.h>
 
 extern "C" {
-#include "thread.h"
-#include "avl.h"
-#include "log.h"
+#include "thread/thread.h"
+#include "avl/avl.h"
+#include "log/log.h"
 #include "global.h"
-#include "httpp.h"
-#include "sock.h"
+#include "httpp/httpp.h"
+#include "net/sock.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"

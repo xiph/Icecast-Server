@@ -61,7 +61,7 @@ struct rate_calc *rate_setup (unsigned int samples, unsigned int ssec);
 void rate_add (struct rate_calc *calc, long value, uint64_t t);
 long rate_avg (struct rate_calc *calc);
 void rate_free (struct rate_calc *calc);
-void rate_reduce (struct rate_calc *calc, unsigned int count);
+void rate_reduce (struct rate_calc *calc, unsigned int range);
 
 int get_line(FILE *file, char *buf, size_t siz);
 

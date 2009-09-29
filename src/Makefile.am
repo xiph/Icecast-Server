@@ -10,7 +10,7 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h event.h md5.h \
     auth.h auth_htpasswd.h auth_cmd.h auth_url.h \
-    fnmatch_loop.c \
+    fnmatch_loop.c fnmatch.h \
     format.h format_ogg.h format_mp3.h \
     format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
     format_kate.h format_skeleton.h

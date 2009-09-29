@@ -138,6 +138,7 @@ source_t *source_reserve (const char *mount)
         /* make duplicates for strings or similar */
         src->mount = strdup (mount);
         src->listener_send_trigger = 10000;
+        src->format = calloc (1, sizeof(format_plugin_t));
 
         thread_mutex_create (&src->lock);
 
@@ -250,15 +251,12 @@ void source_clear_listeners (source_t *source)
         client->shared_data = NULL;
         client_set_queue (client, NULL);
         /* do not count listeners who have joined but haven't done any processing */
-        if (client->respcode == 200)
-            i++;
+        i++;
         auth_release_listener (client, source->mount, mountinfo);
     }
     config_release_config ();
     if (i)
-    {
         stats_event_sub (NULL, "listeners", i);
-    }
     source->listeners = 0;
     source->prev_listeners = 0;
 }
@@ -278,8 +276,7 @@ void source_clear_source (source_t *source)
         source->dumpfile = NULL;
     }
 
-    format_free_plugin (source->format);
-    source->format = NULL;
+    format_plugin_clear (source->format);
 
     /* flush out the stream data, we don't want any left over */
 
@@ -346,6 +343,7 @@ static int _free_source (void *p)
     thread_mutex_destroy (&source->lock);
 
     INFO1 ("freeing source \"%s\"", source->mount);
+    free (source->format);
     free (source->mount);
     free (source);
     return 1;
@@ -388,7 +386,7 @@ static void update_source_stats (source_t *source)
 
     source->format->sent_bytes += kbytes_sent*1024;
     stats_event_args (source->mount, "outgoing_kbitrate", "%ld",
-            (8 * rate_avg (source->format->out_bitrate))/1000);
+            (8 * rate_avg (source->format->out_bitrate))/1024);
     stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate);
     stats_event_args (source->mount, "total_bytes_read",
             "%"PRIu64, source->format->read_bytes);
@@ -445,7 +443,7 @@ void source_read (source_t *source)
                 stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
             }
         }
-        if (source->client && current >= source->client_stats_update)
+        if (current >= source->client_stats_update)
         {
             source_change_worker (source);
             update_source_stats (source);
@@ -481,13 +479,13 @@ void source_read (source_t *source)
                         source->timeout, (long)current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->flags &= ~SOURCE_RUNNING;
+                skip = 0;
                 break;
             }
-            rate_add (source->format->in_bitrate, 0, current);
-            if (source->skip_duration < 60)
-                source->skip_duration = 80;
+            if (source->skip_duration < 20)
+                source->skip_duration = 30;
             else
-                source->skip_duration = (long)(source->skip_duration *1.8);
+                source->skip_duration = (long)(source->skip_duration * 1.8);
             break;
         }
         source->skip_duration = (long)(source->skip_duration * 0.9);
@@ -580,6 +578,12 @@ static int source_client_read (client_t *client)
     source_t *source = client->shared_data;
 
     thread_mutex_lock (&source->lock);
+    if (client->connection.discon_time &&
+            client->connection.discon_time <= client->worker->current_time.tv_sec)
+    {
+        source->flags &= ~SOURCE_RUNNING;
+        INFO1 ("streaming duration expired on %s", source->mount);
+    }
     if (source_running (source))
         source_read (source);
     else
@@ -726,7 +730,7 @@ static int http_source_listener (client_t *client)
 
     if (client->respcode == 0)
     {
-        int (*build_headers)(source_t *, client_t *) = format_general_headers;
+        int (*build_headers)(format_plugin_t *, client_t *) = format_general_headers;
 
         if (source_running (source) == 0)
         {
@@ -737,13 +741,11 @@ static int http_source_listener (client_t *client)
             build_headers = source->format->create_client_data;
 
         refbuf->len = 0;
-        if (build_headers (source, client) < 0)
+        if (build_headers (source->format, client) < 0)
         {
             ERROR0 ("internal problem, dropping client");
             return -1;
         }
-        stats_event_inc (NULL, "listeners");
-        stats_event_inc (NULL, "listener_connections");
         stats_event_inc (source->mount, "listener_connections");
     }
     if (client->pos == refbuf->len)
@@ -766,6 +768,15 @@ static int http_source_listener (client_t *client)
 }
 
 
+void source_listener_detach (client_t *client)
+{
+    source_t *source = client->shared_data;
+    if (client->check_buffer != http_source_listener && 
+            (client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
+        client_set_queue (client, NULL);
+    client->check_buffer = source->format->write_buf_to_client;
+}
+
 /* general send routine per listener.
  */
 static int send_to_listener (client_t *client)
@@ -780,27 +791,25 @@ static int send_to_listener (client_t *client)
         return -1;
     if (source->fallback.mount)
     {
+        int move_failed;
+        client_t **pnext;
         thread_mutex_lock (&source->lock);
-
-        if (client->flags & CLIENT_IS_SLAVE)
-            client->schedule_ms = client->worker->time_ms + 100;
-        else
+        // remove from the sources client list
+        pnext = &source->client_list;
+        while (*pnext && *pnext != client)
+            pnext = &((*pnext)->next);
+        *pnext = client->next;
+        source->listeners--;
+        source_listener_detach (client);
+        thread_mutex_unlock (&source->lock);
+        move_failed = move_listener (client, &source->fallback);
+        thread_mutex_lock (&source->lock);
+        if (move_failed)
         {
-            // remove from the sources client list
-            client_t **pnext = &source->client_list;
-            while (*pnext && *pnext != client)
-                pnext = &((*pnext)->next);
-            *pnext = client->next;
-            if (client->check_buffer != http_source_listener)
-            {
-                if ((client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
-                    client_set_queue (client, NULL);
-                client->check_buffer = source->format->write_buf_to_client;
-            }
-            thread_mutex_unlock (&source->lock);
-            move_listener (client, &source->fallback);
-            thread_mutex_lock (&source->lock);
-            source->listeners--;
+            client->next = source->client_list;
+            source->client_list = client;
+            source->listeners++;
+            client->schedule_ms = client->worker->time_ms + 50;
         }
         source->termination_count--;
         thread_mutex_unlock (&source->lock);
@@ -809,10 +818,10 @@ static int send_to_listener (client_t *client)
     if (source->flags & SOURCE_TERMINATING)
     {
         thread_mutex_lock (&source->lock);
-        DEBUG1 ("termination_count now %d",  source->termination_count);
+        source->termination_count--;
+        DEBUG2 ("termination count on %s now %d", source->mount, source->termination_count);
         client_set_queue (client, NULL);
         client->ops = &listener_pause_ops;
-        source->termination_count--;
         thread_mutex_unlock (&source->lock);
         return -1;
     }
@@ -830,6 +839,9 @@ static int send_to_listener (client_t *client)
     }
 
     thread_mutex_lock (&source->lock);
+
+    if (client->refbuf == NULL)
+        client->check_buffer = source_queue_advance;
 
     // do we migrate this listener to the same handler as the source client
     if (source->client && source->client->worker != client->worker)
@@ -861,12 +873,9 @@ static int send_to_listener (client_t *client)
     }
     if (loop == 0)
         client->schedule_ms -= 500;
-    if (total_written)
-    {
-        rate_add (source->format->out_bitrate, total_written, client->worker->time_ms);
-        global_add_bitrates (global.out_bitrate, total_written, client->worker->time_ms);
-        source->bytes_sent_since_update += total_written;
-    }
+    rate_add (source->format->out_bitrate, total_written, client->worker->time_ms);
+    global_add_bitrates (global.out_bitrate, total_written, client->worker->time_ms);
+    source->bytes_sent_since_update += total_written;
 
     /* the refbuf referenced at head (last in queue) may be marked for deletion
      * if so, check to see if this client is still referring to it */
@@ -932,8 +941,8 @@ void source_init (source_t *source)
             stats_event (source->mount, "audio_info", str);
         }
     }
-    source->format->in_bitrate = rate_setup (50, 1);
-    source->format->out_bitrate = rate_setup (50, 1000);
+    source->format->in_bitrate = rate_setup (60, 1);
+    source->format->out_bitrate = rate_setup (9000, 1000);
 
     thread_mutex_unlock (&source->lock);
 
@@ -993,13 +1002,15 @@ void source_set_override (const char *mount, const char *dest)
 
 void source_set_fallback (source_t *source, const char *dest_mount)
 {
+    source->termination_count = source->listeners;
     if (dest_mount == NULL)
         return;
 
     source->fallback.flags = FS_FALLBACK;
     source->fallback.mount = strdup (dest_mount);
     source->fallback.limit = (int)(rate_avg (source->format->in_bitrate) * 1.02);
-    source->termination_count = source->listeners;
+    INFO4 ("fallback set on %s to %s(%d) with %d listeners", source->mount, dest_mount,
+            source->fallback.limit, source->listeners);
 }
 
 void source_shutdown (source_t *source, int with_fallback)
@@ -1016,7 +1027,7 @@ void source_shutdown (source_t *source, int with_fallback)
             source_run_script (mountinfo->on_disconnect, source->mount);
         auth_stream_end (mountinfo, source->mount);
 
-        if (with_fallback)
+        if (with_fallback && global.running == ICE_RUNNING)
             source_set_fallback (source, mountinfo->fallback_mount);
     }
     config_release_config();
@@ -1582,7 +1593,7 @@ static void source_listener_release (client_t *client)
     *pnext = client->next;
     value = --source->listeners;
     if (source->listeners == 0)
-        rate_reduce (source->format->out_bitrate, 0);
+        rate_reduce (source->format->out_bitrate, 1000);
 
     stats_event_dec (NULL, "listeners");
     stats_event_args (source->mount, "listeners", "%lu", value);
@@ -1599,7 +1610,7 @@ static void source_listener_release (client_t *client)
 
 int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
-    int loop = 10;
+    int loop = 10, bitrate = 0;
     int within_limits;
     source_t *source;
     mount_proxy *minfo = mountinfo;
@@ -1626,8 +1637,27 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
                     break;
                 thread_mutex_unlock (&source->lock);
             }
+            if (minfo && minfo->limit_rate)
+                bitrate = minfo->limit_rate;
             if (minfo == NULL || minfo->fallback_mount == NULL)
+            {
+                if (bitrate)
+                {
+                    fbinfo f;
+                    f.flags = FS_FALLBACK;
+                    f.mount = (char *)mount;
+                    f.fallback = NULL;
+                    f.limit = bitrate/8;
+                    if (move_listener (client, &f) == 0)
+                    {
+                        /* source dead but fallback to file found */
+                        stats_event_inc (NULL, "listeners");
+                        stats_event_inc (NULL, "listener_connections");
+                        return 0;
+                    }
+                }
                 return -2;
+            }
             mount = minfo->fallback_mount;
             minfo = config_find_mount (config_get_config_unlocked(), mount);
             loop--;
@@ -1720,6 +1750,9 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
 
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
     memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+
+    stats_event_inc (NULL, "listeners");
+    stats_event_inc (NULL, "listener_connections");
 
     source_setup_listener (source, client);
     client->flags |= CLIENT_ACTIVE;

@@ -585,7 +585,7 @@ static int stats_listeners_send (client_t *client)
     int ret = 0;
     event_listener_t *listener = client->shared_data;
 
-    if (client->connection.error)
+    if (client->connection.error || global.running != ICE_RUNNING)
         return -1;
     if (client->flags & STATS_LARGE)
         loop = 4;
@@ -1087,10 +1087,14 @@ void stats_clear_virtual_mounts (void)
 
         if (source == NULL)
         {
-            /* no source_t is reserved so remove them now */
-            snode = avl_get_next (snode);
-            avl_delete (_stats.source_tree, src, _free_source_stats);
-            continue;
+            stats_node_t *node = _find_node (src->stats_tree, "file");
+            if (node == NULL)
+            {
+                /* no source_t and no fallbakc file stat, so delete */
+                snode = avl_get_next (snode);
+                avl_delete (_stats.source_tree, src, _free_source_stats);
+                continue;
+            }
         }
 
         snode = avl_get_next (snode);
@@ -1110,7 +1114,7 @@ void stats_global_calc (void)
 
     thread_mutex_lock (&_stats_mutex);
     snprintf (buffer, sizeof(buffer), "%" PRIu64,
-            (int64_t)global_getrate_avg (global.out_bitrate) * 8 / 1000);
+            (int64_t)global_getrate_avg (global.out_bitrate) * 8 / 1024);
     process_event_unlocked (&event);
     /* retrieve the list of closing down clients */
     listener = _stats.listeners_removed;

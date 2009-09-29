@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh12"
+#define VERSION "2.3.2-kh16"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -159,6 +159,7 @@ typedef unsigned int socklen_t;
 #define HAVE_SYS_TIMEB_H 1
 
 #define sock_t SOCKET
+#define sockaddr_storage sockaddr_in
 
 /* time format for strftime */
 #define ICECAST_TIME_FMT "%a, %d %b %Y %H:%M:%S"

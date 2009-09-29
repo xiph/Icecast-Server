@@ -72,6 +72,6 @@ typedef struct ogg_codec_tag
 refbuf_t *make_refbuf_with_page (ogg_codec_t *codec, ogg_page *page);
 void format_ogg_attach_header (ogg_codec_t *codec, ogg_page *page);
 void format_ogg_free_headers (ogg_state_t *ogg_info);
-int format_ogg_get_plugin (source_t *source);
+int  format_ogg_get_plugin (format_plugin_t *plugin);
 
 #endif  /* __FORMAT_OGG_H__ */

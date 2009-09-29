@@ -708,7 +708,7 @@ static int http_client_request (client_t *client)
                 client->shared_data = NULL;
                 client->check_buffer = format_generic_write_to_client;
                 fserve_setup_client_fb (client, &fb);
-                return 1;
+                return 0;
             }
             /* find a blank line */
             do
@@ -782,7 +782,7 @@ static int http_client_request (client_t *client)
                         WARN0("unhandled request type from client");
                         client_send_400 (client, "unknown request");
                 }
-                return 1;
+                return 0;
             }
             /* invalid http request */
             return -1;
@@ -897,7 +897,10 @@ int connection_complete_source (source_t *source, int response)
             format_type = FORMAT_TYPE_GENERIC;
         }
 
-        if (format_get_plugin (format_type, source) < 0)
+        source->format->type = format_type;
+        source->format->mount = source->mount;
+        source->format->parser = source->parser;
+        if (format_get_plugin (source->format) < 0)
         {
             global_unlock();
             config_release_config();

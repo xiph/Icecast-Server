@@ -100,13 +100,13 @@
     <!-- Allow multiple master servers to be specified, tries each one in turn.
     <relay>
         <local-mount>/stream.mp3</local-mount>
+        <server>a.b.c.d</server>
+        <timeout>6</timeout>
         <master>
-            <server>a.b.c.d</server>
             <port>8000</port>
             <mount>/a</mount>
         </master>
         <master>
-            <server>a.b.c.d</server>
             <port>80</port>
             <mount>/</mount>
         </master>

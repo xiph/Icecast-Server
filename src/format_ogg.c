@@ -51,7 +51,7 @@
 struct _ogg_state_tag;
 
 static void format_ogg_free_plugin (format_plugin_t *plugin);
-static int  create_ogg_client_data(source_t *source, client_t *client);
+static int  create_ogg_client_data(format_plugin_t *plugin, client_t *client);
 static void free_ogg_client_data (client_t *client);
 
 static int get_image (client_t *client, struct _format_plugin_tag *format);
@@ -156,14 +156,10 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
 }
 
 
-int format_ogg_get_plugin (source_t *source)
+int format_ogg_get_plugin (format_plugin_t *plugin)
 {
-    format_plugin_t *plugin;
     ogg_state_t *state = calloc (1, sizeof (ogg_state_t));
 
-    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
-
-    plugin->type = FORMAT_TYPE_OGG;
     plugin->get_buffer = ogg_get_buffer;
     plugin->write_buf_to_client = write_buf_to_client;
     plugin->write_buf_to_file = write_ogg_to_file;
@@ -172,15 +168,20 @@ int format_ogg_get_plugin (source_t *source)
     plugin->get_image = get_image;
     plugin->set_tag = NULL;
     plugin->apply_settings = apply_ogg_settings;
-    if (strcmp (httpp_getvar (source->parser, "content-type"), "application/x-ogg") == 0)
-        httpp_setvar (source->parser, "content-type", "application/ogg");
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");;
+    if (plugin->parser)
+    {
+        const char *s = httpp_getvar (plugin->parser, "content-type");;
+        if (s==NULL || strcmp (s, "application/x-ogg") == 0)
+            httpp_setvar (plugin->parser, "content-type", "application/ogg");
+        plugin->contenttype = strdup (httpp_getvar (plugin->parser, "content-type"));
+    }
+    else
+        plugin->contenttype = strdup ("application/ogg");
 
     ogg_sync_init (&state->oy);
 
     plugin->_state = state;
-    source->format = plugin;
-    state->mount = source->mount;
+    state->mount = plugin->mount;
     state->bos_end = &state->header_pages;
 
     return 0;
@@ -198,8 +199,7 @@ static void format_ogg_free_plugin (format_plugin_t *plugin)
 
     ogg_sync_clear (&state->oy);
     free (state);
-
-    free (plugin);
+    free (plugin->contenttype);
 }
 
 
@@ -336,6 +336,7 @@ static void update_comments (source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
+    stats_event_time (source->mount, "metadata_updated");
 
     codec = ogg_info->codecs;
     while (codec)
@@ -474,7 +475,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
 }
 
 
-static int create_ogg_client_data (source_t *source, client_t *client) 
+static int create_ogg_client_data (format_plugin_t *plugin, client_t *client) 
 {
     struct ogg_client *client_data = calloc (1, sizeof (struct ogg_client));
     int ret = -1;
@@ -484,7 +485,7 @@ static int create_ogg_client_data (source_t *source, client_t *client)
         client_data->headers_sent = 1;
         client->format_data = client_data;
         client->free_client_data = free_ogg_client_data;
-        ret = format_general_headers (source, client);
+        ret = format_general_headers (plugin, client);
     }
     return ret;
 }

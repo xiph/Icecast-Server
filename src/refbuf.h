@@ -40,5 +40,7 @@ void refbuf_release(refbuf_t *self);
 
 #define PER_CLIENT_REFBUF_SIZE  4096
 
+#define WRITE_BLOCK_GENERIC     01000
+
 #endif  /* __REFBUF_H__ */
 

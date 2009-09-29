@@ -366,7 +366,7 @@ static void *auth_run_thread (void *arg)
 }
 
 
-void move_listener (client_t *client, struct _fbinfo *finfo)
+int move_listener (client_t *client, struct _fbinfo *finfo)
 {
     source_t *source;
 
@@ -382,7 +382,7 @@ void move_listener (client_t *client, struct _fbinfo *finfo)
             avl_tree_unlock (global.source_tree);
             source_setup_listener (source, client);
             thread_mutex_unlock (&source->lock);
-            return;
+            return 0;
         }
         if (source->fallback.mount)
         {
@@ -392,7 +392,9 @@ void move_listener (client_t *client, struct _fbinfo *finfo)
         }
     }
     avl_tree_unlock (global.source_tree);
-    fserve_setup_client_fb (client, finfo);
+    if (client->flags & CLIENT_IS_SLAVE)
+        return -1;
+    return fserve_setup_client_fb (client, finfo);
 }
 
 
@@ -448,6 +450,8 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         }
         ret = fserve_client_create (client, mount);
     }
+    if (ret == 0)
+        global_reduce_bitrate_sampling (global.out_bitrate);
     return ret;
 }
 
@@ -460,12 +464,10 @@ static int auth_postprocess_listener (auth_client *auth_user)
     ice_config_t *config;
     mount_proxy *mountinfo;
     const char *mount = auth_user->mount;
-    worker_t *worker;
 
     if (client == NULL)
         return -1;
 
-    worker = client->worker;
     if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
         /* auth failed so do we place the listener elsewhere */

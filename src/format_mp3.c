@@ -51,7 +51,7 @@ static void format_mp3_free_plugin(format_plugin_t *plugin);
 static refbuf_t *mp3_get_filter_meta (source_t *source);
 static refbuf_t *mp3_get_no_meta (source_t *source);
 
-static int  format_mp3_create_client_data (source_t *source, client_t *client);
+static int  format_mp3_create_client_data (format_plugin_t *plugin, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
@@ -73,17 +73,13 @@ typedef struct {
 static refbuf_t blank_meta = { 17, 1, "\001StreamTitle='';", NULL, NULL, 0 };
 
 
-int format_mp3_get_plugin (source_t *source)
+int format_mp3_get_plugin (format_plugin_t *plugin)
 {
     const char *metadata;
-    format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
+    const char *s;
 
-    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
-
-    plugin->mount = source->mount;
-    plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
     plugin->write_buf_to_client = format_mp3_write_buf_to_client;
     plugin->write_buf_to_file = write_mp3_to_file;
@@ -92,11 +88,12 @@ int format_mp3_get_plugin (source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");
-    if (plugin->contenttype == NULL) {
+    s = httpp_getvar (plugin->parser, "content-type");
+    if (s)
+        plugin->contenttype = strdup (s);
+    else
         /* We default to MP3 audio for old clients without content types */
-        plugin->contenttype = "audio/mpeg";
-    }
+        plugin->contenttype = strdup ("audio/mpeg");
 
     plugin->_state = state;
 
@@ -107,7 +104,7 @@ int format_mp3_get_plugin (source_t *source)
     state->metadata = meta;
     state->interval = -1;
 
-    metadata = httpp_getvar (source->parser, "icy-metaint");
+    metadata = httpp_getvar (plugin->parser, "icy-metaint");
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
@@ -118,7 +115,6 @@ int format_mp3_get_plugin (source_t *source)
             state->interval = state->inline_metadata_interval;
         }
     }
-    source->format = plugin;
     thread_mutex_create (&state->url_lock);
 
     return 0;
@@ -159,6 +155,7 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
         free (source_mp3->url_title);
         source_mp3->url_title = value;
         stats_event (plugin->mount, "title", value);
+        stats_event_time (plugin->mount, "metadata_updated");
     }
     else if (strcmp (tag, "artist") == 0)
     {
@@ -494,8 +491,8 @@ static void format_mp3_free_plugin (format_plugin_t *plugin)
     free (format_mp3->url);
     refbuf_release (format_mp3->metadata);
     refbuf_release (format_mp3->read_data);
-    free(format_mp3);
-    free(plugin);
+    free (plugin->contenttype);
+    free (format_mp3);
 }
 
 
@@ -657,6 +654,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
                         source_mp3->build_metadata, source_mp3->build_metadata_len);
                 logging_playlist (source->mount, title, source->listeners);
                 stats_event_conv (source->mount, "title", title, source->format->charset);
+                stats_event_time (source->mount, "metadata_updated");
                 yp_touch (source->mount);
                 free (title);
                 refbuf_release (source_mp3->metadata);
@@ -690,10 +688,10 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 }
 
 
-static int format_mp3_create_client_data(source_t *source, client_t *client)
+static int format_mp3_create_client_data (format_plugin_t *plugin, client_t *client)
 {
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
-    mp3_state *source_mp3 = source->format->_state;
+    mp3_state *source_mp3 = plugin->_state;
     const char *metadata;
     size_t  remaining = 4096;
     char *ptr = client->refbuf->data;
@@ -722,7 +720,7 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
     client->free_client_data = free_mp3_client_data;
     client->refbuf->len = 4096 - remaining;
 
-    if (format_general_headers (source, client) < 0)
+    if (format_general_headers (plugin, client) < 0)
         return -1;
 
     remaining = 4096 - client->refbuf->len + 2;

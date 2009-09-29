@@ -28,6 +28,7 @@
 #define CATMODULE "refbuf"
 
 #include "logging.h"
+#include "global.h"
 
 
 void refbuf_initialize(void)

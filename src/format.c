@@ -61,28 +61,29 @@ format_type_t format_get_type(const char *contenttype)
         return FORMAT_TYPE_GENERIC;
 }
 
-void format_free_plugin (format_plugin_t *format)
+void format_plugin_clear (format_plugin_t *format)
 {
     if (format == NULL)
         return;
     rate_free (format->in_bitrate);
     rate_free (format->out_bitrate);
     free (format->charset);
+    format->charset = NULL;
     if (format->free_plugin)
         format->free_plugin (format);
 }
 
 
-int format_get_plugin (format_type_t type, source_t *source)
+int format_get_plugin (format_plugin_t *plugin)
 {
     int ret = -1;
 
-    switch (type) {
+    switch (plugin->type) {
     case FORMAT_TYPE_OGG:
-        ret = format_ogg_get_plugin (source);
+        ret = format_ogg_get_plugin (plugin);
         break;
     case FORMAT_TYPE_GENERIC:
-        ret = format_mp3_get_plugin (source);
+        ret = format_mp3_get_plugin (plugin);
         break;
     default:
         break;
@@ -151,7 +152,7 @@ int format_generic_write_to_client (client_t *client)
 }
 
 
-int format_general_headers (source_t *source, client_t *client)
+int format_general_headers (format_plugin_t *plugin, client_t *client)
 {
     unsigned remaining = 4096 - client->refbuf->len;
     char *ptr = client->refbuf->data + client->refbuf->len;
@@ -163,69 +164,72 @@ int format_general_headers (source_t *source, client_t *client)
     if (client->respcode == 0)
     {
         bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-                "Content-Type: %s\r\n", source->format->contenttype);
+                "Content-Type: %s\r\n", plugin->contenttype);
         remaining -= bytes;
         ptr += bytes;
         client->respcode = 200;
     }
 
-    /* iterate through source http headers and send to client */
-    avl_tree_rlock (source->parser->vars);
-    node = avl_get_first (source->parser->vars);
-    while (node)
+    if (plugin->parser)
     {
-        int next = 1;
-        http_var_t *var = (http_var_t *)node->key;
-        bytes = 0;
-        if (!strcasecmp (var->name, "ice-audio-info"))
+        /* iterate through source http headers and send to client */
+        avl_tree_rlock (plugin->parser->vars);
+        node = avl_get_first (plugin->parser->vars);
+        while (node)
         {
-            /* convert ice-audio-info to icy-br */
-            char *brfield = NULL;
-            unsigned int bitrate;
-
-            if (bitrate_filtered == 0)
-                brfield = strstr (var->value, "bitrate=");
-            if (brfield && sscanf (brfield, "bitrate=%u", &bitrate))
+            int next = 1;
+            http_var_t *var = (http_var_t *)node->key;
+            bytes = 0;
+            if (!strcasecmp (var->name, "ice-audio-info"))
             {
-                bytes = snprintf (ptr, remaining, "icy-br:%u\r\n", bitrate);
-                next = 0;
-                bitrate_filtered = 1;
+                /* convert ice-audio-info to icy-br */
+                char *brfield = NULL;
+                unsigned int bitrate;
+
+                if (bitrate_filtered == 0)
+                    brfield = strstr (var->value, "bitrate=");
+                if (brfield && sscanf (brfield, "bitrate=%u", &bitrate))
+                {
+                    bytes = snprintf (ptr, remaining, "icy-br:%u\r\n", bitrate);
+                    next = 0;
+                    bitrate_filtered = 1;
+                }
+                else
+                    /* show ice-audio_info header as well because of relays */
+                    bytes = snprintf (ptr, remaining, "%s: %s\r\n", var->name, var->value);
             }
             else
-                /* show ice-audio_info header as well because of relays */
-                bytes = snprintf (ptr, remaining, "%s: %s\r\n", var->name, var->value);
-        }
-        else
-        {
-            if (strcasecmp (var->name, "ice-password") &&
-                    strcasecmp (var->name, "icy-metaint"))
             {
-                if (!strncasecmp ("ice-", var->name, 4))
+                if (strcasecmp (var->name, "ice-password") &&
+                        strcasecmp (var->name, "icy-metaint"))
                 {
-                    if (!strcasecmp ("ice-public", var->name))
-                        bytes = snprintf (ptr, remaining, "icy-pub:%s\r\n", var->value);
-                    else
-                        if (!strcasecmp ("ice-bitrate", var->name))
-                            bytes = snprintf (ptr, remaining, "icy-br:%s\r\n", var->value);
+                    if (!strncasecmp ("ice-", var->name, 4))
+                    {
+                        if (!strcasecmp ("ice-public", var->name))
+                            bytes = snprintf (ptr, remaining, "icy-pub:%s\r\n", var->value);
                         else
+                            if (!strcasecmp ("ice-bitrate", var->name))
+                                bytes = snprintf (ptr, remaining, "icy-br:%s\r\n", var->value);
+                            else
+                                bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
+                                        var->name + 3, var->value);
+                    }
+                    else 
+                        if (!strncasecmp ("icy-", var->name, 4))
+                        {
                             bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
                                     var->name + 3, var->value);
+                        }
                 }
-                else 
-                    if (!strncasecmp ("icy-", var->name, 4))
-                    {
-                        bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
-                                var->name + 3, var->value);
-                    }
             }
-        }
 
-        remaining -= bytes;
-        ptr += bytes;
-        if (next)
-            node = avl_get_next (node);
+            remaining -= bytes;
+            ptr += bytes;
+            if (next)
+                node = avl_get_next (node);
+        }
+        avl_tree_unlock (plugin->parser->vars);
     }
-    avl_tree_unlock (source->parser->vars);
 
     config = config_get_config();
     bytes = snprintf (ptr, remaining, "Server: %s\r\n", config->server_id);
@@ -243,6 +247,7 @@ int format_general_headers (source_t *source, client_t *client)
     ptr += bytes;
 
     client->refbuf->len = 4096 - remaining;
+    client->refbuf->flags |= WRITE_BLOCK_GENERIC;
     return 0;
 }
 

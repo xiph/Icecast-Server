@@ -16,6 +16,57 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh16
+. you can now fallback to file if the initial mountpont is not available as long
+  as there is a limit-rate set at some point within the fallback chain.
+. A header from url listener add "icecast-auth-user: withintro" indicates that
+  the response contains intro data to be sent to the this listener. Anything
+  else indicates the previous behaviour.
+. allow source clients to be limited by duration, set by time limit header in
+  url stream auth
+. internal changes to average bitrate calculations. blocks are now removed based
+  on the timestamp not the block count.
+. fix possible race with url auth'd listener getting a 404 response
+. try throttle file sending based on duration/bytes sent on file handle and split the
+  file sending function into two (throttled/unthrottled). reduces memory.
+. merge in compile-time allocation counters
+. Added some stats for fallback files, and metadata_updated for sources
+. minor cleanups for internal API. log message cleanups.
+. kh15b. fix possible crash on url listener failing.
+. kh15a
+  - fix memory corruption when clients are referring to the same file.
+  - log buffering on win32 enabled
+
+2.3.2-kh15
+. lock mismatch identified, could cause a stall in the worker.
+. relay connection timeout was not being set in all cases
+. Don't fallback listeners on relay fail if server shutting down
+. minor code cleanups.
+
+2.3.2-kh14
+. Allow stats/listclients/killclient work with file references
+. Add timeout parameter to relay. number of seconds for connect to complete.
+. fixes for restarting of relays, especially where changes are detected and
+  where fallback to files were set.
+. repeat fallback file
+. tuneup client scheduling for file sending
+. added a few validation checks, useragent chars, xml config port ranges
+. log message cleanups.
+
+2.3.2-kh13
+. on source exit, listeners do not need to be moved to the file serving engine,
+  just release any shared data and delete client if not on worker. saves process
+  work at source exit
+. fix possible crash bug with long lock held detection.
+. allow listener_add response to include intro content
+. merge connection_t into client_t, and shrunk connection_t, reduces memory used
+. improve some of the internal client scheduling.
+. the reading of the mime types file was done too early
+. admin/fallback now updates the mount details if available.
+. more source lock cleanups. nothing major
+. change the order of the header routines, the format specific routine now calls
+  the general routine.
+
 2.3.2-kh12
 . xml based relays could cause a crash on server exit or xml reload
 . avoid memory/fd leak on active relay restart.

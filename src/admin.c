@@ -106,7 +106,7 @@ static struct admin_command admin_general[] =
 
 static struct admin_command admin_mount[] =
 {
-    { "fallbacks",          RAW,    { command_fallback } },
+    { "fallback",           RAW,    { command_fallback } },
     { "metadata",           RAW,    { command_metadata } },
     { "listclients",        RAW,    { command_show_listeners } },
     { "updatemetadata",     RAW,    { command_updatemetadata } },
@@ -283,8 +283,23 @@ void admin_mount_request (client_t *client, const char *uri)
 
     if (source == NULL)
     {
-        WARN1("Admin command on non-existent source %s", mount);
         avl_tree_unlock(global.source_tree);
+        if (strncmp (cmd->request, "stats", 5) == 0)
+        {
+            fserve_list_clients (client, mount, cmd->response, 0);
+            return;
+        }
+        if (strncmp (cmd->request, "listclients", 11) == 0)
+        {
+            fserve_list_clients (client, mount, cmd->response, 1);
+            return;
+        }
+        if (strncmp (cmd->request, "killclient", 10) == 0)
+        {
+            fserve_kill_client (client, mount, cmd->response);
+            return;
+        }
+        WARN1("Admin command on non-existent source %s", mount);
         client_send_400 (client, "Source does not exist");
     }
     else
@@ -623,7 +638,7 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
 
     useragent = httpp_getvar (listener->parser, "user-agent");
-    if (useragent)
+    if (useragent && xmlCheckUTF8((unsigned char *)useragent))
     {
         xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
         xmlNewChild (node, NULL, XMLSTR("useragent"), str); 
@@ -1118,6 +1133,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
 static void command_stats_mount (client_t *client, source_t *source, int response)
 {
+    thread_mutex_unlock (&source->lock);
     command_stats (client, NULL);
 }
 /* catch all function for admin requests.  If file has xsl extension then

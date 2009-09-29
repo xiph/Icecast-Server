@@ -138,6 +138,7 @@ typedef struct _relay_server_master
     char *bind;
     char *mount;
     int port;
+    int timeout;
 } relay_server_master;
 
 typedef struct _relay_server

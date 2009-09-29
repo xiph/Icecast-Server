@@ -31,24 +31,27 @@ typedef enum _format_type_tag
     FORMAT_TYPE_GENERIC
 } format_type_t;
 
-typedef struct _format_plugin_tag
+typedef struct _format_plugin_tag format_plugin_t;
+
+struct _format_plugin_tag
 {
     format_type_t type;
 
     /* we need to know the mount to report statistics */
     char *mount;
 
-    const char *contenttype;
+    char *contenttype;
     char *charset;
     uint64_t read_bytes;
     uint64_t sent_bytes;
     struct rate_calc *in_bitrate;
     struct rate_calc *out_bitrate;
+    http_parser_t *parser;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(client_t *client);
     void (*write_buf_to_file)(struct source_tag *source, refbuf_t *refbuf);
-    int (*create_client_data)(struct source_tag *source, client_t *client);
+    int (*create_client_data)(format_plugin_t *plugin, client_t *client);
     void (*set_tag)(struct _format_plugin_tag *plugin, const char *tag, const char *value, const char *charset);
     void (*free_plugin)(struct _format_plugin_tag *self);
     void (*apply_settings)(client_t *client, struct _format_plugin_tag *format, struct _mount_proxy *mount);
@@ -56,20 +59,19 @@ typedef struct _format_plugin_tag
 
     /* for internal state management */
     void *_state;
-} format_plugin_t;
+};
 
 format_type_t format_get_type(const char *contenttype);
-int format_get_plugin(format_type_t type, struct source_tag *source);
-
+int format_get_plugin (format_plugin_t *plugin);
 int format_generic_write_to_client (client_t *client);
 
 int format_file_read (client_t *client, FILE *fp);
-int format_general_headers (struct source_tag *source, client_t *client);
+int format_general_headers (format_plugin_t *plugin, client_t *client);
 
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
 
-void format_free_plugin (format_plugin_t *format);
+void format_plugin_clear (format_plugin_t *format);
 
 #endif  /* __FORMAT_H__ */
 
