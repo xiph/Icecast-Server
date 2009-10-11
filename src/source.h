@@ -106,7 +106,7 @@ void source_listener_detach (client_t *client);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
 int  source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client);
-void source_read (source_t *source);
+int  source_read (source_t *source);
 void source_setup_listener (source_t *source, client_t *client);
 void source_init (source_t *source);
 void source_shutdown (source_t *source, int with_fallback);

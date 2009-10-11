@@ -131,7 +131,7 @@ int  client_send_bytes (client_t *client, const void *buf, unsigned len);
 int  client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
 
-void client_change_worker (client_t *client, worker_t *dest_worker);
+int  client_change_worker (client_t *client, worker_t *dest_worker);
 void client_add_worker (client_t *client);
 worker_t *find_least_busy_handler (void);
 void workers_adjust (int new_count);
@@ -141,7 +141,7 @@ void workers_adjust (int new_count);
 #define CLIENT_ACTIVE               (001)
 #define CLIENT_AUTHENTICATED        (002)
 #define CLIENT_IS_SLAVE             (004)
-#define CLIENT_HAS_CHANGED_THREAD   (010)
+
 #define CLIENT_NO_CONTENT_LENGTH    (020)
 #define CLIENT_HAS_INTRO_CONTENT    (040)
 #define CLIENT_FORMAT_BIT           (01000)

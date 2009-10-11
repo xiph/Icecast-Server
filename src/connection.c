@@ -704,6 +704,7 @@ static int http_client_request (client_t *client)
                 fb.flags = FS_NORMAL|FS_USE_ADMIN;
                 fb.fallback = NULL;
                 fb.limit = 0;
+                client->respcode = 200;
                 refbuf_release (refbuf);
                 client->shared_data = NULL;
                 client->check_buffer = format_generic_write_to_client;

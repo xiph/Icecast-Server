@@ -66,11 +66,20 @@ void format_plugin_clear (format_plugin_t *format)
     if (format == NULL)
         return;
     rate_free (format->in_bitrate);
+    format->in_bitrate = NULL;
     rate_free (format->out_bitrate);
+    format->out_bitrate = NULL;
     free (format->charset);
     format->charset = NULL;
     if (format->free_plugin)
         format->free_plugin (format);
+    format->get_buffer = NULL;
+    format->write_buf_to_client = NULL;
+    format->write_buf_to_file = NULL;
+    format->create_client_data = NULL;
+    format->free_plugin = NULL;
+    format->set_tag = NULL;
+    format->apply_settings = NULL;
 }
 
 

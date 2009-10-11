@@ -317,29 +317,37 @@ worker_t *find_least_busy_handler (void)
 }
 
 
-void client_change_worker (client_t *client, worker_t *dest_worker)
+static void worker_add_client (worker_t *worker, client_t *client)
+{
+    *worker->last_p = client;
+    worker->last_p = &client->next_on_worker;
+    client->worker = worker;
+    ++worker->count;
+    if (worker->wakeup_ms - worker->time_ms > 15)
+        thread_cond_signal (&worker->cond); /* wake thread if required */
+}
+
+
+int client_change_worker (client_t *client, worker_t *dest_worker)
 {
     worker_t *this_worker = client->worker;
 
+    if (dest_worker->running == 0)
+        return 0;
     // make sure this client list is ok
     *this_worker->current_p = client->next_on_worker;
+    if (client->next_on_worker == NULL)
+        this_worker->last_p = this_worker->current_p;
     this_worker->count--;
     thread_mutex_unlock (&this_worker->lock);
     client->next_on_worker = NULL;
 
     thread_mutex_lock (&dest_worker->lock);
-    if (dest_worker->running)
-    {
-        client->worker = dest_worker;
-        *dest_worker->last_p = client;
-        dest_worker->last_p = &client->next_on_worker;
-        dest_worker->count++;
-        client->flags |= CLIENT_HAS_CHANGED_THREAD;
-        // make client inactive so that the destination thread does not run it straight away
-        client->flags &= ~CLIENT_ACTIVE;
-    }
+    worker_add_client (dest_worker, client);
+
     thread_mutex_unlock (&dest_worker->lock);
     thread_mutex_lock (&this_worker->lock);
+    return 1;
 }
 
 
@@ -354,12 +362,7 @@ void client_add_worker (client_t *client)
     thread_rwlock_unlock (&workers_lock);
 
     client->schedule_ms = handler->time_ms;
-    *handler->last_p = client;
-    handler->last_p = &client->next_on_worker;
-    client->worker = handler;
-    ++handler->count;
-    if (handler->wakeup_ms - handler->time_ms > 15)
-        thread_cond_signal (&handler->cond); /* wake thread if required */
+    worker_add_client (handler, client);
     thread_mutex_unlock (&handler->lock);
 }
 
@@ -406,13 +409,9 @@ void *worker (void *arg)
                     ret = client->ops->process (client);
 
                     /* special handler, client has moved away to another worker */
-                    if (client->flags & CLIENT_HAS_CHANGED_THREAD)
+                    if (ret > 0)
                     {
-                        client->flags &= ~CLIENT_HAS_CHANGED_THREAD;
-                        client->flags |= CLIENT_ACTIVE;
                         client = *prevp;
-                        if (client == NULL)
-                            handler->last_p = prevp;
                         continue;
                     }
                     if (ret < 0)

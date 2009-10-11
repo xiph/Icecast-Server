@@ -1259,8 +1259,7 @@ static int relay_read (client_t *client)
             source->flags &= ~SOURCE_RUNNING;
         if (relay->on_demand && source->listeners == 0)
             source->flags &= ~SOURCE_RUNNING;
-        source_read (source);
-        return 0;
+        return source_read (source);
     }
     if (relay->running && relay->enable)
     {

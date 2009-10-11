@@ -188,6 +188,7 @@ static int _compare_fh(void *arg, void *a, void *b)
 static int _delete_fh (void *mapping)
 {
     fh_node *fh = mapping;
+    fh->refcount--;
     if (fh->refcount)
         WARN2 ("handle for %s has refcount %d", fh->finfo.mount, fh->refcount);
     else
@@ -242,6 +243,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
     {
         free (fh);
         thread_mutex_lock (&result->lock);
+        avl_tree_unlock (fh_cache);
         result->refcount++;
         if (client)
         {
@@ -259,7 +261,6 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
             }
         }
         DEBUG2 ("refcount now %d for %s", result->refcount, result->finfo.mount);
-        avl_tree_unlock (fh_cache);
         return result;
     }
 
@@ -578,11 +579,11 @@ int fserve_client_create (client_t *httpclient, const char *path)
 // fh must be locked before calling this
 static void fh_release (fh_node *fh)
 {
-    fh->refcount--;
     if (fh->finfo.mount[0])
         DEBUG2 ("refcount now %d on %s", fh->refcount, fh->finfo.mount);
-    if (fh->refcount)
+    if (fh->refcount > 1)
     {
+        fh->refcount--;
         thread_mutex_unlock (&fh->lock);
         return;
     }
@@ -592,7 +593,7 @@ static void fh_release (fh_node *fh)
     thread_mutex_unlock (&fh->lock);
     avl_tree_wlock (fh_cache);
     thread_mutex_lock (&fh->lock);
-    if (fh->refcount)
+    if (fh->refcount > 1)
         thread_mutex_unlock (&fh->lock);
     else
         avl_delete (fh_cache, fh, _delete_fh);
@@ -732,7 +733,7 @@ static int prefile_send (client_t *client)
         if (written > 30000)
             break;
     }
-    client->schedule_ms = client->worker->time_ms + 150;
+    client->schedule_ms = client->worker->time_ms + 100;
     return 0;
 }
 

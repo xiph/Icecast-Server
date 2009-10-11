@@ -72,8 +72,8 @@ static int  send_to_listener (client_t *client);
 static int  http_source_listener (client_t *client);
 static int  http_source_intro (client_t *client);
 static int  locate_start_on_queue (source_t *source, client_t *client);
-static void listener_change_worker (client_t *client, source_t *source);
-static void source_change_worker (source_t *source);
+static int  listener_change_worker (client_t *client, source_t *source);
+static int  source_change_worker (source_t *source);
 static int  source_client_callback (client_t *client);
 
 #ifdef _WIN32
@@ -412,7 +412,7 @@ static void update_source_stats (source_t *source)
  * and sent back, however NULL is also valid as in the case of a short
  * timeout and there's no data pending.
  */
-void source_read (source_t *source)
+int source_read (source_t *source)
 {
     client_t *client = source->client;
     refbuf_t *refbuf = NULL;
@@ -445,11 +445,10 @@ void source_read (source_t *source)
         }
         if (current >= source->client_stats_update)
         {
-            source_change_worker (source);
             update_source_stats (source);
             source->client_stats_update = current + source->stats_interval;
-            thread_mutex_unlock (&source->lock);
-            return;
+            if (source_change_worker (source))
+                return 1;
         }
         if (source->limit_rate)
         {
@@ -486,6 +485,8 @@ void source_read (source_t *source)
                 source->skip_duration = 30;
             else
                 source->skip_duration = (long)(source->skip_duration * 1.8);
+                if (source->skip_duration > 700)
+                    source->skip_duration = 700;
             break;
         }
         source->skip_duration = (long)(source->skip_duration * 0.9);
@@ -570,6 +571,7 @@ void source_read (source_t *source)
     if (skip)
         client->schedule_ms = client->worker->time_ms + source->skip_duration;
     thread_mutex_unlock (&source->lock);
+    return 0;
 }
 
 
@@ -585,7 +587,7 @@ static int source_client_read (client_t *client)
         INFO1 ("streaming duration expired on %s", source->mount);
     }
     if (source_running (source))
-        source_read (source);
+        return source_read (source);
     else
     {
         if ((source->flags & SOURCE_TERMINATING) == 0)
@@ -845,7 +847,8 @@ static int send_to_listener (client_t *client)
 
     // do we migrate this listener to the same handler as the source client
     if (source->client && source->client->worker != client->worker)
-        listener_change_worker (client, source);
+        if (listener_change_worker (client, source))
+            return 1;
 
     client->schedule_ms = client->worker->time_ms;
     while (loop)
@@ -867,12 +870,12 @@ static int send_to_listener (client_t *client)
         if (bytes < 0)
             break;  /* can't write any more */
 
-        client->schedule_ms += 100;
+        client->schedule_ms += 40;
         total_written += bytes;
         loop--;
     }
     if (loop == 0)
-        client->schedule_ms -= 500;
+        client->schedule_ms -= 190;
     rate_add (source->format->out_bitrate, total_written, client->worker->time_ms);
     global_add_bitrates (global.out_bitrate, total_written, client->worker->time_ms);
     source->bytes_sent_since_update += total_written;
@@ -1852,10 +1855,11 @@ int source_startup (client_t *client, const char *uri)
 /* check to see if the source client can be moved to a less busy worker thread.
  * we only move the source client, not the listeners, they will move later
  */
-void source_change_worker (source_t *source)
+int source_change_worker (source_t *source)
 {
     client_t *client = source->client;
     worker_t *this_worker = client->worker, *worker;
+    int ret = 0;
 
     thread_rwlock_rlock (&workers_lock);
     worker = find_least_busy_handler ();
@@ -1864,22 +1868,26 @@ void source_change_worker (source_t *source)
         if (worker->count + source->listeners + 10 < client->worker->count)
         {
             thread_mutex_unlock (&source->lock);
-            client_change_worker (client, worker);
-            DEBUG2 ("moving source from %p to %p", this_worker, worker);
-            thread_mutex_lock (&source->lock);
+            ret = client_change_worker (client, worker);
+            if (ret)
+                DEBUG2 ("moving source from %p to %p", this_worker, worker);
+            else
+                thread_mutex_lock (&source->lock);
         }
     }
     thread_rwlock_unlock (&workers_lock);
+    return ret;
 }
 
 
 /* move listener client to worker theread that the source is on. This will
  * help cache but prevent overloading a single worker with many listeners.
  */
-void listener_change_worker (client_t *client, source_t *source)
+int listener_change_worker (client_t *client, source_t *source)
 {
     worker_t *this_worker = client->worker, *dest_worker;
     long diff;
+    int ret = 0;
 
     thread_rwlock_rlock (&workers_lock);
     dest_worker = source->client->worker;
@@ -1888,10 +1896,13 @@ void listener_change_worker (client_t *client, source_t *source)
     if (diff < 1000 && this_worker != dest_worker)
     {
         thread_mutex_unlock (&source->lock);
-        client_change_worker (client, dest_worker);
-        DEBUG2 ("moving listener from %p to %p", this_worker, dest_worker);
-        thread_mutex_lock (&source->lock);
+        ret = client_change_worker (client, dest_worker);
+        if (ret)
+            DEBUG2 ("moving listener from %p to %p", this_worker, dest_worker);
+        else
+            thread_mutex_lock (&source->lock);
     }
     thread_rwlock_unlock (&workers_lock);
+    return ret;
 }
 

@@ -16,6 +16,13 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh17
+. fix possible memory corruption when using multiple workers
+. a few minor timing changes, nothing major.
+. fix possible race case in multiple file handle close
+. kh16b. fix possible crash case with relay failing
+. kh16a. some fserve changes exposed a crash bug with flash clients.
+
 2.3.2-kh16
 . you can now fallback to file if the initial mountpont is not available as long
   as there is a limit-rate set at some point within the fallback chain.
