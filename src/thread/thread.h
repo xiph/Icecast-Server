@@ -34,7 +34,7 @@ typedef struct {
     time_t create_time;
     
     /* the file and line which created this thread */
-    char *file;
+    const char *file;
     int line;
 
     /* is the thread running detached? */
@@ -60,11 +60,10 @@ typedef struct {
     /* time the lock was taken */
     unsigned long long lock_start;
 
-    /* the file and line where the mutex was locked */
-    char *file;
-    int line;    
-
 #endif
+    /* the file and line where the mutex was locked */
+    const char *file;
+    int line;    
 
     /* the system specific mutex */
     pthread_mutex_t sys_mutex;
@@ -89,7 +88,7 @@ typedef struct {
     ** this rwlock was write locked
     */
     long thread_id;
-    char *file;
+    const char *file;
     int line;
 
     /* time the lock was taken */
@@ -120,6 +119,7 @@ typedef mutex_t spin_t;
 
 #define thread_create(n,x,y,z) thread_create_c(n,x,y,z,__LINE__,__FILE__)
 #define thread_mutex_create(x) thread_mutex_create_c(x,__LINE__,__FILE__)
+#define thread_mutex_destroy(x) thread_mutex_destroy_c(x,__LINE__,__FILE__)
 #define thread_mutex_lock(x) thread_mutex_lock_c(x,__LINE__,__FILE__)
 #define thread_mutex_unlock(x) thread_mutex_unlock_c(x,__LINE__,__FILE__)
 #define thread_cond_create(x) thread_cond_create_c(x,__LINE__,__FILE__)
@@ -141,13 +141,13 @@ typedef mutex_t spin_t;
 
 #ifdef _mangle
 # define thread_initialize _mangle(thread_initialize)
-# define thread_initialize_with_log_id _mangle(thread_initialize_with_log_id)
+# define thread_use_log_id _mangle(thread_use_log_id)
 # define thread_shutdown _mangle(thread_shutdown)
 # define thread_create_c _mangle(thread_create_c)
 # define thread_mutex_create_c _mangle(thread_mutex_create)
 # define thread_mutex_lock_c _mangle(thread_mutex_lock_c)
 # define thread_mutex_unlock_c _mangle(thread_mutex_unlock_c)
-# define thread_mutex_destroy _mangle(thread_mutex_destroy)
+# define thread_mutex_destroy _mangle(thread_mutex_destroy_c)
 # define thread_cond_create_c _mangle(thread_cond_create_c)
 # define thread_cond_signal_c _mangle(thread_cond_signal_c)
 # define thread_cond_broadcast_c _mangle(thread_cond_broadcast_c)
@@ -170,16 +170,16 @@ typedef mutex_t spin_t;
 
 /* init/shutdown of the library */
 void thread_initialize(void);
-void thread_initialize_with_log_id(int log_id);
 void thread_shutdown(void);
+void thread_use_log_id(int log_id);
 
 /* creation, destruction, locking, unlocking, signalling and waiting */
 thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
-        void *arg, int detached, int line, char *file);
+        void *arg, int detached, int line, const char *file);
 void thread_mutex_create_c(mutex_t *mutex, int line, const char *file);
 void thread_mutex_lock_c(mutex_t *mutex, int line, char *file);
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file);
-void thread_mutex_destroy(mutex_t *mutex);
+void thread_mutex_destroy_c (mutex_t *mutex, int line, const char *file);
 void thread_cond_create_c(cond_t *cond, int line, char *file);
 void thread_cond_signal_c(cond_t *cond, int line, char *file);
 void thread_cond_broadcast_c(cond_t *cond, int line, char *file);

@@ -45,9 +45,7 @@
 #include <timing/timing.h>
 #include <thread/thread.h>
 #include <avl/avl.h>
-#ifdef THREAD_DEBUG
 #include <log/log.h>
-#endif
 
 #ifdef _WIN32
 #define __FUNCTION__ __FILE__
@@ -93,7 +91,8 @@ typedef struct thread_start_tag {
 static long _next_thread_id = 0;
 static int _initialized = 0;
 static avl_tree *_threadtree = NULL;
-static int abort_on_mutex_timeout;
+static int lock_problem_abort;
+static int thread_log;
 
 
 #ifdef THREAD_DEBUG
@@ -125,8 +124,8 @@ static int _free_mutex(void *key);
 
 #else
 
-static mutex_t _threadtree_mutex = { PTHREAD_MUTEX_INITIALIZER };
-static mutex_t _library_mutex = { PTHREAD_MUTEX_INITIALIZER };
+static mutex_t _threadtree_mutex;
+static mutex_t _library_mutex;
 
 #endif
 
@@ -137,19 +136,23 @@ static int _free_thread(void *key);
 
 /* mutex fuctions */
 static void _mutex_create(mutex_t *mutex);
-static void _mutex_lock(mutex_t *mutex);
-static void _mutex_unlock(mutex_t *mutex);
+static void _mutex_lock_c(mutex_t *mutex, const char *file, int line);
+static void _mutex_unlock_c(mutex_t *mutex, const char *file, int line);
 
 /* misc thread stuff */
 static void *_start_routine(void *arg);
 static void _catch_signals(void);
 static void _block_signals(void);
 
+#define _mutex_lock(x)      _mutex_lock_c((x),__FILE__,__LINE__)
+#define _mutex_unlock(x)    _mutex_unlock_c((x),__FILE__,__LINE__)
+
 /* LIBRARY INITIALIZATION */
 
 void thread_initialize(void)
 {
     thread_type *thread;
+    const char *dbg;
 
     /* set up logging */
 
@@ -178,11 +181,11 @@ void thread_initialize(void)
 
     _threadtree = avl_tree_new(_compare_threads, NULL);
 
-    thread = (thread_type *)malloc(sizeof(thread_type));
+    thread = (thread_type *)calloc(1, sizeof(thread_type));
 
     thread->thread_id = _next_thread_id++;
     thread->line = 0;
-    thread->file = strdup("main.c");
+    thread->file = "main.c";
     thread->sys_thread = pthread_self();
     thread->create_time = time(NULL);
     thread->name = strdup("Main Thread");
@@ -191,11 +194,19 @@ void thread_initialize(void)
 
     _catch_signals();
 
-    abort_on_mutex_timeout = 0;
-    if (getenv ("ICE_MUTEX_ABORT"))
-        abort_on_mutex_timeout = 1;
+    lock_problem_abort = 0;
+    dbg = getenv ("ICE_LOCK_ABORT");
+    if (dbg)
+        lock_problem_abort = atoi (dbg);
     _initialized = 1;
 }
+
+
+void thread_use_log_id (int log_id)
+{
+    thread_log = log_id;
+}
+
 
 void thread_shutdown(void)
 {
@@ -275,7 +286,7 @@ static void _catch_signals(void)
 
 
 thread_type *thread_create_c(char *name, void *(*start_routine)(void *), 
-        void *arg, int detached, int line, char *file)
+        void *arg, int detached, int line, const char *file)
 {
     int ok = 1;
     thread_type *thread = NULL;
@@ -293,7 +304,7 @@ thread_type *thread_create_c(char *name, void *(*start_routine)(void *),
             break;
 
         thread->line = line;
-        thread->file = strdup(file);
+        thread->file = file;
 
         _mutex_lock (&_threadtree_mutex);    
         thread->thread_id = _next_thread_id++;
@@ -346,7 +357,17 @@ static void _mutex_create(mutex_t *mutex)
     mutex->line = -1;
 #endif
 
-    pthread_mutex_init(&mutex->sys_mutex, NULL);
+    if (lock_problem_abort == 2)
+    {
+        pthread_mutexattr_t attr;
+
+        pthread_mutexattr_init (&attr);
+        pthread_mutexattr_settype (&attr, PTHREAD_MUTEX_ERRORCHECK);
+        pthread_mutex_init (&mutex->sys_mutex, &attr);
+        pthread_mutexattr_destroy (&attr);
+    }
+    else
+        pthread_mutex_init(&mutex->sys_mutex, NULL);
 }
 
 void thread_mutex_create_c(mutex_t *mutex, int line, const char *file)
@@ -365,9 +386,14 @@ void thread_mutex_create_c(mutex_t *mutex, int line, const char *file)
 #endif
 }
 
-void thread_mutex_destroy (mutex_t *mutex)
+void thread_mutex_destroy_c (mutex_t *mutex, int line, const char *file)
 {
-    pthread_mutex_destroy(&mutex->sys_mutex);
+    int rc = pthread_mutex_destroy(&mutex->sys_mutex);
+    if (rc)
+    {
+        log_write (thread_log, 1, "thread/", "mutex", "destroy error triggered at %s:%d (%d)", file, line, rc);
+        abort();
+    }
 
 #ifdef THREAD_DEBUG
     _mutex_lock(&_mutextree_mutex);
@@ -381,7 +407,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 #ifdef THREAD_DEBUG
     LOG_DEBUG3("Lock on %s requested at %s:%d", mutex->name, file, line);
 #endif
-    _mutex_lock(mutex);
+    _mutex_lock_c(mutex, file, line);
 #ifdef THREAD_DEBUG
     mutex->lock_start = get_count();
     mutex->file = strdup (file);
@@ -392,7 +418,7 @@ void thread_mutex_lock_c(mutex_t *mutex, int line, char *file)
 
 void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 {
-    _mutex_unlock(mutex);
+    _mutex_unlock_c(mutex, file, line);
 #ifdef THREAD_DEBUG
     LOG_DEBUG4 ("lock %s, at %s:%d lasted %llu", mutex->name, mutex->file,
             mutex->line, get_count() - mutex->lock_start);
@@ -403,18 +429,25 @@ void thread_mutex_unlock_c(mutex_t *mutex, int line, char *file)
 
 void thread_cond_create_c(cond_t *cond, int line, char *file)
 {
-    pthread_cond_init(&cond->sys_cond, NULL);
+    int rc = pthread_cond_init(&cond->sys_cond, NULL);
+    if (rc)
+        log_write (thread_log, 1, "thread/", "cond", "create error triggered at %s:%d (%d)", file,line, rc);
 }
 
 void thread_cond_destroy(cond_t *cond)
 {
-    pthread_cond_destroy(&cond->sys_cond);
+    int rc = pthread_cond_destroy(&cond->sys_cond);
+    if (rc)
+        log_write (thread_log, 1, "thread/", "cond", "destroy error triggered at (%d)", rc);
 }
 
 void thread_cond_signal_c(cond_t *cond, int line, char *file)
 {
+    int rc;
     cond->set = 1;
-    pthread_cond_signal(&cond->sys_cond);
+    rc = pthread_cond_signal(&cond->sys_cond);
+    if (rc)
+        log_write (thread_log, 1, "thread/", "cond", "signal error triggered at %s:%d (%d)", file, line, rc);
 }
 
 void thread_cond_broadcast_c(cond_t *cond, int line, char *file)
@@ -431,11 +464,15 @@ void thread_cond_timedwait_c(cond_t *cond, mutex_t *mutex, struct timespec *ts, 
         rc = pthread_cond_timedwait(&cond->sys_cond, &mutex->sys_mutex, ts);
     if (rc == 0 && cond->set == 1)
         cond->set = 0;
+    if (rc && rc != ETIMEDOUT)
+        log_write (thread_log, 1, "thread/", "mutex", "timedwait error triggered at %s:%d (%d)", file,line, rc);
 }
 
 void thread_cond_wait_c(cond_t *cond, mutex_t *mutex,int line, char *file)
 {
-    pthread_cond_wait(&cond->sys_cond, &mutex->sys_mutex);
+    int rc = pthread_cond_wait(&cond->sys_cond, &mutex->sys_mutex);
+    if (rc)
+        log_write (thread_log, 1, "thread/", "cond", "wait error triggered at %s:%d (%d)", file,line, rc);
 }
 
 void thread_rwlock_create_c(const char *name, rwlock_t *rwlock, int line, const char *file)
@@ -462,6 +499,20 @@ void thread_rwlock_rlock_c(rwlock_t *rwlock, int line, const char *file)
 #ifdef THREAD_DEBUG
     LOG_DEBUG3("rLock on %s requested at %s:%d", rwlock->name, file, line);
 #endif
+    if (lock_problem_abort)
+    {
+        struct timespec now;
+        int rc;
+        thread_get_timespec (&now);
+        now.tv_sec += 7;
+        rc = pthread_rwlock_timedrdlock (&rwlock->sys_rwlock, &now);
+        if (rc)
+        {
+            log_write (thread_log, 1, "thread/", "rwlock", "rlock error triggered at %s:%d (%d)", file, line, rc);
+            abort();
+        }
+        return;
+    }
     pthread_rwlock_rdlock(&rwlock->sys_rwlock);
 #ifdef THREAD_DEBUG
     LOG_DEBUG3("rLock on %s acquired at %s:%d", rwlock->name, file, line);
@@ -473,6 +524,20 @@ void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, const char *file)
 #ifdef THREAD_DEBUG
     LOG_DEBUG3("wLock on %s requested at %s:%d", rwlock->name, file, line);
 #endif
+    if (lock_problem_abort)
+    {
+        struct timespec now;
+        int rc;
+        thread_get_timespec (&now);
+        now.tv_sec += 7;
+        rc = pthread_rwlock_timedwrlock (&rwlock->sys_rwlock, &now);
+        if (rc)
+        {
+            log_write (thread_log, 1, "thread/", "rwlock", "wlock error triggered at %s:%d (%d)", file, line, rc);
+            abort();
+        }
+        return;
+    }
     pthread_rwlock_wrlock(&rwlock->sys_rwlock);
 #ifdef THREAD_DEBUG
     LOG_DEBUG3("wLock on %s acquired at %s:%d", rwlock->name, file, line);
@@ -481,7 +546,13 @@ void thread_rwlock_wlock_c(rwlock_t *rwlock, int line, const char *file)
 
 void thread_rwlock_unlock_c(rwlock_t *rwlock, int line, const char *file)
 {
-    pthread_rwlock_unlock(&rwlock->sys_rwlock);
+    int rc = pthread_rwlock_unlock(&rwlock->sys_rwlock);
+    if (rc)
+    {
+        log_write (thread_log, 1, "thread/", "rwlock", "unlock error triggered at %s:%d (%d)", file, line, rc);
+        abort ();
+    }
+
 #ifdef THREAD_DEBUG
     LOG_DEBUG3 ("unlock %s, at %s:%d", rwlock->name, file, line);
 #endif
@@ -517,7 +588,7 @@ void thread_exit_c(long val, int line, char *file)
     th->running = 0;
 #endif
 
-    if (th && th->detached)
+    if (th)
     {
 #ifdef THREAD_DEBUG
         LOG_DEBUG4("Removing thread %d [%s] started at [%s:%d]", th->thread_id,
@@ -574,7 +645,6 @@ static void *_start_routine(void *arg)
 
     /* insert thread into thread tree here */
     _mutex_lock(&_threadtree_mutex);
-    thread->sys_thread = pthread_self();
     avl_insert(_threadtree, (void *)thread);
     _mutex_unlock(&_threadtree_mutex);
 
@@ -650,25 +720,45 @@ void thread_rename(const char *name)
     th->name = strdup(name);
 }
 
-static void _mutex_lock(mutex_t *mutex) 
+static void _mutex_lock_c(mutex_t *mutex, const char *file, int line) 
 {
-    if (abort_on_mutex_timeout)
+    if (lock_problem_abort)
     {
         struct timespec now;
         int rc;
         thread_get_timespec (&now);
-        now.tv_sec += 4;
+        now.tv_sec += 7;
         rc = pthread_mutex_timedlock (&mutex->sys_mutex, &now);
-        if (rc == ETIMEDOUT)
+        if (rc)
+        {
+            if (file)
+                log_write (thread_log, 1, "thread/", "mutex", "lock error triggered at %s:%d (%d)", file,line, rc);
+            else
+                log_write (thread_log, 1, "thread/", "mutex", "lock error triggered no reference (%d)", rc);
+            if (mutex->file)
+                log_write (thread_log, 1, "thread/", "mutex", "last lock at %s:%d", mutex->file,mutex->line);
             abort();
+        }
+        mutex->file = file;
+        mutex->line = line;
         return;
     }
     pthread_mutex_lock(&mutex->sys_mutex);
 }
 
-static void _mutex_unlock(mutex_t *mutex)
+static void _mutex_unlock_c(mutex_t *mutex, const char *file, int line)
 {
-    pthread_mutex_unlock(&mutex->sys_mutex);
+    int rc;
+    mutex->file = NULL;
+    rc = pthread_mutex_unlock(&mutex->sys_mutex);
+    if (lock_problem_abort && rc)
+    {
+        if (file)
+            log_write (thread_log, 1, "thread/", "mutex", "unlock error triggered at %s:%d (%d)", file, line, rc);
+        else
+            log_write (thread_log, 1, "thread/", "mutex", "unlock error triggered no reference (%d)", rc);
+        abort ();
+    }
 }
 
 
@@ -754,8 +844,6 @@ static int _free_thread(void *key)
 
     t = (thread_type *)key;
 
-    if (t->file)
-        free(t->file);
     if (t->name)
         free(t->name);
 

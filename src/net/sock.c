@@ -561,7 +561,7 @@ int sock_connected (sock_t sock, int timeout)
             if (sock_recoverable (sock_error()))
                 return 0;
             return SOCK_ERROR;
-    }                                           
+    }
 }
 
 #else
@@ -953,21 +953,21 @@ sock_t sock_accept(sock_t serversock, char *ip, size_t len)
     sock_t ret;
     socklen_t slen;
 
-    if (ip == NULL || len == 0 || !sock_valid_socket(serversock))
-        return SOCK_ERROR;
-
     slen = sizeof(sa);
     ret = accept(serversock, (struct sockaddr *)&sa, &slen);
 
     if (ret != SOCK_ERROR)
     {
+        if (ip)
+        {
 #ifdef HAVE_GETNAMEINFO
-        if (getnameinfo ((struct sockaddr *)&sa, slen, ip, len, NULL, 0, NI_NUMERICHOST))
-            snprintf (ip, len, "unknown");
+            if (getnameinfo ((struct sockaddr *)&sa, slen, ip, len, NULL, 0, NI_NUMERICHOST))
+                snprintf (ip, len, "unknown");
 #else
-        /* inet_ntoa is not reentrant, we should protect this */
-        strncpy(ip, inet_ntoa(sa.sin_addr), len);
+            /* inet_ntoa is not reentrant, we should protect this */
+            strncpy(ip, inet_ntoa(sa.sin_addr), len);
 #endif
+        }
         sock_set_nolinger(ret);
         sock_set_keepalive(ret);
     }
