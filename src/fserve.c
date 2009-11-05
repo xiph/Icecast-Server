@@ -292,7 +292,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         {
             char *contenttype = fserve_content_type (fullpath);
 
-            stats_event_hidden (finfo->mount, "file", fullpath, STATS_HIDDEN);
+            stats_event_flags (finfo->mount, "file", fullpath, STATS_HIDDEN);
             fh->format = calloc (1, sizeof (format_plugin_t));
             fh->format->type = format_get_type (contenttype);
             free (contenttype);
@@ -318,7 +318,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
     if (client)
     {
         if (finfo->mount && (finfo->flags & FS_FALLBACK))
-            stats_event_hidden (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
+            stats_event_flags (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
         fh->clients = client;
         client->next = NULL;
     }
@@ -546,7 +546,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         return -1;
     }
 
-    finfo.flags = FS_NORMAL;
+    finfo.flags = 0;
     finfo.mount = (char *)path;
     finfo.fallback = NULL;
     finfo.limit = 0;
@@ -609,7 +609,7 @@ static void file_release (client_t *client)
     if (fh)
     {
         thread_mutex_lock (&fh->lock);
-        if (fh->finfo.flags & (FS_FALLBACK|FS_JINGLE))
+        if (fh->finfo.flags & FS_FALLBACK)
             stats_event_dec (NULL, "listeners");
         remove_from_fh (fh, client);
         fh_release (fh);
@@ -909,7 +909,7 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 void fserve_setup_client (client_t *client, const char *mount)
 {
     fbinfo finfo;
-    finfo.flags = FS_NORMAL;
+    finfo.flags = 0;
     finfo.mount = (char *)mount;
     finfo.fallback = NULL;
     finfo.limit = 0;
@@ -1033,7 +1033,7 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
     const char *idtext, *v = "0";
     char buf[50];
 
-    finfo.flags = FS_NORMAL;
+    finfo.flags = 0;
     finfo.mount = (char*)mount;
     finfo.limit = 0;
     finfo.fallback = NULL;
@@ -1092,7 +1092,7 @@ void fserve_list_clients (client_t *client, const char *mount, int response, int
     xmlNodePtr node, srcnode;
     char buf[100];
 
-    finfo.flags = FS_NORMAL;
+    finfo.flags = 0;
     if (type && strcmp (type, "fallback") == 0)
     {
         finfo.flags = FS_FALLBACK;

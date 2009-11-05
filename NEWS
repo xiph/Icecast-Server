@@ -16,6 +16,23 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh18
+. for people who use ICE_MUTEX_ABORT (environment var) to trap for long held
+  locks, change the name to ICE_LOCK_ABORT
+. fix possible memory corruption case in stats and threading
+. fix vorbis stream bandwidth increase when certain source clients connect
+. avoid any ::ffff: in IPs
+. YP thread now started from worker as required instead of once per second
+. shutdown order and other internal code cleanups
+. use signalfd if available for processing signals in connection thread, saves
+  waking up the thread.
+. make sure the auth mountpoint returned is used instead of the listener
+  supplied one. Allows for redirecting listeners to alternative mounts
+. update command auth, works in a similar way to url auth now.
+. stats clients work better under much heavier load. stats notifications
+  are grouped together if possible before sending, this reduces writes in the
+  many streams case
+
 2.3.2-kh17
 . fix possible memory corruption when using multiple workers
 . a few minor timing changes, nothing major.

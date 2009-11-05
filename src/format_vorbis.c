@@ -261,11 +261,9 @@ static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
             /* check for short values on first initial page */
             if (packet . packetno == 4)
             {
+                source_vorbis->initial_page_granulepos = codec->os.granulepos;
                 if (source_vorbis->initial_page_granulepos < source_vorbis->granulepos)
-                {
                     source_vorbis->granulepos -= source_vorbis->initial_page_granulepos;
-                    source_vorbis->samples_in_page = source_vorbis->page_samples_trigger;
-                }
             }
             /* check for long values on first page */
             if (packet.granulepos == source_vorbis->initial_page_granulepos)

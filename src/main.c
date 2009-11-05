@@ -58,7 +58,6 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
-#include "yp.h"
 #include "auth.h"
 
 #include <libxml/xmlmemory.h>
@@ -118,13 +117,12 @@ void _initialize_subsystems(void)
 
 void _shutdown_subsystems(void)
 {
-    fserve_shutdown();
-    slave_shutdown();
+    connection_shutdown();
     auth_shutdown();
-    yp_shutdown();
+    slave_shutdown();
+    fserve_shutdown();
     stats_shutdown();
 
-    connection_shutdown();
     config_shutdown();
     refbuf_shutdown();
     resolver_shutdown();
@@ -224,6 +222,7 @@ static int _start_logging(void)
         _fatal_error(buf);
     }
     log_set_level(errorlog, config->error_log.level);
+    thread_use_log_id (errorlog);
 
     if(strcmp(config->access_log.name, "-")) {
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log.name);
@@ -483,9 +482,6 @@ int main(int argc, char **argv)
 
     /* let her rip */
     global.running = ICE_RUNNING;
-
-    /* Startup yp thread */
-    yp_initialize();
 
     /* Do this after logging init */
     auth_initialise ();

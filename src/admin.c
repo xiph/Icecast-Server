@@ -628,7 +628,6 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
 {
     const char *useragent;
     char buf[30];
-    source_t *source = listener->shared_data;
 
     xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
 
@@ -645,8 +644,11 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
         xmlFree (str);
     }
 
-    if (listener->flags & CLIENT_ACTIVE)
+    if ((listener->flags & (CLIENT_ACTIVE|CLIENT_IN_FSERVE)) == CLIENT_ACTIVE)
+    {
+        source_t *source = listener->shared_data;
         snprintf (buf, sizeof (buf), "%ld", (long)(source->client->queue_pos - listener->queue_pos));
+    }
     else
         snprintf (buf, sizeof (buf), "0");
     xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));

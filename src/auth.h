@@ -46,7 +46,6 @@ typedef struct auth_client_tag
     int         handler;
     client_t    *client;
     struct auth_tag *auth;
-    char        *rejected_mount;
     void        *thread_data;
     void        (*process)(struct auth_client_tag *auth_user);
     struct auth_client_tag *next;

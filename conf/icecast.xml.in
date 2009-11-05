@@ -127,7 +127,7 @@
         <max-listeners>1</max-listeners>
         <max-bandwidth>1000k</max-bandwidth>
         <file-seekable>0</file-seekable>
-        <dump-file>/tmp/dump-example1.ogg</dump-file>
+        <dump-file>/backup/live-%d-%b.ogg</dump-file>
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
         <fallback-override>1</fallback-override>
@@ -150,15 +150,13 @@
     <mount>
     ....
         <authentication type="command">
-             <option name="filename" value="auth_verify"/>
+             <option name="listener_add" value="auth_verify"/>
         </authentication>
         
         or 
 
-        for url auth, the add url needs to return a "icecast-auth-user: 1" http
-        header for a user to authenicate. Both urls are sent params via POST,
-        add is sent id, mount, user, pass, ip, useragent
-        remove is passed id, mount, user, pass, duration
+        for url auth, the add url needs to return a "icecast-auth-user:" http
+        header for a user to authenicate. URLs are sent params via POST.
 
         <authentication type="url">
              <option name="username" value="admin"/>

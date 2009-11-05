@@ -48,6 +48,8 @@ struct _auth_thread_t
 };
 
 static volatile int thread_id;
+static rwlock_t auth_lock;
+int allow_auth;
 
 static void *auth_run_thread (void *arg);
 static int  auth_postprocess_listener (auth_client *auth_user);
@@ -308,9 +310,10 @@ static void *auth_run_thread (void *arg)
     auth_thread_t *handler = arg;
     auth_t *auth = handler->auth;
 
-    INFO2 ("Authentication thread %d started for %s", handler->id, auth->mount);
+    DEBUG2 ("Authentication thread %d started for %s", handler->id, auth->mount);
+    thread_rwlock_rlock (&auth_lock);
 
-    while (auth->running)
+    while (1)
     {
         /* usually no clients are waiting, so don't bother taking locks */
         if (auth->head)
@@ -337,7 +340,7 @@ static void *auth_run_thread (void *arg)
             auth_user->thread_data = handler->data;
             auth_user->handler = handler->id;
 
-            if (auth_user->process)
+            if (allow_auth && auth_user->process)
             {
                 worker_t *worker = NULL;
                 if (auth_user->client)
@@ -351,8 +354,6 @@ static void *auth_run_thread (void *arg)
                     thread_mutex_unlock (&worker->lock);
                 }
             }
-            else
-                ERROR0 ("client auth process not set");
 
             auth_client_free (auth_user);
 
@@ -360,8 +361,9 @@ static void *auth_run_thread (void *arg)
         }
         break;
     }
-    INFO1 ("Authenication thread %d shutting down", handler->id);
+    DEBUG1 ("Authenication thread %d shutting down", handler->id);
     handler->thread = NULL;
+    thread_rwlock_unlock (&auth_lock);
     return NULL;
 }
 
@@ -471,13 +473,12 @@ static int auth_postprocess_listener (auth_client *auth_user)
     if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
         /* auth failed so do we place the listener elsewhere */
-        if (auth_user->rejected_mount)
-            mount = auth_user->rejected_mount;
-        else if (auth->rejected_mount)
+        if (auth->rejected_mount)
             mount = auth->rejected_mount;
         else
         {
-            client->flags |= CLIENT_ACTIVE;
+            client_send_401 (client, auth_user->auth->realm);
+            auth_user->client = NULL;
             return -1;
         }
     }
@@ -540,7 +541,7 @@ void auth_add_listener (const char *mount, client_t *client)
     {
         auth_client *auth_user;
 
-        if (mountinfo->auth->pending_count > 1000)
+        if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 1000)
         {
             config_release_config ();
             WARN0 ("too many clients awaiting authentication");
@@ -550,7 +551,7 @@ void auth_add_listener (const char *mount, client_t *client)
         auth_user = auth_client_setup (mount, client);
         auth_user->process = auth_new_listener;
         client->flags &= ~CLIENT_ACTIVE;
-        INFO0 ("adding client for authentication");
+        DEBUG0 ("adding client for authentication");
         queue_auth_client (auth_user, mountinfo);
     }
     else
@@ -816,10 +817,14 @@ int auth_check_source (client_t *client, const char *mount)
 void auth_initialise (void)
 {
     thread_id = 0;
+    allow_auth = 1;
 }
 
 void auth_shutdown (void)
 {
-    INFO0 ("Auth shutdown");
+    allow_auth = 0;
+    thread_rwlock_wlock (&auth_lock);
+    thread_rwlock_unlock (&auth_lock);
+    INFO0 ("Auth shutdown complete");
 }
 

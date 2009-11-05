@@ -26,6 +26,7 @@
 #define STATS_GENERAL  4
 #define STATS_COUNTERS 8
 #define STATS_PUBLIC   (STATS_GENERAL|STATS_COUNTERS)
+#define STATS_REGULAR   01000
 #define STATS_ALL      ~0
 
 void stats_initialize(void);
@@ -44,7 +45,7 @@ void stats_event_inc(const char *source, const char *name);
 void stats_event_add(const char *source, const char *name, unsigned long value);
 void stats_event_sub(const char *source, const char *name, unsigned long value);
 void stats_event_dec(const char *source, const char *name);
-void stats_event_hidden (const char *source, const char *name, const char *value, int hidden);
+void stats_event_flags (const char *source, const char *name, const char *value, int flags);
 void stats_event_time (const char *mount, const char *name);
 
 void *stats_connection(void *arg);
@@ -53,7 +54,7 @@ void stats_global_calc(void);
 
 void stats_transform_xslt(client_t *client, const char *uri);
 void stats_sendxml(client_t *client);
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount);
+xmlDocPtr stats_get_xml(int flags, const char *show_mount);
 char *stats_get_value(const char *source, const char *name);
 
 #endif  /* __STATS_H__ */

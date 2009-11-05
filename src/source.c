@@ -915,14 +915,14 @@ void source_init (source_t *source)
 
     /* start off the statistics */
     stats_event_inc (NULL, "source_total_connections");
-    stats_event_hidden (source->mount, "slow_listeners", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "slow_listeners", "0", STATS_COUNTERS);
     stats_event (source->mount, "server_type", source->format->contenttype);
-    stats_event_hidden (source->mount, "listener_peak", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "listener_peak", "0", STATS_COUNTERS);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
     stats_event_time (source->mount, "stream_start");
-    stats_event_hidden (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
-    stats_event_hidden (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
-    stats_event_hidden (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
     stats_event (source->mount, "source_ip", source->client->connection.ip);
 
     source->last_read = time(NULL);
@@ -1333,21 +1333,21 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
             DEBUG1 ("fallback_when_full to %u", mountinfo->fallback_when_full);
         DEBUG1 ("max listeners to %d", mountinfo->max_listeners);
         stats_event_args (source->mount, "max_listeners", "%d", mountinfo->max_listeners);
-        stats_event_hidden (source->mount, "cluster_password", mountinfo->cluster_password, STATS_SLAVE|STATS_HIDDEN);
+        stats_event_flags (source->mount, "cluster_password", mountinfo->cluster_password, STATS_SLAVE|STATS_HIDDEN);
         if (mountinfo->hidden)
         {
-            stats_event_hidden (source->mount, NULL, NULL, STATS_HIDDEN);
+            stats_event_flags (source->mount, NULL, NULL, STATS_HIDDEN);
             DEBUG0 ("hidden from public");
         }
         else
-            stats_event_hidden (source->mount, NULL, NULL, 0);
+            stats_event_flags (source->mount, NULL, NULL, 0);
     }
     else
     {
         DEBUG0 ("max listeners is not specified");
         stats_event (source->mount, "max_listeners", "unlimited");
-        stats_event_hidden (source->mount, "cluster_password", NULL, STATS_SLAVE);
-        stats_event_hidden (source->mount, NULL, NULL, STATS_PUBLIC);
+        stats_event_flags (source->mount, "cluster_password", NULL, STATS_SLAVE);
+        stats_event_flags (source->mount, NULL, NULL, STATS_PUBLIC);
     }
     DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
@@ -1375,7 +1375,7 @@ static int source_client_callback (client_t *client)
     if (agent)
         stats_event (source->mount, "user_agent", agent);
     stats_event_inc(NULL, "source_client_connections");
-    stats_event_hidden (source->mount, "listener_connections", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "listener_connections", "0", STATS_COUNTERS);
 
     source_init (source);
     client->ops = &source_client_ops;
@@ -1462,7 +1462,7 @@ void source_recheck_mounts (int update_all)
             }
             else if (update_all)
             {
-                stats_event_hidden (mount->mountname, NULL, NULL, mount->hidden?STATS_HIDDEN:0);
+                stats_event_flags (mount->mountname, NULL, NULL, mount->hidden?STATS_HIDDEN:0);
                 stats_event_args (mount->mountname, "listenurl", "http://%s:%d%s",
                         config->hostname, config->port, mount->mountname);
                 stats_event (mount->mountname, "listeners", "0");

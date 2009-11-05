@@ -222,8 +222,13 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         if (strncasecmp (ptr, "Mountpoint: ", 12) == 0)
         {
             int len = strcspn ((char*)ptr+12, "\r\n");
-            auth_user->rejected_mount = malloc (len+1);
-            snprintf (auth_user->rejected_mount, len+1, "%s", (char *)ptr+12);
+            char *mount = malloc (len+1);
+            if (mount)
+            {
+                snprintf (mount, len+1, "%s", (char *)ptr+12);
+                free (auth_user->mount);
+                auth_user->mount = mount;
+            }
         }
     }
 

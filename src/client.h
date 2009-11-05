@@ -141,7 +141,7 @@ void workers_adjust (int new_count);
 #define CLIENT_ACTIVE               (001)
 #define CLIENT_AUTHENTICATED        (002)
 #define CLIENT_IS_SLAVE             (004)
-
+#define CLIENT_IN_FSERVE            (010)
 #define CLIENT_NO_CONTENT_LENGTH    (020)
 #define CLIENT_HAS_INTRO_CONTENT    (040)
 #define CLIENT_FORMAT_BIT           (01000)

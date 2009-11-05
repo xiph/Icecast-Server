@@ -59,6 +59,7 @@
 #include "source.h"
 #include "format.h"
 #include "event.h"
+#include "yp.h"
 
 #define CATMODULE "slave"
 
@@ -226,10 +227,12 @@ void slave_initialize(void)
 
 void slave_shutdown(void)
 {
+    yp_stop();
     workers_adjust (0);
     thread_rwlock_destroy (&slaves_lock);
     thread_rwlock_destroy (&workers_lock);
     thread_spin_destroy (&relay_start_lock);
+    yp_shutdown();
 }
 
 
@@ -595,7 +598,7 @@ static void check_relay_stream (relay_server *relay)
         }
         relay->source = source;
         INFO1("Adding new relay at mountpoint \"%s\"", relay->localmount);
-        stats_event_hidden (source->mount, "listener_connections", "0", STATS_COUNTERS);
+        stats_event_flags (source->mount, "listener_connections", "0", STATS_COUNTERS);
     }
     if (source->client == NULL)
     {
@@ -1049,6 +1052,7 @@ static void slave_startup (void)
     update_master_as_slave (config);
     stats_global (config);
     workers_adjust (config->workers_count);
+    yp_initialize (config);
     config_release_config();
 
     source_recheck_mounts (1);
@@ -1115,8 +1119,6 @@ static void _slave_thread(void)
                 restart_connection_thread = 0;
             }
         }
-        /* trigger any YP processing */
-        yp_thread_startup();
         stats_global_calc();
         thread_sleep (1000000);
     }
@@ -1127,8 +1129,6 @@ static void _slave_thread(void)
     global.relays = NULL;
     global.master_relays = NULL;
     redirector_clearall();
-    /* send any removals to the YP servers */
-    yp_thread_startup();
 
     thread_rwlock_wlock (&global.shutdown_lock);
     thread_rwlock_unlock (&global.shutdown_lock);

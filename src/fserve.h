@@ -26,10 +26,9 @@ typedef struct _fbinfo
     char *fallback;
 } fbinfo;
 
-#define FS_NORMAL               01
+#define FS_USE_ADMIN            01
 #define FS_FALLBACK             02
-#define FS_USE_ADMIN            04
-#define FS_JINGLE               010
+#define FS_FALLBACK_EOF         04
 
 void fserve_initialize(void);
 void fserve_shutdown(void);

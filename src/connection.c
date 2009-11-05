@@ -33,6 +33,10 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #endif
+#ifdef HAVE_SIGNALFD
+#include <sys/signalfd.h>
+#include <signal.h>
+#endif
 
 #include "compat.h"
 
@@ -98,6 +102,7 @@ static time_t now;
 static spin_t _connection_lock;
 static volatile unsigned long _current_id = 0;
 thread_type *conn_tid;
+int sigfd;
 
 static int ssl_ok;
 #ifdef HAVE_OPENSSL
@@ -436,7 +441,10 @@ int connection_init (connection_t *con, sock_t sock)
 #ifdef HAVE_GETNAMEINFO
             char buffer [200] = "unknown";
             getnameinfo ((struct sockaddr *)&sa, slen, buffer, 200, NULL, 0, NI_NUMERICHOST);
-            ip = strdup (buffer);
+            if (strncmp (buffer, "::ffff:", 7) == 0)
+                ip = strdup (buffer+7);
+            else
+                ip = strdup (buffer);
 #else
             int len = 30;
             ip = malloc (len);
@@ -466,10 +474,10 @@ void connection_uses_ssl (connection_t *con)
 #endif
 }
 
-static sock_t wait_for_serversock(int timeout)
+static sock_t wait_for_serversock (void)
 {
 #ifdef HAVE_POLL
-    struct pollfd ufds [global.server_sockets];
+    struct pollfd ufds [global.server_sockets + 1];
     int i, ret;
 
     for(i=0; i < global.server_sockets; i++) {
@@ -477,16 +485,45 @@ static sock_t wait_for_serversock(int timeout)
         ufds[i].events = POLLIN;
         ufds[i].revents = 0;
     }
+#ifdef HAVE_SIGNALFD
+    ufds[i].fd = sigfd;
+    ufds[i].events = POLLIN;
+    ufds[i].revents = 0;
+    ret = poll(ufds, i+1, -1);
+#else
+    ret = poll(ufds, global.server_sockets, 333);
+#endif
 
-    ret = poll(ufds, global.server_sockets, timeout);
-    if(ret < 0) {
+    if (ret <= 0)
         return SOCK_ERROR;
-    }
-    else if(ret == 0) {
-        return SOCK_ERROR;
-    }
     else {
         int dst;
+#ifdef HAVE_SIGNALFD
+        if (ufds[i].revents & POLLIN)
+        {
+            struct signalfd_siginfo fdsi;
+            int ret  = read (sigfd, &fdsi, sizeof(struct signalfd_siginfo));
+            if (ret == sizeof(struct signalfd_siginfo))
+            {
+                switch (fdsi.ssi_signo)
+                {
+                    case SIGINT:
+                    case SIGTERM:
+                        global.running = ICE_HALTING;
+                        connection_running = 0;
+                        DEBUG0 ("signalfd received a termination");
+                        break;
+                    case SIGHUP:
+                        global.schedule_config_reread = 1;
+                        connection_running = 0;
+                        INFO0 ("HUP received, reread scheduled");
+                        break;
+                    default:
+                        WARN1 ("unexpected signal (%d)", fdsi.ssi_signo);
+                }
+            }
+        }
+#endif
         for(i=0; i < global.server_sockets; i++) {
             if(ufds[i].revents & POLLIN)
                 return ufds[i].fd;
@@ -526,13 +563,10 @@ static sock_t wait_for_serversock(int timeout)
             max = global.serversock[i];
     }
 
-    if(timeout >= 0) {
-        tv.tv_sec = timeout/1000;
-        tv.tv_usec = (timeout % 1000) * 1000;
-        p = &tv;
-    }
+    tv.tv_sec = 0;
+    tv.tv_usec = 333000;
 
-    ret = select(max+1, &rfds, NULL, NULL, p);
+    ret = select(max+1, &rfds, NULL, NULL, &tv);
     if(ret < 0) {
         return SOCK_ERROR;
     }
@@ -550,10 +584,10 @@ static sock_t wait_for_serversock(int timeout)
 }
 
 
-static client_t *accept_client (int duration)
+static client_t *accept_client (void)
 {
     client_t *client;
-    sock_t sock, serversock = wait_for_serversock (duration);
+    sock_t sock, serversock = wait_for_serversock ();
 
     if (serversock == SOCK_ERROR)
         return NULL;
@@ -701,7 +735,7 @@ static int http_client_request (client_t *client)
             {
                 fbinfo fb;
                 fb.mount = "/flashpolicy";
-                fb.flags = FS_NORMAL|FS_USE_ADMIN;
+                fb.flags = FS_USE_ADMIN;
                 fb.fallback = NULL;
                 fb.limit = 0;
                 client->respcode = 200;
@@ -804,6 +838,14 @@ static void *connection_thread (void *arg)
 {
     ice_config_t *config;
 
+#ifdef HAVE_SIGNALFD
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGHUP);
+    sigaddset(&mask, SIGTERM);
+    sigfd = signalfd(-1, &mask, 0);
+#endif
     connection_running = 1;
     INFO0 ("connection thread started");
 
@@ -816,7 +858,7 @@ static void *connection_thread (void *arg)
 
     while (connection_running)
     {
-        client_t *client = accept_client (333);
+        client_t *client = accept_client ();
         if (client)
         {
             /* do a small delay here so the client has chance to send the request after
@@ -837,6 +879,11 @@ static void *connection_thread (void *arg)
 
 void connection_thread_startup ()
 {
+#ifdef HAVE_SIGNALFD
+    sigset_t mask;
+    sigfillset(&mask);
+    pthread_sigmask (SIG_SETMASK, &mask, NULL);
+#endif
     connection_running = 0;
     while (conn_tid)
         thread_sleep (100001);
