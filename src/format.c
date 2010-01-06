@@ -173,7 +173,7 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
     if (client->respcode == 0)
     {
         bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-                "Content-Type: %s\r\n", plugin->contenttype);
+                "content-type: %s\r\n", plugin->contenttype);
         remaining -= bytes;
         ptr += bytes;
         client->respcode = 200;

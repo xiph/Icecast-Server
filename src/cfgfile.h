@@ -30,6 +30,37 @@ typedef struct _listener_t listener_t;
 #include "auth.h"
 #include "compat.h"
 
+typedef struct
+{
+    char *name;
+    int logid;
+    int log_ip;
+    int archive;
+    int display;
+    int size;
+    char *exclude_ext;
+} access_log;
+
+typedef struct
+{
+    char *name;
+    int logid;
+    int archive;
+    int display;
+    int size;
+    int level;
+} error_log;
+
+typedef struct
+{
+    char *name;
+    int logid;
+    int archive;
+    int display;
+    int size;
+} playlist_log;
+
+
 typedef struct ice_config_dir_tag
 {
     char *host;
@@ -97,6 +128,8 @@ typedef struct _mount_proxy {
     char *on_connect;
     char *on_disconnect;
     unsigned int max_listener_duration;
+
+    access_log      access_log;
 
     char *stream_name;
     char *stream_description;
@@ -167,32 +200,6 @@ typedef struct
     char *password;
 } ice_master_details;
 
-typedef struct
-{
-    char *name;
-    int log_ip;
-    int archive;
-    int display;
-    int trigger_size;
-    char *exclude_ext;
-} access_log;
-
-typedef struct
-{
-    char *name;
-    int archive;
-    int display;
-    int trigger_size;
-    int level;
-} error_log;
-
-typedef struct
-{
-    char *name;
-    int archive;
-    int display;
-    int trigger_size;
-} playlist_log;
 
 typedef struct ice_config_tag
 {

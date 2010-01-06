@@ -982,6 +982,9 @@ void stats_transform_xslt(client_t *client, const char *uri)
     char *xslpath = util_get_path_from_normalised_uri (uri, 0);
     const char *mount = httpp_get_query_param (client->parser, "mount");
 
+    if (mount == NULL && client->server_conn->shoutcast_mount && strcmp (uri, "/7.xsl") == 0)
+        mount = client->server_conn->shoutcast_mount;
+
     doc = stats_get_xml (STATS_PUBLIC, mount);
 
     xslt_transform(doc, xslpath, client);

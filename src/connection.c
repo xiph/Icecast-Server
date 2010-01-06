@@ -98,7 +98,6 @@ typedef struct
     avl_tree *contents;
 } cache_file_contents;
 
-static time_t now;
 static spin_t _connection_lock;
 static volatile unsigned long _current_id = 0;
 thread_type *conn_tid;
@@ -184,10 +183,8 @@ void connection_initialize(void)
     thread_spin_create (&_connection_lock);
 
     banned_ip.contents = NULL;
-    banned_ip.file_mtime = 0;
-
     allowed_ip.contents = NULL;
-    allowed_ip.file_mtime = 0;
+    useragents.contents = NULL;
 
     conn_tid = NULL;
     connection_running = 0;
@@ -199,10 +196,6 @@ void connection_initialize(void)
 
 void connection_shutdown(void)
 {
-    if (banned_ip.contents)  avl_tree_free (banned_ip.contents, free_filtered_line);
-    if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_line);
-    if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
-
     thread_spin_destroy (&_connection_lock);
 }
 
@@ -331,7 +324,7 @@ int connection_send (connection_t *con, const void *buf, size_t len)
 /* function to handle the re-populating of the avl tree containing IP addresses
  * for deciding whether a connection of an incoming request is to be dropped.
  */
-static void recheck_cached_file (cache_file_contents *cache)
+static void recheck_cached_file (cache_file_contents *cache, time_t now)
 {
     if (now >= cache->file_recheck)
     {
@@ -393,9 +386,10 @@ static void recheck_cached_file (cache_file_contents *cache)
 static int accept_ip_address (char *ip)
 {
     void *result;
+    time_t now = time(NULL);
 
-    recheck_cached_file (&banned_ip);
-    recheck_cached_file (&allowed_ip);
+    recheck_cached_file (&banned_ip, now);
+    recheck_cached_file (&allowed_ip, now);
 
     if (banned_ip.contents)
     {
@@ -777,7 +771,7 @@ static int http_client_request (client_t *client)
             httpp_initialize (client->parser, NULL);
             if (httpp_parse (client->parser, refbuf->data, refbuf->len))
             {
-                recheck_cached_file (&useragents);
+                recheck_cached_file (&useragents, client->worker->current_time.tv_sec);
                 if (useragents.contents)
                 {
                     const char *agent = httpp_getvar (client->parser, "user-agent");
@@ -846,10 +840,25 @@ static void *connection_thread (void *arg)
     sigaddset(&mask, SIGTERM);
     sigfd = signalfd(-1, &mask, 0);
 #endif
+    banned_ip.filename = NULL;
+    banned_ip.file_mtime = 0;
+    allowed_ip.filename = NULL;
+    allowed_ip.file_mtime = 0;
+    useragents.filename = NULL;
+    useragents.file_mtime = 0;
+
     connection_running = 1;
     INFO0 ("connection thread started");
 
     config = config_get_config ();
+    /* setup the banned/allowed IP filenames from the xml */
+    if (config->banfile)
+        banned_ip.filename = strdup (config->banfile);
+    if (config->allowfile)
+        allowed_ip.filename = strdup (config->allowfile);
+    if (config->agentfile)
+        useragents.filename = strdup (config->agentfile);
+
     get_ssl_certificate (config);
     if (config->chuid == 0)
         connection_setup_sockets (config);
@@ -872,6 +881,16 @@ static void *connection_thread (void *arg)
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
 #endif
+    if (banned_ip.contents)  avl_tree_free (banned_ip.contents, free_filtered_line);
+    if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_line);
+    if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
+    banned_ip.contents = NULL;
+    allowed_ip.contents = NULL;
+    useragents.contents = NULL;
+    free (banned_ip.filename);
+    free (allowed_ip.filename);
+    free (useragents.filename);
+
     INFO0 ("connection thread finished");
 
     return NULL;
@@ -1272,13 +1291,6 @@ int connection_setup_sockets (ice_config_t *config)
     int count = 0;
     listener_t *listener, **prev;
 
-    free (banned_ip.filename);
-    banned_ip.filename = NULL;
-    free (allowed_ip.filename);
-    allowed_ip.filename = NULL;
-    free (useragents.filename);
-    useragents.filename = NULL;
-
     global_lock();
     /* place sockets away from config, so we don't need to take config lock
      * in the accept loop. */
@@ -1299,16 +1311,6 @@ int connection_setup_sockets (ice_config_t *config)
         global_unlock();
         return 0;
     }
-
-    /* setup the banned/allowed IP filenames from the xml */
-    if (config->banfile)
-        banned_ip.filename = strdup (config->banfile);
-
-    if (config->allowfile)
-        allowed_ip.filename = strdup (config->allowfile);
-
-    if (config->agentfile)
-        useragents.filename = strdup (config->agentfile);
 
     count = 0;
     global.serversock = calloc (config->listen_sock_count, sizeof (sock_t));

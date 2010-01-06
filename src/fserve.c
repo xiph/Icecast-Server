@@ -604,7 +604,6 @@ static void fh_release (fh_node *fh)
 static void file_release (client_t *client)
 {
     fh_node *fh = client->shared_data;
-    const char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
 
     if (fh)
     {
@@ -616,8 +615,11 @@ static void file_release (client_t *client)
     }
     if (client->respcode == 200)
     {
+        const char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config_find_mount (config, mount);
+        if (mountinfo && mountinfo->access_log.name)
+            logging_access_id (&mountinfo->access_log, client);
         auth_release_listener (client, mount, mountinfo);
         config_release_config();
     }

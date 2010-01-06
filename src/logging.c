@@ -30,10 +30,10 @@
 #include "logging.h"
 #include "util.h"
 
+void fatal_error (const char *perr);
 
 /* the global log descriptors */
 int errorlog = 0;
-int accesslog = 0;
 int playlistlog = 0;
 
 #ifdef _WIN32
@@ -104,7 +104,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
 ** AGENT = get from client->parser
 ** TIME = timing_get_time() - client->con->con_time
 */
-void logging_access(client_t *client)
+void logging_access_id (access_log *accesslog, client_t *client)
 {
     char datebuf[128];
     char reqbuf[1024];
@@ -112,7 +112,6 @@ void logging_access(client_t *client)
     time_t now;
     time_t stayed;
     const char *referrer, *user_agent, *username, *ip = "-";
-    ice_config_t *config;
 
     if (httpp_getvar (client->parser, "__avoid_access_log"))
         return;
@@ -149,17 +148,22 @@ void logging_access(client_t *client)
     if (user_agent == NULL)
         user_agent = "-";
 
-    config = config_get_config();
-    if (config->access_log.log_ip)
+    if (accesslog->log_ip)
         ip = client->connection.ip;
-    config_release_config ();
-    log_write_direct (accesslog,
+    log_write_direct (accesslog->logid,
             "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
             ip, username,
             datebuf, reqbuf, client->respcode, client->connection.sent_bytes,
             referrer, user_agent, (unsigned long)stayed);
+    client->respcode = -1;
 }
 
+void logging_access (client_t *client)
+{
+    ice_config_t *config = config_get_config();
+    logging_access_id (&config->access_log, client);
+    config_release_config ();
+}
 
 /* This function will provide a log of metadata for each
    mountpoint.  The metadata *must* be in UTF-8, and thus
@@ -209,39 +213,110 @@ void log_parse_failure (void *ctx, const char *fmt, ...)
 }
 
 
-void restart_logging (ice_config_t *config)
+static int recheck_log_file (ice_config_t *config, int *id, const char *file)
 {
-    if (strcmp (config->error_log.name, "-"))
-    {
-        char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log.name);
-        log_set_filename (errorlog, fn_error);
-        log_set_level (errorlog, config->error_log.level);
-        log_set_trigger (errorlog, config->error_log.trigger_size);
-        log_set_lines_kept (errorlog, config->error_log.display);
-        log_set_archive_timestamp(errorlog, config->error_log.archive);
-        log_reopen (errorlog);
-    }
+    char fn [FILENAME_MAX];
 
-    if (strcmp (config->access_log.name, "-"))
+    if (file == NULL || strcmp (file, "-") == 0)
     {
-        char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log.name);
-        log_set_filename (accesslog, fn_error);
-        log_set_trigger (accesslog, config->access_log.trigger_size);
-        log_set_lines_kept (accesslog, config->access_log.display);
-        log_set_archive_timestamp (accesslog, config->access_log.archive);
-        log_reopen (accesslog);
+        log_close (*id);
+        *id = -1;
+        return 0;
     }
-
-    if (config->playlist_log.name)
+    snprintf (fn, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, file);
+    if (*id < 0)
     {
-        char fn_error[FILENAME_MAX];
-        snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log.name);
-        log_set_filename (playlistlog, fn_error);
-        log_set_trigger (playlistlog, config->playlist_log.trigger_size);
-        log_set_lines_kept (playlistlog, config->playlist_log.display);
-        log_set_archive_timestamp (playlistlog, config->playlist_log.archive);
-        log_reopen (playlistlog);
+        *id = log_open (fn);
+        if (*id < 0)
+        {
+            char buf[1024];
+            snprintf (buf,1024, "FATAL: could not open log %s: %s", fn, strerror(errno));
+            fatal_error (buf);
+            return -1;
+        }
+        return 0;
     }
+    log_set_filename (*id, fn);
+    log_reopen (*id);
+    return 0;
 }
+
+
+int restart_logging (ice_config_t *config)
+{
+    ice_config_t *current = config_get_config_unlocked();
+    mount_proxy *m;
+    int ret = 0;
+
+    config->error_log.logid = current->error_log.logid;
+    config->access_log.logid = current->access_log.logid;
+    config->playlist_log.logid = current->playlist_log.logid;
+
+    if (recheck_log_file (config, &config->error_log.logid, config->error_log.name) < 0)
+        ret = -1;
+    else
+    {
+        log_set_trigger (config->error_log.logid, config->error_log.size);
+        log_set_lines_kept (config->error_log.logid, config->error_log.display);
+        log_set_archive_timestamp (config->error_log.logid, config->error_log.archive);
+        log_set_level (config->error_log.logid, config->error_log.level);
+    }
+    thread_use_log_id (config->error_log.logid);
+    errorlog = config->error_log.logid; /* value stays static so avoid taking the config lock */
+
+    if (recheck_log_file (config, &config->access_log.logid, config->access_log.name) < 0)
+        ret = -1;
+    else
+    {
+        log_set_trigger (config->access_log.logid, config->access_log.size);
+        log_set_lines_kept (config->access_log.logid, config->access_log.display);
+        log_set_archive_timestamp (config->access_log.logid, config->access_log.archive);
+        log_set_level (config->access_log.logid, 4);
+    }
+
+    if (recheck_log_file (config, &config->playlist_log.logid, config->playlist_log.name) < 0)
+        ret = -1;
+    else
+    {
+        log_set_trigger (config->playlist_log.logid, config->playlist_log.size);
+        log_set_lines_kept (config->playlist_log.logid, config->playlist_log.display);
+        log_set_archive_timestamp (config->playlist_log.logid, config->playlist_log.archive);
+        log_set_level (config->playlist_log.logid, 4);
+    }
+    playlistlog = config->playlist_log.logid;
+    m = config->mounts;
+    while (m)
+    {
+        if (recheck_log_file (config, &m->access_log.logid, m->access_log.name) < 0)
+            ret = -1;
+        else
+        {
+            log_set_trigger (m->access_log.logid, m->access_log.size);
+            log_set_lines_kept (m->access_log.logid, m->access_log.display);
+            log_set_archive_timestamp (m->access_log.logid, m->access_log.archive);
+            log_set_level (m->access_log.logid, 4);
+        }
+        m = m->next;
+    }
+    return ret;
+}
+
+
+int start_logging (ice_config_t *config)
+{
+    if (strcmp (config->error_log.name, "-") == 0)
+        errorlog = log_open_file (stderr);
+    if (strcmp(config->access_log.name, "-") == 0)
+        config->access_log.logid = log_open_file (stderr);
+    return restart_logging (config);
+}
+
+
+void stop_logging(void)
+{
+    ice_config_t *config = config_get_config_unlocked();
+    log_close (errorlog);
+    log_close (config->access_log.logid);
+    log_close (config->playlist_log.logid);
+}
+

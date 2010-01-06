@@ -275,6 +275,8 @@ static void config_clear_mount (mount_proxy *mount)
         option = nextopt;
     }
     auth_release (mount->auth);
+    if (mount->access_log.logid >= 0)
+        log_close (mount->access_log.logid);
     free (mount);
 }
 
@@ -600,9 +602,11 @@ static int _parse_accesslog (xmlNodePtr node, void *arg)
         { "archive",        config_get_bool,    &log->archive },
         { "exclude_ext",    config_get_str,     &log->exclude_ext },
         { "display",        config_get_int,     &log->display },
+        { "size",           config_get_int,     &log->size },
         { NULL, NULL, NULL }
     };
 
+    log->logid = -1;
     return parse_xml_tags (node, icecast_tags);
 }
 
@@ -615,9 +619,12 @@ static int _parse_errorlog (xmlNodePtr node, void *arg)
         { "archive",        config_get_bool,    &log->archive },
         { "display",        config_get_int,     &log->display },
         { "level",          config_get_int,     &log->level },
+        { "size",           config_get_int,     &log->size },
         { NULL, NULL, NULL }
     };
 
+    log->logid = -1;
+    log->level = 3;
     return parse_xml_tags (node, icecast_tags);
 }
 
@@ -629,9 +636,11 @@ static int _parse_playlistlog (xmlNodePtr node, void *arg)
         { "name",           config_get_str,     &log->name },
         { "archive",        config_get_bool,    &log->archive },
         { "display",        config_get_int,     &log->display },
+        { "size",           config_get_int,     &log->size },
         { NULL, NULL, NULL }
     };
 
+    log->logid = -1;
     return parse_xml_tags (node, icecast_tags);
 }
 
@@ -661,21 +670,30 @@ static int _parse_logging (xmlNodePtr node, void *arg)
         { NULL, NULL, NULL }
     };
 
+    config->access_log.logid = -1;
     config->access_log.display = 100;
+    config->access_log.archive = -1;
+    config->error_log.logid = -1;
     config->error_log.display = 100;
+    config->error_log.archive = -1;
+    config->playlist_log.logid = -1;
     config->playlist_log.display = 10;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
     if (old_trigger_size > 0)
     {
-        config->error_log.trigger_size  = old_trigger_size;
-        config->access_log.trigger_size = old_trigger_size;
+        if (config->error_log.size == 0)
+            config->error_log.size = old_trigger_size;
+        if (config->access_log.size == 0)
+            config->access_log.size = old_trigger_size;
     }
     if (old_archive > 0)
     {
-        config->error_log.archive  = old_archive;
-        config->access_log.archive = old_archive;
+        if (config->error_log.archive == 0)
+            config->error_log.archive = old_archive;
+        if (config->access_log.archive == 0)
+            config->access_log.archive = old_archive;
     }
     return 0;
 }
@@ -774,6 +792,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "on-disconnect",      config_get_str,     &mount->on_disconnect },
         { "max-listener-duration",
                                 config_get_int,     &mount->max_listener_duration },
+        { "accesslog",          _parse_accesslog,   &mount->access_log },
         /* YP settings */
         { "cluster-password",   config_get_str,     &mount->cluster_password },
         { "stream-name",        config_get_str,     &mount->stream_name },
@@ -797,6 +816,8 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->avg_bitrate_duration = 60;
     mount->source_timeout = config->source_timeout;
     mount->file_seekable = 1;
+    mount->access_log.logid = -1;
+    mount->access_log.log_ip = 1;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;

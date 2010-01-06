@@ -63,11 +63,13 @@
 /* avl tree helper */
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_client_release (client_t *client);
-static void source_listener_release (client_t *client);
+static int  source_listener_release (source_t *source, client_t *client);
 static int  source_client_read (client_t *client);
 static int  source_client_shutdown (client_t *client);
 static int  source_client_http_send (client_t *client);
 static int  send_to_listener (client_t *client);
+static int  send_listener (source_t *source, client_t *client);
+static int  wait_for_restart (client_t *client);
 
 static int  http_source_listener (client_t *client);
 static int  http_source_intro (client_t *client);
@@ -97,13 +99,13 @@ struct _client_functions source_client_halt_ops =
 struct _client_functions listener_client_ops = 
 {
     send_to_listener,
-    source_listener_release
+    client_destroy
 };
 
 struct _client_functions listener_pause_ops = 
 {
-    NULL,
-    NULL
+    wait_for_restart,
+    client_destroy
 };
 
 struct _client_functions source_client_http_ops =
@@ -111,6 +113,17 @@ struct _client_functions source_client_http_ops =
     source_client_http_send,
     source_client_release
 };
+
+
+static int compare_listeners (void *compare_arg, void *a, void *b)
+{
+    client_t *ca = a, *cb = b;
+
+    if (ca->connection.id < cb->connection.id) return -1;
+    if (ca->connection.id > cb->connection.id) return 1;
+
+    return 0;
+}
 
 
 /* Allocate a new source with the stated mountpoint, if one already
@@ -139,6 +152,7 @@ source_t *source_reserve (const char *mount)
         src->mount = strdup (mount);
         src->listener_send_trigger = 10000;
         src->format = calloc (1, sizeof(format_plugin_t));
+        src->clients = avl_tree_new (compare_listeners, NULL);
 
         thread_mutex_create (&src->lock);
 
@@ -230,6 +244,16 @@ int source_compare_sources(void *arg, void *a, void *b)
 }
 
 
+static int source_listener_drop (source_t *source, client_t *client, mount_proxy *mountinfo)
+{
+    client->shared_data = NULL;
+    client_set_queue (client, NULL);
+    if (mountinfo && mountinfo->access_log.name)
+        logging_access_id (&mountinfo->access_log, client);
+
+    return auth_release_listener (client, source->mount, mountinfo);
+}
+
 void source_clear_listeners (source_t *source)
 {
     int i;
@@ -241,18 +265,20 @@ void source_clear_listeners (source_t *source)
     i = 0;
     config = config_get_config ();
     mountinfo = config_find_mount (config, source->mount);
-    while (source->client_list)
+    while (1)
     {
-        client_t *client;
-
-        client = source->client_list;
-        source->client_list = client->next;
-        client->next = NULL;
-        client->shared_data = NULL;
-        client_set_queue (client, NULL);
-        /* do not count listeners who have joined but haven't done any processing */
-        i++;
-        auth_release_listener (client, source->mount, mountinfo);
+        avl_node *node = source->clients->root->right;
+        if (node)
+        {
+            client_t *client = node->key;
+            if (avl_delete (source->clients, client, NULL) == 0)
+            {
+                source_listener_drop (source, client, mountinfo);
+                i++;
+            }
+            continue;
+        }
+        break;
     }
     config_release_config ();
     if (i)
@@ -319,8 +345,6 @@ void source_clear_source (source_t *source)
         fclose (source->intro_file);
         source->intro_file = NULL;
     }
-
-    source->flags &= ~SOURCE_ON_DEMAND_REQ;
 }
 
 
@@ -336,7 +360,7 @@ static int _free_source (void *p)
     yp_remove (source->mount);
 
     /* There should be no listeners on this mount */
-    if (source->client_list)
+    if (source->listeners)
         WARN1("active listeners on mountpoint %s", source->mount);
 
     thread_mutex_unlock (&source->lock);
@@ -362,16 +386,13 @@ void source_free_source (source_t *source)
 
 client_t *source_find_client(source_t *source, int id)
 {
-    client_t *client = NULL;
+    client_t fakeclient;
+    void *result = NULL;
 
-    client = source->client_list;
-    while (client)
-    {
-        if (client->connection.id == id)
-            break;
-        client = client->next;
-    }
-    return client;
+    fakeclient.connection.id = id;
+
+    avl_get_by_key (source->clients, &fakeclient, &result);
+    return result;
 }
 
 
@@ -394,7 +415,7 @@ static void update_source_stats (source_t *source)
             "%"PRIu64, source->format->sent_bytes);
     stats_event_args (source->mount, "total_mbytes_sent",
             "%"PRIu64, source->format->sent_bytes/(1024*1024));
-    if (source->client)
+    if (source->client->connection.con_time)
     {
         worker_t *worker = source->client->worker;
         stats_event_args (source->mount, "connected", "%"PRIu64,
@@ -595,14 +616,15 @@ static int source_client_read (client_t *client)
             source_shutdown (source, 1);
             source->flags |= SOURCE_TERMINATING;
         }
-        DEBUG2 ("counts are %d and %d", source->termination_count, source->listeners);
         if (source->termination_count)
+        {
+            DEBUG3 ("%s waiting (%d, %d)", source->mount, source->termination_count, source->listeners);
             client->schedule_ms = client->worker->time_ms + 200;
+        }
         else
         {
-            /* all the source listeners are stopped but still on the handlers */
-            DEBUG0 ("source client shutting down");
-            /* move them to possible fallback */
+            INFO1 ("no more listeners on %s", source->mount);
+            client->connection.discon_time = 0;
             client->ops = &source_client_halt_ops;
             free (source->fallback.mount);
             source->fallback.mount = NULL;
@@ -770,61 +792,88 @@ static int http_source_listener (client_t *client)
 }
 
 
-void source_listener_detach (client_t *client)
+void source_listener_detach (source_t *source, client_t *client)
+{
+    if (client->check_buffer != http_source_listener)
+    {
+        client->check_buffer = source->format->write_buf_to_client;
+        if ((client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
+            client_set_queue (client, NULL);
+    }
+    avl_delete (source->clients, client, NULL);
+    source->listeners--;
+}
+
+
+static int wait_for_restart (client_t *client)
 {
     source_t *source = client->shared_data;
-    if (client->check_buffer != http_source_listener && 
-            (client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
-        client_set_queue (client, NULL);
-    client->check_buffer = source->format->write_buf_to_client;
+
+    if (source_running (source) || source->termination_count || client->connection.error)
+        client->ops = &listener_client_ops;
+    else
+        client->schedule_ms = client->worker->time_ms + 150;
+    return 0;
 }
 
 /* general send routine per listener.
  */
 static int send_to_listener (client_t *client)
 {
+    source_t *source = client->shared_data;
+    int ret;
+
+    if (source == NULL)
+        return -1;
+    thread_mutex_lock (&source->lock);
+    ret = send_listener (source, client);
+    if (ret < 0)
+        ret = source_listener_release (source, client);
+    thread_mutex_unlock (&source->lock);
+    return ret;
+}
+
+static int send_listener (source_t *source, client_t *client)
+{
     int bytes;
     int loop = 6;   /* max number of iterations in one go */
     long total_written = 0;
     int ret = 0;
-    source_t *source = client->shared_data;
 
-    if (client->connection.error || source == NULL)
+    if (client->connection.error)
+    {
+        /* if listener disconnects at the same time as the source does then we need
+         * to account for it as the source thinks it is still connected */
+        if (source->termination_count)
+            source->termination_count--;
         return -1;
+    }
     if (source->fallback.mount)
     {
         int move_failed;
-        client_t **pnext;
-        thread_mutex_lock (&source->lock);
-        // remove from the sources client list
-        pnext = &source->client_list;
-        while (*pnext && *pnext != client)
-            pnext = &((*pnext)->next);
-        *pnext = client->next;
-        source->listeners--;
-        source_listener_detach (client);
+
+        source_listener_detach (source, client);
         thread_mutex_unlock (&source->lock);
         move_failed = move_listener (client, &source->fallback);
         thread_mutex_lock (&source->lock);
         if (move_failed)
         {
-            client->next = source->client_list;
-            source->client_list = client;
-            source->listeners++;
+            source_setup_listener (source, client);
             client->schedule_ms = client->worker->time_ms + 50;
         }
         source->termination_count--;
-        thread_mutex_unlock (&source->lock);
         return 0;
     }
     if (source->flags & SOURCE_TERMINATING)
     {
-        thread_mutex_lock (&source->lock);
         source->termination_count--;
         DEBUG2 ("termination count on %s now %d", source->mount, source->termination_count);
-        client_set_queue (client, NULL);
-        client->ops = &listener_pause_ops;
-        thread_mutex_unlock (&source->lock);
+        if (source->flags & SOURCE_RESTART_RELAY && global.running == ICE_RUNNING)
+        {
+            client->ops = &listener_pause_ops;
+            client->schedule_ms = client->worker->time_ms + 100;
+            return 0;
+        }
         return -1;
     }
     /* check for limited listener time */
@@ -840,13 +889,11 @@ static int send_to_listener (client_t *client)
         return 0;
     }
 
-    thread_mutex_lock (&source->lock);
-
     if (client->refbuf == NULL)
         client->check_buffer = source_queue_advance;
 
     // do we migrate this listener to the same handler as the source client
-    if (source->client && source->client->worker != client->worker)
+    if (source->client->worker != client->worker)
         if (listener_change_worker (client, source))
             return 1;
 
@@ -890,7 +937,6 @@ static int send_to_listener (client_t *client)
         client_set_queue (client, NULL);
         ret = -1;
     }
-    thread_mutex_unlock (&source->lock);
     return ret;
 }
 
@@ -1005,13 +1051,13 @@ void source_set_override (const char *mount, const char *dest)
 
 void source_set_fallback (source_t *source, const char *dest_mount)
 {
-    source->termination_count = source->listeners;
-    if (dest_mount == NULL)
+    int bitrate = (int)(rate_avg (source->format->in_bitrate) * 1.02);
+    if (dest_mount == NULL || bitrate == 0)
         return;
 
     source->fallback.flags = FS_FALLBACK;
     source->fallback.mount = strdup (dest_mount);
-    source->fallback.limit = (int)(rate_avg (source->format->in_bitrate) * 1.02);
+    source->fallback.limit = bitrate;
     INFO4 ("fallback set on %s to %s(%d) with %d listeners", source->mount, dest_mount,
             source->fallback.limit, source->listeners);
 }
@@ -1022,7 +1068,9 @@ void source_shutdown (source_t *source, int with_fallback)
 
     INFO1("Source \"%s\" exiting", source->mount);
 
-    update_source_stats (source);
+    if (source->client->connection.con_time)
+        update_source_stats (source);
+    source->termination_count = source->listeners;
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo)
     {
@@ -1034,12 +1082,6 @@ void source_shutdown (source_t *source, int with_fallback)
             source_set_fallback (source, mountinfo->fallback_mount);
     }
     config_release_config();
-
-    global_lock();
-    global.sources--;
-    stats_event_args (NULL, "sources", "%d", global.sources);
-    global_unlock();
-    stats_event (source->mount, NULL, NULL);
 }
 
 
@@ -1278,7 +1320,6 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             free (path);
         }
     }
-
     if (mountinfo && mountinfo->queue_size_limit)
         source->queue_size_limit = mountinfo->queue_size_limit;
 
@@ -1488,7 +1529,7 @@ void source_recheck_mounts (int update_all)
  */
 static int check_duplicate_logins (source_t *source, client_t *client, auth_t *auth)
 {
-    client_t *existing;
+    avl_node *node;
 
     if (auth == NULL || auth->allow_duplicate_users)
         return 1;
@@ -1497,22 +1538,23 @@ static int check_duplicate_logins (source_t *source, client_t *client, auth_t *a
     if (client->username == NULL || client->flags & CLIENT_IS_SLAVE)
         return 1;
 
-    existing = source->client_list;
-    while (existing)
-    {
-        if (existing->connection.error == 0 && existing->username &&
-                strcmp (existing->username, client->username) == 0)
+    node = avl_get_first (source->clients);
+    while (node)
+    {   
+        client_t *existing_client = (client_t *)node->key;
+        if (existing_client->username && 
+                strcmp (existing_client->username, client->username) == 0)
         {
             if (auth->drop_existing_listener)
             {
-                existing->connection.error = 1;
+                existing_client->connection.error = 1;
                 return 1;
             }
             else
                 return 0;
         }
-        existing = existing->next;
-    }
+        node = avl_get_next (node);
+    }       
     return 1;
 }
 
@@ -1544,6 +1586,10 @@ static int source_client_shutdown (client_t *client)
         ret = 0;
     }
     thread_mutex_unlock (&source->lock);
+    global_lock();
+    global.sources--;
+    stats_event_args (NULL, "sources", "%d", global.sources);
+    global_unlock();
     return ret;
 }
 
@@ -1568,46 +1614,27 @@ void source_client_release (client_t *client)
 }
 
 
-/* listener is off the handler list, so clean up */
-static void source_listener_release (client_t *client)
+static int source_listener_release (source_t *source, client_t *client)
 {
-    source_t *source = client->shared_data;
     ice_config_t *config;
     mount_proxy *mountinfo;
-    client_t **pnext;
-    int value;
-
-    if (source == NULL)
-    {
-        client_destroy (client);
-        return;
-    }
-    if (source_running (source) == 0)
-        return;
-
-    thread_mutex_lock (&source->lock);
+    int ret;
 
     /* search through sources client list to find previous link in list */
-    // we could flag the source to recreate the client list when needed
-    // killclient, listclients, move clients
-    pnext = &source->client_list;
-    while (*pnext && *pnext != client)
-        pnext = &((*pnext)->next);
-    *pnext = client->next;
-    value = --source->listeners;
+    source_listener_detach (source, client);
     if (source->listeners == 0)
         rate_reduce (source->format->out_bitrate, 1000);
 
     stats_event_dec (NULL, "listeners");
-    stats_event_args (source->mount, "listeners", "%lu", value);
+    stats_event_args (source->mount, "listeners", "%lu", source->listeners);
     /* change of listener numbers, so reduce scope of global sampling */
     global_reduce_bitrate_sampling (global.out_bitrate);
 
     config = config_get_config ();
     mountinfo = config_find_mount (config, source->mount);
-    auth_release_listener (client, source->mount, mountinfo);
+    ret = source_listener_drop (source, client, mountinfo);
     config_release_config();
-    thread_mutex_unlock (&source->lock);
+    return ret;
 }
 
 
@@ -1770,14 +1797,16 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
  */
 void source_setup_listener (source_t *source, client_t *client)
 {
-    client->ops = &listener_client_ops;
+    if ((source->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) == SOURCE_ON_DEMAND)
+        client->ops = &listener_pause_ops;
+    else
+        client->ops = &listener_client_ops;
     client->shared_data = source;
     client->queue_pos = 0;
 
     client->check_buffer = http_source_listener;
     // add client to the source
-    client->next = source->client_list;
-    source->client_list = client;
+    avl_insert (source->clients, client);
     source->listeners++;
 }
 

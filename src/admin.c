@@ -433,14 +433,17 @@ static void admin_handle_general_request(client_t *client, const char *uri)
 }
 
 
-#define COMMAND_REQUIRE(client,name,var) \
-    do { \
-        (var) = httpp_get_query_param((client)->parser, (name)); \
-        if((var) == NULL) { \
-            client_send_400((client), "Missing parameter"); \
-            return; \
-        } \
-    } while(0);
+#define COMMAND_REQUIRE(client,name,var) command_require(client,name,&(var))
+static int command_require (client_t *client, const char *name, const char **var)
+{
+    *var = httpp_get_query_param((client)->parser, (name));
+    if (*var == NULL) {
+        client_send_400((client), "Missing parameter");
+        return -1;
+    }
+    return 0;
+} 
+
 #define COMMAND_OPTIONAL(client,name,var) \
     (var) = httpp_get_query_param((client)->parser, (name))
 
@@ -482,6 +485,7 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlDocSetRootElement(doc, node);
 
     source_set_fallback (source, dest_source);
+    source->termination_count = source->listeners;
     source->flags |= SOURCE_TEMPORARY_FALLBACK;
 
     snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
@@ -522,7 +526,8 @@ static void command_admin_function (client_t *client, int response)
     const char *perform;
     char buf[256];
 
-    COMMAND_REQUIRE (client, "perform", perform);
+    if (COMMAND_REQUIRE (client, "perform", perform) < 0)
+        return;
     if (admin_function (perform, buf, sizeof buf) < 0)
     {
         client_send_400 (client, "No such handler");
@@ -647,7 +652,7 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     if ((listener->flags & (CLIENT_ACTIVE|CLIENT_IN_FSERVE)) == CLIENT_ACTIVE)
     {
         source_t *source = listener->shared_data;
-        snprintf (buf, sizeof (buf), "%ld", (long)(source->client->queue_pos - listener->queue_pos));
+        snprintf (buf, sizeof (buf), "%"PRIu64, source->client->queue_pos - listener->queue_pos);
     }
     else
         snprintf (buf, sizeof (buf), "0");
@@ -673,16 +678,16 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
  */
 void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
 {
-    client_t *listener;
+    avl_node *node;
 
     if (source == NULL)
         return;
-
-    listener = source->client_list;
-    while (listener)
+    node = avl_get_first (source->clients);
+    while (node)
     {
+        client_t *listener = (client_t *)node->key;
         add_listener_node (srcnode, listener);
-        listener = listener->next;
+        node = avl_get_next (node);
     }
 }
 
@@ -754,18 +759,10 @@ static void command_show_listeners(client_t *client, source_t *source,
         admin_source_listeners (source, srcnode);
     else
     {
-        client_t *listener;
+        client_t *listener = source_find_client (source, id);
 
-        listener = source->client_list;
-        while (listener)
-        {
-            if (listener->connection.id == id)
-            {
-                add_listener_node (srcnode, listener);
-                break;
-            }
-            listener = listener->next;
-        }
+        if (listener)
+            add_listener_node (srcnode, listener);
     }
     thread_mutex_unlock (&source->lock);
 
@@ -802,8 +799,9 @@ static void command_buildm3u (client_t *client, const char *mount)
     const char *password = NULL;
     ice_config_t *config;
 
-    COMMAND_REQUIRE(client, "username", username);
-    COMMAND_REQUIRE(client, "password", password);
+    if (COMMAND_REQUIRE(client, "username", username) < 0 ||
+            COMMAND_REQUIRE(client, "password", password) < 0)
+        return;
 
     client->respcode = 200;
     config = config_get_config();
@@ -945,7 +943,8 @@ static void command_kill_client(client_t *client, source_t *source,
     xmlNodePtr node;
     char buf[50] = "";
 
-    COMMAND_REQUIRE(client, "id", idtext);
+    if (COMMAND_REQUIRE(client, "id", idtext) < 0)
+        return;
 
     id = atoi(idtext);
 
@@ -993,7 +992,8 @@ static void command_fallback(client_t *client, source_t *source,
     {
         const char *fallback;
         char buffer[200];
-        COMMAND_REQUIRE(client, "fallback", fallback);
+        if (COMMAND_REQUIRE(client, "fallback", fallback) < 0)
+            return;
 
         xmlFree (mountinfo->fallback_mount);
         mountinfo->fallback_mount = (char *)xmlCharStrdup (fallback);
@@ -1090,46 +1090,62 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     const char *value;
     int same_ip = 1;
 
-    DEBUG0("Got shoutcast metadata update request");
-
-    COMMAND_REQUIRE(client, "mode", action);
-    COMMAND_REQUIRE(client, "song", value);
-
-    if (strcmp (action, "updinfo") != 0)
+    if (COMMAND_REQUIRE(client, "mode", action) < 0)
     {
         thread_mutex_unlock (&source->lock);
-        client_send_400 (client, "No such action");
         return;
     }
 
     if ((source->flags & SOURCE_SHOUTCAST_COMPAT) == 0)
     {
         thread_mutex_unlock (&source->lock);
-        ERROR0 ("illegal change of metadata on non-shoutcast compatible stream");
-        client_send_400 (client, "illegal metadata call");
+        ERROR0 ("illegal request on non-shoutcast compatible stream");
+        client_send_400 (client, "Not a shoutcast compatible stream");
         return;
     }
 
-    if (source->client && strcmp (client->connection.ip, source->client->connection.ip) != 0)
-        if (connection_check_admin_pass (client->parser) == 0)
-            same_ip = 0;
-
-    if (same_ip && source->format && source->format->set_tag)
+    if (strcmp (action, "updinfo") == 0)
     {
-        httpp_set_query_param (client->parser, "mount", client->server_conn->shoutcast_mount);
-        source->format->set_tag (source->format, "title", value, NULL);
-        source->format->set_tag (source->format, NULL, NULL, NULL);
+        DEBUG0("Got shoutcast metadata update request");
+        if (COMMAND_REQUIRE (client, "song", value) < 0)
+        {
+            thread_mutex_unlock (&source->lock);
+            return;
+        }
+        if (source->client && strcmp (client->connection.ip, source->client->connection.ip) != 0)
+            if (connection_check_admin_pass (client->parser) == 0)
+                same_ip = 0;
 
-        DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
-                source->mount, value);
-        thread_mutex_unlock (&source->lock);
-        html_success(client, "Metadata update successful");
+        if (same_ip && source->format && source->format->set_tag)
+        {
+            httpp_set_query_param (client->parser, "mount", client->server_conn->shoutcast_mount);
+            source->format->set_tag (source->format, "title", value, NULL);
+            source->format->set_tag (source->format, NULL, NULL, NULL);
+
+            DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
+                    source->mount, value);
+            thread_mutex_unlock (&source->lock);
+            html_success(client, "Metadata update successful");
+        }
+        else
+        {
+            thread_mutex_unlock (&source->lock);
+            client_send_400 (client, "mountpoint will not accept URL updates");
+        }
+        return;
     }
-    else
+    if (strcmp (action, "viewxml") == 0)
     {
+        xmlDocPtr doc;
+        DEBUG0("Got shoutcast viewxml request");
+        doc = stats_get_xml (STATS_ALL, source->mount);
         thread_mutex_unlock (&source->lock);
-        client_send_400 (client, "mountpoint will not accept URL updates");
+        admin_send_response (doc, client, XSLT, "viewxml.xsl");
+        xmlFreeDoc(doc);
+        return;
     }
+    thread_mutex_unlock (&source->lock);
+    client_send_400 (client, "No such action");
 }
 
 
@@ -1165,6 +1181,7 @@ static void command_list_log (client_t *client, int response)
     refbuf_t *content;
     const char *logname = httpp_get_query_param (client->parser, "log");
     int log = -1;
+    ice_config_t *config;
 
     if (logname == NULL)
     {
@@ -1172,21 +1189,24 @@ static void command_list_log (client_t *client, int response)
         return;
     }
 
+    config = config_get_config ();
     if (strcmp (logname, "errorlog") == 0)
-        log = errorlog;
+        log = config->error_log.logid;
     else if (strcmp (logname, "accesslog") == 0)
-        log = accesslog;
+        log = config->access_log.logid;
     else if (strcmp (logname, "playlistlog") == 0)
-        log = playlistlog;
+        log = config->playlist_log.logid;
 
     if (log < 0)
     {
+        config_release_config();
         WARN1 ("request to show unknown log \"%s\"", logname);
         client_send_400 (client, "");
         return;
     }
     content = refbuf_new (0);
     log_contents (log, &content->data, &content->len);
+    config_release_config();
 
     if (response == XSLT)
     {

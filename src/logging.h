@@ -19,8 +19,6 @@
 /* declare the global log descriptors */
 
 extern int errorlog;
-extern int accesslog;
-extern int playlistlog;
 
 /* these are all ERRORx and WARNx where _x_ is the number of parameters
 ** it takes.  it turns out most other copmilers don't have support for
@@ -87,9 +85,12 @@ extern int playlistlog;
 
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
+void logging_access_id (access_log *accesslog, client_t *client);
 void logging_access(client_t *client);
 void logging_playlist(const char *mount, const char *metadata, long listeners);
-void restart_logging (ice_config_t *config);
+int  restart_logging (ice_config_t *config);
+int  start_logging(ice_config_t *config);
+void stop_logging(void);
 void log_parse_failure (void *ctx, const char *fmt, ...);
 
 #endif  /* __LOGGING_H__ */

@@ -33,7 +33,7 @@ typedef struct source_tag
 
     struct _format_plugin_tag *format;
 
-    client_t *client_list;
+    avl_tree *clients;
 
     util_dict *audio_info;
 
@@ -55,7 +55,6 @@ typedef struct source_tag
     unsigned long prev_listeners;
 
     int yp_public;
-    int log_id;
 
     /* per source burst handling for connecting clients */
     unsigned int burst_size;    /* trigger level for burst on connect */
@@ -79,9 +78,9 @@ typedef struct source_tag
 
 } source_t;
 
-#define SOURCE_RUNNING              001
-#define SOURCE_ON_DEMAND            002
-#define SOURCE_ON_DEMAND_REQ        004
+#define SOURCE_RUNNING              01
+#define SOURCE_ON_DEMAND            02
+#define SOURCE_RESTART_RELAY        04
 #define SOURCE_SHOUTCAST_COMPAT     010
 #define SOURCE_TERMINATING          020
 #define SOURCE_TEMPORARY_FALLBACK   040
@@ -100,9 +99,6 @@ source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, int id);
 int source_compare_sources(void *arg, void *a, void *b);
 void source_free_source(source_t *source);
-void source_move_clients (source_t *source, source_t *dest);
-int source_remove_client(void *key);
-void source_listener_detach (client_t *client);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
 int  source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client);

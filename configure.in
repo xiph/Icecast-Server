@@ -1,5 +1,6 @@
-AC_INIT([Icecast], [2.3.2-kh18], [karl@xiph.org])
+AC_INIT([Icecast], [2.3.2-kh19], [karl@xiph.org])
 
+LT_INIT
 AC_PREREQ(2.59)
 AC_CONFIG_SRCDIR(src/main.c)
 dnl Process this file with autoconf to produce a configure script.

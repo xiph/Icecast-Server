@@ -95,7 +95,7 @@ void client_destroy(client_t *client)
     /* write log entry if ip is set (some things don't set it, like outgoing 
      * slave requests
      */
-    if (client->respcode && client->parser)
+    if (client->respcode > 0 && client->parser)
         logging_access(client);
 
     connection_close (&client->connection);

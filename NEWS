@@ -16,6 +16,25 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh19
+. add 7.xsl processing to present stats for a shoutcast /7.html request, requires
+  alias of /7.html to /7.xsl
+. avl tree of listeners is back in, workers process lists of clients but the tree
+  enables a quick listener lookup from a source.
+. the admin arg require handler left a lock held if not specified.
+. make sure the allow/deny/useragent files reload properly
+. initialisation bug for auth, more likely to affect win32 gui.
+. content-type has to be lower case for shoutcast to recognise the mime type.
+. per-mount access log. <accesslog> <name>/file.log</name> ....
+. update to the source shutdown process. reduces code in relay shutdown, no point
+  in duplication. allow listeners to be placed in a waiting state if source is
+  waiting to start up.
+. do not dump stream stats on on-demand relay failure.
+. allow for reporting xml parser warnings to stderr at startup
+. fix possible auth related corruption with disconnected clients on slow auth
+. type fixup on lag calculation on 32bit systems.
+. if streamlist fails then drop all slave relays.
+
 2.3.2-kh18
 . for people who use ICE_MUTEX_ABORT (environment var) to trap for long held
   locks, change the name to ICE_LOCK_ABORT

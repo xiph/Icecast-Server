@@ -60,10 +60,10 @@ void event_config_read (void)
         config_release_config();
     }
     else {
+        restart_logging (&new_config);
         config_clear(config);
         config_set_config(&new_config);
         config = config_get_config_unlocked();
-        restart_logging (config);
         yp_recheck_config (config);
         fserve_recheck_mime_types (config);
         stats_global (config);

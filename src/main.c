@@ -68,7 +68,8 @@
 static int background;
 static char *pidfile = NULL;
 
-static void _fatal_error(char *perr)
+#define _fatal_error fatal_error
+void fatal_error (const char *perr)
 {
 #ifdef WIN32_SERVICE
     MessageBox(NULL, perr, "Error", MB_SERVICE_NOTIFICATION);
@@ -90,16 +91,11 @@ static void _print_usage(void)
     printf("\n");
 }
 
-static void _stop_logging(void)
-{
-    log_close(errorlog);
-    log_close(accesslog);
-    log_close(playlistlog);
-}
 
 void _initialize_subsystems(void)
 {
     log_initialize();
+    errorlog = log_open_file (stderr);
     thread_initialize();
     sock_initialize();
     resolver_initialize();
@@ -134,7 +130,6 @@ void _shutdown_subsystems(void)
 #endif
 
     /* Now that these are done, we can stop the loggers. */
-    _stop_logging();
     log_shutdown();
     xslt_shutdown();
     thread_shutdown();
@@ -191,91 +186,6 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
         return -1;
 }
 
-static int _start_logging(void)
-{
-    char fn_error[FILENAME_MAX];
-    char fn_access[FILENAME_MAX];
-    char fn_playlist[FILENAME_MAX];
-    char buf[1024];
-    int log_to_stderr;
-
-    ice_config_t *config = config_get_config_unlocked();
-
-    if(strcmp(config->error_log.name, "-")) {
-        snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log.name);
-        errorlog = log_open(fn_error);
-        log_to_stderr = 0;
-        if (config->error_log.trigger_size)
-            log_set_trigger (errorlog, config->error_log.trigger_size);
-        log_set_archive_timestamp(errorlog, config->error_log.archive);
-    } else {
-        errorlog = log_open_file(stderr);
-        log_to_stderr = 1;
-    }
-
-    if (errorlog < 0) {
-        buf[sizeof(buf)-1] = 0;
-        snprintf(buf, sizeof(buf)-1, 
-                "FATAL: could not open error logging (%s): %s",
-                log_to_stderr?"standard error":fn_error,
-                strerror(errno));
-        _fatal_error(buf);
-    }
-    log_set_level(errorlog, config->error_log.level);
-    thread_use_log_id (errorlog);
-
-    if(strcmp(config->access_log.name, "-")) {
-        snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log.name);
-        accesslog = log_open(fn_access);
-        log_to_stderr = 0;
-        if (config->access_log.trigger_size)
-            log_set_trigger (accesslog, config->access_log.trigger_size);
-        log_set_archive_timestamp(accesslog, config->access_log.archive);
-    } else {
-        accesslog = log_open_file(stderr);
-        log_to_stderr = 1;
-    }
-
-    if (accesslog < 0) {
-        buf[sizeof(buf)-1] = 0;
-        snprintf(buf, sizeof(buf)-1, 
-                "FATAL: could not open access logging (%s): %s",
-                log_to_stderr?"standard error":fn_access,
-                strerror(errno));
-        _fatal_error(buf);
-    }
-
-    if(config->playlist_log.name) {
-        snprintf(fn_playlist, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log.name);
-        playlistlog = log_open(fn_playlist);
-        if (playlistlog < 0) {
-            buf[sizeof(buf)-1] = 0;
-            snprintf(buf, sizeof(buf)-1, 
-                "FATAL: could not open playlist logging (%s): %s",
-                log_to_stderr?"standard error":fn_playlist,
-                strerror(errno));
-            _fatal_error(buf);
-        }
-        log_to_stderr = 0;
-        if (config->playlist_log.trigger_size)
-            log_set_trigger (playlistlog, config->playlist_log.trigger_size);
-        log_set_archive_timestamp(playlistlog, config->playlist_log.archive);
-    } else {
-        playlistlog = -1;
-    }
-
-    log_set_level(errorlog, config->error_log.level);
-    log_set_level(accesslog, 4);
-    log_set_level(playlistlog, 4);
-    log_set_lines_kept (errorlog, config->error_log.display);
-    log_set_lines_kept (accesslog, config->access_log.display);
-    log_set_lines_kept (playlistlog, config->playlist_log.display);
-
-    if (errorlog >= 0 && accesslog >= 0) return 1;
-    
-    return 0;
-}
-
 
 /* bind the socket and start listening */
 static int _server_proc_init(void)
@@ -312,6 +222,7 @@ static void _server_proc(void)
     slave_initialize();
 
     connection_setup_sockets (NULL);
+    stop_logging();
 }
 
 /* chroot the process. Watch out - we need to do this before starting other
@@ -470,7 +381,8 @@ int main(int argc, char **argv)
     /* setup default signal handlers */
     sighandler_initialize();
 
-    if (!_start_logging()) {
+    if (start_logging (config_get_config_unlocked()) < 0)
+    {
         _fatal_error("FATAL: Could not start logging");
         _shutdown_subsystems();
         return -1;

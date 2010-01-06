@@ -193,7 +193,6 @@ static void auth_client_free (auth_client *auth_user)
         if (client->respcode)
             client->connection.error = 1;
         client_send_401 (client, auth_user->auth->realm);
-        client->flags |= CLIENT_ACTIVE;
         auth_user->client = NULL;
     }
     auth_release (auth_user->auth);
@@ -578,14 +577,21 @@ int auth_release_listener (client_t *client, const char *mount, mount_proxy *mou
             auth_client *auth_user = auth_client_setup (mount, client);
             auth_user->process = auth_remove_listener;
             queue_auth_client (auth_user, mountinfo);
-            return 1;
+            return 0;
         }
         client->flags &= ~CLIENT_AUTHENTICATED;
-        client_destroy (client);
-        return 1;
     }
-    client_send_404 (client, NULL);
-    return 0;
+    if (client->worker)
+    {
+        if (client->connection.sent_bytes == 0)
+        {
+            client_send_404 (client, NULL);
+            return 0;
+        }
+    }
+    else
+        client_destroy (client);
+    return -1;
 }
 
 
@@ -816,6 +822,7 @@ int auth_check_source (client_t *client, const char *mount)
 
 void auth_initialise (void)
 {
+    thread_rwlock_create (&auth_lock);
     thread_id = 0;
     allow_auth = 1;
 }
@@ -825,6 +832,7 @@ void auth_shutdown (void)
     allow_auth = 0;
     thread_rwlock_wlock (&auth_lock);
     thread_rwlock_unlock (&auth_lock);
+    thread_rwlock_destroy (&auth_lock);
     INFO0 ("Auth shutdown complete");
 }
 
