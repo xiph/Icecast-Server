@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3.2-kh19], [karl@xiph.org])
+AC_INIT([Icecast], [2.3.2-kh20], [karl@xiph.org])
 
 LT_INIT
 AC_PREREQ(2.59)

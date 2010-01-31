@@ -58,7 +58,7 @@ void connection_thread_shutdown();
 int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
 int  connection_init (connection_t *con, sock_t sock);
-int connection_complete_source (struct source_tag *source, int response);
+int  connection_complete_source (struct source_tag *source, http_parser_t *parser);
 void connection_uses_ssl (connection_t *con);
 #ifdef HAVE_OPENSSL
 int  connection_read_ssl (connection_t *con, void *buf, size_t len);

@@ -229,10 +229,10 @@ static auth_result auth_cmd_client (auth_client *auth_user)
         case 0: /* child */
             dup2 (outfd[0], 0);
             dup2 (infd[1], 1);
-            close (outfd[0]);
-            close (infd[1]);
-            if (execl (cmd->listener_add, cmd->listener_add, NULL) < 0)
-                ERROR1 ("unable to exec command \"%s\"", cmd->listener_add);
+            close (outfd[1]);
+            close (infd[0]);
+            execl (cmd->listener_add, cmd->listener_add, NULL);
+            ERROR1 ("unable to exec command \"%s\"", cmd->listener_add);
             exit (-1);
         case -1:
             break;

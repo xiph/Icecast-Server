@@ -362,6 +362,7 @@ static int _free_source (void *p)
     /* There should be no listeners on this mount */
     if (source->listeners)
         WARN1("active listeners on mountpoint %s", source->mount);
+    avl_tree_free (source->clients, NULL);
 
     thread_mutex_unlock (&source->lock);
     thread_mutex_destroy (&source->lock);
@@ -497,7 +498,7 @@ int source_read (source_t *source)
             {
                 DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
-                WARN0 ("Disconnecting source due to socket timeout");
+                WARN1 ("Disconnecting %s due to socket timeout", source->mount);
                 source->flags &= ~SOURCE_RUNNING;
                 skip = 0;
                 break;
@@ -521,6 +522,7 @@ int source_read (source_t *source)
             {
                 source->bytes_read_since_update += refbuf->len;
 
+                refbuf->flags |= SOURCE_QUEUE_BLOCK;
                 /* the latest refbuf is counted twice so that it stays */
                 refbuf_addref (refbuf);
 
@@ -616,9 +618,9 @@ static int source_client_read (client_t *client)
             source_shutdown (source, 1);
             source->flags |= SOURCE_TERMINATING;
         }
-        if (source->termination_count)
+        if (source->termination_count && source->termination_count <= source->listeners)
         {
-            DEBUG3 ("%s waiting (%d, %d)", source->mount, source->termination_count, source->listeners);
+            DEBUG3 ("%s waiting (%lu, %lu)", source->mount, source->termination_count, source->listeners);
             client->schedule_ms = client->worker->time_ms + 200;
         }
         else
@@ -827,6 +829,8 @@ static int send_to_listener (client_t *client)
         return -1;
     thread_mutex_lock (&source->lock);
     ret = send_listener (source, client);
+    if (ret == 1)
+        return 0;
     if (ret < 0)
         ret = source_listener_release (source, client);
     thread_mutex_unlock (&source->lock);
@@ -867,9 +871,11 @@ static int send_listener (source_t *source, client_t *client)
     if (source->flags & SOURCE_TERMINATING)
     {
         source->termination_count--;
-        DEBUG2 ("termination count on %s now %d", source->mount, source->termination_count);
-        if (source->flags & SOURCE_RESTART_RELAY && global.running == ICE_RUNNING)
+        DEBUG2 ("termination count on %s now %lu", source->mount, source->termination_count);
+        if ((source->flags & SOURCE_PAUSE_LISTENERS) && global.running == ICE_RUNNING)
         {
+            if (client->refbuf && (client->refbuf->flags & SOURCE_QUEUE_BLOCK))
+                client_set_queue (client, NULL);
             client->ops = &listener_pause_ops;
             client->schedule_ms = client->worker->time_ms + 100;
             return 0;
@@ -965,6 +971,7 @@ void source_init (source_t *source)
     stats_event (source->mount, "server_type", source->format->contenttype);
     stats_event_flags (source->mount, "listener_peak", "0", STATS_COUNTERS);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+    stats_event_flags (source->mount, "listener_connections", "0", STATS_COUNTERS);
     stats_event_time (source->mount, "stream_start");
     stats_event_flags (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
@@ -995,10 +1002,6 @@ void source_init (source_t *source)
 
     thread_mutex_unlock (&source->lock);
 
-    /* on demand relays should of already called this */
-    if ((source->flags & SOURCE_ON_DEMAND) == 0)
-        slave_update_all_mounts();
-
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo)
     {
@@ -1020,6 +1023,10 @@ void source_init (source_t *source)
 
     INFO1 ("Source %s initialised", source->mount);
     source->flags |= SOURCE_RUNNING;
+
+    /* on demand relays should of already called this */
+    if ((source->flags & SOURCE_ON_DEMAND) == 0)
+        slave_update_all_mounts();
 }
 
 
@@ -1144,7 +1151,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
     /* to be done before possible non-utf8 stats */
     if (source->format && source->format->apply_settings)
-        source->format->apply_settings (source->client, source->format, mountinfo);
+        source->format->apply_settings (source->format, mountinfo);
 
     /* public */
     if (mountinfo && mountinfo->yp_public >= 0)
@@ -1416,7 +1423,6 @@ static int source_client_callback (client_t *client)
     if (agent)
         stats_event (source->mount, "user_agent", agent);
     stats_event_inc(NULL, "source_client_connections");
-    stats_event_flags (source->mount, "listener_connections", "0", STATS_COUNTERS);
 
     source_init (source);
     client->ops = &source_client_ops;
@@ -1576,7 +1582,8 @@ static int source_client_shutdown (client_t *client)
             return -1;
     }
     thread_mutex_lock (&source->lock);
-    DEBUG1 ("remaining listeners to process is %d", source->listeners);
+    if (source->listeners)
+        DEBUG1 ("remaining listeners to process is %d", source->listeners);
     /* listeners handled now */
     if (source->wait_time)
     {
@@ -1840,15 +1847,32 @@ int source_startup (client_t *client, const char *uri)
 
     if (source)
     {
-        thread_mutex_lock (&source->lock);
-        source->client = client;
-        source->parser = client->parser;
-        if (connection_complete_source (source, 1) < 0)
+        ice_config_t *config = config_get_config();
+        global_lock();
+        if (global.sources >= config->source_limit)
         {
+            config_release_config();
+            WARN1 ("Request to add source when maximum source limit reached %d", global.sources);
+            global_unlock();
+            client_send_403 (client, "too many streams connected");
+            source_free_source (source);
+            return 0;
+        }
+        config_release_config();
+        global.sources++;
+        INFO1 ("sources count is now %d", global.sources);
+        stats_event_args (NULL, "sources", "%d", global.sources);
+        global_unlock();
+        thread_mutex_lock (&source->lock);
+        if (connection_complete_source (source, client->parser) < 0)
+        {
+            client_send_403 (client, "content type not supported");
             thread_mutex_unlock (&source->lock);
             source_free_source (source);
-            return -1;
+            return 0;
         }
+        source->client = client;
+        source->parser = client->parser;
         client->respcode = 200;
         client->shared_data = source;
 

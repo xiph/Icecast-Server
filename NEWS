@@ -11,10 +11,27 @@ Feature differences from SVN trunk
   max-listener/bandwidth check. slaves can use a different auth to listeners
 . mount can filter out theora content, useful for defining a local relay
   of a theora+vorbis stream to have a vorbis only stream from the same source.
-. handlers options for url authenticator.
+. handlers setting for URL authenticator, for N requests at a time.
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+
+2.3.2-kh20
+. fix possible lock imbalance bug if mutliple workers set
+. make sure listeners are not paused if relay is not running
+. fix memory leak on each source disconnection.
+. fix double free corruption bug if listener_remove used.
+. on server shutdown, prevent auth of new listeners only. other auth requests
+  can continue which allows client details to clean up properly
+. relocate where the source count is increased. For source clients it is just
+  before where it used to be but for relays it is increased before a relay
+  connection is attempted. Bug in kh19 meant sources kept increasing on relay
+  restart
+. fix possible stalling bug in auth command method.
+. listener_connections stat could have a random data bug
+. Do not force a master relay recheck on stream start/stop
+. build fix on certain platforms.
+. small internal code cleanups.
 
 2.3.2-kh19
 . add 7.xsl processing to present stats for a shoutcast /7.html request, requires

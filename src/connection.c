@@ -925,86 +925,47 @@ void connection_thread_shutdown ()
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, int response)
+int connection_complete_source (source_t *source, http_parser_t *parser)
 {
-    ice_config_t *config = config_get_config();
+    const char *contenttype = httpp_getvar (parser, "content-type");
+    mount_proxy *mountinfo;
+    format_type_t format_type;
+    ice_config_t *config;
 
-    global_lock ();
-    DEBUG1 ("sources count is %d", global.sources);
-
-    if (global.sources < config->source_limit)
+    /* setup format handler */
+    if (contenttype != NULL)
     {
-        const char *contenttype;
-        mount_proxy *mountinfo;
-        format_type_t format_type;
+        format_type = format_get_type (contenttype);
 
-        /* setup format handler */
-        contenttype = httpp_getvar (source->parser, "content-type");
-        if (contenttype != NULL)
+        if (format_type == FORMAT_ERROR)
         {
-            format_type = format_get_type (contenttype);
-
-            if (format_type == FORMAT_ERROR)
-            {
-                global_unlock();
-                config_release_config();
-                if (response)
-                {
-                    client_send_403 (source->client, "Content-type not supported");
-                    source->client = NULL;
-                }
-                WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
-                return -1;
-            }
-        }
-        else
-        {
-            WARN0("No content-type header, falling back to backwards compatibility mode "
-                    "for icecast 1.x relays. Assuming content is mp3.");
-            format_type = FORMAT_TYPE_GENERIC;
-        }
-
-        source->format->type = format_type;
-        source->format->mount = source->mount;
-        source->format->parser = source->parser;
-        if (format_get_plugin (source->format) < 0)
-        {
-            global_unlock();
-            config_release_config();
-            if (response)
-            {
-                client_send_403 (source->client, "internal format allocation problem");
-                source->client = NULL;
-            }
-            WARN1 ("plugin format failed for \"%s\"", source->mount);
+            WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
             return -1;
         }
-
-        global.sources++;
-        stats_event_args (NULL, "sources", "%d", global.sources);
-        global_unlock();
-
-        mountinfo = config_find_mount (config, source->mount);
-        source_update_settings (config, source, mountinfo);
-        INFO1 ("source %s is ready to start", source->mount);
-        config_release_config();
-        slave_rebuild_mounts();
-
-        return 0;
     }
-    WARN1("Request to add source when maximum source limit "
-            "reached %d", global.sources);
+    else
+    {
+        WARN0("No content-type header, falling back to backwards compatibility mode "
+                "for icecast 1.x relays. Assuming content is mp3.");
+        format_type = FORMAT_TYPE_GENERIC;
+    }
 
-    global_unlock();
+    source->format->type = format_type;
+    source->format->mount = source->mount;
+    source->format->parser = parser;
+    if (format_get_plugin (source->format) < 0)
+    {
+        WARN1 ("plugin format failed for \"%s\"", source->mount);
+        return -1;
+    }
+
+    config = config_get_config();
+    mountinfo = config_find_mount (config, source->mount);
+    source_update_settings (config, source, mountinfo);
+    INFO1 ("source %s is ready to start", source->mount);
     config_release_config();
 
-    if (response)
-    {
-        client_send_403 (source->client, "too many sources connected");
-        source->client = NULL;
-    }
-
-    return -1;
+    return 0;
 }
 
 
@@ -1157,7 +1118,7 @@ static int _handle_source_request (client_t *client)
     {
         WARN0 ("source mountpoint not starting with /");
         client_send_401 (client, NULL);
-        return 1;
+        return 0;
     }
     switch (auth_check_source (client, uri))
     {

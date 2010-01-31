@@ -29,6 +29,7 @@
 #include "cfgfile.h"
 #include "logging.h"
 #include "util.h"
+#include "errno.h"
 
 void fatal_error (const char *perr);
 

@@ -56,7 +56,7 @@ static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
-static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
+static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mount);
 
 
 typedef struct {
@@ -198,7 +198,7 @@ static char *filter_shoutcast_metadata (source_t *source, char *metadata, size_t
 }
 
 
-static void format_mp3_apply_settings (client_t *client, format_plugin_t *format, mount_proxy *mount)
+static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mount)
 {
     mp3_state *source_mp3 = format->_state;
 
@@ -218,7 +218,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
     }
     if (source_mp3->interval < 0)
     {
-        const char *metadata = httpp_getvar (client->parser, "icy-metaint");
+        const char *metadata = httpp_getvar (format->parser, "icy-metaint");
         source_mp3->interval = ICY_METADATA_INTERVAL;
         if (metadata)
         {

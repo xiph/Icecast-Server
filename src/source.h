@@ -80,7 +80,7 @@ typedef struct source_tag
 
 #define SOURCE_RUNNING              01
 #define SOURCE_ON_DEMAND            02
-#define SOURCE_RESTART_RELAY        04
+#define SOURCE_PAUSE_LISTENERS      04
 #define SOURCE_SHOUTCAST_COMPAT     010
 #define SOURCE_TERMINATING          020
 #define SOURCE_TEMPORARY_FALLBACK   040
@@ -111,6 +111,7 @@ void source_set_override (const char *mount, const char *dest);
 
 #define SOURCE_BLOCK_SYNC           01
 #define SOURCE_BLOCK_RELEASE        02
+#define SOURCE_QUEUE_BLOCK          04
 
 #endif
 

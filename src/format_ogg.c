@@ -58,8 +58,7 @@ static int get_image (client_t *client, struct _format_plugin_tag *format);
 static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer (source_t *source);
 static int write_buf_to_client (client_t *client);
-static void apply_ogg_settings (client_t *client,
-        format_plugin_t *format, mount_proxy *mount);
+static void apply_ogg_settings (format_plugin_t *format, mount_proxy *mount);
 
 
 struct ogg_client
@@ -203,8 +202,7 @@ static void format_ogg_free_plugin (format_plugin_t *plugin)
 }
 
 
-static void apply_ogg_settings (client_t *client,
-        format_plugin_t *format, mount_proxy *mount)
+static void apply_ogg_settings (format_plugin_t *format, mount_proxy *mount)
 {
     ogg_state_t *ogg_info = format->_state;
 

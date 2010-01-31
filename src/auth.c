@@ -224,9 +224,9 @@ static void auth_new_listener (auth_client *auth_user)
 
     /* make sure there is still a client at this point, a slow backend request
      * can be avoided if client has disconnected */
-    if (is_listener_connected (client) == 0)
+    if (allow_auth == 0 || is_listener_connected (client) == 0)
     {
-        DEBUG0 ("listener is no longer connected");
+        DEBUG0 ("dropping listener connection");
         client->respcode = 400;
         return;
     }
@@ -257,7 +257,10 @@ static void auth_remove_listener (auth_client *auth_user)
     auth_user->auth = NULL;
     /* client is going, so auth is not an issue at this point */
     auth_user->client->flags &= ~CLIENT_AUTHENTICATED;
-    client_send_404 (auth_user->client, "Failed relay");
+    if (auth_user->client->respcode == 0)
+        client_send_404 (auth_user->client, "Failed relay");
+    else
+        auth_user->client->flags |= CLIENT_ACTIVE;
     auth_user->client = NULL;
 }
 
@@ -339,7 +342,7 @@ static void *auth_run_thread (void *arg)
             auth_user->thread_data = handler->data;
             auth_user->handler = handler->id;
 
-            if (allow_auth && auth_user->process)
+            if (auth_user->process)
             {
                 worker_t *worker = NULL;
                 if (auth_user->client)
@@ -575,6 +578,7 @@ int auth_release_listener (client_t *client, const char *mount, mount_proxy *mou
         if (mount && mountinfo && mountinfo->auth && mountinfo->auth->release_listener)
         {
             auth_client *auth_user = auth_client_setup (mount, client);
+            client->flags &= ~CLIENT_ACTIVE;
             auth_user->process = auth_remove_listener;
             queue_auth_client (auth_user, mountinfo);
             return 0;

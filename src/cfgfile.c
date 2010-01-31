@@ -277,6 +277,8 @@ static void config_clear_mount (mount_proxy *mount)
     auth_release (mount->auth);
     if (mount->access_log.logid >= 0)
         log_close (mount->access_log.logid);
+    xmlFree (mount->access_log.name);
+    xmlFree (mount->access_log.exclude_ext);
     free (mount);
 }
 
