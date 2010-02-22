@@ -115,17 +115,6 @@ struct _client_functions source_client_http_ops =
 };
 
 
-static int compare_listeners (void *compare_arg, void *a, void *b)
-{
-    client_t *ca = a, *cb = b;
-
-    if (ca->connection.id < cb->connection.id) return -1;
-    if (ca->connection.id > cb->connection.id) return 1;
-
-    return 0;
-}
-
-
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
  * NULL.
@@ -152,7 +141,7 @@ source_t *source_reserve (const char *mount)
         src->mount = strdup (mount);
         src->listener_send_trigger = 10000;
         src->format = calloc (1, sizeof(format_plugin_t));
-        src->clients = avl_tree_new (compare_listeners, NULL);
+        src->clients = avl_tree_new (client_compare, NULL);
 
         thread_mutex_create (&src->lock);
 
@@ -281,6 +270,7 @@ void source_clear_listeners (source_t *source)
         break;
     }
     config_release_config ();
+    DEBUG1 ("no listeners are attached to %s", source->mount);
     if (i)
         stats_event_sub (NULL, "listeners", i);
     source->listeners = 0;
@@ -353,7 +343,6 @@ void source_clear_source (source_t *source)
 static int _free_source (void *p)
 {
     source_t *source = p;
-    source_clear_listeners (source);
     source_clear_source (source);
 
     /* make sure all YP entries have gone */
@@ -364,7 +353,6 @@ static int _free_source (void *p)
         WARN1("active listeners on mountpoint %s", source->mount);
     avl_tree_free (source->clients, NULL);
 
-    thread_mutex_unlock (&source->lock);
     thread_mutex_destroy (&source->lock);
 
     INFO1 ("freeing source \"%s\"", source->mount);
@@ -378,8 +366,9 @@ static int _free_source (void *p)
 /* Remove the provided source from the global tree and free it */
 void source_free_source (source_t *source)
 {
+    INFO1 ("source %s to be freed", source->mount);
     avl_tree_wlock (global.source_tree);
-    thread_mutex_lock (&source->lock); /* listeners may of been added */
+    INFO1 ("removing source %s from tree", source->mount);
     avl_delete (global.source_tree, source, _free_source);
     avl_tree_unlock (global.source_tree);
 }
@@ -1272,7 +1261,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->type)
         stats_event (source->mount, "server_type", mountinfo->type);
     else
-        if (source->format)
+        if (source->format && source->format->contenttype)
             stats_event (source->mount, "server_type", source->format->contenttype);
 
     if (mountinfo && mountinfo->subtype)
@@ -1609,12 +1598,15 @@ void source_client_release (client_t *client)
     global_reduce_bitrate_sampling (global.out_bitrate);
 
     thread_mutex_lock (&source->lock);
+    source->flags &= ~(SOURCE_RUNNING|SOURCE_ON_DEMAND);
     /* log bytes read in access log */
     if (source->format)
         client->connection.sent_bytes = source->format->read_bytes;
-    thread_mutex_unlock (&source->lock);
 
     client_destroy (client);
+    source_clear_listeners (source);
+    thread_mutex_unlock (&source->lock);
+
     source_free_source (source);
     thread_rwlock_unlock (&global.shutdown_lock);
     slave_update_all_mounts();
@@ -1660,13 +1652,14 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
 
         do
         {
-            source = source_find_mount_raw (mount);
             if (loop == 0)
             {
                 WARN0 ("preventing a fallback loop");
                 client_send_403 (client, "Fallback through too many mountpoints");
                 return -1;
             }
+            avl_tree_rlock (global.source_tree);
+            source = source_find_mount_raw (mount);
             if (source)
             {
                 thread_mutex_lock (&source->lock);
@@ -1674,6 +1667,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
                     break;
                 thread_mutex_unlock (&source->lock);
             }
+            avl_tree_unlock (global.source_tree);
             if (minfo && minfo->limit_rate)
                 bitrate = minfo->limit_rate;
             if (minfo == NULL || minfo->fallback_mount == NULL)
@@ -1701,6 +1695,8 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
         } while (1);
 
         /* ok, we found a source and it is locked */
+        avl_tree_unlock (global.source_tree);
+
         if (client->flags & CLIENT_IS_SLAVE)
         {
             if (source->client == NULL && (source->flags & SOURCE_ON_DEMAND) == 0)
@@ -1848,17 +1844,17 @@ int source_startup (client_t *client, const char *uri)
     if (source)
     {
         ice_config_t *config = config_get_config();
+        int source_limit = config->source_limit;
+        config_release_config();
         global_lock();
-        if (global.sources >= config->source_limit)
+        if (global.sources >= source_limit)
         {
-            config_release_config();
             WARN1 ("Request to add source when maximum source limit reached %d", global.sources);
             global_unlock();
             client_send_403 (client, "too many streams connected");
             source_free_source (source);
             return 0;
         }
-        config_release_config();
         global.sources++;
         INFO1 ("sources count is now %d", global.sources);
         stats_event_args (NULL, "sources", "%d", global.sources);
@@ -1895,6 +1891,7 @@ int source_startup (client_t *client, const char *uri)
             client->ops = &source_client_http_ops;
             thread_mutex_unlock (&source->lock);
         }
+        client->flags |= CLIENT_ACTIVE;
     }
     else
     {

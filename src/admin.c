@@ -1137,11 +1137,13 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     if (strcmp (action, "viewxml") == 0)
     {
         xmlDocPtr doc;
+        char *mount = strdup (source->mount);
         DEBUG0("Got shoutcast viewxml request");
-        doc = stats_get_xml (STATS_ALL, source->mount);
         thread_mutex_unlock (&source->lock);
+        doc = stats_get_xml (STATS_ALL, mount);
         admin_send_response (doc, client, XSLT, "viewxml.xsl");
         xmlFreeDoc(doc);
+        free (mount);
         return;
     }
     thread_mutex_unlock (&source->lock);

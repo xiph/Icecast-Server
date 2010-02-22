@@ -110,7 +110,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
 
     if (htpasswd->filename == NULL)
         return;
-    if (stat (htpasswd->filename, &file_stat) < 0)
+    if (stat (htpasswd->filename, &file_stat) != 0)
     {
         WARN1 ("failed to check status of %s", htpasswd->filename);
 
@@ -186,18 +186,20 @@ static auth_result htpasswd_auth (auth_client *auth_user)
 
         if (client->username && client->password)
             break;
-        free (client->username);
         val = httpp_get_query_param (client->parser, "user");
         if (val)
         {
+            free (client->username);
             client->username = strdup (val);
             val = httpp_get_query_param (client->parser, "pass");
             if (val)
             {
+                free (client->password);
                 client->password = strdup (val);
                 break;
             }
         }
+        DEBUG0 ("No username/password provided by client");
         return AUTH_FAILED;
     } while (0);
 
@@ -210,14 +212,15 @@ static auth_result htpasswd_auth (auth_client *auth_user)
         htpasswd_user *found = result;
         char *hashed_pw;
 
-        thread_rwlock_unlock (&htpasswd->file_rwlock);
         hashed_pw = get_hash (client->password, strlen (client->password));
         if (strcmp (found->pass, hashed_pw) == 0)
         {
             free (hashed_pw);
+            thread_rwlock_unlock (&htpasswd->file_rwlock);
             client->flags |= CLIENT_AUTHENTICATED;
             return AUTH_OK;
         }
+        thread_rwlock_unlock (&htpasswd->file_rwlock);
         free (hashed_pw);
         DEBUG0 ("incorrect password for client");
         return AUTH_FAILED;

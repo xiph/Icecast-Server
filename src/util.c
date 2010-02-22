@@ -721,7 +721,10 @@ static void rate_purge_entries (struct rate_calc *calc, uint64_t cutoff)
     while (count && node->index <= cutoff)
     {
         struct rate_calc_node *to_go = node;
-        node = calc->current->next = node->next;
+        if (node == NULL || node->next == NULL)
+            abort();
+        node = node->next;
+        calc->current->next = node;
         calc->total -= to_go->value;
         free (to_go);
         count--;

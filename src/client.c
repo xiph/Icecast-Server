@@ -119,6 +119,17 @@ void client_destroy(client_t *client)
 }
 
 
+int client_compare (void *compare_arg, void *a, void *b)
+{
+    client_t *ca = a, *cb = b;
+
+    if (ca->connection.id < cb->connection.id) return -1;
+    if (ca->connection.id > cb->connection.id) return 1;
+
+    return 0;
+}
+
+
 /* helper function for reading data from a client */
 int client_read_bytes (client_t *client, void *buf, unsigned len)
 {

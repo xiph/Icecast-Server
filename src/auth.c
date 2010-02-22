@@ -372,7 +372,7 @@ static void *auth_run_thread (void *arg)
 
 int move_listener (client_t *client, struct _fbinfo *finfo)
 {
-    source_t *source;
+    source_t *source, *prev;
 
     DEBUG1 ("moving listener to %s", finfo->mount);
     avl_tree_rlock (global.source_tree);
@@ -388,16 +388,17 @@ int move_listener (client_t *client, struct _fbinfo *finfo)
             thread_mutex_unlock (&source->lock);
             return 0;
         }
-        if (source->fallback.mount)
-        {
-            source_t *prev = source;
+        prev = source;
+        if (prev->fallback.mount)
             source = source_find_mount (prev->fallback.mount);
-            thread_mutex_unlock (&prev->lock);
-        }
+        else
+            source = NULL;
+        thread_mutex_unlock (&prev->lock);
     }
     avl_tree_unlock (global.source_tree);
     if (client->flags & CLIENT_IS_SLAVE)
         return -1;
+    DEBUG1 ("no source, trying %s as a file", finfo->mount);
     return fserve_setup_client_fb (client, finfo);
 }
 
@@ -440,9 +441,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         return 0;
     }
 
-    avl_tree_rlock (global.source_tree);
     ret = source_add_listener (mount, mountinfo, client);
-    avl_tree_unlock (global.source_tree);
 
     if (ret == -2)
     {
@@ -514,7 +513,6 @@ void auth_postprocess_source (auth_client *auth_user)
         DEBUG1 ("on mountpoint %s", mount);
         source_startup (client, mount);
     }
-    client->flags |= CLIENT_ACTIVE;
 }
 
 

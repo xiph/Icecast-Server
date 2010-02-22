@@ -1231,11 +1231,12 @@ static int relay_read (client_t *client)
         int fallback = 1;
         if (relay->running && relay->enable && client->connection.con_time)
             fallback = 0;
+        /* don't pause listeners if relay shutting down */
+        if (relay->running == 0 || relay->enable == 0)
+            source->flags &= ~SOURCE_PAUSE_LISTENERS;
         // fallback listeners unless relay is to be retried
         source_shutdown (source, fallback);
         source->flags |= SOURCE_TERMINATING;
-        if (relay->running == 0) /* don't pause listeners if relay shutting down */
-            source->flags &= ~SOURCE_PAUSE_LISTENERS;
     }
     if (source->termination_count && source->termination_count <= source->listeners)
     {

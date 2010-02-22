@@ -109,7 +109,7 @@ SOURCE=.\Icecast2winDlg.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=\xiph\icecast\branches\kh\icecast\src\main.c
+SOURCE=..\src\main.c
 # End Source File
 # Begin Source File
 

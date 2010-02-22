@@ -1012,7 +1012,11 @@ xmlDocPtr stats_get_xml (int flags, const char *show_mount)
         source = source_find_mount_raw (show_mount);
 
         if (source)
+        {
+            thread_mutex_lock (&source->lock);
             admin_source_listeners (source, node);
+            thread_mutex_unlock (&source->lock);
+        }
 
         avl_tree_unlock (global.source_tree);
     }

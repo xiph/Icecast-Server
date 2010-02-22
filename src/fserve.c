@@ -78,7 +78,7 @@ typedef struct {
     FILE *fp;
     time_t stats_update;
     format_plugin_t *format;
-    client_t *clients;
+    avl_tree *clients;
 } fh_node;
 
 int fserve_running;
@@ -204,6 +204,7 @@ static int _delete_fh (void *mapping)
         format_plugin_clear (fh->format);
         free (fh->format);
     }
+    avl_tree_free (fh->clients, NULL);
     free (fh->finfo.mount);
     free (fh->finfo.fallback);
     free (fh);
@@ -214,18 +215,7 @@ static int _delete_fh (void *mapping)
 
 static void remove_from_fh (fh_node *fh, client_t *client)
 {
-    client_t **p = &fh->clients;
-    while (*p)
-    {
-        if (*p == client)
-        {
-            *p = client->next;
-            return;
-        }
-        p = &(*p)->next;
-    }
-    if (fh->finfo.mount)
-        DEBUG0 ("unable to find client");
+    avl_delete (fh->clients, client, NULL);
 }
 
 
@@ -249,8 +239,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         {
             if (finfo->mount && (finfo->flags & FS_FALLBACK))
                 stats_event_args (result->finfo.mount, "listeners", "%ld", result->refcount);
-            client->next = result->clients;
-            result->clients = client;
+            avl_insert (result->clients, client);
             if (result->format)
             {
                 if (result->format->create_client_data && client->format_data == NULL)
@@ -314,13 +303,13 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
     }
     thread_mutex_create (&fh->lock);
     thread_mutex_lock (&fh->lock);
+    fh->clients = avl_tree_new (client_compare, NULL);
     fh->refcount = 1;
     if (client)
     {
         if (finfo->mount && (finfo->flags & FS_FALLBACK))
             stats_event_flags (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
-        fh->clients = client;
-        client->next = NULL;
+        avl_insert (fh->clients, client);
     }
     fh->finfo.mount = strdup (finfo->mount);
     if (finfo->fallback)
@@ -1058,10 +1047,11 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
         fh_node *fh = open_fh (&finfo, NULL);
         if (fh)
         {
-            client_t *listener = fh->clients;
+            avl_node *node = avl_get_first (fh->clients);
 
-            while (listener)
+            while (node)
             {
+                client_t *listener = (client_t *)node->key;
                 if (listener->connection.id == id)
                 {
                     listener->connection.error = 1;
@@ -1069,7 +1059,7 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
                     v = "1";
                     break;
                 }
-                listener = listener->next;
+                node = avl_get_next (node);
             }
             fh_release (fh);
             break;
@@ -1115,10 +1105,12 @@ void fserve_list_clients (client_t *client, const char *mount, int response, int
         fh_node *fh = open_fh (&finfo, NULL);
         if (fh)
         {
-            client_t *listener = fh->clients;
+            avl_node *node = avl_get_first (fh->clients);
 
-            while (listener)
+            while (node)
             {
+                client_t *listener = (client_t *)node->key;
+
                 if (show_listeners)
                 {
                     xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
@@ -1147,7 +1139,7 @@ void fserve_list_clients (client_t *client, const char *mount, int response, int
                 }
 
                 entries++;
-                listener = listener->next;
+                node = avl_get_next (node);
             }
             fh_release (fh);
         }

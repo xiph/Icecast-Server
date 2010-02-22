@@ -16,6 +16,19 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh21
+. Fix possible stall bug when a source exits and when adding a listener, only
+  keep the source_tree lock held until a source lock can be acquired. 
+. tighten up where the certain locks are held/released. 
+. win32 stat return code fix
+. added a few internal checks and some log messages.
+. fixes from moo, #1646, status response header first always, #1648, return ICY
+  response for mpc
+. make fh_node use tree for quick lookup
+. zero out format structure, remove previous stats for restarting relays
+. NULL pointer fix in cases where a relay was being cleared of listeners without
+  a fallback mount, eg being disabled or removed from slave list or reread XML
+
 2.3.2-kh20
 . fix possible lock imbalance bug if mutliple workers set
 . make sure listeners are not paused if relay is not running

@@ -65,21 +65,12 @@ void format_plugin_clear (format_plugin_t *format)
 {
     if (format == NULL)
         return;
-    rate_free (format->in_bitrate);
-    format->in_bitrate = NULL;
-    rate_free (format->out_bitrate);
-    format->out_bitrate = NULL;
-    free (format->charset);
-    format->charset = NULL;
     if (format->free_plugin)
         format->free_plugin (format);
-    format->get_buffer = NULL;
-    format->write_buf_to_client = NULL;
-    format->write_buf_to_file = NULL;
-    format->create_client_data = NULL;
-    format->free_plugin = NULL;
-    format->set_tag = NULL;
-    format->apply_settings = NULL;
+    rate_free (format->in_bitrate);
+    rate_free (format->out_bitrate);
+    free (format->charset);
+    memset (format, 0, sizeof (format_plugin_t));
 }
 
 
@@ -172,8 +163,12 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
 
     if (client->respcode == 0)
     {
-        bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-                "content-type: %s\r\n", plugin->contenttype);
+        const char *useragent = httpp_getvar (client->parser, "user-agent");
+        const char *protocol = "HTTP/1.0";
+        if (useragent && strstr(useragent, "shoutcastsource")) /* hack for mpc */
+            protocol = "ICY";
+        bytes = snprintf (ptr, remaining, "%s 200 OK\r\n"
+                "content-type: %s\r\n", protocol, plugin->contenttype);
         remaining -= bytes;
         ptr += bytes;
         client->respcode = 200;

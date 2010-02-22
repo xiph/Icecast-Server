@@ -693,13 +693,24 @@ static int format_mp3_create_client_data (format_plugin_t *plugin, client_t *cli
     mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
     mp3_state *source_mp3 = plugin->_state;
     const char *metadata;
-    size_t  remaining = 4096;
-    char *ptr = client->refbuf->data;
+    size_t  remaining;
+    char *ptr;
     int bytes;
     const char *useragent;
 
     if (client_mp3 == NULL)
         return -1;
+
+    client->format_data = client_mp3;
+    client->free_client_data = free_mp3_client_data;
+    client->refbuf->len = 0;
+
+    if (format_general_headers (plugin, client) < 0)
+        return -1;
+
+    client->refbuf->len -= 2;
+    remaining = 4096 - client->refbuf->len;
+    ptr = client->refbuf->data + client->refbuf->len;
 
     /* hack for flash player, it wants a length.  It has also been reported that the useragent
      * appears as MSIE if run in internet explorer */
@@ -715,16 +726,6 @@ static int format_mp3_create_client_data (format_plugin_t *plugin, client_t *cli
         remaining -= bytes;
         ptr += bytes; 
     }
-
-    client->format_data = client_mp3;
-    client->free_client_data = free_mp3_client_data;
-    client->refbuf->len = 4096 - remaining;
-
-    if (format_general_headers (plugin, client) < 0)
-        return -1;
-
-    remaining = 4096 - client->refbuf->len + 2;
-    ptr = client->refbuf->data + client->refbuf->len - 2;
 
     /* check for shoutcast style metadata inserts */
     metadata = httpp_getvar(client->parser, "icy-metadata");
