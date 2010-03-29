@@ -50,7 +50,7 @@
 
 struct _ogg_state_tag;
 
-static void format_ogg_free_plugin (format_plugin_t *plugin);
+static void format_ogg_free_plugin (format_plugin_t *plugin, client_t *client);
 static int  create_ogg_client_data(format_plugin_t *plugin, client_t *client);
 static void free_ogg_client_data (client_t *client);
 
@@ -155,7 +155,7 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
 }
 
 
-int format_ogg_get_plugin (format_plugin_t *plugin)
+int format_ogg_get_plugin (format_plugin_t *plugin, client_t *client)
 {
     ogg_state_t *state = calloc (1, sizeof (ogg_state_t));
 
@@ -187,7 +187,7 @@ int format_ogg_get_plugin (format_plugin_t *plugin)
 }
 
 
-static void format_ogg_free_plugin (format_plugin_t *plugin)
+static void format_ogg_free_plugin (format_plugin_t *plugin, client_t *client)
 {
     ogg_state_t *state = plugin->_state;
 

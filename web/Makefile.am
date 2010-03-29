@@ -9,6 +9,7 @@ dist_web_DATA = status.xsl \
                 style.css \
                 auth.xsl \
                 server_version.xsl \
+                7.xsl \
                 adminbar.html \
                 statusbar.html \
                 admin.html \

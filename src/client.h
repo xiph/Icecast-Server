@@ -143,6 +143,7 @@ void workers_adjust (int new_count);
 #define CLIENT_IN_FSERVE            (010)
 #define CLIENT_NO_CONTENT_LENGTH    (020)
 #define CLIENT_HAS_INTRO_CONTENT    (040)
+#define CLIENT_SKIP_ACCESSLOG       (0100)
 #define CLIENT_FORMAT_BIT           (01000)
 
 #endif  /* __CLIENT_H__ */

@@ -112,11 +112,12 @@ typedef struct _mount_proxy {
     int url_ogg_meta; /* enable to allow updates via url requests for ogg */
     int ogg_passthrough; /* enable to prevent the ogg stream being rebuilt */
     int admin_comments_only; /* enable to only show comments set from the admin page */
+    int skip_accesslog;         /* skip logging client to access log */
 
     /* duration in seconds for sampling the bandwidth */
     int avg_bitrate_duration;
 
-    long limit_rate;
+    int64_t limit_rate;
 
     /* duration (secs) for mountpoint to be kept reserved after source client exits */
     int wait_time;

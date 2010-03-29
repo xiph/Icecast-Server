@@ -76,7 +76,7 @@ void fatal_error (const char *perr)
 #elif defined(WIN32)
     MessageBox(NULL, perr, "Error", MB_OK);
 #else
-    fprintf(stdout, "%s\n", perr);
+    ERROR1("%s", perr);
 #endif
 }
 

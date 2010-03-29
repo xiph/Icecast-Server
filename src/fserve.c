@@ -201,7 +201,7 @@ static int _delete_fh (void *mapping)
     stats_event (fh->finfo.mount, NULL, NULL);
     if (fh->format)
     {
-        format_plugin_clear (fh->format);
+        format_plugin_clear (fh->format, NULL);
         free (fh->format);
     }
     avl_tree_free (fh->clients, NULL);
@@ -286,7 +286,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
             fh->format->type = format_get_type (contenttype);
             free (contenttype);
             fh->format->mount = fh->finfo.mount;
-            if (format_get_plugin (fh->format) < 0)
+            if (format_get_plugin (fh->format, NULL) < 0)
             {
                 avl_tree_unlock (fh_cache);
                 free (fullpath);
@@ -760,6 +760,13 @@ static int file_send (client_t *client)
     time_t now = client->worker->current_time.tv_sec;
 
     client->schedule_ms = client->worker->time_ms;
+    /* slowdown if max bandwidth is exceeded, but allow for short-lived connections to avoid 
+     * this, eg admin requests */
+    if (throttle_sends > 1 && now - client->connection.con_time > 1)
+    {
+        client->schedule_ms += 500;
+        loop = 1; 
+    }
     while (loop && written < 30000)
     {
         loop--;
@@ -827,6 +834,7 @@ static int throttled_file_send (client_t *client)
             /* loop fallback file  */
             thread_mutex_unlock (&fh->lock);
             client->intro_offset = 0;
+            client->pos = refbuf->len = 0;
             client->schedule_ms = client->worker->time_ms + 150;
             return 0;
         }
@@ -840,6 +848,10 @@ static int throttled_file_send (client_t *client)
     global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
     client->counter += bytes;
     client->schedule_ms = client->worker->time_ms + (1000/(fh->finfo.limit/1400*2));
+
+    /* progessive slowdown if max bandwidth is exceeded. */
+    if (throttle_sends > 1)
+        client->schedule_ms += 300;
     return 0;
 }
 

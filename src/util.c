@@ -781,7 +781,7 @@ void rate_add (struct rate_calc *calc, long value, uint64_t sid)
 /* return the average sample value over all the blocks except the 
  * current one, as that may be incomplete
  */
-long rate_avg (struct rate_calc *calc)
+float rate_avg (struct rate_calc *calc)
 {
     float range;
 
@@ -790,7 +790,7 @@ long rate_avg (struct rate_calc *calc)
     range = (calc->current->index - calc->current->next->index) + 1;
     if (range < 1)
         range = 1;
-    return (long)(calc->total / range * calc->ssec);
+    return calc->total / range * calc->ssec;
 }
 
 /* reduce the samples used to calculate average */

@@ -192,7 +192,8 @@ int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
                         ret = 0;
                         continue;
                     }
-                    xmlParserWarning (NULL, "skipping element \"%s\" parsing \"%s\"\n", node->name, parent->name);
+                    xmlParserWarning (NULL, "skipping element \"%s\" parsing \"%s\" "
+                            "at line %ld\n", node->name, parent->name, xmlGetLineNo(node));
                     ret = 0;
                 }
                 break;
@@ -200,7 +201,8 @@ int parse_xml_tags (xmlNodePtr parent, const struct cfg_tag *args)
             argp++;
         }
         if (argp->name == NULL)
-            WARN2 ("unknown element \"%s\" parsing \"%s\"", node->name, parent->name);
+            WARN3 ("unknown element \"%s\" parsing \"%s\" at line %ld", node->name,
+                    parent->name, xmlGetLineNo(node));
     }
     if (ret == 0 && seen_element == 0)
         return 2;
@@ -246,7 +248,6 @@ static void config_clear_mount (mount_proxy *mount)
 {
     config_options_t *option;
 
-    if (mount->mountname)   xmlFree (mount->mountname);
     if (mount->username)    xmlFree (mount->username);
     if (mount->password)    xmlFree (mount->password);
     if (mount->dumpfile)    xmlFree (mount->dumpfile);
@@ -279,6 +280,7 @@ static void config_clear_mount (mount_proxy *mount)
         log_close (mount->access_log.logid);
     xmlFree (mount->access_log.name);
     xmlFree (mount->access_log.exclude_ext);
+    xmlFree (mount->mountname);
     free (mount);
 }
 
@@ -777,6 +779,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "wait-time",          config_get_int,     &mount->wait_time },
         { "filter-theora",      config_get_bool,    &mount->filter_theora },
         { "limit-rate",         config_get_bitrate, &mount->limit_rate },
+        { "skip-accesslog",     config_get_bool,    &mount->skip_accesslog },
         { "avg-bitrate-duration",
                                 config_get_int,     &mount->avg_bitrate_duration },
         { "charset",            config_get_str,     &mount->charset },

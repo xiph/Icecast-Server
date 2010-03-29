@@ -53,11 +53,17 @@ typedef struct ice_global_tag
     /* redirection to slaves */
     unsigned int redirect_count;
 
+    /* a copy of what is in the config xml */
+    int64_t max_rate;
+
     spin_t spinlock;
     struct rate_calc *out_bitrate;
 
     cond_t shutdown_cond;
 } ice_global_t;
+
+extern unsigned int throttle_sends;
+
 
 #ifdef MY_ALLOC
 #define calloc(x,y) my_calloc(__func__,__LINE__,x,y)

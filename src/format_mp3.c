@@ -39,6 +39,7 @@
 #include "logging.h"
 
 #include "format_mp3.h"
+#include "mpeg.h"
 
 #define CATMODULE "format-mp3"
 
@@ -47,13 +48,13 @@
  */
 #define ICY_METADATA_INTERVAL 16000
 
-static void format_mp3_free_plugin(format_plugin_t *plugin);
+static void format_mp3_free_plugin(format_plugin_t *plugin, client_t *client);
 static refbuf_t *mp3_get_filter_meta (source_t *source);
 static refbuf_t *mp3_get_no_meta (source_t *source);
 
 static int  format_mp3_create_client_data (format_plugin_t *plugin, client_t *client);
 static void free_mp3_client_data (client_t *client);
-static int format_mp3_write_buf_to_client(client_t *client);
+static int  format_mp3_write_buf_to_client(client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
 static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mount);
@@ -73,7 +74,7 @@ typedef struct {
 static refbuf_t blank_meta = { 17, 1, "\001StreamTitle='';", NULL, NULL, 0 };
 
 
-int format_mp3_get_plugin (format_plugin_t *plugin)
+int format_mp3_get_plugin (format_plugin_t *plugin, client_t *client)
 {
     const char *metadata;
     mp3_state *state = calloc(1, sizeof(mp3_state));
@@ -115,7 +116,14 @@ int format_mp3_get_plugin (format_plugin_t *plugin)
             state->interval = state->inline_metadata_interval;
         }
     }
-    thread_mutex_create (&state->url_lock);
+    if (client)
+    {
+        if (plugin->type == FORMAT_TYPE_AAC || plugin->type == FORMAT_TYPE_MPEG)
+        {
+            client->format_data = malloc (sizeof (mpeg_sync));
+            mpeg_setup (client->format_data);
+        }
+    }
 
     return 0;
 }
@@ -126,13 +134,9 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     mp3_state *source_mp3 = plugin->_state;
     char *value = NULL;
 
-    /* protect against multiple updaters */
-    thread_mutex_lock (&source_mp3->url_lock);
-
     if (tag==NULL)
     {
         source_mp3->update_metadata = 1;
-        thread_mutex_unlock (&source_mp3->url_lock);
         return;
     }
 
@@ -170,7 +174,6 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     }
     else
         free (value);
-    thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 
@@ -248,9 +251,6 @@ static void mp3_set_title (source_t *source)
     unsigned int len = sizeof(streamtitle) + 2; /* the StreamTitle, quotes, ; and null */
     mp3_state *source_mp3 = source->format->_state;
 
-    /* make sure the url data does not disappear from under us */
-    thread_mutex_lock (&source_mp3->url_lock);
-
     /* work out message length */
     if (source_mp3->url_artist)
         len += strlen (source_mp3->url_artist);
@@ -269,7 +269,6 @@ static void mp3_set_title (source_t *source)
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
-        thread_mutex_unlock (&source_mp3->url_lock);
         WARN1 ("Metadata too long at %d chars", len);
         return;
     }
@@ -315,7 +314,6 @@ static void mp3_set_title (source_t *source)
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
-    thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 
@@ -480,12 +478,17 @@ static int format_mp3_write_buf_to_client (client_t *client)
     return written == 0 ? -1 : written;
 }
 
-static void format_mp3_free_plugin (format_plugin_t *plugin)
+static void format_mp3_free_plugin (format_plugin_t *plugin, client_t *client)
 {
     /* free the plugin instance */
     mp3_state *format_mp3 = plugin->_state;
 
-    thread_mutex_destroy (&format_mp3->url_lock);
+    if (client)
+    {
+        mpeg_cleanup (client->format_data);
+        free (client->format_data);
+        client->format_data = NULL;
+    }
     free (format_mp3->url_artist);
     free (format_mp3->url_title);
     free (format_mp3->url);
@@ -535,11 +538,47 @@ static int complete_read (source_t *source)
 }
 
 
+static int validate_mpeg (mp3_state *source_mp3, mpeg_sync *mpeg_sync, refbuf_t *refbuf)
+{
+    int unprocessed = mpeg_complete_frames (mpeg_sync, refbuf, 0);
+    if (unprocessed < 0)
+        return -1;
+    if (unprocessed > 0)
+    {
+        /* make sure the new block has a minimum of queue_block_size */
+        size_t len = unprocessed > source_mp3->queue_block_size ? unprocessed : source_mp3->queue_block_size;
+        refbuf_t *leftover = refbuf_new (len);
+        memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
+        leftover->len = unprocessed;
+
+        if (source_mp3->inline_metadata_interval > 0)
+        {
+            /* inline metadata may need reading before the rest of the mpeg data */
+            if (source_mp3->build_metadata_len == 0 && source_mp3->offset > unprocessed)
+            {
+                source_mp3->offset -= unprocessed;
+                source_mp3->read_data = leftover;
+                source_mp3->read_count = unprocessed;
+            }
+            else
+                mpeg_data_insert (mpeg_sync, leftover); /* will need to merge this after metadata */
+        }
+        else
+        {
+            source_mp3->read_data = leftover;
+            source_mp3->read_count = unprocessed;
+        }
+    }
+    return 0;
+}
+
+
 /* read an mp3 stream which does not have shoutcast style metadata */
 static refbuf_t *mp3_get_no_meta (source_t *source)
 {
     refbuf_t *refbuf;
     mp3_state *source_mp3 = source->format->_state;
+    client_t *client = source->client;  // maybe move mp3_state into client instead of plugin?
 
     if (complete_read (source) == 0)
         return NULL;
@@ -547,6 +586,11 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
     refbuf = source_mp3->read_data;
     source_mp3->read_data = NULL;
 
+    if (client->format_data && validate_mpeg (source_mp3, client->format_data, refbuf) < 0)
+    {
+        refbuf_release (refbuf);
+        return NULL;
+    }
     source->client->queue_pos += refbuf->len;
     if (source_mp3->update_metadata)
     {
@@ -569,6 +613,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     refbuf_t *refbuf;
     format_plugin_t *plugin = source->format;
     mp3_state *source_mp3 = plugin->_state;
+    client_t *client = source->client;  // maybe move mp3_state into client instead of plugin?
     unsigned char *src;
     unsigned int bytes, mp3_block;
 
@@ -675,6 +720,11 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     }
     /* the data we have just read may of just been metadata */
     if (refbuf->len == 0)
+    {
+        refbuf_release (refbuf);
+        return NULL;
+    }
+    if (client->format_data && validate_mpeg (source_mp3, client->format_data, refbuf) < 0)
     {
         refbuf_release (refbuf);
         return NULL;

@@ -16,6 +16,24 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh22
+. Add mp3/aac sync marker alignment code. This makes the internal buffers contain
+  whole frames. allows for better transistion when moving listeners.
+. The number of logs is not limited to 25 now
+. small changes to client scheduling
+. removed format url lock, source lock is always taken, so this is not needed
+. Add <skip-accesslog> boolean to per-mount settings. Prevents logging listener
+  client details to access log
+. evaluate bandwidth usage when adding to the global bitrate, and change throttle
+  indicator if max bandwidth specified. listeners have varying degrees of
+  scheduling limits applied. lagging listeners get delayed first, then all do.
+. fix long standing bug which could cause a crash on a bad xsl.
+. report line numbers on xml errors.
+. small work-around to handle odd handling of ICY response for mpc and expected
+  the content-type header for shoutcast relay and streamtranscoder.
+. kh21a. kh20 introduced a bug which could occur with listeners being moved between
+  workers.
+
 2.3.2-kh21
 . Fix possible stall bug when a source exits and when adding a listener, only
   keep the source_tree lock held until a source lock can be acquired. 

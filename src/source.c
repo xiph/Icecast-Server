@@ -292,7 +292,7 @@ void source_clear_source (source_t *source)
         source->dumpfile = NULL;
     }
 
-    format_plugin_clear (source->format);
+    format_plugin_clear (source->format, source->client);
 
     /* flush out the stream data, we don't want any left over */
 
@@ -391,13 +391,13 @@ client_t *source_find_client(source_t *source, int id)
  */
 static void update_source_stats (source_t *source)
 {
-    unsigned long incoming_rate = 8 * rate_avg (source->format->in_bitrate);
+    unsigned long incoming_rate = (long)(8 * rate_avg (source->format->in_bitrate));
     unsigned long kbytes_sent = source->bytes_sent_since_update/1024;
     unsigned long kbytes_read = source->bytes_read_since_update/1024;
 
     source->format->sent_bytes += kbytes_sent*1024;
     stats_event_args (source->mount, "outgoing_kbitrate", "%ld",
-            (8 * rate_avg (source->format->out_bitrate))/1024);
+            (long)(8 * rate_avg (source->format->out_bitrate))/1024);
     stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate);
     stats_event_args (source->mount, "total_bytes_read",
             "%"PRIu64, source->format->read_bytes);
@@ -468,7 +468,10 @@ int source_read (source_t *source)
             if (source->limit_rate < incoming_rate)
             {
                 rate_add (source->format->in_bitrate, 0, current);
-                break;
+                source->skip_duration += 300;
+                client->schedule_ms = client->worker->time_ms + 150;
+                thread_mutex_unlock (&source->lock);
+                return 0;
             }
         }
         fds = util_timed_wait_for_fd (client->connection.sock, 0);
@@ -492,15 +495,14 @@ int source_read (source_t *source)
                 skip = 0;
                 break;
             }
-            if (source->skip_duration < 20)
-                source->skip_duration = 30;
-            else
-                source->skip_duration = (long)(source->skip_duration * 1.8);
-                if (source->skip_duration > 700)
-                    source->skip_duration = 700;
+            source->skip_duration = (long)(source->skip_duration * 1.8);
+            if (source->skip_duration > 700)
+                source->skip_duration = 700;
             break;
         }
         source->skip_duration = (long)(source->skip_duration * 0.9);
+        if (source->skip_duration < 5)
+            source->skip_duration = 5;
 
         skip = 0;
         source->last_read = current;
@@ -742,6 +744,8 @@ static int http_source_listener (client_t *client)
         client->check_buffer = http_source_intro;
         return -1;
     }
+    if (source->queue_size == 0)
+        return -1;  /* postpone processing until data on queue */
 
     if (client->respcode == 0)
     {
@@ -787,7 +791,19 @@ void source_listener_detach (source_t *source, client_t *client)
 {
     if (client->check_buffer != http_source_listener)
     {
+        refbuf_t *ref = client->refbuf;
+
         client->check_buffer = source->format->write_buf_to_client;
+        if (ref && client->pos < ref->len && ref->flags&SOURCE_QUEUE_BLOCK)
+        {
+            /* make a private copy so that a write can complete */
+            refbuf_t *orig = ref;
+            ref = refbuf_new (ref->len);
+            memcpy (ref->data, orig->data, orig->len);
+            refbuf_release (client->refbuf);
+            client->refbuf = ref;
+            client->flags |= CLIENT_HAS_INTRO_CONTENT;
+        }
         if ((client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
             client_set_queue (client, NULL);
     }
@@ -819,7 +835,7 @@ static int send_to_listener (client_t *client)
     thread_mutex_lock (&source->lock);
     ret = send_listener (source, client);
     if (ret == 1)
-        return 0;
+        return 1; // client moved, and source unlocked
     if (ret < 0)
         ret = source_listener_release (source, client);
     thread_mutex_unlock (&source->lock);
@@ -892,7 +908,28 @@ static int send_listener (source_t *source, client_t *client)
         if (listener_change_worker (client, source))
             return 1;
 
+    /* progessive slowdown if nearing max bandwidth.  */
     client->schedule_ms = client->worker->time_ms;
+    if (global.max_rate)
+    {
+        if (throttle_sends > 2) /* exceeded limit, skip 30ms */
+        {
+            client->schedule_ms += 30;
+            return 0;
+        }
+        if (throttle_sends > 1) /* slow down any multiple sends */
+        {
+            loop = 2;
+            client->schedule_ms += 50;
+        }
+        if (throttle_sends > 0)
+        {
+            /* make lagging listeners, lag further on high bandwidth use */
+            if (source->client->queue_pos - client->queue_pos > 8192)
+                client->schedule_ms += 150;
+        }
+    }
+
     while (loop)
     {
         /* jump out if client connection has died */
@@ -1603,13 +1640,13 @@ void source_client_release (client_t *client)
     if (source->format)
         client->connection.sent_bytes = source->format->read_bytes;
 
-    client_destroy (client);
     source_clear_listeners (source);
     thread_mutex_unlock (&source->lock);
 
     source_free_source (source);
     thread_rwlock_unlock (&global.shutdown_lock);
     slave_update_all_mounts();
+    client_destroy (client);
 }
 
 

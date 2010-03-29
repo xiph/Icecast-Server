@@ -123,6 +123,7 @@ static void _add_stats_to_stats_client (client_t *client, const char *fmt, va_li
 static void stats_listener_send (int flags, const char *fmt, ...);
 static void process_event_unlocked (stats_event_t *event);
 
+unsigned int throttle_sends;
 
 /* simple helper function for creating an event */
 static void build_event (stats_event_t *event, const char *source, const char *name, const char *value)
@@ -686,6 +687,10 @@ void stats_global (ice_config_t *config)
     stats_event_flags (NULL, "host", config->hostname, STATS_GENERAL);
     stats_event (NULL, "location", config->location);
     stats_event (NULL, "admin", config->admin);
+    thread_spin_lock (&global.spinlock);
+    global.max_rate = config->max_bandwidth;
+    throttle_sends = 0;
+    thread_spin_unlock (&global.spinlock);
 #if 0
     /* restart a master stats connection */
     config->master = calloc (1, sizeof ice_master_details);

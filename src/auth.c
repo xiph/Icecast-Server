@@ -531,11 +531,16 @@ void auth_add_listener (const char *mount, client_t *client)
     }
     config = config_get_config();
     mountinfo = config_find_mount (config, mount);
-    if (mountinfo && mountinfo->no_mount)
+    if (mountinfo)
     {
-        config_release_config ();
-        client_send_403 (client, "mountpoint unavailable");
-        return;
+        if (mountinfo->skip_accesslog)
+            client->flags |= CLIENT_SKIP_ACCESSLOG;
+        if (mountinfo->no_mount)
+        {
+            config_release_config ();
+            client_send_403 (client, "mountpoint unavailable");
+            return;
+        }
     }
     if ((client->flags & CLIENT_AUTHENTICATED) == 0 && mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
     {

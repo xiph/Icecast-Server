@@ -48,7 +48,7 @@ void global_initialize(void)
     thread_mutex_create(&_global_mutex);
     thread_spin_create (&global.spinlock);
     thread_rwlock_create (&global.shutdown_lock);
-    global.out_bitrate = rate_setup (10000, 1000);
+    global.out_bitrate = rate_setup (20000, 1000);
 }
 
 void global_shutdown(void)
@@ -76,8 +76,23 @@ void global_unlock(void)
 
 void global_add_bitrates (struct rate_calc *rate, unsigned long value, uint64_t milli)
 {
+    float avg;
     thread_spin_lock (&global.spinlock);
     rate_add (rate, value, milli);
+    avg = rate_avg (rate);
+
+    if (global.max_rate)
+    {
+        float ratio = avg / global.max_rate;
+        if (ratio > 0.99)
+            throttle_sends = 3;
+        else if (ratio > 0.9)
+            throttle_sends = 2;
+        else if (ratio > 0.8)
+            throttle_sends = 1;
+        else if (throttle_sends > 0)
+            throttle_sends--;
+    }
     thread_spin_unlock (&global.spinlock);
 }
 

@@ -55,18 +55,24 @@ format_type_t format_get_type(const char *contenttype)
         return FORMAT_TYPE_OGG;
     else if(strcmp(contenttype, "video/ogg") == 0)
         return FORMAT_TYPE_OGG;
+    else if(strcmp(contenttype, "audio/aac") == 0)
+        return FORMAT_TYPE_AAC;
+    else if(strcmp(contenttype, "audio/aacp") == 0)
+        return FORMAT_TYPE_AAC;
+    else if(strcmp(contenttype, "audio/mpeg") == 0)
+        return FORMAT_TYPE_MPEG;
     else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3 */
         return FORMAT_TYPE_GENERIC;
 }
 
-void format_plugin_clear (format_plugin_t *format)
+void format_plugin_clear (format_plugin_t *format, client_t *client)
 {
     if (format == NULL)
         return;
     if (format->free_plugin)
-        format->free_plugin (format);
+        format->free_plugin (format, client);
     rate_free (format->in_bitrate);
     rate_free (format->out_bitrate);
     free (format->charset);
@@ -74,19 +80,24 @@ void format_plugin_clear (format_plugin_t *format)
 }
 
 
-int format_get_plugin (format_plugin_t *plugin)
+int format_get_plugin (format_plugin_t *plugin, client_t *client)
 {
     int ret = -1;
 
-    switch (plugin->type) {
-    case FORMAT_TYPE_OGG:
-        ret = format_ogg_get_plugin (plugin);
-        break;
-    case FORMAT_TYPE_GENERIC:
-        ret = format_mp3_get_plugin (plugin);
-        break;
-    default:
-        break;
+    if (client)
+        plugin->parser = client->parser;
+    switch (plugin->type)
+    {
+        case FORMAT_TYPE_OGG:
+            ret = format_ogg_get_plugin (plugin, client);
+            break;
+        case FORMAT_TYPE_AAC:
+        case FORMAT_TYPE_MPEG:
+        case FORMAT_TYPE_GENERIC:
+            ret = format_mp3_get_plugin (plugin, client);
+            break;
+        default:
+            break;
     }
 
     return ret;
@@ -165,10 +176,17 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
     {
         const char *useragent = httpp_getvar (client->parser, "user-agent");
         const char *protocol = "HTTP/1.0";
-        if (useragent && strstr(useragent, "shoutcastsource")) /* hack for mpc */
-            protocol = "ICY";
+        const char *contenttypehdr = "Content-Type";
+
+        if (useragent)
+        {
+            if (strstr (useragent, "shoutcastsource")) /* hack for mpc */
+                protocol = "ICY";
+            if (strstr (useragent, "Shoutcast Server")) /* hack for sc_serv */
+                contenttypehdr = "content-type";
+        }
         bytes = snprintf (ptr, remaining, "%s 200 OK\r\n"
-                "content-type: %s\r\n", protocol, plugin->contenttype);
+                "%s: %s\r\n", protocol, contenttypehdr, plugin->contenttype);
         remaining -= bytes;
         ptr += bytes;
         client->respcode = 200;

@@ -18,6 +18,8 @@
 #ifndef __FORMAT_MP3_H__
 #define __FORMAT_MP3_H__
 
+#include "format.h"
+
 typedef struct {
     /* These are for inline metadata */
     int inline_metadata_interval;
@@ -33,13 +35,12 @@ typedef struct {
     refbuf_t *metadata;
     refbuf_t *read_data;
     int read_count;
-    mutex_t url_lock;
 
     unsigned build_metadata_len;
     unsigned build_metadata_offset;
     char build_metadata[4081];
 } mp3_state;
 
-int format_mp3_get_plugin (format_plugin_t *plugin);
+int format_mp3_get_plugin (format_plugin_t *plugin, client_t *client);
 
 #endif  /* __FORMAT_MP3_H__ */

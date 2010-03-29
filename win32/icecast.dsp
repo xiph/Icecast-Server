@@ -86,57 +86,22 @@ LIB32=link.exe -lib
 # Begin Source File
 
 SOURCE=..\src\admin.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\auth.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\auth_htpasswd.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\auth_url.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\avl\avl.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
@@ -154,35 +119,14 @@ SOURCE=..\src\cfgfile.c
 # Begin Source File
 
 SOURCE=..\src\client.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\connection.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\event.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
@@ -200,310 +144,118 @@ SOURCE=..\src\fnmatch.c
 # Begin Source File
 
 SOURCE=..\src\format.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_flac.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_kate.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_midi.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_mp3.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_ogg.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_skeleton.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_speex.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_theora.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\format_vorbis.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\fserve.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\global.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\httpp\httpp.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\log\log.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\logging.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\md5.c
+# End Source File
+# Begin Source File
 
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
+SOURCE=\src\mpeg.c
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\refbuf.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\net\resolver.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\sighandler.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\slave.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\net\sock.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\source.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\stats.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\thread\thread.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\timing\timing.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\util.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\xslt.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
 SOURCE=..\src\yp.c
-
-!IF  "$(CFG)" == "icecast - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "icecast - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -612,6 +364,10 @@ SOURCE=..\src\logging.h
 # Begin Source File
 
 SOURCE=..\src\md5.h
+# End Source File
+# Begin Source File
+
+SOURCE=\src\mpeg.h
 # End Source File
 # Begin Source File
 

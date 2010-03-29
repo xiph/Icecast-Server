@@ -617,7 +617,6 @@ static client_t *accept_client (void)
             }
         }
         global_unlock ();
-        stats_event_inc (NULL, "connections");
         if (sock_set_blocking (con->sock, 0) || sock_set_nodelay (con->sock))
         {
             WARN0 ("failed to set tcp options on client connection, dropping");
@@ -927,6 +926,7 @@ void connection_thread_shutdown ()
  */
 int connection_complete_source (source_t *source, http_parser_t *parser)
 {
+    client_t *client = source->client;
     const char *contenttype = httpp_getvar (parser, "content-type");
     mount_proxy *mountinfo;
     format_type_t format_type;
@@ -953,7 +953,7 @@ int connection_complete_source (source_t *source, http_parser_t *parser)
     source->format->type = format_type;
     source->format->mount = source->mount;
     source->format->parser = parser;
-    if (format_get_plugin (source->format) < 0)
+    if (format_get_plugin (source->format, client) < 0)
     {
         WARN1 ("plugin format failed for \"%s\"", source->mount);
         return -1;
@@ -1162,7 +1162,7 @@ static void check_for_filtering (ice_config_t *config, client_t *client)
         int len = strcspn (pattern, " ");
         if (strncmp (extension, pattern, len) == 0 && extension[len] == '\0')
         {
-            httpp_setvar (client->parser, "__avoid_access_log", "");
+            client->flags |= CLIENT_SKIP_ACCESSLOG;
             return;
         }
         pattern += len;

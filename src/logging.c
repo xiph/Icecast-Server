@@ -114,7 +114,7 @@ void logging_access_id (access_log *accesslog, client_t *client)
     time_t stayed;
     const char *referrer, *user_agent, *username, *ip = "-";
 
-    if (httpp_getvar (client->parser, "__avoid_access_log"))
+    if (client->flags & CLIENT_SKIP_ACCESSLOG)
         return;
 
     now = time(NULL);
@@ -231,7 +231,7 @@ static int recheck_log_file (ice_config_t *config, int *id, const char *file)
         if (*id < 0)
         {
             char buf[1024];
-            snprintf (buf,1024, "FATAL: could not open log %s: %s", fn, strerror(errno));
+            snprintf (buf,1024, "could not open log %s: %s", fn, strerror(errno));
             fatal_error (buf);
             return -1;
         }
