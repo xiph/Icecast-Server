@@ -75,6 +75,8 @@ typedef struct {
     fbinfo finfo;
     mutex_t lock;
     int refcount;
+    int peak;
+    int max;
     FILE *fp;
     time_t stats_update;
     format_plugin_t *format;
@@ -198,7 +200,6 @@ static int _delete_fh (void *mapping)
     }
     if (fh->fp)
         fclose (fh->fp);
-    stats_event (fh->finfo.mount, NULL, NULL);
     if (fh->format)
     {
         format_plugin_clear (fh->format, NULL);
@@ -238,7 +239,14 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         if (client)
         {
             if (finfo->mount && (finfo->flags & FS_FALLBACK))
+            {
                 stats_event_args (result->finfo.mount, "listeners", "%ld", result->refcount);
+                if (result->refcount > result->peak)
+                {
+                    result->peak = result->refcount;
+                    stats_event_flags (result->finfo.mount, "listener_peak", "%ld", result->peak);
+                }
+            }
             avl_insert (result->clients, client);
             if (result->format)
             {
@@ -281,7 +289,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         {
             char *contenttype = fserve_content_type (fullpath);
 
-            stats_event_flags (finfo->mount, "file", fullpath, STATS_HIDDEN);
+            stats_event (finfo->mount, "fallback", "file");
             fh->format = calloc (1, sizeof (format_plugin_t));
             fh->format->type = format_get_type (contenttype);
             free (contenttype);
@@ -305,10 +313,14 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
     thread_mutex_lock (&fh->lock);
     fh->clients = avl_tree_new (client_compare, NULL);
     fh->refcount = 1;
+    fh->peak = 1;
     if (client)
     {
         if (finfo->mount && (finfo->flags & FS_FALLBACK))
+        {
             stats_event_flags (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
+            stats_event_flags (fh->finfo.mount, "listener_peak", "1", STATS_HIDDEN);
+        }
         avl_insert (fh->clients, client);
     }
     fh->finfo.mount = strdup (finfo->mount);
@@ -600,6 +612,8 @@ static void file_release (client_t *client)
         if (fh->finfo.flags & FS_FALLBACK)
             stats_event_dec (NULL, "listeners");
         remove_from_fh (fh, client);
+        if (fh->refcount == 1)
+            stats_event (fh->finfo.mount, NULL, NULL);
         fh_release (fh);
     }
     if (client->respcode == 200)
@@ -645,6 +659,8 @@ static void fserve_move_listener (client_t *client)
     client->shared_data = NULL;
     thread_mutex_lock (&fh->lock);
     remove_from_fh (fh, client);
+    if (fh->refcount == 1)
+        stats_event (fh->finfo.mount, NULL, NULL);
     f.flags = fh->finfo.flags;
     f.limit = fh->finfo.limit;
     f.mount = fh->finfo.fallback;
@@ -824,7 +840,7 @@ static int throttled_file_send (client_t *client)
     if (fh->stats_update <= now)
     {
         stats_event_args (fh->finfo.mount, "outgoing_kbitrate", "%ld",
-                            (8 * rate_avg (fh->format->out_bitrate))/1024);
+                (long)((8 * rate_avg (fh->format->out_bitrate))/1024));
         fh->stats_update = now + 5;
     }
     if (client->pos == refbuf->len)
@@ -1086,22 +1102,61 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
 }
 
 
+int fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo)
+{
+    int ret = 0;
+    fh_node *fh = open_fh (finfo, NULL);
+
+    if (fh)
+    {
+        avl_node *anode = avl_get_first (fh->clients);
+
+        while (anode)
+        {
+            client_t *listener = (client_t *)anode->key;
+            char buf [100];
+
+            xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
+            const char *useragent;
+            snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
+            xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
+
+            xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
+            useragent = httpp_getvar (listener->parser, "user-agent");
+            if (useragent)
+            {
+                xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
+                xmlNewChild (node, NULL, XMLSTR("useragent"), str);
+                xmlFree (str);
+            }
+            xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR( "0"));
+            snprintf (buf, sizeof (buf), "%lu",
+                    (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
+            xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+            if (listener->username)
+            {
+                xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
+                xmlNewChild (node, NULL, XMLSTR("username"), str);
+                xmlFree (str);
+            }
+
+            ret++;
+            anode = avl_get_next (anode);
+        }
+        fh_release (fh);
+    }
+    return ret;
+}
+
+
 void fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners)
 {
-    int c = 2;
-    unsigned int entries = 0;
-    const char *type = httpp_get_query_param (client->parser, "type");
+    int ret;
     fbinfo finfo;
     xmlDocPtr doc;
     xmlNodePtr node, srcnode;
-    char buf[100];
 
-    finfo.flags = 0;
-    if (type && strcmp (type, "fallback") == 0)
-    {
-        finfo.flags = FS_FALLBACK;
-        c = 1;
-    }
+    finfo.flags = FS_FALLBACK;
     finfo.mount = (char*)mount;
     finfo.limit = 0;
     finfo.fallback = NULL;
@@ -1112,56 +1167,17 @@ void fserve_list_clients (client_t *client, const char *mount, int response, int
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(mount));
 
-    while (c)
+    ret = fserve_list_clients_xml (srcnode, &finfo);
+    if (ret == 0)
     {
-        fh_node *fh = open_fh (&finfo, NULL);
-        if (fh)
-        {
-            avl_node *node = avl_get_first (fh->clients);
-
-            while (node)
-            {
-                client_t *listener = (client_t *)node->key;
-
-                if (show_listeners)
-                {
-                    xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
-                    const char *useragent;
-                    snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
-                    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
-
-                    xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
-                    useragent = httpp_getvar (listener->parser, "user-agent");
-                    if (useragent)
-                    {
-                        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
-                        xmlNewChild (node, NULL, XMLSTR("useragent"), str);
-                        xmlFree (str);
-                    }
-                    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR( "0"));
-                    snprintf (buf, sizeof (buf), "%lu",
-                            (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
-                    xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
-                    if (listener->username)
-                    {
-                        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
-                        xmlNewChild (node, NULL, XMLSTR("username"), str);
-                        xmlFree (str);
-                    }
-                }
-
-                entries++;
-                node = avl_get_next (node);
-            }
-            fh_release (fh);
-        }
-        c--;
-        finfo.flags = FS_FALLBACK;
+        finfo.flags = 0;
+        ret = fserve_list_clients_xml (srcnode, &finfo);
     }
-    if (entries)
+    if (ret)
     {
-        snprintf (buf, sizeof(buf), "%u", entries);
-        xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
+        char buf[20];
+        snprintf (buf, sizeof(buf), "%u", ret);
+        xmlNewChild (srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
         admin_send_response (doc, client, response, "listclients.xsl");
     }
     else

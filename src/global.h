@@ -39,7 +39,6 @@ typedef struct ice_global_tag
     int schedule_config_reread;
 
     avl_tree *source_tree;
-    rwlock_t shutdown_lock;
 
 #ifdef MY_ALLOC
     avl_tree *alloc_tree;

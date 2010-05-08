@@ -16,6 +16,23 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh23
+. if an inactive on-demand relay detects listeners on fallback then start relay
+  but do not move listeners until the connection is complete.
+. fix race condition with restarting non-ogg relays and stats being generated
+. make auth queue limit 150 before rejection.
+. A number of relay related fixes. these typically occur when a relay is either
+  restarted or was removed (eg disappeared from a master).  There is also a
+  possible case of long held locking that is now gone.
+. add <ban-client>N</ban-client> mount option to add client IP to the internal
+  banned list for N seconds. subsequent attempts that have not timed out extend
+  the ban period. A stat count of banned entries is produced each second
+. reload from admin page was not restarting listen thread if signalfd used.
+. increase default queue block size on non-ogg streams to 2900
+. mpeg parsing fix for odd cases. This could appear as corrupt or stalled streams
+. fix listing of stats and listener details on fallback files
+. fix Location header reference from auth url
+
 2.3.2-kh22
 . Add mp3/aac sync marker alignment code. This makes the internal buffers contain
   whole frames. allows for better transistion when moving listeners.

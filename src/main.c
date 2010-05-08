@@ -118,6 +118,7 @@ void _shutdown_subsystems(void)
     slave_shutdown();
     fserve_shutdown();
     stats_shutdown();
+    stop_logging();
 
     config_shutdown();
     refbuf_shutdown();
@@ -222,7 +223,6 @@ static void _server_proc(void)
     slave_initialize();
 
     connection_setup_sockets (NULL);
-    stop_logging();
 }
 
 /* chroot the process. Watch out - we need to do this before starting other

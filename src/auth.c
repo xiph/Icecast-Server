@@ -242,7 +242,7 @@ static void auth_new_listener (auth_client *auth_user)
         }
     }
     if (auth_postprocess_listener (auth_user) < 0)
-        INFO0 ("listener connection failed");
+        DEBUG0 ("listener connection failed");
 }
 
 
@@ -535,8 +535,10 @@ void auth_add_listener (const char *mount, client_t *client)
     {
         if (mountinfo->skip_accesslog)
             client->flags |= CLIENT_SKIP_ACCESSLOG;
-        if (mountinfo->no_mount)
+        if (mountinfo->ban_client || mountinfo->no_mount)
         {
+            if (mountinfo->ban_client)
+                connection_add_banned_ip (client->connection.ip, mountinfo->ban_client);
             config_release_config ();
             client_send_403 (client, "mountpoint unavailable");
             return;
@@ -546,7 +548,7 @@ void auth_add_listener (const char *mount, client_t *client)
     {
         auth_client *auth_user;
 
-        if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 1000)
+        if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 150)
         {
             config_release_config ();
             WARN0 ("too many clients awaiting authentication");

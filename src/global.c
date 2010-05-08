@@ -47,7 +47,6 @@ void global_initialize(void)
 #endif
     thread_mutex_create(&_global_mutex);
     thread_spin_create (&global.spinlock);
-    thread_rwlock_create (&global.shutdown_lock);
     global.out_bitrate = rate_setup (20000, 1000);
 }
 
@@ -55,7 +54,6 @@ void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
     thread_spin_destroy (&global.spinlock);
-    thread_rwlock_destroy (&global.shutdown_lock);
     avl_tree_free(global.source_tree, NULL);
 #ifdef MY_ALLOC
     avl_tree_free(global.alloc_tree, free_alloc_node);

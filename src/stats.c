@@ -1021,9 +1021,20 @@ xmlDocPtr stats_get_xml (int flags, const char *show_mount)
             thread_mutex_lock (&source->lock);
             admin_source_listeners (source, node);
             thread_mutex_unlock (&source->lock);
+            avl_tree_unlock (global.source_tree);
         }
+        else
+        {
+            fbinfo finfo;
 
-        avl_tree_unlock (global.source_tree);
+            avl_tree_unlock (global.source_tree);
+            finfo.flags = FS_FALLBACK;
+            finfo.mount = (char*)show_mount;
+            finfo.limit = 0;
+            finfo.fallback = NULL;
+
+            fserve_list_clients_xml (node, &finfo);
+        }
     }
     return doc;
 }
@@ -1135,10 +1146,10 @@ void stats_clear_virtual_mounts (void)
 
         if (source == NULL)
         {
-            stats_node_t *node = _find_node (src->stats_tree, "file");
+            stats_node_t *node = _find_node (src->stats_tree, "fallback");
             if (node == NULL)
             {
-                /* no source_t and no fallbakc file stat, so delete */
+                /* no source_t and no fallback file stat, so delete */
                 snode = avl_get_next (snode);
                 avl_delete (_stats.source_tree, src, _free_source_stats);
                 continue;
@@ -1158,6 +1169,7 @@ void stats_global_calc (void)
     avl_node *anode;
     char buffer [VAL_BUFSIZE];
 
+    connection_stats ();
     anode = avl_get_first(_stats.global_tree);
     while (anode)
     {

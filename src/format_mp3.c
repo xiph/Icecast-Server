@@ -545,11 +545,8 @@ static int validate_mpeg (mp3_state *source_mp3, mpeg_sync *mpeg_sync, refbuf_t 
         return -1;
     if (unprocessed > 0)
     {
-        /* make sure the new block has a minimum of queue_block_size */
-        size_t len = unprocessed > source_mp3->queue_block_size ? unprocessed : source_mp3->queue_block_size;
-        refbuf_t *leftover = refbuf_new (len);
-        memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
-        leftover->len = unprocessed;
+        size_t len;
+        refbuf_t *leftover;
 
         if (source_mp3->inline_metadata_interval > 0)
         {
@@ -557,17 +554,22 @@ static int validate_mpeg (mp3_state *source_mp3, mpeg_sync *mpeg_sync, refbuf_t 
             if (source_mp3->build_metadata_len == 0 && source_mp3->offset > unprocessed)
             {
                 source_mp3->offset -= unprocessed;
-                source_mp3->read_data = leftover;
-                source_mp3->read_count = unprocessed;
             }
             else
+            {
+                leftover = refbuf_new (unprocessed);
+                memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
+                leftover->len = unprocessed;
                 mpeg_data_insert (mpeg_sync, leftover); /* will need to merge this after metadata */
+                return 0;
+            }
         }
-        else
-        {
-            source_mp3->read_data = leftover;
-            source_mp3->read_count = unprocessed;
-        }
+        /* make sure the new block has a minimum of queue_block_size */
+        len = unprocessed > source_mp3->queue_block_size ? unprocessed : source_mp3->queue_block_size;
+        leftover = refbuf_new (len);
+        memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
+        source_mp3->read_data = leftover;
+        source_mp3->read_count = unprocessed;
     }
     return 0;
 }

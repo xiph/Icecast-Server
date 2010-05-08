@@ -55,7 +55,7 @@ client_t *client_create (sock_t sock)
     if (sock != SOCK_ERROR)
     {
         refbuf_t *r;
-        if (connection_init (&client->connection, sock) < 0)
+        if (connection_init (&client->connection, sock, NULL) < 0)
         {
             free (client);
             return NULL;

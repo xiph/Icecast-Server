@@ -113,23 +113,33 @@ static int handle_mpeg_frame (struct mpeg_sync *mp, unsigned char *p, int remain
 }
 
 
+/* return -1 for no valid frame at this specified address, 0 for more data needed */
 static int get_initial_frame (struct mpeg_sync *mp, unsigned char *p, unsigned remaining)
 {
     if (p[1] < 0xE0) 
-        return 0;
+        return -1;
     mp->layer = (p[1] & 0x6) >> 1;
     //nocrc = p[1] & 0x1;
     if (mp->layer == 0 && (p[1] >= 0xF0))
     {
-        int frame_len;
         int samplerate_idx = (p[2] & 0x3C) >> 2,
             v = (p[2] << 8) + p[3],
             channels_idx = (v & 0x1C0) >> 6;
         int id =  p[1] & 0x8;
+        int checking = 3;
+        unsigned char *fh = p;
 
-        frame_len = get_aac_frame_len (p);
-        if (frame_len >= remaining || p[frame_len] != 255)
-            return -1;
+        while (checking)
+        {
+            int frame_len = get_aac_frame_len (fh);
+            if (frame_len+5 >= remaining)
+                return 0;
+            if (fh[frame_len] != 255 || fh[frame_len+1] != p[1])
+                return -1;
+            remaining -= frame_len;
+            fh += frame_len;
+            checking--;
+        }
         // profile = p[1] & 0xC0;
         mp->samplerate = aacp_sample_freq [samplerate_idx];
         mp->channels = aacp_num_channels [channels_idx];
@@ -140,7 +150,6 @@ static int get_initial_frame (struct mpeg_sync *mp, unsigned char *p, unsigned r
         }
         mp->syncbytes = 3;
         memcpy (&mp->fixed_headerbits[0], p, 3);
-        //mp->samplerate <<= 1;
         DEBUG3 ("detected AAC MPEG-%s, rate %d, channels %d", id ? "2" : "4", mp->samplerate, mp->channels);
         mp->process_frame = handle_aac_frame;
         return 1;
@@ -152,7 +161,8 @@ static int get_initial_frame (struct mpeg_sync *mp, unsigned char *p, unsigned r
         mp->ver = (p[1] & 0x18) >> 3;
         if (mp->layer && version [mp->ver] && layer[mp->layer]) 
         {
-            int frame_len;
+            int checking = 4;
+            unsigned char *fh = p;
             int samplerates [4][4] = {
                 { 11025, 0, 22050, 44100},
                 { 12000, 0, 24000, 48000 },
@@ -163,24 +173,31 @@ static int get_initial_frame (struct mpeg_sync *mp, unsigned char *p, unsigned r
             mp->samplerate = samplerates [(p[2]&0xC) >> 2][mp->ver];
             if (mp->samplerate == 0)
                 return -1;
-            frame_len = get_frame_samples (mp, p);
-            if (frame_len > 0)
+            while (checking)
             {
-                if (frame_len >= remaining || p[frame_len] != 255)
+                int frame_len = get_frame_samples (mp, fh);
+                if (frame_len <= 0)
                     return -1;
-                if  (((p[3] & 0xC0) >> 6) == 3)
-                    mp->channels = 1;
-                else
-                    mp->channels = 2;
-                mp->syncbytes = 2;
-                memcpy (&mp->fixed_headerbits[0], p, 2);
-                //DEBUG4 ("%s %s detected (%d, %d)", version [mp->ver], layer[mp->layer], mp->samplerate, mp->channels);
-                mp->process_frame = handle_mpeg_frame;
-                return 1;
+                if (frame_len+4 >= remaining)
+                    return 0;
+                if (fh[frame_len] != 255 || fh[frame_len+1] != p[1])
+                    return -1;
+                remaining -= frame_len;
+                fh += frame_len;
+                checking--;
             }
+            if  (((p[3] & 0xC0) >> 6) == 3)
+                mp->channels = 1;
+            else
+                mp->channels = 2;
+            mp->syncbytes = 2;
+            memcpy (&mp->fixed_headerbits[0], p, 2);
+            DEBUG4 ("%s %s detected (%d, %d)", version [mp->ver], layer[mp->layer], mp->samplerate, mp->channels);
+            mp->process_frame = handle_mpeg_frame;
+            return 1;
         }
     }
-    return 0;
+    return -1;
 }
 
 
@@ -219,11 +236,11 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
     }
     start = (unsigned char *)new_block->data + offset;
     remaining = new_block->len - offset;
-    end = start + remaining;
+    end = (unsigned char*)new_block->data + new_block->len;
     while (1)
     {
         remaining = end - start;
-        if (remaining < 10)
+        if (remaining < 10) /* make sure we have some bytes to check */
             break;
         if (*start != 255)
         {
@@ -232,21 +249,26 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
             if (ret == remaining)
                 break; // no sync in the rest, so dump it
             new_block->len -= (remaining - ret);
-            remaining = ret;
-            end = start + remaining;
+            end = (unsigned char*)new_block->data + new_block->len;
+            continue;
         }
         if (mp->syncbytes == 0)
         {
-            if (get_initial_frame (mp, start, remaining) <= 0)
+            int ret = get_initial_frame (mp, start, remaining);
+            if (ret < 0)
             {
-                // no a complete frame not here, try again
-                start++;
+                // failed to detect a complete frame, try again
+                memmove (start, start+1, remaining-1);
+                end--;
                 continue;
             }
+            if (ret == 0)
+                break;
         }
         if (memcmp (start, &mp->fixed_headerbits[0], mp->syncbytes) != 0)
         {
-            start++;
+            memmove (start, start+1, remaining-1);
+            end--;
             continue;
         }
         frame_len = mp->process_frame (mp, start, remaining);
@@ -256,7 +278,13 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
         completed++;
     }
     if (completed == 0)
-        return -1;
+    {
+        /* none found, so either shrink it or drop it */
+        if (remaining > 1500)
+            remaining = 1500;
+        else
+            return -1;
+    }
     new_block->len -= remaining;
     return remaining;
 }

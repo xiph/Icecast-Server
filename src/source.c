@@ -350,7 +350,7 @@ static int _free_source (void *p)
 
     /* There should be no listeners on this mount */
     if (source->listeners)
-        WARN1("active listeners on mountpoint %s", source->mount);
+        WARN3("active listeners on mountpoint %s (%ld, %ld)", source->mount, source->listeners, source->termination_count);
     avl_tree_free (source->clients, NULL);
 
     thread_mutex_destroy (&source->lock);
@@ -368,7 +368,7 @@ void source_free_source (source_t *source)
 {
     INFO1 ("source %s to be freed", source->mount);
     avl_tree_wlock (global.source_tree);
-    INFO1 ("removing source %s from tree", source->mount);
+    DEBUG1 ("removing source %s from tree", source->mount);
     avl_delete (global.source_tree, source, _free_source);
     avl_tree_unlock (global.source_tree);
 }
@@ -443,6 +443,8 @@ int source_read (source_t *source)
             source->fallback.mount = NULL;
             source->flags &= ~SOURCE_TEMPORARY_FALLBACK;
         }
+        if (source->listeners == 0)
+            rate_add (source->format->out_bitrate, 0, client->worker->time_ms);
         if (source->prev_listeners != source->listeners)
         {
             INFO2("listener count on %s now %lu", source->mount, source->listeners);
@@ -850,13 +852,8 @@ static int send_listener (source_t *source, client_t *client)
     int ret = 0;
 
     if (client->connection.error)
-    {
-        /* if listener disconnects at the same time as the source does then we need
-         * to account for it as the source thinks it is still connected */
-        if (source->termination_count)
-            source->termination_count--;
         return -1;
-    }
+
     if (source->fallback.mount)
     {
         int move_failed;
@@ -875,10 +872,10 @@ static int send_listener (source_t *source, client_t *client)
     }
     if (source->flags & SOURCE_TERMINATING)
     {
-        source->termination_count--;
         DEBUG2 ("termination count on %s now %lu", source->mount, source->termination_count);
         if ((source->flags & SOURCE_PAUSE_LISTENERS) && global.running == ICE_RUNNING)
         {
+            source->termination_count--;
             if (client->refbuf && (client->refbuf->flags & SOURCE_QUEUE_BLOCK))
                 client_set_queue (client, NULL);
             client->ops = &listener_pause_ops;
@@ -1085,7 +1082,7 @@ void source_set_override (const char *mount, const char *dest)
 void source_set_fallback (source_t *source, const char *dest_mount)
 {
     int bitrate = (int)(rate_avg (source->format->in_bitrate) * 1.02);
-    if (dest_mount == NULL || bitrate == 0)
+    if (dest_mount == NULL)
         return;
 
     source->fallback.flags = FS_FALLBACK;
@@ -1443,7 +1440,6 @@ static int source_client_callback (client_t *client)
         global_unlock();
         return -1;
     }
-    thread_rwlock_rlock (&global.shutdown_lock);
 
     agent = httpp_getvar (source->client->parser, "user-agent");
     if (agent)
@@ -1644,7 +1640,6 @@ void source_client_release (client_t *client)
     thread_mutex_unlock (&source->lock);
 
     source_free_source (source);
-    thread_rwlock_unlock (&global.shutdown_lock);
     slave_update_all_mounts();
     client_destroy (client);
 }
@@ -1660,6 +1655,11 @@ static int source_listener_release (source_t *source, client_t *client)
     source_listener_detach (source, client);
     if (source->listeners == 0)
         rate_reduce (source->format->out_bitrate, 1000);
+
+    /* if listener disconnects at the same time as the source does then we need
+     * to account for it as the source thinks it is still connected */
+    if (source->termination_count)
+        source->termination_count--;
 
     stats_event_dec (NULL, "listeners");
     stats_event_args (source->mount, "listeners", "%lu", source->listeners);

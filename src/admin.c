@@ -286,7 +286,7 @@ void admin_mount_request (client_t *client, const char *uri)
         avl_tree_unlock(global.source_tree);
         if (strncmp (cmd->request, "stats", 5) == 0)
         {
-            fserve_list_clients (client, mount, cmd->response, 0);
+            command_stats (client, uri);
             return;
         }
         if (strncmp (cmd->request, "listclients", 11) == 0)
@@ -511,6 +511,10 @@ static int admin_function (const char *function, char *buf, unsigned int len)
     }
     if (strcmp (function, "updatecfg") == 0)
     {
+#ifdef HAVE_SIGNALFD
+        connection_running = 0;
+        connection_close_sigfd();
+#endif
         global . schedule_config_reread = 1;
         snprintf (buf, len, "Requesting reread of configuration file");
         return 0;

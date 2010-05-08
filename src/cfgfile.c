@@ -791,6 +791,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "allow-url-ogg-metadata",
                                 config_get_bool,    &mount->url_ogg_meta },
         { "no-mount",           config_get_bool,    &mount->no_mount },
+        { "ban-client",         config_get_int,     &mount->ban_client },
         { "hidden",             config_get_bool,    &mount->hidden },
         { "authentication",     auth_get_authenticator, &mount->auth },
         { "on-connect",         config_get_str,     &mount->on_connect },
@@ -841,7 +842,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     if (mount->url_ogg_meta)
         mount->ogg_passthrough = 0;
     if (mount->queue_block_size < 100)
-        mount->queue_block_size = 1400;
+        mount->queue_block_size = 2900;
 
     mount->next = config->mounts;
     config->mounts = mount;

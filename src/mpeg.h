@@ -19,7 +19,7 @@
 typedef struct mpeg_sync
 {
     unsigned char fixed_headerbits[3];
-    int syncbytes;
+    char syncbytes;
     int (*process_frame) (struct mpeg_sync *mp, unsigned char *p, int len);
     refbuf_t *surplus;
     int ver;

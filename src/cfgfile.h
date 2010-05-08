@@ -98,6 +98,7 @@ typedef struct _mount_proxy {
 
     int fallback_override; /* When this source arrives, do we steal back
                               clients from the fallback? */
+    int ban_client;     /* do we add a client on this to the ban list automatically */
     int no_mount; /* Do we permit direct requests of this mountpoint? (or only
                      indirect, through fallbacks) */
     int burst_size; /* amount to send to a new client if possible, -1 take

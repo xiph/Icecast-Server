@@ -89,13 +89,20 @@ static int  _handle_get_request (client_t *client);
 static int  _handle_source_request (client_t *client);
 static int  _handle_stats_request (client_t *client);
 
+struct banned_entry
+{
+    char ip[16]; // may want to expand later for ipv6
+    time_t timeout;
+};
 
 typedef struct
 {
-    char *filename;
     time_t file_recheck;
     time_t file_mtime;
     avl_tree *contents;
+    int  (*compare)(void *arg, void *a, void *b);
+    void (*add_new_entry)(avl_tree *t, const char *ip, time_t now);
+    char *filename;
 } cache_file_contents;
 
 static spin_t _connection_lock;
@@ -141,13 +148,15 @@ struct _client_functions http_req_stats_ops =
 
 /* filtering client connection based on IP */
 cache_file_contents banned_ip, allowed_ip;
+struct banned_entry *ban_entry_removal;
+
 /* filtering listener connection based on useragent */
 cache_file_contents useragents;
 
 int connection_running = 0;
 
 
-static int compare_line (void *arg, void *a, void *b)
+static int compare_pattern (void *arg, void *a, void *b)
 {
     const char *value = (const char *)a;
     const char *pattern = (const char *)b;
@@ -170,6 +179,15 @@ static int compare_line (void *arg, void *a, void *b)
 #endif
 }
 
+static int compare_banned_ip (void *arg, void *a, void *b)
+{
+    struct banned_entry *this = (struct banned_entry *)a;
+    struct banned_entry *that = (struct banned_entry *)b;
+    if (that->timeout)
+        if (ban_entry_removal == NULL || that->timeout < ban_entry_removal->timeout)
+            ban_entry_removal = that; // identify possible removal
+    return compare_pattern (NULL, &this->ip[0] , &that->ip[0]);
+}
 
 static int free_filtered_line (void*x)
 {
@@ -320,6 +338,41 @@ int connection_send (connection_t *con, const void *buf, size_t len)
     return bytes;
 }
 
+static void add_generic_text (avl_tree *t, const char *ip, time_t now)
+{
+    char *str = strdup (ip);
+    if (str)
+        avl_insert (t, str);
+}
+
+static void add_banned_ip (avl_tree *t, const char *ip, time_t now)
+{
+    struct banned_entry *entry = calloc (1, sizeof (struct banned_entry));
+    snprintf (&entry->ip[0], sizeof (entry->ip), "%s", ip);
+    if (now)
+        entry->timeout = now;
+    avl_insert (t, entry);
+}
+
+void connection_add_banned_ip (const char *ip, int duration)
+{
+    time_t timeout = -1;
+    if (duration > 0)
+        timeout = time(NULL) + duration;
+
+    if (banned_ip.contents)
+    {
+        global_lock();
+        add_banned_ip (banned_ip.contents, ip, timeout);
+        global_unlock();
+    }
+}
+
+void connection_stats (void)
+{
+    if (banned_ip.contents)
+        stats_event_args (NULL, "banned_IPs", "%ld", (long)banned_ip.contents->length);
+}
 
 /* function to handle the re-populating of the avl tree containing IP addresses
  * for deciding whether a connection of an incoming request is to be dropped.
@@ -361,17 +414,14 @@ static void recheck_cached_file (cache_file_contents *cache, time_t now)
             return;
         }
 
-        new_ips = avl_tree_new (compare_line, NULL);
+        new_ips = avl_tree_new (cache->compare, NULL);
 
         while (get_line (file, line, MAX_LINE_LEN))
         {
-            char *str;
             if(!line[0] || line[0] == '#')
                 continue;
             count++;
-            str = strdup (line);
-            if (str)
-                avl_insert (new_ips, str);
+            cache->add_new_entry (new_ips, line, 0);
         }
         fclose (file);
         INFO2 ("%d entries read from file \"%s\"", count, cache->filename);
@@ -389,16 +439,41 @@ static int accept_ip_address (char *ip)
     time_t now = time(NULL);
 
     recheck_cached_file (&banned_ip, now);
-    recheck_cached_file (&allowed_ip, now);
 
     if (banned_ip.contents)
     {
+        ban_entry_removal = NULL;
         if (avl_get_by_key (banned_ip.contents, ip, &result) == 0)
         {
-            DEBUG1 ("%s is banned", ip);
-            return 0;
+            struct banned_entry *entry = result;
+            if (entry->timeout)
+            {
+                if (entry->timeout > now)
+                {
+                    /* we may need to extend the timeout, for repeat offenders */
+                    if (now+900 > entry->timeout)
+                        entry->timeout = now + 900;
+                    return 0;
+                }
+            }
+            else
+            {
+                DEBUG1 ("%s is banned", ip);
+                return 0;
+            }
+        }
+        if (ban_entry_removal)
+        {
+            /* we have identified the entry with the earliest timeout, but has it expired */
+            if (ban_entry_removal->timeout <= now)
+            {
+                INFO1 ("removing %s from ban list for now", &ban_entry_removal->ip[0]);
+                avl_delete (banned_ip.contents, &ban_entry_removal->ip[0], free_filtered_line);
+            }
+            ban_entry_removal = NULL;
         }
     }
+    recheck_cached_file (&allowed_ip, now);
     if (allowed_ip.contents)
     {
         if (avl_get_by_key (allowed_ip.contents, ip, &result) == 0)
@@ -416,7 +491,7 @@ static int accept_ip_address (char *ip)
 }
 
 
-int connection_init (connection_t *con, sock_t sock)
+int connection_init (connection_t *con, sock_t sock, const char *addr)
 {
     if (con)
     {
@@ -429,6 +504,11 @@ int connection_init (connection_t *con, sock_t sock)
         con->sock = sock;
         if (sock == SOCK_ERROR)
             return 0;
+        if (addr)
+        {
+            con->ip = strdup (addr);
+            return 0;
+        }
         if (getpeername (sock, (struct sockaddr *)&sa, &slen) == 0)
         {
             char *ip;
@@ -467,6 +547,13 @@ void connection_uses_ssl (connection_t *con)
     SSL_set_fd (con->ssl, con->sock);
 #endif
 }
+
+#ifdef HAVE_SIGNALFD
+void connection_close_sigfd (void)
+{
+    close (sigfd);
+}
+#endif
 
 static sock_t wait_for_serversock (void)
 {
@@ -627,6 +714,7 @@ static client_t *accept_client (void)
     }
     global_unlock ();
     sock_close (sock);
+    thread_sleep (1000);
     return NULL;
 }
 
@@ -841,10 +929,16 @@ static void *connection_thread (void *arg)
 #endif
     banned_ip.filename = NULL;
     banned_ip.file_mtime = 0;
+    banned_ip.add_new_entry = add_banned_ip;
+    banned_ip.compare = compare_banned_ip;
     allowed_ip.filename = NULL;
     allowed_ip.file_mtime = 0;
+    allowed_ip.add_new_entry = add_generic_text;
+    allowed_ip.compare = compare_pattern;
     useragents.filename = NULL;
     useragents.file_mtime = 0;
+    useragents.add_new_entry = add_generic_text;
+    useragents.compare = compare_pattern;
 
     connection_running = 1;
     INFO0 ("connection thread started");
@@ -1147,13 +1241,12 @@ static int _handle_stats_request (client_t *client)
     return 1;
 }
 
-static void check_for_filtering (ice_config_t *config, client_t *client)
+static void check_for_filtering (ice_config_t *config, client_t *client, char *uri)
 {
-    const char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
     char *pattern = config->access_log.exclude_ext;
     char *extension = strrchr (uri, '.');
 
-    if (extension == NULL || uri == NULL || pattern == NULL)
+    if (extension == NULL || pattern == NULL)
         return;
 
     extension++;
@@ -1189,7 +1282,7 @@ static int _handle_get_request (client_t *client)
     }
     DEBUG1 ("start with %s", uri);
     config = config_get_config();
-    check_for_filtering (config, client);
+    check_for_filtering (config, client, uri);
     port = config->port;
     if (client->server_conn)
     {

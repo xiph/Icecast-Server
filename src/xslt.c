@@ -125,7 +125,8 @@ static int evict_cache_entry(void) {
         }
     }
 
-    xsltFreeStylesheet(cache[oldest].stylesheet);
+    if (cache[oldest].stylesheet)
+        xsltFreeStylesheet(cache[oldest].stylesheet);
     free(cache[oldest].filename);
 
     return oldest;

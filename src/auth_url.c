@@ -439,7 +439,7 @@ static auth_result url_add_listener (auth_client *auth_user)
     }
     if (atd->location)
     {
-        client_send_302 (client, atd->location+10);
+        client_send_302 (client, atd->location);
         auth_user->client = NULL;
         free (atd->location);
         atd->location = NULL;

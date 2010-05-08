@@ -40,6 +40,7 @@ void fserve_setup_client (client_t *client, const char *mount);
 int  fserve_setup_client_fb (client_t *client, fbinfo *finfo);
 void fserve_set_override (const char *mount, const char *dest);
 void fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners);
+int  fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo);
 void fserve_kill_client (client_t *client, const char *mount, int response);
 
 extern int fserve_running;
