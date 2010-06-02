@@ -16,6 +16,19 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh24
+. Allow for per-listener wrapping of existing mp3/aac streams when requested with
+  a type=.flv as a query arg. The actual trigger could be anything we want but this
+  allows for using the existing mountpoint, with easy mapping for URL auth and for
+  matching an extension in the player. Works with intro and fallback handling.
+. mpeg parser is more complete, handles more cases, avoiding bad input cases
+. fix possible bad pointer in ogg headers case.
+. fix for shoutcast-style metadata writes being truncated.
+. fixes for non-ogg buffer alignment causing resync or stalled streams.
+. prevent a failed stream list request from dropping current relays
+. handle relay startup shutdown better for memory usage and listeners 
+. use Host header if available for buildm3u
+
 2.3.2-kh23
 . if an inactive on-demand relay detects listeners on fallback then start relay
   but do not move listeners until the connection is complete.

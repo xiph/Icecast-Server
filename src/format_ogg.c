@@ -503,8 +503,14 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 {
     struct ogg_client *client_data = client->format_data;
     refbuf_t *refbuf;
-    int written = 0;
+    int written = 0, loop = 10;
 
+    if (client->flags & CLIENT_HAS_MOVED)
+    {
+        /* if client has been moved then we need to send all header pages */
+        client_data->headers_sent = 1;
+        client->flags &= ~CLIENT_HAS_MOVED;
+    }
     if (client_data->headers_sent)
     {
         client_data->header_page = headers;
@@ -516,23 +522,33 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
     {
         char *data = refbuf->data + client_data->pos;
         unsigned len = refbuf->len - client_data->pos;
-        int ret;
+        int ret = -1;
 
-        ret = client_send_bytes (client, data, len);
+        if (len < 8000 && client->connection.error == 0)
+            ret = client_send_bytes (client, data, len);
         if (ret > 0)
+        {
            written += ret;
+           client_data->pos += ret;
+        }
         if (ret < (int)len)
+        {
+            client->schedule_ms += 250;
             return written ? written : -1;
-        client_data->pos += ret;
+        }
         if (client_data->pos == refbuf->len)
         {
             refbuf = refbuf->associated;
             client_data->header_page = refbuf;
             client_data->pos = 0;
         }
+        if (written > 10000 || loop == 0)
+            return written;
+        loop--;
     }
     client_data->headers_sent = 1;
     client_data->headers = headers;
+    client_data->header_page = NULL;
     return written;
 }
 
@@ -553,9 +569,10 @@ static int write_buf_to_client (client_t *client)
         if (client_data->headers != refbuf->associated)
         {
             ret = send_ogg_headers (client, refbuf->associated);
+            if (ret > 0)
+                written += ret;
             if (client_data->headers_sent == 0)
                 break;
-            written += ret;
         }
         ret = client_send_bytes (client, buf, len);
 
@@ -563,21 +580,14 @@ static int write_buf_to_client (client_t *client)
         {
             client->pos += ret;
             client->queue_pos += ret;
+            written += ret;
         }
 
         if (ret < (int)len)
-            break;
-        written += ret;
-        /* we have now written the page(s) */
-        ret = 0;
+            client->schedule_ms += 250;
     } while (0);
 
-    if (ret > 0) /* short write */
-    {
-        client->schedule_ms += 250;
-        written += ret;
-    }
-    return written;
+    return written ? written : -1;
 }
 
 

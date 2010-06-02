@@ -244,7 +244,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
                 if (result->refcount > result->peak)
                 {
                     result->peak = result->refcount;
-                    stats_event_flags (result->finfo.mount, "listener_peak", "%ld", result->peak);
+                    stats_event_args (result->finfo.mount, "listener_peak", "%ld", result->peak);
                 }
             }
             avl_insert (result->clients, client);

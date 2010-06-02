@@ -22,12 +22,12 @@
 
 typedef struct _refbuf_tag
 {
-    unsigned int len;
-    unsigned int _count;
-    char *data;
-    struct _refbuf_tag *associated;
-    struct _refbuf_tag *next;
     unsigned int flags;
+    unsigned int _count;
+    struct _refbuf_tag *next;
+    struct _refbuf_tag *associated;
+    char *data;
+    unsigned int len;
 
 } refbuf_t;
 

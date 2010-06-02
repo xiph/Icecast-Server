@@ -556,7 +556,7 @@ static void add_relay_xmlnode (xmlNodePtr node, relay_server *relay, int from_ma
     char str [50];
 
     xmlNewChild (relaynode, NULL, XMLSTR("localmount"), XMLSTR(relay->localmount));
-    snprintf (str, sizeof (str), "%d", relay->enable);
+    snprintf (str, sizeof (str), "%d", relay->running);
     xmlNewChild (relaynode, NULL, XMLSTR("enable"), XMLSTR(str));
     snprintf (str, sizeof (str), "%d", relay->on_demand);
     xmlNewChild (relaynode, NULL, XMLSTR("on_demand"), XMLSTR(str));
@@ -612,14 +612,8 @@ static void command_manage_relay (client_t *client, int response)
     msg = "no such relay";
     if (relay)
     {
-        relay->enable = atoi (enable);
+        relay->running = atoi (enable) ? 1 : 0;
         msg = "relay has been changed";
-        if (relay->enable == 0)
-        {
-            if (relay->source && source_running (relay->source) == 0)
-                relay->source->flags &= ~SOURCE_ON_DEMAND;
-        }
-        slave_update_all_mounts();
     }
     thread_mutex_unlock (&(config_locks()->relay_lock));
 
@@ -802,6 +796,7 @@ static void command_buildm3u (client_t *client, const char *mount)
     const char *username = NULL;
     const char *password = NULL;
     ice_config_t *config;
+    const char *host = httpp_getvar (client->parser, "host");
 
     if (COMMAND_REQUIRE(client, "username", username) < 0 ||
             COMMAND_REQUIRE(client, "password", password) < 0)
@@ -809,17 +804,29 @@ static void command_buildm3u (client_t *client, const char *mount)
 
     client->respcode = 200;
     config = config_get_config();
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-        "HTTP/1.0 200 OK\r\n"
-        "Content-Type: audio/x-mpegurl\r\n"
-        "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
-        "http://%s:%s@%s:%d%s\r\n",
-        username,
-        password,
-        config->hostname,
-        config->port,
-        mount
-    );
+    if (host)
+    {
+        char port[10] = "";
+        if (strchr (host, ':') == NULL)
+            snprintf (port, sizeof (port), ":%u",  config->port);
+        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: audio/x-mpegurl\r\n"
+                "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
+                "http://%s:%s@%s%s%s\r\n",
+                username, password,
+                host, port, mount);
+    }
+    else
+    {
+        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: audio/x-mpegurl\r\n"
+                "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
+                "http://%s:%s@%s:%d%s\r\n",
+                username, password,
+                config->hostname, config->port, mount);
+    }
     config_release_config();
 
     client->refbuf->len = strlen (client->refbuf->data);

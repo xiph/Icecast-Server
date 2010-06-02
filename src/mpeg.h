@@ -22,13 +22,20 @@ typedef struct mpeg_sync
     char syncbytes;
     int (*process_frame) (struct mpeg_sync *mp, unsigned char *p, int len);
     refbuf_t *surplus;
+    long sample_count;
+    long resync_count;
+    void *callback_key;
+    int (*frame_callback)(struct mpeg_sync *mp, unsigned char *p, unsigned int len);
+    refbuf_t *raw;
+    int raw_offset;
     int ver;
     int layer;
     int samplerate;
     int channels;
+    const char *mount;
 } mpeg_sync;
 
-void mpeg_setup (mpeg_sync *mpsync);
+void mpeg_setup (mpeg_sync *mpsync, const char *mount);
 void mpeg_cleanup (mpeg_sync *mpsync);
 
 int  mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset);

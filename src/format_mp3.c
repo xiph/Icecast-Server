@@ -39,6 +39,7 @@
 #include "logging.h"
 
 #include "format_mp3.h"
+#include "flv.h"
 #include "mpeg.h"
 
 #define CATMODULE "format-mp3"
@@ -55,23 +56,18 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 static int  format_mp3_create_client_data (format_plugin_t *plugin, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int  format_mp3_write_buf_to_client(client_t *client);
+static int  write_mpeg_buf_to_client (client_t *client);
 static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
 static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mount);
 
 
-typedef struct {
-   refbuf_t *associated;
-   unsigned short interval;
-   short metadata_offset;
-   unsigned short since_meta_block;
-} mp3_client_data;
 
 /* client format flags */
 #define CLIENT_IN_METADATA          CLIENT_FORMAT_BIT
 #define CLIENT_USING_BLANK_META     (CLIENT_FORMAT_BIT<<1)
 
-static refbuf_t blank_meta = { 17, 1, "\001StreamTitle='';", NULL, NULL, 0 };
+static refbuf_t blank_meta = { 0, 1, NULL, NULL, "\001StreamTitle='';", 17 };
 
 
 int format_mp3_get_plugin (format_plugin_t *plugin, client_t *client)
@@ -121,7 +117,8 @@ int format_mp3_get_plugin (format_plugin_t *plugin, client_t *client)
         if (plugin->type == FORMAT_TYPE_AAC || plugin->type == FORMAT_TYPE_MPEG)
         {
             client->format_data = malloc (sizeof (mpeg_sync));
-            mpeg_setup (client->format_data);
+            mpeg_setup (client->format_data, plugin->mount);
+            plugin->write_buf_to_client = write_mpeg_buf_to_client;
         }
     }
 
@@ -208,7 +205,7 @@ static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mou
     source_mp3->interval = -1;
     free (format->charset);
     format->charset = NULL;
-    source_mp3->queue_block_size = 1400;
+    source_mp3->queue_block_size = 2900;
 
     if (mount)
     {
@@ -281,17 +278,23 @@ static void mp3_set_title (source_t *source)
     p = refbuf_new (size);
     if (p)
     {
+        refbuf_t *flvmeta = flv_meta_allocate (1000);
         mp3_state *source_mp3 = source->format->_state;
         int r;
         char *title;
 
         memset (p->data, '\0', size);
+        p->associated = flvmeta;
         if (source_mp3->url_artist && source_mp3->url_title)
+        {
             r = snprintf (p->data, size, "%c%s%s - %s';", len_byte, streamtitle,
                     source_mp3->url_artist, source_mp3->url_title);
+            flv_meta_append (flvmeta, "artist", source_mp3->url_artist);
+        }
         else
             r = snprintf (p->data, size, "%c%s%s';", len_byte, streamtitle,
                     source_mp3->url_title);
+        flv_meta_append (flvmeta, "title", source_mp3->url_title);
         if (r > 0)
         {
             if (source_mp3->inline_url)
@@ -303,7 +306,10 @@ static void mp3_set_title (source_t *source)
                     snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->inline_url+11);
             }
             else if (source_mp3->url)
+            {
                 snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
+                flv_meta_append (flvmeta, "URL", source_mp3->url);
+            }
         }
         DEBUG1 ("shoutcast metadata block setup with %s", p->data+1);
         title = filter_shoutcast_metadata (source, p->data, size);
@@ -311,6 +317,7 @@ static void mp3_set_title (source_t *source)
         yp_touch (source->mount);
         free (title);
 
+        flv_meta_append (flvmeta, NULL, NULL);
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
@@ -445,12 +452,10 @@ static int format_mp3_write_buf_to_client (client_t *client)
                 ret = send_stream_metadata (client, refbuf, remaining);
                 if (client->flags & CLIENT_IN_METADATA)
                     break;
-                written += ret;
                 buf += remaining;
                 len -= remaining;
-                /* limit how much mp3 we send if using small intervals */
-                if (len > client_mp3->interval)
-                    len = client_mp3->interval;
+                if (ret <= (int)remaining || len > client_mp3->interval)
+                    break;
             }
         }
         /* write any mp3, maybe after the metadata block */
@@ -477,6 +482,15 @@ static int format_mp3_write_buf_to_client (client_t *client)
         written += ret;
     return written == 0 ? -1 : written;
 }
+
+
+static int write_mpeg_buf_to_client (client_t *client) 
+{
+    if (client->flags & CLIENT_WANTS_FLV)
+        return write_flv_buf_to_client (client);
+    return format_mp3_write_buf_to_client (client);
+}
+
 
 static void format_mp3_free_plugin (format_plugin_t *plugin, client_t *client)
 {
@@ -506,11 +520,8 @@ static void format_mp3_free_plugin (format_plugin_t *plugin, client_t *client)
  */
 static int complete_read (source_t *source)
 {
-    int bytes = 0;
     format_plugin_t *format = source->format;
     mp3_state *source_mp3 = format->_state;
-    char *buf;
-    refbuf_t *refbuf;
     client_t *client = source->client;
 
     if (source_mp3->read_data == NULL)
@@ -518,21 +529,19 @@ static int complete_read (source_t *source)
         source_mp3->read_data = refbuf_new (source_mp3->queue_block_size);
         source_mp3->read_count = 0;
     }
-    buf = source_mp3->read_data->data + source_mp3->read_count;
-    if (source_mp3->read_count < source_mp3->queue_block_size)
+    if (source_mp3->read_count < source_mp3->read_data->len)
     {
-        int read_in = source_mp3->queue_block_size - source_mp3->read_count;
-        bytes = client_read_bytes (client, buf, read_in);
+        char *buf = source_mp3->read_data->data + source_mp3->read_count;
+        int read_in = source_mp3->read_data->len - source_mp3->read_count;
+        int bytes = client_read_bytes (client, buf, read_in);
         if (bytes < 0)
             return 0;
+        //DEBUG2 ("read in %d of %d bytes", bytes, read_in);
         rate_add (format->in_bitrate, bytes, client->worker->current_time.tv_sec);
+        source_mp3->read_count += bytes;
+        format->read_bytes += bytes;
     }
-    source_mp3->read_count += bytes;
-    refbuf = source_mp3->read_data;
-    refbuf->len = source_mp3->read_count;
-    format->read_bytes += bytes;
-
-    if (source_mp3->read_count < source_mp3->queue_block_size)
+    if (source_mp3->read_count < source_mp3->read_data->len)
         return 0;
     return 1;
 }
@@ -557,21 +566,29 @@ static int validate_mpeg (mp3_state *source_mp3, mpeg_sync *mpeg_sync, refbuf_t 
             }
             else
             {
+                if (unprocessed > 8000)
+                    return -1;
                 leftover = refbuf_new (unprocessed);
                 memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
-                leftover->len = unprocessed;
                 mpeg_data_insert (mpeg_sync, leftover); /* will need to merge this after metadata */
                 return 0;
             }
         }
         /* make sure the new block has a minimum of queue_block_size */
-        len = unprocessed > source_mp3->queue_block_size ? unprocessed : source_mp3->queue_block_size;
+        if (unprocessed < source_mp3->queue_block_size)
+            len = source_mp3->queue_block_size;
+        else
+        {
+            if (unprocessed > 8000)
+                return -1;
+            len = unprocessed + 2000;
+        }
         leftover = refbuf_new (len);
         memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
         source_mp3->read_data = leftover;
         source_mp3->read_count = unprocessed;
     }
-    return 0;
+    return refbuf->len ? 0 : -1;
 }
 
 
@@ -699,14 +716,18 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             {
                 char *title = filter_shoutcast_metadata (source,
                         source_mp3->build_metadata, source_mp3->build_metadata_len);
+                refbuf_t *flvmeta = flv_meta_allocate (strlen(title)+20);
                 logging_playlist (source->mount, title, source->listeners);
                 stats_event_conv (source->mount, "title", title, source->format->charset);
+                flv_meta_append (flvmeta, "title", title);
                 stats_event_time (source->mount, "metadata_updated");
                 yp_touch (source->mount);
                 free (title);
+                source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");
+                flv_meta_append (flvmeta, NULL, NULL);
+                meta->associated = flvmeta;
                 refbuf_release (source_mp3->metadata);
                 source_mp3->metadata = meta;
-                source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");
             }
             else
             {
@@ -756,6 +777,17 @@ static int format_mp3_create_client_data (format_plugin_t *plugin, client_t *cli
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
     client->refbuf->len = 0;
+
+    if (client->flags & CLIENT_WANTS_FLV)
+    {
+        flv_create_client_data (plugin, client); // special case
+        return 0;
+    }
+    if (plugin->type == FORMAT_TYPE_AAC || plugin->type == FORMAT_TYPE_MPEG)
+    {
+        client_mp3->specific = calloc (1, sizeof(mpeg_sync));
+        mpeg_setup (client_mp3->specific, plugin->mount);
+    }
 
     if (format_general_headers (plugin, client) < 0)
         return -1;
@@ -812,6 +844,11 @@ static void free_mp3_client_data (client_t *client)
 {
     mp3_client_data *client_mp3 = client->format_data;
 
+    if (client->flags & CLIENT_WANTS_FLV)
+        free_flv_client_data (client_mp3->specific);
+    else
+        mpeg_cleanup (client_mp3->specific);
+    free (client_mp3->specific);
     refbuf_release (client_mp3->associated);
     free (client->format_data);
     client->format_data = NULL;

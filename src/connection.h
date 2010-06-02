@@ -58,7 +58,7 @@ void connection_thread_shutdown();
 int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
 int  connection_init (connection_t *con, sock_t sock, const char *addr);
-int  connection_complete_source (struct source_tag *source, http_parser_t *parser);
+int  connection_complete_source (struct source_tag *source);
 void connection_uses_ssl (connection_t *con);
 void connection_add_banned_ip (const char *ip, int duration);
 void connection_stats (void);

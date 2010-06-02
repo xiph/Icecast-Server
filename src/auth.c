@@ -385,6 +385,7 @@ int move_listener (client_t *client, struct _fbinfo *finfo)
         {
             avl_tree_unlock (global.source_tree);
             source_setup_listener (source, client);
+            client->flags |= CLIENT_HAS_MOVED;
             thread_mutex_unlock (&source->lock);
             return 0;
         }

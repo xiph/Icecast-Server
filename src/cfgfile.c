@@ -915,12 +915,12 @@ static int _parse_relay (xmlNodePtr node, void *arg)
                             config_get_bool,    &relay->mp3metadata },
         { "username",       config_get_str,     &relay->username },
         { "password",       config_get_str,     &relay->password },
-        { "enable",         config_get_bool,    &relay->enable },
+        { "enable",         config_get_bool,    &relay->running },
         { NULL, NULL, NULL },
     };
 
     relay->mp3metadata = 1;
-    relay->enable = 1;
+    relay->running = 1;
     relay->interval = config->master_update_interval;
     relay->on_demand = config->on_demand;
     relay->masters = master;

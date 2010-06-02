@@ -879,6 +879,7 @@ static int send_listener (source_t *source, client_t *client)
             if (client->refbuf && (client->refbuf->flags & SOURCE_QUEUE_BLOCK))
                 client_set_queue (client, NULL);
             client->ops = &listener_pause_ops;
+            client->flags |= CLIENT_HAS_MOVED;
             client->schedule_ms = client->worker->time_ms + 100;
             return 0;
         }
@@ -1010,6 +1011,7 @@ void source_init (source_t *source)
     source->client_stats_update = source->last_read + 3;
     source->skip_duration = 80;
 
+    util_dict_free (source->audio_info);
     source->audio_info = util_dict_new();
     if (source->client)
     {
@@ -1897,14 +1899,15 @@ int source_startup (client_t *client, const char *uri)
         stats_event_args (NULL, "sources", "%d", global.sources);
         global_unlock();
         thread_mutex_lock (&source->lock);
-        if (connection_complete_source (source, client->parser) < 0)
+        source->client = client;
+        if (connection_complete_source (source) < 0)
         {
+            source->client = NULL;
             client_send_403 (client, "content type not supported");
             thread_mutex_unlock (&source->lock);
             source_free_source (source);
             return 0;
         }
-        source->client = client;
         source->parser = client->parser;
         client->respcode = 200;
         client->shared_data = source;

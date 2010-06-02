@@ -188,7 +188,6 @@ typedef struct _relay_server
     int on_demand;
     int running;
     int cleanup;
-    int enable;
     time_t start;
     struct _relay_server *next;
 } relay_server;

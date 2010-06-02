@@ -162,10 +162,10 @@ relay_server *relay_copy (relay_server *r)
         copy->mp3metadata = r->mp3metadata;
         copy->on_demand = r->on_demand;
         copy->interval = r->interval;
-        copy->enable = r->enable;
         copy->source = r->source;
+        copy->running = 1;
         r->source = NULL;
-        DEBUG1 ("copy relay at %p", copy);
+        DEBUG2 ("copy relay %s at %p", copy->localmount, copy);
     }
     return copy;
 }
@@ -386,7 +386,7 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
         thread_mutex_unlock (&client->worker->lock);
         streamsock = sock_connect_wto_bind (server, port, bind, timeout);
         free (bind);
-        if (streamsock == SOCK_ERROR || connection_init (con, streamsock, server) < 0)
+        if (connection_init (con, streamsock, server) < 0)
         {
             WARN2 ("Failed to connect to %s:%d", server, port);
             thread_mutex_lock (&client->worker->lock);
@@ -463,7 +463,6 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
     free (server);
     free (mount);
     free (auth_header);
-    connection_close (con);
     if (parser)
         httpp_destroy (parser);
     return -1;
@@ -486,13 +485,15 @@ int open_relay (relay_server *relay)
         ret = open_relay_connection (client, relay, master);
         thread_mutex_lock (&src->lock);
 
-        if (relay != client->shared_data) // relay data changed, retry with new data
-            return open_relay (client->shared_data);
+        if (relay != client->shared_data)
+        {
+            relay = client->shared_data; // relay data may of changed
+            master = relay->masters;
+        }
         if (ret < 0)
             continue;
-        source_clear_source (src); // clear any old data
 
-        if (connection_complete_source (src, client->parser) < 0)
+        if (connection_complete_source (src) < 0)
         {
             WARN1 ("Failed to complete initialisation on %s", relay->localmount);
             continue;
@@ -541,14 +542,15 @@ static void *start_relay_stream (void *arg)
     } while (0);
 
     relay = client->shared_data; // relay may of changed during open_relay
-    relay->running = 1;
     client->ops = &relay_client_ops;
     client->schedule_ms = timing_get_time();
 
     if (failed)
     {
         /* failed to start, better clean up and reset */
-        if (relay->on_demand == 0)
+        if (relay->on_demand)
+            src->flags &= ~SOURCE_ON_DEMAND;
+        else
             yp_remove (relay->localmount);
 
         INFO2 ("listener count remaining on %s is %d", src->mount, src->listeners);
@@ -889,7 +891,7 @@ static size_t streamlist_data (void *ptr, size_t size, size_t nmemb, void *strea
             r->mp3metadata = 1;
             r->on_demand = master->on_demand;
             r->interval = master->max_interval;
-            r->enable = 1;
+            r->running = 1;
             if (master->send_auth)
             {
                 r->username = (char *)xmlStrdup (XMLSTR(master->username));
@@ -915,7 +917,7 @@ static void *streamlist_thread (void *arg)
     struct master_conn_details *master = arg;
     CURL *handle;
     const char *protocol = "http";
-    int port = master->port;
+    int port = master->port, have_new_list = 1;
     relay_server *cleanup_relays;
     char error [CURL_ERROR_SIZE];
     char url [1024], auth [100];
@@ -951,16 +953,22 @@ static void *streamlist_thread (void *arg)
                 protocol, master->server, port, master->args);
         curl_easy_setopt (handle, CURLOPT_URL, url);
         if (curl_easy_perform (handle) != 0)
+        {
             WARN2 ("Failed URL access \"%s\" (%s)", url, error);
+            have_new_list = 0;
+        }
     }
-    /* merge retrieved relays */
-    thread_mutex_lock (&(config_locks()->relay_lock));
-    cleanup_relays = update_relays (&global.master_relays, master->new_relays);
+    if (have_new_list)
+    {
+        /* merge retrieved relays */
+        thread_mutex_lock (&(config_locks()->relay_lock));
+        cleanup_relays = update_relays (&global.master_relays, master->new_relays);
 
-    relay_check_streams (global.master_relays, cleanup_relays, 1);
+        relay_check_streams (global.master_relays, cleanup_relays, 1);
+
+        thread_mutex_unlock (&(config_locks()->relay_lock));
+    }
     relay_check_streams (NULL, master->new_relays, 0);
-
-    thread_mutex_unlock (&(config_locks()->relay_lock));
 
     curl_easy_cleanup (handle);
     free (master->server);
@@ -1249,7 +1257,7 @@ static int relay_read (client_t *client)
     thread_mutex_lock (&source->lock);
     if (source_running (source))
     {
-        if (relay->enable == 0 || relay->cleanup)
+        if (relay->cleanup)
             source->flags &= ~SOURCE_RUNNING;
         if (relay->on_demand && source->listeners == 0)
             source->flags &= ~SOURCE_RUNNING;
@@ -1258,10 +1266,24 @@ static int relay_read (client_t *client)
     if ((source->flags & SOURCE_TERMINATING) == 0)
     {
         int fallback = 1;
-        if (relay->running && relay->enable && client->connection.con_time)
-            fallback = 0;
+        if (client->connection.con_time)
+        {
+            if (relay->running)
+                fallback = 0;
+            global_lock();
+            global.sources--;
+            stats_event_args (NULL, "sources", "%d", global.sources);
+            global_unlock();
+            global_reduce_bitrate_sampling (global.out_bitrate);
+            if (client->worker->current_time.tv_sec - client->connection.con_time < 300)
+            {
+                INFO1 ("relay %s terminated quickly, will restart in 60s", relay->localmount);
+                relay->start = client->worker->current_time.tv_sec + 60;
+            }
+            connection_close (&client->connection);
+        }
         /* don't pause listeners if relay shutting down */
-        if (relay->running == 0 || relay->enable == 0)
+        if (relay->running == 0)
             source->flags &= ~SOURCE_PAUSE_LISTENERS;
         // fallback listeners unless relay is to be retried
         source_shutdown (source, fallback);
@@ -1276,10 +1298,9 @@ static int relay_read (client_t *client)
     }
     DEBUG1 ("all listeners have now been checked on %s", relay->localmount);
     source->flags &= ~SOURCE_TERMINATING;
-    if (relay->running && relay->enable)
+    if (relay->running)
     {
         INFO1 ("standing by to restart relay on %s", relay->localmount);
-        connection_close (&client->connection);
         thread_mutex_unlock (&source->lock);
         ret = 0;
     }
@@ -1292,23 +1313,12 @@ static int relay_read (client_t *client)
             return 0; /* listeners may be paused, recheck and let them leave this stream */
         }
         INFO1 ("shutting down relay %s", relay->localmount);
-        if (relay->enable == 0)
-        {
-            source_clear_source (source);
-            relay->running = 0;
-            ret = 0;
-        }
         source_clear_listeners (source);
         thread_mutex_unlock (&source->lock);
         stats_event (relay->localmount, NULL, NULL); // needed???
         slave_update_all_mounts();
     }
     client->ops = &relay_startup_ops;
-    global_lock();
-    global.sources--;
-    stats_event_args (NULL, "sources", "%d", global.sources);
-    global_unlock();
-    global_reduce_bitrate_sampling (global.out_bitrate);
     return ret;
 }
 
@@ -1327,15 +1337,14 @@ static int relay_startup (client_t *client)
 
     if (relay->cleanup)
     {
-        source_t *source = relay->source;
-        thread_mutex_lock (&source->lock);
-        source_clear_listeners (source);
-        thread_mutex_unlock (&source->lock);
-        return -1;
+        /* listeners may be still on, do a recheck */
+        relay->running = 0;
+        client->ops = &relay_client_ops;
+        return 0;
     }
     if (global.running != ICE_RUNNING)
         return 0; /* wait for cleanup */
-    if (relay->enable == 0 || relay->start > client->worker->current_time.tv_sec)
+    if (relay->running == 0 || relay->start > client->worker->current_time.tv_sec)
     {
         client->schedule_ms = client->worker->time_ms + 1000;
         return 0;
@@ -1373,7 +1382,7 @@ static int relay_startup (client_t *client)
             client->schedule_ms = client->worker->time_ms + 1000;
             return 0;
         }
-        DEBUG1 ("Detected listeners on relay %s", relay->localmount);
+        INFO1 ("Detected listeners on relay %s", relay->localmount);
     }
 
     /* limit the number of relays starting up at the same time */

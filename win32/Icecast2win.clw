@@ -27,14 +27,14 @@ Resource8=IDR_MENU3
 Resource9=IDD_ABOUTBOX
 Resource10=IDR_MENU4
 Resource11=IDR_TRAY (English (U.S.))
-Resource12=IDD_ABOUTBOX (English (U.S.))
+Resource12=IDR_MENU4 (English (U.S.))
 Resource13=IDD_ICECAST2WIN_DIALOG (English (U.S.))
 Resource14=IDD_SSTATUS (English (U.S.))
 Resource15=IDD_CONFIGDIALOG (English (U.S.))
 Resource16=IDD_STATSDIALOG (English (U.S.))
 Resource17=IDR_MENU2 (English (U.S.))
 Resource18=IDR_MENU3 (English (U.S.))
-Resource19=IDR_MENU4 (English (U.S.))
+Resource19=IDD_ABOUTBOX (English (U.S.))
 
 [CLS:CIcecast2winApp]
 Type=0

@@ -20,6 +20,17 @@
 
 #include "format.h"
 
+#define CLIENT_WANTS_FLV            (CLIENT_FORMAT_BIT<<20)
+
+typedef struct {
+    refbuf_t *associated;
+    unsigned short interval;
+    short metadata_offset;
+    unsigned short since_meta_block;
+    void         *specific;
+} mp3_client_data;
+
+
 typedef struct {
     /* These are for inline metadata */
     int inline_metadata_interval;

@@ -499,11 +499,11 @@ int connection_init (connection_t *con, sock_t sock, const char *addr)
         socklen_t slen = sizeof (sa);
 
         con->con_time = time(NULL);
-        con->id = _next_connection_id();
-        con->discon_time = con->con_time + header_timeout;
         con->sock = sock;
         if (sock == SOCK_ERROR)
-            return 0;
+            return -1;
+        con->id = _next_connection_id();
+        con->discon_time = con->con_time + header_timeout;
         if (addr)
         {
             con->ip = strdup (addr);
@@ -1018,10 +1018,10 @@ void connection_thread_shutdown ()
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, http_parser_t *parser)
+int connection_complete_source (source_t *source)
 {
     client_t *client = source->client;
-    const char *contenttype = httpp_getvar (parser, "content-type");
+    const char *contenttype = httpp_getvar (client->parser, "content-type");
     mount_proxy *mountinfo;
     format_type_t format_type;
     ice_config_t *config;
@@ -1044,9 +1044,9 @@ int connection_complete_source (source_t *source, http_parser_t *parser)
         format_type = FORMAT_TYPE_GENERIC;
     }
 
+    format_plugin_clear (source->format, client);
     source->format->type = format_type;
     source->format->mount = source->mount;
-    source->format->parser = parser;
     if (format_get_plugin (source->format, client) < 0)
     {
         WARN1 ("plugin format failed for \"%s\"", source->mount);
@@ -1245,11 +1245,20 @@ static void check_for_filtering (ice_config_t *config, client_t *client, char *u
 {
     char *pattern = config->access_log.exclude_ext;
     char *extension = strrchr (uri, '.');
+    const char *type = httpp_get_query_param (client->parser, "type");
 
-    if (extension == NULL || pattern == NULL)
+    if ((extension && strcmp (extension+1, "flv") == 0) || 
+        (type && strcmp (type, ".flv") == 0))
+    {
+        client->flags |= CLIENT_WANTS_FLV;
+        DEBUG0 ("listener has flv extension so flag it for special handling");
+    }
+    if (extension == NULL || uri == NULL)
         return;
 
     extension++;
+    if (pattern == NULL)
+        return;
     while (*pattern)
     {
         int len = strcspn (pattern, " ");

@@ -130,6 +130,10 @@ SOURCE=..\src\event.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\flv.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\fnmatch.c
 
 !IF  "$(CFG)" == "icecast - Win32 Release"
@@ -308,6 +312,10 @@ SOURCE=..\src\event.h
 # Begin Source File
 
 SOURCE=.\fnmatch.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\flv.h
 # End Source File
 # Begin Source File
 

@@ -85,6 +85,7 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "httpp/httpp.h"
+#include "mpeg.h"
 
 #include "logging.h"
 #define CATMODULE "auth_url"
@@ -116,6 +117,8 @@ typedef struct {
 
 struct build_intro_contents
 {
+    format_type_t type;
+    mpeg_sync sync;
     refbuf_t *head, **tailp;
 };
 
@@ -230,6 +233,17 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
                 auth_user->mount = mount;
             }
         }
+        if (strncasecmp (ptr, "content-type: ", 14) == 0)
+        {
+            format_type_t type = format_get_type ((char*)ptr+14);
+
+            if (client->refbuf && (type == FORMAT_TYPE_AAC || type == FORMAT_TYPE_MPEG))
+            {
+                struct build_intro_contents *x = (void*)client->refbuf->data;
+                x->type = type;
+                mpeg_setup (&x->sync, httpp_getvar (client->parser, HTTPP_VAR_URI));
+            }
+        }
     }
 
     return (int)bytes;
@@ -251,6 +265,24 @@ static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *str
 
         n = refbuf_new (bytes);
         memcpy (n->data, ptr, bytes);
+        if (x->type)
+        {
+            int unprocessed = mpeg_complete_frames (&x->sync, n, 0);
+            if (unprocessed < 0)
+            {
+                mpeg_data_insert (&x->sync, n); /* maybe short read, less than frame */
+                return (int)(bytes);
+            }
+            if (unprocessed > 0)
+            {
+                refbuf_t *next = refbuf_new (unprocessed);
+                memcpy (next->data, n->data + n->len, unprocessed);
+                next->len = unprocessed;
+                mpeg_data_insert (&x->sync, next);
+            }
+            if (n->data[0] != (char)0xFF)
+                WARN0 ("unexpected, no frame marker for buffer");
+        }
         *x->tailp = n;
         x->tailp = &n->next;
     }
@@ -421,6 +453,7 @@ static auth_result url_add_listener (auth_client *auth_user)
     atd->errormsg[0] = '\0';
     /* setup in case intro data is returned */
     x = (void *)client->refbuf->data;
+    x->type = 0;
     x->head = NULL;
     x->tailp = &x->head;
 
@@ -463,6 +496,8 @@ static auth_result url_add_listener (auth_client *auth_user)
         n->next = NULL;
         refbuf_release (n);
     }
+    if (x->type)
+        mpeg_cleanup (&x->sync);
     auth_user->client = NULL;
     if (atoi (atd->errormsg) == 403)
         client_send_403 (client, atd->errormsg+4);
