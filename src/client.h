@@ -31,11 +31,14 @@ typedef struct _worker_t worker_t;
 struct _worker_t
 {
     int running;
-    int count;
-    mutex_t lock;
-    cond_t cond;
-    client_t *clients;
-    client_t **current_p, **last_p;
+    int count, pending_count;
+    spin_t lock;
+    int wakeup_fd[2];
+
+    client_t *pending_clients;
+    client_t **pending_clients_tail,
+             *clients;
+    client_t **last_p;
     thread_type *thread;
     struct timespec current_time;
     uint64_t time_ms;
@@ -134,6 +137,7 @@ int  client_change_worker (client_t *client, worker_t *dest_worker);
 void client_add_worker (client_t *client);
 worker_t *find_least_busy_handler (void);
 void workers_adjust (int new_count);
+void worker_wakeup (worker_t *worker);
 
 
 /* client flags bitmask */

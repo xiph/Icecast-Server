@@ -692,11 +692,11 @@ static int _parse_logging (xmlNodePtr node, void *arg)
         if (config->access_log.size == 0)
             config->access_log.size = old_trigger_size;
     }
-    if (old_archive > 0)
+    if (old_archive > -1)
     {
-        if (config->error_log.archive == 0)
+        if (config->error_log.archive == -1)
             config->error_log.archive = old_archive;
-        if (config->access_log.archive == 0)
+        if (config->access_log.archive == -1)
             config->access_log.archive = old_archive;
     }
     return 0;

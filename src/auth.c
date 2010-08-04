@@ -351,9 +351,7 @@ static void *auth_run_thread (void *arg)
                 if (worker)
                 {
                     /* wakeup worker for new client */
-                    thread_mutex_lock (&worker->lock);
-                    thread_cond_signal (&worker->cond);
-                    thread_mutex_unlock (&worker->lock);
+                    worker_wakeup (worker);
                 }
             }
 

@@ -16,6 +16,27 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh25
+. FLV clients could skip frames on a truncated write, leading to playback problems.
+. various client scheduling tunings, allows quicker reschedule when only some data
+  was written. This seems to affect win32 more than others, especially with burst
+. fix shoutcast-inline metadata bug involving a URL
+. per listener mpeg checking only verifies 1 frame as queue is already checked
+. set non-ogg intial blocksize to 1400 again, now that blocks can be more flexible
+  in size
+. filter out multiple / in requests
+. the 2.3 log archive setting wasn't handled correctly.
+. certain relay configuration (multiple addresses) could leak a file descriptor
+  on failure.
+. possible NULL pointer crash in metadata update.
+. possible sources count not decreased if relay fails.
+. fix for possible relay change restart
+. worker lock changes, now we only take the lock when adding clients. This reduces
+  some lock order complexity when moving clients around and means that no locking
+  is done for most of the time.
+. relay changes are tagged and changed by the client functions.
+. compile cleanups
+
 2.3.2-kh24
 . Allow for per-listener wrapping of existing mp3/aac streams when requested with
   a type=.flv as a query arg. The actual trigger could be anything we want but this

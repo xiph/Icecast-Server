@@ -533,7 +533,7 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
         }
         if (ret < (int)len)
         {
-            client->schedule_ms += 250;
+            client->schedule_ms += 50;
             return written ? written : -1;
         }
         if (client_data->pos == refbuf->len)
@@ -584,7 +584,7 @@ static int write_buf_to_client (client_t *client)
         }
 
         if (ret < (int)len)
-            client->schedule_ms += 250;
+            client->schedule_ms += 50;
     } while (0);
 
     return written ? written : -1;

@@ -878,7 +878,6 @@ static int http_client_request (client_t *client)
                     ERROR0("Bad HTTP protocol detected");
                     return -1;
                 }
-                client->schedule_ms = client->worker->time_ms + 20;
                 auth_check_http (client);
                 switch (client->parser->req_type)
                 {
@@ -897,8 +896,9 @@ static int http_client_request (client_t *client)
                     default:
                         WARN0("unhandled request type from client");
                         client_send_400 (client, "unknown request");
+                        return 0;
                 }
-                return 0;
+                return client->ops->process(client);
             }
             /* invalid http request */
             return -1;

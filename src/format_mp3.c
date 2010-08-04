@@ -205,7 +205,7 @@ static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mou
     source_mp3->interval = -1;
     free (format->charset);
     format->charset = NULL;
-    source_mp3->queue_block_size = 2900;
+    source_mp3->queue_block_size = 1400;
 
     if (mount)
     {
@@ -259,7 +259,7 @@ static void mp3_set_title (source_t *source)
     {
         char *end = strstr (source_mp3->inline_url, "';");
         if (end)
-            len += end - source_mp3->inline_url+2;
+            len += end - source_mp3->inline_url + strlen (streamurl) + 2;
     }
     else if (source_mp3->url)
         len += strlen (source_mp3->url) + strlen (streamurl) + 2;
@@ -300,10 +300,13 @@ static void mp3_set_title (source_t *source)
             if (source_mp3->inline_url)
             {
                 char *end = strstr (source_mp3->inline_url, "';");
-                int urllen = size;
-                if (end) urllen = end - source_mp3->inline_url + 2;
-                if (size-r > urllen)
-                    snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->inline_url+11);
+                if (end)
+                {
+                    int urllen = end - source_mp3->inline_url;
+                    int len = urllen + strlen("StreamUrl='") + 3;
+                    if (size-r > len);
+                        snprintf (p->data+r, len, "StreamUrl='%.*s';", urllen, source_mp3->inline_url);
+                }
             }
             else if (source_mp3->url)
             {
@@ -384,14 +387,14 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
             {
                 client_mp3->metadata_offset += (ret - remaining);
                 client->flags |= CLIENT_IN_METADATA;
-                client->schedule_ms += 300;
+                client->schedule_ms += 200;
             }
             client_mp3->since_meta_block = 0;
             client->pos += remaining;
             client->queue_pos += remaining;
             return ret;
         }
-        client->schedule_ms += 300;
+        client->schedule_ms += 200;
         if (ret > 0)
         {
             client_mp3->since_meta_block += ret;
@@ -411,7 +414,7 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
     }
     if (ret > 0)
         client_mp3->metadata_offset += ret;
-    client->schedule_ms += 300;
+    client->schedule_ms += 200;
     client->flags |= CLIENT_IN_METADATA;
 
     return ret > 0 ? ret : 0;
@@ -427,7 +430,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
     mp3_client_data *client_mp3 = client->format_data;
     refbuf_t *refbuf = client->refbuf;
     char *buf = refbuf->data + client->pos;
-    size_t len = refbuf->len - client->pos;
+    unsigned int len = refbuf->len - client->pos;
 
     do
     {
@@ -477,7 +480,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
     } while (0);
 
     if (ret < 0)
-        client->schedule_ms += 250;
+        client->schedule_ms += (written ? 25 : 50);
     if (ret > 0)
         written += ret;
     return written == 0 ? -1 : written;
@@ -724,6 +727,8 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
                 yp_touch (source->mount);
                 free (title);
                 source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");
+                if (source_mp3->inline_url)
+                    source_mp3->inline_url += 11;
                 flv_meta_append (flvmeta, NULL, NULL);
                 meta->associated = flvmeta;
                 refbuf_release (source_mp3->metadata);
@@ -787,6 +792,7 @@ static int format_mp3_create_client_data (format_plugin_t *plugin, client_t *cli
     {
         client_mp3->specific = calloc (1, sizeof(mpeg_sync));
         mpeg_setup (client_mp3->specific, plugin->mount);
+        mpeg_check_numframes (client_mp3->specific, 1);
     }
 
     if (format_general_headers (plugin, client) < 0)

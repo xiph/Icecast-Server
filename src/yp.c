@@ -82,6 +82,7 @@ typedef struct ypdata_tag
 
 static rwlock_t yp_lock;
 static mutex_t yp_pending_lock;
+int yp_initialised;
 
 static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
@@ -243,7 +244,7 @@ static void yp_client_add (ice_config_t *config)
     ypclient.counter = 0;
     ypclient.schedule_ms = 0;
     ypclient.connection.error = 0;
-    ypclient.flags = CLIENT_ACTIVE;
+    ypclient.flags = CLIENT_ACTIVE|CLIENT_SKIP_ACCESSLOG;
     client_add_worker (&ypclient);
 }
 
@@ -333,6 +334,7 @@ void yp_initialize (ice_config_t *config)
     thread_rwlock_create (&yp_lock);
     thread_mutex_create (&yp_pending_lock);
     yp_recheck_config (config);
+    yp_initialised = 1;
 }
 
 
@@ -803,11 +805,8 @@ static void *yp_update_thread(void *arg)
     yp_thread = NULL;
     /* DEBUG0("YP thread shutdown"); */
 
-    thread_mutex_lock (&ypclient.worker->lock);
     ypclient.flags |= CLIENT_ACTIVE;
-    DEBUG1 ("wakeup again in %lu secs", ypclient.counter - time(NULL));
-    thread_cond_signal (&ypclient.worker->cond);
-    thread_mutex_unlock (&ypclient.worker->lock);
+    worker_wakeup (ypclient.worker);
 
     return NULL;
 }
@@ -1029,6 +1028,8 @@ void yp_touch (const char *mount)
 void yp_shutdown (void)
 {
     DEBUG0 ("releasing directory details");
+    if (yp_initialised == 0)
+        return;
     thread_rwlock_destroy (&yp_lock);
     thread_mutex_destroy (&yp_pending_lock);
 
@@ -1042,6 +1043,7 @@ void yp_shutdown (void)
     free ((char*)server_version);
     server_version = NULL;
     active_yps = NULL;
+    yp_initialised = 0;
     INFO0 ("YP cleanup complete");
 }
 
@@ -1051,11 +1053,9 @@ void yp_stop (void)
     worker_t *w = ypclient.worker;
     if (w)
     {
-        thread_mutex_lock (&w->lock);
         ypclient.connection.error = 1;
         ypclient.schedule_ms = 0;
-        thread_cond_signal (&w->cond);
-        thread_mutex_unlock (&w->lock);
+        worker_wakeup(w);
         DEBUG0 ("YP client is now stopped");
     }
 }

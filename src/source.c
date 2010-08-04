@@ -427,8 +427,7 @@ int source_read (source_t *source)
 {
     client_t *client = source->client;
     refbuf_t *refbuf = NULL;
-    int skip = 1;
-    int loop = 3;
+    int skip = 1, loop = 3;
     time_t current = client->worker->current_time.tv_sec;
     int fds = 0;
 
@@ -471,7 +470,7 @@ int source_read (source_t *source)
             {
                 rate_add (source->format->in_bitrate, 0, current);
                 source->skip_duration += 300;
-                client->schedule_ms = client->worker->time_ms + 150;
+                client->schedule_ms += 150;
                 thread_mutex_unlock (&source->lock);
                 return 0;
             }
@@ -497,16 +496,15 @@ int source_read (source_t *source)
                 skip = 0;
                 break;
             }
-            source->skip_duration = (long)(source->skip_duration * 1.8);
+            source->skip_duration = (int)(source->skip_duration * 1.6);
             if (source->skip_duration > 700)
                 source->skip_duration = 700;
             break;
         }
         source->skip_duration = (long)(source->skip_duration * 0.9);
-        if (source->skip_duration < 5)
+        if (source->skip_duration < 5) /* not too low or else it will not be able to increase */
             source->skip_duration = 5;
 
-        skip = 0;
         source->last_read = current;
         do
         {
@@ -555,20 +553,20 @@ int source_read (source_t *source)
                 /* save stream to file */
                 if (source->dumpfile && source->format->write_buf_to_file)
                     source->format->write_buf_to_file (source, refbuf);
-                client->schedule_ms = client->worker->time_ms + 5;
+                skip = 0;
             }
             else
             {
-                skip = 1;
                 if (client->connection.error)
                 {
                     INFO1 ("End of Stream %s", source->mount);
                     source->flags &= ~SOURCE_RUNNING;
+                    skip = 0;
                 }
                 break;
             }
             loop--;
-        } while (0);
+        } while (loop);
 
         /* lets see if we have too much data in the queue */
         while (source->queue_size > source->queue_size_limit ||
@@ -585,7 +583,9 @@ int source_read (source_t *source)
     } while (0);
 
     if (skip)
-        client->schedule_ms = client->worker->time_ms + source->skip_duration;
+        client->schedule_ms += (source->skip_duration | 0xF);
+    else
+        client->schedule_ms += 15;
     thread_mutex_unlock (&source->lock);
     return 0;
 }
@@ -614,7 +614,7 @@ static int source_client_read (client_t *client)
         if (source->termination_count && source->termination_count <= source->listeners)
         {
             DEBUG3 ("%s waiting (%lu, %lu)", source->mount, source->termination_count, source->listeners);
-            client->schedule_ms = client->worker->time_ms + 200;
+            client->schedule_ms = client->worker->time_ms + 100;
         }
         else
         {
@@ -637,7 +637,7 @@ static int source_queue_advance (client_t *client)
 
     if (client->refbuf == NULL && locate_start_on_queue (source, client) < 0)
     {
-        client->schedule_ms += 200;
+        client->schedule_ms += 150;
         return -1;
     }
     refbuf = client->refbuf;
@@ -647,7 +647,7 @@ static int source_queue_advance (client_t *client)
     {
         if (refbuf->next == NULL)
         {
-            client->schedule_ms = source->client->schedule_ms + 20;
+            client->schedule_ms = source->client->schedule_ms + 5;
             return -1;
         }
         client_set_queue (client, refbuf->next);
@@ -670,8 +670,8 @@ static int locate_start_on_queue (source_t *source, client_t *client)
     refbuf = source->stream_data_tail;
     if (client->intro_offset == -1 && (refbuf->flags & SOURCE_BLOCK_SYNC))
     {
-        pos = refbuf->len;
-        lag = 0;
+        pos = 0;
+        lag = refbuf->len;
     }
     else
     {
@@ -719,16 +719,14 @@ static int http_source_intro (client_t *client)
     }
     if (format_file_read (client, source->intro_file) < 0)
     {
-        client->schedule_ms = client->worker->time_ms + 1000;
         if (source->stream_data_tail)
         {
             /* better find the right place in queue for this client */
             client_set_queue (client, NULL);
             client->check_buffer = source_queue_advance;
-            if (client->connection.sent_bytes == 0) // no intro
-                client->schedule_ms = client->worker->time_ms;
-            return 0;
+            return source_queue_advance (client);
         }
+        client->schedule_ms += 100;
         client->intro_offset = 0;  /* replay intro file */
         return -1;
     }
@@ -740,14 +738,18 @@ static int http_source_listener (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     source_t *source = client->shared_data;
+    int ret;
 
     if (refbuf == NULL)
     {
         client->check_buffer = http_source_intro;
-        return -1;
+        return http_source_intro (client);
     }
     if (source->queue_size == 0)
+    {
+        client->schedule_ms += 500;
         return -1;  /* postpone processing until data on queue */
+    }
 
     if (client->respcode == 0)
     {
@@ -755,8 +757,8 @@ static int http_source_listener (client_t *client)
 
         if (source_running (source) == 0)
         {
-            client->schedule_ms = client->worker->time_ms + 200;
-            return 0;
+            client->schedule_ms += 200;
+            return -1;
         }
         if (source->format->create_client_data)
             build_headers = source->format->create_client_data;
@@ -769,6 +771,7 @@ static int http_source_listener (client_t *client)
         }
         stats_event_inc (source->mount, "listener_connections");
     }
+    ret = format_generic_write_to_client (client);
     if (client->pos == refbuf->len)
     {
         client->check_buffer = http_source_intro;
@@ -783,9 +786,10 @@ static int http_source_listener (client_t *client)
         else
             client->pos = refbuf->len = 4096;
         client->connection.sent_bytes = 0;
-        return 0;
+        return ret;
     }
-    return format_generic_write_to_client (client);
+    client->schedule_ms += 200;
+    return ret;
 }
 
 
@@ -847,7 +851,7 @@ static int send_to_listener (client_t *client)
 static int send_listener (source_t *source, client_t *client)
 {
     int bytes;
-    int loop = 6;   /* max number of iterations in one go */
+    int loop = 10;   /* max number of iterations in one go */
     long total_written = 0;
     int ret = 0;
 
@@ -863,10 +867,7 @@ static int send_listener (source_t *source, client_t *client)
         move_failed = move_listener (client, &source->fallback);
         thread_mutex_lock (&source->lock);
         if (move_failed)
-        {
             source_setup_listener (source, client);
-            client->schedule_ms = client->worker->time_ms + 50;
-        }
         source->termination_count--;
         return 0;
     }
@@ -880,7 +881,7 @@ static int send_listener (source_t *source, client_t *client)
                 client_set_queue (client, NULL);
             client->ops = &listener_pause_ops;
             client->flags |= CLIENT_HAS_MOVED;
-            client->schedule_ms = client->worker->time_ms + 100;
+            client->schedule_ms = client->worker->time_ms + 60;
             return 0;
         }
         return -1;
@@ -894,7 +895,8 @@ static int send_listener (source_t *source, client_t *client)
     }
     if (source_running (source) == 0)
     {
-        client->schedule_ms = client->worker->time_ms + 200;
+        DEBUG0 ("source not running, listener will wait 200ms");
+        client->schedule_ms += 200;
         return 0;
     }
 
@@ -907,7 +909,6 @@ static int send_listener (source_t *source, client_t *client)
             return 1;
 
     /* progessive slowdown if nearing max bandwidth.  */
-    client->schedule_ms = client->worker->time_ms;
     if (global.max_rate)
     {
         if (throttle_sends > 2) /* exceeded limit, skip 30ms */
@@ -939,20 +940,14 @@ static int send_listener (source_t *source, client_t *client)
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
         if (total_written > source->listener_send_trigger)
-        {
-            client->schedule_ms = client->worker->time_ms;
             break;
-        }
         bytes = client->check_buffer (client);
         if (bytes < 0)
             break;  /* can't write any more */
 
-        client->schedule_ms += 40;
         total_written += bytes;
         loop--;
     }
-    if (loop == 0)
-        client->schedule_ms -= 190;
     rate_add (source->format->out_bitrate, total_written, client->worker->time_ms);
     global_add_bitrates (global.out_bitrate, total_written, client->worker->time_ms);
     source->bytes_sent_since_update += total_written;
@@ -1833,7 +1828,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
     return 0;
 }
 
-/* call with the source lock heldm, but expect the lock released on exit
+/* call with the source lock held, but expect the lock released on exit
  * as the listener may of changed threads and therefore lock needed to be
  * released
  */

@@ -124,11 +124,11 @@ static int get_mpeg_frame_length (struct mpeg_sync *mp, unsigned char *p)
         bitrate *= 1000;
         if (mp->layer == LAYER_1)
         {
-            frame_len = (12 * bitrate / mp->samplerate + padding) * 4; // ??
+            frame_len = (int)(12 * bitrate / mp->samplerate + padding) * 4; // ??
         }
         else
         {
-            frame_len = samples / 8 * bitrate / mp->samplerate + padding;
+            frame_len = (int)(samples / 8 * bitrate / mp->samplerate + padding);
         }
     }
     return frame_len;
@@ -163,7 +163,7 @@ static int check_for_aac (struct mpeg_sync *mp, unsigned char *p, unsigned remai
             v = (p[2] << 8) + p[3],
             channels_idx = (v & 0x1C0) >> 6;
         int id =  p[1] & 0x8;
-        int checking = 4;
+        int checking = mp->check_numframes;
         unsigned char *fh = p;
 
         while (checking)
@@ -208,7 +208,7 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
         mp->ver = (p[1] & 0x18) >> 3;
         if (mp->layer && version [mp->ver] && layer[mp->layer]) 
         {
-            int checking = 4;
+            int checking = mp->check_numframes;
             unsigned char *fh = p;
             int samplerates [4][4] = {
                 { 11025, 0, 22050, 44100},
@@ -381,7 +381,14 @@ void mpeg_data_insert (mpeg_sync *mp, refbuf_t *inserted)
 void mpeg_setup (mpeg_sync *mpsync, const char *mount)
 {
     memset (mpsync, 0, sizeof (mpeg_sync));
+    mpsync->check_numframes = 4;
     mpsync->mount = mount;
+}
+
+void mpeg_check_numframes (mpeg_sync *mpsync, unsigned count)
+{
+    if (count && count < 100)
+        mpsync->check_numframes = count;
 }
 
 void mpeg_cleanup (mpeg_sync *mpsync)

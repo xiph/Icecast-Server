@@ -22,12 +22,14 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "httpp/httpp.h"
 #include "timing/timing.h"
 
+#include "client.h"
 #include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
@@ -39,6 +41,7 @@
 #include "logging.h"
 #include "slave.h"
 #include "global.h"
+#include "util.h"
 
 #undef CATMODULE
 #define CATMODULE "client"
@@ -328,36 +331,28 @@ worker_t *find_least_busy_handler (void)
 }
 
 
+/* worker mutex should be already locked */
 static void worker_add_client (worker_t *worker, client_t *client)
 {
-    *worker->last_p = client;
-    worker->last_p = &client->next_on_worker;
+    ++worker->pending_count;
+    client->next_on_worker = NULL;
+    *worker->pending_clients_tail = client;
+    worker->pending_clients_tail = &client->next_on_worker;
     client->worker = worker;
-    ++worker->count;
-    if (worker->wakeup_ms - worker->time_ms > 15)
-        thread_cond_signal (&worker->cond); /* wake thread if required */
 }
 
 
 int client_change_worker (client_t *client, worker_t *dest_worker)
 {
-    worker_t *this_worker = client->worker;
-
     if (dest_worker->running == 0)
         return 0;
-    // make sure this client list is ok
-    *this_worker->current_p = client->next_on_worker;
-    if (client->next_on_worker == NULL)
-        this_worker->last_p = this_worker->current_p;
-    this_worker->count--;
-    thread_mutex_unlock (&this_worker->lock);
     client->next_on_worker = NULL;
 
-    thread_mutex_lock (&dest_worker->lock);
+    thread_spin_lock (&dest_worker->lock);
     worker_add_client (dest_worker, client);
+    thread_spin_unlock (&dest_worker->lock);
+    worker_wakeup (dest_worker);
 
-    thread_mutex_unlock (&dest_worker->lock);
-    thread_mutex_lock (&this_worker->lock);
     return 1;
 }
 
@@ -369,12 +364,85 @@ void client_add_worker (client_t *client)
     thread_rwlock_rlock (&workers_lock);
     /* add client to the handler with the least number of clients */
     handler = find_least_busy_handler();
-    thread_mutex_lock (&handler->lock);
+    thread_spin_lock (&handler->lock);
     thread_rwlock_unlock (&workers_lock);
 
-    client->schedule_ms = handler->time_ms;
     worker_add_client (handler, client);
-    thread_mutex_unlock (&handler->lock);
+    thread_spin_unlock (&handler->lock);
+    worker_wakeup (handler);
+}
+
+#ifdef _WIN32
+#define pipe_create         sock_create_pipe_emulation
+#define pipe_write(A, B, C) send(A, B, C, 0)
+#define pipe_read(A,B,C)    recv(A, B, C, 0)
+#else
+#define pipe_create pipe
+#define pipe_write write
+#define pipe_read read
+#endif
+
+static void worker_move_clients (worker_t *from)
+{
+    client_t *client = from->clients;
+
+    if (workers == NULL || from == NULL || workers->running == 0)
+        return;
+    while (client)
+    {
+        client->worker = workers;
+        client = client->next_on_worker;
+    }
+    thread_spin_lock (&workers->lock);
+    *workers->pending_clients_tail = from->clients;
+    workers->pending_clients_tail = from->last_p;
+    workers->pending_count += from->count;
+    thread_spin_unlock (&workers->lock);
+    from->count = 0;
+    from->clients = NULL;
+    from->last_p = &from->clients;
+}
+
+static void worker_add_pending_clients (worker_t *worker)
+{
+    if (worker && worker->pending_clients)
+    {
+        unsigned count;
+        thread_spin_lock (&worker->lock);
+        *worker->last_p = worker->pending_clients;
+        worker->last_p = worker->pending_clients_tail;
+        worker->count += worker->pending_count;
+        count = worker->pending_count;
+        worker->pending_clients = NULL;
+        worker->pending_clients_tail = &worker->pending_clients;
+        worker->pending_count = 0;
+        thread_spin_unlock (&worker->lock);
+        DEBUG2 ("Added %d pending clients to %p", count, worker);
+    }
+}
+
+
+static void worker_wait (worker_t *worker)
+{
+    uint64_t now = timing_get_time();
+    int ret, duration = (int)(worker->wakeup_ms - now);
+    char ca[30];
+
+    if (duration > 60000) /* make duration between 5 and 60ms */
+        duration = 60000;
+    if (duration < 3)
+        duration = 3;
+
+    ret = util_timed_wait_for_fd (worker->wakeup_fd[0], duration);
+    if (ret > 0) /* may of been several wakeup attempts */
+        pipe_read (worker->wakeup_fd[0], ca, sizeof ca);
+
+    worker_add_pending_clients (worker);
+
+    worker->time_ms = timing_get_time();
+    worker->current_time.tv_sec = worker->time_ms/1000;
+    worker->current_time.tv_nsec = worker->current_time.tv_sec - (worker->time_ms*1000);
+    worker->wakeup_ms = worker->time_ms + 60000;
 }
 
 
@@ -383,46 +451,52 @@ void *worker (void *arg)
     worker_t *handler = arg;
     client_t *client, **prevp;
     long prev_count = -1;
-    struct timespec wakeup_time;
 
     handler->running = 1;
-    thread_mutex_lock (&handler->lock);
-    thread_get_timespec (&handler->current_time);
-    handler->time_ms = THREAD_TIME_MS (&handler->current_time);
-    wakeup_time = handler->current_time;
-
+    handler->wakeup_ms = (int64_t)0;
     prevp = &handler->clients;
     while (1)
     {
-        if (handler->running == 0 && handler->count == 0)
-            break;
+        if (handler->running == 0)
+        {
+            handler->wakeup_ms = handler->time_ms + 50;
+            worker_add_pending_clients (handler);
+            if (handler->count == 0)
+                break;
+            worker_move_clients (handler);
+        }
         if (prev_count != handler->count)
         {
             DEBUG2 ("%p now has %d clients", handler, handler->count);
             prev_count = handler->count;
         }
-        thread_cond_timedwait (&handler->cond, &handler->lock, &wakeup_time);
-        thread_get_timespec (&handler->current_time);
-        handler->time_ms = THREAD_TIME_MS (&handler->current_time);
-        handler->wakeup_ms = handler->time_ms + 60000;
+
+        worker_wait (handler);
         client = handler->clients;
         prevp = &handler->clients;
         while (client)
         {
+            if (client->worker != handler)
+                abort();
             /* process client details but skip those that are not ready yet */
             if (client->flags & CLIENT_ACTIVE)
             {
-                if (client->schedule_ms <= handler->time_ms+15)
+                if (client->schedule_ms <= handler->time_ms+10)
                 {
                     int ret;
+                    client_t *nx = client->next_on_worker;
 
-                    handler->current_p = prevp;
+                    client->schedule_ms = handler->time_ms;
                     ret = client->ops->process (client);
 
                     /* special handler, client has moved away to another worker */
                     if (ret > 0)
                     {
-                        client = *prevp;
+                        handler->count--;
+                        if (nx == NULL) /* moved last client */
+                            handler->last_p = prevp;
+                        *prevp = nx;
+                        client = nx;
                         continue;
                     }
                     if (ret < 0)
@@ -446,12 +520,7 @@ void *worker (void *arg)
             prevp = &client->next_on_worker;
             client = *prevp;
         }
-        handler->wakeup_ms += 10;  /* allow a small sleep */
-
-        wakeup_time.tv_sec =  (long)(handler->wakeup_ms/1000);
-        wakeup_time.tv_nsec = (long)((handler->wakeup_ms - (wakeup_time.tv_sec*1000))*1000000);
     }
-    thread_mutex_unlock (&handler->lock);
     INFO0 ("shutting down");
     return NULL;
 }
@@ -461,8 +530,13 @@ static void worker_start (void)
 {
     worker_t *handler = calloc (1, sizeof(worker_t));
 
-    thread_mutex_create (&handler->lock);
-    thread_cond_create (&handler->cond);
+    if (pipe_create (&handler->wakeup_fd[0]) < 0)
+    {
+        ERROR0 ("pipe failed, fd limit?");
+        abort();
+    }
+    handler->pending_clients_tail = &handler->pending_clients;
+    thread_spin_create (&handler->lock);
     thread_rwlock_wlock (&workers_lock);
     handler->last_p = &handler->clients;
     handler->next = workers;
@@ -475,8 +549,6 @@ static void worker_start (void)
 static void worker_stop (void)
 {
     worker_t *handler;
-    client_t *clients = NULL, **last;
-    int count;
 
     if (workers == NULL)
         return;
@@ -486,45 +558,30 @@ static void worker_stop (void)
     worker_count--;
     thread_rwlock_unlock (&workers_lock);
 
-    thread_mutex_lock (&handler->lock);
     handler->running = 0;
-    thread_cond_signal (&handler->cond);
-    thread_mutex_unlock (&handler->lock);
+    worker_wakeup (handler);
 
-    thread_sleep (10000);
-    thread_mutex_lock (&handler->lock);
-    clients = handler->clients;
-    last = handler->last_p;
-    count = handler->count;
-    thread_cond_signal (&handler->cond);
-    thread_mutex_unlock (&handler->lock);
-    if (clients)
-    {
-        if (worker_count == 0)
-            WARN0 ("clients left unprocessed");
-        else
-        {
-            thread_mutex_lock (&workers->lock);
-            *workers->last_p = clients;
-            workers->last_p = last;
-            workers->count += count;
-            thread_mutex_unlock (&workers->lock);
-        }
-    }
     thread_join (handler->thread);
-    thread_mutex_destroy (&handler->lock);
-    thread_cond_destroy (&handler->cond);
+    thread_spin_destroy (&handler->lock);
+
+    sock_close (handler->wakeup_fd[1]);
+    sock_close (handler->wakeup_fd[0]);
     free (handler);
 }
 
 void workers_adjust (int new_count)
 {
+    INFO1 ("requested worker count %d", new_count);
     while (worker_count != new_count)
     {
         if (worker_count < new_count)
             worker_start ();
-        else
+        else if (worker_count > new_count)
             worker_stop ();
     }
 }
 
+void worker_wakeup (worker_t *worker)
+{
+    pipe_write (worker->wakeup_fd[1], "W", 1);
+}

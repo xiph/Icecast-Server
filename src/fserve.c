@@ -56,6 +56,7 @@
 #include "compat.h"
 
 #include "fserve.h"
+#include "format_mp3.h"
 
 #undef CATMODULE
 #define CATMODULE "fserve"
@@ -818,6 +819,7 @@ static int throttled_file_send (client_t *client)
     time_t now = client->worker->current_time.tv_sec;
     unsigned long secs = now - client->timer_start; 
     unsigned int  rate = secs ? ((client->counter+1400)/secs) : 0;
+    unsigned int limit = fh->finfo.limit;
 
     if (fserve_running == 0 || client->connection.error)
         return -1;
@@ -829,7 +831,9 @@ static int throttled_file_send (client_t *client)
         return 0;
     }
     thread_mutex_lock (&fh->lock);
-    if (rate >= fh->finfo.limit)
+    if (client->flags & CLIENT_WANTS_FLV) /* increase limit for flv clients as wrapping takes more space */
+        limit = (unsigned long)(limit * 1.02);
+    if (rate > limit)
     {
         client->schedule_ms = client->worker->time_ms + (1000*(rate - fh->finfo.limit))/fh->finfo.limit;
         rate_add (fh->format->out_bitrate, 0, client->worker->time_ms);
@@ -916,10 +920,8 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
         client->schedule_ms = client->worker->time_ms;
     else
     {
-        thread_mutex_lock (&client->worker->lock);
         client->flags |= CLIENT_ACTIVE;
-        thread_cond_signal (&client->worker->cond);
-        thread_mutex_unlock (&client->worker->lock);
+        worker_wakeup (client->worker);
     }
     return 0;
 }

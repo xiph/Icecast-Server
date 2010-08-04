@@ -1040,9 +1040,10 @@ static void command_metadata(client_t *client, source_t *source,
     COMMAND_OPTIONAL(client, "charset", charset);
 
     plugin = source->format;
-    if (source->client && strcmp (client->connection.ip, source->client->connection.ip) != 0)
-        if (response == RAW && connection_check_admin_pass (client->parser) == 0)
-            same_ip = 0;
+    if (source_running (source))
+        if (strcmp (client->connection.ip, source->client->connection.ip) != 0)
+            if (response == RAW && connection_check_admin_pass (client->parser) == 0)
+                same_ip = 0;
 
     do
     {

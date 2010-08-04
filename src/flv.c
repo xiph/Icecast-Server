@@ -57,7 +57,7 @@ struct flvmeta
 
 static void flv_hdr (struct flv *flv, unsigned int len)
 {
-    unsigned long v = flv->prev_tagsize;
+    long  v = flv->prev_tagsize;
 
     v = flv->prev_tagsize;
     flv->tag [3] = v & 0xFF;
@@ -66,21 +66,21 @@ static void flv_hdr (struct flv *flv, unsigned int len)
     v >>= 8;
     flv->tag [1] = v & 0xFF; // assume less than 2^24 
 
-    v = len;
-    flv->tag [7] = v & 0xFF;
+    v = (long)len;
+    flv->tag [7] = (unsigned char)(v & 0xFF);
     v >>= 8;
-    flv->tag [6] = v & 0xFF;
+    flv->tag [6] = (unsigned char)(v & 0xFF);
     v >>= 8;
-    flv->tag [5] = v & 0xFF;
+    flv->tag [5] = (unsigned char)(v & 0xFF);
 
-    v = flv->prev_ms;
-    flv->tag [10] = v & 0xFF;
+    v = (long)flv->prev_ms;
+    flv->tag [10] = (unsigned char)(v & 0xFF);
     v >>= 8;
-    flv->tag [9] = v & 0xFF;
+    flv->tag [9] = (unsigned char)(v & 0xFF);
     v >>= 8;
-    flv->tag [8] = v & 0xFF;
+    flv->tag [8] = (unsigned char)(v & 0xFF);
     v >>= 8;
-    flv->tag [11] = v & 0xFF;
+    flv->tag [11] = (unsigned char)(v & 0xFF);
 
 }
 
@@ -109,7 +109,7 @@ static int flv_mpX_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
     }
     memcpy (mp->raw->data + mp->raw_offset, &flv->tag[0], 16);
     flv->samples += mp->sample_count;
-    flv->prev_ms = (flv->samples / (mp->samplerate/1000.0)) + 0.5;
+    flv->prev_ms = (int64_t)(flv->samples / (mp->samplerate/1000.0));
     // The extra byte is for the flv audio id, usually 0x2F 
     flv->prev_tagsize = (len + FLVHEADER + 1);
     mp->raw_offset += 16;
@@ -129,7 +129,7 @@ static int flv_aac_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
     // a single frame (headerless) follows this
     memcpy (mp->raw->data + mp->raw_offset, &flv->tag[0], 17);
     flv->samples += mp->sample_count;
-    flv->prev_ms = (flv->samples / (mp->samplerate/1000.0)) + 0.5;
+    flv->prev_ms = (int64_t)(flv->samples / (mp->samplerate/1000.0));
     // frame length + FLVHEADER + AVHEADER
     flv->prev_tagsize = (len + 11 + 2);
     mp->raw_offset += 17;
@@ -179,17 +179,18 @@ static int flv_aac_firsthdr (struct mpeg_sync *mp, unsigned char *frame, unsigne
 
 static int send_flv_buffer (client_t *client, struct flv *flv)
 {
-    int ret;
+    int ret = 0;
     char *buf = flv->mpeg_sync.raw->data + flv->block_pos;
     unsigned int len  = flv->mpeg_sync.raw_offset - flv->block_pos;
 
-    if (len <= 0)
-        return 0;
-    ret = client_send_bytes (client, buf, len);
-    if (ret < (int)len)
-        client->schedule_ms += 300;
-    if (ret > 0)
-        flv->block_pos += ret;
+    if (len > 0)
+    {
+        ret = client_send_bytes (client, buf, len);
+        if (ret < (int)len)
+            client->schedule_ms += (ret ? 20 : 150);
+        if (ret > 0)
+            flv->block_pos += ret;
+    }
     if (flv->block_pos == flv->mpeg_sync.raw_offset)
         flv->block_pos = flv->mpeg_sync.raw_offset = 0;
     return ret;
@@ -201,10 +202,7 @@ int write_flv_buf_to_client (client_t *client)
     refbuf_t *ref = client->refbuf, *scmeta = ref->associated;
     mp3_client_data *client_mp3 = client->format_data;
     struct flv *flv = client_mp3->specific;
-    int unprocessed, ret = -1;
-
-    if (flv->block_pos)
-        return send_flv_buffer (client, flv);
+    int ret;
 
     /* check for metadata updates and insert if needed */
     if (flv->seen_metadata != scmeta)
@@ -247,14 +245,19 @@ int write_flv_buf_to_client (client_t *client)
         flv->seen_metadata = ref->associated;
     }
 
-    unprocessed = mpeg_complete_frames (&flv->mpeg_sync, ref, client->pos);
-    client->pos = ref->len;
-    client->queue_pos += ref->len;
-    if (unprocessed >= 0)
+    if (flv->mpeg_sync.raw_offset == 0)
     {
-        ret = send_flv_buffer (client, flv);
+        int unprocessed = mpeg_complete_frames (&flv->mpeg_sync, ref, client->pos);
+        if (unprocessed < 0)
+            return -1;
         if (unprocessed > 0)
             ref->len += unprocessed;   /* output was truncated, so revert changes */
+    }
+    ret = send_flv_buffer (client, flv);
+    if (flv->mpeg_sync.raw_offset == 0)
+    {
+        client->pos = ref->len;
+        client->queue_pos += client->refbuf->len;
     }
     return ret;
 }
@@ -273,11 +276,25 @@ refbuf_t *flv_meta_allocate (size_t len)
     char *ptr;
     refbuf_t *buffer = refbuf_new (sizeof (struct flvmeta) + len + 30);
     struct flvmeta *flvm = (struct flvmeta *)buffer->data;
+
     memset (flvm, 0, sizeof (struct flvmeta));
     ptr = buffer->data + sizeof (struct flvmeta);
     memcpy (ptr, "\002\000\012onMetaData", 13);
     memcpy (ptr+13, "\010\000\000\000\000", 5);
-    flvm->meta_pos = sizeof (struct flvmeta) + 18;
+    flvm->meta_pos = 18;
+    flvm->arraylen = 0;
+
+#if 0
+    flvm->arraylen = 1;
+    memcpy (ptr+18, "\000\010duration\000", 11);
+    flvm->meta_pos += 2+8+1;
+    {
+        // 1 billion as a double, endian matters. hex 00 41 cd cd  65 00 00 00 00
+        memcpy (ptr+flvm->meta_pos, "\101\315\315\145\000\000\000\000", 8);
+        flvm->meta_pos += 8;
+    }
+#endif
+    flvm->meta_pos += sizeof (struct flvmeta);
     return buffer;
 }
 
@@ -324,6 +341,7 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
     char *ptr = client->refbuf->data;
 
     mpeg_setup (&flv->mpeg_sync, plugin->mount);
+    mpeg_check_numframes (&flv->mpeg_sync, 1); 
     client_mp3->specific = flv;
 
     bytes = snprintf (ptr, 200, "HTTP/1.0 200 OK\r\n"

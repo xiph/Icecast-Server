@@ -211,7 +211,7 @@ SOURCE=..\src\md5.c
 # End Source File
 # Begin Source File
 
-SOURCE=\src\mpeg.c
+SOURCE=..\src\mpeg.c
 # End Source File
 # Begin Source File
 
@@ -375,7 +375,7 @@ SOURCE=..\src\md5.h
 # End Source File
 # Begin Source File
 
-SOURCE=\src\mpeg.h
+SOURCE=..\src\mpeg.h
 # End Source File
 # Begin Source File
 

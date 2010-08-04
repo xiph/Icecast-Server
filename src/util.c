@@ -343,7 +343,6 @@ char *util_url_unescape (const char *src)
                 ERROR0("Fatal internal logic error in util_url_unescape()");
                 free(decoded);
                 return NULL;
-                break;
             default:
                 *dst++ = src[i];
                 break;
@@ -375,6 +374,12 @@ char *util_normalise_uri(const char *uri) {
         return NULL;
     }
 
+    while (1)
+    {
+        char *s = strstr (path, "//");
+        if (s == NULL) break;
+        memmove (path+1, path+2, strlen (path+2)+1);
+    }
     /* We now have a full URI-decoded path. Check it for allowability */
     if(verify_path(path))
         return path;

@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh24"
+#define VERSION "2.3.2-kh25"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -136,6 +136,7 @@ typedef unsigned int socklen_t;
 #define vsnprintf _vsnprintf
 #define getpid _getpid
 #define atoll _atoi64
+#define pipe(x) _pipe(x,255,O_BINARY)
 
 #define fseeko fseek
 #define PRIdMAX "ld"

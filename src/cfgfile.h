@@ -178,18 +178,18 @@ typedef struct _relay_server_master
 
 typedef struct _relay_server
 {
+    struct _relay_server *next, *new_details;
+    struct source_tag *source;
     relay_server_master *masters;
     char *username;
     char *password;
     char *localmount;
-    struct source_tag *source;
     int interval;
     int mp3metadata;
     int on_demand;
     int running;
     int cleanup;
     time_t start;
-    struct _relay_server *next;
 } relay_server;
 
 
