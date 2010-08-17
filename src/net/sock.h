@@ -98,6 +98,7 @@ struct iovec
 # define sock_listen _mangle(sock_listen)
 # define sock_set_send_buffer _mangle(sock_set_send_buffer)
 # define sock_accept _mangle(sock_accept)
+# define sock_create_pipe_emulation _mangle(sock_create_pipe_emulation)
 #endif
 
 /* Misc socket functions */
@@ -117,6 +118,7 @@ void sock_set_send_buffer (sock_t sock, int win_size);
 int sock_set_delay(sock_t sock);
 void sock_set_error(int val);
 int sock_close(sock_t  sock);
+int sock_create_pipe_emulation (int handles[2]);
 
 /* Connection related socket functions */
 sock_t sock_connect_wto(const char *hostname, int port, int timeout);

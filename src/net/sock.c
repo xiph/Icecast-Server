@@ -314,6 +314,7 @@ ssize_t sock_writev (sock_t sock, const struct iovec *iov, size_t count)
     return writev (sock, iov, count);
 }
 
+/* win32 has WSAsend for vectored writes */
 #else
 
 ssize_t sock_writev (sock_t sock, const struct iovec *iov, size_t count)
@@ -975,3 +976,41 @@ sock_t sock_accept(sock_t serversock, char *ip, size_t len)
     return ret;
 }
 
+#ifdef _WIN32
+int sock_create_pipe_emulation (int handles[2])
+{
+    sock_t s;
+    struct  sockaddr_in serv_addr;
+    int     len = sizeof(serv_addr);
+
+    do
+    {
+        handles[0] = handles[1] = INVALID_SOCKET;
+        if ((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+            break;
+        memset((void *) &serv_addr, 0, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(0);
+        serv_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        if (bind(s, (SOCKADDR *) & serv_addr, len) == SOCKET_ERROR)
+            break;
+        sock_listen (s,5);
+        if (getsockname(s, (SOCKADDR *) & serv_addr, &len) == INVALID_SOCKET)
+            break;
+        if ((handles[1] = socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+            break;
+        if (connect(handles[1], (SOCKADDR *) & serv_addr, len) == SOCKET_ERROR)
+            break;
+        if ((handles[0] = accept(s, (SOCKADDR *) & serv_addr, &len)) == INVALID_SOCKET)
+            break;
+        sock_close (s);
+        return 0;
+    } while(0);
+    if (handles[0] != INVALID_SOCKET)
+        sock_close (handles[0]);
+    if (handles[1] != INVALID_SOCKET)
+        sock_close (handles[1]);
+    sock_close (s);
+    return -1;
+}
+#endif
