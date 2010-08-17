@@ -91,6 +91,7 @@ static struct admin_command admin_general[] =
     { "listmounts",         RAW,    { command_list_mounts } },
     { "function",           RAW,    { command_admin_function } },
     { "streamlist.txt",     TEXT,   { command_list_mounts } },
+    { "streams",            TEXT,   { command_list_mounts } },
     { "showlog.txt",        TEXT,   { command_list_log } },
     { "showlog.xsl",        XSLT,   { command_list_log } },
     { "managerelays.xsl",   XSLT,   { command_manage_relay } },
@@ -354,13 +355,7 @@ int admin_handle_request (client_t *client, const char *uri)
         client->flags |= CLIENT_AUTHENTICATED;
 
     /* special case for slaves requesting a streamlist for authenticated relaying */
-    if (strcmp (uri, "streams") == 0)
-    {
-        client->flags |= CLIENT_IS_SLAVE;
-        auth_add_listener ("/admin/streams", client);
-        return 0;
-    }
-    if (strcmp (uri, "streamlist.txt") == 0)
+    if (strcmp (uri, "streams") == 0 || strcmp (uri, "streamlist.txt") == 0)
     {
         if (connection_check_relay_pass (client->parser))
             client->flags |= CLIENT_AUTHENTICATED;
@@ -396,7 +391,10 @@ int admin_handle_request (client_t *client, const char *uri)
                     return 0;
             }
         }
-        admin_mount_request (client, uri);
+        if (strcmp (uri, "streams") == 0)
+            auth_add_listener ("/admin/streams", client);
+        else
+            admin_mount_request (client, uri);
         return 0;
     }
 

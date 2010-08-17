@@ -571,10 +571,7 @@ void auth_add_listener (const char *mount, client_t *client)
     }
     else
     {
-        if (client->flags & CLIENT_AUTHENTICATED)
-            add_authenticated_listener (mount, mountinfo, client);
-        else
-            client_send_403 (client, "Forbidden");
+        add_authenticated_listener (mount, mountinfo, client);
     }
     config_release_config ();
 }

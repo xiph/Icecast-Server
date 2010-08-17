@@ -1248,7 +1248,7 @@ static int _handle_stats_request (client_t *client)
         return 0;
     }
     stats_add_listener (client, STATS_ALL);
-    return 1;
+    return 0;
 }
 
 static void check_for_filtering (ice_config_t *config, client_t *client, char *uri)
