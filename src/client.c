@@ -101,6 +101,13 @@ void client_destroy(client_t *client)
     if (client->respcode > 0 && client->parser)
         logging_access(client);
 
+    if (client->flags & CLIENT_IP_BAN_LIFT)
+    {
+        INFO1 ("lifting IP ban on client at %s", client->connection.ip);
+        connection_release_banned_ip (client->connection.ip);
+        client->flags &= ~CLIENT_IP_BAN_LIFT;
+    }
+
     connection_close (&client->connection);
     if (client->parser)
         httpp_destroy (client->parser);
@@ -372,6 +379,7 @@ void client_add_worker (client_t *client)
     worker_wakeup (handler);
 }
 
+
 #ifdef _WIN32
 #define pipe_create         sock_create_pipe_emulation
 #define pipe_write(A, B, C) send(A, B, C, 0)
@@ -382,26 +390,6 @@ void client_add_worker (client_t *client)
 #define pipe_read read
 #endif
 
-static void worker_move_clients (worker_t *from)
-{
-    client_t *client = from->clients;
-
-    if (workers == NULL || from == NULL || workers->running == 0)
-        return;
-    while (client)
-    {
-        client->worker = workers;
-        client = client->next_on_worker;
-    }
-    thread_spin_lock (&workers->lock);
-    *workers->pending_clients_tail = from->clients;
-    workers->pending_clients_tail = from->last_p;
-    workers->pending_count += from->count;
-    thread_spin_unlock (&workers->lock);
-    from->count = 0;
-    from->clients = NULL;
-    from->last_p = &from->clients;
-}
 
 static void worker_add_pending_clients (worker_t *worker)
 {
@@ -440,87 +428,113 @@ static void worker_wait (worker_t *worker)
     worker_add_pending_clients (worker);
 
     worker->time_ms = timing_get_time();
-    worker->current_time.tv_sec = worker->time_ms/1000;
+    worker->current_time.tv_sec = (time_t)(worker->time_ms/1000);
     worker->current_time.tv_nsec = worker->current_time.tv_sec - (worker->time_ms*1000);
     worker->wakeup_ms = worker->time_ms + 60000;
 }
 
 
-void *worker (void *arg)
+static void worker_relocate_clients (worker_t *worker)
 {
-    worker_t *handler = arg;
-    client_t *client, **prevp;
-    long prev_count = -1;
-
-    handler->running = 1;
-    handler->wakeup_ms = (int64_t)0;
-    prevp = &handler->clients;
-    while (1)
+    if (workers == NULL)
+        return;
+    while (worker->count || worker->pending_count)
     {
-        if (handler->running == 0)
-        {
-            handler->wakeup_ms = handler->time_ms + 50;
-            worker_add_pending_clients (handler);
-            if (handler->count == 0)
-                break;
-            worker_move_clients (handler);
-        }
-        if (prev_count != handler->count)
-        {
-            DEBUG2 ("%p now has %d clients", handler, handler->count);
-            prev_count = handler->count;
-        }
+        client_t *client = worker->clients, **prevp = &worker->clients;
 
-        worker_wait (handler);
-        client = handler->clients;
-        prevp = &handler->clients;
+        worker->wakeup_ms = worker->time_ms + 150;
         while (client)
         {
-            if (client->worker != handler)
-                abort();
+            if (client->flags & CLIENT_ACTIVE)
+            {
+                client->worker = workers;
+                prevp = &client->next_on_worker;
+            }
+            else
+            {
+                *prevp = client->next_on_worker;
+                worker_add_client (worker, client);
+                worker->count--;
+            }
+            client = *prevp;
+        }
+        if (worker->clients)
+        {
+            thread_spin_lock (&workers->lock);
+            *workers->pending_clients_tail = worker->clients;
+            workers->pending_clients_tail = prevp;
+            workers->pending_count += worker->count;
+            thread_spin_unlock (&workers->lock);
+            worker_wakeup (workers);
+            worker->clients = NULL;
+            worker->last_p = &worker->clients;
+            worker->count = 0;
+        }
+        worker_wait (worker);
+    }
+}
+
+void *worker (void *arg)
+{
+    worker_t *worker = arg;
+    long prev_count = -1;
+
+    worker->running = 1;
+    worker->wakeup_ms = (int64_t)0;
+
+    while (1)
+    {
+        client_t *client = worker->clients, **prevp = &worker->clients;
+
+        if (prev_count != worker->count)
+        {
+            DEBUG2 ("%p now has %d clients", worker, worker->count);
+            prev_count = worker->count;
+        }
+        while (client)
+        {
+            if (client->worker != worker) abort();
             /* process client details but skip those that are not ready yet */
             if (client->flags & CLIENT_ACTIVE)
             {
-                if (client->schedule_ms <= handler->time_ms+10)
+                int ret = 0;
+                client_t *nx = client->next_on_worker;
+
+                if (client->schedule_ms <= worker->time_ms+10)
                 {
-                    int ret;
-                    client_t *nx = client->next_on_worker;
-
-                    client->schedule_ms = handler->time_ms;
+                    client->schedule_ms = worker->time_ms;
                     ret = client->ops->process (client);
-
-                    /* special handler, client has moved away to another worker */
-                    if (ret > 0)
-                    {
-                        handler->count--;
-                        if (nx == NULL) /* moved last client */
-                            handler->last_p = prevp;
-                        *prevp = nx;
-                        client = nx;
-                        continue;
-                    }
                     if (ret < 0)
                     {
-                        client_t *to_go = client;
-                        *prevp = to_go->next_on_worker;
-                        client->next_on_worker = NULL;
                         client->worker = NULL;
-                        handler->count--;
                         if (client->ops->release)
                             client->ops->release (client);
-                        client = *prevp;
-                        if (client == NULL)
-                            handler->last_p = prevp;
+                    }
+                    if (ret)
+                    {
+                        worker->count--;
+                        if (nx == NULL) /* is this the last client */
+                            worker->last_p = prevp;
+                        client = *prevp = nx;
                         continue;
                     }
                 }
-                if (client->schedule_ms < handler->wakeup_ms)
-                    handler->wakeup_ms = client->schedule_ms;
+                if (client->schedule_ms < worker->wakeup_ms)
+                    worker->wakeup_ms = client->schedule_ms;
             }
             prevp = &client->next_on_worker;
             client = *prevp;
         }
+        if (worker->running == 0)
+        {
+            if (global.running == ICE_RUNNING)
+                break;
+            if (worker->count == 0 && worker->pending_count == 0)
+                break;
+        }
+        worker_wait (worker);
     }
+    worker_relocate_clients (worker);
     INFO0 ("shutting down");
     return NULL;
 }

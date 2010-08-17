@@ -792,6 +792,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
                                 config_get_bool,    &mount->url_ogg_meta },
         { "no-mount",           config_get_bool,    &mount->no_mount },
         { "ban-client",         config_get_int,     &mount->ban_client },
+        { "so-sndbuf",          config_get_int,     &mount->so_sndbuf },
         { "hidden",             config_get_bool,    &mount->hidden },
         { "authentication",     auth_get_authenticator, &mount->auth },
         { "on-connect",         config_get_str,     &mount->on_connect },
@@ -842,7 +843,9 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     if (mount->url_ogg_meta)
         mount->ogg_passthrough = 0;
     if (mount->queue_block_size < 100)
-        mount->queue_block_size = 2900;
+        mount->queue_block_size = 1400;
+    if (mount->ban_client < 0)
+        mount->no_mount = 0;
 
     mount->next = config->mounts;
     config->mounts = mount;
@@ -1061,6 +1064,7 @@ static int _parse_listen_sock (xmlNodePtr node, void *arg)
 
 static int _parse_root (xmlNodePtr node, ice_config_t *config)
 {
+    char *bindaddress = NULL;
     struct cfg_tag icecast_tags[] =
     {
         { "location",           config_get_str,     &config->location },
@@ -1070,6 +1074,7 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
         { "source-password",    config_get_str,     &config->source_password },
         { "hostname",           config_get_str,     &config->hostname },
         { "port",               config_get_int,     &config->port },
+        { "bind-address",       config_get_str,     &bindaddress },
         { "fileserve",          config_get_bool,    &config->fileserve },
         { "relays-on-demand",   config_get_bool,    &config->on_demand },
         { "master-server",      config_get_str,     &config->master_server },
@@ -1104,8 +1109,22 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
         config->max_redirects = 1;
     if (config->listen_sock_count == 0)
     {
-        WARN0 ("No listen-socket defintions");
-        return -1;
+        if (config->port)
+        {
+            listener_t *listener = calloc (1, sizeof(listener_t));
+            listener->refcount = 1;
+            listener->port = config->port;
+            listener->qlen = ICE_LISTEN_QUEUE;
+            listener->bind_address = (char*)xmlStrdup (XMLSTR(bindaddress));
+            listener->next = config->listen_sock;
+            config->listen_sock = listener;
+            config->listen_sock_count++;
+        }
+        else
+        {
+            WARN0 ("No listen-socket defintions");
+            return -1;
+        }
     }
     return 0;
 }

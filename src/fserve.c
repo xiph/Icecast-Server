@@ -677,6 +677,7 @@ static int prefile_send (client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     int loop = 6, bytes, written = 0;
+    worker_t *worker = client->worker;
 
     while (loop)
     {
@@ -733,15 +734,15 @@ static int prefile_send (client_t *client)
             bytes = client->check_buffer (client);
         if (bytes < 0)
         {
-            client->schedule_ms = client->worker->time_ms + 300;
+            client->schedule_ms = worker->time_ms + 300;
             return 0;
         }
         written += bytes;
-        global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
+        global_add_bitrates (global.out_bitrate, bytes, worker->time_ms);
         if (written > 30000)
             break;
     }
-    client->schedule_ms = client->worker->time_ms + 100;
+    client->schedule_ms = worker->time_ms + 100;
     return 0;
 }
 
@@ -774,9 +775,11 @@ static int file_send (client_t *client)
     refbuf_t *refbuf = client->refbuf;
     int loop = 6, bytes, written = 0, ret = 0;
     fh_node *fh = client->shared_data;
-    time_t now = client->worker->current_time.tv_sec;
+    worker_t *worker = client->worker;
+    time_t now;
 
-    client->schedule_ms = client->worker->time_ms;
+    client->schedule_ms = worker->time_ms;
+    now = worker->current_time.tv_sec;
     /* slowdown if max bandwidth is exceeded, but allow for short-lived connections to avoid 
      * this, eg admin requests */
     if (throttle_sends > 1 && now - client->connection.con_time > 1)
@@ -816,13 +819,17 @@ static int throttled_file_send (client_t *client)
     refbuf_t *refbuf = client->refbuf;
     int  bytes;
     fh_node *fh = client->shared_data;
-    time_t now = client->worker->current_time.tv_sec;
-    unsigned long secs = now - client->timer_start; 
-    unsigned int  rate = secs ? ((client->counter+1400)/secs) : 0;
+    time_t now;
+    worker_t *worker = client->worker;
+    unsigned long secs; 
+    unsigned int  rate = 0;
     unsigned int limit = fh->finfo.limit;
 
     if (fserve_running == 0 || client->connection.error)
         return -1;
+    now = worker->current_time.tv_sec;
+    secs = now - client->timer_start; 
+    client->schedule_ms = worker->time_ms;
     if (client->connection.discon_time && now >= client->connection.discon_time)
         return -1;
     if (fh->finfo.fallback)
@@ -830,15 +837,17 @@ static int throttled_file_send (client_t *client)
         fserve_move_listener (client);
         return 0;
     }
-    thread_mutex_lock (&fh->lock);
     if (client->flags & CLIENT_WANTS_FLV) /* increase limit for flv clients as wrapping takes more space */
         limit = (unsigned long)(limit * 1.02);
+    if (secs)
+        rate = (client->counter+1400)/secs;
+    thread_mutex_lock (&fh->lock);
     if (rate > limit)
     {
-        client->schedule_ms = client->worker->time_ms + (1000*(rate - fh->finfo.limit))/fh->finfo.limit;
-        rate_add (fh->format->out_bitrate, 0, client->worker->time_ms);
+        client->schedule_ms += (1000*(rate - limit))/limit;
+        rate_add (fh->format->out_bitrate, 0, worker->time_ms);
         thread_mutex_unlock (&fh->lock);
-        global_add_bitrates (global.out_bitrate, 0, client->worker->time_ms);
+        global_add_bitrates (global.out_bitrate, 0, worker->time_ms);
         return 0;
     }
     if (fh->stats_update <= now)
@@ -855,7 +864,7 @@ static int throttled_file_send (client_t *client)
             thread_mutex_unlock (&fh->lock);
             client->intro_offset = 0;
             client->pos = refbuf->len = 0;
-            client->schedule_ms = client->worker->time_ms + 150;
+            client->schedule_ms += 150;
             return 0;
         }
         client->pos = 0;
@@ -863,11 +872,11 @@ static int throttled_file_send (client_t *client)
     bytes = client->check_buffer (client);
     if (bytes < 0)
         bytes = 0;
-    rate_add (fh->format->out_bitrate, bytes, client->worker->time_ms);
+    rate_add (fh->format->out_bitrate, bytes, worker->time_ms);
     thread_mutex_unlock (&fh->lock);
-    global_add_bitrates (global.out_bitrate, bytes, client->worker->time_ms);
+    global_add_bitrates (global.out_bitrate, bytes, worker->time_ms);
     client->counter += bytes;
-    client->schedule_ms = client->worker->time_ms + (1000/(fh->finfo.limit/1400*2));
+    client->schedule_ms += (1000/(limit/1400*2));
 
     /* progessive slowdown if max bandwidth is exceeded. */
     if (throttle_sends > 1)

@@ -1,5 +1,6 @@
 Feature differences from SVN trunk
 
+. FLV wrapping for mp3/aac listeners requesting it with ?type=.flv
 . define a fixed number of worker threads (default 1) for processing clients
 . allow for wildcards (*[] expansion) in mount-name and ban/allow files
 . can limit mountpoint by outgoing bandwidth as well as a max listeners count
@@ -15,6 +16,17 @@ Feature differences from SVN trunk
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+
+2.3.2-kh26
+. fix possible content corruption on shoutcast metadata inserted streams if a short
+  send occurs during metadata sending.
+. do not list non-hidden streams in /admin/stream[list|streams] and make sure auth
+  applies to /admin/streams.
+. allow for the so-sndbuf option per-mount as well as on all connections.
+. old style bind-address setting (not listen-socket) was not working
+. allow a negative ban-client value to use the internal deny block of IPs to prevent
+  more than 1 IP connecting at the same time.
+. small code changes for main worker thread
 
 2.3.2-kh25
 . FLV clients could skip frames on a truncated write, leading to playback problems.

@@ -61,6 +61,7 @@ int  connection_init (connection_t *con, sock_t sock, const char *addr);
 int  connection_complete_source (struct source_tag *source);
 void connection_uses_ssl (connection_t *con);
 void connection_add_banned_ip (const char *ip, int duration);
+void connection_release_banned_ip (const char *ip);
 void connection_stats (void);
 #ifdef HAVE_OPENSSL
 int  connection_read_ssl (connection_t *con, void *buf, size_t len);

@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2-KH
-AppVerName=Icecast v2.3.2-kh25
+AppVerName=Icecast v2.3.2-kh26
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.2-kh25_setup
+OutputBaseFilename=icecast2_win32_v2.3.2-kh26
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 VersionInfoVersion=2.3.2
@@ -67,5 +67,4 @@ Filename: "{app}\icecastService.exe"; Parameters: "install ""{app}""";Descriptio
 
 [UninstallRun]
 Filename: "{app}\icecastService.exe"; Parameters: "remove"
-
 

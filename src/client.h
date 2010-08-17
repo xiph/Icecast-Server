@@ -149,6 +149,7 @@ void worker_wakeup (worker_t *worker);
 #define CLIENT_HAS_INTRO_CONTENT    (040)
 #define CLIENT_SKIP_ACCESSLOG       (0100)
 #define CLIENT_HAS_MOVED            (0200)
+#define CLIENT_IP_BAN_LIFT          (0400)
 #define CLIENT_FORMAT_BIT           (01000)
 
 #endif  /* __CLIENT_H__ */

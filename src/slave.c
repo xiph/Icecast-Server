@@ -1345,6 +1345,7 @@ static void relay_release (client_t *client)
 static int relay_startup (client_t *client)
 {
     relay_server *relay = get_relay_details (client);
+    worker_t *worker = client->worker;
 
     if (relay->cleanup)
     {
@@ -1356,7 +1357,7 @@ static int relay_startup (client_t *client)
     }
     if (global.running != ICE_RUNNING)
         return 0; /* wait for cleanup */
-    if (relay->running == 0 || relay->start > client->worker->current_time.tv_sec)
+    if (relay->running == 0 || relay->start > worker->current_time.tv_sec)
     {
         client->schedule_ms = client->worker->time_ms + 1000;
         return 0;
@@ -1368,7 +1369,7 @@ static int relay_startup (client_t *client)
         int start_relay = src->listeners; // 0 or non-zero
 
         src->flags |= SOURCE_ON_DEMAND;
-        if (client->worker->current_time.tv_sec % 10 == 0)
+        if (worker->current_time.tv_sec % 10 == 0)
         {
             mount_proxy * mountinfo = config_find_mount (config_get_config(), src->mount);
             if (mountinfo && mountinfo->fallback_mount)

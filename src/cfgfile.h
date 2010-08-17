@@ -101,6 +101,7 @@ typedef struct _mount_proxy {
     int ban_client;     /* do we add a client on this to the ban list automatically */
     int no_mount; /* Do we permit direct requests of this mountpoint? (or only
                      indirect, through fallbacks) */
+    int so_sndbuf;      /* TCP send buffer size for new clients */
     int burst_size; /* amount to send to a new client if possible, -1 take
                      * from global setting */
     unsigned int queue_size_limit;

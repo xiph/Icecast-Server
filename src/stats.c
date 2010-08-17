@@ -1103,7 +1103,7 @@ refbuf_t *stats_get_streams (int prepend)
         int ret;
         stats_source_t *source = (stats_source_t *)node->key;
 
-        if (source->flags & STATS_SLAVE)
+        if ((source->flags & STATS_HIDDEN) == 0)
         {
             if (remaining <= strlen (source->source) + prelen + 3)
             {

@@ -356,7 +356,7 @@ static void add_banned_ip (avl_tree *t, const char *ip, time_t now)
 
 void connection_add_banned_ip (const char *ip, int duration)
 {
-    time_t timeout = -1;
+    time_t timeout = 0;
     if (duration > 0)
         timeout = time(NULL) + duration;
 
@@ -364,6 +364,16 @@ void connection_add_banned_ip (const char *ip, int duration)
     {
         global_lock();
         add_banned_ip (banned_ip.contents, ip, timeout);
+        global_unlock();
+    }
+}
+
+void connection_release_banned_ip (const char *ip)
+{
+    if (banned_ip.contents)
+    {
+        global_lock();
+        avl_delete (banned_ip.contents, (void*)ip, free_filtered_line);
         global_unlock();
     }
 }

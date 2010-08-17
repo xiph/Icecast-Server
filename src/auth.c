@@ -412,6 +412,10 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
 
     client->flags |= CLIENT_AUTHENTICATED;
 
+    /* some win32 setups do not do TCP win scaling well, so allow an override */
+    if (mountinfo && mountinfo->so_sndbuf > 0)
+        sock_set_send_buffer (client->connection.sock, mountinfo->so_sndbuf);
+
     /* check whether we are processing a streamlist request for slaves */
     if (strcmp (mount, "/admin/streams") == 0)
     {
@@ -534,10 +538,15 @@ void auth_add_listener (const char *mount, client_t *client)
     {
         if (mountinfo->skip_accesslog)
             client->flags |= CLIENT_SKIP_ACCESSLOG;
-        if (mountinfo->ban_client || mountinfo->no_mount)
+        if (mountinfo->ban_client)
         {
-            if (mountinfo->ban_client)
-                connection_add_banned_ip (client->connection.ip, mountinfo->ban_client);
+            DEBUG1 ("ban client value is %d", mountinfo->ban_client);
+            if (mountinfo->ban_client < 0)
+                client->flags |= CLIENT_IP_BAN_LIFT;
+            connection_add_banned_ip (client->connection.ip, mountinfo->ban_client);
+        }
+        if (mountinfo->no_mount)
+        {
             config_release_config ();
             client_send_403 (client, "mountpoint unavailable");
             return;
@@ -562,7 +571,10 @@ void auth_add_listener (const char *mount, client_t *client)
     }
     else
     {
-        add_authenticated_listener (mount, mountinfo, client);
+        if (client->flags & CLIENT_AUTHENTICATED)
+            add_authenticated_listener (mount, mountinfo, client);
+        else
+            client_send_403 (client, "Forbidden");
     }
     config_release_config ();
 }
