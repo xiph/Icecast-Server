@@ -693,8 +693,9 @@ update_relay_set (relay_server **current, relay_server *updated)
                     {
                         /* wakeup client to change relay details */
                         client_t *client = source->client;
+                        worker_t *worker = client->worker;
                         client->schedule_ms = 0;
-                        worker_wakeup (client->worker);
+                        worker_wakeup (worker);
                     }
                 }
                 *existing_p = existing_relay->next; /* leave client to free structure */

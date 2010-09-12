@@ -929,8 +929,9 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
         client->schedule_ms = client->worker->time_ms;
     else
     {
+        worker_t *worker = client->worker;
         client->flags |= CLIENT_ACTIVE;
-        worker_wakeup (client->worker);
+        worker_wakeup (worker); /* worker may of already processed client but make sure */
     }
     return 0;
 }
@@ -938,13 +939,8 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 
 void fserve_setup_client (client_t *client, const char *mount)
 {
-    fbinfo finfo;
-    finfo.flags = 0;
-    finfo.mount = (char *)mount;
-    finfo.fallback = NULL;
-    finfo.limit = 0;
     client->check_buffer = format_generic_write_to_client;
-    fserve_setup_client_fb (client, &finfo);
+    fserve_setup_client_fb (client, NULL);
 }
 
 

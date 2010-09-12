@@ -1025,6 +1025,8 @@ void source_init (source_t *source)
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo)
     {
+        if (mountinfo->max_stream_duration)
+            source->client->connection.discon_time = source->client->worker->current_time.tv_sec + mountinfo->max_stream_duration;
         if (mountinfo->on_connect)
             source_run_script (mountinfo->on_connect, source->mount);
         auth_stream_start (mountinfo, source->mount);
@@ -1188,7 +1190,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             /* handle header from icecast v2 release */
             str = httpp_getvar (parser, "icy-public");
             if (str) break;
-            str = "0";
+            str = source->yp_public > 0 ? "1" : "0";
         } while (0);
         val = atoi (str);
     }
@@ -1565,7 +1567,7 @@ static int check_duplicate_logins (source_t *source, client_t *client, auth_t *a
 
     node = avl_get_first (source->clients);
     while (node)
-    {   
+    {
         client_t *existing_client = (client_t *)node->key;
         if (existing_client->username && 
                 strcmp (existing_client->username, client->username) == 0)

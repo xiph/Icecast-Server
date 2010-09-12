@@ -17,6 +17,17 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh27
+. use the tree locks instead of stats lock, this should lessen contention with many
+  stats updates, typicaly of setups with many streams.
+. rework previous non-ogg metadata short-write fix, was not complete.
+. previous non-ogg metadata fix exposed problem if file fallback used.
+. remove possible race waking up a worker, could result in crash.
+. add <max-stream-duration> to <mount> (in seconds), could even be used to cycle
+  dump files on a relay.
+. leave public setting as-is when on-demand relay stops.
+. minor legacy code cleanup
+
 2.3.2-kh26
 . fix possible content corruption on shoutcast metadata inserted streams if a short
   send occurs during metadata sending.

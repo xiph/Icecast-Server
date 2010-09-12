@@ -365,7 +365,8 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
         }
         else
         {
-            if (associated) /* previously sent metadata does not need to be sent again */
+            /* previously sent metadata does not need to be sent again */
+            if (associated || client->flags & CLIENT_USING_BLANK_META)
             {
                 metadata = "\0";
                 meta_len = 1;
@@ -392,17 +393,20 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
         ret = client_send_bytes (client, merge, remaining+meta_len);
         free (merge);
 
-        if (ret >= (int)remaining)
+        if (ret > (int)remaining)
         {
             /* did we write all of it? */
             if (ret < (int)remaining + meta_len)
             {
-                client_mp3->metadata_offset += (ret - remaining);
+                client_mp3->metadata_offset = (ret - remaining);
                 client->flags |= CLIENT_IN_METADATA;
                 client->schedule_ms += 200;
             }
             else
+            {
                 client->flags &= ~CLIENT_IN_METADATA;
+                client_mp3->metadata_offset = 0;
+            }
             client_mp3->since_meta_block = 0;
             client->pos += remaining;
             client->queue_pos += remaining;
@@ -415,7 +419,6 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
             client->pos += ret;
             client->queue_pos += ret;
         }
-        client->flags |= CLIENT_IN_METADATA;
         return ret > 0 ? ret : 0;
     }
     ret = client_send_bytes (client, metadata, meta_len);
@@ -461,8 +464,8 @@ static int format_mp3_write_buf_to_client (client_t *client)
                 ret = send_stream_metadata (client, refbuf, remaining);
                 if (client->flags & CLIENT_IN_METADATA)
                     break;
-                buf += remaining;
-                len -= remaining;
+                buf = refbuf->data + client->pos;
+                len = refbuf->len - client->pos;
                 if (ret <= (int)remaining || len > client_mp3->interval)
                     break;
                 written += ret;
@@ -862,7 +865,9 @@ static void free_mp3_client_data (client_t *client)
     else
         mpeg_cleanup (client_mp3->specific);
     free (client_mp3->specific);
-    refbuf_release (client_mp3->associated);
+    if ((client->flags & CLIENT_USING_BLANK_META) == 0)
+        refbuf_release (client_mp3->associated);
+    client_mp3->associated = NULL;
     free (client->format_data);
     client->format_data = NULL;
 }

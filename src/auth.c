@@ -343,17 +343,7 @@ static void *auth_run_thread (void *arg)
             auth_user->handler = handler->id;
 
             if (auth_user->process)
-            {
-                worker_t *worker = NULL;
-                if (auth_user->client)
-                    worker = auth_user->client->worker;
                 auth_user->process (auth_user);
-                if (worker)
-                {
-                    /* wakeup worker for new client */
-                    worker_wakeup (worker);
-                }
-            }
 
             auth_client_free (auth_user);
 

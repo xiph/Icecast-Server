@@ -121,7 +121,6 @@ static stats_source_t *_find_source(avl_tree *tree, const char *source);
 static void process_event (stats_event_t *event);
 static void _add_stats_to_stats_client (client_t *client, const char *fmt, va_list ap);
 static void stats_listener_send (int flags, const char *fmt, ...);
-static void process_event_unlocked (stats_event_t *event);
 
 unsigned int throttle_sends;
 
@@ -450,6 +449,7 @@ static void process_global_event (stats_event_t *event)
 {
     stats_node_t *node = NULL;
 
+    avl_tree_wlock (_stats.global_tree);
     /* DEBUG3("global event %s %s %d", event->name, event->value, event->action); */
     if (event->action == STATS_EVENT_REMOVE)
     {
@@ -460,6 +460,7 @@ static void process_global_event (stats_event_t *event)
             stats_listener_send (node->flags, "DELETE global %s\n", event->name);
             avl_delete(_stats.global_tree, (void *)node, _free_stats);
         }
+        avl_tree_unlock (_stats.global_tree);
         return;
     }
     node = _find_node(_stats.global_tree, event->name);
@@ -480,6 +481,7 @@ static void process_global_event (stats_event_t *event)
         avl_insert(_stats.global_tree, (void *)node);
         stats_listener_send (node->flags, "EVENT global %s %s\n", event->name, event->value);
     }
+    avl_tree_unlock (_stats.global_tree);
 }
 
 
@@ -488,13 +490,18 @@ static void process_source_event (stats_event_t *event)
     stats_source_t *snode = _find_source(_stats.source_tree, event->source);
     stats_node_t *node = NULL;
 
+    avl_tree_wlock (_stats.source_tree);
+    snode = _find_source(_stats.source_tree, event->source);
     if (snode == NULL)
     {
         if (event->action == STATS_EVENT_REMOVE)
+        {
+            avl_tree_unlock (_stats.source_tree);
             return;
+        }
         snode = (stats_source_t *)calloc(1,sizeof(stats_source_t));
         if (snode == NULL)
-            return;
+            abort();
         DEBUG1 ("new source stat %s", event->source);
         snode->source = (char *)strdup(event->source);
         snode->stats_tree = avl_tree_new(_compare_stats, NULL);
@@ -502,15 +509,21 @@ static void process_source_event (stats_event_t *event)
 
         avl_insert(_stats.source_tree, (void *)snode);
     }
+    if (event->action == STATS_EVENT_REMOVE)
+    {
+        avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+        avl_tree_unlock (_stats.source_tree);
+        return;
+    }
+    avl_tree_wlock (snode->stats_tree);
+    avl_tree_unlock (_stats.source_tree);
     if (event->name)
     {
         node = _find_node (snode->stats_tree, event->name);
         if (node == NULL)
         {
-            if (event->action == STATS_EVENT_REMOVE)
-                return;
             /* adding node */
-            if (event->value)
+            if (event->action != STATS_EVENT_REMOVE && event->value)
             {
                 DEBUG3 ("new node on %s \"%s\" (%s)", event->source, event->name, event->value);
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
@@ -522,6 +535,7 @@ static void process_source_event (stats_event_t *event)
                 stats_listener_send (node->flags, "EVENT %s %s %s\n", event->source, event->name, event->value);
                 avl_insert(snode->stats_tree, (void *)node);
             }
+            avl_tree_unlock (snode->stats_tree);
             return;
         }
         if (event->action == STATS_EVENT_REMOVE)
@@ -529,10 +543,12 @@ static void process_source_event (stats_event_t *event)
             DEBUG1 ("delete node %s", event->name);
             stats_listener_send (node->flags, "DELETE %s %s\n", event->source, event->name);
             avl_delete(snode->stats_tree, (void *)node, _free_stats);
+            avl_tree_unlock (snode->stats_tree);
             return;
         }
         modify_node_event (node, event);
         stats_listener_send (node->flags, "EVENT %s %s %s\n", event->source, node->name, node->value);
+        avl_tree_unlock (snode->stats_tree);
         return;
     }
     /* change source flags status */
@@ -542,7 +558,10 @@ static void process_source_event (stats_event_t *event)
         int visible = 0;
 
         if ((event->flags&STATS_HIDDEN) == (snode->flags&STATS_HIDDEN))
+        {
+            avl_tree_unlock (snode->stats_tree);
             return;
+        }
         if (snode->flags & STATS_HIDDEN)
         {
             snode->flags &= ~STATS_HIDDEN;
@@ -566,10 +585,10 @@ static void process_source_event (stats_event_t *event)
                 stats->flags |= STATS_HIDDEN;
             node = avl_get_next (node);
         }
+        avl_tree_unlock (snode->stats_tree);
         return;
     }
-    if (event->action == STATS_EVENT_REMOVE)
-        avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+    avl_tree_unlock (snode->stats_tree);
 }
 
 
@@ -702,22 +721,15 @@ void stats_global (ice_config_t *config)
 #endif
 }
 
-static void process_event_unlocked (stats_event_t *event)
+static void process_event (stats_event_t *event)
 {
+    if (event == NULL)
+        return;
     /* check if we are dealing with a global or source event */
     if (event->source == NULL)
         process_global_event (event);
     else
         process_source_event (event);
-}
-
-static void process_event (stats_event_t *event)
-{
-    if (event == NULL)
-        return;
-    thread_mutex_lock (&_stats_mutex);
-    process_event_unlocked (event);
-    thread_mutex_unlock (&_stats_mutex);
 }
 
 
@@ -806,8 +818,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     avl_node *avlnode;
     xmlNodePtr ret = NULL;
 
-    thread_mutex_lock(&_stats_mutex);
     /* general stats first */
+    avl_tree_rlock (_stats.global_tree);
     avlnode = avl_get_first(_stats.global_tree);
     while (avlnode)
     {
@@ -816,7 +828,9 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
         avlnode = avl_get_next (avlnode);
     }
+    avl_tree_unlock (_stats.global_tree);
     /* now per mount stats */
+    avl_tree_rlock (_stats.source_tree);
     avlnode = avl_get_first(_stats.source_tree);
     while (avlnode)
     {
@@ -824,8 +838,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
         if (((flags&STATS_HIDDEN) || (source->flags&STATS_HIDDEN) == (flags&STATS_HIDDEN)) &&
                 (show_mount == NULL || strcmp (show_mount, source->source) == 0))
         {
-            avl_node *avlnode2 = avl_get_first (source->stats_tree);
+            avl_node *avlnode2;
             xmlNodePtr xmlnode = xmlNewTextChild (root, NULL, XMLSTR("source"), NULL);
+            avl_tree_rlock (source->stats_tree);
+            avlnode2 = avl_get_first (source->stats_tree);
 
             xmlSetProp (xmlnode, XMLSTR("mount"), XMLSTR(source->source));
             if (ret == NULL)
@@ -837,10 +853,11 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                     xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
                 avlnode2 = avl_get_next (avlnode2);
             }
+            avl_tree_unlock (source->stats_tree);
         }
         avlnode = avl_get_next (avlnode);
     }
-    thread_mutex_unlock(&_stats_mutex);
+    avl_tree_unlock (_stats.source_tree);
     return ret;
 }
 
@@ -859,7 +876,7 @@ static void _register_listener (client_t *client)
 
     build_event (&stats_count, NULL, "stats_connections", buffer);
     stats_count.action = STATS_EVENT_INC;
-    process_event_unlocked (&stats_count);
+    process_event (&stats_count);
 
     /* first we fill our queue with the current stats */
     refbuf = refbuf_new (size);
@@ -943,7 +960,7 @@ static void stats_client_release (client_t *client)
             client_destroy (client);
             build_event (&stats_count, NULL, "stats_connections", buffer);
             stats_count.action = STATS_EVENT_DEC;
-            process_event_unlocked (&stats_count);
+            process_event (&stats_count);
             return;
         }
         trail = &listener->next;
@@ -1096,7 +1113,7 @@ refbuf_t *stats_get_streams (int prepend)
     prelen = strlen (pre);
 
     /* now the stats for each source */
-    thread_mutex_lock (&_stats_mutex);
+    avl_tree_rlock (_stats.source_tree);
     node = avl_get_first(_stats.source_tree);
     while (node)
     {
@@ -1122,7 +1139,7 @@ refbuf_t *stats_get_streams (int prepend)
         }
         node = avl_get_next(node);
     }
-    thread_mutex_unlock (&_stats_mutex);
+    avl_tree_unlock (_stats.source_tree);
     cur->len = STREAMLIST_BLKSIZE - remaining;
     return start;
 }
@@ -1137,7 +1154,7 @@ void stats_clear_virtual_mounts (void)
 {
     avl_node *snode;
 
-    thread_mutex_lock (&_stats_mutex);
+    avl_tree_wlock (_stats.source_tree);
     snode = avl_get_first(_stats.source_tree);
     while (snode)
     {
@@ -1158,7 +1175,7 @@ void stats_clear_virtual_mounts (void)
 
         snode = avl_get_next (snode);
     }
-    thread_mutex_unlock (&_stats_mutex);
+    avl_tree_unlock (_stats.source_tree);
 }
 
 
@@ -1182,12 +1199,12 @@ void stats_global_calc (void)
     build_event (&event, NULL, "outgoing_kbitrate", buffer);
     event.flags = STATS_COUNTERS|STATS_HIDDEN;
 
-    thread_mutex_lock (&_stats_mutex);
     snprintf (buffer, sizeof(buffer), "%" PRIu64,
             (int64_t)global_getrate_avg (global.out_bitrate) * 8 / 1024);
-    process_event_unlocked (&event);
+    process_event (&event);
 
     /* retrieve the list of closing down clients */
+    thread_mutex_lock (&_stats_mutex);
     listener = _stats.listeners_removed;
     _stats.listeners_removed = NULL;
     thread_mutex_unlock (&_stats_mutex);

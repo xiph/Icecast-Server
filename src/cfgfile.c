@@ -797,6 +797,8 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "authentication",     auth_get_authenticator, &mount->auth },
         { "on-connect",         config_get_str,     &mount->on_connect },
         { "on-disconnect",      config_get_str,     &mount->on_disconnect },
+        { "max-stream-duration",
+                                config_get_int,     &mount->max_stream_duration },
         { "max-listener-duration",
                                 config_get_int,     &mount->max_listener_duration },
         { "accesslog",          _parse_accesslog,   &mount->access_log },

@@ -416,7 +416,7 @@ static void worker_wait (worker_t *worker)
     int ret, duration = (int)(worker->wakeup_ms - now);
     char ca[30];
 
-    if (duration > 60000) /* make duration between 5 and 60ms */
+    if (duration > 60000) /* make duration between 3ms and 60s */
         duration = 60000;
     if (duration < 3)
         duration = 3;

@@ -380,8 +380,10 @@ void connection_release_banned_ip (const char *ip)
 
 void connection_stats (void)
 {
+    long banned_IPs = 0;
     if (banned_ip.contents)
-        stats_event_args (NULL, "banned_IPs", "%ld", (long)banned_ip.contents->length);
+        banned_IPs = (long)banned_ip.contents->length;
+    stats_event_args (NULL, "banned_IPs", "%ld", banned_IPs);
 }
 
 /* function to handle the re-populating of the avl tree containing IP addresses
@@ -542,6 +544,7 @@ int connection_init (connection_t *con, sock_t sock, const char *addr)
             free (ip);
         }
         memset (con, 0, sizeof (connection_t));
+        con->sock = SOCK_ERROR;
     }
     return -1;
 }
