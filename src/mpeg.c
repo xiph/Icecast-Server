@@ -34,6 +34,12 @@ int aacp_num_channels[] = {
     -1, 1, 2, 3, 4, 5, 6, 8, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
+int mpeg_samplerates [4][4] = {
+    { 11025, 0, 22050, 44100},
+    { 12000, 0, 24000, 48000 },
+    {  8000, 0, 16000, 32000 },
+    { 0,0,0 } };
+
 #define LAYER_1     3
 #define LAYER_2     2
 #define LAYER_3     1
@@ -68,6 +74,12 @@ static int handle_aac_frame (struct mpeg_sync *mp, unsigned char *p, int len)
         mp->raw_offset += raw_frame_len;
     }
     return frame_len;
+}
+
+static int get_mpegframe_samplerate (unsigned char *p)
+{
+    int ver = (p[1] & 0x18) >> 3;
+    return mpeg_samplerates [(p[2]&0xC) >> 2][ver];
 }
 
 static int get_mpeg_bitrate (struct mpeg_sync *mp, unsigned char *p)
@@ -124,11 +136,11 @@ static int get_mpeg_frame_length (struct mpeg_sync *mp, unsigned char *p)
         bitrate *= 1000;
         if (mp->layer == LAYER_1)
         {
-            frame_len = (int)(12 * bitrate / mp->samplerate + padding) * 4; // ??
+            frame_len = (int)(12 * bitrate / get_mpegframe_samplerate(p) + padding) * 4; // ??
         }
         else
         {
-            frame_len = (int)(samples / 8 * bitrate / mp->samplerate + padding);
+            frame_len = (int)(samples / 8 * bitrate / get_mpegframe_samplerate(p) + padding);
         }
     }
     return frame_len;
@@ -149,6 +161,15 @@ static int handle_mpeg_frame (struct mpeg_sync *mp, unsigned char *p, int remain
         memcpy (mp->raw->data + mp->raw_offset, p, frame_len);
         mp->raw_offset += frame_len;
     }
+    return frame_len;
+}
+
+static int handle_ts_frame (struct mpeg_sync *mp, unsigned char *p, int remaining)
+{
+    int frame_len = mp->raw_offset;
+
+    if (remaining - frame_len < 0)
+        return 0;
     return frame_len;
 }
 
@@ -210,15 +231,10 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
         {
             int checking = mp->check_numframes;
             unsigned char *fh = p;
-            int samplerates [4][4] = {
-                { 11025, 0, 22050, 44100},
-                { 12000, 0, 24000, 48000 },
-                {  8000, 0, 16000, 32000 },
-                { 0,0,0 } };
             char stream_type[20];
 
             // au.crc = (p[1] & 0x1) == 0;
-            mp->samplerate = samplerates [(p[2]&0xC) >> 2][mp->ver];
+            mp->samplerate = get_mpegframe_samplerate (p);
             if (mp->samplerate == 0)
                 return -1;
             while (checking)
@@ -259,35 +275,83 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
     return -1;
 }
 
+static int check_for_ts (struct mpeg_sync *mp, unsigned char *p, unsigned remaining)
+{
+    int pkt_len = 188, checking;
+    do
+    {
+        int offset = 0;
+        checking = 4;
+        while (checking)
+        {
+            if (offset > remaining) return 0;
+            if (p [offset] != 0x47)
+            {
+                switch (pkt_len) {
+                    case 204: pkt_len = 208; break;
+                    case 188: pkt_len = 204; break;
+                    default:  return -1;
+                }
+                break;
+            }
+            //DEBUG2 ("found 0x37 checking %d (%d)", checking, pkt_len);
+            offset += pkt_len;
+            checking--;
+        }
+    } while (checking);
+    INFO2 ("detected TS (%d) on %s", pkt_len, mp->mount);
+    mp->process_frame = handle_ts_frame;
+    mp->syncbytes = 1;
+    mp->fixed_headerbits [0] = 0x47;
+    mp->raw_offset = pkt_len;
+    return 1;
+}
+
+
 /* return -1 for no valid frame at this specified address, 0 for more data needed */
 static int get_initial_frame (struct mpeg_sync *mp, unsigned char *p, unsigned remaining)
 {
     int ret;
 
+    if (p[0] == 0x47)
+        return check_for_ts (mp, p, remaining);
     if (p[1] < 0xE0)
         return -1;
     mp->layer = (p[1] & 0x6) >> 1;
     ret = check_for_aac (mp, p, remaining);
     if (ret < 0)
-    {
         ret = check_for_mp3 (mp, p, remaining);
-        if (ret < 0)
-            DEBUG0 ("neither aac or mp3");
-    }
+    if (ret > 0) mp->resync_count = 0;
     return ret;
 }
 
 /* return number from 1 to remaining */
-static int find_align_sync (unsigned char *start, int remaining)
+static int find_align_sync (mpeg_sync *mp, unsigned char *start, int remaining)
 {
     int skip = 0;
-    unsigned char *p = memchr (start, 255, remaining);
+    unsigned char *p = start;
+    if (mp->syncbytes)
+        p = memchr (start, mp->fixed_headerbits[0], remaining);
+    else
+    {
+        int offset = remaining;
+        for (; offset && *p != 0xFF && *p != 0x47; offset--)
+            p++;
+        if (offset == 0) p = NULL;
+    }
     if (p)
     {
         skip = p - start;
         memmove (start, p, remaining - skip);
     }
     return skip;
+}
+
+static int is_sync_byte (mpeg_sync *mp, unsigned char *p)
+{
+    if (mp->syncbytes)
+        return *p == mp->fixed_headerbits[0];
+    return *p == 0xFF || *p == 0x47;
 }
 
 
@@ -299,6 +363,8 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
     if (mp == NULL)
         return 0;  /* leave as-is */
     
+    if (mp->resync_count > 30)
+        return -1;
     mp->sample_count = 0;
     if (mp->surplus)
     {
@@ -314,7 +380,8 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
     }
     start = (unsigned char *)new_block->data + offset;
     remaining = new_block->len - offset;
-    mp->raw_offset = 0;
+    if (mp->raw)
+        mp->raw_offset = 0;
     while (1)
     {
         end = (unsigned char*)new_block->data + new_block->len;
@@ -322,13 +389,13 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
         //DEBUG2 ("block size %d, remaining now %d", new_block->len, remaining);
         if (remaining < 10) /* make sure we have some bytes to check */
             break;
-        if (*start != 255)
+        if (!is_sync_byte (mp, start))
         {
             // need to resync
-            int ret = find_align_sync (start, remaining);
+            int ret = find_align_sync (mp, start, remaining);
             if (ret == 0)
                 break; // no sync in the rest, so dump it
-            DEBUG1 ("no frame sync, re-checking after skipping %d", ret);
+            DEBUG2 ("no frame sync, re-checking after skipping %d (%d)", ret, remaining);
             new_block->len -= ret;
             mp->resync_count++;
             mp->syncbytes = 0; /* force an initial recheck */

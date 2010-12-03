@@ -22,9 +22,10 @@ struct flv
     int prev_tagsize;
     int block_pos;
     uint64_t prev_ms;
-    uint64_t samples;
+    int64_t samples;
+    refbuf_t *seen_metadata;
     mpeg_sync mpeg_sync;
-    unsigned char tag[20];
+    unsigned char tag[30];
 };
 
 

@@ -104,6 +104,7 @@ typedef struct _mount_proxy {
     int so_sndbuf;      /* TCP send buffer size for new clients */
     int burst_size; /* amount to send to a new client if possible, -1 take
                      * from global setting */
+    int min_queue_size;     /* minimum length of queue */
     unsigned int queue_size_limit;
     int hidden; /* Do we list this on the xsl pages */
     unsigned int source_timeout;  /* source timeout in seconds */
@@ -115,9 +116,6 @@ typedef struct _mount_proxy {
     int ogg_passthrough; /* enable to prevent the ogg stream being rebuilt */
     int admin_comments_only; /* enable to only show comments set from the admin page */
     int skip_accesslog;         /* skip logging client to access log */
-
-    /* duration in seconds for sampling the bandwidth */
-    int avg_bitrate_duration;
 
     int64_t limit_rate;
 
@@ -191,7 +189,6 @@ typedef struct _relay_server
     int on_demand;
     int running;
     int cleanup;
-    time_t start;
 } relay_server;
 
 
@@ -214,6 +211,7 @@ typedef struct ice_config_tag
     int client_limit;
     int source_limit;
     unsigned int queue_size_limit;
+    int min_queue_size;
     int workers_count;
     unsigned int burst_size;
     int client_timeout;

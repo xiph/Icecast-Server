@@ -28,23 +28,13 @@
 #include "client.h"
 #include "stats.h"
 
+#include "flv.h"
 #include "logging.h"
 #include "mpeg.h"
 #include "format_mp3.h"
 
 #define CATMODULE "flv"
 
-
-struct flv
-{
-    int prev_tagsize;
-    int block_pos;
-    uint64_t prev_ms;
-    int64_t samples;
-    refbuf_t *seen_metadata;
-    mpeg_sync mpeg_sync;
-    unsigned char tag[30];
-};
 
 struct flvmeta
 {
@@ -93,7 +83,14 @@ static int flv_mpX_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
     struct flv *flv = mp->callback_key;
 
     if (mp->raw_offset + len + 16 > mp->raw->len)
-        return -1;
+    {
+        int newlen = mp->raw->len + 4096;
+        void *p = realloc (mp->raw->data, newlen);
+        if (p == NULL)
+            return -1;
+        mp->raw->data = p;
+        mp->raw->len = newlen;
+    }
     flv_hdr (flv, len + 1);
     if (flv->tag[15] == 0x22)
     {
@@ -124,7 +121,14 @@ static int flv_aac_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
     struct flv *flv = mp->callback_key;
 
     if (mp->raw_offset + len + 17 > mp->raw->len)
-        return -1;
+    {
+        int newlen = mp->raw->len + 4096;
+        void *p = realloc (mp->raw->data, newlen);
+        if (p == NULL)
+            return -1;
+        mp->raw->data = p;
+        mp->raw->len = newlen;
+    }
     flv_hdr (flv, len + 2);
     // a single frame (headerless) follows this
     memcpy (mp->raw->data + mp->raw_offset, &flv->tag[0], 17);
@@ -185,9 +189,11 @@ static int send_flv_buffer (client_t *client, struct flv *flv)
 
     if (len > 0)
     {
+        if (len > 1400)
+            len = 1400;
         ret = client_send_bytes (client, buf, len);
         if (ret < (int)len)
-            client->schedule_ms += (ret ? 20 : 150);
+            client->schedule_ms += (ret ? 50 : 250);
         if (ret > 0)
             flv->block_pos += ret;
     }
@@ -204,30 +210,44 @@ int write_flv_buf_to_client (client_t *client)
     struct flv *flv = client_mp3->specific;
     int ret;
 
+    if (client->pos >= ref->len)
+    {
+        WARN2 ("buffer position invalid (%d, %d)", client->pos, ref->len);
+        client->pos = ref->len;
+        return -1;
+    }
     /* check for metadata updates and insert if needed */
     if (flv->seen_metadata != scmeta)
     {
         /* the first assoc block is shoutcast meta, second is flv meta */
-        refbuf_t *flvmeta = scmeta->associated;
         int len;
         char *src, *dst = flv->mpeg_sync.raw->data;
+        refbuf_t *flvmeta = NULL;
+        struct flvmeta *flvm;
 
-        if (flvmeta)
+        if (scmeta)
+            flvmeta = scmeta->associated;
+        if (flvmeta == NULL)
         {
-            struct flvmeta *flvm = (struct flvmeta *)flvmeta->data;
+            char *value = stats_get_value (flv->mpeg_sync.mount, "server_name");
 
-            src = (char *)flvm + sizeof (*flvm);
-            len  = flvm->meta_pos - sizeof (*flvm);
+            flvmeta  = flv_meta_allocate (200);
+            if (value)
+                flv_meta_append (flvmeta, "name", value);
+            free (value);
+            value = stats_get_value (flv->mpeg_sync.mount, "title");
+            if (value)
+                flv_meta_append (flvmeta, "title", value);
+            else
+                flv_meta_append (flvmeta, "title", "");
+            free (value);
+            flv_meta_append (flvmeta, "title", value);
+            flv_meta_append (flvmeta, NULL, NULL);
+            ref->associated = flvmeta;
         }
-        else
-        {
-            src="\002\000\012onMetaData"    // 13
-                "\010\000\000\000\001"      //  5
-                "\000\005title"             //  7
-                "\002\000\001 "             //  4
-                "\000\000\011";             //  3
-            len = 32;
-        }
+        flvm = (struct flvmeta *)flvmeta->data;
+        src = (char *)flvm + sizeof (*flvm);
+        len  = flvm->meta_pos - sizeof (*flvm);
 
         if (len + 15 < flv->mpeg_sync.raw->len)
         {
@@ -340,13 +360,14 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
     int bytes;
     char *ptr = client->refbuf->data;
 
-    mpeg_setup (&flv->mpeg_sync, plugin->mount);
+    mpeg_setup (&flv->mpeg_sync, client->connection.ip);
     mpeg_check_numframes (&flv->mpeg_sync, 1); 
     client_mp3->specific = flv;
 
     bytes = snprintf (ptr, 200, "HTTP/1.0 200 OK\r\n"
             "content-type: video/x-flv\r\n"
             "Cache-Control: no-cache\r\n"
+            "Expires: Thu, 01 Jan 1970 00:00:01 GMT\r\n"
             "Pragma: no-cache\r\n"
             "\r\n"
             "FLV\x1\x4%c%c%c\x9", 0,0,0);
@@ -363,6 +384,7 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
         flv->mpeg_sync.frame_callback = flv_mpX_hdr;
     }
     flv->mpeg_sync.callback_key = flv;
+    flv->seen_metadata = (void*)flv; // force metadata initially with non-NULL meta
 
     client->respcode = 200;
     client->refbuf->len = bytes;
@@ -371,6 +393,7 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
 
 void free_flv_client_data (struct flv *flv)
 {
+    flv->mpeg_sync.mount = NULL;
     mpeg_cleanup (&flv->mpeg_sync);
 }
 

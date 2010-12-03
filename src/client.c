@@ -412,14 +412,17 @@ static void worker_add_pending_clients (worker_t *worker)
 
 static void worker_wait (worker_t *worker)
 {
-    uint64_t now = timing_get_time();
-    int ret, duration = (int)(worker->wakeup_ms - now);
+    int ret, duration = 3;
     char ca[30];
 
-    if (duration > 60000) /* make duration between 3ms and 60s */
-        duration = 60000;
-    if (duration < 3)
-        duration = 3;
+    if (global.running == ICE_RUNNING)
+    {
+        duration = (int)(worker->wakeup_ms - timing_get_time());
+        if (duration > 60000) /* make duration between 3ms and 60s */
+            duration = 60000;
+        if (duration < 3)
+            duration = 3;
+    }
 
     ret = util_timed_wait_for_fd (worker->wakeup_fd[0], duration);
     if (ret > 0) /* may of been several wakeup attempts */
@@ -486,11 +489,6 @@ void *worker (void *arg)
     {
         client_t *client = worker->clients, **prevp = &worker->clients;
 
-        if (prev_count != worker->count)
-        {
-            DEBUG2 ("%p now has %d clients", worker, worker->count);
-            prev_count = worker->count;
-        }
         while (client)
         {
             if (client->worker != worker) abort();
@@ -500,7 +498,7 @@ void *worker (void *arg)
                 int ret = 0;
                 client_t *nx = client->next_on_worker;
 
-                if (client->schedule_ms <= worker->time_ms+10)
+                if (worker->running == 0 || client->schedule_ms <= worker->time_ms+10)
                 {
                     client->schedule_ms = worker->time_ms;
                     ret = client->ops->process (client);
@@ -524,6 +522,11 @@ void *worker (void *arg)
             }
             prevp = &client->next_on_worker;
             client = *prevp;
+        }
+        if (prev_count != worker->count)
+        {
+            DEBUG2 ("%p now has %d clients", worker, worker->count);
+            prev_count = worker->count;
         }
         if (worker->running == 0)
         {

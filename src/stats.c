@@ -163,6 +163,7 @@ void stats_initialize(void)
     stats_event_flags (NULL, "connections", "0", STATS_COUNTERS);
     stats_event_flags (NULL, "sources", "0", STATS_COUNTERS);
     stats_event_flags (NULL, "stats", "0", STATS_COUNTERS);
+    stats_event_flags (NULL, "banned_IPs", "0", STATS_COUNTERS);
     stats_event (NULL, "listeners", "0");
 
     /* global accumulating stats */
@@ -303,7 +304,7 @@ char *stats_get_value(const char *source, const char *name)
 void stats_event_inc(const char *source, const char *name)
 {
     stats_event_t event;
-    char buffer[VAL_BUFSIZE];
+    char buffer[VAL_BUFSIZE] = "1";
     build_event (&event, source, name, buffer);
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
     event.action = STATS_EVENT_INC;
@@ -342,7 +343,7 @@ void stats_event_sub(const char *source, const char *name, unsigned long value)
 void stats_event_dec(const char *source, const char *name)
 {
     stats_event_t event;
-    char buffer[VAL_BUFSIZE];
+    char buffer[VAL_BUFSIZE] = "0";
     /* DEBUG2("%s on %s", name, source==NULL?"global":source); */
     build_event (&event, source, name, buffer);
     event.action = STATS_EVENT_DEC;
@@ -509,7 +510,7 @@ static void process_source_event (stats_event_t *event)
 
         avl_insert(_stats.source_tree, (void *)snode);
     }
-    if (event->action == STATS_EVENT_REMOVE)
+    if (event->action == STATS_EVENT_REMOVE && event->name == NULL)
     {
         avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
         avl_tree_unlock (_stats.source_tree);
@@ -986,7 +987,7 @@ void stats_add_listener (client_t *client, int mask)
     client_set_queue (client, NULL);
     client->refbuf = refbuf_new (100);
     snprintf (client->refbuf->data, 100,
-            "HTTP/1.0 200 OK\r\ncapability: streamlist\r\n\r\n");
+            "HTTP/1.0 200 OK\r\nCapability: streamlist\r\n\r\n");
     client->refbuf->len = strlen (client->refbuf->data);
     listener->content_len = client->refbuf->len;
     listener->recent_block = client->refbuf;

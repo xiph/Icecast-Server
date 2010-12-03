@@ -17,6 +17,29 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh28
+. fix possible short send shoutcast metadata inserts getting corrupted
+. fix a few possible flv issues when metadata is missing.
+. add filter routine for mpeg parsing, used for file inputs like intro or fallback
+. add mpeg ts frame marker to frame alignment code.
+. add min-queue-size mount setting, defaults to burst size so backward compatible.
+  players can request anything up to min-queue-setting with the initial-burst
+  header or burst= arg
+. worker shutdown forces clients to process, should allow for quicker termination
+  or moving to another worker.
+. stats client tidy up, prevent a few more stats going through to slave, report
+  slave auth failure properly, and initialize settings for inc/dec updates
+. introduce SYNC flag to source to keep internal counts consistent when moving or
+  terminating listeners
+. add proxy/cache avoidance headers
+. drop start timer from relay as we use the more general client schedule timer
+. removed the relay recheck each second as the relays are now installed and started
+  via the clients on the workers. saves work with many relays.
+. possible crash point on relay details change, or xml reload
+. offset in file serving was always 0 even if range was requested.
+. add in the 7.xsl hack for compatability
+. A few internal code and log message cleanups.
+
 2.3.2-kh27
 . use the tree locks instead of stats lock, this should lessen contention with many
   stats updates, typicaly of setups with many streams.

@@ -280,11 +280,14 @@ static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *str
                 next->len = unprocessed;
                 mpeg_data_insert (&x->sync, next);
             }
-            if (n->data[0] != (char)0xFF)
-                WARN0 ("unexpected, no frame marker for buffer");
         }
-        *x->tailp = n;
-        x->tailp = &n->next;
+        if (n->len == 0)
+            refbuf_release (n);
+        else
+        {
+            *x->tailp = n;
+            x->tailp = &n->next;
+        }
     }
     return (int)(bytes);
 }

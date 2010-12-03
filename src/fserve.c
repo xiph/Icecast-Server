@@ -203,6 +203,7 @@ static int _delete_fh (void *mapping)
         fclose (fh->fp);
     if (fh->format)
     {
+        free (fh->format->mount);
         format_plugin_clear (fh->format, NULL);
         free (fh->format);
     }
@@ -294,7 +295,7 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
             fh->format = calloc (1, sizeof (format_plugin_t));
             fh->format->type = format_get_type (contenttype);
             free (contenttype);
-            fh->format->mount = fh->finfo.mount;
+            fh->format->mount = strdup (fh->finfo.mount);
             if (format_get_plugin (fh->format, NULL) < 0)
             {
                 avl_tree_unlock (fh_cache);
@@ -700,10 +701,7 @@ static int prefile_send (client_t *client)
                     {
                         int len = 8192;
                         if (fh->finfo.flags & FS_FALLBACK)
-                        {
-                            len = 1400;
                             client->ops = &throttled_file_content_ops;
-                        }
                         else
                             client->ops = &file_content_ops;
                         refbuf_release (client->refbuf);
@@ -838,13 +836,13 @@ static int throttled_file_send (client_t *client)
         return 0;
     }
     if (client->flags & CLIENT_WANTS_FLV) /* increase limit for flv clients as wrapping takes more space */
-        limit = (unsigned long)(limit * 1.02);
+        limit = (unsigned long)(limit * 1.05);
     if (secs)
         rate = (client->counter+1400)/secs;
     thread_mutex_lock (&fh->lock);
     if (rate > limit)
     {
-        client->schedule_ms += (1000*(rate - limit))/limit;
+        client->schedule_ms += 1000/(limit/1400);
         rate_add (fh->format->out_bitrate, 0, worker->time_ms);
         thread_mutex_unlock (&fh->lock);
         global_add_bitrates (global.out_bitrate, 0, worker->time_ms);
@@ -858,14 +856,22 @@ static int throttled_file_send (client_t *client)
     }
     if (client->pos == refbuf->len)
     {
-        if (read_file (client, 1400) == 0)
+        //DEBUG1 ("reading another block from offset %ld", client->intro_offset);
+        int ret = format_file_read (client, fh->format, fh->fp);
+
+        switch (ret)
         {
-            /* loop fallback file  */
-            thread_mutex_unlock (&fh->lock);
-            client->intro_offset = 0;
-            client->pos = refbuf->len = 0;
-            client->schedule_ms += 150;
-            return 0;
+            case -1: /* loop fallback file  */
+                thread_mutex_unlock (&fh->lock);
+                // DEBUG0 ("loop of file triggered");
+                client->intro_offset = 0;
+                client->schedule_ms += 150;
+                return 0;
+            case -2: /* non-recoverable */
+                thread_mutex_unlock (&fh->lock);
+                // DEBUG0 ("major failure on read, better leave");
+                return -1;
+            default:  ;
         }
         client->pos = 0;
     }
@@ -911,6 +917,7 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
             if (client->connection.sent_bytes == 0)
                 client->timer_start -= 2;
             client->counter = 0;
+            client->intro_offset = 0;
             fh->stats_update = client->timer_start + 5;
             fh->format->out_bitrate = rate_setup (10000, 1000);
             global_reduce_bitrate_sampling (global.out_bitrate);
@@ -924,7 +931,6 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 
     client->ops = &buffer_content_ops;
     client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
-    client->intro_offset = 0;
     if (client->flags & CLIENT_ACTIVE)
         client->schedule_ms = client->worker->time_ms;
     else

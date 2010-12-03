@@ -37,6 +37,8 @@ void refbuf_shutdown(void);
 refbuf_t *refbuf_new(unsigned int size);
 void refbuf_addref(refbuf_t *self);
 void refbuf_release(refbuf_t *self);
+refbuf_t *refbuf_copy(refbuf_t *orig);
+
 
 #define PER_CLIENT_REFBUF_SIZE  4096
 

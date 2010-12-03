@@ -57,7 +57,8 @@ struct _format_plugin_tag
     void (*set_tag)(struct _format_plugin_tag *plugin, const char *tag, const char *value, const char *charset);
     void (*free_plugin)(struct _format_plugin_tag *self, client_t *client);
     void (*apply_settings)(struct _format_plugin_tag *format, struct _mount_proxy *mount);
-    int (*get_image)(client_t *client, struct _format_plugin_tag *format);
+    int  (*align_buffer)(client_t *client, format_plugin_t *plugin);
+    int  (*get_image)(client_t *client, struct _format_plugin_tag *format);
 
     /* for internal state management */
     void *_state;
@@ -67,7 +68,7 @@ format_type_t format_get_type(const char *contenttype);
 int format_get_plugin (format_plugin_t *plugin, client_t *client);
 int format_generic_write_to_client (client_t *client);
 
-int format_file_read (client_t *client, FILE *fp);
+int format_file_read (client_t *client, format_plugin_t *plugin, FILE *fp);
 int format_general_headers (format_plugin_t *plugin, client_t *client);
 
 void format_send_general_headers(format_plugin_t *format, 

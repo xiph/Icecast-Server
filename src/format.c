@@ -104,43 +104,61 @@ int format_get_plugin (format_plugin_t *plugin, client_t *client)
 }
 
 
-int format_file_read (client_t *client, FILE *intro)
+int format_file_read (client_t *client, format_plugin_t *plugin, FILE *intro)
 {
     refbuf_t *refbuf = client->refbuf;
+    size_t bytes = -1;
+    int unprocessed = 0;
 
-    if (refbuf == NULL)
-        return -1;
-    if (client->pos == refbuf->len)
+    do
     {
-        size_t bytes;
-
+        if (refbuf == NULL)
+        {
+            if (intro == NULL)
+                return -2;
+            refbuf = client->refbuf = refbuf_new (4096);
+            client->pos = refbuf->len;
+            client->intro_offset = 0;
+            client->queue_pos = 0;
+        }
+        if (client->pos < refbuf->len)
+            break;
         if (client->flags & CLIENT_HAS_INTRO_CONTENT)
         {
             if (refbuf->next)
             {
+                //DEBUG1 ("next intro block is %d", refbuf->next->len);
                 client->refbuf = refbuf->next;
                 refbuf->next = NULL;
                 refbuf_release (refbuf);
                 client->pos = 0;
                 return 0;
             }
+            //DEBUG0 ("No more intro data ");
             client_set_queue (client, NULL);
             client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
             client->intro_offset = client->connection.sent_bytes;
-            return -1;
+            refbuf = NULL;
+            continue;
         }
-        if (intro == NULL)
-            return -1;
-        if (fseek (intro, client->intro_offset, SEEK_SET) < 0)
-            return -1;
-        bytes = fread (refbuf->data, 1, PER_CLIENT_REFBUF_SIZE, intro);
-        if (bytes == 0)
-            return -1;
 
-        client->intro_offset += bytes;
+        if (fseek (intro, client->intro_offset, SEEK_SET) < 0 ||
+                (bytes = fread (refbuf->data, 1, 4096, intro)) <= 0)
+        {
+            return bytes < 0 ? -2 : -1;
+        }
         refbuf->len = bytes;
         client->pos = 0;
-    }
+        if (plugin->align_buffer)
+        {
+            /* here the buffer may require truncating to keep the buffers aligned on
+             * certain boundaries */
+            unprocessed = plugin->align_buffer (client, plugin);
+            if (unprocessed < 0 || unprocessed >= bytes)
+                unprocessed = 0;
+        }
+        client->intro_offset += (bytes - unprocessed);
+    } while (1);
     return 0;
 }
 

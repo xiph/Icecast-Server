@@ -57,10 +57,11 @@ typedef struct source_tag
     int yp_public;
 
     /* per source burst handling for connecting clients */
-    unsigned int burst_size;    /* trigger level for burst on connect */
-    unsigned int burst_offset; 
-    refbuf_t *burst_point;
+    unsigned int default_burst_size;
 
+    refbuf_t *min_queue_point;
+    unsigned int min_queue_offset;
+    unsigned int min_queue_size;
     unsigned int queue_size;
     unsigned int queue_size_limit;
 
@@ -78,12 +79,12 @@ typedef struct source_tag
 
 } source_t;
 
-#define SOURCE_RUNNING              01
-#define SOURCE_ON_DEMAND            02
-#define SOURCE_PAUSE_LISTENERS      04
-#define SOURCE_SHOUTCAST_COMPAT     010
-#define SOURCE_TERMINATING          020
-#define SOURCE_TEMPORARY_FALLBACK   040
+#define SOURCE_RUNNING              1
+#define SOURCE_ON_DEMAND            (1<<1)
+#define SOURCE_SHOUTCAST_COMPAT     (1<<2)
+#define SOURCE_PAUSE_LISTENERS      (1<<3)
+#define SOURCE_TERMINATING          (1<<4)
+#define SOURCE_LISTENERS_SYNC       (1<<5)
 
 #define source_available(x)     (((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) && (x)->fallback.mount == NULL)
 #define source_running(x)       ((x)->flags & SOURCE_RUNNING)

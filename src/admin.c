@@ -353,12 +353,14 @@ int admin_handle_request (client_t *client, const char *uri)
 
     if (connection_check_admin_pass (client->parser))
         client->flags |= CLIENT_AUTHENTICATED;
-
-    /* special case for slaves requesting a streamlist for authenticated relaying */
-    if (strcmp (uri, "streams") == 0 || strcmp (uri, "streamlist.txt") == 0)
+    else
     {
-        if (connection_check_relay_pass (client->parser))
-            client->flags |= CLIENT_AUTHENTICATED;
+        /* special case for slaves requesting a streamlist for authenticated relaying */
+        if (strcmp (uri, "streams") == 0 || strcmp (uri, "streamlist.txt") == 0)
+        {
+            if (connection_check_relay_pass (client->parser))
+                client->flags |= CLIENT_AUTHENTICATED;
+        }
     }
 
     if (mount)
@@ -484,7 +486,7 @@ static void command_move_clients(client_t *client, source_t *source,
 
     source_set_fallback (source, dest_source);
     source->termination_count = source->listeners;
-    source->flags |= SOURCE_TEMPORARY_FALLBACK;
+    source->flags |= SOURCE_LISTENERS_SYNC;
 
     snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
             source->mount, dest_source);

@@ -70,6 +70,7 @@ static int  source_client_http_send (client_t *client);
 static int  send_to_listener (client_t *client);
 static int  send_listener (source_t *source, client_t *client);
 static int  wait_for_restart (client_t *client);
+static int  wait_for_other_listeners (client_t *client);
 
 static int  http_source_listener (client_t *client);
 static int  http_source_intro (client_t *client);
@@ -106,6 +107,12 @@ struct _client_functions listener_pause_ops =
 {
     wait_for_restart,
     client_destroy
+};
+
+struct _client_functions listener_wait_ops = 
+{
+    wait_for_other_listeners,
+    NULL
 };
 
 struct _client_functions source_client_http_ops =
@@ -308,19 +315,20 @@ void source_clear_source (source_t *source)
         p = to_go->next;
         to_go->next = NULL;
         // DEBUG1 ("queue refbuf count is %d", to_go->_count);
-        if (do_twice || to_go == source->burst_point)
+        if (do_twice || to_go == source->min_queue_point)
         { /* burst data is also counted */
             refbuf_release (to_go); 
             do_twice = 1;
         }
         refbuf_release (to_go);
     }
-    source->burst_point = NULL;
+    source->min_queue_point = NULL;
     source->stream_data = NULL;
     source->stream_data_tail = NULL;
 
-    source->burst_size = 0;
-    source->burst_offset = 0;
+    source->min_queue_size = 0;
+    source->min_queue_offset = 0;
+    source->default_burst_size = 0;
     source->queue_size = 0;
     source->queue_size_limit = 0;
     source->client_stats_update = 0;
@@ -440,7 +448,7 @@ int source_read (source_t *source)
             DEBUG1 ("listeners have now moved to %s", source->fallback.mount);
             free (source->fallback.mount);
             source->fallback.mount = NULL;
-            source->flags &= ~SOURCE_TEMPORARY_FALLBACK;
+            source->flags &= ~SOURCE_LISTENERS_SYNC;
         }
         if (source->listeners == 0)
             rate_add (source->format->out_bitrate, 0, client->worker->time_ms);
@@ -521,8 +529,8 @@ int source_read (source_t *source)
                 if (source->stream_data == NULL)
                 {
                     source->stream_data = refbuf;
-                    source->burst_point = refbuf;
-                    source->burst_offset = 0;
+                    source->min_queue_point = refbuf;
+                    source->min_queue_offset = 0;
                 }
                 if (source->stream_data_tail)
                 {
@@ -536,17 +544,21 @@ int source_read (source_t *source)
                 refbuf_addref (refbuf);
 
                 /* move the starting point for new listeners */
-                source->burst_offset += refbuf->len;
-                while (source->burst_offset > source->burst_size)
+                source->min_queue_offset += refbuf->len;
+                while (source->min_queue_offset > source->min_queue_size)
                 {
-                    refbuf_t *to_release = source->burst_point;
+                    refbuf_t *to_release = source->min_queue_point;
                     if (to_release && to_release->next)
                     {
-                        source->burst_offset -= to_release->len;
-                        source->burst_point = to_release->next;
+                        source->min_queue_offset -= to_release->len;
+                        source->min_queue_point = to_release->next;
                         refbuf_release (to_release);
                         continue;
                     }
+                    DEBUG0 ("weird state of min_queue point");
+                    refbuf_release (source->min_queue_point);
+                    source->min_queue_point = refbuf;
+                    source->min_queue_offset = refbuf->len;
                     break;
                 }
 
@@ -607,10 +619,8 @@ static int source_client_read (client_t *client)
     else
     {
         if ((source->flags & SOURCE_TERMINATING) == 0)
-        {
             source_shutdown (source, 1);
-            source->flags |= SOURCE_TERMINATING;
-        }
+
         if (source->termination_count && source->termination_count <= source->listeners)
         {
             DEBUG3 ("%s waiting (%lu, %lu)", source->mount, source->termination_count, source->listeners);
@@ -623,6 +633,7 @@ static int source_client_read (client_t *client)
             client->ops = &source_client_halt_ops;
             free (source->fallback.mount);
             source->fallback.mount = NULL;
+            source->flags &= ~SOURCE_LISTENERS_SYNC;
         }
         thread_mutex_unlock (&source->lock);
     }
@@ -636,10 +647,8 @@ static int source_queue_advance (client_t *client)
     refbuf_t *refbuf;
 
     if (client->refbuf == NULL && locate_start_on_queue (source, client) < 0)
-    {
-        client->schedule_ms += 150;
         return -1;
-    }
+
     refbuf = client->refbuf;
 
     /* move to the next buffer if we have finished with the current one */
@@ -660,7 +669,6 @@ static int locate_start_on_queue (source_t *source, client_t *client)
 {
     refbuf_t *refbuf;
     long lag = 0;
-    int ret = -1, pos = 0;
 
     /* we only want to attempt a burst at connection time, not midstream
      * however streams like theora may not have the most recent page marked as
@@ -668,17 +676,25 @@ static int locate_start_on_queue (source_t *source, client_t *client)
     if (source->stream_data_tail == NULL)
         return -1;
     refbuf = source->stream_data_tail;
-    if (client->intro_offset == -1 && (refbuf->flags & SOURCE_BLOCK_SYNC))
+    if (client->connection.sent_bytes > source->min_queue_offset && (refbuf->flags & SOURCE_BLOCK_SYNC))
     {
-        pos = 0;
         lag = refbuf->len;
     }
     else
     {
-        size_t size = client->intro_offset;
-        refbuf = source->burst_point;
-        lag = source->burst_offset;
-        while (size > 0 && refbuf && refbuf->next)
+        const char *header = httpp_getvar (client->parser, "initial-burst");
+        const char *arg = httpp_get_query_param (client->parser, "burst");
+        size_t size = source->min_queue_size;
+        off_t v = source->default_burst_size;
+        if (arg)
+            v = atol (arg);
+        else if (header)
+            v = atol (header);
+        v -= client->connection.sent_bytes; /* have we sent data already */
+        refbuf = source->min_queue_point;
+        lag = source->min_queue_offset;
+        // DEBUG3 ("size %lld, v %lld, lag %ld", size, v, lag);
+        while (size > v && refbuf && refbuf->next)
         {
             size -= refbuf->len;
             lag -= refbuf->len;
@@ -694,15 +710,15 @@ static int locate_start_on_queue (source_t *source, client_t *client)
         {
             client_set_queue (client, refbuf);
             client->intro_offset = -1;
-            client->pos = pos;
+            client->pos = 0;
             client->queue_pos = source->client->queue_pos - lag;
-            ret = 0;
-            break;
+            return 0;
         }
         lag -= refbuf->len;
         refbuf = refbuf->next;
     }
-    return ret;
+    client->schedule_ms += 150;
+    return -1;
 }
 
 
@@ -710,14 +726,7 @@ static int http_source_intro (client_t *client)
 {
     source_t *source = client->shared_data;
 
-    if (client->refbuf == NULL && source->intro_file)
-    {
-        client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-        client->pos = client->refbuf->len;
-        client->intro_offset = 0;
-        client->queue_pos = 0;
-    }
-    if (format_file_read (client, source->intro_file) < 0)
+    if (format_file_read (client, source->format, source->intro_file) < 0)
     {
         if (source->stream_data_tail)
         {
@@ -740,7 +749,7 @@ static int http_source_listener (client_t *client)
     source_t *source = client->shared_data;
     int ret;
 
-    if (refbuf == NULL)
+    if (refbuf == NULL || client->respcode)
     {
         client->check_buffer = http_source_intro;
         return http_source_intro (client);
@@ -781,10 +790,12 @@ static int http_source_listener (client_t *client)
             client->refbuf = refbuf->next;
             refbuf->next = NULL;
             refbuf_release (refbuf);
+            if (client->refbuf == NULL)
+                client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
             client->pos = 0;
         }
         else
-            client->pos = refbuf->len = 4096;
+            client_set_queue (client, NULL);
         client->connection.sent_bytes = 0;
         return ret;
     }
@@ -803,11 +814,10 @@ void source_listener_detach (source_t *source, client_t *client)
         if (ref && client->pos < ref->len && ref->flags&SOURCE_QUEUE_BLOCK)
         {
             /* make a private copy so that a write can complete */
-            refbuf_t *orig = ref;
-            ref = refbuf_new (ref->len);
-            memcpy (ref->data, orig->data, orig->len);
+            refbuf_t *copy = refbuf_copy (client->refbuf);
+
             refbuf_release (client->refbuf);
-            client->refbuf = ref;
+            client->refbuf = copy;
             client->flags |= CLIENT_HAS_INTRO_CONTENT;
         }
         if ((client->flags & CLIENT_HAS_INTRO_CONTENT) == 0)
@@ -818,16 +828,42 @@ void source_listener_detach (source_t *source, client_t *client)
 }
 
 
+/* used to hold listeners in waiting over a relay restart. Handling of a failed relay also
+ * needs to occur.
+ */
 static int wait_for_restart (client_t *client)
 {
     source_t *source = client->shared_data;
 
-    if (source_running (source) || source->termination_count || client->connection.error)
+    if (source_running (source) || (source->flags & SOURCE_PAUSE_LISTENERS) == 0 || client->connection.error)
+    {
         client->ops = &listener_client_ops;
+        return 0;
+    }
+    if (source->flags & SOURCE_LISTENERS_SYNC)
+        client->schedule_ms = client->worker->time_ms + 100;
     else
-        client->schedule_ms = client->worker->time_ms + 150;
+        client->schedule_ms = client->worker->time_ms + 300;
     return 0;
 }
+
+
+/* used to hold listeners that have already been processed while other listeners
+ * are still to be done
+ */
+static int wait_for_other_listeners (client_t *client)
+{
+    source_t *source = client->shared_data;
+
+    if (source->flags & SOURCE_LISTENERS_SYNC)
+    {
+        client->schedule_ms = client->worker->time_ms + 150;
+        return 0;
+    }
+    client->ops = &listener_client_ops;
+    return 0;
+}
+
 
 /* general send routine per listener.
  */
@@ -848,6 +884,44 @@ static int send_to_listener (client_t *client)
     return ret;
 }
 
+
+int listener_waiting_on_source (source_t *source, client_t *client)
+{
+    source->termination_count--;
+    //DEBUG2 ("termination count on %s now %lu", source->mount, source->termination_count);
+    if (source->fallback.mount)
+    {
+        int move_failed;
+
+        source_listener_detach (source, client);
+        thread_mutex_unlock (&source->lock);
+        move_failed = move_listener (client, &source->fallback);
+        thread_mutex_lock (&source->lock);
+        if (move_failed == 0)
+            return 0;
+        source_setup_listener (source, client);
+    }
+    if (source->flags & SOURCE_TERMINATING)
+    {
+        if ((source->flags & SOURCE_PAUSE_LISTENERS) && global.running == ICE_RUNNING)
+        {
+            if (client->refbuf && (client->refbuf->flags & SOURCE_QUEUE_BLOCK))
+                client_set_queue (client, NULL);
+            client->ops = &listener_pause_ops;
+            client->flags |= CLIENT_HAS_MOVED;
+            client->schedule_ms = client->worker->time_ms + 60;
+            return 0;
+        }
+        return -1;
+    }
+    /* wait for all source listeners to go through this */
+    // DEBUG1 ("listener now waiting for the other %d listeners", source->termination_count);
+    client->ops = &listener_wait_ops;
+    client->schedule_ms = client->worker->time_ms + 60;
+    return 0;
+}
+
+
 static int send_listener (source_t *source, client_t *client)
 {
     int bytes;
@@ -858,34 +932,9 @@ static int send_listener (source_t *source, client_t *client)
     if (client->connection.error)
         return -1;
 
-    if (source->fallback.mount)
-    {
-        int move_failed;
+    if (source->flags & SOURCE_LISTENERS_SYNC)
+        return listener_waiting_on_source (source, client);
 
-        source_listener_detach (source, client);
-        thread_mutex_unlock (&source->lock);
-        move_failed = move_listener (client, &source->fallback);
-        thread_mutex_lock (&source->lock);
-        if (move_failed)
-            source_setup_listener (source, client);
-        source->termination_count--;
-        return 0;
-    }
-    if (source->flags & SOURCE_TERMINATING)
-    {
-        DEBUG2 ("termination count on %s now %lu", source->mount, source->termination_count);
-        if ((source->flags & SOURCE_PAUSE_LISTENERS) && global.running == ICE_RUNNING)
-        {
-            source->termination_count--;
-            if (client->refbuf && (client->refbuf->flags & SOURCE_QUEUE_BLOCK))
-                client_set_queue (client, NULL);
-            client->ops = &listener_pause_ops;
-            client->flags |= CLIENT_HAS_MOVED;
-            client->schedule_ms = client->worker->time_ms + 60;
-            return 0;
-        }
-        return -1;
-    }
     /* check for limited listener time */
     if (client->connection.discon_time &&
             client->worker->current_time.tv_sec >= client->connection.discon_time)
@@ -995,6 +1044,9 @@ void source_init (source_t *source)
     stats_event_flags (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "outgoing_kbitrate", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "incoming_bitrate", "0", STATS_COUNTERS);
+    stats_event_flags (source->mount, "connected", "0", STATS_COUNTERS);
     stats_event (source->mount, "source_ip", source->client->connection.ip);
 
     source->last_read = time(NULL);
@@ -1020,6 +1072,7 @@ void source_init (source_t *source)
     source->format->in_bitrate = rate_setup (60, 1);
     source->format->out_bitrate = rate_setup (9000, 1000);
 
+    source->flags |= SOURCE_RUNNING;
     thread_mutex_unlock (&source->lock);
 
     mountinfo = config_find_mount (config_get_config(), source->mount);
@@ -1044,7 +1097,6 @@ void source_init (source_t *source)
     config_release_config();
 
     INFO1 ("Source %s initialised", source->mount);
-    source->flags |= SOURCE_RUNNING;
 
     /* on demand relays should of already called this */
     if ((source->flags & SOURCE_ON_DEMAND) == 0)
@@ -1068,6 +1120,7 @@ void source_set_override (const char *mount, const char *dest)
                 source->fallback.limit = 0;
                 source->fallback.mount = strdup (dest);
                 source->termination_count = source->listeners;
+                source->flags |= SOURCE_LISTENERS_SYNC;
             }
             thread_mutex_unlock (&source->lock);
         }
@@ -1111,6 +1164,7 @@ void source_shutdown (source_t *source, int with_fallback)
             source_set_fallback (source, mountinfo->fallback_mount);
     }
     config_release_config();
+    source->flags |= (SOURCE_TERMINATING | SOURCE_LISTENERS_SYNC);
 }
 
 
@@ -1356,10 +1410,15 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
         source->timeout = mountinfo->source_timeout;
 
     if (mountinfo && mountinfo->burst_size >= 0)
-        source->burst_size = (unsigned int)mountinfo->burst_size;
+        source->default_burst_size = (unsigned int)mountinfo->burst_size;
 
-    if (source->burst_size > source->queue_size_limit - 50000)
-        source->queue_size_limit = source->burst_size + 50000;
+    if (mountinfo && mountinfo->min_queue_size >= 0)
+        source->min_queue_size = mountinfo->min_queue_size;
+    if (source->min_queue_size < source->default_burst_size)
+        source->min_queue_size = source->default_burst_size;
+
+    if (source->min_queue_size > source->queue_size_limit - 50000)
+        source->queue_size_limit = source->min_queue_size + 50000;
 
     source->wait_time = 0;
     if (mountinfo && mountinfo->wait_time)
@@ -1374,8 +1433,9 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
 {
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
+    source->min_queue_size = config->min_queue_size;
     source->timeout = config->source_timeout;
-    source->burst_size = config->burst_size;
+    source->default_burst_size = config->burst_size;
 
     stats_event_args (source->mount, "listenurl", "http://%s:%d%s",
             config->hostname, config->port, source->mount);
@@ -1421,7 +1481,8 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     }
     DEBUG1 ("public set to %d", source->yp_public);
     DEBUG1 ("queue size to %u", source->queue_size_limit);
-    DEBUG1 ("burst size to %u", source->burst_size);
+    DEBUG1 ("min queue size to %u", source->min_queue_size);
+    DEBUG1 ("burst size to %u", source->default_burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
 }
 
@@ -1777,7 +1838,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
         if (mountinfo->max_listener_duration && client->connection.discon_time == 0)
             client->connection.discon_time = time(NULL) + mountinfo->max_listener_duration;
 
-        INFO3 ("max on %s is %ld (cur %lu)", source->mount,
+        INFO3 ("max on %s is %d (cur %lu)", source->mount,
                 mountinfo->max_listeners, source->listeners);
         within_limits = 1;
         if (mountinfo->max_bandwidth > -1 && stream_bitrate)
@@ -1825,6 +1886,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
 
     source_setup_listener (source, client);
     client->flags |= CLIENT_ACTIVE;
+    worker_wakeup (client->worker);
     thread_mutex_unlock (&source->lock);
 
     return 0;
@@ -1950,7 +2012,7 @@ int source_change_worker (source_t *source)
 
     thread_rwlock_rlock (&workers_lock);
     worker = find_least_busy_handler ();
-    if (worker != client->worker)
+    if (worker && worker != client->worker)
     {
         if (worker->count + source->listeners + 10 < client->worker->count)
         {

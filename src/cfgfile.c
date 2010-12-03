@@ -513,6 +513,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->relay_username = (char *)xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
     configuration->relay_password = NULL;
     /* default to a typical prebuffer size used by clients */
+    configuration->min_queue_size = 0;
     configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;
 }
 
@@ -766,6 +767,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "source-timeout",     config_get_int,     &mount->source_timeout },
         { "queue-size",         config_get_int,     &mount->queue_size_limit },
         { "burst-size",         config_get_int,     &mount->burst_size},
+        { "min-queue-size",     config_get_int,     &mount->min_queue_size},
         { "username",           config_get_str,     &mount->username },
         { "password",           config_get_str,     &mount->password },
         { "dump-file",          config_get_str,     &mount->dumpfile },
@@ -780,10 +782,9 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "filter-theora",      config_get_bool,    &mount->filter_theora },
         { "limit-rate",         config_get_bitrate, &mount->limit_rate },
         { "skip-accesslog",     config_get_bool,    &mount->skip_accesslog },
-        { "avg-bitrate-duration",
-                                config_get_int,     &mount->avg_bitrate_duration },
         { "charset",            config_get_str,     &mount->charset },
         { "qblock-size",        config_get_int,     &mount->queue_block_size },
+        { "metadata-interval",  config_get_int,     &mount->mp3_meta_interval },
         { "mp3-metadata-interval",
                                 config_get_int,     &mount->mp3_meta_interval },
         { "ogg-passthrough",    config_get_bool,    &mount->ogg_passthrough },
@@ -819,10 +820,10 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->max_listeners = -1;
     mount->max_bandwidth = -1;
     mount->burst_size = -1;
+    mount->min_queue_size = -1;
     mount->mp3_meta_interval = -1;
     mount->yp_public = -1;
     mount->url_ogg_meta = 0;
-    mount->avg_bitrate_duration = 60;
     mount->source_timeout = config->source_timeout;
     mount->file_seekable = 1;
     mount->access_log.logid = -1;
@@ -838,12 +839,12 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     }
     if (mount->auth)
         mount->auth->mount = strdup (mount->mountname);
-    if (mount->avg_bitrate_duration < 2)
-        mount->avg_bitrate_duration = 2;
     if (mount->admin_comments_only)
         mount->url_ogg_meta = 1;
     if (mount->url_ogg_meta)
         mount->ogg_passthrough = 0;
+    if (mount->min_queue_size < 0)
+        mount->min_queue_size = mount->burst_size;
     if (mount->queue_block_size < 100)
         mount->queue_block_size = 1400;
     if (mount->ban_client < 0)
@@ -968,6 +969,7 @@ static int _parse_limits (xmlNodePtr node, void *arg)
         { "clients",        config_get_int,    &config->client_limit },
         { "sources",        config_get_int,    &config->source_limit },
         { "queue-size",     config_get_int,    &config->queue_size_limit },
+        { "min-queue-size", config_get_int,    &config->min_queue_size },
         { "burst-size",     config_get_int,    &config->burst_size },
         { "workers",        config_get_int,    &config->workers_count },
         { "client-timeout", config_get_int,    &config->client_timeout },

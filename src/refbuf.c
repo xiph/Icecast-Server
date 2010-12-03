@@ -68,6 +68,22 @@ void refbuf_addref(refbuf_t *self)
     self->_count++;
 }
 
+refbuf_t *refbuf_copy(refbuf_t *orig)
+{
+    refbuf_t *ret = refbuf_new (orig->len), *ref = ret;
+    memcpy (ref->data, orig->data, orig->len);
+    orig = orig->associated;
+    while (orig)
+    {
+        ref->associated = refbuf_new (orig->len);
+        ref = ref->associated;
+        memcpy (ref->data, orig->data, orig->len);
+        orig = orig->associated;
+    }
+    return ret;
+}
+
+
 static void refbuf_release_associated (refbuf_t *ref)
 {
     if (ref == NULL)

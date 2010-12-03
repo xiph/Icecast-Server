@@ -987,15 +987,17 @@ static void *connection_thread (void *arg)
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
 #endif
+    global_lock();
     if (banned_ip.contents)  avl_tree_free (banned_ip.contents, free_filtered_line);
     if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_line);
     if (useragents.contents) avl_tree_free (useragents.contents, free_filtered_line);
-    banned_ip.contents = NULL;
-    allowed_ip.contents = NULL;
-    useragents.contents = NULL;
     free (banned_ip.filename);
     free (allowed_ip.filename);
     free (useragents.filename);
+    memset (&banned_ip, 0, sizeof (banned_ip));
+    memset (&allowed_ip, 0, sizeof (allowed_ip));
+    memset (&useragents, 0, sizeof (useragents));
+    global_unlock();
 
     INFO0 ("connection thread finished");
 
@@ -1243,16 +1245,20 @@ static int _handle_source_request (client_t *client)
 
 static int _handle_stats_request (client_t *client)
 {
-    const char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
-
-    if (connection_check_admin_pass (client->parser) == 0)
+    if (connection_check_admin_pass (client->parser))
+        stats_add_listener (client, STATS_ALL);
+    else
     {
-        auth_add_listener (uri, client);
-        return 0;
+        const char *uri = httpp_getvar (client->parser, HTTPP_VAR_URI);
+
+        if (strcmp (uri, "/admin/streams") == 0 && connection_check_relay_pass (client->parser))
+            stats_add_listener (client, STATS_SLAVE|STATS_GENERAL);
+        else
+            auth_add_listener (uri, client);
     }
-    stats_add_listener (client, STATS_ALL);
     return 0;
 }
+
 
 static void check_for_filtering (ice_config_t *config, client_t *client, char *uri)
 {
@@ -1264,7 +1270,7 @@ static void check_for_filtering (ice_config_t *config, client_t *client, char *u
         (type && strcmp (type, ".flv") == 0))
     {
         client->flags |= CLIENT_WANTS_FLV;
-        DEBUG0 ("listener has flv extension so flag it for special handling");
+        DEBUG0 ("listener has requested FLV");
     }
     if (extension == NULL || uri == NULL)
         return;
@@ -1452,12 +1458,14 @@ void connection_close(connection_t *con)
 {
     if (con->con_time)
     {
-        sock_close(con->sock);
+        if (con->sock != SOCK_ERROR)
+            sock_close(con->sock);
         free(con->ip);
 #ifdef HAVE_OPENSSL
         if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
 #endif
         memset (con, 0, sizeof (connection_t));
+        con->sock = SOCK_ERROR;
     }
 }
 

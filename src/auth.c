@@ -409,7 +409,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     /* check whether we are processing a streamlist request for slaves */
     if (strcmp (mount, "/admin/streams") == 0)
     {
-        if (client->parser->req_type == httpp_req_stats)
+        if (client->parser->req_type == httpp_req_stats && (client->flags & CLIENT_IS_SLAVE))
         {
             stats_add_listener (client, STATS_SLAVE|STATS_GENERAL);
             return 0;
@@ -514,55 +514,58 @@ void auth_postprocess_source (auth_client *auth_user)
  */
 void auth_add_listener (const char *mount, client_t *client)
 {
-    mount_proxy *mountinfo; 
-    ice_config_t *config;
+    ice_config_t *config = config_get_config();
+    mount_proxy *mountinfo = config_find_mount (config, mount);
 
-    if (connection_check_relay_pass (client->parser))
+    if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
-        client->flags |= (CLIENT_IS_SLAVE|CLIENT_AUTHENTICATED);
-        INFO0 ("client connected as slave");
-    }
-    config = config_get_config();
-    mountinfo = config_find_mount (config, mount);
-    if (mountinfo)
-    {
-        if (mountinfo->skip_accesslog)
-            client->flags |= CLIENT_SKIP_ACCESSLOG;
-        if (mountinfo->ban_client)
+        if (mountinfo)
         {
-            DEBUG1 ("ban client value is %d", mountinfo->ban_client);
-            if (mountinfo->ban_client < 0)
-                client->flags |= CLIENT_IP_BAN_LIFT;
-            connection_add_banned_ip (client->connection.ip, mountinfo->ban_client);
-        }
-        if (mountinfo->no_mount)
-        {
-            config_release_config ();
-            client_send_403 (client, "mountpoint unavailable");
-            return;
-        }
-    }
-    if ((client->flags & CLIENT_AUTHENTICATED) == 0 && mountinfo && mountinfo->auth && mountinfo->auth->authenticate)
-    {
-        auth_client *auth_user;
+            if (mountinfo->skip_accesslog)
+                client->flags |= CLIENT_SKIP_ACCESSLOG;
+            if (mountinfo->ban_client)
+            {
+                if (mountinfo->ban_client < 0)
+                    client->flags |= CLIENT_IP_BAN_LIFT;
+                connection_add_banned_ip (client->connection.ip, mountinfo->ban_client);
+            }
+            if (mountinfo->no_mount)
+            {
+                config_release_config ();
+                client_send_403 (client, "mountpoint unavailable");
+                return;
+            }
+            if (mountinfo->auth && mountinfo->auth->authenticate)
+            {
+                auth_client *auth_user;
 
-        if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 150)
-        {
-            config_release_config ();
-            WARN0 ("too many clients awaiting authentication");
-            client_send_403 (client, "busy, please try again later");
-            return;
+                if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 150)
+                {
+                    config_release_config ();
+                    WARN0 ("too many clients awaiting authentication");
+                    client_send_403 (client, "busy, please try again later");
+                    return;
+                }
+                auth_user = auth_client_setup (mount, client);
+                auth_user->process = auth_new_listener;
+                client->flags &= ~CLIENT_ACTIVE;
+                DEBUG0 ("adding client for authentication");
+                queue_auth_client (auth_user, mountinfo);
+                config_release_config ();
+                return;
+            }
         }
-        auth_user = auth_client_setup (mount, client);
-        auth_user->process = auth_new_listener;
-        client->flags &= ~CLIENT_ACTIVE;
-        DEBUG0 ("adding client for authentication");
-        queue_auth_client (auth_user, mountinfo);
+        else
+        {
+            if (strcmp (mount, "/admin/streams") == 0)
+            {
+                config_release_config ();
+                client_send_401 (client, NULL);
+                return;
+            }
+        }
     }
-    else
-    {
-        add_authenticated_listener (mount, mountinfo, client);
-    }
+    add_authenticated_listener (mount, mountinfo, client);
     config_release_config ();
 }
 
