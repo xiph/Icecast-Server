@@ -112,7 +112,8 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         return;
     if (stat (htpasswd->filename, &file_stat) != 0)
     {
-        WARN1 ("failed to check status of %s", htpasswd->filename);
+        const char *msg = strerror (errno);
+        WARN2 ("failed to check status of %s (%s)", htpasswd->filename, msg ? msg : "unknown");
 
         /* Create a dummy users tree for things to use later */
         thread_rwlock_wlock (&htpasswd->file_rwlock);

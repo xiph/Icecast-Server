@@ -32,7 +32,7 @@ void event_config_read (void)
 {
     int ret;
     ice_config_t *config;
-    ice_config_t new_config;
+    ice_config_t new_config, old_config;
     /* reread config file */
 
     INFO0("Re-reading XML");
@@ -61,8 +61,7 @@ void event_config_read (void)
     }
     else {
         restart_logging (&new_config);
-        config_clear(config);
-        config_set_config(&new_config);
+        config_set_config (&new_config, &old_config);
         config = config_get_config_unlocked();
         yp_recheck_config (config);
         fserve_recheck_mime_types (config);
@@ -71,6 +70,7 @@ void event_config_read (void)
         config_release_config();
         connection_thread_shutdown();
         slave_restart();
+        config_clear (&old_config);
     }
 }
 

@@ -637,13 +637,13 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
     xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
 
-    xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
+    xmlNewChild (node, NULL, XMLSTR("IP"), XMLSTR(listener->connection.ip));
 
     useragent = httpp_getvar (listener->parser, "user-agent");
     if (useragent && xmlCheckUTF8((unsigned char *)useragent))
     {
         xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
-        xmlNewChild (node, NULL, XMLSTR("useragent"), str); 
+        xmlNewChild (node, NULL, XMLSTR("UserAgent"), str); 
         xmlFree (str);
     }
 
@@ -660,7 +660,7 @@ static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
     {
         snprintf (buf, sizeof (buf), "%lu",
                 (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
-        xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
+        xmlNewChild (node, NULL, XMLSTR("Connected"), XMLSTR(buf));
     }
     if (listener->username)
     {
@@ -1061,17 +1061,17 @@ static void command_metadata(client_t *client, source_t *source,
             if (song)
             {
                 plugin->set_tag (plugin, "song", song, charset);
-                INFO2("Metadata song on mountpoint %s changed to \"%s\"", source->mount, song);
+                INFO2("Metadata song on %s set to \"%s\"", source->mount, song);
             }
             if (artist)
             {
                 plugin->set_tag (plugin, "artist", artist, charset);
-                INFO2 ("Metadata artist on mountpoint %s changed to \"%s\"", source->mount, artist);
+                INFO2 ("Metadata artist on %s changed to \"%s\"", source->mount, artist);
             }
             if (title)
             {
                 plugin->set_tag (plugin, "title", title, charset);
-                INFO2 ("Metadata title on mountpoint %s changed to \"%s\"", source->mount, title);
+                INFO2 ("Metadata title on %s changed to \"%s\"", source->mount, title);
             }
             /* updates are now done, let them be pushed into the stream */
             plugin->set_tag (plugin, NULL, NULL, NULL);

@@ -617,7 +617,7 @@ static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
         {
             if (write_ogg_data (source, header) == 0)
                 return;
-            header = header->next;
+            header = header->associated;
         }
         ogg_info->file_headers = refbuf->associated;
     }

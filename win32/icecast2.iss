@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=Icecast2-KH
-AppVerName=Icecast v2.3.2-kh28
+AppVerName=Icecast v2.3.2-kh29
 AppPublisherURL=http://www.icecast.org
 AppSupportURL=http://www.icecast.org
 AppUpdatesURL=http://www.icecast.org
@@ -13,7 +13,7 @@ AllowNoIcons=yes
 LicenseFile=..\COPYING
 InfoAfterFile=..\README
 OutputDir=.
-OutputBaseFilename=icecast2_win32_v2.3.2-kh28_setup
+OutputBaseFilename=icecast2_win32_v2.3.2-kh29_setup
 WizardImageFile=icecast2logo2.bmp
 WizardImageStretch=no
 VersionInfoVersion=2.3.2

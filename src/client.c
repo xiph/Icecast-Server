@@ -391,6 +391,16 @@ void client_add_worker (client_t *client)
 #endif
 
 
+static void worker_control_create (worker_t *worker)
+{
+    if (pipe_create (&worker->wakeup_fd[0]) < 0)
+    {
+        ERROR0 ("pipe failed, descriptor limit?");
+        abort();
+    }
+}
+
+
 static void worker_add_pending_clients (worker_t *worker)
 {
     if (worker && worker->pending_clients)
@@ -413,7 +423,6 @@ static void worker_add_pending_clients (worker_t *worker)
 static void worker_wait (worker_t *worker)
 {
     int ret, duration = 3;
-    char ca[30];
 
     if (global.running == ICE_RUNNING)
     {
@@ -426,7 +435,22 @@ static void worker_wait (worker_t *worker)
 
     ret = util_timed_wait_for_fd (worker->wakeup_fd[0], duration);
     if (ret > 0) /* may of been several wakeup attempts */
-        pipe_read (worker->wakeup_fd[0], ca, sizeof ca);
+    {
+        char ca[30];
+        do
+        {
+            ret = pipe_read (worker->wakeup_fd[0], ca, sizeof ca);
+            if (ret > 0)
+                break;
+            if (ret < 0 && sock_recoverable (sock_error()))
+                break;
+            sock_close (worker->wakeup_fd[1]);
+            sock_close (worker->wakeup_fd[0]);
+            worker_control_create (worker);
+            worker_wakeup (worker);
+            WARN0 ("Had to recreate worker control feed");
+        } while (1);
+    }
 
     worker_add_pending_clients (worker);
 
@@ -547,11 +571,8 @@ static void worker_start (void)
 {
     worker_t *handler = calloc (1, sizeof(worker_t));
 
-    if (pipe_create (&handler->wakeup_fd[0]) < 0)
-    {
-        ERROR0 ("pipe failed, fd limit?");
-        abort();
-    }
+    worker_control_create (handler);
+
     handler->pending_clients_tail = &handler->pending_clients;
     thread_spin_create (&handler->lock);
     thread_rwlock_wlock (&workers_lock);

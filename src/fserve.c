@@ -439,7 +439,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     fbinfo finfo;
 
     fullpath = util_get_path_from_normalised_uri (path, 0);
-    INFO2 ("checking for file %s (%s)", path, fullpath);
+    DEBUG2 ("checking for file %s (%s)", path, fullpath);
 
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
         m3u_requested = 1;
@@ -607,6 +607,7 @@ static void fh_release (fh_node *fh)
 static void file_release (client_t *client)
 {
     fh_node *fh = client->shared_data;
+    int ret = -1;
 
     if (fh)
     {
@@ -618,17 +619,17 @@ static void file_release (client_t *client)
             stats_event (fh->finfo.mount, NULL, NULL);
         fh_release (fh);
     }
-    if (client->respcode == 200)
+    if (client->flags & CLIENT_AUTHENTICATED)
     {
         const char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
         ice_config_t *config = config_get_config ();
         mount_proxy *mountinfo = config_find_mount (config, mount);
         if (mountinfo && mountinfo->access_log.name)
             logging_access_id (&mountinfo->access_log, client);
-        auth_release_listener (client, mount, mountinfo);
+        ret = auth_release_listener (client, mount, mountinfo);
         config_release_config();
     }
-    else
+    if (ret < 0)
     {
         client->flags &= ~CLIENT_AUTHENTICATED;
         client_destroy (client);
@@ -925,6 +926,7 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
         thread_mutex_unlock (&fh->lock);
         if (client->respcode == 0)
             fill_http_headers (client, finfo->mount, NULL);
+        client->mount = fh->finfo.mount;
     }
     else
         client->check_buffer = format_generic_write_to_client;

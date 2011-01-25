@@ -44,6 +44,7 @@
 #include "avl/avl.h"
 #include "net/sock.h"
 #include "httpp/httpp.h"
+#include "timing/timing.h"
 
 #include "cfgfile.h"
 #include "global.h"
@@ -510,12 +511,10 @@ int connection_init (connection_t *con, sock_t sock, const char *addr)
         struct sockaddr_storage sa;
         socklen_t slen = sizeof (sa);
 
-        con->con_time = time(NULL);
         con->sock = sock;
         if (sock == SOCK_ERROR)
             return -1;
         con->id = _next_connection_id();
-        con->discon_time = con->con_time + header_timeout;
         if (addr)
         {
             con->ip = strdup (addr);
@@ -566,6 +565,8 @@ void connection_close_sigfd (void)
 {
     close (sigfd);
 }
+#else
+#define connection_close_sigfd()    do {}while(0);
 #endif
 
 static sock_t wait_for_serversock (void)
@@ -583,7 +584,7 @@ static sock_t wait_for_serversock (void)
     ufds[i].fd = sigfd;
     ufds[i].events = POLLIN;
     ufds[i].revents = 0;
-    ret = poll(ufds, i+1, -1);
+    ret = poll(ufds, i+1, 4000);
 #else
     ret = poll(ufds, global.server_sockets, 333);
 #endif
@@ -727,7 +728,6 @@ static client_t *accept_client (void)
     }
     global_unlock ();
     sock_close (sock);
-    thread_sleep (1000);
     return NULL;
 }
 
@@ -977,12 +977,16 @@ static void *connection_thread (void *arg)
         if (client)
         {
             /* do a small delay here so the client has chance to send the request after
-             * getting a connect. This also prevents excessively large number of new
-             * listeners from joining at the same time */
-            thread_sleep (3000);
+             * getting a connect. */
+            client->schedule_ms = timing_get_time();
+            client->connection.con_time = client->schedule_ms/1000;
+            client->connection.discon_time = client->connection.con_time + header_timeout;
+            client->schedule_ms += 5;
             client_add_worker (client);
             stats_event_inc (NULL, "connections");
         }
+        if (global.new_connections_slowdown)
+            thread_sleep (global.new_connections_slowdown * 5000);
     }
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
@@ -1023,6 +1027,7 @@ void connection_thread_shutdown ()
     if (conn_tid)
     {
         connection_running = 0;
+        connection_close_sigfd ();
         INFO0("shutting down connection thread");
         thread_join (conn_tid);
         conn_tid = NULL;
@@ -1456,16 +1461,13 @@ int connection_setup_sockets (ice_config_t *config)
 
 void connection_close(connection_t *con)
 {
-    if (con->con_time)
-    {
-        if (con->sock != SOCK_ERROR)
-            sock_close(con->sock);
-        free(con->ip);
+    if (con->sock != SOCK_ERROR)
+        sock_close (con->sock);
+    free (con->ip);
 #ifdef HAVE_OPENSSL
-        if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
+    if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
 #endif
-        memset (con, 0, sizeof (connection_t));
-        con->sock = SOCK_ERROR;
-    }
+    memset (con, 0, sizeof (connection_t));
+    con->sock = SOCK_ERROR;
 }
 

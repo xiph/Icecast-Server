@@ -76,6 +76,8 @@ void format_plugin_clear (format_plugin_t *format, client_t *client)
     rate_free (format->in_bitrate);
     rate_free (format->out_bitrate);
     free (format->charset);
+    if (format->parser && format->parser != client->parser) // a relay client may have a new parser
+        httpp_destroy (format->parser);
     memset (format, 0, sizeof (format_plugin_t));
 }
 
@@ -195,6 +197,7 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
         const char *useragent = httpp_getvar (client->parser, "user-agent");
         const char *protocol = "HTTP/1.0";
         const char *contenttypehdr = "Content-Type";
+        const char *contenttype = plugin->contenttype;
 
         if (useragent)
         {
@@ -202,9 +205,11 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
                 protocol = "ICY";
             if (strstr (useragent, "Shoutcast Server")) /* hack for sc_serv */
                 contenttypehdr = "content-type";
+            if (strstr (useragent, "BlackBerry"))
+                contenttype="audio/aac";
         }
         bytes = snprintf (ptr, remaining, "%s 200 OK\r\n"
-                "%s: %s\r\n", protocol, contenttypehdr, plugin->contenttype);
+                "%s: %s\r\n", protocol, contenttypehdr, contenttype);
         remaining -= bytes;
         ptr += bytes;
         client->respcode = 200;

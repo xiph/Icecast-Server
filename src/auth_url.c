@@ -100,6 +100,8 @@ typedef struct
 } auth_thread_data;
 
 typedef struct {
+    time_t reject_until;
+    int  presume_innocent;
     char *addurl;
     char *removeurl;
     char *stream_start;
@@ -176,7 +178,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             if (retcode == 403)
             {
                 char *p = strchr (ptr, ' ') + 1;
-                snprintf (atd->errormsg, sizeof(atd->errormsg), p);
+                snprintf (atd->errormsg, sizeof(atd->errormsg), "%s", p);
                 p = strchr (atd->errormsg, '\r');
                 if (p) *p='\0';
             }
@@ -241,7 +243,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             {
                 struct build_intro_contents *x = (void*)client->refbuf->data;
                 x->type = type;
-                mpeg_setup (&x->sync, httpp_getvar (client->parser, HTTPP_VAR_URI));
+                mpeg_setup (&x->sync, client->connection.ip);
             }
         }
     }
@@ -298,13 +300,19 @@ static auth_result url_remove_listener (auth_client *auth_user)
     client_t *client = auth_user->client;
     auth_url *url = auth_user->auth->state;
     auth_thread_data *atd = auth_user->thread_data;
-    time_t duration = time(NULL) - client->connection.con_time;
+    time_t now = time(NULL), duration = now - client->connection.con_time;
     char *username, *password, *mount, *server, *ipaddr;
     const char *qargs;
     char *userpwd = NULL, post [4096];
 
     if (url->removeurl == NULL)
         return AUTH_OK;
+    if (url->reject_until)
+    {
+        if (url->reject_until >= now)
+            return AUTH_FAILED;
+        url->reject_until = 0;
+    }
     server = util_url_escape (auth_user->hostname);
 
     if (client->username)
@@ -364,7 +372,10 @@ static auth_result url_remove_listener (auth_client *auth_user)
 
     DEBUG1 ("...handler %d sending request", auth_user->handler);
     if (curl_easy_perform (atd->curl))
+    {
         WARN2 ("auth to server %s failed with %s", url->removeurl, atd->errormsg);
+        url->reject_until = time (NULL) + 60; /* prevent further attempts for a while */
+    }
     else
         DEBUG1 ("...handler %d request complete", auth_user->handler);
 
@@ -390,6 +401,15 @@ static auth_result url_add_listener (auth_client *auth_user)
 
     if (url->addurl == NULL)
         return AUTH_OK;
+
+    if (url->reject_until)
+    {
+        if (url->presume_innocent)
+            client->flags |= CLIENT_AUTHENTICATED;
+        if (url->reject_until >= time(NULL))
+            return AUTH_FAILED;
+        url->reject_until = 0;
+    }
 
     config = config_get_config ();
     server = util_url_escape (config->hostname);
@@ -468,9 +488,11 @@ static auth_result url_add_listener (auth_client *auth_user)
 
     if (res)
     {
+        url->reject_until = time (NULL) + 60; /* prevent further attempts for a while */
         WARN2 ("auth to server %s failed with %s", url->addurl, atd->errormsg);
-        client_send_403 (client, "Authentication not possible");
-        auth_user->client = NULL;
+        INFO0 ("will not auth new listeners for 60 seconds");
+        if (url->presume_innocent)
+            client->flags |= CLIENT_AUTHENTICATED;
         return AUTH_FAILED;
     }
     if (atd->location)
@@ -501,11 +523,11 @@ static auth_result url_add_listener (auth_client *auth_user)
     }
     if (x->type)
         mpeg_cleanup (&x->sync);
-    auth_user->client = NULL;
     if (atoi (atd->errormsg) == 403)
+    {
+        auth_user->client = NULL;
         client_send_403 (client, atd->errormsg+4);
-    else
-        client_send_401 (client, auth_user->auth->realm);
+    }
     if (atd->errormsg[0])
         INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, atd->errormsg);
     return AUTH_FAILED;
@@ -756,6 +778,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
             free (url_info->timelimit_header);
             url_info->timelimit_header = strdup (options->value);
         }
+        if (strcmp(options->name, "presume_innocent") == 0)
+            url_info->presume_innocent = strcasecmp (options->value, "yes") ? 0 : 1;
         options = options->next;
     }
 

@@ -28,8 +28,8 @@ typedef struct source_tag
     int listener_send_trigger;
 
     client_t *client;
-    http_parser_t *parser;
     time_t client_stats_update;
+    time_t worker_balance_recheck;
 
     struct _format_plugin_tag *format;
 
@@ -86,7 +86,7 @@ typedef struct source_tag
 #define SOURCE_TERMINATING          (1<<4)
 #define SOURCE_LISTENERS_SYNC       (1<<5)
 
-#define source_available(x)     (((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) && (x)->fallback.mount == NULL)
+#define source_available(x)     (((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) && ((x)->flags & SOURCE_LISTENERS_SYNC) == 0)
 #define source_running(x)       ((x)->flags & SOURCE_RUNNING)
 
 source_t *source_reserve (const char *mount);

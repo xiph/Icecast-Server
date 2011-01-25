@@ -228,8 +228,9 @@ void config_init_configuration(ice_config_t *configuration)
 }
 
 
-static void config_clear_relay (relay_server *relay)
+relay_server *config_clear_relay (relay_server *relay)
 {
+    relay_server *next = relay->next;
     while (relay->masters)
     {
         relay_server_master *master = relay->masters;
@@ -239,8 +240,11 @@ static void config_clear_relay (relay_server *relay)
         if (master->mount) xmlFree (master->mount);
         free (master);
     }
-    if (relay->localmount) xmlFree (relay->localmount);
+    if (relay->localmount)  xmlFree (relay->localmount);
+    if (relay->username)    xmlFree (relay->username);
+    if (relay->password)    xmlFree (relay->password);
     free (relay);
+    return next;
 }
 
 
@@ -347,11 +351,7 @@ void config_clear(ice_config_t *c)
     if (c->mimetypes_fn) xmlFree (c->mimetypes_fn);
 
     while (c->relay)
-    {
-        relay_server *to_go = c->relay;
-        c->relay = to_go->next;
-        config_clear_relay (to_go);
-    }
+        c->relay = config_clear_relay (c->relay);
 
     while (c->mounts)
     {
@@ -458,8 +458,11 @@ ice_config_t *config_grab_config(void)
 }
 
 /* MUST be called with the lock held! */
-void config_set_config(ice_config_t *config) {
-    memcpy(&_current_configuration, config, sizeof(ice_config_t));
+void config_set_config (ice_config_t *new_config, ice_config_t *old_config)
+{
+    if (old_config)
+        memcpy (old_config, &_current_configuration, sizeof(ice_config_t));
+    memcpy(&_current_configuration, new_config, sizeof(ice_config_t));
 }
 
 ice_config_t *config_get_config_unlocked(void)

@@ -17,6 +17,53 @@ Feature differences from SVN trunk
 any extra tags are show in the conf/icecast.xml.dist file
 
 
+2.3.2-kh29
+. prevent crash with very small burst size (eg 0). 
+. fix possible race with relay restart and headers used in stats update
+. fix possible mpeg issues causing a crash or getting stuck in an allocation loop on bad input.
+. An FLV listener could trigger a corruption in the metadata for non-FLV listeners. More likely
+  to occur when starting on-demand relays.
+. relays that have only been connected for a few seconds will be treated as if it had failed to
+  restart and listeners will be droped or moved.
+. fix possible server stall if reload requested and auth listeners were pending on auth queue
+. Fix a number of cases where listeners kept a relay from restarting because of an incorrect
+  internal state, a stuck relay.
+. revert to reserving a new relay source later in client processing. The relay is still installed
+  immediately (with client) but the source could clash with another already reserved.
+. listener triggers wakeup of inactive on-demand relay, which allows us to reduce the scheduling
+  of inactive relay clients.
+. when relays are updated, only wakeup workers once, not for each relay.
+. stats cleanup on disabled or failed relay start
+. on-demand relays minimum transfer set to 2Meg
+. make rejected_mount and stream_auth work properly again for URL auth
+. possible listener cleanup race if auth used at exit.  We now keep listener on the worker even
+  if inactive until complete.
+. expanded FLV metadata, double and bool settings, adds audiocodecid, audiosamplerate, stereo and
+  various entries from stats.
+. slave relay could of been redirected, now it is marked as a slave by the master so bypassess
+  various limit checks.
+. If auth server does not respond then disable URL requests for listeners for 60 seconds. Keeps
+  icecast from clogging up if link to auth server breaks. Some people use auth for non-auth
+  accounting or listener intro, so extra option added to allow those by default (option
+  presume_innocent set to yes to allow listener even if auth not active).
+. Make auth refcount change based on threads holding it not clients, simplifies the shutdown or
+  busy startup case.
+. move non-ogg metadata update code into one place, and fix-up use of inline URL parsing and
+  possible short write in rare cases.
+. slow down listener thread (therefore reduce new incoming listeners) if relay starts up, more
+  so if many relays start or auth queues are full.
+. increase internal settings, max auth handlers to 100, auth queue to 300 and listen queue to 64
+. fix ogg stream dump-file.
+. reduce frequency of rebalancing across workers with many streams, reduces lock contention
+. use alloca instead of malloc for non-ogg metadata/stream merge, minor speedup
+. new listeners (with queryargs or user:pass) redirected because of icecast will
+  have their supplied auth details added to new location.
+. recreate worker pipe if it fails or else we could busy loop.
+. add error code to recoverable list for accept, and prevent listener thread slow down in those
+  cases, seems to affect FreeBSD more than others although it could affect others.
+. revert listener stat names for listclients to 2.3.2 case for now
+. minor log message cleanups.
+
 2.3.2-kh28
 . fix possible short send shoutcast metadata inserts getting corrupted
 . fix a few possible flv issues when metadata is missing.

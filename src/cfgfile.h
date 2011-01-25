@@ -294,8 +294,9 @@ void config_shutdown(void);
 int config_parse_file(const char *filename, ice_config_t *configuration);
 int config_initial_parse_file(const char *filename);
 int config_parse_cmdline(int arg, char **argv);
-void config_set_config(ice_config_t *config);
+void config_set_config (ice_config_t *new_config, ice_config_t *old_config);
 listener_t *config_clear_listener (listener_t *listener);
+relay_server *config_clear_relay (relay_server *relay);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount);
 

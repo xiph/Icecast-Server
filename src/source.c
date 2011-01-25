@@ -240,51 +240,6 @@ int source_compare_sources(void *arg, void *a, void *b)
 }
 
 
-static int source_listener_drop (source_t *source, client_t *client, mount_proxy *mountinfo)
-{
-    client->shared_data = NULL;
-    client_set_queue (client, NULL);
-    if (mountinfo && mountinfo->access_log.name)
-        logging_access_id (&mountinfo->access_log, client);
-
-    return auth_release_listener (client, source->mount, mountinfo);
-}
-
-void source_clear_listeners (source_t *source)
-{
-    int i;
-    ice_config_t *config;
-    mount_proxy *mountinfo;
-
-    /* lets drop any listeners still connected */
-    DEBUG2 ("source %s has %d clients to release", source->mount, source->listeners);
-    i = 0;
-    config = config_get_config ();
-    mountinfo = config_find_mount (config, source->mount);
-    while (1)
-    {
-        avl_node *node = source->clients->root->right;
-        if (node)
-        {
-            client_t *client = node->key;
-            if (avl_delete (source->clients, client, NULL) == 0)
-            {
-                source_listener_drop (source, client, mountinfo);
-                i++;
-            }
-            continue;
-        }
-        break;
-    }
-    config_release_config ();
-    DEBUG1 ("no listeners are attached to %s", source->mount);
-    if (i)
-        stats_event_sub (NULL, "listeners", i);
-    source->listeners = 0;
-    source->prev_listeners = 0;
-}
-
-
 void source_clear_source (source_t *source)
 {
     int do_twice = 0;
@@ -443,11 +398,20 @@ int source_read (source_t *source)
         source->flags &= ~SOURCE_RUNNING;
     do
     {
-        if (source->fallback.mount && source->termination_count == 0)
+        if (source->flags & SOURCE_LISTENERS_SYNC)
         {
-            DEBUG1 ("listeners have now moved to %s", source->fallback.mount);
-            free (source->fallback.mount);
-            source->fallback.mount = NULL;
+            if (source->termination_count)
+            {
+                client->schedule_ms += 20;
+                thread_mutex_unlock (&source->lock);
+                return 0;
+            }
+            if (source->fallback.mount)
+            {
+                DEBUG1 ("listeners have now moved to %s", source->fallback.mount);
+                free (source->fallback.mount);
+                source->fallback.mount = NULL;
+            }
             source->flags &= ~SOURCE_LISTENERS_SYNC;
         }
         if (source->listeners == 0)
@@ -467,6 +431,11 @@ int source_read (source_t *source)
         {
             update_source_stats (source);
             source->client_stats_update = current + source->stats_interval;
+        }
+        if (current >= source->worker_balance_recheck)
+        {
+            int recheck = global.sources > 6 ? global.sources : 6;
+            source->worker_balance_recheck = current + recheck;
             if (source_change_worker (source))
                 return 1;
         }
@@ -500,7 +469,7 @@ int source_read (source_t *source)
                 DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
                 WARN1 ("Disconnecting %s due to socket timeout", source->mount);
-                source->flags &= ~SOURCE_RUNNING;
+                source->flags &= ~(SOURCE_RUNNING|SOURCE_PAUSE_LISTENERS);
                 skip = 0;
                 break;
             }
@@ -555,10 +524,11 @@ int source_read (source_t *source)
                         refbuf_release (to_release);
                         continue;
                     }
-                    DEBUG0 ("weird state of min_queue point");
-                    refbuf_release (source->min_queue_point);
-                    source->min_queue_point = refbuf;
-                    source->min_queue_offset = refbuf->len;
+                    if (source->min_queue_point != refbuf)
+                    {
+                        ERROR0 ("weird state of min_queue point");
+                        abort();
+                    }
                     break;
                 }
 
@@ -855,7 +825,7 @@ static int wait_for_other_listeners (client_t *client)
 {
     source_t *source = client->shared_data;
 
-    if (source->flags & SOURCE_LISTENERS_SYNC)
+    if ((source->flags & (SOURCE_TERMINATING|SOURCE_LISTENERS_SYNC)) == SOURCE_LISTENERS_SYNC)
     {
         client->schedule_ms = client->worker->time_ms + 150;
         return 0;
@@ -889,6 +859,8 @@ int listener_waiting_on_source (source_t *source, client_t *client)
 {
     source->termination_count--;
     //DEBUG2 ("termination count on %s now %lu", source->mount, source->termination_count);
+    if (client->connection.error)
+        return -1;
     if (source->fallback.mount)
     {
         int move_failed;
@@ -929,11 +901,11 @@ static int send_listener (source_t *source, client_t *client)
     long total_written = 0;
     int ret = 0;
 
-    if (client->connection.error)
-        return -1;
-
     if (source->flags & SOURCE_LISTENERS_SYNC)
         return listener_waiting_on_source (source, client);
+
+    if (client->connection.error)
+        return -1;
 
     /* check for limited listener time */
     if (client->connection.discon_time &&
@@ -1053,9 +1025,9 @@ void source_init (source_t *source)
     source->prev_listeners = -1;
     source->bytes_sent_since_update = 0;
     source->stats_interval = 5;
-    source->termination_count = 0;
     /* so the first set of average stats after 3 seconds */
     source->client_stats_update = source->last_read + 3;
+    source->worker_balance_recheck = source->last_read + 20;
     source->skip_duration = 80;
 
     util_dict_free (source->audio_info);
@@ -1101,6 +1073,7 @@ void source_init (source_t *source)
     /* on demand relays should of already called this */
     if ((source->flags & SOURCE_ON_DEMAND) == 0)
         slave_update_all_mounts();
+    source->flags &= ~SOURCE_ON_DEMAND;
 }
 
 
@@ -1152,6 +1125,7 @@ void source_shutdown (source_t *source, int with_fallback)
 
     if (source->client->connection.con_time)
         update_source_stats (source);
+    source->flags &= ~SOURCE_ON_DEMAND;
     source->termination_count = source->listeners;
     mountinfo = config_find_mount (config_get_config(), source->mount);
     if (mountinfo)
@@ -1185,13 +1159,12 @@ static void _parse_audio_info (source_t *source, const char *s)
         if (len)
         {
             char name[100], value[200];
-            char *esc;
+            int n = sscanf (start, "%99[^=]=%199[^;\r\n]", name, value);
 
-            sscanf (start, "%99[^=]=%199[^;\r\n]", name, value);
-            esc = util_url_unescape (value);
-            if (esc)
+            if (n == 2 && strncmp (name, "ice-", 4) == 0)
             {
-                if (source_running (source))
+                char *esc = util_url_unescape (value);
+                if (esc)
                 {
                     util_dict_set (source->audio_info, name, esc);
                     stats_event (source->mount, name, esc);
@@ -1696,7 +1669,6 @@ void source_client_release (client_t *client)
     if (source->format)
         client->connection.sent_bytes = source->format->read_bytes;
 
-    source_clear_listeners (source);
     thread_mutex_unlock (&source->lock);
 
     source_free_source (source);
@@ -1707,30 +1679,32 @@ void source_client_release (client_t *client)
 
 static int source_listener_release (source_t *source, client_t *client)
 {
-    ice_config_t *config;
-    mount_proxy *mountinfo;
-    int ret;
-
     /* search through sources client list to find previous link in list */
     source_listener_detach (source, client);
+    client->shared_data = NULL;
     if (source->listeners == 0)
         rate_reduce (source->format->out_bitrate, 1000);
-
-    /* if listener disconnects at the same time as the source does then we need
-     * to account for it as the source thinks it is still connected */
-    if (source->termination_count)
-        source->termination_count--;
 
     stats_event_dec (NULL, "listeners");
     stats_event_args (source->mount, "listeners", "%lu", source->listeners);
     /* change of listener numbers, so reduce scope of global sampling */
     global_reduce_bitrate_sampling (global.out_bitrate);
 
-    config = config_get_config ();
-    mountinfo = config_find_mount (config, source->mount);
-    ret = source_listener_drop (source, client, mountinfo);
-    config_release_config();
-    return ret;
+    if (client->respcode)
+    {
+        int ret;
+        ice_config_t *config = config_get_config ();
+        mount_proxy *mountinfo = config_find_mount (config, source->mount);
+
+        if (mountinfo && mountinfo->access_log.name)
+            logging_access_id (&mountinfo->access_log, client);
+
+        ret = auth_release_listener (client, source->mount, mountinfo);
+        config_release_config();
+        return ret;
+    }
+    client_send_404 (client, NULL); // failed on-demand relay? 
+    return 0;
 }
 
 
@@ -1898,17 +1872,27 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
  */
 void source_setup_listener (source_t *source, client_t *client)
 {
-    if ((source->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) == SOURCE_ON_DEMAND)
+    if (source->flags & SOURCE_LISTENERS_SYNC)
+        client->ops = &listener_wait_ops;
+    else if ((source->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) == SOURCE_ON_DEMAND)
         client->ops = &listener_pause_ops;
     else
         client->ops = &listener_client_ops;
     client->shared_data = source;
     client->queue_pos = 0;
+    client->mount = source->mount;
 
     client->check_buffer = http_source_listener;
     // add client to the source
     avl_insert (source->clients, client);
     source->listeners++;
+    if ((source->flags & (SOURCE_ON_DEMAND|SOURCE_RUNNING)) == SOURCE_ON_DEMAND)
+    {
+        source->client->schedule_ms = 0;
+        client->schedule_ms += 300;
+        worker_wakeup (source->client->worker);
+        DEBUG0 ("woke up relay");
+    }
 }
 
 
@@ -1967,7 +1951,6 @@ int source_startup (client_t *client, const char *uri)
             source_free_source (source);
             return 0;
         }
-        source->parser = client->parser;
         client->respcode = 200;
         client->shared_data = source;
 
@@ -1991,6 +1974,7 @@ int source_startup (client_t *client, const char *uri)
             thread_mutex_unlock (&source->lock);
         }
         client->flags |= CLIENT_ACTIVE;
+        worker_wakeup (client->worker);
     }
     else
     {

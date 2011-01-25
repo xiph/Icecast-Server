@@ -67,10 +67,19 @@ struct _client_tag
     /* position in first buffer */
     unsigned int pos;
 
-    /* http response code for this client */
-    int respcode;
-
     client_t *next_on_worker;
+
+    /* functions to process client */
+    struct _client_functions *ops;
+
+    /* function to check if refbuf needs updating */
+    int (*check_buffer)(struct _client_tag *client);
+
+    /* generic handle */
+    void *shared_data;
+
+    /* current mountpoint */
+    const char *mount;
 
     /* the clients connection */
     connection_t connection;
@@ -96,9 +105,6 @@ struct _client_tag
     /* Client password, if authenticated */
     char *password;
 
-    /* generic handle */
-    void *shared_data;
-
     /* Format-handler-specific data for this client */
     void *format_data;
 
@@ -111,11 +117,8 @@ struct _client_tag
     /* function to call to release format specific resources */
     void (*free_client_data)(struct _client_tag *client);
 
-    /* function to check if refbuf needs updating */
-    int (*check_buffer)(struct _client_tag *client);
-
-    /* functions to process client */
-    struct _client_functions *ops;
+    /* http response code for this client */
+    int respcode;
 };
 
 client_t *client_create (sock_t sock);

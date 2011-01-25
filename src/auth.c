@@ -54,6 +54,21 @@ int allow_auth;
 static void *auth_run_thread (void *arg);
 static int  auth_postprocess_listener (auth_client *auth_user);
 static void auth_postprocess_source (auth_client *auth_user);
+static int  wait_for_auth (client_t *client);
+
+
+struct _client_functions auth_release_ops =
+{
+    wait_for_auth,
+    client_destroy
+};
+
+
+static int wait_for_auth (client_t *client)
+{
+    DEBUG0 ("client finished with auth");
+    return -1;
+}
 
 
 void auth_check_http (client_t *client)
@@ -112,7 +127,6 @@ static auth_client *auth_client_setup (const char *mount, client_t *client)
 static void queue_auth_client (auth_client *auth_user, mount_proxy *mountinfo)
 {
     auth_t *auth;
-    int i;
 
     if (auth_user == NULL || mountinfo == NULL)
         return;
@@ -120,23 +134,27 @@ static void queue_auth_client (auth_client *auth_user, mount_proxy *mountinfo)
     thread_mutex_lock (&auth->lock);
     auth_user->next = NULL;
     auth_user->auth = auth;
-    auth->refcount++;
     *auth->tailp = auth_user;
     auth->tailp = &auth_user->next;
     auth->pending_count++;
-    for (i=0; i<auth->handlers; i++)
+    if (auth->refcount > auth->handlers)
+        DEBUG0 ("max authentication handlers allocated");
+    else
     {
-        if (auth->handles [i].thread == NULL)
+        int i;
+        for (i=0; i<auth->handlers; i++)
         {
-            DEBUG1 ("starting auth thread %d", i);
-            auth->handles [i].thread = thread_create ("auth thread", auth_run_thread,
-                    &auth->handles [i], THREAD_DETACHED);
-            break;
+            if (auth->handles [i].thread == NULL)
+            {
+                DEBUG1 ("starting auth thread %d", i);
+                auth->refcount++;
+                auth->handles [i].thread = thread_create ("auth thread", auth_run_thread,
+                        &auth->handles [i], THREAD_DETACHED);
+                break;
+            }
         }
     }
-    if (i == auth->handlers)
-        DEBUG0 ("max authentication handlers allocated");
-    INFO2 ("auth on %s has %d pending", auth->mount, auth->pending_count);
+    DEBUG2 ("auth on %s has %d pending", auth->mount, auth->pending_count);
     thread_mutex_unlock (&auth->lock);
 }
 
@@ -162,8 +180,6 @@ void auth_release (auth_t *authenticator)
     authenticator->running = 0;
     while (authenticator->handlers)
     {
-        while (authenticator->handles [authenticator->handlers-1].thread)
-            thread_sleep (5000);
         if (authenticator->release_thread_data)
             authenticator->release_thread_data (authenticator,
                     authenticator->handles [authenticator->handlers-1].data);
@@ -195,7 +211,6 @@ static void auth_client_free (auth_client *auth_user)
         client_send_401 (client, auth_user->auth->realm);
         auth_user->client = NULL;
     }
-    auth_release (auth_user->auth);
     free (auth_user->hostname);
     free (auth_user->mount);
     free (auth_user);
@@ -250,18 +265,23 @@ static void auth_new_listener (auth_client *auth_user)
  */
 static void auth_remove_listener (auth_client *auth_user)
 {
-    DEBUG0 ("...queue listener");
     if (auth_user->auth->release_listener)
         auth_user->auth->release_listener (auth_user);
-    auth_release (auth_user->auth);
     auth_user->auth = NULL;
+
     /* client is going, so auth is not an issue at this point */
-    auth_user->client->flags &= ~CLIENT_AUTHENTICATED;
-    if (auth_user->client->respcode == 0)
-        client_send_404 (auth_user->client, "Failed relay");
-    else
-        auth_user->client->flags |= CLIENT_ACTIVE;
-    auth_user->client = NULL;
+    if (auth_user->client)
+    {
+        client_t *client = auth_user->client;
+        if (client->worker)
+            client->flags = CLIENT_ACTIVE | (client->flags & ~CLIENT_AUTHENTICATED);
+        else
+        {
+            client->flags &= ~CLIENT_AUTHENTICATED;
+            client_destroy (auth_user->client);
+        }
+        auth_user->client = NULL;
+    }
 }
 
 
@@ -353,6 +373,7 @@ static void *auth_run_thread (void *arg)
     }
     DEBUG1 ("Authenication thread %d shutting down", handler->id);
     handler->thread = NULL;
+    auth_release (auth);
     thread_rwlock_unlock (&auth_lock);
     return NULL;
 }
@@ -409,7 +430,8 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     /* check whether we are processing a streamlist request for slaves */
     if (strcmp (mount, "/admin/streams") == 0)
     {
-        if (client->parser->req_type == httpp_req_stats && (client->flags & CLIENT_IS_SLAVE))
+        client->flags |= CLIENT_IS_SLAVE;
+        if (client->parser->req_type == httpp_req_stats)
         {
             stats_add_listener (client, STATS_SLAVE|STATS_GENERAL);
             return 0;
@@ -467,12 +489,12 @@ static int auth_postprocess_listener (auth_client *auth_user)
     if ((client->flags & CLIENT_AUTHENTICATED) == 0)
     {
         /* auth failed so do we place the listener elsewhere */
+        auth_user->client = NULL;
         if (auth->rejected_mount)
             mount = auth->rejected_mount;
         else
         {
             client_send_401 (client, auth_user->auth->realm);
-            auth_user->client = NULL;
             return -1;
         }
     }
@@ -539,11 +561,13 @@ void auth_add_listener (const char *mount, client_t *client)
             {
                 auth_client *auth_user;
 
-                if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 150)
+                if (mountinfo->auth->running == 0 || mountinfo->auth->pending_count > 300)
                 {
                     config_release_config ();
                     WARN0 ("too many clients awaiting authentication");
                     client_send_403 (client, "busy, please try again later");
+                    if (global.new_connections_slowdown < 10)
+                        global.new_connections_slowdown++;
                     return;
                 }
                 auth_user = auth_client_setup (mount, client);
@@ -577,30 +601,20 @@ int auth_release_listener (client_t *client, const char *mount, mount_proxy *mou
 {
     if (client->flags & CLIENT_AUTHENTICATED)
     {
-        /* drop any queue reference here, we do not want a race between the source thread
-         * and the auth/fserve thread */
         client_set_queue (client, NULL);
 
         if (mount && mountinfo && mountinfo->auth && mountinfo->auth->release_listener)
         {
             auth_client *auth_user = auth_client_setup (mount, client);
             client->flags &= ~CLIENT_ACTIVE;
+            if (client->worker)
+                client->ops = &auth_release_ops; // put into a wait state
             auth_user->process = auth_remove_listener;
             queue_auth_client (auth_user, mountinfo);
             return 0;
         }
         client->flags &= ~CLIENT_AUTHENTICATED;
     }
-    if (client->worker)
-    {
-        if (client->connection.sent_bytes == 0)
-        {
-            client_send_404 (client, NULL);
-            return 0;
-        }
-    }
-    else
-        client_destroy (client);
     return -1;
 }
 
@@ -663,8 +677,8 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             auth->handlers = atoi (options->value);
         options = options->next;
     }
-    if (auth->handlers < 1) auth->handlers = 1;
-    if (auth->handlers > 20) auth->handlers = 20;
+    if (auth->handlers < 1) auth->handlers = 3;
+    if (auth->handlers > 100) auth->handlers = 100;
     return 0;
 }
 

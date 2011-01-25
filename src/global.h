@@ -15,7 +15,7 @@
 
 #include "config.h"
 
-#define ICE_LISTEN_QUEUE 10
+#define ICE_LISTEN_QUEUE 64
 
 #define ICE_RUNNING 1
 #define ICE_HALTING 2
@@ -34,6 +34,7 @@ typedef struct ice_global_tag
 
     int running;
 
+    int new_connections_slowdown;
     int sources;
     int clients;
     int schedule_config_reread;

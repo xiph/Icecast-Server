@@ -208,7 +208,7 @@ int write_flv_buf_to_client (client_t *client)
     refbuf_t *ref = client->refbuf, *scmeta = ref->associated;
     mp3_client_data *client_mp3 = client->format_data;
     struct flv *flv = client_mp3->specific;
-    int ret;
+    int ret, meta_to_free = 0;
 
     if (client->pos >= ref->len)
     {
@@ -229,21 +229,50 @@ int write_flv_buf_to_client (client_t *client)
             flvmeta = scmeta->associated;
         if (flvmeta == NULL)
         {
-            char *value = stats_get_value (flv->mpeg_sync.mount, "server_name");
+            char *value = stats_get_value (client->mount, "server_name");
 
             flvmeta  = flv_meta_allocate (200);
+            meta_to_free = 1;
             if (value)
-                flv_meta_append (flvmeta, "name", value);
+                flv_meta_append_string (flvmeta, "name", value);
             free (value);
             value = stats_get_value (flv->mpeg_sync.mount, "title");
             if (value)
-                flv_meta_append (flvmeta, "title", value);
+                flv_meta_append_string (flvmeta, "title", value);
             else
-                flv_meta_append (flvmeta, "title", "");
+                flv_meta_append_string (flvmeta, "title", "");
             free (value);
-            flv_meta_append (flvmeta, "title", value);
-            flv_meta_append (flvmeta, NULL, NULL);
-            ref->associated = flvmeta;
+            flv_meta_append_string (flvmeta, "title", value);
+            value = stats_get_value (client->mount, "audio_codecid");
+            if (value)
+            {
+                int id = atoi (value);
+                if (id == 2 || id == 10)
+                    flv_meta_append_number (flvmeta, "audiocodecid", (double)id);
+                free (value);
+            }
+            value = stats_get_value (client->mount, "ice-bitrate");
+            if (value)
+            {
+                double rate = (double)atoi (value);
+                flv_meta_append_number (flvmeta, "audiodatarate", rate);
+                free (value);
+            }
+            value = stats_get_value (client->mount, "ice-samplerate");
+            if (value)
+            {
+                double rate = (double)atoi (value);
+                flv_meta_append_number (flvmeta, "audiosamplerate", rate);
+                free (value);
+            }
+            value = stats_get_value (client->mount, "ice-channels");
+            if (value)
+            {
+                int chann = atoi (value);
+                flv_meta_append_bool (flvmeta, "stereo", chann == 2 ? 1 : 0);
+                free (value);
+            }
+            flv_meta_append_string (flvmeta, NULL, NULL);
         }
         flvm = (struct flvmeta *)flvmeta->data;
         src = (char *)flvm + sizeof (*flvm);
@@ -260,8 +289,10 @@ int write_flv_buf_to_client (client_t *client)
             flv->prev_tagsize = len + 11;
             flv->tag[4] = prev_type;
             flv->seen_metadata = ref->associated;
+            if (meta_to_free) refbuf_release (flvmeta);
             return send_flv_buffer (client, flv);
         }
+        if (meta_to_free) refbuf_release (flvmeta);
         flv->seen_metadata = ref->associated;
     }
 
@@ -280,6 +311,25 @@ int write_flv_buf_to_client (client_t *client)
         client->queue_pos += client->refbuf->len;
     }
     return ret;
+}
+
+
+void flv_write_BE64 (void *where, void *val)
+{
+    int len = sizeof (uint64_t);
+    int diff = 1;
+    unsigned char *src = val, *dst = where;
+
+    if (*((unsigned char *)&len)) // little endian?
+    {
+        diff = -1;
+        src += sizeof (uint64_t) - 1;
+    }
+    for (len = sizeof (uint64_t); len; len--, dst++)
+    {
+        *dst = *src;
+        src += diff;
+    }
 }
 
 
@@ -303,41 +353,80 @@ refbuf_t *flv_meta_allocate (size_t len)
     memcpy (ptr+13, "\010\000\000\000\000", 5);
     flvm->meta_pos = 18;
     flvm->arraylen = 0;
-
-#if 0
-    flvm->arraylen = 1;
-    memcpy (ptr+18, "\000\010duration\000", 11);
-    flvm->meta_pos += 2+8+1;
-    {
-        // 1 billion as a double, endian matters. hex 00 41 cd cd  65 00 00 00 00
-        memcpy (ptr+flvm->meta_pos, "\101\315\315\145\000\000\000\000", 8);
-        flvm->meta_pos += 8;
-    }
-#endif
     flvm->meta_pos += sizeof (struct flvmeta);
     return buffer;
 }
 
 
-void flv_meta_append (refbuf_t *buffer, const char *tag, const char *value)
+static int flv_meta_increase (refbuf_t *buffer, int taglen, int valuelen)
 {
     struct flvmeta *flvm = (struct flvmeta *)buffer->data;
+    unsigned char *array_size_loc = (unsigned char *)buffer->data + sizeof (*flvm) + 16;
+
+    if (taglen + valuelen + 3 + flvm->meta_pos > buffer->len - 3)
+        taglen = 0; // force end of the metadata
+    if (taglen == 0)
+    {
+        DEBUG1 ("%d array elements", flvm->arraylen);
+        memcpy (buffer->data+flvm->meta_pos, "\000\000\011", 3);
+        flvm->meta_pos += 3;
+        return -1;
+    }
+    flvm->arraylen++;
+    flv_write_UI16 (array_size_loc, flvm->arraylen); // over 64k tags not handled
+    flvm->meta_pos += (2 + taglen + 1 + valuelen);
+    return 0;
+}
+
+
+void flv_meta_append_bool (refbuf_t *buffer, const char *tag, int value)
+{
+    int taglen = tag ? strlen (tag) : 0;
+    struct flvmeta *flvm = (struct flvmeta *)buffer->data;
+    unsigned char *ptr = (unsigned char *)buffer->data + flvm->meta_pos;
+
+    if (flv_meta_increase (buffer, taglen, 1) < 0)
+        return;
+
+    flv_write_UI16 (ptr, taglen);
+    memcpy (ptr+2, tag, taglen);
+    ptr += (taglen + 2);
+    *ptr = 0x01; // a boolean as UI8
+    ptr[1] = value & 0xFF;
+}
+
+
+void flv_meta_append_number (refbuf_t *buffer, const char *tag, double value)
+{
+    int taglen = 0;
+    struct flvmeta *flvm = (struct flvmeta *)buffer->data;
+    unsigned char *ptr = (unsigned char *)buffer->data + flvm->meta_pos;
+
+    if (tag)   taglen = strlen (tag);
+    if (flv_meta_increase (buffer, taglen, 8) < 0)
+        return;
+
+    flv_write_UI16 (ptr, taglen);
+    memcpy (ptr+2, tag, taglen);
+    ptr += (taglen + 2);
+    *ptr = 0x00; // a number
+    ptr++;
+    flv_write_BE64 (ptr, &value);
+    // DEBUG2 ("Appending %s number %g", tag, value);
+}
+
+
+void flv_meta_append_string (refbuf_t *buffer, const char *tag, const char *value)
+{
     int taglen = 0, valuelen = 0;
-    unsigned char *ptr, *array_sizing;
+    struct flvmeta *flvm = (struct flvmeta *)buffer->data;
+    unsigned char *ptr = (unsigned char *)buffer->data + flvm->meta_pos;
 
     if (tag)   taglen = strlen (tag);
     if (value) valuelen = strlen (value);
 
-    if (taglen + valuelen + 5 + flvm->meta_pos > buffer->len - 3)
-        tag = NULL; // force end of the metadata
-    if (tag == NULL)
-    {
-        memcpy (buffer->data+flvm->meta_pos, "\000\000\011", 3);
-        flvm->meta_pos += 3;
+    if (flv_meta_increase (buffer, taglen, valuelen+2) < 0)
         return;
-    }
-    array_sizing = (unsigned char *)buffer->data + sizeof (*flvm) +16; // 64k elements enough?
-    ptr = (unsigned char *)buffer->data + flvm->meta_pos;
 
     flv_write_UI16 (ptr, taglen);
     memcpy (ptr+2, tag, taglen);
@@ -346,10 +435,7 @@ void flv_meta_append (refbuf_t *buffer, const char *tag, const char *value)
     ptr++;
     flv_write_UI16 (ptr, valuelen);
     memcpy (ptr+2, value, valuelen);
-    ptr += (valuelen + 2);
-    flvm->arraylen++;
-    flv_write_UI16 (array_sizing, flvm->arraylen); // over 64k tags not handled
-    flvm->meta_pos = (char*)ptr - buffer->data;
+    // DEBUG2 ("Appending %s string %s", tag, value);
 }
 
 

@@ -129,18 +129,21 @@ static int get_mpeg_frame_length (struct mpeg_sync *mp, unsigned char *p)
 
     int64_t bitrate = get_mpeg_bitrate (mp, p);
     int samples = get_samples_per_mpegframe (mp->ver, mp->layer);
+    int samplerate = get_mpegframe_samplerate (p);
 
+    if (samplerate == 0 || (mp->samplerate && mp->samplerate != samplerate))
+        return -1;
     mp->sample_count = samples;
     if (bitrate > 0 && samples > 0)
     {
         bitrate *= 1000;
         if (mp->layer == LAYER_1)
         {
-            frame_len = (int)(12 * bitrate / get_mpegframe_samplerate(p) + padding) * 4; // ??
+            frame_len = (int)(12 * bitrate / samplerate + padding) * 4; // ??
         }
         else
         {
-            frame_len = (int)(samples / 8 * bitrate / get_mpegframe_samplerate(p) + padding);
+            frame_len = (int)(samples / 8 * bitrate / samplerate + padding);
         }
     }
     return frame_len;
@@ -151,6 +154,8 @@ static int handle_mpeg_frame (struct mpeg_sync *mp, unsigned char *p, int remain
 {
     int frame_len = get_mpeg_frame_length (mp, p);
 
+    if (frame_len <= 0)
+        return -1;
     if (remaining - frame_len < 0)
         return 0;
     if (mp->raw)
@@ -212,8 +217,8 @@ static int check_for_aac (struct mpeg_sync *mp, unsigned char *p, unsigned remai
         }
         mp->syncbytes = 3;
         memcpy (&mp->fixed_headerbits[0], p, 3);
-        INFO4 ("detected AAC MPEG-%s, rate %d, channels %d on %s", id ? "2" : "4", mp->samplerate,
-                mp->channels, mp->mount);
+        if (mp->check_numframes > 1)
+            INFO4 ("detected AAC MPEG-%s, rate %d, channels %d on %s", id ? "2" : "4", mp->samplerate, mp->channels, mp->mount);
         mp->process_frame = handle_aac_frame;
         return 1;
     }
@@ -229,13 +234,13 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
         mp->ver = (p[1] & 0x18) >> 3;
         if (mp->layer && version [mp->ver] && layer[mp->layer]) 
         {
-            int checking = mp->check_numframes;
+            int checking = mp->check_numframes, samplerate;
             unsigned char *fh = p;
             char stream_type[20];
 
             // au.crc = (p[1] & 0x1) == 0;
-            mp->samplerate = get_mpegframe_samplerate (p);
-            if (mp->samplerate == 0)
+            samplerate = get_mpegframe_samplerate (p);
+            if (samplerate == 0)
                 return -1;
             while (checking)
             {
@@ -250,6 +255,8 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
                     //DEBUG3 ("checking frame %d, but need more data (%d,%d)", 5-checking, frame_len, remaining);
                     return 0;
                 }
+                if (samplerate != get_mpegframe_samplerate (fh+frame_len))
+                    return -1;
                 if (fh[frame_len] != 255 || fh[frame_len+1] != p[1])
                 {
                     //DEBUG4 ("checking frame %d, but code is %x %x %x", 5-checking, fh[frame_len], fh[frame_len+1], fh[frame_len+2]);
@@ -260,6 +267,7 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
                 fh += frame_len;
                 checking--;
             }
+            mp->samplerate = samplerate;
             if  (((p[3] & 0xC0) >> 6) == 3)
                 mp->channels = 1;
             else
@@ -267,7 +275,8 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
             mp->syncbytes = 2;
             memcpy (&mp->fixed_headerbits[0], p, 2);
             snprintf (stream_type, sizeof (stream_type), "%s %s", version [mp->ver], layer[mp->layer]);
-            INFO4 ("%s detected (%d, %d) on %s", stream_type, mp->samplerate, mp->channels, mp->mount);
+            if (mp->check_numframes > 1)
+                INFO4 ("%s detected (%d, %d) on %s", stream_type, mp->samplerate, mp->channels, mp->mount);
             mp->process_frame = handle_mpeg_frame;
             return 1;
         }
@@ -363,8 +372,6 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
     if (mp == NULL)
         return 0;  /* leave as-is */
     
-    if (mp->resync_count > 30)
-        return -1;
     mp->sample_count = 0;
     if (mp->surplus)
     {
@@ -413,7 +420,7 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
             }
             if (ret == 0)
             {
-                if (remaining > 10000)
+                if (remaining > 20000)
                     return -1;
                 new_block->len = 0;
                 return remaining;
@@ -433,7 +440,10 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
         completed++;
     }
     if (remaining < 0 || remaining > new_block->len)
+    {
+        ERROR2 ("block inconsistency (%d, %d)", remaining, new_block->len);
         abort();
+    }
     new_block->len -= remaining;
     return remaining;
 }
