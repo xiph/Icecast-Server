@@ -4,9 +4,9 @@
 #include "stdafx.h"
 #include "Icecast2win.h"
 #include "Icecast2winDlg.h"
+#include "xslt.h"
 
 extern "C" {
-#include "xslt.h"
 void _initialize_subsystems(void);
 void _shutdown_subsystems(void);
 }

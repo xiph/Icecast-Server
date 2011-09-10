@@ -36,12 +36,12 @@ int fserve_client_create(client_t *httpclient, const char *path);
 char *fserve_content_type (const char *path);
 void fserve_recheck_mime_types (ice_config_t *config);
 
-void fserve_setup_client (client_t *client, const char *mount);
+int  fserve_setup_client (client_t *client);
 int  fserve_setup_client_fb (client_t *client, fbinfo *finfo);
 void fserve_set_override (const char *mount, const char *dest);
-void fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners);
+int  fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners);
 int  fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo);
-void fserve_kill_client (client_t *client, const char *mount, int response);
+int  fserve_kill_client (client_t *client, const char *mount, int response);
 
 extern int fserve_running;
 

@@ -54,6 +54,7 @@
 #include "util.h"
 #include "admin.h"
 #include "compat.h"
+#include "slave.h"
 
 #include "fserve.h"
 #include "format_mp3.h"
@@ -103,7 +104,7 @@ void fserve_initialize(void)
     fserve_recheck_mime_types (config);
     config_release_config();
 
-    stats_event (NULL, "file_connections", "0");
+    stats_event_flags (NULL, "file_connections", "0", STATS_COUNTERS);
     fserve_running = 1;
     INFO0("file serving started");
 }
@@ -358,7 +359,6 @@ static int fill_http_headers (client_t *client, const char *path, struct stat *f
             /* Date: is required on all HTTP1.1 responses */
             char currenttime[50];
             time_t now;
-            int strflen;
             struct tm result;
             off_t endpos;
             fh_node * fh = client->shared_data;
@@ -374,7 +374,7 @@ static int fill_http_headers (client_t *client, const char *path, struct stat *f
                 endpos = 0;
 
             now = client->worker->current_time.tv_sec;
-            strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
+            strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
                     gmtime_r (&now, &result));
             client->respcode = 206;
             type = fserve_content_type (path);
@@ -434,6 +434,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
     int xspf_requested = 0, xspf_file_available = 1;
+    int ret = -1;
     ice_config_t *config;
     fh_node *fh;
     fbinfo finfo;
@@ -453,10 +454,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
         /* the m3u can be generated, but send an m3u file if available */
         if (m3u_requested == 0 && xspf_requested == 0)
         {
-            WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
-            client_send_404 (httpclient, "The file you requested could not be found");
+            if (redirect_client (path, httpclient) == 0)
+            {
+                if ((httpclient->flags & CLIENT_SKIP_ACCESSLOG) == 0)
+                    WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
+                ret = client_send_404 (httpclient, "The file you requested could not be found");
+            }
             free (fullpath);
-            return -1;
+            return ret;
         }
         m3u_file_available = 0;
         xspf_file_available = 0;
@@ -466,7 +471,9 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (m3u_requested && m3u_file_available == 0)
     {
-        const char *host = httpp_getvar (httpclient->parser, "host");
+        const char  *host = httpp_getvar (httpclient->parser, "host"),
+                    *args = httpp_getvar (httpclient->parser, HTTPP_VAR_QUERYARGS),
+                    *at = "", *user = "", *pass ="";
         char *sourceuri = strdup (path);
         char *dot = strrchr (sourceuri, '.');
         char *protocol = "http";
@@ -484,6 +491,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
             host = NULL;
 
         *dot = 0;
+        if (httpclient->username && httpclient->password)
+        {
+            at = "@";
+            user = httpclient->username;
+            pass = httpclient->password;
+        }
         httpclient->respcode = 200;
         if (host == NULL)
         {
@@ -491,11 +504,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
             snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "%s://%s:%d%s\r\n", 
+                    "%s://%s%s%s%s%s:%d%s%s\r\n", 
                     protocol,
+                    user, at[0]?":":"", pass, at, 
                     config->hostname, config->port,
-                    sourceuri
-                    );
+                    sourceuri,
+                    args?args:"");
             config_release_config();
         }
         else
@@ -503,17 +517,17 @@ int fserve_client_create (client_t *httpclient, const char *path)
             snprintf (httpclient->refbuf->data, BUFSIZE,
                     "HTTP/1.0 200 OK\r\n"
                     "Content-Type: audio/x-mpegurl\r\n\r\n"
-                    "%s://%s%s\r\n", 
+                    "%s://%s%s%s%s%s%s%s\r\n",
                     protocol,
+                    user, at[0]?":":"", pass, at, 
                     host, 
-                    sourceuri
-                    );
+                    sourceuri,
+                    args?args:"");
         }
         httpclient->refbuf->len = strlen (httpclient->refbuf->data);
-        fserve_setup_client_fb (httpclient, NULL);
         free (sourceuri);
         free (fullpath);
-        return 0;
+        return fserve_setup_client_fb (httpclient, NULL);
     }
     if (xspf_requested && xspf_file_available == 0)
     {
@@ -524,29 +538,25 @@ int fserve_client_create (client_t *httpclient, const char *path)
             *eol = '\0';
         doc = stats_get_xml (0, reference);
         free (reference);
-        admin_send_response (doc, httpclient, XSLT, "xspf.xsl");
-        xmlFreeDoc(doc);
-        return 0;
+        return admin_send_response (doc, httpclient, XSLT, "xspf.xsl");
     }
 
     /* on demand file serving check */
     config = config_get_config();
     if (config->fileserve == 0)
     {
-        DEBUG1 ("on demand file \"%s\" refused", fullpath);
-        client_send_404 (httpclient, "The file you requested could not be found");
         config_release_config();
+        DEBUG1 ("on demand file \"%s\" refused", fullpath);
         free (fullpath);
-        return -1;
+        return client_send_404 (httpclient, "The file you requested could not be found");
     }
     config_release_config();
 
     if (S_ISREG (file_buf.st_mode) == 0)
     {
-        client_send_404 (httpclient, "The file you requested could not be found");
         WARN1 ("found requested file but there is no handler for it: %s", fullpath);
         free (fullpath);
-        return -1;
+        return client_send_404 (httpclient, "The file you requested could not be found");
     }
 
     finfo.flags = 0;
@@ -558,9 +568,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (fh == NULL)
     {
         WARN1 ("Problem accessing file \"%s\"", fullpath);
-        client_send_404 (httpclient, "File not readable");
         free (fullpath);
-        return -1;
+        return client_send_404 (httpclient, "File not readable");
     }
     free (fullpath);
 
@@ -569,15 +578,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (fill_http_headers (httpclient, path, &file_buf) < 0)
     {
         thread_mutex_unlock (&fh->lock);
-        client_send_416 (httpclient);
-        return -1;
+        return client_send_416 (httpclient);
     }
 
-    stats_event_inc (NULL, "file_connections");
     thread_mutex_unlock (&fh->lock);
-    fserve_setup_client_fb (httpclient, NULL);
-    return 0;
+    stats_event_inc (NULL, "file_connections");
+    return fserve_setup_client_fb (httpclient, NULL);
 }
+
 
 // fh must be locked before calling this
 static void fh_release (fh_node *fh)
@@ -604,6 +612,20 @@ static void fh_release (fh_node *fh)
 }
 
 
+static void _free_fserve_buffers (client_t *client)
+{
+    refbuf_t *buf = client->refbuf;
+    while (buf)
+    {
+        refbuf_t *old = buf;
+        buf = old->next;
+        old->next = NULL;
+        refbuf_release (old);
+    }
+    client->refbuf = NULL;
+}
+
+
 static void file_release (client_t *client)
 {
     fh_node *fh = client->shared_data;
@@ -619,6 +641,7 @@ static void file_release (client_t *client)
             stats_event (fh->finfo.mount, NULL, NULL);
         fh_release (fh);
     }
+    _free_fserve_buffers (client);
     if (client->flags & CLIENT_AUTHENTICATED)
     {
         const char *mount = httpp_getvar (client->parser, HTTPP_VAR_URI);
@@ -657,8 +680,7 @@ static void fserve_move_listener (client_t *client)
     fh_node *fh = client->shared_data;
     fbinfo f;
 
-    refbuf_release (client->refbuf);
-    client->refbuf = NULL;
+    _free_fserve_buffers (client);
     client->shared_data = NULL;
     thread_mutex_lock (&fh->lock);
     remove_from_fh (fh, client);
@@ -708,15 +730,14 @@ static int prefile_send (client_t *client)
                         refbuf_release (client->refbuf);
                         client->refbuf = refbuf_new(len);
                         client->pos = len;
-                        return 0;
+                        return client->ops->process (client);
                     }
                 }
                 if (client->respcode)
                     return -1;
-                client_send_404 (client, NULL);
                 thread_mutex_lock (&fh->lock);
                 fh_release (fh);
-                return 0;
+                return client_send_404 (client, NULL);
             }
             else
             {
@@ -741,7 +762,6 @@ static int prefile_send (client_t *client)
         if (written > 30000)
             break;
     }
-    client->schedule_ms = worker->time_ms + 100;
     return 0;
 }
 
@@ -783,7 +803,7 @@ static int file_send (client_t *client)
      * this, eg admin requests */
     if (throttle_sends > 1 && now - client->connection.con_time > 1)
     {
-        client->schedule_ms += 500;
+        client->schedule_ms += 300;
         loop = 1; 
     }
     while (loop && written < 30000)
@@ -840,14 +860,18 @@ static int throttled_file_send (client_t *client)
         limit = (unsigned long)(limit * 1.05);
     if (secs)
         rate = (client->counter+1400)/secs;
+    // DEBUG3 ("counter %lld, duration %ld, limit %u", client->counter, secs, rate);
     thread_mutex_lock (&fh->lock);
-    if (rate > limit)
+    if (rate > limit || secs < 3)
     {
         client->schedule_ms += 1000/(limit/1400);
         rate_add (fh->format->out_bitrate, 0, worker->time_ms);
-        thread_mutex_unlock (&fh->lock);
-        global_add_bitrates (global.out_bitrate, 0, worker->time_ms);
-        return 0;
+        if (secs > 2)
+        {
+            thread_mutex_unlock (&fh->lock);
+            global_add_bitrates (global.out_bitrate, 0, worker->time_ms);
+            return 0;
+        }
     }
     if (fh->stats_update <= now)
     {
@@ -879,10 +903,10 @@ static int throttled_file_send (client_t *client)
     bytes = client->check_buffer (client);
     if (bytes < 0)
         bytes = 0;
+    //DEBUG3 ("bytes %d, counter %ld, %ld", bytes, client->counter, client->worker->time_ms - (client->timer_start*1000));
     rate_add (fh->format->out_bitrate, bytes, worker->time_ms);
     thread_mutex_unlock (&fh->lock);
     global_add_bitrates (global.out_bitrate, bytes, worker->time_ms);
-    client->counter += bytes;
     client->schedule_ms += (1000/(limit/1400*2));
 
     /* progessive slowdown if max bandwidth is exceeded. */
@@ -899,17 +923,17 @@ struct _client_functions throttled_file_content_ops =
 };
 
 
-/* return 0 for success, 1 for fallback invalid */
+/* return 0 for success, -1 for fallback invalid */
 int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 {
     if (finfo)
     {
         fh_node *fh;
         if (finfo->flags & FS_FALLBACK && finfo->limit == 0)
-            return 1;
+            return -1;
         fh = open_fh (finfo, client);
         if (fh == NULL)
-            return 1;
+            return -1;
         client->shared_data = fh;
 
         if (fh->finfo.limit)
@@ -934,7 +958,10 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
     client->ops = &buffer_content_ops;
     client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
     if (client->flags & CLIENT_ACTIVE)
+    {
         client->schedule_ms = client->worker->time_ms;
+        return client->ops->process (client);
+    }
     else
     {
         worker_t *worker = client->worker;
@@ -945,10 +972,10 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 }
 
 
-void fserve_setup_client (client_t *client, const char *mount)
+int fserve_setup_client (client_t *client)
 {
     client->check_buffer = format_generic_write_to_client;
-    fserve_setup_client_fb (client, NULL);
+    return fserve_setup_client_fb (client, NULL);
 }
 
 
@@ -1058,9 +1085,9 @@ void fserve_recheck_mime_types (ice_config_t *config)
 }
 
 
-void fserve_kill_client (client_t *client, const char *mount, int response)
+int fserve_kill_client (client_t *client, const char *mount, int response)
 {
-    int c = 2, id;
+    int loop = 2, id;
     fbinfo finfo;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1074,10 +1101,8 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
 
     idtext = httpp_get_query_param (client->parser, "id");
     if (idtext == NULL)
-    {
-        client_send_400 (client, "missing parameter id");
-        return;
-    }
+        return client_send_400 (client, "missing parameter id");
+
     id = atoi(idtext);
 
     doc = xmlNewDoc(XMLSTR("1.0"));
@@ -1085,7 +1110,7 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
     xmlDocSetRootElement(doc, node);
     snprintf (buf, sizeof(buf), "Client %d not found", id);
 
-    while (c)
+    while (1)
     {
         fh_node *fh = open_fh (&finfo, NULL);
         if (fh)
@@ -1100,20 +1125,20 @@ void fserve_kill_client (client_t *client, const char *mount, int response)
                     listener->connection.error = 1;
                     snprintf (buf, sizeof(buf), "Client %d removed", id);
                     v = "1";
+                    loop = 0;
                     break;
                 }
                 node = avl_get_next (node);
             }
             fh_release (fh);
-            break;
         }
-        c--;
-        finfo.flags = FS_FALLBACK;
+        if (loop == 0) break;
+        loop--;
+        if (loop == 1) finfo.flags = FS_FALLBACK;
     }
     xmlNewChild (node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild (node, NULL, XMLSTR("return"), XMLSTR(v));
-    admin_send_response (doc, client, response, "response.xsl");
-    xmlFreeDoc(doc);
+    return admin_send_response (doc, client, response, "response.xsl");
 }
 
 
@@ -1164,7 +1189,7 @@ int fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo)
 }
 
 
-void fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners)
+int fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners)
 {
     int ret;
     fbinfo finfo;
@@ -1193,9 +1218,7 @@ void fserve_list_clients (client_t *client, const char *mount, int response, int
         char buf[20];
         snprintf (buf, sizeof(buf), "%u", ret);
         xmlNewChild (srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
-        admin_send_response (doc, client, response, "listclients.xsl");
+        return admin_send_response (doc, client, response, "listclients.xsl");
     }
-    else
-        client_send_400 (client, "mount does not exist");
-    xmlFreeDoc(doc);
+    return client_send_400 (client, "mount does not exist");
 }

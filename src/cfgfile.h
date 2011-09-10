@@ -133,6 +133,7 @@ typedef struct _mount_proxy {
 
     access_log      access_log;
 
+    char *redirect;
     char *stream_name;
     char *stream_description;
     char *stream_url;

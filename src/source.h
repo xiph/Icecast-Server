@@ -53,6 +53,7 @@ typedef struct source_tag
     unsigned long peak_listeners;
     unsigned long listeners;
     unsigned long prev_listeners;
+    long incoming_rate;
 
     int yp_public;
 

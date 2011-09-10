@@ -227,6 +227,8 @@ static void format_mp3_apply_settings (format_plugin_t *format, mount_proxy *mou
 {
     mp3_state *source_mp3 = format->_state;
 
+    if (source_mp3 == NULL)
+        return;
     source_mp3->interval = -1;
     free (format->charset);
     format->charset = NULL;
@@ -349,14 +351,17 @@ static void mp3_set_title (source_t *source)
         }
         if (source_mp3->url_artist && source_mp3->url_title)
         {
+            stats_event (source->mount, "title", source_mp3->url_title);
             r = snprintf (p->data, size, "%c%s%s - %s", len_byte, streamtitle,
                     source_mp3->url_artist, source_mp3->url_title);
             flv_meta_append_string (flvmeta, "artist", source_mp3->url_artist);
         }
         else
+        {
             r = snprintf (p->data, size, "%c%s%s", len_byte, streamtitle, source_mp3->url_title);
+            stats_event (source->mount, "title", p->data+14);
+        }
         logging_playlist (source->mount, p->data+14, source->listeners);
-        stats_event (source->mount, "title", p->data+14);
         strcat (p->data+14, "';");
         flv_meta_append_string (flvmeta, "title", source_mp3->url_title);
         if (r > 0)
@@ -381,7 +386,7 @@ static void mp3_set_title (source_t *source)
         flv_meta_append_string (flvmeta, NULL, NULL);
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
-        stats_event_time (source->mount, "metadata_updated");
+        stats_event_time (source->mount, "metadata_updated", STATS_GENERAL);
     }
 }
 
@@ -390,11 +395,11 @@ static void mp3_set_title (source_t *source)
  * which is 0 or greater.  Check the client in_metadata value afterwards
  * to see if all metadata has been sent
  */
-static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned int remaining)
+static int send_stream_metadata (client_t *client, refbuf_t *refbuf)
 {
     int ret = 0;
-    char *metadata;
-    int meta_len;
+    char *metadata, *merge;
+    int meta_len, block_len;
     refbuf_t *associated = refbuf->associated;
     mp3_client_data *client_mp3 = client->format_data;
 
@@ -443,61 +448,32 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
     }
     /* if there is normal stream data to send as well as metadata then try
      * to merge them into 1 write call */
-    if (remaining)
+
+    block_len = refbuf->len - client->pos;
+    merge = alloca (block_len + meta_len);
+
+    memcpy (merge, metadata, meta_len);
+    memcpy (merge + meta_len, refbuf->data + client->pos, block_len);
+
+    ret = client_send_bytes (client, merge, meta_len+block_len);
+
+    if (ret >= meta_len)
     {
-        char *merge = alloca (remaining + meta_len);
-        memcpy (merge, refbuf->data + client->pos, remaining);
-        memcpy (merge+remaining, metadata, meta_len);
-
-        ret = client_send_bytes (client, merge, remaining+meta_len);
-
-        if (ret > (int)remaining)
-        {
-            /* did we write all of it? */
-            if (ret < (int)remaining + meta_len)
-            {
-                client_mp3->metadata_offset = (ret - remaining);
-                client->flags |= CLIENT_IN_METADATA;
-                client->schedule_ms += 200;
-                client_mp3->since_meta_block += remaining;
-            }
-            else
-            {
-                client->flags &= ~CLIENT_IN_METADATA;
-                client_mp3->metadata_offset = 0;
-                client_mp3->since_meta_block = 0;
-                client->pos += remaining;
-            }
-            client->queue_pos += remaining;
-            return ret;
-        }
-        /* although we are not actually in metadata yet, we know we can do another merge next time */
-        client->flags |= CLIENT_IN_METADATA;
-        client->schedule_ms += 200;
-        if (ret > 0)
-        {
-            client_mp3->since_meta_block += ret;
-            client->pos += ret;
-            client->queue_pos += ret;
-        }
-        return ret > 0 ? ret : 0;
-    }
-    ret = client_send_bytes (client, metadata, meta_len);
-
-    if (ret == meta_len)
-    {
-        client_mp3->metadata_offset = 0;
+        client->queue_pos += (ret - meta_len);
+        client->counter += (ret - meta_len);
+        client_mp3->since_meta_block = (ret - meta_len);
+        client->pos += (ret - meta_len);
         client->flags &= ~CLIENT_IN_METADATA;
-        client_mp3->since_meta_block = 0;
-        client->pos += remaining;
-        return ret;
+        client_mp3->metadata_offset = 0;
     }
-    if (ret > 0)
-        client_mp3->metadata_offset += ret;
-    client->schedule_ms += 200;
-    client->flags |= CLIENT_IN_METADATA;
-
-    return ret > 0 ? ret : 0;
+    else
+    {
+        client->flags |= CLIENT_IN_METADATA;
+        if (ret > 0)
+            client_mp3->metadata_offset += ret;
+        client->schedule_ms += 150;
+    }
+    return ret;
 }
 
 
@@ -506,56 +482,37 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf, unsigned in
  */
 static int format_mp3_write_buf_to_client (client_t *client) 
 {
-    int ret, written = 0;
+    int ret = -1, len;
     mp3_client_data *client_mp3 = client->format_data;
     refbuf_t *refbuf = client->refbuf;
-    char *buf = refbuf->data + client->pos;
-    unsigned int len = refbuf->len - client->pos;
 
-    do
+    if (client_mp3->interval && client_mp3->interval == client_mp3->since_meta_block)
+        return send_stream_metadata (client, refbuf);
+
+    len = refbuf->len - client->pos;
+    if (client_mp3->interval && len > client_mp3->interval - client_mp3->since_meta_block)
+        len = client_mp3->interval - client_mp3->since_meta_block;
+    if (len > 2900)
+        len = 2900; // do not send a huge amount out in one go
+
+    if (len)
     {
-        /* see if we need to send the current metadata to the client */
-        if (client_mp3->interval)
+        char *buf = refbuf->data + client->pos;
+
+        ret = client_send_bytes (client, buf, len);
+
+        if (ret < len)
+            client->schedule_ms += 50;
+        if (ret > 0)
         {
-            size_t remaining = client_mp3->interval -
-                client_mp3->since_meta_block;
-
-            /* leading up to sending the metadata block */
-            if ((client->flags & CLIENT_IN_METADATA) || remaining <= len)
-            {
-                ret = send_stream_metadata (client, refbuf, remaining);
-                if (client->flags & CLIENT_IN_METADATA)
-                    break;
-                buf = refbuf->data + client->pos;
-                len = refbuf->len - client->pos;
-                if (ret <= (int)remaining || len > client_mp3->interval)
-                    break;
-                written += ret;
-            }
+            client_mp3->since_meta_block += ret;
+            client->pos += ret;
+            client->queue_pos += ret;
+            client->counter += ret;
         }
-        /* write any mp3, maybe after the metadata block */
-        if (len)
-        {
-            ret = client_send_bytes (client, buf, len);
-
-            if (ret > 0)
-            {
-                client_mp3->since_meta_block += ret;
-                client->pos += ret;
-                client->queue_pos += ret;
-            }
-            if (ret < (int)len)
-                break;
-            written += ret;
-        }
-        ret = 0;
-    } while (0);
-
-    if (ret < 0)
-        client->schedule_ms += (written ? 25 : 50);
-    if (ret > 0)
-        written += ret;
-    return written == 0 ? -1 : written;
+    }
+    client->schedule_ms += 4;
+    return ret;
 }
 
 
@@ -606,17 +563,22 @@ static int complete_read (source_t *source)
         source_mp3->read_data = refbuf_new (source_mp3->queue_block_size);
         source_mp3->read_count = 0;
     }
+    if (source_mp3->update_metadata)
+    {
+        mp3_set_title (source);
+        source_mp3->update_metadata = 0;
+    }
     if (source_mp3->read_count < source_mp3->read_data->len)
     {
         char *buf = source_mp3->read_data->data + source_mp3->read_count;
         int read_in = source_mp3->read_data->len - source_mp3->read_count;
         int bytes = client_read_bytes (client, buf, read_in);
-        if (bytes < 0)
-            return 0;
-        //DEBUG2 ("read in %d of %d bytes", bytes, read_in);
-        rate_add (format->in_bitrate, bytes, client->worker->current_time.tv_sec);
-        source_mp3->read_count += bytes;
-        format->read_bytes += bytes;
+        if (bytes > 0)
+        {
+            rate_add (format->in_bitrate, bytes, client->worker->current_time.tv_sec);
+            source_mp3->read_count += bytes;
+            format->read_bytes += bytes;
+        }
     }
     if (source_mp3->read_count < source_mp3->read_data->len)
         return 0;
@@ -631,7 +593,15 @@ int mpeg_process_buffer (client_t *client, format_plugin_t *plugin)
     int unprocessed = -1;
 
     if (refbuf)
+    {
         unprocessed = mpeg_complete_frames (&source_mp3->file_sync, refbuf, 0);
+        if (source_mp3->metadata && refbuf->associated != source_mp3->metadata)
+        {
+            refbuf_release (refbuf->associated);
+            refbuf->associated = source_mp3->metadata;
+            refbuf_addref (source_mp3->metadata);
+        }
+    }
     return unprocessed;
 }
 
@@ -708,11 +678,6 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
         return NULL;
     }
     source->client->queue_pos += refbuf->len;
-    if (source_mp3->update_metadata)
-    {
-        mp3_set_title (source);
-        source_mp3->update_metadata = 0;
-    }
     refbuf->associated = source_mp3->metadata;
     refbuf_addref (source_mp3->metadata);
     refbuf->flags |= SOURCE_BLOCK_SYNC;
@@ -740,11 +705,6 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     source_mp3->read_data = NULL;
     src = (unsigned char *)refbuf->data;
 
-    if (source_mp3->update_metadata)
-    {
-        mp3_set_title (source);
-        source_mp3->update_metadata = 0;
-    }
     /* fill the buffer with the read data */
     bytes = source_mp3->read_count;
     refbuf->len = 0;

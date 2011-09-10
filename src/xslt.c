@@ -84,6 +84,75 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 }
 #endif
 
+struct bufs
+{
+    refbuf_t *head, **tail;
+    int len;
+};
+
+
+static int xslt_write_callback (void *ctxt, const char *data, int len)
+{
+    struct bufs *x = ctxt;
+    refbuf_t *r;
+    int loop = 10;
+
+    if (len == 0)
+        return 0;
+    if (len < 0 || len > 2000000)
+    {
+        ERROR1 ("%d length requested", len);
+        return -1;
+    }
+    while (loop)
+    {
+        int size = len > 4096 ? len : 4096;
+        if (*x->tail == NULL)
+        {
+            *x->tail = refbuf_new (size);
+            (*x->tail)->len = 0;
+        }
+        r = *x->tail;
+        if (r->len + len > size)
+        {
+            x->tail = &r->next;
+            loop--;
+            continue;
+        }
+        memcpy (r->data + r->len, data, len);
+        r->len += len;
+        x->len += len;
+        break;
+    }
+    return len;
+}
+
+
+int xslt_SaveResultToBuf (refbuf_t **bptr, int *len, xmlDocPtr result, xsltStylesheetPtr style)
+{
+    xmlOutputBufferPtr buf;
+    struct bufs x;
+
+    if (result->children == NULL)
+    {
+        *bptr = NULL;
+        *len = 0;
+        return 0;
+    }
+
+    memset (&x, 0, sizeof (x));
+    x.tail = &x.head;
+    buf = xmlOutputBufferCreateIO (xslt_write_callback, NULL, &x, NULL);
+
+    if (buf == NULL)
+		return  -1;
+    xsltSaveResultTo (buf, result, style);
+    *bptr = x.head;
+    *len = x.len;
+    xmlOutputBufferClose(buf);
+    return 0;
+}
+
 /* Keep it small... */
 #define CACHESIZE 3
 
@@ -180,13 +249,14 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     return cache[i].stylesheet;
 }
 
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
+
+int xslt_transform (xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
     xmlDocPtr    res;
     xsltStylesheetPtr cur;
-    xmlChar *string;
-    int len, problem = 0;
-    const char *mediatype = NULL;
+    int len;
+    refbuf_t *content = NULL;
+    char **params = NULL;
 
     xmlSetGenericErrorFunc ("", log_parse_failure);
     xsltSetGenericErrorFunc ("", log_parse_failure);
@@ -198,54 +268,67 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     {
         thread_mutex_unlock(&xsltlock);
         ERROR1 ("problem reading stylesheet \"%s\"", xslfilename);
-        client_send_404 (client, "Could not parse XSLT file");
-        return;
+        return client_send_404 (client, "Could not parse XSLT file");
+    }
+    if (client->parser->queryvars)
+    {
+        // annoying but we need to surround the args with ' when passing them in
+        int i, arg_count = client->parser->queryvars->length * 2;
+        avl_node *node = avl_get_first (client->parser->queryvars);
+
+        params = calloc (arg_count+1, sizeof (char *));
+        for (i = 0; node && i < arg_count; node = avl_get_next (node))
+        {
+            http_var_t *param = (http_var_t *)node->key;
+            params[i++] = param->name;
+            params[i] = (char*)alloca (strlen (param->value) +3);
+            sprintf (params[i++], "\'%s\'", param->value);
+        }
+        params[i] = NULL;
     }
 
-    res = xsltApplyStylesheet(cur, doc, NULL);
+    res = xsltApplyStylesheet (cur, doc, (const char **)params);
+    free (params);
 
-    if (res == NULL || xsltSaveResultToString (&string, &len, res, cur) < 0)
-        problem = 1;
-
-    /* lets find out the content type to use */
-    if (cur->mediaType)
-        mediatype = (char *)cur->mediaType;
+    if (res == NULL || xslt_SaveResultToBuf (&content, &len, res, cur) < 0)
+    {
+        thread_mutex_unlock (&xsltlock);
+        xmlFreeDoc (res);
+        WARN1 ("problem applying stylesheet \"%s\"", xslfilename);
+        return client_send_404 (client, "XSLT problem");
+    }
     else
     {
-        /* check method for the default, a missing method assumes xml */
-        if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
-            mediatype = "text/html";
-        else
-            if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
-                mediatype = "text/plain";
-            else
-                mediatype = "text/xml";
-    }
-    if (problem == 0)
-    {
         /* the 100 is to allow for the hardcoded headers */
-        unsigned int full_len = strlen (mediatype) + len + 100;
-        refbuf_t *refbuf = refbuf_new (full_len);
+        refbuf_t *refbuf = refbuf_new (100);
+        const char *mediatype = NULL;
 
-        if (string == NULL)
-            string = xmlCharStrdup ("");
-        snprintf (refbuf->data, full_len,
-                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
-                mediatype, len, string);
+        /* lets find out the content type to use */
+        if (cur->mediaType)
+            mediatype = (char *)cur->mediaType;
+        else
+        {
+            /* check method for the default, a missing method assumes xml */
+            if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
+                mediatype = "text/html";
+            else
+                if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
+                    mediatype = "text/plain";
+                else
+                    mediatype = "text/xml";
+        }
+        snprintf (refbuf->data, 100,
+                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n",
+                mediatype, len);
 
+        thread_mutex_unlock (&xsltlock);
         client->respcode = 200;
         client_set_queue (client, NULL);
         client->refbuf = refbuf;
         refbuf->len = strlen (refbuf->data);
-        fserve_setup_client (client, NULL);
-        xmlFree (string);
+        refbuf->next = content;
     }
-    else
-    {
-        WARN1 ("problem applying stylesheet \"%s\"", xslfilename);
-        client_send_404 (client, "XSLT problem");
-    }
-    thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);
+    return fserve_setup_client (client);
 }
 

@@ -324,20 +324,16 @@ char *util_url_unescape (const char *src)
     for(i=0; i < len; i++) {
         switch(src[i]) {
             case '%':
-                if(i+2 >= len) {
-                    free(decoded);
-                    return NULL;
+                if (i+2 >= len || hex(src[i+1]) == -1 || hex(src[i+2]) == -1)
+                {
+                    /* no matching pattern so assume just the % */
+                    *dst++ = '%';
                 }
-                if(hex(src[i+1]) == -1 || hex(src[i+2]) == -1 ) {
-                    free(decoded);
-                    return NULL;
+                else
+                {
+                    *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
+                    i+= 2;
                 }
-
-                *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
-                i+= 2;
-                break;
-            case '#':
-                done = 1;
                 break;
             case 0:
                 ERROR0("Fatal internal logic error in util_url_unescape()");
@@ -841,3 +837,23 @@ int get_line(FILE *file, char *buf, size_t siz)
     return 0;
 }
 
+#ifdef _MSC_VER
+int msvc_snprintf (char *buf, int len, const char *fmt, ...)
+{
+    int ret;
+    va_list ap;
+    va_start(ap, fmt);
+    ret = _vsnprintf (buf, len, fmt, ap);
+    if (ret < 0)
+        buf[len-1] = 0;
+    va_end(ap);
+    return ret;
+}
+int msvc_vsnprintf (char *buf, int len, const char *fmt, va_list ap)
+{
+    int ret = _vsnprintf (buf, len, fmt, ap);
+    if (ret < 0)
+        buf[len-1] = 0;
+    return ret;
+}
+#endif

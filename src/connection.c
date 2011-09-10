@@ -28,7 +28,10 @@
 #include <fnmatch.h>
 #endif
 
-#ifndef _WIN32
+#ifdef _MSC_VER
+ #include <winsock2.h>
+ #include <ws2tcpip.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -348,11 +351,14 @@ static void add_generic_text (avl_tree *t, const char *ip, time_t now)
 
 static void add_banned_ip (avl_tree *t, const char *ip, time_t now)
 {
-    struct banned_entry *entry = calloc (1, sizeof (struct banned_entry));
-    snprintf (&entry->ip[0], sizeof (entry->ip), "%s", ip);
-    if (now)
-        entry->timeout = now;
-    avl_insert (t, entry);
+    if (t)
+    {
+        struct banned_entry *entry = calloc (1, sizeof (struct banned_entry));
+        snprintf (&entry->ip[0], sizeof (entry->ip), "%s", ip);
+        if (now)
+            entry->timeout = now;
+        avl_insert (t, entry);
+    }
 }
 
 void connection_add_banned_ip (const char *ip, int duration)
@@ -508,41 +514,25 @@ int connection_init (connection_t *con, sock_t sock, const char *addr)
 {
     if (con)
     {
-        struct sockaddr_storage sa;
-        socklen_t slen = sizeof (sa);
-
+        memset (con, 0, sizeof (connection_t));
         con->sock = sock;
         if (sock == SOCK_ERROR)
             return -1;
-        con->id = _next_connection_id();
         if (addr)
         {
-            con->ip = strdup (addr);
-            return 0;
-        }
-        if (getpeername (sock, (struct sockaddr *)&sa, &slen) == 0)
-        {
             char *ip;
-#ifdef HAVE_GETNAMEINFO
-            char buffer [200] = "unknown";
-            getnameinfo ((struct sockaddr *)&sa, slen, buffer, 200, NULL, 0, NI_NUMERICHOST);
-            if (strncmp (buffer, "::ffff:", 7) == 0)
-                ip = strdup (buffer+7);
+            if (strncmp (addr, "::ffff:", 7) == 0)
+                ip = strdup (addr+7);
             else
-                ip = strdup (buffer);
-#else
-            int len = 30;
-            ip = malloc (len);
-            strncpy (ip, inet_ntoa (sa.sin_addr), len);
-#endif
+                ip = strdup (addr);
             if (accept_ip_address (ip))
             {
                 con->ip = ip;
+                con->id = _next_connection_id();
                 return 0;
             }
             free (ip);
         }
-        memset (con, 0, sizeof (connection_t));
         con->sock = SOCK_ERROR;
     }
     return -1;
@@ -604,19 +594,24 @@ static sock_t wait_for_serversock (void)
                 {
                     case SIGINT:
                     case SIGTERM:
+                        DEBUG0 ("signalfd received a termination");
                         global.running = ICE_HALTING;
                         connection_running = 0;
-                        DEBUG0 ("signalfd received a termination");
                         break;
                     case SIGHUP:
+                        INFO0 ("HUP received, reread scheduled");
                         global.schedule_config_reread = 1;
                         connection_running = 0;
-                        INFO0 ("HUP received, reread scheduled");
                         break;
                     default:
                         WARN1 ("unexpected signal (%d)", fdsi.ssi_signo);
                 }
             }
+        }
+        if (ufds[i].revents & (POLLNVAL|POLLERR))
+        {
+            ERROR0 ("signalfd descriptor became invalid, doing thread restart");
+            slave_restart(); // something odd happened
         }
 #endif
         for(i=0; i < global.server_sockets; i++) {
@@ -681,13 +676,14 @@ static sock_t wait_for_serversock (void)
 
 static client_t *accept_client (void)
 {
-    client_t *client;
+    client_t *client = NULL;
     sock_t sock, serversock = wait_for_serversock ();
+    char addr [200];
 
     if (serversock == SOCK_ERROR)
         return NULL;
 
-    sock = sock_accept (serversock, NULL, 0);
+    sock = sock_accept (serversock, addr, 200);
     if (sock == SOCK_ERROR)
     {
         if (sock_recoverable (sock_error()))
@@ -696,12 +692,26 @@ static client_t *accept_client (void)
         thread_sleep (500000);
         return NULL;
     }
-    global_lock ();
-    client = client_create (sock);
-    if (client)
+    do
     {
-        connection_t *con = &client->connection;
-        int i;
+        int i, num;
+        refbuf_t *r;
+
+        if (sock_set_blocking (sock, 0) || sock_set_nodelay (sock))
+        {
+            WARN0 ("failed to set tcp options on client connection, dropping");
+            break;
+        }
+        client = calloc (1, sizeof (client_t));
+        if (client == NULL || connection_init (&client->connection, sock, addr) < 0)
+            break;
+
+        client->shared_data = r = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+        r->len = 0; // for building up the request coming in
+
+        global_lock ();
+        client_register (client);
+
         for (i=0; i < global.server_sockets; i++)
         {
             if (global.serversock[i] == serversock)
@@ -709,7 +719,7 @@ static client_t *accept_client (void)
                 client->server_conn = global.server_conn[i];
                 client->server_conn->refcount++;
                 if (client->server_conn->ssl && ssl_ok)
-                    connection_uses_ssl (con);
+                    connection_uses_ssl (&client->connection);
                 if (client->server_conn->shoutcast_compat)
                     client->ops = &shoutcast_source_ops;
                 else
@@ -717,16 +727,13 @@ static client_t *accept_client (void)
                 break;
             }
         }
+        num = global.clients;
         global_unlock ();
-        if (sock_set_blocking (con->sock, 0) || sock_set_nodelay (con->sock))
-        {
-            WARN0 ("failed to set tcp options on client connection, dropping");
-            client_destroy (client);
-            client = NULL;
-        }
+        stats_event_args (NULL, "clients", "%d", num);
         return client;
-    }
-    global_unlock ();
+    } while (0);
+
+    free (client);
     sock_close (sock);
     return NULL;
 }
@@ -836,8 +843,7 @@ static int http_client_request (client_t *client)
                 refbuf_release (refbuf);
                 client->shared_data = NULL;
                 client->check_buffer = format_generic_write_to_client;
-                fserve_setup_client_fb (client, &fb);
-                return 0;
+                return fserve_setup_client_fb (client, &fb);
             }
             /* find a blank line */
             do
@@ -908,9 +914,9 @@ static int http_client_request (client_t *client)
                         break;
                     default:
                         WARN0("unhandled request type from client");
-                        client_send_400 (client, "unknown request");
-                        return 0;
+                        return client_send_400 (client, "unknown request");
                 }
+                client->counter = 0;
                 return client->ops->process(client);
             }
             /* invalid http request */
@@ -918,7 +924,12 @@ static int http_client_request (client_t *client)
         }
         if (ret && client->connection.error == 0)
         {
-            client->schedule_ms = client->worker->time_ms + 100;
+            /* scale up the retry time, very short initially, usual case */
+            uint64_t diff = client->worker->time_ms - client->counter;
+            diff >>= 1;
+            if (diff > 200)
+                diff = 200;
+            client->schedule_ms = client->worker->time_ms + 6 + diff;
             return 0;
         }
     }
@@ -978,10 +989,10 @@ static void *connection_thread (void *arg)
         {
             /* do a small delay here so the client has chance to send the request after
              * getting a connect. */
-            client->schedule_ms = timing_get_time();
+            client->counter = client->schedule_ms = timing_get_time();
             client->connection.con_time = client->schedule_ms/1000;
             client->connection.discon_time = client->connection.con_time + header_timeout;
-            client->schedule_ms += 5;
+            client->schedule_ms += 6;
             client_add_worker (client);
             stats_event_inc (NULL, "connections");
         }
@@ -1002,6 +1013,7 @@ static void *connection_thread (void *arg)
     memset (&allowed_ip, 0, sizeof (allowed_ip));
     memset (&useragents, 0, sizeof (useragents));
     global_unlock();
+    connection_close_sigfd ();
 
     INFO0 ("connection thread finished");
 
@@ -1027,7 +1039,6 @@ void connection_thread_shutdown ()
     if (conn_tid)
     {
         connection_running = 0;
-        connection_close_sigfd ();
         INFO0("shutting down connection thread");
         thread_join (conn_tid);
         conn_tid = NULL;
@@ -1231,8 +1242,7 @@ static int _handle_source_request (client_t *client)
     if (uri[0] != '/')
     {
         WARN0 ("source mountpoint not starting with /");
-        client_send_401 (client, NULL);
-        return 0;
+        return client_send_401 (client, NULL);
     }
     switch (auth_check_source (client, uri))
     {
@@ -1242,7 +1252,7 @@ static int _handle_source_request (client_t *client)
             break;
         default:        /* failed */
             INFO1("Source (%s) attempted to login with invalid or missing password", uri);
-            client_send_401 (client, NULL);
+            return client_send_401 (client, NULL);
     }
     return 0;
 }
@@ -1259,7 +1269,7 @@ static int _handle_stats_request (client_t *client)
         if (strcmp (uri, "/admin/streams") == 0 && connection_check_relay_pass (client->parser))
             stats_add_listener (client, STATS_SLAVE|STATS_GENERAL);
         else
-            auth_add_listener (uri, client);
+            return auth_add_listener (uri, client);
     }
     return 0;
 }
@@ -1300,23 +1310,19 @@ static void check_for_filtering (ice_config_t *config, client_t *client, char *u
 
 static int _handle_get_request (client_t *client)
 {
-    int port;
     char *serverhost = NULL;
-    int serverport = 0;
+    int serverport = 0, ret = 0;
     aliases *alias;
     ice_config_t *config;
     char *uri = util_normalise_uri (httpp_getvar (client->parser, HTTPP_VAR_URI));
     int client_limit_reached = 0;
 
     if (uri == NULL)
-    {
-        client_send_400 (client, "invalid request URI");
-        return 0;
-    }
+        return client_send_400 (client, "invalid request URI");
+
     DEBUG1 ("start with %s", uri);
     config = config_get_config();
     check_for_filtering (config, client, uri);
-    port = config->port;
     if (client->server_conn)
     {
         serverhost = client->server_conn->bind_address;
@@ -1354,19 +1360,18 @@ static int _handle_get_request (client_t *client)
 
     stats_event_inc(NULL, "client_connections");
 
-    /* Dispatch all admin requests */
-    if (admin_handle_request (client, uri) == 0)
-    {
-        free (uri);
-        return 0;
-    }
-    /* drop non-admin GET requests here if clients limit reached */
-    if (client_limit_reached)
-        client_send_403 (client, "Too many clients connected");
+    if (strcmp (uri, "/admin.cgi") == 0 || strncmp("/admin/", uri, 7) == 0)
+        ret = admin_handle_request (client, uri);
     else
-        auth_add_listener (uri, client);
+    {
+        /* drop non-admin GET requests here if clients limit reached */
+        if (client_limit_reached)
+            ret = client_send_403 (client, "Too many clients connected");
+        else
+            ret = auth_add_listener (uri, client);
+    }
     free (uri);
-    return 0;
+    return ret;
 }
 
 

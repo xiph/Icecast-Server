@@ -95,7 +95,7 @@
 #define PACKAGE_NAME "Icecast"
 
 /* Version number of package */
-#define VERSION "2.3.2-kh29"
+#define VERSION "2.3.2-kh30"
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION VERSION
@@ -132,8 +132,11 @@ typedef unsigned int socklen_t;
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 
-#define snprintf _snprintf
-#define vsnprintf _vsnprintf
+#include <stdarg.h>
+int msvc_snprintf (char *buf, int len, const char *fmt, ...);
+int msvc_vsnprintf (char *buf, int len, const char *fmt, va_list);
+#define snprintf msvc_snprintf 
+#define vsnprintf msvc_vsnprintf
 #define getpid _getpid
 #define atoll _atoi64
 #define pipe(x) _pipe(x,255,O_BINARY)

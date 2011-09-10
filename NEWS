@@ -16,6 +16,37 @@ Feature differences from SVN trunk
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+2.3.2-kh30
+. stats updates.
+   Split stats lock into global and source stats locks, reduces contention.
+   Updated internal API for using a stats handle for quick lookup when updating
+   several stats at once.
+   Make metadata_updated stat to be sent last in the initial listing, we would want
+   that to appear after title, useful as a trigger for updates.
+   make NEW also report the content type after the mountpoint
+. re-work metadata insert merge with shoutcast inserts for mp3/aac, do metadata
+  followed by stream data instead of the other way around, reduces code.
+. fix url decode crash bug with %invalid code.
+. prevent yp add if required data is missing.
+. allow for all args to be supplied to xsl transforms from request not just mount
+. xsl transforms are written direct to refbufs, so should avoid a memory copy on
+  each transform, should help in cases of large data sets. 
+. Add redirect tag on <mount>
+. change default to allow ogg matadata via url (for consistency with trunk).
+. have master relays supply auth by default.
+. allow for quick responses to be tried and possible close the connection, saves
+  rescheduling the worker for just closing the socket.
+. streamlist.txt was not getting tried if /admin/streams failed. IE kh slave to a
+  2.3.2 master.
+. reduce duration of when the config write lock is held when doing reload. 
+. a number of tunings for rescheduling clients (source and stats mainly).
+. small reworking of client_t creation and accounting.
+. missing redirect new listener case not handled.
+. source count could get out of sync in certainly failing relay cases.
+. a few cases of memory leaks fixed, not commonly used but can accumulate in
+  certain setups, eg intros via auth or reloading frequently.
+. fix win32 snprintf missing nul char bug
+. automatically set nofile and corefile size limits to max allowed, for debug
 
 2.3.2-kh29
 . prevent crash with very small burst size (eg 0). 

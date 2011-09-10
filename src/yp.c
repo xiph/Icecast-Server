@@ -456,6 +456,12 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info (yp, value, YP_AUDIO_INFO);
     free (value);
 
+    if (yp->server_name[0] == 0 || yp->server_genre[0] == 0 || yp->server_type[0] == 0 || yp->bitrate[0] == 0)
+    {
+        INFO1 ("mount %s requires stats (sn, genre, type, bitrate)", yp->mount);
+        yp_schedule (yp, 600);
+        return -1;
+    }
     ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
                     "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
                     yp->server_name, yp->server_genre, yp->cluster_password,

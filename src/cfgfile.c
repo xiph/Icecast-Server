@@ -787,6 +787,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
         { "skip-accesslog",     config_get_bool,    &mount->skip_accesslog },
         { "charset",            config_get_str,     &mount->charset },
         { "qblock-size",        config_get_int,     &mount->queue_block_size },
+        { "redirect",           config_get_str,     &mount->redirect },
         { "metadata-interval",  config_get_int,     &mount->mp3_meta_interval },
         { "mp3-metadata-interval",
                                 config_get_int,     &mount->mp3_meta_interval },
@@ -826,7 +827,7 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->min_queue_size = -1;
     mount->mp3_meta_interval = -1;
     mount->yp_public = -1;
-    mount->url_ogg_meta = 0;
+    mount->url_ogg_meta = 1;
     mount->source_timeout = config->source_timeout;
     mount->file_seekable = 1;
     mount->access_log.logid = -1;
@@ -1005,7 +1006,6 @@ static int _parse_master (xmlNodePtr node, void *arg)
         { NULL, NULL, NULL },
     };
 
-    config->master_relay_auth = 1;
     if (parse_xml_tags (node, icecast_tags))
         return -1;
 
@@ -1109,6 +1109,7 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
         { NULL, NULL, NULL }
     };
 
+    config->master_relay_auth = 1;
     if (parse_xml_tags (node, icecast_tags))
         return -1;
 

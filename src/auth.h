@@ -104,7 +104,7 @@ typedef struct auth_tag
     char *realm;
 } auth_t;
 
-void auth_add_listener (const char *mount, client_t *client);
+int  auth_add_listener (const char *mount, client_t *client);
 int  auth_release_listener (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
 int  move_listener (client_t *client, struct _fbinfo *finfo);
 int  auth_check_source (client_t *client, const char *mount);

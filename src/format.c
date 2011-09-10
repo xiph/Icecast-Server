@@ -67,6 +67,7 @@ format_type_t format_get_type(const char *contenttype)
         return FORMAT_TYPE_GENERIC;
 }
 
+
 void format_plugin_clear (format_plugin_t *format, client_t *client)
 {
     if (format == NULL)
@@ -106,7 +107,7 @@ int format_get_plugin (format_plugin_t *plugin, client_t *client)
 }
 
 
-int format_file_read (client_t *client, format_plugin_t *plugin, FILE *intro)
+int format_file_read (client_t *client, format_plugin_t *plugin, FILE *fp)
 {
     refbuf_t *refbuf = client->refbuf;
     size_t bytes = -1;
@@ -116,7 +117,7 @@ int format_file_read (client_t *client, format_plugin_t *plugin, FILE *intro)
     {
         if (refbuf == NULL)
         {
-            if (intro == NULL)
+            if (fp == NULL)
                 return -2;
             refbuf = client->refbuf = refbuf_new (4096);
             client->pos = refbuf->len;
@@ -125,7 +126,7 @@ int format_file_read (client_t *client, format_plugin_t *plugin, FILE *intro)
         }
         if (client->pos < refbuf->len)
             break;
-        if (client->flags & CLIENT_HAS_INTRO_CONTENT)
+        if (fp == NULL || client->flags & CLIENT_HAS_INTRO_CONTENT)
         {
             if (refbuf->next)
             {
@@ -144,8 +145,8 @@ int format_file_read (client_t *client, format_plugin_t *plugin, FILE *intro)
             continue;
         }
 
-        if (fseek (intro, client->intro_offset, SEEK_SET) < 0 ||
-                (bytes = fread (refbuf->data, 1, 4096, intro)) <= 0)
+        if (fseek (fp, client->intro_offset, SEEK_SET) < 0 ||
+                (bytes = fread (refbuf->data, 1, 4096, fp)) <= 0)
         {
             return bytes < 0 ? -2 : -1;
         }
@@ -172,8 +173,6 @@ int format_generic_write_to_client (client_t *client)
     const char *buf = refbuf->data + client->pos;
     unsigned int len = refbuf->len - client->pos;
 
-    if (len > 5000) /* make sure we don't send huge amounts in one go */
-        len = 4096;
     ret = client_send_bytes (client, buf, len);
 
     if (ret > 0)
@@ -205,8 +204,13 @@ int format_general_headers (format_plugin_t *plugin, client_t *client)
                 protocol = "ICY";
             if (strstr (useragent, "Shoutcast Server")) /* hack for sc_serv */
                 contenttypehdr = "content-type";
-            if (strstr (useragent, "BlackBerry"))
-                contenttype="audio/aac";
+            // if (strstr (useragent, "Sonos"))
+                // contenttypehdr = "content-type";
+            if (plugin->type == FORMAT_TYPE_AAC)
+            {
+                if (strstr (useragent, "BlackBerry"))
+                    contenttype="audio/aac";
+            }
         }
         bytes = snprintf (ptr, remaining, "%s 200 OK\r\n"
                 "%s: %s\r\n", protocol, contenttypehdr, contenttype);

@@ -191,6 +191,7 @@ void auth_release (auth_t *authenticator)
         authenticator->release (authenticator);
     xmlFree (authenticator->type);
     xmlFree (authenticator->realm);
+    xmlFree (authenticator->rejected_mount);
     thread_mutex_unlock (&authenticator->lock);
     thread_mutex_destroy (&authenticator->lock);
     free (authenticator->mount);
@@ -452,8 +453,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     {
         /* If the file exists, then transform it, otherwise, write a 404 */
         DEBUG0("Stats request, sending XSL transformed stats");
-        stats_transform_xslt (client, mount);
-        return 0;
+        return stats_transform_xslt (client, mount);
     }
 
     ret = source_add_listener (mount, mountinfo, client);
@@ -468,8 +468,6 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         }
         ret = fserve_client_create (client, mount);
     }
-    if (ret == 0)
-        global_reduce_bitrate_sampling (global.out_bitrate);
     return ret;
 }
 
@@ -534,8 +532,9 @@ void auth_postprocess_source (auth_client *auth_user)
 /* Add a listener. Check for any mount information that states any
  * authentication to be used.
  */
-void auth_add_listener (const char *mount, client_t *client)
+int auth_add_listener (const char *mount, client_t *client)
 {
+    int ret = 0;
     ice_config_t *config = config_get_config();
     mount_proxy *mountinfo = config_find_mount (config, mount);
 
@@ -554,8 +553,15 @@ void auth_add_listener (const char *mount, client_t *client)
             if (mountinfo->no_mount)
             {
                 config_release_config ();
-                client_send_403 (client, "mountpoint unavailable");
-                return;
+                return client_send_403 (client, "mountpoint unavailable");
+            }
+            if (mountinfo->redirect)
+            {
+                int len = strlen (mountinfo->redirect) + strlen (mount) + 3;
+                char *addr = alloca (len);
+                snprintf (addr, len, "%s%s", mountinfo->redirect, mount);
+                config_release_config ();
+                return client_send_302 (client, addr);
             }
             if (mountinfo->auth && mountinfo->auth->authenticate)
             {
@@ -565,10 +571,9 @@ void auth_add_listener (const char *mount, client_t *client)
                 {
                     config_release_config ();
                     WARN0 ("too many clients awaiting authentication");
-                    client_send_403 (client, "busy, please try again later");
                     if (global.new_connections_slowdown < 10)
                         global.new_connections_slowdown++;
-                    return;
+                    return client_send_403 (client, "busy, please try again later");
                 }
                 auth_user = auth_client_setup (mount, client);
                 auth_user->process = auth_new_listener;
@@ -576,7 +581,7 @@ void auth_add_listener (const char *mount, client_t *client)
                 DEBUG0 ("adding client for authentication");
                 queue_auth_client (auth_user, mountinfo);
                 config_release_config ();
-                return;
+                return 0;
             }
         }
         else
@@ -584,13 +589,13 @@ void auth_add_listener (const char *mount, client_t *client)
             if (strcmp (mount, "/admin/streams") == 0)
             {
                 config_release_config ();
-                client_send_401 (client, NULL);
-                return;
+                return client_send_401 (client, NULL);
             }
         }
     }
-    add_authenticated_listener (mount, mountinfo, client);
+    ret = add_authenticated_listener (mount, mountinfo, client);
     config_release_config ();
+    return ret;
 }
 
 

@@ -48,29 +48,13 @@
 
 int worker_count;
 
-/* Return client_t ready for use. The provided socket can be SOCK_ERROR to
- * allocate a dummy client_t.  Must be called with global lock held.
- */
-client_t *client_create (sock_t sock)
+void client_register (client_t *client)
 {
-    client_t *client = calloc (1, sizeof (client_t));
-
-    if (sock != SOCK_ERROR)
+    if (client && client->connection.sock)
     {
-        refbuf_t *r;
-        if (connection_init (&client->connection, sock, NULL) < 0)
-        {
-            free (client);
-            return NULL;
-        }
-        r = refbuf_new (PER_CLIENT_REFBUF_SIZE);
-        r->len = 0;
-        client->shared_data = r;
         client->flags |= CLIENT_ACTIVE;
+        global.clients++;
     }
-    global.clients++;
-    stats_event_args (NULL, "clients", "%d", global.clients);
-    return client;
 }
 
 
@@ -146,6 +130,8 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     int (*con_read)(struct connection_tag *handle, void *buf, size_t len) = connection_read;
     int bytes;
 
+    if (len == 0)
+        return 0;
     if (client->refbuf && client->pos < client->refbuf->len)
     {
         unsigned remaining = client->refbuf->len - client->pos;
@@ -168,7 +154,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 }
 
 
-void client_send_302(client_t *client, const char *location)
+int client_send_302(client_t *client, const char *location)
 {
     client_set_queue (client, NULL);
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
@@ -179,24 +165,25 @@ void client_send_302(client_t *client, const char *location)
             "Moved <a href=\"%s\">here</a>\r\n", location, location);
     client->respcode = 302;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_setup_client (client, NULL);
+    return fserve_setup_client (client);
 }
 
 
-void client_send_400(client_t *client, char *message) {
+int client_send_400(client_t *client, const char *message)
+{
     client_set_queue (client, NULL);
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
             "HTTP/1.0 400 Bad Request\r\n"
             "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
+            "<b>%s</b>\r\n", message?message:"");
     client->respcode = 400;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_setup_client (client, NULL);
+    return fserve_setup_client (client);
 }
 
 
-void client_send_401 (client_t *client, const char *realm)
+int client_send_401 (client_t *client, const char *realm)
 {
     ice_config_t *config = config_get_config ();
 
@@ -213,11 +200,11 @@ void client_send_401 (client_t *client, const char *realm)
     config_release_config();
     client->respcode = 401;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_setup_client (client, NULL);
+    return fserve_setup_client (client);
 }
 
 
-void client_send_403(client_t *client, const char *reason)
+int client_send_403(client_t *client, const char *reason)
 {
     if (reason == NULL)
         reason = "Forbidden";
@@ -228,23 +215,26 @@ void client_send_403(client_t *client, const char *reason)
             "Content-Type: text/html\r\n\r\n", reason);
     client->respcode = 403;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_setup_client (client, NULL);
+    return fserve_setup_client (client);
 }
 
-void client_send_403redirect (client_t *client, const char *mount, const char *reason)
+
+int client_send_403redirect (client_t *client, const char *mount, const char *reason)
 {
     if (redirect_client (mount, client))
-        return;
-    client_send_403 (client, reason);
+        return 0;
+    return client_send_403 (client, reason);
 }
 
 
-void client_send_404(client_t *client, const char *message)
+int client_send_404 (client_t *client, const char *message)
 {
+    int ret = -1;
+
     if (client->worker == NULL)   /* client is not on any worker now */
     {
         client_destroy (client);
-        return;
+        return 0;
     }
     client_set_queue (client, NULL);
     if (client->respcode == 0)
@@ -258,12 +248,13 @@ void client_send_404(client_t *client, const char *message)
                 "<b>%s</b>\r\n", message);
         client->respcode = 404;
         client->refbuf->len = strlen (client->refbuf->data);
-        fserve_setup_client (client, NULL);
+        ret = fserve_setup_client (client);
     }
+    return ret;
 }
 
 
-void client_send_416(client_t *client)
+int client_send_416(client_t *client)
 {
     client_set_queue (client, NULL);
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
@@ -271,7 +262,7 @@ void client_send_416(client_t *client)
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     client->respcode = 416;
     client->refbuf->len = strlen (client->refbuf->data);
-    fserve_setup_client (client, NULL);
+    return fserve_setup_client (client);
 }
 
 
@@ -398,15 +389,19 @@ static void worker_control_create (worker_t *worker)
         ERROR0 ("pipe failed, descriptor limit?");
         abort();
     }
+    sock_set_blocking (worker->wakeup_fd[0], 0);
 }
 
 
-static void worker_add_pending_clients (worker_t *worker)
+static client_t **worker_add_pending_clients (worker_t *worker)
 {
-    if (worker && worker->pending_clients)
+    if (worker->pending_clients)
     {
         unsigned count;
+        client_t **p;
+
         thread_spin_lock (&worker->lock);
+        p = worker->last_p;
         *worker->last_p = worker->pending_clients;
         worker->last_p = worker->pending_clients_tail;
         worker->count += worker->pending_count;
@@ -416,21 +411,27 @@ static void worker_add_pending_clients (worker_t *worker)
         worker->pending_count = 0;
         thread_spin_unlock (&worker->lock);
         DEBUG2 ("Added %d pending clients to %p", count, worker);
+        if (worker->wakeup_ms > worker->time_ms+5)
+            return p;  /* only these new ones scheduled so process from here */
     }
+    worker->wakeup_ms = worker->time_ms + 60000;
+    return &worker->clients;
 }
 
 
-static void worker_wait (worker_t *worker)
+static client_t **worker_wait (worker_t *worker)
 {
-    int ret, duration = 3;
+    int ret, duration = 2;
 
     if (global.running == ICE_RUNNING)
     {
-        duration = (int)(worker->wakeup_ms - timing_get_time());
-        if (duration > 60000) /* make duration between 3ms and 60s */
+        uint64_t tm = timing_get_time();
+        if (worker->wakeup_ms > tm)
+            duration = (int)(worker->wakeup_ms - tm);
+        if (duration > 60000) /* make duration between 2ms and 60s */
             duration = 60000;
-        if (duration < 3)
-            duration = 3;
+        if (duration < 2)
+            duration = 2;
     }
 
     ret = util_timed_wait_for_fd (worker->wakeup_fd[0], duration);
@@ -452,12 +453,10 @@ static void worker_wait (worker_t *worker)
         } while (1);
     }
 
-    worker_add_pending_clients (worker);
-
     worker->time_ms = timing_get_time();
     worker->current_time.tv_sec = (time_t)(worker->time_ms/1000);
-    worker->current_time.tv_nsec = worker->current_time.tv_sec - (worker->time_ms*1000);
-    worker->wakeup_ms = worker->time_ms + 60000;
+
+    return worker_add_pending_clients (worker);
 }
 
 
@@ -505,13 +504,16 @@ void *worker (void *arg)
 {
     worker_t *worker = arg;
     long prev_count = -1;
+    client_t **prevp = &worker->clients;
 
     worker->running = 1;
     worker->wakeup_ms = (int64_t)0;
+    worker->time_ms = timing_get_time();
 
     while (1)
     {
-        client_t *client = worker->clients, **prevp = &worker->clients;
+        client_t *client = *prevp;
+        uint64_t sched_ms = worker->time_ms+6;
 
         while (client)
         {
@@ -522,9 +524,8 @@ void *worker (void *arg)
                 int ret = 0;
                 client_t *nx = client->next_on_worker;
 
-                if (worker->running == 0 || client->schedule_ms <= worker->time_ms+10)
+                if (worker->running == 0 || client->schedule_ms <= sched_ms)
                 {
-                    client->schedule_ms = worker->time_ms;
                     ret = client->ops->process (client);
                     if (ret < 0)
                     {
@@ -559,7 +560,7 @@ void *worker (void *arg)
             if (worker->count == 0 && worker->pending_count == 0)
                 break;
         }
-        worker_wait (worker);
+        prevp = worker_wait (worker);
     }
     worker_relocate_clients (worker);
     INFO0 ("shutting down");

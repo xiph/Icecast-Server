@@ -102,21 +102,21 @@ typedef struct _stats_tag
     avl_tree *source_tree;
 
     /* list of listeners for stats */
-    event_listener_t *event_listeners, *listeners_removed;
+    event_listener_t *event_listeners;
+    mutex_t listeners_lock;
 
 } stats_t;
 
 static volatile int _stats_running = 0;
 
 static stats_t _stats;
-static mutex_t _stats_mutex;
 
 
 static int _compare_stats(void *a, void *b, void *arg);
 static int _compare_source_stats(void *a, void *b, void *arg);
 static int _free_stats(void *key);
 static int _free_source_stats(void *key);
-static stats_node_t *_find_node(avl_tree *tree, const char *name);
+static stats_node_t *_find_node(const avl_tree *tree, const char *name);
 static stats_source_t *_find_source(avl_tree *tree, const char *source);
 static void process_event (stats_event_t *event);
 static void _add_stats_to_stats_client (client_t *client, const char *fmt, va_list ap);
@@ -149,14 +149,11 @@ void stats_initialize(void)
     _stats.source_tree = avl_tree_new(_compare_source_stats, NULL);
 
     _stats.event_listeners = NULL;
-    _stats.listeners_removed = NULL;
-
-    /* set up global mutex */
-    thread_mutex_create(&_stats_mutex);
+    thread_mutex_create (&_stats.listeners_lock);
 
     _stats_running = 1;
 
-    stats_event_time (NULL, "server_start");
+    stats_event_time (NULL, "server_start", STATS_GENERAL);
 
     /* global currently active stats */
     stats_event_flags (NULL, "clients", "0", STATS_COUNTERS);
@@ -185,9 +182,9 @@ void stats_shutdown(void)
 
     _stats_running = 0;
 
-    thread_mutex_destroy(&_stats_mutex);
     avl_tree_free(_stats.source_tree, _free_source_stats);
     avl_tree_free(_stats.global_tree, _free_stats);
+    thread_mutex_destroy (&_stats.listeners_lock);
 }
 
 
@@ -277,20 +274,25 @@ static char *_get_stats(const char *source, const char *name)
     stats_source_t *src = NULL;
     char *value = NULL;
 
-    thread_mutex_lock(&_stats_mutex);
-
     if (source == NULL) {
+        avl_tree_rlock (_stats.global_tree);
         stats = _find_node(_stats.global_tree, name);
+        if (stats) value = (char *)strdup(stats->value);
+        avl_tree_unlock (_stats.global_tree);
     } else {
+        avl_tree_rlock (_stats.source_tree);
         src = _find_source(_stats.source_tree, source);
-        if (src) {
+        if (src)
+        {
+            avl_tree_rlock (src->stats_tree);
+            avl_tree_unlock (_stats.source_tree);
             stats = _find_node(src->stats_tree, name);
+            if (stats) value = (char *)strdup(stats->value);
+            avl_tree_unlock (src->stats_tree);
         }
+        else
+            avl_tree_unlock (_stats.source_tree);
     }
-
-    if (stats) value = (char *)strdup(stats->value);
-
-    thread_mutex_unlock(&_stats_mutex);
 
     return value;
 }
@@ -353,7 +355,7 @@ void stats_event_dec(const char *source, const char *name)
 /* note: you must call this function only when you have exclusive access
 ** to the avl_tree
 */
-static stats_node_t *_find_node(avl_tree *stats_tree, const char *name)
+static stats_node_t *_find_node(const avl_tree *stats_tree, const char *name)
 {
     stats_node_t *stats;
     avl_node *node;
@@ -413,6 +415,8 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
     {
         node->flags = event->flags;
         event->action &= ~STATS_EVENT_HIDDEN;
+        if (event->value == NULL)
+            return;
     }
     if (event->action != STATS_EVENT_SET)
     {
@@ -486,10 +490,90 @@ static void process_global_event (stats_event_t *event)
 }
 
 
+static void process_source_stat (stats_source_t *src_stats, stats_event_t *event)
+{
+    if (event->name)
+    {
+        stats_node_t *node = _find_node (src_stats->stats_tree, event->name);
+        if (node == NULL)
+        {
+            /* adding node */
+            if (event->action != STATS_EVENT_REMOVE && event->value)
+            {
+                DEBUG3 ("new node on %s \"%s\" (%s)", src_stats->source, event->name, event->value);
+                node = (stats_node_t *)calloc (1,sizeof(stats_node_t));
+                node->name = (char *)strdup (event->name);
+                node->value = (char *)strdup (event->value);
+                node->flags = event->flags;
+                if (src_stats->flags & STATS_HIDDEN)
+                    node->flags |= STATS_HIDDEN;
+                stats_listener_send (node->flags, "EVENT %s %s %s\n", src_stats->source, event->name, event->value);
+                avl_insert (src_stats->stats_tree, (void *)node);
+            }
+            return;
+        }
+        if (event->action == STATS_EVENT_REMOVE)
+        {
+            DEBUG2 ("delete node %s from %s", event->name, src_stats->source);
+            stats_listener_send (node->flags, "DELETE %s %s\n", src_stats->source, event->name);
+            avl_delete (src_stats->stats_tree, (void *)node, _free_stats);
+            return;
+        }
+        modify_node_event (node, event);
+        stats_listener_send (node->flags, "EVENT %s %s %s\n", src_stats->source, node->name, node->value);
+        return;
+    }
+    if (event->action == STATS_EVENT_REMOVE && event->name == NULL)
+    {
+        avl_tree_unlock (src_stats->stats_tree);
+        avl_tree_wlock (_stats.source_tree);
+        avl_tree_wlock (src_stats->stats_tree);
+        avl_delete (_stats.source_tree, (void *)src_stats, _free_source_stats);
+        avl_tree_unlock (_stats.source_tree);
+        return;
+    }
+    /* change source flags status */
+    if (event->action & STATS_EVENT_HIDDEN)
+    {
+        avl_node *node = avl_get_first (src_stats->stats_tree);
+        int visible = 0;
+
+        if ((event->flags&STATS_HIDDEN) == (src_stats->flags&STATS_HIDDEN))
+            return;
+        if (src_stats->flags & STATS_HIDDEN)
+        {
+            stats_node_t *ct = _find_node (src_stats->stats_tree, "content-type");
+            const char *type = "audio/mpeg";
+            if (ct)
+                type = ct->name;
+            src_stats->flags &= ~STATS_HIDDEN;
+            stats_listener_send (src_stats->flags, "NEW %s %s\n", type, src_stats->source);
+            visible = 1;
+        }
+        else
+        {
+            stats_listener_send (src_stats->flags, "DELETE %s\n", src_stats->source);
+            src_stats->flags |= STATS_HIDDEN;
+        }
+        while (node)
+        {
+            stats_node_t *stats = (stats_node_t*)node->key;
+            if (visible)
+            {
+                stats->flags &= ~STATS_HIDDEN;
+                stats_listener_send (stats->flags, "EVENT %s %s %s\n", src_stats->source, stats->name, stats->value);
+            }
+            else
+                stats->flags |= STATS_HIDDEN;
+            node = avl_get_next (node);
+        }
+    }
+}
+
+
 static void process_source_event (stats_event_t *event)
 {
-    stats_source_t *snode = _find_source(_stats.source_tree, event->source);
-    stats_node_t *node = NULL;
+    stats_source_t *snode;
 
     avl_tree_wlock (_stats.source_tree);
     snode = _find_source(_stats.source_tree, event->source);
@@ -518,82 +602,12 @@ static void process_source_event (stats_event_t *event)
     }
     avl_tree_wlock (snode->stats_tree);
     avl_tree_unlock (_stats.source_tree);
-    if (event->name)
-    {
-        node = _find_node (snode->stats_tree, event->name);
-        if (node == NULL)
-        {
-            /* adding node */
-            if (event->action != STATS_EVENT_REMOVE && event->value)
-            {
-                DEBUG3 ("new node on %s \"%s\" (%s)", event->source, event->name, event->value);
-                node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
-                node->name = (char *)strdup(event->name);
-                node->value = (char *)strdup(event->value);
-                node->flags = event->flags;
-                if (snode->flags & STATS_HIDDEN)
-                    node->flags |= STATS_HIDDEN;
-                stats_listener_send (node->flags, "EVENT %s %s %s\n", event->source, event->name, event->value);
-                avl_insert(snode->stats_tree, (void *)node);
-            }
-            avl_tree_unlock (snode->stats_tree);
-            return;
-        }
-        if (event->action == STATS_EVENT_REMOVE)
-        {
-            DEBUG1 ("delete node %s", event->name);
-            stats_listener_send (node->flags, "DELETE %s %s\n", event->source, event->name);
-            avl_delete(snode->stats_tree, (void *)node, _free_stats);
-            avl_tree_unlock (snode->stats_tree);
-            return;
-        }
-        modify_node_event (node, event);
-        stats_listener_send (node->flags, "EVENT %s %s %s\n", event->source, node->name, node->value);
-        avl_tree_unlock (snode->stats_tree);
-        return;
-    }
-    /* change source flags status */
-    if (event->action & STATS_EVENT_HIDDEN)
-    {
-        avl_node *node = avl_get_first (snode->stats_tree);
-        int visible = 0;
-
-        if ((event->flags&STATS_HIDDEN) == (snode->flags&STATS_HIDDEN))
-        {
-            avl_tree_unlock (snode->stats_tree);
-            return;
-        }
-        if (snode->flags & STATS_HIDDEN)
-        {
-            snode->flags &= ~STATS_HIDDEN;
-            stats_listener_send (snode->flags, "NEW %s\n", snode->source);
-            visible = 1;
-        }
-        else
-        {
-            stats_listener_send (snode->flags, "DELETE %s\n", snode->source);
-            snode->flags |= STATS_HIDDEN;
-        }
-        while (node)
-        {
-            stats_node_t *stats = (stats_node_t*)node->key;
-            if (visible)
-            {
-                stats->flags &= ~STATS_HIDDEN;
-                stats_listener_send (stats->flags, "EVENT %s %s %s\n", snode->source, stats->name, stats->value);
-            }
-            else
-                stats->flags |= STATS_HIDDEN;
-            node = avl_get_next (node);
-        }
-        avl_tree_unlock (snode->stats_tree);
-        return;
-    }
+    process_source_stat (snode, event);
     avl_tree_unlock (snode->stats_tree);
 }
 
 
-void stats_event_time (const char *mount, const char *name)
+void stats_event_time (const char *mount, const char *name, int flags)
 {
     time_t now = time(NULL);
     struct tm local;
@@ -601,13 +615,13 @@ void stats_event_time (const char *mount, const char *name)
 
     localtime_r (&now, &local);
     strftime (buffer, sizeof (buffer), ICECAST_TIME_FMT, &local);
-    stats_event_flags (mount, name, buffer, STATS_GENERAL);
+    stats_event_flags (mount, name, buffer, flags);
 }
 
 
 static int stats_listeners_send (client_t *client)
 {
-    int loop = 8;
+    int loop = 8, total = 0;
     int ret = 0;
     event_listener_t *listener = client->shared_data;
 
@@ -624,23 +638,24 @@ static int stats_listeners_send (client_t *client)
             return -1;
         }
     client->schedule_ms = client->worker->time_ms;
-    thread_mutex_lock(&_stats_mutex);
-    while (loop)
+    thread_mutex_lock (&_stats.listeners_lock);
+    while (1)
     {
         refbuf_t *refbuf = client->refbuf;
 
         if (refbuf == NULL)
         {
-            client->schedule_ms = client->worker->time_ms + 300;
+            client->schedule_ms = client->worker->time_ms + 100;
             break;
         }
+        if (loop == 0 || total > 32768)
+            break;
         ret = format_generic_write_to_client (client);
-        if (ret < 0)
+        if (ret > 0)
         {
-            client->schedule_ms = client->worker->time_ms + 200;
-            break;
+            total += ret;
+            listener->content_len -= ret;
         }
-        listener->content_len -= ret;
         if (client->pos == refbuf->len)
         {
             client->refbuf = refbuf->next;
@@ -652,18 +667,20 @@ static int stats_listeners_send (client_t *client)
                 if (listener->content_len)
                     WARN1 ("content length is %u", listener->content_len);
                 listener->recent_block = NULL;
+                client->schedule_ms = client->worker->time_ms + 100;
+                break;
             }
+            loop--;
         }
         else
         {
-            client->schedule_ms = client->worker->time_ms + 200;
+            client->schedule_ms = client->worker->time_ms + 250;
             break; /* short write, so stop for now */
         }
-        loop--;
     }
-    thread_mutex_unlock(&_stats_mutex);
-    if (loop == 0)
-        client->schedule_ms = client->worker->time_ms;
+    thread_mutex_unlock (&_stats.listeners_lock);
+    if (client->connection.error || global.running != ICE_RUNNING)
+        return -1;
     return 0;
 }
 
@@ -686,21 +703,25 @@ static void clear_stats_queue (client_t *client)
 static void stats_listener_send (int mask, const char *fmt, ...)
 {
     va_list ap;
-    event_listener_t *listener = _stats.event_listeners,
-                     **trail = &_stats.event_listeners;
+    event_listener_t *listener;
 
     va_start(ap, fmt);
+
+    thread_mutex_lock (&_stats.listeners_lock);
+    listener = _stats.event_listeners;
 
     while (listener)
     {
         if (listener->mask & mask)
             _add_stats_to_stats_client (listener->client, fmt, ap);
-        trail = &listener->next;
         listener = listener->next;
     }
+    thread_mutex_unlock (&_stats.listeners_lock);
     va_end(ap);
 }
 
+
+/* called after each xml reload */
 void stats_global (ice_config_t *config)
 {
     stats_event_flags (NULL, "server_id", config->server_id, STATS_GENERAL);
@@ -711,15 +732,6 @@ void stats_global (ice_config_t *config)
     global.max_rate = config->max_bandwidth;
     throttle_sends = 0;
     thread_spin_unlock (&global.spinlock);
-#if 0
-    /* restart a master stats connection */
-    config->master = calloc (1, sizeof ice_master_details);
-    config->master->hostname = xmlCharStrdup ("127.0.0.1");
-    config->master->port = 8000;
-    config->master->username = xmlCharStrdup ("relay");
-    config->master->password = xmlCharStrdup ("relayme");
-    _stats.sock = sock_connect_wto_bind (server, port, bind, 10);
-#endif
 }
 
 static void process_event (stats_event_t *event)
@@ -811,6 +823,7 @@ static void _add_stats_to_stats_client (client_t *client, const char *fmt, va_li
         return;
     }
     _add_node_to_stats_client (client, r);
+    client->schedule_ms = 0;
 }
 
 
@@ -884,6 +897,7 @@ static void _register_listener (client_t *client)
     refbuf->len = 0;
 
     /* the global stats */
+    avl_tree_rlock (_stats.global_tree);
     node = avl_get_first(_stats.global_tree);
     while (node)
     {
@@ -901,15 +915,23 @@ static void _register_listener (client_t *client)
         }
         node = avl_get_next(node);
     }
+    avl_tree_unlock (_stats.global_tree);
     /* now the stats for each source */
+    avl_tree_rlock (_stats.source_tree);
     node = avl_get_first(_stats.source_tree);
     while (node)
     {
         avl_node *node2;
+        stats_node_t *metadata_stat = NULL;
         stats_source_t *snode = (stats_source_t *)node->key;
+
         if (snode->flags & listener->mask)
         {
-            if (_append_to_buffer (refbuf, size, "NEW %s\n", snode->source) < 0)
+            stats_node_t *ct = _find_node (snode->stats_tree, "content-type");
+            const char *type = "audio/mpeg";
+            if (ct)
+                type = ct->name;
+            if (_append_to_buffer (refbuf, size, "NEW %s %s\n", type, snode->source) < 0)
             {
                 _add_node_to_stats_client (client, refbuf);
                 refbuf = refbuf_new (size);
@@ -918,11 +940,14 @@ static void _register_listener (client_t *client)
             }
         }
         node = avl_get_next(node);
+        avl_tree_rlock (snode->stats_tree);
         node2 = avl_get_first(snode->stats_tree);
         while (node2)
         {
             stats_node_t *stat = node2->key;
-            if (stat->flags & listener->mask)
+            if (metadata_stat == NULL && strcmp (stat->name, "metadata_updated") == 0)
+                metadata_stat = stat;
+            else if (stat->flags & listener->mask)
             {
                 if (_append_to_buffer (refbuf, size, "EVENT %s %s %s\n", snode->source, stat->name, stat->value) < 0)
                 {
@@ -934,19 +959,39 @@ static void _register_listener (client_t *client)
             }
             node2 = avl_get_next (node2);
         }
+        while (metadata_stat)
+        {
+            if (_append_to_buffer (refbuf, size, "EVENT %s %s %s\n", snode->source, metadata_stat->name, metadata_stat->value) < 0)
+            {
+                _add_node_to_stats_client (client, refbuf);
+                refbuf = refbuf_new (size);
+                refbuf->len = 0;
+                continue;
+            }
+            break;
+        }
+        avl_tree_unlock (snode->stats_tree);
     }
+    avl_tree_unlock (_stats.source_tree);
     _add_node_to_stats_client (client, refbuf);
 
     /* now we register to receive future event notices */
+    thread_mutex_lock (&_stats.listeners_lock);
     listener->next = _stats.event_listeners;
     _stats.event_listeners = listener;
+    thread_mutex_unlock (&_stats.listeners_lock);
 }
 
 
 static void stats_client_release (client_t *client)
 {
-    event_listener_t *listener = _stats.event_listeners,
-                     **trail = &_stats.event_listeners;
+    event_listener_t *listener, **trail;
+
+    INFO0 ("removing stats client");
+    thread_mutex_lock (&_stats.listeners_lock);
+    listener = _stats.event_listeners;
+    trail = &_stats.event_listeners;
+
     while (listener)
     {
         if (listener == client->shared_data)
@@ -955,6 +1000,7 @@ static void stats_client_release (client_t *client)
             char buffer [20];
 
             *trail = listener->next;
+            thread_mutex_unlock (&_stats.listeners_lock);
             clear_stats_queue (client);
             free (listener->source);
             free (listener);
@@ -967,6 +1013,7 @@ static void stats_client_release (client_t *client)
         trail = &listener->next;
         listener = listener->next;
     }
+    thread_mutex_unlock (&_stats.listeners_lock);
 }
 
 
@@ -993,27 +1040,28 @@ void stats_add_listener (client_t *client, int mask)
     listener->recent_block = client->refbuf;
     listener->client = client;
 
-    thread_mutex_lock(&_stats_mutex);
     _register_listener (client);
-    thread_mutex_unlock(&_stats_mutex);
     client->flags |= CLIENT_ACTIVE;
 }
 
-void stats_transform_xslt(client_t *client, const char *uri)
+
+int stats_transform_xslt (client_t *client, const char *uri)
 {
     xmlDocPtr doc;
     char *xslpath = util_get_path_from_normalised_uri (uri, 0);
     const char *mount = httpp_get_query_param (client->parser, "mount");
+    int ret;
 
     if (mount == NULL && client->server_conn->shoutcast_mount && strcmp (uri, "/7.xsl") == 0)
         mount = client->server_conn->shoutcast_mount;
 
     doc = stats_get_xml (STATS_PUBLIC, mount);
 
-    xslt_transform(doc, xslpath, client);
+    ret = xslt_transform (doc, xslpath, client);
 
     xmlFreeDoc(doc);
     free (xslpath);
+    return ret;
 }
 
 xmlDocPtr stats_get_xml (int flags, const char *show_mount)
@@ -1088,6 +1136,7 @@ static int _free_source_stats(void *key)
     stats_source_t *node = (stats_source_t *)key;
     stats_listener_send (node->flags, "DELETE %s\n", node->source);
     DEBUG1 ("delete source node %s", node->source);
+    avl_tree_unlock (node->stats_tree);
     avl_tree_free(node->stats_tree, _free_stats);
     free(node->source);
     free(node);
@@ -1164,7 +1213,9 @@ void stats_clear_virtual_mounts (void)
 
         if (source == NULL)
         {
-            stats_node_t *node = _find_node (src->stats_tree, "fallback");
+            stats_node_t *node;
+            avl_tree_wlock (src->stats_tree);
+            node = _find_node (src->stats_tree, "fallback");
             if (node == NULL)
             {
                 /* no source_t and no fallback file stat, so delete */
@@ -1172,6 +1223,7 @@ void stats_clear_virtual_mounts (void)
                 avl_delete (_stats.source_tree, src, _free_source_stats);
                 continue;
             }
+            avl_tree_unlock (src->stats_tree);
         }
 
         snode = avl_get_next (snode);
@@ -1182,12 +1234,12 @@ void stats_clear_virtual_mounts (void)
 
 void stats_global_calc (void)
 {
-    event_listener_t *listener;
     stats_event_t event;
     avl_node *anode;
     char buffer [VAL_BUFSIZE];
 
     connection_stats ();
+    avl_tree_rlock (_stats.global_tree);
     anode = avl_get_first(_stats.global_tree);
     while (anode)
     {
@@ -1197,17 +1249,132 @@ void stats_global_calc (void)
             stats_listener_send (node->flags, "EVENT global %s %s\n", node->name, node->value);
         anode = avl_get_next (anode);
     }
+    avl_tree_unlock (_stats.global_tree);
     build_event (&event, NULL, "outgoing_kbitrate", buffer);
     event.flags = STATS_COUNTERS|STATS_HIDDEN;
 
     snprintf (buffer, sizeof(buffer), "%" PRIu64,
             (int64_t)global_getrate_avg (global.out_bitrate) * 8 / 1024);
     process_event (&event);
+}
 
-    /* retrieve the list of closing down clients */
-    thread_mutex_lock (&_stats_mutex);
-    listener = _stats.listeners_removed;
-    _stats.listeners_removed = NULL;
-    thread_mutex_unlock (&_stats_mutex);
+
+long stats_handle (const char *mount)
+{
+    stats_source_t *src_stats;
+
+    avl_tree_wlock (_stats.source_tree);
+    src_stats = _find_source(_stats.source_tree, mount);
+    if (src_stats == NULL)
+    {
+        src_stats = (stats_source_t *)calloc (1, sizeof (stats_source_t));
+        if (src_stats == NULL)
+            abort();
+        DEBUG1 ("new source stat %s", mount);
+        src_stats->source = (char *)strdup (mount);
+        src_stats->stats_tree = avl_tree_new (_compare_stats, NULL);
+        src_stats->flags = STATS_SLAVE|STATS_GENERAL|STATS_HIDDEN;
+
+        avl_insert (_stats.source_tree, (void *)src_stats);
+    }
+    avl_tree_wlock (src_stats->stats_tree);
+    avl_tree_unlock (_stats.source_tree);
+
+    return (long)src_stats;
+}
+
+
+void stats_lock (long handle)
+{
+    stats_source_t *src_stats = (stats_source_t *)handle;
+    if (src_stats)
+        avl_tree_wlock (src_stats->stats_tree);
+}
+
+
+void stats_release (long handle)
+{
+    stats_source_t *src_stats = (stats_source_t *)handle;
+    if (src_stats)
+        avl_tree_unlock (src_stats->stats_tree);
+}
+
+
+// assume source stats are write locked 
+void stats_set (long handle, const char *name, const char *value)
+{
+    if (handle)
+    {
+        stats_source_t *src_stats = (stats_source_t *)handle;
+        stats_event_t event;
+
+        build_event (&event, src_stats->source, name, (char *)value);
+        process_source_stat (src_stats, &event);
+    }
+}
+
+
+void stats_set_args (long handle, const char *name, const char *format, ...)
+{
+    va_list val;
+    int ret;
+    stats_source_t *src_stats = (stats_source_t *)handle;
+    char buf[1024];
+
+    if (name == NULL)
+        return;
+    va_start (val, format);
+    ret = vsnprintf (buf, sizeof (buf), format, val);
+    va_end (val);
+
+    if (ret < 0 || (unsigned int)ret >= sizeof (buf))
+    {
+        WARN2 ("problem with formatting %s stat %s",
+                src_stats == NULL ? "global" : src_stats->source, name);
+        return;
+    }
+    stats_set (handle, name, buf);
+}
+
+
+void stats_set_flags (long handle, const char *name, const char *value, int flags)
+{
+    stats_source_t *src_stats = (stats_source_t *)handle;
+    stats_event_t event;
+
+    build_event (&event, src_stats->source, name, value);
+    event.flags = flags;
+    if (value)
+        event.action |= STATS_EVENT_HIDDEN;
+    else
+        event.action = STATS_EVENT_HIDDEN;
+    process_source_stat (src_stats, &event);
+}
+
+
+void stats_set_conv(long handle, const char *name, const char *value, const char *charset)
+{
+    const char *metadata = value;
+    xmlBufferPtr conv = xmlBufferCreate ();
+
+    if (charset && value)
+    {
+        xmlCharEncodingHandlerPtr handle = xmlFindCharEncodingHandler (charset);
+
+        if (handle)
+        {
+            xmlBufferPtr raw = xmlBufferCreate ();
+            xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
+            if (xmlCharEncInFunc (handle, conv, raw) > 0)
+                metadata = (char *)xmlBufferContent (conv);
+            xmlBufferFree (raw);
+            xmlCharEncCloseFunc (handle);
+        }
+        else
+            WARN1 ("No charset found for \"%s\"", charset);
+    }
+
+    stats_set (handle, name, metadata);
+    xmlBufferFree (conv);
 }
 

@@ -1,10 +1,10 @@
-#include <config.h>
 #define _WIN32_WINNT 0x0400
 #include <windows.h>
 #include <stdio.h>
 #include <direct.h>
 
 extern "C" {
+#include <config.h>
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "log/log.h"

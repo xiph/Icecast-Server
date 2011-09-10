@@ -206,7 +206,7 @@ static void apply_ogg_settings (format_plugin_t *format, mount_proxy *mount)
 {
     ogg_state_t *ogg_info = format->_state;
 
-    if (mount == NULL || format == NULL)
+    if (mount == NULL || format == NULL || ogg_info == NULL)
         return;
     if (mount->filter_theora)
         ogg_info->filter_theora = 1;
@@ -334,7 +334,7 @@ static void update_comments (source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
-    stats_event_time (source->mount, "metadata_updated");
+    stats_event_time (source->mount, "metadata_updated", STATS_GENERAL);
 
     codec = ogg_info->codecs;
     while (codec)
@@ -581,6 +581,7 @@ static int write_buf_to_client (client_t *client)
             client->pos += ret;
             client->queue_pos += ret;
             written += ret;
+            client->counter += ret;
         }
 
         if (ret < (int)len)

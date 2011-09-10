@@ -112,7 +112,7 @@ struct _client_functions listener_pause_ops =
 struct _client_functions listener_wait_ops = 
 {
     wait_for_other_listeners,
-    NULL
+    client_destroy
 };
 
 struct _client_functions source_client_http_ops =
@@ -316,6 +316,7 @@ static int _free_source (void *p)
         WARN3("active listeners on mountpoint %s (%ld, %ld)", source->mount, source->listeners, source->termination_count);
     avl_tree_free (source->clients, NULL);
 
+    thread_mutex_unlock (&source->lock);
     thread_mutex_destroy (&source->lock);
 
     INFO1 ("freeing source \"%s\"", source->mount);
@@ -331,6 +332,7 @@ void source_free_source (source_t *source)
 {
     INFO1 ("source %s to be freed", source->mount);
     avl_tree_wlock (global.source_tree);
+    thread_mutex_lock (&source->lock);
     DEBUG1 ("removing source %s from tree", source->mount);
     avl_delete (global.source_tree, source, _free_source);
     avl_tree_unlock (global.source_tree);
@@ -354,20 +356,21 @@ client_t *source_find_client(source_t *source, int id)
  */
 static void update_source_stats (source_t *source)
 {
-    unsigned long incoming_rate = (long)(8 * rate_avg (source->format->in_bitrate));
+    unsigned long incoming_rate = (long)rate_avg (source->format->in_bitrate);
     unsigned long kbytes_sent = source->bytes_sent_since_update/1024;
     unsigned long kbytes_read = source->bytes_read_since_update/1024;
 
     source->format->sent_bytes += kbytes_sent*1024;
     stats_event_args (source->mount, "outgoing_kbitrate", "%ld",
             (long)(8 * rate_avg (source->format->out_bitrate))/1024);
-    stats_event_args (source->mount, "incoming_bitrate", "%ld", incoming_rate);
+    stats_event_args (source->mount, "incoming_bitrate", "%ld", (8 * incoming_rate));
     stats_event_args (source->mount, "total_bytes_read",
             "%"PRIu64, source->format->read_bytes);
     stats_event_args (source->mount, "total_bytes_sent",
             "%"PRIu64, source->format->sent_bytes);
     stats_event_args (source->mount, "total_mbytes_sent",
             "%"PRIu64, source->format->sent_bytes/(1024*1024));
+    stats_event_args (source->mount, "queue_size", "%u", source->queue_size);
     if (source->client->connection.con_time)
     {
         worker_t *worker = source->client->worker;
@@ -379,6 +382,7 @@ static void update_source_stats (source_t *source)
 
     source->bytes_sent_since_update %= 1024;
     source->bytes_read_since_update %= 1024;
+    source->listener_send_trigger = incoming_rate;
 }
 
 
@@ -390,7 +394,7 @@ int source_read (source_t *source)
 {
     client_t *client = source->client;
     refbuf_t *refbuf = NULL;
-    int skip = 1, loop = 3;
+    int skip = 1, loop = 2;
     time_t current = client->worker->current_time.tv_sec;
     int fds = 0;
 
@@ -441,9 +445,7 @@ int source_read (source_t *source)
         }
         if (source->limit_rate)
         {
-            unsigned long incoming_rate = 8 * rate_avg (source->format->in_bitrate);
-
-            if (source->limit_rate < incoming_rate)
+            if (source->limit_rate < (8 * source->incoming_rate))
             {
                 rate_add (source->format->in_bitrate, 0, current);
                 source->skip_duration += 300;
@@ -464,6 +466,8 @@ int source_read (source_t *source)
         }
         if (fds == 0)
         {
+            if (source->last_read + (time_t)3 == current)
+                WARN1 ("Nothing received on %s for 3 seconds", source->mount);
             if (source->last_read + (time_t)source->timeout < current)
             {
                 DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
@@ -479,8 +483,8 @@ int source_read (source_t *source)
             break;
         }
         source->skip_duration = (long)(source->skip_duration * 0.9);
-        if (source->skip_duration < 5) /* not too low or else it will not be able to increase */
-            source->skip_duration = 5;
+        if (source->skip_duration < 10) /* not too low or else it will not be able to increase */
+            source->skip_duration = 10;
 
         source->last_read = current;
         do
@@ -598,6 +602,15 @@ static int source_client_read (client_t *client)
         }
         else
         {
+            if (source->listeners)
+            {
+                INFO1 ("listeners on terminating source %s, rechecking", source->mount);
+                source->termination_count = source->listeners;
+                source->flags &= ~SOURCE_PAUSE_LISTENERS;
+                source->flags |= SOURCE_LISTENERS_SYNC;
+                thread_mutex_unlock (&source->lock);
+                return 0;
+            }
             INFO1 ("no more listeners on %s", source->mount);
             client->connection.discon_time = 0;
             client->ops = &source_client_halt_ops;
@@ -622,7 +635,7 @@ static int source_queue_advance (client_t *client)
     refbuf = client->refbuf;
 
     /* move to the next buffer if we have finished with the current one */
-    if (client->pos == refbuf->len)
+    if (client->pos >= refbuf->len)
     {
         if (refbuf->next == NULL)
         {
@@ -897,9 +910,9 @@ int listener_waiting_on_source (source_t *source, client_t *client)
 static int send_listener (source_t *source, client_t *client)
 {
     int bytes;
-    int loop = 10;   /* max number of iterations in one go */
+    int loop = 8;   /* max number of iterations in one go */
     long total_written = 0;
-    int ret = 0;
+    int ret = 0, lag;
 
     if (source->flags & SOURCE_LISTENERS_SYNC)
         return listener_waiting_on_source (source, client);
@@ -916,18 +929,17 @@ static int send_listener (source_t *source, client_t *client)
     }
     if (source_running (source) == 0)
     {
-        DEBUG0 ("source not running, listener will wait 200ms");
-        client->schedule_ms += 200;
+        DEBUG0 ("source not running, listener will wait");
+        client->schedule_ms += 100;
         return 0;
     }
-
-    if (client->refbuf == NULL)
-        client->check_buffer = source_queue_advance;
 
     // do we migrate this listener to the same handler as the source client
     if (source->client->worker != client->worker)
         if (listener_change_worker (client, source))
             return 1;
+
+    lag = source->client->queue_pos - client->queue_pos;
 
     /* progessive slowdown if nearing max bandwidth.  */
     if (global.max_rate)
@@ -945,12 +957,14 @@ static int send_listener (source_t *source, client_t *client)
         if (throttle_sends > 0)
         {
             /* make lagging listeners, lag further on high bandwidth use */
-            if (source->client->queue_pos - client->queue_pos > 8192)
+            if (lag > (source->incoming_rate*2))
                 client->schedule_ms += 150;
         }
     }
+    if (source->incoming_rate > 1 && lag < (source->incoming_rate<<1))
+        loop = lag / (source->incoming_rate>>1);
 
-    while (loop)
+    while (1)
     {
         /* jump out if client connection has died */
         if (client->connection.error)
@@ -960,8 +974,11 @@ static int send_listener (source_t *source, client_t *client)
         }
         /* lets not send too much to one client in one go, but don't
            sleep for too long if more data can be sent */
-        if (total_written > source->listener_send_trigger)
+        if (loop == 0 || total_written > source->listener_send_trigger)
+        {
+            client->schedule_ms = client->worker->time_ms + 15;
             break;
+        }
         bytes = client->check_buffer (client);
         if (bytes < 0)
             break;  /* can't write any more */
@@ -1012,14 +1029,14 @@ void source_init (source_t *source)
     stats_event_flags (source->mount, "listener_peak", "0", STATS_COUNTERS);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
     stats_event_flags (source->mount, "listener_connections", "0", STATS_COUNTERS);
-    stats_event_time (source->mount, "stream_start");
+    stats_event_time (source->mount, "stream_start", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_mbytes_sent", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_bytes_sent", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "total_bytes_read", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "outgoing_kbitrate", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "incoming_bitrate", "0", STATS_COUNTERS);
     stats_event_flags (source->mount, "connected", "0", STATS_COUNTERS);
-    stats_event (source->mount, "source_ip", source->client->connection.ip);
+    stats_event_flags (source->mount, "source_ip", source->client->connection.ip, STATS_COUNTERS);
 
     source->last_read = time(NULL);
     source->prev_listeners = -1;
@@ -1106,10 +1123,16 @@ void source_set_override (const char *mount, const char *dest)
 
 void source_set_fallback (source_t *source, const char *dest_mount)
 {
-    int bitrate = (int)(rate_avg (source->format->in_bitrate) * 1.02);
+    int bitrate = 0;
+    client_t *client = source->client;
+    time_t connected = client->worker->current_time.tv_sec - client->connection.con_time;
+
     if (dest_mount == NULL)
         return;
-
+    if (connected > 20)
+        bitrate = (int)(rate_avg (source->format->in_bitrate) * 1.02);
+    if (bitrate == 0 && source->limit_rate)
+        bitrate = source->limit_rate;
     source->fallback.flags = FS_FALLBACK;
     source->fallback.mount = strdup (dest_mount);
     source->fallback.limit = bitrate;
@@ -1123,20 +1146,22 @@ void source_shutdown (source_t *source, int with_fallback)
 
     INFO1("Source \"%s\" exiting", source->mount);
 
-    if (source->client->connection.con_time)
-        update_source_stats (source);
     source->flags &= ~SOURCE_ON_DEMAND;
     source->termination_count = source->listeners;
     mountinfo = config_find_mount (config_get_config(), source->mount);
-    if (mountinfo)
+    if (source->client->connection.con_time)
     {
-        if (mountinfo->on_disconnect)
-            source_run_script (mountinfo->on_disconnect, source->mount);
-        auth_stream_end (mountinfo, source->mount);
-
-        if (with_fallback && global.running == ICE_RUNNING)
-            source_set_fallback (source, mountinfo->fallback_mount);
+        /* only do these if source has been running */
+        update_source_stats (source);
+        if (mountinfo)
+        {
+            if (mountinfo->on_disconnect)
+                source_run_script (mountinfo->on_disconnect, source->mount);
+            auth_stream_end (mountinfo, source->mount);
+        }
     }
+    if (mountinfo && with_fallback && global.running == ICE_RUNNING)
+        source_set_fallback (source, mountinfo->fallback_mount);
     config_release_config();
     source->flags |= (SOURCE_TERMINATING | SOURCE_LISTENERS_SYNC);
 }
@@ -1404,14 +1429,19 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
+    char *listen_url;
+    int len;
+
     /* set global settings first */
     source->queue_size_limit = config->queue_size_limit;
     source->min_queue_size = config->min_queue_size;
     source->timeout = config->source_timeout;
     source->default_burst_size = config->burst_size;
 
-    stats_event_args (source->mount, "listenurl", "http://%s:%d%s",
-            config->hostname, config->port, source->mount);
+    len = strlen (config->hostname) + strlen(source->mount) + 16;
+    listen_url = alloca (len);
+    snprintf (listen_url, len, "http://%s:%d%s", config->hostname, config->port, source->mount);
+    stats_event_flags (source->mount, "listenurl", listen_url, STATS_COUNTERS);
 
     source_apply_mount (source, mountinfo);
 
@@ -1608,6 +1638,7 @@ static int check_duplicate_logins (source_t *source, client_t *client, auth_t *a
         {
             if (auth->drop_existing_listener)
             {
+                INFO2 ("Found %s on %s, dropping previous account", existing_client->username, source->mount);
                 existing_client->connection.error = 1;
                 return 1;
             }
@@ -1703,14 +1734,13 @@ static int source_listener_release (source_t *source, client_t *client)
         config_release_config();
         return ret;
     }
-    client_send_404 (client, NULL); // failed on-demand relay? 
-    return 0;
+    return client_send_404 (client, NULL); // failed on-demand relay? 
 }
 
 
 int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *client)
 {
-    int loop = 10, bitrate = 0;
+    int loop = 10, bitrate = 0, do_process = 0;
     int within_limits;
     source_t *source;
     mount_proxy *minfo = mountinfo;
@@ -1726,8 +1756,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
             if (loop == 0)
             {
                 WARN0 ("preventing a fallback loop");
-                client_send_403 (client, "Fallback through too many mountpoints");
-                return -1;
+                return client_send_403 (client, "Fallback through too many mountpoints");
             }
             avl_tree_rlock (global.source_tree);
             source = source_find_mount_raw (mount);
@@ -1770,12 +1799,6 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
 
         if (client->flags & CLIENT_IS_SLAVE)
         {
-            if (source->client == NULL && (source->flags & SOURCE_ON_DEMAND) == 0)
-            {
-                thread_mutex_unlock (&source->lock);
-                client_send_403 (client, "Slave relay reading from time unregulated stream");
-                return -1;
-            }
             INFO0 ("client is from a slave, bypassing limits");
             break;
         }
@@ -1792,8 +1815,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
                 {
                     thread_mutex_unlock (&source->lock);
                     INFO0 ("server-wide outgoing bandwidth limit reached");
-                    client_send_403redirect (client, passed_mount, "server bandwidth reached");
-                    return -1;
+                    return client_send_403redirect (client, passed_mount, "server bandwidth reached");
                 }
             }
         }
@@ -1804,8 +1826,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
         if (check_duplicate_logins (source, client, mountinfo->auth) == 0)
         {
             thread_mutex_unlock (&source->lock);
-            client_send_403 (client, "Account already in use");
-            return -1;
+            return client_send_403 (client, "Account already in use");
         }
 
         /* set a per-mount disconnect time if auth hasn't set one already */
@@ -1846,8 +1867,7 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
 
         /* now we fail the client */
         thread_mutex_unlock (&source->lock);
-        client_send_403redirect (client, passed_mount, "max listeners reached");
-        return -1;
+        return client_send_403redirect (client, passed_mount, "max listeners reached");
 
     } while (1);
     client->connection.sent_bytes = 0;
@@ -1855,16 +1875,25 @@ int source_add_listener (const char *mount, mount_proxy *mountinfo, client_t *cl
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
     memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
 
+    source_setup_listener (source, client);
+    if ((client->flags & CLIENT_ACTIVE) && (source->flags & SOURCE_RUNNING))
+        do_process = 1;
+    else
+    {
+        client->flags |= CLIENT_ACTIVE; // from an auth thread context
+        worker_wakeup (client->worker);
+    }
+    thread_mutex_unlock (&source->lock);
+    global_reduce_bitrate_sampling (global.out_bitrate);
+
     stats_event_inc (NULL, "listeners");
     stats_event_inc (NULL, "listener_connections");
 
-    source_setup_listener (source, client);
-    client->flags |= CLIENT_ACTIVE;
-    worker_wakeup (client->worker);
-    thread_mutex_unlock (&source->lock);
-
+    if (do_process) // send something back quickly
+        return client->ops->process (client);
     return 0;
 }
+
 
 /* call with the source lock held, but expect the lock released on exit
  * as the listener may of changed threads and therefore lock needed to be

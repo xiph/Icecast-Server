@@ -440,7 +440,7 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     }
 
     value = util_conv_string (in_value, charset, "UTF-8");
-    if (value == NULL)
+    if (value == NULL && in_value)
         value = strdup (in_value);
 
     if (strcmp (tag, "artist") == 0)

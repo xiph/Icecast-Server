@@ -221,6 +221,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         if (strncasecmp (ptr, "Location: ", 10) == 0)
         {
             int len = strcspn ((char*)ptr+10, "\r\n");
+            free (atd->location);
             atd->location = malloc (len+1);
             snprintf (atd->location, len+1, "%s", (char *)ptr+10);
         }
@@ -391,7 +392,7 @@ static auth_result url_add_listener (auth_client *auth_user)
     auth_t *auth = auth_user->auth;
     auth_url *url = auth->state;
     auth_thread_data *atd = auth_user->thread_data;
-    int res = 0, port;
+    int res = 0, port, ret = AUTH_FAILED;
     const char *agent, *qargs;
     char *user_agent, *username, *password;
     char *mount, *ipaddr, *server;
@@ -474,6 +475,8 @@ static auth_result url_add_listener (auth_client *auth_user)
     curl_easy_setopt (atd->curl, CURLOPT_WRITEHEADER, auth_user);
     curl_easy_setopt (atd->curl, CURLOPT_WRITEDATA, auth_user);
     atd->errormsg[0] = '\0';
+    free (atd->location);
+    atd->location = NULL;
     /* setup in case intro data is returned */
     x = (void *)client->refbuf->data;
     x->type = 0;
@@ -486,32 +489,25 @@ static auth_result url_add_listener (auth_client *auth_user)
 
     free (userpwd);
 
-    if (res)
-    {
-        url->reject_until = time (NULL) + 60; /* prevent further attempts for a while */
-        WARN2 ("auth to server %s failed with %s", url->addurl, atd->errormsg);
-        INFO0 ("will not auth new listeners for 60 seconds");
-        if (url->presume_innocent)
-            client->flags |= CLIENT_AUTHENTICATED;
-        return AUTH_FAILED;
-    }
-    if (atd->location)
-    {
-        client_send_302 (client, atd->location);
-        auth_user->client = NULL;
-        free (atd->location);
-        atd->location = NULL;
-        return AUTH_FAILED;
-    }
-    /* we received a response, lets see what it is */
     if (client->flags & CLIENT_AUTHENTICATED)
     {
         if (client->flags & CLIENT_HAS_INTRO_CONTENT)
             client->refbuf->next = x->head;
         if (x->head == NULL)
             client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
-
-        return AUTH_OK;
+        x->head = NULL;
+        ret = AUTH_OK;
+    }
+    if (res)
+    {
+        url->reject_until = time (NULL) + 60; /* prevent further attempts for a while */
+        WARN2 ("auth to server %s failed with %s", url->addurl, atd->errormsg);
+        INFO0 ("will not auth new listeners for 60 seconds");
+        if (url->presume_innocent)
+        {
+            client->flags |= CLIENT_AUTHENTICATED;
+            ret = AUTH_OK;
+        }
     }
     /* better cleanup memory */
     while (x->head)
@@ -523,14 +519,23 @@ static auth_result url_add_listener (auth_client *auth_user)
     }
     if (x->type)
         mpeg_cleanup (&x->sync);
-    if (atoi (atd->errormsg) == 403)
+    if (atd->location)
     {
+        client_send_302 (client, atd->location);
         auth_user->client = NULL;
-        client_send_403 (client, atd->errormsg+4);
+        free (atd->location);
+        atd->location = NULL;
     }
-    if (atd->errormsg[0])
+    else if (atd->errormsg[0])
+    {
+        if (atoi (atd->errormsg) == 403)
+        {
+            auth_user->client = NULL;
+            client_send_403 (client, atd->errormsg+4);
+        }
         INFO2 ("client auth (%s) failed with \"%s\"", url->addurl, atd->errormsg);
-    return AUTH_FAILED;
+    }
+    return ret;
 }
 
 
@@ -697,6 +702,10 @@ static void *alloc_thread_data (auth_t *auth)
     curl_easy_setopt (atd->curl, CURLOPT_PASSWDFUNCTION, my_getpass);
 #endif
     curl_easy_setopt (atd->curl, CURLOPT_ERRORBUFFER, &atd->errormsg[0]);
+    curl_easy_setopt (atd->curl, CURLOPT_FOLLOWLOCATION, 1);
+#ifdef CURLOPT_POSTREDIR
+    curl_easy_setopt (atd->curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+#endif
     INFO0 ("...handler data initialized");
     return atd;
 }
