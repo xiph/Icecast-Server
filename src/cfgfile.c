@@ -37,8 +37,6 @@
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT 30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT 15
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
-#define CONFIG_DEFAULT_SOURCE_PASSWORD "changeme"
-#define CONFIG_DEFAULT_RELAY_PASSWORD "changeme"
 #define CONFIG_DEFAULT_MASTER_USERNAME "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
 #define CONFIG_DEFAULT_ICE_LOGIN 0
@@ -348,7 +346,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
-    configuration->source_password = (char *)xmlCharStrdup (CONFIG_DEFAULT_SOURCE_PASSWORD);
+    configuration->source_password = NULL;
     configuration->shoutcast_mount = (char *)xmlCharStrdup (CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
