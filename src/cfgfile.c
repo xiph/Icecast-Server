@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
-                        Thomas B. "dm8tbr" Ruecker <thomas.rucker@tieto.com>.
+ *                      Thomas B. "dm8tbr" Ruecker <thomas.rucker@tieto.com>.
  */
 
 #ifdef HAVE_CONFIG_H
