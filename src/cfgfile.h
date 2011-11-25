@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>,
  */
 
 #ifndef __CFGFILE_H__
@@ -161,6 +162,7 @@ typedef struct ice_config_tag
     char *banfile;
     char *allowfile;
     char *cert_file;
+    char *cipher_list;
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;
