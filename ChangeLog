@@ -1,3 +1,15 @@
+2011-11-25 21:20  ph3-der-loewe
+
+	* trunk/icecast/AUTHORS, trunk/icecast/src/cfgfile.c.
+	  trunk/icecast/src/connection.c: Allow the source password
+	  to be undefined. This is to avoid falling back to a default
+	  password which may open security holes.
+
+----------------------------------------------------------------------
+	Everything above is post 2.3.2. The stuff below is incomplete.
+	The time zone above is UTC, the time zone below is unknown.
+	ph3-der-loewe, Fri Nov 25 21:20:58 UTC 2011
+----------------------------------------------------------------------
 2005-11-29 03:06  karl
 
 	* trunk/icecast/src/auth_url.c: update for authentication header

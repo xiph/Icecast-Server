@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -1168,7 +1169,12 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         if (mountinfo && mountinfo->password)
             source_password = strdup (mountinfo->password);
         else
-            source_password = strdup (config->source_password);
+        {
+            if (config->source_password) 
+                source_password = strdup (config->source_password);
+            else
+                source_password = NULL;
+        }
         config_release_config();
 
         /* Get rid of trailing \r\n or \n after password */
@@ -1198,7 +1204,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         }
         *ptr = '\0';
 
-        if (strcmp (client->refbuf->data, source_password) == 0)
+        if (source_password && strcmp (client->refbuf->data, source_password) == 0)
         {
             client->respcode = 200;
             /* send this non-blocking but if there is only a partial write
