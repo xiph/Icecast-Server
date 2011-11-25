@@ -25,7 +25,7 @@
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
-        <alias source="/" dest="/status.xsl"/>
+        <alias source="/" destination="/status.xsl"/>
     </paths>
     <logging>
         <accesslog>access.log</accesslog>

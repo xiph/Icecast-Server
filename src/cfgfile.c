@@ -986,7 +986,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
                 free(alias);
                 continue;
             }
-            alias->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
+            alias->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
+            if (!alias->destination)
+                alias->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
             if(alias->destination == NULL) {
                 xmlFree(alias->source);
                 free(alias);

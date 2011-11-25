@@ -1,3 +1,11 @@
+2011-11-25 23:17  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c, trunk/icecast/conf/icecast.xml.in,
+	  trunk/icecast/conf/icecast_urlauth.xml.in,
+	  trunk/icecast/conf/icecast_minimal.xml.in: Updated <alias>
+	  to use destination="" not dest="". The old dest="" attribute
+	  is still supported.
+
 2011-11-25 21:20  ph3-der-loewe
 
 	* trunk/icecast/AUTHORS, trunk/icecast/src/cfgfile.c.
