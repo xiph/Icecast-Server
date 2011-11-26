@@ -8,8 +8,8 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
- *                      Dave 'justdave' Miller <justdave@mozilla.com>,
+ * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ *                      Dave 'justdave' Miller <justdave@mozilla.com>.
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */

@@ -21,9 +21,9 @@
 
 	* trunk/icecast/src/cfgfile.c trunk/icecast/src/cfgfile.h
 	  trunk/icecast/src/connection.c:
-          Applied justdave's patches, fixing #1717 and #1718.
+	  Applied justdave's patches, fixing #1717 and #1718.
 	  HTTPS now with better security and support for chained
-          certificates.
+	  certificates.
 
 2011-11-25 21:20  ph3-der-loewe
 

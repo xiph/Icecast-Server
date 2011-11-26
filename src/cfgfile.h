@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>,
+ * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
  */
 
 #ifndef __CFGFILE_H__
