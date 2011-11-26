@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -405,7 +406,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
     int ret = 0;
     char *fullpath;
     int m3u_requested = 0, m3u_file_available = 1;
-    int xspf_requested = 0, xspf_file_available = 1;
+    const char * xslt_playlist_requested = NULL;
+    int xslt_playlist_file_available = 1;
     ice_config_t *config;
     FILE *file;
 
@@ -416,13 +418,16 @@ int fserve_client_create (client_t *httpclient, const char *path)
         m3u_requested = 1;
 
     if (strcmp (util_get_extension (fullpath), "xspf") == 0)
-        xspf_requested = 1;
+        xslt_playlist_requested = "xspf.xsl";
+
+    if (strcmp (util_get_extension (fullpath), "vclt") == 0)
+        xslt_playlist_requested = "vclt.xsl";
 
     /* check for the actual file */
     if (stat (fullpath, &file_buf) != 0)
     {
         /* the m3u can be generated, but send an m3u file if available */
-        if (m3u_requested == 0 && xspf_requested == 0)
+        if (m3u_requested == 0 && xslt_playlist_requested == NULL)
         {
             WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
@@ -430,7 +435,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             return -1;
         }
         m3u_file_available = 0;
-        xspf_file_available = 0;
+        xslt_playlist_file_available = 0;
     }
 
     httpclient->refbuf->len = PER_CLIENT_REFBUF_SIZE;
@@ -477,7 +482,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         free (fullpath);
         return 0;
     }
-    if (xspf_requested && xspf_file_available == 0)
+    if (xslt_playlist_requested && xslt_playlist_file_available == 0)
     {
         xmlDocPtr doc;
         char *reference = strdup (path);
@@ -486,7 +491,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             *eol = '\0';
         doc = stats_get_xml (0, reference);
         free (reference);
-        admin_send_response (doc, httpclient, TRANSFORMED, "xspf.xsl");
+        admin_send_response (doc, httpclient, TRANSFORMED, xslt_playlist_requested);
         xmlFreeDoc(doc);
         return 0;
     }
