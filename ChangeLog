@@ -1,3 +1,8 @@
+2011-11-26 11:11  ph3-der-loewe
+
+	* trunk/icecast/admin/Makefile.am: Added vclt.xsl to list
+	  of files which are to be installed.
+
 2011-11-26 02:36  ph3-der-loewe
 
 	* trunk/icecast/src/fserve.c, trunk/icecast/admin/vclt.xsl,
