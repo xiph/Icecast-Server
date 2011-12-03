@@ -43,7 +43,7 @@ This section will describe each section of the config file and is grouped into t
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
     &lt;/limits&gt;
 </pre>
-<p>This section contains server level settings that, in general, do not need to be changed.  Only modify this section if you are know what you are doing.
+<p>This section contains server level settings that, in general, do not need to be changed.  Only modify this section if you know what you are doing.
 </p>
 <h4>clients</h4>
 <div class="indentedbox">
@@ -158,7 +158,9 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
 <h2>Misc Server Settings</h2>
 <p>Server wide settings.</p>
 <pre>
-    &lt;hostname&gt;localhost&lt;hostname&gt;
+    &lt;hostname&gt;localhost&lt;/hostname&gt;
+    &lt;location&gt;earth&lt;/location&gt;
+    &lt;admin&gt;icemaster@localhost&lt;/admin&gt;
     &lt;fileserve&gt;1&lt;/fileserve&gt;
     &lt;server-id&gt;icecast 2.3&lt;/server-id&gt;
 </pre>
@@ -168,6 +170,17 @@ The URL which icecast2 uses to communicate with the Directory server.  The value
     This is the DNS name or IP address that will be used for the stream directory lookups or
     possibily the playlist generation if a Host header is not provided. While localhost is shown
     as an example, in fact you will want something that your listeners can use.
+</div>
+<h4>location</h4>
+<div class="indentedbox">
+    This sets the location string for this icecast instance. It will be shown e.g in the 
+    web interface.
+</div>
+<h4>admin</h4>
+<div class="indentedbox">
+    This should contain contact details for getting in touch with the server administrator.
+    Usually this will be an email address, but as this can be an arbitrary string it could also
+    be a phone number. This will be shown e.g. in the web interface.
 </div>
 <h4>fileserve</h4>
 <div class="indentedbox">
@@ -446,7 +459,8 @@ The name of the mount point for which these settings apply.
 </div>
 <h4>username</h4>
 <div class="indentedbox">
-An optional value which will set the username that a source must use to connect using this mountpoint.
+An optional value which will set the username that a source must use to connect using this mountpoint.<br />
+Do not set this value unless you are sure that the source clients connecting to the mount point can be configured to send a username other than 'source'. If this value is not present the default username is 'source'.
 </div>
 <h4>password</h4>
 <div class="indentedbox">
