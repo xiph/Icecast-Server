@@ -2,7 +2,7 @@
     <!-- location and admin are two arbitrary strings that are e.g. visible
          on the server info page of the icecast web interface
          (server_version.xsl). -->
-    <location>Earth<location>
+    <location>Earth</location>
     <admin>icemaster@localhost</admin>
 
     <limits>
