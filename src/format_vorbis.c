@@ -30,6 +30,7 @@
 #include "format_ogg.h"
 #include "stats.h"
 #include "format.h"
+#include "global.h"
 
 #define CATMODULE "format-vorbis"
 #include "logging.h"

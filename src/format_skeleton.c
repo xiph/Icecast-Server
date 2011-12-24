@@ -28,6 +28,7 @@ typedef struct source_tag source_t;
 #include "format_skeleton.h"
 #include "client.h"
 #include "stats.h"
+#include "global.h"
 
 #define CATMODULE "format-skeleton"
 #include "logging.h"

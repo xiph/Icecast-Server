@@ -22,6 +22,7 @@
 #include "compat.h"
 #include "mpeg.h"
 #include "format_mp3.h"
+#include "global.h"
 
 #define CATMODULE "mpeg"
 #include "logging.h"
@@ -70,8 +71,6 @@ static int handle_aac_frame (struct mpeg_sync *mp, unsigned char *p, int len)
         if (mp->frame_callback)
             if (mp->frame_callback (mp, s, raw_frame_len) < 0)
                 return -1;
-        memcpy (mp->raw->data + mp->raw_offset, s, raw_frame_len);
-        mp->raw_offset += raw_frame_len;
     }
     return frame_len;
 }
@@ -163,8 +162,6 @@ static int handle_mpeg_frame (struct mpeg_sync *mp, unsigned char *p, int remain
         if (mp->frame_callback)
             if (mp->frame_callback (mp, p, frame_len) < 0)
                 return -1;
-        memcpy (mp->raw->data + mp->raw_offset, p, frame_len);
-        mp->raw_offset += frame_len;
     }
     return frame_len;
 }
@@ -242,31 +239,31 @@ static int check_for_mp3 (struct mpeg_sync *mp, unsigned char *p, unsigned remai
             samplerate = get_mpegframe_samplerate (p);
             if (samplerate == 0)
                 return -1;
-            while (checking)
+            do
             {
-                int frame_len = get_mpeg_frame_length (mp, fh);
+                int frame_len;
+
+                if (remaining <= 4)
+                    return 0;
+                if (fh [0] != 255 || fh [1] != p[1])
+                    return -1;
+                frame_len = get_mpeg_frame_length (mp, fh);
                 if (frame_len <= 0 || frame_len > 3000)
                 {
                     //DEBUG2 ("checking frame %d, but len %d invalid", 5-checking, frame_len);
                     return -1;
                 }
-                if (frame_len+4 >= remaining)
+                if (frame_len > remaining)
                 {
                     //DEBUG3 ("checking frame %d, but need more data (%d,%d)", 5-checking, frame_len, remaining);
                     return 0;
                 }
-                if (samplerate != get_mpegframe_samplerate (fh+frame_len))
+                if (samplerate != get_mpegframe_samplerate (fh))
                     return -1;
-                if (fh[frame_len] != 255 || fh[frame_len+1] != p[1])
-                {
-                    //DEBUG4 ("checking frame %d, but code is %x %x %x", 5-checking, fh[frame_len], fh[frame_len+1], fh[frame_len+2]);
-                    return -1;
-                }
                 //DEBUG4 ("frame %d checked, next header codes are %x %x %x", 5-checking, fh[frame_len], fh[frame_len+1], fh[frame_len+2]);
                 remaining -= frame_len;
                 fh += frame_len;
-                checking--;
-            }
+            } while (--checking);
             mp->samplerate = samplerate;
             if  (((p[3] & 0xC0) >> 6) == 3)
                 mp->channels = 1;
@@ -375,20 +372,23 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
     mp->sample_count = 0;
     if (mp->surplus)
     {
-        int new_len = mp->surplus->len + new_block->len;
-        unsigned char *p = realloc (mp->surplus->data, new_len);
+        if (offset >= mp->surplus->len)
+            offset -= mp->surplus->len;
+        else
+        {
+            int new_len = mp->surplus->len + new_block->len;
+            unsigned char *p = realloc (mp->surplus->data, new_len);
 
-        memcpy (p+mp->surplus->len, new_block->data, new_block->len);
-        mp->surplus->data = new_block->data;
-        new_block->data = (void*)p;
-        new_block->len = new_len;
+            memcpy (p+mp->surplus->len, new_block->data, new_block->len);
+            mp->surplus->data = new_block->data;
+            new_block->data = (void*)p;
+            new_block->len = new_len;
+        }
         refbuf_release (mp->surplus);
         mp->surplus = NULL;
     }
     start = (unsigned char *)new_block->data + offset;
     remaining = new_block->len - offset;
-    if (mp->raw)
-        mp->raw_offset = 0;
     while (1)
     {
         end = (unsigned char*)new_block->data + new_block->len;
@@ -398,7 +398,6 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
             break;
         if (!is_sync_byte (mp, start))
         {
-            // need to resync
             int ret = find_align_sync (mp, start, remaining);
             if (ret == 0)
                 break; // no sync in the rest, so dump it
@@ -422,7 +421,7 @@ int mpeg_complete_frames (mpeg_sync *mp, refbuf_t *new_block, unsigned offset)
             {
                 if (remaining > 20000)
                     return -1;
-                new_block->len = 0;
+                new_block->len = offset;
                 return remaining;
             }
         }
@@ -474,5 +473,6 @@ void mpeg_cleanup (mpeg_sync *mpsync)
     {
         refbuf_release (mpsync->surplus);
         refbuf_release (mpsync->raw);
+        mpsync->mount = NULL;
     }
 }

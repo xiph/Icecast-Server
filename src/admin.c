@@ -61,6 +61,9 @@ static int command_updatemetadata(client_t *client, source_t *source, int respon
 static int command_admin_function (client_t *client, int response);
 static int command_list_log (client_t *client, int response);
 static int command_manage_relay (client_t *client, int response);
+#ifdef MY_ALLOC
+static int command_alloc(client_t *client);
+#endif
 
 static int admin_handle_general_request(client_t *client, const char *command);
 
@@ -84,6 +87,9 @@ static struct admin_command admin_general[] =
     { "manageauth",         RAW,    { command_manageauth } },
     { "listmounts",         RAW,    { command_list_mounts } },
     { "function",           RAW,    { command_admin_function } },
+#ifdef MY_ALLOC
+    { "alloc",              RAW,    { command_alloc } },
+#endif
     { "streamlist.txt",     TEXT,   { command_list_mounts } },
     { "streams",            TEXT,   { command_list_mounts } },
     { "showlog.txt",        TEXT,   { command_list_log } },
@@ -592,50 +598,6 @@ static int command_manage_relay (client_t *client, int response)
 }
 
 
-static void add_listener_node (xmlNodePtr srcnode, client_t *listener)
-{
-    const char *useragent;
-    char buf[30];
-
-    xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
-
-    snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
-    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
-
-    xmlNewChild (node, NULL, XMLSTR("IP"), XMLSTR(listener->connection.ip));
-
-    useragent = httpp_getvar (listener->parser, "user-agent");
-    if (useragent && xmlCheckUTF8((unsigned char *)useragent))
-    {
-        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
-        xmlNewChild (node, NULL, XMLSTR("UserAgent"), str); 
-        xmlFree (str);
-    }
-
-    if ((listener->flags & (CLIENT_ACTIVE|CLIENT_IN_FSERVE)) == CLIENT_ACTIVE)
-    {
-        source_t *source = listener->shared_data;
-        snprintf (buf, sizeof (buf), "%"PRIu64, source->client->queue_pos - listener->queue_pos);
-    }
-    else
-        snprintf (buf, sizeof (buf), "0");
-    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
-
-    if (listener->worker)
-    {
-        snprintf (buf, sizeof (buf), "%lu",
-                (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
-        xmlNewChild (node, NULL, XMLSTR("Connected"), XMLSTR(buf));
-    }
-    if (listener->username)
-    {
-        xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
-        xmlNewChild (node, NULL, XMLSTR("username"), str);
-        xmlFree (str);
-    }
-}
-
-
 /* populate within srcnode, groups of 0 or more listener tags detailing
  * information about each listener connected on the provide source.
  */
@@ -649,7 +611,7 @@ void admin_source_listeners (source_t *source, xmlNodePtr srcnode)
     while (node)
     {
         client_t *listener = (client_t *)node->key;
-        add_listener_node (srcnode, listener);
+        stats_listener_to_xml (listener, srcnode);
         node = avl_get_next (node);
     }
 }
@@ -724,7 +686,7 @@ static int command_show_listeners (client_t *client, source_t *source, int respo
         client_t *listener = source_find_client (source, id);
 
         if (listener)
-            add_listener_node (srcnode, listener);
+            stats_listener_to_xml (listener, srcnode);
     }
     thread_mutex_unlock (&source->lock);
 
@@ -1241,4 +1203,34 @@ static int command_updatemetadata(client_t *client, source_t *source, int respon
 
     return admin_send_response (doc, client, response, "updatemetadata.xsl");
 }
+
+
+#ifdef MY_ALLOC
+static int command_alloc(client_t *client)
+{
+    xmlDocPtr doc = xmlNewDoc (XMLSTR("1.0"));
+    xmlNodePtr rootnode = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    avl_node *node;
+
+    xmlDocSetRootElement(doc, rootnode);
+    avl_tree_rlock (global.alloc_tree);
+    node = avl_get_first (global.alloc_tree);
+    while (node)
+    {
+        alloc_node *an = node->key;
+        char value[25];
+        xmlNodePtr bnode = xmlNewChild (rootnode, NULL, XMLSTR("block"), NULL);
+        xmlSetProp (bnode, XMLSTR("name"), XMLSTR(an->name));
+        snprintf (value, sizeof value, "%d", an->count);
+        xmlNewChild (bnode, NULL, XMLSTR("count"), XMLSTR(value));
+        snprintf (value, sizeof value, "%d", an->allocated);
+        xmlNewChild (bnode, NULL, XMLSTR("allocated"), XMLSTR(value));
+
+        node = avl_get_next (node);
+    }
+    avl_tree_unlock (global.alloc_tree);
+
+    return admin_send_response (doc, client, RAW, "stats.xsl");
+}
+#endif
 

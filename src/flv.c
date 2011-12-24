@@ -32,6 +32,7 @@
 #include "logging.h"
 #include "mpeg.h"
 #include "format_mp3.h"
+#include "global.h"
 
 #define CATMODULE "flv"
 
@@ -105,11 +106,13 @@ static int flv_mpX_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
             flv->tag[15] |= 0x1;
     }
     memcpy (mp->raw->data + mp->raw_offset, &flv->tag[0], 16);
+    connection_bufs_append (&flv->bufs, mp->raw->data + mp->raw_offset, 16);
     flv->samples += mp->sample_count;
     flv->prev_ms = (int64_t)(flv->samples / (mp->samplerate/1000.0));
     // The extra byte is for the flv audio id, usually 0x2F 
     flv->prev_tagsize = (len + FLVHEADER + 1);
     mp->raw_offset += 16;
+    connection_bufs_append (&flv->bufs, frame, len);
     return 0;
 }
 
@@ -132,11 +135,13 @@ static int flv_aac_hdr (struct mpeg_sync *mp, unsigned char *frame, unsigned int
     flv_hdr (flv, len + 2);
     // a single frame (headerless) follows this
     memcpy (mp->raw->data + mp->raw_offset, &flv->tag[0], 17);
+    connection_bufs_append (&flv->bufs, mp->raw->data + mp->raw_offset, 17);
     flv->samples += mp->sample_count;
     flv->prev_ms = (int64_t)(flv->samples / (mp->samplerate/1000.0));
     // frame length + FLVHEADER + AVHEADER
     flv->prev_tagsize = (len + 11 + 2);
     mp->raw_offset += 17;
+    connection_bufs_append (&flv->bufs, frame, len);
     return 0;
 }
 
@@ -171,6 +176,7 @@ static int flv_aac_firsthdr (struct mpeg_sync *mp, unsigned char *frame, unsigne
     flv->tag[15] = 0xAF; // AAC audio, need these codes first
     flv->tag[16] = 0x0;
     memcpy (mp->raw->data, &flv->tag[0], 11+4+2+c);
+    connection_bufs_append (&flv->bufs, mp->raw->data, 11+4+2+c);
     mp->raw_offset = 11+4+2+c;
     flv->prev_tagsize = 11 + 2 + c;
     flv->tag[16] = 0x01;   // as per spec. headerless frame follows this
@@ -184,22 +190,116 @@ static int flv_aac_firsthdr (struct mpeg_sync *mp, unsigned char *frame, unsigne
 static int send_flv_buffer (client_t *client, struct flv *flv)
 {
     int ret = 0;
-    char *buf = flv->mpeg_sync.raw->data + flv->block_pos;
-    unsigned int len  = flv->mpeg_sync.raw_offset - flv->block_pos;
+    unsigned int len = flv->bufs.total - flv->block_pos;
 
     if (len > 0)
     {
-        if (len > 1400)
-            len = 1400;
-        ret = client_send_bytes (client, buf, len);
+        ret = connection_bufs_send (&client->connection, &flv->bufs, flv->block_pos);
         if (ret < (int)len)
-            client->schedule_ms += (ret ? 50 : 250);
+            client->schedule_ms += (ret > 0 ? 50 : 200);
         if (ret > 0)
             flv->block_pos += ret;
     }
-    if (flv->block_pos == flv->mpeg_sync.raw_offset)
+    if (flv->block_pos == flv->bufs.total)
+    {
         flv->block_pos = flv->mpeg_sync.raw_offset = 0;
+        connection_bufs_flush (&flv->bufs);
+    }
     return ret;
+}
+
+
+void flv_write_metadata (struct flv *flv, refbuf_t *scmeta, const char *mount)
+{
+    /* the first assoc block is shoutcast meta, second is flv meta */
+    int len;
+    struct flvmeta *flvm;
+    unsigned char prev_type = flv->tag[4];
+    refbuf_t *flvmeta = NULL;
+    int meta_copied = 0;
+    refbuf_t *raw = flv->mpeg_sync.raw;
+    char *src, *dst = raw->data + flv->mpeg_sync.raw_offset;
+
+    if (scmeta)
+        flvmeta = scmeta->associated;
+    if (flvmeta == NULL)
+    {
+        char *value = stats_get_value (mount, "server_name");
+
+        flvmeta  = flv_meta_allocate (200);
+        if (value)
+            flv_meta_append_string (flvmeta, "name", value);
+        free (value);
+        value = stats_get_value (flv->mpeg_sync.mount, "title");
+        if (value)
+            flv_meta_append_string (flvmeta, "title", value);
+        else
+            flv_meta_append_string (flvmeta, "title", "");
+        free (value);
+        value = stats_get_value (mount, "audio_codecid");
+        if (value)
+        {
+            int id = atoi (value);
+            if (id == 2 || id == 10)
+                flv_meta_append_number (flvmeta, "audiocodecid", (double)id);
+            free (value);
+        }
+        value = stats_get_value (mount, "ice-bitrate");
+        if (value)
+        {
+            double rate = (double)atoi (value);
+            flv_meta_append_number (flvmeta, "audiodatarate", rate);
+            free (value);
+        }
+        value = stats_get_value (mount, "ice-samplerate");
+        if (value)
+        {
+            double rate = (double)atoi (value);
+            flv_meta_append_number (flvmeta, "audiosamplerate", rate);
+            free (value);
+        }
+        value = stats_get_value (mount, "ice-channels");
+        if (value)
+        {
+            int chann = atoi (value);
+            flv_meta_append_bool (flvmeta, "stereo", chann == 2 ? 1 : 0);
+            free (value);
+        }
+        flv_meta_append_string (flvmeta, NULL, NULL);
+        flvm = (struct flvmeta *)flvmeta->data;
+        meta_copied  = flvm->meta_pos - sizeof (*flvm);
+    }
+    else
+        flvm = (struct flvmeta *)flvmeta->data;
+    len  = flvm->meta_pos - sizeof (*flvm);
+    src = (char *)flvm + sizeof (*flvm);
+
+    if (meta_copied + 15 > raw->len)
+    {
+        int newlen = raw->len + 1024;
+        void *p = realloc (raw->data, newlen);
+        if (p == NULL)
+            return;
+        raw->data = p;
+        raw->len = newlen;
+    }
+    flv->tag[4] = 18;    // metadata
+    flv_hdr (flv, len);
+    memcpy (dst, &flv->tag[0], 15);
+    connection_bufs_append (&flv->bufs, dst, 15);
+    flv->mpeg_sync.raw_offset += 15;
+    dst += 15;
+    if (meta_copied)
+    {
+        memcpy (dst, src, len);
+        connection_bufs_append (&flv->bufs, dst, len);
+        flv->mpeg_sync.raw_offset += len;
+        refbuf_release (flvmeta);
+    }
+    else
+        connection_bufs_append (&flv->bufs, src, len);
+    flv->prev_tagsize = len + 11;
+    flv->tag[4] = prev_type;
 }
 
 
@@ -208,7 +308,7 @@ int write_flv_buf_to_client (client_t *client)
     refbuf_t *ref = client->refbuf, *scmeta = ref->associated;
     mp3_client_data *client_mp3 = client->format_data;
     struct flv *flv = client_mp3->specific;
-    int ret, meta_to_free = 0;
+    int ret;
 
     if (client->pos >= ref->len)
     {
@@ -216,99 +316,27 @@ int write_flv_buf_to_client (client_t *client)
         client->pos = ref->len;
         return -1;
     }
+
     /* check for metadata updates and insert if needed */
-    if (flv->seen_metadata != scmeta)
-    {
-        /* the first assoc block is shoutcast meta, second is flv meta */
-        int len;
-        char *src, *dst = flv->mpeg_sync.raw->data;
-        refbuf_t *flvmeta = NULL;
-        struct flvmeta *flvm;
-
-        if (scmeta)
-            flvmeta = scmeta->associated;
-        if (flvmeta == NULL)
-        {
-            char *value = stats_get_value (client->mount, "server_name");
-
-            flvmeta  = flv_meta_allocate (200);
-            meta_to_free = 1;
-            if (value)
-                flv_meta_append_string (flvmeta, "name", value);
-            free (value);
-            value = stats_get_value (flv->mpeg_sync.mount, "title");
-            if (value)
-                flv_meta_append_string (flvmeta, "title", value);
-            else
-                flv_meta_append_string (flvmeta, "title", "");
-            free (value);
-            flv_meta_append_string (flvmeta, "title", value);
-            value = stats_get_value (client->mount, "audio_codecid");
-            if (value)
-            {
-                int id = atoi (value);
-                if (id == 2 || id == 10)
-                    flv_meta_append_number (flvmeta, "audiocodecid", (double)id);
-                free (value);
-            }
-            value = stats_get_value (client->mount, "ice-bitrate");
-            if (value)
-            {
-                double rate = (double)atoi (value);
-                flv_meta_append_number (flvmeta, "audiodatarate", rate);
-                free (value);
-            }
-            value = stats_get_value (client->mount, "ice-samplerate");
-            if (value)
-            {
-                double rate = (double)atoi (value);
-                flv_meta_append_number (flvmeta, "audiosamplerate", rate);
-                free (value);
-            }
-            value = stats_get_value (client->mount, "ice-channels");
-            if (value)
-            {
-                int chann = atoi (value);
-                flv_meta_append_bool (flvmeta, "stereo", chann == 2 ? 1 : 0);
-                free (value);
-            }
-            flv_meta_append_string (flvmeta, NULL, NULL);
-        }
-        flvm = (struct flvmeta *)flvmeta->data;
-        src = (char *)flvm + sizeof (*flvm);
-        len  = flvm->meta_pos - sizeof (*flvm);
-
-        if (len + 15 < flv->mpeg_sync.raw->len)
-        {
-            unsigned char prev_type = flv->tag[4];
-            flv->tag[4] = 18;    // metadata
-            flv_hdr (flv, len);
-            memcpy (dst, &flv->tag[0], 15);
-            memcpy (dst+15, src, len);
-            flv->mpeg_sync.raw_offset = len + 15;
-            flv->prev_tagsize = len + 11;
-            flv->tag[4] = prev_type;
-            flv->seen_metadata = ref->associated;
-            if (meta_to_free) refbuf_release (flvmeta);
-            return send_flv_buffer (client, flv);
-        }
-        if (meta_to_free) refbuf_release (flvmeta);
-        flv->seen_metadata = ref->associated;
-    }
-
     if (flv->mpeg_sync.raw_offset == 0)
     {
         int unprocessed = mpeg_complete_frames (&flv->mpeg_sync, ref, client->pos);
+
         if (unprocessed < 0)
             return -1;
         if (unprocessed > 0)
             ref->len += unprocessed;   /* output was truncated, so revert changes */
+
+        if (flv->seen_metadata != scmeta)
+            flv_write_metadata (flv, scmeta, client->mount);
     }
     ret = send_flv_buffer (client, flv);
     if (flv->mpeg_sync.raw_offset == 0)
     {
         client->pos = ref->len;
         client->queue_pos += client->refbuf->len;
+        if (flv->seen_metadata != scmeta)
+            flv->seen_metadata = scmeta;
     }
     return ret;
 }
@@ -458,7 +486,8 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
             "\r\n"
             "FLV\x1\x4%c%c%c\x9", 0,0,0);
 
-    flv->mpeg_sync.raw = refbuf_new (4096);
+    // only flv headers in here, allows for up to 64 frames per read block, expandable
+    flv->mpeg_sync.raw = refbuf_new (1024);
     flv->tag[4] = 8;    // Audio details only
     if (plugin->type == FORMAT_TYPE_AAC)
     {
@@ -474,6 +503,7 @@ void flv_create_client_data (format_plugin_t *plugin, client_t *client)
 
     client->respcode = 200;
     client->refbuf->len = bytes;
+    connection_bufs_init (&flv->bufs, 10);
 }
 
 
@@ -481,5 +511,6 @@ void free_flv_client_data (struct flv *flv)
 {
     flv->mpeg_sync.mount = NULL;
     mpeg_cleanup (&flv->mpeg_sync);
+    connection_bufs_release (&flv->bufs);
 }
 

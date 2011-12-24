@@ -13,9 +13,6 @@
 #ifndef __AUTH_H__
 #define __AUTH_H__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 
 struct source_tag;
 struct auth_tag;

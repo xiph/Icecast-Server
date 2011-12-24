@@ -36,18 +36,24 @@
 #endif
 
 /* Make sure we define 64 bit types */
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_MINGW32_)
 #  define PATH_SEPARATOR "\\"
 #  define size_t unsigned int
 #  define ssize_t int
 #  define uint32_t unsigned int
+#  define fseeko fseek
+#  include <malloc.h> // for alloca
+//#  define alloca _alloca
+#  define SCN_OFF_T "ld"
+#  define PRI_OFF_T "ld"
 #else
 #  define PATH_SEPARATOR "/"
-#  if defined(HAVE_INTTYPES_H)
+#endif
+
+#if defined(HAVE_INTTYPES_H)
 #    include <inttypes.h>
-#  elif defined(HAVE_STDINT_H)
+#elif defined(HAVE_STDINT_H)
 #    include <stdint.h>
-#  endif
 #endif
 
 #endif /* __COMPAT_H__ */

@@ -31,11 +31,17 @@
 #ifdef _MSC_VER
  #include <winsock2.h>
  #include <ws2tcpip.h>
-#else
+#endif
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
+
 #ifdef HAVE_SIGNALFD
 #include <sys/signalfd.h>
 #include <signal.h>
@@ -218,6 +224,7 @@ void connection_initialize(void)
 
 void connection_shutdown(void)
 {
+    connection_listen_sockets_close (NULL, 1);
     thread_spin_destroy (&_connection_lock);
 }
 
@@ -341,6 +348,126 @@ int connection_send (connection_t *con, const void *buf, size_t len)
         con->sent_bytes += bytes;
     return bytes;
 }
+
+
+#ifdef WIN32
+#define IO_VECTOR_LEN(x) ((x)->len)
+#define IO_VECTOR_BASE(x) ((x)->buf)
+#else
+#define IO_VECTOR_LEN(x) ((x)->iov_len)
+#define IO_VECTOR_BASE(x) ((x)->iov_base)
+#endif
+
+void connection_bufs_init (struct connection_bufs *v, short start)
+{
+    memset (v, 0, sizeof (struct connection_bufs));
+    if (start && start < 500)
+    {
+        v->block = calloc (start, sizeof (IOVEC));
+        v->max = start;
+    }
+}
+
+
+void connection_bufs_release (struct connection_bufs *v)
+{
+    free (v->block);
+    memset (v, 0, sizeof (struct connection_bufs));
+}
+
+
+void connection_bufs_flush (struct connection_bufs *v)
+{
+    v->count = 0;
+    v->total = 0;
+}
+
+
+int connection_bufs_append (struct connection_bufs *v, void *buf, unsigned int len)
+{
+    if (v->count >= v->max)
+    {
+       int len = v->max + 16;
+       IOVEC *arr = realloc (v->block, (len*sizeof(IOVEC)));
+       v->max = len;
+       v->block = arr;
+    }
+    IO_VECTOR_BASE (v->block + v->count) = buf;
+    IO_VECTOR_LEN (v->block + v->count) = len;
+    v->count++;
+    v->total += len;
+    return v->total;
+
+}
+
+
+static int connbufs_locate_start (struct connection_bufs *vects, int skip, IOVEC *old_value, int *offp)
+{
+    int sum = 0, i = vects->count;
+    IOVEC *p = vects->block;
+
+    if (skip < vects->total)
+    {
+        for (; i; i--)
+        {
+            if (sum + IO_VECTOR_LEN(p) > skip)
+            {
+                int offset = skip - sum;
+                if (offset)
+                {
+                    *old_value = *p;
+                    IO_VECTOR_BASE(p) += offset;
+                    IO_VECTOR_LEN(p) -= offset;
+                }
+                *offp = offset;
+                return p - vects->block;
+            }
+            sum += IO_VECTOR_LEN(p);
+            p++;
+        }
+    }
+    return -1;
+}
+
+
+int connection_bufs_send (connection_t *con, struct connection_bufs *vectors, int skip)
+{
+    IOVEC *p = vectors->block, old_vals;
+    int i = vectors->count,  offset = 0, ret = -1;
+
+    i = connbufs_locate_start (vectors, skip, &old_vals, &offset);
+    p = vectors->block + i;
+
+    if (i >= 0)
+    {
+        if (not_ssl_connection (con))
+        {
+            ret = sock_writev (con->sock, p, vectors->count - i);
+            if (ret < 0 && !sock_recoverable (sock_error()))
+                con->error = 1;
+        }
+#ifdef HAVE_OPENSSL
+        else
+        {
+            IOVEC *io = p;
+            int bytes = 0;
+            for (; i < vectors->count; i++, io++)
+            {
+               int v = connection_send_ssl (con, IO_VECTOR_BASE(io), IO_VECTOR_LEN(io));
+               if (v > 0) bytes += v;
+               if (v < IO_VECTOR_LEN(io)) break;
+            }
+            if (bytes > 0)  ret = bytes;
+        }
+#endif
+        if (offset)
+            *p = old_vals;
+        if (ret > 0)
+            con->sent_bytes += ret;
+    }
+    return ret;
+}
+
 
 static void add_generic_text (avl_tree *t, const char *ip, time_t now)
 {
@@ -641,7 +768,7 @@ static sock_t wait_for_serversock (void)
     }
 #else
     fd_set rfds;
-    struct timeval tv, *p=NULL;
+    struct timeval tv;
     int i, ret;
     sock_t max = SOCK_ERROR;
 
@@ -697,7 +824,7 @@ static client_t *accept_client (void)
         int i, num;
         refbuf_t *r;
 
-        if (sock_set_blocking (sock, 0) || sock_set_nodelay (sock))
+        if (sock_set_blocking (sock, 0)) // || sock_set_nodelay (sock))
         {
             WARN0 ("failed to set tcp options on client connection, dropping");
             break;
@@ -885,7 +1012,8 @@ static int http_client_request (client_t *client)
 
                     if (agent && avl_get_by_key (useragents.contents, (char *)agent, &result) == 0)
                     {
-                        INFO1 ("dropping client because useragent is %s", agent);
+                        INFO2 ("dropping client at %s because useragent is %s",
+                                client->connection.ip, agent);
                         return -1;
                     }
                 }
@@ -977,8 +1105,7 @@ static void *connection_thread (void *arg)
         useragents.filename = strdup (config->agentfile);
 
     get_ssl_certificate (config);
-    if (config->chuid == 0)
-        connection_setup_sockets (config);
+    connection_setup_sockets (config);
     header_timeout = config->header_timeout;
     config_release_config ();
 
@@ -1020,6 +1147,7 @@ static void *connection_thread (void *arg)
     return NULL;
 }
 
+
 void connection_thread_startup ()
 {
 #ifdef HAVE_SIGNALFD
@@ -1033,6 +1161,7 @@ void connection_thread_startup ()
 
     conn_tid = thread_create ("connection", connection_thread, NULL, THREAD_ATTACHED);
 }
+
 
 void connection_thread_shutdown ()
 {
@@ -1375,41 +1504,71 @@ static int _handle_get_request (client_t *client)
 }
 
 
-/* close any open listening sockets and reopen new listener sockets based on the settings
- * in the configuration.
+/* close any open listening sockets 
  */
+void connection_listen_sockets_close (ice_config_t *config, int all_sockets)
+{
+    if (global.serversock)
+    {
+        int old = 0, new = 0, cur = global.server_sockets;
+        for (; old < cur; old++)
+        {
+            // close all listening sockets unless privileged ones are to stay open
+            // and it is still present in the config.
+            if (config && all_sockets == 0 && global.server_conn [old]->port < 1024)
+            {
+                listener_t *listener = config->listen_sock;
+                while (listener && listener->port != global.server_conn [old]->port)
+                    listener = listener->next;
+                if (listener)
+                {
+                    INFO2 ("Leaving port %d (%s) open", listener->port,
+                            listener->bind_address ? listener->bind_address : "");
+                    if (new < old)
+                    {
+                        global.server_conn [new] = global.server_conn [old];
+                        global.serversock [new] = global.serversock [old];
+                        new++;
+                    }
+                    continue;
+                }
+            }
+            INFO1 ("Closing port %d", global.server_conn [old]->port);
+            sock_close (global.serversock [old]);
+            global.serversock [old] = SOCK_ERROR;
+            config_clear_listener (global.server_conn [old]);
+            global.server_sockets--;
+        }
+        if (global.server_sockets == 0)
+        {
+            free (global.serversock);
+            global.serversock = NULL;
+            free (global.server_conn);
+            global.server_conn = NULL;
+        }
+    }
+}
+
+
 int connection_setup_sockets (ice_config_t *config)
 {
     int count = 0;
     listener_t *listener, **prev;
+    void *tmp;
 
-    global_lock();
-    /* place sockets away from config, so we don't need to take config lock
-     * in the accept loop. */
-    if (global.serversock)
-    {
-        for (; count < global.server_sockets; count++)
-        {
-            sock_close (global.serversock [count]);
-            config_clear_listener (global.server_conn [count]);
-        }
-        free (global.serversock);
-        global.serversock = NULL;
-        free (global.server_conn);
-        global.server_conn = NULL;
-    }
-    if (config == NULL)
-    {
-        global_unlock();
+    if (global.server_sockets >= config->listen_sock_count)
         return 0;
-    }
+    global_lock();
 
-    count = 0;
-    global.serversock = calloc (config->listen_sock_count, sizeof (sock_t));
-    global.server_conn = calloc (config->listen_sock_count, sizeof (listener_t*));
+    tmp = realloc (global.serversock, (config->listen_sock_count*sizeof (sock_t)));
+    if (tmp) global.serversock = tmp;
+
+    tmp = realloc (global.server_conn, (config->listen_sock_count*sizeof (listener_t*)));
+    if (tmp) global.server_conn = tmp;
 
     listener = config->listen_sock;
     prev = &config->listen_sock;
+    count = global.server_sockets;
     while (listener)
     {
         int successful = 0;
@@ -1429,6 +1588,8 @@ int connection_setup_sockets (ice_config_t *config)
                 sock_set_send_buffer (sock, listener->so_sndbuf);
             sock_set_blocking (sock, 0);
             successful = 1;
+            if (count >= config->listen_sock_count)
+                abort();
             global.serversock [count] = sock;
             global.server_conn [count] = listener;
             listener->refcount++;

@@ -14,6 +14,7 @@
 #include <config.h>
 #endif
 
+#include "compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,15 +28,21 @@
 #include <sys/poll.h>
 #endif
 
-#ifndef _WIN32
-#include <unistd.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#define SCN_OFF_T SCNdMAX
-#define PRI_OFF_T PRIdMAX
-#else
+#ifdef _MSC_VER
 #include <winsock2.h>
 #include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/time.h>
+# ifdef HAVE_SYS_SOCKET_H
+#  include <sys/socket.h>
+# endif
+# ifndef SCN_OFF_T
+#  define SCN_OFF_T SCNdMAX
+# endif
+# ifndef PRI_OFF_T
+#  define PRI_OFF_T PRIdMAX
+# endif
 #endif
 
 #include "thread/thread.h"
@@ -53,7 +60,6 @@
 #include "cfgfile.h"
 #include "util.h"
 #include "admin.h"
-#include "compat.h"
 #include "slave.h"
 
 #include "fserve.h"
@@ -178,6 +184,7 @@ char *fserve_content_type (const char *path)
     return type;
 }
 
+
 static int _compare_fh(void *arg, void *a, void *b)
 {
     fh_node *x = a, *y = b;
@@ -188,6 +195,7 @@ static int _compare_fh(void *arg, void *a, void *b)
     if (r) return r;
     return 0;
 }
+
 
 static int _delete_fh (void *mapping)
 {
@@ -217,9 +225,30 @@ static int _delete_fh (void *mapping)
 }
 
 
+static void remove_fh_from_cache (fh_node *fh)
+{
+    avl_tree_wlock (fh_cache);
+    avl_delete (fh_cache, fh, NULL);
+    avl_tree_unlock (fh_cache);
+    fh->peak = 0;
+}
+
+
 static void remove_from_fh (fh_node *fh, client_t *client)
 {
     avl_delete (fh->clients, client, NULL);
+}
+
+
+static fh_node *find_fh (fbinfo *finfo)
+{
+    fh_node fh, *result = NULL;
+    if (finfo->mount == NULL)
+        finfo->mount = "";
+    memcpy (&fh.finfo, finfo, sizeof (fbinfo));
+    if (avl_get_by_key (fh_cache, &fh, (void**)&result) == 0)
+        return result;
+    return NULL;
 }
 
 
@@ -254,10 +283,9 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
             if (result->format)
             {
                 if (result->format->create_client_data && client->format_data == NULL)
-                {
                     result->format->create_client_data (result->format, client);
+                if (result->format->write_buf_to_client)
                     client->check_buffer = result->format->write_buf_to_client;
-                }
             }
         }
         DEBUG2 ("refcount now %d for %s", result->refcount, result->finfo.mount);
@@ -271,9 +299,9 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         if (client)
         {
             if (finfo->flags & FS_FALLBACK)
-                DEBUG1 ("lookup of fallback file \"%s\"", finfo->mount);
+                INFO2 ("lookup of fallback file \"%s\" (%d)", finfo->mount, finfo->limit);
             else
-                DEBUG1 ("lookup of \"%s\"", finfo->mount);
+                INFO1 ("lookup of \"%s\"", finfo->mount);
         }
         fh->fp = fopen (fullpath, "rb");
         if (fh->fp == NULL)
@@ -292,7 +320,8 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
         {
             char *contenttype = fserve_content_type (fullpath);
 
-            stats_event (finfo->mount, "fallback", "file");
+            stats_event_flags (finfo->mount, "fallback", "file", STATS_COUNTERS|STATS_HIDDEN);
+            stats_event_flags (finfo->mount, "outgoing_kbitrate", "0", STATS_COUNTERS|STATS_HIDDEN);
             fh->format = calloc (1, sizeof (format_plugin_t));
             fh->format->type = format_get_type (contenttype);
             free (contenttype);
@@ -305,10 +334,9 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
                 return NULL;
             }
             if (fh->format->create_client_data && client->format_data == NULL)
-            {
                 fh->format->create_client_data (fh->format, client);
+            if (fh->format->write_buf_to_client)
                 client->check_buffer = fh->format->write_buf_to_client;
-            }
         }
         free (fullpath);
     }
@@ -321,8 +349,8 @@ static fh_node *open_fh (fbinfo *finfo, client_t *client)
     {
         if (finfo->mount && (finfo->flags & FS_FALLBACK))
         {
-            stats_event_flags (fh->finfo.mount, "listeners", "1", STATS_HIDDEN);
-            stats_event_flags (fh->finfo.mount, "listener_peak", "1", STATS_HIDDEN);
+            stats_event_flags (fh->finfo.mount, "listeners", "1", STATS_GENERAL|STATS_HIDDEN);
+            stats_event_flags (fh->finfo.mount, "listener_peak", "1", STATS_GENERAL|STATS_HIDDEN);
         }
         avl_insert (fh->clients, client);
     }
@@ -595,20 +623,16 @@ static void fh_release (fh_node *fh)
     if (fh->refcount > 1)
     {
         fh->refcount--;
+        stats_event_args (fh->finfo.mount, "listeners", "%ld", fh->refcount);
         thread_mutex_unlock (&fh->lock);
         return;
     }
-    /* now we will probably remove the fh, but to prevent a deadlock with
-     * open_fh, we drop the node lock and acquire the tree and node locks
-     * in that order and only remove if the refcount is still 0 */
-    thread_mutex_unlock (&fh->lock);
-    avl_tree_wlock (fh_cache);
-    thread_mutex_lock (&fh->lock);
-    if (fh->refcount > 1)
-        thread_mutex_unlock (&fh->lock);
-    else
-        avl_delete (fh_cache, fh, _delete_fh);
-    avl_tree_unlock (fh_cache);
+    stats_event (fh->finfo.mount, "fallback", NULL);
+    stats_event (fh->finfo.mount, NULL, NULL);
+    if (fh->peak)
+        remove_fh_from_cache (fh);
+    // leave as locked
+    _delete_fh (fh);
 }
 
 
@@ -686,10 +710,10 @@ static void fserve_move_listener (client_t *client)
     remove_from_fh (fh, client);
     if (fh->refcount == 1)
         stats_event (fh->finfo.mount, NULL, NULL);
-    f.flags = fh->finfo.flags;
+    f.flags = fh->finfo.flags|FS_OVERRIDE;
     f.limit = fh->finfo.limit;
     f.mount = fh->finfo.fallback;
-    f.fallback = NULL;
+    f.fallback = fh->finfo.mount;
     client->intro_offset = -1;
     move_listener (client, &f);
     fh_release (fh);
@@ -857,14 +881,17 @@ static int throttled_file_send (client_t *client)
         return 0;
     }
     if (client->flags & CLIENT_WANTS_FLV) /* increase limit for flv clients as wrapping takes more space */
-        limit = (unsigned long)(limit * 1.05);
+        limit = (unsigned long)(limit * 1.01);
     if (secs)
         rate = (client->counter+1400)/secs;
     // DEBUG3 ("counter %lld, duration %ld, limit %u", client->counter, secs, rate);
     thread_mutex_lock (&fh->lock);
     if (rate > limit || secs < 3)
     {
-        client->schedule_ms += 1000/(limit/1400);
+        if (limit >= 1400)
+            client->schedule_ms += 1000/(limit/1400);
+        else
+            client->schedule_ms += 50; // should not happen but guard against it
         rate_add (fh->format->out_bitrate, 0, worker->time_ms);
         if (secs > 2)
         {
@@ -907,7 +934,10 @@ static int throttled_file_send (client_t *client)
     rate_add (fh->format->out_bitrate, bytes, worker->time_ms);
     thread_mutex_unlock (&fh->lock);
     global_add_bitrates (global.out_bitrate, bytes, worker->time_ms);
-    client->schedule_ms += (1000/(limit/1400*2));
+    if (limit > 2800)
+        client->schedule_ms += (1000/(limit/1400*2));
+    else
+        client->schedule_ms += 50;
 
     /* progessive slowdown if max bandwidth is exceeded. */
     if (throttle_sends > 1)
@@ -928,12 +958,23 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 {
     if (finfo)
     {
+        mount_proxy *minfo;
         fh_node *fh;
         if (finfo->flags & FS_FALLBACK && finfo->limit == 0)
             return -1;
         fh = open_fh (finfo, client);
         if (fh == NULL)
             return -1;
+        minfo = config_find_mount (config_get_config(), finfo->mount);
+        if (minfo && minfo->max_listeners >= 0 && fh->refcount > minfo->max_listeners)
+        {
+            config_release_config();
+            remove_from_fh (fh, client);
+            fh_release (fh);
+            client->shared_data = NULL;
+            return client_send_403redirect (client, finfo->mount, "max listeners reached");
+        }
+        config_release_config();
         client->shared_data = fh;
 
         if (fh->finfo.limit)
@@ -957,9 +998,12 @@ int fserve_setup_client_fb (client_t *client, fbinfo *finfo)
 
     client->ops = &buffer_content_ops;
     client->flags &= ~CLIENT_HAS_INTRO_CONTENT;
+    client->flags |= CLIENT_IN_FSERVE;
     if (client->flags & CLIENT_ACTIVE)
     {
         client->schedule_ms = client->worker->time_ms;
+        if (finfo && finfo->flags & FS_FALLBACK)
+            return 0; // prevent a recursive loop 
         return client->ops->process (client);
     }
     else
@@ -979,7 +1023,7 @@ int fserve_setup_client (client_t *client)
 }
 
 
-void fserve_set_override (const char *mount, const char *dest)
+int fserve_set_override (const char *mount, const char *dest)
 {
     fh_node fh, *result;
 
@@ -987,15 +1031,23 @@ void fserve_set_override (const char *mount, const char *dest)
     fh.finfo.mount = (char *)mount;
     fh.finfo.fallback = NULL;
 
-    avl_tree_rlock (fh_cache);
+    avl_tree_wlock (fh_cache);
     if (avl_get_by_key (fh_cache, &fh, (void**)&result) == 0)
     {
         char *tmp = result->finfo.fallback;
+        thread_mutex_lock (&result->lock);
+        avl_delete (fh_cache, result, NULL);
+        avl_tree_unlock (fh_cache);
+
+        result->finfo.flags |= FS_OVERRIDE;
         result->finfo.fallback = strdup (dest);
+        thread_mutex_unlock (&result->lock);
         free (tmp);
         INFO2 ("move clients from %s to %s", mount, dest);
+        return 1;
     }
     avl_tree_unlock (fh_cache);
+    return 0;
 }
 
 static int _delete_mapping(void *mapping) {
@@ -1110,13 +1162,16 @@ int fserve_kill_client (client_t *client, const char *mount, int response)
     xmlDocSetRootElement(doc, node);
     snprintf (buf, sizeof(buf), "Client %d not found", id);
 
+    avl_tree_rlock (fh_cache);
     while (1)
     {
-        fh_node *fh = open_fh (&finfo, NULL);
+        avl_node *node;
+        fh_node *fh = find_fh (&finfo);
         if (fh)
         {
-            avl_node *node = avl_get_first (fh->clients);
-
+            thread_mutex_lock (&fh->lock);
+            avl_tree_unlock (fh_cache);
+            node = avl_get_first (fh->clients);
             while (node)
             {
                 client_t *listener = (client_t *)node->key;
@@ -1130,61 +1185,46 @@ int fserve_kill_client (client_t *client, const char *mount, int response)
                 }
                 node = avl_get_next (node);
             }
-            fh_release (fh);
+            thread_mutex_unlock (&fh->lock);
+            avl_tree_rlock (fh_cache);
         }
         if (loop == 0) break;
         loop--;
         if (loop == 1) finfo.flags = FS_FALLBACK;
     }
+    avl_tree_unlock (fh_cache);
     xmlNewChild (node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild (node, NULL, XMLSTR("return"), XMLSTR(v));
     return admin_send_response (doc, client, response, "response.xsl");
 }
 
 
-int fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo)
+int fserve_list_clients_xml (xmlNodePtr parent, fbinfo *finfo)
 {
     int ret = 0;
-    fh_node *fh = open_fh (finfo, NULL);
+    fh_node *fh;
+    avl_node *anode;
 
-    if (fh)
+    avl_tree_rlock (fh_cache);
+    fh = find_fh (finfo);
+    if (fh == NULL)
     {
-        avl_node *anode = avl_get_first (fh->clients);
-
-        while (anode)
-        {
-            client_t *listener = (client_t *)anode->key;
-            char buf [100];
-
-            xmlNodePtr node = xmlNewChild (srcnode, NULL, XMLSTR("listener"), NULL);
-            const char *useragent;
-            snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
-            xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
-
-            xmlNewChild (node, NULL, XMLSTR("ip"), XMLSTR(listener->connection.ip));
-            useragent = httpp_getvar (listener->parser, "user-agent");
-            if (useragent)
-            {
-                xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(useragent));
-                xmlNewChild (node, NULL, XMLSTR("useragent"), str);
-                xmlFree (str);
-            }
-            xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR( "0"));
-            snprintf (buf, sizeof (buf), "%lu",
-                    (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
-            xmlNewChild (node, NULL, XMLSTR("connected"), XMLSTR(buf));
-            if (listener->username)
-            {
-                xmlChar *str = xmlEncodeEntitiesReentrant (srcnode->doc, XMLSTR(listener->username));
-                xmlNewChild (node, NULL, XMLSTR("username"), str);
-                xmlFree (str);
-            }
-
-            ret++;
-            anode = avl_get_next (anode);
-        }
-        fh_release (fh);
+        avl_tree_unlock (fh_cache);
+        return 0;
     }
+    thread_mutex_lock (&fh->lock);
+    avl_tree_unlock (fh_cache);
+
+    anode = avl_get_first (fh->clients);
+    while (anode)
+    {
+        client_t *listener = (client_t *)anode->key;
+
+        stats_listener_to_xml (listener, parent);
+        ret++;
+        anode = avl_get_next (anode);
+    }
+    thread_mutex_unlock (&fh->lock);
     return ret;
 }
 
@@ -1208,17 +1248,33 @@ int fserve_list_clients (client_t *client, const char *mount, int response, int 
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(mount));
 
     ret = fserve_list_clients_xml (srcnode, &finfo);
-    if (ret == 0)
+    if (ret == 0 && finfo.flags&FS_FALLBACK)
     {
-        finfo.flags = 0;
+        finfo.flags = 0; // retry
         ret = fserve_list_clients_xml (srcnode, &finfo);
     }
     if (ret)
     {
-        char buf[20];
-        snprintf (buf, sizeof(buf), "%u", ret);
+        char buf [20];
+        snprintf (buf, sizeof(buf), "%d", ret);
         xmlNewChild (srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
         return admin_send_response (doc, client, response, "listclients.xsl");
     }
+    xmlFree (doc);
     return client_send_400 (client, "mount does not exist");
 }
+
+
+int fserve_query_count (fbinfo *finfo)
+{
+    int ret = 0;
+    fh_node *fh;
+
+    avl_tree_rlock (fh_cache);
+    fh = find_fh (finfo);
+    if (fh)
+        ret = fh->refcount;
+    avl_tree_unlock (fh_cache);
+    return ret;
+}
+

@@ -21,6 +21,7 @@
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <libxml/parserInternals.h>
 #include <libxml/tree.h>
 
 #include "thread/thread.h"
@@ -596,7 +597,12 @@ static void process_source_event (stats_event_t *event)
     }
     if (event->action == STATS_EVENT_REMOVE && event->name == NULL)
     {
-        avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+        int fallback_stream = 0;
+        avl_tree_wlock (snode->stats_tree);
+        fallback_stream = _find_node (snode->stats_tree, "fallback") == NULL ? 1 : 0;
+        avl_tree_unlock (snode->stats_tree);
+        if (fallback_stream)
+            avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
         avl_tree_unlock (_stats.source_tree);
         return;
     }
@@ -645,7 +651,7 @@ static int stats_listeners_send (client_t *client)
 
         if (refbuf == NULL)
         {
-            client->schedule_ms = client->worker->time_ms + 100;
+            client->schedule_ms = client->worker->time_ms + 60;
             break;
         }
         if (loop == 0 || total > 32768)
@@ -667,14 +673,14 @@ static int stats_listeners_send (client_t *client)
                 if (listener->content_len)
                     WARN1 ("content length is %u", listener->content_len);
                 listener->recent_block = NULL;
-                client->schedule_ms = client->worker->time_ms + 100;
+                client->schedule_ms = client->worker->time_ms + 50;
                 break;
             }
             loop--;
         }
         else
         {
-            client->schedule_ms = client->worker->time_ms + 250;
+            client->schedule_ms = client->worker->time_ms + 200;
             break; /* short write, so stop for now */
         }
     }
@@ -712,7 +718,11 @@ static void stats_listener_send (int mask, const char *fmt, ...)
 
     while (listener)
     {
-        if (listener->mask & mask)
+        int admuser = listener->mask & STATS_HIDDEN,
+            hidden = mask & STATS_HIDDEN,
+            flags = mask & ~STATS_HIDDEN;
+
+        if (admuser || (hidden == 0 && (flags & listener->mask)))
             _add_stats_to_stats_client (listener->client, fmt, ap);
         listener = listener->next;
     }
@@ -987,7 +997,6 @@ static void stats_client_release (client_t *client)
 {
     event_listener_t *listener, **trail;
 
-    INFO0 ("removing stats client");
     thread_mutex_lock (&_stats.listeners_lock);
     listener = _stats.event_listeners;
     trail = &_stats.event_listeners;
@@ -1034,7 +1043,7 @@ void stats_add_listener (client_t *client, int mask)
     client_set_queue (client, NULL);
     client->refbuf = refbuf_new (100);
     snprintf (client->refbuf->data, 100,
-            "HTTP/1.0 200 OK\r\nCapability: streamlist\r\n\r\n");
+            "HTTP/1.0 200 OK\r\nCapability: streamlist stats\r\n\r\n");
     client->refbuf->len = strlen (client->refbuf->data);
     listener->content_len = client->refbuf->len;
     listener->recent_block = client->refbuf;
@@ -1263,6 +1272,8 @@ long stats_handle (const char *mount)
 {
     stats_source_t *src_stats;
 
+    if (mount == NULL)
+        return 0;
     avl_tree_wlock (_stats.source_tree);
     src_stats = _find_source(_stats.source_tree, mount);
     if (src_stats == NULL)
@@ -1284,11 +1295,14 @@ long stats_handle (const char *mount)
 }
 
 
-void stats_lock (long handle)
+long stats_lock (long handle, const char *mount)
 {
     stats_source_t *src_stats = (stats_source_t *)handle;
-    if (src_stats)
+    if (src_stats == NULL)
+        src_stats = (stats_source_t*)stats_handle (mount);
+    else
         avl_tree_wlock (src_stats->stats_tree);
+    return (long)src_stats;
 }
 
 
@@ -1352,29 +1366,88 @@ void stats_set_flags (long handle, const char *name, const char *value, int flag
 }
 
 
-void stats_set_conv(long handle, const char *name, const char *value, const char *charset)
+static void stats_set_entity_decode (long handle, const char *name, const char *value)
 {
-    const char *metadata = value;
-    xmlBufferPtr conv = xmlBufferCreate ();
-
-    if (charset && value)
+    xmlParserCtxtPtr parser = xmlNewParserCtxt();
+    if (parser)
     {
-        xmlCharEncodingHandlerPtr handle = xmlFindCharEncodingHandler (charset);
+        xmlChar *decoded = xmlStringDecodeEntities (parser,
+                (const xmlChar *) value, XML_SUBSTITUTE_BOTH, 0, 0, 0);
+        stats_set (handle, name, (void*)decoded);
+        xmlFreeParserCtxt (parser);
+        xmlFree (decoded);
+        return;
+    }
+    stats_set (handle, name, value);
+}
 
-        if (handle)
+
+void stats_set_conv (long handle, const char *name, const char *value, const char *charset)
+{
+    if (charset)
+    {
+        xmlCharEncodingHandlerPtr encoding = xmlFindCharEncodingHandler (charset);
+
+        if (encoding)
         {
-            xmlBufferPtr raw = xmlBufferCreate ();
-            xmlBufferAdd (raw, (const xmlChar *)value, strlen (value));
-            if (xmlCharEncInFunc (handle, conv, raw) > 0)
-                metadata = (char *)xmlBufferContent (conv);
-            xmlBufferFree (raw);
-            xmlCharEncCloseFunc (handle);
+            xmlBufferPtr in = xmlBufferCreate ();
+            xmlBufferPtr conv = xmlBufferCreate ();
+
+            xmlBufferCCat (in, value);
+            if (xmlCharEncInFunc (encoding, conv, in) > 0)
+                stats_set_entity_decode (handle, name, (void*)xmlBufferContent (conv));
+            xmlBufferFree (in);
+            xmlBufferFree (conv);
+            xmlCharEncCloseFunc (encoding);
+            return;
         }
-        else
-            WARN1 ("No charset found for \"%s\"", charset);
+        WARN1 ("No charset found for \"%s\"", charset);
+        return;
+    }
+    stats_set_entity_decode (handle, name, value);
+}
+
+
+void stats_listener_to_xml (client_t *listener, xmlNodePtr parent)
+{
+    const char *useragent;
+    char buf[30];
+
+    xmlNodePtr node = xmlNewChild (parent, NULL, XMLSTR("listener"), NULL);
+
+    snprintf (buf, sizeof (buf), "%lu", listener->connection.id);
+    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
+
+    xmlNewChild (node, NULL, XMLSTR("IP"), XMLSTR(listener->connection.ip));
+
+    useragent = httpp_getvar (listener->parser, "user-agent");
+    if (useragent && xmlCheckUTF8((unsigned char *)useragent))
+    {
+        xmlChar *str = xmlEncodeEntitiesReentrant (parent->doc, XMLSTR(useragent));
+        xmlNewChild (node, NULL, XMLSTR("UserAgent"), str);
+        xmlFree (str);
     }
 
-    stats_set (handle, name, metadata);
-    xmlBufferFree (conv);
+    if ((listener->flags & (CLIENT_ACTIVE|CLIENT_IN_FSERVE)) == CLIENT_ACTIVE)
+    {
+        source_t *source = listener->shared_data;
+        snprintf (buf, sizeof (buf), "%"PRIu64, source->client->queue_pos - listener->queue_pos);
+    }
+    else
+        snprintf (buf, sizeof (buf), "0");
+    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
+
+    if (listener->worker)
+    {
+        snprintf (buf, sizeof (buf), "%lu",
+                (unsigned long)(listener->worker->current_time.tv_sec - listener->connection.con_time));
+        xmlNewChild (node, NULL, XMLSTR("Connected"), XMLSTR(buf));
+    }
+    if (listener->username)
+    {
+        xmlChar *str = xmlEncodeEntitiesReentrant (parent->doc, XMLSTR(listener->username));
+        xmlNewChild (node, NULL, XMLSTR("username"), str);
+        xmlFree (str);
+    }
 }
 

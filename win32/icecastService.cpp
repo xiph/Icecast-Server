@@ -1,7 +1,4 @@
-#define _WIN32_WINNT 0x0400
-#include <windows.h>
 #include <stdio.h>
-#include <direct.h>
 
 extern "C" {
 #include <config.h>
@@ -27,7 +24,6 @@ SERVICE_STATUS_HANDLE   hStatus;
  
 void  ServiceMain(int argc, char** argv); 
 void  ControlHandler(DWORD request); 
-extern "C" int mainService(int argc, char **argv);
 
 
 void installService (const char *path)
@@ -112,10 +108,26 @@ void ControlHandler(DWORD request)
     SetServiceStatus (hStatus, &ServiceStatus);
 }
 
+
+static int run_server (int argc, char *argv[])
+{
+    int		ret;
+
+    initialize_subsystems();
+
+    ret = server_init (argc, argv);
+    if (ret == 0)
+        server_process();
+
+    shutdown_subsystems();
+    return ret;
+}
+
+
 void ServiceMain(int argc, char** argv) 
 { 
     ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS; 
-    ServiceStatus.dwWin32ExitCode = 0; 
+    ServiceStatus.dwWin32ExitCode = -1; 
     ServiceStatus.dwServiceSpecificExitCode = 0; 
     ServiceStatus.dwCheckPoint = 0;
     ServiceStatus.dwWaitHint = 0; 
@@ -123,7 +135,7 @@ void ServiceMain(int argc, char** argv)
     hStatus = RegisterServiceCtrlHandler(PACKAGE_STRING, (LPHANDLER_FUNCTION)ControlHandler); 
     if (hStatus == (SERVICE_STATUS_HANDLE)0) { 
         // Registering Control Handler failed
-		MessageBox (NULL, "RegisterServiceCtrlHandler failed", NULL, MB_SERVICE_NOTIFICATION);
+        MessageBox (NULL, "RegisterServiceCtrlHandler failed", NULL, MB_SERVICE_NOTIFICATION);
         return; 
     }  
 
@@ -144,19 +156,21 @@ void ServiceMain(int argc, char** argv)
     else
         argv2 [2] = argv[1];
 
-    ServiceStatus.dwWin32ExitCode = mainService(argc2, (char **)argv2);
+    ServiceStatus.dwWin32ExitCode = run_server (argc2, argv2);
 
     ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
 
-void main(int argc, char *argv[]) 
+int main (int argc, char *argv[]) 
 {
     if (argc < 2)
     {
-        printf ("Usage: icecastservice [remove] | [install <path>]\n");
-        return;
+        printf (PACKAGE_STRING "\n\n"
+                "Usage: icecastService [remove] | [install <path>]\n"
+                "       icecastService -c icecast.xml\n\n");
+        return -1;
     }
     if (!strcmp(argv[1], "install"))
     {
@@ -165,29 +179,33 @@ void main(int argc, char *argv[])
         else
             printf ("install requires a path arg as well\n");
         Sleep (1000);
-        return;
+        return 0;
     }
     if (!strcmp(argv[1], "remove") || !strcmp(argv[1], "uninstall"))
     {
         removeService();
-        return;
+        return 0;
     }
 
-   if (_chdir(argv[1]) < 0)
-   {
-       char buffer [256];
-       _snprintf (buffer, sizeof(buffer), "Unable to change to directory %s", argv[1]);
-	   MessageBox (NULL, buffer, NULL, MB_SERVICE_NOTIFICATION);
-       return;
-   }
+    if (strcmp (argv[1], "-c") == 0)
+        return run_server (argc, argv);
+
+    if (_chdir(argv[1]) < 0)
+    {
+        char buffer [256];
+        snprintf (buffer, sizeof(buffer), "Unable to change to directory %s", argv[1]);
+        MessageBox (NULL, buffer, NULL, MB_SERVICE_NOTIFICATION);
+        return -1;
+    }
 
     SERVICE_TABLE_ENTRY ServiceTable[2];
-    ServiceTable[0].lpServiceName = PACKAGE_STRING;
+    ServiceTable[0].lpServiceName = (char*)PACKAGE_STRING;
     ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION)ServiceMain;
 
     ServiceTable[1].lpServiceName = NULL;
     ServiceTable[1].lpServiceProc = NULL;
     // Start the control dispatcher thread for our service
     if (StartServiceCtrlDispatcher (ServiceTable) == 0)
-		MessageBox (NULL, "StartServiceCtrlDispatcher failed", NULL, MB_SERVICE_NOTIFICATION);
+        MessageBox (NULL, "StartServiceCtrlDispatcher failed", NULL, MB_SERVICE_NOTIFICATION);
+    return 0;
 }

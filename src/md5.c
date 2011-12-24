@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "global.h"
 
 static void MD5Transform(uint32_t buf[4], uint32_t const in[HASH_LEN]);
 

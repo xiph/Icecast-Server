@@ -37,7 +37,7 @@ void fatal_error (const char *perr);
 int errorlog = 0;
 int playlistlog = 0;
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 /* Since strftime's %z option on win32 is different, we need
    to go through a few loops to get the same info as %z */
 int get_clf_time (char *buffer, unsigned len, struct tm *t)
@@ -107,12 +107,13 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
 */
 void logging_access_id (access_log *accesslog, client_t *client)
 {
-    char datebuf[128];
-    char reqbuf[1024];
+    const char *req;
     struct tm thetime;
     time_t now;
     time_t stayed;
-    const char *referrer, *user_agent, *username, *ip = "-";
+    const char *referrer, *user_agent, *username = NULL, *ip = "-";
+    char datebuf[50];
+    char reqbuf[128];
 
     if (client->flags & CLIENT_SKIP_ACCESSLOG)
         return;
@@ -121,41 +122,56 @@ void logging_access_id (access_log *accesslog, client_t *client)
 
     localtime_r (&now, &thetime);
     /* build the data */
-#ifdef _WIN32
+#ifdef _MSC_VER
     memset(datebuf, '\000', sizeof(datebuf));
     get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
 #else
     strftime (datebuf, sizeof(datebuf), LOGGING_FORMAT_CLF, &thetime);
 #endif
+    req = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    if (req == NULL)
+        req = httpp_getvar (client->parser, HTTPP_VAR_URI);
     /* build the request */
     snprintf (reqbuf, sizeof(reqbuf), "%s %s %s/%s",
-            httpp_getvar (client->parser, HTTPP_VAR_REQ_TYPE),
-            httpp_getvar (client->parser, HTTPP_VAR_URI),
+            httpp_getvar (client->parser, HTTPP_VAR_REQ_TYPE), req,
             httpp_getvar (client->parser, HTTPP_VAR_PROTOCOL),
             httpp_getvar (client->parser, HTTPP_VAR_VERSION));
 
     stayed = now - client->connection.con_time;
-
-    if (client->username == NULL)
-        username = "-"; 
-    else
-        username = client->username;
-
+    username = client->username;
     referrer = httpp_getvar (client->parser, "referer");
-    if (referrer == NULL)
-        referrer = "-";
-
     user_agent = httpp_getvar (client->parser, "user-agent");
-    if (user_agent == NULL)
-        user_agent = "-";
 
     if (accesslog->log_ip)
         ip = client->connection.ip;
-    log_write_direct (accesslog->logid,
-            "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
-            ip, username,
-            datebuf, reqbuf, client->respcode, client->connection.sent_bytes,
-            referrer, user_agent, (unsigned long)stayed);
+
+    if (accesslog->type == LOG_ACCESS_CLF_ESC)
+    {
+        char *un = client->username ? util_url_escape (username) : strdup ("-"),
+             *rq = util_url_escape (reqbuf),
+             *rf = referrer ? util_url_escape (referrer) : strdup ("-"),
+             *ua = user_agent ? util_url_escape (user_agent) : strdup ("-");
+
+        log_write_direct (accesslog->logid,
+                "%s - %s %s %s %d %" PRIu64 " %.50s %.50s %lu",
+                ip, un, datebuf, rq, client->respcode, client->connection.sent_bytes,
+                rf, ua, (unsigned long)stayed);
+        free (ua);
+        free (rf);
+        free (rq);
+        free (un);
+    }
+    else
+    {
+        if (client->username == NULL)   username = "-"; 
+        if (referrer == NULL)           referrer = "-";
+        if (user_agent == NULL)         user_agent = "-";
+
+        log_write_direct (accesslog->logid,
+                "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%.50s\" \"%.50s\" %lu",
+                ip, username, datebuf, reqbuf, client->respcode, client->connection.sent_bytes,
+                referrer, user_agent, (unsigned long)stayed);
+    }
     client->respcode = -1;
 }
 
@@ -183,7 +199,7 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
 
     localtime_r (&now, &thetime);
     /* build the data */
-#ifdef _WIN32
+#ifdef _MSC_VER
     memset(datebuf, '\000', sizeof(datebuf));
     get_clf_time(datebuf, sizeof(datebuf)-1, &thetime);
 #else

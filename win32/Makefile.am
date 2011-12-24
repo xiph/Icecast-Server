@@ -14,3 +14,12 @@ EXTRA_DIST = ConfigTab.cpp ConfigTab.h Icecast2win.clw Icecast2win.cpp \
     icecast2_console.dsw icecast2_console.dsp credits.bmp icecast2title.bmp \
     icecastService.cpp icecastService.dsp
 
+bin_PROGRAMS = icecast
+icecast_DEPENDENCIES = ../src/libicecast.a ../src/net/libicenet.la \
+    ../src/thread/libicethread.la ../src/httpp/libicehttpp.la ../src/log/libicelog.la \
+    ../src/avl/libiceavl.la ../src/timing/libicetiming.la
+
+icecast_SOURCES = icecastService.cpp
+icecast_CPPFLAGS = -I../src @XIPH_CFLAGS@ @XIPH_CPPFLAGS@
+icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LDFLAGS@ @XIPH_LIBS@ @KATE_LIBS@
+

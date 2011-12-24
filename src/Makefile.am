@@ -4,7 +4,11 @@ AUTOMAKE_OPTIONS = foreign
 
 SUBDIRS = avl thread httpp net log timing
 
-bin_PROGRAMS = icecast
+if WIN32
+noinst_LIBRARIES = libicecast.a
+else
+bin_PROGRAMS = icecast 
+endif
 
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
@@ -26,6 +30,10 @@ EXTRA_icecast_SOURCES = yp.c \
 icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
     httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la timing/libicetiming.la
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@
+
+libicecast_a_SOURCES = $(icecast_SOURCES)
+libicecast_a_DEPENDENCIES = $(icecast_DEPENDENCIES)
+libicecast_a_LIBADD = $(icecast_DEPENDENCIES)
 
 AM_CFLAGS = @XIPH_CFLAGS@
 AM_CPPFLAGS = @XIPH_CPPFLAGS@

@@ -60,22 +60,14 @@
 #include "format.h"
 #include "event.h"
 #include "yp.h"
+#include "slave.h"
 
 #define CATMODULE "slave"
-
-typedef struct _redirect_host
-{
-    struct _redirect_host *next;
-    time_t next_update;
-    char *server;
-    int port;
-} redirect_host;
 
 
 static void _slave_thread(void);
 static void redirector_add (const char *server, int port, int interval);
 static redirect_host *find_slave_host (const char *server, int port);
-static void redirector_clearall (void);
 static int  relay_startup (client_t *client);
 static int  relay_read (client_t *client);
 static void relay_release (client_t *client);
@@ -162,7 +154,6 @@ void slave_update_all_mounts (void)
 void slave_restart (void)
 {
     restart_connection_thread = 1;
-    redirector_clearall();
     slave_update_all_mounts ();
     streamlist_check = 0;
 }
@@ -370,6 +361,8 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
         else
             INFO3 ("connecting to %s:%d for %s", server, port, relay->localmount);
 
+        con->con_time = time (NULL);
+        relay->in_use = master;
         streamsock = sock_connect_wto_bind (server, port, bind, timeout);
         free (bind);
         if (connection_init (con, streamsock, server) < 0)
@@ -446,6 +439,8 @@ static int open_relay_connection (client_t *client, relay_server *relay, relay_s
     if (parser)
         httpp_destroy (parser);
     connection_close (con);
+    con->con_time = time (NULL);
+    if (relay->in_use) relay->in_use->skip = 1;
     return -1;
 }
 
@@ -462,6 +457,11 @@ int open_relay (relay_server *relay)
     {
         int ret;
 
+        if (master->skip)
+        {
+            INFO3 ("skipping %s:%d for %s", master->ip, master->port, relay->localmount);
+            continue;
+        }
         thread_mutex_unlock (&src->lock);
         ret = open_relay_connection (client, relay, master);
         thread_mutex_lock (&src->lock);
@@ -531,6 +531,7 @@ static void *start_relay_stream (void *arg)
             src->yp_public = -1;
         }
 
+        relay->in_use = NULL;
         INFO2 ("listener count remaining on %s is %d", src->mount, src->listeners);
         src->flags &= ~SOURCE_PAUSE_LISTENERS;
         thread_mutex_unlock (&src->lock);
@@ -968,6 +969,7 @@ static void slave_startup (void)
     update_settings = 0;
     update_all_mounts = 0;
 
+    redirector_setup (config);
     update_master_as_slave (config);
     stats_global (config);
     workers_adjust (config->workers_count);
@@ -1058,7 +1060,7 @@ relay_server *slave_find_relay (relay_server *relays, const char *mount)
 
 /* drop all redirection details.
  */
-static void redirector_clearall (void)
+void redirector_clearall (void)
 {
     thread_rwlock_wlock (&slaves_lock);
     while (redirectors)
@@ -1072,6 +1074,21 @@ static void redirector_clearall (void)
     global.redirect_count = 0;
     thread_rwlock_unlock (&slaves_lock);
 }
+
+
+void redirector_setup (ice_config_t *config)
+{
+    redirect_host *redir = config->redirect_hosts;
+
+    thread_rwlock_wlock (&slaves_lock);
+    while (redir)
+    {
+        redirector_add (redir->server, redir->port, 0);
+        redir = redir->next;
+    }
+    thread_rwlock_unlock (&slaves_lock);
+}
+
 
 /* Add new redirectors or update any existing ones
  */
@@ -1096,7 +1113,15 @@ void redirector_update (client_t *client)
     redirect = find_slave_host (rserver, rport);
     if (redirect == NULL)
     {
-        redirector_add (rserver, rport, interval);
+        ice_config_t *config = config_get_config();
+        unsigned int allowed = config->max_redirects;
+
+        config_release_config();
+
+        if (global.redirect_count < allowed)
+            redirector_add (rserver, rport, interval);
+        else
+            INFO2 ("redirect to slave limit reached (%d, %d)", global.redirect_count, allowed);
     }
     else
     {
@@ -1126,18 +1151,7 @@ static redirect_host *find_slave_host (const char *server, int port)
 
 static void redirector_add (const char *server, int port, int interval)
 {
-    ice_config_t *config = config_get_config();
-    unsigned int allowed = config->max_redirects;
-    redirect_host *redirect;
-
-    config_release_config();
-
-    if (global.redirect_count >= allowed)
-    {
-        INFO2 ("redirect to slave limit reached (%d, %d)", global.redirect_count, allowed);
-        return;
-    }
-    redirect = calloc (1, sizeof (redirect_host));
+    redirect_host *redirect = calloc (1, sizeof (redirect_host));
     if (redirect == NULL)
         abort();
     redirect->server = strdup (server);
@@ -1174,6 +1188,17 @@ static relay_server *get_relay_details (client_t *client)
 }
 
 
+static void relay_reset (relay_server *relay)
+{
+    relay_server_master *server = relay->masters;
+
+    source_clear_source (relay->source);
+    for (; server; server = server->next)
+       server->skip = 0;
+    INFO1 ("servers to be retried on %s", relay->localmount);
+}
+
+
 static int relay_read (client_t *client)
 {
     relay_server *relay = get_relay_details (client);
@@ -1185,30 +1210,31 @@ static int relay_read (client_t *client)
         if (relay->cleanup) relay->running = 0;
         if (relay->running == 0)
             source->flags &= ~SOURCE_RUNNING;
-        if (relay->on_demand && source->listeners == 0 && source->format->read_bytes > 2000000)
+        if (relay->on_demand && source->listeners == 0 && source->format->read_bytes > 1000000)
             source->flags &= ~SOURCE_RUNNING;
         return source_read (source);
     }
     if ((source->flags & SOURCE_TERMINATING) == 0)
     {
+        /* this section is for once through code */
         int fallback = 1;
         if (client->connection.con_time)
         {
-            if (relay->running)
+            if (relay->running && relay->in_use)
                 fallback = 0;
-            if (client->worker->current_time.tv_sec - client->connection.con_time < 3)
+            if (client->worker->current_time.tv_sec - client->connection.con_time < 60)
             {
-                /* force a delayed restart if stream cannot be maintained for 3 seconds, by
-                 * which time any listeners in restart wait would of come back on */
-                source->flags &= ~SOURCE_PAUSE_LISTENERS;
-                client->connection.con_time = 0;
-                fallback = 1;
+                /* force a server skip if a stream cannot be maintained for 1 min */
+                WARN1 ("stream for %s died too quickly, skipping server for now", relay->localmount);
+                if (relay->in_use) relay->in_use->skip = 1;
             }
-            global_lock();
-            global.sources--;
-            stats_event_args (NULL, "sources", "%d", global.sources);
-            global_unlock();
-            global_reduce_bitrate_sampling (global.out_bitrate);
+            else
+                relay_reset (relay); // spent some time on this so give other servers a chance
+            if (source->flags & SOURCE_TIMEOUT)
+            {
+                WARN1 ("stream for %s timed out, skipping server for now", relay->localmount);
+                if (relay->in_use) relay->in_use->skip = 1;
+            }
         }
         /* don't pause listeners if relay shutting down */
         if (relay->running == 0)
@@ -1219,11 +1245,26 @@ static int relay_read (client_t *client)
     if (source->termination_count && source->termination_count <= source->listeners)
     {
         client->schedule_ms = client->worker->time_ms + 150;
-        DEBUG3 ("counts are %lu and %lu (%s)", source->termination_count, source->listeners, source->mount);
+        if (client->worker->current_time.tv_sec - client->timer_start > 2)
+        {
+            client->schedule_ms += 400;
+            WARN3 ("counts are %lu and %lu (%s)", source->termination_count, source->listeners, source->mount);
+        }
+        else
+            DEBUG3 ("counts are %lu and %lu (%s)", source->termination_count, source->listeners, source->mount);
         thread_mutex_unlock (&source->lock);
         return 0;
     }
     DEBUG1 ("all listeners have now been checked on %s", relay->localmount);
+    if (client->connection.con_time)
+    {
+        global_lock();
+        global.sources--;
+        stats_event_args (NULL, "sources", "%d", global.sources);
+        global_unlock();
+        global_reduce_bitrate_sampling (global.out_bitrate);
+    }
+    client->timer_start = 0;
     client->parser = NULL;
     free (source->fallback.mount);
     source->fallback.mount = NULL;
@@ -1241,6 +1282,7 @@ static int relay_read (client_t *client)
             return 0; /* listeners may be paused, recheck and let them leave this stream */
         }
         INFO1 ("shutting down relay %s", relay->localmount);
+        stats_event_args (source->mount, "listeners", "%lu", source->listeners);
         thread_mutex_unlock (&source->lock);
         stats_event (relay->localmount, NULL, NULL);
         slave_update_all_mounts();
@@ -1249,11 +1291,11 @@ static int relay_read (client_t *client)
     do {
         if (relay->running)
         {
-            if (client->connection.con_time)
+            if (client->connection.con_time && relay->in_use)
             {
                 INFO1 ("standing by to restart relay on %s", relay->localmount);
                 if (relay->on_demand && source->listeners == 0)
-                    source_clear_source (source);
+                    relay_reset (relay);
                 break;
             }
             else
@@ -1268,8 +1310,11 @@ static int relay_read (client_t *client)
             client->schedule_ms = client->worker->time_ms + 3600000;
         }
         source->flags &= ~SOURCE_ON_DEMAND;
-        source_clear_source (source);
+        relay_reset (relay);
     } while (0);
+    stats_event_args (source->mount, "listeners", "%lu", source->listeners);
+    client->connection.con_time = 0;
+    source->stats = 0;
     stats_event (relay->localmount, NULL, NULL);
     slave_update_all_mounts();
 
@@ -1343,37 +1388,45 @@ static int relay_startup (client_t *client)
 
     if (relay->on_demand)
     {
-        source_t *src = relay->source;
-        int start_relay = src->listeners; // 0 or non-zero
+        source_t *source = relay->source;
+        int fallback_def = 0, start_relay = source->listeners; // 0 or non-zero
+        mount_proxy *mountinfo = config_find_mount (config_get_config(), source->mount);
 
-        src->flags |= SOURCE_ON_DEMAND;
-        if (worker->current_time.tv_sec % 10 == 0)
+        source->flags |= SOURCE_ON_DEMAND;
+        if (mountinfo && mountinfo->fallback_mount)
         {
-            mount_proxy *mountinfo = config_find_mount (config_get_config(), src->mount);
-            if (mountinfo && mountinfo->fallback_mount)
+            source_t *fallback;
+
+            avl_tree_rlock (global.source_tree);
+            fallback = source_find_mount (mountinfo->fallback_mount);
+            fallback_def = 1;
+            if (fallback)
             {
-                source_t *fallback;
-                avl_tree_rlock (global.source_tree);
-                fallback = source_find_mount (mountinfo->fallback_mount);
-                if (fallback)
-                {
-                    if (strcmp (fallback->mount, src->mount) != 0)
-                    {
-                        // if there are listeners not already being moved
-                        if (fallback->listeners && fallback->fallback.mount == NULL)
-                            start_relay = 1;
-                    }
-                }
+                if (strcmp (fallback->mount, source->mount) != 0 && fallback->listeners)
+                    start_relay = 1;
                 avl_tree_unlock (global.source_tree);
             }
-            config_release_config();
+            else
+            {
+                fbinfo finfo;
+
+                avl_tree_unlock (global.source_tree);
+                finfo.flags = FS_FALLBACK;
+                finfo.mount = (char *)mountinfo->fallback_mount;
+                finfo.fallback = NULL;
+
+                // need to check for listeners on the fallback
+                if (fserve_query_count (&finfo) > 0)
+                    start_relay = 1; // force a start if there is fallback defined
+            }
         }
+        config_release_config();
         if (start_relay == 0)
         {
-            client->schedule_ms = worker->time_ms + 60000;
+            client->schedule_ms = worker->time_ms + (fallback_def ? (relay->interval*1000) : 60000);
             return 0;
         }
-        INFO1 ("Detected listeners on relay %s", relay->localmount);
+        INFO1 ("starting on-demand relay %s", relay->localmount);
     }
 
     /* limit the number of relays starting up at the same time */

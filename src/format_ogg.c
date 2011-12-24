@@ -44,6 +44,7 @@
 #include "format_flac.h"
 #include "format_kate.h"
 #include "format_skeleton.h"
+#include "global.h"
 
 #define CATMODULE "format-ogg"
 #include "logging.h"
@@ -524,7 +525,9 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
         unsigned len = refbuf->len - client_data->pos;
         int ret = -1;
 
-        if (len < 8000 && client->connection.error == 0)
+        if (len > 8192)
+            len = 8192;
+        if (client->connection.error == 0)
             ret = client_send_bytes (client, data, len);
         if (ret > 0)
         {

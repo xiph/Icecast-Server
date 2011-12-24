@@ -62,11 +62,13 @@
 #define CONFIG_DEFAULT_LOG_DIR "/usr/local/icecast/logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR "/usr/local/icecast/webroot"
 #define CONFIG_DEFAULT_ADMINROOT_DIR "/usr/local/icecast/admin"
+#define MIMETYPESFILE "/etc/mime.types"
 #else
 #define CONFIG_DEFAULT_BASE_DIR ".\\"
 #define CONFIG_DEFAULT_LOG_DIR ".\\logs"
 #define CONFIG_DEFAULT_WEBROOT_DIR ".\\webroot"
 #define CONFIG_DEFAULT_ADMINROOT_DIR ".\\admin"
+#define MIMETYPESFILE ".\\mime.types"
 #endif
 
 static ice_config_t _current_configuration;
@@ -157,9 +159,9 @@ int config_get_bitrate (xmlNodePtr node, void *x)
             return 1;
         sscanf ((char*)str, "%"SCNd64 "%c", p, &metric);
         if (metric == 'k' || metric == 'K')
-            (*p) *= 1024;
+            (*p) *= 1000;
         if (metric == 'm' || metric == 'M')
-            (*p) *= 1024*1024;
+            (*p) *= 10000000;
         xmlFree (str);
     }
     return 0;
@@ -225,6 +227,19 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
+}
+
+
+redirect_host *config_clear_redirect (redirect_host *redir)
+{
+    redirect_host *next = NULL;
+    if (redir)
+    {
+        next = redir->next;
+        xmlFree (redir->server);
+        free (redir);
+    }
+    return next;
 }
 
 
@@ -352,6 +367,9 @@ void config_clear(ice_config_t *c)
 
     while (c->relay)
         c->relay = config_clear_relay (c->relay);
+
+    while (c->redirect_hosts)
+        c->redirect_hosts = config_clear_redirect (c->redirect_hosts);
 
     while (c->mounts)
     {
@@ -602,11 +620,13 @@ static int _parse_security (xmlNodePtr node, void *arg)
 
 static int _parse_accesslog (xmlNodePtr node, void *arg)
 {
-    access_log *log = arg;
+    struct access_log *log = arg;
+    char *type = NULL;
     struct cfg_tag icecast_tags[] =
     {
         { "name",           config_get_str,     &log->name },
         { "ip",             config_get_bool,    &log->log_ip },
+        { "type",           config_get_str,     &type },
         { "archive",        config_get_bool,    &log->archive },
         { "exclude_ext",    config_get_str,     &log->exclude_ext },
         { "display",        config_get_int,     &log->display },
@@ -615,8 +635,15 @@ static int _parse_accesslog (xmlNodePtr node, void *arg)
     };
 
     log->logid = -1;
-    return parse_xml_tags (node, icecast_tags);
+    log->type = LOG_ACCESS_CLF;
+    if (parse_xml_tags (node, icecast_tags))
+        return 2;
+    if (type && strcmp (type, "CLF-ESC") == 0)
+        log->type = LOG_ACCESS_CLF_ESC;
+    xmlFree (type);
+    return 0;
 }
+
 
 static int _parse_errorlog (xmlNodePtr node, void *arg)
 {
@@ -659,7 +686,6 @@ static int _parse_logging (xmlNodePtr node, void *arg)
     struct cfg_tag icecast_tags[] =
     {
         { "accesslog",      _parse_accesslog,   &config->access_log },
-        { "errorlog",       _parse_errorlog,    &config->error_log },
         { "playlistlog",    _parse_playlistlog, &config->playlist_log },
         { "accesslog",      config_get_str,     &config->access_log.name },
         { "accesslog_ip",   config_get_bool,    &config->access_log.log_ip },
@@ -667,7 +693,8 @@ static int _parse_logging (xmlNodePtr node, void *arg)
                             config_get_str,     &config->access_log.exclude_ext },
         { "accesslog_lines",
                             config_get_int,     &config->access_log.display },
-        { "errorlog",       config_get_str,     &config->error_log },
+        { "errorlog",       _parse_errorlog,    &config->error_log },
+        { "errorlog",       config_get_str,     &config->error_log.name },
         { "errorlog_lines", config_get_int,     &config->error_log.display },
         { "loglevel",       config_get_int,     &config->error_log.level },
         { "playlistlog",    config_get_str,     &config->playlist_log },
@@ -678,6 +705,7 @@ static int _parse_logging (xmlNodePtr node, void *arg)
         { NULL, NULL, NULL }
     };
 
+    config->access_log.type = LOG_ACCESS_CLF;
     config->access_log.logid = -1;
     config->access_log.display = 100;
     config->access_log.archive = -1;
@@ -830,8 +858,10 @@ static int _parse_mount (xmlNodePtr node, void *arg)
     mount->url_ogg_meta = 1;
     mount->source_timeout = config->source_timeout;
     mount->file_seekable = 1;
+    mount->access_log.type = LOG_ACCESS_CLF;
     mount->access_log.logid = -1;
     mount->access_log.log_ip = 1;
+    mount->fallback_override = 1;
 
     if (parse_xml_tags (node, icecast_tags))
         return -1;
@@ -962,6 +992,36 @@ static int _parse_relay (xmlNodePtr node, void *arg)
 
     return 0;
 }
+
+
+static int _parse_redirect (xmlNodePtr node, void *arg)
+{
+    ice_config_t *config = arg;
+    redirect_host *redir = calloc (1, sizeof (*redir));
+
+    struct cfg_tag icecast_tags[] =
+    {
+        { "host", config_get_str, &redir->server },
+        { "port", config_get_int, &redir->port },
+        { NULL, NULL, NULL },
+    };
+
+    do
+    {
+        redir->port = 8000;
+        if (parse_xml_tags (node, icecast_tags))
+            break;
+
+        if (redir->server == NULL || redir->port < 1 || redir->port > 65536)
+            break;
+        redir->next = config->redirect_hosts;
+        config->redirect_hosts = redir;
+        return 0;
+    } while (0);
+    free (redir);
+    return -1;
+}
+
 
 static int _parse_limits (xmlNodePtr node, void *arg)
 {
@@ -1095,6 +1155,7 @@ static int _parse_root (xmlNodePtr node, ice_config_t *config)
         { "master-ssl-port",    config_get_int,     &config->master_ssl_port },
         { "master-redirect",    config_get_bool,    &config->master_redirect },
         { "max-redirect-slaves",config_get_int,     &config->max_redirects },
+        { "redirect",           _parse_redirect,    config },
         { "shoutcast-mount",    config_get_str,     &config->shoutcast_mount },
         { "listen-socket",      _parse_listen_sock, config },
         { "limits",             _parse_limits,      config },

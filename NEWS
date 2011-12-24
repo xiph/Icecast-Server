@@ -16,6 +16,40 @@ Feature differences from SVN trunk
 
 any extra tags are show in the conf/icecast.xml.dist file
 
+2.3.2-kh31
+. Add generic scattered IO routines, listeners wanting FLV wrapping now use this which
+  saves a lot of memory copying and therefore load.
+. build setup for mingw32. This should help with library updates for us, drop GUI build
+. relay restarting fixes included for certain error cases. relays are treaated as
+  failed if they stop within 60 seconds and skip on to next server if specified.
+. a better trigger for on-demand relay if fallback has listeners.
+. on reload when changeowner used, allow for listening sockets to be reopend but
+  prevent closing priviledged ports unless missing from xml
+. prevent unescape routine from creating non-printable chars
+. ignore per-mount username when source is using shoutcast protocol.
+. URL auth can now accept a "ice-username: ..." in the response headers for setting the
+  username. For setups that use query args for auth
+. expand args applied to xsl requests, url encoded now.
+. modify k and m in bitrates to be on 1000 not 1024
+. accesslog modification to parsing, optionally set <type> in <accesslog> to CLF-ESC
+  to escape-encode strings instead of using "".
+. if falling back to file, the bitrate used takes, in order of priority, incoming
+  bitrate, limit-rate and then [value] in filename eg /fallback-[128]
+. fix a large ogg page bug, flac is probably the only one showing this up currently
+. fix a couple of rare crash cases with file serving clients.
+. prevent intro file sending when override triggered.
+. make access log report query args on the request, but truncate the strings if too long.
+. minor change to send limiter
+. move incoming rate limiter to source client specific code.
+. Add server-wide redirect tags.
+. use per-source stats handles for updates, reduces lookups and avoids taking a
+  shared lock.
+. minor log message changes.
+. fix fallback trigger if source timeout occurs
+. fix possible sources count inconsistency with failed relays
+. entity expansion in stats conversion routines added
+. fixup debug allocation code. not normally used.
+
 2.3.2-kh30
 . stats updates.
    Split stats lock into global and source stats locks, reduces contention.

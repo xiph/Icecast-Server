@@ -46,6 +46,7 @@
 #include "client.h"
 #include "stats.h"
 #include "fserve.h"
+#include "util.h"
 
 #define CATMODULE "xslt"
 
@@ -280,9 +281,12 @@ int xslt_transform (xmlDocPtr doc, const char *xslfilename, client_t *client)
         for (i = 0; node && i < arg_count; node = avl_get_next (node))
         {
             http_var_t *param = (http_var_t *)node->key;
+            char *tmp = util_url_escape (param->value);
             params[i++] = param->name;
-            params[i] = (char*)alloca (strlen (param->value) +3);
-            sprintf (params[i++], "\'%s\'", param->value);
+            // use alloca for now, should really url esc into a supplied buffer
+            params[i] = (char*)alloca (strlen (tmp) + 3);
+            sprintf (params[i++], "\'%s\'", tmp);
+            free (tmp);
         }
         params[i] = NULL;
     }

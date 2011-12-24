@@ -55,11 +55,11 @@ void global_shutdown(void)
     thread_mutex_destroy(&_global_mutex);
     thread_spin_destroy (&global.spinlock);
     avl_tree_free(global.source_tree, NULL);
+    rate_free (global.out_bitrate);
+    global.out_bitrate = NULL;
 #ifdef MY_ALLOC
     avl_tree_free(global.alloc_tree, free_alloc_node);
 #endif
-    rate_free (global.out_bitrate);
-    global.out_bitrate = NULL;
 }
 
 void global_lock(void)

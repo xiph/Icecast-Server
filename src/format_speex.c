@@ -26,6 +26,7 @@ typedef struct source_tag source_t;
 #include "format_speex.h"
 #include "refbuf.h"
 #include "client.h"
+#include "global.h"
 
 #define CATMODULE "format-speex"
 #include "logging.h"

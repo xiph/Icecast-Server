@@ -13,7 +13,6 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
-#include "config.h"
 
 #define ICE_LISTEN_QUEUE 64
 
@@ -25,6 +24,7 @@
 #include "thread/thread.h"
 #include "net/sock.h"
 #include "compat.h"
+#include "avl/avl.h"
 
 typedef struct ice_global_tag
 {
@@ -63,6 +63,11 @@ typedef struct ice_global_tag
 } ice_global_t;
 
 extern unsigned int throttle_sends;
+
+extern void initialize_subsystems (void);
+extern void shutdown_subsystems (void);
+extern void server_process (void);
+extern int  server_init (int argc, char *argv[]);
 
 
 #ifdef MY_ALLOC

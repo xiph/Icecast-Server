@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -40,6 +41,7 @@
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
+#include "global.h"
 
 #define CATMODULE "util"
 
@@ -309,48 +311,46 @@ char *util_url_escape (const char *src)
     return dst;
 }
 
+
+static int unescape_code (const char *src)
+{
+    if (hex (src[0]) == -1 || hex (src[1]) == -1)
+        return -1;
+    return (hex (src[0]) << 4)  + hex (src[1]);
+}
+
+
 char *util_url_unescape (const char *src)
 {
     int len = strlen(src);
     char *decoded;
-    int i;
+    int i, v;
     char *dst;
-    int done = 0;
 
     decoded = calloc(1, len + 1);
 
     dst = decoded;
 
-    for(i=0; i < len; i++) {
-        switch(src[i]) {
-            case '%':
-                if (i+2 >= len || hex(src[i+1]) == -1 || hex(src[i+2]) == -1)
-                {
-                    /* no matching pattern so assume just the % */
-                    *dst++ = '%';
-                }
-                else
-                {
-                    *dst++ = hex(src[i+1]) * 16  + hex(src[i+2]);
-                    i+= 2;
-                }
-                break;
-            case 0:
-                ERROR0("Fatal internal logic error in util_url_unescape()");
-                free(decoded);
-                return NULL;
-            default:
-                *dst++ = src[i];
-                break;
+    for(i=0; i < len; i++)
+    {
+        if (src[i] == '%' && i+2 < len)
+        {
+            v = unescape_code (src + i +1);
+            if (v >= 0 && isprint(v))
+            {
+                *dst++ = (char)v;
+                i += 2;
+                continue;
+            }
         }
-        if(done)
-            break;
+        *dst++ = src[i];
     }
 
     *dst = 0; /* null terminator */
 
     return decoded;
 }
+
 
 /* Get an absolute path (from the webroot dir) from a URI. Return NULL if the
  * path contains 'disallowed' sequences like foo/../ (which could be used to
@@ -637,7 +637,7 @@ char *util_dict_urlencode(util_dict *dict, char delim)
     return res;
 }
 
-#ifndef HAVE_LOCALTIME_R
+#ifndef HAVE_DECL_LOCALTIME_R
 struct tm *localtime_r (const time_t *timep, struct tm *result)
 {
      static mutex_t localtime_lock;

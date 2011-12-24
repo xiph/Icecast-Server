@@ -58,12 +58,14 @@ xmlDocPtr stats_get_xml(int flags, const char *show_mount);
 char *stats_get_value(const char *source, const char *name);
 
 long stats_handle (const char *mount);
-void stats_lock (long handle);
+long stats_lock (long handle, const char *mount);
 void stats_release (long handle);
 void stats_set (long handle, const char *name, const char *value);
 void stats_set_args (long handle, const char *name, const char *format, ...);
 void stats_set_flags (long handle, const char *name, const char *value, int flags);
 void stats_set_conv (long handle, const char *name, const char *value, const char *charset);
+
+void stats_listener_to_xml (client_t *listener, xmlNodePtr parent);
 
 #endif  /* __STATS_H__ */
 

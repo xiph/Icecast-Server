@@ -70,6 +70,7 @@ typedef struct source_tag
     unsigned long bytes_sent_since_update;
     unsigned long bytes_read_since_update;
     int stats_interval;
+    long stats;
 
     time_t last_read;
 
@@ -86,6 +87,7 @@ typedef struct source_tag
 #define SOURCE_PAUSE_LISTENERS      (1<<3)
 #define SOURCE_TERMINATING          (1<<4)
 #define SOURCE_LISTENERS_SYNC       (1<<5)
+#define SOURCE_TIMEOUT              (1<<6)
 
 #define source_available(x)     (((x)->flags & (SOURCE_RUNNING|SOURCE_ON_DEMAND)) && ((x)->flags & SOURCE_LISTENERS_SYNC) == 0)
 #define source_running(x)       ((x)->flags & SOURCE_RUNNING)
@@ -109,7 +111,7 @@ void source_setup_listener (source_t *source, client_t *client);
 void source_init (source_t *source);
 void source_shutdown (source_t *source, int with_fallback);
 void source_set_fallback (source_t *source, const char *dest_mount);
-void source_set_override (const char *mount, const char *dest);
+int  source_set_override (const char *mount, const char *dest);
 
 #define SOURCE_BLOCK_SYNC           01
 #define SOURCE_BLOCK_RELEASE        02

@@ -27,6 +27,7 @@ typedef struct source_tag source_t;
 #include "format_ogg.h"
 #include "client.h"
 #include "stats.h"
+#include "global.h"
 
 #define CATMODULE "format-midi"
 #include "logging.h"

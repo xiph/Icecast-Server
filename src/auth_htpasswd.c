@@ -32,6 +32,7 @@
 #include "cfgfile.h"
 #include "httpp/httpp.h"
 #include "md5.h"
+#include "global.h"
 
 #include "logging.h"
 #define CATMODULE "auth_htpasswd"

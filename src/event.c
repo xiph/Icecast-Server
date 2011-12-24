@@ -64,14 +64,17 @@ void event_config_read (void)
         config_set_config (&new_config, &old_config);
         config_release_config();
 
+        connection_thread_shutdown();
+        redirector_clearall();
         config = config_get_config();
         yp_recheck_config (config);
         fserve_recheck_mime_types (config);
         stats_global (config);
         workers_adjust (config->workers_count);
+        connection_listen_sockets_close (config, 0);
+        redirector_setup (config);
         config_release_config();
 
-        connection_thread_shutdown();
         slave_restart();
         config_clear (&old_config);
     }

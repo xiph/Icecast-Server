@@ -13,9 +13,6 @@
 #ifndef __AUTH_URL_H__
 #define __AUTH_URL_H__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 
 int auth_get_url_auth (auth_t *authenticator, config_options_t *options);
 

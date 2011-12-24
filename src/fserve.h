@@ -29,6 +29,7 @@ typedef struct _fbinfo
 #define FS_USE_ADMIN            01
 #define FS_FALLBACK             02
 #define FS_FALLBACK_EOF         04
+#define FS_OVERRIDE             010
 
 void fserve_initialize(void);
 void fserve_shutdown(void);
@@ -38,10 +39,12 @@ void fserve_recheck_mime_types (ice_config_t *config);
 
 int  fserve_setup_client (client_t *client);
 int  fserve_setup_client_fb (client_t *client, fbinfo *finfo);
-void fserve_set_override (const char *mount, const char *dest);
+int  fserve_set_override (const char *mount, const char *dest);
 int  fserve_list_clients (client_t *client, const char *mount, int response, int show_listeners);
 int  fserve_list_clients_xml (xmlNodePtr srcnode, fbinfo *finfo);
 int  fserve_kill_client (client_t *client, const char *mount, int response);
+int  fserve_query_count (fbinfo *finfo);
+
 
 extern int fserve_running;
 

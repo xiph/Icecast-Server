@@ -85,7 +85,7 @@ extern int errorlog;
 
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
-void logging_access_id (access_log *accesslog, client_t *client);
+void logging_access_id (struct access_log *accesslog, client_t *client);
 void logging_access(client_t *client);
 void logging_playlist(const char *mount, const char *metadata, long listeners);
 int  restart_logging (ice_config_t *config);

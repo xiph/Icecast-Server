@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3.2-kh30], [karl@xiph.org])
+AC_INIT([Icecast], [2.3.2-kh31], [karl@xiph.org])
 
 LT_INIT
 AC_PREREQ(2.59)
@@ -9,6 +9,7 @@ AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 AM_MAINTAINER_MODE
 
+AC_PROG_CXX
 AC_PROG_CC
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
@@ -25,6 +26,7 @@ else
     PROFILE="-pg -g"
     AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
 fi
+AM_CONDITIONAL([WIN32], [test x$host_os = xmingw32])
 
 dnl Checks for programs.
 
@@ -34,9 +36,8 @@ dnl Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_CHECK_HEADERS([signal.h fnmatch.h limits.h sys/timeb.h])
+AC_CHECK_HEADERS([signal.h fnmatch.h limits.h sys/timeb.h malloc.h])
 AC_CHECK_HEADERS(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
-AC_CHECK_HEADERS(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__
@@ -46,10 +47,19 @@ AC_TYPE_OFF_T
 AC_CHECK_TYPES([struct timespec])
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS([localtime_r poll atoll strtoll strcasecmp getrlimit gettimeofday ftime fsync])
+AC_CHECK_DECLS([localtime_r],,,
+        [#include <time.h>
+#include <pthread.h>])
+AC_CHECK_FUNCS([fnmatch chroot fork poll atoll strtoll strcasecmp getrlimit gettimeofday ftime fsync])
 AC_CHECK_TYPES([struct signalfd_siginfo],
                [AC_DEFINE(HAVE_SIGNALFD, 1 ,[Define if signalfd exists])], [],
                [#include <sys/signalfd.h>])
+if test "x$ac_cv_func_fnmatch" != "xyes" 
+then
+AC_CHECK_LIB(fnmatch, fnmatch, [XIPH_VAR_APPEND([XIPH_LIBS],["-lfnmatch"])],
+        [ AC_CHECK_LIB(iberty, fnmatch, [XIPH_VAR_APPEND([XIPH_LIBS],["-liberty"])])
+        ])
+fi
 AC_SEARCH_LIBS(nanosleep, rt posix4,
         AC_DEFINE(HAVE_NANOSLEEP, 1, [Define if you have nanosleep]))
 AC_SEARCH_LIBS(clock_gettime, rt posix4,
@@ -140,8 +150,10 @@ XIPH_PATH_OPENSSL([
     [ AC_MSG_NOTICE([SSL disabled!])
     ])
 
-ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_cmd.o"
-AC_DEFINE([MIMETYPESFILE],"/etc/mime.types", [Default location of mime types file])
+if test "x$ac_cv_func_fork" = "xyes"
+then
+    ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_cmd.o"
+fi
 AC_DEFINE([ICECAST_TIME_FMT],["%a, %d %b %Y %H:%M:%S %z"], [time format for strftime])
 
 dnl Make substitutions

@@ -13,6 +13,10 @@
 #ifndef __CONNECTION_H__
 #define __CONNECTION_H__
 
+#ifdef HAVE_WINSOCK2_H
+#include <winsock2.h>
+#endif
+
 #include <sys/types.h>
 #include <time.h>
 #ifdef HAVE_OPENSSL
@@ -46,6 +50,15 @@ struct connection_tag
     char *ip;
 };
 
+
+struct connection_bufs
+{
+    short count, max;
+    int total;
+    IOVEC *block;
+};
+
+
 #ifdef HAVE_OPENSSL
 #define not_ssl_connection(x)    ((x)->ssl==NULL)
 #else
@@ -63,6 +76,14 @@ void connection_uses_ssl (connection_t *con);
 void connection_add_banned_ip (const char *ip, int duration);
 void connection_release_banned_ip (const char *ip);
 void connection_stats (void);
+
+void connection_bufs_init (struct connection_bufs *vectors, short start);
+void connection_bufs_release (struct connection_bufs *v);
+void connection_bufs_flush (struct connection_bufs *v);
+int  connection_bufs_append (struct connection_bufs *vectors, void *buf, unsigned int len);
+int  connection_bufs_read (connection_t *con, struct connection_bufs *vecs, int skip);
+int  connection_bufs_send (connection_t *con, struct connection_bufs *vecs, int skip);
+
 #ifdef HAVE_OPENSSL
 int  connection_read_ssl (connection_t *con, void *buf, size_t len);
 int  connection_send_ssl (connection_t *con, const void *buf, size_t len);
@@ -76,6 +97,7 @@ int connection_check_relay_pass(http_parser_t *parser);
 int connection_check_admin_pass(http_parser_t *parser);
 
 void connection_close_sigfd (void);
+void connection_listen_sockets_close (struct ice_config_tag *config, int all_sockets);
 
 extern int connection_running;
 

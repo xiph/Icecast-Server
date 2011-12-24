@@ -22,6 +22,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#ifdef HAVE_MALLOC_H
+#include <malloc.h>
+#endif
 
 #include "auth.h"
 #include "auth_htpasswd.h"
@@ -382,34 +385,52 @@ static void *auth_run_thread (void *arg)
 
 int move_listener (client_t *client, struct _fbinfo *finfo)
 {
-    source_t *source, *prev;
+    source_t *source;
+    const char *mount = finfo->mount;
+    int rate = finfo->limit;
+    mount_proxy *minfo;
+    ice_config_t *config = config_get_config();
 
-    DEBUG1 ("moving listener to %s", finfo->mount);
     avl_tree_rlock (global.source_tree);
 
-    source = source_find_mount (finfo->mount);
-    while (source)
+    source = source_find_mount_raw (mount);
+    while (1)
     {
+        minfo = config_find_mount (config, mount);
+        if (rate == 0 && minfo && minfo->limit_rate)
+            rate = minfo->limit_rate;
+        if (source == NULL)
+            break;
         thread_mutex_lock (&source->lock);
         if (source_available (source))
         {
+            config_release_config();
             avl_tree_unlock (global.source_tree);
             source_setup_listener (source, client);
             client->flags |= CLIENT_HAS_MOVED;
             thread_mutex_unlock (&source->lock);
             return 0;
         }
-        prev = source;
-        if (prev->fallback.mount)
-            source = source_find_mount (prev->fallback.mount);
-        else
-            source = NULL;
-        thread_mutex_unlock (&prev->lock);
+        mount = minfo ? minfo->fallback_mount : NULL;
+        thread_mutex_unlock (&source->lock);
     }
+    config_release_config();
     avl_tree_unlock (global.source_tree);
     if (client->flags & CLIENT_IS_SLAVE)
         return -1;
-    DEBUG1 ("no source, trying %s as a file", finfo->mount);
+    if (finfo->flags & FS_OVERRIDE)
+    {
+        finfo->mount = finfo->fallback;
+        finfo->fallback = NULL;
+        finfo->flags &= ~FS_OVERRIDE;
+    }
+    if (finfo->limit == 0)
+    {
+        if (rate == 0)
+            if (sscanf (finfo->mount, "%*[^[][%d]", &rate) == 1)
+                rate = rate * 1000/8;
+        finfo->limit = rate;
+    }
     return fserve_setup_client_fb (client, finfo);
 }
 
@@ -836,7 +857,7 @@ int auth_check_source (client_t *client, const char *mount)
             ret = -1;
             if (mountinfo->password)
                 pass = mountinfo->password;
-            if (mountinfo->username)
+            if (mountinfo->username && client->server_conn->shoutcast_compat == 0)
                 user = mountinfo->username;
         }
         if (connection_check_pass (client->parser, user, pass) > 0)
@@ -858,6 +879,8 @@ void auth_initialise (void)
 
 void auth_shutdown (void)
 {
+    if (allow_auth == 0)
+        return;
     allow_auth = 0;
     thread_rwlock_wlock (&auth_lock);
     thread_rwlock_unlock (&auth_lock);

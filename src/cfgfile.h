@@ -30,18 +30,32 @@ typedef struct _listener_t listener_t;
 #include "auth.h"
 #include "compat.h"
 
-typedef struct
+
+typedef struct _redirect_host
+{
+    struct _redirect_host *next;
+    time_t next_update;
+    char *server;
+    int port;
+} redirect_host;
+
+
+typedef struct access_log
 {
     char *name;
     int logid;
     int log_ip;
+    int type;
     int archive;
     int display;
     int size;
     char *exclude_ext;
 } access_log;
 
-typedef struct
+#define LOG_ACCESS_CLF                  0
+#define LOG_ACCESS_CLF_ESC              1
+
+typedef struct error_log
 {
     char *name;
     int logid;
@@ -51,7 +65,7 @@ typedef struct
     int level;
 } error_log;
 
-typedef struct
+typedef struct playlist_log
 {
     char *name;
     int logid;
@@ -131,7 +145,7 @@ typedef struct _mount_proxy {
     unsigned int max_stream_duration;
     unsigned int max_listener_duration;
 
-    access_log      access_log;
+    struct access_log      access_log;
 
     char *redirect;
     char *stream_name;
@@ -175,13 +189,14 @@ typedef struct _relay_server_master
     char *mount;
     int port;
     int timeout;
+    int skip;
 } relay_server_master;
 
 typedef struct _relay_server
 {
     struct _relay_server *next, *new_details;
     struct source_tag *source;
-    relay_server_master *masters;
+    relay_server_master *masters, *in_use;
     char *username;
     char *password;
     char *localmount;
@@ -240,8 +255,6 @@ typedef struct ice_config_tag
     listener_t *listen_sock;
     unsigned int listen_sock_count;
 
-    ice_master_details *master;
-
     char *master_server;
     int master_server_port;
     int master_update_interval;
@@ -252,6 +265,7 @@ typedef struct ice_config_tag
     int master_ssl_port;
     int master_redirect;
     int max_redirects;
+    struct _redirect_host *redirect_hosts;
 
     relay_server *relay;
 
@@ -267,12 +281,12 @@ typedef struct ice_config_tag
     char *cert_file;
     char *webroot_dir;
     char *adminroot_dir;
-    aliases *aliases;
+    struct _aliases *aliases;
     unsigned slaves_count;
 
-    access_log      access_log;
-    error_log       error_log;
-    playlist_log    playlist_log;
+    struct access_log      access_log;
+    struct error_log       error_log;
+    struct playlist_log    playlist_log;
 
     int chroot;
     int chuid;

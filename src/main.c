@@ -20,9 +20,6 @@
 #include <errno.h>
 
 #ifdef WIN32
-#define _WIN32_WINNT 0x0400
-/* For getpid() */
-//#include <winsock2.h>
 #include <process.h>
 #include <windows.h>
 #endif
@@ -93,7 +90,7 @@ static void _print_usage(void)
 }
 
 
-void _initialize_subsystems(void)
+void initialize_subsystems(void)
 {
     log_initialize();
     errorlog = log_open_file (stderr);
@@ -112,10 +109,10 @@ void _initialize_subsystems(void)
 #endif
 }
 
-void _shutdown_subsystems(void)
+
+void shutdown_subsystems(void)
 {
     connection_shutdown();
-    auth_shutdown();
     slave_shutdown();
     fserve_shutdown();
     stats_shutdown();
@@ -212,9 +209,17 @@ static int _server_proc_init(void)
     return 1;
 }
 
+
 /* this is the heart of the beast */
-static void _server_proc(void)
+void server_process (void)
 {
+    INFO1 ("%s server started", ICECAST_VERSION_STRING);
+
+    global.running = ICE_RUNNING;
+
+    /* Do this after logging init */
+    auth_initialise ();
+
     if (background)
     {
         fclose (stdin);
@@ -222,8 +227,8 @@ static void _server_proc(void)
         fclose (stderr);
     }
     slave_initialize();
-
-    connection_setup_sockets (NULL);
+    INFO0("Shutting down");
+    auth_shutdown();
 }
 
 /* chroot the process. Watch out - we need to do this before starting other
@@ -258,7 +263,7 @@ static void _ch_root_uid_setup(void)
    }
 #endif
 
-#ifdef CHROOT
+#ifdef HAVE_CHROOT
    if (conf->chroot)
    {
        if(getuid()) /* root check */
@@ -303,115 +308,97 @@ static void _ch_root_uid_setup(void)
 #endif
 }
 
-#ifdef WIN32_SERVICE
-int mainService(int argc, char **argv)
-#else
-int main(int argc, char **argv)
-#endif
+
+int server_init (int argc, char *argv[])
 {
-    int res, ret;
+    int  ret;
     char filename[512];
     char pbuf[1024];
 
-    /* parse the '-c icecast.xml' option
-    ** only, so that we can read a configfile
-    */
-    res = _parse_config_opts(argc, argv, filename, 512);
-    if (res == 1) {
-#if !defined(_WIN32) || defined(_CONSOLE)
-        /* startup all the modules */
-        _initialize_subsystems();
-#endif
-        /* parse the config file */
-        config_get_config();
-        ret = config_initial_parse_file(filename);
-        config_release_config();
-        if (ret < 0) {
-            snprintf(pbuf, sizeof(pbuf)-1, 
-                "FATAL: error parsing config file (%s)", filename);
-            _fatal_error(pbuf);
-            switch (ret) {
-            case CONFIG_EINSANE:
-                _fatal_error("filename was null or blank");
-                break;
-            case CONFIG_ENOROOT:
-                _fatal_error("no root element found");
-                break;
-            case CONFIG_EBADROOT:
-                _fatal_error("root element is not <icecast>");
-                break;
-            default:
-                _fatal_error("XML config parsing error");
-                break;
-            }
-#if !defined(_WIN32) || defined(_CONSOLE)
-            _shutdown_subsystems();
-#endif
+    switch (_parse_config_opts (argc, argv, filename, 512))
+    {
+        case -1:
+            _print_usage();
             return -1;
-        }
-    } else if (res == -1) {
-        _print_usage();
-        return -1;
+        default:
+            /* parse the config file */
+            config_get_config();
+            ret = config_initial_parse_file(filename);
+            config_release_config();
+            if (ret < 0)
+            {
+                snprintf (pbuf, sizeof(pbuf), 
+                        "FATAL: error parsing config file (%s)", filename);
+                _fatal_error (pbuf);
+                switch (ret)
+                {
+                    case CONFIG_EINSANE:
+                        _fatal_error("filename was null or blank");
+                        break;
+                    case CONFIG_ENOROOT:
+                        _fatal_error("no root element found");
+                        break;
+                    case CONFIG_EBADROOT:
+                        _fatal_error("root element is not <icecast>");
+                        break;
+                    default:
+                        _fatal_error("XML config parsing error");
+                        break;
+                }
+                return -1;
+            }
     }
-    
+
     /* override config file options with commandline options */
     config_parse_cmdline(argc, argv);
 
     /* Bind socket, before we change userid */
-    if(!_server_proc_init()) {
+    if (_server_proc_init() == 0)
+    {
         _fatal_error("Server startup failed. Exiting");
-        _shutdown_subsystems();
         return -1;
     }
-
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
     fserve_initialize();
 
 #ifdef CHUID 
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
-    if(!getuid()) /* Running as root! Don't allow this */
+    if (getuid() == 0) /* Running as root! Don't allow this */
     {
-        fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
-        fprintf(stderr, "Use the changeowner directive in the config file\n");
-        _shutdown_subsystems();
-        return 1;
+        fprintf (stderr, "ERROR: You should not run icecast2 as root\n");
+        fprintf (stderr, "Use the changeowner directive in the config file\n");
+        return -1;
     }
 #endif
-
     /* setup default signal handlers */
     sighandler_initialize();
 
     if (start_logging (config_get_config_unlocked()) < 0)
     {
         _fatal_error("FATAL: Could not start logging");
-        _shutdown_subsystems();
         return -1;
     }
+    return 0;
+}
 
-    INFO1 ("%s server started", ICECAST_VERSION_STRING);
 
-    /* REM 3D Graphics */
+#ifndef _WIN32
+int main (int argc, char *argv[])
+{
+    initialize_subsystems();
 
-    /* let her rip */
-    global.running = ICE_RUNNING;
+    if (server_init (argc, argv) == 0)
+        server_process();
 
-    /* Do this after logging init */
-    auth_initialise ();
+    shutdown_subsystems();
 
-    _server_proc();
-
-    INFO0("Shutting down");
-#if !defined(_WIN32) || defined(_CONSOLE)
-    _shutdown_subsystems();
-#endif
     if (pidfile)
     {
         remove (pidfile);
         free (pidfile);
     }
-
     return 0;
 }
-
+#endif
 

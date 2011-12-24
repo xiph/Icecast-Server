@@ -3,7 +3,10 @@
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = src conf doc web admin win32
+SUBDIRS = conf doc web admin src
+if WIN32
+SUBDIRS += win32
+endif
 
 EXTRA_DIST = HACKING config.h.vc6 m4/acx_pthread.m4 m4/ogg.m4 \
     m4/theora.m4 m4/vorbis.m4 m4/speex.m4\
@@ -19,5 +22,7 @@ debug:
 profile:
 	$(MAKE) all CFLAGS="@PROFILE@"
 
+staticdebug:
+	$(MAKE) all CFLAGS="-g -DLIBXML_STATIC -DCURL_STATICLIB" LDFLAGS="${LDFLAGS} -all-static"
 static:
-	$(MAKE) all LDFLAGS="${LDFLAGS} -all-static"
+	$(MAKE) all CFLAGS="-O2 -DLIBXML_STATIC -DCURL_STATICLIB" LDFLAGS="${LDFLAGS} -all-static"

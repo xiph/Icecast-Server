@@ -27,6 +27,7 @@
 #include "format_theora.h"
 #include "client.h"
 #include "stats.h"
+#include "global.h"
 
 #define CATMODULE "format-theora"
 #include "logging.h"

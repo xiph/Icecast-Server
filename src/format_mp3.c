@@ -41,6 +41,7 @@
 #include "format_mp3.h"
 #include "flv.h"
 #include "mpeg.h"
+#include "global.h"
 
 #define CATMODULE "format-mp3"
 
@@ -64,8 +65,9 @@ static int  mpeg_process_buffer (client_t *client, format_plugin_t *plugin);
 
 
 /* client format flags */
-#define CLIENT_IN_METADATA          CLIENT_FORMAT_BIT
-#define CLIENT_USING_BLANK_META     (CLIENT_FORMAT_BIT<<1)
+#define CLIENT_INTERNAL_FORMAT          (CLIENT_FORMAT_BIT << 4)
+#define CLIENT_IN_METADATA              (CLIENT_INTERNAL_FORMAT)
+#define CLIENT_USING_BLANK_META         (CLIENT_INTERNAL_FORMAT<<1)
 
 static refbuf_t blank_meta = { 0, 1, NULL, NULL, "\001StreamTitle='';", 17 };
 
@@ -138,7 +140,10 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
 
     if (in_value)
     {
-        value = util_conv_string (in_value, charset, plugin->charset);
+        if (charset == NULL && plugin->charset)
+           charset = plugin->charset;
+        if (charset && (strcasecmp (charset, "utf-8") && strcasecmp (charset, "utf8")))
+            value = util_conv_string (in_value, charset, "UTF8");
         if (value == NULL)
             value = strdup (in_value);
     }
@@ -450,6 +455,8 @@ static int send_stream_metadata (client_t *client, refbuf_t *refbuf)
      * to merge them into 1 write call */
 
     block_len = refbuf->len - client->pos;
+    if (block_len > client_mp3->interval)
+        block_len = client_mp3->interval; // handle small intervals
     merge = alloca (block_len + meta_len);
 
     memcpy (merge, metadata, meta_len);
@@ -502,7 +509,7 @@ static int format_mp3_write_buf_to_client (client_t *client)
         ret = client_send_bytes (client, buf, len);
 
         if (ret < len)
-            client->schedule_ms += 50;
+            client->schedule_ms += 80;
         if (ret > 0)
         {
             client_mp3->since_meta_block += ret;
@@ -629,30 +636,33 @@ static int validate_mpeg (source_t *source, refbuf_t *refbuf)
 
         if (source_mp3->inline_metadata_interval > 0)
         {
-            /* inline metadata may need reading before the rest of the mpeg data */
-            if (source_mp3->build_metadata_len == 0 && source_mp3->offset > unprocessed)
+            if (source_mp3->inline_metadata_interval <= source_mp3->offset)
             {
-                source_mp3->offset -= unprocessed;
-            }
-            else
-            {
+                // reached meta but we have a frame fragment, so keep it for later
                 leftover = refbuf_new (unprocessed);
                 memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
-                mpeg_data_insert (mpeg_sync, leftover); /* will need to merge this after metadata */
-                return 0;
+                mpeg_data_insert (mpeg_sync, leftover);
+                client->pos = 0;
+                return refbuf->len ? 0 : -1;
             }
+            // not reached the metadata block so save and rewind for completing the read
+            source_mp3->offset -= unprocessed;
         }
         /* make sure the new block has a minimum of queue_block_size */
         if (unprocessed < source_mp3->queue_block_size)
             len = source_mp3->queue_block_size;
         else
-            len = unprocessed + 2000;
+            len = unprocessed + 1000;
 
         leftover = refbuf_new (len);
         memcpy (leftover->data, refbuf->data + refbuf->len, unprocessed);
         source_mp3->read_data = leftover;
         source_mp3->read_count = unprocessed;
+        client->pos = unprocessed;
     }
+    else
+        client->pos = 0;
+
     if (source->format->read_bytes < 2500)
         stats_event_args (source->mount, "audio_codecid", "%d", (mpeg_sync->layer ? 2 : 10));
     return refbuf->len ? 0 : -1;
@@ -670,6 +680,8 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
         return NULL;
 
     refbuf = source_mp3->read_data;
+    refbuf->len = source_mp3->read_count;
+    source_mp3->read_count = 0;
     source_mp3->read_data = NULL;
 
     if (client->format_data && validate_mpeg (source, refbuf) < 0)
@@ -708,6 +720,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
     /* fill the buffer with the read data */
     bytes = source_mp3->read_count;
     refbuf->len = 0;
+
     while (bytes > 0)
     {
         unsigned int metadata_remaining;
@@ -771,7 +784,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
         source_mp3->build_metadata_len = 0;
     }
     /* the data we have just read may of just been metadata */
-    if (refbuf->len == 0)
+    if (refbuf->len <= 0)
     {
         refbuf_release (refbuf);
         return NULL;

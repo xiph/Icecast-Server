@@ -20,12 +20,12 @@
 #include "avl/avl.h"
 #include "httpp/httpp.h"
 
-#include "global.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h"
 #include "event.h"
+#include "global.h"
 
 #define CATMODULE "sighandler"
 

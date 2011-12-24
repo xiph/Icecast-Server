@@ -44,6 +44,7 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "httpp/httpp.h"
+#include "global.h"
 
 #include "logging.h"
 #define CATMODULE "auth_cmd"

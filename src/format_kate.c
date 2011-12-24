@@ -31,6 +31,7 @@ typedef struct source_tag source_t;
 #include "format_kate.h"
 #include "client.h"
 #include "stats.h"
+#include "global.h"
 
 #define CATMODULE "format-kate"
 #include "logging.h"

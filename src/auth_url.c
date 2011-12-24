@@ -86,6 +86,7 @@
 #include "cfgfile.h"
 #include "httpp/httpp.h"
 #include "mpeg.h"
+#include "global.h"
 
 #include "logging.h"
 #define CATMODULE "auth_url"
@@ -217,6 +218,17 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
                 eol = strchr (atd->errormsg, '\n');
             if (eol)
                 *eol = '\0';
+        }
+        if (strncasecmp (ptr, "ice-username: ", 14) == 0)
+        {
+            int len = strcspn ((char*)ptr+14, "\r\n");
+            char *name = malloc (len+1);
+            if (name)
+            {
+                snprintf (name, len+1, "%s", (char *)ptr+14);
+                free (client->username);
+                client->username = name;
+            }
         }
         if (strncasecmp (ptr, "Location: ", 10) == 0)
         {

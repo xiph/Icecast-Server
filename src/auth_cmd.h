@@ -13,10 +13,6 @@
 #ifndef __AUTH_CMD_H__
 #define __AUTH_CMD_H__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 int auth_get_cmd_auth (auth_t *, config_options_t *options);
 
 #endif

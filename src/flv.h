@@ -25,6 +25,7 @@ struct flv
     int64_t samples;
     refbuf_t *seen_metadata;
     mpeg_sync mpeg_sync;
+    struct connection_bufs bufs;
     unsigned char tag[30];
 };
 
