@@ -40,6 +40,7 @@
 #ifdef HAVE_SPEEX
 #include "format_speex.h"
 #endif
+#include "format_opus.h"
 #include "format_midi.h"
 #include "format_flac.h"
 #include "format_kate.h"
@@ -246,6 +247,9 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
         codec = initial_skeleton_page (plugin, page);
+        if (codec)
+            break;
+        codec = initial_opus_page (plugin, page);
         if (codec)
             break;
 
