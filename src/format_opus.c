@@ -1,7 +1,9 @@
 /* Icecast
  *
  *  This program is distributed under the GNU General Public License,
- *  version 2 or later. A copy of this license is included with this source.
+ *  version 2. A copy of this license is included with this source.
+ *  At your option, this specific source file can also be distributed
+ *  under the GNU GPL version 3.
  *
  * Copyright 2012,      David Richards, Mozilla Foundation,
  *                      and others (see AUTHORS for details).
