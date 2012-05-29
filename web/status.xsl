@@ -43,7 +43,9 @@
             <colgroup align="left" />
             <colgroup align="right" width="300" />
             <tr>
-                <td><h3>Mount Point <xsl:value-of select="@mount" /></h3></td>
+                <td><h3>Mount Point 
+                  <a href="{@mount}"><xsl:value-of select="@mount" /></a>
+                </h3></td>
                 <xsl:choose>
                     <xsl:when test="authenticator">
                         <td align="right"><a class="auth" href="/auth.xsl">Login</a></td>
