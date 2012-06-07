@@ -467,6 +467,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                 case '9':
                     block_len = atoi(format);
                     for (; *format >= '0' && *format <= '9'; format++);
+                    format--;
                     break;
                 case 'p':
                     snprintf(buf, sizeof(buf), "%p", (void*)va_arg(ap, void *));
