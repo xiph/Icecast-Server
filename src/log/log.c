@@ -518,7 +518,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                     {
                         for (; *arg && block_len && size; arg++, size--)
                         {
-                            if (*arg <= '"')
+                            if (*arg <= '"' || *arg == '`'  || *arg == '\\')
                                 *(str++) = '.';
                             else
                                 *(str++) = *arg;
