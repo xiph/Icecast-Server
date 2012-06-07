@@ -412,7 +412,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     FILE *file;
 
     fullpath = util_get_path_from_normalised_uri (path);
-    INFO2 ("checking for file %s (%s)", path, fullpath);
+    INFO2 ("checking for file %H (%H)", path, fullpath);
 
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
         m3u_requested = 1;
@@ -429,7 +429,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         /* the m3u can be generated, but send an m3u file if available */
         if (m3u_requested == 0 && xslt_playlist_requested == NULL)
         {
-            WARN2 ("req for file \"%s\" %s", fullpath, strerror (errno));
+            WARN2 ("req for file \"%H\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
             free (fullpath);
             return -1;
@@ -500,7 +500,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     config = config_get_config();
     if (config->fileserve == 0)
     {
-        DEBUG1 ("on demand file \"%s\" refused", fullpath);
+        DEBUG1 ("on demand file \"%H\" refused", fullpath);
         client_send_404 (httpclient, "The file you requested could not be found");
         config_release_config();
         free (fullpath);
@@ -511,7 +511,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (S_ISREG (file_buf.st_mode) == 0)
     {
         client_send_404 (httpclient, "The file you requested could not be found");
-        WARN1 ("found requested file but there is no handler for it: %s", fullpath);
+        WARN1 ("found requested file but there is no handler for it: %H", fullpath);
         free (fullpath);
         return -1;
     }
@@ -519,7 +519,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     file = fopen (fullpath, "rb");
     if (file == NULL)
     {
-        WARN1 ("Problem accessing file \"%s\"", fullpath);
+        WARN1 ("Problem accessing file \"%H\"", fullpath);
         client_send_404 (httpclient, "File not readable");
         free (fullpath);
         return -1;
