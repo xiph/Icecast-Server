@@ -516,7 +516,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                     // is branch optimized.
                     if (*format == 'H' )
                     {
-                        for (; *arg && block_len && size; arg++, size--)
+                        for (; *arg && block_len && size; arg++, size--, block_len--)
                         {
                             if (*arg <= '"' || *arg == '`'  || *arg == '\\')
                                 *(str++) = '.';
@@ -526,7 +526,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                     }
                     else
                     {
-                        for (; *arg && block_len && size; arg++, size--)
+                        for (; *arg && block_len && size; arg++, size--, block_len--)
                             *(str++) = *arg;
                     }
                     in_block = 0;
