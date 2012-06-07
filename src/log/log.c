@@ -419,11 +419,132 @@ void log_contents (int log_id, char **_contents, unsigned int *_len)
     _unlock_logger ();
 }
 
+static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) {
+    int in_block = 0;
+    int block_size = 0;
+    int block_len;
+    const char * arg;
+    char buf[80];
+
+    for (; *format && size; format++)
+    {
+        if ( !in_block )
+        {
+            if ( *format == '%' ) {
+                in_block = 1;
+                block_size = 0;
+                block_len  = 0;
+            }
+            else
+            {
+                *(str++) = *format;
+                size--;
+            }
+        }
+        else
+        {
+            // TODO: %l*[sdupi] as well as %.4080s and "%.*s
+            arg = NULL;
+            switch (*format)
+            {
+                case 'l':
+                    block_size++;
+                    break;
+                case '.':
+                    // just ignore '.'. If somebody cares: fix it.
+                    break;
+                case '*':
+                    block_len = va_arg(ap, int);
+                    break;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    block_len = atoi(format);
+                    for (; *format >= '0' && *format <= '9'; format++);
+                    break;
+                case 'p':
+                    snprintf(buf, sizeof(buf), "%p", (void*)va_arg(ap, void *));
+                    arg = buf;
+                case 'd':
+                case 'i':
+                case 'u':
+                    if (!arg)
+                    {
+                        switch (block_size)
+                        {
+                            case 0:
+                                if (*format == 'u')
+                                    snprintf(buf, sizeof(buf), "%u", (unsigned int)va_arg(ap, unsigned int));
+                                else
+                                    snprintf(buf, sizeof(buf), "%i", (int)va_arg(ap, int));
+                                break;
+                            case 1:
+                                if (*format == 'u')
+                                    snprintf(buf, sizeof(buf), "%lu", (unsigned long int)va_arg(ap, unsigned long int));
+                                else
+                                    snprintf(buf, sizeof(buf), "%li", (long int)va_arg(ap, long int));
+                                break;
+                            case 2:
+                                if (*format == 'u')
+                                    snprintf(buf, sizeof(buf), "%llu", (unsigned long long int)va_arg(ap, unsigned long long int));
+                                else
+                                    snprintf(buf, sizeof(buf), "%lli", (long long int)va_arg(ap, long long int));
+                                break;
+                            default:
+                                snprintf(buf, sizeof(buf), "<<<invalid>>>");
+                                break;
+                        }
+                        arg = buf;
+                    }
+                case 's':
+                case 'H':
+                    // TODO.
+                    if (!arg)
+                        arg = va_arg(ap, const char *);
+                    if (!arg)
+                        arg = "(null)";
+                    if (!block_len)
+                        block_len = strlen(arg);
+
+                    // the if() is the outer structure so the inner for()
+                    // is branch optimized.
+                    if (*format == 'H' )
+                    {
+                        for (; *arg && block_len && size; arg++, size--)
+                        {
+                            if (*arg <= '"')
+                                *(str++) = '.';
+                            else
+                                *(str++) = *arg;
+                        }
+                    }
+                    else
+                    {
+                        for (; *arg && block_len && size; arg++, size--)
+                            *(str++) = *arg;
+                    }
+                    in_block = 0;
+                    break;
+            }
+        }
+    }
+
+    if ( !size )
+        str--;
+
+    *str = 0;
+}
 
 void log_write(int log_id, unsigned priority, const char *cat, const char *func, 
         const char *fmt, ...)
 {
-    static char *prior[] = { "EROR", "WARN", "INFO", "DBUG" };
+    static const char *prior[] = { "EROR", "WARN", "INFO", "DBUG" };
     int datelen;
     time_t now;
     char pre[256];
@@ -434,16 +555,16 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
     if (loglist[log_id].level < priority) return;
     if (priority > sizeof(prior)/sizeof(prior[0])) return; /* Bad priority */
 
+
     va_start(ap, fmt);
-    vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
+    __vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
 
     now = time(NULL);
-
-    _lock_logger();
     datelen = strftime (pre, sizeof (pre), "[%Y-%m-%d  %H:%M:%S]", localtime(&now)); 
-
     snprintf (pre+datelen, sizeof (pre)-datelen, " %s %s%s ", prior [priority-1], cat, func);
 
+    _lock_logger();
     if (_log_open (log_id))
     {
         int len = create_log_entry (log_id, pre, line);
@@ -451,8 +572,6 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
             loglist[log_id].size += len;
     }
     _unlock_logger();
-
-    va_end(ap);
 }
 
 void log_write_direct(int log_id, const char *fmt, ...)
