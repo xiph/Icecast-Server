@@ -620,7 +620,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             memcpy (meta->data, source_mp3->build_metadata,
                     source_mp3->build_metadata_len);
 
-            DEBUG1("shoutcast metadata %.4080s", meta->data+1);
+	    DEBUG2("shoutcast metadata %.*s", 4080, meta->data+1);
             if (strncmp (meta->data+1, "StreamTitle=", 12) == 0)
             {
                 filter_shoutcast_metadata (source, source_mp3->build_metadata,
