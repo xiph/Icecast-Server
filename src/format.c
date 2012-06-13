@@ -40,6 +40,7 @@
 
 #include "format_ogg.h"
 #include "format_mp3.h"
+#include "format_ebml.h"
 
 #include "logging.h"
 #include "stats.h"
@@ -64,6 +65,16 @@ format_type_t format_get_type (const char *contenttype)
         return FORMAT_TYPE_OGG;
     else if(strcmp(contenttype, "video/ogg") == 0)
         return FORMAT_TYPE_OGG;
+    else if(strcmp(contenttype, "audio/webm") == 0)
+        return FORMAT_TYPE_EBML;
+    else if(strcmp(contenttype, "video/webm") == 0)
+        return FORMAT_TYPE_EBML;
+    else if(strcmp(contenttype, "audio/x-matroska") == 0)
+        return FORMAT_TYPE_EBML;
+    else if(strcmp(contenttype, "video/x-matroska") == 0)
+        return FORMAT_TYPE_EBML;
+    else if(strcmp(contenttype, "video/x-matroska-3d") == 0)
+        return FORMAT_TYPE_EBML;
     else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3 */
@@ -77,6 +88,9 @@ int format_get_plugin(format_type_t type, source_t *source)
     switch (type) {
     case FORMAT_TYPE_OGG:
         ret = format_ogg_get_plugin (source);
+        break;
+    case FORMAT_TYPE_EBML:
+        ret = format_ebml_get_plugin (source);
         break;
     case FORMAT_TYPE_GENERIC:
         ret = format_mp3_get_plugin (source);
