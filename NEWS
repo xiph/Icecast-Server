@@ -1,3 +1,11 @@
+Icecast 2.3.4
+- Support for WebM video
+- Support for Opus audio in Ogg
+
+Icecast 2.3.3
+-----------------------------------------------------------------------------
+- Various bug fixes.
+
 Icecast 2.3.2
 -----------------------------------------------------------------------------
 - Character set support.
