@@ -342,6 +342,8 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
         parser->req_type = httpp_req_get;
     } else if (strcasecmp("POST", req_type) == 0) {
         parser->req_type = httpp_req_post;
+    } else if (strcasecmp("PUT", req_type) == 0) {
+        parser->req_type = httpp_req_put;
     } else if (strcasecmp("HEAD", req_type) == 0) {
         parser->req_type = httpp_req_head;
     } else if (strcasecmp("SOURCE", req_type) == 0) {
@@ -391,6 +393,9 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
             break;
         case httpp_req_post:
             httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "POST");
+            break;
+        case httpp_req_put:
+            httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "PUT");
             break;
         case httpp_req_head:
             httpp_setvar(parser, HTTPP_VAR_REQ_TYPE, "HEAD");

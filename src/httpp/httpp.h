@@ -22,7 +22,7 @@
 #define HTTPP_VAR_ICYPASSWORD "__icy_password"
 
 typedef enum httpp_request_type_tag {
-    httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_head,
+    httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_put, httpp_req_head,
     httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
 } httpp_request_type_e;
 
