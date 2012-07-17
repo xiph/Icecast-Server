@@ -631,9 +631,9 @@ static void *_stats_thread(void *arg)
 
     INFO0 ("stats thread started");
     while (_stats_running) {
+        thread_mutex_lock(&_global_event_mutex);
         if (_global_event_queue.head != NULL) {
             /* grab the next event from the queue */
-            thread_mutex_lock(&_global_event_mutex);
             event = _get_event_from_queue (&_global_event_queue);
             thread_mutex_unlock(&_global_event_mutex);
 
@@ -666,6 +666,10 @@ static void *_stats_thread(void *arg)
 
             thread_mutex_unlock(&_stats_mutex);
             continue;
+        }
+        else
+        {
+            thread_mutex_unlock(&_global_event_mutex);
         }
 
         thread_sleep(300000);

@@ -17,11 +17,13 @@
 #include "yp.h"
 #include "util.h"
 #include "format.h"
+#include "thread/thread.h"
 
 #include <stdio.h>
 
 typedef struct source_tag
 {
+    mutex_t lock;
     client_t *client;
     connection_t *con;
     http_parser_t *parser;

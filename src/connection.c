@@ -105,7 +105,7 @@ typedef struct
     avl_tree *contents;
 } cache_file_contents;
 
-static spin_t _connection_lock;
+static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
 
@@ -568,8 +568,10 @@ static connection_t *_accept_connection(int duration)
  */
 static void _add_connection (client_queue_t *node)
 {
+    thread_spin_lock (&_connection_lock);
     *_con_queue_tail = node;
     _con_queue_tail = (volatile client_queue_t **)&node->next;
+    thread_spin_unlock (&_connection_lock);
 }
 
 
@@ -580,7 +582,8 @@ static client_queue_t *_get_connection(void)
 {
     client_queue_t *node = NULL;
 
-    /* common case, no new connections so don't bother taking locks */
+    thread_spin_lock (&_connection_lock);
+
     if (_con_queue)
     {
         node = (client_queue_t *)_con_queue;
@@ -589,6 +592,8 @@ static client_queue_t *_get_connection(void)
             _con_queue_tail = &_con_queue;
         node->next = NULL;
     }
+
+    thread_spin_unlock (&_connection_lock);
     return node;
 }
 

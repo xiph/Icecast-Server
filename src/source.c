@@ -102,6 +102,7 @@ source_t *source_reserve (const char *mount)
         /* make duplicates for strings or similar */
         src->mount = strdup (mount);
         src->max_listeners = -1;
+        thread_mutex_create(&src->lock);
 
         avl_insert (global.source_tree, src);
 
@@ -492,13 +493,15 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         if (fds == 0)
         {
-            if (source->last_read + (time_t)source->timeout < current)
+            thread_mutex_lock(&source->lock);
+            if ((source->last_read + (time_t)source->timeout) < current)
             {
                 DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
                 WARN0 ("Disconnecting source due to socket timeout");
                 source->running = 0;
             }
+            thread_mutex_unlock(&source->lock);
             break;
         }
         source->last_read = current;
@@ -718,8 +721,10 @@ void source_main (source_t *source)
                 source->format->write_buf_to_file (source, refbuf);
         }
         /* lets see if we have too much data in the queue, but don't remove it until later */
+        thread_mutex_lock(&source->lock);
         if (source->queue_size > source->queue_size_limit)
             remove_from_q = 1;
+        thread_mutex_unlock(&source->lock);
 
         /* acquire write lock on pending_tree */
         avl_tree_wlock(source->pending_tree);
@@ -1169,13 +1174,16 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
 
 /* update the specified source with details from the config or mount.
  * mountinfo can be NULL in which case default settings should be taken
+ * This function is called by the Slave thread
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
+    thread_mutex_lock(&source->lock);
     /*  skip if source is a fallback to file */
     if (source->running && source->client == NULL)
     {
         stats_event_hidden (source->mount, NULL, 1);
+        thread_mutex_unlock(&source->lock);
         return;
     }
     /* set global settings first */
@@ -1229,6 +1237,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     DEBUG1 ("burst size to %u", source->burst_size);
     DEBUG1 ("source timeout to %u", source->timeout);
     DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
+    thread_mutex_unlock(&source->lock);
 }
 
 

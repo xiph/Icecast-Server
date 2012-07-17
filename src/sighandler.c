@@ -54,7 +54,10 @@ void _sig_ignore(int signo)
 
 void _sig_hup(int signo)
 {
+    global_lock();
     global . schedule_config_reread = 1;
+    global_unlock();
+
     /* some OSes require us to reattach the signal handler */
     signal(SIGHUP, _sig_hup);
 }
