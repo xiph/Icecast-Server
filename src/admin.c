@@ -269,14 +269,19 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
         xmlChar *buff = NULL;
         int len = 0;
         unsigned int buf_len;
-        const char *http = "HTTP/1.0 200 OK\r\n"
-               "Content-Type: text/xml\r\n"
-               "Content-Length: ";
         xmlDocDumpMemory(doc, &buff, &len);
-        buf_len = strlen (http) + len + 20;
+        buf_len = len + 256 /* just a random medium number */;
+
         client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
-        len = snprintf (client->refbuf->data, buf_len, "%s%d\r\n\r\n%s", http, len, buff);
+
+        /* FIXME: in this section we hope no function will ever return -1 */
+	len = util_http_build_header(client->refbuf->data, buf_len, 0,
+	                             0, 200, NULL,
+				     "text/xml", NULL,
+				     NULL);
+	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", len, buff);
+
         client->refbuf->len = len;
         xmlFree(buff);
         client->respcode = 200;
@@ -563,11 +568,17 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
 
 static void html_success(client_t *client, char *message)
 {
+    ssize_t ret;
+
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 200, NULL,
+				 "text/html", NULL,
+				 "");
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "<html><head><title>Admin request successful</title></head>"
+	     "<body><p>%s</p></body></html>", message);
+
     client->respcode = 200;
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" 
-            "<html><head><title>Admin request successful</title></head>"
-            "<body><p>%s</p></body></html>", message);
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
@@ -693,15 +704,18 @@ static void command_buildm3u(client_t *client,  const char *mount)
     const char *username = NULL;
     const char *password = NULL;
     ice_config_t *config;
+    ssize_t ret;
 
     COMMAND_REQUIRE(client, "username", username);
     COMMAND_REQUIRE(client, "password", password);
 
-    client->respcode = 200;
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 200, NULL,
+				 "audio/x-mpegurl", NULL,
+				 NULL);
+
     config = config_get_config();
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-        "HTTP/1.0 200 OK\r\n"
-        "Content-Type: audio/x-mpegurl\r\n"
+    snprintf (client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
         "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
         "http://%s:%s@%s:%d%s\r\n",
         username,
@@ -712,6 +726,7 @@ static void command_buildm3u(client_t *client,  const char *mount)
     );
     config_release_config();
 
+    client->respcode = 200;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
@@ -1014,8 +1029,10 @@ static void command_list_mounts(client_t *client, int response)
 
     if (response == PLAINTEXT)
     {
-        snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-                "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n");
+        util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+	                       0, 200, NULL,
+			       "text/html", NULL,
+			       "");
         client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
 

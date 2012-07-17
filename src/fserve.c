@@ -454,12 +454,13 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
         *dot = 0;
         httpclient->respcode = 200;
+        ret = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
+	                              0, 200, NULL,
+				      "audio/x-mpegurl", NULL, "");
         if (host == NULL)
         {
-            config = config_get_config();
-            snprintf (httpclient->refbuf->data, BUFSIZE,
-                    "HTTP/1.0 200 OK\r\n"
-                    "Content-Type: audio/x-mpegurl\r\n\r\n"
+	    config = config_get_config();
+            snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
                     "http://%s:%d%s\r\n", 
                     config->hostname, config->port,
                     sourceuri
@@ -468,9 +469,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         }
         else
         {
-            snprintf (httpclient->refbuf->data, BUFSIZE,
-                    "HTTP/1.0 200 OK\r\n"
-                    "Content-Type: audio/x-mpegurl\r\n\r\n"
+	    snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
                     "http://%s%s\r\n", 
                     host, 
                     sourceuri
@@ -555,36 +554,27 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 rangeproblem = 1;
             }
             if (!rangeproblem) {
-                /* Date: is required on all HTTP1.1 responses */
-                char currenttime[50];
-                time_t now;
-                int strflen;
-                struct tm result;
                 off_t endpos = rangenumber+new_content_len-1;
                 char *type;
 
                 if (endpos < 0) {
                     endpos = 0;
                 }
-                time(&now);
-                strflen = strftime(currenttime, 50, "%a, %d-%b-%Y %X GMT",
-                                   gmtime_r(&now, &result));
                 httpclient->respcode = 206;
                 type = fserve_content_type (path);
-                bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
-                    "HTTP/1.1 206 Partial Content\r\n"
-                    "Date: %s\r\n"
+		bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
+		                                0, 206, NULL,
+						type, NULL,
+						NULL);
+                bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
                     "Accept-Ranges: bytes\r\n"
                     "Content-Length: %" PRI_OFF_T "\r\n"
                     "Content-Range: bytes %" PRI_OFF_T \
-                    "-%" PRI_OFF_T "/%" PRI_OFF_T "\r\n"
-                    "Content-Type: %s\r\n\r\n",
-                    currenttime,
+                    "-%" PRI_OFF_T "/%" PRI_OFF_T "\r\n\r\n",
                     new_content_len,
                     rangenumber,
                     endpos,
-                    content_length,
-                    type);
+                    content_length);
                 free (type);
             }
             else {
@@ -598,13 +588,14 @@ int fserve_client_create (client_t *httpclient, const char *path)
     else {
         char *type = fserve_content_type(path);
         httpclient->respcode = 200;
-        bytes = snprintf (httpclient->refbuf->data, BUFSIZE,
-            "HTTP/1.0 200 OK\r\n"
+	bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
+	                                0, 200, NULL,
+					type, NULL,
+					NULL);
+        bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
             "Accept-Ranges: bytes\r\n"
-            "Content-Length: %" PRI_OFF_T "\r\n"
-            "Content-Type: %s\r\n\r\n",
-            content_length,
-            type);
+            "Content-Length: %" PRI_OFF_T "\r\n\r\n",
+            content_length);
         free (type);
     }
     httpclient->refbuf->len = bytes;

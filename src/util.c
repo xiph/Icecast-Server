@@ -485,6 +485,85 @@ char *util_base64_decode(const char *data)
     return result;
 }
 
+ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
+        int cache,
+        int status, const char * statusmsg,
+        const char * contenttype, const char * charset,
+        const char * datablock) {
+    const char * http_version = "1.0";
+    ice_config_t *config;
+    time_t now;
+    struct tm result;
+    char currenttime_buffer[50];
+    char status_buffer[80];
+    char contenttype_buffer[80];
+    ssize_t ret;
+
+    if (!out)
+        return -1;
+
+    if (offset == -1)
+        offset = strlen (out);
+
+    out += offset;
+    len -= offset;
+
+    if (status == -1)
+    {
+        status_buffer[0] = '\0';
+    }
+    else
+    {
+        if (!statusmsg)
+	{
+	    switch (status)
+	    {
+	        case 200: statusmsg = "OK"; break;
+		case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
+		case 400: statusmsg = "Bad Request"; break;
+		case 401: statusmsg = "Authentication Required"; break;
+		case 403: statusmsg = "Forbidden"; break;
+		case 404: statusmsg = "File Not Found"; break;
+		case 416: statusmsg = "Request Range Not Satisfiable"; break;
+		default:  statusmsg = "(unknown status code)"; break;
+	    }
+	}
+	snprintf (status_buffer, sizeof (status_buffer), "HTTP/%s %d %s\r\n", http_version, status, statusmsg);
+    }
+
+    if (contenttype)
+    {
+    	if (charset)
+            snprintf (contenttype_buffer, sizeof (contenttype_buffer), "Content-Type: %s; charset=%s\r\n",
+	                                                               contenttype, charset);
+	else
+            snprintf (contenttype_buffer, sizeof (contenttype_buffer), "Content-Type: %s\r\n",
+                                                                       contenttype);
+    }
+    else
+    {
+        contenttype_buffer[0] = '\0';
+    }
+
+    time(&now);
+    strftime(currenttime_buffer, 50, "%a, %d-%b-%Y %X GMT", gmtime_r(&now, &result));
+
+    config = config_get_config();
+    ret = snprintf (out, len, "%sServer: %s\r\nDate: %s\r\n%s%s%s%s%s",
+                              status_buffer,
+			      config->server_id,
+			      currenttime_buffer,
+			      contenttype_buffer,
+			      (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
+                              (cache     ? "" : "Cache-Control: no-cache\r\n"),
+                              (datablock ? "\r\n" : ""),
+                              (datablock ? datablock : ""));
+    config_release_config();
+
+    return ret;
+}
+
+
 util_dict *util_dict_new(void)
 {
     return (util_dict *)calloc(1, sizeof(util_dict));

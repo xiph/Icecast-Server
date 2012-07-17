@@ -298,8 +298,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr = client->refbuf->data;
     client->respcode = 200;
 
-    bytes = snprintf (ptr, remaining, "HTTP/1.0 200 OK\r\n"
-            "Content-Type: %s\r\n", source->format->contenttype);
+    bytes = util_http_build_header (ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL);
 
     remaining -= bytes;
     ptr += bytes;
@@ -361,17 +360,6 @@ static int format_prepare_headers (source_t *source, client_t *client)
             node = avl_get_next(node);
     }
     avl_tree_unlock(source->parser->vars);
-
-    config = config_get_config();
-    bytes = snprintf (ptr, remaining, "Server: %s\r\n", config->server_id);
-    config_release_config();
-    remaining -= bytes;
-    ptr += bytes;
-
-    /* prevent proxy servers from caching */
-    bytes = snprintf (ptr, remaining, "Cache-Control: no-cache\r\n");
-    remaining -= bytes;
-    ptr += bytes;
 
     bytes = snprintf (ptr, remaining, "\r\n");
     remaining -= bytes;

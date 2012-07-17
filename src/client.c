@@ -182,21 +182,32 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
 
 
 void client_send_400(client_t *client, char *message) {
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 400 Bad Request\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
+    ssize_t ret;
+
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 400, NULL,
+                                 "text/html", NULL,
+                                 "");
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "<b>%s</b>\r\n", message);
+
     client->respcode = 400;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
 
 void client_send_404(client_t *client, char *message) {
+    ssize_t ret;
 
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 404 File Not Found\r\n"
-            "Content-Type: text/html\r\n\r\n"
-            "<b>%s</b>\r\n", message);
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 404, NULL,
+                                 "text/html", NULL,
+                                 "");
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "<b>%s</b>\r\n", message);
+
     client->respcode = 404;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
@@ -204,11 +215,10 @@ void client_send_404(client_t *client, char *message) {
 
 
 void client_send_401(client_t *client) {
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 401 Authentication Required\r\n"
-            "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n"
-            "\r\n"
-            "You need to authenticate\r\n");
+    util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                           0, 401, NULL,
+			   "text/plain", NULL,
+			   "You need to authenticate\r\n");
     client->respcode = 401;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
@@ -216,10 +226,10 @@ void client_send_401(client_t *client) {
 
 void client_send_403(client_t *client, const char *reason)
 {
-    if (reason == NULL)
-        reason = "Forbidden";
-    snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 403 %s\r\n\r\n", reason);
+    util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                           0, 403, reason,
+			   "text/plain", NULL,
+			   "Forbidden");
     client->respcode = 403;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);

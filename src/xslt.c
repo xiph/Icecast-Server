@@ -227,14 +227,16 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     if (problem == 0)
     {
         /* the 100 is to allow for the hardcoded headers */
-        unsigned int full_len = strlen (mediatype) + len + 100;
+        unsigned int full_len = strlen (mediatype) + len + 256;
         refbuf_t *refbuf = refbuf_new (full_len);
+	ssize_t ret;
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        snprintf (refbuf->data, full_len,
-                "HTTP/1.0 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s",
-                mediatype, len, string);
+        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, NULL, NULL, NULL);
+	snprintf (refbuf->data + ret, full_len - ret,
+                "Content-Length: %d\r\n\r\n%s",
+                len, string);
 
         client->respcode = 200;
         client_set_queue (client, NULL);
