@@ -579,6 +579,29 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 }
 
 
+/* Open the file for stream dumping.
+ * This function should do all processing of the filename.
+ */
+static FILE * source_open_dumpfile(const char * filename) {
+#ifndef _WIN32
+    /* some of the below functions seems not to be standard winapi functions */
+    char buffer[PATH_MAX];
+    time_t curtime;
+    struct tm *loctime;
+
+    /* Get the current time. */
+    curtime = time (NULL);
+
+    /* Convert it to local time representation. */
+    loctime = localtime (&curtime);
+
+    strftime (buffer, sizeof(buffer), filename, loctime);
+    filename = buffer;
+#endif
+
+    return fopen (filename, "ab");
+}
+
 /* Perform any initialisation just before the stream data is processed, the header
  * info is processed by now and the format details are setup
  */
@@ -614,7 +637,7 @@ static void source_init (source_t *source)
 
     if (source->dumpfilename != NULL)
     {
-        source->dumpfile = fopen (source->dumpfilename, "ab");
+        source->dumpfile = source_open_dumpfile (source->dumpfilename);
         if (source->dumpfile == NULL)
         {
             WARN2("Cannot open dump file \"%s\" for appending: %s, disabling.",
