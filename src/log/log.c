@@ -554,7 +554,7 @@ void log_write(int log_id, unsigned priority, const char *cat, const char *func,
 
     if (log_id < 0 || log_id >= LOG_MAXLOGS) return; /* Bad log number */
     if (loglist[log_id].level < priority) return;
-    if (priority > sizeof(prior)/sizeof(prior[0])) return; /* Bad priority */
+    if (!priority || priority > sizeof(prior)/sizeof(prior[0])) return; /* Bad priority */
 
 
     va_start(ap, fmt);
