@@ -333,7 +333,22 @@ static int format_prepare_headers (source_t *source, client_t *client)
             if (strcasecmp(var->name, "ice-password") &&
                 strcasecmp(var->name, "icy-metaint"))
             {
-                if (!strncasecmp("ice-", var->name, 4))
+		if (!strcasecmp(var->name, "ice-name"))
+		{
+		    ice_config_t *config;
+		    mount_proxy *mountinfo;
+
+		    config = config_get_config();
+		    mountinfo = config_find_mount (config, source->mount);
+
+		    if (mountinfo && mountinfo->stream_name)
+		        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);
+                    else
+		        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", var->value);
+
+                    config_release_config();
+		}
+                else if (!strncasecmp("ice-", var->name, 4))
                 {
                     if (!strcasecmp("ice-public", var->name))
                         bytes = snprintf (ptr, remaining, "icy-pub:%s\r\n", var->value);
