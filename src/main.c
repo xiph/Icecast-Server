@@ -41,9 +41,13 @@
 #include "net/resolver.h"
 #include "httpp/httpp.h"
 
-#ifdef CHUID
+#if HAVE_SYS_TYPES_H
 #include <sys/types.h>
+#endif
+#if HAVE_GRP_H
 #include <grp.h>
+#endif
+#if HAVE_PWD_H
 #include <pwd.h>
 #endif
 
@@ -362,7 +366,7 @@ static void _ch_root_uid_setup(void)
    }
 #endif
 
-#ifdef CHROOT
+#if HAVE_CHROOT
    if (conf->chroot)
    {
        if(getuid()) /* root check */
@@ -380,7 +384,7 @@ static void _ch_root_uid_setup(void)
 
    }   
 #endif
-#ifdef CHUID
+#if HAVE_CHUID
 
    if(conf->chuid)
    {

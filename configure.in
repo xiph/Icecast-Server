@@ -34,8 +34,9 @@ AC_HEADER_STDC
 AC_HEADER_TIME
 
 AC_CHECK_HEADERS([alloca.h sys/timeb.h])
-AC_CHECK_HEADERS(pwd.h, AC_DEFINE(CHUID, 1, [Define if you have pwd.h]),,)
-AC_CHECK_HEADERS(unistd.h, AC_DEFINE(CHROOT, 1, [Define if you have unistd.h]),,)
+AC_CHECK_HEADERS([pwd.h, unistd.h, grp.h, sys/types.h])
+AC_CHECK_FUNC([chuid])
+AC_CHECK_FUNC([chown])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__

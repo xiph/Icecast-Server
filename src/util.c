@@ -494,7 +494,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     ice_config_t *config;
     time_t now;
     struct tm result;
-    char currenttime_buffer[50];
+    struct tm *gmtime_result;
+    char currenttime_buffer[80];
     char status_buffer[80];
     char contenttype_buffer[80];
     ssize_t ret;
@@ -546,10 +547,22 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     }
 
     time(&now);
-    strftime(currenttime_buffer, 50, "%a, %d-%b-%Y %X GMT", gmtime_r(&now, &result));
+#ifndef _WIN32
+    gmtime_result = gmtime_r(&now, &result);
+#else
+    /* gmtime() on W32 breaks POSIX and IS thread-safe (uses TLS) */
+    gmtime_result = gmtime (&now);
+    if (gmtime_result)
+        memcpy (&result, gmtime_result, sizeof (result));
+#endif
+
+    if (gmtime_result)
+        strftime(currenttime_buffer, sizeof(currenttime_buffer), "Date: %a, %d-%b-%Y %X GMT\r\n", gmtime_result);
+    else
+        currenttime_buffer[0] = '\0';
 
     config = config_get_config();
-    ret = snprintf (out, len, "%sServer: %s\r\nDate: %s\r\n%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s",
                               status_buffer,
 			      config->server_id,
 			      currenttime_buffer,

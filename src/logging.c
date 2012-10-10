@@ -54,7 +54,15 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     struct tm *thetime;
     time_t now;
 
-    gmtime_r(&time1, &gmt);
+#if !defined(_WIN32)
+    thetime = gmtime_r(&time1, &gmt)
+#else
+    /* gmtime() on W32 breaks POSIX and IS thread-safe (uses TLS) */
+    thetime = gmtime (&time1);
+    if (thetime)
+      memcpy (&gmt, thetime, sizeof (gmt));
+#endif
+    /* FIXME: bail out if gmtime* returns NULL */
 
     time_days = t->tm_yday - gmt.tm_yday;
 
