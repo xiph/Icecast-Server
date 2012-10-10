@@ -50,6 +50,7 @@
 #include "client.h"
 #include "stats.h"
 #include "fserve.h"
+#include "util.h"
 
 #define CATMODULE "xslt"
 
@@ -233,7 +234,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, NULL, NULL, NULL);
+        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, NULL, NULL);
 	snprintf (refbuf->data + ret, full_len - ret,
                 "Content-Length: %d\r\n\r\n%s",
                 len, string);
