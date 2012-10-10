@@ -67,8 +67,8 @@
 
 #define BUFSIZE 4096
 
-fserve_t *active_list = NULL;
-fserve_t *pending_list = NULL;
+static fserve_t *active_list = NULL;
+static fserve_t *pending_list = NULL;
 
 static spin_t pending_lock;
 static avl_tree *mimetypes = NULL;

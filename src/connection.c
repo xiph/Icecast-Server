@@ -117,7 +117,7 @@ static SSL_CTX *ssl_ctx;
 #endif
 
 /* filtering client connection based on IP */
-cache_file_contents banned_ip, allowed_ip;
+static cache_file_contents banned_ip, allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
