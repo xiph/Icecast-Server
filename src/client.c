@@ -37,6 +37,8 @@
 #include "client.h"
 #include "logging.h"
 
+#include "util.h"
+
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif
@@ -180,59 +182,43 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-
-void client_send_400(client_t *client, char *message) {
+static void client_send_error0(client_t *client, int status, int plain, char *message)
+{
     ssize_t ret;
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                                 0, 400, NULL,
-                                 "text/html", NULL,
-                                 "");
+                                 0, status, NULL,
+                                 plain ? "text/plain" : "text/html", NULL,
+                                 plain ? message : "");
 
-    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "<b>%s</b>\r\n", message);
+    if (!plain)
+        snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+                 "<html><head><title>Error %i</title></head><body><b>%i - %s</b></body></html>\r\n",
+                 status, status, message);
 
-    client->respcode = 400;
+    client->respcode = status;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
 }
 
-void client_send_404(client_t *client, char *message) {
-    ssize_t ret;
-
-    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                                 0, 404, NULL,
-                                 "text/html", NULL,
-                                 "");
-
-    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "<b>%s</b>\r\n", message);
-
-    client->respcode = 404;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+void client_send_400(client_t *client, char *message)
+{
+    client_send_error0(client, 400, 0, message);
 }
 
+void client_send_404(client_t *client, char *message)
+{
+    client_send_error0(client, 404, 0, message);
+}
 
-void client_send_401(client_t *client) {
-    util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                           0, 401, NULL,
-			   "text/plain", NULL,
-			   "You need to authenticate\r\n");
-    client->respcode = 401;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+void client_send_401(client_t *client)
+{
+    client_send_error0(client, 401, 1, "You need to authenticate\r\n");
 }
 
 void client_send_403(client_t *client, const char *reason)
 {
-    util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                           0, 403, reason,
-			   "text/plain", NULL,
-			   "Forbidden");
-    client->respcode = 403;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    client_send_error0(client, 403, 1, "Forbidden");
 }
 
 
