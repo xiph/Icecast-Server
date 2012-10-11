@@ -8,9 +8,9 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
- *                      Thomas B. "dm8tbr" Ruecker <thomas.rucker@tieto.com>,
+ * Copyright 2011,      Thomas B. "dm8tbr" Ruecker <thomas.rucker@tieto.com>,
  *                      Dave 'justdave' Miller <justdave@mozilla.com>.
+ * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
