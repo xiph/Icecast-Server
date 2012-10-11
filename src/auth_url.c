@@ -85,6 +85,8 @@
 #define CATMODULE "auth_url"
 
 typedef struct {
+    char *pass_headers; // headers passed from client to addurl.
+    char *prefix_headers; // prefix for passed headers.
     char *addurl;
     char *removeurl;
     char *stream_start;
@@ -112,6 +114,8 @@ static void auth_url_clear(auth_t *self)
     curl_easy_cleanup (url->handle);
     free (url->username);
     free (url->password);
+    free (url->pass_headers);
+    free (url->prefix_headers);
     free (url->removeurl);
     free (url->addurl);
     free (url->stream_start);
@@ -266,6 +270,10 @@ static auth_result url_add_listener (auth_client *auth_user)
     char *mount, *ipaddr, *server;
     ice_config_t *config;
     char *userpwd = NULL, post [4096];
+    ssize_t post_offset;
+    char *pass_headers, *cur_header, *next_header;
+    const char *header_val;
+    char *header_valesc;
 
     if (url->addurl == NULL)
         return AUTH_OK;
@@ -294,7 +302,7 @@ static auth_result url_add_listener (auth_client *auth_user)
     mount = util_url_escape (mountreq);
     ipaddr = util_url_escape (client->con->ip);
 
-    snprintf (post, sizeof (post),
+    post_offset = snprintf (post, sizeof (post),
             "action=listener_add&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&ip=%s&agent=%s",
             server, port, client->con->id, mount, username,
@@ -305,6 +313,35 @@ static auth_result url_add_listener (auth_client *auth_user)
     free (username);
     free (password);
     free (ipaddr);
+
+    pass_headers = NULL;
+    if (url->pass_headers)
+        pass_headers = strdup (url->pass_headers);
+    if (pass_headers)
+    {
+        cur_header = pass_headers;
+        while (cur_header)
+        {
+	    next_header = strstr (cur_header, ",");
+	    if (next_header)
+	    {
+		*next_header=0;
+                next_header++;
+	    }
+
+            header_val = httpp_getvar (client->parser, cur_header);
+            if (header_val)
+            {
+                header_valesc = util_url_escape (header_val);
+                post_offset += snprintf (post+post_offset, sizeof (post)-post_offset, "&%s%s=%s",
+                                         url->prefix_headers ? url->prefix_headers : "",
+                                         cur_header, header_valesc);
+                free (header_valesc);
+            }
+
+	    cur_header = next_header;
+        }
+    }
 
     if (strchr (url->addurl, '@') == NULL)
     {
@@ -548,6 +585,16 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         {
             free (url_info->password);
             url_info->password = strdup (options->value);
+        }
+        if(!strcmp(options->name, "headers"))
+        {
+            free (url_info->pass_headers);
+            url_info->pass_headers = strdup (options->value);
+        }
+        if(!strcmp(options->name, "header_prefix"))
+        {
+            free (url_info->prefix_headers);
+            url_info->prefix_headers = strdup (options->value);
         }
         if(!strcmp(options->name, "listener_add"))
         {

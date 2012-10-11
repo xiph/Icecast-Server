@@ -122,6 +122,8 @@
             <option name="mount_remove"    value="http://myauthserver.net/notify_mount.php"/>
             <option name="listener_add"    value="http://myauthserver.net/notify_listener.php"/>
             <option name="listener_remove" value="http://myauthserver.net/notify_listener.php"/>
+            <option name="headers"         value="x-pragma,x-token"/>
+            <option name="header_prefix"   value="ClientHeader."/>
         </authentication>
     </mount>
 

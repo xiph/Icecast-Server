@@ -93,6 +93,8 @@ config file.  The following shows the list of options available :</p>
             &lt;option name="password" value="pass"/&gt;
             &lt;option name="auth_header" value="icecast-auth-user: 1"/&gt;
             &lt;option name="timelimit_header" value="icecast-auth-timelimit:"/&gt;
+            &lt;option name="headers"          value="x-pragma,x-token"/&gt;
+            &lt;option name="header_prefix"    value="ClientHeader."/&gt;
         &lt;/authentication&gt;
     &lt;/mount&gt;
 </pre>
@@ -149,6 +151,13 @@ but it could can anything you like, for instance
 <h3>timelimit_header</h3>
 <p>Listeners could have a time limit imposed on them, and if this header is sent back with a
 figure (which represents seconds) then that is how long the client will remain connected for.
+</p>
+<h3>headers</h3>
+<p>This is a list of HTTP headers provided by the client which should be passed to the authencation service.
+Those headers are prepended by the value of header_prefix and send as post parameters.
+</p>
+<h3>header_prefix</h3>
+<p>This is the prefix used for passing client headers. See headers for details.
 </p>
 <br />
 <h2>A note about players and authentication</h2>
