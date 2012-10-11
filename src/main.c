@@ -340,7 +340,7 @@ static void _server_proc(void)
 static void _ch_root_uid_setup(void)
 {
    ice_config_t *conf = config_get_config_unlocked();
-#ifdef CHUID
+#ifdef HAVE_SETUID
    struct passwd *user;
    struct group *group;
    uid_t uid=-1;
@@ -384,7 +384,7 @@ static void _ch_root_uid_setup(void)
 
    }   
 #endif
-#if HAVE_CHUID
+#if HAVE_SETUID
 
    if(conf->chuid)
    {
@@ -478,7 +478,7 @@ int main(int argc, char **argv)
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */
 
-#ifdef CHUID 
+#ifdef HAVE_SETUID 
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
     if(!getuid()) /* Running as root! Don't allow this */
