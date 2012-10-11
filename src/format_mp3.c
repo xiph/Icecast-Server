@@ -293,9 +293,9 @@ static void mp3_set_title (source_t *source)
             if (source_mp3->inline_url)
             {
                 char *end = strstr (source_mp3->inline_url, "';");
-                int urllen = size;
+                ssize_t urllen = size;
                 if (end) urllen = end - source_mp3->inline_url + 2;
-                if (size-r > urllen)
+                if ((ssize_t)(size-r) > urllen)
                     snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->inline_url+11);
             }
             else if (source_mp3->url)

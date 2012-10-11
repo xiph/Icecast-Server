@@ -182,7 +182,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static void client_send_error0(client_t *client, int status, int plain, char *message)
+static void client_send_error(client_t *client, int status, int plain, const char *message)
 {
     ssize_t ret;
 
@@ -201,24 +201,24 @@ static void client_send_error0(client_t *client, int status, int plain, char *me
     fserve_add_client (client, NULL);
 }
 
-void client_send_400(client_t *client, char *message)
+void client_send_400(client_t *client, const char *message)
 {
-    client_send_error0(client, 400, 0, message);
+    client_send_error(client, 400, 0, message);
 }
 
-void client_send_404(client_t *client, char *message)
+void client_send_404(client_t *client, const char *message)
 {
-    client_send_error0(client, 404, 0, message);
+    client_send_error(client, 404, 0, message);
 }
 
 void client_send_401(client_t *client)
 {
-    client_send_error0(client, 401, 1, "You need to authenticate\r\n");
+    client_send_error(client, 401, 1, "You need to authenticate\r\n");
 }
 
-void client_send_403(client_t *client, const char *reason)
+void client_send_403(client_t *client, const char *message)
 {
-    client_send_error0(client, 403, 1, "Forbidden");
+    client_send_error(client, 403, 1, message);
 }
 
 

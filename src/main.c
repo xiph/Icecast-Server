@@ -394,14 +394,14 @@ static void _ch_root_uid_setup(void)
            return;
        }
 
-       if(gid != -1) {
+       if(gid != (gid_t)-1) {
            if(!setgid(gid))
                fprintf(stdout, "Changed groupid to %i.\n", (int)gid);
            else
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
        }
 
-       if(uid != -1) {
+       if(uid != (uid_t)-1) {
            if(!setuid(uid))
                fprintf(stdout, "Changed userid to %i.\n", (int)uid);
            else

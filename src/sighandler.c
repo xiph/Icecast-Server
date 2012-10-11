@@ -54,6 +54,8 @@ void _sig_ignore(int signo)
 
 void _sig_hup(int signo)
 {
+    INFO1("Caught signal %d, scheduling config re-read...", signo);
+
     global_lock();
     global . schedule_config_reread = 1;
     global_unlock();
