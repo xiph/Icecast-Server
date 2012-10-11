@@ -411,15 +411,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
             /* TODO: This is the backwards-compatibility location */
-            char *mount, *pass;
-            if ((mount = (char *)xmlGetProp(node, XMLSTR("mount"))) != NULL) {
-                pass = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-                /* FIXME: This is a placeholder for per-mount passwords */
-            }
-            else {
-                if (configuration->source_password) xmlFree(configuration->source_password);
-                configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            }
+            WARN0("<source-password> defined outside <authentication>. This is deprecated.");
+            if (configuration->source_password) xmlFree(configuration->source_password);
+            configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("icelogin")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->ice_login = atoi(tmp);
@@ -864,10 +858,8 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
         if (xmlIsBlankNode(node)) continue;
 
         if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
-            char *mount, *pass;
-            if ((mount = (char *)xmlGetProp(node, XMLSTR("mount"))) != NULL) {
-                pass = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-                /* FIXME: This is a placeholder for per-mount passwords */
+            if (xmlGetProp(node, XMLSTR("mount"))) {
+                ERROR0("Mount level source password defined within global <authentication> section.");
             }
             else {
                 if (configuration->source_password)
