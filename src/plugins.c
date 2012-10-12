@@ -132,6 +132,8 @@ static void *plugin_runner(void *arg)
         roarapi_unlock();
 	if ( ret == -1 )
 	    thread_sleep(500000);
+	else
+	    thread_sleep(5000);
         roarapi_lock();
     }
     roarapi_unlock();
