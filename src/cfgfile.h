@@ -9,6 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
+ * Copyright 2012,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __CFGFILE_H__
@@ -109,6 +110,12 @@ typedef struct _listener_t {
     int ssl;
 } listener_t;
 
+typedef struct _plugin_t {
+    struct _plugin_t *next;
+    char *name;
+    char *args;
+} plugin_t;
+
 typedef struct ice_config_tag
 {
     char *config_filename;
@@ -182,6 +189,8 @@ typedef struct ice_config_tag
     int    yp_url_timeout[MAX_YP_DIRECTORIES];
     int    yp_touch_interval[MAX_YP_DIRECTORIES];
     int num_yp_directories;
+
+    plugin_t *plugins;
 } ice_config_t;
 
 typedef struct {

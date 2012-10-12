@@ -89,6 +89,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_plugins(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
 static void create_locks(void) {
     thread_mutex_create(&_locks.relay_lock);
@@ -161,6 +162,19 @@ listener_t *config_clear_listener (listener_t *listener)
         if (listener->bind_address)     xmlFree (listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree (listener->shoutcast_mount);
         free (listener);
+    }
+    return next;
+}
+
+plugin_t *config_clear_plugin (plugin_t *plugin)
+{
+    plugin_t *next = NULL;
+    if (plugin)
+    {
+        next = plugin->next;
+	if (plugin->name) xmlFree (plugin->name);
+	if (plugin->args) xmlFree (plugin->args);
+	free (plugin);
     }
     return next;
 }
@@ -256,6 +270,9 @@ void config_clear(ice_config_t *c)
         i++;
     }
 #endif
+
+    while ((c->plugins = config_clear_plugin (c->plugins)))
+        ;
 
     memset(c, 0, sizeof(ice_config_t));
 }
@@ -434,6 +451,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("listen-socket")) == 0) {
             _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp (node->name, XMLSTR("plugins")) == 0) {
+            _parse_plugins(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->port = atoi(tmp);
@@ -848,6 +867,54 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         listener->next = sc_port;
         configuration->listen_sock_count++;
     }
+}
+
+static void _parse_plugin(xmlDocPtr doc, xmlNodePtr node, plugin_t **plugin)
+{
+    plugin_t *ret = calloc (1, sizeof(plugin_t));
+
+    *plugin = ret;
+
+    if (!ret)
+        return;
+
+    ret->name = (char*)xmlGetProp(node, XMLSTR("name"));
+    if (!ret->name)
+    {
+        free (ret);
+	*plugin = NULL;
+	return;
+    }
+    ret->name = (char*)xmlStrdup (XMLSTR(ret->name));
+
+    ret->args = (char*)xmlGetProp(node, XMLSTR("args"));
+    if (ret->args)
+        ret->args = (char*)xmlStrdup (XMLSTR(ret->args));
+}
+
+static void _parse_plugins(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
+    plugin_t **tail = NULL;
+    plugin_t *next;
+
+    tail = &c->plugins;
+    while (*tail)
+        tail = &(*tail)->next;
+
+    do {
+        if (node == NULL) break;
+        if (xmlIsBlankNode(node)) continue;
+        if (xmlStrcmp (node->name, XMLSTR("plugin")) == 0)
+	{
+	    next = NULL;
+	    _parse_plugin(doc, node, &next);
+	    if (next)
+	    {
+	        *tail = next;
+		tail = &next->next;
+		*tail = NULL;
+	    }
+	}
+    } while ((node = node->next));
 }
 
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,

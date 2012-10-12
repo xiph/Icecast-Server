@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -25,6 +26,7 @@
 #include "slave.h"
 #include "fserve.h"
 #include "stats.h"
+#include "plugins.h"
 
 #define CATMODULE "event"
 
@@ -66,6 +68,7 @@ void event_config_read(void *arg)
         yp_recheck_config (config);
         fserve_recheck_mime_types (config);
         stats_global (config);
+	plugins_load (config);
         config_release_config();
         slave_update_all_mounts();
     }

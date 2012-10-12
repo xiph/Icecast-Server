@@ -67,6 +67,8 @@
 #include "fserve.h"
 #include "yp.h"
 #include "auth.h"
+#include "roarapi.h"
+#include "plugins.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -120,6 +122,8 @@ void initialize_subsystems(void)
 #ifdef HAVE_CURL_GLOBAL_INIT
     curl_global_init (CURL_GLOBAL_ALL);
 #endif
+    roarapi_initialize();
+    plugins_initialize();
 }
 
 void shutdown_subsystems(void)
@@ -130,6 +134,9 @@ void shutdown_subsystems(void)
     auth_shutdown();
     yp_shutdown();
     stats_shutdown();
+
+    plugins_shutdown();
+    roarapi_shutdown();
 
     global_shutdown();
     connection_shutdown();
@@ -513,6 +520,8 @@ int main(int argc, char **argv)
     /* Do this after logging init */
     slave_initialize();
     auth_initialise ();
+
+    plugins_load(NULL);
 
     _server_proc();
 
