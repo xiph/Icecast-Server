@@ -25,7 +25,13 @@
 #include "logging.h"
 
 #ifdef HAVE_ROARAUDIO
+// all vars are protected by roarapi_*lock();
 static struct roar_plugincontainer * container = NULL;
+static int plugins_running = 0;
+
+// not protected by roarapi_*lock()
+static thread_type * plugin_thread;
+static void *plugin_runner(void *arg);
 #endif
 
 void plugins_initialize(void)
@@ -35,13 +41,27 @@ void plugins_initialize(void)
     container = roar_plugincontainer_new_simple(ICECAST_HOST_VERSION_STRING, PACKAGE_VERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
     roarapi_unlock();
+    plugin_thread = thread_create("Plugin Thread", plugin_runner, NULL, 0);
 #endif
 }
+
+#ifdef HAVE_ROARAUDIO
+static inline void plugins_shutdown_plugin_thread(void)
+{
+    if (!plugins_running)
+        return;
+    plugins_running = 0;
+    roarapi_unlock();
+    thread_join(plugin_thread);
+    roarapi_lock();
+}
+#endif
 
 void plugins_shutdown(void)
 {
 #ifdef HAVE_ROARAUDIO
     roarapi_lock();
+    plugins_shutdown_plugin_thread();
     roar_plugincontainer_unref(container);
     container = NULL;
     roarapi_unlock();
@@ -95,3 +115,27 @@ void plugins_load(ice_config_t * config)
     if (need_release)
         config_release_config();
 }
+
+#ifdef HAVE_ROARAUDIO
+static void *plugin_runner(void *arg)
+{
+    int ret;
+    (void)arg;
+
+    roarapi_lock();
+    plugins_running = 1;
+    while (plugins_running)
+    {
+        ret = roar_plugincontainer_appsched_trigger(container, ROAR_DL_APPSCHED_WAIT);
+
+        roar_plugincontainer_appsched_trigger(container, ROAR_DL_APPSCHED_UPDATE);
+        roarapi_unlock();
+	if ( ret == -1 )
+	    thread_sleep(500000);
+        roarapi_lock();
+    }
+    roarapi_unlock();
+
+    return NULL;
+}
+#endif
