@@ -180,6 +180,8 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
                 exit(1);
             }
             background = 1;
+#else
+            FreeConsole();
 #endif
         }
         if (strcmp(argv[i], "-v") == 0) {
