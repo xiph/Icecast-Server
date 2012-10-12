@@ -38,7 +38,7 @@ void plugins_initialize(void)
 {
 #ifdef HAVE_ROARAUDIO
     roarapi_lock();
-    container = roar_plugincontainer_new_simple(ICECAST_HOST_VERSION_STRING, PACKAGE_VERSION);
+    container = roar_plugincontainer_new_simple(ICECAST_HOST_STRING, PACKAGE_VERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
     roarapi_unlock();
     plugin_thread = thread_create("Plugin Thread", plugin_runner, NULL, 0);
@@ -75,7 +75,7 @@ static void plugins_load_one(plugin_t *plugin)
 
     if (plugin->args)
     {
-        para = roar_dl_para_new(plugin->args, NULL, ICECAST_HOST_VERSION_STRING, PACKAGE_VERSION);
+        para = roar_dl_para_new(plugin->args, NULL, ICECAST_HOST_STRING, PACKAGE_VERSION);
 	if (!para)
 	    return;
     }
