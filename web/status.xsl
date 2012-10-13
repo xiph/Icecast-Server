@@ -52,7 +52,7 @@
                         <td align="right">
                             <a href="{@mount}.m3u">M3U</a>
                             <a href="{@mount}.xspf">XSPF</a>
-                            <!-- <a href="{@mount}.vclt">VCLT</a> -->
+                            <a href="{@mount}.vclt">VCLT</a>
                         </td>
                     </xsl:otherwise>
                 </xsl:choose>
