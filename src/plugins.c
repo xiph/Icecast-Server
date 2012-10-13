@@ -28,6 +28,9 @@
 // all vars are protected by roarapi_*lock();
 static struct roar_plugincontainer * container = NULL;
 static int plugins_running = 0;
+static struct roar_scheduler * sched = NULL;
+static struct roar_scheduler_source source_container = {.type = ROAR_SCHEDULER_PLUGINCONTAINER};
+static struct roar_scheduler_source source_timeout = {.type = ROAR_SCHEDULER_TIMEOUT, .handle.timeout = {0, 500000000L}};
 
 // not protected by roarapi_*lock()
 static thread_type * plugin_thread;
@@ -40,6 +43,10 @@ void plugins_initialize(void)
     roarapi_lock();
     container = roar_plugincontainer_new_simple(ICECAST_HOST_STRING, PACKAGE_VERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
+    sched = roar_scheduler_new(ROAR_SCHEDULER_FLAG_DEFAULT, ROAR_SCHEDULER_STRATEGY_DEFAULT);
+    source_container.handle.container = container;
+    roar_scheduler_source_add(sched, &source_container);
+    roar_scheduler_source_add(sched, &source_timeout);
     roarapi_unlock();
     plugin_thread = thread_create("Plugin Thread", plugin_runner, NULL, 0);
 #endif
@@ -63,7 +70,9 @@ void plugins_shutdown(void)
     roarapi_lock();
     plugins_shutdown_plugin_thread();
     roar_plugincontainer_unref(container);
+    roar_scheduler_unref(sched);
     container = NULL;
+    sched = NULL;
     roarapi_unlock();
 #endif
 }
@@ -126,11 +135,10 @@ static void *plugin_runner(void *arg)
     plugins_running = 1;
     while (plugins_running)
     {
-        ret = roar_plugincontainer_appsched_trigger(container, ROAR_DL_APPSCHED_WAIT);
+        ret = roar_scheduler_iterate(sched);
 
-        roar_plugincontainer_appsched_trigger(container, ROAR_DL_APPSCHED_UPDATE);
         roarapi_unlock();
-	if ( ret == -1 )
+	if ( ret < 1 )
 	    thread_sleep(500000);
 	else
 	    thread_sleep(5000);
