@@ -116,6 +116,14 @@ typedef struct _plugin_t {
     char *args;
 } plugin_t;
 
+typedef struct _cpi_t {
+    struct _cpi_t *next;
+    char *protocol;
+    char *host;
+    int port;
+    int autoload;
+} cpi_t;
+
 typedef struct ice_config_tag
 {
     char *config_filename;
@@ -191,6 +199,7 @@ typedef struct ice_config_tag
     int num_yp_directories;
 
     plugin_t *plugins;
+    cpi_t *cpis;
 } ice_config_t;
 
 typedef struct {

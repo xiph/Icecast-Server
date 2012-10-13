@@ -179,6 +179,19 @@ plugin_t *config_clear_plugin (plugin_t *plugin)
     return next;
 }
 
+cpi_t *config_clear_cpi (cpi_t *cpi)
+{
+    cpi_t *next = NULL;
+    if (cpi)
+    {
+        next = cpi->next;
+        if (cpi->protocol) xmlFree (cpi->protocol);
+        if (cpi->host) xmlFree (cpi->host);
+        free (cpi);
+    }
+    return next;
+}
+
 void config_clear(ice_config_t *c)
 {
     ice_config_dir_t *dirnode, *nextdirnode;
@@ -272,6 +285,8 @@ void config_clear(ice_config_t *c)
 #endif
 
     while ((c->plugins = config_clear_plugin (c->plugins)))
+        ;
+    while ((c->cpis = config_clear_cpi (c->cpis)))
         ;
 
     memset(c, 0, sizeof(ice_config_t));
@@ -892,28 +907,86 @@ static void _parse_plugin(xmlDocPtr doc, xmlNodePtr node, plugin_t **plugin)
         ret->args = (char*)xmlStrdup (XMLSTR(ret->args));
 }
 
-static void _parse_plugins(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
-    plugin_t **tail = NULL;
-    plugin_t *next;
+static void _parse_cpi(xmlDocPtr doc, xmlNodePtr node, cpi_t **cpi)
+{
+    cpi_t *ret = calloc (1, sizeof(cpi_t));
+    const char * tmp;
 
-    tail = &c->plugins;
-    while (*tail)
-        tail = &(*tail)->next;
+    *cpi = ret;
+
+    if (!ret)
+        return;
+
+    ret->protocol = (char*)xmlGetProp(node, XMLSTR("protocol"));
+    if (!ret->protocol)
+    {
+        free (ret);
+        *cpi = NULL;
+        return;
+    }
+    ret->protocol = (char*)xmlStrdup (XMLSTR(ret->protocol));
+
+    ret->host = (char*)xmlGetProp(node, XMLSTR("host"));
+    if (!ret->host) {
+        xmlFree (ret->protocol);
+        free (ret);
+        *cpi = NULL;
+        return;
+    }
+    ret->host = (char*)xmlStrdup (XMLSTR(ret->host));
+
+    tmp = (const char*)xmlGetProp(node, XMLSTR("port"));
+    if (tmp)
+        ret->port = atoi (tmp);
+    else
+        ret->port = 12347; // just a random port.
+
+    tmp = (const char*)xmlGetProp(node, XMLSTR("autoload"));
+    if (tmp)
+        ret->autoload = atoi (tmp);
+    else
+        ret->autoload = 0;
+}
+
+static void _parse_plugins(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
+    plugin_t **p_tail = NULL;
+    plugin_t *p_next;
+    cpi_t **c_tail = NULL;
+    cpi_t *c_next;
+
+    p_tail = &c->plugins;
+    while (*p_tail)
+        p_tail = &(*p_tail)->next;
+
+    c_tail = &c->cpis;
+    while (*c_tail)
+        c_tail = &(*c_tail)->next;
 
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
         if (xmlStrcmp (node->name, XMLSTR("plugin")) == 0)
 	{
-	    next = NULL;
-	    _parse_plugin(doc, node, &next);
-	    if (next)
+	    p_next = NULL;
+	    _parse_plugin(doc, node, &p_next);
+	    if (p_next)
 	    {
-	        *tail = next;
-		tail = &next->next;
-		*tail = NULL;
+	        *p_tail = p_next;
+		p_tail = &p_next->next;
+		*p_tail = NULL;
 	    }
 	}
+        else if (xmlStrcmp (node->name, XMLSTR("cpi")) == 0)
+        {
+            c_next = NULL;
+            _parse_cpi(doc, node, &c_next);
+            if (c_next)
+            {
+                *c_tail = c_next;
+                c_tail = &c_next->next;
+                *c_tail = NULL;
+            }
+        }
     } while ((node = node->next));
 }
 
