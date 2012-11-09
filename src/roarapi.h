@@ -14,7 +14,17 @@
 #ifndef __ROARAPI_H__
 #define __ROARAPI_H__
 
+#include "cfgfile.h"
+
+#ifdef HAVE_ROARAUDIO
+
+// Bad workaround on for win32:
+// Both icecast and libroar define socklen_t as borken win* does not provide it.
+#ifndef HAVE_SOCKLEN_T
+#define ROAR_HAVE_T_SOCKLEN_T
+#endif
 #include <roaraudio.h>
+#endif
 
 #define ICECAST_HOST_STRING "Icecast <Xiph Foundation>"
 
