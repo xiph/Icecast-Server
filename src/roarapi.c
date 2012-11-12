@@ -17,17 +17,24 @@
 #endif
 
 #include "thread/thread.h"
+#include "logging.h"
+
+#define CATMODULE "roarapi" 
 
 static mutex_t _roarapi_mutex;
 
 void roarapi_initialize(void)
 {
+    DEBUG0("RoarAPI is being initialized");
     thread_mutex_create(&_roarapi_mutex);
+    DEBUG0("RoarAPI is now initialized");
 }
 
 void roarapi_shutdown(void)
 {
+    DEBUG0("RoarAPI is being shut down");
     thread_mutex_destroy(&_roarapi_mutex);
+    DEBUG0("RoarAPI is now shut down");
 }
 
 void roarapi_lock(void)

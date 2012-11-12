@@ -41,6 +41,7 @@ static void *plugin_runner(void *arg);
 void plugins_initialize(void)
 {
 #ifdef HAVE_ROARAUDIO
+    DEBUG0("Plugin Interface is being initialized");
     roarapi_lock();
     container = roar_plugincontainer_new_simple(ICECAST_HOST_STRING, PACKAGE_VERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
@@ -51,6 +52,7 @@ void plugins_initialize(void)
     roar_scheduler_source_add(sched, &source_timeout);
     roarapi_unlock();
     plugin_thread = thread_create("Plugin Thread", plugin_runner, NULL, 0);
+    DEBUG0("Plugin Interface is now initialized");
 #endif
 }
 
@@ -69,6 +71,7 @@ static inline void plugins_shutdown_plugin_thread(void)
 void plugins_shutdown(void)
 {
 #ifdef HAVE_ROARAUDIO
+    DEBUG0("Plugin Interface is being shut down");
     roarapi_lock();
     plugins_shutdown_plugin_thread();
     roar_plugincontainer_unref(container);
@@ -76,6 +79,7 @@ void plugins_shutdown(void)
     container = NULL;
     sched = NULL;
     roarapi_unlock();
+    DEBUG0("Plugin Interface is now shut down");
 #endif
 }
 
