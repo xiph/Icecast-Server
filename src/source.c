@@ -1359,13 +1359,13 @@ static void *source_fallback_file (void *arg)
     {
         if (mount == NULL || mount[0] != '/')
             break;
-        config = config_get_config();
+        config = config_get_config ();
         len  = strlen (config->webroot_dir) + strlen (mount) + 1;
         path = malloc (len);
         if (path)
             snprintf (path, len, "%s%s", config->webroot_dir, mount);
-        
         config_release_config ();
+
         if (path == NULL)
             break;
 

@@ -1259,7 +1259,6 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
     else {
         free (server);
     }
-    
 }
 
 

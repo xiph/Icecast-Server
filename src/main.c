@@ -436,7 +436,7 @@ int main(int argc, char **argv)
     */
     res = _parse_config_opts(argc, argv, filename, 512);
     if (res == 1) {
-#if !defined(_WIN32) || defined(_CONSOLE)
+#if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
         initialize_subsystems();
 #endif
@@ -463,7 +463,7 @@ int main(int argc, char **argv)
                 _fatal_error("XML config parsing error");
                 break;
             }
-#if !defined(_WIN32) || defined(_CONSOLE)
+#if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
             shutdown_subsystems();
 #endif
             return 1;
@@ -528,7 +528,7 @@ int main(int argc, char **argv)
     _server_proc();
 
     INFO0("Shutting down");
-#if !defined(_WIN32) || defined(_CONSOLE)
+#if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
     shutdown_subsystems();
 #endif
     if (pidfile)
