@@ -280,7 +280,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 	                             0, 200, NULL,
 				     "text/xml", NULL,
 				     NULL);
-	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", len, buff);
+	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
 
         client->refbuf->len = len;
         xmlFree(buff);
