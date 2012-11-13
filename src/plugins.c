@@ -16,8 +16,6 @@
 #include <config.h>
 #endif
 
-#include <signal.h>
-
 #include "thread/thread.h"
 #include "roarapi.h"
 #include "plugins.h"
@@ -220,25 +218,22 @@ static void *plugin_runner(void *arg)
 
 // plugin API:
 // pcall = plugin call (think of syscalls ;)
-static int __pcall_send_sig(int sig) {
- int ret;
+static int _pcall_exit(int err) {
+ (void)err;
 
- roar_err_clear_all();
- ret = kill(getpid(), sig);
- roar_err_update();
+ global_lock();
+ global.running = ICE_HALTING;
+ global_unlock();
 
- if ( ret != 0 )
-  return -1;
  return 0;
 }
 
-static int _pcall_exit(int err) {
- (void)err;
- return __pcall_send_sig(SIGTERM);
-}
-
 static int _pcall_config_queue_reload(void) {
- return __pcall_send_sig(SIGHUP);
+ global_lock();
+ global.schedule_config_reread = 1;
+ global_unlock();
+
+ return 0;
 }
 
 static const struct {
