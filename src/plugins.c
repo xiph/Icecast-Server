@@ -16,6 +16,8 @@
 #include <config.h>
 #endif
 
+#include <signal.h>
+
 #include "thread/thread.h"
 #include "roarapi.h"
 #include "plugins.h"
@@ -36,6 +38,7 @@ static struct roar_scheduler_source source_timeout = {.type = ROAR_SCHEDULER_TIM
 // not protected by roarapi_*lock()
 static thread_type * plugin_thread;
 static void *plugin_runner(void *arg);
+static icecastph_func_t plugin_getter(const char * func);
 #endif
 
 void plugins_initialize(void)
@@ -88,7 +91,7 @@ static void plugins_load_one(plugin_t *plugin)
 #ifdef HAVE_ROARAUDIO
     struct roar_dl_librarypara * para = NULL;
 
-    para = roar_dl_para_new(plugin->args, NULL, ICECASTPH_APPNAME, ICECASTPH_ABIVERSION);
+    para = roar_dl_para_new(plugin->args, plugin_getter, ICECASTPH_APPNAME, ICECASTPH_ABIVERSION);
     if (!para)
         return;
 
@@ -212,6 +215,57 @@ static void *plugin_runner(void *arg)
     }
     roarapi_unlock();
 
+    return NULL;
+}
+
+// plugin API:
+// pcall = plugin call (think of syscalls ;)
+static int __pcall_send_sig(int sig) {
+ int ret;
+
+ roar_err_clear_all();
+ ret = kill(getpid(), sig);
+ roar_err_update();
+
+ if ( ret != 0 )
+  return -1;
+ return 0;
+}
+
+static int _pcall_exit(int err) {
+ (void)err;
+ return __pcall_send_sig(SIGTERM);
+}
+
+static int _pcall_config_queue_reload(void) {
+ return __pcall_send_sig(SIGHUP);
+}
+
+static const struct {
+ const char * name;
+ icecastph_func_t func;
+} __pcalls[] = {
+ {"exit", _pcall_exit},
+ {"config_queue_reload", _pcall_config_queue_reload}
+};
+
+static icecastph_func_t plugin_getter(const char * func)
+{
+    size_t i;
+
+    if (!func)
+    {
+        roar_err_set(ROAR_ERROR_FAULT);
+	return NULL;
+    }
+
+    for (i = 0; i < (sizeof(__pcalls)/sizeof(*__pcalls)); i++)
+    {
+        if (!strcmp(func, __pcalls[i].name))
+	    return __pcalls[i].func;
+    }
+
+    roar_err_set(ROAR_ERROR_NOSYS);
     return NULL;
 }
 #endif
