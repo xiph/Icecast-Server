@@ -14,4 +14,12 @@
 
 #define ICECASTPH_CHECK_VERSIONS() ROAR_DL_PLUGIN_CHECK_VERSIONS(ICECASTPH_APPNAME, ICECASTPH_ABIVERSION)
 
+typedef int (*icecastph_func_t)();
+typedef icecastph_func_t(*icecastph_getter_t)(const char * abiversion, const char * func);
+
+#define __icecastph_export_func(func)     (((icecastph_getter_t)para->binargv)->(ICECASTPH_ABIVERSION, #func))
+#define __icecastph_export0(prefix,func)         __icecastph_export_func(prefix,func)()
+#define __icecastph_export1(prefix,func,arg)     __icecastph_export_func(prefix,func)(arg)
+#define __icecastph_exportn(prefix,func,arg,...) __icecastph_export_func(prefix,func)(arg, __VA_ARGS__)
+
 #endif  /* __ICECASTPLUGIN_H__ */

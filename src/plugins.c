@@ -99,12 +99,14 @@ static void plugins_load_one(plugin_t *plugin)
 #endif
 }
 
-static void to_lower(char * p)
+#ifdef HAVE_ROARAUDIO
+static inline void to_lower(char * p)
 {
     for (; *p; p++)
         if ( *p >= 'A' && *p <= 'Z' )
 	    *p += 'a' - 'A';
 }
+#endif
 
 static void plugins_load_cpi(cpi_t *cpi)
 {
