@@ -15,6 +15,7 @@
 #define __PLUGINS_H__
 
 #include "cfgfile.h"
+#include "icecastplugin.h"
 
 void plugins_initialize(void);
 void plugins_shutdown(void);

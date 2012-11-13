@@ -43,7 +43,7 @@ void plugins_initialize(void)
 #ifdef HAVE_ROARAUDIO
     DEBUG0("Plugin Interface is being initialized");
     roarapi_lock();
-    container = roar_plugincontainer_new_simple(ICECAST_HOST_STRING, PACKAGE_VERSION);
+    container = roar_plugincontainer_new_simple(ICECASTPH_APPNAME, ICECASTPH_ABIVERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
     sched = roar_scheduler_new(ROAR_SCHEDULER_FLAG_DEFAULT, ROAR_SCHEDULER_STRATEGY_DEFAULT);
     source_container.handle.container = container;
@@ -88,7 +88,7 @@ static void plugins_load_one(plugin_t *plugin)
 #ifdef HAVE_ROARAUDIO
     struct roar_dl_librarypara * para = NULL;
 
-    para = roar_dl_para_new(plugin->args, NULL, ICECAST_HOST_STRING, PACKAGE_VERSION);
+    para = roar_dl_para_new(plugin->args, NULL, ICECASTPH_APPNAME, ICECASTPH_ABIVERSION);
     if (!para)
         return;
 

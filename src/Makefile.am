@@ -6,6 +6,8 @@ SUBDIRS = avl thread httpp net log timing
 
 bin_PROGRAMS = icecast
 
+include_HEADERS = icecastplugin.h
+
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h event.h md5.h \

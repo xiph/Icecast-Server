@@ -26,8 +26,6 @@
 #include <roaraudio.h>
 #endif
 
-#define ICECAST_HOST_STRING "Icecast <Xiph Foundation>"
-
 void roarapi_initialize(void);
 void roarapi_shutdown(void);
 void roarapi_lock(void);
