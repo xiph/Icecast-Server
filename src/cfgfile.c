@@ -698,6 +698,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         current = current->next;
     }
 
+    if (!mount->fallback_mount && (mount->fallback_when_full || mount->fallback_override))
+    {
+        WARN1("Config for mount %s contains fallback options but no fallback mount.", mount->mountname);
+    }
+
     if(last)
         last->next = mount;
     else
