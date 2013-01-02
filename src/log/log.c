@@ -588,7 +588,7 @@ void log_write_direct(int log_id, const char *fmt, ...)
     now = time(NULL);
 
     _lock_logger();
-    vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
+    __vsnprintf(line, LOG_MAXLINELEN, fmt, ap);
     if (_log_open (log_id))
     {
         int len = create_log_entry (log_id, "", line);
