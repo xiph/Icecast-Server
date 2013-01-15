@@ -159,7 +159,7 @@ void logging_access(client_t *client)
         user_agent = "-";
 
     log_write_direct (accesslog,
-            "%s - %s [%s] \"%s\" %d %" PRIu64 " \"%s\" \"%s\" %lu",
+            "%s - %H [%s] \"%H\" %d %" PRIu64 " \"%H\" \"%H\" %lu",
             client->con->ip,
             username,
             datebuf,
