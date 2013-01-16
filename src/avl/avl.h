@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#define AVL_KEY_PRINTER_BUFLEN (256)
+
 #ifndef NO_THREAD
 #include "thread/thread.h"
 #else

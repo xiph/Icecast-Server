@@ -1074,7 +1074,7 @@ static char balance_chars[3] = {'\\', '-', '/'};
 static int
 default_key_printer (char * buffer, void * key)
 {
-  return sprintf (buffer, "%p", key);
+  return snprintf (buffer, AVL_KEY_PRINTER_BUFLEN, "%p", key);
 }  
 
 /*
@@ -1116,7 +1116,7 @@ print_node (avl_key_printer_fun_type key_printer,
         avl_node * node,
         link_node * link)
 {
-  char buffer[256];
+  char buffer[AVL_KEY_PRINTER_BUFLEN];
   unsigned int width;
   width = key_printer (buffer, node->key);
 
