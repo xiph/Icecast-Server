@@ -39,6 +39,7 @@
 
 #include "compat.h"
 
+#include <libxml/uri.h>
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "net/sock.h"
@@ -666,18 +667,37 @@ static int update_from_master(ice_config_t *config)
             if (!strlen(buf))
                 continue;
             DEBUG2 ("read %d from master \"%s\"", count++, buf);
+            xmlURIPtr parsed_uri = xmlParseURI(buf);
+            if (parsed_uri == NULL) {
+                DEBUG0("Error while parsing line from master. Ignoring line.");
+                continue;
+            }
             r = calloc (1, sizeof (relay_server));
             if (r)
             {
-                r->server = (char *)xmlCharStrdup (master);
-                r->port = port;
-                r->mount = (char *)xmlCharStrdup (buf);
-                r->localmount = (char *)xmlCharStrdup (buf);
+                if (parsed_uri->server != NULL)
+                {
+                  r->server = strdup(parsed_uri->server);
+                  if (parsed_uri->port == 0)
+                    r->port = 80;
+                  else
+                    r->port = parsed_uri->port;
+                }
+                else
+                {
+                  r->server = (char *)xmlCharStrdup (master);
+                  r->port = port;
+                }
+
+                r->mount = strdup(parsed_uri->path);
+                r->localmount = strdup(parsed_uri->path);
                 r->mp3metadata = 1;
                 r->on_demand = on_demand;
                 r->next = new_relays;
+                DEBUG3 ("Added relay host=\"%s\", port=%d, mount=\"%s\"", r->server, r->port, r->mount);
                 new_relays = r;
             }
+            xmlFreeURI(parsed_uri);
         }
         sock_close (mastersock);
 

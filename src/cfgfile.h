@@ -98,7 +98,7 @@ typedef struct _aliases {
     int port;
     char *bind_address;
     struct _aliases *next;
-}aliases;
+} aliases;
 
 typedef struct _listener_t {
     struct _listener_t *next;

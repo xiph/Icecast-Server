@@ -313,13 +313,11 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
     node = xmlDocGetRootElement(doc);
     if (node == NULL) {
         xmlFreeDoc(doc);
-        xmlCleanupParser();
         return CONFIG_ENOROOT;
     }
 
     if (xmlStrcmp (node->name, XMLSTR("icecast")) != 0) {
         xmlFreeDoc(doc);
-        xmlCleanupParser();
         return CONFIG_EBADROOT;
     }
 
