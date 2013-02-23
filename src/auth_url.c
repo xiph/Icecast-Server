@@ -189,13 +189,22 @@ static auth_result url_remove_listener (auth_client *auth_user)
     ice_config_t *config;
     int port;
     char *userpwd = NULL, post [4096];
+    const char *agent;
+    char *user_agent, *ipaddr;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
+
     config = config_get_config ();
     server = util_url_escape (config->hostname);
     port = config->port;
     config_release_config ();
+
+    agent = httpp_getvar (client->parser, "user-agent");
+    if (agent)
+        user_agent = util_url_escape (agent);
+    else
+        user_agent = strdup ("-");
 
     if (client->username)
         username = util_url_escape (client->username);
@@ -212,16 +221,19 @@ static auth_result url_remove_listener (auth_client *auth_user)
     if (mountreq == NULL)
         mountreq = httpp_getvar (client->parser, HTTPP_VAR_URI);
     mount = util_url_escape (mountreq);
+    ipaddr = util_url_escape (client->con->ip);
 
     snprintf (post, sizeof (post),
             "action=listener_remove&server=%s&port=%d&client=%lu&mount=%s"
-            "&user=%s&pass=%s&duration=%lu",
+            "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
             server, port, client->con->id, mount, username,
-            password, (long unsigned)duration);
+            password, (long unsigned)duration, ipaddr, user_agent);
     free (server);
     free (mount);
     free (username);
     free (password);
+    free (ipaddr);
+    free (user_agent);
 
     if (strchr (url->removeurl, '@') == NULL)
     {
@@ -232,7 +244,7 @@ static auth_result url_remove_listener (auth_client *auth_user)
             /* auth'd requests may not have a user/pass, but may use query args */
             if (client->username && client->password)
             {
-                int len = strlen (client->username) + strlen (client->password) + 2;
+                size_t len = strlen (client->username) + strlen (client->password) + 2;
                 userpwd = malloc (len);
                 snprintf (userpwd, len, "%s:%s", client->username, client->password);
                 curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
@@ -283,16 +295,20 @@ static auth_result url_add_listener (auth_client *auth_user)
     server = util_url_escape (config->hostname);
     port = config->port;
     config_release_config ();
+
     agent = httpp_getvar (client->parser, "user-agent");
-    if (agent == NULL)
-        agent = "-";
-    user_agent = util_url_escape (agent);
+    if (agent)
+        user_agent = util_url_escape (agent);
+    else
+        user_agent = strdup ("-");
+
     if (client->username)
-        username  = util_url_escape (client->username);
+        username = util_url_escape (client->username);
     else
         username = strdup ("");
+
     if (client->password)
-        password  = util_url_escape (client->password);
+        password = util_url_escape (client->password);
     else
         password = strdup ("");
 
@@ -353,7 +369,7 @@ static auth_result url_add_listener (auth_client *auth_user)
             /* auth'd requests may not have a user/pass, but may use query args */
             if (client->username && client->password)
             {
-                int len = strlen (client->username) + strlen (client->password) + 2;
+                size_t len = strlen (client->username) + strlen (client->password) + 2;
                 userpwd = malloc (len);
                 snprintf (userpwd, len, "%s:%s", client->username, client->password);
                 curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
