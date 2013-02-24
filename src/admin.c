@@ -1031,7 +1031,7 @@ static void command_list_mounts(client_t *client, int response)
     {
         util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
 	                       0, 200, NULL,
-			       "text/html", NULL,
+			       "text/plain", NULL,
 			       "");
         client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
