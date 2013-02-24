@@ -125,7 +125,7 @@ unless the auth server sends back a response header which may be stated in the '
 </p>
 <p>POST details are</p>
 <pre>
-    action=listener_add&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;ip=127.0.0.1&amp;agent="My%20player"
+    action=listener_add&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;ip=127.0.0.1&amp;agent=My%20player
 </pre>
 <p>There are more details with this, client is the unique ID for the client within icecast,
 user and pass may be blank but come from the HTTP basic auth that the listener states, ip
@@ -138,7 +138,7 @@ note that each option data is escaped before being passed via POST
 <p>This URL is for when a listener connection closes.</p>
 <p>POST details are</p>
 <pre>
-    action=listener_remove&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;duration=3600
+    action=listener_remove&amp;server=myserver.com&amp;port=8000&amp;client=1&amp;mount=/live&amp;user=&amp;pass=&amp;duration=3600&amp;ip=127.0.0.1&amp;agent=My%20player
 </pre>
 <p>Again this is similar to the add option, the difference being that a duration is passed
 reflecting the number of seconds the listener was connected for </p>
