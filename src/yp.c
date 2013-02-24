@@ -109,33 +109,34 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     unsigned bytes = size * nmemb;
 
     /* DEBUG2 ("header from YP is \"%.*s\"", bytes, ptr); */
-    if (strncmp (ptr, "YPResponse: 1", 13) == 0)
+    if (strncasecmp (ptr, "YPResponse: 1", 13) == 0)
         yp->cmd_ok = 1;
 
-    if (strncmp (ptr, "YPMessage: ", 11) == 0)
+    if (strncasecmp (ptr, "YPMessage: ", 11) == 0)
     {
         unsigned len = bytes - 11;
         free (yp->error_msg);
         yp->error_msg = calloc (1, len);
         if (yp->error_msg)
-            sscanf (ptr, "YPMessage: %[^\r\n]", yp->error_msg);
+            sscanf (ptr + 11, "%[^\r\n]", yp->error_msg);
     }
 
     if (yp->process == do_yp_add)
     {
-        if (strncmp (ptr, "SID: ", 5) == 0)
+        if (strncasecmp (ptr, "SID: ", 5) == 0)
         {
             unsigned len = bytes - 5;
             free (yp->sid);
             yp->sid = calloc (1, len);
             if (yp->sid)
-                sscanf (ptr, "SID: %[^\r\n]", yp->sid);
+                sscanf (ptr + 5, "%[^\r\n]", yp->sid);
         }
     }
-    if (strncmp (ptr, "TouchFreq: ", 11) == 0)
+    if (strncasecmp (ptr, "TouchFreq: ", 11) == 0)
     {
         unsigned secs;
-        sscanf (ptr, "TouchFreq: %u", &secs);
+        if ( sscanf (ptr + 11, "%u", &secs) != 1 )
+            secs = 0;
         if (secs < 30)
             secs = 30;
         DEBUG1 ("server touch interval is %u", secs);
