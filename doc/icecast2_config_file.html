@@ -434,9 +434,8 @@ The source of the relay may require authentication itself, if so state the passw
         &lt;hidden&gt;1&lt;/hidden&gt;
         &lt;burst-size&gt;65536&lt;/burst-size&gt;
         &lt;mp3-metadata-interval&gt;4096&lt;/mp3-metadata-interval&gt;
-        &lt;authentication type="htpasswd"&gt;
-                &lt;option name="filename" value="myauth"/&gt;
-                &lt;option name="allow_duplicate_users" value="0"/&gt;
+        &lt;authentication type="xxxxxx"&gt;
+                &lt;!-- See listener authentiaction documentation --&gt;
         &lt;/authentication&gt;
         &lt;on-connect&gt;/home/icecast/bin/source-start&lt;/on-connect&gt;
         &lt;on-disconnect&gt;/home/icecast/bin/source-end&lt;/on-disconnect&gt;
@@ -464,7 +463,8 @@ Do not set this value unless you are sure that the source clients connecting to 
 </div>
 <h4>password</h4>
 <div class="indentedbox">
-An optional value which will set the password that a source must use to connect using this mountpoint.
+An optional value which will set the password that a source must use to connect using this mountpoint.<br />
+There is also a <a href="icecast2_listenerauth.html#stream_auth">URL based authentication method</a> for sources that can be used instead.
 </div>
 <h4>max-listeners</h4>
 <div class="indentedbox">
@@ -618,7 +618,7 @@ relay to be shown
 </div>
 <h4>authentication</h4>
 <div class="indentedbox">
-This specifies that the named mount point will require listener authentication.  Currently, we only support a file-based authentication scheme (type=htpasswd).  Users and encrypted password are placed in this file (separated by a :) and all requests for this mountpoint will require that a user and password be supplied for authentication purposes.  These values are passed in via normal HTTP Basic Authentication means (i.e. http://user:password@stream:port/mountpoint.ogg).  Users and Passwords are maintained via the web admin interface.  A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication <a href="icecast2_listenerauth.html">here</a>.
+This specifies that the named mount point will require listener (or source) authentication.  Currently, we support a file-based authentication scheme (type=htpasswd) and URL based authentication request forwarding. A mountpoint configured with an authenticator will display a red key next to the mount point name on the admin screens.  You can read more about listener authentication and URL based source authentication <a href="icecast2_listenerauth.html">here</a>.
 </div>
 <h4>on-connect</h4>
 <div class="indentedbox">

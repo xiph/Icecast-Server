@@ -95,6 +95,7 @@ config file.  The following shows the list of options available :</p>
             &lt;option name="timelimit_header" value="icecast-auth-timelimit:"/&gt;
             &lt;option name="headers"          value="x-pragma,x-token"/&gt;
             &lt;option name="header_prefix"    value="ClientHeader."/&gt;
+            &lt;option name="stream_auth" value="http://myauthserver.com/source.php"/&gt;
         &lt;/authentication&gt;
     &lt;/mount&gt;
 </pre>
@@ -142,6 +143,22 @@ note that each option data is escaped before being passed via POST
 </pre>
 <p>Again this is similar to the add option, the difference being that a duration is passed
 reflecting the number of seconds the listener was connected for </p>
+<div id="stream_auth" >
+<h3>stream_auth</h3>
+<p>Technically this does not belong to listener authentication, but due to its similarity
+it is explained here too. When a source connects, before anything is sent back to them, 
+this request is processed.  The default action is to reject a source unless the auth server
+sends back a response header which may be stated in the 'header' option
+</p>
+<p>POST details are</p>
+<pre>
+    action=stream_auth&amp;mount=/stream.ogg&amp;ip=192.0.2.0&amp;server=icecast.example.org&amp;port=8000&amp;user=source&amp;pass=password&amp;admin=1
+</pre>
+<p>The request contains: the mountpoint, the IP from which the source client is connecting,
+the hostname of the icecast server the client tries to connect to,
+the port of said server and finally username and password as sent by the source client. 
+As admin requests can come in for a stream (eg metadata update) these requests can be 
+issued while stream is active. For these &amp;admin=1 is added to the POST details.</p></div>
 <h3>auth_header</h3>
 <p>The expected response header to be returned that allows the authencation to take
 place may be specified here. The default is 
@@ -154,7 +171,7 @@ figure (which represents seconds) then that is how long the client will remain c
 </p>
 <h3>headers</h3>
 <p>This is a list of HTTP headers provided by the client which should be passed to the authencation service.
-Those headers are prepended by the value of header_prefix and send as post parameters.
+Those headers are prepended by the value of header_prefix and sent as post parameters.
 </p>
 <h3>header_prefix</h3>
 <p>This is the prefix used for passing client headers. See headers for details.
