@@ -1344,7 +1344,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                if (parser->req_type == httpp_req_source) {
+                if (parser->req_type == httpp_req_source || parser->req_type == httpp_req_put) {
                     _handle_source_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_stats) {
