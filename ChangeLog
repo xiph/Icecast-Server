@@ -1,3 +1,367 @@
+2013-03-30 07:09:14  dm8tbr
+
+	* trunk/icecast/doc/icecast2_config_file.html:
+	Adding "A word of warning" to Icecast config file documentation.
+
+2013-03-29 15:07:33  dm8tbr
+
+	* trunk/icecast/src/connection.c:
+	Highly experimental HTTP PUT support. ref #1812
+	We are handling it the same as we would handle a SOURCE request.
+	Due to legacy code, sender MUST send proper content-type header,
+	if content type is not audio/mpeg!
+	Can be tested using real-time encoded output and piping it into
+	 
+	| curl -u username:password -H "Content-type: application/ogg" -T - \
+	http://localhost:8000/mountname.ogg
+	 
+	Note that this example has ZERO timing, so a simple 'cat *.ogg' will
+	fail.
+	Whatever feeds the pipe must do it at proper timing for real-time
+	playback!
+
+2013-03-29 14:41:24  dm8tbr
+
+	* trunk/icecast/src/logging.c:
+	Backing out part of r18755 touching this file.
+	fixes #1942
+	
+2013-03-09 15:23:48  dm8tbr
+
+	* trunk/icecast/doc/icecast2_basicsetup.html:
+	Added note about distribution packaging of Icecast, fixing #1249.
+
+2013-02-24 20:12:42  dm8tbr
+
+	* trunk/icecast/doc/icecast2_listenerauth.html:
+	Fixing a small bit in the example that got copied.
+
+2013-02-24 16:19:53  dm8tbr
+
+	* trunk/icecast/doc/icecast2_config_file.html:
+	* trunk/icecast/doc/icecast2_listenerauth.html:
+	Icecast documentation update for stream_auth.
+
+2013-02-24 14:25:37  ph3-der-loewe
+
+	* trunk/icecast/src/admin.c:
+	corrected mime type of plain text mount point list, 
+	thanks to cato
+
+2013-02-24 02:04:43  ph3-der-loewe
+
+	* trunk/icecast/src/format_mp3.c:
+	* trunk/icecast/src/util.c:
+	send Expires:-headers on all cache=0 requests, close #1870
+
+2013-02-24 00:53:09  ph3-der-loewe
+
+	* trunk/icecast/src/yp.c:
+	handle yp headers case insensetive, close #1873
+
+2013-02-24 00:41:15  ph3-der-loewe
+
+	* trunk/icecast/doc/icecast2_config_file.html:
+	add info abot usage of strftime(3), see #1823
+
+2013-02-24 00:17:45  ph3-der-loewe
+
+	* trunk/icecast/doc/icecast2_listenerauth.html:
+	updated docs, added additional POST data, see #1422
+
+2013-02-23 20:55:58  ph3-der-loewe
+
+	* trunk/icecast/src/slave.c:
+	Allow full URLs to be returned by the master server. close #1878
+
+2013-02-23 17:51:16  ph3-der-loewe
+
+	* trunk/icecast/src/auth_url.c:
+	Updated listener_remove handler:
+	 - added ip= and agent=,
+	 - Some cleanup && made code more uniform,
+	 - avoid int for size_t vars.
+	actions: close #1422
+
+2013-02-23 17:05:54  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c:
+	format fix
+
+2013-02-23 16:38:23  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c:
+	do not call xmlCleanupParser() too often, close #1931
+
+2013-01-16 12:03:03  ph3-der-loewe
+
+	* trunk/icecast/src/shout.c:
+	* trunk/icecast/src/util.c:
+	Replaced usage of sprintf() with snprintf().
+
+2013-01-16 12:02:14  ph3-der-loewe
+
+	* trunk/icecast/src/avl/avl.c:
+	* trunk/icecast/src/avl/avl.h:
+	Replaced usage of sprintf() with snprintf(). Also exported size of key
+	printer's buffer in avl/.
+	
+2013-01-02 14:44:43  ph3-der-loewe
+
+	* trunk/icecast/src/log/log.c:
+	* trunk/icecast/src/log/log.h:
+	Escape log entries in access log (close: #1916)
+
+2013-01-02 14:44:08  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c:
+	* trunk/icecast/src/logging.c:
+	Escape log entries in access log (close: #1916)
+
+2012-11-13 14:40:48  ph3-der-loewe
+
+	* trunk/icecast/src/admin.c:
+	corrected Content-Length: header in admin (raw) requests. Thanks to
+	paluh for reporting.
+
+2012-11-13 11:25:46  ph3-der-loewe
+
+	* trunk/icecast/src/sighandler.h:
+	cleanup unused var schedule_config_reread.
+
+2012-11-12 21:01:57  ph3-der-loewe
+
+	* trunk/icecast/src/main.c:
+	correction for win32 build to avoid segfault if build with mingw.
+
+2012-10-14 23:50:15  ph3-der-loewe
+
+	* trunk/icecast/src/source.c:
+	corrected coding style
+
+2012-10-14 21:36:10  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c:
+	removed useless blank line
+
+2012-10-12 14:41:12  ph3-der-loewe
+
+	* trunk/icecast/:
+	removed \r at end of lines
+	
+2012-10-11 22:54:53  ph3-der-loewe
+
+	* trunk/icecast/src/auth_url.c:
+	* trunk/icecast/src/cfgfile.c:
+	* trunk/icecast/src/client.c:
+	* trunk/icecast/src/client.h:
+	* trunk/icecast/src/format_mp3.c:
+	* trunk/icecast/src/logging.c:
+	* trunk/icecast/src/main.c:
+	* trunk/icecast/src/sighandler.c:
+	* trunk/icecast/src/util.c:
+	updated copyright notices.
+
+2012-10-11 22:49:57  ph3-der-loewe
+
+	* trunk/icecast/src/client.c:
+	* trunk/icecast/src/client.h:
+	* trunk/icecast/src/format_mp3.c:
+	* trunk/icecast/src/main.c:
+	* trunk/icecast/src/sighandler.c:
+	avoid compiler warnings; 
+	send /message/ in case of 403.
+
+2012-10-11 22:28:40  ph3-der-loewe
+
+	* trunk/icecast/src/cfgfile.c:
+	cleanup of <source-password> parser code
+
+2012-10-11 18:06:30  ph3-der-loewe
+
+	* trunk/icecast/conf/icecast.xml.in
+	* trunk/icecast/doc/icecast2_listenerauth.html
+	* trunk/icecast/src/auth_url.c:
+	Added options "headers" and "header_prefix" to URL based listener
+	auth.
+	Someone should update the docs/ text to good english.
+	
+2012-10-11 00:26:38  ph3-der-loewe
+
+	* trunk/icecast/configure.in:
+	* trunk/icecast/src/main.c:
+	Fix win32 patches (r18642) so it builds corectly on non-win32 again.
+
+2012-10-10 23:34:54  ph3-der-loewe
+
+	* trunk/icecast/src/xslt.c:
+	use correct prototype.
+
+2012-10-10 23:15:05  ph3-der-loewe
+
+	* trunk/icecast/src/client.c:
+	Improved handling of HTTP client errors:
+	 - Make the internal API more uniform,
+	 - Improved error pages slightly (See: #1889).
+
+2012-10-10 22:48:15  ph3-der-loewe
+
+	* trunk/icecast/src/connection.c:
+	* trunk/icecast/src/fserve.c:
+	Make some more vars local (static).
+
+2012-10-10 22:41:30  ph3-der-loewe
+
+	* trunk/icecast/configure.in:
+	* trunk/icecast/src/logging.c:
+	* trunk/icecast/src/main.c:
+	* trunk/icecast/src/util.c:
+	fixes for win32 (ported 2.3.99.0 patches). 
+	Thanks to LRN (from mailing list).
+
+2012-07-31 23:09:42  ph3-der-loewe
+
+	* trunk/icecast/src/log/log.c:
+	Corrected check for the value of priority to be within
+	valid range.
+
+2012-07-18 01:40:55  ph3-der-loewe
+
+	* trunk/icecast/src/format.c:
+	remove unused variable "ice_config_t *config" from
+	format_prepare_headers()
+
+2012-07-17 23:55:09  ph3-der-loewe
+
+	* trunk/icecast/src/admin.c:
+	* trunk/icecast/src/client.c:
+	* trunk/icecast/src/format.c:
+	* trunk/icecast/src/fserve.c:
+	* trunk/icecast/src/util.c:
+	* trunk/icecast/src/util.h:
+	* trunk/icecast/src/xslt.c:
+	Send proper HTTP headers in responses to clients.
+	This is currently not implemented for SOURCE and STATS clients as
+	I suspect to break them. This needs some more research.
+	close #1639, see #1870 and #1885.
+	
+2012-07-17 21:35:31  dm8tbr
+
+	* tags/icecast/icecast-2.4-beta:
+	Release of Icecast 2.4 beta1 (2.3.99.0)
+	
+2012-07-17 21:24:45  dm8tbr
+
+	* trunk/icecast/src/source.c:
+	Adding limits.h to fix build problems on e.g. newer glibc.
+
+2012-07-17 20:46:06  dm8tbr
+
+	* trunk/icecast/NEWS:
+	* trunk/icecast/configure.in:
+	Updated NEWS for Icecast 2.3.3 and 2.4-beta.
+	Changed version to report as 2.3.99.0 for 2.4-beta release
+	
+2012-07-17 14:42:16  ph3-der-loewe
+
+	* trunk/icecast/src/source.c:
+	Allow (standard strftime(3)) %x codes in mount's <dump-file> to embedd
+	timestamps in filenames. This currently only works on non windows.
+	closes #1823
+
+2012-07-17 14:03:37  ph3-der-loewe
+
+	* trunk/icecast/src/connection.c:
+	* trunk/icecast/src/sighandler.c:
+	* trunk/icecast/src/slave.c:
+	* trunk/icecast/src/source.c:
+	* trunk/icecast/src/source.h:
+	* trunk/icecast/src/stats.c:
+	race condition patch as submitted by lds and remi, slightly modified
+	by me. closes #1810
+
+2012-07-16 16:05:21  ph3-der-loewe
+
+	* trunk/icecast/httpp/httpp.c:
+	* trunk/icecast/httpp/httpp.h:
+	commited support for HTTP PUT, See #1812
+
+2012-06-13 21:11:07  giles
+
+	* trunk/icecast/AUTHORS:
+	* trunk/icecast/NEWS:
+	* trunk/icecast/src/Makefile.am:
+	* trunk/icecast/src/format_ogg.c:
+	* trunk/icecast/src/format_opus.c:
+	* trunk/icecast/src/format_opus.h:
+	Add WebM support.
+	This is David Richard's webm support patch from the icecast-webm
+	branch.
+	Mention Opus and WebM support in NEWS.
+
+2012-06-13 19:56:58  dm8tbr
+
+	* trunk/icecast/:
+	Removed outdated debian packaging, not used by downstream anyway.
+
+2012-06-11 20:06:32  dm8tbr
+
+	* trunk/icecast/configure.in:
+	Reset version string to 'trunk'.
+
+2012-06-11 16:43:54  dm8tbr
+
+	* tags/icecast_2_3_3:
+	Icecast release, version 2.3.3
+	
+
+2012-06-10 20:09:59  dm8tbr
+
+	* trunk/icecast/doc/icecast2_win32.html:
+	* trunk/icecast/doc/index_win32.html:
+	Added note about missing IPv6 support on Win32. cf. #1877
+
+2012-06-10 13:06:03  dm8tbr
+
+	* trunk/icecast/configure.in:
+	set 2.3.3 version in preparation for release
+
+2012-06-10 12:35:47  dm8tbr
+
+	* trunk/icecast/web/status.xsl:
+	Hide VCLT from status.xsl for now as agreed earlier.
+	VCLT support remains unchanged for users that want to use it.
+	Just use the URL: {@mount}.vclt
+	
+2012-06-07 18:27:58  ph3-der-loewe
+
+	* trunk/icecast/log/log.c:
+	support field width with (most common) %Ns and %NH syntax.
+
+2012-06-07 18:13:28  ph3-der-loewe
+
+	* trunk/icecast/log/log.c:
+	honor field width in %s and %H
+
+2012-06-07 18:09:48  ph3-der-loewe
+
+	* trunk/icecast/log/log.c:
+	consider backticks as well as backslashes invalid chars
+
+2012-06-07 15:57  dm8tbr
+
+	* trunk/icecast/format_mp3.c:
+	* trunk/icecast/fserve.c:
+	* trunk/icecast/log/log.c:
+	  Patchset to properly address CVE-2011-4612
+
+2011-12-03 09:25  dm8tbr
+
+	* trunk/icecast/doc/icecast2_config_file.html:
+	  Added 'admin' and 'location' to documentation
+	  Added clarification to the 'username' attribute of a mount
+	  Fixed typos
+
 2011-11-26 11:11  ph3-der-loewe
 
 	* trunk/icecast/admin/Makefile.am: Added vclt.xsl to list
