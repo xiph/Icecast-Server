@@ -90,11 +90,12 @@ static void _fatal_error(char *perr)
 static void _print_usage(void)
 {
     printf("%s\n\n", ICECAST_VERSION_STRING);
-    printf("usage: icecast [-b -v] -c <file>\n");
+    printf("usage: icecast [-b] -c <file>\n");
+    printf("or   : icecast {-v|--version}\n");
     printf("options:\n");
-    printf("\t-c <file>\tSpecify configuration file\n");
-    printf("\t-v\t\tDisplay version info\n");
-    printf("\t-b\t\tRun icecast in the background\n");
+    printf("\t-c <file>       Specify configuration file\n");
+    printf("\t-v or --version Display version info\n");
+    printf("\t-b              Run icecast in the background\n");
     printf("\n");
 }
 
@@ -175,7 +176,7 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
             background = 1;
 #endif
         }
-        if (strcmp(argv[i], "-v") == 0) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
             exit(0);
         }
