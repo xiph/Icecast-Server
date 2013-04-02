@@ -76,7 +76,7 @@
 static int background;
 static char *pidfile = NULL;
 
-static void _fatal_error(char *perr)
+static void _fatal_error(const char *perr)
 {
 #ifdef WIN32_SERVICE
     MessageBox(NULL, perr, "Error", MB_SERVICE_NOTIFICATION);
