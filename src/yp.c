@@ -593,7 +593,7 @@ static ypdata_t *create_yp_entry (const char *mount)
             snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, mount);
         }
 
-        mountproxy = config_find_mount (config, mount);
+        mountproxy = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
         if (mountproxy && mountproxy->cluster_password)
             add_yp_info (yp, mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
         config_release_config();

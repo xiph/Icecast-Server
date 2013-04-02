@@ -466,7 +466,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
-            _parse_mount(doc, node->xmlChildrenNode, configuration);
+            _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("directory")) == 0) {
             _parse_directory(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("paths")) == 0) {
@@ -548,11 +548,29 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *last=NULL;
     
     /* default <mount> settings */
+    mount->mounttype = MOUNT_TYPE_NORMAL;
     mount->max_listeners = -1;
     mount->burst_size = -1;
     mount->mp3_meta_interval = -1;
     mount->yp_public = -1;
     mount->next = NULL;
+
+    tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+    if (tmp) {
+        if (strcmp(tmp, "normal") == 0) {
+	    mount->mounttype = MOUNT_TYPE_NORMAL;
+	}
+	else if (strcmp(tmp, "default") == 0) {
+	    mount->mounttype = MOUNT_TYPE_DEFAULT;
+	}
+	else {
+	    WARN1("Unknown mountpoint type: %s", tmp);
+            config_clear_mount (mount);
+            return;
+	}
+    }
+
+    node = node->xmlChildrenNode;
 
     do {
         if (node == NULL) break;
@@ -684,7 +702,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     } while ((node = node->next));
 
     /* make sure we have at least the mountpoint name */
-    if (mount->mountname == NULL)
+    if (mount->mountname == NULL && mount->mounttype != MOUNT_TYPE_DEFAULT)
     {
         config_clear_mount (mount);
         return;
@@ -1126,16 +1144,26 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 
 
 /* return the mount details that match the supplied mountpoint */
-mount_proxy *config_find_mount (ice_config_t *config, const char *mount)
+mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type)
 {
     mount_proxy *mountinfo = config->mounts;
 
-    while (mountinfo)
+    for (; mountinfo; mountinfo = mountinfo->next)
     {
-        if (strcmp (mountinfo->mountname, mount) == 0)
+        if (mountinfo->mounttype != type)
+	    continue;
+
+	if (mount == NULL || mountinfo->mountname == NULL)
             break;
-        mountinfo = mountinfo->next;
+
+	if (strcmp (mountinfo->mountname, mount) == 0)
+            break;
     }
+
+    /* retry with default mount */
+    if (!mountinfo && type == MOUNT_TYPE_NORMAL)
+            mountinfo = config_find_mount(config, mount, MOUNT_TYPE_DEFAULT);
+
     return mountinfo;
 }
 
