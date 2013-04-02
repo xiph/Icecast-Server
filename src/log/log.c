@@ -423,6 +423,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
     int in_block = 0;
     int block_size = 0;
     int block_len;
+    int block_space = 0;
     const char * arg;
     char buf[80];
 
@@ -434,6 +435,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                 in_block = 1;
                 block_size = 0;
                 block_len  = 0;
+                block_space = 0;
             }
             else
             {
@@ -455,6 +457,9 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                     break;
                 case '*':
                     block_len = va_arg(ap, int);
+                    break;
+                case ' ':
+                    block_space = 1;
                     break;
                 case '1':
                 case '2':
@@ -519,7 +524,7 @@ static void __vsnprintf(char *str, size_t size, const char *format, va_list ap) 
                     {
                         for (; *arg && block_len && size; arg++, size--, block_len--)
                         {
-                            if (*arg <= '"' || *arg == '`'  || *arg == '\\')
+                            if ((*arg <= '"' || *arg == '`'  || *arg == '\\') && !(block_space && *arg == ' '))
                                 *(str++) = '.';
                             else
                                 *(str++) = *arg;
