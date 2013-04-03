@@ -90,6 +90,9 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *c);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
+static void merge_mounts(mount_proxy * dst, mount_proxy * src);
+static inline void _merge_mounts_all(ice_config_t *c);
+
 static void create_locks(void) {
     thread_mutex_create(&_locks.relay_lock);
     thread_rwlock_create(&_locks.config_lock);
@@ -296,6 +299,8 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
     _parse_root(doc, node->xmlChildrenNode, configuration);
 
     xmlFreeDoc(doc);
+
+    _merge_mounts_all(configuration);
 
     return 0;
 }
@@ -1142,6 +1147,84 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
     }
 }
 
+static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
+    if (!dst || !src)
+    	return;
+
+    if (!dst->username)
+    	dst->username = (char*)xmlStrdup((xmlChar*)src->username);
+    if (!dst->password)
+    	dst->password = (char*)xmlStrdup((xmlChar*)src->password);
+    if (!dst->dumpfile)
+    	dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
+    if (!dst->intro_filename)
+    	dst->intro_filename = (char*)xmlStrdup((xmlChar*)src->intro_filename);
+    if (!dst->fallback_when_full)
+    	dst->fallback_when_full = src->fallback_when_full;
+    if (dst->max_listeners == -1)
+    	dst->max_listeners = src->max_listeners;
+    if (!dst->fallback_mount)
+    	dst->fallback_mount = (char*)xmlStrdup((xmlChar*)src->fallback_mount);
+    if (!dst->fallback_override)
+    	dst->fallback_override = src->fallback_override;
+    if (!dst->no_mount)
+    	dst->no_mount = src->no_mount;
+    if (dst->burst_size == -1)
+    	dst->burst_size = src->burst_size;
+    if (!dst->queue_size_limit)
+    	dst->queue_size_limit = src->queue_size_limit;
+    if (!dst->hidden)
+    	dst->hidden = src->hidden;
+    if (!dst->source_timeout)
+    	dst->source_timeout = src->source_timeout;
+    if (!dst->charset)
+    	dst->charset = (char*)xmlStrdup((xmlChar*)src->charset);
+    if (dst->mp3_meta_interval == -1)
+    	dst->mp3_meta_interval = src->mp3_meta_interval;
+    if (!dst->auth_type)
+    	dst->auth_type = (char*)xmlStrdup((xmlChar*)src->auth_type);
+    // TODO: dst->auth
+    if (!dst->cluster_password)
+    	dst->cluster_password = (char*)xmlStrdup((xmlChar*)src->cluster_password);
+    // TODO: dst->auth_options
+    if (!dst->on_connect)
+    	dst->on_connect = (char*)xmlStrdup((xmlChar*)src->on_connect);
+    if (!dst->on_disconnect)
+    	dst->on_disconnect = (char*)xmlStrdup((xmlChar*)src->on_disconnect);
+    if (!dst->max_listener_duration)
+    	dst->max_listener_duration = src->max_listener_duration;
+    if (!dst->stream_name)
+    	dst->stream_name = (char*)xmlStrdup((xmlChar*)src->stream_name);
+    if (!dst->stream_description)
+    	dst->stream_description = (char*)xmlStrdup((xmlChar*)src->stream_description);
+    if (!dst->stream_url)
+    	dst->stream_url = (char*)xmlStrdup((xmlChar*)src->stream_url);
+    if (!dst->stream_genre)
+    	dst->stream_genre = (char*)xmlStrdup((xmlChar*)src->stream_genre);
+    if (!dst->bitrate)
+    	dst->bitrate = (char*)xmlStrdup((xmlChar*)src->bitrate);
+    if (!dst->type)
+    	dst->type = (char*)xmlStrdup((xmlChar*)src->type);
+    if (!dst->subtype)
+    	dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
+    if (dst->yp_public == -1)
+    	dst->yp_public = src->yp_public;
+}
+
+static inline void _merge_mounts_all(ice_config_t *c) {
+    mount_proxy *mountinfo = c->mounts;
+    mount_proxy *default_mount;
+
+    for (; mountinfo; mountinfo = mountinfo->next)
+    {
+    	if (mountinfo->mounttype != MOUNT_TYPE_NORMAL)
+	    continue;
+
+        default_mount = config_find_mount(c, mountinfo->mountname, MOUNT_TYPE_DEFAULT);
+
+	merge_mounts(mountinfo, default_mount);
+    }
+}
 
 /* return the mount details that match the supplied mountpoint */
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type)
