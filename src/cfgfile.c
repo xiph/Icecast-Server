@@ -20,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <fnmatch.h>
+#endif
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
@@ -1243,8 +1245,13 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
 	if (mountinfo->mounttype == MOUNT_TYPE_NORMAL && strcmp (mountinfo->mountname, mount) == 0)
             break;
 
+#ifndef _WIN32
         if (fnmatch(mountinfo->mountname, mount, FNM_PATHNAME) == 0)
             break;
+#else
+        if (strcmp(mountinfo->mountname, mount) == 0)
+            break;
+#endif
     }
 
     /* retry with default mount */
