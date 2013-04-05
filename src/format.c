@@ -77,7 +77,9 @@ format_type_t format_get_type (const char *contenttype)
         return FORMAT_TYPE_EBML;
     else
         /* We default to the Generic format handler, which
-           can handle many more formats than just mp3 */
+           can handle many more formats than just mp3.
+	   Let's warn that this is not well supported */
+	WARN1("Unsupported or legacy stream type: \"%s\". Falling back to generic minimal handler for best effort.", contenttype);
         return FORMAT_TYPE_GENERIC;
 }
 
