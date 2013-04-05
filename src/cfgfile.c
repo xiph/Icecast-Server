@@ -717,7 +717,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     }
     else if (mount->mountname != NULL && mount->mounttype == MOUNT_TYPE_DEFAULT)
     {
-    	WARN1("Default mount %s has mountpoint set. This is an unoffical feature and should not be used.", mount->mountname);
+    	WARN1("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
     }
     if (mount->auth)
         mount->auth->mount = strdup ((char *)mount->mountname);
