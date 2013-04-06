@@ -1,3 +1,63 @@
+2013-04-06 05:00:00  dm8tbr  
+
+	* Icecast 2.4 beta3 aka 2.3.99.3
+
+2013-04-05 20:13:18  dm8tbr
+
+	* Edited warning for clarity.
+
+2013-04-05 19:49:13  ph3-der-loewe
+
+	* added a warning in case mount of type default is defined but a
+	mountname is set
+
+2013-04-05 16:44:51  dm8tbr
+
+	* Setting Icecast version to 2.3.99.3 in preparation for 2.4 beta3.
+
+2013-04-05 16:43:16  dm8tbr
+
+	* Add warning when using generic handler for stream sent to Icecast.
+	All bets are off, we're trying our best using legacy handling code.
+
+2013-04-03 02:04:38  
+
+	* avoid fnmatch() on _WIN32 and fall back to strcmp(). Seems that
+	MinGW does half-implement fnmatch()...
+
+2013-04-03 00:46:55  ph3-der-loewe
+
+	* do fuzzy(fnmatch) matching for mountpoint names of non-normal
+	mounts, see #1914
+
+2013-04-03 00:33:10  ph3-der-loewe
+
+	* mount points defined in config should use data from default mounts
+	as well, see #1914
+
+2013-04-02 18:46:44  ph3-der-loewe
+
+	* Added support for a default mount. See #1914.
+	The default mount is a block in the config file that contains settings
+	for all mount points that do not have a block in configfile themself.
+	This is implemented by a <mount type="default">-block.
+	In this case the <mount>-block MUST NOT contain 
+	a <mount-name>-subblock.
+
+
+2013-04-02 12:19:33  
+
+	* Throw away the reqbuf stuff as it was not well designed. Removing it
+	and restoring usage of %H to properly address #1916
+
+2013-04-02 11:51:47  ph3-der-loewe
+
+	* make use of const keyword in _fatal_error()
+
+2013-04-02 11:48:40  ph3-der-loewe
+
+	* allow --version as alias to -v (printing version number)
+
 2013-03-30 10:52  dm8tbr
 
 	* trunk/icecast/ChangeLog:
