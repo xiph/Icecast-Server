@@ -236,7 +236,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
             config = config_get_config();
-            mountinfo = config_find_mount (config, source->mount);
+            mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
             if (mountinfo && mountinfo->auth)
             {
                 xmlNewChild(srcnode, NULL, XMLSTR("authenticator"),
@@ -742,7 +742,7 @@ static void command_manageauth(client_t *client, source_t *source,
     char *message = NULL;
     int ret = AUTH_OK;
     ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, source->mount);
+    mount_proxy *mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
 
     do
     {

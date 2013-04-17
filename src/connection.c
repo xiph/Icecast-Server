@@ -851,7 +851,7 @@ int connection_complete_source (source_t *source, int response)
         global_unlock();
 
         source->running = 1;
-        mountinfo = config_find_mount (config, source->mount);
+        mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
         source_update_settings (config, source, mountinfo);
         config_release_config();
         slave_rebuild_mounts();
@@ -1178,7 +1178,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     if (node->shoutcast == 1)
     {
         char *source_password, *ptr, *headers;
-        mount_proxy *mountinfo = config_find_mount (config, shoutcast_mount);
+        mount_proxy *mountinfo = config_find_mount (config, shoutcast_mount, MOUNT_TYPE_NORMAL);
 
         if (mountinfo && mountinfo->password)
             source_password = strdup (mountinfo->password);
@@ -1344,7 +1344,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                if (parser->req_type == httpp_req_source) {
+                if (parser->req_type == httpp_req_source || parser->req_type == httpp_req_put) {
                     _handle_source_request (client, uri);
                 }
                 else if (parser->req_type == httpp_req_stats) {

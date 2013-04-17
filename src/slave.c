@@ -407,7 +407,7 @@ static void check_relay_stream (relay_server *relay)
             if (relay->on_demand)
             {
                 ice_config_t *config = config_get_config ();
-                mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+                mount_proxy *mountinfo = config_find_mount (config, relay->localmount, MOUNT_TYPE_NORMAL);
                 if (mountinfo == NULL)
                     source_update_settings (config, relay->source, mountinfo);
                 config_release_config ();
@@ -474,7 +474,7 @@ static void check_relay_stream (relay_server *relay)
         if (relay->on_demand && relay->source)
         {
             ice_config_t *config = config_get_config ();
-            mount_proxy *mountinfo = config_find_mount (config, relay->localmount);
+            mount_proxy *mountinfo = config_find_mount (config, relay->localmount, MOUNT_TYPE_NORMAL);
             source_update_settings (config, relay->source, mountinfo);
             config_release_config ();
             stats_event (relay->localmount, "listeners", "0");

@@ -485,7 +485,7 @@ int auth_postprocess_listener (auth_client *auth_user)
     client_t *client = auth_user->client;
     ice_config_t *config = config_get_config();
 
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount, MOUNT_TYPE_NORMAL);
 
     ret = add_authenticated_listener (auth_user->mount, mountinfo, client);
     config_release_config();
@@ -530,7 +530,7 @@ void auth_add_listener (const char *mount, client_t *client)
     mount_proxy *mountinfo; 
     ice_config_t *config = config_get_config();
 
-    mountinfo = config_find_mount (config, mount);
+    mountinfo = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
     if (mountinfo && mountinfo->no_mount)
     {
         config_release_config ();

@@ -45,8 +45,15 @@ typedef struct _config_options {
     struct _config_options *next;
 } config_options_t;
 
+typedef enum _mount_type {
+ MOUNT_TYPE_NORMAL,
+ MOUNT_TYPE_DEFAULT
+} mount_type;
+
 typedef struct _mount_proxy {
     char *mountname; /* The mountpoint this proxy is used for */
+
+    mount_type mounttype; /* The type of the mount point */
 
     char *username; /* Username and password for this mountpoint. If unset, */
     char *password; /* falls back to global source password */
@@ -216,7 +223,7 @@ int config_parse_cmdline(int arg, char **argv);
 void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
-mount_proxy *config_find_mount (ice_config_t *config, const char *mount);
+mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type);
 listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con);
 
 int config_rehash(void);

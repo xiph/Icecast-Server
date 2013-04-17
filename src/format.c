@@ -339,7 +339,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
 		    mount_proxy *mountinfo;
 
 		    config = config_get_config();
-		    mountinfo = config_find_mount (config, source->mount);
+		    mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
 
 		    if (mountinfo && mountinfo->stream_name)
 		        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);

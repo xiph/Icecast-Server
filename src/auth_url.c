@@ -412,7 +412,7 @@ static void url_stream_start (auth_client *auth_user)
 {
     char *mount, *server;
     ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount, MOUNT_TYPE_NORMAL);
     auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
     char *stream_start_url;
@@ -464,7 +464,7 @@ static void url_stream_end (auth_client *auth_user)
 {
     char *mount, *server;
     ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount);
+    mount_proxy *mountinfo = config_find_mount (config, auth_user->mount, MOUNT_TYPE_NORMAL);
     auth_t *auth = mountinfo->auth;
     auth_url *url = auth->state;
     char *stream_end_url;

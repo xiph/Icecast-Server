@@ -170,7 +170,7 @@ source_t *source_find_mount (const char *mount)
         /* we either have a source which is not active (relay) or no source
          * at all. Check the mounts list for fallback settings
          */
-        mountinfo = config_find_mount (config, mount);
+        mountinfo = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
         source = NULL;
 
         if (mountinfo == NULL)
@@ -662,7 +662,7 @@ static void source_init (source_t *source)
     source->prev_listeners = -1;
     source->running = 1;
 
-    mountinfo = config_find_mount (config_get_config(), source->mount);
+    mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
     if (mountinfo)
     {
         if (mountinfo->on_connect)
@@ -870,7 +870,7 @@ static void source_shutdown (source_t *source)
     source->running = 0;
     INFO1("Source \"%s\" exiting", source->mount);
 
-    mountinfo = config_find_mount (config_get_config(), source->mount);
+    mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
     if (mountinfo)
     {
         if (mountinfo->on_disconnect)
@@ -1423,8 +1423,11 @@ void source_recheck_mounts (int update_all)
     if (update_all)
         stats_clear_virtual_mounts ();
 
-    while (mount)
+    for (; mount; mount = mount->next)
     {
+        if (mount->mounttype != MOUNT_TYPE_NORMAL)
+	    continue;
+
         source_t *source = source_find_mount (mount->mountname);
 
         if (source)
@@ -1432,7 +1435,7 @@ void source_recheck_mounts (int update_all)
             source = source_find_mount_raw (mount->mountname);
             if (source)
             {
-                mount_proxy *mountinfo = config_find_mount (config, source->mount);
+                mount_proxy *mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
                 source_update_settings (config, source, mountinfo);
             }
             else if (update_all)
@@ -1460,8 +1463,6 @@ void source_recheck_mounts (int update_all)
                         strdup (mount->fallback_mount), THREAD_DETACHED);
             }
         }
-
-        mount = mount->next;
     }
     avl_tree_unlock (global.source_tree);
     config_release_config();

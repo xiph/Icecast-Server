@@ -133,7 +133,7 @@ int client_check_source_auth (client_t *client, const char *mount)
     char *pass = config->source_password;
     char *user = "source";
     int ret = -1;
-    mount_proxy *mountinfo = config_find_mount (config, mount);
+    mount_proxy *mountinfo = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
 
     do
     {
