@@ -20,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <fnmatch.h>
+#endif
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
@@ -747,6 +749,10 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         config_clear_mount (mount);
         return;
     }
+    else if (mount->mountname != NULL && mount->mounttype == MOUNT_TYPE_DEFAULT)
+    {
+    	WARN1("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
+    }
     if (mount->auth)
         mount->auth->mount = strdup ((char *)mount->mountname);
     while(current) {
@@ -1383,8 +1389,13 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
 	if (mountinfo->mounttype == MOUNT_TYPE_NORMAL && strcmp (mountinfo->mountname, mount) == 0)
             break;
 
+#ifndef _WIN32
         if (fnmatch(mountinfo->mountname, mount, FNM_PATHNAME) == 0)
             break;
+#else
+        if (strcmp(mountinfo->mountname, mount) == 0)
+            break;
+#endif
     }
 
     /* retry with default mount */
