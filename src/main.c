@@ -3,10 +3,11 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2013, Jack Moffitt <jack@xiph.org, 
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
- *                      Karl Heyes <karl@xiph.org>
+ *                      Karl Heyes <karl@xiph.org>,
+ *                      Thomas B. Ruecker <thomas.ruecker@tieto.com>
  *                      and others (see AUTHORS for details).
  * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
@@ -151,13 +152,40 @@ void shutdown_subsystems(void)
 
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)
 {
-    int i = 1;
+    int i;
     int config_ok = 0;
 
-    background = 0;
     if (argc < 2) return -1;
 
-    while (i < argc) {
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
+            exit(0);
+        }
+
+        if (strcmp(argv[i], "-c") == 0) {
+            if (i + 1 < argc) {
+                strncpy(filename, argv[i + 1], size-1);
+                filename[size-1] = 0;
+                config_ok = 1;
+            } else {
+                return -1;
+            }
+        }
+    }
+
+    if(config_ok)
+        return 1;
+    else
+        return -1;
+}
+
+static int _parse_config_opts_remaining(int argc, char **argv, char *filename, int size)
+{
+    int i;
+    background = 0;
+
+    for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-b") == 0) {
 #ifndef WIN32
             pid_t pid;
@@ -176,27 +204,8 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
             background = 1;
 #endif
         }
-        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
-            exit(0);
-        }
-
-        if (strcmp(argv[i], "-c") == 0) {
-            if (i + 1 < argc) {
-                strncpy(filename, argv[i + 1], size-1);
-                filename[size-1] = 0;
-                config_ok = 1;
-            } else {
-                return -1;
-            }
-        }
-        i++;
     }
-
-    if(config_ok)
-        return 1;
-    else
-        return -1;
+    return 0;
 }
 
 static int _start_logging(void)
@@ -500,6 +509,9 @@ int main(int argc, char **argv)
         shutdown_subsystems();
         return 1;
     }
+
+    /* Delayed command line argument parsing, e.g. background */
+    _parse_config_opts_remaining(argc, argv, filename, 512);
 
     INFO1 ("%s server started", ICECAST_VERSION_STRING);
 
