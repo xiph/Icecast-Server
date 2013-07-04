@@ -298,7 +298,7 @@ void log_flush(int log_id)
 
 void log_reopen(int log_id)
 {
-    if (log_id < 0 && log_id >= LOG_MAXLOGS)
+    if (log_id < 0 || log_id >= LOG_MAXLOGS)
         return;
     if (loglist [log_id] . filename && loglist [log_id] . logfile)
     {
