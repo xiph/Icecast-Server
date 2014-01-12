@@ -576,6 +576,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             config_clear_mount (mount);
             return;
 	}
+	xmlFree(tmp);
     }
 
     node = node->xmlChildrenNode;
