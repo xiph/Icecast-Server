@@ -70,6 +70,7 @@ typedef struct _client_tag
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
+void client_send_100(client_t *client);
 void client_send_404(client_t *client, const char *message);
 void client_send_401(client_t *client);
 void client_send_403(client_t *client, const char *message);

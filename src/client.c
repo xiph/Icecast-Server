@@ -202,6 +202,12 @@ static void client_send_error(client_t *client, int status, int plain, const cha
     fserve_add_client (client, NULL);
 }
 
+void client_send_100(client_t *client)
+{
+    /* On demand inject a HTTP/1.1 100 Continue to make sure clients are happy */
+    sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
+}
+
 void client_send_400(client_t *client, const char *message)
 {
     client_send_error(client, 400, 0, message);

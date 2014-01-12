@@ -38,6 +38,7 @@ AC_CHECK_HEADERS([pwd.h unistd.h grp.h sys/types.h],,,AC_INCLUDES_DEFAULT)
 AC_CHECK_FUNCS([setuid])
 AC_CHECK_FUNCS([chroot])
 AC_CHECK_FUNCS([chown])
+AC_CHECK_FUNCS([strcasestr])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__
