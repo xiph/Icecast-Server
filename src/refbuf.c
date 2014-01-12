@@ -70,11 +70,12 @@ static void refbuf_release_associated (refbuf_t *ref)
 {
     if (ref == NULL)
         return;
-    while (ref && ref->_count == 1)
+    while (ref)
     {
         refbuf_t *to_go = ref;
         ref = to_go->next;
-        to_go->next = NULL;
+        if ( to_go->_count == 1 )
+	    to_go->next = NULL;
         refbuf_release (to_go);
     }
 }
@@ -88,7 +89,7 @@ void refbuf_release(refbuf_t *self)
     {
         refbuf_release_associated (self->associated);
         if (self->next)
-            DEBUG0 ("next not null");
+            ERROR0 ("next not null");
         free(self->data);
         free(self);
     }
