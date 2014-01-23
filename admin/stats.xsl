@@ -1,18 +1,18 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
 <xsl:output omit-xml-declaration="no" method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:template match = "/icestats" >
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 <h2>Icecast2 Admin</h2>
 <br />
 <!--header menu -->
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 	<table border="0" cellpadding="1" cellspacing="3">
 	<tr>        
@@ -24,7 +24,7 @@
 	    </td></tr>
 	</table>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
 <br />
@@ -34,9 +34,9 @@
 <!--global server stats-->
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
 </div>
-<div class="newscontent">
+<div class="content">
 <h3>Global Server Stats</h3>
 <table border="0" cellpadding="4">
 <xsl:for-each select="/icestats">
@@ -52,7 +52,7 @@
 </table>
 </div>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
 <br />
@@ -64,9 +64,9 @@
 <xsl:if test = "listeners!=''"> 
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
 </div>
-<div class="newscontent">
+<div class="content">
     <div class="streamheader">
         <table cellspacing="0" cellpadding="0" >
             <colgroup align="left" />
@@ -87,7 +87,7 @@
                 </xsl:choose>
         </tr></table>
     </div>
-	<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
+	<table border="0" cellpadding="1" cellspacing="5" style="background-color: 444444">
 	<tr>        
 	    <td align="center">
 		    <a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
@@ -108,14 +108,13 @@
 </table>
 </div>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 </xsl:if>
 </xsl:for-each>
-<xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
+<p><xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;</p>
 
 
 <!--end mount point stats-->

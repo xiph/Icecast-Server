@@ -1,3 +1,8 @@
+2014-01-23 06:23:42  dm8tbr
+
+	* Updated web interface to be more XHTML compliant.
+	* Added warning about HTML scraping to main page.
+
 2014-01-12 21:09:04  ph3-der-loewe 
 
 	* Fixed a memory leak. Lost headers of stream because of wrong ref

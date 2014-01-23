@@ -1,18 +1,18 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
 <xsl:output omit-xml-declaration="no" method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:template match = "/icestats" >
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body topmargin="0" leftmargin="0" rightmargin="0" bottommargin="0">
+<body>
 <h2>Icecast2 Admin</h2>
-<br />
+<p><br /></p>
 
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 	<table border="0" cellpadding="1" cellspacing="3">
 	<tr>        
@@ -24,20 +24,18 @@
 	    </td></tr>
 	</table>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
-
+<p><br /><p>
 
 
 <h1>Listener Stats</h1>
 <div class="roundcont">
 <div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" />
+<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
 </div>
-<div class="newscontent">
+<div class="content">
 <xsl:for-each select="source">
 <div class="streamheader">
     <table cellspacing="0" cellpadding="0" >
@@ -60,7 +58,7 @@
     </tr></table>
 </div>
 
-<table border="0" cellpadding="1" cellspacing="5" bgcolor="444444">
+<table border="0" cellpadding="1" cellspacing="5" style="background-color: 444444">
 	<tr>        
 	    <td align="center">
 			<a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
@@ -70,7 +68,7 @@
 	    </td></tr>
 	</table>
 <br />
-<table cellspacing="0" cellpadding="5" border="1" bordercolor="#C0C0C0" >
+<table cellspacing="0" cellpadding="5" border="1" style="bordercolor: #C0C0C0" >
 		<tr>
 				<td ><center><b>IP</b></center></td>
 				<td ><center><b>Seconds Connected</b></center></td>
@@ -93,7 +91,7 @@
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 </div>
 <div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" />
+<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
 <div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>

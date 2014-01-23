@@ -118,7 +118,7 @@ td {
 .roundcont a {
     margin: 0px 10px;
 }
-.newscontent {
+.content {
 	margin: 0 20px;
 }
 h3 {
@@ -130,11 +130,11 @@ h3 {
 	font-size: 110%;
 	color: #f8ef64;
 }
-.newscontent h3 {
+.content h3 {
     margin-bottom: 10px;
     border-bottom: 1px groove #ACACAC;
 }
-.newscontent h4 {
+.content h4 {
 	margin: 10px 0px;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
@@ -142,21 +142,21 @@ h3 {
 	font-size: 110%;
 	color: #f8ef64;
 }
-.newscontent p {
+.content p {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
 	font-weight: none;
 	font-size: 90%;
 }
-.newscontent td {
+.content td {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
 	font-weight: none;
 	font-size: 90%;
 }
-.newscontent td.streamdata {
+.content td.streamstats {
 	margin: 0 0;
 	font-family: Verdana, sans-serif;
 	text-decoration: none;
@@ -164,46 +164,46 @@ h3 {
 	font-size: 90%;
         color: #f8ef64;
 }
-.streamheader table {
+.streamheading table {
     width: 100%;
     margin-bottom: 5px;
     border-bottom:  1px groove #ACACAC;
 }
-.streamheader td {
+.streamheading td {
     margin: 0px;
     padding-top: 10px;
     padding-bottom: 10px;
     padding: 10 5 10 5;
     border: 0px solid white;
 }
-.streamheader h3 {
+.streamheading h3 {
     border: 0px;
 }
-.streamheader a {
+.streamheading a {
     padding: 8px 5px 3px 30px;
     text-decoration: none;
     background: transparent url("/tunein.png") no-repeat left center;
 }
-.streamheader a.auth {
+.streamheading a.auth {
     padding-top: 10px;
     padding-bottom: 10px;
     padding-left: 32px;
     background: transparent url("/key.png") no-repeat left center;
 }
-.newscontent a {
+.content a {
     font-family: Verdana, sans-serif;
     text-decoration: none;
     font-weight: bold;
     margin: 0px;
     color: #f8ef64;
 }
-.newscontent a:hover {
+.content a:hover {
     font-family: Verdana, sans-serif;
     text-decoration: none;
     font-weight: bold;
     color: #fff;
 }
-.newscontent a.nav2 {
+.content a.nav2 {
     font-family: Verdana, sans-serif;
     text-decoration: none;
     font-weight: bold;
@@ -211,7 +211,7 @@ h3 {
     background: #444;
     color: #f8ef64;
 }
-.newscontent a.nav2:hover {
+.content a.nav2:hover {
     font-family: Verdana, sans-serif;
     text-decoration: none;
     background: #777;
