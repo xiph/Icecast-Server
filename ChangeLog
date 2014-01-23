@@ -1,3 +1,35 @@
+2014-01-12 21:09:04  ph3-der-loewe 
+
+	* Fixed a memory leak. Lost headers of stream because of wrong ref
+	counter in associated refbuf objects.
+
+2014-01-12 12:29:27  ph3-der-loewe
+
+	* Completed HTTP PUT support, send 100-continue-header,
+	if client requests it. We need to adhere to HTTP1.1 here.
+
+2014-01-12 12:09:59  ph3-der-loewe   
+
+	* avoid memory leak in _parse_mount() when "type"-attribuet is set
+
+2013-11-06 01:01:31  ph3-der-loewe   
+
+	* corrected Date-header format to conform the standard (see RFC1123).
+	Thanks to cato for reporting.
+
+2013-05-29 08:22:06  dm8tbr
+
+	* Added a favicon to the web-root content
+
+2013-05-15 16:45:55  dm8tbr   
+
+	* We now split handling of command line arguments into two parts.
+	Only the critical part of getting the config file is done first (and
+	-v as it prevents startup). The rest (currently only -b) is deferred.
+	It allows us to log error messages to stderr even if the -b argument
+	is passed. This is mainly for the case where the logfile or TCP port 
+	can't be opened.
+
 2013-04-06 05:00:00  dm8tbr  
 
 	* Icecast 2.4 beta3 aka 2.3.99.3
