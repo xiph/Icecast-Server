@@ -77,7 +77,7 @@
 <tr><td>Content Type:</td><td class="streamstats"><xsl:value-of select="server_type" /></td></tr>
 </xsl:if>
 <xsl:if test="stream_start">
-<tr><td>Mount started:</td><td class="streamstats"><xsl:value-of select="stream_start" /></td></tr>
+<tr><td>Stream started:</td><td class="streamstats"><xsl:value-of select="stream_start" /></td></tr>
 </xsl:if>
 <xsl:if test="bitrate">
 <tr><td>Bitrate:</td><td class="streamstats"> <xsl:value-of select="bitrate" /></td></tr>
