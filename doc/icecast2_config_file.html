@@ -100,6 +100,7 @@ The burst size is the amount of data (in bytes) to burst to a client at connecti
 burst-on-connect, this is to quickly fill the pre-buffer used by media players. The default
 is 64 kbytes which is a typical size used by most clients so changing it is not usually required.
 This setting applies to all mountpoints unless overridden in the mount settings.
+Ensure that this value is smaller than queue-size, if necessary increase queue-size to be larger than your desired burst-size. Failure to do so might result in aborted listener client connection attempts, due to initial burst leading to the connection already exceeding the queue-size limit.
 </div>
 <p>
 <br />
