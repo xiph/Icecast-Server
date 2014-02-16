@@ -8,7 +8,6 @@
 </head>
 <body>
 <h2>Icecast2 Admin</h2>
-<br />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -27,8 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 
 <xsl:variable name = "currentmount" ><xsl:value-of select="current_source" /></xsl:variable>
 <h1>Moving Listeners From (<xsl:value-of select="current_source" />)</h1>

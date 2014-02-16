@@ -6,9 +6,8 @@
 <title>Icecast Streaming Media Server</title>
 <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
-<body
+<body>
 <h2>Icecast2 Admin</h2>
-<br />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -27,8 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 
 <div class="roundcont">
 <div class="roundtop">
@@ -52,7 +50,7 @@
 	    </td></tr>
 	</table>
 <br></br>
-<form method="GET" action="manageauth.xsl">
+<form method="get" action="manageauth.xsl">
 <table cellpadding="2" cellspacing="4" border="0" >
 		<tr>
 				<td ><b>User Id</b></td>
@@ -76,7 +74,7 @@
 				<td ><input type="text" name="password" /></td>
 		</tr>
 		<tr>
-				<td colspan="2"><input type="Submit" name="Submit" value="Add New User" /></td>
+				<td colspan="2"><input type="submit" name="Submit" value="Add New User" /></td>
 		</tr>
 </table>
 <input type="hidden" name="mount" value="{@mount}"/>

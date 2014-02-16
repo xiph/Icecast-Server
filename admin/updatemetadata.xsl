@@ -8,7 +8,6 @@
 </head>
 <body>
 <h2>Icecast2 Admin</h2>
-<br />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -27,8 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 
 <h1>Update Metadata</h1>
 <div class="roundcont">
@@ -41,17 +39,18 @@
 <xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
 (<xsl:value-of select="@mount" />)</h3>
 
-<form method="GET" action="/admin/metadata.xsl">
+<form method="get" action="/admin/metadata.xsl">
 <table border="0" cellpadding="4">
-<tr><td>Metadata : <input type="text" name="song"/></td></tr>
-<tr><td><input type="Submit" value="Update"/></td></tr>
+	<tr><td><p>Metadata : <input type="text" name="song"/></p></td></tr>
+<tr><td><input type="submit" value="Update"/></td></tr>
 </table>
-<input type="hidden" name="mount" value="{@mount}"/>
-<input type="hidden" name="mode" value="updinfo"/>
-<input type="hidden" name="charset" value="UTF-8"/>
+<div>
+	<input type="hidden" name="mount" value="{@mount}"/>
+	<input type="hidden" name="mode" value="updinfo"/>
+	<input type="hidden" name="charset" value="UTF-8"/>
+</div>
 </form>
 
-<br />
 <br />
 </xsl:for-each>
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;

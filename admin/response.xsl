@@ -8,7 +8,6 @@
 </head>
 <body>
 <img align="left" src="/icecast.png" /><h2><center>Icecast2 Admin</center></h2>
-<br />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -27,8 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 
 <h1>Icecast Server Response</h1>
 <div class="roundcont">

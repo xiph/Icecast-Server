@@ -8,7 +8,6 @@
 </head>
 <body>
 <h2>Icecast2 Admin</h2>
-<p><br /></p>
 
 <div class="roundcont">
 <div class="roundtop">
@@ -49,8 +48,8 @@
                 </xsl:when>
                 <xsl:otherwise>
                     <td align="right">
-                        <a href="{@mount}.m3u">M3U</a>
-                        <a href="{@mount}.xspf">XSPF</a>
+                        <a href="{@mount}.m3u">M3U </a>
+                        <a href="{@mount}.xspf">XSPF </a>
                         <a href="{@mount}.vclt">VCLT</a>
                     </td>
                 </xsl:otherwise>

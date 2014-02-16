@@ -8,7 +8,6 @@
 </head>
 <body>
 <h2>Icecast2 Admin</h2>
-<br />
 <!--header menu -->
 <div class="roundcont">
 <div class="roundtop">
@@ -27,8 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p> 
 <!--end header menu -->
 
 <!--global server stats-->
@@ -43,7 +41,7 @@
 <xsl:for-each select="*">
 <xsl:if test = "name()!='source'"> 
 <tr>
-	<td width="130"><xsl:value-of select="name()" /></td>
+	<td style="width: 130"><xsl:value-of select="name()" /></td>
 	<td class="streamdata"><xsl:value-of select="." /></td>
 </tr>
 </xsl:if>
@@ -55,8 +53,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
+<p><br /></p>
 <!--end global server stats-->
 
 <!--mount point stats-->
@@ -79,8 +76,8 @@
                     </xsl:when>
                     <xsl:otherwise>
                         <td align="right">
-                            <a href="{@mount}.m3u">M3U</a>
-                            <a href="{@mount}.xspf">XSPF</a>
+                            <a href="{@mount}.m3u">M3U </a>
+                            <a href="{@mount}.xspf">XSPF </a>
                             <a href="{@mount}.vclt">VCLT</a>
                         </td>
                     </xsl:otherwise>
@@ -101,7 +98,7 @@
 <table cellpadding="5" cellspacing="0" border="0">
 	<xsl:for-each select="*">
 	<tr>
-		<td width="130"><xsl:value-of select="name()" /></td>
+		<td style="width: 130"><xsl:value-of select="name()" /></td>
 		<td class="streamdata"><xsl:value-of select="." /></td>
 	</tr>
 	</xsl:for-each>

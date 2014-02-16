@@ -8,7 +8,6 @@
 </head>
 <body>
 <h2>Icecast2 Admin</h2>
-<br />
 
 <div class="roundcont">
 <div class="roundtop">
@@ -27,9 +26,7 @@
 <img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
 </div>
 </div>
-<br />
-<br />
-
+<p><br /></p>
 
 <h1>Active Mountpoints</h1>
 <div class="roundcont">
@@ -71,7 +68,7 @@
 	</table>
 <br />
 <p><xsl:value-of select="listeners" /> Listener(s)</p>
-<br></br>
+<p><br /></p>
 </xsl:for-each>
 <xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
 </div>
