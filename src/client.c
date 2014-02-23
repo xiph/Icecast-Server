@@ -189,7 +189,7 @@ static void client_send_error(client_t *client, int status, int plain, const cha
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
-                                 plain ? "text/plain" : "text/html", NULL,
+                                 plain ? "text/plain" : "text/html", "utf-8",
                                  plain ? message : "");
 
     if (!plain)
