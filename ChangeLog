@@ -1,3 +1,27 @@
+2014-03-01 17:53:00  dm8tbr
+
+	* Icecast 2.4 beta5 aka 2.3.99.5
+
+2014-03-01 17:37:38  dm8tbr
+
+	* Reverting r18945 for now as using -b breaks things.
+	  Reopening #1886, patch needs rework.
+
+2014-03-01 16:38:15  dm8tbr
+
+	* Web output properly redone, credit to ePirat.
+	  Now validates completely as XHTML1.0 strict.
+	  Also improves rendering on mobile devices.
+
+2014-02-23 21:29:35  dm8tbr
+
+	* Send charset in headers for everything, excluding file-serv and streams.
+
+2014-02-16 10:14:28  dm8tbr
+
+	* Added warning to documentation 
+	  ensure queue-size >> burst-size.
+
 2014-01-23 13:55:23  dm8tbr
 
 	* Icecast 2.4 beta4 aka 2.3.99.4
