@@ -12,45 +12,149 @@
 <br />
 <br />
 <br />
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#xslt">HTML interface, XSLT generated</a></li>
+<li><a href="#xslt_advanced">Advanced machine readable data, XSLT generated</a></li>
+<li><a href="#available_raw_data">Available raw data</a></li>
+</ul>
+
+<a name="overview"></a>
 <h2>Overview</h2>
-<p>This section contains information about the server statistics available from icecast.  An example stats XML tree will be shown and each element will be described.  The following example stats tree will be used:</p>
+
+<a name="xslt"></a>
+<h2>HTML interface, XSLT generated</h2>
+
+<a name="xslt_advanced"></a>
+<h2>Advanced machine readable data, XSLT generated</h2>
+
+<a name="available_raw_data"></a>
+<h2>Available raw data</h2>
+<p>This section contains information about the raw server statistics data available inside icecast.  An example stats XML tree will be shown and each element will be described.  The following example stats tree will be used (it should not be considered complete nor authoritative):</p>
 <pre>
-&lt;?xml version="1.0"?&gt;
+&lt;?xml version="1.0"?&gt;	
 &lt;icestats&gt;
+	&lt;admin&gt;icemaster@example.org&lt;/admin&gt;
 	&lt;client_connections&gt;13&lt;/client_connections&gt;
+	&lt;clients&gt;2&lt;/clients&gt;
 	&lt;connections&gt;14&lt;/connections&gt;
-	&lt;source_connections&gt;1&lt;/source_connections&gt;
+	&lt;file_connections&gt;1&lt;/file_connections&gt;
+	&lt;host&gt;stream.example.org&lt;/host&gt;
+	&lt;listener_connections&gt;7&lt;/listener_connections&gt;
+	&lt;listeners&gt;1&lt;/listeners&gt;
+	&lt;location&gt;Earth&lt;/location&gt;
+	&lt;server_id&gt;Icecast 2.4.0&lt;/server_id&gt;
+	&lt;server_start&gt;Tue, 01 Apr 2014 23:42:05 +0000&lt;/server_start&gt;
+	&lt;source_client_connections&gt;1&lt;/source_client_connections&gt;
+	&lt;source_relay_connections&gt;0&lt;/source_relay_connections&gt;
+	&lt;source_total_connections&gt;1&lt;/source_total_connections&gt;
 	&lt;sources&gt;1&lt;/sources&gt;
+	&lt;stats&gt;0&lt;/stats&gt;
+	&lt;stats_connections&gt;0&lt;/stats_connections&gt;
 	&lt;source mount="/test.ogg"&gt;
-		&lt;artist&gt;&lt;/artist&gt;
-		&lt;audio_info&gt;ice-samplerate=32000;ice-bitrate=Quality -1;ice-channels=1&lt;/audio_info&gt;
-		&lt;ice-bitrate&gt;Quality -1&lt;/ice-bitrate&gt;
-		&lt;ice-channels&gt;1&lt;/ice-channels&gt;
-		&lt;ice-samplerate&gt;32000&lt;/ice-samplerate&gt;
+		&lt;artist&gt;Test artist&lt;/artist&gt;
+		&lt;audio_bitrate&gt;32000&lt;/audio_bitrate&gt;
+		&lt;audio_channels&gt;2&lt;/audio_channels&gt;
+		&lt;audio_info&gt;samplerate=32000;channels=2;quality=-1;ice-channels=1&lt;/audio_info&gt;
+		&lt;ice-bitrate&gt;32&lt;/ice-bitrate&gt;
+		&lt;listener_peak&gt;2&lt;/listener_peak&gt;
 		&lt;listeners&gt;0&lt;/listeners&gt;
+		&lt;listenurl&gt;http://stream.example.org:8000/test.ogg&lt;/listenurl&gt;
+		&lt;max_listeners&gt;unlimited&lt;/max_listeners&gt;
 		&lt;public&gt;0&lt;/public&gt;
-		&lt;title&gt;&lt;/title&gt;
-		&lt;type&gt;Ogg Vorbis&lt;/type&gt;
+		&lt;quality&gt;-1.00&lt;/quality&gt;
+		&lt;samplerate&gt;32000&lt;/samplerate&gt;
+		&lt;server_description&gt;A stream for testing ogg/vorbis.&lt;/server_description&gt;
+		&lt;server_name&gt;TestStream&lt;/server_name&gt;
+		&lt;server_type&gt;application/ogg&lt;/server_type&gt;
+		&lt;slow_listeners&gt;1&lt;/slow_listeners&gt;
+		&lt;source_ip&gt;203.0.113.42&lt;/source_ip&gt;
+		&lt;stream_start&gt;Wed, 02 Apr 2014 13:37:42 +0000&lt;/stream_start&gt;
+		&lt;subtype&gt;Vorbis&lt;/subtype&gt;
+		&lt;title&gt;Test title&lt;/title&gt;
+		&lt;total_bytes_read&gt;448632&lt;/total_bytes_read&gt;
+		&lt;total_bytes_sent&gt;207463&lt;/total_bytes_sent&gt;
+		&lt;user_agent&gt;IceS 2.0.1&lt;/user_agent&gt;
 	&lt;/source&gt;
 &lt;/icestats&gt;
 </pre>
 <h3>General Statistics</h3>
+<!--
+<h4></h4>
+<div class="indentedbox">
+
+</div>
+-->
+<h4>admin</h4>
+<div class="indentedbox">
+As set in the server config, this should contain contact details for getting in touch with the server administrator. Usually this will be an email address, but as this can be an arbitrary string it could also be a phone number.
+</div>
 <h4>client-connections</h4>
 <div class="indentedbox">
 Client connections are basically anything that is not a source connection.  These include listeners (not concurrent, but cumulative), any admin function accesses, and any static content (file serving) accesses.
 </div>
-<h4>source-connections</h4>
+<h4>clients</h4>
 <div class="indentedbox">
-Source connections are the number of times (cumulative not currently connected) a source has connected to icecast.
+<!--FIXME-->
 </div>
 <h4>connections</h4>
 <div class="indentedbox">
-The total of client + source connections.
+The total of all inbound TCP connections since start-up.
+</div>
+<h4>file_connections</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>host</h4>
+<div class="indentedbox">
+As set in the server config,<!--FIXME-->
+</div>
+<h4>listener_connections</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>listeners</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>location</h4>
+<div class="indentedbox">
+As set in the server config,<!--FIXME-->
+</div>
+<h4>server_id</h4>
+<div class="indentedbox">
+Defaults to the version string of the currently running Icecast server. While not recommended it can be overriden in the server config.
+</div>
+<h4>server_start</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>source_client_connections</h4>
+<div class="indentedbox">
+Source client connections are the number of times (cumulative since start-up, not just currently connected) a source client has connected to icecast.
+</div>
+<h4>source_relay_connections</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>source_total_connections</h4>
+<div class="indentedbox">
+<!--FIXME-->
 </div>
 <h4>sources</h4>
 <div class="indentedbox">
 The total of currently connected sources (mountpoints).
 </div>
+<h4>stats</h4>
+<div class="indentedbox">
+The total of currently connected STATS clients.
+</div>
+<h4>stats_connections</h4>
+<div class="indentedbox">
+Number of times (cumulative since start-up, not just currently connected) a stats client has connected to icecast.
+</div>
+
+
 <h3>Source-specific Statistics</h3>
 <h4>artist</h4>
 <div class="indentedbox">
@@ -60,30 +164,94 @@ Artist of the current song (metadata set by source client).
 <div class="indentedbox">
 Title of the current song (metadata set by source client).
 </div>
+<h4>audio_bitrate</h4>
+<div class="indentedbox">
+<!--FIXME-->(metadata set by source client).
+</div>
+<h4>audio_channels</h4>
+<div class="indentedbox">
+<!--FIXME-->(metadata set by source client).
+</div>
 <h4>audio-info</h4>
 <div class="indentedbox">
-Information about the bitrate/samplerate/quality of the stream (set by source client). Also used for YP entries.
+Information about the bitrate/samplerate/quality of the stream (metadata set by source client). Also used for YP entries.
 </div>
 <h4>ice-bitrate</h4>
-<h4>ice-samplerate</h4>
-<h4>ice-channels</h4>
+<h4>samplerate</h4>
 <div class="indentedbox">
-Information about the bitrate/samplerate/quality of the stream (set by source client).
+Information about the bitrate/samplerate/quality of the stream (metadata set by source client).
+</div>
+<h4>listener_peak</h4>
+<div class="indentedbox">
+<!--FIXME-->
 </div>
 <h4>listeners</h4>
 <div class="indentedbox">
 The number of currently connected listeners.
 </div>
+<h4>listenurl</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>max_listeners</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
 <h4>public</h4>
 <div class="indentedbox">
-Flag that indicates whether this mount is being listed on a YP (sey by source client).
+Flag that indicates whether this mount is to be listed on a YP (set by source client, can be overriden by server config).
 </div>
-<h4>type</h4>
+<h4>quality</h4>
 <div class="indentedbox">
-Media type of the stream.
+<!--FIXME-->(metadata set by source client).
+</div>
+<h4>samplerate</h4>
+<div class="indentedbox">
+<!--FIXME-->(metadata set by source client).
+</div>
+<h4>server_description</h4>
+<div class="indentedbox">
+<!--FIXME-->(metadata set by source client).
+</div>
+<h4>server_name</h4>
+<div class="indentedbox">
+<!--FIXME-->(metadata set by source client).
+</div>
+<h4>server_type</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>slow_listeners</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>source_ip</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>stream_start</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>subtype</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>total_bytes_read</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>total_bytes_sent</h4>
+<div class="indentedbox">
+<!--FIXME-->
+</div>
+<h4>user_agent</h4>
+<div class="indentedbox">
+HTTP user agent string as sent by the source client.
 </div>
 <br />
 <br />
+Additional data can be accessed through the admin interface, as every page of the admin interface has an XML equivalent.
 <br />
 </div>
 </body>

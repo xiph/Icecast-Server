@@ -1,95 +1,90 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" >
-<xsl:output omit-xml-declaration="no" method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:template match = "/icestats" >
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<title>Icecast Streaming Media Server</title>
-<link rel="stylesheet" type="text/css" href="/style.css" />
+	<title>Icecast Streaming Media Server</title>
+	<link rel="stylesheet" type="text/css" href="/style.css" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 </head>
 <body>
-<h2>Icecast2 Admin</h2>
-
-<div class="roundcont">
-<div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
-</div>
-	<table border="0" cellpadding="1" cellspacing="3">
-	<tr>        
-	    <td align="center">
-	        <a class="nav" href="stats.xsl">Admin Home</a>
-		    <a class="nav" href="listmounts.xsl">List Mountpoints</a>
-        	<a class="nav" href="moveclients.xsl">Move Listeners</a>
-        	<a class="nav" href="/status.xsl">Index</a>
-	    </td></tr>
-	</table>
-<div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
-</div>
-</div>
-<p><br /></p>
-
-<div class="roundcont">
-<div class="roundtop">
-<img src="/corner_topleft.jpg" class="corner" style="display: none" alt="" />
-</div>
-<div class="content">
-<xsl:for-each select="iceresponse">
-<xsl:value-of select="message" /> 
-</xsl:for-each>
-<xsl:for-each select="source">
-<h3>
-<xsl:if test="server_name"><xsl:value-of select="server_name" /> </xsl:if>
-(<xsl:value-of select="@mount" />)</h3>
-	<table border="0" cellpadding="1" cellspacing="5" style="background-color: 444444">
-	<tr>        
-	    <td align="center">
-			<a class="nav2" href="listclients.xsl?mount={@mount}">List Clients</a>
-        	<a class="nav2" href="moveclients.xsl?mount={@mount}">Move Listeners</a>
-			<a class="nav2" href="updatemetadata.xsl?mount={@mount}">Update Metadata</a>
-        	<a class="nav2" href="killsource.xsl?mount={@mount}">Kill Source</a>
-	    </td></tr>
-	</table>
-<br></br>
-<form method="get" action="manageauth.xsl">
-<table cellpadding="2" cellspacing="4" border="0" >
-		<tr>
-				<td ><b>User Id</b></td>
-				<td ></td>
-		</tr>
-<xsl:variable name = "themount" ><xsl:value-of select="@mount" /></xsl:variable>
-<xsl:for-each select="User">
-		<tr>
-				<td><xsl:value-of select="username" /></td>
-				<td><a class="nav2" href="manageauth.xsl?mount={$themount}&amp;username={username}&amp;action=delete">delete</a></td>
-		</tr>
-</xsl:for-each>
-</table>
-<table cellpadding="2" cellspacing="4" border="0" >
-		<tr>
-				<td ><b>User Id</b></td>
-				<td ><b>Password</b></td>
-		</tr>
-		<tr>
-				<td ><input type="text" name="username" /></td>
-				<td ><input type="text" name="password" /></td>
-		</tr>
-		<tr>
-				<td colspan="2"><input type="submit" name="Submit" value="Add New User" /></td>
-		</tr>
-</table>
-<input type="hidden" name="mount" value="{@mount}"/>
-<input type="hidden" name="action" value="add"/>
-</form>
-<br />
-<br />
-</xsl:for-each>
-<xsl:text disable-output-escaping="yes">&amp;</xsl:text>nbsp;
-</div>
-<div class="roundbottom">
-<img src="/corner_bottomleft.jpg" class="corner" style="display: none" alt="" />
-</div>
-</div>
-<div class="poster">Support icecast development at <a class="nav" href="http://www.icecast.org">www.icecast.org</a></div>
+	<h1>Icecast2 Admin</h1>
+	<!--index header menu -->
+	<div id="menu">
+		<ul>
+			<li><a href="stats.xsl">Admin Home</a></li>
+			<li><a href="listmounts.xsl">Mountpoint List</a></li>
+			<li><a href="/status.xsl">Public Home</a></li>
+		</ul>
+	</div>
+	<!--end index header menu -->
+	<h2>Manage Authentication</h2>
+	<xsl:if test="iceresponse">
+		<div class="roundbox">
+			<h3>Message</h3>
+			<xsl:for-each select="iceresponse">
+				<xsl:value-of select="message" /><br />
+			</xsl:for-each>
+		</div>
+	</xsl:if>
+	<xsl:for-each select="source">
+		<div class="roundbox">
+			<h3>Mountpoint <xsl:value-of select="@mount" />
+				<xsl:if test="server_name">
+					<small><xsl:value-of select="server_name" /></small>
+				</xsl:if>
+			</h3>
+			<ul class="nav">
+				<li><a href="listclients.xsl?mount={@mount}">List Clients</a></li>
+				<li><a href="moveclients.xsl?mount={@mount}">Move Listeners</a></li>
+				<li><a href="updatemetadata.xsl?mount={@mount}">Update Metadata</a></li>
+				<li><a href="manageauth.xsl?mount={@mount}">Manage Authentication</a></li>
+				<li><a href="killsource.xsl?mount={@mount}">Kill Source</a></li>
+			</ul>
+			<xsl:if test="User">
+				<table border="1">
+					<thead>
+						<tr>
+							<td>User</td>
+							<td>Action</td>
+						</tr>
+					</thead>
+					<tbody>
+						<xsl:variable name="themount"><xsl:value-of select="@mount" /></xsl:variable>
+						<xsl:for-each select="User">
+							<tr>
+								<td>
+									<xsl:value-of select="username" />
+								</td>
+								<td>
+									<a href="manageauth.xsl?mount={$themount}&amp;username={username}&amp;action=delete">Delete</a>
+								</td>
+							</tr>
+						</xsl:for-each>
+					</tbody>
+				</table>
+			</xsl:if>
+			<form class="alignedform" method="get" action="/admin/manageauth.xsl">
+				<fieldset>
+					<legend>Add new user</legend>
+					<p>
+						<label for="username">Username:</label>
+						<input type="text" id="username" name="username"/>
+					</p>
+					<p>
+						<label for="password">Password:</label>
+						<input type="password" id="password" name="password"/>
+					</p>
+					<input type="hidden" name="mount" value="{@mount}"/>
+					<input type="hidden" name="action" value="add"/>
+					<input type="Submit" value="Add"/>
+				</fieldset>
+			</form>
+		</div>
+	</xsl:for-each>
+	<div id="footer">
+		Support icecast development at <a href="http://www.icecast.org">www.icecast.org</a>
+	</div>
 </body>
 </html>
 </xsl:template>
