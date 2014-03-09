@@ -25,7 +25,7 @@
   THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-  <xsl:output indent="no" omit-xml-declaration="yes" method="text" encoding="UTF-8" media-type="text/x-json"/>
+  <xsl:output indent="no" omit-xml-declaration="yes" method="text" encoding="UTF-8" media-type="application/json"/>
 	<xsl:strip-space elements="*"/>
   <!--default to no output-->
   <xsl:variable name="output">false</xsl:variable>
