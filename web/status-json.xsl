@@ -7,9 +7,10 @@
 <xsl:variable name="output">true</xsl:variable>
 
 <!-- hide certain nodes from all sources -->
+<xsl:template match="icestats/source/max_listeners" />
+<xsl:template match="icestats/source/public" />
 <xsl:template match="icestats/source/source_ip" />
 <xsl:template match="icestats/source/slow_listeners" />
-<xsl:template match="icestats/source/public" />
 <xsl:template match="icestats/source/*[contains(name(), 'total_bytes')]" />
 <xsl:template match="icestats/source/user_agent" >
 	<!-- user_agent is most of the time the last node in a mount, 
