@@ -1,5 +1,5 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-<xsl:import href="xml2json.xslt.fail"/>
+<xsl:import href="xml2json.xslt"/>
 <xsl:output indent="no" omit-xml-declaration="yes" method="text" encoding="UTF-8" media-type="text/javascript"/>
 <xsl:strip-space elements="*"/>
 
