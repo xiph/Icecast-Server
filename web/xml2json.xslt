@@ -27,7 +27,10 @@
 
   <xsl:output indent="no" omit-xml-declaration="yes" method="text" encoding="UTF-8" media-type="text/x-json"/>
 	<xsl:strip-space elements="*"/>
-  <!--contant-->
+  <!--default to no output-->
+  <xsl:variable name="output">false</xsl:variable>
+
+  <!--constant-->
   <xsl:variable name="d">0123456789</xsl:variable>
 
   <!-- ignore document text -->
@@ -130,45 +133,83 @@
   <xsl:template match="text()[translate(.,'TRUE','true')='true']">true</xsl:template>
   <xsl:template match="text()[translate(.,'FALSE','false')='false']">false</xsl:template>
 
-  <!-- object -->
+  <!-- objects and arrays -->
   <xsl:template match="*" name="base">
-    <xsl:if test="not(preceding-sibling::*)">{</xsl:if>
-    <xsl:call-template name="escape-string">
-      <xsl:with-param name="s" select="name()"/>
-    </xsl:call-template>
-    <xsl:text>:</xsl:text>
-    <!-- check type of node -->
     <xsl:choose>
-      <!-- null nodes -->
-      <xsl:when test="count(child::node())=0">null</xsl:when>
-      <!-- other nodes -->
+      <!-- complete array -->
+      <xsl:when test="(count(../*[name(current())=name()])=count(../*)) and count(../*[name(current())=name()])&gt;1">
+        <xsl:variable name="el" select="name()"/>
+        <xsl:if test="not(following-sibling::*[name()=$el])">
+          <xsl:text>[</xsl:text>
+          <xsl:for-each select="../*[name()=$el]">
+            <xsl:if test="position()!=1">,</xsl:if>
+            <xsl:choose>
+              <xsl:when test="not(child::node())">
+                <xsl:text>null</xsl:text>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:apply-templates select="child::node()"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:for-each>
+          <xsl:text>]</xsl:text>
+        </xsl:if>
+      </xsl:when>
+
+      <!-- partial array -->
+      <xsl:when test="count(../*[name(current())=name()])&gt;1">
+        <xsl:if test="not(preceding-sibling::*)">{</xsl:if>
+        <xsl:variable name="el" select="name()"/>
+        <xsl:if test="not(following-sibling::*[name()=$el])">
+          <xsl:call-template name="escape-string">
+            <xsl:with-param name="s" select="$el"/>
+          </xsl:call-template>
+          <xsl:text>:[</xsl:text>
+          <xsl:for-each select="../*[name()=$el]">
+            <xsl:if test="position()!=1">,</xsl:if>
+            <xsl:choose>
+              <xsl:when test="not(child::node())">
+                <xsl:text>null</xsl:text>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:apply-templates select="child::node()"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:for-each>
+          <xsl:text>]</xsl:text>
+          <xsl:if test="following-sibling::*">,</xsl:if>
+        </xsl:if>
+        <xsl:if test="not(following-sibling::*)">}</xsl:if>
+      </xsl:when>
+
+      <!-- object -->
       <xsl:otherwise>
-      	<xsl:apply-templates select="child::node()"/>
+        <xsl:if test="not(preceding-sibling::*)">{</xsl:if>
+        <xsl:call-template name="escape-string">
+          <xsl:with-param name="s" select="name()"/>
+        </xsl:call-template>
+        <xsl:text>:</xsl:text>
+        <!-- check type of node -->
+        <xsl:choose>
+            <!-- null nodes -->
+            <xsl:when test="count(child::node())=0">null</xsl:when>
+            <!-- other nodes -->
+            <xsl:otherwise>
+                <xsl:apply-templates select="child::node()"/>
+            </xsl:otherwise>
+          </xsl:choose>
+          <!-- end of type check -->
+          <xsl:if test="following-sibling::*">,</xsl:if>
+        <xsl:if test="not(following-sibling::*)">}</xsl:if>
       </xsl:otherwise>
     </xsl:choose>
-    <!-- end of type check -->
-    <xsl:if test="following-sibling::*">,</xsl:if>
-    <xsl:if test="not(following-sibling::*)">}</xsl:if>
   </xsl:template>
 
-  <!-- array -->
-  <xsl:template match="*[count(../*[name(../*)=name(.)])=count(../*) and count(../*)&gt;1]">
-    <xsl:if test="not(preceding-sibling::*)">[</xsl:if>
-    <xsl:choose>
-      <xsl:when test="not(child::node())">
-        <xsl:text>null</xsl:text>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:apply-templates select="child::node()"/>
-      </xsl:otherwise>
-    </xsl:choose>
-    <xsl:if test="following-sibling::*">,</xsl:if>
-    <xsl:if test="not(following-sibling::*)">]</xsl:if>
-  </xsl:template>
-  
   <!-- convert root element to an anonymous container -->
   <xsl:template match="/">
-    <xsl:apply-templates select="node()"/>
+    <xsl:if test="$output='true'">
+      <xsl:apply-templates select="node()"/>
+    </xsl:if>
   </xsl:template>
     
 </xsl:stylesheet>
