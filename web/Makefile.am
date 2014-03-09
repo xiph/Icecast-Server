@@ -10,4 +10,6 @@ dist_web_DATA = status.xsl \
                 auth.xsl \
                 server_version.xsl \
                 tunein.png \
-                key.png
+                key.png \
+                status-json.xsl \
+                xml2json.xslt
