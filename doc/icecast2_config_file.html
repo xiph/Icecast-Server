@@ -36,8 +36,8 @@ Please note that, especially for new Icecast users, editing the config file can 
 <p>
 Should you need to customize the configuration, then make a backup of your working config file, before you make any changes. If Icecast refuses to start it is in most cases due to a malformed config file. In such a case running the following command should point out most XML syntax problems.
 <pre>xmllint icecast.xml</pre>
-A known limitation of Icecast 2.4.0 is that it will segfault on empty XML tags, so please don't use them (e.g. &lt;webroot&gt;&lt;/webroot&gt;).<br />
-Also check the Icecast error.log for additional hints.
+<strong>A known limitation of Icecast 2.4.0 is that it will segfault on empty XML tags, so please don't use them (e.g. &lt;webroot&gt;&lt;/webroot&gt;).</strong><br /><br />
+Also check the Icecast error.log for additional hints in case of all problems!
 </p>
 <p>
 <br />
@@ -62,7 +62,7 @@ Also check the Icecast error.log for additional hints.
 </p>
 <h4>clients</h4>
 <div class="indentedbox">
-Total number of concurrent clients supported by the server.  Listeners are considered clients, but so are accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max *concurrent* connections for the entire server (not per mountpoint).
+Total number of concurrent clients supported by the server.  Listeners are considered clients, but so are accesses to any static content (i.e. fileserved content) and also any requests to gather stats.  These are max <strong>concurrent</strong> connections for the entire server (not per mountpoint).
 </div>
 <h4>sources</h4>
 <div class="indentedbox">
