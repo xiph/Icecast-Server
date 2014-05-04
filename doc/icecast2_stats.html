@@ -11,7 +11,6 @@
 <hr id='titlebar' />
 <br />
 <br />
-<br />
 <ul>
 <li><a href="#overview">Overview</a></li>
 <li><a href="#xslt">HTML interface, XSLT generated</a></li>
@@ -21,16 +20,18 @@
 
 <a name="overview"></a>
 <h2>Overview</h2>
-
+<p>Icecast provides extensive run time statistics. Both in the form of active connection numbers and cumulative counters (since server startup or respectively source connection startup).</p>
 <a name="xslt"></a>
 <h2>HTML interface, XSLT generated</h2>
-
+<p>Icecast comes with a basic, XHTML web interface. It exposes a basic set of server statistics that should fulfil basic user needs. If so desired the files in web-root can be customized to contain more or less information (see section on raw XML data below). <br/>
+We strongly discourage attempts to scrape data from this interface as we do not consider this an API and will change it, even completely, between versions. The preferred ways are custom XSLT, JSON and raw XML.</p>
 <a name="xslt_advanced"></a>
 <h2>Advanced machine readable data, XSLT generated</h2>
-
+<p>Icecast uses the very powerful libXSLT engine to transform its internal raw statistical data into custom tailored interfaces. Many people have written custom XSLT code that produces e.g. plain text "now playing", XSPF, VCLT, munin interface data, etc.</p>
+<p>Since version 2.4.0 Icecast includes a basic JSON API (/status-json.xsl) based on a xml2json template by Doeke Zanstra (see xml2json.xslt). It exposes a basic set of server statistics that should fulfil basic user needs. The intention is to not break backwards compatibility of this interface in the future, still we recommend to design robust software that can deal with possible changes like addition or removal of variables.</p>
 <a name="available_raw_data"></a>
 <h2>Available raw data</h2>
-<p>This section contains information about the raw server statistics data available inside icecast.  An example stats XML tree will be shown and each element will be described.  The following example stats tree will be used (it should not be considered complete nor authoritative):</p>
+<p>This section contains information about the raw XML server statistics data available inside icecast.  An example stats XML tree will be shown and each element will be described.  The following example stats tree will be used:</p>
 <pre>
 &lt;?xml version="1.0"?&gt;	
 &lt;icestats&gt;
@@ -45,6 +46,7 @@
 	&lt;location&gt;Earth&lt;/location&gt;
 	&lt;server_id&gt;Icecast 2.4.0&lt;/server_id&gt;
 	&lt;server_start&gt;Tue, 01 Apr 2014 23:42:05 +0000&lt;/server_start&gt;
+	&lt;server_start_iso8601&gt;2014-04-01T23:42:05+0000&lt;/server_start&gt;
 	&lt;source_client_connections&gt;1&lt;/source_client_connections&gt;
 	&lt;source_relay_connections&gt;0&lt;/source_relay_connections&gt;
 	&lt;source_total_connections&gt;1&lt;/source_total_connections&gt;
@@ -70,6 +72,7 @@
 		&lt;slow_listeners&gt;1&lt;/slow_listeners&gt;
 		&lt;source_ip&gt;203.0.113.42&lt;/source_ip&gt;
 		&lt;stream_start&gt;Wed, 02 Apr 2014 13:37:42 +0000&lt;/stream_start&gt;
+		&lt;stream_start_iso8601&gt;2014-04-02T13:37:42+0000&lt;/stream_start&gt;
 		&lt;subtype&gt;Vorbis&lt;/subtype&gt;
 		&lt;title&gt;Test title&lt;/title&gt;
 		&lt;total_bytes_read&gt;448632&lt;/total_bytes_read&gt;
@@ -89,61 +92,66 @@
 <div class="indentedbox">
 As set in the server config, this should contain contact details for getting in touch with the server administrator. Usually this will be an email address, but as this can be an arbitrary string it could also be a phone number.
 </div>
-<h4>client-connections</h4>
+<h4>client_connections</h4>
 <div class="indentedbox">
-Client connections are basically anything that is not a source connection.  These include listeners (not concurrent, but cumulative), any admin function accesses, and any static content (file serving) accesses.
+Client connections are basically anything that is not a source connection.  These include listeners (not concurrent, but cumulative), any admin function accesses, and any static content (file serving) accesses. This is an accumulating counter.
 </div>
 <h4>clients</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Number of currently active client connections. <!-- FIXME: be more verbose -->
 </div>
 <h4>connections</h4>
 <div class="indentedbox">
-The total of all inbound TCP connections since start-up.
+The total of all inbound TCP connections since start-up. This is an accumulating counter.
 </div>
 <h4>file_connections</h4>
 <div class="indentedbox">
-<!--FIXME-->
+<!--FIXME-->This is an accumulating counter.
 </div>
 <h4>host</h4>
 <div class="indentedbox">
-As set in the server config,<!--FIXME-->
+As set in the server config, this should be the full DNS resolveable name or FQDN for the host on which this icecast instance is running.
 </div>
 <h4>listener_connections</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Number of listener connections to mount points. This is an accumulating counter.
 </div>
 <h4>listeners</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Number of currently active listener connections.
 </div>
 <h4>location</h4>
 <div class="indentedbox">
-As set in the server config,<!--FIXME-->
+As set in the server config, this is a free form field that should describe e.g. the physical location of this server.
 </div>
 <h4>server_id</h4>
 <div class="indentedbox">
 Defaults to the version string of the currently running Icecast server. While not recommended it can be overriden in the server config.
 </div>
+<h4>server_start_iso8601</h4>
+<div class="indentedbox">
+Timestamp of server startup in ISO 8601 date format.
+</div>
 <h4>server_start</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Timestamp of server startup in RFC 2822 date format. This field is deprecated and may be removed in a future version, please use <em>server_start_iso8601</em> instead.
 </div>
 <h4>source_client_connections</h4>
 <div class="indentedbox">
-Source client connections are the number of times (cumulative since start-up, not just currently connected) a source client has connected to icecast.
+Source client connections are the number of times (cumulative since start-up, not just currently connected) a source client has connected to icecast. This is an accumulating counter.
 </div>
 <h4>source_relay_connections</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Number of outbound relay connections to (master) icecast servers. This is an accumulating counter.
 </div>
 <h4>source_total_connections</h4>
 <div class="indentedbox">
+Both clients and relays. This is an accumulating counter.
 <!--FIXME-->
 </div>
 <h4>sources</h4>
 <div class="indentedbox">
-The total of currently connected sources (mountpoints).
+The total of currently connected sources.
 </div>
 <h4>stats</h4>
 <div class="indentedbox">
@@ -151,11 +159,13 @@ The total of currently connected STATS clients.
 </div>
 <h4>stats_connections</h4>
 <div class="indentedbox">
-Number of times (cumulative since start-up, not just currently connected) a stats client has connected to icecast.
+Number of times a stats client has connected to icecast. This is an accumulating counter.
 </div>
 
 
 <h3>Source-specific Statistics</h3>
+<p>Please note that the statistics are valid within the scope of the current source connection. A reconnect or disconnection will reset those.
+</p>
 <h4>artist</h4>
 <div class="indentedbox">
 Artist of the current song (metadata set by source client).
@@ -183,7 +193,7 @@ Information about the bitrate/samplerate/quality of the stream (metadata set by 
 </div>
 <h4>listener_peak</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Peak concurrent number of listener connections for this mountpoint.
 </div>
 <h4>listeners</h4>
 <div class="indentedbox">
@@ -191,11 +201,11 @@ The number of currently connected listeners.
 </div>
 <h4>listenurl</h4>
 <div class="indentedbox">
-<!--FIXME-->
+URL to this mountpoint. (This is not aware of aliases)
 </div>
 <h4>max_listeners</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Maximum number of listeners permitted to concurrently connect to this mountpoint.
 </div>
 <h4>public</h4>
 <div class="indentedbox">
@@ -219,7 +229,7 @@ Flag that indicates whether this mount is to be listed on a YP (set by source cl
 </div>
 <h4>server_type</h4>
 <div class="indentedbox">
-<!--FIXME-->
+MIME-type for the stream currently active on this mountpoint.
 </div>
 <h4>slow_listeners</h4>
 <div class="indentedbox">
@@ -227,23 +237,27 @@ Flag that indicates whether this mount is to be listed on a YP (set by source cl
 </div>
 <h4>source_ip</h4>
 <div class="indentedbox">
-<!--FIXME-->
+IP address of the currently connected source client. In case of relays the content of &lt;server&gt;.
+</div>
+<h4>stream_start_iso8601</h4>
+<div class="indentedbox">
+Timestamp of when the currently active source client connected to this mount point in ISO 8601 date format.
 </div>
 <h4>stream_start</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Timestamp of when the currently active source client connected to this mount point in RFC 2822 date format. This field is deprecated and may be removed in a future version, please use <em>stream_start_iso8601</em> instead.
 </div>
 <h4>subtype</h4>
 <div class="indentedbox">
-<!--FIXME-->
+MIME-subtype, can be e.g. codecs like Opus, Vorbis, Theora.
 </div>
 <h4>total_bytes_read</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Total number of bytes received from the source client.
 </div>
 <h4>total_bytes_sent</h4>
 <div class="indentedbox">
-<!--FIXME-->
+Total number of bytes sent to all listener connections since last source connect.
 </div>
 <h4>user_agent</h4>
 <div class="indentedbox">
