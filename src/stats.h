@@ -89,6 +89,7 @@ void stats_event_sub(const char *source, const char *name, unsigned long value);
 void stats_event_dec(const char *source, const char *name);
 void stats_event_hidden (const char *source, const char *name, int hidden);
 void stats_event_time (const char *mount, const char *name);
+void stats_event_time_iso8601 (const char *mount, const char *name);
 
 void *stats_connection(void *arg);
 void stats_callback (client_t *client, void *notused);

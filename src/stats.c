@@ -597,6 +597,18 @@ void stats_event_time (const char *mount, const char *name)
 }
 
 
+void stats_event_time_iso8601 (const char *mount, const char *name)
+{
+    time_t now = time(NULL);
+    struct tm local;
+    char buffer[100];
+
+    localtime_r (&now, &local);
+    strftime (buffer, sizeof (buffer), "%FT%T%z", &local);
+    stats_event (mount, name, buffer);
+}
+
+
 void stats_global (ice_config_t *config)
 {
     stats_event (NULL, "server_id", config->server_id);
@@ -613,6 +625,7 @@ static void *_stats_thread(void *arg)
     event_listener_t *listener;
 
     stats_event_time (NULL, "server_start");
+    stats_event_time_iso8601 (NULL, "server_start_iso8601");
 
     /* global currently active stats */
     stats_event (NULL, "clients", "0");
