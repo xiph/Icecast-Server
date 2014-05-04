@@ -10,6 +10,4 @@ doc_DATA = index.html icecast2_admin.html icecast2_basicsetup.html \
 	listener_auth1.jpg listener_auth2.jpg listener_auth3.jpg \
 	masterslave.png relay.png
 
-EXTRA_DIST = Index.hhk icecast2.hhc icecast2.hhp index_win32.html \
-	stats1.jpg style.css win32_section1.html win32_section2.html \
-	win32_section3.html windowtitle.jpg $(doc_DATA)
+EXTRA_DIST = $(doc_DATA)
