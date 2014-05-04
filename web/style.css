@@ -120,6 +120,24 @@ form.alignedform input {
 	color: #f8ef64;
 }
 
+table.colortable {
+	border-collapse: collapse;
+	padding: 20px 0 20px 0;
+	margin: 0 auto;
+}
+
+table.colortable td {
+	border: 1px solid #000;
+	text-align: center;
+	padding: 5px;
+}
+
+table.colortable thead tr td {
+	color: #656565;
+	background: #f8ef64;
+	border-color: white;
+}
+
 .roundbox table.yellowkeys tr td {
 	padding: 5px 5px 0 0;
 	word-wrap: break-word;

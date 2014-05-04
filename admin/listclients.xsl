@@ -51,7 +51,7 @@
 				<xsl:choose>
 					<xsl:when test="listener">
 						<div class="scrolltable">
-							<table border="1">
+							<table class="colortable">
 								<thead>
 									<tr>
 										<td>IP</td>

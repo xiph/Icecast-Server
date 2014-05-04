@@ -42,7 +42,7 @@
 				<li><a href="killsource.xsl?mount={@mount}">Kill Source</a></li>
 			</ul>
 			<xsl:if test="User">
-				<table border="1">
+				<table class="colortable">
 					<thead>
 						<tr>
 							<td>User</td>
