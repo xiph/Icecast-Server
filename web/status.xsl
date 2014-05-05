@@ -50,6 +50,13 @@
 					</div>
 				</div>
 				<div class="mountcont">
+					<xsl:if test="server_type and ((server_type = 'application/ogg') or (server_type = 'audio/ogg'))">
+						<div class="audioplayer">
+							<audio controls="controls" preload="none">
+								<source src="{@mount}" type="{server_type}" />
+							</audio>
+						</div>
+					</xsl:if>
 					<table class="yellowkeys">
 						<tbody>
 							<xsl:if test="server_name">

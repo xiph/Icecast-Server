@@ -69,6 +69,13 @@
 						</xsl:if>
 						<li><a href="killsource.xsl?mount={@mount}">Kill Source</a></li>
 					</ul>
+					<xsl:if test="server_type and ((server_type = 'application/ogg') or (server_type = 'audio/ogg'))">
+						<div class="audioplayer">
+							<audio controls="controls" preload="none">
+								<source src="{@mount}" type="{server_type}" />
+							</audio>
+						</div>
+					</xsl:if>
 					<table class="yellowkeys">
 						<tbody>
 							<xsl:for-each select="*">
