@@ -1,3 +1,67 @@
+2014-05-06 05:23:42  dm8tbr
+
+	* This is Icecast 2.4.0!
+
+2014-05-06 04:53:24  dm8tbr
+
+	* SECURITY FIX - Override supplementary groups if <changeowner>
+
+2014-05-05 05:16:44  dm8tbr
+
+	* Added <audio> for supported streams. TNX ePirat
+
+2014-05-04 17:36:25  dm8tbr
+
+	* status2.xsl, broken for a decade, now it's gone!
+
+2014-05-04 17:09:59  dm8tbr
+
+	* Updated docs: 
+	  * logging to STDERR; known issues
+	  * Refactored docs about client authentication
+	  * Vastly improved page about Icecast statistics
+	  * Clean up supported windows versions
+	  * Quick fixup of the basic setup page
+	  * Minor fixes to the config file documentation
+	  * Updated YP documentation
+	  * Reduced win32 documentation to essentials
+
+2014-05-04 07:14:54  dm8tbr
+
+	* Adding stream_start_iso8601, server_start_iso8601
+	  ISO8601 compliante timestamps for statistics. Should make usage in
+	  e.g. JSON much easier.
+	  Added as new variables to avoid breaking backwards compatibility.
+
+2014-05-04 05:16:00  dm8tbr
+
+	* Nicer looking tables for the admin interface.
+	  ePirat sent updated tables code that should look much nicer.
+	  This is admin interface only (and a global css change).
+
+2014-03-09 13:02:35  dm8tbr
+
+	* Set content-type to official "application/json"
+
+2014-03-09 12:27:58  dm8tbr
+
+	* Initial JSON status transform.
+	  Output roughly limited to data also visible through status.xsl.
+
+2014-03-09 12:26:15  dm8tbr
+
+	* Silence direct calls, add partial array support.
+	* The XSLT will now return empty if called directly.
+	  This is a security measure to prevent unintended data leakage.
+	* Adding partial array support to print sources in an array. 
+	  Code lifted from: 
+	  https://code.google.com/p/xml2json-xslt/issues/detail?id=3
+
+2014-03-09 12:19:35  dm8tbr
+
+	* Adding xml2json XSLT, svn r31 upstream trunk.
+	  https://code.google.com/p/xml2json-xslt/
+
 2014-03-01 17:53:00  dm8tbr
 
 	* Icecast 2.4 beta5 aka 2.3.99.5
