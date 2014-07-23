@@ -22,7 +22,7 @@ VERSIONGREP="sed -e s/.*[^0-9\.]\([0-9]\.[0-9]\).*/\1/"
                                                                                 
 # do we need automake?
 if test -r Makefile.am; then
-    echo Checking for automake version
+    echo "Checking for automake version"
     options=`fgrep AUTOMAKE_OPTIONS Makefile.am`
     AM_NEEDED=`echo "$options" | $VERSIONGREP`
     AM_PROGS=automake
@@ -70,17 +70,23 @@ if test -r Makefile.am; then
       }
 fi
 
-(libtoolize --version)  > /dev/null 2>&1 || {
-	echo
-	echo "You must have libtool installed to compile $package."
-	echo "Download the appropriate package for your system,"
-	echo "or get the source from one of the GNU ftp sites"
-	echo "listed in http://www.gnu.org/order/ftp.html"
-	DIE=1
-}
+if command libtoolize --version 2>/dev/null; then
+  USE_GLIBTOOLIZE=0
+else
+  if command glibtoolize --version 2>/dev/null; then
+    USE_GLIBTOOLIZE=1
+  else
+    echo
+    echo "You must have libtool installed to compile $package."
+    echo "Download the appropriate package for your system,"
+    echo "or get the source from one of the GNU ftp sites"
+    echo "listed in http://www.gnu.org/order/ftp.html"
+    DIE=1
+  fi
+fi
 
 if test "$DIE" -eq 1; then
-        exit 1
+  exit 1
 fi
 
 echo "Generating configuration files for $package, please wait...."
@@ -94,8 +100,13 @@ fi
 echo "  autoheader"
 autoheader
 
-echo "  libtoolize --automake"
-libtoolize --automake
+if test "$USE_GLIBTOOLIZE" -eq 0; then
+  echo "  libtoolize --automake"
+  libtoolize --automake
+else
+  echo "  glibtoolize --automake"
+  glibtoolize --automake
+fi
 
 if test -n "$AUTOMAKE"; then
   echo "  $AUTOMAKE --add-missing"
