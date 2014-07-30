@@ -804,6 +804,7 @@ int connection_complete_source (source_t *source, int response)
     if (global.sources < config->source_limit)
     {
         const char *contenttype;
+        const char *expectcontinue;
         mount_proxy *mountinfo;
         format_type_t format_type;
 
@@ -845,6 +846,21 @@ int connection_complete_source (source_t *source, int response)
             WARN1 ("plugin format failed for \"%s\"", source->mount);
             return -1;
         }
+
+	/* For PUT support we check for 100-continue and send back a 100 to stay in spec */
+	expectcontinue = httpp_getvar (source->parser, "expect");
+	if (expectcontinue != NULL)
+	{
+#ifdef HAVE_STRCASESTR
+	    if (strcasestr (expectcontinue, "100-continue") != NULL)
+#else
+	    WARN0("OS doesn't support case insenestive substring checks...");
+	    if (strstr (expectcontinue, "100-continue") != NULL)
+#endif
+	    {
+		client_send_100 (source->client);
+	    }
+	}
 
         global.sources++;
         stats_event_args (NULL, "sources", "%d", global.sources);

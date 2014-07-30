@@ -656,6 +656,7 @@ static void source_init (source_t *source)
     stats_event_args (source->mount, "listeners", "%lu", source->listeners);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
     stats_event_time (source->mount, "stream_start");
+    stats_event_time_iso8601 (source->mount, "stream_start_iso8601");
 
     DEBUG0("Source creation complete");
     source->last_read = time (NULL);

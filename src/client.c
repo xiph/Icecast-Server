@@ -189,7 +189,7 @@ static void client_send_error(client_t *client, int status, int plain, const cha
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
-                                 plain ? "text/plain" : "text/html", NULL,
+                                 plain ? "text/plain" : "text/html", "utf-8",
                                  plain ? message : "");
 
     if (!plain)
@@ -200,6 +200,12 @@ static void client_send_error(client_t *client, int status, int plain, const cha
     client->respcode = status;
     client->refbuf->len = strlen (client->refbuf->data);
     fserve_add_client (client, NULL);
+}
+
+void client_send_100(client_t *client)
+{
+    /* On demand inject a HTTP/1.1 100 Continue to make sure clients are happy */
+    sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
 }
 
 void client_send_400(client_t *client, const char *message)

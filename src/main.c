@@ -6,9 +6,10 @@
  * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
- *                      Karl Heyes <karl@xiph.org>
+ *                      Karl Heyes <karl@xiph.org>,
  *                      and others (see AUTHORS for details).
  * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014,      Thomas B. Ruecker <thomas@ruecker.fi>.
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -405,14 +406,15 @@ static void _ch_root_uid_setup(void)
            return;
        }
 
-       if(gid != (gid_t)-1) {
+       if(uid != (uid_t)-1 && gid != (gid_t)-1) {
            if(!setgid(gid))
                fprintf(stdout, "Changed groupid to %i.\n", (int)gid);
            else
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
-       }
-
-       if(uid != (uid_t)-1) {
+           if(!initgroups(conf->user, gid))
+               fprintf(stdout, "Changed supplementary groups based on user: %s.\n", conf->user);
+	   else
+               fprintf(stdout, "Error changing supplementary groups: %s.\n", strerror(errno));
            if(!setuid(uid))
                fprintf(stdout, "Changed userid to %i.\n", (int)uid);
            else

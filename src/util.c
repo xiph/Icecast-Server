@@ -558,7 +558,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 #endif
 
     if (gmtime_result)
-        strftime(currenttime_buffer, sizeof(currenttime_buffer), "Date: %a, %d-%b-%Y %X GMT\r\n", gmtime_result);
+        strftime(currenttime_buffer, sizeof(currenttime_buffer), "Date: %a, %d %b %Y %X GMT\r\n", gmtime_result);
     else
         currenttime_buffer[0] = '\0';
 

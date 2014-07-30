@@ -278,7 +278,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
         /* FIXME: in this section we hope no function will ever return -1 */
 	len = util_http_build_header(client->refbuf->data, buf_len, 0,
 	                             0, 200, NULL,
-				     "text/xml", NULL,
+				     "text/xml", "utf-8",
 				     NULL);
 	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
 
@@ -572,7 +572,7 @@ static void html_success(client_t *client, char *message)
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 200, NULL,
-				 "text/html", NULL,
+				 "text/html", "utf-8",
 				 "");
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
              "<html><head><title>Admin request successful</title></head>"
@@ -1031,7 +1031,7 @@ static void command_list_mounts(client_t *client, int response)
     {
         util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
 	                       0, 200, NULL,
-			       "text/plain", NULL,
+			       "text/plain", "utf-8",
 			       "");
         client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
