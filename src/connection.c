@@ -212,29 +212,29 @@ static void get_ssl_certificate (ice_config_t *config)
             break;
         if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0)
         {
-            WARN1 ("Invalid cert file %s", config->cert_file);
+            LOG_WARN("Invalid cert file %s", config->cert_file);
             break;
         }
         if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
         {
-            WARN1 ("Invalid private key file %s", config->cert_file);
+            LOG_WARN("Invalid private key file %s", config->cert_file);
             break;
         }
         if (!SSL_CTX_check_private_key (ssl_ctx))
         {
-            ERROR1 ("Invalid %s - Private key does not match cert public key", config->cert_file);
+            LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
             break;
         }
         if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) 
         { 
-            WARN1 ("Invalid cipher list: %s", config->cipher_list); 
+            LOG_WARN("Invalid cipher list: %s", config->cipher_list); 
         } 
         ssl_ok = 1;
-        INFO1 ("SSL certificate found at %s", config->cert_file);
-        INFO1 ("SSL using ciphers %s", config->cipher_list); 
+        LOG_INFO("SSL certificate found at %s", config->cert_file);
+        LOG_INFO("SSL using ciphers %s", config->cipher_list); 
         return;
     } while (0);
-    INFO0 ("No SSL capability on any configured ports");
+    LOG_INFO("No SSL capability on any configured ports");
 }
 
 
@@ -282,7 +282,7 @@ static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
 static void get_ssl_certificate (ice_config_t *config)
 {
     ssl_ok = 0;
-    INFO0 ("No SSL capability");
+    LOG_INFO("No SSL capability");
 }
 #endif /* HAVE_OPENSSL */
 
@@ -340,7 +340,7 @@ static void recheck_ip_file (cache_file_contents *cache)
         }
         if (stat (cache->filename, &file_stat) < 0)
         {
-            WARN2 ("failed to check status of \"%s\": %s", cache->filename, strerror(errno));
+            LOG_WARN("failed to check status of \"%s\": %s", cache->filename, strerror(errno));
             return;
         }
         if (file_stat.st_mtime == cache->file_mtime)
@@ -351,7 +351,7 @@ static void recheck_ip_file (cache_file_contents *cache)
         file = fopen (cache->filename, "r");
         if (file == NULL)
         {
-            WARN2("Failed to open file \"%s\": %s", cache->filename, strerror (errno));
+            LOG_WARN("Failed to open file \"%s\": %s", cache->filename, strerror (errno));
             return;
         }
 
@@ -368,7 +368,7 @@ static void recheck_ip_file (cache_file_contents *cache)
                 avl_insert (new_ips, str);
         }
         fclose (file);
-        INFO2 ("%d entries read from file \"%s\"", count, cache->filename);
+        LOG_INFO("%d entries read from file \"%s\"", count, cache->filename);
 
         if (cache->contents) avl_tree_free (cache->contents, free_filtered_ip);
         cache->contents = new_ips;
@@ -388,7 +388,7 @@ static int accept_ip_address (char *ip)
     {
         if (avl_get_by_key (banned_ip.contents, ip, &result) == 0)
         {
-            DEBUG1 ("%s is banned", ip);
+            LOG_DEBUG("%s is banned", ip);
             return 0;
         }
     }
@@ -396,12 +396,12 @@ static int accept_ip_address (char *ip)
     {
         if (avl_get_by_key (allowed_ip.contents, ip, &result) == 0)
         {
-            DEBUG1 ("%s is allowed", ip);
+            LOG_DEBUG("%s is allowed", ip);
             return 1;
         }
         else
         {
-            DEBUG1 ("%s is not allowed", ip);
+            LOG_DEBUG("%s is not allowed", ip);
             return 0;
         }
     }
@@ -469,7 +469,7 @@ static sock_t wait_for_serversock(int timeout)
                 if (ufds[i].revents & (POLLHUP|POLLERR))
                 {
                     sock_close (global.serversock[i]);
-                    WARN0("Had to close a listening socket");
+                    LOG_WARN("Had to close a listening socket");
                 }
                 global.serversock[i] = SOCK_ERROR;
             }
@@ -553,7 +553,7 @@ static connection_t *_accept_connection(int duration)
     {
         if (!sock_recoverable(sock_error()))
         {
-            WARN2("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
+            LOG_WARN("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
             thread_sleep (500000);
         }
     }
@@ -740,7 +740,7 @@ void connection_accept_loop (void)
             if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
             {
                 global_unlock();
-                WARN0 ("failed to set tcp options on client connection, dropping");
+                LOG_WARN("failed to set tcp options on client connection, dropping");
                 client_destroy (client);
                 continue;
             }
@@ -798,7 +798,7 @@ int connection_complete_source (source_t *source, int response)
     ice_config_t *config;
 
     global_lock ();
-    DEBUG1 ("sources count is %d", global.sources);
+    LOG_DEBUG("sources count is %d", global.sources);
 
     config = config_get_config();
     if (global.sources < config->source_limit)
@@ -823,13 +823,13 @@ int connection_complete_source (source_t *source, int response)
                     client_send_403 (source->client, "Content-type not supported");
                     source->client = NULL;
                 }
-                WARN1("Content-type \"%s\" not supported, dropping source", contenttype);
+                LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
                 return -1;
             }
         }
         else
         {
-            WARN0("No content-type header, falling back to backwards compatibility mode "
+            LOG_WARN("No content-type header, falling back to backwards compatibility mode "
                     "for icecast 1.x relays. Assuming content is mp3.");
             format_type = FORMAT_TYPE_GENERIC;
         }
@@ -843,7 +843,7 @@ int connection_complete_source (source_t *source, int response)
                 client_send_403 (source->client, "internal format allocation problem");
                 source->client = NULL;
             }
-            WARN1 ("plugin format failed for \"%s\"", source->mount);
+            LOG_WARN("plugin format failed for \"%s\"", source->mount);
             return -1;
         }
 
@@ -854,7 +854,7 @@ int connection_complete_source (source_t *source, int response)
 #ifdef HAVE_STRCASESTR
 	    if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-	    WARN0("OS doesn't support case insenestive substring checks...");
+	    LOG_WARN("OS doesn't support case insenestive substring checks...");
 	    if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
 	    {
@@ -873,11 +873,11 @@ int connection_complete_source (source_t *source, int response)
         slave_rebuild_mounts();
 
         source->shutdown_rwlock = &_source_shutdown_rwlock;
-        DEBUG0 ("source is ready to start");
+        LOG_DEBUG("source is ready to start");
 
         return 0;
     }
-    WARN1("Request to add source when maximum source limit "
+    LOG_WARN("Request to add source when maximum source limit "
             "reached %d", global.sources);
 
     global_unlock();
@@ -909,7 +909,7 @@ static int _check_pass_http(http_parser_t *parser,
 
     userpass = util_base64_decode(header+6);
     if(userpass == NULL) {
-        WARN1("Base64 decode of Authorization header \"%s\" failed",
+        LOG_WARN("Base64 decode of Authorization header \"%s\" failed",
                 header+6);
         return 0;
     }
@@ -1008,7 +1008,7 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
     const char *protocol;
 
     if(!pass) {
-        WARN0("No source password set, rejecting source");
+        LOG_WARN("No source password set, rejecting source");
         return -1;
     }
 
@@ -1025,7 +1025,7 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
             {
                 ret = _check_pass_ice(parser, pass);
                 if(ret)
-                    WARN0("Source is using deprecated icecast login");
+                    LOG_WARN("Source is using deprecated icecast login");
             }
         }
     }
@@ -1036,11 +1036,11 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
 /* only called for native icecast source clients */
 static void _handle_source_request (client_t *client, const char *uri)
 {
-    INFO1("Source logging in at mountpoint \"%s\"", uri);
+    LOG_INFO("Source logging in at mountpoint \"%s\"", uri);
 
     if (uri[0] != '/')
     {
-        WARN0 ("source mountpoint not starting with /");
+        LOG_WARN("source mountpoint not starting with /");
         client_send_401 (client);
         return;
     }
@@ -1054,7 +1054,7 @@ static void _handle_source_request (client_t *client, const char *uri)
             break;
 
         default: /* failed */
-            INFO1("Source (%s) attempted to login with invalid or missing password", uri);
+            LOG_INFO("Source (%s) attempted to login with invalid or missing password", uri);
             client_send_401(client);
             break;
     }
@@ -1099,7 +1099,7 @@ void source_startup (client_t *client, const char *uri, int auth_style)
     else
     {
         client_send_403 (client, "Mountpoint in use");
-        WARN1 ("Mountpoint %s in use", uri);
+        LOG_WARN("Mountpoint %s in use", uri);
     }
 }
 
@@ -1111,7 +1111,7 @@ static void _handle_stats_request (client_t *client, char *uri)
     if (connection_check_admin_pass (client->parser) == 0)
     {
         client_send_401 (client);
-        ERROR0("Bad password for stats connection");
+        LOG_ERROR("Bad password for stats connection");
         return;
     }
 
@@ -1157,7 +1157,7 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     while(alias) {
         if(strcmp(uri, alias->source) == 0 && (alias->port == -1 || alias->port == serverport) && (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0))) {
             uri = strdup (alias->destination);
-            DEBUG2 ("alias has made %s into %s", passed_uri, uri);
+            LOG_DEBUG("alias has made %s into %s", passed_uri, uri);
             break;
         }
         alias = alias->next;
@@ -1249,7 +1249,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             return;
         }
         else
-            INFO1 ("password does not match \"%s\"", client->refbuf->data);
+            LOG_INFO("password does not match \"%s\"", client->refbuf->data);
         client_destroy (client);
         free (source_password);
         free (node->shoutcast_mount);
@@ -1347,7 +1347,7 @@ static void _handle_connection(void)
 
                 if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
                     strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
-                    ERROR0("Bad HTTP protocol detected");
+                    LOG_ERROR("Bad HTTP protocol detected");
                     client_destroy (client);
                     continue;
                 }
@@ -1370,7 +1370,7 @@ static void _handle_connection(void)
                     _handle_get_request (client, uri);
                 }
                 else {
-                    ERROR0("Wrong request type from client");
+                    LOG_ERROR("Wrong request type from client");
                     client_send_400 (client, "unknown request");
                 }
 
@@ -1379,7 +1379,7 @@ static void _handle_connection(void)
             else
             {
                 free (node);
-                ERROR0("HTTP request parsing failed");
+                LOG_ERROR("HTTP request parsing failed");
                 client_destroy (client);
             }
             continue;
@@ -1451,19 +1451,19 @@ int connection_setup_sockets (ice_config_t *config)
         if (successful == 0)
         {
             if (listener->bind_address)
-                ERROR2 ("Could not create listener socket on port %d bind %s",
+                LOG_ERROR("Could not create listener socket on port %d bind %s",
                         listener->port, listener->bind_address);
             else
-                ERROR1 ("Could not create listener socket on port %d", listener->port);
+                LOG_ERROR("Could not create listener socket on port %d", listener->port);
             /* remove failed connection */
             *prev = config_clear_listener (listener);
             listener = *prev;
             continue;
         }
         if (listener->bind_address)
-            INFO2 ("listener socket on port %d address %s", listener->port, listener->bind_address);
+            LOG_INFO("listener socket on port %d address %s", listener->port, listener->bind_address);
         else
-            INFO1 ("listener socket on port %d", listener->port);
+            LOG_INFO("listener socket on port %d", listener->port);
         prev = &listener->next;
         listener = listener->next;
     }
@@ -1471,7 +1471,7 @@ int connection_setup_sockets (ice_config_t *config)
     global_unlock();
 
     if (count == 0)
-        ERROR0 ("No listening sockets established");
+        LOG_ERROR("No listening sockets established");
 
     return count;
 }

@@ -417,7 +417,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
             /* TODO: This is the backwards-compatibility location */
-            WARN0("<source-password> defined outside <authentication>. This is deprecated.");
+            LOG_WARN("<source-password> defined outside <authentication>. This is deprecated.");
             if (configuration->source_password) xmlFree(configuration->source_password);
             configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("icelogin")) == 0) {
@@ -572,7 +572,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
 	    mount->mounttype = MOUNT_TYPE_DEFAULT;
 	}
 	else {
-	    WARN1("Unknown mountpoint type: %s", tmp);
+	    LOG_WARN("Unknown mountpoint type: %s", tmp);
             config_clear_mount (mount);
             return;
 	}
@@ -718,7 +718,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     }
     else if (mount->mountname != NULL && mount->mounttype == MOUNT_TYPE_DEFAULT)
     {
-    	WARN1("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
+    	LOG_WARN("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
     }
     if (mount->auth)
         mount->auth->mount = strdup ((char *)mount->mountname);
@@ -729,7 +729,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
 
     if (!mount->fallback_mount && (mount->fallback_when_full || mount->fallback_override))
     {
-        WARN1("Config for mount %s contains fallback options but no fallback mount.", mount->mountname);
+        LOG_WARN("Config for mount %s contains fallback options but no fallback mount.", mount->mountname);
     }
 
     if(last)
@@ -893,7 +893,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 
         if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
             if (xmlGetProp(node, XMLSTR("mount"))) {
-                ERROR0("Mount level source password defined within global <authentication> section.");
+                LOG_ERROR("Mount level source password defined within global <authentication> section.");
             }
             else {
                 if (configuration->source_password)
@@ -931,7 +931,7 @@ static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
     char *tmp;
 
     if (configuration->num_yp_directories >= MAX_YP_DIRECTORIES) {
-        ERROR0("Maximum number of yp directories exceeded!");
+        LOG_ERROR("Maximum number of yp directories exceeded!");
         return;
     }
     do {

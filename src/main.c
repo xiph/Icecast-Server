@@ -503,7 +503,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    INFO1 ("%s server started", ICECAST_VERSION_STRING);
+    LOG_INFO("%s server started", ICECAST_VERSION_STRING);
 
     /* REM 3D Graphics */
 
@@ -519,7 +519,7 @@ int main(int argc, char **argv)
 
     _server_proc();
 
-    INFO0("Shutting down");
+    LOG_INFO("Shutting down");
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
     shutdown_subsystems();
 #endif

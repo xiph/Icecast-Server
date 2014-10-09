@@ -70,7 +70,7 @@ static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max
 relay_server *relay_free (relay_server *relay)
 {
     relay_server *next = relay->next;
-    DEBUG1("freeing relay %s", relay->localmount);
+    LOG_DEBUG("freeing relay %s", relay->localmount);
     if (relay->source)
        source_free_source (relay->source);
     xmlFree (relay->server);
@@ -147,7 +147,7 @@ void slave_shutdown(void)
     if (!slave_running)
         return;
     slave_running = 0;
-    DEBUG0 ("waiting for slave thread");
+    LOG_DEBUG("waiting for slave thread");
     thread_join (_slave_thread_id);
 }
 
@@ -195,12 +195,12 @@ static client_t *open_relay_connection (relay_server *relay)
     {
         sock_t streamsock;
 
-        INFO2 ("connecting to %s:%d", server, port);
+        LOG_INFO("connecting to %s:%d", server, port);
 
         streamsock = sock_connect_wto_bind (server, port, relay->bind, 10);
         if (streamsock == SOCK_ERROR)
         {
-            WARN2 ("Failed to connect to %s:%d", server, port);
+            LOG_WARN("Failed to connect to %s:%d", server, port);
             break;
         }
         con = connection_create (streamsock, -1, strdup (server));
@@ -224,14 +224,14 @@ static client_t *open_relay_connection (relay_server *relay)
         memset (header, 0, sizeof(header));
         if (util_read_header (con->sock, header, 4096, READ_ENTIRE_HEADER) == 0)
         {
-            ERROR4 ("Header read failed for %s (%s:%d%s)", relay->localmount, server, port, mount);
+            LOG_ERROR("Header read failed for %s (%s:%d%s)", relay->localmount, server, port, mount);
             break;
         }
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
         if (! httpp_parse_response (parser, header, strlen(header), relay->localmount))
         {
-            ERROR4("Error parsing relay request for %s (%s:%d%s)", relay->localmount,
+            LOG_ERROR("Error parsing relay request for %s (%s:%d%s)", relay->localmount,
                     server, port, mount);
             break;
         }
@@ -242,7 +242,7 @@ static client_t *open_relay_connection (relay_server *relay)
             int len;
 
             uri = httpp_getvar (parser, "location");
-            INFO1 ("redirect received %s", uri);
+            LOG_INFO("redirect received %s", uri);
             if (strncmp (uri, "http://", 7) != 0)
                 break;
             uri += 7;
@@ -271,7 +271,7 @@ static client_t *open_relay_connection (relay_server *relay)
 
             if (httpp_getvar (parser, HTTPP_VAR_ERROR_MESSAGE))
             {
-                ERROR2("Error from relay request: %s (%s)", relay->localmount,
+                LOG_ERROR("Error from relay request: %s (%s)", relay->localmount,
                         httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
                 break;
             }
@@ -319,7 +319,7 @@ static void *start_relay_stream (void *arg)
     source_t *src = relay->source;
     client_t *client;
 
-    INFO1("Starting relayed source at mountpoint \"%s\"", relay->localmount);
+    LOG_INFO("Starting relayed source at mountpoint \"%s\"", relay->localmount);
     do
     {
         client = open_relay_connection (relay);
@@ -333,7 +333,7 @@ static void *start_relay_stream (void *arg)
 
         if (connection_complete_source (src, 0) < 0)
         {
-            INFO0("Failed to complete source initialisation");
+            LOG_INFO("Failed to complete source initialisation");
             client_destroy (client);
             src->client = NULL;
             continue;
@@ -363,7 +363,7 @@ static void *start_relay_stream (void *arg)
     {
         source_t *fallback_source;
 
-        DEBUG1 ("failed relay, fallback to %s", relay->source->fallback_mount);
+        LOG_DEBUG("failed relay, fallback to %s", relay->source->fallback_mount);
         avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount (relay->source->fallback_mount);
 
@@ -395,7 +395,7 @@ static void check_relay_stream (relay_server *relay)
     {
         if (relay->localmount[0] != '/')
         {
-            WARN1 ("relay mountpoint \"%s\" does not start with /, skipping",
+            LOG_WARN("relay mountpoint \"%s\" does not start with /, skipping",
                     relay->localmount);
             return;
         }
@@ -403,7 +403,7 @@ static void check_relay_stream (relay_server *relay)
         relay->source = source_reserve (relay->localmount);
         if (relay->source)
         {
-            DEBUG1("Adding relay source at mountpoint \"%s\"", relay->localmount);
+            LOG_DEBUG("Adding relay source at mountpoint \"%s\"", relay->localmount);
             if (relay->on_demand)
             {
                 ice_config_t *config = config_get_config ();
@@ -419,7 +419,7 @@ static void check_relay_stream (relay_server *relay)
         {
             if (relay->start == 0)
             {
-                WARN1 ("new relay but source \"%s\" already exists", relay->localmount);
+                LOG_WARN("new relay but source \"%s\" already exists", relay->localmount);
                 relay->start = 1;
             }
             return;
@@ -443,7 +443,7 @@ static void check_relay_stream (relay_server *relay)
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
                 {
-                   DEBUG2 ("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
+                   LOG_DEBUG("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
                    source->on_demand_req = 1;
                 }
                 avl_tree_unlock (global.source_tree);
@@ -464,7 +464,7 @@ static void check_relay_stream (relay_server *relay)
     {
         if (relay->thread)
         {
-            DEBUG1 ("waiting for relay thread for \"%s\"", relay->localmount);
+            LOG_DEBUG("waiting for relay thread for \"%s\"", relay->localmount);
             thread_join (relay->thread);
             relay->thread = NULL;
         }
@@ -579,7 +579,7 @@ static void relay_check_streams (relay_server *to_start,
             if (to_free->running)
             {
                 /* relay has been removed from xml, shut down active relay */
-                DEBUG1 ("source shutdown request on \"%s\"", to_free->localmount);
+                LOG_DEBUG("source shutdown request on \"%s\"", to_free->localmount);
                 to_free->running = 0;
                 to_free->source->running = 0;
                 thread_join (to_free->thread);
@@ -633,7 +633,7 @@ static int update_from_master(ice_config_t *config)
 
         if (mastersock == SOCK_ERROR)
         {
-            WARN0("Relay slave failed to contact master server to fetch stream list");
+            LOG_WARN("Relay slave failed to contact master server to fetch stream list");
             break;
         }
 
@@ -652,7 +652,7 @@ static int update_from_master(ice_config_t *config)
                 strncmp (buf, "HTTP/1.0 200", 12) != 0)
         {
             sock_close (mastersock);
-            WARN0 ("Master rejected streamlist request");
+            LOG_WARN("Master rejected streamlist request");
             break;
         }
 
@@ -666,10 +666,10 @@ static int update_from_master(ice_config_t *config)
             relay_server *r;
             if (!strlen(buf))
                 continue;
-            DEBUG2 ("read %d from master \"%s\"", count++, buf);
+            LOG_DEBUG("read %d from master \"%s\"", count++, buf);
             xmlURIPtr parsed_uri = xmlParseURI(buf);
             if (parsed_uri == NULL) {
-                DEBUG0("Error while parsing line from master. Ignoring line.");
+                LOG_DEBUG("Error while parsing line from master. Ignoring line.");
                 continue;
             }
             r = calloc (1, sizeof (relay_server));
@@ -694,7 +694,7 @@ static int update_from_master(ice_config_t *config)
                 r->mp3metadata = 1;
                 r->on_demand = on_demand;
                 r->next = new_relays;
-                DEBUG3 ("Added relay host=\"%s\", port=%d, mount=\"%s\"", r->server, r->port, r->mount);
+                LOG_DEBUG("Added relay host=\"%s\", port=%d, mount=\"%s\"", r->server, r->port, r->mount);
                 new_relays = r;
             }
             xmlFreeURI(parsed_uri);
@@ -761,7 +761,7 @@ static void *_slave_thread(void *arg)
         thread_mutex_lock(&_slave_mutex);
         if (max_interval <= interval)
         {
-            DEBUG0 ("checking master stream list");
+            LOG_DEBUG("checking master stream list");
             config = config_get_config();
 
             if (max_interval == 0)
@@ -799,11 +799,11 @@ static void *_slave_thread(void *arg)
         }
         thread_mutex_unlock(&_slave_mutex);
     }
-    INFO0 ("shutting down current relays");
+    LOG_INFO("shutting down current relays");
     relay_check_streams (NULL, global.relays, 0);
     relay_check_streams (NULL, global.master_relays, 0);
 
-    INFO0 ("Slave thread shutdown complete");
+    LOG_INFO("Slave thread shutdown complete");
 
     return NULL;
 }

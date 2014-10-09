@@ -66,7 +66,7 @@ static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
 #ifdef _WIN32
-#define source_run_script(x,y)  WARN0("on [dis]connect scripts disabled");
+#define source_run_script(x,y)  LOG_WARN("on [dis]connect scripts disabled");
 #else
 static void source_run_script (char *command, char *mountpoint);
 #endif
@@ -80,7 +80,7 @@ source_t *source_reserve (const char *mount)
     source_t *src = NULL;
 
     if(mount[0] != '/')
-        WARN1("Source at \"%s\" does not start with '/', clients will be "
+        LOG_WARN("Source at \"%s\" does not start with '/', clients will be "
                 "unable to connect", mount);
 
     do
@@ -197,7 +197,7 @@ void source_clear_source (source_t *source)
 {
     int c;
 
-    DEBUG1 ("clearing source \"%s\"", source->mount);
+    LOG_DEBUG("clearing source \"%s\"", source->mount);
 
     avl_tree_wlock (source->pending_tree);
     client_destroy(source->client);
@@ -211,7 +211,7 @@ void source_clear_source (source_t *source)
 
     if (source->dumpfile)
     {
-        INFO1 ("Closing dumpfile for %s", source->mount);
+        LOG_INFO("Closing dumpfile for %s", source->mount);
         fclose (source->dumpfile);
         source->dumpfile = NULL;
     }
@@ -235,7 +235,7 @@ void source_clear_source (source_t *source)
     if (c)
     {
         stats_event_sub (NULL, "listeners", source->listeners);
-        INFO2 ("%d active listeners on %s released", c, source->mount);
+        LOG_INFO("%d active listeners on %s released", c, source->mount);
     }
     avl_tree_unlock (source->client_tree);
 
@@ -296,7 +296,7 @@ void source_clear_source (source_t *source)
 /* Remove the provided source from the global tree and free it */
 void source_free_source (source_t *source)
 {
-    DEBUG1 ("freeing source \"%s\"", source->mount);
+    LOG_DEBUG("freeing source \"%s\"", source->mount);
     avl_tree_wlock (global.source_tree);
     avl_delete (global.source_tree, source, NULL);
     avl_tree_unlock (global.source_tree);
@@ -345,7 +345,7 @@ void source_move_clients (source_t *source, source_t *dest)
     unsigned long count = 0;
     if (strcmp (source->mount, dest->mount) == 0)
     {
-        WARN1 ("src and dst are the same \"%s\", skipping", source->mount);
+        LOG_WARN("src and dst are the same \"%s\", skipping", source->mount);
         return;
     }
     /* we don't want the two write locks to deadlock in here */
@@ -356,7 +356,7 @@ void source_move_clients (source_t *source, source_t *dest)
     avl_tree_wlock (dest->pending_tree);
     if (dest->running == 0 && dest->on_demand == 0)
     {
-        WARN1 ("destination mount %s not running, unable to move clients ", dest->mount);
+        LOG_WARN("destination mount %s not running, unable to move clients ", dest->mount);
         avl_tree_unlock (dest->pending_tree);
         thread_mutex_unlock (&move_clients_mutex);
         return;
@@ -373,14 +373,14 @@ void source_move_clients (source_t *source, source_t *dest)
 
         if (source->on_demand == 0 && source->format == NULL)
         {
-            INFO1 ("source mount %s is not available", source->mount);
+            LOG_INFO("source mount %s is not available", source->mount);
             break;
         }
         if (source->format && dest->format)
         {
             if (source->format->type != dest->format->type)
             {
-                WARN2 ("stream %s and %s are of different types, ignored", source->mount, dest->mount);
+                LOG_WARN("stream %s and %s are of different types, ignored", source->mount, dest->mount);
                 break;
             }
         }
@@ -432,7 +432,7 @@ void source_move_clients (source_t *source, source_t *dest)
             avl_insert (dest->pending_tree, (void *)client);
             count++;
         }
-        INFO2 ("passing %lu listeners to \"%s\"", count, dest->mount);
+        LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
 
         source->listeners = 0;
         stats_event (source->mount, "listeners", "0");
@@ -487,7 +487,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         {
             if (! sock_recoverable (sock_error()))
             {
-                WARN0 ("Error while waiting on socket, Disconnecting source");
+                LOG_WARN("Error while waiting on socket, Disconnecting source");
                 source->running = 0;
             }
             break;
@@ -497,9 +497,9 @@ static refbuf_t *get_next_buffer (source_t *source)
             thread_mutex_lock(&source->lock);
             if ((source->last_read + (time_t)source->timeout) < current)
             {
-                DEBUG3 ("last %ld, timeout %d, now %ld", (long)source->last_read,
+                LOG_DEBUG("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
-                WARN0 ("Disconnecting source due to socket timeout");
+                LOG_WARN("Disconnecting source due to socket timeout");
                 source->running = 0;
             }
             thread_mutex_unlock(&source->lock);
@@ -509,7 +509,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         refbuf = source->format->get_buffer (source);
         if (source->client->con && source->client->con->error)
         {
-            INFO1 ("End of Stream %s", source->mount);
+            LOG_INFO("End of Stream %s", source->mount);
             source->running = 0;
             continue;
         }
@@ -538,7 +538,7 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
         if (client->con->discon_time)
             if (time(NULL) >= client->con->discon_time)
             {
-                INFO1 ("time limit reached for client #%lu", client->con->id);
+                LOG_INFO("time limit reached for client #%lu", client->con->id);
                 client->con->error = 1;
             }
 
@@ -572,7 +572,7 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
      * if so, check to see if this client is still referring to it */
     if (deletion_expected && client->refbuf && client->refbuf == source->stream_data)
     {
-        INFO2 ("Client %lu (%s) has fallen too far behind, removing",
+        LOG_INFO("Client %lu (%s) has fallen too far behind, removing",
                 client->con->id, client->con->ip);
         stats_event_inc (source->mount, "slow_listeners");
         client->con->error = 1;
@@ -641,7 +641,7 @@ static void source_init (source_t *source)
         source->dumpfile = source_open_dumpfile (source->dumpfilename);
         if (source->dumpfile == NULL)
         {
-            WARN2("Cannot open dump file \"%s\" for appending: %s, disabling.",
+            LOG_WARN("Cannot open dump file \"%s\" for appending: %s, disabling.",
                     source->dumpfilename, strerror(errno));
         }
     }
@@ -658,7 +658,7 @@ static void source_init (source_t *source)
     stats_event_time (source->mount, "stream_start");
     stats_event_time_iso8601 (source->mount, "stream_start_iso8601");
 
-    DEBUG0("Source creation complete");
+    LOG_DEBUG("Source creation complete");
     source->last_read = time (NULL);
     source->prev_listeners = -1;
     source->running = 1;
@@ -769,7 +769,7 @@ void source_main (source_t *source)
                     stats_event_dec (NULL, "listeners");
                 avl_delete(source->client_tree, (void *)client, _free_client);
                 source->listeners--;
-                DEBUG0("Client removed");
+                LOG_DEBUG("Client removed");
                 continue;
             }
             client_node = avl_get_next(client_node);
@@ -791,7 +791,7 @@ void source_main (source_t *source)
                 client_node = avl_get_next(client_node);
                 avl_delete(source->pending_tree, (void *)client, _free_client);
 
-                INFO0("Client deleted, exceeding maximum listeners for this "
+                LOG_INFO("Client deleted, exceeding maximum listeners for this "
                         "mountpoint.");
                 continue;
             }
@@ -800,7 +800,7 @@ void source_main (source_t *source)
             avl_insert(source->client_tree, client_node->key);
 
             source->listeners++;
-            DEBUG0("Client added");
+            LOG_DEBUG("Client added");
             stats_event_inc(source->mount, "connections");
 
             client_node = avl_get_next(client_node);
@@ -820,7 +820,7 @@ void source_main (source_t *source)
         if (source->listeners != source->prev_listeners)
         {
             source->prev_listeners = source->listeners;
-            INFO2("listener count on %s now %lu", source->mount, source->listeners);
+            LOG_INFO("listener count on %s now %lu", source->mount, source->listeners);
             if (source->listeners > source->peak_listeners)
             {
                 source->peak_listeners = source->listeners;
@@ -846,7 +846,7 @@ void source_main (source_t *source)
                 if (to_go->next == NULL || source->burst_point == to_go)
                 {
                     /* this should not happen */
-                    ERROR0 ("queue state is unexpected");
+                    LOG_ERROR("queue state is unexpected");
                     source->running = 0;
                     break;
                 }
@@ -869,7 +869,7 @@ static void source_shutdown (source_t *source)
     mount_proxy *mountinfo;
 
     source->running = 0;
-    INFO1("Source \"%s\" exiting", source->mount);
+    LOG_INFO("Source \"%s\" exiting", source->mount);
 
     mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
     if (mountinfo)
@@ -985,7 +985,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     int val;
     http_parser_t *parser = NULL;
 
-    DEBUG1("Applying mount information for \"%s\"", source->mount);
+    LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
 
@@ -1028,7 +1028,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     stats_event_args (source->mount, "public", "%d", val);
     if (source->yp_public != val)
     {
-        DEBUG1 ("YP changed to %d", val);
+        LOG_DEBUG("YP changed to %d", val);
         if (val)
             yp_add (source->mount);
         else
@@ -1176,7 +1176,7 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
             if (f)
                 source->intro_file = f;
             else
-                WARN2 ("Cannot open intro file \"%s\": %s", path, strerror(errno));
+                LOG_WARN("Cannot open intro file \"%s\": %s", path, strerror(errno));
             free (path);
         }
     }
@@ -1222,18 +1222,18 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     source_apply_mount (source, mountinfo);
 
     if (source->fallback_mount)
-        DEBUG1 ("fallback %s", source->fallback_mount);
+        LOG_DEBUG("fallback %s", source->fallback_mount);
     if (mountinfo && mountinfo->intro_filename)
-        DEBUG1 ("intro file is %s", mountinfo->intro_filename);
+        LOG_DEBUG("intro file is %s", mountinfo->intro_filename);
     if (source->dumpfilename)
-        DEBUG1 ("Dumping stream to %s", source->dumpfilename);
+        LOG_DEBUG("Dumping stream to %s", source->dumpfilename);
     if (mountinfo && mountinfo->on_connect)
-        DEBUG1 ("connect script \"%s\"", mountinfo->on_connect);
+        LOG_DEBUG("connect script \"%s\"", mountinfo->on_connect);
     if (mountinfo && mountinfo->on_disconnect)
-        DEBUG1 ("disconnect script \"%s\"", mountinfo->on_disconnect);
+        LOG_DEBUG("disconnect script \"%s\"", mountinfo->on_disconnect);
     if (source->on_demand)
     {
-        DEBUG0 ("on_demand set");
+        LOG_DEBUG("on_demand set");
         stats_event (source->mount, "on_demand", "1");
         stats_event_args (source->mount, "listeners", "%ld", source->listeners);
     }
@@ -1243,7 +1243,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     if (source->hidden)
     {
         stats_event_hidden (source->mount, NULL, 1);
-        DEBUG0 ("hidden from public");
+        LOG_DEBUG("hidden from public");
     }
     else
         stats_event_hidden (source->mount, NULL, 0);
@@ -1256,12 +1256,12 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         snprintf (buf, sizeof (buf), "%ld", source->max_listeners);
         stats_event (source->mount, "max_listeners", buf);
     }
-    DEBUG1 ("public set to %d", source->yp_public);
-    DEBUG1 ("max listeners to %ld", source->max_listeners);
-    DEBUG1 ("queue size to %u", source->queue_size_limit);
-    DEBUG1 ("burst size to %u", source->burst_size);
-    DEBUG1 ("source timeout to %u", source->timeout);
-    DEBUG1 ("fallback_when_full to %u", source->fallback_when_full);
+    LOG_DEBUG("public set to %d", source->yp_public);
+    LOG_DEBUG("max listeners to %ld", source->max_listeners);
+    LOG_DEBUG("queue size to %u", source->queue_size_limit);
+    LOG_DEBUG("burst size to %u", source->burst_size);
+    LOG_DEBUG("source timeout to %u", source->timeout);
+    LOG_DEBUG("fallback_when_full to %u", source->fallback_when_full);
     thread_mutex_unlock(&source->lock);
 }
 
@@ -1323,19 +1323,19 @@ static void source_run_script (char *command, char *mountpoint)
             switch (pid = fork ())
             {
                 case -1:
-                    ERROR2 ("Unable to fork %s (%s)", command, strerror (errno));
+                    LOG_ERROR("Unable to fork %s (%s)", command, strerror (errno));
                     break;
                 case 0:  /* child */
-                    DEBUG1 ("Starting command %s", command);
+                    LOG_DEBUG("Starting command %s", command);
                     execl (command, command, mountpoint, (char *)NULL);
-                    ERROR2 ("Unable to run command %s (%s)", command, strerror (errno));
+                    LOG_ERROR("Unable to run command %s (%s)", command, strerror (errno));
                     exit(0);
                 default: /* parent */
                     break;
             }
             exit (0);
         case -1:
-            ERROR1 ("Unable to fork %s", strerror (errno));
+            LOG_ERROR("Unable to fork %s", strerror (errno));
             break;
         default: /* parent */
             waitpid (external_pid, NULL, 0);
@@ -1373,7 +1373,7 @@ static void *source_fallback_file (void *arg)
         file = fopen (path, "rb");
         if (file == NULL)
         {
-            WARN1 ("unable to open file \"%s\"", path);
+            LOG_WARN("unable to open file \"%s\"", path);
             free (path);
             break;
         }
@@ -1381,10 +1381,10 @@ static void *source_fallback_file (void *arg)
         source = source_reserve (mount);
         if (source == NULL)
         {
-            WARN1 ("mountpoint \"%s\" already reserved", mount);
+            LOG_WARN("mountpoint \"%s\" already reserved", mount);
             break;
         }
-        INFO1 ("mountpoint %s is reserved", mount);
+        LOG_INFO("mountpoint %s is reserved", mount);
         type = fserve_content_type (mount);
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);

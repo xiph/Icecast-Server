@@ -300,7 +300,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
             config->adminroot_dir, PATH_SEPARATOR, xslt_template);
         config_release_config();
 
-        DEBUG1("Sending XSLT (%s)", fullpath_xslt_template);
+        LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
         xslt_transform(doc, fullpath_xslt_template, client);
         free(fullpath_xslt_template);
     }
@@ -312,10 +312,10 @@ void admin_handle_request(client_t *client, const char *uri)
     const char *mount, *command_string;
     int command;
 
-    DEBUG1("Admin request (%s)", uri);
+    LOG_DEBUG("Admin request (%s)", uri);
     if (!((strcmp(uri, "/admin.cgi") == 0) ||
          (strncmp("/admin/", uri, 7) == 0))) {
-        ERROR0("Internal error: admin request isn't");
+        LOG_ERROR("Internal error: admin request isn't");
         client_send_401(client);
         return;
     }
@@ -327,11 +327,11 @@ void admin_handle_request(client_t *client, const char *uri)
         command_string = uri + 7;
     }
 
-    DEBUG1("Got command (%s)", command_string);
+    LOG_DEBUG("Got command (%s)", command_string);
     command = admin_get_command(command_string);
 
     if(command < 0) {
-        ERROR1("Error parsing command string or unrecognised command: %s",
+        LOG_ERROR("Error parsing command string or unrecognised command: %s",
                 command_string);
         client_send_400(client, "Unrecognised command");
         return;
@@ -383,7 +383,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 case 0:
                     break;
                 default:
-                    INFO1("Bad or missing password on mount modification admin "
+                    LOG_INFO("Bad or missing password on mount modification admin "
                             "request (command: %s)", command_string);
                     client_send_401(client);
                     /* fall through */
@@ -397,7 +397,7 @@ void admin_handle_request(client_t *client, const char *uri)
 
         if (source == NULL)
         {
-            WARN2("Admin command %s on non-existent source %s", 
+            LOG_WARN("Admin command %s on non-existent source %s", 
                     command_string, mount);
             avl_tree_unlock(global.source_tree);
             client_send_400(client, "Source does not exist");
@@ -407,7 +407,7 @@ void admin_handle_request(client_t *client, const char *uri)
             if (source->running == 0 && source->on_demand == 0)
             {
                 avl_tree_unlock (global.source_tree);
-                INFO2("Received admin command %s on unavailable mount \"%s\"",
+                LOG_INFO("Received admin command %s on unavailable mount \"%s\"",
                         command_string, mount);
                 client_send_400 (client, "Source is not available");
                 return;
@@ -416,12 +416,12 @@ void admin_handle_request(client_t *client, const char *uri)
                     source->shoutcast_compat == 0)
             {
                 avl_tree_unlock (global.source_tree);
-                ERROR0 ("illegal change of metadata on non-shoutcast "
+                LOG_ERROR("illegal change of metadata on non-shoutcast "
                         "compatible stream");
                 client_send_400 (client, "illegal metadata call");
                 return;
             }
-            INFO2("Received admin command %s on mount \"%s\"", 
+            LOG_INFO("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
             admin_handle_mount_request(client, source, command);
             avl_tree_unlock(global.source_tree);
@@ -434,7 +434,7 @@ void admin_handle_request(client_t *client, const char *uri)
            mounts from the master, so handle this request
            validating against the relay password */
             if(!connection_check_relay_pass(client->parser)) {
-                INFO1("Bad or missing password on admin command "
+                LOG_INFO("Bad or missing password on admin command "
                       "request (command: %s)", command_string);
                 client_send_401(client);
                 return;
@@ -442,7 +442,7 @@ void admin_handle_request(client_t *client, const char *uri)
         }
         else {
             if(!connection_check_admin_pass(client->parser)) {
-                INFO1("Bad or missing password on admin command "
+                LOG_INFO("Bad or missing password on admin command "
                       "request (command: %s)", command_string);
                 client_send_401(client);
                 return;
@@ -481,7 +481,7 @@ static void admin_handle_general_request(client_t *client, int command)
             command_list_mounts(client, TRANSFORMED);
             break;
         default:
-            WARN0("General admin request not recognised");
+            LOG_WARN("General admin request not recognised");
             client_send_400(client, "Unknown admin request");
             return;
     }
@@ -549,7 +549,7 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             command_updatemetadata(client, source, RAW);
             break;
         default:
-            WARN0("Mount request not recognised");
+            LOG_WARN("Mount request not recognised");
             client_send_400(client, "Mount request unknown");
             break;
     }
@@ -594,11 +594,11 @@ static void command_move_clients(client_t *client, source_t *source,
     char buf[255];
     int parameters_passed = 0;
 
-    DEBUG0("Doing optional check");
+    LOG_DEBUG("Doing optional check");
     if((COMMAND_OPTIONAL(client, "destination", dest_source))) {
         parameters_passed = 1;
     }
-    DEBUG1("Done optional check (%d)", parameters_passed);
+    LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
         doc = admin_build_sourcelist(source->mount);
         admin_send_response(doc, client, response, 
@@ -627,7 +627,7 @@ static void command_move_clients(client_t *client, source_t *source,
         return;
     }
 
-    INFO2 ("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
+    LOG_INFO("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
@@ -748,7 +748,7 @@ static void command_manageauth(client_t *client, source_t *source,
     {
         if (mountinfo == NULL || mountinfo->auth == NULL)
         {
-            WARN1 ("manage auth request for %s but no facility available", source->mount);
+            LOG_WARN("manage auth request for %s but no facility available", source->mount);
             break;
         }
         COMMAND_OPTIONAL(client, "action", action);
@@ -764,7 +764,7 @@ static void command_manageauth(client_t *client, source_t *source,
 
             if (username == NULL || password == NULL)
             {
-                WARN1 ("manage auth request add for %s but no user/pass", source->mount);
+                LOG_WARN("manage auth request add for %s but no user/pass", source->mount);
                 break;
             }
             ret = mountinfo->auth->adduser(mountinfo->auth, username, password);
@@ -782,7 +782,7 @@ static void command_manageauth(client_t *client, source_t *source,
         {
             if (username == NULL)
             {
-                WARN1 ("manage auth request delete for %s but no username", source->mount);
+                LOG_WARN("manage auth request delete for %s but no username", source->mount);
                 break;
             }
             ret = mountinfo->auth->deleteuser(mountinfo->auth, username);
@@ -860,10 +860,10 @@ static void command_kill_client(client_t *client, source_t *source,
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
-    DEBUG1("Response is %d", response);
+    LOG_DEBUG("Response is %d", response);
 
     if(listener != NULL) {
-        INFO1("Admin request: client %d removed", id);
+        LOG_INFO("Admin request: client %d removed", id);
 
         /* This tags it for removal on the next iteration of the main source
          * loop
@@ -891,7 +891,7 @@ static void command_fallback(client_t *client, source_t *source,
     const char *fallback;
     char *old;
 
-    DEBUG0("Got fallback request");
+    LOG_DEBUG("Got fallback request");
 
     COMMAND_REQUIRE(client, "fallback", fallback);
 
@@ -916,7 +916,7 @@ static void command_metadata(client_t *client, source_t *source,
     node = xmlNewDocNode (doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 
-    DEBUG0("Got metadata update request");
+    LOG_DEBUG("Got metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_OPTIONAL(client, "song", song);
@@ -944,7 +944,7 @@ static void command_metadata(client_t *client, source_t *source,
         if (song)
         {
             plugin->set_tag (plugin, "song", song, charset);
-            INFO2 ("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+            LOG_INFO("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
         }
         else
         {
@@ -952,7 +952,7 @@ static void command_metadata(client_t *client, source_t *source,
             {
                 plugin->set_tag (plugin, "title", title, charset);
                 plugin->set_tag (plugin, "artist", artist, charset);
-                INFO3("Metadata on mountpoint %s changed to \"%s - %s\"",
+                LOG_INFO("Metadata on mountpoint %s changed to \"%s - %s\"",
                         source->mount, artist, title);
             }
         }
@@ -983,7 +983,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     const char *value;
     int same_ip = 1;
 
-    DEBUG0("Got shoutcast metadata update request");
+    LOG_DEBUG("Got shoutcast metadata update request");
 
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
@@ -1002,7 +1002,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         source->format->set_tag (source->format, "title", value, NULL);
         source->format->set_tag (source->format, NULL, NULL, NULL);
 
-        DEBUG2("Metadata on mountpoint %s changed to \"%s\"", 
+        LOG_DEBUG("Metadata on mountpoint %s changed to \"%s\"", 
                 source->mount, value);
         html_success(client, "Metadata update successful");
     }
@@ -1015,7 +1015,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 static void command_stats(client_t *client, const char *mount, int response) {
     xmlDocPtr doc;
 
-    DEBUG0("Stats request, sending xml stats");
+    LOG_DEBUG("Stats request, sending xml stats");
 
     doc = stats_get_xml(1, mount);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
@@ -1025,7 +1025,7 @@ static void command_stats(client_t *client, const char *mount, int response) {
 
 static void command_list_mounts(client_t *client, int response)
 {
-    DEBUG0("List mounts request");
+    LOG_DEBUG("List mounts request");
 
     if (response == PLAINTEXT)
     {
