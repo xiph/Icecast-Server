@@ -42,20 +42,20 @@ void event_config_read(void *arg)
     xmlSetGenericErrorFunc ("config", log_parse_failure);
     ret = config_parse_file(config->config_filename, &new_config);
     if(ret < 0) {
-        ERROR0("Error parsing config, not replacing existing config");
+        LOG_ERROR("Error parsing config, not replacing existing config");
         switch(ret) {
             case CONFIG_EINSANE:
-                ERROR0("Config filename null or blank");
+                LOG_ERROR("Config filename null or blank");
                 break;
             case CONFIG_ENOROOT:
-                ERROR1("Root element not found in %s", config->config_filename);
+                LOG_ERROR("Root element not found in %s", config->config_filename);
                 break;
             case CONFIG_EBADROOT:
-                ERROR1("Not an icecast2 config file: %s",
+                LOG_ERROR("Not an icecast2 config file: %s",
                         config->config_filename);
                 break;
             default:
-                ERROR1("Parse error in reading %s", config->config_filename);
+                LOG_ERROR("Parse error in reading %s", config->config_filename);
                 break;
         }
         config_release_config();

@@ -142,7 +142,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     struct stat file;
 
     if(stat(fn, &file)) {
-        WARN2("Error checking for stylesheet file \"%s\": %s", fn, 
+        LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn, 
                 strerror(errno));
         return NULL;
     }
@@ -164,7 +164,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                     cache[i].stylesheet = xsltParseStylesheetFile (XMLSTR(fn));
                     cache[i].cache_age = time(NULL);
                 }
-                DEBUG1("Using cached sheet %i", i);
+                LOG_DEBUG("Using cached sheet %i", i);
                 return cache[i].stylesheet;
             }
         }
@@ -202,7 +202,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     if (cur == NULL)
     {
         thread_mutex_unlock(&xsltlock);
-        ERROR1 ("problem reading stylesheet \"%s\"", xslfilename);
+        LOG_ERROR("problem reading stylesheet \"%s\"", xslfilename);
         client_send_404 (client, "Could not parse XSLT file");
         return;
     }
@@ -252,7 +252,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     }
     else
     {
-        WARN1 ("problem applying stylesheet \"%s\"", xslfilename);
+        LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
         client_send_404 (client, "XSLT problem");
     }
     thread_mutex_unlock (&xsltlock);

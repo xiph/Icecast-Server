@@ -59,7 +59,7 @@ static auth_client *auth_client_setup (const char *mount, client_t *client)
             userpass = util_base64_decode (header+6);
             if (userpass == NULL)
             {
-                WARN1("Base64 decode of Authorization header \"%s\" failed",
+                LOG_WARN("Base64 decode of Authorization header \"%s\" failed",
                         header+6);
                 break;
             }
@@ -79,7 +79,7 @@ static auth_client *auth_client_setup (const char *mount, client_t *client)
             free (userpass);
             break;
         }
-        INFO1 ("unhandled authorization header: %s", header);
+        LOG_INFO("unhandled authorization header: %s", header);
 
     } while (0);
 
@@ -109,17 +109,17 @@ static void queue_auth_client (auth_client *auth_user, mount_proxy *mountinfo)
     {
         if (auth_user->client == NULL || auth_user->client->auth == NULL)
         {
-            WARN1 ("internal state is incorrect for %p", auth_user->client);
+            LOG_WARN("internal state is incorrect for %p", auth_user->client);
             return;
         }
         auth = auth_user->client->auth;
         thread_mutex_lock (&auth->lock);
     }
-    DEBUG2 ("...refcount on auth_t %s is now %d", auth->mount, auth->refcount);
+    LOG_DEBUG("...refcount on auth_t %s is now %d", auth->mount, auth->refcount);
     *auth->tailp = auth_user;
     auth->tailp = &auth_user->next;
     auth->pending_count++;
-    INFO2 ("auth on %s has %d pending", auth->mount, auth->pending_count);
+    LOG_INFO("auth on %s has %d pending", auth->mount, auth->pending_count);
     thread_mutex_unlock (&auth->lock);
 }
 
@@ -134,7 +134,7 @@ void auth_release (auth_t *authenticator)
 
     thread_mutex_lock (&authenticator->lock);
     authenticator->refcount--;
-    DEBUG2 ("...refcount on auth_t %s is now %d", authenticator->mount, authenticator->refcount);
+    LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, authenticator->refcount);
     if (authenticator->refcount)
     {
         thread_mutex_unlock (&authenticator->lock);
@@ -198,7 +198,7 @@ static void auth_new_listener (auth_t *auth, auth_client *auth_user)
      * can be avoided if client has disconnected */
     if (is_listener_connected (client) == 0)
     {
-        DEBUG0 ("listener is no longer connected");
+        LOG_DEBUG("listener is no longer connected");
         client->respcode = 400;
         auth_release (client->auth);
         client->auth = NULL;
@@ -217,7 +217,7 @@ static void auth_new_listener (auth_t *auth, auth_client *auth_user)
     {
         auth_release (client->auth);
         client->auth = NULL;
-        INFO1 ("client %lu failed", client->con->id);
+        LOG_INFO("client %lu failed", client->con->id);
     }
 }
 
@@ -252,7 +252,7 @@ static void stream_auth_callback (auth_t *auth, auth_client *auth_user)
     if (client->authenticated)
         auth_postprocess_source (auth_user);
     else
-        WARN1 ("Failed auth for source \"%s\"", auth_user->mount);
+        LOG_WARN("Failed auth for source \"%s\"", auth_user->mount);
 }
 
 
@@ -283,7 +283,7 @@ static void *auth_run_thread (void *arg)
 {
     auth_t *auth = arg;
 
-    INFO0 ("Authentication thread started");
+    LOG_INFO("Authentication thread started");
     while (auth->running)
     {
         /* usually no clients are waiting, so don't bother taking locks */
@@ -299,7 +299,7 @@ static void *auth_run_thread (void *arg)
                 thread_mutex_unlock (&auth->lock);
                 continue;
             }
-            DEBUG2 ("%d client(s) pending on %s", auth->pending_count, auth->mount);
+            LOG_DEBUG("%d client(s) pending on %s", auth->pending_count, auth->mount);
             auth->head = auth_user->next;
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
@@ -310,7 +310,7 @@ static void *auth_run_thread (void *arg)
             if (auth_user->process)
                 auth_user->process (auth, auth_user);
             else
-                ERROR0 ("client auth process not set");
+                LOG_ERROR("client auth process not set");
 
             auth_client_free (auth_user);
 
@@ -318,7 +318,7 @@ static void *auth_run_thread (void *arg)
         }
         thread_sleep (150000);
     }
-    INFO0 ("Authenication thread shutting down");
+    LOG_INFO("Authenication thread shutting down");
     return NULL;
 }
 
@@ -379,7 +379,7 @@ static int add_listener_to_source (source_t *source, client_t *client)
     int loop = 10;
     do
     {
-        DEBUG3 ("max on %s is %ld (cur %lu)", source->mount,
+        LOG_DEBUG("max on %s is %ld (cur %lu)", source->mount,
                 source->max_listeners, source->listeners);
         if (source->max_listeners == -1)
             break;
@@ -390,12 +390,12 @@ static int add_listener_to_source (source_t *source, client_t *client)
         {
             source_t *next = source_find_mount (source->fallback_mount);
             if (!next) {
-                ERROR2("Fallback '%s' for full source '%s' not found", 
+                LOG_ERROR("Fallback '%s' for full source '%s' not found", 
                         source->mount, source->fallback_mount);
                 return -1;
             }
 
-            INFO1 ("stream full trying %s", next->mount);
+            LOG_INFO("stream full trying %s", next->mount);
             source = next;
             loop--;
             continue;
@@ -418,10 +418,10 @@ static int add_listener_to_source (source_t *source, client_t *client)
     if (source->running == 0 && source->on_demand)
     {
         /* enable on-demand relay to start, wake up the slave thread */
-        DEBUG0("kicking off on-demand relay");
+        LOG_DEBUG("kicking off on-demand relay");
         source->on_demand_req = 1;
     }
-    DEBUG1 ("Added client to %s", source->mount);
+    LOG_DEBUG("Added client to %s", source->mount);
     return 0;
 }
 
@@ -442,7 +442,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
     if (util_check_valid_extension (mount) == XSLT_CONTENT)
     {
         /* If the file exists, then transform it, otherwise, write a 404 */
-        DEBUG0("Stats request, sending XSL transformed stats");
+        LOG_DEBUG("Stats request, sending XSL transformed stats");
         stats_transform_xslt (client, mount);
         return 0;
     }
@@ -468,7 +468,7 @@ static int add_authenticated_listener (const char *mount, mount_proxy *mountinfo
         ret = add_listener_to_source (source, client);
         avl_tree_unlock (global.source_tree);
         if (ret == 0)
-            DEBUG0 ("client authenticated, passed to source");
+            LOG_DEBUG("client authenticated, passed to source");
     }
     else
     {
@@ -511,12 +511,12 @@ void auth_postprocess_source (auth_client *auth_user)
     client->authenticated = 1;
     if (strcmp (req, "/admin.cgi") == 0 || strncmp ("/admin/metadata", req, 15) == 0)
     {
-        DEBUG2 ("metadata request (%s, %s)", req, mount);
+        LOG_DEBUG("metadata request (%s, %s)", req, mount);
         admin_handle_request (client, "/admin/metadata");
     }
     else
     {
-        DEBUG1 ("on mountpoint %s", mount);
+        LOG_DEBUG("on mountpoint %s", mount);
         source_startup (client, mount, 0);
     }
 }
@@ -544,13 +544,13 @@ void auth_add_listener (const char *mount, client_t *client)
         if (mountinfo->auth->pending_count > 100)
         {
             config_release_config ();
-            WARN0 ("too many clients awaiting authentication");
+            LOG_WARN("too many clients awaiting authentication");
             client_send_403 (client, "busy, please try again later");
             return;
         }
         auth_user = auth_client_setup (mount, client);
         auth_user->process = auth_new_listener;
-        INFO0 ("adding client for authentication");
+        LOG_INFO("adding client for authentication");
         queue_auth_client (auth_user, mountinfo);
         config_release_config ();
     }
@@ -594,12 +594,12 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 {
     if (auth->type == NULL)
     {
-        WARN0 ("no authentication type defined");
+        LOG_WARN("no authentication type defined");
         return -1;
     }
     do
     {
-        DEBUG1 ("type is %s", auth->type);
+        LOG_DEBUG("type is %s", auth->type);
 
         if (strcmp (auth->type, "url") == 0)
         {
@@ -608,7 +608,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
                 return -1;
             break;
 #else
-            ERROR0 ("Auth URL disabled");
+            LOG_ERROR("Auth URL disabled");
             return -1;
 #endif
         }
@@ -619,7 +619,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             break;
         }
 
-        ERROR1("Unrecognised authenticator type: \"%s\"", auth->type);
+        LOG_ERROR("Unrecognised authenticator type: \"%s\"", auth->type);
         return -1;
     } while (0);
 
@@ -668,7 +668,7 @@ auth_t *auth_get_authenticator (xmlNodePtr node)
         }
         else
             if (xmlStrcmp (current->name, XMLSTR("text")) != 0)
-                WARN1 ("unknown auth setting (%s)", current->name);
+                LOG_WARN("unknown auth setting (%s)", current->name);
     }
     auth->type = (char*)xmlGetProp (node, XMLSTR("type"));
     if (get_authenticator (auth, options) < 0)
@@ -709,7 +709,7 @@ int auth_stream_authenticate (client_t *client, const char *mount, mount_proxy *
         auth_client *auth_user = auth_client_setup (mount, client);
 
         auth_user->process = stream_auth_callback;
-        INFO1 ("request source auth for \"%s\"", mount);
+        LOG_INFO("request source auth for \"%s\"", mount);
         queue_auth_client (auth_user, mountinfo);
         return 1;
     }
@@ -763,6 +763,6 @@ void auth_initialise (void)
 
 void auth_shutdown (void)
 {
-    INFO0 ("Auth shutdown");
+    LOG_INFO("Auth shutdown");
 }
 
