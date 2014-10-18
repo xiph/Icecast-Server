@@ -604,7 +604,7 @@ void stats_event_time_iso8601 (const char *mount, const char *name)
     char buffer[100];
 
     localtime_r (&now, &local);
-    strftime (buffer, sizeof (buffer), "%FT%T%z", &local);
+    strftime (buffer, sizeof (buffer), "%Y-%m-%dT%H:%M:%S%z", &local);
     stats_event (mount, name, buffer);
 }
 

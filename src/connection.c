@@ -1124,7 +1124,6 @@ static void _handle_stats_request (client_t *client, char *uri)
 
 static void _handle_get_request (client_t *client, char *passed_uri)
 {
-    int port;
     char *serverhost = NULL;
     int serverport = 0;
     aliases *alias;
@@ -1133,7 +1132,6 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     listener_t *listen_sock;
 
     config = config_get_config();
-    port = config->port;
 
     listen_sock = config_get_listen_sock (config, client->con);
     if (listen_sock)

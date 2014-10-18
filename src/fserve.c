@@ -40,7 +40,9 @@
 #define PRI_OFF_T "ld"
 #define snprintf _snprintf
 #define strncasecmp _strnicmp
+#ifndef S_ISREG
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
+#endif
 #endif
 
 #include "thread/thread.h"
