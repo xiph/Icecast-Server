@@ -348,7 +348,7 @@ static void _server_proc(void)
 
 /* chroot the process. Watch out - we need to do this before starting other
  * threads. Change uid as well, after figuring out uid _first_ */
-
+#if defined(HAVE_SETUID) || defined(HAVE_CHROOT) || defined(HAVE_SETUID)
 static void _ch_root_uid_setup(void)
 {
    ice_config_t *conf = config_get_config_unlocked();
@@ -396,8 +396,8 @@ static void _ch_root_uid_setup(void)
 
    }   
 #endif
-#if HAVE_SETUID
 
+#if HAVE_SETUID
    if(conf->chuid)
    {
        if(getuid()) /* root check */
@@ -423,6 +423,7 @@ static void _ch_root_uid_setup(void)
    }
 #endif
 }
+#endif
 
 #ifdef WIN32_SERVICE
 int mainService(int argc, char **argv)
@@ -486,7 +487,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+#if defined(HAVE_SETUID) || defined(HAVE_CHROOT) || defined(HAVE_SETUID)
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
+#endif
 
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */
