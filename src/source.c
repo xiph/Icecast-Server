@@ -792,7 +792,7 @@ void source_main (source_t *source)
                 avl_delete(source->pending_tree, (void *)client, _free_client);
 
                 LOG_INFO("Client deleted, exceeding maximum listeners for this "
-                        "mountpoint.");
+                        "mountpoint (%s).", source->mount);
                 continue;
             }
             
@@ -800,7 +800,7 @@ void source_main (source_t *source)
             avl_insert(source->client_tree, client_node->key);
 
             source->listeners++;
-            LOG_DEBUG("Client added");
+            LOG_DEBUG("Client added for mountpoint (%s)", source->mount);
             stats_event_inc(source->mount, "connections");
 
             client_node = avl_get_next(client_node);
@@ -869,7 +869,7 @@ static void source_shutdown (source_t *source)
     mount_proxy *mountinfo;
 
     source->running = 0;
-    LOG_INFO("Source \"%s\" exiting", source->mount);
+    LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
 
     mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
     if (mountinfo)
