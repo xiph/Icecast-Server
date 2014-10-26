@@ -720,8 +720,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     {
     	LOG_WARN("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
     }
-    if (mount->auth)
+    if (mount->auth && mount->mountname) {
         mount->auth->mount = strdup ((char *)mount->mountname);
+    } else if (mount->auth && mount->mounttype == MOUNT_TYPE_DEFAULT ) {
+        mount->auth->mount = strdup ("(default mount)");
+    }
     while(current) {
         last = current;
         current = current->next;

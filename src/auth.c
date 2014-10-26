@@ -150,7 +150,8 @@ void auth_release (auth_t *authenticator)
     xmlFree (authenticator->type);
     thread_mutex_unlock (&authenticator->lock);
     thread_mutex_destroy (&authenticator->lock);
-    free (authenticator->mount);
+    if (authenticator->mount)
+        free (authenticator->mount);
     free (authenticator);
 }
 
