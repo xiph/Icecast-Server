@@ -1036,7 +1036,8 @@ int connection_check_pass (http_parser_t *parser, const char *user, const char *
 /* only called for native icecast source clients */
 static void _handle_source_request (client_t *client, const char *uri)
 {
-    LOG_INFO("Source logging in at mountpoint \"%s\"", uri);
+    LOG_INFO("Source logging in at mountpoint \"%s\" from %s",
+        uri, client->con->ip);
 
     if (uri[0] != '/')
     {
