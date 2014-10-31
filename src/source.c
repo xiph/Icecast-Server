@@ -462,7 +462,7 @@ static refbuf_t *get_next_buffer (source_t *source)
 
     if (source->short_delay)
         delay = 0;
-    while (global.running == ICE_RUNNING && source->running)
+    while (global.running == ICECAST_RUNNING && source->running)
     {
         int fds = 0;
         time_t current = time (NULL);
@@ -702,7 +702,7 @@ void source_main (source_t *source)
 
     source_init (source);
 
-    while (global.running == ICE_RUNNING && source->running) {
+    while (global.running == ICECAST_RUNNING && source->running) {
         int remove_from_q;
 
         refbuf = get_next_buffer (source);
@@ -1455,7 +1455,7 @@ void source_recheck_mounts (int update_all)
             stats_event (mount->mountname, NULL, NULL);
 
         /* check for fallback to file */
-        if (global.running == ICE_RUNNING && mount->fallback_mount)
+        if (global.running == ICECAST_RUNNING && mount->fallback_mount)
         {
             source_t *fallback = source_find_mount (mount->fallback_mount);
             if (fallback == NULL)
