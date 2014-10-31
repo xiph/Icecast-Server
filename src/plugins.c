@@ -222,7 +222,7 @@ static int _pcall_exit(int err) {
  (void)err;
 
  global_lock();
- global.running = ICE_HALTING;
+ global.running = ICECAST_HALTING;
  global_unlock();
 
  return 0;

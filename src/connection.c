@@ -713,7 +713,7 @@ void connection_accept_loop (void)
     get_ssl_certificate (config);
     config_release_config ();
 
-    while (global.running == ICE_RUNNING)
+    while (global.running == ICECAST_RUNNING)
     {
         con = _accept_connection (duration);
 
@@ -1434,7 +1434,7 @@ int connection_setup_sockets (ice_config_t *config)
             sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
             if (sock == SOCK_ERROR)
                 break;
-            if (sock_listen (sock, ICE_LISTEN_QUEUE) == SOCK_ERROR)
+            if (sock_listen (sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR)
             {
                 sock_close (sock);
                 break;

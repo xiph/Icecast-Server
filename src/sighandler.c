@@ -70,7 +70,7 @@ void _sig_die(int signo)
     ICECAST_ICECAST_LOG_INFO("Caught signal %d, shutting down...", signo);
 
     /* inform the server to start shutting down */
-    global.running = ICE_HALTING;
+    global.running = ICECAST_HALTING;
 }
 
 #endif

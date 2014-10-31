@@ -13,10 +13,10 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
-#define ICE_LISTEN_QUEUE 5
+#define ICECAST_LISTEN_QUEUE 5
 
-#define ICE_RUNNING 1
-#define ICE_HALTING 2
+#define ICECAST_RUNNING 1
+#define ICECAST_HALTING 2
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
