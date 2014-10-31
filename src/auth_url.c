@@ -109,7 +109,7 @@ static void auth_url_clear(auth_t *self)
 {
     auth_url *url;
 
-    LOG_INFO("Doing auth URL cleanup");
+    ICECAST_LOG_INFO("Doing auth URL cleanup");
     url = self->state;
     self->state = NULL;
     curl_easy_cleanup (url->handle);
@@ -263,7 +263,7 @@ static auth_result url_remove_listener (auth_client *auth_user)
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        LOG_WARN("auth to server %s failed with %s", url->removeurl, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", url->removeurl, url->errormsg);
 
     free (userpwd);
 
@@ -394,13 +394,13 @@ static auth_result url_add_listener (auth_client *auth_user)
 
     if (res)
     {
-        LOG_WARN("auth to server %s failed with %s", url->addurl, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", url->addurl, url->errormsg);
         return AUTH_FAILED;
     }
     /* we received a response, lets see what it is */
     if (client->authenticated)
         return AUTH_OK;
-    LOG_INFO("client auth (%s) failed with \"%s\"", url->addurl, url->errormsg);
+    ICECAST_LOG_INFO("client auth (%s) failed with \"%s\"", url->addurl, url->errormsg);
     return AUTH_FAILED;
 }
 
@@ -452,7 +452,7 @@ static void url_stream_start (auth_client *auth_user)
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        LOG_WARN("auth to server %s failed with %s", stream_start_url, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", stream_start_url, url->errormsg);
 
     auth_release (auth);
     free (stream_start_url);
@@ -504,7 +504,7 @@ static void url_stream_end (auth_client *auth_user)
     curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        LOG_WARN("auth to server %s failed with %s", stream_end_url, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", stream_end_url, url->errormsg);
 
     auth_release (auth);
     free (stream_end_url);
@@ -554,7 +554,7 @@ static void url_stream_auth (auth_client *auth_user)
 
     client->authenticated = 0;
     if (curl_easy_perform (url->handle))
-        LOG_WARN("auth to server %s failed with %s", url->stream_auth, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", url->stream_auth, url->errormsg);
 }
 
 
@@ -683,7 +683,7 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
         snprintf (url_info->userpwd, len, "%s:%s", url_info->username, url_info->password);
     }
 
-    LOG_INFO("URL based authentication setup");
+    ICECAST_LOG_INFO("URL based authentication setup");
     return 0;
 }
 

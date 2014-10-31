@@ -55,7 +55,7 @@ void _sig_ignore(int signo)
 
 void _sig_hup(int signo)
 {
-    LOG_INFO("Caught signal %d, scheduling config re-read...", signo);
+    ICECAST_LOG_INFO("Caught signal %d, scheduling config re-read...", signo);
 
     global_lock();
     global . schedule_config_reread = 1;
@@ -67,7 +67,7 @@ void _sig_hup(int signo)
 
 void _sig_die(int signo)
 {
-    LOG_INFO("Caught signal %d, shutting down...", signo);
+    ICECAST_LOG_INFO("Caught signal %d, shutting down...", signo);
 
     /* inform the server to start shutting down */
     global.running = ICE_HALTING;

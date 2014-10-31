@@ -89,7 +89,7 @@ void refbuf_release(refbuf_t *self)
     {
         refbuf_release_associated (self->associated);
         if (self->next)
-            LOG_ERROR("next not null");
+            ICECAST_LOG_ERROR("next not null");
         free(self->data);
         free(self);
     }

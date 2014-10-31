@@ -65,7 +65,7 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 
     global.clients++;
     if (config->client_limit < global.clients)
-        LOG_WARN("server client limit reached (%d/%d)", config->client_limit, global.clients);
+        ICECAST_LOG_WARN("server client limit reached (%d/%d)", config->client_limit, global.clients);
     else
         ret = 0;
 
@@ -178,7 +178,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     bytes = client->con->read (client->con, buf, len);
 
     if (bytes == -1 && client->con->error)
-        LOG_DEBUG("reading from connection has failed");
+        ICECAST_LOG_DEBUG("reading from connection has failed");
 
     return bytes;
 }
@@ -235,7 +235,7 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
     int ret = client->con->send (client->con, buf, len);
 
     if (client->con->error)
-        LOG_DEBUG("Client connection died");
+        ICECAST_LOG_DEBUG("Client connection died");
 
     return ret;
 }

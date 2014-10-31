@@ -34,7 +34,7 @@ typedef struct source_tag source_t;
 
 static void flac_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    LOG_DEBUG("freeing FLAC codec");
+    ICECAST_LOG_DEBUG("freeing FLAC codec");
     stats_event (ogg_info->mount, "FLAC_version", NULL);
     ogg_stream_clear (&codec->os);
     free (codec);
@@ -93,7 +93,7 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for FLAC codec");
+    ICECAST_LOG_DEBUG("checking for FLAC codec");
     do
     {
         unsigned char *parse = packet.packet;
@@ -106,7 +106,7 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
         if (memcmp (parse, "FLAC", 4) != 0)
             break;
 
-        LOG_INFO("seen initial FLAC header");
+        ICECAST_LOG_INFO("seen initial FLAC header");
 
         parse += 4;
         stats_event_args (ogg_info->mount, "FLAC_version", "%d.%d",  parse[0], parse[1]);

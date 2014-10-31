@@ -54,7 +54,7 @@ static void kate_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     kate_codec_t *kate = codec->specific;
 
-    LOG_DEBUG("freeing kate codec");
+    ICECAST_LOG_DEBUG("freeing kate codec");
     /* TODO: should i replace with something or just remove
     stats_event (ogg_info->mount, "video_bitrate", NULL);
     stats_event (ogg_info->mount, "video_quality", NULL);
@@ -98,7 +98,7 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
             if (ret < 0)
             {
                 ogg_info->error = 1;
-                LOG_WARN("problem with kate header");
+                ICECAST_LOG_WARN("problem with kate header");
                 return NULL;
             }
             header_page = 1;
@@ -139,7 +139,7 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         if (codec->headers < kate->num_headers)
         {
             ogg_info->error = 1;
-            LOG_ERROR("Not enough header packets");
+            ICECAST_LOG_ERROR("Not enough header packets");
             return NULL;
         }
     }
@@ -150,7 +150,7 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
     }
 
     refbuf = make_refbuf_with_page (page);
-    /* LOG_DEBUG("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
+    /* ICECAST_LOG_DEBUG("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
 
     if (codec->possible_start)
     {
@@ -196,7 +196,7 @@ ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for kate codec");
+    ICECAST_LOG_DEBUG("checking for kate codec");
 #ifdef HAVE_KATE
     if (kate_ogg_decode_headerin (&kate_codec->ki, &kate_codec->kc, &packet) < 0)
     {
@@ -218,7 +218,7 @@ ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
     }
 #endif
 
-    LOG_INFO("seen initial kate header");
+    ICECAST_LOG_INFO("seen initial kate header");
     codec->specific = kate_codec;
     codec->process_page = process_kate_page;
     codec->codec_free = kate_codec_free;

@@ -34,7 +34,7 @@ typedef struct source_tag source_t;
 
 static void midi_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    LOG_DEBUG("freeing MIDI codec");
+    ICECAST_LOG_DEBUG("freeing MIDI codec");
     ogg_stream_clear (&codec->os);
     free (codec);
 }
@@ -68,7 +68,7 @@ ogg_codec_t *initial_midi_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for MIDI codec");
+    ICECAST_LOG_DEBUG("checking for MIDI codec");
     do
     {
         if (packet.bytes < 9)
@@ -78,7 +78,7 @@ ogg_codec_t *initial_midi_page (format_plugin_t *plugin, ogg_page *page)
         if (packet.bytes != 12)
             break;
 
-        LOG_INFO("seen initial MIDI header");
+        ICECAST_LOG_INFO("seen initial MIDI header");
         codec->process_page = process_midi_page;
         codec->codec_free = midi_codec_free;
         codec->headers = 1;
