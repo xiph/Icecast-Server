@@ -79,7 +79,7 @@ format_type_t format_get_type (const char *contenttype)
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3.
 	   Let's warn that this is not well supported */
-	LOG_WARN("Unsupported or legacy stream type: \"%s\". Falling back to generic minimal handler for best effort.", contenttype);
+	ICECAST_ICECAST_LOG_WARN("Unsupported or legacy stream type: \"%s\". Falling back to generic minimal handler for best effort.", contenttype);
         return FORMAT_TYPE_GENERIC;
 }
 
@@ -221,11 +221,11 @@ int format_check_http_buffer (source_t *source, client_t *client)
 
     if (client->respcode == 0)
     {
-        LOG_DEBUG("processing pending client headers");
+        ICECAST_ICECAST_LOG_DEBUG("processing pending client headers");
 
         if (format_prepare_headers (source, client) < 0)
         {
-            LOG_ERROR("internal problem, dropping client");
+            ICECAST_ICECAST_LOG_ERROR("internal problem, dropping client");
             client->con->error = 1;
             return -1;
         }

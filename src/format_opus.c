@@ -70,14 +70,14 @@ ogg_codec_t *initial_opus_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for opus codec");
+    ICECAST_ICECAST_LOG_DEBUG("checking for opus codec");
     if (strncmp((char *)packet.packet, "OpusHead", 8) != 0)
     {
         ogg_stream_clear (&codec->os);
         free (codec);
         return NULL;
     }
-    LOG_INFO("seen initial opus header");
+    ICECAST_ICECAST_LOG_INFO("seen initial opus header");
     codec->process_page = process_opus_page;
     codec->codec_free = opus_codec_free;
     codec->headers = 1;

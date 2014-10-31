@@ -47,7 +47,7 @@ static void theora_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     theora_codec_t *theora = codec->specific;
 
-    LOG_DEBUG("freeing theora codec");
+    ICECAST_ICECAST_LOG_DEBUG("freeing theora codec");
     stats_event (ogg_info->mount, "video_bitrate", NULL);
     stats_event (ogg_info->mount, "video_quality", NULL);
     stats_event (ogg_info->mount, "frame_rate", NULL);
@@ -86,7 +86,7 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
             if (theora_decode_header (&theora->ti, &theora->tc, &packet) < 0)
             {
                 ogg_info->error = 1;
-                LOG_WARN("problem with theora header");
+                ICECAST_ICECAST_LOG_WARN("problem with theora header");
                 return NULL;
             }
             header_page = 1;
@@ -109,7 +109,7 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
         if (codec->headers < 3)
         {
             ogg_info->error = 1;
-            LOG_ERROR("Not enough header packets");
+            ICECAST_ICECAST_LOG_ERROR("Not enough header packets");
             return NULL;
         }
         if (theora_packet_iskeyframe (&packet))
@@ -122,7 +122,7 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
     }
 
     refbuf = make_refbuf_with_page (page);
-    /* LOG_DEBUG("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
+    /* ICECAST_ICECAST_LOG_DEBUG("refbuf %p has pageno %ld, %llu", refbuf, ogg_page_pageno (page), (uint64_t)granulepos); */
 
     if (granulepos != theora->prev_granulepos || granulepos == 0)
     {
@@ -162,7 +162,7 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for theora codec");
+    ICECAST_ICECAST_LOG_DEBUG("checking for theora codec");
     if (theora_decode_header (&theora_codec->ti, &theora_codec->tc, &packet) < 0)
     {
         theora_info_clear (&theora_codec->ti);
@@ -172,7 +172,7 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
         free (codec);
         return NULL;
     }
-    LOG_INFO("seen initial theora header");
+    ICECAST_ICECAST_LOG_INFO("seen initial theora header");
     codec->specific = theora_codec;
     codec->process_page = process_theora_page;
     codec->codec_free = theora_codec_free;

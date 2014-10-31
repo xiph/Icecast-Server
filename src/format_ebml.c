@@ -201,7 +201,7 @@ static refbuf_t *ebml_get_buffer (source_t *source)
             format->read_bytes += bytes;
             ret = ebml_wrote (ebml_source_state->ebml, bytes);
             if (ret != bytes) {
-                LOG_ERROR("Problem processing stream");
+                ICECAST_ICECAST_LOG_ERROR("Problem processing stream");
                 source->running = 0;
                 return NULL;
             }
@@ -244,7 +244,7 @@ static void ebml_free_client_data (client_t *client)
 
 static void ebml_write_buf_to_file_fail (source_t *source)
 {
-    LOG_WARN("Write to dump file failed, disabling");
+    ICECAST_ICECAST_LOG_WARN("Write to dump file failed, disabling");
     fclose (source->dumpfile);
     source->dumpfile = NULL;
 }
@@ -420,7 +420,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
     {
         if ((ebml->header_position + len) > EBML_HEADER_MAX_SIZE)
         {
-            LOG_ERROR("EBML Header too large, failing");
+            ICECAST_ICECAST_LOG_ERROR("EBML Header too large, failing");
             return -1;
         }
         

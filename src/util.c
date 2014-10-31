@@ -319,7 +319,7 @@ char *util_url_unescape (const char *src)
                 done = 1;
                 break;
             case 0:
-                LOG_ERROR("Fatal internal logic error in util_url_unescape()");
+                ICECAST_ICECAST_LOG_ERROR("Fatal internal logic error in util_url_unescape()");
                 free(decoded);
                 return NULL;
                 break;
@@ -350,7 +350,7 @@ char *util_normalise_uri(const char *uri) {
     path = util_url_unescape(uri);
 
     if(path == NULL) {
-        LOG_WARN("Error decoding URI: %s\n", uri);
+        ICECAST_ICECAST_LOG_WARN("Error decoding URI: %s\n", uri);
         return NULL;
     }
 
@@ -358,7 +358,7 @@ char *util_normalise_uri(const char *uri) {
     if(verify_path(path))
         return path;
     else {
-        LOG_WARN("Rejecting invalid path \"%s\"", path);
+        ICECAST_ICECAST_LOG_WARN("Rejecting invalid path \"%s\"", path);
         free(path);
         return NULL;
     }
@@ -617,7 +617,7 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
     util_dict *prev;
 
     if (!dict || !key) {
-        LOG_ERROR("NULL values passed to util_dict_set()");
+        ICECAST_ICECAST_LOG_ERROR("NULL values passed to util_dict_set()");
         return 0;
     }
 
@@ -632,7 +632,7 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
     if (!dict) {
         dict = util_dict_new();
         if (!dict) {
-            LOG_ERROR("unable to allocate new dictionary");
+            ICECAST_ICECAST_LOG_ERROR("unable to allocate new dictionary");
             return 0;
         }
         if (prev)
@@ -646,13 +646,13 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
             prev->next = NULL;
         util_dict_free (dict);
 
-        LOG_ERROR("unable to allocate new dictionary key");
+        ICECAST_ICECAST_LOG_ERROR("unable to allocate new dictionary key");
         return 0;
     }
 
     dict->val = strdup(val);
     if (!dict->val) {
-        LOG_ERROR("unable to allocate new dictionary value");
+        ICECAST_ICECAST_LOG_ERROR("unable to allocate new dictionary value");
         return 0;
     }
 
@@ -750,7 +750,7 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
         xmlBufferPtr utf8 = xmlBufferCreate ();
         xmlBufferPtr conv = xmlBufferCreate ();
 
-        LOG_INFO("converting metadata from %s to %s", in_charset, out_charset);
+        ICECAST_ICECAST_LOG_INFO("converting metadata from %s to %s", in_charset, out_charset);
         xmlBufferCCat (orig, string);
         if (xmlCharEncInFunc (in, utf8, orig) > 0)
         {

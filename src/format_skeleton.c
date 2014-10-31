@@ -35,7 +35,7 @@ typedef struct source_tag source_t;
 
 static void skeleton_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
-    LOG_DEBUG("freeing skeleton codec");
+    ICECAST_ICECAST_LOG_DEBUG("freeing skeleton codec");
     ogg_stream_clear (&codec->os);
     free (codec);
 }
@@ -79,7 +79,7 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for skeleton codec");
+    ICECAST_ICECAST_LOG_DEBUG("checking for skeleton codec");
 
     if ((packet.bytes<8) || memcmp(packet.packet, "fishead\0", 8))
     {
@@ -88,7 +88,7 @@ ogg_codec_t *initial_skeleton_page (format_plugin_t *plugin, ogg_page *page)
         return NULL;
     }
 
-    LOG_INFO("seen initial skeleton header");
+    ICECAST_ICECAST_LOG_INFO("seen initial skeleton header");
     codec->process_page = process_skeleton_page;
     codec->codec_free = skeleton_codec_free;
     codec->headers = 1;

@@ -42,7 +42,7 @@ static icecastph_func_t plugin_getter(const char * func);
 void plugins_initialize(void)
 {
 #ifdef HAVE_ROARAUDIO
-    LOG_DEBUG("Plugin Interface is being initialized");
+    ICECAST_ICECAST_LOG_DEBUG("Plugin Interface is being initialized");
     roarapi_lock();
     container = roar_plugincontainer_new_simple(ICECASTPH_APPNAME, ICECASTPH_ABIVERSION);
     roar_plugincontainer_set_autoappsched(container, 1);
@@ -53,7 +53,7 @@ void plugins_initialize(void)
     roar_scheduler_source_add(sched, &source_timeout);
     roarapi_unlock();
     plugin_thread = thread_create("Plugin Thread", plugin_runner, NULL, 0);
-    LOG_DEBUG("Plugin Interface is now initialized");
+    ICECAST_ICECAST_LOG_DEBUG("Plugin Interface is now initialized");
 #endif
 }
 
@@ -72,7 +72,7 @@ static inline void plugins_shutdown_plugin_thread(void)
 void plugins_shutdown(void)
 {
 #ifdef HAVE_ROARAUDIO
-    LOG_DEBUG("Plugin Interface is being shut down");
+    ICECAST_ICECAST_LOG_DEBUG("Plugin Interface is being shut down");
     roarapi_lock();
     plugins_shutdown_plugin_thread();
     roar_plugincontainer_unref(container);
@@ -80,7 +80,7 @@ void plugins_shutdown(void)
     container = NULL;
     sched = NULL;
     roarapi_unlock();
-    LOG_DEBUG("Plugin Interface is now shut down");
+    ICECAST_ICECAST_LOG_DEBUG("Plugin Interface is now shut down");
 #endif
 }
 
@@ -96,7 +96,7 @@ static void plugins_load_one(plugin_t *plugin)
     roar_plugincontainer_load(container, plugin->name, para);
     roar_dl_para_unref(para);
 #else
-    LOG_ERROR("Can not load plugin \"%s\" as RoarAudio support is not compiled in.", plugin->name);
+    ICECAST_ICECAST_LOG_ERROR("Can not load plugin \"%s\" as RoarAudio support is not compiled in.", plugin->name);
 #endif
 }
 
@@ -151,7 +151,7 @@ static void plugins_load_cpi(cpi_t *cpi)
 	plugins_load_one(&plugin);
     }
 #else
-    LOG_ERROR("Can not load CPI as RoarAudio support is not compiled in.");
+    ICECAST_ICECAST_LOG_ERROR("Can not load CPI as RoarAudio support is not compiled in.");
 #endif
 }
 

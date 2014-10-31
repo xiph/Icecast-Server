@@ -84,7 +84,7 @@ static void vorbis_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     vorbis_codec_t *vorbis = codec->specific;
 
-    LOG_DEBUG("freeing vorbis codec");
+    ICECAST_ICECAST_LOG_DEBUG("freeing vorbis codec");
     stats_event (ogg_info->mount, "audio_bitrate", NULL);
     stats_event (ogg_info->mount, "audio_channels", NULL);
     stats_event (ogg_info->mount, "audio_samplerate", NULL);
@@ -195,7 +195,7 @@ static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
         source_vorbis->prev_page_samples = ogg_page_granulepos (&page);
 
         refbuf = make_refbuf_with_page (&page);
-        LOG_DEBUG("flushing page");
+        ICECAST_ICECAST_LOG_DEBUG("flushing page");
         return refbuf;
     }
     ogg_stream_clear (&source_vorbis->new_os);
@@ -221,7 +221,7 @@ static void initiate_flush (vorbis_codec_t *source_vorbis)
     if (source_vorbis->prev_packet)
     {
         /* insert prev_packet with eos */
-        LOG_DEBUG("adding EOS packet");
+        ICECAST_ICECAST_LOG_DEBUG("adding EOS packet");
         source_vorbis->prev_packet->e_o_s = 1;
         add_audio_packet (source_vorbis, source_vorbis->prev_packet);
         source_vorbis->prev_packet->e_o_s = 0;
@@ -318,7 +318,7 @@ static int process_vorbis_headers (ogg_state_t *ogg_info, ogg_codec_t *codec)
     if (source_vorbis->header [0] == NULL)
         return 0;
 
-    LOG_DEBUG("Adding the 3 header packets");
+    ICECAST_ICECAST_LOG_DEBUG("Adding the 3 header packets");
     ogg_stream_packetin (&source_vorbis->new_os, source_vorbis->header [0]);
     /* NOTE: we could build a separate comment packet each time */
     if (source_vorbis->rebuild_comment)
@@ -373,7 +373,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    LOG_DEBUG("checking for vorbis codec");
+    ICECAST_ICECAST_LOG_DEBUG("checking for vorbis codec");
     if (vorbis_synthesis_headerin (&vorbis->vi, &vorbis->vc, &packet) < 0)
     {
         ogg_stream_clear (&codec->os);
@@ -383,7 +383,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
         free (codec);
         return NULL;
     }
-    LOG_INFO("seen initial vorbis header");
+    ICECAST_ICECAST_LOG_INFO("seen initial vorbis header");
     codec->specific = vorbis;
     codec->codec_free = vorbis_codec_free;
     codec->headers = 1;
@@ -523,7 +523,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
     while (codec->headers < 3)
     {
         /* now, lets extract the packets */
-        LOG_DEBUG("processing incoming header packet (%d)", codec->headers);
+        ICECAST_ICECAST_LOG_DEBUG("processing incoming header packet (%d)", codec->headers);
 
         if (ogg_stream_packetout (&codec->os, &header) <= 0)
         {
@@ -536,14 +536,14 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         if (vorbis_synthesis_headerin (&source_vorbis->vi, &source_vorbis->vc, &header) < 0)
         {
             ogg_info->error = 1;
-            LOG_WARN("Problem parsing ogg vorbis header");
+            ICECAST_ICECAST_LOG_WARN("Problem parsing ogg vorbis header");
             return NULL;
         }
         header.granulepos = 0;
         source_vorbis->header [codec->headers] = copy_ogg_packet (&header);
         codec->headers++;
     }
-    LOG_DEBUG("we have the header packets now");
+    ICECAST_ICECAST_LOG_DEBUG("we have the header packets now");
 
     /* if vorbis is the only codec then allow rebuilding of the streams */
     if (ogg_info->codecs->next == NULL)

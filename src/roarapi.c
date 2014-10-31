@@ -25,16 +25,16 @@ static mutex_t _roarapi_mutex;
 
 void roarapi_initialize(void)
 {
-    LOG_DEBUG("RoarAPI is being initialized");
+    ICECAST_ICECAST_LOG_DEBUG("RoarAPI is being initialized");
     thread_mutex_create(&_roarapi_mutex);
-    LOG_DEBUG("RoarAPI is now initialized");
+    ICECAST_ICECAST_LOG_DEBUG("RoarAPI is now initialized");
 }
 
 void roarapi_shutdown(void)
 {
-    LOG_DEBUG("RoarAPI is being shut down");
+    ICECAST_ICECAST_LOG_DEBUG("RoarAPI is being shut down");
     thread_mutex_destroy(&_roarapi_mutex);
-    LOG_DEBUG("RoarAPI is now shut down");
+    ICECAST_ICECAST_LOG_DEBUG("RoarAPI is now shut down");
 }
 
 void roarapi_lock(void)

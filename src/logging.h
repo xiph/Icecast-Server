@@ -31,10 +31,10 @@ extern int playlistlog;
 ** Variadic macros for logging
 */
 
-#define LOG_ERROR(...) log_write(errorlog, 1, CATMODULE "/", __func__, __VA_ARGS__)
-#define LOG_WARN(...) log_write(errorlog, 2, CATMODULE "/", __func__, __VA_ARGS__)
-#define LOG_INFO(...) log_write(errorlog, 3, CATMODULE "/", __func__, __VA_ARGS__)
-#define LOG_DEBUG(...) log_write(errorlog, 4, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_ICECAST_LOG_ERROR(...) log_write(errorlog, 1, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_ICECAST_LOG_WARN(...) log_write(errorlog, 2, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_ICECAST_LOG_INFO(...) log_write(errorlog, 3, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_ICECAST_LOG_DEBUG(...) log_write(errorlog, 4, CATMODULE "/", __func__, __VA_ARGS__)
 
 /* CATMODULE is the category or module that logging messages come from.
 ** we set one here in cause someone forgets in the .c file.

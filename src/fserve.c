@@ -108,7 +108,7 @@ void fserve_initialize(void)
     config_release_config();
 
     stats_event (NULL, "file_connections", "0");
-    LOG_INFO("file serving started");
+    ICECAST_ICECAST_LOG_INFO("file serving started");
 }
 
 void fserve_shutdown(void)
@@ -134,7 +134,7 @@ void fserve_shutdown(void)
 
     thread_spin_unlock (&pending_lock);
     thread_spin_destroy (&pending_lock);
-    LOG_INFO("file serving stopped");
+    ICECAST_ICECAST_LOG_INFO("file serving stopped");
 }
 
 #ifdef HAVE_POLL
@@ -332,7 +332,7 @@ static void *fserv_thread_function(void *arg)
             fclient = fclient->next;
         }
     }
-    LOG_DEBUG("fserve handler exit");
+    ICECAST_ICECAST_LOG_DEBUG("fserve handler exit");
     return NULL;
 }
 
@@ -414,7 +414,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     FILE *file;
 
     fullpath = util_get_path_from_normalised_uri (path);
-    LOG_INFO("checking for file %H (%H)", path, fullpath);
+    ICECAST_ICECAST_LOG_INFO("checking for file %H (%H)", path, fullpath);
 
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
         m3u_requested = 1;
@@ -431,7 +431,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         /* the m3u can be generated, but send an m3u file if available */
         if (m3u_requested == 0 && xslt_playlist_requested == NULL)
         {
-            LOG_WARN("req for file \"%H\" %s", fullpath, strerror (errno));
+            ICECAST_ICECAST_LOG_WARN("req for file \"%H\" %s", fullpath, strerror (errno));
             client_send_404 (httpclient, "The file you requested could not be found");
             free (fullpath);
             return -1;
@@ -501,7 +501,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     config = config_get_config();
     if (config->fileserve == 0)
     {
-        LOG_DEBUG("on demand file \"%H\" refused", fullpath);
+        ICECAST_ICECAST_LOG_DEBUG("on demand file \"%H\" refused", fullpath);
         client_send_404 (httpclient, "The file you requested could not be found");
         config_release_config();
         free (fullpath);
@@ -512,7 +512,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (S_ISREG (file_buf.st_mode) == 0)
     {
         client_send_404 (httpclient, "The file you requested could not be found");
-        LOG_WARN("found requested file but there is no handler for it: %H", fullpath);
+        ICECAST_ICECAST_LOG_WARN("found requested file but there is no handler for it: %H", fullpath);
         free (fullpath);
         return -1;
     }
@@ -520,7 +520,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     file = fopen (fullpath, "rb");
     if (file == NULL)
     {
-        LOG_WARN("Problem accessing file \"%H\"", fullpath);
+        ICECAST_ICECAST_LOG_WARN("Problem accessing file \"%H\"", fullpath);
         client_send_404 (httpclient, "File not readable");
         free (fullpath);
         return -1;
@@ -629,7 +629,7 @@ static void fserve_add_pending (fserve_t *fclient)
     if (run_fserv == 0)
     {
         run_fserv = 1;
-        LOG_DEBUG("fserve handler waking up");
+        ICECAST_ICECAST_LOG_DEBUG("fserve handler waking up");
         thread_create("File Serving Thread", fserv_thread_function, NULL, THREAD_DETACHED);
     }
     thread_spin_unlock (&pending_lock);
@@ -643,7 +643,7 @@ int fserve_add_client (client_t *client, FILE *file)
 {
     fserve_t *fclient = calloc (1, sizeof(fserve_t));
 
-    LOG_DEBUG("Adding client to file serving engine");
+    ICECAST_ICECAST_LOG_DEBUG("Adding client to file serving engine");
     if (fclient == NULL)
     {
         client_send_404 (client, "memory exhausted");
@@ -665,7 +665,7 @@ void fserve_add_client_callback (client_t *client, fserve_callback_t callback, v
 {
     fserve_t *fclient = calloc (1, sizeof(fserve_t));
 
-    LOG_DEBUG("Adding client to file serving engine");
+    ICECAST_ICECAST_LOG_DEBUG("Adding client to file serving engine");
     if (fclient == NULL)
     {
         client_send_404 (client, "memory exhausted");
@@ -710,7 +710,7 @@ void fserve_recheck_mime_types (ice_config_t *config)
     mimefile = fopen (config->mimetypes_fn, "r");
     if (mimefile == NULL)
     {
-        LOG_WARN("Cannot open mime types file %s", config->mimetypes_fn);
+        ICECAST_ICECAST_LOG_WARN("Cannot open mime types file %s", config->mimetypes_fn);
         return;
     }
 
