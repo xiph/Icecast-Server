@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>, 
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -31,8 +31,7 @@ struct _mount_proxy;
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
-typedef struct ice_config_dir_tag
-{
+typedef struct ice_config_dir_tag {
     char *host;
     int touch_interval;
     struct ice_config_dir_tag *next;
@@ -116,8 +115,7 @@ typedef struct _listener_t {
     int ssl;
 } listener_t;
 
-typedef struct ice_config_tag
-{
+typedef struct ice_config_tag {
     char *config_filename;
 
     char *location;
@@ -220,6 +218,3 @@ void config_release_config(void);
 ice_config_t *config_get_config_unlocked(void);
 
 #endif  /* __CFGFILE_H__ */
-
-
-
