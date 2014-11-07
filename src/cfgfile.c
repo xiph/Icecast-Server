@@ -87,6 +87,7 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
@@ -121,6 +122,18 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
+}
+
+static void config_clear_http_header(ice_config_http_header_t *header) {
+ ice_config_http_header_t *old;
+
+ while (header) {
+  xmlFree(header->name);
+  xmlFree(header->value);
+  old = header;
+  header = header->next;
+  free(old);
+ }
 }
 
 static void config_clear_mount (mount_proxy *mount)
@@ -262,6 +275,8 @@ void config_clear(ice_config_t *c)
         i++;
     }
 #endif
+
+    config_clear_http_header(c->http_headers);
 
     memset(c, 0, sizeof(ice_config_t));
 }
@@ -471,6 +486,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->shoutcast_mount = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("limits")) == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
+            _parse_http_headers(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
@@ -741,6 +758,41 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         configuration->mounts = mount;
 }
 
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
+    ice_config_http_header_t *header;
+    ice_config_http_header_t *next;
+    char *name = NULL;
+    char *value = NULL;
+
+    do {
+        if (node == NULL) break;
+        if (xmlIsBlankNode(node)) continue;
+        if (xmlStrcmp (node->name, XMLSTR("header")) != 0) break;
+        if (!(name = (char *)xmlGetProp(node, XMLSTR("name")))) break;
+        if (!(value = (char *)xmlGetProp(node, XMLSTR("value")))) break;
+
+        header = calloc(1, sizeof(ice_config_http_header_t));
+        if (!header) break;
+        header->type = HTTP_HEADER_TYPE_STATIC;
+        header->name = name;
+        header->value = value;
+        name = NULL;
+        value = NULL;
+
+        if (!c->http_headers) {
+            c->http_headers = header;
+            continue;
+        }
+        next = c->http_headers;
+        while (next->next) next = next->next;
+        next->next = header;
+    } while ((node = node->next));
+    /* in case we used break we may need to clean those up */
+    if (name)
+	xmlFree(name);
+    if (value)
+	xmlFree(value);
+}
 
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)

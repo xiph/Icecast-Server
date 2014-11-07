@@ -486,6 +486,40 @@ char *util_base64_decode(const char *data)
     return result;
 }
 
+/* TODO, FIXME: handle memory allocation errors better. */
+static inline char * _build_headers(ice_config_t *config) {
+    char *ret = NULL;
+    size_t len = 1;
+    size_t headerlen;
+    const char *name;
+    const char *value;
+    ice_config_http_header_t *header = config->http_headers;
+
+    if (!header) {
+        return strdup("");
+    }
+
+    ret = calloc(1, 1);
+    *ret = 0;
+    while (header) {
+        name = header->name;
+        switch (header->type) {
+            case HTTP_HEADER_TYPE_STATIC:
+                value = header->value;
+                break;
+        }
+        headerlen = strlen(name) + strlen(value) + 4;
+        len += headerlen;
+        ret = realloc(ret, len);
+        strcat(ret, name);
+        strcat(ret, ": ");
+        strcat(ret, value);
+        strcat(ret, "\r\n");
+        header = header->next;
+    }
+    return ret;
+}
+
 ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int cache,
         int status, const char * statusmsg,
@@ -500,6 +534,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     char status_buffer[80];
     char contenttype_buffer[80];
     ssize_t ret;
+    char * extra_headers;
 
     if (!out)
         return -1;
@@ -563,7 +598,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         currenttime_buffer[0] = '\0';
 
     config = config_get_config();
-    ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s",
+    extra_headers = _build_headers(config);
+    ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
 			      config->server_id,
 			      currenttime_buffer,
@@ -572,8 +608,10 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               (cache     ? "" : "Cache-Control: no-cache\r\n"
                                                 "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n"
                                                 "Pragma: no-cache\r\n"),
+                              extra_headers,
                               (datablock ? "\r\n" : ""),
                               (datablock ? datablock : ""));
+    free(extra_headers);
     config_release_config();
 
     return ret;

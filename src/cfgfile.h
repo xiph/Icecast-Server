@@ -31,6 +31,17 @@ struct _mount_proxy;
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
+typedef enum _http_header_type {
+ HTTP_HEADER_TYPE_STATIC
+} http_header_type;
+
+typedef struct ice_config_http_header_tag {
+    http_header_type type;
+    char *name;
+    char *value;
+    struct ice_config_http_header_tag *next;
+} ice_config_http_header_t;
+
 typedef struct ice_config_dir_tag {
     char *host;
     int touch_interval;
@@ -155,6 +166,8 @@ typedef struct ice_config_tag {
     int master_update_interval;
     char *master_username;
     char *master_password;
+
+    ice_config_http_header_t *http_headers;
 
     relay_server *relay;
 
