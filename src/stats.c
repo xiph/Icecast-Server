@@ -584,27 +584,69 @@ static void process_source_event (stats_event_t *event)
     }
 }
 
+/* NOTE: implicit %z is added to format string. */
+static inline void __format_time(char * buffer, size_t len, const char * format) {
+    time_t now = time(NULL);
+    struct tm local;
+    char tzbuffer[32];
+    char timebuffer[128];
+#ifdef _WIN32
+    struct tm *thetime;
+    int time_days, time_hours, time_tz;
+    int tempnum1, tempnum2;
+    char sign;
+#endif
+
+    localtime_r (&now, &local);
+#ifndef _WIN32
+    strftime (tzbuffer, sizeof(tzbuffer), "%z", &local);
+#else
+    thetime = gmtime (&now);
+    time_days = local.tm_yday - thetime->tm_yday;
+
+    if (time_days < -1) {
+        tempnum1 = 24;
+    } else {
+        tempnum1 = 1;
+    }
+
+    if (tempnum1 < time_days) {
+        tempnum2 = -24;
+    } else {
+        tempnum2 = time_days*24;
+    }
+
+    time_hours = (tempnum2 + local.tm_hour - thetime->tm_hour);
+    time_tz = time_hours * 60 + local.tm_min - thetime->tm_min;
+
+    if (time_tz < 0) {
+        sign = '-';
+        time_tz = -time_tz;
+    } else {
+        sign = '+';
+    }
+
+    snprintf(tzbuffer, sizeof(tzbuffer), "%c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
+#endif
+    strftime (timebuffer, sizeof(timebuffer), format, &local);
+
+    snprintf(buffer, len, "%s%s", timebuffer, tzbuffer);
+}
 
 void stats_event_time (const char *mount, const char *name)
 {
-    time_t now = time(NULL);
-    struct tm local;
     char buffer[100];
 
-    localtime_r (&now, &local);
-    strftime (buffer, sizeof (buffer), "%a, %d %b %Y %H:%M:%S %z", &local);
+    __format_time(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S ");
     stats_event (mount, name, buffer);
 }
 
 
 void stats_event_time_iso8601 (const char *mount, const char *name)
 {
-    time_t now = time(NULL);
-    struct tm local;
     char buffer[100];
 
-    localtime_r (&now, &local);
-    strftime (buffer, sizeof (buffer), "%Y-%m-%dT%H:%M:%S%z", &local);
+    __format_time(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S");
     stats_event (mount, name, buffer);
 }
 
