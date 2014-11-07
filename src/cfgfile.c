@@ -232,7 +232,9 @@ void config_clear(ice_config_t *c)
     relay_server *relay, *nextrelay;
     mount_proxy *mount, *nextmount;
     aliases *alias, *nextalias;
+#ifdef USE_YP
     int i;
+#endif
 
     free(c->config_filename);
 
