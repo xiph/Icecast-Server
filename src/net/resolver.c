@@ -159,7 +159,8 @@ char *resolver_getname(const char *ip, char *buff, int len)
 
     thread_mutex_lock(&_resolver_mutex);
     if (inet_aton (ip, &addr)) {
-        if ((host=gethostbyaddr (&addr, sizeof (struct in_addr), AF_INET)))
+        /* casting &addr to const char* as it is recommended on win* */
+        if ((host=gethostbyaddr ((const char *)&addr, sizeof (struct in_addr), AF_INET)))
         {
             ret = strncpy (buff, host->h_name, len);
             buff [len-1] = '\0';
