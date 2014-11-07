@@ -108,7 +108,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     ypdata_t *yp = stream;
     unsigned bytes = size * nmemb;
 
-    /* ICECAST_ICECAST_LOG_DEBUG("header from YP is \"%.*s\"", bytes, ptr); */
+    /* ICECAST_LOG_DEBUG("header from YP is \"%.*s\"", bytes, ptr); */
     if (strncasecmp (ptr, "YPResponse: 1", 13) == 0)
         yp->cmd_ok = 1;
 
@@ -139,7 +139,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
             secs = 0;
         if (secs < 30)
             secs = 30;
-        ICECAST_ICECAST_LOG_DEBUG("server touch interval is %u", secs);
+        ICECAST_LOG_DEBUG("server touch interval is %u", secs);
         yp->touch_interval = secs;
     }
     return (int)bytes;
@@ -180,11 +180,11 @@ static void destroy_yp_server (struct yp_server *server)
 {
     if (server == NULL)
         return;
-    ICECAST_ICECAST_LOG_DEBUG("Removing YP server entry for %s", server->url);
+    ICECAST_LOG_DEBUG("Removing YP server entry for %s", server->url);
     if (server->curl)
         curl_easy_cleanup (server->curl);
-    if (server->mounts) ICECAST_ICECAST_LOG_WARN("active ypdata not freed up");
-    if (server->pending_mounts) ICECAST_ICECAST_LOG_WARN("pending ypdata not freed up");
+    if (server->mounts) ICECAST_LOG_WARN("active ypdata not freed up");
+    if (server->pending_mounts) ICECAST_LOG_WARN("pending ypdata not freed up");
     free (server->url);
     free (server->server_id);
     free (server);
@@ -211,7 +211,7 @@ void yp_recheck_config (ice_config_t *config)
     int i;
     struct yp_server *server;
 
-    ICECAST_ICECAST_LOG_DEBUG("Updating YP configuration");
+    ICECAST_LOG_DEBUG("Updating YP configuration");
     thread_rwlock_rlock (&yp_lock);
 
     server = (struct yp_server *)active_yps;
@@ -263,7 +263,7 @@ void yp_recheck_config (ice_config_t *config)
             curl_easy_setopt (server->curl, CURLOPT_ERRORBUFFER, &(server->curl_error[0]));
             server->next = (struct yp_server *)pending_yps;
             pending_yps = server;
-            ICECAST_ICECAST_LOG_INFO("Adding new YP server \"%s\" (timeout %ds, default interval %ds)",
+            ICECAST_LOG_INFO("Adding new YP server \"%s\" (timeout %ds, default interval %ds)",
                     server->url, server->url_timeout, server->touch_interval);
         }
         else
@@ -298,7 +298,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     int curlcode;
     struct yp_server *server = yp->server;
 
-    /* ICECAST_ICECAST_LOG_DEBUG("send YP (%s):%s", cmd, post); */
+    /* ICECAST_LOG_DEBUG("send YP (%s):%s", cmd, post); */
     yp->cmd_ok = 0;
     curl_easy_setopt (server->curl, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt (server->curl, CURLOPT_WRITEHEADER, yp);
@@ -307,7 +307,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
     {
         yp->process = do_yp_add;
         yp->next_update = now + 1200;
-        ICECAST_ICECAST_LOG_ERROR("connection to %s failed with \"%s\"", server->url, server->curl_error);
+        ICECAST_LOG_ERROR("connection to %s failed with \"%s\"", server->url, server->curl_error);
         return -2;
     }
     if (yp->cmd_ok == 0)
@@ -316,7 +316,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
             yp->error_msg = strdup ("no response from server");
         if (yp->process == do_yp_add)
         {
-            ICECAST_ICECAST_LOG_ERROR("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
+            ICECAST_LOG_ERROR("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
             yp->next_update = now + 7200;
         }
         if (yp->process == do_yp_touch)
@@ -331,14 +331,14 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
                 yp->next_update = now + 1200;
             else
                 yp->next_update = now + yp->touch_interval;
-            ICECAST_ICECAST_LOG_INFO("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
+            ICECAST_LOG_INFO("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
         }
         yp->process = do_yp_add;
         free (yp->sid);
         yp->sid = NULL;
         return -1;
     }
-    ICECAST_ICECAST_LOG_DEBUG("YP %s at %s succeeded", cmd, server->url);
+    ICECAST_LOG_DEBUG("YP %s at %s succeeded", cmd, server->url);
     return 0;
 }
 
@@ -354,7 +354,7 @@ static int do_yp_remove (ypdata_t *yp, char *s, unsigned len)
         if (ret >= (signed)len)
             return ret+1;
 
-        ICECAST_ICECAST_LOG_INFO("clearing up YP entry for %s", yp->mount);
+        ICECAST_LOG_INFO("clearing up YP entry for %s", yp->mount);
         ret = send_to_yp ("remove", yp, s);
         free (yp->sid);
         yp->sid = NULL;
@@ -530,7 +530,7 @@ static void yp_process_server (struct yp_server *server)
     ypdata_t *yp;
     int state = 0;
 
-    /* ICECAST_ICECAST_LOG_DEBUG("processing yp server %s", server->url); */
+    /* ICECAST_LOG_DEBUG("processing yp server %s", server->url); */
     yp = server->mounts;
     while (yp)
     {
@@ -540,7 +540,7 @@ static void yp_process_server (struct yp_server *server)
          */
         if (state == -2)
         {
-            ICECAST_ICECAST_LOG_DEBUG("skiping %s on %s", yp->mount, server->url);
+            ICECAST_LOG_DEBUG("skiping %s on %s", yp->mount, server->url);
             yp->process = do_yp_add;
             yp->next_update += 900;
         }
@@ -622,7 +622,7 @@ static void check_servers (void)
         if (server->remove)
         {
             struct yp_server *to_go = server;
-            ICECAST_ICECAST_LOG_DEBUG("YP server \"%s\"removed", server->url);
+            ICECAST_LOG_DEBUG("YP server \"%s\"removed", server->url);
             *server_p = server->next;
             server = server->next;
             destroy_yp_server (to_go);
@@ -639,7 +639,7 @@ static void check_servers (void)
         server = (struct yp_server *)pending_yps;
         pending_yps = server->next;
 
-        ICECAST_ICECAST_LOG_DEBUG("Add pending yps %s", server->url);
+        ICECAST_LOG_DEBUG("Add pending yps %s", server->url);
         server->next = (struct yp_server *)active_yps;
         active_yps = server;
 
@@ -653,7 +653,7 @@ static void check_servers (void)
             source_t *source = node->key;
             if (source->yp_public && (yp = create_yp_entry (source->mount)) != NULL)
             {
-                ICECAST_ICECAST_LOG_DEBUG("Adding existing mount %s", source->mount);
+                ICECAST_LOG_DEBUG("Adding existing mount %s", source->mount);
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->mounts;
@@ -685,7 +685,7 @@ static void add_pending_yp (struct yp_server *server)
         yp = yp->next;
     }
     yp->next = current;
-    ICECAST_ICECAST_LOG_DEBUG("%u YP entries added to %s", count, server->url);
+    ICECAST_LOG_DEBUG("%u YP entries added to %s", count, server->url);
 }
 
 
@@ -698,7 +698,7 @@ static void delete_marked_yp (struct yp_server *server)
         if (yp->remove)
         {
             ypdata_t *to_go = yp;
-            ICECAST_ICECAST_LOG_DEBUG("removed %s from YP server %s", yp->mount, server->url);
+            ICECAST_LOG_DEBUG("removed %s from YP server %s", yp->mount, server->url);
             *prev = yp->next;
             yp = yp->next;
             yp_destroy_ypdata (to_go);
@@ -712,7 +712,7 @@ static void delete_marked_yp (struct yp_server *server)
 
 static void *yp_update_thread(void *arg)
 {
-    ICECAST_ICECAST_LOG_INFO("YP update thread started");
+    ICECAST_LOG_INFO("YP update thread started");
 
     yp_running = 1;
     while (yp_running)
@@ -726,7 +726,7 @@ static void *yp_update_thread(void *arg)
         server = (struct yp_server *)active_yps;
         while (server)
         {
-            /* ICECAST_ICECAST_LOG_DEBUG("trying %s", server->url); */
+            /* ICECAST_LOG_DEBUG("trying %s", server->url); */
             yp_process_server (server);
             server = server->next;
         }
@@ -740,7 +740,7 @@ static void *yp_update_thread(void *arg)
             server = (struct yp_server *)active_yps;
             while (server)
             {
-                /* ICECAST_ICECAST_LOG_DEBUG("Checking yps %s", server->url); */
+                /* ICECAST_LOG_DEBUG("Checking yps %s", server->url); */
                 add_pending_yp (server);
                 delete_marked_yp (server);
                 server = server->next;
@@ -891,7 +891,7 @@ void yp_add (const char *mount)
             yp = create_yp_entry (mount);
             if (yp)
             {
-                ICECAST_ICECAST_LOG_DEBUG("Adding %s to %s", mount, server->url);
+                ICECAST_LOG_DEBUG("Adding %s to %s", mount, server->url);
                 yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->pending_mounts;
@@ -901,7 +901,7 @@ void yp_add (const char *mount)
             }
         }
         else
-            ICECAST_ICECAST_LOG_DEBUG("YP entry %s already exists", mount);
+            ICECAST_LOG_DEBUG("YP entry %s already exists", mount);
         server = server->next;
     }
     thread_mutex_unlock (&yp_pending_lock);
@@ -930,7 +930,7 @@ void yp_remove (const char *mount)
                 list = yp->next;
                 continue;   /* search again these are old entries */
             }
-            ICECAST_ICECAST_LOG_DEBUG("release %s on YP %s", mount, server->url);
+            ICECAST_LOG_DEBUG("release %s on YP %s", mount, server->url);
             yp->release = 1;
             yp->next_update = 0;
         }
@@ -983,6 +983,6 @@ void yp_shutdown (void)
     curl_global_cleanup();
     free ((char*)server_version);
     server_version = NULL;
-    ICECAST_ICECAST_LOG_INFO("YP thread down");
+    ICECAST_LOG_INFO("YP thread down");
 }
 

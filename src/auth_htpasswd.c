@@ -115,7 +115,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         return;
     if (stat (htpasswd->filename, &file_stat) < 0)
     {
-        ICECAST_ICECAST_LOG_WARN("failed to check status of %s", htpasswd->filename);
+        ICECAST_LOG_WARN("failed to check status of %s", htpasswd->filename);
 
         /* Create a dummy users tree for things to use later */
         thread_rwlock_wlock (&htpasswd->file_rwlock);
@@ -131,11 +131,11 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         /* common case, no update to file */
         return;
     }
-    ICECAST_ICECAST_LOG_INFO("re-reading htpasswd file \"%s\"", htpasswd->filename);
+    ICECAST_LOG_INFO("re-reading htpasswd file \"%s\"", htpasswd->filename);
     passwdfile = fopen (htpasswd->filename, "rb");
     if (passwdfile == NULL)
     {
-        ICECAST_ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
                 htpasswd->filename, strerror(errno));
         return;
     }
@@ -155,7 +155,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         sep = strrchr (line, ':');
         if (sep == NULL)
         {
-            ICECAST_ICECAST_LOG_WARN("No separator on line %d (%s)", num, htpasswd->filename);
+            ICECAST_LOG_WARN("No separator on line %d (%s)", num, htpasswd->filename);
             continue;
         }
         entry = calloc (1, sizeof (htpasswd_user));
@@ -189,7 +189,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
 
     if (htpasswd->filename == NULL)
     {
-        ICECAST_ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+        ICECAST_LOG_ERROR("No filename given in options for authenticator.");
         return AUTH_FAILED;
     }
     htpasswd_recheckfile (htpasswd);
@@ -209,10 +209,10 @@ static auth_result htpasswd_auth (auth_client *auth_user)
             return AUTH_OK;
         }
         free (hashed_pw);
-        ICECAST_ICECAST_LOG_DEBUG("incorrect password for client");
+        ICECAST_LOG_DEBUG("incorrect password for client");
         return AUTH_FAILED;
     }
-    ICECAST_ICECAST_LOG_DEBUG("no such username: %s", client->username);
+    ICECAST_LOG_DEBUG("no such username: %s", client->username);
     thread_rwlock_unlock (&htpasswd->file_rwlock);
     return AUTH_FAILED;
 }
@@ -240,10 +240,10 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     }
 
     if (state->filename)
-        ICECAST_ICECAST_LOG_INFO("Configured htpasswd authentication using password file \"%s\"", 
+        ICECAST_LOG_INFO("Configured htpasswd authentication using password file \"%s\"", 
                 state->filename);
     else
-        ICECAST_ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+        ICECAST_LOG_ERROR("No filename given in options for authenticator.");
 
     authenticator->state = state;
 
@@ -278,7 +278,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     if (passwdfile == NULL)
     {
         thread_rwlock_unlock (&state->file_rwlock);
-        ICECAST_ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
                 state->filename, strerror(errno));
         return AUTH_FAILED;
     }
@@ -312,7 +312,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     passwdfile = fopen(state->filename, "rb");
 
     if(passwdfile == NULL) {
-        ICECAST_ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
                 state->filename, strerror(errno));
         thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_FAILED;
@@ -322,7 +322,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     snprintf (tmpfile, tmpfile_len, "%s.tmp", state->filename);
     if (stat (tmpfile, &file_info) == 0)
     {
-        ICECAST_ICECAST_LOG_WARN("temp file \"%s\" exists, rejecting operation", tmpfile);
+        ICECAST_LOG_WARN("temp file \"%s\" exists, rejecting operation", tmpfile);
         free (tmpfile);
         fclose (passwdfile);
         thread_rwlock_unlock (&state->file_rwlock);
@@ -332,7 +332,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     tmp_passwdfile = fopen(tmpfile, "wb");
 
     if(tmp_passwdfile == NULL) {
-        ICECAST_ICECAST_LOG_WARN("Failed to open temporary authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open temporary authentication database \"%s\": %s", 
                 tmpfile, strerror(errno));
         fclose(passwdfile);
         free(tmpfile);
@@ -347,7 +347,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
 
         sep = strchr(line, ':');
         if(sep == NULL) {
-            ICECAST_ICECAST_LOG_DEBUG("No separator in line");
+            ICECAST_LOG_DEBUG("No separator in line");
             continue;
         }
 
@@ -367,12 +367,12 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     /* Windows won't let us rename a file if the destination file
        exists...so, lets remove the original first */
     if (remove(state->filename) != 0) {
-        ICECAST_ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
+        ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
                 tmpfile, state->filename, strerror(errno));
     }
     else {
         if (rename(tmpfile, state->filename) != 0) {
-            ICECAST_ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
+            ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
                     tmpfile, state->filename, strerror(errno));
         }
     }

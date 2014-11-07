@@ -73,7 +73,7 @@ ogg_codec_t *initial_speex_page (format_plugin_t *plugin, ogg_page *page)
 
     ogg_stream_packetout (&codec->os, &packet);
 
-    ICECAST_ICECAST_LOG_DEBUG("checking for speex codec");
+    ICECAST_LOG_DEBUG("checking for speex codec");
     header = speex_packet_to_header ((char*)packet.packet, packet.bytes);
     if (header == NULL)
     {
@@ -82,7 +82,7 @@ ogg_codec_t *initial_speex_page (format_plugin_t *plugin, ogg_page *page)
         free (codec);
         return NULL;
     }
-    ICECAST_ICECAST_LOG_INFO("seen initial speex header");
+    ICECAST_LOG_INFO("seen initial speex header");
     codec->process_page = process_speex_page;
     codec->codec_free = speex_codec_free;
     codec->headers = 1;

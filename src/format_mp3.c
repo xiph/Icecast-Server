@@ -227,8 +227,8 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
     if (format->charset == NULL)
         format->charset = strdup ("ISO8859-1");
 
-    ICECAST_ICECAST_LOG_DEBUG("sending metadata interval %d", source_mp3->interval);
-    ICECAST_ICECAST_LOG_DEBUG("charset %s", format->charset);
+    ICECAST_LOG_DEBUG("sending metadata interval %d", source_mp3->interval);
+    ICECAST_LOG_DEBUG("charset %s", format->charset);
 }
 
 
@@ -267,7 +267,7 @@ static void mp3_set_title (source_t *source)
     if (len > MAX_META_LEN)
     {
         thread_mutex_unlock (&source_mp3->url_lock);
-        ICECAST_ICECAST_LOG_WARN("Metadata too long at %d chars", len);
+        ICECAST_LOG_WARN("Metadata too long at %d chars", len);
         return;
     }
     /* work out the metadata len byte */
@@ -302,7 +302,7 @@ static void mp3_set_title (source_t *source)
             else if (source_mp3->url)
                 snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
         }
-        ICECAST_ICECAST_LOG_DEBUG("shoutcast metadata block setup with %s", p->data+1);
+        ICECAST_LOG_DEBUG("shoutcast metadata block setup with %s", p->data+1);
         filter_shoutcast_metadata (source, p->data, size);
 
         refbuf_release (source_mp3->metadata);
@@ -621,7 +621,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             memcpy (meta->data, source_mp3->build_metadata,
                     source_mp3->build_metadata_len);
 
-	    ICECAST_ICECAST_LOG_DEBUG("shoutcast metadata %.*s", 4080, meta->data+1);
+	    ICECAST_LOG_DEBUG("shoutcast metadata %.*s", 4080, meta->data+1);
             if (strncmp (meta->data+1, "StreamTitle=", 12) == 0)
             {
                 filter_shoutcast_metadata (source, source_mp3->build_metadata,
@@ -632,7 +632,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
             }
             else
             {
-                ICECAST_ICECAST_LOG_ERROR("Incorrect metadata format, ending stream");
+                ICECAST_LOG_ERROR("Incorrect metadata format, ending stream");
                 source->running = 0;
                 refbuf_release (refbuf);
                 refbuf_release (meta);
@@ -724,7 +724,7 @@ static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf)
         return;
     if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) < (size_t)refbuf->len)
     {
-        ICECAST_ICECAST_LOG_WARN("Write to dump file failed, disabling");
+        ICECAST_LOG_WARN("Write to dump file failed, disabling");
         fclose (source->dumpfile);
         source->dumpfile = NULL;
     }

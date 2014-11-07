@@ -160,7 +160,7 @@ void stats_shutdown(void)
         n = _stats_threads;
         thread_mutex_unlock(&_stats_mutex);
     } while (n > 0);
-    ICECAST_ICECAST_LOG_INFO("stats thread finished");
+    ICECAST_LOG_INFO("stats thread finished");
 
     /* free the queues */
 
@@ -205,7 +205,7 @@ void stats_event(const char *source, const char *name, const char *value)
 
     if (value && xmlCheckUTF8 ((unsigned char *)value) == 0)
     {
-        ICECAST_ICECAST_LOG_WARN("seen non-UTF8 data, probably incorrect metadata (%s, %s)", name, value);
+        ICECAST_LOG_WARN("seen non-UTF8 data, probably incorrect metadata (%s, %s)", name, value);
         return;
     }
     event = build_event (source, name, value);
@@ -234,7 +234,7 @@ void stats_event_conv(const char *mount, const char *name, const char *value, co
             xmlCharEncCloseFunc (handle);
         }
         else
-            ICECAST_ICECAST_LOG_WARN("No charset found for \"%s\"", charset);
+            ICECAST_LOG_WARN("No charset found for \"%s\"", charset);
     }
 
     stats_event (mount, name, metadata);
@@ -273,7 +273,7 @@ void stats_event_args(const char *source, char *name, char *format, ...)
 
     if (ret < 0 || (unsigned int)ret >= sizeof (buf))
     {
-        ICECAST_ICECAST_LOG_WARN("problem with formatting %s stat %s",
+        ICECAST_LOG_WARN("problem with formatting %s stat %s",
                 source==NULL ? "global" : source, name);
         return;
     }
@@ -313,7 +313,7 @@ char *stats_get_value(const char *source, const char *name)
 void stats_event_inc(const char *source, const char *name)
 {
     stats_event_t *event = build_event (source, name, NULL);
-    /* ICECAST_ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
+    /* ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
     if (event)
     {
         event->action = STATS_EVENT_INC;
@@ -324,7 +324,7 @@ void stats_event_inc(const char *source, const char *name)
 void stats_event_add(const char *source, const char *name, unsigned long value)
 {
     stats_event_t *event = build_event (source, name, NULL);
-    /* ICECAST_ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
+    /* ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
     if (event)
     {
         event->value = malloc (16);
@@ -349,7 +349,7 @@ void stats_event_sub(const char *source, const char *name, unsigned long value)
 /* decrease the value in the provided stat by 1 */
 void stats_event_dec(const char *source, const char *name)
 {
-    /* ICECAST_ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
+    /* ICECAST_LOG_DEBUG("%s on %s", name, source==NULL?"global":source); */
     stats_event_t *event = build_event (source, name, NULL);
     if (event)
     {
@@ -463,7 +463,7 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
                 value = atoll (node->value) - atoll (event->value);
                 break;
             default:
-                ICECAST_ICECAST_LOG_WARN("unhandled event (%d) for %s", event->action, event->source);
+                ICECAST_LOG_WARN("unhandled event (%d) for %s", event->action, event->source);
                 break;
         }
         str = malloc (16);
@@ -476,9 +476,9 @@ static void modify_node_event (stats_node_t *node, stats_event_t *event)
     free (node->value);
     node->value = str;
     if (event->source)
-        ICECAST_ICECAST_LOG_DEBUG("update \"%s\" %s (%s)", event->source, node->name, node->value);
+        ICECAST_LOG_DEBUG("update \"%s\" %s (%s)", event->source, node->name, node->value);
     else
-        ICECAST_ICECAST_LOG_DEBUG("update global %s (%s)", node->name, node->value);
+        ICECAST_LOG_DEBUG("update global %s (%s)", node->name, node->value);
 }
 
 
@@ -486,7 +486,7 @@ static void process_global_event (stats_event_t *event)
 {
     stats_node_t *node;
 
-    /* ICECAST_ICECAST_LOG_DEBUG("global event %s %s %d", event->name, event->value, event->action); */
+    /* ICECAST_LOG_DEBUG("global event %s %s %d", event->name, event->value, event->action); */
     if (event->action == STATS_EVENT_REMOVE)
     {
         /* we're deleting */
@@ -522,7 +522,7 @@ static void process_source_event (stats_event_t *event)
         snode = (stats_source_t *)calloc(1,sizeof(stats_source_t));
         if (snode == NULL)
             return;
-        ICECAST_ICECAST_LOG_DEBUG("new source stat %s", event->source);
+        ICECAST_LOG_DEBUG("new source stat %s", event->source);
         snode->source = (char *)strdup(event->source);
         snode->stats_tree = avl_tree_new(_compare_stats, NULL);
         if (event->action == STATS_EVENT_HIDDEN)
@@ -542,7 +542,7 @@ static void process_source_event (stats_event_t *event)
             /* adding node */
             if (event->value)
             {
-                ICECAST_ICECAST_LOG_DEBUG("new node %s (%s)", event->name, event->value);
+                ICECAST_LOG_DEBUG("new node %s (%s)", event->name, event->value);
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
                 node->name = (char *)strdup(event->name);
                 node->value = (char *)strdup(event->value);
@@ -554,7 +554,7 @@ static void process_source_event (stats_event_t *event)
         }
         if (event->action == STATS_EVENT_REMOVE)
         {
-            ICECAST_ICECAST_LOG_DEBUG("delete node %s", event->name);
+            ICECAST_LOG_DEBUG("delete node %s", event->name);
             avl_delete(snode->stats_tree, (void *)node, _free_stats);
             return;
         }
@@ -579,7 +579,7 @@ static void process_source_event (stats_event_t *event)
     }
     if (event->action == STATS_EVENT_REMOVE)
     {
-        ICECAST_ICECAST_LOG_DEBUG("delete source node %s", event->source);
+        ICECAST_LOG_DEBUG("delete source node %s", event->source);
         avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
     }
 }
@@ -642,7 +642,7 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "stats_connections", "0");
     stats_event (NULL, "listener_connections", "0");
 
-    ICECAST_ICECAST_LOG_INFO("stats thread started");
+    ICECAST_LOG_INFO("stats thread started");
     while (_stats_running) {
         thread_mutex_lock(&_global_event_mutex);
         if (_global_event_queue.head != NULL) {
@@ -865,7 +865,7 @@ void *stats_connection(void *arg)
     stats_event_t *event;
     event_listener_t listener;
 
-    ICECAST_ICECAST_LOG_INFO("stats client starting");
+    ICECAST_LOG_INFO("stats client starting");
 
     event_queue_init (&listener.queue);
     /* increment the thread count */
@@ -901,7 +901,7 @@ void *stats_connection(void *arg)
 
     thread_mutex_destroy (&listener.mutex);
     client_destroy (client);
-    ICECAST_ICECAST_LOG_INFO("stats client finished");
+    ICECAST_LOG_INFO("stats client finished");
 
     return NULL;
 }
@@ -1062,7 +1062,7 @@ void stats_clear_virtual_mounts (void)
         {
             /* no source_t is reserved so remove them now */
             snode = avl_get_next (snode);
-            ICECAST_ICECAST_LOG_DEBUG("releasing %s stats", src->source);
+            ICECAST_LOG_DEBUG("releasing %s stats", src->source);
             avl_delete (_stats.source_tree, src, _free_source_stats);
             continue;
         }

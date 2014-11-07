@@ -41,7 +41,7 @@ void yp_shutdown(void);
 #define yp_remove(x)            do{}while(0)
 #define yp_touch(x)             do{}while(0)
 #define yp_recheck_config(x)    do{}while(0)
-#define yp_initialize()         ICECAST_ICECAST_LOG_WARN("YP server handling has been disabled")
+#define yp_initialize()         ICECAST_LOG_WARN("YP server handling has been disabled")
 #define yp_shutdown()           do{}while(0)
 
 #endif /* USE_YP */

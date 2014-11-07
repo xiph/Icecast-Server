@@ -92,7 +92,7 @@ void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
 
     if (ogg_page_bos (page))
     {
-        ICECAST_ICECAST_LOG_DEBUG("attaching BOS page");
+        ICECAST_LOG_DEBUG("attaching BOS page");
         if (*ogg_info->bos_end == NULL)
             ogg_info->header_pages_tail = refbuf;
         refbuf->next = *ogg_info->bos_end;
@@ -100,7 +100,7 @@ void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
         ogg_info->bos_end = &refbuf->next;
         return;
     }
-    ICECAST_ICECAST_LOG_DEBUG("attaching header page");
+    ICECAST_LOG_DEBUG("attaching header page");
     if (ogg_info->header_pages_tail)
         ogg_info->header_pages_tail->next = refbuf;
     ogg_info->header_pages_tail = refbuf;
@@ -115,7 +115,7 @@ void format_ogg_free_headers (ogg_state_t *ogg_info)
     refbuf_t *header;
 
     /* release the header pages first */
-    ICECAST_ICECAST_LOG_DEBUG("releasing header pages");
+    ICECAST_LOG_DEBUG("releasing header pages");
     header = ogg_info->header_pages;
     while (header)
     {
@@ -141,7 +141,7 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
 
     /* now free the codecs */
     codec = ogg_info->codecs;
-    ICECAST_ICECAST_LOG_DEBUG("freeing codecs");
+    ICECAST_LOG_DEBUG("freeing codecs");
     while (codec)
     {
         ogg_codec_t *next = codec->next;
@@ -219,7 +219,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
     {
         if (ogg_info->codec_count > 10)
         {
-            ICECAST_ICECAST_LOG_ERROR("many codecs in stream, playing safe, dropping source");
+            ICECAST_LOG_ERROR("many codecs in stream, playing safe, dropping source");
             ogg_info->error = 1;
             return -1;
         }
@@ -253,7 +253,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
             break;
 
         /* any others */
-        ICECAST_ICECAST_LOG_ERROR("Seen BOS page with unknown type");
+        ICECAST_LOG_ERROR("Seen BOS page with unknown type");
         ogg_info->error = 1;
         return -1;
     } while (0);
@@ -430,7 +430,7 @@ static refbuf_t *ogg_get_buffer (source_t *source)
                 }
                 if (ogg_info->error)
                 {
-                    ICECAST_ICECAST_LOG_ERROR("Problem processing stream");
+                    ICECAST_LOG_ERROR("Problem processing stream");
                     source->running = 0;
                     return NULL;
                 }
@@ -564,7 +564,7 @@ static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
 
     if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) != refbuf->len)
     {
-        ICECAST_ICECAST_LOG_WARN("Write to dump file failed, disabling");
+        ICECAST_LOG_WARN("Write to dump file failed, disabling");
         fclose (source->dumpfile);
         source->dumpfile = NULL;
         ret = 0;
