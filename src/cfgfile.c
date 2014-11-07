@@ -10,7 +10,7 @@
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Thomas B. "dm8tbr" Ruecker <thomas.ruecker@tieto.com>,
  *                      Dave 'justdave' Miller <justdave@mozilla.com>.
- * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -502,6 +502,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("server-id")) == 0) {
             xmlFree (configuration->server_id);
             configuration->server_id = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            ICECAST_LOG_WARN("Warning, server version string override detected. This may lead to unexpected client software behavior.");
         } else if(xmlStrcmp (node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
@@ -592,6 +593,28 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
     }
     if (configuration->port == 0)
         configuration->port = 8000;
+
+   /* issue some warnings on bad configurations */
+   if (!configuration->fileserve)
+       ICECAST_LOG_WARN("Warning, serving of static files has been disabled in the config, this will also affect files used by the web interface (stylesheets, images).");
+
+  if (!configuration->hostname || strcmp(configuration->hostname, CONFIG_DEFAULT_HOSTNAME) == 0) {
+      ICECAST_LOG_WARN("Warning, <hostname> not configured, using default value \"%s\". This will cause problems, e.g. with YP directory listings.", CONFIG_DEFAULT_HOSTNAME);
+      if (!configuration->hostname)
+          configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
+  }
+
+  if (!configuration->location || strcmp(configuration->location, CONFIG_DEFAULT_LOCATION) == 0) {
+      ICECAST_LOG_WARN("Warning, <location> not configured, using default value \"%s\".", CONFIG_DEFAULT_LOCATION);
+      if (!configuration->location)
+          configuration->location = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOCATION);
+  }
+
+  if (!configuration->admin || strcmp(configuration->admin, CONFIG_DEFAULT_ADMIN) == 0) {
+      ICECAST_LOG_WARN("Warning, <admin> contact not configured, using default value \"%s\".", CONFIG_DEFAULT_ADMIN);
+      if (!configuration->admin)
+          configuration->admin = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMIN);
+  }
 }
 
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, 
