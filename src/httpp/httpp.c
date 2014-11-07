@@ -91,14 +91,13 @@ static int split_headers(char *data, unsigned long len, char **line)
 
 static void parse_headers(http_parser_t *parser, char **line, int lines)
 {
-    int i,l;
-    int whitespace, where, slen;
+    int i, l;
+    int whitespace, slen;
     char *name = NULL;
     char *value = NULL;
 
     /* parse the name: value lines. */
     for (l = 1; l < lines; l++) {
-        where = 0;
         whitespace = 0;
         name = line[l];
         value = NULL;
