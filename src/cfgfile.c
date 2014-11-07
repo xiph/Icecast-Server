@@ -457,9 +457,13 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->port = atoi(tmp);
-            configuration->listen_sock->port = atoi(tmp);
-            if (tmp) xmlFree(tmp);
+            if (tmp) {
+                configuration->port = atoi(tmp);
+                configuration->listen_sock->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         } else if (xmlStrcmp (node->name, XMLSTR("bind-address")) == 0) {
             if (configuration->listen_sock->bind_address) 
                 xmlFree(configuration->listen_sock->bind_address);
@@ -829,8 +833,12 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->port = atoi(tmp);
-            if(tmp) xmlFree(tmp);
+            if (tmp) {
+                relay->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
             if (relay->mount) xmlFree (relay->mount);
@@ -887,10 +895,14 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
 
         if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            if(configuration->port == 0)
-                configuration->port = atoi(tmp);
-            listener->port = atoi(tmp);
-            if(tmp) xmlFree(tmp);
+            if (tmp) {
+                if(configuration->port == 0)
+                    configuration->port = atoi(tmp);
+                listener->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1031,8 +1043,12 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if (configuration->base_dir) xmlFree(configuration->base_dir);
             configuration->base_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("logdir")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<logdir> must not be empty.");
+                continue;
+            }
             if (configuration->log_dir) xmlFree(configuration->log_dir);
-            configuration->log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->log_dir = temp;
         } else if (xmlStrcmp (node->name, XMLSTR("pidfile")) == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
             configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1049,14 +1065,22 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if (configuration->cipher_list) xmlFree(configuration->cipher_list);
             configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("webroot")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<webroot> must not be empty.");
+                continue;
+            }
             if (configuration->webroot_dir) xmlFree(configuration->webroot_dir);
-            configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->webroot_dir = temp;
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
         } else if (xmlStrcmp (node->name, XMLSTR("adminroot")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<adminroot> must not be empty.");
+                continue;
+            }
             if (configuration->adminroot_dir) 
                 xmlFree(configuration->adminroot_dir);
-            configuration->adminroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->adminroot_dir = (char *)temp;
             if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp (node->name, XMLSTR("alias")) == 0) {
@@ -1101,16 +1125,25 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
+    char *tmp;
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
 
         if (xmlStrcmp (node->name, XMLSTR("accesslog")) == 0) {
+            if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<accesslog> must not be empty.");
+                continue;
+            }
             if (configuration->access_log) xmlFree(configuration->access_log);
-            configuration->access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->access_log = tmp;
         } else if (xmlStrcmp (node->name, XMLSTR("errorlog")) == 0) {
+            if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<errorlog> must not be empty.");
+                continue;
+            }
             if (configuration->error_log) xmlFree(configuration->error_log);
-            configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->error_log = tmp;
         } else if (xmlStrcmp (node->name, XMLSTR("playlistlog")) == 0) {
             if (configuration->playlist_log) xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
