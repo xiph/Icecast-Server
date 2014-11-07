@@ -59,7 +59,7 @@
 #define CONFIG_DEFAULT_GROUP NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL 120
 #define CONFIG_YP_URL_TIMEOUT 10
-#define CONFIG_DEFAULT_CIPHER_LIST "ALL:!aNULL:!ADH:!eNULL:!LOW:!EXP:RC4+RSA:+HIGH:+MEDIUM"
+#define CONFIG_DEFAULT_CIPHER_LIST "ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS"
 
 #ifndef _WIN32
 #define CONFIG_DEFAULT_BASE_DIR "/usr/local/icecast"
@@ -87,6 +87,8 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_http_header_t **http_headers);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
@@ -124,6 +126,58 @@ void config_init_configuration(ice_config_t *configuration)
     _set_defaults(configuration);
 }
 
+static void config_clear_http_header(ice_config_http_header_t *header) {
+ ice_config_http_header_t *old;
+
+ while (header) {
+  xmlFree(header->name);
+  xmlFree(header->value);
+  old = header;
+  header = header->next;
+  free(old);
+ }
+}
+
+static inline ice_config_http_header_t * config_copy_http_header(ice_config_http_header_t *header) {
+    ice_config_http_header_t *ret = NULL;
+    ice_config_http_header_t *cur = NULL;
+    ice_config_http_header_t *old = NULL;
+
+    while (header) {
+        if (cur) {
+            cur->next = calloc(1, sizeof(ice_config_http_header_t));
+            old = cur;
+            cur = cur->next;
+        } else {
+            ret = calloc(1, sizeof(ice_config_http_header_t));
+            cur = ret;
+        }
+
+        if (!cur) return ret; /* TODO: do better error handling */
+
+        cur->type   = header->type;
+        cur->name   = (char *)xmlCharStrdup(header->name);
+        cur->value  = (char *)xmlCharStrdup(header->value);
+        cur->status = header->status;
+
+        if (!cur->name || !cur->value) {
+            if (cur->name) xmlFree(cur->name);
+            if (cur->value) xmlFree(cur->value);
+            if (old) {
+                old->next = NULL;
+            } else {
+                ret = NULL;
+            }
+            free(cur);
+            return ret;
+        }
+
+        header = header->next;
+    }
+
+    return ret;
+}
+
 static void config_clear_mount (mount_proxy *mount)
 {
     config_options_t *option;
@@ -156,6 +210,7 @@ static void config_clear_mount (mount_proxy *mount)
         option = nextopt;
     }
     auth_release (mount->auth);
+    config_clear_http_header(mount->http_headers);
     free (mount);
 }
 
@@ -294,6 +349,8 @@ void config_clear(ice_config_t *c)
         ;
     while ((c->cpis = config_clear_cpi (c->cpis)))
         ;
+
+    config_clear_http_header(c->http_headers);
 
     memset(c, 0, sizeof(ice_config_t));
 }
@@ -476,9 +533,13 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_plugins(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->port = atoi(tmp);
-            configuration->listen_sock->port = atoi(tmp);
-            if (tmp) xmlFree(tmp);
+            if (tmp) {
+                configuration->port = atoi(tmp);
+                configuration->listen_sock->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         } else if (xmlStrcmp (node->name, XMLSTR("bind-address")) == 0) {
             if (configuration->listen_sock->bind_address) 
                 xmlFree(configuration->listen_sock->bind_address);
@@ -505,6 +566,8 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->shoutcast_mount = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("limits")) == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
+            _parse_http_headers(doc, node->xmlChildrenNode, &(configuration->http_headers));
         } else if (xmlStrcmp (node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
@@ -741,6 +804,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("subtype")) == 0) {
             mount->subtype = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
+            _parse_http_headers(doc, node->xmlChildrenNode, &(mount->http_headers));
         }
     } while ((node = node->next));
 
@@ -775,6 +840,63 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         configuration->mounts = mount;
 }
 
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_header_t **http_headers) {
+    ice_config_http_header_t *header;
+    ice_config_http_header_t *next;
+    char *name = NULL;
+    char *value = NULL;
+    char *tmp;
+    int status;
+    http_header_type type;
+
+    do {
+        if (node == NULL) break;
+        if (xmlIsBlankNode(node)) continue;
+        if (xmlStrcmp (node->name, XMLSTR("header")) != 0) break;
+        if (!(name = (char *)xmlGetProp(node, XMLSTR("name")))) break;
+        if (!(value = (char *)xmlGetProp(node, XMLSTR("value")))) break;
+
+        type = HTTP_HEADER_TYPE_STATIC; /* default */
+        if ((tmp = (char *)xmlGetProp(node, XMLSTR("type")))) {
+            if (strcmp(tmp, "static") == 0) {
+                type = HTTP_HEADER_TYPE_STATIC;
+            } else {
+                ICECAST_LOG_WARN("Unknown type %s for HTTP Header %s", tmp, name);
+                xmlFree(tmp);
+                break;
+            }
+            xmlFree(tmp);
+        }
+
+        status = 0; /* default: any */
+        if ((tmp = (char *)xmlGetProp(node, XMLSTR("status")))) {
+            status = atoi(tmp);
+            xmlFree(tmp);
+        }
+
+        header = calloc(1, sizeof(ice_config_http_header_t));
+        if (!header) break;
+        header->type = type;
+        header->name = name;
+        header->value = value;
+        header->status = status;
+        name = NULL;
+        value = NULL;
+
+        if (!*http_headers) {
+            *http_headers = header;
+            continue;
+        }
+        next = *http_headers;
+        while (next->next) next = next->next;
+        next->next = header;
+    } while ((node = node->next));
+    /* in case we used break we may need to clean those up */
+    if (name)
+	xmlFree(name);
+    if (value)
+	xmlFree(value);
+}
 
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
@@ -811,8 +933,12 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->port = atoi(tmp);
-            if(tmp) xmlFree(tmp);
+            if (tmp) {
+                relay->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
             if (relay->mount) xmlFree (relay->mount);
@@ -869,10 +995,14 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
 
         if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            if(configuration->port == 0)
-                configuration->port = atoi(tmp);
-            listener->port = atoi(tmp);
-            if(tmp) xmlFree(tmp);
+            if (tmp) {
+                if(configuration->port == 0)
+                    configuration->port = atoi(tmp);
+                listener->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> must not be empty.");
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1119,8 +1249,12 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if (configuration->base_dir) xmlFree(configuration->base_dir);
             configuration->base_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("logdir")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<logdir> must not be empty.");
+                continue;
+            }
             if (configuration->log_dir) xmlFree(configuration->log_dir);
-            configuration->log_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->log_dir = temp;
         } else if (xmlStrcmp (node->name, XMLSTR("pidfile")) == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
             configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1137,14 +1271,22 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             if (configuration->cipher_list) xmlFree(configuration->cipher_list);
             configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("webroot")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<webroot> must not be empty.");
+                continue;
+            }
             if (configuration->webroot_dir) xmlFree(configuration->webroot_dir);
-            configuration->webroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->webroot_dir = temp;
             if(configuration->webroot_dir[strlen(configuration->webroot_dir)-1] == '/')
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
         } else if (xmlStrcmp (node->name, XMLSTR("adminroot")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<adminroot> must not be empty.");
+                continue;
+            }
             if (configuration->adminroot_dir) 
                 xmlFree(configuration->adminroot_dir);
-            configuration->adminroot_dir = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->adminroot_dir = (char *)temp;
             if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp (node->name, XMLSTR("alias")) == 0) {
@@ -1189,16 +1331,25 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
+    char *tmp;
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
 
         if (xmlStrcmp (node->name, XMLSTR("accesslog")) == 0) {
+            if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<accesslog> must not be empty.");
+                continue;
+            }
             if (configuration->access_log) xmlFree(configuration->access_log);
-            configuration->access_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->access_log = tmp;
         } else if (xmlStrcmp (node->name, XMLSTR("errorlog")) == 0) {
+            if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<errorlog> must not be empty.");
+                continue;
+            }
             if (configuration->error_log) xmlFree(configuration->error_log);
-            configuration->error_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->error_log = tmp;
         } else if (xmlStrcmp (node->name, XMLSTR("playlistlog")) == 0) {
             if (configuration->playlist_log) xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1299,6 +1450,9 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 }
 
 static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
+    ice_config_http_header_t *http_header_next;
+    ice_config_http_header_t **http_header_tail;
+
     if (!dst || !src)
     	return;
 
@@ -1360,6 +1514,15 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     	dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
     if (dst->yp_public == -1)
     	dst->yp_public = src->yp_public;
+
+    if (dst->http_headers) {
+        http_header_next = dst->http_headers;
+        while (http_header_next->next) http_header_next = http_header_next->next;
+        http_header_tail = &(http_header_next->next);
+    } else {
+        http_header_tail = &(dst->http_headers);
+    }
+    *http_header_tail = config_copy_http_header(src->http_headers);
 }
 
 static inline void _merge_mounts_all(ice_config_t *c) {

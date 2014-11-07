@@ -209,6 +209,16 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
         return -1;
 }
 
+static int _start_logging_stdout(void) {
+    errorlog = log_open_file(stderr);
+    if ( errorlog < 0 )
+        return 0;
+
+    log_set_level(errorlog, 2 /* WARN */);
+
+    return 1;
+}
+
 static int _start_logging(void)
 {
     char fn_error[FILENAME_MAX];
@@ -227,8 +237,7 @@ static int _start_logging(void)
             log_set_trigger (errorlog, config->logsize);
         log_set_archive_timestamp(errorlog, config->logarchive);
     } else {
-        errorlog = log_open_file(stderr);
-        log_to_stderr = 1;
+        /* this is already in place because of _start_logging_stdout() */
     }
 
     if (errorlog < 0) {
@@ -443,6 +452,11 @@ int main(int argc, char **argv)
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
         initialize_subsystems();
+        if (!_start_logging_stdout()) {
+            _fatal_error("FATAL: Could not start logging on stderr.");
+            shutdown_subsystems();
+            return 1;
+        }
 #endif
         /* parse the config file */
         config_get_config();

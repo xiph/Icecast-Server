@@ -279,7 +279,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 	len = util_http_build_header(client->refbuf->data, buf_len, 0,
 	                             0, 200, NULL,
 				     "text/xml", "utf-8",
-				     NULL);
+				     NULL, NULL);
 	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
 
         client->refbuf->len = len;
@@ -573,7 +573,7 @@ static void html_success(client_t *client, char *message)
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 200, NULL,
 				 "text/html", "utf-8",
-				 "");
+				 "", NULL);
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
              "<html><head><title>Admin request successful</title></head>"
 	     "<body><p>%s</p></body></html>", message);
@@ -712,7 +712,7 @@ static void command_buildm3u(client_t *client,  const char *mount)
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 200, NULL,
 				 "audio/x-mpegurl", NULL,
-				 NULL);
+				 NULL, NULL);
 
     config = config_get_config();
     snprintf (client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
@@ -1032,7 +1032,7 @@ static void command_list_mounts(client_t *client, int response)
         util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
 	                       0, 200, NULL,
 			       "text/plain", "utf-8",
-			       "");
+			       "", NULL);
         client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
 

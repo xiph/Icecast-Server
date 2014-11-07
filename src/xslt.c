@@ -238,7 +238,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL);
+        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
 	snprintf (refbuf->data + ret, full_len - ret,
                 "Content-Length: %d\r\n\r\n%s",
                 len, string);

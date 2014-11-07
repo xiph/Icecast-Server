@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>, 
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -32,8 +32,27 @@ struct _mount_proxy;
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
-typedef struct ice_config_dir_tag
-{
+typedef enum _http_header_type {
+ /* static: headers are passed as is to the client. */
+ HTTP_HEADER_TYPE_STATIC
+} http_header_type;
+
+typedef struct ice_config_http_header_tag {
+    /* type of this header. See http_header_type */
+    http_header_type type;
+
+    /* name and value of the header */
+    char *name;
+    char *value;
+
+    /* filters */
+    int status;
+
+    /* link to the next list element */
+    struct ice_config_http_header_tag *next;
+} ice_config_http_header_t;
+
+typedef struct ice_config_dir_tag {
     char *host;
     int touch_interval;
     struct ice_config_dir_tag *next;
@@ -78,6 +97,8 @@ typedef struct _mount_proxy {
     unsigned int source_timeout;  /* source timeout in seconds */
     char *charset;  /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
+
+    ice_config_http_header_t *http_headers; /* additional HTTP headers */
 
     char *auth_type; /* Authentication type */
     struct auth_tag *auth;
@@ -131,8 +152,7 @@ typedef struct _cpi_t {
     int autoload;
 } cpi_t;
 
-typedef struct ice_config_tag
-{
+typedef struct ice_config_tag {
     char *config_filename;
 
     char *location;
@@ -172,6 +192,8 @@ typedef struct ice_config_tag
     int master_update_interval;
     char *master_username;
     char *master_password;
+
+    ice_config_http_header_t *http_headers;
 
     relay_server *relay;
 
@@ -238,6 +260,3 @@ void config_release_config(void);
 ice_config_t *config_get_config_unlocked(void);
 
 #endif  /* __CFGFILE_H__ */
-
-
-
