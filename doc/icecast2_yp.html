@@ -13,7 +13,7 @@
 <br />
 <br />
 <h2>Overview</h2>
-<p>A YP (Yellow Pages) directory is a listing of broadcast streams.  Icecast2 has it own YP directory located at http://dir.xiph.org.  Currently icecast2 can only be listed in an icecast2-supported YP directory.  This means that you cannot list your stream in the Shoutcast YP directory.</p>
+<p>A YP (Yellow Pages) directory is a listing of broadcast streams.  Icecast2 has it own YP directory located at <a href="http://dir.xiph.org">http://dir.xiph.org</a>.  Currently icecast2 can only be listed in an icecast2-supported YP directory.  This means that you cannot list your stream in the Shoutcast YP directory.</p>
 <p>In the icecast2 configuration file are all the currently available YP directory servers.  Listing your stream in a YP is a combination of settings in the icecast configuration file and also in your source client.</p>
 <br />
 <br />
@@ -32,7 +32,8 @@
 <br />
 <br />
 <h2>Configuring Your Source Client for YP Support</h2>
-<p>This is usually covered in the source client documentation.  More specifically, the source client needs to provide the HTTP header ice-public:1 on connect in order to enable YP listing of the stream.</p>
+<p>This is usually covered in the source client documentation.  More specifically, the source client needs to provide the HTTP header ice-public:1 on connect in order to enable YP listing of the stream.<br />
+This can however be overridden in mount point settings, refer to the config file documentation for further details.</p>
 <p>If a mountpoint is being listed on a YP, then you will see some additional statistics relating to the YP such as last-touch, currently-playing, etc.</p>
 <br />
 <br />

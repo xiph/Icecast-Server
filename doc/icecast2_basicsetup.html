@@ -44,13 +44,7 @@ specified, and if neccessary, changed to suite your situation :
 &lt;source-password&gt; - will be used for the source client authentication
 &lt;admin-password&gt; - will be used for authenticating admin features of icecast
 &lt;listen-socket&gt; (both port and bind-address)
-&lt;logdir&gt; - directory where log files will be placed
-&lt;webroot&gt; - directory for non admin content (file serving root), status page is provided
-&lt;adminroot&gt; - directory containing admin xslt files
 </pre>
-<p>Most will not need to change adminroot/webroot as those are only read by icecast but icecast
-needs to create files in the logdir which MAY mean you want to be more selective. The other
-settings above will need to be provided by the icecast administrator </p>
 <p>Once the configuration file is modified, you should be able to start the server with the following command</p>
 <pre>
 icecast -c /path/to/icecast.xml
@@ -72,7 +66,7 @@ source password - from &lt;source-password&gt;
 </p>
 <p>Additionally, you will need to choose a mountpoint and specify this in the source client.  Icecast does not need to know about each mount point (although you can configure settings for specific mountpoint - this is covered under Advanced configuration) there are, however, some points to mention regarding mountpoints.  All Ogg Vorbis streams should have mountpoints that end in .ogg (i,e. /mystream.ogg).  This is due to the lazy way most media players infer the type of stream.  MP3 streams usually do not contain an extension (/mystream).  Mount points also should not contain any spaces or odd characters (again due to the lazy way many of the media players are coded).</p>
 <p>Once you have configured your source client, you should be able to connect it to the icecast server.  Verify that it is connected by hitting the stats.xml URL that was mentioned above.</p>
-<p>Now that you have the source connnected, listening to the stream involves simply opening the appropriate following URL in a browser: http://yourip:port/mounpointyouspecified.m3u.  So, for instance, if you attached your source client to an icecast server located at 192.168.1.10:8000 with a mountpoint of /mystream.ogg, then you would open : http://192.168.1.10:8000/mystream.ogg.m3u.  Note that the .m3u extention will serve up a link that opens most media players.  Also it is important to note that m3u need not contain only MP3 stream, it can contain streams of arbitrary content-type and is used by icecast to serve a playlist that represents your broadcast to listening clients.  Alternatively you can open up the stream URL directly within your media player (http://192.168.1.10:8000/mystream.ogg in this case)</p>
+<p>Now that you have the source connnected, listening to the stream involves simply opening the appropriate following URL in a browser: http://yourip:port/mounpointyouspecified .  So, for instance, if you attached your source client to an icecast server located at 192.0.2.23:8000 with a mountpoint of /mystream.ogg, then you would open : http://192.0.2.23:8000/mystream.ogg or http://192.0.2.23:8000/mystream.ogg.m3u.  Note that the URL with .m3u extention will serve up a link that opens most media players.  Also it is important to note that m3u need not contain only MP3 stream, it can contain streams of arbitrary content-type and is used by icecast to serve a playlist that represents your broadcast to listening clients.  Alternatively you can open up the stream URL directly within your media player (http://192.0.2.23:8000/mystream.ogg in this case)</p>
 <p>
 <br />
 <br />

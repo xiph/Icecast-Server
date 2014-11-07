@@ -11,6 +11,59 @@
 <hr id='titlebar' />
 <p>
 </p>
+<h2>Version 2.4.0</h2>
+<h3>New Features</h3>
+<p>
+<ul>
+  <li> Support for Ogg Opus streams
+  <li> Support for WebM streams 
+  <li> HTTP 1.1 PUT support for source connections. Deprecating SOURCE method.
+  <li> <em>Default mount.</em> -
+       This <mount type="default"> allows you to define a global set of defaults
+       for ALL mounts.
+       This way you can use e.g. url-auth for sources and or listeners also for
+       dynamically generated mounts.
+  <li> <em>Web interface redone</em> -
+  <ul>
+    <li> Web output properly redone, credit to ePirat.
+    <li> Added &lt;audio&gt; element for supported audio streams.
+    <li> Now validates completely as XHTML1.0 strict.
+    <li> Also improves rendering on mobile devices.
+  </ul>
+  <li> Added basic JSON API (/status-json.xsl) based on a xml2json template by Doeke Zanstra (see xml2json.xslt). Output is roughly limited to data also visible through status.xsl.
+  <li> Send charset in HTTP headers for everything, excluding file-serv and streams.
+  <li> Allow (standard strftime(3)) %x codes in &lt;dump-file&gt;. Disabled for win32.
+  <li> Added stream_start_iso8601, server_start_iso8601 to statitics.
+       ISO8601 compliante timestamps for statistics. Should make usage in
+       e.g. JSON much easier.
+       Added as new variables to avoid breaking backwards compatibility.
+  <li> Now compiles for win32 using mingw
+  <li> Added options "headers" and "header_prefix" to URL based listener auth.
+  <li> Updated listener_remove handler, added ip= and agent=,
+  <li> Allow full URLs to be returned by the master server. 
+</ul>
+<h3>Fixes</h3>
+<ul>
+  <li> <strong>SECURITY FIX</strong> - Override supplementary groups if <changeowner> is used
+  <li> Fixes for some race conditions
+  <li> Dropped debian packaging directory as debian use their own. 
+  <li> Send proper HTTP headers in responses to clients.
+  <li> corrected Content-Length: header in admin (raw) requests. Thanks to paluh for reporting.
+  <li> Escape log entries in access log
+  <li> Fixed a memory leak. Lost headers of stream because of wrong ref
+        counter in associated refbuf objects.
+  <li> avoid memory leak in _parse_mount() when "type"-attribute is set
+  <li> Updated web interface to be XHTML compliant.
+  <li> Removed status2.xsl from release. It was only a broken example file anyway.
+</ul>
+<h3>Known issues</h3>
+<ul>
+  <li> Will crash if certain config tags are left empty.
+</ul>
+
+</p>
+
+
 <h2>Version 2.3</h2>
 <h3>New Features</h3>
 <p>
