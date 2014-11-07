@@ -56,11 +56,14 @@ char *util_url_escape(const char *src);
  * If datablock is NULL no end-of-header nor any data is appended.
  * Returns the number of bytes written or -1 on error.
  */
+struct source_tag; /* use forward decleration so we do not need to
+                    * include <source.h> that would cause other conflicts. */
 ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int cache,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
-        const char * datablock);
+        const char * datablock,
+        struct source_tag * source);
 
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */

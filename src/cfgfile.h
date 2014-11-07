@@ -88,6 +88,8 @@ typedef struct _mount_proxy {
     char *charset;  /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
+    ice_config_http_header_t *http_headers; /* additional HTTP headers */
+
     char *auth_type; /* Authentication type */
     struct auth_tag *auth;
     char *cluster_password;

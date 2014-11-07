@@ -458,7 +458,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         ret = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
 	                              0, 200, NULL,
-				      "audio/x-mpegurl", NULL, "");
+				      "audio/x-mpegurl", NULL, "", NULL);
         if (host == NULL)
         {
 	    config = config_get_config();
@@ -567,7 +567,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 		bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
 		                                0, 206, NULL,
 						type, NULL,
-						NULL);
+						NULL, NULL);
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
                     "Accept-Ranges: bytes\r\n"
                     "Content-Length: %" PRI_OFF_T "\r\n"
@@ -593,7 +593,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 	bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
 	                                0, 200, NULL,
 					type, NULL,
-					NULL);
+					NULL, NULL);
         bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
             "Accept-Ranges: bytes\r\n"
             "Content-Length: %" PRI_OFF_T "\r\n\r\n",

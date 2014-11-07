@@ -45,6 +45,7 @@
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
+#include "source.h"
 
 #define CATMODULE "util"
 
@@ -487,20 +488,12 @@ char *util_base64_decode(const char *data)
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline char * _build_headers(ice_config_t *config) {
-    char *ret = NULL;
-    size_t len = 1;
+static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header) {
     size_t headerlen;
     const char *name;
     const char *value;
-    ice_config_http_header_t *header = config->http_headers;
+    char * r = *ret;
 
-    if (!header) {
-        return strdup("");
-    }
-
-    ret = calloc(1, 1);
-    *ret = 0;
     while (header) {
         name = header->name;
         switch (header->type) {
@@ -509,14 +502,31 @@ static inline char * _build_headers(ice_config_t *config) {
                 break;
         }
         headerlen = strlen(name) + strlen(value) + 4;
-        len += headerlen;
-        ret = realloc(ret, len);
-        strcat(ret, name);
-        strcat(ret, ": ");
-        strcat(ret, value);
-        strcat(ret, "\r\n");
+        *len += headerlen;
+        r = realloc(r, *len);
+        strcat(r, name);
+        strcat(r, ": ");
+        strcat(r, value);
+        strcat(r, "\r\n");
         header = header->next;
     }
+    *ret = r;
+}
+static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
+    mount_proxy *mountproxy = NULL;
+    char *ret = NULL;
+    size_t len = 1;
+
+    if (source)
+        mountproxy = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
+
+    ret = calloc(1, 1);
+    *ret = 0;
+
+    _build_headers_loop(&ret, &len, config->http_headers);
+    if (mountproxy && mountproxy->http_headers)
+        _build_headers_loop(&ret, &len, mountproxy->http_headers);
+
     return ret;
 }
 
@@ -524,7 +534,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int cache,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
-        const char * datablock) {
+        const char * datablock,
+        struct source_tag * source) {
     const char * http_version = "1.0";
     ice_config_t *config;
     time_t now;
@@ -598,7 +609,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         currenttime_buffer[0] = '\0';
 
     config = config_get_config();
-    extra_headers = _build_headers(config);
+    extra_headers = _build_headers(status, config, source);
     ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
 			      config->server_id,

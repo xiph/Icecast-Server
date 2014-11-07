@@ -299,7 +299,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr = client->refbuf->data;
     client->respcode = 200;
 
-    bytes = util_http_build_header (ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL);
+    bytes = util_http_build_header (ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source);
 
     remaining -= bytes;
     ptr += bytes;

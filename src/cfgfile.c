@@ -87,7 +87,8 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
-static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node,
+        ice_config_http_header_t **http_headers);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
@@ -136,6 +137,45 @@ static void config_clear_http_header(ice_config_http_header_t *header) {
  }
 }
 
+static ice_config_http_header_t * config_copy_http_header(ice_config_http_header_t *header) {
+    ice_config_http_header_t *ret = NULL;
+    ice_config_http_header_t *cur = NULL;
+    ice_config_http_header_t *old = NULL;
+
+    while (header) {
+        if (cur) {
+            cur->next = calloc(1, sizeof(ice_config_http_header_t));
+            old = cur;
+            cur = cur->next;
+        } else {
+            ret = calloc(1, sizeof(ice_config_http_header_t));
+            cur = ret;
+        }
+
+        if (!cur) return ret; /* TODO: do better error handling */
+
+        cur->type = header->type;
+        cur->name = (char *)xmlCharStrdup(header->name);
+        cur->value = (char *)xmlCharStrdup(header->value);
+
+        if (!cur->name || !cur->value) {
+            if (cur->name) xmlFree(cur->name);
+            if (cur->value) xmlFree(cur->value);
+            if (old) {
+                old->next = NULL;
+            } else {
+                ret = NULL;
+            }
+            free(cur);
+            return ret;
+        }
+
+        header = header->next;
+    }
+
+    return ret;
+}
+
 static void config_clear_mount (mount_proxy *mount)
 {
     config_options_t *option;
@@ -168,6 +208,7 @@ static void config_clear_mount (mount_proxy *mount)
         option = nextopt;
     }
     auth_release (mount->auth);
+    config_clear_http_header(mount->http_headers);
     free (mount);
 }
 
@@ -491,7 +532,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("limits")) == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
-            _parse_http_headers(doc, node->xmlChildrenNode, configuration);
+            _parse_http_headers(doc, node->xmlChildrenNode, &(configuration->http_headers));
         } else if (xmlStrcmp (node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("mount")) == 0) {
@@ -728,6 +769,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("subtype")) == 0) {
             mount->subtype = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
+            _parse_http_headers(doc, node->xmlChildrenNode, &(mount->http_headers));
         }
     } while ((node = node->next));
 
@@ -762,7 +805,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         configuration->mounts = mount;
 }
 
-static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
+static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_header_t **http_headers) {
     ice_config_http_header_t *header;
     ice_config_http_header_t *next;
     char *name = NULL;
@@ -783,11 +826,11 @@ static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c)
         name = NULL;
         value = NULL;
 
-        if (!c->http_headers) {
-            c->http_headers = header;
+        if (!*http_headers) {
+            *http_headers = header;
             continue;
         }
-        next = c->http_headers;
+        next = *http_headers;
         while (next->next) next = next->next;
         next->next = header;
     } while ((node = node->next));
@@ -1244,6 +1287,9 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
 }
 
 static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
+    ice_config_http_header_t *http_header_next;
+    ice_config_http_header_t **http_header_tail;
+
     if (!dst || !src)
     	return;
 
@@ -1305,6 +1351,15 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     	dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
     if (dst->yp_public == -1)
     	dst->yp_public = src->yp_public;
+
+    if (dst->http_headers) {
+        http_header_next = dst->http_headers;
+        while (http_header_next->next) http_header_next = http_header_next->next;
+        http_header_tail = &(http_header_next->next);
+    } else {
+        http_header_tail = &(dst->http_headers);
+    }
+    *http_header_tail = config_copy_http_header(src->http_headers);
 }
 
 static inline void _merge_mounts_all(ice_config_t *c) {
