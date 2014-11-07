@@ -488,19 +488,30 @@ char *util_base64_decode(const char *data)
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header) {
+static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
     size_t headerlen;
     const char *name;
     const char *value;
     char * r = *ret;
 
-    while (header) {
+    if (!header)
+        return;
+
+    do {
+        /* filter out header's we don't use. */
+        if (header->status != 0 && header->status != status) continue;
+
+        /* get the name of the header */
         name = header->name;
+
+        /* handle type of the header */
         switch (header->type) {
             case HTTP_HEADER_TYPE_STATIC:
                 value = header->value;
                 break;
         }
+
+        /* append the header to the buffer */
         headerlen = strlen(name) + strlen(value) + 4;
         *len += headerlen;
         r = realloc(r, *len);
@@ -508,8 +519,7 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         strcat(r, ": ");
         strcat(r, value);
         strcat(r, "\r\n");
-        header = header->next;
-    }
+    } while ((header = header->next));
     *ret = r;
 }
 static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
@@ -523,9 +533,9 @@ static inline char * _build_headers(int status, ice_config_t *config, source_t *
     ret = calloc(1, 1);
     *ret = 0;
 
-    _build_headers_loop(&ret, &len, config->http_headers);
+    _build_headers_loop(&ret, &len, config->http_headers, status);
     if (mountproxy && mountproxy->http_headers)
-        _build_headers_loop(&ret, &len, mountproxy->http_headers);
+        _build_headers_loop(&ret, &len, mountproxy->http_headers, status);
 
     return ret;
 }

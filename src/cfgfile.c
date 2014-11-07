@@ -137,7 +137,7 @@ static void config_clear_http_header(ice_config_http_header_t *header) {
  }
 }
 
-static ice_config_http_header_t * config_copy_http_header(ice_config_http_header_t *header) {
+static inline ice_config_http_header_t * config_copy_http_header(ice_config_http_header_t *header) {
     ice_config_http_header_t *ret = NULL;
     ice_config_http_header_t *cur = NULL;
     ice_config_http_header_t *old = NULL;
@@ -154,9 +154,10 @@ static ice_config_http_header_t * config_copy_http_header(ice_config_http_header
 
         if (!cur) return ret; /* TODO: do better error handling */
 
-        cur->type = header->type;
-        cur->name = (char *)xmlCharStrdup(header->name);
-        cur->value = (char *)xmlCharStrdup(header->value);
+        cur->type   = header->type;
+        cur->name   = (char *)xmlCharStrdup(header->name);
+        cur->value  = (char *)xmlCharStrdup(header->value);
+        cur->status = header->status;
 
         if (!cur->name || !cur->value) {
             if (cur->name) xmlFree(cur->name);
@@ -810,6 +811,9 @@ static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_
     ice_config_http_header_t *next;
     char *name = NULL;
     char *value = NULL;
+    char *tmp;
+    int status;
+    http_header_type type;
 
     do {
         if (node == NULL) break;
@@ -818,11 +822,30 @@ static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_
         if (!(name = (char *)xmlGetProp(node, XMLSTR("name")))) break;
         if (!(value = (char *)xmlGetProp(node, XMLSTR("value")))) break;
 
+        type = HTTP_HEADER_TYPE_STATIC; /* default */
+        if ((tmp = (char *)xmlGetProp(node, XMLSTR("type")))) {
+            if (strcmp(tmp, "static") == 0) {
+                type = HTTP_HEADER_TYPE_STATIC;
+            } else {
+                ICECAST_LOG_WARN("Unknown type %s for HTTP Header %s", tmp, name);
+                xmlFree(tmp);
+                break;
+            }
+            xmlFree(tmp);
+        }
+
+        status = 0; /* default: any */
+        if ((tmp = (char *)xmlGetProp(node, XMLSTR("status")))) {
+            status = atoi(tmp);
+            xmlFree(tmp);
+        }
+
         header = calloc(1, sizeof(ice_config_http_header_t));
         if (!header) break;
-        header->type = HTTP_HEADER_TYPE_STATIC;
+        header->type = type;
         header->name = name;
         header->value = value;
+        header->status = status;
         name = NULL;
         value = NULL;
 
