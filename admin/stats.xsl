@@ -21,6 +21,9 @@
 	<!--global server stats-->
 	<div class="roundbox">
 		<h3>Global Server Stats</h3>
+		<ul class="nav">
+			<li><a href="reloadconfig.xsl">Reload Server Config</a></li>
+		</ul>
 		<table class="yellowkeys">
 			<tbody>
 				<xsl:for-each select="/icestats">
