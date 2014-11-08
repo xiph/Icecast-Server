@@ -505,11 +505,16 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         name = header->name;
 
         /* handle type of the header */
+        value = NULL;
         switch (header->type) {
             case HTTP_HEADER_TYPE_STATIC:
                 value = header->value;
                 break;
         }
+
+        /* check data */
+        if (!name || !value)
+            continue;
 
         /* append the header to the buffer */
         headerlen = strlen(name) + strlen(value) + 4;

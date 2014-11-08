@@ -17,6 +17,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 #include <ogg/ogg.h>
 
 typedef struct source_tag source_t;
