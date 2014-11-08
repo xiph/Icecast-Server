@@ -152,7 +152,7 @@ void logging_access(client_t *client)
         user_agent = "-";
 
     log_write_direct (accesslog,
-            "%s - %H [%s] \"%H %H %H/%H\" %d %" PRIu64 " \"% H\" \"% H\" %lu",
+            "%s - %H [%s] \"%H %H %H/%H\" %d %llu \"% H\" \"% H\" %llu",
             client->con->ip,
             username,
             datebuf,
@@ -161,10 +161,10 @@ void logging_access(client_t *client)
             httpp_getvar (client->parser, HTTPP_VAR_PROTOCOL),
             httpp_getvar (client->parser, HTTPP_VAR_VERSION),
             client->respcode,
-            client->con->sent_bytes,
+            (long long unsigned int)client->con->sent_bytes,
             referrer,
             user_agent,
-            (unsigned long)stayed);
+            (long long unsigned int)stayed);
 }
 /* This function will provide a log of metadata for each
    mountpoint.  The metadata *must* be in UTF-8, and thus
