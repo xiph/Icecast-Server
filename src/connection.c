@@ -822,19 +822,26 @@ int connection_complete_source (source_t *source, int response)
             {
                 config_release_config();
                 global_unlock();
-                if (response)
-                {
+                if (response) {
                     client_send_403 (source->client, "Content-type not supported");
                     source->client = NULL;
                 }
                 ICECAST_LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
                 return -1;
             }
-        }
-        else
-        {
-            ICECAST_LOG_WARN("No content-type header, falling back to backwards compatibility mode "
-                    "for icecast 1.x relays. Assuming content is mp3.");
+        } else if (source->parser->req_type == httpp_req_put) {
+            config_release_config();
+            global_unlock();
+            if (response) {
+                client_send_403 (source->client, "No Content-type given");
+                source->client = NULL;
+            }
+            ICECAST_LOG_ERROR("Content-type not given in PUT request, dropping source");
+            return -1;
+        } else {
+            ICECAST_LOG_ERROR("No content-type header, falling back to backwards compatibility mode "
+                    "for icecast 1.x relays. Assuming content is mp3. This behaviour is deprecated "
+                    "and the source client will NOT work with future Icecast versions!");
             format_type = FORMAT_TYPE_GENERIC;
         }
 
