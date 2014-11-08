@@ -1,3 +1,132 @@
+2014-05-06 05:23:42  dm8tbr
+
+	* This is Icecast 2.4.0!
+
+2014-05-06 04:53:24  dm8tbr
+
+	* SECURITY FIX - Override supplementary groups if <changeowner>
+
+2014-05-05 05:16:44  dm8tbr
+
+	* Added <audio> for supported streams. TNX ePirat
+
+2014-05-04 17:36:25  dm8tbr
+
+	* status2.xsl, broken for a decade, now it's gone!
+
+2014-05-04 17:09:59  dm8tbr
+
+	* Updated docs: 
+	  * logging to STDERR; known issues
+	  * Refactored docs about client authentication
+	  * Vastly improved page about Icecast statistics
+	  * Clean up supported windows versions
+	  * Quick fixup of the basic setup page
+	  * Minor fixes to the config file documentation
+	  * Updated YP documentation
+	  * Reduced win32 documentation to essentials
+
+2014-05-04 07:14:54  dm8tbr
+
+	* Adding stream_start_iso8601, server_start_iso8601
+	  ISO8601 compliante timestamps for statistics. Should make usage in
+	  e.g. JSON much easier.
+	  Added as new variables to avoid breaking backwards compatibility.
+
+2014-05-04 05:16:00  dm8tbr
+
+	* Nicer looking tables for the admin interface.
+	  ePirat sent updated tables code that should look much nicer.
+	  This is admin interface only (and a global css change).
+
+2014-03-09 13:02:35  dm8tbr
+
+	* Set content-type to official "application/json"
+
+2014-03-09 12:27:58  dm8tbr
+
+	* Initial JSON status transform.
+	  Output roughly limited to data also visible through status.xsl.
+
+2014-03-09 12:26:15  dm8tbr
+
+	* Silence direct calls, add partial array support.
+	* The XSLT will now return empty if called directly.
+	  This is a security measure to prevent unintended data leakage.
+	* Adding partial array support to print sources in an array. 
+	  Code lifted from: 
+	  https://code.google.com/p/xml2json-xslt/issues/detail?id=3
+
+2014-03-09 12:19:35  dm8tbr
+
+	* Adding xml2json XSLT, svn r31 upstream trunk.
+	  https://code.google.com/p/xml2json-xslt/
+
+2014-03-01 17:53:00  dm8tbr
+
+	* Icecast 2.4 beta5 aka 2.3.99.5
+
+2014-03-01 17:37:38  dm8tbr
+
+	* Reverting r18945 for now as using -b breaks things.
+	  Reopening #1886, patch needs rework.
+
+2014-03-01 16:38:15  dm8tbr
+
+	* Web output properly redone, credit to ePirat.
+	  Now validates completely as XHTML1.0 strict.
+	  Also improves rendering on mobile devices.
+
+2014-02-23 21:29:35  dm8tbr
+
+	* Send charset in headers for everything, excluding file-serv and streams.
+
+2014-02-16 10:14:28  dm8tbr
+
+	* Added warning to documentation 
+	  ensure queue-size >> burst-size.
+
+2014-01-23 13:55:23  dm8tbr
+
+	* Icecast 2.4 beta4 aka 2.3.99.4
+
+2014-01-23 06:23:42  dm8tbr
+
+	* Updated web interface to be more XHTML compliant.
+	* Added warning about HTML scraping to main page.
+
+2014-01-12 21:09:04  ph3-der-loewe 
+
+	* Fixed a memory leak. Lost headers of stream because of wrong ref
+	counter in associated refbuf objects.
+
+2014-01-12 12:29:27  ph3-der-loewe
+
+	* Completed HTTP PUT support, send 100-continue-header,
+	if client requests it. We need to adhere to HTTP1.1 here.
+
+2014-01-12 12:09:59  ph3-der-loewe   
+
+	* avoid memory leak in _parse_mount() when "type"-attribuet is set
+
+2013-11-06 01:01:31  ph3-der-loewe   
+
+	* corrected Date-header format to conform the standard (see RFC1123).
+	Thanks to cato for reporting.
+
+2013-05-29 08:22:06  dm8tbr
+
+	* Added a favicon to the web-root content
+
+2013-05-15 16:45:55  dm8tbr   
+
+	* We now split handling of command line arguments into two parts.
+	Only the critical part of getting the config file is done first (and
+	-v as it prevents startup). The rest (currently only -b) is deferred.
+	It allows us to log error messages to stderr even if the -b argument
+	is passed. This is mainly for the case where the logfile or TCP port 
+	can't be opened.
+
 2013-04-06 05:00:00  dm8tbr  
 
 	* Icecast 2.4 beta3 aka 2.3.99.3

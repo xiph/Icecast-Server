@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.3.99.3-ph3], [icecast@xiph.org])
+AC_INIT([Icecast], [2.4.0-ph3], [icecast@xiph.org])
 
 AC_PREREQ(2.54)
 AC_CONFIG_SRCDIR(src/main.c)
@@ -38,6 +38,7 @@ AC_CHECK_HEADERS([pwd.h unistd.h grp.h sys/types.h],,,AC_INCLUDES_DEFAULT)
 AC_CHECK_FUNCS([setuid])
 AC_CHECK_FUNCS([chroot])
 AC_CHECK_FUNCS([chown])
+AC_CHECK_FUNCS([strcasestr])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__
