@@ -269,7 +269,7 @@ void stats_event_args(const char *source, char *name, char *format, ...)
     if (name == NULL)
         return;
     va_start(val, format);
-    ret = vsnprintf(buf, 1024, format, val);
+    ret = vsnprintf(buf, sizeof(buf), format, val);
     va_end(val);
 
     if (ret < 0 || (unsigned int)ret >= sizeof (buf))
