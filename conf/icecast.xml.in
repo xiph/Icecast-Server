@@ -90,7 +90,10 @@
     -->
 
     <!-- Only define a <mount> section if you want to use advanced options,
-         like alternative usernames or passwords
+	 like alternative usernames or passwords
+    -->
+
+    <!--
     <mount>
         <mount-name>/example-complex.ogg</mount-name>
 
@@ -113,7 +116,9 @@
         <on-connect>/home/icecast/bin/stream-start</on-connect>
         <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
     </mount>
+    -->
 
+    <!--
     <mount>
         <mount-name>/auth_example.ogg</mount-name>
         <authentication type="url">
@@ -125,13 +130,12 @@
             <option name="header_prefix"   value="ClientHeader."/>
         </authentication>
     </mount>
-
     -->
 
     <fileserve>1</fileserve>
 
     <paths>
-		<!-- basedir is only used if chroot is enabled -->
+        <!-- basedir is only used if chroot is enabled -->
         <basedir>@pkgdatadir@</basedir>
 
         <!-- Note that if <chroot> is turned on below, these paths must both
@@ -152,7 +156,7 @@
              this example will redirect all requests for http://server:port/ to
              the status page
           -->
-        <alias source="/" destination="/status.xsl"/>
+	<alias source="/" destination="/status.xsl"/>
     </paths>
 
     <logging>
