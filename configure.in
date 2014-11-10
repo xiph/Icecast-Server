@@ -118,6 +118,7 @@ dnl    PKG_CHECK_MODULES([RoarAudio], [libroar >= 1.0.6], [have_roaraudio=yes], 
 
     if test "$have_roaraudio" = yes; then
         ROARAUDIO_LIBS="`roar-config --libs`"
+        ROARAUDIO_CFLAGS="`roar-config --cflags`"
         AC_DEFINE(HAVE_ROARAUDIO, ,[Define to enable RoarAudio depending modules])
 	echo "ok"
     else
@@ -174,6 +175,7 @@ AC_SUBST(XIPH_CPPFLAGS)
 AC_SUBST(XIPH_CFLAGS)
 AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_LDFLAGS)
+AC_SUBST(ROARAUDIO_CFLAGS)
 AC_SUBST(ROARAUDIO_LIBS)
 AC_SUBST(PTHREAD_CPPFLAGS)
 AC_SUBST(PTHREAD_CFLAGS)

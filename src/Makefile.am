@@ -30,7 +30,7 @@ icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.l
     httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la timing/libicetiming.la
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@ @ROARAUDIO_LIBS@
 
-AM_CFLAGS = @XIPH_CFLAGS@
+AM_CFLAGS = @XIPH_CFLAGS@ @ROARAUDIO_CFLAGS@
 AM_CPPFLAGS = @XIPH_CPPFLAGS@
 AM_LDFLAGS = @XIPH_LDFLAGS@ @KATE_LIBS@
 
