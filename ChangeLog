@@ -1,3 +1,133 @@
+
+2014-11-08 16:23:26  dm8tbr
+
+	* Applying patch by ph3-der-loewe, HTTP PUT requires content-type
+	* In case of SOURCE we are lenient and thus quite some source clients
+	don't send a proper content-type, especially if they only support mp3.
+	* This was meant to be introduced in 2.4.0 already, sadly we missed it.
+	* All source clients MUST send proper content-type after migrating to 
+	Icecast HTTP PUT protocol.
+
+2014-11-08 13:34:45  ph3-der-loewe
+
+	* Fixed regression introduced in r18356 (CVE-2011-4612): client
+	duration time is now correctly logged. PRIu64 MUST NOT be used with
+	log_write_direct() as depending on platform PRIu64 may be using
+	something not supported by __vsnprintf() of log/log.c.
+
+2014-11-08 12:28:17  ph3-der-loewe
+
+	* make use of sizeof() not explicit magic numbers
+
+2014-11-07 23:10:43  ph3-der-loewe
+
+	* fixing some compiler warnings
+
+2014-11-07 22:06:06  ph3-der-loewe
+
+	* updated some copyright headers
+
+2014-11-07 20:56:04  ph3-der-loewe
+
+	* fix for %z on win*. hope it doesn't breaky anything else.
+
+2014-11-07 19:14:28  ph3-der-loewe
+
+	* added warnings on empty and default values of <fileserve>,
+	<hostname>, <location>, <admin> and <server-id>
+
+2014-11-07 11:18:54  ph3-der-loewe
+
+	* send errorlog (loglevel WARN) to stderr prior to opening the real
+	logfiles.
+
+2014-11-07 10:12:24  ph3-der-loewe
+
+	* added support for type="" and status="" in <header> 
+	(subelement of <http-headers>).
+
+2014-11-07 02:55:57  ph3-der-loewe
+
+	* Added support for <http-headers> within <mount>. 
+	Also support merging of headers (normal mount + default mount).
+
+2014-11-07 01:40:28  ph3-der-loewe
+
+	* handle empty strings in config file better. Now empty strings are
+	handled in: accesslog, errorlog, logdir, webroot, adminroot and
+	hopefully all kinds of port.
+
+2014-11-07 00:56:02  ph3-der-loewe
+
+	* initial patch to allow adding user defined headers
+
+2014-11-06 23:55:58  ph3-der-loewe
+
+	* coding style and typo correcion
+
+2014-11-06 12:02:00  dm8tbr
+
+	* Be more verbose in case of fileserve off
+
+2014-11-05 10:09:07  dm8tbr
+
+	* applied patch to update the default ciphers to be more secure
+	* tested this successfully against https://www.ssllabs.com/ssltest/
+
+2014-11-03 19:34:10  ph3-der-loewe
+
+	* applied patch to disable SSLv3 and SSL compression explicitly
+
+2014-11-02 20:19:29  dm8tbr
+
+	* fix JSON status API problems
+	* Put the last item check into every filtered tag.
+	* This way we shouldn't run into problems of this type anymore.
+	* Also it should be easier to customize this way,
+	if someone wants to filter differently.
+
+
+2014-10-31 09:00:45  ph3-der-loewe
+
+	* rename ICE_LISTEN_QUEUE, ICE_RUNNING and ICE_HALTING 
+	so they have a prefix of ICECAST_
+
+2014-10-31 08:46:58  ph3-der-loewe
+
+	* LOG_{ERROR|WARN|INFO|DEBUG}() 
+	  -> ICECAST_LOG_{ERROR|WARN|INFO|DEBUG}()
+	* avoid collision with LOG_INFO that is defined as part of syslog.
+
+2014-10-26 14:03:57  ph3-der-loewe
+
+	* make <auth> in <mount type="default"> work if no <mount-name> is
+	given.
+
+2014-10-23 20:41:38  epirat
+
+	* More detailed logging
+	* Add source IP adress to startup and source exit logging
+	* Add mountpoint to some log lines
+
+2014-10-18 16:25:29  ph3-der-loewe
+
+	* fix warnings, mostly related to win*-builds
+
+2014-10-09 10:39:13  ph3-der-loewe
+
+	* Replace the old logging macros with variadic argument macros. 
+	  (patch by ePirat)
+
+2014-07-23 16:55:57  dm8tbr
+
+	* removed threadpool from example config
+	  it is long gone and unused
+
+2014-07-23 10:20:47  dm8tbr
+
+	* Fix autogen.sh to work properly on Mac OS
+	* Applying patch by ePirat
+
 2014-05-06 05:23:42  dm8tbr
 
 	* This is Icecast 2.4.0!

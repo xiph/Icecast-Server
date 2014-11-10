@@ -1,6 +1,6 @@
 <!--
     XSPF xslt stylesheet for Icecast and above
-    Copyright (C) 2007 Thomas B. Ruecker, thomas@ruecker.fi
+    Copyright (C) 2007 Thomas B. Ruecker, <thomas@ruecker.fi>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
