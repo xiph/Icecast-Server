@@ -37,6 +37,10 @@
 #include <curl/curl.h>
 #endif
 
+#ifdef HAVE_UNAME
+#include <sys/utsname.h>
+#endif
+
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "net/sock.h"
@@ -54,6 +58,7 @@
 #endif
 
 #include "cfgfile.h"
+#include "util.h"
 #include "sighandler.h"
 
 #include "global.h"
@@ -434,6 +439,46 @@ static void _ch_root_uid_setup(void)
 }
 #endif
 
+static inline void __log_system_name(void) {
+    char hostname[80] = "(unknown)";
+    char system[128] = "(unknown)";
+    int have_hostname = 0;
+#ifdef HAVE_UNAME
+    struct utsname utsname;
+#endif
+    ice_config_t *config;
+
+#ifdef HAVE_GETHOSTNAME
+    if (gethostname(hostname, sizeof(hostname)) != 0) {
+        strncpy(hostname, "(unknown)", sizeof(hostname));
+    } else {
+        have_hostname = 1;
+    }
+#endif
+#ifdef HAVE_UNAME
+    if(uname(&utsname) == 0) {
+        snprintf(system, sizeof(system), "%s %s, %s, %s, %s",
+                 utsname.sysname, utsname.release, utsname.nodename, utsname.version, utsname.machine);
+        if (!have_hostname) {
+            strncpy(hostname, utsname.nodename, sizeof(hostname));
+            have_hostname = 1;
+        }
+    }
+#elif defined(WIN32)
+    strncpy(system, "MS Windows", sizeof(system));
+#endif
+
+   ICECAST_LOG_INFO("Running on %s; OS: %s; Address Bits: %i", hostname, system, sizeof(void*)*8);
+
+   if (have_hostname) {
+       config = config_get_config();
+       if (!config->sane_hostname && util_hostcheck(hostname) == HOSTCHECK_SANE) {
+           ICECAST_LOG_WARN("Hostname is not set to anything useful in <hostname>, Consider setting it to the system's name \"%s\".", hostname);
+       }
+       config_release_config();
+   }
+}
+
 #ifdef WIN32_SERVICE
 int mainService(int argc, char **argv)
 #else
@@ -530,6 +575,7 @@ int main(int argc, char **argv)
     }
 
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
+    __log_system_name();
 
     /* REM 3D Graphics */
 

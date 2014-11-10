@@ -33,6 +33,18 @@ char *util_base64_encode(const char *data);
 char *util_base64_decode(const char *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
+typedef enum _util_hostcheck_tag {
+ HOSTCHECK_ERROR = -1,
+ HOSTCHECK_SANE  = 0,
+ HOSTCHECK_NOT_FQDN,
+ HOSTCHECK_IS_LOCALHOST,
+ HOSTCHECK_IS_IPV4,
+ HOSTCHECK_IS_IPV6,
+ HOSTCHECK_BADCHAR
+} util_hostcheck_type;
+
+util_hostcheck_type util_hostcheck(const char *hostname);
+
 char *util_url_unescape(const char *src);
 char *util_url_escape(const char *src);
 

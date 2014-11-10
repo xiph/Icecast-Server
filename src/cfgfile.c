@@ -31,6 +31,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h" 
+#include "util.h" 
 
 #define CATMODULE "CONFIG"
 #define CONFIG_DEFAULT_LOCATION "Earth"
@@ -483,6 +484,44 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;
 }
 
+static inline void __check_hostname(ice_config_t *configuration) {
+    char *p;
+
+    // ensure we have a non-NULL buffer:
+    if (!configuration->hostname)
+        configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
+
+    // convert to lower case:
+    for (p = configuration->hostname; *p; p++)
+        if ( *p >= 'A' && *p <= 'Z' )
+            *p += 'a' - 'A';
+
+    configuration->sane_hostname = 0;
+    switch (util_hostcheck(configuration->hostname)) {
+        case HOSTCHECK_SANE:
+            configuration->sane_hostname = 1;
+        break;
+        case HOSTCHECK_ERROR:
+            ICECAST_LOG_ERROR("Can not check hostname \"%s\".", configuration->hostname);
+        break;
+        case HOSTCHECK_NOT_FQDN:
+            ICECAST_LOG_WARN("Warning, <hostname> seems not to be set to a fully qualified fomain name (FQDN). This may cause problems, e.g. with YP directory listings.");
+        break;
+        case HOSTCHECK_IS_LOCALHOST:
+            ICECAST_LOG_WARN("Warning, <hostname> not configured, using default value \"%s\". This will cause problems, e.g. with YP directory listings.", CONFIG_DEFAULT_HOSTNAME);
+        break;
+        case HOSTCHECK_IS_IPV4:
+            ICECAST_LOG_WARN("Warning, <hostname> seems to be set to an IPv4 address. This may cause problems, e.g. with YP directory listings.");
+        break;
+        case HOSTCHECK_IS_IPV6:
+            ICECAST_LOG_WARN("Warning, <hostname> seems to be set to an IPv6 address. This may cause problems, e.g. with YP directory listings.");
+        break;
+        case HOSTCHECK_BADCHAR:
+            ICECAST_LOG_WARN("Warning, <hostname> configured to unusual characters. This may cause problems, e.g. with YP directory listings.");
+        break;
+    }
+}
+
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *configuration)
 {
@@ -601,11 +640,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
    if (!configuration->fileserve)
        ICECAST_LOG_WARN("Warning, serving of static files has been disabled in the config, this will also affect files used by the web interface (stylesheets, images).");
 
-  if (!configuration->hostname || strcmp(configuration->hostname, CONFIG_DEFAULT_HOSTNAME) == 0) {
-      ICECAST_LOG_WARN("Warning, <hostname> not configured, using default value \"%s\". This will cause problems, e.g. with YP directory listings.", CONFIG_DEFAULT_HOSTNAME);
-      if (!configuration->hostname)
-          configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
-  }
+  __check_hostname(configuration);
 
   if (!configuration->location || strcmp(configuration->location, CONFIG_DEFAULT_LOCATION) == 0) {
       ICECAST_LOG_WARN("Warning, <location> not configured, using default value \"%s\".", CONFIG_DEFAULT_LOCATION);

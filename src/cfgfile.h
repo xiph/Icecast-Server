@@ -182,6 +182,7 @@ typedef struct ice_config_tag {
     ice_config_dir_t *dir_list;
 
     char *hostname;
+    int sane_hostname;
     int port;
     char *mimetypes_fn;
 
