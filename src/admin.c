@@ -268,21 +268,57 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
     {
         xmlChar *buff = NULL;
         int len = 0;
-        unsigned int buf_len;
+        size_t buf_len;
+        ssize_t ret;
+
         xmlDocDumpMemory(doc, &buff, &len);
-        buf_len = len + 256 /* just a random medium number */;
+
+        buf_len = len + 1024;
+        if (buf_len < 4096)
+            buf_len = 4096;
 
         client_set_queue (client, NULL);
         client->refbuf = refbuf_new (buf_len);
 
-        /* FIXME: in this section we hope no function will ever return -1 */
-	len = util_http_build_header(client->refbuf->data, buf_len, 0,
+	ret = util_http_build_header(client->refbuf->data, buf_len, 0,
 	                             0, 200, NULL,
 				     "text/xml", "utf-8",
 				     NULL, NULL);
-	len += snprintf (client->refbuf->data + len, buf_len - len, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
+        if (ret == -1) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_500(client, "Header generation failed.");
+            xmlFree(buff);
+            return;
+        } else if (buf_len < (len + ret + 64)) {
+            void *new_data;
+            buf_len = ret + len + 64;
+            new_data = realloc(client->refbuf->data, buf_len);
+            if (new_data) {
+                ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
+                client->refbuf->data = new_data;
+                client->refbuf->len = buf_len;
+                ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                                             0, 200, NULL,
+                                             "text/xml", "utf-8",
+                                             NULL, NULL);
+                if (ret == -1) {
+                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                    client_send_500(client, "Header generation failed.");
+                    xmlFree(buff);
+                    return;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
+                client_send_500(client, "Buffer reallocation failed.");
+                xmlFree(buff);
+                return;
+            } 
+        }
 
-        client->refbuf->len = len;
+        /* FIXME: in this section we hope no function will ever return -1 */
+	ret += snprintf (client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
+
+        client->refbuf->len = ret;
         xmlFree(buff);
         client->respcode = 200;
         fserve_add_client (client, NULL);
@@ -574,6 +610,13 @@ static void html_success(client_t *client, char *message)
                                  0, 200, NULL,
 				 "text/html", "utf-8",
 				 "", NULL);
+
+    if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_500(client, "Header generation failed.");
+        return;
+    }
+
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
              "<html><head><title>Admin request successful</title></head>"
 	     "<body><p>%s</p></body></html>", message);
@@ -713,6 +756,13 @@ static void command_buildm3u(client_t *client,  const char *mount)
                                  0, 200, NULL,
 				 "audio/x-mpegurl", NULL,
 				 NULL, NULL);
+
+    if (ret == -1 || ret >= (PER_CLIENT_REFBUF_SIZE - 512)) { /* we want at least 512 Byte left for data */
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_500(client, "Header generation failed.");
+        return;
+    }
+
 
     config = config_get_config();
     snprintf (client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
@@ -1029,10 +1079,17 @@ static void command_list_mounts(client_t *client, int response)
 
     if (response == PLAINTEXT)
     {
-        util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+        ssize_t ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
 	                       0, 200, NULL,
 			       "text/plain", "utf-8",
 			       "", NULL);
+
+        if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_500(client, "Header generation failed.");
+            return;
+        }
+
         client->refbuf->len = strlen (client->refbuf->data);
         client->respcode = 200;
 

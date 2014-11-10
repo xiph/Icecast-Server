@@ -231,23 +231,52 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     }
     if (problem == 0)
     {
-        /* the 100 is to allow for the hardcoded headers */
-        unsigned int full_len = strlen (mediatype) + len + 256;
+        size_t full_len = strlen (mediatype) + len + 1024;
         refbuf_t *refbuf = refbuf_new (full_len);
 	ssize_t ret;
+        int failed = 0;
+
+        if (full_len < 4096)
+            full_len = 4096;
 
         if (string == NULL)
             string = xmlCharStrdup ("");
         ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
-	snprintf (refbuf->data + ret, full_len - ret,
-                "Content-Length: %d\r\n\r\n%s",
-                len, string);
+        if (ret == -1) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_500(client, "Header generation failed.");
+        } else {
+            if ( full_len < (ret + len + 64) ) {
+                void *new_data;
+                full_len = ret + len + 64;
+                new_data = realloc(refbuf->data, full_len);
+                if (new_data) {
+                    ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
+                    refbuf->data = new_data;
+                    refbuf->len = full_len;
+                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
+                    if (ret == -1) {
+                        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                        client_send_500(client, "Header generation failed.");
+                        failed = 1;
+                    }
+                } else {
+                    ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
+                    client_send_500(client, "Buffer reallocation failed.");
+                    failed = 1;
+                }
+            }
 
-        client->respcode = 200;
-        client_set_queue (client, NULL);
-        client->refbuf = refbuf;
-        refbuf->len = strlen (refbuf->data);
-        fserve_add_client (client, NULL);
+            if (!failed) {
+                  snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
+
+                client->respcode = 200;
+                client_set_queue (client, NULL);
+                client->refbuf = refbuf;
+                refbuf->len = strlen (refbuf->data);
+                fserve_add_client (client, NULL);
+            }
+        }
         xmlFree (string);
     }
     else

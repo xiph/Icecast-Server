@@ -192,6 +192,12 @@ static void client_send_error(client_t *client, int status, int plain, const cha
                                  plain ? "text/plain" : "text/html", "utf-8",
                                  plain ? message : "", NULL);
 
+    if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_500(client, "Header generation failed.");
+        return;
+    }
+
     if (!plain)
         snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
                  "<html><head><title>Error %i</title></head><body><b>%i - %s</b></body></html>\r\n",
@@ -228,6 +234,21 @@ void client_send_403(client_t *client, const char *message)
     client_send_error(client, 403, 1, message);
 }
 
+/* this function is designed to work even if client is in bad state */
+void client_send_500(client_t *client, const char *message) {
+    const char header[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
+                          "500 - Internal Server Error\n---------------------------\n";
+    const size_t header_len = sizeof(header) - 1;
+    int ret;
+
+    ret = client_send_bytes(client, header, header_len);
+
+    /* only send message if we have one AND if header could have transmitted completly */
+    if (message && ret == header_len)
+        client_send_bytes(client, message, strlen(message));
+
+    client_destroy(client);
+}
 
 /* helper function for sending the data to a client */
 int client_send_bytes (client_t *client, const void *buf, unsigned len)

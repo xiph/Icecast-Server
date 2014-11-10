@@ -459,6 +459,11 @@ int fserve_client_create (client_t *httpclient, const char *path)
         ret = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
 	                              0, 200, NULL,
 				      "audio/x-mpegurl", NULL, "", NULL);
+        if (ret == -1 || ret >= (BUFSIZE - 512)) { /* we want at least 512 bytes left for the content of the playlist */
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_500(httpclient, "Header generation failed.");
+            return -1;
+        }
         if (host == NULL)
         {
 	    config = config_get_config();
@@ -568,6 +573,11 @@ int fserve_client_create (client_t *httpclient, const char *path)
 		                                0, 206, NULL,
 						type, NULL,
 						NULL, NULL);
+                if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
+                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                    client_send_500(httpclient, "Header generation failed.");
+                    return -1;
+                }
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
                     "Accept-Ranges: bytes\r\n"
                     "Content-Length: %" PRI_OFF_T "\r\n"
@@ -594,6 +604,11 @@ int fserve_client_create (client_t *httpclient, const char *path)
 	                                0, 200, NULL,
 					type, NULL,
 					NULL, NULL);
+        if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_500(httpclient, "Header generation failed.");
+            return -1;
+        }
         bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
             "Accept-Ranges: bytes\r\n"
             "Content-Length: %" PRI_OFF_T "\r\n\r\n",
