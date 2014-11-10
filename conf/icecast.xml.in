@@ -6,8 +6,8 @@
     <admin>icemaster@localhost</admin>
 
     <!-- IMPORTANT!
-	 Especially for inexperienced users:
-	 Start out by ONLY changing all passwords and restarting Icecast.
+         Especially for inexperienced users:
+         Start out by ONLY changing all passwords and restarting Icecast.
          For detailed setup instructions please refer to the documentation.
          It's also available here: http://icecast.org/docs/
     -->
@@ -90,7 +90,7 @@
              This will make streams easier embeddable (some HTML5 functionality needs it).
              Also it allows direct access to e.g. /status-json.xsl from other sites.
              If you don't want this, comment out the following line or read up on CORS.
-	-->    
+        -->    
         <header name="Access-Control-Allow-Origin" value="*" />
     </http-headers>
 
@@ -124,7 +124,7 @@
 
     <!-- Mountpoints
          Only define <mount> sections if you want to use advanced options,
-	 like alternative usernames or passwords
+         like alternative usernames or passwords
     -->
 
     <!-- Default settings for all mounts that don't have a specific <mount type="normal">.
@@ -132,14 +132,14 @@
     <!-- 
     <mount type="default">
         <public>0</public>
-	<intro>/server-wide-intro.ogg</intro>
+        <intro>/server-wide-intro.ogg</intro>
         <max-listener-duration>3600</max-listener-duration>
-	<authentication type="url">
+        <authentication type="url">
                 <option name="mount_add" value="http://auth.example.org/stream_start.php"/>
-	</authentication>
+        </authentication>
         <http-headers>
                 <header name="foo" value="bar" />
-	</http-headers>
+        </http-headers>
     </mount>
     -->
 
@@ -165,9 +165,9 @@
                 <option name="allow_duplicate_users" value="0"/>
         </authentication>
         <http-headers>
-		<header name="Access-Control-Allow-Origin" value="http://webplayer.example.org" />
+                <header name="Access-Control-Allow-Origin" value="http://webplayer.example.org" />
                 <header name="baz" value="quux" />
-	</http-headers>
+        </http-headers>
         <on-connect>/home/icecast/bin/stream-start</on-connect>
         <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
     </mount>
@@ -211,10 +211,10 @@
              this example will redirect all requests for http://server:port/ to
              the status page
         -->
-	<alias source="/" destination="/status.xsl"/>
-	<!-- The certificate file needs to contain both public and private part.
+        <alias source="/" destination="/status.xsl"/>
+        <!-- The certificate file needs to contain both public and private part.
              Both should be PEM encoded.
-	<ssl-certificate>@pkgdatadir@/icecast.pem</ssl-certificate>
+        <ssl-certificate>@pkgdatadir@/icecast.pem</ssl-certificate>
         -->
     </paths>
 
@@ -222,8 +222,8 @@
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
         <!-- <playlistlog>playlist.log</playlistlog> -->
-      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
-      	<logsize>10000</logsize> <!-- Max size of a logfile -->
+        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <logsize>10000</logsize> <!-- Max size of a logfile -->
         <!-- If logarchive is enabled (1), then when logsize is reached
              the logfile will be moved to [error|access|playlist].log.DATESTAMP,
              otherwise it will be moved to [error|access|playlist].log.old.
