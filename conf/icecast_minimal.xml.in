@@ -1,5 +1,6 @@
 <!-- This config file contains a minimal set of configurable parameters,
-     and mostly just contains the things you need to change.  We created
+     and mostly just contains the things you need to change or are
+     necessary to get Icecast working for most use cases.  We created
      this for those who got scared away from the rather large and heavily
      commented icecast.xml.dist file. -->
 <icecast>
@@ -30,6 +31,9 @@
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
-      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
     </logging>
+    <http-headers>
+        <header name="Access-Control-Allow-Origin" value="*" />
+    </http-headers>
 </icecast>
