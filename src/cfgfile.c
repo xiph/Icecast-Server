@@ -446,7 +446,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
-    configuration->threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
@@ -549,7 +548,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_authentication(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
             /* TODO: This is the backwards-compatibility location */
-            ICECAST_LOG_WARN("<source-password> defined outside <authentication>. This is deprecated.");
+            ICECAST_LOG_WARN("<source-password> defined outside <authentication>. This is deprecated and will be removed in version 2.5.");
             if (configuration->source_password) xmlFree(configuration->source_password);
             configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("icelogin")) == 0) {
@@ -677,9 +676,7 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             configuration->queue_size_limit = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("threadpool")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->threadpool_size = atoi(tmp);
-            if (tmp) xmlFree(tmp);
+            ICECAST_LOG_WARN("<threadpool> deprecated and will be removed in version 2.5.");
         } else if (xmlStrcmp (node->name, XMLSTR("client-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_timeout = atoi(tmp);
@@ -796,6 +793,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("no-yp")) == 0) {
+            ICECAST_LOG_WARN("<no-yp> defined. Please use <public>. This is deprecated and will be removed in version 2.5.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->yp_public = atoi(tmp) == 0 ? -1 : 0;
             if(tmp) xmlFree(tmp);
