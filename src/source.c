@@ -1320,10 +1320,14 @@ void source_client_callback (client_t *client, void *arg)
 /* this sets up the new environment for script execution.
  * We ignore most failtures as we can not handle them anyway.
  */
+#ifdef HAVE_SETENV
 static inline void __update_environ(const char *name, const char *value) {
     if (!name || !value) return;
     setenv(name, value, 1);
 }
+#else
+#define __update_environ(x,y)
+#endif
 static inline void __setup_empty_script_environment(ice_config_t * config, source_t *source, mount_proxy *mountinfo, const char *action) {
     int i;
 
@@ -1347,7 +1351,6 @@ static inline void __setup_empty_script_environment(ice_config_t * config, sourc
             close(i);
     }
 
-#ifdef HAVE_SETENV
     __update_environ("ICECAST_VERSION",   ICECAST_VERSION_STRING);
     __update_environ("ICECAST_HOSTNAME",  config->hostname);
     __update_environ("ICECAST_ADMIN",     config->admin);
@@ -1360,7 +1363,6 @@ static inline void __setup_empty_script_environment(ice_config_t * config, sourc
     __update_environ("MOUNT_DESCRIPTION", mountinfo->stream_description);
     __update_environ("MOUNT_URL",         mountinfo->stream_url);
     __update_environ("MOUNT_GENRE",       mountinfo->stream_genre);
-#endif
 }
 
 static void source_run_script (const char *command, source_t *source, mount_proxy *mountinfo, const char *action) {
