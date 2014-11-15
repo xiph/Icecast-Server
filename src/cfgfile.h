@@ -204,6 +204,7 @@ typedef struct ice_config_tag {
     char *base_dir;
     char *log_dir;
     char *pidfile;
+    char *null_file;
     char *banfile;
     char *allowfile;
     char *cert_file;
