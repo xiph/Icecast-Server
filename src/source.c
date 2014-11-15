@@ -34,6 +34,11 @@
 #define snprintf _snprintf
 #endif
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "httpp/httpp.h"
@@ -1311,6 +1316,21 @@ void source_client_callback (client_t *client, void *arg)
 
 
 #ifndef _WIN32
+static inline void __setup_empty_script_environment(void) {
+    int i;
+
+    for (i = 0; i < 1024; i++)
+        close(i);
+
+    i = open("/dev/null", O_RDWR);
+    if (i == -1)
+        return;
+
+    dup2(i, 0);
+    dup2(i, 1);
+    dup2(i, 2);
+}
+
 static void source_run_script (char *command, char *mountpoint)
 {
     pid_t pid, external_pid;
@@ -1327,8 +1347,9 @@ static void source_run_script (char *command, char *mountpoint)
                     break;
                 case 0:  /* child */
                     ICECAST_LOG_DEBUG("Starting command %s", command);
+                    __setup_empty_script_environment();
                     execl (command, command, mountpoint, (char *)NULL);
-                    ICECAST_LOG_ERROR("Unable to run command %s (%s)", command, strerror (errno));
+                    //ICECAST_LOG_ERROR("Unable to run command %s (%s)", command, strerror (errno));
                     exit(0);
                 default: /* parent */
                     break;
