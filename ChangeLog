@@ -1,3 +1,38 @@
+2014-11-17 19:20:57 ph3-der-loewe
+
+	* subset of earlier patch so it can go into 2.4.1: disconnects
+	stdio of <on-[dis]connect> scripts from random filehandles.
+	* This is considered a security fix: if on-connect/on-disconnect
+	scripts are used, file descriptors of the server process remain open
+	and could be written to or read from. Most pressing STDIN, STDOUT,
+	STDERR are handled. Further all file descriptors up to 1024 are closed.
+	There is a remaining (much lower) risk in combination of either a
+	malicious or susceptible script and FDs above 1024.
+
+2014-11-10 10:46:55 ph3-der-loewe
+
+	* patch to fix regression on header size with large headers introduced
+	by support of <server-id> and <http-headers>. This should ensure we
+	have at least space for 2kB of extra headers. Depending on function
+	and call we may have much more space.
+
+2014-11-10 08:23:34  dm8tbr
+
+	* Update minimal config to also contain ACAO * header
+
+2014-11-10 06:25:15  dm8tbr
+
+	* Update default config: SSL, headers, default-mount
+
+2014-11-09 10:55:29  dm8tbr
+
+	* Updated default openSSL cipher string
+	* https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28default.29
+	* same Qualys result
+
+2014-11-09 09:13:59  dm8tbr
+
+	* Clean up default config
 
 2014-11-08 16:23:26  dm8tbr
 
