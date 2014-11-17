@@ -1336,7 +1336,7 @@ static inline void __setup_empty_script_environment(ice_config_t * config, sourc
         close(i);
 
     /* open null device */
-    i = open(config->null_file, O_RDWR);
+    i = open(config->null_device, O_RDWR);
     if (i != -1) {
         /* attach null device to stdin, stdout and stderr */
         if (i != 0)

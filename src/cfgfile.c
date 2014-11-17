@@ -468,7 +468,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->base_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_BASE_DIR);
     configuration->log_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOG_DIR);
     configuration->cipher_list = (char *)xmlCharStrdup (CONFIG_DEFAULT_CIPHER_LIST);
-    configuration->null_file = (char *)xmlCharStrdup (CONFIG_DEFAULT_NULL_FILE);
+    configuration->null_device = (char *)xmlCharStrdup (CONFIG_DEFAULT_NULL_FILE);
     configuration->webroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_WEBROOT_DIR);
     configuration->adminroot_dir = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMINROOT_DIR);
     configuration->playlist_log = (char *)xmlCharStrdup (CONFIG_DEFAULT_PLAYLIST_LOG);
@@ -1320,9 +1320,9 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("pidfile")) == 0) {
             if (configuration->pidfile) xmlFree(configuration->pidfile);
             configuration->pidfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("nullfile")) == 0) {
-            if (configuration->null_file) xmlFree(configuration->null_file);
-            configuration->null_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("nulldevice")) == 0) {
+            if (configuration->null_device) xmlFree(configuration->null_device);
+            configuration->null_device = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("deny-ip")) == 0) {
             if (configuration->banfile) xmlFree(configuration->banfile);
             configuration->banfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
