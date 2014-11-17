@@ -34,6 +34,12 @@
 #define snprintf _snprintf
 #endif
 
+#ifndef _WIN32
+/* for __setup_empty_script_environment() */
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
+
 #include "thread/thread.h"
 #include "avl/avl.h"
 #include "httpp/httpp.h"
@@ -1311,6 +1317,33 @@ void source_client_callback (client_t *client, void *arg)
 
 
 #ifndef _WIN32
+/* this sets up the new environment for script execution.
+ * We ignore most failtures as we can not handle them anyway.
+ */
+static inline void __setup_empty_script_environment(void) {
+    int i;
+
+    /* close at least the first 1024 handles */
+    for (i = 0; i < 1024; i++)
+        close(i);
+
+    /* open null device */
+    i = open("/dev/null", O_RDWR);
+    if (i != -1) {
+        /* attach null device to stdin, stdout and stderr */
+        if (i != 0)
+            dup2(i, 0);
+        if (i != 1)
+            dup2(i, 1);
+        if (i != 2)
+            dup2(i, 2);
+
+        /* close null device */
+        if (i > 2)
+            close(i);
+    }
+}
+
 static void source_run_script (char *command, char *mountpoint)
 {
     pid_t pid, external_pid;
@@ -1326,10 +1359,15 @@ static void source_run_script (char *command, char *mountpoint)
                     ICECAST_LOG_ERROR("Unable to fork %s (%s)", command, strerror (errno));
                     break;
                 case 0:  /* child */
+                    if (access(command, R_OK|X_OK) != 0) {
+                        ICECAST_LOG_ERROR("Unable to run command %s (%s)", command, strerror(errno));
+                        exit(1);
+                    }
                     ICECAST_LOG_DEBUG("Starting command %s", command);
-                    execl (command, command, mountpoint, (char *)NULL);
-                    ICECAST_LOG_ERROR("Unable to run command %s (%s)", command, strerror (errno));
-                    exit(0);
+                    __setup_empty_script_environment();
+                    /* consider to add action here as well */
+                    execl(command, command, mountpoint, (char *)NULL);
+                    exit(1);
                 default: /* parent */
                     break;
             }
