@@ -1,7 +1,7 @@
 <!--
     VCLT xslt stylesheet for Icecast 2.3.2 and above
     based on XSPF xslt stylesheet.
-    Copyright (C) 2007 Thomas B. Ruecker, <tbr@ruecker.fi>
+    Copyright (C) 2007 Thomas B. Ruecker, <thomas@ruecker.fi>
     Copyright (C) 2011 Philipp Schafft, <lion@lion.leolix.org>
 
     This program is free software; you can redistribute it and/or
