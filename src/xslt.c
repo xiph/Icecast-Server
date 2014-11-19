@@ -231,13 +231,13 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     }
     if (problem == 0)
     {
-        size_t full_len = strlen (mediatype) + len + 1024;
-        refbuf_t *refbuf = refbuf_new (full_len);
-	ssize_t ret;
+        ssize_t ret;
         int failed = 0;
-
+        refbuf_t *refbuf;
+        size_t full_len = strlen (mediatype) + len + 1024;
         if (full_len < 4096)
             full_len = 4096;
+        refbuf = refbuf_new (full_len);
 
         if (string == NULL)
             string = xmlCharStrdup ("");

@@ -84,13 +84,13 @@
 
     <!-- Global header settings 
          Headers defined here will be returned for every HTTP request to Icecast.
+
+         The ACAO header makes Icecast public content/API by default
+         This will make streams easier embeddable (some HTML5 functionality needs it).
+         Also it allows direct access to e.g. /status-json.xsl from other sites.
+         If you don't want this, comment out the following line or read up on CORS. 
     -->
     <http-headers>
-        <!-- Make Icecast public content/API by default
-             This will make streams easier embeddable (some HTML5 functionality needs it).
-             Also it allows direct access to e.g. /status-json.xsl from other sites.
-             If you don't want this, comment out the following line or read up on CORS.
-        -->    
         <header name="Access-Control-Allow-Origin" value="*" />
     </http-headers>
 
