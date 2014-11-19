@@ -28,6 +28,9 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #else
 #include <winsock2.h>
 #include <windows.h>
