@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Icecast Docs Docs &mdash; Glossary</title>
+	<meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" type="text/css" href="assets/css/style.css" media="screen, print" />
+</head>
+
+  <body>
+
+    <div class="header">
+      <h1><a href="#" title="Home page">Icecast</a> <span>documentation</span></h1>
+    </div>
+
+    <div class="section">
+      
+      <h2>Icecast 2.4.1 Docs &mdash; Glossary</h2>
+      
+<div class="article">
+  <dl>
+    <dt>Source client</dt>
+    <dd>A source client is an external program which is responsible for sending content data to Icecast.<br />
+Some source clients that support Icecast 2 are Oddcast, Ices 2, Ices 0.3 and DarkIce.</dd>
+    <dt>Slave server (Relay)</dt>
+    <dd>The slave server in a relay configuration is the server that is pulling the data from the master server.
+It acts as a listening client to the master server.</dd>
+    <dt>Master server (Relay)</dt>
+    <dd>The master server in a relay configuration is the server that has the stream that is being relayed.</dd>
+    <dt>Mountpoint</dt>
+    <dd>A mountpoint is a resource on the Icecast server that represents a single broadcast stream. Mountpoints are
+named similar to files (<code>/mystream.ogg</code>, <code>/mymp3stream</code>).<br />
+When listeners connect to Icecast, they must specify the mountpoint in the request (i.e. <code>http://192.168.1.10:8000/mystream.ogg</code>).
+Additionally, source clients must specify a mountpoint when they connect as well. Statistics are kept track of by mountpoint.
+Mountpoints are a fundamental aspect of Icecast 2 and how it is organized.</dd>
+    <dt>Fallback mountpoint</dt>
+    <dd>A fallback mountpoint is configured with a parent mountpoint. In the event of the parent mountpoint losing connection with Icecast,
+Icecast will then move all clients currently connected to the now defunct mountpoint to it’s fallback mountpoint.</dd>
+  </dl>
+
+</div>
+
+    </div>
+
+    <div class="footer">
+      <p>Support icecast development at <a href="http://icecast.org">icecast.org</a></p>
+    </div>
+
+  </body>
+</html>
