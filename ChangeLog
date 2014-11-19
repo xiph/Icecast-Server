@@ -1,7 +1,39 @@
-2014-11-17 19:20:57 ph3-der-loewe
+2014-11-19 13:42:23  dm8tbr
+
+	* This is Spaaarrr^w Icecast 2.4.1!
+
+2014-11-19 13:41:09  dm8tbr
+
+	* Makefile.am and configure.in for new docs
+
+2014-11-19 12:18:49  dm8tbr
+
+	* Removing unmaintained RPM spec file
+
+2014-11-19 11:30:58  ePirat
+
+	* Set PATH_MAX to 4096 if not defined (patch by Svante Signell
+	<svante.signell@gmail.com>)
+	See: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=767542
+
+2014-11-18 19:57:21  ePirat
+
+	* Docs: 2.4.1 docs added
+
+2014-11-18 10:17:16  ePirat
+
+	* fix for memory errors when using a lot of headers
+
+2014-11-18 08:51:03  dm8tbr
+
+	* Comments in <http-headers> break things ATM.
+	Moved the comment out to avoid this bug.
+	Needs to be checked.
+
+2014-11-17 19:20:57  ph3-der-loewe
 
 	* subset of earlier patch so it can go into 2.4.1: disconnects
-	stdio of <on-[dis]connect> scripts from random filehandles.
+	stdio of <on-[dis]connect> scripts from server owned filehandles.
 	* This is considered a security fix: if on-connect/on-disconnect
 	scripts are used, file descriptors of the server process remain open
 	and could be written to or read from. Most pressing STDIN, STDOUT,
@@ -9,7 +41,7 @@
 	There is a remaining (much lower) risk in combination of either a
 	malicious or susceptible script and FDs above 1024.
 
-2014-11-10 10:46:55 ph3-der-loewe
+2014-11-10 10:46:55  ph3-der-loewe
 
 	* patch to fix regression on header size with large headers introduced
 	by support of <server-id> and <http-headers>. This should ensure we
