@@ -125,6 +125,7 @@ typedef struct _aliases {
     char *destination;
     int port;
     char *bind_address;
+    char *vhost;
     struct _aliases *next;
 } aliases;
 

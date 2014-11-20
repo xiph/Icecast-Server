@@ -1142,6 +1142,9 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     ice_config_t *config;
     char *uri = passed_uri;
     listener_t *listen_sock;
+    const char *http_host = httpp_getvar(client->parser, "host");
+    char *vhost;
+    char *vhost_colon;
 
     config = config_get_config();
 
@@ -1164,14 +1167,27 @@ static void _handle_get_request (client_t *client, char *passed_uri)
     /* TODO: add GUID-xxxxxx */
 
     /* Handle aliases */
-    while(alias) {
-        if(strcmp(uri, alias->source) == 0 && (alias->port == -1 || alias->port == serverport) && (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0))) {
+    if (http_host) {
+        vhost = strdup(http_host);
+        if (vhost) {
+            vhost_colon = strstr(vhost, ":");
+            if (vhost_colon)
+                *vhost_colon = 0;
+        }
+    }
+    while (alias) {
+        if(strcmp(uri, alias->source) == 0 &&
+           (alias->port == -1 || alias->port == serverport) &&
+           (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
+           (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
             uri = strdup (alias->destination);
             ICECAST_LOG_DEBUG("alias has made %s into %s", passed_uri, uri);
             break;
         }
         alias = alias->next;
     }
+    if (vhost)
+        free(vhost);
     config_release_config();
 
     stats_event_inc(NULL, "client_connections");

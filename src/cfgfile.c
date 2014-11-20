@@ -300,6 +300,7 @@ void config_clear(ice_config_t *c)
         xmlFree(alias->source);
         xmlFree(alias->destination);
         xmlFree(alias->bind_address);
+        xmlFree(alias->vhost);
         free(alias);
         alias = nextalias;
     }
@@ -1199,6 +1200,7 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             else
                 alias->port = -1;
             alias->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
+            alias->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
             current = configuration->aliases;
             last = NULL;
             while(current) {
