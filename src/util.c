@@ -487,6 +487,47 @@ char *util_base64_decode(const char *data)
     return result;
 }
 
+util_hostcheck_type util_hostcheck(const char *hostname) {
+    const char * p;
+    size_t colon_count;
+
+    if (!hostname)
+        return HOSTCHECK_ERROR;
+
+    if (strcmp(hostname, "localhost") == 0 ||
+        strcmp(hostname, "localhost.localdomain") == 0 ||
+        strcmp(hostname, "localhost.localnet") == 0)
+        return HOSTCHECK_IS_LOCALHOST;
+
+    for (p = hostname; *p; p++)
+        if (!( (*p >= '0' && *p <= '9') || *p == '.'))
+            break;
+    if (!*p)
+        return HOSTCHECK_IS_IPV4;
+
+    for (p = hostname, colon_count = 0; *p; p++) {
+        if (*p == ':') {
+            colon_count++;
+            continue;
+        }
+        if (!((*p >= 'a' && *p <= 'f') || (*p >= '0' && *p <= '9') || *p == ':'))
+            break;
+    }
+    if (!*p && colon_count)
+        return HOSTCHECK_IS_IPV6;
+
+    for (p = hostname; *p; p++)
+        if (!( (*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') || *p == '.' || *p == '-' ))
+            return HOSTCHECK_BADCHAR;
+
+    for (p = hostname, colon_count = 0; *p && *p != '.'; p++);
+    if (!*p)
+        return HOSTCHECK_NOT_FQDN;
+
+    return HOSTCHECK_SANE;
+}
+
+
 /* TODO, FIXME: handle memory allocation errors better. */
 static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
     size_t headerlen;
