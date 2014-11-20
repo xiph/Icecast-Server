@@ -68,9 +68,11 @@
 #define COMMAND_RAW_STATS                   102
 #define COMMAND_RAW_LISTSTREAM              103
 #define COMMAND_PLAINTEXT_LISTSTREAM        104
+#define COMMAND_RAW_QUEUE_RELOAD            105
 #define COMMAND_TRANSFORMED_LIST_MOUNTS     201
 #define COMMAND_TRANSFORMED_STATS           202
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
+#define COMMAND_TRANSFORMED_QUEUE_RELOAD    205
 
 /* Client management commands */
 #define COMMAND_RAW_KILL_CLIENT             301
@@ -90,6 +92,8 @@
 #define LISTCLIENTS_TRANSFORMED_REQUEST "listclients.xsl"
 #define STATS_RAW_REQUEST "stats"
 #define STATS_TRANSFORMED_REQUEST "stats.xsl"
+#define QUEUE_RELOAD_RAW_REQUEST "reloadconfig"
+#define QUEUE_RELOAD_TRANSFORMED_REQUEST "reloadconfig.xsl"
 #define LISTMOUNTS_RAW_REQUEST "listmounts"
 #define LISTMOUNTS_TRANSFORMED_REQUEST "listmounts.xsl"
 #define STREAMLIST_RAW_REQUEST "streamlist"
@@ -132,6 +136,10 @@ int admin_get_command(const char *command)
         return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, "stats.xml")) /* The old way */
         return COMMAND_RAW_STATS;
+    else if(!strcmp(command, QUEUE_RELOAD_RAW_REQUEST))
+        return COMMAND_RAW_QUEUE_RELOAD;
+    else if(!strcmp(command, QUEUE_RELOAD_TRANSFORMED_REQUEST))
+        return COMMAND_TRANSFORMED_QUEUE_RELOAD;
     else if(!strcmp(command, LISTMOUNTS_RAW_REQUEST))
         return COMMAND_RAW_LIST_MOUNTS;
     else if(!strcmp(command, LISTMOUNTS_TRANSFORMED_REQUEST))
@@ -178,6 +186,7 @@ static void command_show_listeners(client_t *client, source_t *source,
 static void command_move_clients(client_t *client, source_t *source,
         int response);
 static void command_stats(client_t *client, const char *mount, int response);
+static void command_queue_reload(client_t *client, int response);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
@@ -495,6 +504,9 @@ static void admin_handle_general_request(client_t *client, int command)
         case COMMAND_RAW_STATS:
             command_stats(client, NULL, RAW);
             break;
+        case COMMAND_RAW_QUEUE_RELOAD:
+            command_queue_reload(client, RAW);
+            break;
         case COMMAND_RAW_LIST_MOUNTS:
             command_list_mounts(client, RAW);
             break;
@@ -506,6 +518,9 @@ static void admin_handle_general_request(client_t *client, int command)
             break;
         case COMMAND_TRANSFORMED_STATS:
             command_stats(client, NULL, TRANSFORMED);
+            break;
+        case COMMAND_TRANSFORMED_QUEUE_RELOAD:
+            command_queue_reload(client, TRANSFORMED);
             break;
         case COMMAND_TRANSFORMED_LIST_MOUNTS:
             command_list_mounts(client, TRANSFORMED);
@@ -1072,6 +1087,25 @@ static void command_stats(client_t *client, const char *mount, int response) {
     xmlFreeDoc(doc);
     return;
 }
+
+static void command_queue_reload(client_t *client, int response) {
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    global_lock();
+    global.schedule_config_reread = 1;
+    global_unlock();
+
+    doc = xmlNewDoc (XMLSTR("1.0"));
+    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Config reload queued"));
+    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlDocSetRootElement(doc, node);
+
+    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+}       
+
 
 static void command_list_mounts(client_t *client, int response)
 {
