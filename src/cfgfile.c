@@ -914,7 +914,7 @@ static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
-        if (xmlStrcmp (node->name, XMLSTR("header")) != 0) break;
+        if (xmlStrcmp (node->name, XMLSTR("header")) != 0) continue;
         if (!(name = (char *)xmlGetProp(node, XMLSTR("name")))) break;
         if (!(value = (char *)xmlGetProp(node, XMLSTR("value")))) break;
 
