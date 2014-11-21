@@ -47,6 +47,8 @@
 #undef CATMODULE
 #define CATMODULE "client"
 
+static inline void client_send_500(client_t *client, const char *message);
+
 /* create a client_t with the provided connection and parser details. Return
  * 0 on success, -1 if server limit has been reached.  In either case a
  * client_t is returned just in case a message needs to be returned. Should
@@ -183,9 +185,14 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static void client_send_error(client_t *client, int status, int plain, const char *message)
+void client_send_error(client_t *client, int status, int plain, const char *message)
 {
     ssize_t ret;
+
+    if (status == 500) {
+         client_send_500(client, message);
+         return;
+    }
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
@@ -214,28 +221,8 @@ void client_send_100(client_t *client)
     sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
 }
 
-void client_send_400(client_t *client, const char *message)
-{
-    client_send_error(client, 400, 0, message);
-}
-
-void client_send_404(client_t *client, const char *message)
-{
-    client_send_error(client, 404, 0, message);
-}
-
-void client_send_401(client_t *client)
-{
-    client_send_error(client, 401, 1, "You need to authenticate\r\n");
-}
-
-void client_send_403(client_t *client, const char *message)
-{
-    client_send_error(client, 403, 1, message);
-}
-
 /* this function is designed to work even if client is in bad state */
-void client_send_500(client_t *client, const char *message) {
+static inline void client_send_500(client_t *client, const char *message) {
     const char header[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
                           "500 - Internal Server Error\n---------------------------\n";
     const size_t header_len = sizeof(header) - 1;

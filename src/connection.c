@@ -732,7 +732,7 @@ void connection_accept_loop (void)
             if (client_create (&client, con, NULL) < 0)
             {
                 global_unlock();
-                client_send_403 (client, "Icecast connection limit reached");
+                client_send_error(client, 403, 1, "Icecast connection limit reached");
                 /* don't be too eager as this is an imposed hard limit */
                 thread_sleep (400000);
                 continue;
@@ -823,7 +823,7 @@ int connection_complete_source (source_t *source, int response)
                 config_release_config();
                 global_unlock();
                 if (response) {
-                    client_send_403 (source->client, "Content-type not supported");
+                    client_send_error(source->client, 403, 1, "Content-type not supported");
                     source->client = NULL;
                 }
                 ICECAST_LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
@@ -833,7 +833,7 @@ int connection_complete_source (source_t *source, int response)
             config_release_config();
             global_unlock();
             if (response) {
-                client_send_403 (source->client, "No Content-type given");
+                client_send_error(source->client, 403, 1, "No Content-type given");
                 source->client = NULL;
             }
             ICECAST_LOG_ERROR("Content-type not given in PUT request, dropping source");
@@ -851,7 +851,7 @@ int connection_complete_source (source_t *source, int response)
             config_release_config();
             if (response)
             {
-                client_send_403 (source->client, "internal format allocation problem");
+                client_send_error(source->client, 403, 1, "internal format allocation problem");
                 source->client = NULL;
             }
             ICECAST_LOG_WARN("plugin format failed for \"%s\"", source->mount);
@@ -896,7 +896,7 @@ int connection_complete_source (source_t *source, int response)
 
     if (response)
     {
-        client_send_403 (source->client, "too many sources connected");
+        client_send_error(source->client, 403, 1, "too many sources connected");
         source->client = NULL;
     }
 
@@ -1053,7 +1053,7 @@ static void _handle_source_request (client_t *client, const char *uri)
     if (uri[0] != '/')
     {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
-        client_send_401 (client);
+        client_send_error(client, 401, 1, "You need to authenticate\r\n");
         return;
     }
     switch (client_check_source_auth (client, uri))
@@ -1067,7 +1067,7 @@ static void _handle_source_request (client_t *client, const char *uri)
 
         default: /* failed */
             ICECAST_LOG_INFO("Source (%s) attempted to login with invalid or missing password", uri);
-            client_send_401(client);
+            client_send_error(client, 401, 1, "You need to authenticate\r\n");
             break;
     }
 }
@@ -1110,7 +1110,7 @@ void source_startup (client_t *client, const char *uri, int auth_style)
     }
     else
     {
-        client_send_403 (client, "Mountpoint in use");
+        client_send_error(client, 403, 1, "Mountpoint in use");
         ICECAST_LOG_WARN("Mountpoint %s in use", uri);
     }
 }
@@ -1122,7 +1122,7 @@ static void _handle_stats_request (client_t *client, char *uri)
 
     if (connection_check_admin_pass (client->parser) == 0)
     {
-        client_send_401 (client);
+        client_send_error(client, 401, 1, "You need to authenticate\r\n");
         ICECAST_LOG_ERROR("Bad password for stats connection");
         return;
     }
@@ -1397,7 +1397,7 @@ static void _handle_connection(void)
                 }
                 else {
                     ICECAST_LOG_ERROR("Wrong request type from client");
-                    client_send_400 (client, "unknown request");
+                    client_send_error(client, 400, 0, "unknown request");
                 }
 
                 free(uri);

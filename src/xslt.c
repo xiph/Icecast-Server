@@ -203,7 +203,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     {
         thread_mutex_unlock(&xsltlock);
         ICECAST_LOG_ERROR("problem reading stylesheet \"%s\"", xslfilename);
-        client_send_404 (client, "Could not parse XSLT file");
+        client_send_error(client, 404, 0, "Could not parse XSLT file");
         return;
     }
 
@@ -244,7 +244,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
         if (ret == -1) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_500(client, "Header generation failed.");
+            client_send_error(client, 500, 0, "Header generation failed.");
         } else {
             if ( full_len < (ret + len + 64) ) {
                 void *new_data;
@@ -257,12 +257,12 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
                     ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
                     if (ret == -1) {
                         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                        client_send_500(client, "Header generation failed.");
+                        client_send_error(client, 500, 0, "Header generation failed.");
                         failed = 1;
                     }
                 } else {
                     ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                    client_send_500(client, "Buffer reallocation failed.");
+                    client_send_error(client, 500, 0, "Buffer reallocation failed.");
                     failed = 1;
                 }
             }
@@ -282,7 +282,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     else
     {
         ICECAST_LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
-        client_send_404 (client, "XSLT problem");
+        client_send_error(client, 404, 0, "XSLT problem");
     }
     thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);

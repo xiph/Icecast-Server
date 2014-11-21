@@ -167,7 +167,7 @@ static void auth_client_free (auth_client *auth_user)
         if (client->respcode)
             client_destroy (client);
         else
-            client_send_401 (client);
+            client_send_error(client, 401, 1, "You need to authenticate\r\n");
         auth_user->client = NULL;
     }
     free (auth_user->mount);
@@ -492,7 +492,7 @@ int auth_postprocess_listener (auth_client *auth_user)
     config_release_config();
 
     if (ret < 0)
-        client_send_401 (auth_user->client);
+        client_send_error(auth_user->client, 401, 1, "You need to authenticate\r\n");
     auth_user->client = NULL;
 
     return ret;
@@ -535,7 +535,7 @@ void auth_add_listener (const char *mount, client_t *client)
     if (mountinfo && mountinfo->no_mount)
     {
         config_release_config ();
-        client_send_403 (client, "mountpoint unavailable");
+        client_send_error(client, 403, 1, "mountpoint unavailable");
         return;
     }
     if (mountinfo && mountinfo->auth)
@@ -546,7 +546,7 @@ void auth_add_listener (const char *mount, client_t *client)
         {
             config_release_config ();
             ICECAST_LOG_WARN("too many clients awaiting authentication");
-            client_send_403 (client, "busy, please try again later");
+            client_send_error(client, 403, 1, "busy, please try again later");
             return;
         }
         auth_user = auth_client_setup (mount, client);
@@ -560,7 +560,7 @@ void auth_add_listener (const char *mount, client_t *client)
         int ret = add_authenticated_listener (mount, mountinfo, client);
         config_release_config ();
         if (ret < 0)
-            client_send_403 (client, "max listeners reached");
+            client_send_error(client, 403, 1, "max listeners reached");
     }
 }
 
