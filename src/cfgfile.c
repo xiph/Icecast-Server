@@ -128,6 +128,33 @@ void config_init_configuration(ice_config_t *configuration)
     _set_defaults(configuration);
 }
 
+static inline int __parse_public(const char *str) {
+    /* values that are not bool */
+    if (strcasecmp(str, "client") == 0)
+        return -1;
+
+    /* old way of doing so */
+    if (strcmp(str, "-1") == 0)
+        return -1;
+
+    /* ok, only normal bool left! */
+    return util_str_to_bool(str);
+}
+
+static inline int __parse_loglevel(const char *str) {
+    if (strcasecmp(str, "debug") == 0 || strcasecmp(str, "DBUG") == 0)
+        return 4;
+    if (strcasecmp(str, "information") == 0 || strcasecmp(str, "INFO") == 0)
+        return 3;
+    if (strcasecmp(str, "warning") == 0 || strcasecmp(str, "WARN") == 0)
+        return 2;
+    if (strcasecmp(str, "error") == 0 || strcasecmp(str, "EROR") == 0)
+        return 1;
+
+    /* gussing it is old-style numerical setting */
+    return atoi(str);
+}
+
 static void config_clear_http_header(ice_config_http_header_t *header) {
  ice_config_http_header_t *old;
 
@@ -524,15 +551,15 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("icelogin")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->ice_login = atoi(tmp);
+            configuration->ice_login = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("fileserve")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->fileserve = atoi(tmp);
+            configuration->fileserve = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("relays-on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->on_demand = atoi(tmp);
+            configuration->on_demand = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("hostname")) == 0) {
             if (configuration->hostname) xmlFree(configuration->hostname);
@@ -734,7 +761,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("fallback-when-full")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_when_full = atoi(tmp);
+            mount->fallback_when_full = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("max-listeners")) == 0) {
@@ -753,23 +780,23 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_override = atoi(tmp);
+            mount->fallback_override = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("no-mount")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->no_mount = atoi(tmp);
+            mount->no_mount = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("no-yp")) == 0) {
             ICECAST_LOG_WARN("<no-yp> defined. Please use <public>. This is deprecated and will be removed in version 2.5.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->yp_public = atoi(tmp) == 0 ? -1 : 0;
+            mount->yp_public = util_str_to_bool(tmp) == 0 ? -1 : 0;
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("hidden")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->hidden = atoi(tmp);
+            mount->hidden = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("authentication")) == 0) {
@@ -824,7 +851,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                     doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("public")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->yp_public = atoi (tmp);
+            mount->yp_public = __parse_public(tmp);
             if(tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("type")) == 0) {
             mount->type = (char *)xmlNodeListGetString(
@@ -980,7 +1007,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->mp3metadata = atoi(tmp);
+            relay->mp3metadata = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("username")) == 0) {
@@ -995,7 +1022,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->on_demand = atoi(tmp);
+            relay->on_demand = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("bind")) == 0) {
@@ -1034,12 +1061,12 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->ssl = atoi(tmp);
+            listener->ssl = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("shoutcast-compat")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->shoutcast_compat = atoi(tmp);
+            listener->shoutcast_compat = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("shoutcast-mount")) == 0) {
@@ -1285,7 +1312,7 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           configuration->loglevel = atoi(tmp);
+           configuration->loglevel = __parse_loglevel(tmp);
            if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("logarchive")) == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1307,7 +1334,7 @@ static void _parse_security(xmlDocPtr doc, xmlNodePtr node,
 
        if (xmlStrcmp (node->name, XMLSTR("chroot")) == 0) {
            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           configuration->chroot = atoi(tmp);
+           configuration->chroot = util_str_to_bool(tmp);
            if (tmp) xmlFree(tmp);
        } else if (xmlStrcmp (node->name, XMLSTR("changeowner")) == 0) {
            configuration->chuid = 1;

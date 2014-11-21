@@ -45,6 +45,8 @@ typedef enum _util_hostcheck_tag {
 
 util_hostcheck_type util_hostcheck(const char *hostname);
 
+int util_str_to_bool(const char *str);
+
 char *util_url_unescape(const char *src);
 char *util_url_escape(const char *src);
 
