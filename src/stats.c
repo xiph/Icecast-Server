@@ -35,6 +35,7 @@
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
+#include "admin.h"
 #include "stats.h"
 #include "xslt.h"
 #include "util.h"
@@ -988,12 +989,20 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
+    source_t * source;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
 
     node = _dump_stats_to_doc (node, show_mount, show_hidden);
+
+    if (show_mount && node) {
+        avl_tree_rlock(global.source_tree);
+        source = source_find_mount_raw(show_mount);
+        admin_add_listeners_to_mount(source, node);
+        avl_tree_unlock(global.source_tree);
+    }
 
     return doc;
 }

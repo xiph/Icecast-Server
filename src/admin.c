@@ -704,16 +704,65 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlFreeDoc(doc);
 }
 
+static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, time_t now) {
+    const char *tmp;
+    xmlNodePtr node;
+    char buf[22];
+
+#if 0
+    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
+
+    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
+
+#endif
+
+    node = xmlNewChild(parent, NULL, XMLSTR("listener"), NULL);
+    if (!node)
+        return NULL;
+
+    memset(buf, '\000', sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%lu", client->con->id);
+    xmlNewChild(node, NULL, XMLSTR("ID"), XMLSTR(buf));
+
+    xmlNewChild(node, NULL, XMLSTR("IP"), XMLSTR(client->con->ip));
+
+    tmp = httpp_getvar(client->parser, "user-agent");
+    if (tmp)
+        xmlNewChild(node, NULL, XMLSTR("UserAgent"), XMLSTR(tmp));
+
+    tmp = httpp_getvar(client->parser, "referer");
+    if (tmp)
+        xmlNewChild(node, NULL, XMLSTR("Referer"), XMLSTR(tmp));
+
+    memset(buf, '\000', sizeof(buf));
+    snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
+    xmlNewChild(node, NULL, XMLSTR("Connected"), XMLSTR(buf));
+
+    if (client->username)
+        xmlNewChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
+
+    return node;
+}
+
+void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent) {
+    time_t now = time(NULL);
+    avl_node *client_node;
+
+    avl_tree_rlock(source->client_tree);
+    client_node = avl_get_first(source->client_tree);
+    while(client_node) {
+        __add_listener((client_t *)client_node->key, parent, now);
+        client_node = avl_get_next(client_node);
+    }
+    avl_tree_unlock(source->client_tree);
+}
+
 static void command_show_listeners(client_t *client, source_t *source,
     int response)
 {
     xmlDocPtr doc;
-    xmlNodePtr node, srcnode, listenernode;
-    avl_node *client_node;
-    client_t *current;
+    xmlNodePtr node, srcnode;
     char buf[22];
-    const char *userAgent = NULL;
-    time_t now = time(NULL);
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
@@ -725,33 +774,8 @@ static void command_show_listeners(client_t *client, source_t *source,
     snprintf (buf, sizeof(buf), "%lu", source->listeners);
     xmlNewChild(srcnode, NULL, XMLSTR("Listeners"), XMLSTR(buf));
 
-    avl_tree_rlock(source->client_tree);
+    admin_add_listeners_to_mount(source, srcnode);
 
-    client_node = avl_get_first(source->client_tree);
-    while(client_node) {
-        current = (client_t *)client_node->key;
-        listenernode = xmlNewChild(srcnode, NULL, XMLSTR("listener"), NULL);
-        xmlNewChild(listenernode, NULL, XMLSTR("IP"), XMLSTR(current->con->ip));
-        userAgent = httpp_getvar(current->parser, "user-agent");
-        if (userAgent) {
-            xmlNewChild(listenernode, NULL, XMLSTR("UserAgent"), XMLSTR(userAgent));
-        }
-        else {
-            xmlNewChild(listenernode, NULL, XMLSTR("UserAgent"), XMLSTR("Unknown"));
-        }
-        memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - current->con->con_time));
-        xmlNewChild(listenernode, NULL, XMLSTR("Connected"), XMLSTR(buf));
-        memset(buf, '\000', sizeof(buf));
-        snprintf(buf, sizeof(buf)-1, "%lu", current->con->id);
-        xmlNewChild(listenernode, NULL, XMLSTR("ID"), XMLSTR(buf));
-        if (current->username) {
-            xmlNewChild(listenernode, NULL, XMLSTR("username"), XMLSTR(current->username));
-        }
-        client_node = avl_get_next(client_node);
-    }
-
-    avl_tree_unlock(source->client_tree);
     admin_send_response(doc, client, response, 
         LISTCLIENTS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
