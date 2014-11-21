@@ -527,6 +527,24 @@ util_hostcheck_type util_hostcheck(const char *hostname) {
     return HOSTCHECK_SANE;
 }
 
+int util_str_to_bool(const char *str) {
+    /* consider NULL and empty strings false */
+    if (!str || !*str)
+        return 0;
+
+    /* common words for true values */
+    if (strcasecmp(str, "true") == 0 ||
+        strcasecmp(str, "yes")  == 0 ||
+        strcasecmp(str, "on")   == 0 )
+        return 1;
+
+    /* old style numbers: consider everyting non-zero true */
+    if (atoi(str))
+        return 1;
+
+    /* we default to no */
+    return 0;
+}
 
 /* TODO, FIXME: handle memory allocation errors better. */
 static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
