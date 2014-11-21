@@ -75,9 +75,9 @@ static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
 #ifdef _WIN32
-#define source_run_script(x,y)  ICECAST_LOG_WARN("on [dis]connect scripts disabled");
+#define source_run_script(w,x,y,z)  ICECAST_LOG_WARN("on [dis]connect scripts disabled");
 #else
-static void source_run_script (char *command, char *mountpoint);
+static void source_run_script (const char *command, source_t *source, mount_proxy *mountinfo, const char *action);
 #endif
 
 /* Allocate a new source with the stated mountpoint, if one already
@@ -676,7 +676,7 @@ static void source_init (source_t *source)
     if (mountinfo)
     {
         if (mountinfo->on_connect)
-            source_run_script (mountinfo->on_connect, source->mount);
+            source_run_script (mountinfo->on_connect, source, mountinfo, "source-connect");
         auth_stream_start (mountinfo, source->mount);
     }
     config_release_config();
@@ -884,7 +884,7 @@ static void source_shutdown (source_t *source)
     if (mountinfo)
     {
         if (mountinfo->on_disconnect)
-            source_run_script (mountinfo->on_disconnect, source->mount);
+            source_run_script (mountinfo->on_disconnect, source, mountinfo, "source-disconnect");
         auth_stream_end (mountinfo, source->mount);
     }
     config_release_config();
@@ -1323,7 +1323,15 @@ void source_client_callback (client_t *client, void *arg)
 /* this sets up the new environment for script execution.
  * We ignore most failtures as we can not handle them anyway.
  */
-static inline void __setup_empty_script_environment(void) {
+#ifdef HAVE_SETENV
+static inline void __update_environ(const char *name, const char *value) {
+    if (!name || !value) return;
+    setenv(name, value, 1);
+}
+#else
+#define __update_environ(x,y)
+#endif
+static inline void __setup_empty_script_environment(ice_config_t * config, source_t *source, mount_proxy *mountinfo, const char *action) {
     int i;
 
     /* close at least the first 1024 handles */
@@ -1331,7 +1339,7 @@ static inline void __setup_empty_script_environment(void) {
         close(i);
 
     /* open null device */
-    i = open("/dev/null", O_RDWR);
+    i = open(config->null_device, O_RDWR);
     if (i != -1) {
         /* attach null device to stdin, stdout and stderr */
         if (i != 0)
@@ -1345,11 +1353,25 @@ static inline void __setup_empty_script_environment(void) {
         if (i > 2)
             close(i);
     }
+
+    __update_environ("ICECAST_VERSION",   ICECAST_VERSION_STRING);
+    __update_environ("ICECAST_HOSTNAME",  config->hostname);
+    __update_environ("ICECAST_ADMIN",     config->admin);
+    __update_environ("ICECAST_LOGDIR",    config->log_dir);
+    __update_environ("SOURCE_ACTION",     action);
+    __update_environ("SOURCE_MOUNTPOINT", source->mount);
+    __update_environ("SOURCE_PUBLIC",     source->yp_public ? "true" : "false");
+    __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false");
+    __update_environ("MOUNT_NAME",        mountinfo->stream_name);
+    __update_environ("MOUNT_DESCRIPTION", mountinfo->stream_description);
+    __update_environ("MOUNT_URL",         mountinfo->stream_url);
+    __update_environ("MOUNT_GENRE",       mountinfo->stream_genre);
 }
 
-static void source_run_script (char *command, char *mountpoint)
-{
+static void source_run_script (const char *command, source_t *source, mount_proxy *mountinfo, const char *action) {
+    const char *mountpoint = source->mount;
     pid_t pid, external_pid;
+    ice_config_t * config;
 
     /* do a fork twice so that the command has init as parent */
     external_pid = fork();
@@ -1367,7 +1389,9 @@ static void source_run_script (char *command, char *mountpoint)
                         exit(1);
                     }
                     ICECAST_LOG_DEBUG("Starting command %s", command);
-                    __setup_empty_script_environment();
+                    config = config_get_config();
+                    __setup_empty_script_environment(config, source, mountinfo, action);
+                    config_release_config();
                     /* consider to add action here as well */
                     execl(command, command, mountpoint, (char *)NULL);
                     exit(1);

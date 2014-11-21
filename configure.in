@@ -41,6 +41,7 @@ AC_CHECK_FUNCS([chown])
 AC_CHECK_FUNCS([strcasestr])
 AC_CHECK_FUNCS([gethostname])
 AC_CHECK_FUNCS([uname])
+AC_CHECK_FUNCS([setenv])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 XIPH_C__FUNC__
