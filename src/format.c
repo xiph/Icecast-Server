@@ -302,7 +302,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source);
     if (bytes == -1) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_500(client, "Header generation failed.");
+        client_send_error(client, 500, 0, "Header generation failed.");
         return -1;
     } else if ((bytes + 1024) >= remaining) { /* we don't know yet how much to follow but want at least 1kB free space */
         void *new_ptr = realloc(ptr, bytes + 1024);
@@ -313,12 +313,12 @@ static int format_prepare_headers (source_t *source, client_t *client)
             bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source);
             if (bytes == -1 ) {
                 ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                client_send_500(client, "Header generation failed.");
+                client_send_error(client, 500, 0, "Header generation failed.");
                 return -1;
             }
         } else {
             ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-            client_send_500(client, "Buffer reallocation failed.");
+            client_send_error(client, 500, 0, "Buffer reallocation failed.");
             return -1;
         }
     }

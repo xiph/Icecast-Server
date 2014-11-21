@@ -947,7 +947,7 @@ static int _free_client(void *key)
 
     /* if no response has been sent then send a 404 */
     if (client->respcode == 0)
-        client_send_404 (client, "Mount unavailable");
+        client_send_error(client, 404, 0, "Mount unavailable");
     else
         client_destroy(client);
     

@@ -295,7 +295,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 				     NULL, NULL);
         if (ret == -1) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_500(client, "Header generation failed.");
+            client_send_error(client, 500, 0, "Header generation failed.");
             xmlFree(buff);
             return;
         } else if (buf_len < (len + ret + 64)) {
@@ -312,13 +312,13 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
                                              NULL, NULL);
                 if (ret == -1) {
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                    client_send_500(client, "Header generation failed.");
+                    client_send_error(client, 500, 0, "Header generation failed.");
                     xmlFree(buff);
                     return;
                 }
             } else {
                 ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                client_send_500(client, "Buffer reallocation failed.");
+                client_send_error(client, 500, 0, "Buffer reallocation failed.");
                 xmlFree(buff);
                 return;
             } 
@@ -361,7 +361,7 @@ void admin_handle_request(client_t *client, const char *uri)
     if (!((strcmp(uri, "/admin.cgi") == 0) ||
          (strncmp("/admin/", uri, 7) == 0))) {
         ICECAST_LOG_ERROR("Internal error: admin request isn't");
-        client_send_401(client);
+        client_send_error(client, 401, 1, "You need to authenticate\r\n");
         return;
     }
 
@@ -378,7 +378,7 @@ void admin_handle_request(client_t *client, const char *uri)
     if(command < 0) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %s",
                 command_string);
-        client_send_400(client, "Unrecognised command");
+        client_send_error(client, 400, 0, "Unrecognised command");
         return;
     }
 
@@ -391,7 +391,7 @@ void admin_handle_request(client_t *client, const char *uri)
 
         if (pass == NULL)
         {
-            client_send_400 (client, "missing pass parameter");
+            client_send_error(client, 400, 0, "missing pass parameter");
             return;
         }
         global_lock();
@@ -430,7 +430,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 default:
                     ICECAST_LOG_INFO("Bad or missing password on mount modification admin "
                             "request (command: %s)", command_string);
-                    client_send_401(client);
+                    client_send_error(client, 401, 1, "You need to authenticate\r\n");
                     /* fall through */
                 case 1:
                     return;
@@ -445,7 +445,7 @@ void admin_handle_request(client_t *client, const char *uri)
             ICECAST_LOG_WARN("Admin command %s on non-existent source %s", 
                     command_string, mount);
             avl_tree_unlock(global.source_tree);
-            client_send_400(client, "Source does not exist");
+            client_send_error(client, 400, 0, "Source does not exist");
         }
         else
         {
@@ -454,7 +454,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 avl_tree_unlock (global.source_tree);
                 ICECAST_LOG_INFO("Received admin command %s on unavailable mount \"%s\"",
                         command_string, mount);
-                client_send_400 (client, "Source is not available");
+                client_send_error(client, 400, 0, "Source is not available");
                 return;
             }
             if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
@@ -463,7 +463,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 avl_tree_unlock (global.source_tree);
                 ICECAST_LOG_ERROR("illegal change of metadata on non-shoutcast "
                         "compatible stream");
-                client_send_400 (client, "illegal metadata call");
+                client_send_error(client, 400, 0, "illegal metadata call");
                 return;
             }
             ICECAST_LOG_INFO("Received admin command %s on mount \"%s\"", 
@@ -481,7 +481,7 @@ void admin_handle_request(client_t *client, const char *uri)
             if(!connection_check_relay_pass(client->parser)) {
                 ICECAST_LOG_INFO("Bad or missing password on admin command "
                       "request (command: %s)", command_string);
-                client_send_401(client);
+                client_send_error(client, 401, 1, "You need to authenticate\r\n");
                 return;
             }
         }
@@ -489,7 +489,7 @@ void admin_handle_request(client_t *client, const char *uri)
             if(!connection_check_admin_pass(client->parser)) {
                 ICECAST_LOG_INFO("Bad or missing password on admin command "
                       "request (command: %s)", command_string);
-                client_send_401(client);
+                client_send_error(client, 401, 1, "You need to authenticate\r\n");
                 return;
             }
         }
@@ -533,7 +533,7 @@ static void admin_handle_general_request(client_t *client, int command)
             break;
         default:
             ICECAST_LOG_WARN("General admin request not recognised");
-            client_send_400(client, "Unknown admin request");
+            client_send_error(client, 400, 0, "Unknown admin request");
             return;
     }
 }
@@ -601,7 +601,7 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
             break;
         default:
             ICECAST_LOG_WARN("Mount request not recognised");
-            client_send_400(client, "Mount request unknown");
+            client_send_error(client, 400, 0, "Mount request unknown");
             break;
     }
 }
@@ -610,7 +610,7 @@ static void admin_handle_mount_request(client_t *client, source_t *source,
     do { \
         (var) = httpp_get_query_param((client)->parser, (name)); \
         if((var) == NULL) { \
-            client_send_400((client), "Missing parameter"); \
+            client_send_error((client), 400, 0, "Missing parameter"); \
             return; \
         } \
     } while(0);
@@ -628,7 +628,7 @@ static void html_success(client_t *client, char *message)
 
     if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_500(client, "Header generation failed.");
+        client_send_error(client, 500, 0, "Header generation failed.");
         return;
     }
 
@@ -669,19 +669,19 @@ static void command_move_clients(client_t *client, source_t *source,
 
     if (dest == NULL)
     {
-        client_send_400 (client, "No such destination");
+        client_send_error(client, 400, 0, "No such destination");
         return;
     }
 
     if (strcmp (dest->mount, source->mount) == 0)
     {
-        client_send_400 (client, "supplied mountpoints are identical");
+        client_send_error(client, 400, 0, "supplied mountpoints are identical");
         return;
     }
 
     if (dest->running == 0 && dest->on_demand == 0)
     {
-        client_send_400 (client, "Destination not running");
+        client_send_error(client, 400, 0, "Destination not running");
         return;
     }
 
@@ -798,7 +798,7 @@ static void command_buildm3u(client_t *client,  const char *mount)
 
     if (ret == -1 || ret >= (PER_CLIENT_REFBUF_SIZE - 512)) { /* we want at least 512 Byte left for data */
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_500(client, "Header generation failed.");
+        client_send_error(client, 500, 0, "Header generation failed.");
         return;
     }
 
@@ -908,7 +908,7 @@ static void command_manageauth(client_t *client, source_t *source,
     } while (0);
 
     config_release_config ();
-    client_send_400 (client, "missing parameter");
+    client_send_error(client, 400, 0, "missing parameter");
 }
 
 static void command_kill_source(client_t *client, source_t *source,
@@ -1079,7 +1079,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
     if (strcmp (action, "updinfo") != 0)
     {
-        client_send_400 (client, "No such action");
+        client_send_error(client, 400, 0, "No such action");
         return;
     }
     if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
@@ -1097,7 +1097,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     }
     else
     {
-        client_send_400 (client, "mountpoint will not accept URL updates");
+        client_send_error(client, 400, 0, "mountpoint will not accept URL updates");
     }
 }
 
@@ -1144,7 +1144,7 @@ static void command_list_mounts(client_t *client, int response)
 
         if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_500(client, "Header generation failed.");
+            client_send_error(client, 500, 0, "Header generation failed.");
             return;
         }
 

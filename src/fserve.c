@@ -432,7 +432,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         if (m3u_requested == 0 && xslt_playlist_requested == NULL)
         {
             ICECAST_LOG_WARN("req for file \"%H\" %s", fullpath, strerror (errno));
-            client_send_404 (httpclient, "The file you requested could not be found");
+            client_send_error(httpclient, 404, 0, "The file you requested could not be found");
             free (fullpath);
             return -1;
         }
@@ -461,7 +461,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 				      "audio/x-mpegurl", NULL, "", NULL);
         if (ret == -1 || ret >= (BUFSIZE - 512)) { /* we want at least 512 bytes left for the content of the playlist */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_500(httpclient, "Header generation failed.");
+            client_send_error(httpclient, 500, 0, "Header generation failed.");
             return -1;
         }
         if (host == NULL)
@@ -507,7 +507,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (config->fileserve == 0)
     {
         ICECAST_LOG_DEBUG("on demand file \"%H\" refused. Serving static files has been disabled in the config", fullpath);
-        client_send_404 (httpclient, "The file you requested could not be found");
+        client_send_error(httpclient, 404, 0, "The file you requested could not be found");
         config_release_config();
         free (fullpath);
         return -1;
@@ -516,7 +516,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (S_ISREG (file_buf.st_mode) == 0)
     {
-        client_send_404 (httpclient, "The file you requested could not be found");
+        client_send_error(httpclient, 404, 0, "The file you requested could not be found");
         ICECAST_LOG_WARN("found requested file but there is no handler for it: %H", fullpath);
         free (fullpath);
         return -1;
@@ -526,7 +526,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (file == NULL)
     {
         ICECAST_LOG_WARN("Problem accessing file \"%H\"", fullpath);
-        client_send_404 (httpclient, "File not readable");
+        client_send_error(httpclient, 404, 0, "File not readable");
         free (fullpath);
         return -1;
     }
@@ -575,7 +575,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 						NULL, NULL);
                 if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                    client_send_500(httpclient, "Header generation failed.");
+                    client_send_error(httpclient, 500, 0, "Header generation failed.");
                     return -1;
                 }
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
@@ -606,7 +606,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 					NULL, NULL);
         if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_500(httpclient, "Header generation failed.");
+            client_send_error(httpclient, 500, 0, "Header generation failed.");
             return -1;
         }
         bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
@@ -661,7 +661,7 @@ int fserve_add_client (client_t *client, FILE *file)
     ICECAST_LOG_DEBUG("Adding client to file serving engine");
     if (fclient == NULL)
     {
-        client_send_404 (client, "memory exhausted");
+        client_send_error(client, 404, 0, "memory exhausted");
         return -1;
     }
     fclient->file = file;
@@ -683,7 +683,7 @@ void fserve_add_client_callback (client_t *client, fserve_callback_t callback, v
     ICECAST_LOG_DEBUG("Adding client to file serving engine");
     if (fclient == NULL)
     {
-        client_send_404 (client, "memory exhausted");
+        client_send_error(client, 404, 0, "memory exhausted");
         return;
     }
     fclient->file = NULL;
