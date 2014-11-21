@@ -18,6 +18,7 @@
 
 #include "refbuf.h"
 #include "client.h"
+#include "source.h"
 
 #define RAW         1
 #define TRANSFORMED 2
@@ -26,5 +27,7 @@
 void admin_handle_request(client_t *client, const char *uri);
 void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, const char *xslt_template);
+
+void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent);
 
 #endif  /* __ADMIN_H__ */
