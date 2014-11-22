@@ -45,16 +45,18 @@
 
 #define CATMODULE "admin"
 
-#define COMMAND_ERROR             (-1)
+/* special commands */
+#define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
+#define COMMAND_ANY                        ADMIN_COMMAND_ANY
 
 /* Mount-specific commands */
-#define COMMAND_RAW_FALLBACK        1
-#define COMMAND_RAW_METADATA_UPDATE     2
-#define COMMAND_RAW_SHOW_LISTENERS  3
-#define COMMAND_RAW_MOVE_CLIENTS    4
-#define COMMAND_RAW_MANAGEAUTH      5
-#define COMMAND_SHOUTCAST_METADATA_UPDATE     6
-#define COMMAND_RAW_UPDATEMETADATA      7
+#define COMMAND_RAW_FALLBACK               1
+#define COMMAND_RAW_METADATA_UPDATE        2
+#define COMMAND_RAW_SHOW_LISTENERS         3
+#define COMMAND_RAW_MOVE_CLIENTS           4
+#define COMMAND_RAW_MANAGEAUTH             5
+#define COMMAND_SHOUTCAST_METADATA_UPDATE  6
+#define COMMAND_RAW_UPDATEMETADATA         7
 
 #define COMMAND_TRANSFORMED_FALLBACK        50
 #define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
@@ -174,6 +176,8 @@ int admin_get_command(const char *command)
         return COMMAND_TRANSFORMED_STATS;
     else if(!strcmp(command, DEFAULT_RAW_REQUEST))
         return COMMAND_TRANSFORMED_STATS;
+    else if(!strcmp(command, "*")) /* for ACL framework */
+        return COMMAND_ANY;
     else
         return COMMAND_ERROR;
 }
@@ -375,7 +379,7 @@ void admin_handle_request(client_t *client, const char *uri)
     ICECAST_LOG_DEBUG("Got command (%s)", command_string);
     command = admin_get_command(command_string);
 
-    if(command < 0) {
+    if(command <= 0) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %s",
                 command_string);
         client_send_error(client, 400, 0, "Unrecognised command");
