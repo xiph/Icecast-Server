@@ -337,23 +337,7 @@ int httpp_parse(http_parser_t *parser, const char *http_data, unsigned long len)
         }
     }
 
-    if (strcasecmp("GET", req_type) == 0) {
-        parser->req_type = httpp_req_get;
-    } else if (strcasecmp("POST", req_type) == 0) {
-        parser->req_type = httpp_req_post;
-    } else if (strcasecmp("PUT", req_type) == 0) {
-        parser->req_type = httpp_req_put;
-    } else if (strcasecmp("HEAD", req_type) == 0) {
-        parser->req_type = httpp_req_head;
-    } else if (strcasecmp("SOURCE", req_type) == 0) {
-        parser->req_type = httpp_req_source;
-    } else if (strcasecmp("PLAY", req_type) == 0) {
-        parser->req_type = httpp_req_play;
-    } else if (strcasecmp("STATS", req_type) == 0) {
-        parser->req_type = httpp_req_stats;
-    } else {
-        parser->req_type = httpp_req_unknown;
-    }
+    parser->req_type = httpp_str_to_method(req_type);
 
     if (uri != NULL && strlen(uri) > 0) {
         char *query;
@@ -567,5 +551,25 @@ static int _free_vars(void *key)
     free(var);
 
     return 1;
+}
+
+httpp_request_type_e httpp_str_to_method(const char * method) {
+    if (strcasecmp("GET", method) == 0) {
+        return httpp_req_get;
+    } else if (strcasecmp("POST", method) == 0) {
+        return httpp_req_post;
+    } else if (strcasecmp("PUT", method) == 0) {
+        return httpp_req_put;
+    } else if (strcasecmp("HEAD", method) == 0) {
+        return httpp_req_head;
+    } else if (strcasecmp("SOURCE", method) == 0) {
+        return httpp_req_source;
+    } else if (strcasecmp("PLAY", method) == 0) {
+        return httpp_req_play;
+    } else if (strcasecmp("STATS", method) == 0) {
+        return httpp_req_stats;
+    } else {
+        return httpp_req_unknown;
+    }
 }
 

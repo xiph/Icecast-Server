@@ -82,5 +82,8 @@ void httpp_set_query_param(http_parser_t *parser, const char *name, const char *
 const char *httpp_get_query_param(http_parser_t *parser, const char *name);
 void httpp_destroy(http_parser_t *parser);
 void httpp_clear(http_parser_t *parser);
+
+/* util functions */
+httpp_request_type_e httpp_str_to_method(const char * method);
  
 #endif
