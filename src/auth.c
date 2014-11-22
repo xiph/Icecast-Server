@@ -602,8 +602,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
     {
         ICECAST_LOG_DEBUG("type is %s", auth->type);
 
-        if (strcmp (auth->type, "url") == 0)
-        {
+        if (strcmp (auth->type, "url") == 0) {
 #ifdef HAVE_AUTH_URL
             if (auth_get_url_auth (auth, options) < 0)
                 return -1;
@@ -612,9 +611,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             ICECAST_LOG_ERROR("Auth URL disabled");
             return -1;
 #endif
-        }
-        if (strcmp (auth->type, "htpasswd") == 0)
-        {
+        } else if (strcmp (auth->type, "htpasswd") == 0) {
             if (auth_get_htpasswd_auth (auth, options) < 0)
                 return -1;
             break;
