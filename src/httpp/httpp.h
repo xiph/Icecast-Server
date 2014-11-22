@@ -22,8 +22,21 @@
 #define HTTPP_VAR_ICYPASSWORD "__icy_password"
 
 typedef enum httpp_request_type_tag {
-    httpp_req_none, httpp_req_get, httpp_req_post, httpp_req_put, httpp_req_head,
-    httpp_req_source, httpp_req_play, httpp_req_stats, httpp_req_unknown
+    /* Initial and internally used state of the engine */
+    httpp_req_none = 0,
+    /* Part of HTTP standard: GET, POST, PUT and HEAD */
+    httpp_req_get,
+    httpp_req_post,
+    httpp_req_put,
+    httpp_req_head,
+    /* Icecast SOURCE, to be replaced with PUT some day */
+    httpp_req_source,
+    /* XXX: ??? */
+    httpp_req_play,
+    /* Icecast 2.x STATS, to request a live stream of stats events */
+    httpp_req_stats,
+    /* Used if request method is unknown. MUST BE LAST ONE IN LIST. */
+    httpp_req_unknown
 } httpp_request_type_e;
 
 typedef struct http_var_tag {
