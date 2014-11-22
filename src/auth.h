@@ -29,10 +29,17 @@ struct auth_tag;
 
 typedef enum
 {
+    /* XXX: ??? */
     AUTH_UNDEFINED,
+    /* user authed successfull */
     AUTH_OK,
+    /* user authed failed */
     AUTH_FAILED,
+    /* XXX: ??? */
     AUTH_FORBIDDEN,
+    /* No match for given username or other identifier found */
+    AUTH_NOMATCH,
+    /* status codes for database changes */
     AUTH_USERADDED,
     AUTH_USEREXISTS,
     AUTH_USERDELETED
