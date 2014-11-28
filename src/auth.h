@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __AUTH_H__
@@ -27,6 +28,13 @@ struct auth_tag;
 #include "client.h"
 #include "thread/thread.h"
 
+/* implemented */
+#define AUTH_TYPE_ANONYMOUS       "anonymous"
+#define AUTH_TYPE_STATIC          "static"
+#define AUTH_TYPE_LEGACY_PASSWORD "legacy-password"
+#define AUTH_TYPE_URL             "url"
+#define AUTH_TYPE_HTPASSWD        "htpasswd"
+
 typedef enum
 {
     /* XXX: ??? */
@@ -35,6 +43,8 @@ typedef enum
     AUTH_OK,
     /* user authed failed */
     AUTH_FAILED,
+    /* session got terminated */
+    AUTH_RELEASED,
     /* XXX: ??? */
     AUTH_FORBIDDEN,
     /* No match for given username or other identifier found */
@@ -47,9 +57,11 @@ typedef enum
 
 typedef struct auth_client_tag
 {
-    char        *mount;
-    client_t    *client;
-    void        (*process)(struct auth_tag *auth, struct auth_client_tag *auth_user);
+    client_t     *client;
+    auth_result (*process)(struct auth_tag *auth, struct auth_client_tag *auth_user);
+    void        (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
+    void        (*on_result)(client_t *client, void *userdata, auth_result result);
+    void         *userdata;
     struct auth_client_tag *next;
 } auth_client;
 
@@ -58,18 +70,12 @@ typedef struct auth_tag
 {
     char *mount;
 
+    /* filters */
+    int method[httpp_req_unknown+1];
+
     /* Authenticate using the given username and password */
-    auth_result (*authenticate)(auth_client *aclient);
-    auth_result (*release_listener)(auth_client *auth_user);
-
-    /* auth handler for authenicating a connecting source client */
-    void (*stream_auth)(auth_client *auth_user);
-
-    /* auth handler for source startup, no client passed as it may disappear */
-    void (*stream_start)(auth_client *auth_user);
-
-    /* auth handler for source exit, no client passed as it may disappear */
-    void (*stream_end)(auth_client *auth_user);
+    auth_result (*authenticate_client)(auth_client *aclient);
+    auth_result (*release_client)(auth_client *auth_user);
 
     /* auth state-specific free call */
     void (*free)(struct auth_tag *self);
@@ -80,8 +86,7 @@ typedef struct auth_tag
 
     mutex_t lock;
     int running;
-    int refcount;
-    int allow_duplicate_users;
+    size_t refcount;
 
     thread_type *thread;
 
@@ -91,30 +96,33 @@ typedef struct auth_tag
 
     void *state;
     char *type;
+    char *unique_tag;
+
+    /* acl to set on succsessful auth */
+    acl_t *acl;
+    /* role name for later matching, may be NULL if no role name was given in config */
+    char  *role;
 } auth_t;
 
-void auth_add_listener (const char *mount, client_t *client);
-int  auth_release_listener (client_t *client);
+typedef struct auth_stack_tag auth_stack_t;
 
 void auth_initialise (void);
 void auth_shutdown (void);
 
 auth_t  *auth_get_authenticator (xmlNodePtr node);
 void    auth_release (auth_t *authenticator);
+void    auth_addref (auth_t *authenticator);
 
-/* call to trigger an event when a stream starts */
-void auth_stream_start (struct _mount_proxy *mountinfo, const char *mount);
+int  auth_release_client(client_t *client);
 
-/* call to trigger an event when a stream ends */
-void auth_stream_end (struct _mount_proxy *mountinfo, const char *mount);
+void          auth_stack_add_client(auth_stack_t *stack, client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
 
-/* call to trigger an event to authenticate a source client */
-int auth_stream_authenticate (client_t *client, const char *mount, struct _mount_proxy *mountinfo);
-
-/* called from auth thread, after the client has successfully authenticated
- * and requires adding to source or fserve. */
-int auth_postprocess_listener (auth_client *auth_user);
+void          auth_stack_release(auth_stack_t *stack);
+void          auth_stack_addref(auth_stack_t *stack);
+int           auth_stack_next(auth_stack_t **stack); /* returns -1 on error, 0 on success, +1 if no next element is present */
+int           auth_stack_push(auth_stack_t **stack, auth_t *auth);
+int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail);
+auth_t       *auth_stack_get(auth_stack_t *stack);
+acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack);
 
 #endif
-
-

@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __SOURCE_H__
@@ -82,7 +83,6 @@ typedef struct source_tag
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
-void source_startup (client_t *client, const char *uri, int auth_style);
 void source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
@@ -99,5 +99,3 @@ void source_recheck_mounts (int update_all);
 extern mutex_t move_clients_mutex;
 
 #endif
-
-

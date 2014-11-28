@@ -8,8 +8,8 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
- *                      Dave 'justdave' Miller <justdave@mozilla.com>.
+ * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>,
+ * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -80,8 +80,6 @@
 
    Icecast auth style uses HTTP and Basic Authorization.
 */
-#define SHOUTCAST_SOURCE_AUTH 1
-#define ICECAST_SOURCE_AUTH 0
 
 typedef struct client_queue_tag {
     client_t *client;
@@ -903,177 +901,7 @@ int connection_complete_source (source_t *source, int response)
     return -1;
 }
 
-
-static int _check_pass_http(http_parser_t *parser, 
-        const char *correctuser, const char *correctpass)
-{
-    /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
-    const char *header = httpp_getvar(parser, "authorization");
-    char *userpass, *tmp;
-    char *username, *password;
-
-    if(header == NULL)
-        return 0;
-
-    if(strncmp(header, "Basic ", 6))
-        return 0;
-
-    userpass = util_base64_decode(header+6);
-    if(userpass == NULL) {
-        ICECAST_LOG_WARN("Base64 decode of Authorization header \"%s\" failed",
-                header+6);
-        return 0;
-    }
-
-    tmp = strchr(userpass, ':');
-    if(!tmp) {
-        free(userpass);
-        return 0;
-    }
-    *tmp = 0;
-    username = userpass;
-    password = tmp+1;
-
-    if(strcmp(username, correctuser) || strcmp(password, correctpass)) {
-        free(userpass);
-        return 0;
-    }
-    free(userpass);
-
-    return 1;
-}
-
-static int _check_pass_icy(http_parser_t *parser, const char *correctpass)
-{
-    const char *password;
-
-    password = httpp_getvar(parser, HTTPP_VAR_ICYPASSWORD);
-    if(!password)
-        return 0;
-
-    if (strcmp(password, correctpass))
-        return 0;
-    else
-        return 1;
-}
-
-static int _check_pass_ice(http_parser_t *parser, const char *correctpass)
-{
-    const char *password;
-
-    password = httpp_getvar(parser, "ice-password");
-    if(!password)
-        password = "";
-
-    if (strcmp(password, correctpass))
-        return 0;
-    else
-        return 1;
-}
-
-int connection_check_admin_pass(http_parser_t *parser)
-{
-    int ret;
-    ice_config_t *config = config_get_config();
-    char *pass = config->admin_password;
-    char *user = config->admin_username;
-    const char *protocol;
-
-    if(!pass || !user) {
-        config_release_config();
-        return 0;
-    }
-
-    protocol = httpp_getvar (parser, HTTPP_VAR_PROTOCOL);
-    if (protocol && strcmp (protocol, "ICY") == 0)
-        ret = _check_pass_icy (parser, pass);
-    else 
-        ret = _check_pass_http (parser, user, pass);
-    config_release_config();
-    return ret;
-}
-
-int connection_check_relay_pass(http_parser_t *parser)
-{
-    int ret;
-    ice_config_t *config = config_get_config();
-    char *pass = config->relay_password;
-    char *user = config->relay_username;
-
-    if(!pass || !user) {
-        config_release_config();
-        return 0;
-    }
-
-    ret = _check_pass_http(parser, user, pass);
-    config_release_config();
-    return ret;
-}
-
-
-/* return 0 for failed, 1 for ok
- */
-int connection_check_pass (http_parser_t *parser, const char *user, const char *pass)
-{
-    int ret;
-    const char *protocol;
-
-    if(!pass) {
-        ICECAST_LOG_WARN("No source password set, rejecting source");
-        return -1;
-    }
-
-    protocol = httpp_getvar(parser, HTTPP_VAR_PROTOCOL);
-    if(protocol != NULL && !strcmp(protocol, "ICY")) {
-        ret = _check_pass_icy(parser, pass);
-    }
-    else {
-        ret = _check_pass_http(parser, user, pass);
-        if (!ret)
-        {
-            ice_config_t *config = config_get_config_unlocked();
-            if (config->ice_login)
-            {
-                ret = _check_pass_ice(parser, pass);
-                if(ret)
-                    ICECAST_LOG_WARN("Source is using deprecated icecast login");
-            }
-        }
-    }
-    return ret;
-}
-
-
-/* only called for native icecast source clients */
-static void _handle_source_request (client_t *client, const char *uri)
-{
-    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s",
-        uri, client->con->ip);
-
-    if (uri[0] != '/')
-    {
-        ICECAST_LOG_WARN("source mountpoint not starting with /");
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        return;
-    }
-    switch (client_check_source_auth (client, uri))
-    {
-        case 0: /* authenticated from config file */
-            source_startup (client, uri, ICECAST_SOURCE_AUTH);
-            break;
-
-        case 1: /* auth pending */
-            break;
-
-        default: /* failed */
-            ICECAST_LOG_INFO("Source (%s) attempted to login with invalid or missing password", uri);
-            client_send_error(client, 401, 1, "You need to authenticate\r\n");
-            break;
-    }
-}
-
-
-void source_startup (client_t *client, const char *uri, int auth_style)
+static inline void source_startup (client_t *client, const char *uri)
 {
     source_t *source;
     source = source_reserve (uri);
@@ -1090,13 +918,14 @@ void source_startup (client_t *client, const char *uri, int auth_style)
             return;
         }
         client->respcode = 200;
-        if (auth_style == SHOUTCAST_SOURCE_AUTH)
-        {
+        if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
+            client->respcode = 200;
+            /* send this non-blocking but if there is only a partial write
+             * then leave to header timeout */
+            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
             source->shoutcast_compat = 1;
             source_client_callback (client, source);
-        }
-        else
-        {
+        } else {
             refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
             client->respcode = 200;
             snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
@@ -1115,17 +944,26 @@ void source_startup (client_t *client, const char *uri, int auth_style)
     }
 }
 
+/* only called for native icecast source clients */
+static void _handle_source_request (client_t *client, const char *uri)
+{
+    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s",
+        uri, client->con->ip);
+
+    if (uri[0] != '/')
+    {
+        ICECAST_LOG_WARN("source mountpoint not starting with /");
+        client_send_error(client, 400, 1, "source mountpoint not starting with /");
+        return;
+    }
+
+    source_startup(client, uri);
+}
+
 
 static void _handle_stats_request (client_t *client, char *uri)
 {
     stats_event_inc(NULL, "stats_connections");
-
-    if (connection_check_admin_pass (client->parser) == 0)
-    {
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        ICECAST_LOG_ERROR("Bad password for stats connection");
-        return;
-    }
 
     client->respcode = 200;
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
@@ -1134,73 +972,173 @@ static void _handle_stats_request (client_t *client, char *uri)
     fserve_add_client_callback (client, stats_callback, NULL);
 }
 
-static void _handle_get_request (client_t *client, char *passed_uri)
+/* if 0 is returned then the client should not be touched, however if -1
+ * is returned then the caller is responsible for handling the client
+ */
+static int __add_listener_to_source (source_t *source, client_t *client)
 {
-    char *serverhost = NULL;
-    int serverport = 0;
-    aliases *alias;
-    ice_config_t *config;
-    char *uri = passed_uri;
-    listener_t *listen_sock;
-    const char *http_host = httpp_getvar(client->parser, "host");
-    char *vhost;
-    char *vhost_colon;
+    size_t loop = 10;
 
-    config = config_get_config();
-
-    listen_sock = config_get_listen_sock (config, client->con);
-    if (listen_sock)
+    do
     {
-        serverhost = listen_sock->bind_address;
-        serverport = listen_sock->port;
+        ICECAST_LOG_DEBUG("max on %s is %ld (cur %lu)", source->mount,
+                source->max_listeners, source->listeners);
+        if (source->max_listeners == -1)
+            break;
+        if (source->listeners < (unsigned long)source->max_listeners)
+            break;
+
+        if (loop && source->fallback_when_full && source->fallback_mount)
+        {
+            source_t *next = source_find_mount (source->fallback_mount);
+            if (!next) {
+                ICECAST_LOG_ERROR("Fallback '%s' for full source '%s' not found",
+                        source->mount, source->fallback_mount);
+                return -1;
+            }
+
+            ICECAST_LOG_INFO("stream full trying %s", next->mount);
+            source = next;
+            loop--;
+            continue;
+        }
+        /* now we fail the client */
+        return -1;
+    } while (1);
+
+    client->write_to_client = format_generic_write_to_client;
+    client->check_buffer = format_check_http_buffer;
+    client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
+    memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+
+    /* lets add the client to the active list */
+    avl_tree_wlock (source->pending_tree);
+    avl_insert (source->pending_tree, client);
+    avl_tree_unlock (source->pending_tree);
+
+    if (source->running == 0 && source->on_demand)
+    {
+        /* enable on-demand relay to start, wake up the slave thread */
+        ICECAST_LOG_DEBUG("kicking off on-demand relay");
+        source->on_demand_req = 1;
     }
-    alias = config->aliases;
+    ICECAST_LOG_DEBUG("Added client to %s", source->mount);
+    return 0;
+}
+
+/* count the number of clients on a mount with same username and same role as the given one */
+static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *client) {
+    ssize_t ret = 0;
+    avl_node *node;
+
+    avl_tree_rlock(source->client_tree);
+    node = avl_get_first(source->client_tree);
+    while (node) {
+        client_t *existing_client = (client_t *)node->key;
+        if (existing_client->username && client->username &&
+            strcmp(existing_client->username, client->username) == 0 &&
+            existing_client->role && client->role &&
+            strcmp(existing_client->role, client->role) == 0)
+            ret++;
+        node = avl_get_next(node);
+    }
+    avl_tree_unlock(source->client_tree);
+
+    avl_tree_rlock(source->pending_tree);
+    node = avl_get_first(source->pending_tree);
+    while (node)
+    {
+        client_t *existing_client = (client_t *)node->key;
+        if (existing_client->username && client->username &&
+            strcmp(existing_client->username, client->username) == 0 &&
+            existing_client->role && client->role &&
+            strcmp(existing_client->role, client->role) == 0)
+            ret++;
+        node = avl_get_next(node);
+    }
+    avl_tree_unlock(source->pending_tree);
+
+    return ret;
+}
+
+static void _handle_get_request (client_t *client, char *uri) {
+    source_t *source = NULL;
+
+    ICECAST_LOG_DEBUG("Got client %p with URI %H", client, uri);
 
     /* there are several types of HTTP GET clients
-    ** media clients, which are looking for a source (eg, URI = /stream.ogg)
-    ** stats clients, which are looking for /admin/stats.xml
-    ** and directory server authorizers, which are looking for /GUID-xxxxxxxx 
-    ** (where xxxxxx is the GUID in question) - this isn't implemented yet.
-    ** we need to handle the latter two before the former, as the latter two
-    ** aren't subject to the limits.
-    */
-    /* TODO: add GUID-xxxxxx */
-
-    /* Handle aliases */
-    if (http_host) {
-        vhost = strdup(http_host);
-        if (vhost) {
-            vhost_colon = strstr(vhost, ":");
-            if (vhost_colon)
-                *vhost_colon = 0;
-        }
-    }
-    while (alias) {
-        if(strcmp(uri, alias->source) == 0 &&
-           (alias->port == -1 || alias->port == serverport) &&
-           (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
-           (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
-            uri = strdup (alias->destination);
-            ICECAST_LOG_DEBUG("alias has made %s into %s", passed_uri, uri);
-            break;
-        }
-        alias = alias->next;
-    }
-    if (vhost)
-        free(vhost);
-    config_release_config();
+     * media clients, which are looking for a source (eg, URI = /stream.ogg),
+     * stats clients, which are looking for /admin/stats.xml and
+     * fserve clients, which are looking for static files.
+     */
 
     stats_event_inc(NULL, "client_connections");
 
     /* Dispatch all admin requests */
     if ((strcmp(uri, "/admin.cgi") == 0) ||
         (strncmp(uri, "/admin/", 7) == 0)) {
+        ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
         admin_handle_request(client, uri);
-        if (uri != passed_uri) free (uri);
         return;
     }
-    auth_add_listener (uri, client);
-    if (uri != passed_uri) free (uri);
+
+    /* this is a web/ request. let's check if we are allowed to do that. */
+    if (acl_test_web(client->acl) != ACL_POLICY_ALLOW) {
+        /* doesn't seem so, sad client :( */
+        if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
+            client_destroy(client);
+        } else {
+            client_send_error(client, 401, 1, "You need to authenticate\r\n");
+        }
+        return;
+    }
+
+    if (util_check_valid_extension(uri) == XSLT_CONTENT) {
+        /* If the file exists, then transform it, otherwise, write a 404 */
+        ICECAST_LOG_DEBUG("Stats request, sending XSL transformed stats");
+        stats_transform_xslt(client, uri);
+        return;
+    }
+
+    avl_tree_rlock(global.source_tree);
+    /* let's see if this is a source or just a random fserve file */
+    source = source_find_mount(uri);
+    if (source) {
+        /* true mount */
+        int in_error = 0;
+        ssize_t max_connections_per_user = acl_get_max_connections_per_user(client->acl);
+        /* check for duplicate_logins */
+        if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
+            if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
+                client_send_error(client, 403, 1, "Reached limit of concurrent connections on those credentials");
+                in_error = 1;
+            }
+        }
+
+
+        /* Set max listening duration in case not already set. */
+        if (!in_error && client->con->discon_time == 0) {
+            time_t connection_duration = acl_get_max_connection_duration(client->acl);
+            if (connection_duration == -1) {
+                ice_config_t *config = config_get_config();
+                mount_proxy *mount = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
+                if (mount && mount->max_listener_duration)
+                    connection_duration = mount->max_listener_duration;
+                config_release_config();
+            }
+
+            if (connection_duration > 0) /* -1 = not set (-> default=unlimited), 0 = unlimited */
+                client->con->discon_time = connection_duration + time(NULL);
+        }
+        if (!in_error && __add_listener_to_source(source, client) == -1) {
+            client_send_error(client, 403, 1, "Rejecting client for whatever reason");
+        }
+        avl_tree_unlock(global.source_tree);
+    } else {
+        /* file */
+        avl_tree_unlock(global.source_tree);
+        fserve_client_create(client, uri);
+    }
 }
 
 static void _handle_shoutcast_compatible (client_queue_t *node)
@@ -1208,30 +1146,13 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
     char *http_compliant;
     int http_compliant_len = 0;
     http_parser_t *parser;
-    ice_config_t *config = config_get_config ();
-    char *shoutcast_mount;
+    const char *shoutcast_mount;
     client_t *client = node->client;
-
-    if (node->shoutcast_mount)
-        shoutcast_mount = node->shoutcast_mount;
-    else
-        shoutcast_mount = config->shoutcast_mount;
+    ice_config_t *config;
 
     if (node->shoutcast == 1)
     {
-        char *source_password, *ptr, *headers;
-        mount_proxy *mountinfo = config_find_mount (config, shoutcast_mount, MOUNT_TYPE_NORMAL);
-
-        if (mountinfo && mountinfo->password)
-            source_password = strdup (mountinfo->password);
-        else
-        {
-            if (config->source_password) 
-                source_password = strdup (config->source_password);
-            else
-                source_password = NULL;
-        }
-        config_release_config();
+        char *ptr, *headers;
 
         /* Get rid of trailing \r\n or \n after password */
         ptr = strstr (client->refbuf->data, "\r\r\n");
@@ -1253,45 +1174,36 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         if (ptr == NULL)
         {
             client_destroy (client);
-            free (source_password);
             free (node->shoutcast_mount);
             free (node);
             return;
         }
         *ptr = '\0';
 
-        if (source_password && strcmp (client->refbuf->data, source_password) == 0)
-        {
-            client->respcode = 200;
-            /* send this non-blocking but if there is only a partial write
-             * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
-            node->offset -= (headers - client->refbuf->data);
-            memmove (client->refbuf->data, headers, node->offset+1);
-            node->shoutcast = 2;
-            /* we've checked the password, now send it back for reading headers */
-            _add_request_queue (node);
-            free (source_password);
-            return;
-        }
-        else
-            ICECAST_LOG_INFO("password does not match \"%s\"", client->refbuf->data);
-        client_destroy (client);
-        free (source_password);
-        free (node->shoutcast_mount);
-        free (node);
+        client->password = strdup(client->refbuf->data);
+        node->offset -= (headers - client->refbuf->data);
+        memmove (client->refbuf->data, headers, node->offset+1);
+        node->shoutcast = 2;
+        /* we've checked the password, now send it back for reading headers */
+        _add_request_queue (node);
         return;
     }
     /* actually make a copy as we are dropping the config lock */
-    shoutcast_mount = strdup (shoutcast_mount);
-    config_release_config();
     /* Here we create a valid HTTP request based of the information
        that was passed in via the non-HTTP style protocol above. This
        means we can use some of our existing code to handle this case */
-    http_compliant_len = 20 + strlen (shoutcast_mount) + node->offset;
+    config = config_get_config();
+    if (node->shoutcast_mount) {
+        shoutcast_mount = node->shoutcast_mount;
+    } else {
+        shoutcast_mount = config->shoutcast_mount;
+    }
+    http_compliant_len = 20 + strlen(shoutcast_mount) + node->offset;
     http_compliant = (char *)calloc(1, http_compliant_len);
-    snprintf (http_compliant, http_compliant_len,
+    snprintf(http_compliant, http_compliant_len,
             "SOURCE %s HTTP/1.0\r\n%s", shoutcast_mount, client->refbuf->data);
+    config_release_config();
+
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
     if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
@@ -1306,19 +1218,222 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
         }
         client->parser = parser;
-        source_startup (client, shoutcast_mount, SHOUTCAST_SOURCE_AUTH);
+        client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
+        node->shoutcast = 0;
+        return;
     }
     else {
         httpp_destroy (parser);
         client_destroy (client);
     }
     free (http_compliant);
-    free (shoutcast_mount);
     free (node->shoutcast_mount);
     free (node);
     return;
 }
 
+/* Handle <alias> lookups here.
+ */
+
+static int _handle_aliases(client_t *client, char **uri) {
+    const char *http_host = httpp_getvar(client->parser, "host");
+    char *serverhost = NULL;
+    int   serverport = 0;
+    char *vhost;
+    char *vhost_colon;
+    char *new_uri = NULL;
+    ice_config_t *config;
+    listener_t *listen_sock;
+    aliases *alias;
+
+    if (http_host) {
+        vhost = strdup(http_host);
+        if (vhost) {
+            vhost_colon = strstr(vhost, ":");
+            if (vhost_colon)
+                *vhost_colon = 0;
+        }
+    }
+
+    config = config_get_config();
+    listen_sock = config_get_listen_sock (config, client->con);
+    if (listen_sock)
+    {
+        serverhost = listen_sock->bind_address;
+        serverport = listen_sock->port;
+    }
+
+    alias = config->aliases;
+
+    while (alias) {
+        if(strcmp(*uri, alias->source) == 0 &&
+           (alias->port == -1 || alias->port == serverport) &&
+           (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
+           (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
+            new_uri = strdup(alias->destination);
+            ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
+            break;
+        }
+        alias = alias->next;
+    }
+
+    config_release_config();
+
+    if (new_uri) {
+        free(*uri);
+        *uri = new_uri;
+    }
+
+    if (vhost)
+        free(vhost);
+
+    return 0;
+}
+
+/* Handle any client that passed the authing process.
+ */
+static void _handle_authed_client(client_t *client, void *uri, auth_result result) {
+    auth_stack_release(client->authstack);
+    client->authstack = NULL;
+
+    if (result != AUTH_OK) {
+        ICECAST_LOG_ERROR("Client not authenticated at all! (uri is: %H)", uri);
+        client_send_error(client, 401, 1, "You need to authenticate\r\n");
+        free(uri);
+        return;
+    }
+
+    if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
+        ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
+        client_send_error(client, 401, 1, "You need to authenticate\r\n");
+        free(uri);
+        return;
+    }
+
+    switch (client->parser->req_type) {
+        case httpp_req_source:
+        case httpp_req_put:
+            _handle_source_request(client, uri);
+        break;
+        case httpp_req_stats:
+            _handle_stats_request(client, uri);
+        break;
+        case httpp_req_get:
+            _handle_get_request(client, uri);
+        break;
+        default:
+            ICECAST_LOG_ERROR("Wrong request type from client");
+            client_send_error(client, 400, 0, "unknown request");
+        break;
+    }
+
+    free(uri);
+}
+
+/* Handle clients that still need to authenticate.
+ */
+
+static void _handle_authentication_global(client_t *client, void *uri, auth_result result) {
+    ice_config_t *config;
+
+    auth_stack_release(client->authstack);
+    client->authstack = NULL;
+
+    if (result != AUTH_NOMATCH) {
+        _handle_authed_client(client, uri, result);
+        return;
+    }
+
+    config = config_get_config();
+    auth_stack_add_client(config->authstack, client, _handle_authed_client, uri);
+    config_release_config();
+}
+
+static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const char *name, mount_type type) {
+    if (strcmp(name, "/admin.cgi") == 0 || strncmp(name, "/admin/", 7) == 0)
+        return NULL;
+
+    return config_find_mount(config, name, type);
+}
+
+static void _handle_authentication_mount_generic(client_t *client, void *uri, mount_type type, void (*callback)(client_t*, void*, auth_result)) {
+    ice_config_t *config;
+    mount_proxy *mountproxy;
+    auth_stack_t *stack = NULL;
+
+    config = config_get_config();
+    mountproxy = __find_non_admin_mount(config, uri, type);
+    if (!mountproxy) {
+        int command_type = admin_get_command_type(client->admin_command);
+        if (command_type == ADMINTYPE_MOUNT || command_type == ADMINTYPE_HYBRID) {
+            const char *mount = httpp_get_query_param(client->parser, "mount");
+            if (mount)
+                mountproxy = __find_non_admin_mount(config, mount, type);
+        }
+    }
+    if (mountproxy && mountproxy->mounttype == type)
+        stack = mountproxy->authstack;
+    auth_stack_addref(stack);
+    config_release_config();
+
+    if (stack) {
+        auth_stack_add_client(stack, client, callback, uri);
+        auth_stack_release(stack);
+    } else {
+        callback(client, uri, AUTH_NOMATCH);
+    }
+}
+
+static void _handle_authentication_mount_default(client_t *client, void *uri, auth_result result) {
+    auth_stack_release(client->authstack);
+    client->authstack = NULL;
+
+    if (result != AUTH_NOMATCH) {
+        _handle_authed_client(client, uri, result);
+        return;
+    }
+
+    _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
+}
+
+static void _handle_authentication_mount_normal(client_t *client, char *uri) {
+    _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
+}
+
+static void _handle_authentication(client_t *client, char *uri) {
+    _handle_authentication_mount_normal(client, uri);
+}
+
+static void __prepare_shoutcast_admin_cgi_request(client_t *client) {
+    ice_config_t *config;
+    const char *sc_mount;
+    const char *pass = httpp_get_query_param(client->parser, "pass");
+    listener_t *listener;
+
+    if (pass == NULL) {
+        ICECAST_LOG_ERROR("missing pass parameter");
+        return;
+    }
+
+    if (client->password) {
+        ICECAST_LOG_INFO("Client already has password set");
+        return;
+    }
+
+    global_lock();
+    config = config_get_config();
+    sc_mount = config->shoutcast_mount;
+    listener = config_get_listen_sock(config, client->con);
+
+    if (listener && listener->shoutcast_mount)
+        sc_mount = listener->shoutcast_mount;
+
+    httpp_set_query_param(client->parser, "mount", sc_mount);
+    httpp_setvar(client->parser, HTTPP_VAR_PROTOCOL, "ICY");
+    client->password = strdup(pass);
+    config_release_config();
+    global_unlock();
+}
 
 /* Connection thread. Here we take clients off the connection queue and check
  * the contents provided. We set up the parser then hand off to the specific
@@ -1336,19 +1451,26 @@ static void _handle_connection(void)
         if (node)
         {
             client_t *client = node->client;
+            int already_parsed = 0;
 
             /* Check for special shoutcast compatability processing */
             if (node->shoutcast)
             {
                 _handle_shoutcast_compatible (node);
-                continue;
+                if (node->shoutcast)
+                    continue;
             }
 
             /* process normal HTTP headers */
-            parser = httpp_create_parser();
-            httpp_initialize(parser, NULL);
-            client->parser = parser;
-            if (httpp_parse (parser, client->refbuf->data, node->offset))
+            if (client->parser) {
+                already_parsed = 1;
+                parser = client->parser;
+            } else {
+                parser = httpp_create_parser();
+                httpp_initialize(parser, NULL);
+                client->parser = parser;
+            }
+            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset))
             {
                 char *uri;
 
@@ -1380,27 +1502,28 @@ static void _handle_connection(void)
 
                 uri = util_normalise_uri(rawuri);
 
-                if (uri == NULL)
-                {
+                if (!uri) {
                     client_destroy (client);
                     continue;
                 }
 
-                if (parser->req_type == httpp_req_source || parser->req_type == httpp_req_put) {
-                    _handle_source_request (client, uri);
-                }
-                else if (parser->req_type == httpp_req_stats) {
-                    _handle_stats_request (client, uri);
-                }
-                else if (parser->req_type == httpp_req_get) {
-                    _handle_get_request (client, uri);
-                }
-                else {
-                    ICECAST_LOG_ERROR("Wrong request type from client");
-                    client_send_error(client, 400, 0, "unknown request");
+                if (_handle_aliases(client, &uri) != 0) {
+                    client_destroy (client);
+                    continue;
                 }
 
-                free(uri);
+                if (strcmp(uri, "/admin.cgi") == 0) {
+                    client->admin_command = admin_get_command(uri + 1);
+                    __prepare_shoutcast_admin_cgi_request(client);
+                    if (!client->password) {
+                        client_send_error(client, 400, 0, "missing pass parameter");
+                        continue;
+                    }
+                } else if (strncmp("/admin/", uri, 7) == 0) {
+                    client->admin_command = admin_get_command(uri + 7);
+                }
+
+                _handle_authentication(client, uri);
             } 
             else
             {

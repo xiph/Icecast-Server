@@ -20,6 +20,13 @@
 #include "client.h"
 #include "source.h"
 
+/* types */
+#define ADMINTYPE_ERROR   (-1)
+#define ADMINTYPE_GENERAL   1
+#define ADMINTYPE_MOUNT     2
+#define ADMINTYPE_HYBRID    (ADMINTYPE_GENERAL|ADMINTYPE_MOUNT)
+
+/* formats */
 #define RAW         1
 #define TRANSFORMED 2
 #define PLAINTEXT   3
@@ -35,5 +42,6 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
 void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent);
 
 int admin_get_command(const char *command);
+int admin_get_command_type(int command);
 
 #endif  /* __ADMIN_H__ */

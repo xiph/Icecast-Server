@@ -32,6 +32,7 @@
 #include "client.h"
 #include "logging.h" 
 #include "util.h" 
+#include "auth.h" 
 
 #define CATMODULE "CONFIG"
 #define CONFIG_DEFAULT_LOCATION "Earth"
@@ -46,7 +47,6 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT 10
 #define CONFIG_DEFAULT_MASTER_USERNAME "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT "/stream"
-#define CONFIG_DEFAULT_ICE_LOGIN 0
 #define CONFIG_DEFAULT_FILESERVE 1
 #define CONFIG_DEFAULT_TOUCH_FREQ 5
 #define CONFIG_DEFAULT_HOSTNAME "localhost"
@@ -89,7 +89,7 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node, 
-        ice_config_t *c);
+        ice_config_t *c, char **source_password);
 static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node,
         ice_config_http_header_t **http_headers);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
@@ -156,6 +156,112 @@ static inline int __parse_loglevel(const char *str) {
     return atoi(str);
 }
 
+static void __append_old_style_auth(auth_stack_t **stack, const char *name, const char *type, const char *username, const char *password, const char *method, const char *allow_method, int allow_web, const char *allow_admin) {
+    xmlNodePtr role, user, pass;
+    auth_t *auth;
+
+    if (!type)
+        return;
+
+    role = xmlNewNode(NULL, XMLSTR("role"));
+
+    xmlSetProp(role, XMLSTR("type"), XMLSTR(type));
+    xmlSetProp(role, XMLSTR("deny-method"), XMLSTR("*"));
+    if (allow_method)
+        xmlSetProp(role, XMLSTR("allow-method"), XMLSTR(allow_method));
+
+    if (name)
+        xmlSetProp(role, XMLSTR("name"), XMLSTR(name));
+
+    if (method)
+        xmlSetProp(role, XMLSTR("method"), XMLSTR(method));
+
+    if (allow_web) {
+        xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
+    } else {
+        xmlSetProp(role, XMLSTR("deny-web"), XMLSTR("*"));
+    }
+
+    if (allow_admin && strcmp(allow_admin, "*") == 0) {
+        xmlSetProp(role, XMLSTR("allow-admin"), XMLSTR("*"));
+    } else {
+        xmlSetProp(role, XMLSTR("deny-admin"), XMLSTR("*"));
+        if (allow_admin)
+            xmlSetProp(role, XMLSTR("allow-admin"), XMLSTR(allow_admin));
+    }
+
+    if (username) {
+        user = xmlNewChild(role, NULL, XMLSTR("option"), NULL);
+        xmlSetProp(user, XMLSTR("name"), XMLSTR("username"));
+        xmlSetProp(user, XMLSTR("value"), XMLSTR(username));
+    }
+    if (password) {
+        pass = xmlNewChild(role, NULL, XMLSTR("option"), NULL);
+        xmlSetProp(pass, XMLSTR("name"), XMLSTR("password"));
+        xmlSetProp(pass, XMLSTR("value"), XMLSTR(password));
+    }
+
+    auth = auth_get_authenticator(role);
+    auth_stack_push(stack, auth);
+    auth_release(auth);
+
+    xmlFreeNode(role);
+}
+
+static void __append_option_tag (xmlNodePtr parent, const char *name, const char *value) {
+    xmlNodePtr node;
+
+    if (!name || !value)
+        return;
+
+    node = xmlNewChild(parent, NULL, XMLSTR("option"), NULL);
+    xmlSetProp(node, XMLSTR("name"), XMLSTR(name));
+    xmlSetProp(node, XMLSTR("value"), XMLSTR(value));
+}
+
+static void __append_old_style_urlauth(auth_stack_t **stack, const char *client_add, const char *client_remove, const char *action_add, const char *action_remove, const char *username, const char *password, int is_source, const char *auth_header, const char *timelimit_header, const char *headers, const char *header_prefix) {
+    xmlNodePtr role;
+    auth_t *auth;
+
+    if (!stack || !client_add || !!client_remove)
+        return;
+
+    role = xmlNewNode(NULL, XMLSTR("role"));
+
+    xmlSetProp(role, XMLSTR("type"), XMLSTR("url"));
+
+    if (is_source) {
+        xmlSetProp(role, XMLSTR("method"), XMLSTR("source,put"));
+        xmlSetProp(role, XMLSTR("deny-method"), XMLSTR("*"));
+        xmlSetProp(role, XMLSTR("allow-method"), XMLSTR("source,put"));
+        xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
+        xmlSetProp(role, XMLSTR("allow-admin"), XMLSTR("*"));
+    } else {
+        xmlSetProp(role, XMLSTR("method"), XMLSTR("get,post,head"));
+        xmlSetProp(role, XMLSTR("deny-method"), XMLSTR("*"));
+        xmlSetProp(role, XMLSTR("allow-method"), XMLSTR("get,post,head"));
+        xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
+        xmlSetProp(role, XMLSTR("deny-admin"), XMLSTR("*"));
+    }
+
+    __append_option_tag(role, "client_add", client_add);
+    __append_option_tag(role, "client_remove", client_remove);
+    __append_option_tag(role, "action_add", action_add);
+    __append_option_tag(role, "action_remove", action_remove);
+    __append_option_tag(role, "username", username);
+    __append_option_tag(role, "password", password);
+    __append_option_tag(role, "auth_header", auth_header);
+    __append_option_tag(role, "timelimit_header", timelimit_header);
+    __append_option_tag(role, "headers", headers);
+    __append_option_tag(role, "header_prefix", header_prefix);
+
+    auth = auth_get_authenticator(role);
+    auth_stack_push(stack, auth);
+    auth_release(auth);
+
+    xmlFreeNode(role);
+}
+
 static void config_clear_http_header(ice_config_http_header_t *header) {
  ice_config_http_header_t *old;
 
@@ -210,11 +316,7 @@ static inline ice_config_http_header_t * config_copy_http_header(ice_config_http
 
 static void config_clear_mount (mount_proxy *mount)
 {
-    config_options_t *option;
-
     if (mount->mountname)       xmlFree (mount->mountname);
-    if (mount->username)        xmlFree (mount->username);
-    if (mount->password)        xmlFree (mount->password);
     if (mount->dumpfile)        xmlFree (mount->dumpfile);
     if (mount->intro_filename)  xmlFree (mount->intro_filename);
     if (mount->on_connect)      xmlFree (mount->on_connect);
@@ -228,18 +330,8 @@ static void config_clear_mount (mount_proxy *mount)
     if (mount->type)            xmlFree (mount->type);
     if (mount->charset)         xmlFree (mount->charset);
     if (mount->cluster_password)    xmlFree (mount->cluster_password);
+    if (mount->authstack)       auth_stack_release(mount->authstack);
 
-    if (mount->auth_type)       xmlFree (mount->auth_type);
-    option = mount->auth_options;
-    while (option)
-    {
-        config_options_t *nextopt = option->next;
-        if (option->name)   xmlFree (option->name);
-        if (option->value)  xmlFree (option->value);
-        free (option);
-        option = nextopt;
-    }
-    auth_release (mount->auth);
     config_clear_http_header(mount->http_headers);
     free (mount);
 }
@@ -298,15 +390,6 @@ void config_clear(ice_config_t *c)
     xmlFree (c->server_id);
     if (c->location) xmlFree(c->location);
     if (c->admin) xmlFree(c->admin);
-    if (c->source_password) xmlFree(c->source_password);
-    if (c->admin_username)
-        xmlFree(c->admin_username);
-    if (c->admin_password)
-        xmlFree(c->admin_password);
-    if (c->relay_username)
-        xmlFree(c->relay_username);
-    if (c->relay_password)
-        xmlFree(c->relay_password);
     if (c->hostname) xmlFree(c->hostname);
     if (c->base_dir) xmlFree(c->base_dir);
     if (c->log_dir) xmlFree(c->log_dir);
@@ -322,6 +405,7 @@ void config_clear(ice_config_t *c)
     if (c->access_log) xmlFree(c->access_log);
     if (c->error_log) xmlFree(c->error_log);
     if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
+    if (c->authstack)       auth_stack_release(c->authstack);
     if (c->master_server) xmlFree(c->master_server);
     if (c->master_username) xmlFree(c->master_username);
     if (c->master_password) xmlFree(c->master_password);
@@ -478,9 +562,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
-    configuration->source_password = NULL;
     configuration->shoutcast_mount = (char *)xmlCharStrdup (CONFIG_DEFAULT_SHOUTCAST_MOUNT);
-    configuration->ice_login = CONFIG_DEFAULT_ICE_LOGIN;
     configuration->fileserve = CONFIG_DEFAULT_FILESERVE;
     configuration->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
     configuration->on_demand = 0;
@@ -507,8 +589,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->user = NULL;
     configuration->group = NULL;
     configuration->num_yp_directories = 0;
-    configuration->relay_username = (char *)xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
-    configuration->relay_password = NULL;
     /* default to a typical prebuffer size used by clients */
     configuration->burst_size = CONFIG_DEFAULT_BURST_SIZE;
 }
@@ -555,6 +635,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         ice_config_t *configuration)
 {
     char *tmp;
+    char *source_password = NULL;
 
     configuration->listen_sock = calloc (1, sizeof (*configuration->listen_sock));
     configuration->listen_sock->port = 8000;
@@ -575,16 +656,15 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             configuration->server_id = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             ICECAST_LOG_WARN("Warning, server version string override detected. This may lead to unexpected client software behavior.");
         } else if(xmlStrcmp (node->name, XMLSTR("authentication")) == 0) {
-            _parse_authentication(doc, node->xmlChildrenNode, configuration);
+            _parse_authentication(doc, node->xmlChildrenNode, configuration, &source_password);
         } else if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
             /* TODO: This is the backwards-compatibility location */
             ICECAST_LOG_WARN("<source-password> defined outside <authentication>. This is deprecated and will be removed in version 2.5.");
-            if (configuration->source_password) xmlFree(configuration->source_password);
-            configuration->source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (source_password)
+                xmlFree(source_password);
+            source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("icelogin")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->ice_login = util_str_to_bool(tmp);
-            if (tmp) xmlFree(tmp);
+            ICECAST_LOG_ERROR("<icelogin> has been removed.");
         } else if (xmlStrcmp (node->name, XMLSTR("fileserve")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->fileserve = util_str_to_bool(tmp);
@@ -654,6 +734,29 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_security(doc, node->xmlChildrenNode, configuration);
         }
     } while ((node = node->next));
+
+    /* global source password is set.
+     * We need to set it on default mount.
+     * If default mount has a authstack not NULL we don't need to do anything.
+     */
+    if (source_password) {
+        mount_proxy *mount = config_find_mount(configuration, NULL, MOUNT_TYPE_DEFAULT);
+        if (!mount) {
+            /* create a default mount here */
+            xmlNodePtr node;
+            node = xmlNewNode(NULL, XMLSTR("mount"));
+            xmlSetProp(node, XMLSTR("type"), XMLSTR("default"));
+            _parse_mount(doc, node, configuration);
+            xmlFreeNode(node);
+            mount = config_find_mount(configuration, NULL, MOUNT_TYPE_DEFAULT);
+        }
+        if (mount) {
+            if (!mount->authstack)
+                __append_old_style_auth(&mount->authstack, "legacy-global-source", AUTH_TYPE_STATIC, "source", source_password, NULL, "source,put,get", 0, "*");
+        } else {
+            ICECAST_LOG_ERROR("Can not find nor create default mount but global lagency source password set. Bad.");
+        }
+    }
 
     /* drop the first listening socket details if more than one is defined, as we only
      * have port or listen-socket not both */
@@ -732,6 +835,158 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
     } while ((node = node->next));
 }
 
+static void _parse_mount_oldstyle_authentication(mount_proxy *mount, xmlNodePtr node, auth_stack_t **authstack) {
+     int allow_duplicate_users = 1;
+     auth_t *auth;
+     char *type;
+     char *name;
+     char *value;
+     xmlNodePtr child;
+
+     child = node->xmlChildrenNode;
+
+     while (child) {
+         if (xmlStrcmp(node->name, XMLSTR("option")) == 0) {
+             name = (char *)xmlGetProp(node, XMLSTR("name"));
+             value = (char *)xmlGetProp(node, XMLSTR("value"));
+             if (name && value) {
+                 if (strcmp(name, "allow_duplicate_users") == 0) {
+                     allow_duplicate_users = util_str_to_bool(value);
+                 }
+             }
+             if (name)
+                 xmlFree(name);
+             if (value)
+                 xmlFree(value);
+         }
+         child = child->next;
+     }
+
+     type = (char *)xmlGetProp(node, XMLSTR("type"));
+     if (strcmp(type, AUTH_TYPE_HTPASSWD) == 0) {
+         if (!allow_duplicate_users)
+             xmlSetProp(node, XMLSTR("connections-per-user"), XMLSTR("0"));
+
+         auth = auth_get_authenticator(node);
+         if (auth) {
+             auth_stack_push(authstack, auth);
+             auth_release(auth);
+         }
+
+         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, "source,put", NULL, 0, NULL);
+     } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
+         /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemans take care and watch your children! */
+         /* Stuff that was of help:
+          * $ sed 's/^.*name="\([^"]*\)".*$/         const char *\1 = NULL;/'
+          * $ sed 's/^.*name="\([^"]*\)".*$/         if (\1)\n             xmlFree(\1);/'
+          * $ sed 's/^.*name="\([^"]*\)".*$/                     } else if (strcmp(name, "\1") == 0) {\n                         \1 = value;\n                         value = NULL;/'
+          */
+         /* urls */
+         char *mount_add        = NULL;
+         char *mount_remove     = NULL;
+         char *listener_add     = NULL;
+         char *listener_remove  = NULL;
+         char *stream_auth      = NULL;
+         /* request credentials */
+         char *username         = NULL;
+         char *password         = NULL;
+         /* general options */
+         char *auth_header      = NULL;
+         char *timelimit_header = NULL;
+         char *headers          = NULL;
+         char *header_prefix    = NULL;
+
+         child = node->xmlChildrenNode;
+         while (child) {
+             if (xmlStrcmp(node->name, XMLSTR("option")) == 0) {
+                 name = (char *)xmlGetProp(node, XMLSTR("name"));
+                 value = (char *)xmlGetProp(node, XMLSTR("value"));
+
+                 if (name && value) {
+                     if (strcmp(name, "mount_add") == 0) {
+                         mount_add = value;
+                         value = NULL;
+                     } else if (strcmp(name, "mount_add") == 0) {
+                         mount_add = value;
+                         value = NULL;
+                     } else if (strcmp(name, "mount_remove") == 0) {
+                         mount_remove = value;
+                         value = NULL;
+                     } else if (strcmp(name, "listener_add") == 0) {
+                         listener_add = value;
+                         value = NULL;
+                     } else if (strcmp(name, "listener_remove") == 0) {
+                         listener_remove = value;
+                         value = NULL;
+                     } else if (strcmp(name, "username") == 0) {
+                         username = value;
+                         value = NULL;
+                     } else if (strcmp(name, "password") == 0) {
+                         password = value;
+                         value = NULL;
+                     } else if (strcmp(name, "auth_header") == 0) {
+                         auth_header = value;
+                         value = NULL;
+                     } else if (strcmp(name, "timelimit_header") == 0) {
+                         timelimit_header = value;
+                         value = NULL;
+                     } else if (strcmp(name, "headers") == 0) {
+                         headers = value;
+                         value = NULL;
+                     } else if (strcmp(name, "header_prefix") == 0) {
+                         header_prefix = value;
+                         value = NULL;
+                     } else if (strcmp(name, "stream_auth") == 0) {
+                         stream_auth = value;
+                         value = NULL;
+                     }
+                 }
+
+                 if (name)
+                     xmlFree(name);
+                 if (value)
+                     xmlFree(value);
+             }
+             child = child->next;
+         }
+
+         /* TODO: FIXME: XXX: implement support for mount_add and mount_remove (using only username and password) here. */
+         __append_old_style_urlauth(authstack, listener_add, listener_remove, "listener_add", "listener_remove", username, password, 0, auth_header, timelimit_header, headers, header_prefix);
+         __append_old_style_urlauth(authstack, stream_auth, NULL, "stream_auth", NULL, username, password, 1, auth_header, timelimit_header, headers, header_prefix);
+         if (listener_add)
+             __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, "get,put,head", NULL, 0, NULL);
+         if (stream_auth)
+             __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, "source,put", NULL, 0, NULL);
+
+         if (mount_add)
+             xmlFree(mount_add);
+         if (mount_remove)
+             xmlFree(mount_remove);
+         if (listener_add)
+             xmlFree(listener_add);
+         if (listener_remove)
+             xmlFree(listener_remove);
+         if (username)
+             xmlFree(username);
+         if (password)
+             xmlFree(password);
+         if (auth_header)
+             xmlFree(auth_header);
+         if (timelimit_header)
+             xmlFree(timelimit_header);
+         if (headers)
+             xmlFree(headers);
+         if (header_prefix)
+             xmlFree(header_prefix);
+         if (stream_auth)
+             xmlFree(stream_auth);
+     } else {
+         ICECAST_LOG_ERROR("Unknown authentication type in legacy mode. Disable anonymous login listener and global login for source.");
+         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, NULL, NULL, 0, NULL);
+     }
+     xmlFree(type);
+}
+
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *configuration)
 {
@@ -739,6 +994,9 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     mount_proxy *mount = calloc(1, sizeof(mount_proxy));
     mount_proxy *current = configuration->mounts;
     mount_proxy *last=NULL;
+    char *username = NULL;
+    char *password = NULL;
+    auth_stack_t *authstack = NULL;
     
     /* default <mount> settings */
     mount->mounttype = MOUNT_TYPE_NORMAL;
@@ -774,11 +1032,11 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             mount->mountname = (char *)xmlNodeListGetString (doc, node->xmlChildrenNode, 1);
         }
         else if (xmlStrcmp (node->name, XMLSTR("username")) == 0) {
-            mount->username = (char *)xmlNodeListGetString(
+            username = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
         else if (xmlStrcmp (node->name, XMLSTR("password")) == 0) {
-            mount->password = (char *)xmlNodeListGetString(
+            password = (char *)xmlNodeListGetString(
                     doc, node->xmlChildrenNode, 1);
         }
         else if (xmlStrcmp (node->name, XMLSTR("dump-file")) == 0) {
@@ -834,7 +1092,23 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("authentication")) == 0) {
-            mount->auth = auth_get_authenticator (node);
+            tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+            if (tmp) {
+                xmlFree(tmp);
+                _parse_mount_oldstyle_authentication(mount, node, &authstack);
+            } else {
+                xmlNodePtr child = node->xmlChildrenNode;
+
+                do {
+                    if (child == NULL) break;
+                    if (xmlIsBlankNode(child)) continue;
+                    if (xmlStrcmp (child->name, XMLSTR("role")) == 0) {
+                        auth_t *auth = auth_get_authenticator(child);
+                        auth_stack_push(&authstack, auth);
+                        auth_release(auth);
+                    }
+               } while ((child = child->next));
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("on-connect")) == 0) {
             mount->on_connect = (char *)xmlNodeListGetString(
@@ -898,6 +1172,25 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
     } while ((node = node->next));
 
+    if (password) {
+        auth_stack_t *old_style = NULL;
+        __append_old_style_auth(&old_style, "legacy-mount-source", AUTH_TYPE_STATIC, username ? username : "source", password, NULL, "source,put,get", 0, "*");
+        if (authstack) {
+            auth_stack_append(old_style, authstack);
+            auth_stack_release(authstack);
+        }
+        authstack = old_style;
+    }
+
+    if (username)
+        xmlFree(username);
+    if (password)
+        xmlFree(password);
+
+    if (mount->authstack)
+        auth_stack_release(mount->authstack);
+    auth_stack_addref(mount->authstack = authstack);
+
     /* make sure we have at least the mountpoint name */
     if (mount->mountname == NULL && mount->mounttype != MOUNT_TYPE_DEFAULT)
     {
@@ -908,11 +1201,18 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     {
     	ICECAST_LOG_WARN("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
     }
-    if (mount->auth && mount->mountname) {
-        mount->auth->mount = strdup ((char *)mount->mountname);
-    } else if (mount->auth && mount->mounttype == MOUNT_TYPE_DEFAULT ) {
-        mount->auth->mount = strdup ("(default mount)");
+
+    while (authstack) {
+        auth_t *auth = auth_stack_get(authstack);
+        if (mount->mountname) {
+            auth->mount = strdup((char *)mount->mountname);
+        } else if (mount->mounttype == MOUNT_TYPE_DEFAULT ) {
+            auth->mount = strdup("(default mount)");
+        }
+        auth_release(auth);
+        auth_stack_next(&authstack);
     }
+
     while(current) {
         last = current;
         current = current->next;
@@ -1247,8 +1547,13 @@ static void _parse_plugins(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c) {
 }
 
 static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
-        ice_config_t *configuration)
+        ice_config_t *configuration, char **source_password)
 {
+    char *admin_password = NULL, *admin_username = NULL;
+    char *relay_password = NULL, *relay_username = (char*)xmlCharStrdup(CONFIG_DEFAULT_MASTER_USERNAME);
+    auth_stack_t *old_style = NULL;
+    auth_stack_t *new_style = NULL;
+
     do {
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
@@ -1258,33 +1563,59 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
                 ICECAST_LOG_ERROR("Mount level source password defined within global <authentication> section.");
             }
             else {
-                if (configuration->source_password)
-                    xmlFree(configuration->source_password);
-                configuration->source_password = 
+                if (*source_password) xmlFree(*source_password);
+                *source_password = 
                     (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
         } else if (xmlStrcmp (node->name, XMLSTR("admin-password")) == 0) {
-            if(configuration->admin_password)
-                xmlFree(configuration->admin_password);
-            configuration->admin_password =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(admin_password) xmlFree(admin_password);
+            admin_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("admin-user")) == 0) {
-            if(configuration->admin_username)
-                xmlFree(configuration->admin_username);
-            configuration->admin_username =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(admin_username) xmlFree(admin_username);
+            admin_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("relay-password")) == 0) {
-            if(configuration->relay_password)
-                xmlFree(configuration->relay_password);
-            configuration->relay_password =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(relay_password) xmlFree(relay_password);
+            relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("relay-user")) == 0) {
-            if(configuration->relay_username)
-                xmlFree(configuration->relay_username);
-            configuration->relay_username =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if(relay_username) xmlFree(relay_username);
+            relay_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (node->name, XMLSTR("role")) == 0) {
+            auth_t *auth = auth_get_authenticator(node);
+            auth_stack_push(&new_style, auth);
+            auth_release(auth);
         }
     } while ((node = node->next));
+
+    if (admin_password && admin_username)
+        __append_old_style_auth(&old_style, "legacy-admin", AUTH_TYPE_STATIC, admin_username, admin_password, NULL, "get,post,head", 1, "*");
+
+    if (relay_password && relay_username)
+        __append_old_style_auth(&old_style, "legacy-relay", AUTH_TYPE_STATIC, relay_username, relay_password, NULL, "get", 1, "streamlist.txt");
+
+    if (admin_password)
+        xmlFree(admin_password);
+    if (admin_username)
+        xmlFree(admin_username);
+    if (relay_password)
+        xmlFree(relay_password);
+    if (relay_username)
+        xmlFree(relay_username);
+
+    if (old_style && new_style) {
+        auth_stack_append(old_style, new_style);
+        auth_stack_release(new_style);
+    } else if (new_style) {
+        old_style = new_style;
+    }
+
+    /* default unauthed anonymous account */
+    __append_old_style_auth(&old_style, "anonymous", AUTH_TYPE_ANONYMOUS, NULL, NULL, NULL, "get,post,head", 1, NULL);
+    if (!old_style)
+        ICECAST_LOG_ERROR("BAD. old_style=NULL");
+
+    if (configuration->authstack)
+        auth_stack_release(configuration->authstack);
+    configuration->authstack = old_style;
 }
 
 static void _parse_directory(xmlDocPtr doc, xmlNodePtr node,
@@ -1549,10 +1880,6 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     if (!dst || !src)
     	return;
 
-    if (!dst->username)
-    	dst->username = (char*)xmlStrdup((xmlChar*)src->username);
-    if (!dst->password)
-    	dst->password = (char*)xmlStrdup((xmlChar*)src->password);
     if (!dst->dumpfile)
     	dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
     if (!dst->intro_filename)
@@ -1579,12 +1906,8 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     	dst->charset = (char*)xmlStrdup((xmlChar*)src->charset);
     if (dst->mp3_meta_interval == -1)
     	dst->mp3_meta_interval = src->mp3_meta_interval;
-    if (!dst->auth_type)
-    	dst->auth_type = (char*)xmlStrdup((xmlChar*)src->auth_type);
-    // TODO: dst->auth
     if (!dst->cluster_password)
     	dst->cluster_password = (char*)xmlStrdup((xmlChar*)src->cluster_password);
-    // TODO: dst->auth_options
     if (!dst->on_connect)
     	dst->on_connect = (char*)xmlStrdup((xmlChar*)src->on_connect);
     if (!dst->on_disconnect)
@@ -1634,8 +1957,7 @@ static inline void _merge_mounts_all(ice_config_t *c) {
 }
 
 /* return the mount details that match the supplied mountpoint */
-mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type)
-{
+mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type) {
     mount_proxy *mountinfo = config->mounts;
 
     for (; mountinfo; mountinfo = mountinfo->next)
@@ -1643,19 +1965,27 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
         if (mountinfo->mounttype != type)
 	    continue;
 
-	if (mount == NULL || mountinfo->mountname == NULL)
+	if (!mount && !mountinfo->mountname)
             break;
 
-	if (mountinfo->mounttype == MOUNT_TYPE_NORMAL && strcmp (mountinfo->mountname, mount) == 0)
-            break;
+        if (mountinfo->mounttype == MOUNT_TYPE_NORMAL) {
+            if (!mount || !mountinfo->mountname)
+                continue;
+
+	    if (strcmp(mountinfo->mountname, mount) == 0)
+                break;
+        } else if (mountinfo->mounttype == MOUNT_TYPE_DEFAULT) {
+            if (!mountinfo->mountname)
+                break;
 
 #ifndef _WIN32
-        if (fnmatch(mountinfo->mountname, mount, FNM_PATHNAME) == 0)
-            break;
+            if (fnmatch(mountinfo->mountname, mount, FNM_PATHNAME) == 0)
+                break;
 #else
-        if (strcmp(mountinfo->mountname, mount) == 0)
-            break;
+            if (strcmp(mountinfo->mountname, mount) == 0)
+                break;
 #endif
+        }
     }
 
     /* retry with default mount */
@@ -1688,4 +2018,3 @@ listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
     }
     return listener;
 }
-

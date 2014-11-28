@@ -11,7 +11,7 @@ include_HEADERS = icecastplugin.h
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h event.h md5.h \
-    auth.h auth_htpasswd.h auth_url.h \
+    acl.h auth.h auth_htpasswd.h auth_url.h auth_anonymous.h auth_static.h \
     format.h format_ogg.h format_mp3.h format_ebml.h \
     format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
     format_kate.h format_skeleton.h format_opus.h \
@@ -20,7 +20,7 @@ icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c 
     util.c slave.c source.c stats.c refbuf.c client.c \
     xslt.c fserve.c event.c admin.c md5.c \
     format.c format_ogg.c format_mp3.c format_midi.c format_flac.c format_ebml.c \
-    auth.c auth_htpasswd.c format_kate.c format_skeleton.c format_opus.c \
+    acl.c auth.c auth_htpasswd.c auth_anonymous.c auth_static.c format_kate.c format_skeleton.c format_opus.c
     roarapi.c plugins.c
 EXTRA_icecast_SOURCES = yp.c \
     auth_url.c \
@@ -40,4 +40,3 @@ debug:
 
 profile:
 	$(MAKE) all CFLAGS="@PROFILE@"
-

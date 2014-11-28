@@ -26,7 +26,6 @@ struct _mount_proxy;
 
 #include "thread/thread.h"
 #include "avl/avl.h"
-#include "auth.h"
 #include "global.h"
 #include "connection.h"
 
@@ -74,8 +73,8 @@ typedef struct _mount_proxy {
 
     mount_type mounttype; /* The type of the mount point */
 
-    char *username; /* Username and password for this mountpoint. If unset, */
-    char *password; /* falls back to global source password */
+    //char *username; /* Username and password for this mountpoint. If unset, */
+    //char *password; /* falls back to global source password */
 
     char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
                        to not dump. */
@@ -100,10 +99,8 @@ typedef struct _mount_proxy {
 
     ice_config_http_header_t *http_headers; /* additional HTTP headers */
 
-    char *auth_type; /* Authentication type */
-    struct auth_tag *auth;
     char *cluster_password;
-    config_options_t *auth_options; /* Options for this type */
+    struct auth_stack_tag *authstack;
     char *on_connect;
     char *on_disconnect;
     unsigned int max_listener_duration;
@@ -166,16 +163,11 @@ typedef struct ice_config_tag {
     int client_timeout;
     int header_timeout;
     int source_timeout;
-    int ice_login;
     int fileserve;
     int on_demand; /* global setting for all relays */
 
     char *shoutcast_mount;
-    char *source_password;
-    char *admin_username;
-    char *admin_password;
-    char *relay_username;
-    char *relay_password;
+    struct auth_stack_tag *authstack;
 
     int touch_interval;
     ice_config_dir_t *dir_list;
