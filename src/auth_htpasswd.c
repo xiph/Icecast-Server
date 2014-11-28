@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /** 
@@ -184,13 +185,12 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     htpasswd_user entry;
     void *result;
 
-    if (client->username == NULL || client->password == NULL)
-        return AUTH_FAILED;
+    if (!client->username || !client->password)
+        return AUTH_NOMATCH;
 
-    if (htpasswd->filename == NULL)
-    {
+    if (!htpasswd->filename) {
         ICECAST_LOG_ERROR("No filename given in options for authenticator.");
-        return AUTH_FAILED;
+        return AUTH_NOMATCH;
     }
     htpasswd_recheckfile (htpasswd);
 
@@ -214,15 +214,14 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     }
     ICECAST_LOG_DEBUG("no such username: %s", client->username);
     thread_rwlock_unlock (&htpasswd->file_rwlock);
-    return AUTH_FAILED;
+    return AUTH_NOMATCH;
 }
-
 
 int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
 {
     htpasswd_auth_state *state;
 
-    authenticator->authenticate = htpasswd_auth;
+    authenticator->authenticate_client = htpasswd_auth;
     authenticator->free = htpasswd_clear;
     authenticator->adduser = htpasswd_adduser;
     authenticator->deleteuser = htpasswd_deleteuser;
@@ -408,4 +407,3 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 
     return AUTH_OK;
 }
-

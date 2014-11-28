@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* client.c
@@ -36,9 +36,13 @@
 #include "fserve.h"
 
 #include "client.h"
+#include "auth.h"
 #include "logging.h"
 
 #include "util.h"
+
+/* for ADMIN_COMMAND_ERROR */
+#include "admin.h"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -76,6 +80,8 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
     stats_event_args (NULL, "clients", "%d", global.clients);
     client->con = con;
     client->parser = parser;
+    client->protocol = ICECAST_PROTOCOL_HTTP;
+    client->admin_command = ADMIN_COMMAND_ERROR;
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     client->refbuf->len = 0; /* force reader code to ignore buffer contents */
     client->pos = 0;
@@ -87,6 +93,7 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
 
 void client_destroy(client_t *client)
 {
+    ICECAST_LOG_DEBUG("Called to destory client %p", client);
     if (client == NULL)
         return;
 
@@ -98,7 +105,7 @@ void client_destroy(client_t *client)
         client->refbuf = NULL;
     }
 
-    if (auth_release_listener (client))
+    if (auth_release_client(client))
         return;
 
     /* write log entry if ip is set (some things don't set it, like outgoing 
@@ -123,40 +130,11 @@ void client_destroy(client_t *client)
 
     free(client->username);
     free(client->password);
+    free(client->role);
+    acl_release(client->acl);
 
     free(client);
 }
-
-/* return -1 for failed, 0 for authenticated, 1 for pending
- */
-int client_check_source_auth (client_t *client, const char *mount)
-{
-    ice_config_t *config = config_get_config();
-    char *pass = config->source_password;
-    char *user = "source";
-    int ret = -1;
-    mount_proxy *mountinfo = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
-
-    do
-    {
-        if (mountinfo)
-        {
-            ret = 1;
-            if (auth_stream_authenticate (client, mount, mountinfo) > 0)
-                break;
-            ret = -1;
-            if (mountinfo->password)
-                pass = mountinfo->password;
-            if (mountinfo->username)
-                user = mountinfo->username;
-        }
-        if (connection_check_pass (client->parser, user, pass) > 0)
-            ret = 0;
-    } while (0);
-    config_release_config();
-    return ret;
-}
-
 
 /* helper function for reading data from a client */
 int client_read_bytes (client_t *client, void *buf, unsigned len)
@@ -259,4 +237,3 @@ void client_set_queue (client_t *client, refbuf_t *refbuf)
     if (to_release)
         refbuf_release (to_release);
 }
-

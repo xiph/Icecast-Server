@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -677,7 +678,8 @@ static void source_init (source_t *source)
     {
         if (mountinfo->on_connect)
             source_run_script (mountinfo->on_connect, source, mountinfo, "source-connect");
-        auth_stream_start (mountinfo, source->mount);
+        /* TODO: replace with <event> */
+        /* auth_stream_start (mountinfo, source->mount); */
     }
     config_release_config();
 
@@ -885,7 +887,8 @@ static void source_shutdown (source_t *source)
     {
         if (mountinfo->on_disconnect)
             source_run_script (mountinfo->on_disconnect, source, mountinfo, "source-disconnect");
-        auth_stream_end (mountinfo, source->mount);
+        /* TODO: replace with <event> */
+        /* auth_stream_end (mountinfo, source->mount); */
     }
     config_release_config();
 
@@ -988,11 +991,12 @@ static void _parse_audio_info (source_t *source, const char *s)
 
 
 /* Apply the mountinfo details to the source */
-static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
+static void source_apply_mount (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
     const char *str;
     int val;
     http_parser_t *parser = NULL;
+    acl_t *acl = NULL;
 
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
@@ -1141,10 +1145,15 @@ static void source_apply_mount (source_t *source, mount_proxy *mountinfo)
     if (mountinfo && mountinfo->subtype)
         stats_event (source->mount, "subtype", mountinfo->subtype);
 
-    if (mountinfo && mountinfo->auth)
-        stats_event (source->mount, "authenticator", mountinfo->auth->type);
+    if (mountinfo)
+        acl = auth_stack_get_anonymous_acl(mountinfo->authstack);
+    if (!acl)
+        auth_stack_get_anonymous_acl(config->authstack);
+    if (acl && acl_test_web(acl) == ACL_POLICY_DENY)
+        stats_event (source->mount, "authenticator", "(dummy)");
     else
         stats_event (source->mount, "authenticator", NULL);
+    acl_release(acl);
 
     if (mountinfo && mountinfo->fallback_mount)
     {
@@ -1228,7 +1237,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     stats_event_args (source->mount, "listenurl", "http://%s:%d%s",
             config->hostname, config->port, source->mount);
 
-    source_apply_mount (source, mountinfo);
+    source_apply_mount (config, source, mountinfo);
 
     if (source->fallback_mount)
         ICECAST_LOG_DEBUG("fallback %s", source->fallback_mount);
@@ -1533,4 +1542,3 @@ void source_recheck_mounts (int update_all)
     avl_tree_unlock (global.source_tree);
     config_release_config();
 }
-

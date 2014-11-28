@@ -8,12 +8,14 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
 #include "cfgfile.h"
+#include "client.h"
 #include "log/log.h"
 
 /* declare the global log descriptors */
@@ -76,4 +78,3 @@ void restart_logging (ice_config_t *config);
 void log_parse_failure (void *ctx, const char *fmt, ...);
 
 #endif  /* __LOGGING_H__ */
-

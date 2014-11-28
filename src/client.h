@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* client.h
@@ -21,7 +21,13 @@
 
 #include "connection.h"
 #include "refbuf.h"
+#include "acl.h"
 #include "httpp/httpp.h"
+
+typedef enum _protocol_tag {
+    ICECAST_PROTOCOL_HTTP = 0,
+    ICECAST_PROTOCOL_SHOUTCAST
+} protocol_t;
 
 typedef struct _client_tag
 {
@@ -30,11 +36,29 @@ typedef struct _client_tag
     /* the client's http headers */
     http_parser_t *parser;
 
+    /* protocol client uses */
+    protocol_t protocol;
+
     /* http response code for this client */
     int respcode;
 
-    /* auth completed, 0 not yet, 1 passed */
-    int authenticated;
+    /* admin command if any. ADMIN_COMMAND_ERROR if not an admin command. */
+    int admin_command;
+
+    /* authentication instances we still need to go thru */
+    struct auth_stack_tag *authstack;
+
+    /* Client username */
+    char *username;
+
+    /* Client password */
+    char *password;
+
+    /* Client role */
+    char *role;
+
+    /* active ACL, set as soon as the client is authenticated */
+    acl_t *acl;
 
     /* is client getting intro data */
     long intro_offset;
@@ -47,12 +71,6 @@ typedef struct _client_tag
 
     /* auth used for this client */
     struct auth_tag *auth;
-
-    /* Client username, if authenticated */
-    char *username;
-
-    /* Client password, if authenticated */
-    char *password;
 
     /* Format-handler-specific data for this client */
     void *format_data;
@@ -75,6 +93,5 @@ void client_send_100(client_t *client);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
-int client_check_source_auth (client_t *client, const char *mount);
 
 #endif  /* __CLIENT_H__ */

@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -116,70 +117,73 @@
 #define DEFAULT_TRANSFORMED_REQUEST ""
 #define BUILDM3U_RAW_REQUEST "buildm3u"
 
-int admin_get_command(const char *command)
-{
-    if(!strcmp(command, FALLBACK_RAW_REQUEST))
-        return COMMAND_RAW_FALLBACK;
-    else if(!strcmp(command, FALLBACK_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_FALLBACK;
-    else if(!strcmp(command, METADATA_RAW_REQUEST))
-        return COMMAND_RAW_METADATA_UPDATE;
-    else if(!strcmp(command, METADATA_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_METADATA_UPDATE;
-    else if(!strcmp(command, SHOUTCAST_METADATA_REQUEST))
-        return COMMAND_SHOUTCAST_METADATA_UPDATE;
-    else if(!strcmp(command, LISTCLIENTS_RAW_REQUEST))
-        return COMMAND_RAW_SHOW_LISTENERS;
-    else if(!strcmp(command, LISTCLIENTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_SHOW_LISTENERS;
-    else if(!strcmp(command, STATS_RAW_REQUEST))
-        return COMMAND_RAW_STATS;
-    else if(!strcmp(command, STATS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else if(!strcmp(command, "stats.xml")) /* The old way */
-        return COMMAND_RAW_STATS;
-    else if(!strcmp(command, QUEUE_RELOAD_RAW_REQUEST))
-        return COMMAND_RAW_QUEUE_RELOAD;
-    else if(!strcmp(command, QUEUE_RELOAD_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_QUEUE_RELOAD;
-    else if(!strcmp(command, LISTMOUNTS_RAW_REQUEST))
-        return COMMAND_RAW_LIST_MOUNTS;
-    else if(!strcmp(command, LISTMOUNTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_LIST_MOUNTS;
-    else if(!strcmp(command, STREAMLIST_RAW_REQUEST))
-        return COMMAND_RAW_LISTSTREAM;
-    else if(!strcmp(command, STREAMLIST_PLAINTEXT_REQUEST))
-        return COMMAND_PLAINTEXT_LISTSTREAM;
-    else if(!strcmp(command, MOVECLIENTS_RAW_REQUEST))
-        return COMMAND_RAW_MOVE_CLIENTS;
-    else if(!strcmp(command, MOVECLIENTS_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MOVE_CLIENTS;
-    else if(!strcmp(command, KILLCLIENT_RAW_REQUEST))
-        return COMMAND_RAW_KILL_CLIENT;
-    else if(!strcmp(command, KILLCLIENT_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_KILL_CLIENT;
-    else if(!strcmp(command, KILLSOURCE_RAW_REQUEST))
-        return COMMAND_RAW_KILL_SOURCE;
-    else if(!strcmp(command, KILLSOURCE_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_KILL_SOURCE;
-    else if(!strcmp(command, MANAGEAUTH_RAW_REQUEST))
-        return COMMAND_RAW_MANAGEAUTH;
-    else if(!strcmp(command, MANAGEAUTH_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_MANAGEAUTH;
-    else if(!strcmp(command, UPDATEMETADATA_RAW_REQUEST))
-        return COMMAND_RAW_UPDATEMETADATA;
-    else if(!strcmp(command, UPDATEMETADATA_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_UPDATEMETADATA;
-    else if(!strcmp(command, BUILDM3U_RAW_REQUEST))
-        return COMMAND_BUILDM3U;
-    else if(!strcmp(command, DEFAULT_TRANSFORMED_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else if(!strcmp(command, DEFAULT_RAW_REQUEST))
-        return COMMAND_TRANSFORMED_STATS;
-    else if(!strcmp(command, "*")) /* for ACL framework */
-        return COMMAND_ANY;
-    else
-        return COMMAND_ERROR;
+typedef struct admin_command_tag {
+    const int   id;
+    const char *name;
+    const int   type;
+    const int   format;
+} admin_command_t;
+
+/*
+COMMAND_TRANSFORMED_METADATA_UPDATE -> METADATA_TRANSFORMED_REQUEST
+COMMAND_TRANSFORMED_UPDATEMETADATA  -> UPDATEMETADATA_TRANSFORMED_REQUEST
+*/
+
+static const admin_command_t commands[] = {
+ {COMMAND_RAW_FALLBACK,                FALLBACK_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_FALLBACK,        FALLBACK_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_METADATA_UPDATE,         METADATA_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_SHOUTCAST_METADATA_UPDATE,   SHOUTCAST_METADATA_REQUEST,         ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_TRANSFORMED_METADATA_UPDATE, METADATA_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_SHOW_LISTENERS,          LISTCLIENTS_RAW_REQUEST,            ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_SHOW_LISTENERS,  LISTCLIENTS_TRANSFORMED_REQUEST,    ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_STATS,                   STATS_RAW_REQUEST,                  ADMINTYPE_HYBRID,  RAW},
+ {COMMAND_TRANSFORMED_STATS,           STATS_TRANSFORMED_REQUEST,          ADMINTYPE_HYBRID,  TRANSFORMED},
+ {COMMAND_RAW_STATS,                   "stats.xml",                        ADMINTYPE_HYBRID,  RAW}, /* The old way */
+ {COMMAND_RAW_QUEUE_RELOAD,            QUEUE_RELOAD_RAW_REQUEST,           ADMINTYPE_GENERAL, RAW},
+ {COMMAND_TRANSFORMED_QUEUE_RELOAD,    QUEUE_RELOAD_TRANSFORMED_REQUEST,   ADMINTYPE_GENERAL, TRANSFORMED},
+ {COMMAND_RAW_LIST_MOUNTS,             LISTMOUNTS_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
+ {COMMAND_TRANSFORMED_LIST_MOUNTS,     LISTMOUNTS_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
+ {COMMAND_RAW_LISTSTREAM,              STREAMLIST_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
+ {COMMAND_PLAINTEXT_LISTSTREAM,        STREAMLIST_PLAINTEXT_REQUEST,       ADMINTYPE_GENERAL, PLAINTEXT},
+ {COMMAND_TRANSFORMED_LISTSTREAM,      STREAMLIST_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
+ {COMMAND_RAW_MOVE_CLIENTS,            MOVECLIENTS_RAW_REQUEST,            ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_MOVE_CLIENTS,    MOVECLIENTS_TRANSFORMED_REQUEST,    ADMINTYPE_HYBRID,  TRANSFORMED},
+ {COMMAND_RAW_KILL_CLIENT,             KILLCLIENT_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_KILL_CLIENT,     KILLCLIENT_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_KILL_SOURCE,             KILLSOURCE_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_KILL_SOURCE,     KILLSOURCE_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_MANAGEAUTH,              MANAGEAUTH_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_MANAGEAUTH,      MANAGEAUTH_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_UPDATEMETADATA,          UPDATEMETADATA_RAW_REQUEST,         ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_UPDATEMETADATA,  UPDATEMETADATA_TRANSFORMED_REQUEST, ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_BUILDM3U,                    BUILDM3U_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
+ {COMMAND_TRANSFORMED_STATS,           DEFAULT_TRANSFORMED_REQUEST,        ADMINTYPE_HYBRID,  TRANSFORMED},
+ {COMMAND_TRANSFORMED_STATS,           DEFAULT_RAW_REQUEST,                ADMINTYPE_HYBRID,  TRANSFORMED},
+ {COMMAND_ANY,                         "*",                                ADMINTYPE_GENERAL, TRANSFORMED} /* for ACL framework */
+};
+
+int admin_get_command(const char *command) {
+    size_t i;
+
+    for (i = 0; i < (sizeof(commands)/sizeof(*commands)); i++)
+        if (strcmp(commands[i].name, command) == 0)
+            return commands[i].id;
+
+    return COMMAND_ERROR;
+}
+
+int admin_get_command_type(int command) {
+    size_t i;
+
+    if (command == ADMIN_COMMAND_ERROR || command == COMMAND_ANY)
+        return ADMINTYPE_ERROR;
+
+    for (i = 0; i < (sizeof(commands)/sizeof(*commands)); i++)
+        if (commands[i].id == command)
+            return commands[i].type;
+
+    return ADMINTYPE_ERROR;
 }
 
 static void command_fallback(client_t *client, source_t *source, int response);
@@ -201,9 +205,8 @@ static void command_kill_source(client_t *client, source_t *source,
         int response);
 static void command_updatemetadata(client_t *client, source_t *source,
         int response);
-static void admin_handle_mount_request(client_t *client, source_t *source,
-        int command);
-static void admin_handle_general_request(client_t *client, int command);
+static void admin_handle_mount_request(client_t *client, source_t *source);
+static void admin_handle_general_request(client_t *client);
 
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
@@ -238,6 +241,7 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
         {
             ice_config_t *config;
             mount_proxy *mountinfo;
+            acl_t *acl = NULL;
 
             srcnode = xmlNewChild(xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
@@ -250,11 +254,14 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             config = config_get_config();
             mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
-            if (mountinfo && mountinfo->auth)
-            {
-                xmlNewChild(srcnode, NULL, XMLSTR("authenticator"),
-                        XMLSTR(mountinfo->auth->type));
+            if (mountinfo)
+                acl = auth_stack_get_anonymous_acl(mountinfo->authstack);
+            if (!acl)
+                auth_stack_get_anonymous_acl(config->authstack);
+            if (acl && acl_test_web(acl) == ACL_POLICY_DENY) {
+                xmlNewChild(srcnode, NULL, XMLSTR("authenticator"), XMLSTR("(dummy)"));
             }
+            acl_release(acl);
             config_release_config();
 
             if (source->running)
@@ -359,7 +366,6 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 void admin_handle_request(client_t *client, const char *uri)
 {
     const char *mount, *command_string;
-    int command;
 
     ICECAST_LOG_DEBUG("Admin request (%s)", uri);
     if (!((strcmp(uri, "/admin.cgi") == 0) ||
@@ -377,40 +383,23 @@ void admin_handle_request(client_t *client, const char *uri)
     }
 
     ICECAST_LOG_DEBUG("Got command (%s)", command_string);
-    command = admin_get_command(command_string);
 
-    if(command <= 0) {
+    if (client->admin_command <= 0) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %s",
                 command_string);
         client_send_error(client, 400, 0, "Unrecognised command");
         return;
     }
 
-    if (command == COMMAND_SHOUTCAST_METADATA_UPDATE) {
-
-        ice_config_t *config;
-        const char *sc_mount;
-        const char *pass = httpp_get_query_param (client->parser, "pass");
-        listener_t *listener;
-
-        if (pass == NULL)
-        {
-            client_send_error(client, 400, 0, "missing pass parameter");
+    if (acl_test_admin(client->acl, client->admin_command) != ACL_POLICY_ALLOW) {
+        if (client->admin_command == COMMAND_RAW_METADATA_UPDATE &&
+            (acl_test_method(client->acl, httpp_req_source) == ACL_POLICY_ALLOW ||
+             acl_test_method(client->acl, httpp_req_put)    == ACL_POLICY_ALLOW)) {
+            ICECAST_LOG_DEBUG("Granted right to call COMMAND_RAW_METADATA_UPDATE to client because it is allowed to do SOURCE or PUT.");
+        } else {
+            client_send_error(client, 401, 1, "You need to authenticate\r\n");
             return;
         }
-        global_lock();
-        config = config_get_config ();
-        sc_mount = config->shoutcast_mount;
-        listener = config_get_listen_sock (config, client->con);
-
-        if (listener && listener->shoutcast_mount)
-            sc_mount = listener->shoutcast_mount;
-
-        httpp_set_query_param (client->parser, "mount", sc_mount);
-        httpp_setvar (client->parser, HTTPP_VAR_PROTOCOL, "ICY");
-        httpp_setvar (client->parser, HTTPP_VAR_ICYPASSWORD, pass);
-        config_release_config ();
-        global_unlock();
     }
 
     mount = httpp_get_query_param(client->parser, "mount");
@@ -419,28 +408,12 @@ void admin_handle_request(client_t *client, const char *uri)
         source_t *source;
 
         /* this request does not require auth but can apply to files on webroot */
-        if (command == COMMAND_BUILDM3U)
-        {
-            command_buildm3u (client, mount);
+        if (client->admin_command == COMMAND_BUILDM3U) {
+            command_buildm3u(client, mount);
             return;
         }
-        /* This is a mount request, handle it as such */
-        if (client->authenticated == 0 && !connection_check_admin_pass(client->parser))
-        {
-            switch (client_check_source_auth (client, mount))
-            {
-                case 0:
-                    break;
-                default:
-                    ICECAST_LOG_INFO("Bad or missing password on mount modification admin "
-                            "request (command: %s)", command_string);
-                    client_send_error(client, 401, 1, "You need to authenticate\r\n");
-                    /* fall through */
-                case 1:
-                    return;
-            }
-        }
 
+        /* This is a mount request, handle it as such */
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(mount);
 
@@ -461,7 +434,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 client_send_error(client, 400, 0, "Source is not available");
                 return;
             }
-            if (command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
+            if (client->admin_command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
                     source->shoutcast_compat == 0)
             {
                 avl_tree_unlock (global.source_tree);
@@ -472,39 +445,18 @@ void admin_handle_request(client_t *client, const char *uri)
             }
             ICECAST_LOG_INFO("Received admin command %s on mount \"%s\"", 
                     command_string, mount);
-            admin_handle_mount_request(client, source, command);
+            admin_handle_mount_request(client, source);
             avl_tree_unlock(global.source_tree);
         }
     }
     else {
-
-        if (command == COMMAND_PLAINTEXT_LISTSTREAM) {
-        /* this request is used by a slave relay to retrieve
-           mounts from the master, so handle this request
-           validating against the relay password */
-            if(!connection_check_relay_pass(client->parser)) {
-                ICECAST_LOG_INFO("Bad or missing password on admin command "
-                      "request (command: %s)", command_string);
-                client_send_error(client, 401, 1, "You need to authenticate\r\n");
-                return;
-            }
-        }
-        else {
-            if(!connection_check_admin_pass(client->parser)) {
-                ICECAST_LOG_INFO("Bad or missing password on admin command "
-                      "request (command: %s)", command_string);
-                client_send_error(client, 401, 1, "You need to authenticate\r\n");
-                return;
-            }
-        }
-        
-        admin_handle_general_request(client, command);
+        admin_handle_general_request(client);
     }
 }
 
-static void admin_handle_general_request(client_t *client, int command)
+static void admin_handle_general_request(client_t *client)
 {
-    switch(command) {
+    switch(client->admin_command) {
         case COMMAND_RAW_STATS:
             command_stats(client, NULL, RAW);
             break;
@@ -542,10 +494,8 @@ static void admin_handle_general_request(client_t *client, int command)
     }
 }
 
-static void admin_handle_mount_request(client_t *client, source_t *source, 
-        int command)
-{
-    switch(command) {
+static void admin_handle_mount_request(client_t *client, source_t *source) {
+    switch(client->admin_command) {
         case COMMAND_RAW_STATS:
             command_stats(client, source->mount, RAW);
             break;
@@ -836,14 +786,22 @@ static void command_manageauth(client_t *client, source_t *source,
     int ret = AUTH_OK;
     ice_config_t *config = config_get_config ();
     mount_proxy *mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
+    auth_t *auth;
 
     do
     {
+#if 0
         if (mountinfo == NULL || mountinfo->auth == NULL)
         {
             ICECAST_LOG_WARN("manage auth request for %s but no facility available", source->mount);
             break;
         }
+        auth = mountinfo->auth;
+#else
+        ICECAST_LOG_WARN("manage auth request for %s but no facility available", source->mount);
+        break;
+#endif
+
         COMMAND_OPTIONAL(client, "action", action);
         COMMAND_OPTIONAL (client, "username", username);
 
@@ -860,7 +818,7 @@ static void command_manageauth(client_t *client, source_t *source,
                 ICECAST_LOG_WARN("manage auth request add for %s but no user/pass", source->mount);
                 break;
             }
-            ret = mountinfo->auth->adduser(mountinfo->auth, username, password);
+            ret = auth->adduser(auth, username, password);
             if (ret == AUTH_FAILED) {
                 message = strdup("User add failed - check the icecast error log");
             }
@@ -878,7 +836,7 @@ static void command_manageauth(client_t *client, source_t *source,
                 ICECAST_LOG_WARN("manage auth request delete for %s but no username", source->mount);
                 break;
             }
-            ret = mountinfo->auth->deleteuser(mountinfo->auth, username);
+            ret = auth->deleteuser(auth, username);
             if (ret == AUTH_FAILED) {
                 message = strdup("User delete failed - check the icecast error log");
             }
@@ -899,8 +857,8 @@ static void command_manageauth(client_t *client, source_t *source,
 
         xmlDocSetRootElement(doc, node);
 
-        if (mountinfo && mountinfo->auth && mountinfo->auth->listuser)
-            mountinfo->auth->listuser (mountinfo->auth, srcnode);
+        if (auth && auth->listuser)
+            auth->listuser(auth, srcnode);
 
         config_release_config ();
 
@@ -1011,6 +969,10 @@ static void command_metadata(client_t *client, source_t *source,
 
     ICECAST_LOG_DEBUG("Got metadata update request");
 
+    if (source->parser->req_type == httpp_req_put) {
+        ICECAST_LOG_ERROR("Got legacy SOURCE-style metadata update command on source connected with PUT at mountpoint %s", source->mount);
+    }
+
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_OPTIONAL(client, "song", song);
     COMMAND_OPTIONAL(client, "title", title);
@@ -1029,7 +991,7 @@ static void command_metadata(client_t *client, source_t *source,
 
     plugin = source->format;
     if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
-        if (response == RAW && connection_check_admin_pass (client->parser) == 0)
+        if (response == RAW && acl_test_admin(client->acl, COMMAND_RAW_METADATA_UPDATE) != ACL_POLICY_ALLOW)
             same_ip = 0;
 
     if (same_ip && plugin && plugin->set_tag)
@@ -1078,6 +1040,10 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
 
     ICECAST_LOG_DEBUG("Got shoutcast metadata update request");
 
+    if (source->parser->req_type == httpp_req_put) {
+        ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command on source connected with PUT at mountpoint %s", source->mount);
+    }
+
     COMMAND_REQUIRE(client, "mode", action);
     COMMAND_REQUIRE(client, "song", value);
 
@@ -1087,7 +1053,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         return;
     }
     if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
-        if (connection_check_admin_pass (client->parser) == 0)
+        if (acl_test_admin(client->acl, COMMAND_RAW_METADATA_UPDATE) != ACL_POLICY_ALLOW)
             same_ip = 0;
 
     if (same_ip && source->format && source->format->set_tag)

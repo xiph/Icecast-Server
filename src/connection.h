@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __CONNECTION_H__
@@ -59,10 +60,6 @@ int  connection_setup_sockets (struct ice_config_tag *config);
 void connection_close(connection_t *con);
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source (struct source_tag *source, int response);
-
-int connection_check_pass (http_parser_t *parser, const char *user, const char *pass);
-int connection_check_relay_pass(http_parser_t *parser);
-int connection_check_admin_pass(http_parser_t *parser);
 
 extern rwlock_t _source_shutdown_rwlock;
 
