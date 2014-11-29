@@ -19,8 +19,8 @@
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
         <source-timeout>10</source-timeout>
-        <!-- If enabled, this will provide a burst of data when a client 
-             first connects, thereby significantly reducing the startup 
+        <!-- If enabled, this will provide a burst of data when a client
+             first connects, thereby significantly reducing the startup
              time for listeners that do substantial buffering. However,
              it also significantly increases latency between the source
              client and listening client.  For low-latency setups, you
@@ -82,13 +82,13 @@
     -->
 
 
-    <!-- Global header settings 
+    <!-- Global header settings
          Headers defined here will be returned for every HTTP request to Icecast.
 
          The ACAO header makes Icecast public content/API by default
          This will make streams easier embeddable (some HTML5 functionality needs it).
          Also it allows direct access to e.g. /status-json.xsl from other sites.
-         If you don't want this, comment out the following line or read up on CORS. 
+         If you don't want this, comment out the following line or read up on CORS.
     -->
     <http-headers>
         <header name="Access-Control-Allow-Origin" value="*" />
@@ -129,7 +129,7 @@
 
     <!-- Default settings for all mounts that don't have a specific <mount type="normal">.
     -->
-    <!-- 
+    <!--
     <mount type="default">
         <public>0</public>
         <intro>/server-wide-intro.ogg</intro>
