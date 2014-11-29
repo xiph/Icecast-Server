@@ -663,12 +663,11 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
     xmlNodePtr node;
     char buf[22];
 
-#if 0
-    xmlSetProp (node, XMLSTR("id"), XMLSTR(buf));
-
-    xmlNewChild (node, NULL, XMLSTR("lag"), XMLSTR(buf));
-
-#endif
+    /* TODO: kh has support for a child node "lag". We should add that.
+     * BEFORE RELEASE 2.5.0 REVIEW #2097: Check if we are on-track for lowercasing child nodes.
+     * BEFORE RELEASE 2.6.0 TODO #2097: Change case of child nodes to lower case.
+     * The case of <ID>, <IP>, <UserAgent> and <Connected> should be converted to lower case.
+     */
 
     node = xmlNewChild(parent, NULL, XMLSTR("listener"), NULL);
     if (!node)
@@ -676,6 +675,7 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
 
     memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", client->con->id);
+    xmlSetProp(node, XMLSTR("id"), XMLSTR(buf));
     xmlNewChild(node, NULL, XMLSTR("ID"), XMLSTR(buf));
 
     xmlNewChild(node, NULL, XMLSTR("IP"), XMLSTR(client->con->ip));
@@ -686,7 +686,7 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
 
     tmp = httpp_getvar(client->parser, "referer");
     if (tmp)
-        xmlNewChild(node, NULL, XMLSTR("Referer"), XMLSTR(tmp));
+        xmlNewChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
     memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
@@ -694,6 +694,9 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
 
     if (client->username)
         xmlNewChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
+
+    if (client->role)
+        xmlNewChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
 
     return node;
 }
