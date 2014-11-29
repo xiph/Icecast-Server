@@ -1239,7 +1239,7 @@ static int _handle_aliases(client_t *client, char **uri) {
     const char *http_host = httpp_getvar(client->parser, "host");
     char *serverhost = NULL;
     int   serverport = 0;
-    char *vhost;
+    char *vhost = NULL;
     char *vhost_colon;
     char *new_uri = NULL;
     ice_config_t *config;
