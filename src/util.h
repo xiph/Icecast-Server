@@ -14,6 +14,9 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
+/* for FILE* */
+#include <stdio.h>
+
 #define XSLT_CONTENT 1
 #define HTML_CONTENT 2
 
