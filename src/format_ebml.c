@@ -7,6 +7,7 @@
  *
  * Copyright 2012,      David Richards, Mozilla Foundation,
  *                      and others (see AUTHORS for details).
+ * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
  */
 
 /* format_ebml.c
@@ -35,7 +36,6 @@
 
 #include "logging.h"
 
-#define EBML_DEBUG 0
 #define EBML_HEADER_MAX_SIZE 131072
 #define EBML_SLICE_SIZE 4096
 
@@ -423,12 +423,11 @@ static int ebml_wrote(ebml_t *ebml, int len)
             ICECAST_LOG_ERROR("EBML Header too large, failing");
             return -1;
         }
-        
-        if (EBML_DEBUG)
-        {
-            printf("EBML: Adding to header, ofset is %d size is %d adding %d\n", 
-                   ebml->header_size, ebml->header_position, len);
-        }
+
+/* 
+        ICECAST_LOG_DEBUG("EBML: Adding to header, ofset is %d size is %d adding %d", 
+                          ebml->header_size, ebml->header_position, len);
+*/
         
         memcpy(ebml->header + ebml->header_position, ebml->input_buffer, len);
         ebml->header_position += len;
@@ -442,10 +441,9 @@ static int ebml_wrote(ebml_t *ebml, int len)
     {
         if (!memcmp(ebml->input_buffer + b, ebml->cluster_id, 4))
         {
-            if (EBML_DEBUG)
-            {
-                printf("EBML: found cluster\n");
-            }
+/*
+            ICECAST_LOG_DEBUG("EBML: found cluster");
+*/
         
             if (ebml->header_size == 0)
             {
