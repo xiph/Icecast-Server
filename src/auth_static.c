@@ -14,6 +14,9 @@
 #include <config.h>
 #endif
 
+/* for strcmp() and strdup() */
+#include <string.h>
+
 #include "auth.h"
 #include "client.h"
 
