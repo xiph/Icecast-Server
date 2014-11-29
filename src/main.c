@@ -398,9 +398,8 @@ static void _ch_root_uid_setup(void)
        if(getuid()) /* root check */
        {
            fprintf(stderr, "WARNING: Cannot change server root unless running as root.\n");
-           return;
        }
-       if(chroot(conf->base_dir))
+       if(chroot(conf->base_dir) == -1 || chdir("/") == -1)
        {
            fprintf(stderr,"WARNING: Couldn't change server root: %s\n", strerror(errno));
            return;
@@ -421,18 +420,28 @@ static void _ch_root_uid_setup(void)
        }
 
        if(uid != (uid_t)-1 && gid != (gid_t)-1) {
-           if(!setgid(gid))
+#ifdef HAVE_SETRESGID
+           if(!setresgid(gid, gid, gid)) {
+#else
+           if(!setgid(gid)) {
+#endif
                fprintf(stdout, "Changed groupid to %i.\n", (int)gid);
-           else
+           } else {
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
+           }
            if(!initgroups(conf->user, gid))
                fprintf(stdout, "Changed supplementary groups based on user: %s.\n", conf->user);
 	   else
                fprintf(stdout, "Error changing supplementary groups: %s.\n", strerror(errno));
-           if(!setuid(uid))
+#ifdef HAVE_SETRESUID
+           if(!setresuid(uid, uid, uid)) {
+#else
+           if(!setuid(uid)) {
+#endif
                fprintf(stdout, "Changed userid to %i.\n", (int)uid);
-           else
+           } else {
                fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
+           }
        }
    }
 #endif
