@@ -268,7 +268,7 @@ static void *auth_run_thread (void *arg)
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
             auth->pending_count--;
-            thread_mutex_unlock (&auth->lock);
+            thread_mutex_unlock(&auth->lock);
             auth_user->next = NULL;
 
             if (auth_user->process) {
@@ -409,9 +409,9 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 }
 
 
-auth_t *auth_get_authenticator (xmlNodePtr node)
+auth_t *auth_get_authenticator(xmlNodePtr node)
 {
-    auth_t *auth = calloc (1, sizeof (auth_t));
+    auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
     xmlNodePtr option;
     char *method;

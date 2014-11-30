@@ -74,10 +74,10 @@ typedef struct ypdata_tag
     char *subtype;
 
     struct yp_server *server;
-    time_t      next_update;
-    unsigned    touch_interval;
-    char        *error_msg;
-    int    (*process)(struct ypdata_tag *yp, char *s, unsigned len);
+    time_t next_update;
+    unsigned touch_interval;
+    char *error_msg;
+    int (*process)(struct ypdata_tag *yp, char *s, unsigned len);
 
     struct ypdata_tag *next;
 } ypdata_t;
@@ -95,10 +95,10 @@ static volatile unsigned client_limit = 0;
 static volatile char *server_version = NULL;
 
 static void *yp_update_thread(void *arg);
-static void add_yp_info (ypdata_t *yp, void *info, int type);
-static int do_yp_remove (ypdata_t *yp, char *s, unsigned len);
-static int do_yp_add (ypdata_t *yp, char *s, unsigned len);
-static int do_yp_touch (ypdata_t *yp, char *s, unsigned len);
+static void add_yp_info(ypdata_t *yp, void *info, int type);
+static int do_yp_remove(ypdata_t *yp, char *s, unsigned len);
+static int do_yp_add(ypdata_t *yp, char *s, unsigned len);
+static int do_yp_touch(ypdata_t *yp, char *s, unsigned len);
 static void yp_destroy_ypdata(ypdata_t *ypdata);
 
 
@@ -334,7 +334,7 @@ static int send_to_yp (const char *cmd, ypdata_t *yp, char *post)
             ICECAST_LOG_INFO("YP %s on %s failed: %s", cmd, server->url, yp->error_msg);
         }
         yp->process = do_yp_add;
-        free (yp->sid);
+        free(yp->sid);
         yp->sid = NULL;
         return -1;
     }
@@ -491,7 +491,7 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
 
 
 
-static int process_ypdata (struct yp_server *server, ypdata_t *yp)
+static int process_ypdata(struct yp_server *server, ypdata_t *yp)
 {
     unsigned len = 1024;
     char *s = NULL, *tmp;
@@ -503,7 +503,7 @@ static int process_ypdata (struct yp_server *server, ypdata_t *yp)
     while (1)
     {
         int ret;
-        if ((tmp = realloc (s, len)) == NULL)
+        if ((tmp = realloc(s, len)) == NULL)
             return 0;
         s = tmp;
 
@@ -625,7 +625,7 @@ static void check_servers (void)
             ICECAST_LOG_DEBUG("YP server \"%s\"removed", server->url);
             *server_p = server->next;
             server = server->next;
-            destroy_yp_server (to_go);
+            destroy_yp_server(to_go);
             continue;
         }
         server_p = &server->next;
@@ -689,7 +689,7 @@ static void add_pending_yp (struct yp_server *server)
 }
 
 
-static void delete_marked_yp (struct yp_server *server)
+static void delete_marked_yp(struct yp_server *server)
 {
     ypdata_t *yp = server->mounts, **prev = &server->mounts;
 
@@ -701,7 +701,7 @@ static void delete_marked_yp (struct yp_server *server)
             ICECAST_LOG_DEBUG("removed %s from YP server %s", yp->mount, server->url);
             *prev = yp->next;
             yp = yp->next;
-            yp_destroy_ypdata (to_go);
+            yp_destroy_ypdata(to_go);
             continue;
         }
         prev = &yp->next;
@@ -768,10 +768,10 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
 {
     if (ypdata) {
         if (ypdata->mount) {
-            free (ypdata->mount);
+            free(ypdata->mount);
         }
         if (ypdata->url) {
-            free (ypdata->url);
+            free(ypdata->url);
         }
         if (ypdata->sid) {
             free(ypdata->sid);
@@ -803,13 +803,13 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
         if (ypdata->audio_info) {
             free(ypdata->audio_info);
         }
-        free (ypdata->subtype);
-        free (ypdata->error_msg);
-        free (ypdata);
+        free(ypdata->subtype);
+        free(ypdata->error_msg);
+        free(ypdata);
     }
 }
 
-static void add_yp_info (ypdata_t *yp, void *info, int type)
+static void add_yp_info(ypdata_t *yp, void *info, int type)
 {
     char *escaped;
 

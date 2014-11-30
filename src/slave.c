@@ -109,7 +109,7 @@ relay_server *relay_copy (relay_server *r)
 /* force a recheck of the relays. This will recheck the master server if
  * this is a slave and rebuild all mountpoints in the stats tree
  */
-void slave_update_all_mounts (void)
+void slave_update_all_mounts(void)
 {
     thread_mutex_lock(&_slave_mutex);
     max_interval = 0;
@@ -122,7 +122,7 @@ void slave_update_all_mounts (void)
 /* Request slave thread to check the relay list for changes and to
  * update the stats for the current streams.
  */
-void slave_rebuild_mounts (void)
+void slave_rebuild_mounts(void)
 {
     thread_mutex_lock(&_slave_mutex);
     update_settings = 1;
@@ -357,7 +357,7 @@ static void *start_relay_stream (void *arg)
         slave_rebuild_mounts();
 
         return NULL;
-    } while (0);  /* TODO allow looping through multiple servers */
+    } while (0); /* TODO allow looping through multiple servers */
 
     if (relay->source->fallback_mount)
     {
@@ -365,15 +365,15 @@ static void *start_relay_stream (void *arg)
 
         ICECAST_LOG_DEBUG("failed relay, fallback to %s", relay->source->fallback_mount);
         avl_tree_rlock(global.source_tree);
-        fallback_source = source_find_mount (relay->source->fallback_mount);
+        fallback_source = source_find_mount(relay->source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients (relay->source, fallback_source);
+            source_move_clients(relay->source, fallback_source);
 
-        avl_tree_unlock (global.source_tree);
+        avl_tree_unlock(global.source_tree);
     }
 
-    source_clear_source (relay->source);
+    source_clear_source(relay->source);
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
     thread_mutex_lock(&_slave_mutex);
@@ -511,7 +511,7 @@ static int relay_has_changed (relay_server *new, relay_server *old)
  * the list of relays to shutdown
  */
 static relay_server *
-update_relay_set (relay_server **current, relay_server *updated)
+update_relay_set(relay_server **current, relay_server *updated)
 {
     relay_server *relay = updated;
     relay_server *existing_relay, **existing_p;
@@ -557,7 +557,7 @@ update_relays (relay_server **relay_list, relay_server *new_relay_list)
 {
     relay_server *active_relays, *cleanup_relays;
 
-    active_relays = update_relay_set (relay_list, new_relay_list);
+    active_relays = update_relay_set(relay_list, new_relay_list);
 
     cleanup_relays = *relay_list;
     /* re-assign new set */
@@ -615,12 +615,12 @@ static int update_from_master(ice_config_t *config)
         int len, count = 1;
         int on_demand;
 
-        username = strdup (config->master_username);
+        username = strdup(config->master_username);
         if (config->master_password)
-            password = strdup (config->master_password);
+            password = strdup(config->master_password);
 
         if (config->master_server)
-            master = strdup (config->master_server);
+            master = strdup(config->master_server);
 
         port = config->master_server_port;
 
@@ -629,7 +629,7 @@ static int update_from_master(ice_config_t *config)
         on_demand = config->on_demand;
         ret = 1;
         config_release_config();
-        mastersock = sock_connect_wto (master, port, 10);
+        mastersock = sock_connect_wto(master, port, 10);
 
         if (mastersock == SOCK_ERROR)
         {
@@ -733,9 +733,9 @@ static void *_slave_thread(void *arg)
     thread_mutex_unlock(&_slave_mutex);
 
     config = config_get_config();
-    stats_global (config);
+    stats_global(config);
     config_release_config();
-    source_recheck_mounts (1);
+    source_recheck_mounts(1);
 
     while (1)
     {
@@ -747,11 +747,11 @@ static void *_slave_thread(void *arg)
         if (global . schedule_config_reread)
         {
             event_config_read (NULL);
-            global . schedule_config_reread = 0;
+            global.schedule_config_reread = 0;
         }
         global_unlock();
 
-        thread_sleep (1000000);
+        thread_sleep(1000000);
         if (slave_running == 0)
             break;
 

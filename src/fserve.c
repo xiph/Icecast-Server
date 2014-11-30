@@ -77,7 +77,7 @@ static avl_tree *mimetypes = NULL;
 
 static volatile int run_fserv = 0;
 static unsigned int fserve_clients;
-static int client_tree_changed=0;
+static int client_tree_changed = 0;
 
 #ifdef HAVE_POLL
 static struct pollfd *ufds = NULL;
@@ -172,7 +172,7 @@ int fserve_client_waiting (void)
         for (i=0; i<fserve_clients; i++)
         {
             if (ufds[i].revents & (POLLOUT|POLLHUP|POLLERR))
-                fclient->ready = 1;
+            fclient->ready = 1;
             fclient = fclient->next;
         }
         return 1;
@@ -180,19 +180,19 @@ int fserve_client_waiting (void)
     return 0;
 }
 #else
-int fserve_client_waiting (void)
+int fserve_client_waiting(void)
 {
     fserve_t *fclient;
     fd_set realfds;
 
     /* only rebuild fds if there are clients added/removed */
-    if(client_tree_changed) {
+    if (client_tree_changed) {
         client_tree_changed = 0;
         FD_ZERO(&fds);
         fd_max = SOCK_ERROR;
         fclient = active_list;
         while (fclient) {
-            FD_SET (fclient->client->con->sock, &fds);
+            FD_SET(fclient->client->con->sock, &fds);
             if (fclient->client->con->sock > fd_max || fd_max == SOCK_ERROR)
                 fd_max = fclient->client->con->sock;
             fclient = fclient->next;
@@ -254,7 +254,7 @@ static int wait_for_fds(void)
                 fserve_clients++;
             }
             pending_list = NULL;
-            thread_spin_unlock (&pending_lock);
+            thread_spin_unlock(&pending_lock);
         }
         /* drop out of here if someone is ready */
         ret = fserve_client_waiting();
@@ -337,7 +337,7 @@ static void *fserv_thread_function(void *arg)
 }
 
 /* string returned needs to be free'd */
-char *fserve_content_type (const char *path)
+char *fserve_content_type(const char *path)
 {
     char *ext = util_get_extension(path);
     mime_type exttype = {ext, NULL};
@@ -509,7 +509,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         ICECAST_LOG_DEBUG("on demand file \"%H\" refused. Serving static files has been disabled in the config", fullpath);
         client_send_error(httpclient, 404, 0, "The file you requested could not be found");
         config_release_config();
-        free (fullpath);
+        free(fullpath);
         return -1;
     }
     config_release_config();
@@ -692,7 +692,7 @@ void fserve_add_client_callback (client_t *client, fserve_callback_t callback, v
     fclient->callback = callback;
     fclient->arg = arg;
 
-    fserve_add_pending (fclient);
+    fserve_add_pending(fclient);
 }
 
 
@@ -712,7 +712,7 @@ static int _compare_mappings(void *arg, void *a, void *b)
             ((mime_type *)b)->ext);
 }
 
-void fserve_recheck_mime_types (ice_config_t *config)
+void fserve_recheck_mime_types(ice_config_t *config)
 {
     FILE *mimefile;
     char line[4096];

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -11,7 +11,7 @@
  * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
-/* 
+/*
  * Client authentication via URL functions
  *
  * authenticate user via a URL, this is done via libcurl so https can also
@@ -60,11 +60,11 @@
 #include <errno.h>
 #include <stdio.h>
 #ifndef _WIN32
-#include <sys/wait.h>
-#include <strings.h>
+#   include <sys/wait.h>
+#   include <strings.h>
 #else
-#define snprintf _snprintf
-#define strncasecmp strnicmp
+#   define snprintf _snprintf
+#   define strncasecmp strnicmp
 #endif
 
 #include <curl/curl.h>
@@ -415,7 +415,7 @@ static auth_result auth_url_listuser (auth_t *auth, xmlNodePtr srcnode)
     return AUTH_FAILED;
 }
 
-int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
+int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
 {
     auth_url *url_info;
     const char * addaction = "listener_add";
@@ -430,8 +430,8 @@ int auth_get_url_auth (auth_t *authenticator, config_options_t *options)
     authenticator->state = url_info;
 
     /* default headers */
-    url_info->auth_header = strdup ("icecast-auth-user: 1\r\n");
-    url_info->timelimit_header = strdup ("icecast-auth-timelimit:");
+    url_info->auth_header = strdup("icecast-auth-user: 1\r\n");
+    url_info->timelimit_header = strdup("icecast-auth-timelimit:");
 
     /* force auth thread to call function. this makes sure the auth_t is attached to client */
     authenticator->authenticate_client = url_add_client;

@@ -35,27 +35,27 @@
 #include "logging.h"
 
 
-typedef struct vorbis_codec_tag
+typedef struct vorbis_codec_tag 
 {
-    vorbis_info vi;
+    vorbis_info    vi;
     vorbis_comment vc;
 
     int rebuild_comment;
     int stream_notify;
     int initial_audio_page;
 
-    ogg_stream_state new_os;
-    int page_samples_trigger;
-    ogg_int64_t prev_granulepos;
-    ogg_packet *prev_packet;
-    ogg_int64_t granulepos;
-    ogg_int64_t initial_page_granulepos;
-    ogg_int64_t samples_in_page;
-    int prev_window;
-    int initial_audio_packet;
+    ogg_stream_state    new_os;
+    int                 page_samples_trigger;
+    ogg_int64_t         prev_granulepos;
+    ogg_packet          *prev_packet;
+    ogg_int64_t         granulepos;
+    ogg_int64_t         initial_page_granulepos;
+    ogg_int64_t         samples_in_page;
+    int                 prev_window;
+    int                 initial_audio_packet;
 
-    ogg_page bos_page;
-    ogg_packet *header [3];
+    ogg_page    bos_page;
+    ogg_packet  *header[3];
     ogg_int64_t prev_page_samples;
 
     int (*process_packet)(ogg_state_t *ogg_info, ogg_codec_t *codec);
@@ -183,7 +183,7 @@ static refbuf_t *get_buffer_header (ogg_state_t *ogg_info, ogg_codec_t *codec)
 }
 
 
-static refbuf_t *get_buffer_finished (ogg_state_t *ogg_info, ogg_codec_t *codec)
+static refbuf_t *get_buffer_finished(ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     vorbis_codec_t *source_vorbis = codec->specific;
     ogg_page page;
@@ -235,7 +235,7 @@ static void initiate_flush (vorbis_codec_t *source_vorbis)
  * and add them into the new stream, flushing after so many samples. We
  * also check if an new headers are requested after each processed page
  */
-static int process_vorbis_audio (ogg_state_t *ogg_info, ogg_codec_t *codec)
+static int process_vorbis_audio(ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     vorbis_codec_t *source_vorbis = codec->specific;
 
@@ -389,24 +389,24 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
     codec->headers = 1;
     codec->name = "Vorbis";
 
-    free_ogg_packet (vorbis->header[0]);
-    free_ogg_packet (vorbis->header[1]);
-    free_ogg_packet (vorbis->header[2]);
-    memset (vorbis->header, 0, sizeof (vorbis->header));
-    vorbis->header [0] = copy_ogg_packet (&packet);
-    ogg_stream_init (&vorbis->new_os, rand());
+    free_ogg_packet(vorbis->header[0]);
+    free_ogg_packet(vorbis->header[1]);
+    free_ogg_packet(vorbis->header[2]);
+    memset(vorbis->header, 0, sizeof(vorbis->header));
+    vorbis->header[0] = copy_ogg_packet(&packet);
+    ogg_stream_init(&vorbis->new_os, rand());
 
     codec->process_page = process_vorbis_page;
     codec->process = process_vorbis;
     plugin->set_tag = vorbis_set_tag;
 
-    vorbis->bos_page.header = malloc (page->header_len + page->body_len);
-    
-    memcpy (vorbis->bos_page.header, page->header, page->header_len);
+    vorbis->bos_page.header = malloc(page->header_len + page->body_len);
+
+    memcpy(vorbis->bos_page.header, page->header, page->header_len);
     vorbis->bos_page.header_len = page->header_len;
 
     vorbis->bos_page.body = vorbis->bos_page.header + page->header_len;
-    memcpy (vorbis->bos_page.body, page->body, page->body_len);
+    memcpy(vorbis->bos_page.body, page->body, page->body_len);
     vorbis->bos_page.body_len = page->body_len;
 
     return codec;
@@ -528,7 +528,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
         if (ogg_stream_packetout (&codec->os, &header) <= 0)
         {
             if (ogg_info->codecs->next)
-                format_ogg_attach_header (ogg_info, page);
+                format_ogg_attach_header(ogg_info, page);
             return NULL;
         }
 
@@ -540,7 +540,7 @@ static refbuf_t *process_vorbis_page (ogg_state_t *ogg_info,
             return NULL;
         }
         header.granulepos = 0;
-        source_vorbis->header [codec->headers] = copy_ogg_packet (&header);
+        source_vorbis->header[codec->headers] = copy_ogg_packet(&header);
         codec->headers++;
     }
     ICECAST_LOG_DEBUG("we have the header packets now");

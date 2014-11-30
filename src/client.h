@@ -12,10 +12,10 @@
  */
 
 /* client.h
-**
-** client data structions and function definitions
-**
-*/
+ **
+ ** client data structions and function definitions
+ **
+ */
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 

@@ -55,13 +55,13 @@
 
 struct _ogg_state_tag;
 
-static void format_ogg_free_plugin (format_plugin_t *plugin);
-static int  create_ogg_client_data(source_t *source, client_t *client);
-static void free_ogg_client_data (client_t *client);
+static void format_ogg_free_plugin(format_plugin_t *plugin);
+static int create_ogg_client_data(source_t *source, client_t *client);
+static void free_ogg_client_data(client_t *client);
 
-static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf);
-static refbuf_t *ogg_get_buffer (source_t *source);
-static int write_buf_to_client (client_t *client);
+static void write_ogg_to_file(struct source_tag *source, refbuf_t *refbuf);
+static refbuf_t *ogg_get_buffer(source_t *source);
+static int write_buf_to_client(client_t *client);
 
 
 struct ogg_client
@@ -110,7 +110,7 @@ void format_ogg_attach_header (ogg_state_t *ogg_info, ogg_page *page)
 }
 
 
-void format_ogg_free_headers (ogg_state_t *ogg_info)
+void format_ogg_free_headers(ogg_state_t *ogg_info)
 {
     refbuf_t *header;
 
@@ -121,7 +121,7 @@ void format_ogg_free_headers (ogg_state_t *ogg_info)
     {
         refbuf_t *to_release = header;
         header = header->next;
-        refbuf_release (to_release);
+        refbuf_release(to_release);
     }
     ogg_info->header_pages = NULL;
     ogg_info->header_pages_tail = NULL;
@@ -130,14 +130,14 @@ void format_ogg_free_headers (ogg_state_t *ogg_info)
 
 
 /* release the memory used for the codec and header pages from the module */
-static void free_ogg_codecs (ogg_state_t *ogg_info)
+static void free_ogg_codecs(ogg_state_t *ogg_info)
 {
     ogg_codec_t *codec;
 
     if (ogg_info == NULL)
         return;
 
-    format_ogg_free_headers (ogg_info);
+    format_ogg_free_headers(ogg_info);
 
     /* now free the codecs */
     codec = ogg_info->codecs;
@@ -146,8 +146,8 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
     {
         ogg_codec_t *next = codec->next;
         if (codec->possible_start)
-            refbuf_release (codec->possible_start);
-        codec->codec_free (ogg_info, codec);
+            refbuf_release(codec->possible_start);
+        codec->codec_free(ogg_info, codec);
         codec = next;
     }
     ogg_info->codecs = NULL;
@@ -157,12 +157,12 @@ static void free_ogg_codecs (ogg_state_t *ogg_info)
 }
 
 
-int format_ogg_get_plugin (source_t *source)
+int format_ogg_get_plugin(source_t *source)
 {
     format_plugin_t *plugin;
-    ogg_state_t *state = calloc (1, sizeof (ogg_state_t));
+    ogg_state_t *state = calloc(1, sizeof(ogg_state_t));
 
-    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
+    plugin = (format_plugin_t *) calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_OGG;
     plugin->get_buffer = ogg_get_buffer;
@@ -213,7 +213,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         ogg_info->bitrate = 0;
         ogg_info->codec_sync = NULL;
         /* need to zap old list of codecs when next group of BOS pages appear */
-        free_ogg_codecs (ogg_info);
+        free_ogg_codecs(ogg_info);
     }
     do
     {
@@ -223,7 +223,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
             ogg_info->error = 1;
             return -1;
         }
-        codec = initial_vorbis_page (plugin, page);
+        codec = initial_vorbis_page(plugin, page);
         if (codec)
             break;
 #ifdef HAVE_THEORA
@@ -231,10 +231,10 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
 #endif
-        codec = initial_midi_page (plugin, page);
+        codec = initial_midi_page(plugin, page);
         if (codec)
             break;
-        codec = initial_flac_page (plugin, page);
+        codec = initial_flac_page(plugin, page);
         if (codec)
             break;
 #ifdef HAVE_SPEEX
@@ -242,13 +242,13 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
         if (codec)
             break;
 #endif
-        codec = initial_kate_page (plugin, page);
+        codec = initial_kate_page(plugin, page);
         if (codec)
             break;
-        codec = initial_skeleton_page (plugin, page);
+        codec = initial_skeleton_page(plugin, page);
         if (codec)
             break;
-        codec = initial_opus_page (plugin, page);
+        codec = initial_opus_page(plugin, page);
         if (codec)
             break;
 
@@ -274,7 +274,7 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
  * artist and title are provided separately so here we update the stats
  * and write log entry if required.
  */
-static void update_comments (source_t *source)
+static void update_comments(source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
     char *title = ogg_info->title;
@@ -367,7 +367,7 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
 /* process the incoming page. this requires searching through the
  * currently known codecs that have been seen in the stream
  */
-static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
+static refbuf_t *process_ogg_page(ogg_state_t *ogg_info, ogg_page *page)
 {
     ogg_codec_t *codec = ogg_info->codecs;
     refbuf_t *refbuf = NULL;
@@ -377,7 +377,7 @@ static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
         if (ogg_page_serialno (page) == codec->os.serialno)
         {
             if (codec->process_page)
-                refbuf = codec->process_page (ogg_info, codec, page);
+                refbuf = codec->process_page(ogg_info, codec, page);
             break;
         }
 
@@ -392,7 +392,7 @@ static refbuf_t *process_ogg_page (ogg_state_t *ogg_info, ogg_page *page)
  * just add an incoming page to the codecs and process it until either
  * more data is needed or we prodice a buffer for the queue.
  */
-static refbuf_t *ogg_get_buffer (source_t *source)
+static refbuf_t *ogg_get_buffer(source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
     format_plugin_t *format = source->format;
@@ -501,10 +501,10 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
         unsigned len = refbuf->len - client_data->pos;
         int ret;
 
-        ret = client_send_bytes (client, data, len);
+        ret = client_send_bytes(client, data, len);
         if (ret > 0)
-           written += ret;
-        if (ret < (int)len)
+            written += ret;
+        if (ret < (int) len)
             return written ? written : -1;
         client_data->pos += ret;
         if (client_data->pos == refbuf->len)
@@ -523,7 +523,7 @@ static int send_ogg_headers (client_t *client, refbuf_t *headers)
 /* main client write routine for sending ogg data. Each refbuf has a
  * single page so we only need to determine if there are new headers
  */
-static int write_buf_to_client (client_t *client)
+static int write_buf_to_client(client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     char *buf = refbuf->data + client->pos;

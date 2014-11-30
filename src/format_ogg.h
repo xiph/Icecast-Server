@@ -11,10 +11,10 @@
  */
 
 /* format_ogg.h
-**
-** vorbis format plugin header
-**
-*/
+ **
+ ** vorbis format plugin header
+ **
+ */
 #ifndef __FORMAT_OGG_H__
 #define __FORMAT_OGG_H__
 

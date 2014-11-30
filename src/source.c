@@ -111,15 +111,15 @@ source_t *source_reserve (const char *mount)
         src->pending_tree = avl_tree_new(_compare_clients, NULL);
 
         /* make duplicates for strings or similar */
-        src->mount = strdup (mount);
+        src->mount = strdup(mount);
         src->max_listeners = -1;
         thread_mutex_create(&src->lock);
 
-        avl_insert (global.source_tree, src);
+        avl_insert(global.source_tree, src);
 
     } while (0);
 
-    avl_tree_unlock (global.source_tree);
+    avl_tree_unlock(global.source_tree);
     return src;
 }
 
@@ -138,9 +138,9 @@ source_t *source_find_mount_raw(const char *mount)
     }
     /* get the root node */
     node = global.source_tree->root->right;
-    
+
     while (node) {
-        source = (source_t *)node->key;
+        source = (source_t *) node->key;
         cmp = strcmp(mount, source->mount);
         if (cmp < 0) 
             node = node->left;
@@ -159,7 +159,7 @@ source_t *source_find_mount_raw(const char *mount)
  * check the fallback, and so on.  Must have a global source lock to call
  * this function.
  */
-source_t *source_find_mount (const char *mount)
+source_t *source_find_mount(const char *mount)
 {
     source_t *source = NULL;
     ice_config_t *config;
@@ -180,7 +180,7 @@ source_t *source_find_mount (const char *mount)
         /* we either have a source which is not active (relay) or no source
          * at all. Check the mounts list for fallback settings
          */
-        mountinfo = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
+        mountinfo = config_find_mount(config, mount, MOUNT_TYPE_NORMAL);
         source = NULL;
 
         if (mountinfo == NULL)
@@ -283,7 +283,7 @@ void source_clear_source (source_t *source)
     source->hidden = 0;
     source->shoutcast_compat = 0;
     source->client_stats_update = 0;
-    util_dict_free (source->audio_info);
+    util_dict_free(source->audio_info);
     source->audio_info = NULL;
 
     free(source->fallback_mount);
@@ -350,7 +350,7 @@ client_t *source_find_client(source_t *source, int id)
  * The only lock that should be held when this is called is the
  * source tree lock
  */
-void source_move_clients (source_t *source, source_t *dest)
+void source_move_clients(source_t *source, source_t *dest)
 {
     unsigned long count = 0;
     if (strcmp (source->mount, dest->mount) == 0)
@@ -378,8 +378,8 @@ void source_move_clients (source_t *source, source_t *dest)
 
         /* we need to move the client and pending trees - we must take the
          * locks in this order to avoid deadlocks */
-        avl_tree_wlock (source->pending_tree);
-        avl_tree_wlock (source->client_tree);
+        avl_tree_wlock(source->pending_tree);
+        avl_tree_wlock(source->client_tree);
 
         if (source->on_demand == 0 && source->format == NULL)
         {
@@ -567,12 +567,12 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 
         loop--;
 
-        if (client->check_buffer (source, client) < 0)
+        if (client->check_buffer(source, client) < 0)
             break;
 
-        bytes = client->write_to_client (client);
+        bytes = client->write_to_client(client);
         if (bytes <= 0)
-            break;  /* can't write any more */
+            break; /* can't write any more */
 
         total_written += bytes;
     }
@@ -734,7 +734,7 @@ void source_main (source_t *source)
             source->stream_data_tail = refbuf;
             source->queue_size += refbuf->len;
             /* new buffer is referenced for burst */
-            refbuf_addref (refbuf);
+            refbuf_addref(refbuf);
 
             /* new data on queue, so check the burst point */
             source->burst_offset += refbuf->len;
@@ -746,7 +746,7 @@ void source_main (source_t *source)
                 {
                     source->burst_point = to_release->next;
                     source->burst_offset -= to_release->len;
-                    refbuf_release (to_release);
+                    refbuf_release(to_release);
                     continue;
                 }
                 break;
@@ -754,7 +754,7 @@ void source_main (source_t *source)
 
             /* save stream to file */
             if (source->dumpfile && source->format->write_buf_to_file)
-                source->format->write_buf_to_file (source, refbuf);
+                source->format->write_buf_to_file(source, refbuf);
         }
         /* lets see if we have too much data in the queue, but don't remove it until later */
         thread_mutex_lock(&source->lock);
@@ -770,15 +770,15 @@ void source_main (source_t *source)
 
         client_node = avl_get_first(source->client_tree);
         while (client_node) {
-            client = (client_t *)client_node->key;
+            client = (client_t *) client_node->key;
 
-            send_to_listener (source, client, remove_from_q);
+            send_to_listener(source, client, remove_from_q);
 
             if (client->con->error) {
                 client_node = avl_get_next(client_node);
                 if (client->respcode == 200)
-                    stats_event_dec (NULL, "listeners");
-                avl_delete(source->client_tree, (void *)client, _free_client);
+                    stats_event_dec(NULL, "listeners");
+                avl_delete(source->client_tree, (void *) client, _free_client);
                 source->listeners--;
                 ICECAST_LOG_DEBUG("Client removed");
                 continue;
@@ -900,24 +900,24 @@ static void source_shutdown (source_t *source)
         source_t *fallback_source;
 
         avl_tree_rlock(global.source_tree);
-        fallback_source = source_find_mount (source->fallback_mount);
+        fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients (source, fallback_source);
+            source_move_clients(source, fallback_source);
 
-        avl_tree_unlock (global.source_tree);
+        avl_tree_unlock(global.source_tree);
     }
 
     /* delete this sources stats */
     stats_event(source->mount, NULL, NULL);
 
     /* we don't remove the source from the tree here, it may be a relay and
-       therefore reserved */
-    source_clear_source (source);
+     therefore reserved */
+    source_clear_source(source);
 
     global_lock();
     global.sources--;
-    stats_event_args (NULL, "sources", "%d", global.sources);
+    stats_event_args(NULL, "sources", "%d", global.sources);
     global_unlock();
 
     /* release our hold on the lock so the main thread can continue cleaning up */
@@ -927,8 +927,8 @@ static void source_shutdown (source_t *source)
 
 static int _compare_clients(void *compare_arg, void *a, void *b)
 {
-    client_t *clienta = (client_t *)a;
-    client_t *clientb = (client_t *)b;
+    client_t *clienta = (client_t *) a;
+    client_t *clientb = (client_t *) b;
 
     connection_t *cona = clienta->con;
     connection_t *conb = clientb->con;
@@ -1206,12 +1206,12 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         source->timeout = mountinfo->source_timeout;
 
     if (mountinfo && mountinfo->burst_size >= 0)
-        source->burst_size = (unsigned int)mountinfo->burst_size;
+        source->burst_size = (unsigned int) mountinfo->burst_size;
 
     if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
 
-    avl_tree_unlock (source->client_tree);
+    avl_tree_unlock(source->client_tree);
 }
 
 

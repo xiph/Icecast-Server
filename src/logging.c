@@ -43,11 +43,11 @@ int playlistlog = 0;
 
 #ifdef _WIN32
 /* Since strftime's %z option on win32 is different, we need
-   to go through a few loops to get the same info as %z */
+ to go through a few loops to get the same info as %z */
 int get_clf_time (char *buffer, unsigned len, struct tm *t)
 {
-    char    sign;
-    char    *timezone_string;
+    char sign;
+    char *timezone_string;
     struct tm gmt;
     time_t time1 = time(NULL);
     int time_days, time_hours, time_tz;
@@ -99,24 +99,24 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
     thetime = localtime(&now);
     strftime (buffer, len-7, "%d/%b/%Y:%H:%M:%S", thetime);
     strcat(buffer, timezone_string);
-	free(timezone_string);
+    free(timezone_string);
     return 1;
 }
 #endif
 /* 
-** ADDR IDENT USER DATE REQUEST CODE BYTES REFERER AGENT [TIME]
-**
-** ADDR = client->con->ip
-** IDENT = always - , we don't support it because it's useless
-** USER = client->username
-** DATE = _make_date(client->con->con_time)
-** REQUEST = build from client->parser
-** CODE = client->respcode
-** BYTES = client->con->sent_bytes
-** REFERER = get from client->parser
-** AGENT = get from client->parser
-** TIME = timing_get_time() - client->con->con_time
-*/
+ ** ADDR IDENT USER DATE REQUEST CODE BYTES REFERER AGENT [TIME]
+ **
+ ** ADDR = client->con->ip
+ ** IDENT = always - , we don't support it because it's useless
+ ** USER = client->username
+ ** DATE = _make_date(client->con->con_time)
+ ** REQUEST = build from client->parser
+ ** CODE = client->respcode
+ ** BYTES = client->con->sent_bytes
+ ** REFERER = get from client->parser
+ ** AGENT = get from client->parser
+ ** TIME = timing_get_time() - client->con->con_time
+ */
 void logging_access(client_t *client)
 {
     char datebuf[128];
