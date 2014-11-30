@@ -1297,7 +1297,6 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     client->authstack = NULL;
 
     if (result != AUTH_OK) {
-        ICECAST_LOG_ERROR("Client not authenticated at all! (uri is: %H)", uri);
         client_send_error(client, 401, 1, "You need to authenticate\r\n");
         free(uri);
         return;
