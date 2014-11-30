@@ -181,13 +181,16 @@ static void auth_client_free (auth_client *auth_user)
 
 
 /* verify that the listener is still connected. */
-static int is_client_connected (client_t *client)
-{
+static int is_client_connected (client_t *client) {
+/* As long as sock_active() is broken we need to disable this:
+
     int ret = 1;
     if (client)
         if (sock_active(client->con->sock) == 0)
             ret = 0;
     return ret;
+*/
+    return 1;
 }
 
 static auth_result auth_new_client (auth_t *auth, auth_client *auth_user) {
