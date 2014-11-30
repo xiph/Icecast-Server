@@ -180,7 +180,7 @@ static void auth_client_free (auth_client *auth_user)
 }
 
 
-/* verify that the listener is still connected. */
+/* verify that the client is still connected. */
 static int is_client_connected (client_t *client) {
 /* As long as sock_active() is broken we need to disable this:
 
@@ -200,7 +200,7 @@ static auth_result auth_new_client (auth_t *auth, auth_client *auth_user) {
     /* make sure there is still a client at this point, a slow backend request
      * can be avoided if client has disconnected */
     if (is_client_connected(client) == 0) {
-        ICECAST_LOG_DEBUG("listener is no longer connected");
+        ICECAST_LOG_DEBUG("client is no longer connected");
         client->respcode = 400;
         auth_release (client->auth);
         client->auth = NULL;
@@ -220,7 +220,7 @@ static auth_result auth_new_client (auth_t *auth, auth_client *auth_user) {
 }
 
 
-/* wrapper function for auth thread to drop listener connections
+/* wrapper function for auth thread to drop client connections
  */
 static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
 {
