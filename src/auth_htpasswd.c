@@ -150,7 +150,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         htpasswd_user *entry;
 
         num++;
-        if(!line[0] || line[0] == '#')
+        if (!line[0] || line[0] == '#')
             continue;
 
         sep = strrchr (line, ':');
@@ -247,7 +247,7 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     authenticator->state = state;
 
     thread_rwlock_create(&state->file_rwlock);
-    htpasswd_recheckfile (state);
+    htpasswd_recheckfile(state);
 
     return 0;
 }
@@ -376,8 +376,8 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         }
     }
     free(tmpfile);
-    thread_rwlock_unlock (&state->file_rwlock);
-    htpasswd_recheckfile (state);
+    thread_rwlock_unlock(&state->file_rwlock);
+    htpasswd_recheckfile(state);
 
     return AUTH_USERDELETED;
 }

@@ -99,7 +99,7 @@ const char *util_dict_get(util_dict *dict, const char *key);
 char *util_dict_urlencode(util_dict *dict, char delim);
 
 #ifndef HAVE_LOCALTIME_R
-struct tm *localtime_r (const time_t *timep, struct tm *result);
+struct tm *localtime_r(const time_t *timep, struct tm *result);
 #endif
 char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 

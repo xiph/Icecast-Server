@@ -181,9 +181,9 @@ static unsigned long _next_connection_id(void)
 {
     unsigned long id;
 
-    thread_spin_lock (&_connection_lock);
+    thread_spin_lock(&_connection_lock);
     id = _current_id++;
-    thread_spin_unlock (&_connection_lock);
+    thread_spin_unlock(&_connection_lock);
 
     return id;
 }
@@ -196,8 +196,8 @@ static void get_ssl_certificate (ice_config_t *config)
     long ssl_opts;
     ssl_ok = 0;
 
-    SSL_load_error_strings();                /* readable error messages */
-    SSL_library_init();                      /* initialize library */
+    SSL_load_error_strings(); /* readable error messages */
+    SSL_library_init(); /* initialize library */
 
     method = SSLv23_server_method();
     ssl_ctx = SSL_CTX_new (method);
@@ -253,7 +253,7 @@ static int connection_read_ssl (connection_t *con, void *buf, size_t len)
         {
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
-                return -1;
+            return -1;
         }
         con->error = 1;
     }
@@ -281,7 +281,7 @@ static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
 #else
 
 /* SSL not compiled in, so at least log it */
-static void get_ssl_certificate (ice_config_t *config)
+static void get_ssl_certificate(ice_config_t *config)
 {
     ssl_ok = 0;
     ICECAST_LOG_INFO("No SSL capability");
@@ -319,7 +319,7 @@ static int connection_send (connection_t *con, const void *buf, size_t len)
 /* function to handle the re-populating of the avl tree containing IP addresses
  * for deciding whether a connection of an incoming request is to be dropped.
  */
-static void recheck_ip_file (cache_file_contents *cache)
+static void recheck_ip_file(cache_file_contents *cache)
 {
     time_t now = time(NULL);
     if (now >= cache->file_recheck)
@@ -379,12 +379,12 @@ static void recheck_ip_file (cache_file_contents *cache)
 
 
 /* return 0 if the passed ip address is not to be handled by icecast, non-zero otherwise */
-static int accept_ip_address (char *ip)
+static int accept_ip_address(char *ip)
 {
     void *result;
 
-    recheck_ip_file (&banned_ip);
-    recheck_ip_file (&allowed_ip);
+    recheck_ip_file(&banned_ip);
+    recheck_ip_file(&allowed_ip);
 
     if (banned_ip.contents)
     {
@@ -431,7 +431,7 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 
 /* prepare connection for interacting over a SSL connection
  */
-void connection_uses_ssl (connection_t *con)
+void connection_uses_ssl(connection_t *con)
 {
 #ifdef HAVE_OPENSSL
     con->read = connection_read_ssl;
@@ -480,9 +480,9 @@ static sock_t wait_for_serversock(int timeout)
         for(i=0, dst=0; i < global.server_sockets; i++)
         {
             if (global.serversock[i] == SOCK_ERROR)
-                continue;
+            continue;
             if (i!=dst)
-                global.serversock[dst] = global.serversock[i];
+            global.serversock[dst] = global.serversock[i];
             dst++;
         }
         global.server_sockets = dst;
@@ -568,12 +568,12 @@ static connection_t *_accept_connection(int duration)
  * has been collected, so we now pass it onto the connection thread for
  * further processing
  */
-static void _add_connection (client_queue_t *node)
+static void _add_connection(client_queue_t *node)
 {
-    thread_spin_lock (&_connection_lock);
+    thread_spin_lock(&_connection_lock);
     *_con_queue_tail = node;
-    _con_queue_tail = (volatile client_queue_t **)&node->next;
-    thread_spin_unlock (&_connection_lock);
+    _con_queue_tail = (volatile client_queue_t **) &node->next;
+    thread_spin_unlock(&_connection_lock);
 }
 
 
@@ -1564,15 +1564,15 @@ int connection_setup_sockets (ice_config_t *config)
 
     /* setup the banned/allowed IP filenames from the xml */
     if (config->banfile)
-        banned_ip.filename = strdup (config->banfile);
+        banned_ip.filename = strdup(config->banfile);
 
     if (config->allowfile)
-        allowed_ip.filename = strdup (config->allowfile);
+        allowed_ip.filename = strdup(config->allowfile);
 
     count = 0;
-    global.serversock = calloc (config->listen_sock_count, sizeof (sock_t));
+    global.serversock = calloc(config->listen_sock_count, sizeof(sock_t));
 
-    listener = config->listen_sock; 
+    listener = config->listen_sock;
     prev = &config->listen_sock;
     while (listener)
     {

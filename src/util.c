@@ -396,7 +396,7 @@ char *util_bin_to_hex(unsigned char *data, int len)
     char *hex = malloc(len*2 + 1);
     int i;
 
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         hex[i*2] = hexchars[(data[i]&0xf0) >> 4];
         hex[i*2+1] = hexchars[data[i]&0x0f];
     }
@@ -422,15 +422,15 @@ char *util_base64_encode(const char *data)
             case 3:
                 *out++ = base64table[((*(data+1) & 0x0F)<<2) | ((*(data+2) & 0xC0)>>6)];
                 *out++ = base64table[(*(data+2)) & 0x3F];
-                break;
+            break;
             case 2:
                 *out++ = base64table[((*(data+1) & 0x0F)<<2)];
                 *out++ = '=';
-                break;
+            break;
             case 1:
                 *out++ = '=';
                 *out++ = '=';
-                break;
+            break;
         }
         data += chunk;
         len -= chunk;

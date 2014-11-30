@@ -43,7 +43,7 @@ typedef struct connection_tag
     int error;
 
 #ifdef HAVE_OPENSSL
-    SSL *ssl;   /* SSL handler */
+    SSL *ssl; /* SSL handler */
 #endif
     int (*send)(struct connection_tag *handle, const void *buf, size_t len);
     int (*read)(struct connection_tag *handle, void *buf, size_t len);
@@ -56,10 +56,10 @@ typedef struct connection_tag
 void connection_initialize(void);
 void connection_shutdown(void);
 void connection_accept_loop(void);
-int  connection_setup_sockets (struct ice_config_tag *config);
+int connection_setup_sockets(struct ice_config_tag *config);
 void connection_close(connection_t *con);
-connection_t *connection_create (sock_t sock, sock_t serversock, char *ip);
-int connection_complete_source (struct source_tag *source, int response);
+connection_t *connection_create(sock_t sock, sock_t serversock, char *ip);
+int connection_complete_source(struct source_tag *source, int response);
 
 extern rwlock_t _source_shutdown_rwlock;
 

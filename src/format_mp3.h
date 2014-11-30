@@ -11,10 +11,10 @@
  */
 
 /* format_mp3.h
-**
-** mp3 format plugin
-**
-*/
+ **
+ ** mp3 format plugin
+ **
+ */
 #ifndef __FORMAT_MP3_H__
 #define __FORMAT_MP3_H__
 

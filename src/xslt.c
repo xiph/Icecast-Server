@@ -57,10 +57,10 @@
 #include "logging.h"
 
 typedef struct {
-    char              *filename;
-    time_t             last_modified;
-    time_t             cache_age;
-    xsltStylesheetPtr  stylesheet;
+    char *filename;
+    time_t last_modified;
+    time_t cache_age;
+    xsltStylesheetPtr stylesheet;
 } stylesheet_cache_t;
 
 #ifndef HAVE_XSLTSAVERESULTTOSTRING
@@ -70,21 +70,21 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
     *doc_txt_ptr = NULL;
     *doc_txt_len = 0;
     if (result->children == NULL)
-	return(0);
+        return (0);
 
-	buf = xmlAllocOutputBuffer(NULL);
+    buf = xmlAllocOutputBuffer(NULL);
 
     if (buf == NULL)
-		return(-1);
+        return (-1);
     xsltSaveResultTo(buf, result, style);
     if (buf->conv != NULL) {
-		*doc_txt_len = buf->conv->use;
-		*doc_txt_ptr = xmlStrndup(buf->conv->content, *doc_txt_len);
+        *doc_txt_len = buf->conv->use;
+        *doc_txt_ptr = xmlStrndup(buf->conv->content, *doc_txt_len);
     } else {
-		*doc_txt_len = buf->buffer->use;
-		*doc_txt_ptr = xmlStrndup(buf->buffer->content, *doc_txt_len);
+        *doc_txt_len = buf->buffer->use;
+        *doc_txt_ptr = xmlStrndup(buf->buffer->content, *doc_txt_len);
     }
-    (void)xmlOutputBufferClose(buf);
+    (void) xmlOutputBufferClose(buf);
     return 0;
 }
 #endif
@@ -97,7 +97,7 @@ static mutex_t xsltlock;
 
 void xslt_initialize(void)
 {
-    memset(cache, 0, sizeof(stylesheet_cache_t)*CACHESIZE);
+    memset(cache, 0, sizeof(stylesheet_cache_t) * CACHESIZE);
     thread_mutex_create(&xsltlock);
     xmlInitParser();
     LIBXML_TEST_VERSION
@@ -159,9 +159,9 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                 if(file.st_mtime > cache[i].last_modified)
                 {
                     xsltFreeStylesheet(cache[i].stylesheet);
-
+                    
                     cache[i].last_modified = file.st_mtime;
-                    cache[i].stylesheet = xsltParseStylesheetFile (XMLSTR(fn));
+                    cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
                     cache[i].cache_age = time(NULL);
                 }
                 ICECAST_LOG_DEBUG("Using cached sheet %i", i);
@@ -179,22 +179,22 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
 
     cache[i].last_modified = file.st_mtime;
     cache[i].filename = strdup(fn);
-    cache[i].stylesheet = xsltParseStylesheetFile (XMLSTR(fn));
+    cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
     cache[i].cache_age = time(NULL);
     return cache[i].stylesheet;
 }
 
 void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
-    xmlDocPtr    res;
+    xmlDocPtr res;
     xsltStylesheetPtr cur;
     xmlChar *string;
     int len, problem = 0;
     const char *mediatype = NULL;
     const char *charset = NULL;
 
-    xmlSetGenericErrorFunc ("", log_parse_failure);
-    xsltSetGenericErrorFunc ("", log_parse_failure);
+    xmlSetGenericErrorFunc("", log_parse_failure);
+    xsltSetGenericErrorFunc("", log_parse_failure);
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);

@@ -53,7 +53,7 @@ struct ebml_st {
 
     char *cluster_id;
     int cluster_start;
-    
+
     int position;
     unsigned char *input_buffer;
     unsigned char *buffer;
@@ -66,12 +66,12 @@ struct ebml_st {
 
 };
 
-static void ebml_free_plugin (format_plugin_t *plugin);
-static refbuf_t *ebml_get_buffer (source_t *source);
-static int  ebml_write_buf_to_client (client_t *client);
-static void  ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf);
-static int  ebml_create_client_data (source_t *source, client_t *client);
-static void ebml_free_client_data (client_t *client);
+static void ebml_free_plugin(format_plugin_t *plugin);
+static refbuf_t *ebml_get_buffer(source_t *source);
+static int ebml_write_buf_to_client(client_t *client);
+static void ebml_write_buf_to_file(source_t *source, refbuf_t *refbuf);
+static int ebml_create_client_data(source_t *source, client_t *client);
+static void ebml_free_client_data(client_t *client);
 
 static ebml_t *ebml_create();
 static void ebml_destroy(ebml_t *ebml);
@@ -81,7 +81,7 @@ static int ebml_last_was_sync(ebml_t *ebml);
 static char *ebml_write_buffer(ebml_t *ebml, int len);
 static int ebml_wrote(ebml_t *ebml, int len);
 
-int format_ebml_get_plugin (source_t *source)
+int format_ebml_get_plugin(source_t *source)
 {
 
     ebml_source_state_t *ebml_source_state = calloc(1, sizeof(ebml_source_state_t));
@@ -95,7 +95,7 @@ int format_ebml_get_plugin (source_t *source)
     plugin->set_tag = NULL;
     plugin->apply_settings = NULL;
 
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+    plugin->contenttype = httpp_getvar(source->parser, "content-type");
 
     plugin->_state = ebml_source_state;
     source->format = plugin;
@@ -104,19 +104,19 @@ int format_ebml_get_plugin (source_t *source)
     return 0;
 }
 
-static void ebml_free_plugin (format_plugin_t *plugin)
+static void ebml_free_plugin(format_plugin_t *plugin)
 {
 
     ebml_source_state_t *ebml_source_state = plugin->_state;
 
-    refbuf_release (ebml_source_state->header);
+    refbuf_release(ebml_source_state->header);
     ebml_destroy(ebml_source_state->ebml);
-    free (ebml_source_state);
-    free (plugin);
+    free(ebml_source_state);
+    free(plugin);
 
 }
 
-static int send_ebml_header (client_t *client)
+static int send_ebml_header(client_t *client)
 {
 
     ebml_client_data_t *ebml_client_data = client->format_data;
@@ -157,7 +157,7 @@ static int ebml_write_buf_to_client (client_t *client)
 
 }
 
-static refbuf_t *ebml_get_buffer (source_t *source)
+static refbuf_t *ebml_get_buffer(source_t *source)
 {
 
     ebml_source_state_t *ebml_source_state = source->format->_state;
@@ -209,7 +209,7 @@ static refbuf_t *ebml_get_buffer (source_t *source)
     }
 }
 
-static int ebml_create_client_data (source_t *source, client_t *client)
+static int ebml_create_client_data(source_t *source, client_t *client)
 {
 
     ebml_client_data_t *ebml_client_data = calloc(1, sizeof(ebml_client_data_t));
@@ -220,7 +220,7 @@ static int ebml_create_client_data (source_t *source, client_t *client)
     if ((ebml_client_data) && (ebml_source_state->header))
     {
         ebml_client_data->header = ebml_source_state->header;
-        refbuf_addref (ebml_client_data->header);
+        refbuf_addref(ebml_client_data->header);
         client->format_data = ebml_client_data;
         client->free_client_data = ebml_free_client_data;
         ret = 0;
@@ -313,7 +313,7 @@ static int ebml_read_space(ebml_t *ebml)
             read_space = ebml->cluster_start;
         else
             read_space = ebml->position - 4;
-            
+
         return read_space;
     }
     else
@@ -353,7 +353,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len)
         memcpy(buffer, ebml->buffer, to_read);
         memmove(ebml->buffer, ebml->buffer + to_read, ebml->position - to_read);
         ebml->position -= to_read;
-        
+
         if (ebml->cluster_start > 0)
             ebml->cluster_start -= to_read;
     }
@@ -406,7 +406,7 @@ static int ebml_last_was_sync(ebml_t *ebml)
 static char *ebml_write_buffer(ebml_t *ebml, int len)
 {
 
-    return (char *)ebml->input_buffer;
+    return (char *) ebml->input_buffer;
 
 }
 
@@ -459,7 +459,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
             }
         }
     }
-    
+
     ebml->position += len;
 
     return len;

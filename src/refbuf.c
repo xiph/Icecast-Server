@@ -11,10 +11,10 @@
  */
 
 /* refbuf.c
-**
-** reference counting buffer implementation
-**
-*/
+ **
+ ** reference counting buffer implementation
+ **
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

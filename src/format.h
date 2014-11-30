@@ -11,10 +11,10 @@
  */
 
 /* format.h
-**
-** format plugin header
-**
-*/
+ **
+ ** format plugin header
+ **
+ */
 #ifndef __FORMAT_H__
 #define __FORMAT_H__
 
@@ -40,10 +40,10 @@ typedef struct _format_plugin_tag
     /* we need to know the mount to report statistics */
     char *mount;
 
-    const char *contenttype;
-    char *charset;
-    uint64_t read_bytes;
-    uint64_t sent_bytes;
+    const char  *contenttype;
+    char        *charset;
+    uint64_t    read_bytes;
+    uint64_t    sent_bytes;
 
     refbuf_t *(*get_buffer)(struct source_tag *);
     int (*write_buf_to_client)(client_t *client);

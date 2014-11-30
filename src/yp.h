@@ -14,18 +14,18 @@
 #ifndef __YP_H__
 #define __YP_H__
 
-#define  YP_SERVER_NAME 1
-#define  YP_SERVER_DESC 2
-#define  YP_SERVER_GENRE 3
-#define  YP_SERVER_URL 4
-#define  YP_BITRATE 5
-#define  YP_AUDIO_INFO 6
-#define  YP_SERVER_TYPE 7
-#define  YP_CURRENT_SONG 8
-#define  YP_CLUSTER_PASSWORD 9
-#define  YP_SUBTYPE 10 
+#define  YP_SERVER_NAME         1
+#define  YP_SERVER_DESC         2
+#define  YP_SERVER_GENRE        3
+#define  YP_SERVER_URL          4
+#define  YP_BITRATE             5
+#define  YP_AUDIO_INFO          6
+#define  YP_SERVER_TYPE         7
+#define  YP_CURRENT_SONG        8
+#define  YP_CLUSTER_PASSWORD    9
+#define  YP_SUBTYPE             10 
 
-#define YP_ADD_ALL -1
+#define YP_ADD_ALL              -1
 
 #ifdef USE_YP
 void yp_add (const char *mount);

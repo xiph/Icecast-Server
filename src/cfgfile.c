@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -313,7 +313,7 @@ static inline ice_config_http_header_t * config_copy_http_header(ice_config_http
     return ret;
 }
 
-static void config_clear_mount (mount_proxy *mount)
+static void config_clear_mount(mount_proxy *mount)
 {
     if (mount->mountname)       xmlFree (mount->mountname);
     if (mount->dumpfile)        xmlFree (mount->dumpfile);
@@ -391,7 +391,7 @@ void config_clear(ice_config_t *c)
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
-    while(relay) {
+    while (relay) {
         nextrelay = relay->next;
         xmlFree(relay->server);
         xmlFree(relay->mount);
@@ -402,14 +402,14 @@ void config_clear(ice_config_t *c)
     thread_mutex_unlock(&(_locks.relay_lock));
 
     mount = c->mounts;
-    while(mount) {
+    while (mount) {
         nextmount = mount->next;
-        config_clear_mount (mount);
+        config_clear_mount(mount);
         mount = nextmount;
     }
 
     alias = c->aliases;
-    while(alias) {
+    while (alias) {
         nextalias = alias->next;
         xmlFree(alias->source);
         xmlFree(alias->destination);
@@ -420,7 +420,7 @@ void config_clear(ice_config_t *c)
     }
 
     dirnode = c->dir_list;
-    while(dirnode) {
+    while (dirnode) {
         nextdirnode = dirnode->next;
         xmlFree(dirnode->host);
         free(dirnode);
@@ -521,9 +521,9 @@ ice_config_t *config_get_config_unlocked(void)
 
 static void _set_defaults(ice_config_t *configuration)
 {
-    configuration->location = (char *)xmlCharStrdup (CONFIG_DEFAULT_LOCATION);
-    configuration->server_id = (char *)xmlCharStrdup (ICECAST_VERSION_STRING);
-    configuration->admin = (char *)xmlCharStrdup (CONFIG_DEFAULT_ADMIN);
+    configuration->location = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOCATION);
+    configuration->server_id = (char *) xmlCharStrdup(ICECAST_VERSION_STRING);
+    configuration->admin = (char *) xmlCharStrdup(CONFIG_DEFAULT_ADMIN);
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
@@ -1274,8 +1274,8 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
     relay->next = NULL;
     relay->mp3metadata = 1;
     relay->on_demand = configuration->on_demand;
-    relay->server = (char *)xmlCharStrdup ("127.0.0.1");
-    relay->mount = (char *)xmlCharStrdup ("/");
+    relay->server = (char *) xmlCharStrdup("127.0.0.1");
+    relay->mount = (char *) xmlCharStrdup("/");
 
     do {
         if (node == NULL) break;
@@ -1418,7 +1418,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("source-password")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("source-password")) == 0) {
             if (xmlGetProp(node, XMLSTR("mount"))) {
                 ICECAST_LOG_ERROR("Mount level source password defined within global <authentication> section.");
             }
@@ -1600,7 +1600,7 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             alias->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
             current = configuration->aliases;
             last = NULL;
-            while(current) {
+            while (current) {
                 last = current;
                 current = current->next;
             }
@@ -1703,12 +1703,12 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
         if (node == NULL) break;
         if (xmlIsBlankNode(node)) continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("host")) == 0) {
-            server->host = (char *)xmlNodeListGetString(doc, 
-                    node->xmlChildrenNode, 1);
+        if (xmlStrcmp(node->name, XMLSTR("host")) == 0) {
+            server->host = (char *) xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
             addnode = 1;
-        } else if (xmlStrcmp (node->name, XMLSTR("touch-interval")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
+            tmp = (char *) xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             server->touch_interval = atoi(tmp);
             if (tmp) xmlFree(tmp);
         }
@@ -1850,7 +1850,7 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
 
     /* retry with default mount */
     if (!mountinfo && type == MOUNT_TYPE_NORMAL)
-            mountinfo = config_find_mount(config, mount, MOUNT_TYPE_DEFAULT);
+        mountinfo = config_find_mount(config, mount, MOUNT_TYPE_DEFAULT);
 
     return mountinfo;
 }
@@ -1858,7 +1858,7 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
 /* Helper function to locate the configuration details of the listening 
  * socket
  */
-listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con)
+listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con)
 {
     listener_t *listener;
     int i = 0;

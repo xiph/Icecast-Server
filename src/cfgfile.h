@@ -15,10 +15,10 @@
 #ifndef __CFGFILE_H__
 #define __CFGFILE_H__
 
-#define CONFIG_EINSANE -1
-#define CONFIG_ENOROOT -2
+#define CONFIG_EINSANE  -1
+#define CONFIG_ENOROOT  -2
 #define CONFIG_EBADROOT -3
-#define CONFIG_EPARSE -4
+#define CONFIG_EPARSE   -4
 
 #define MAX_YP_DIRECTORIES 25
 
@@ -78,7 +78,7 @@ typedef struct _mount_proxy {
 
     char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
                        to not dump. */
-    char *intro_filename;   /* Send contents of file to client before the stream */
+    char *intro_filename; /* Send contents of file to client before the stream */
     int fallback_when_full; /* switch new listener to fallback source
                                when max listeners reached */
     int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
@@ -93,8 +93,8 @@ typedef struct _mount_proxy {
                      * from global setting */
     unsigned int queue_size_limit;
     int hidden; /* Do we list this on the xsl pages */
-    unsigned int source_timeout;  /* source timeout in seconds */
-    char *charset;  /* character set if not utf8 */
+    unsigned int source_timeout; /* source timeout in seconds */
+    char *charset; /* character set if not utf8 */
     int mp3_meta_interval; /* outgoing per-stream metadata interval */
 
     ice_config_http_header_t *http_headers; /* additional HTTP headers */
@@ -203,8 +203,8 @@ typedef struct ice_config_tag {
     char *user;
     char *group;
     char *yp_url[MAX_YP_DIRECTORIES];
-    int    yp_url_timeout[MAX_YP_DIRECTORIES];
-    int    yp_touch_interval[MAX_YP_DIRECTORIES];
+    int yp_url_timeout[MAX_YP_DIRECTORIES];
+    int yp_touch_interval[MAX_YP_DIRECTORIES];
     int num_yp_directories;
 } ice_config_t;
 

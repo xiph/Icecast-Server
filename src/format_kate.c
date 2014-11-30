@@ -87,7 +87,7 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         ogg_info->error = 1;
         return NULL;
     }
-    granulepos = ogg_page_granulepos (page);
+    granulepos = ogg_page_granulepos(page);
 
     while (ogg_stream_packetout (&codec->os, &packet) > 0)
     {
@@ -108,21 +108,21 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
             {
                 kate->headers_done = 1;
                 /* TODO: what to replace this with ?
-                ogg_info->bitrate += theora->ti.target_bitrate;
-                stats_event_args (ogg_info->mount, "video_bitrate", "%ld",
-                        (long)theora->ti.target_bitrate);
-                stats_event_args (ogg_info->mount, "video_quality", "%ld",
-                        (long)theora->ti.quality);
-                stats_event_args (ogg_info->mount, "frame_size", "%ld x %ld",
-                        (long)theora->ti.frame_width,
-                        (long)theora->ti.frame_height);
-                stats_event_args (ogg_info->mount, "frame_rate", "%.2f",
-                        (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
-                */
+                 ogg_info->bitrate += theora->ti.target_bitrate;
+                 stats_event_args (ogg_info->mount, "video_bitrate", "%ld",
+                 (long)theora->ti.target_bitrate);
+                 stats_event_args (ogg_info->mount, "video_quality", "%ld",
+                 (long)theora->ti.quality);
+                 stats_event_args (ogg_info->mount, "frame_size", "%ld x %ld",
+                 (long)theora->ti.frame_width,
+                 (long)theora->ti.frame_height);
+                 stats_event_args (ogg_info->mount, "frame_rate", "%.2f",
+                 (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
+                 */
             }
             continue;
 #else
-            header_page = (packet.bytes>0 && (packet.packet[0]&0x80));
+            header_page = (packet.bytes > 0 && (packet.packet[0] & 0x80));
             if (!header_page)
                 break;
             codec->headers++;
@@ -178,23 +178,23 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
 /* Check if specified BOS page is the start of a kate stream and
  * if so, create a codec structure for handling it
  */
-ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
+ogg_codec_t *initial_kate_page(format_plugin_t *plugin, ogg_page *page)
 {
     ogg_state_t *ogg_info = plugin->_state;
-    ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
+    ogg_codec_t *codec = calloc(1, sizeof(ogg_codec_t));
     ogg_packet packet;
 
-    kate_codec_t *kate_codec = calloc (1, sizeof (kate_codec_t));
+    kate_codec_t *kate_codec = calloc(1, sizeof(kate_codec_t));
 
-    ogg_stream_init (&codec->os, ogg_page_serialno (page));
-    ogg_stream_pagein (&codec->os, page);
+    ogg_stream_init(&codec->os, ogg_page_serialno(page));
+    ogg_stream_pagein(&codec->os, page);
 
 #ifdef HAVE_KATE
     kate_info_init (&kate_codec->ki);
     kate_comment_init (&kate_codec->kc);
 #endif
 
-    ogg_stream_packetout (&codec->os, &packet);
+    ogg_stream_packetout(&codec->os, &packet);
 
     ICECAST_LOG_DEBUG("checking for kate codec");
 #ifdef HAVE_KATE
@@ -225,7 +225,7 @@ ogg_codec_t *initial_kate_page (format_plugin_t *plugin, ogg_page *page)
     codec->headers = 1;
     codec->name = "Kate";
 
-    format_ogg_attach_header (ogg_info, page);
+    format_ogg_attach_header(ogg_info, page);
     ogg_info->codec_sync = codec;
     return codec;
 }

@@ -260,10 +260,10 @@ static int _start_logging(void)
 
     if (accesslog < 0) {
         buf[sizeof(buf)-1] = 0;
-        snprintf(buf, sizeof(buf)-1, 
-                "FATAL: could not open access logging (%s): %s",
-                log_to_stderr?"standard error":fn_access,
-                strerror(errno));
+        snprintf(buf, sizeof(buf) - 1,
+            "FATAL: could not open access logging (%s): %s",
+            log_to_stderr ? "standard error" : fn_access,
+            strerror(errno));
         _fatal_error(buf);
     }
 

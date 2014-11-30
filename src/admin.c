@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -246,10 +246,10 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             srcnode = xmlNewChild(xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
 
-            xmlNewChild(srcnode, NULL, XMLSTR("fallback"), 
+            xmlNewChild(srcnode, NULL, XMLSTR("fallback"),
                     (source->fallback_mount != NULL)?
                     XMLSTR(source->fallback_mount):XMLSTR(""));
-            snprintf (buf, sizeof(buf), "%lu", source->listeners);
+            snprintf(buf, sizeof(buf), "%lu", source->listeners);
             xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
             config = config_get_config();
@@ -297,8 +297,8 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
         if (buf_len < 4096)
             buf_len = 4096;
 
-        client_set_queue (client, NULL);
-        client->refbuf = refbuf_new (buf_len);
+        client_set_queue(client, NULL);
+        client->refbuf = refbuf_new(buf_len);
 
 	ret = util_http_build_header(client->refbuf->data, buf_len, 0,
 	                             0, 200, NULL,
@@ -587,8 +587,8 @@ static void html_success(client_t *client, char *message)
     }
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "<html><head><title>Admin request successful</title></head>"
-	     "<body><p>%s</p></body></html>", message);
+        "<html><head><title>Admin request successful</title></head>"
+        "<body><p>%s</p></body></html>", message);
 
     client->respcode = 200;
     client->refbuf->len = strlen (client->refbuf->data);
@@ -649,7 +649,7 @@ static void command_move_clients(client_t *client, source_t *source,
 
     memset(buf, '\000', sizeof(buf));
     snprintf (buf, sizeof(buf), "Clients moved from %s to %s",
-            source->mount, dest_source);
+        source->mount, dest_source);
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
@@ -721,7 +721,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     xmlNodePtr node, srcnode;
     char buf[22];
 
-    doc = xmlNewDoc (XMLSTR("1.0"));
+    doc = xmlNewDoc(XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
@@ -761,8 +761,8 @@ static void command_buildm3u(client_t *client,  const char *mount)
 
 
     config = config_get_config();
-    snprintf (client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-        "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n" 
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+        "Content-Disposition = attachment; filename=listen.m3u\r\n\r\n"
         "http://%s:%s@%s:%d%s\r\n",
         username,
         password,
@@ -814,7 +814,7 @@ static void command_manageauth(client_t *client, source_t *source,
         if (!strcmp(action, "add"))
         {
             const char *password = NULL;
-            COMMAND_OPTIONAL (client, "password", password);
+            COMMAND_OPTIONAL(client, "password", password);
 
             if (username == NULL || password == NULL)
             {
@@ -848,7 +848,7 @@ static void command_manageauth(client_t *client, source_t *source,
             }
         }
 
-        doc = xmlNewDoc (XMLSTR("1.0"));
+        doc = xmlNewDoc(XMLSTR("1.0"));
         node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
         srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
         xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
@@ -890,7 +890,7 @@ static void command_kill_source(client_t *client, source_t *source,
 
     source->running = 0;
 
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -966,7 +966,7 @@ static void command_metadata(client_t *client, source_t *source,
     xmlNodePtr node;
     int same_ip = 1;
 
-    doc = xmlNewDoc (XMLSTR("1.0"));
+    doc = xmlNewDoc(XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("iceresponse"), NULL);
     xmlDocSetRootElement(doc, node);
 

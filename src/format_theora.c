@@ -77,7 +77,7 @@ static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec,
         ogg_info->error = 1;
         return NULL;
     }
-    granulepos = ogg_page_granulepos (page);
+    granulepos = ogg_page_granulepos(page);
 
     while (ogg_stream_packetout (&codec->os, &packet) > 0)
     {
@@ -179,7 +179,7 @@ ogg_codec_t *initial_theora_page (format_plugin_t *plugin, ogg_page *page)
     codec->headers = 1;
     codec->name = "Theora";
 
-    format_ogg_attach_header (ogg_info, page);
+    format_ogg_attach_header(ogg_info, page);
     ogg_info->codec_sync = codec;
     return codec;
 }

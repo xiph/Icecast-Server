@@ -103,7 +103,7 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
         if (*parse != 0x7F)
             break;
         parse++;
-        if (memcmp (parse, "FLAC", 4) != 0)
+        if (memcmp(parse, "FLAC", 4) != 0)
             break;
 
         ICECAST_LOG_INFO("seen initial FLAC header");
@@ -115,12 +115,12 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
         codec->headers = 1;
         codec->name = "FLAC";
 
-        format_ogg_attach_header (ogg_info, page);
+        format_ogg_attach_header(ogg_info, page);
         return codec;
     } while (0);
 
-    ogg_stream_clear (&codec->os);
-    free (codec);
+    ogg_stream_clear(&codec->os);
+    free(codec);
     return NULL;
 }
 

@@ -13,10 +13,10 @@
  */
 
 /* format_mp3.c
-**
-** format plugin for mp3
-**
-*/
+ **
+ ** format plugin for mp3
+ **
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -67,21 +67,21 @@ static void format_mp3_apply_settings(client_t *client, format_plugin_t *format,
 
 
 typedef struct {
-   unsigned int interval;
-   int metadata_offset;
-   unsigned int since_meta_block;
-   int in_metadata;
-   refbuf_t *associated;
+    unsigned int interval;
+    int metadata_offset;
+    unsigned int since_meta_block;
+    int in_metadata;
+    refbuf_t *associated;
 } mp3_client_data;
 
-int format_mp3_get_plugin (source_t *source)
+int format_mp3_get_plugin(source_t *source)
 {
     const char *metadata;
     format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
 
-    plugin = (format_plugin_t *)calloc(1, sizeof(format_plugin_t));
+    plugin = (format_plugin_t *) calloc(1, sizeof(format_plugin_t));
 
     plugin->type = FORMAT_TYPE_GENERIC;
     plugin->get_buffer = mp3_get_no_meta;
@@ -92,7 +92,7 @@ int format_mp3_get_plugin (source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+    plugin->contenttype = httpp_getvar(source->parser, "content-type");
     if (plugin->contenttype == NULL) {
         /* We default to MP3 audio for old clients without content types */
         plugin->contenttype = "audio/mpeg";
@@ -119,7 +119,7 @@ int format_mp3_get_plugin (source_t *source)
         }
     }
     source->format = plugin;
-    thread_mutex_create (&state->url_lock);
+    thread_mutex_create(&state->url_lock);
 
     return 0;
 }
@@ -235,7 +235,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
 /* called from the source thread when the metadata has been updated.
  * The artist title are checked and made ready for clients to send
  */
-static void mp3_set_title (source_t *source)
+static void mp3_set_title(source_t *source)
 {
     const char streamtitle[] = "StreamTitle='";
     const char streamurl[] = "StreamUrl='";
@@ -345,7 +345,7 @@ static int send_stream_metadata (client_t *client, refbuf_t *associated)
             meta_len = 17 - client_mp3->metadata_offset;
         }
     }
-    ret = client_send_bytes (client, metadata, meta_len);
+    ret = client_send_bytes(client, metadata, meta_len);
 
     if (ret == meta_len)
     {
@@ -382,7 +382,7 @@ static int format_mp3_write_buf_to_client(client_t *client)
         if (client_mp3->in_metadata)
         {
             refbuf_t *associated = refbuf->associated;
-            ret = send_stream_metadata (client, associated);
+            ret = send_stream_metadata(client, associated);
 
             if (client_mp3->in_metadata)
                 break;
@@ -449,12 +449,12 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     /* free the plugin instance */
     mp3_state *state = self->_state;
 
-    thread_mutex_destroy (&state->url_lock);
-    free (state->url_artist);
-    free (state->url_title);
-    free (self->charset);
-    refbuf_release (state->metadata);
-    refbuf_release (state->read_data);
+    thread_mutex_destroy(&state->url_lock);
+    free(state->url_artist);
+    free(state->url_title);
+    free(self->charset);
+    refbuf_release(state->metadata);
+    refbuf_release(state->read_data);
     free(state);
     free(self);
 }
@@ -465,7 +465,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
  * incoming streams come in small packets which could waste a lot of 
  * bandwidth with many listeners due to headers and such like.
  */
-static int complete_read (source_t *source)
+static int complete_read(source_t *source)
 {
     int bytes;
     format_plugin_t *format = source->format;
@@ -538,7 +538,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source)
  * metadata so that the mp3 data itself is store on the queue and the
  * metadata is is associated with it
  */
-static refbuf_t *mp3_get_filter_meta (source_t *source)
+static refbuf_t *mp3_get_filter_meta(source_t *source)
 {
     refbuf_t *refbuf;
     format_plugin_t *plugin = source->format;
@@ -658,7 +658,7 @@ static refbuf_t *mp3_get_filter_meta (source_t *source)
 
 static int format_mp3_create_client_data(source_t *source, client_t *client)
 {
-    mp3_client_data *client_mp3 = calloc(1,sizeof(mp3_client_data));
+    mp3_client_data *client_mp3 = calloc(1, sizeof(mp3_client_data));
     mp3_state *source_mp3 = source->format->_state;
     const char *metadata;
     /* the +-2 is for overwriting the last set of \r\n */

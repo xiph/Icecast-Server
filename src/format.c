@@ -12,10 +12,10 @@
 
 /* -*- c-basic-offset: 4; -*- */
 /* format.c
-**
-** format plugin implementation
-**
-*/
+ **
+ ** format plugin implementation
+ **
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -87,16 +87,16 @@ int format_get_plugin(format_type_t type, source_t *source)
     int ret = -1;
 
     switch (type) {
-    case FORMAT_TYPE_OGG:
-        ret = format_ogg_get_plugin (source);
+        case FORMAT_TYPE_OGG:
+            ret = format_ogg_get_plugin(source);
         break;
-    case FORMAT_TYPE_EBML:
-        ret = format_ebml_get_plugin (source);
+        case FORMAT_TYPE_EBML:
+            ret = format_ebml_get_plugin(source);
         break;
-    case FORMAT_TYPE_GENERIC:
-        ret = format_mp3_get_plugin (source);
+        case FORMAT_TYPE_GENERIC:
+            ret = format_mp3_get_plugin(source);
         break;
-    default:
+        default:
         break;
     }
     if (ret < 0)
@@ -110,7 +110,7 @@ int format_get_plugin(format_type_t type, source_t *source)
 /* clients need to be start from somewhere in the queue so we will look for
  * a refbuf which has been previously marked as a sync point. 
  */
-static void find_client_start (source_t *source, client_t *client)
+static void find_client_start(source_t *source, client_t *client)
 {
     refbuf_t *refbuf = source->burst_point;
 
@@ -146,7 +146,7 @@ static void find_client_start (source_t *source, client_t *client)
 }
 
 
-static int get_file_data (FILE *intro, client_t *client)
+static int get_file_data(FILE *intro, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     size_t bytes;
@@ -211,7 +211,7 @@ int format_check_file_buffer (source_t *source, client_t *client)
 /* call this to verify that the HTTP data has been sent and if so setup
  * callbacks to the appropriate format functions
  */
-int format_check_http_buffer (source_t *source, client_t *client)
+int format_check_http_buffer(source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
 
@@ -229,9 +229,9 @@ int format_check_http_buffer (source_t *source, client_t *client)
             return -1;
         }
         client->respcode = 200;
-        stats_event_inc (NULL, "listeners");
-        stats_event_inc (NULL, "listener_connections");
-        stats_event_inc (source->mount, "listener_connections");
+        stats_event_inc(NULL, "listeners");
+        stats_event_inc(NULL, "listener_connections");
+        stats_event_inc(source->mount, "listener_connections");
     }
 
     if (client->pos == refbuf->len)
@@ -246,14 +246,14 @@ int format_check_http_buffer (source_t *source, client_t *client)
 }
 
 
-int format_generic_write_to_client (client_t *client)
+int format_generic_write_to_client(client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
     int ret;
     const char *buf = refbuf->data + client->pos;
     unsigned int len = refbuf->len - client->pos;
 
-    ret = client_send_bytes (client, buf, len);
+    ret = client_send_bytes(client, buf, len);
 
     if (ret > 0)
         client->pos += ret;
@@ -266,7 +266,7 @@ int format_generic_write_to_client (client_t *client)
  * the next buffer in the queue if there is no more left to be written from 
  * the existing buffer.
  */
-int format_advance_queue (source_t *source, client_t *client)
+int format_advance_queue(source_t *source, client_t *client)
 {
     refbuf_t *refbuf = client->refbuf;
 
@@ -331,7 +331,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     while (node)
     {
         int next = 1;
-        http_var_t *var = (http_var_t *)node->key;
+        http_var_t *var = (http_var_t *) node->key;
         bytes = 0;
         if (!strcasecmp(var->name, "ice-audio-info"))
         {
@@ -398,7 +398,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     }
     avl_tree_unlock(source->parser->vars);
 
-    bytes = snprintf (ptr, remaining, "\r\n");
+    bytes = snprintf(ptr, remaining, "\r\n");
     remaining -= bytes;
     ptr += bytes;
 

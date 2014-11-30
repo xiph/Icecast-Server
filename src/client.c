@@ -12,10 +12,10 @@
  */
 
 /* client.c
-**
-** client interface implementation
-**
-*/
+ **
+ ** client interface implementation
+ **
+ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -58,16 +58,16 @@ static inline void client_send_500(client_t *client, const char *message);
  * client_t is returned just in case a message needs to be returned. Should
  * be called with global lock held.
  */
-int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser)
+int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
     ice_config_t *config;
-    client_t *client = (client_t *)calloc(1, sizeof(client_t));
+    client_t *client = (client_t *) calloc(1, sizeof(client_t));
     int ret = -1;
 
     if (client == NULL)
         abort();
 
-    config = config_get_config ();
+    config = config_get_config();
 
     global.clients++;
     if (config->client_limit < global.clients)
@@ -119,14 +119,14 @@ void client_destroy(client_t *client)
     if (client->parser)
         httpp_destroy(client->parser);
 
-    global_lock ();
+    global_lock();
     global.clients--;
-    stats_event_args (NULL, "clients", "%d", global.clients);
-    global_unlock ();
+    stats_event_args(NULL, "clients", "%d", global.clients);
+    global_unlock();
 
     /* we need to free client specific format data (if any) */
     if (client->free_client_data)
-        client->free_client_data (client);
+        client->free_client_data(client);
 
     free(client->username);
     free(client->password);
@@ -137,7 +137,7 @@ void client_destroy(client_t *client)
 }
 
 /* helper function for reading data from a client */
-int client_read_bytes (client_t *client, void *buf, unsigned len)
+int client_read_bytes(client_t *client, void *buf, unsigned len)
 {
     int bytes;
 
@@ -216,9 +216,9 @@ static inline void client_send_500(client_t *client, const char *message) {
 }
 
 /* helper function for sending the data to a client */
-int client_send_bytes (client_t *client, const void *buf, unsigned len)
+int client_send_bytes(client_t *client, const void *buf, unsigned len)
 {
-    int ret = client->con->send (client->con, buf, len);
+    int ret = client->con->send(client->con, buf, len);
 
     if (client->con->error)
         ICECAST_LOG_DEBUG("Client connection died");
@@ -226,14 +226,14 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len)
     return ret;
 }
 
-void client_set_queue (client_t *client, refbuf_t *refbuf)
+void client_set_queue(client_t *client, refbuf_t *refbuf)
 {
     refbuf_t *to_release = client->refbuf;
 
     client->refbuf = refbuf;
     if (refbuf)
-        refbuf_addref (client->refbuf);
+        refbuf_addref(client->refbuf);
     client->pos = 0;
     if (to_release)
-        refbuf_release (to_release);
+        refbuf_release(to_release);
 }
