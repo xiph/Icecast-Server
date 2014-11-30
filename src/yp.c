@@ -435,7 +435,7 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     if (artist || title)
     {
          char *song;
-         char *separator = " - ";
+         const char *separator = " - ";
          if (artist == NULL)
          {
              artist = strdup("");
