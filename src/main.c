@@ -41,11 +41,11 @@
 #include <sys/utsname.h>
 #endif
 
-#include "thread/thread.h"
-#include "avl/avl.h"
-#include "net/sock.h"
-#include "net/resolver.h"
-#include "httpp/httpp.h"
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
+#include "common/net/sock.h"
+#include "common/net/resolver.h"
+#include "common/httpp/httpp.h"
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>

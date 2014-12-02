@@ -26,7 +26,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include "thread/thread.h"
+#include "common/thread/thread.h"
 #include "cfgfile.h"
 #include "refbuf.h"
 #include "client.h"
