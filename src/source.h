@@ -18,7 +18,7 @@
 #include "yp.h"
 #include "util.h"
 #include "format.h"
-#include "thread/thread.h"
+#include "common/thread/thread.h"
 
 #include <stdio.h>
 

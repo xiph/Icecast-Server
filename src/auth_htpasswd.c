@@ -30,7 +30,7 @@
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 #include "md5.h"
 
 #include "logging.h"

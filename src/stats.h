@@ -15,7 +15,7 @@
 
 #include "cfgfile.h"
 #include "connection.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 #include "client.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>

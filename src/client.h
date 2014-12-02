@@ -22,7 +22,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "acl.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 typedef enum _protocol_tag {
     ICECAST_PROTOCOL_HTTP = 0,

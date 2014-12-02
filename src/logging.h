@@ -16,7 +16,7 @@
 
 #include "cfgfile.h"
 #include "client.h"
-#include "log/log.h"
+#include "common/log/log.h"
 
 /* declare the global log descriptors */
 

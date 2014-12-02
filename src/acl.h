@@ -16,7 +16,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 typedef enum acl_policy_tag {
  /* Error on function call */

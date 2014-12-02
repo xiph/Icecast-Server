@@ -22,9 +22,9 @@
 #endif
 
 #include "compat.h"
-#include "httpp/httpp.h"
-#include "thread/thread.h"
-#include "net/sock.h"
+#include "common/httpp/httpp.h"
+#include "common/thread/thread.h"
+#include "common/net/sock.h"
 
 struct _client_tag;
 struct source_tag;
