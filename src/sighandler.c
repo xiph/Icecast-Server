@@ -17,9 +17,9 @@
 
 #include <signal.h>
 
-#include "thread/thread.h"
-#include "avl/avl.h"
-#include "httpp/httpp.h"
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
+#include "common/httpp/httpp.h"
 
 #include "global.h"
 #include "connection.h"

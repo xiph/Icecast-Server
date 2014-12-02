@@ -25,7 +25,7 @@ struct auth_tag;
 #include <libxml/tree.h>
 #include "cfgfile.h"
 #include "client.h"
-#include "thread/thread.h"
+#include "common/thread/thread.h"
 
 typedef enum
 {

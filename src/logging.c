@@ -19,8 +19,8 @@
 #include <time.h>
 #include <string.h>
 
-#include "thread/thread.h"
-#include "httpp/httpp.h"
+#include "common/thread/thread.h"
+#include "common/httpp/httpp.h"
 
 #include "connection.h"
 #include "refbuf.h"

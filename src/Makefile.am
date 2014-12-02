@@ -2,11 +2,13 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = avl thread httpp net log timing
+SUBDIRS = common/avl common/net common/thread common/httpp common/log common/timing
 
 bin_PROGRAMS = icecast
 
 include_HEADERS = icecastplugin.h
+
+INCLUDES = -I./common
 
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
@@ -26,8 +28,8 @@ EXTRA_icecast_SOURCES = yp.c \
     auth_url.c \
     format_vorbis.c format_theora.c format_speex.c
 
-icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ net/libicenet.la thread/libicethread.la \
-    httpp/libicehttpp.la log/libicelog.la avl/libiceavl.la timing/libicetiming.la
+icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ common/net/libicenet.la common/thread/libicethread.la \
+    common/httpp/libicehttpp.la common/log/libicelog.la common/avl/libiceavl.la common/timing/libicetiming.la
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@ @ROARAUDIO_LIBS@
 
 AM_CFLAGS = @XIPH_CFLAGS@ @ROARAUDIO_CFLAGS@

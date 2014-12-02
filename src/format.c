@@ -36,7 +36,7 @@
 #include "source.h"
 #include "format.h"
 #include "global.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 #include "format_ogg.h"
 #include "format_mp3.h"

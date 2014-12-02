@@ -36,8 +36,8 @@
 #define strncasecmp strnicmp
 #endif
 
-#include "net/sock.h"
-#include "thread/thread.h"
+#include "common/net/sock.h"
+#include "common/thread/thread.h"
 
 #include "cfgfile.h"
 #include "util.h"

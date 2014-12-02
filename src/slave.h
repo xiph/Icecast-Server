@@ -13,7 +13,7 @@
 #ifndef __SLAVE_H__
 #define __SLAVE_H__
 
-#include "thread/thread.h"
+#include "common/thread/thread.h"
 
 typedef struct _relay_server {
     char *server;

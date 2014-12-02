@@ -21,7 +21,7 @@
 
 #include "connection.h"
 #include "refbuf.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 typedef struct _client_tag
 {

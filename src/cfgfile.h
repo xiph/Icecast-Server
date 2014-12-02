@@ -24,8 +24,8 @@
 
 struct _mount_proxy;
 
-#include "thread/thread.h"
-#include "avl/avl.h"
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
 #include "auth.h"
 #include "global.h"
 #include "connection.h"

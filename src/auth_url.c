@@ -80,7 +80,7 @@
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 #include "logging.h"
 #define CATMODULE "auth_url"

@@ -40,10 +40,10 @@
 #include "compat.h"
 
 #include <libxml/uri.h>
-#include "thread/thread.h"
-#include "avl/avl.h"
-#include "net/sock.h"
-#include "httpp/httpp.h"
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
+#include "common/net/sock.h"
+#include "common/httpp/httpp.h"
 
 #include "cfgfile.h"
 #include "global.h"

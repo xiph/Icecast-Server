@@ -30,7 +30,7 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "stats.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 #include "fserve.h"
 #include "admin.h"
 

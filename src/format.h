@@ -20,7 +20,7 @@
 
 #include "client.h"
 #include "refbuf.h"
-#include "httpp/httpp.h"
+#include "common/httpp/httpp.h"
 
 struct source_tag;
 struct _mount_proxy;

@@ -38,10 +38,10 @@
 #define snprintf _snprintf
 #endif
 
-#include "thread/thread.h"
-#include "avl/avl.h"
-#include "httpp/httpp.h"
-#include "net/sock.h"
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
+#include "common/httpp/httpp.h"
+#include "common/net/sock.h"
 
 #include "connection.h"
 
