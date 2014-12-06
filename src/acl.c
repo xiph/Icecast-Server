@@ -125,6 +125,7 @@ acl_t * acl_new_from_xml_node(xmlNodePtr node) {
     while (prop) {
         tmp = (char*)xmlGetProp(node, prop->name);
         if (tmp) {
+            /* basic {allow|deny}-* options */
             if (strcmp((const char*)prop->name, "allow-method") == 0) {
                 acl_set_method_str(ret, ACL_POLICY_ALLOW, tmp);
             } else if (strcmp((const char*)prop->name, "deny-method") == 0) {
@@ -134,11 +135,41 @@ acl_t * acl_new_from_xml_node(xmlNodePtr node) {
             } else if (strcmp((const char*)prop->name, "deny-admin") == 0) {
                 acl_set_admin_str(ret, ACL_POLICY_DENY, tmp);
             } else if (strcmp((const char*)prop->name, "allow-web") == 0) {
-                if (strstr(tmp, "*"))
+                if (strstr(tmp, "*") || util_str_to_bool(tmp)) {
                     acl_set_web_policy(ret, ACL_POLICY_ALLOW);
-            } else if (strcmp((const char*)prop->name, "deny-web") == 0) {
-                if (strstr(tmp, "*"))
+                } else {
                     acl_set_web_policy(ret, ACL_POLICY_DENY);
+                }
+            } else if (strcmp((const char*)prop->name, "deny-web") == 0) {
+                if (strstr(tmp, "*") || util_str_to_bool(tmp)) {
+                    acl_set_web_policy(ret, ACL_POLICY_DENY);
+                } else {
+                    acl_set_web_policy(ret, ACL_POLICY_ALLOW);
+                }
+
+            /* wildcard {allow,deny} option */
+            } else if (strcmp((const char*)prop->name, "allow-all") == 0) {
+                if (strstr(tmp, "*") || util_str_to_bool(tmp)) {
+                    acl_set_method_str(ret, ACL_POLICY_ALLOW, "*");
+                    acl_set_admin_str(ret,  ACL_POLICY_ALLOW, "*");
+                    acl_set_web_policy(ret, ACL_POLICY_ALLOW);
+                } else {
+                    acl_set_method_str(ret, ACL_POLICY_DENY, "*");
+                    acl_set_admin_str(ret,  ACL_POLICY_DENY, "*");
+                    acl_set_web_policy(ret, ACL_POLICY_DENY);
+                }
+            } else if (strcmp((const char*)prop->name, "deny-all") == 0) {
+                if (strstr(tmp, "*") || util_str_to_bool(tmp)) {
+                    acl_set_method_str(ret, ACL_POLICY_DENY, "*");
+                    acl_set_admin_str(ret,  ACL_POLICY_DENY, "*");                    
+                    acl_set_web_policy(ret, ACL_POLICY_DENY);
+                } else {
+                    acl_set_method_str(ret, ACL_POLICY_ALLOW, "*");
+                    acl_set_admin_str(ret,  ACL_POLICY_ALLOW, "*");
+                    acl_set_web_policy(ret, ACL_POLICY_ALLOW);
+                }
+
+            /* other options */
             } else if (strcmp((const char*)prop->name, "connections-per-user") == 0) {
                 if (strcmp(tmp, "*") == 0 || strcmp(tmp, "unlimited") == 0) {
                     acl_set_max_connections_per_user(ret, 0);
