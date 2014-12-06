@@ -11,7 +11,7 @@ EXTRA_DIST = HACKING m4/acx_pthread.m4 m4/ogg.m4 \
     m4/xiph_types.m4 m4/xiph_xml2.m4
 
 docdir = $(datadir)/doc/$(PACKAGE)
-doc_DATA = README AUTHORS COPYING NEWS TODO ChangeLog
+doc_DATA = README.md AUTHORS COPYING NEWS ChangeLog
 
 debug:
 	$(MAKE) all CFLAGS="@DEBUG@"
