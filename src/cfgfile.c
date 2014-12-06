@@ -1712,7 +1712,7 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             configuration->adminroot_dir = (char *)temp;
             if(configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
-        } else if (xmlStrcmp (node->name, XMLSTR("alias")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
             alias = malloc(sizeof(aliases));
             alias->next = NULL;
             alias->source = (char *)xmlGetProp(node, XMLSTR("source"));
