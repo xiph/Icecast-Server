@@ -34,6 +34,11 @@
 #include "util.h" 
 #include "auth.h" 
 
+/* for config_reread_config() */
+#include "yp.h"
+#include "fserve.h"
+#include "stats.h"
+
 #define CATMODULE "CONFIG"
 #define CONFIG_DEFAULT_LOCATION "Earth"
 #define CONFIG_DEFAULT_ADMIN "icemaster@localhost"
@@ -438,6 +443,47 @@ void config_clear(ice_config_t *c)
     config_clear_http_header(c->http_headers);
 
     memset(c, 0, sizeof(ice_config_t));
+}
+
+void config_reread_config(void) {
+    int ret;
+    ice_config_t *config;
+    ice_config_t new_config;
+    /* reread config file */
+
+    config = config_grab_config(); /* Both to get the lock, and to be able
+                                     to find out the config filename */
+    xmlSetGenericErrorFunc("config", log_parse_failure);
+    ret = config_parse_file(config->config_filename, &new_config);
+    if(ret < 0) {
+        ICECAST_LOG_ERROR("Error parsing config, not replacing existing config");
+        switch (ret) {
+            case CONFIG_EINSANE:
+                ICECAST_LOG_ERROR("Config filename null or blank");
+                break;
+            case CONFIG_ENOROOT:
+                ICECAST_LOG_ERROR("Root element not found in %s", config->config_filename);
+                break;
+            case CONFIG_EBADROOT:
+                ICECAST_LOG_ERROR("Not an icecast2 config file: %s",
+                        config->config_filename);
+                break;
+            default:
+                ICECAST_LOG_ERROR("Parse error in reading %s", config->config_filename);
+                break;
+        }
+        config_release_config();
+    } else {
+        config_clear(config);
+        config_set_config(&new_config);
+        config = config_get_config_unlocked();
+        restart_logging (config);
+        yp_recheck_config (config);
+        fserve_recheck_mime_types (config);
+        stats_global (config);
+        config_release_config();
+        slave_update_all_mounts();
+    }
 }
 
 int config_initial_parse_file(const char *filename)
