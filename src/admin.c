@@ -29,7 +29,6 @@
 #include "client.h"
 #include "source.h"
 #include "global.h"
-#include "event.h"
 #include "stats.h"
 #include "compat.h"
 #include "xslt.h"

@@ -233,6 +233,7 @@ typedef struct {
 void config_initialize(void);
 void config_shutdown(void);
 
+void config_reread_config(void);
 int config_parse_file(const char *filename, ice_config_t *configuration);
 int config_initial_parse_file(const char *filename);
 int config_parse_cmdline(int arg, char **argv);

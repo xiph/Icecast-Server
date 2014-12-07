@@ -60,7 +60,6 @@
 #include "source.h"
 #include "format.h"
 #include "format_mp3.h"
-#include "event.h"
 #include "admin.h"
 #include "auth.h"
 

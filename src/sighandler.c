@@ -26,7 +26,6 @@
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h"
-#include "event.h"
 
 #define CATMODULE "sighandler"
 

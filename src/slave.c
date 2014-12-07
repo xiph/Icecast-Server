@@ -55,7 +55,6 @@
 #include "logging.h"
 #include "source.h"
 #include "format.h"
-#include "event.h"
 
 #define CATMODULE "slave"
 
@@ -744,9 +743,8 @@ static void *_slave_thread(void *arg)
 
         /* re-read xml file if requested */
         global_lock();
-        if (global . schedule_config_reread)
-        {
-            event_config_read (NULL);
+        if (global.schedule_config_reread) {
+            config_reread_config();
             global.schedule_config_reread = 0;
         }
         global_unlock();
