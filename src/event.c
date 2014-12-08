@@ -341,6 +341,31 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
         return;
     }
 
+    config = config_get_config();
+    event_push_reglist(event, config->event);
+
+    mount = config_find_mount(config, uri, MOUNT_TYPE_NORMAL);
+    if (mount && mount->mounttype == MOUNT_TYPE_NORMAL)
+        event_push_reglist(event, mount->event);
+
+    mount = config_find_mount(config, uri, MOUNT_TYPE_DEFAULT);
+    if (mount && mount->mounttype == MOUNT_TYPE_DEFAULT)
+        event_push_reglist(event, mount->event);
+    config_release_config();
+
+    /* This isn't perfectly clean but is a important speedup:
+     * If first element of reglist is NULL none of the above pushed in
+     * some registrations. If there are no registrations we can just drop
+     * this event now and here.
+     * We do this before inserting all the data into the object to avoid
+     * all the strdups() and stuff in case they aren't needed.
+     */
+    if (event->reglist[0] == NULL) {
+        /* we have no registrations, drop this event. */
+        event_release(event);
+        return;
+    }
+
     if (client) {
         const char *tmp;
         event->connection_id = client->con->id;
@@ -358,18 +383,6 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
 
     if (uri)
         event->uri = strdup(uri);
-
-    config = config_get_config();
-    event_push_reglist(event, config->event);
-
-    mount = config_find_mount(config, uri, MOUNT_TYPE_NORMAL);
-    if (mount && mount->mounttype == MOUNT_TYPE_NORMAL)
-        event_push_reglist(event, mount->event);
-
-    mount = config_find_mount(config, uri, MOUNT_TYPE_DEFAULT);
-    if (mount && mount->mounttype == MOUNT_TYPE_DEFAULT)
-        event_push_reglist(event, mount->event);
-    config_release_config();
 
     event_emit(event);
     event_release(event);
