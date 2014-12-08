@@ -33,6 +33,7 @@
 #include "logging.h" 
 #include "util.h" 
 #include "auth.h" 
+#include "event.h" 
 
 /* for config_reread_config() */
 #include "yp.h"
@@ -58,7 +59,7 @@
 #define CONFIG_DEFAULT_PLAYLIST_LOG NULL
 #define CONFIG_DEFAULT_ACCESS_LOG "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG "error.log"
-#define CONFIG_DEFAULT_LOG_LEVEL 3
+#define CONFIG_DEFAULT_LOG_LEVEL ICECAST_LOGLEVEL_INFO
 #define CONFIG_DEFAULT_CHROOT 0
 #define CONFIG_DEFAULT_CHUID 0
 #define CONFIG_DEFAULT_USER NULL
@@ -102,6 +103,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node, 
         ice_config_t *c);
 static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_events(event_registration_t **events, xmlNodePtr node);
 
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
@@ -144,20 +146,6 @@ static inline int __parse_public(const char *str) {
 
     /* ok, only normal bool left! */
     return util_str_to_bool(str);
-}
-
-static inline int __parse_loglevel(const char *str) {
-    if (strcasecmp(str, "debug") == 0 || strcasecmp(str, "DBUG") == 0)
-        return 4;
-    if (strcasecmp(str, "information") == 0 || strcasecmp(str, "INFO") == 0)
-        return 3;
-    if (strcasecmp(str, "warning") == 0 || strcasecmp(str, "WARN") == 0)
-        return 2;
-    if (strcasecmp(str, "error") == 0 || strcasecmp(str, "EROR") == 0)
-        return 1;
-
-    /* gussing it is old-style numerical setting */
-    return atoi(str);
 }
 
 static void __append_old_style_auth(auth_stack_t **stack, const char *name, const char *type, const char *username, const char *password, const char *method, const char *allow_method, int allow_web, const char *allow_admin) {
@@ -266,6 +254,45 @@ static void __append_old_style_urlauth(auth_stack_t **stack, const char *client_
     xmlFreeNode(role);
 }
 
+static void __append_old_style_exec_event(event_registration_t **list, const char *trigger, const char *executable) {
+    xmlNodePtr exec;
+    event_registration_t *er;
+
+    exec = xmlNewNode(NULL, XMLSTR("event"));
+
+    xmlSetProp(exec, XMLSTR("type"), XMLSTR("exec"));
+    xmlSetProp(exec, XMLSTR("trigger"), XMLSTR(trigger));
+
+    __append_option_tag(exec, "executable", executable);
+
+    er = event_new_from_xml_node(exec);
+    event_registration_push(list, er);
+    event_registration_release(er);
+
+    xmlFreeNode(exec);
+}
+
+static void __append_old_style_url_event(event_registration_t **list, const char *trigger, const char *url, const char *action, const char *username, const char *password) {
+    xmlNodePtr exec;
+    event_registration_t *er;
+
+    exec = xmlNewNode(NULL, XMLSTR("event"));
+
+    xmlSetProp(exec, XMLSTR("type"), XMLSTR("url"));
+    xmlSetProp(exec, XMLSTR("trigger"), XMLSTR(trigger));
+
+    __append_option_tag(exec, "url", url);
+    __append_option_tag(exec, "action", action);
+    __append_option_tag(exec, "username", username);
+    __append_option_tag(exec, "password", password);
+
+    er = event_new_from_xml_node(exec);
+    event_registration_push(list, er);
+    event_registration_release(er);
+
+    xmlFreeNode(exec);
+}
+
 static void config_clear_http_header(ice_config_http_header_t *header) {
  ice_config_http_header_t *old;
 
@@ -323,8 +350,6 @@ static void config_clear_mount(mount_proxy *mount)
     if (mount->mountname)       xmlFree (mount->mountname);
     if (mount->dumpfile)        xmlFree (mount->dumpfile);
     if (mount->intro_filename)  xmlFree (mount->intro_filename);
-    if (mount->on_connect)      xmlFree (mount->on_connect);
-    if (mount->on_disconnect)   xmlFree (mount->on_disconnect);
     if (mount->fallback_mount)  xmlFree (mount->fallback_mount);
     if (mount->stream_name)     xmlFree (mount->stream_name);
     if (mount->stream_description)  xmlFree (mount->stream_description);
@@ -335,6 +360,8 @@ static void config_clear_mount(mount_proxy *mount)
     if (mount->charset)         xmlFree (mount->charset);
     if (mount->cluster_password)    xmlFree (mount->cluster_password);
     if (mount->authstack)       auth_stack_release(mount->authstack);
+
+    event_registration_release(mount->event);
 
     config_clear_http_header(mount->http_headers);
     free (mount);
@@ -390,6 +417,8 @@ void config_clear(ice_config_t *c)
     if (c->user) xmlFree(c->user);
     if (c->group) xmlFree(c->group);
     if (c->mimetypes_fn) xmlFree (c->mimetypes_fn);
+
+    event_registration_release(c->event);
 
     while ((c->listen_sock = config_clear_listener (c->listen_sock)))
         ;
@@ -744,6 +773,9 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             _parse_logging(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp (node->name, XMLSTR("security")) == 0) {
             _parse_security(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp (node->name, XMLSTR("kartoffelsalat")) == 0) {
+            /* BEFORE RELEASE NEXT REVIEW: Should this tag really be <kartoffelsalat>? */
+            _parse_events(&configuration->event, node->xmlChildrenNode);
         }
     } while ((node = node->next));
 
@@ -962,7 +994,11 @@ static void _parse_mount_oldstyle_authentication(mount_proxy *mount, xmlNodePtr 
              child = child->next;
          }
 
-         /* TODO: FIXME: XXX: implement support for mount_add and mount_remove (using only username and password) here. */
+         if (mount_add)
+             __append_old_style_url_event(&mount->event, "source-connect", mount_add, "mount_add", username, password);
+         if (mount_remove)
+             __append_old_style_url_event(&mount->event, "source-disconnect", mount_add, "mount_remove", username, password);
+
          __append_old_style_urlauth(authstack, listener_add, listener_remove, "listener_add", "listener_remove", username, password, 0, auth_header, timelimit_header, headers, header_prefix);
          __append_old_style_urlauth(authstack, stream_auth, NULL, "stream_auth", NULL, username, password, 1, auth_header, timelimit_header, headers, header_prefix);
          if (listener_add)
@@ -1123,12 +1159,18 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
             }
         }
         else if (xmlStrcmp (node->name, XMLSTR("on-connect")) == 0) {
-            mount->on_connect = (char *)xmlNodeListGetString(
-                    doc, node->xmlChildrenNode, 1);
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (tmp) {
+                __append_old_style_exec_event(&mount->event, "source-connect", tmp);
+                xmlFree(tmp);
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("on-disconnect")) == 0) {
-            mount->on_disconnect = (char *)xmlNodeListGetString(
-                    doc, node->xmlChildrenNode, 1);
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (tmp) {
+                __append_old_style_exec_event(&mount->event, "source-disconnect", tmp);
+                xmlFree(tmp);
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("max-listener-duration")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1181,6 +1223,9 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
                     doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
             _parse_http_headers(doc, node->xmlChildrenNode, &(mount->http_headers));
+        } else if (xmlStrcmp (node->name, XMLSTR("kartoffelsalat")) == 0) {
+            /* BEFORE RELEASE NEXT REVIEW: Should this tag really be <kartoffelsalat>? */
+            _parse_events(&mount->event, node->xmlChildrenNode);
         }
     } while ((node = node->next));
 
@@ -1689,7 +1734,7 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           configuration->loglevel = __parse_loglevel(tmp);
+           configuration->loglevel = util_str_to_loglevel(tmp);
            if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("logarchive")) == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1779,6 +1824,64 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node,
     }
 }
 
+static void _parse_events(event_registration_t **events, xmlNodePtr node) {
+    while (node) {
+        if (xmlStrcmp(node->name, XMLSTR("event")) == 0) {
+            event_registration_t *reg = event_new_from_xml_node(node);
+            event_registration_push(events, reg);
+            event_registration_release(reg);
+        }
+        node = node->next;
+    }
+}
+
+config_options_t *config_parse_options(xmlNodePtr node) {
+    config_options_t *ret = NULL;
+    config_options_t *cur = NULL;
+
+    if (!node)
+        return NULL;
+
+    node = node->xmlChildrenNode;
+
+    if (!node)
+        return NULL;
+
+    do {
+        if (xmlStrcmp(node->name, XMLSTR("option")) != 0)
+            continue;
+        if (cur) {
+           cur->next = calloc(1, sizeof(config_options_t));
+           cur = cur->next;
+        } else {
+          cur = ret = calloc(1, sizeof(config_options_t));
+        }
+
+        cur->type  = (char *)xmlGetProp(node, XMLSTR("type"));
+        cur->name  = (char *)xmlGetProp(node, XMLSTR("name"));
+        cur->value = (char *)xmlGetProp(node, XMLSTR("value"));
+
+        /* map type="default" to NULL. This is to avoid many extra xmlCharStrdup()s. */
+        if (cur->type && strcmp(cur->type, "default") == 0) {
+            xmlFree(cur->type);
+            cur->type = NULL;
+        }
+    } while ((node = node->next));
+
+    return ret;
+}
+
+void config_clear_options(config_options_t *options) {
+    while (options) {
+        config_options_t *opt = options;
+        options = opt->next;
+        if (opt->type)  xmlFree(opt->type);
+        if (opt->name)  xmlFree(opt->name);
+        if (opt->value) xmlFree(opt->value);
+        free(opt);
+    }
+}
+
 static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     ice_config_http_header_t *http_header_next;
     ice_config_http_header_t **http_header_tail;
@@ -1814,10 +1917,6 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     	dst->mp3_meta_interval = src->mp3_meta_interval;
     if (!dst->cluster_password)
     	dst->cluster_password = (char*)xmlStrdup((xmlChar*)src->cluster_password);
-    if (!dst->on_connect)
-    	dst->on_connect = (char*)xmlStrdup((xmlChar*)src->on_connect);
-    if (!dst->on_disconnect)
-    	dst->on_disconnect = (char*)xmlStrdup((xmlChar*)src->on_disconnect);
     if (!dst->max_listener_duration)
     	dst->max_listener_duration = src->max_listener_duration;
     if (!dst->stream_name)

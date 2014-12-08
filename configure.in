@@ -111,7 +111,7 @@ XIPH_PATH_CURL([
     AC_CHECK_DECL([CURLOPT_NOSIGNAL],
         [ AC_DEFINE([HAVE_AUTH_URL], 1, [Define to compile in auth URL support code])
         AC_CHECK_FUNCS([curl_global_init])
-        ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_url.o"
+        ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_url.o event_url.o"
         enable_curl="yes"
         XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
         XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])

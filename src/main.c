@@ -73,6 +73,7 @@
 #include "fserve.h"
 #include "yp.h"
 #include "auth.h"
+#include "event.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -131,6 +132,7 @@ void initialize_subsystems(void)
 
 void shutdown_subsystems(void)
 {
+    event_shutdown();
     fserve_shutdown();
     refbuf_shutdown();
     slave_shutdown();
@@ -210,7 +212,7 @@ static int _start_logging_stdout(void) {
     if ( errorlog < 0 )
         return 0;
 
-    log_set_level(errorlog, 2 /* WARN */);
+    log_set_level(errorlog, ICECAST_LOGLEVEL_WARN);
 
     return 1;
 }
@@ -588,8 +590,11 @@ int main(int argc, char **argv)
     /* Do this after logging init */
     slave_initialize();
     auth_initialise ();
+    event_initialise();
 
+    event_emit_global("icecast-start");
     _server_proc();
+    event_emit_global("icecast-stop");
 
     ICECAST_LOG_INFO("Shutting down");
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)

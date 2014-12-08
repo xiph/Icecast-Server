@@ -24,6 +24,7 @@
 
 struct _mount_proxy;
 
+#include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "global.h"
@@ -58,6 +59,7 @@ typedef struct ice_config_dir_tag {
 } ice_config_dir_t;
 
 typedef struct _config_options {
+    char *type;
     char *name;
     char *value;
     struct _config_options *next;
@@ -99,10 +101,10 @@ typedef struct _mount_proxy {
 
     ice_config_http_header_t *http_headers; /* additional HTTP headers */
 
+    struct event_registration_tag *event;
+
     char *cluster_password;
     struct auth_stack_tag *authstack;
-    char *on_connect;
-    char *on_disconnect;
     unsigned int max_listener_duration;
 
     char *stream_name;
@@ -154,6 +156,8 @@ typedef struct ice_config_tag {
 
     char *shoutcast_mount;
     struct auth_stack_tag *authstack;
+
+    struct event_registration_tag *event;
 
     int touch_interval;
     ice_config_dir_t *dir_list;
@@ -225,6 +229,9 @@ listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type);
 listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con);
+
+config_options_t *config_parse_options(xmlNodePtr node);
+void config_clear_options(config_options_t *options);
 
 int config_rehash(void);
 
