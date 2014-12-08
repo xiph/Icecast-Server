@@ -470,6 +470,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             auth->method[i] = 1;
     }
 
+    /* BEFORE RELEASE 2.4.2 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
     while (option)
     {

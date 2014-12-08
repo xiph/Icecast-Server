@@ -23,6 +23,7 @@
 #include <ogg/ogg.h>
 #include <errno.h>
 
+/* REVIEW: Are all those includes needed? */
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/time.h>
@@ -36,12 +37,6 @@
 #include <winsock2.h>
 #include <windows.h>
 #define snprintf _snprintf
-#endif
-
-#ifndef _WIN32
-/* for __setup_empty_script_environment() */
-#include <sys/stat.h>
-#include <fcntl.h>
 #endif
 
 #include "common/thread/thread.h"
@@ -61,6 +56,7 @@
 #include "format.h"
 #include "fserve.h"
 #include "auth.h"
+#include "event.h"
 #include "compat.h"
 
 #undef CATMODULE
@@ -75,11 +71,6 @@ static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
-#ifdef _WIN32
-#define source_run_script(w,x,y,z)  ICECAST_LOG_WARN("on [dis]connect scripts disabled");
-#else
-static void source_run_script (const char *command, source_t *source, mount_proxy *mountinfo, const char *action);
-#endif
 
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
@@ -622,7 +613,6 @@ static void source_init (source_t *source)
     char *listenurl;
     const char *str;
     int listen_url_size;
-    mount_proxy *mountinfo;
 
     /* 6 for max size of port */
     listen_url_size = strlen("http://") + strlen(config->hostname) +
@@ -673,15 +663,7 @@ static void source_init (source_t *source)
     source->prev_listeners = -1;
     source->running = 1;
 
-    mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
-    if (mountinfo)
-    {
-        if (mountinfo->on_connect)
-            source_run_script (mountinfo->on_connect, source, mountinfo, "source-connect");
-        /* TODO: replace with <event> */
-        /* auth_stream_start (mountinfo, source->mount); */
-    }
-    config_release_config();
+    event_emit_clientevent("source-connect", source->client, source->mount);
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -877,20 +859,10 @@ void source_main (source_t *source)
 
 static void source_shutdown (source_t *source)
 {
-    mount_proxy *mountinfo;
-
     source->running = 0;
     ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
 
-    mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
-    if (mountinfo)
-    {
-        if (mountinfo->on_disconnect)
-            source_run_script (mountinfo->on_disconnect, source, mountinfo, "source-disconnect");
-        /* TODO: replace with <event> */
-        /* auth_stream_end (mountinfo, source->mount); */
-    }
-    config_release_config();
+    event_emit_clientevent("source-disconnect", source->client, source->mount);
 
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
@@ -1245,10 +1217,6 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
         ICECAST_LOG_DEBUG("intro file is %s", mountinfo->intro_filename);
     if (source->dumpfilename)
         ICECAST_LOG_DEBUG("Dumping stream to %s", source->dumpfilename);
-    if (mountinfo && mountinfo->on_connect)
-        ICECAST_LOG_DEBUG("connect script \"%s\"", mountinfo->on_connect);
-    if (mountinfo && mountinfo->on_disconnect)
-        ICECAST_LOG_DEBUG("disconnect script \"%s\"", mountinfo->on_disconnect);
     if (source->on_demand)
     {
         ICECAST_LOG_DEBUG("on_demand set");
@@ -1326,98 +1294,6 @@ void source_client_callback (client_t *client, void *arg)
     thread_create ("Source Thread", source_client_thread,
             source, THREAD_DETACHED);
 }
-
-
-#ifndef _WIN32
-/* this sets up the new environment for script execution.
- * We ignore most failtures as we can not handle them anyway.
- */
-#ifdef HAVE_SETENV
-static inline void __update_environ(const char *name, const char *value) {
-    if (!name || !value) return;
-    setenv(name, value, 1);
-}
-#else
-#define __update_environ(x,y)
-#endif
-static inline void __setup_empty_script_environment(ice_config_t * config, source_t *source, mount_proxy *mountinfo, const char *action) {
-    int i;
-
-    /* close at least the first 1024 handles */
-    for (i = 0; i < 1024; i++)
-        close(i);
-
-    /* open null device */
-    i = open(config->null_device, O_RDWR);
-    if (i != -1) {
-        /* attach null device to stdin, stdout and stderr */
-        if (i != 0)
-            dup2(i, 0);
-        if (i != 1)
-            dup2(i, 1);
-        if (i != 2)
-            dup2(i, 2);
-
-        /* close null device */
-        if (i > 2)
-            close(i);
-    }
-
-    __update_environ("ICECAST_VERSION",   ICECAST_VERSION_STRING);
-    __update_environ("ICECAST_HOSTNAME",  config->hostname);
-    __update_environ("ICECAST_ADMIN",     config->admin);
-    __update_environ("ICECAST_LOGDIR",    config->log_dir);
-    __update_environ("SOURCE_ACTION",     action);
-    __update_environ("SOURCE_MOUNTPOINT", source->mount);
-    __update_environ("SOURCE_PUBLIC",     source->yp_public ? "true" : "false");
-    __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false");
-    __update_environ("MOUNT_NAME",        mountinfo->stream_name);
-    __update_environ("MOUNT_DESCRIPTION", mountinfo->stream_description);
-    __update_environ("MOUNT_URL",         mountinfo->stream_url);
-    __update_environ("MOUNT_GENRE",       mountinfo->stream_genre);
-}
-
-static void source_run_script (const char *command, source_t *source, mount_proxy *mountinfo, const char *action) {
-    const char *mountpoint = source->mount;
-    pid_t pid, external_pid;
-    ice_config_t * config;
-
-    /* do a fork twice so that the command has init as parent */
-    external_pid = fork();
-    switch (external_pid)
-    {
-        case 0:
-            switch (pid = fork ())
-            {
-                case -1:
-                    ICECAST_LOG_ERROR("Unable to fork %s (%s)", command, strerror (errno));
-                    break;
-                case 0:  /* child */
-                    if (access(command, R_OK|X_OK) != 0) {
-                        ICECAST_LOG_ERROR("Unable to run command %s (%s)", command, strerror(errno));
-                        exit(1);
-                    }
-                    ICECAST_LOG_DEBUG("Starting command %s", command);
-                    config = config_get_config();
-                    __setup_empty_script_environment(config, source, mountinfo, action);
-                    config_release_config();
-                    /* consider to add action here as well */
-                    execl(command, command, mountpoint, (char *)NULL);
-                    exit(1);
-                default: /* parent */
-                    break;
-            }
-            exit (0);
-        case -1:
-            ICECAST_LOG_ERROR("Unable to fork %s", strerror (errno));
-            break;
-        default: /* parent */
-            waitpid (external_pid, NULL, 0);
-            break;
-    }
-}
-#endif
-
 
 static void *source_fallback_file (void *arg)
 {

@@ -546,6 +546,20 @@ int util_str_to_bool(const char *str) {
     return 0;
 }
 
+int util_str_to_loglevel(const char *str) {
+    if (strcasecmp(str, "debug") == 0 || strcasecmp(str, "DBUG") == 0)
+        return ICECAST_LOGLEVEL_DEBUG;
+    if (strcasecmp(str, "information") == 0 || strcasecmp(str, "INFO") == 0)
+        return ICECAST_LOGLEVEL_INFO;
+    if (strcasecmp(str, "warning") == 0 || strcasecmp(str, "WARN") == 0)
+        return ICECAST_LOGLEVEL_WARN;
+    if (strcasecmp(str, "error") == 0 || strcasecmp(str, "EROR") == 0)
+        return ICECAST_LOGLEVEL_ERROR;
+
+    /* gussing it is old-style numerical setting */
+    return atoi(str);
+}
+
 /* TODO, FIXME: handle memory allocation errors better. */
 static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
     size_t headerlen;
