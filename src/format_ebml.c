@@ -98,6 +98,7 @@ int format_ebml_get_plugin(source_t *source)
     plugin->contenttype = httpp_getvar(source->parser, "content-type");
 
     plugin->_state = ebml_source_state;
+    vorbis_comment_init(&plugin->vc);
     source->format = plugin;
 
     ebml_source_state->ebml = ebml_create();
@@ -112,8 +113,8 @@ static void ebml_free_plugin(format_plugin_t *plugin)
     refbuf_release(ebml_source_state->header);
     ebml_destroy(ebml_source_state->ebml);
     free(ebml_source_state);
+    vorbis_comment_clear(&plugin->vc);
     free(plugin);
-
 }
 
 static int send_ebml_header(client_t *client)

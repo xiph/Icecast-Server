@@ -37,7 +37,7 @@ static void opus_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
 
 static refbuf_t *process_opus_page (ogg_state_t *ogg_info,
-        ogg_codec_t *codec, ogg_page *page)
+        ogg_codec_t *codec, ogg_page *page, format_plugin_t *plugin)
 {
     refbuf_t *refbuf;
 

@@ -176,6 +176,7 @@ int format_ogg_get_plugin(source_t *source)
     plugin->contenttype = httpp_getvar (source->parser, "content-type");
 
     ogg_sync_init (&state->oy);
+    vorbis_comment_init(&plugin->vc);
 
     plugin->_state = state;
     source->format = plugin;
@@ -192,11 +193,12 @@ static void format_ogg_free_plugin (format_plugin_t *plugin)
 
     /* free memory associated with this plugin instance */
     free_ogg_codecs (state);
-    free (state->artist);
-    free (state->title);
 
     ogg_sync_clear (&state->oy);
+
     free (state);
+
+    vorbis_comment_clear(&plugin->vc);
 
     free (plugin);
 }
@@ -277,14 +279,14 @@ static int process_initial_page (format_plugin_t *plugin, ogg_page *page)
 static void update_comments(source_t *source)
 {
     ogg_state_t *ogg_info = source->format->_state;
-    char *title = ogg_info->title;
-    char *artist = ogg_info->artist;
+    char *title = vorbis_comment_query(&source->format->vc, "TITLE", 0);
+    char *artist = vorbis_comment_query(&source->format->vc, "ARTIST", 0);
     char *metadata = NULL;
     unsigned int len = 1; /* space for the nul byte at least */
     ogg_codec_t *codec;
     char codec_names [100] = "";
 
-    if (ogg_info->artist)
+    if (artist)
     {
         if (title)
         {
@@ -367,7 +369,7 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
 /* process the incoming page. this requires searching through the
  * currently known codecs that have been seen in the stream
  */
-static refbuf_t *process_ogg_page(ogg_state_t *ogg_info, ogg_page *page)
+static refbuf_t *process_ogg_page(ogg_state_t *ogg_info, ogg_page *page, format_plugin_t *plugin)
 {
     ogg_codec_t *codec = ogg_info->codecs;
     refbuf_t *refbuf = NULL;
@@ -377,7 +379,7 @@ static refbuf_t *process_ogg_page(ogg_state_t *ogg_info, ogg_page *page)
         if (ogg_page_serialno (page) == codec->os.serialno)
         {
             if (codec->process_page)
-                refbuf = codec->process_page(ogg_info, codec, page);
+                refbuf = codec->process_page(ogg_info, codec, page, plugin);
             break;
         }
 
@@ -410,7 +412,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
             /* if a codec has just been given a page then process it */
             if (codec && codec->process)
             {
-                refbuf = codec->process (ogg_info, codec);
+                refbuf = codec->process (ogg_info, codec, source->format);
                 if (refbuf)
                     return complete_buffer (source, refbuf);
 
@@ -426,7 +428,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
                 else
                 {
                     ogg_info->bos_completed = 1;
-                    refbuf = process_ogg_page (ogg_info, &page);
+                    refbuf = process_ogg_page (ogg_info, &page, source->format);
                 }
                 if (ogg_info->error)
                 {

@@ -63,7 +63,7 @@ static void theora_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 /* theora pages are not rebuilt, so here we just for headers and then
  * pass them straight through to the the queue
  */
-static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page)
+static refbuf_t *process_theora_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page, format_plugin_t *plugin)
 {
     theora_codec_t *theora = codec->specific;
     ogg_packet packet;

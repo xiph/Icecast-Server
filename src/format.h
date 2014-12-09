@@ -18,6 +18,8 @@
 #ifndef __FORMAT_H__
 #define __FORMAT_H__
 
+#include <vorbis/codec.h>
+
 #include "client.h"
 #include "refbuf.h"
 #include "common/httpp/httpp.h"
@@ -53,6 +55,9 @@ typedef struct _format_plugin_tag
     void (*free_plugin)(struct _format_plugin_tag *self);
     void (*apply_settings)(client_t *client, struct _format_plugin_tag *format, struct _mount_proxy *mount);
 
+    /* meta data */
+    vorbis_comment vc;
+
     /* for internal state management */
     void *_state;
 } format_plugin_t;
@@ -66,8 +71,11 @@ int format_advance_queue (struct source_tag *source, client_t *client);
 int format_check_http_buffer (struct source_tag *source, client_t *client);
 int format_check_file_buffer (struct source_tag *source, client_t *client);
 
+
 void format_send_general_headers(format_plugin_t *format, 
         struct source_tag *source, client_t *client);
+
+void format_set_vorbiscomment(format_plugin_t *plugin, const char *tag, const char *value);
 
 #endif  /* __FORMAT_H__ */
 

@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -985,6 +986,29 @@ void stats_transform_xslt(client_t *client, const char *uri)
     free(xslpath);
 }
 
+static void __add_metadata(xmlNodePtr node, const char *tag) {
+    const char *value = strstr(tag, "=");
+    char *name = NULL;
+    size_t namelen = value - tag + 1;
+    size_t i;
+
+    if (!value)
+        return;
+
+    name = malloc(namelen);
+    if (!name)
+        return;
+
+    for (i = 0; i < (namelen - 1); i++)
+        name[i] = tolower(tag[i]);
+
+    name[namelen-1] = 0;
+
+    xmlNewTextChild(node, NULL, XMLSTR(name), XMLSTR(value+1));
+
+    free(name);
+}
+
 xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
 {
     xmlDocPtr doc;
@@ -998,8 +1022,13 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
     node = _dump_stats_to_doc (node, show_mount, show_hidden);
 
     if (show_mount && node) {
+        xmlNodePtr metadata = xmlNewTextChild(node, NULL, XMLSTR("metadata"), NULL);
+        int i;
+
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(show_mount);
+        for (i = 0; i < source->format->vc.comments; i++)
+            __add_metadata(metadata, source->format->vc.user_comments[i]);
         admin_add_listeners_to_mount(source, node);
         avl_tree_unlock(global.source_tree);
     }
