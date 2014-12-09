@@ -42,7 +42,7 @@ static void flac_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 
 
 /* Here, we just verify the page is ok and then add it to the queue */
-static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page)
+static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page, format_plugin_t *plugin)
 {
     refbuf_t * refbuf;
 

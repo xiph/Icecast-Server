@@ -30,8 +30,6 @@ typedef struct ogg_state_tag
 
     int codec_count;
     struct ogg_codec_tag *codecs;
-    char *artist;
-    char *title;
     int log_metadata;
     refbuf_t *file_headers;
     refbuf_t *header_pages;
@@ -55,9 +53,9 @@ typedef struct ogg_codec_tag
     refbuf_t        *possible_start;
     refbuf_t        *page;
 
-    refbuf_t *(*process)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec);
+    refbuf_t *(*process)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec, format_plugin_t *plugin);
     refbuf_t *(*process_page)(ogg_state_t *ogg_info,
-            struct ogg_codec_tag *codec, ogg_page *page);
+            struct ogg_codec_tag *codec, ogg_page *page, format_plugin_t *plugin);
     void (*codec_free)(ogg_state_t *ogg_info, struct ogg_codec_tag *codec);
 } ogg_codec_t;
 

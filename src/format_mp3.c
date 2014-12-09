@@ -118,6 +118,8 @@ int format_mp3_get_plugin(source_t *source)
             state->interval = state->inline_metadata_interval;
         }
     }
+
+    vorbis_comment_init(&plugin->vc);
     source->format = plugin;
     thread_mutex_create(&state->url_lock);
 
@@ -147,23 +149,17 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
             value = strdup (in_value);
     }
 
-    if (strcmp (tag, "title") == 0 || strcmp (tag, "song") == 0)
-    {
-        free (source_mp3->url_title);
-        source_mp3->url_title = value;
+    if (strcmp(tag, "title") == 0 || strcmp(tag, "song") == 0) {
+        tag = MP3_METADATA_TITLE;
+    } else if (strcmp(tag, "artist") == 0) {
+        tag = MP3_METADATA_ARTIST;
+    } else if (strcmp(tag, "url") == 0) {
+        tag = MP3_METADATA_URL;
     }
-    else if (strcmp (tag, "artist") == 0)
-    {
-        free (source_mp3->url_artist);
-        source_mp3->url_artist = value;
-    }
-    else if (strcmp (tag, "url") == 0)
-    {
-        free (source_mp3->url);
-        source_mp3->url = value;
-    }
-    else
-        free (value);
+
+    format_set_vorbiscomment(plugin, tag, value);
+    free (value);
+
     thread_mutex_unlock (&source_mp3->url_lock);
 }
 
@@ -239,6 +235,9 @@ static void mp3_set_title(source_t *source)
 {
     const char streamtitle[] = "StreamTitle='";
     const char streamurl[] = "StreamUrl='";
+    const char *url_artist = vorbis_comment_query(&source->format->vc, MP3_METADATA_ARTIST, 0);
+    const char *url_title = vorbis_comment_query(&source->format->vc, MP3_METADATA_TITLE, 0);
+    const char *url = vorbis_comment_query(&source->format->vc, MP3_METADATA_URL, 0);
     size_t size;
     unsigned char len_byte;
     refbuf_t *p;
@@ -249,11 +248,11 @@ static void mp3_set_title(source_t *source)
     thread_mutex_lock (&source_mp3->url_lock);
 
     /* work out message length */
-    if (source_mp3->url_artist)
-        len += strlen (source_mp3->url_artist);
-    if (source_mp3->url_title)
-        len += strlen (source_mp3->url_title);
-    if (source_mp3->url_artist && source_mp3->url_title)
+    if (url_artist)
+        len += strlen (url_artist);
+    if (url_title)
+        len += strlen (url_title);
+    if (url_artist && url_title)
         len += 3;
     if (source_mp3->inline_url)
     {
@@ -261,8 +260,8 @@ static void mp3_set_title(source_t *source)
         if (end)
             len += end - source_mp3->inline_url+2;
     }
-    else if (source_mp3->url)
-        len += strlen (source_mp3->url) + strlen (streamurl) + 2;
+    else if (url)
+        len += strlen (url) + strlen (streamurl) + 2;
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
@@ -283,12 +282,12 @@ static void mp3_set_title(source_t *source)
         int r;
 
         memset (p->data, '\0', size);
-        if (source_mp3->url_artist && source_mp3->url_title)
+        if (url_artist && url_title)
             r = snprintf (p->data, size, "%c%s%s - %s';", len_byte, streamtitle,
-                    source_mp3->url_artist, source_mp3->url_title);
+                    url_artist, url_title);
         else
             r = snprintf (p->data, size, "%c%s%s';", len_byte, streamtitle,
-                    source_mp3->url_title);
+                    url_title);
         if (r > 0)
         {
             if (source_mp3->inline_url)
@@ -299,8 +298,8 @@ static void mp3_set_title(source_t *source)
                 if ((ssize_t)(size-r) > urllen)
                     snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->inline_url+11);
             }
-            else if (source_mp3->url)
-                snprintf (p->data+r, size-r, "StreamUrl='%s';", source_mp3->url);
+            else if (url)
+                snprintf (p->data+r, size-r, "StreamUrl='%s';", url);
         }
         ICECAST_LOG_DEBUG("shoutcast metadata block setup with %s", p->data+1);
         filter_shoutcast_metadata (source, p->data, size);
@@ -450,12 +449,11 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     mp3_state *state = self->_state;
 
     thread_mutex_destroy(&state->url_lock);
-    free(state->url_artist);
-    free(state->url_title);
     free(self->charset);
     refbuf_release(state->metadata);
     refbuf_release(state->read_data);
     free(state);
+    vorbis_comment_clear(&self->vc);
     free(self);
 }
 

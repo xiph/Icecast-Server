@@ -44,7 +44,7 @@ static void skeleton_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 /* skeleton pages are not rebuilt, so here we just for headers and then
  * pass them straight through to the the queue
  */
-static refbuf_t *process_skeleton_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page)
+static refbuf_t *process_skeleton_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page, format_plugin_t *plugin)
 {
     ogg_packet packet;
 

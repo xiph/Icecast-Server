@@ -18,14 +18,15 @@
 #ifndef __FORMAT_MP3_H__
 #define __FORMAT_MP3_H__
 
+#define MP3_METADATA_TITLE  "X_ICY_TITLE"
+#define MP3_METADATA_ARTIST "X_ICY_ARTIST"
+#define MP3_METADATA_URL    "X_ICY_URL"
+
 typedef struct {
     /* These are for inline metadata */
     int inline_metadata_interval;
     int offset;
     int interval;
-    char *url_artist;
-    char *url_title;
-    char *url;
     char *inline_url;
     int update_metadata;
 

@@ -30,6 +30,8 @@
 # include <sys/types.h>
 #endif
 
+#include <vorbis/codec.h>
+
 #include "connection.h"
 #include "refbuf.h"
 
@@ -409,4 +411,28 @@ static int format_prepare_headers (source_t *source, client_t *client)
     return 0;
 }
 
+void format_set_vorbiscomment(format_plugin_t *plugin, const char *tag, const char *value) {
+    if (vorbis_comment_query_count(&plugin->vc, tag) != 0) {
+        /* delete key */
+        /* as libvorbis hides away all the memory functions we need to copy
+         * the structure comment by comment. sorry about that...
+         */
+        vorbis_comment vc;
+        int i; /* why does vorbis_comment use int, not size_t? */
+        size_t keylen = strlen(tag);
 
+        vorbis_comment_init(&vc);
+        /* copy tags */
+        for (i = 0; i < plugin->vc.comments; i++) {
+            if (strncasecmp(plugin->vc.user_comments[i], tag, keylen) == 0 && plugin->vc.user_comments[i][keylen] == '=')
+                continue;
+            vorbis_comment_add(&vc, plugin->vc.user_comments[i]);
+        }
+        /* move vendor */
+        vc.vendor = plugin->vc.vendor;
+        plugin->vc.vendor = NULL;
+        vorbis_comment_clear(&plugin->vc);
+        plugin->vc = vc;
+    }
+    vorbis_comment_add_tag(&plugin->vc, tag, value);
+}
