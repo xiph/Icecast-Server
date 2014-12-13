@@ -24,7 +24,7 @@ icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c 
     format.c format_ogg.c format_mp3.c format_midi.c format_flac.c format_ebml.c \
     format_kate.c format_skeleton.c format_opus.c \
     event.c event_log.c event_exec.c \
-    acl.c auth.c auth_htpasswd.c auth_anonymous.c auth_static.c
+    acl.c auth.c auth_htpasswd.c auth_anonymous.c auth_static.c \
 	roarapi.c plugins.c
 EXTRA_icecast_SOURCES = yp.c \
     auth_url.c event_url.c \
