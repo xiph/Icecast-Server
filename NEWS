@@ -1,3 +1,92 @@
+Icecast 2.4.1
+-----------------------------------------------------------------------------
+Fixes
+
+    * Fix autogen.sh to work properly on OS X
+    * Removed threadpool from the example config (it is long gone and unused)
+    * More detailed logging:
+        Add source IP adress to source start/stop logging
+        Add mountpoints to some log lines
+    * Fix logging to send errors to STDERR prior to opening log files
+    * Fix <auth> in default mounts (<mount type="default">) to work properly
+    * Fix the JSON status API (status-json.xsl), which could return 
+      invalid JSON in some cases
+    * SSL Security improvements:
+        Disable SSLv3
+        Disable SSL compression
+        Updated the default ciphers to be more secure
+    * Handle empty strings in config file better
+    * Fix logging of client connection duration time on Windows
+    * Fix possibly broken XML on Windows
+    * Require Content-Type header for PUT requests
+    * Fix on-connect and on-disconnect script STDIN/STDOUT/STDERR corruption
+      due to shared file descriptors. (CVE-2014-9018)
+    * Fix JSON access by adding support for global and mount specific 
+      custom HTTP headers
+
+Known issues
+
+    * HTTP PUT implementation currently doesn’t support chunked encoding yet.
+    * HTTP PUT with “Expect: 100-Continue” receives first a “100” and soon 
+      after a “200”, instead of the “200” at the end of transmission.
+    * Caution should be exercised when using <on-connect> or <on-disconnect>,
+      as there is a small chance of stream file descriptors being mixed up 
+      with script file descriptors, if the FD numbers go above 1024. 
+      This will be further addressed in the next Icecast release.
+    * Don’t use comments inside <http-headers> as it will prevent processing
+      of further <header> tags.
+    * Webinterface shows Login when using just stream_auth.
+
+Icecast 2.4.0
+-----------------------------------------------------------------------------
+New features
+
+    * Support for Ogg Opus streams
+    * Support for WebM streams
+    * HTTP 1.1 PUT support for source connections. Deprecating SOURCE method.
+    * Default mount
+      This allows you to define a global set of defaults for all mounts. 
+      This way you can use e.g. url-auth for sources and or listeners also for
+      dynamically generated mounts.
+    * Web interface redone
+        Web output properly redone, credit to ePirat.
+        Added <audio> element for supported audio streams.
+        Now validates completely as XHTML1.0 strict.
+        Improves rendering on mobile devices.
+    * Added basic JSON API (/status-json.xsl) based on a xml2json template by
+      Doeke Zanstra (see xml2json.xslt). Output is roughly limited to data also
+      visible through status.xsl.
+    * Send charset in HTTP headers for everything, excluding file-serv 
+      and streams.
+    * Allow (standard strftime(3)) %x codes in <dump-file>. Disabled for win32.
+    * Added stream_start_iso8601, server_start_iso8601 to statistics. 
+      ISO8601 compliant timestamps for statistics. Should make usage in e.g. 
+      JSON much easier. 
+      Added as new variables to avoid breaking backwards compatibility.
+    * Now compiles for win32 using mingw
+    * Added options headers and header_prefix to URL based listener auth.
+    * Updated listener_remove handler, added ip= and agent=
+    * Allow full URLs to be returned by the master server.
+
+Fixes
+
+    * Security Fix: Override supplementary groups if <changeowner> is used
+    * Fixes for some race conditions
+    * Dropped debian packaging directory as debian use their own.
+    * Send proper HTTP headers in responses to clients.
+    * Corrected Content-Length header in admin (raw) requests. Thanks to paluh for reporting.
+    * Escape log entries in access log
+    * Fixed a memory leak. Lost headers of stream because of wrong ref counter in associated refbuf objects.
+    * Avoid memory leak in _parse_mount() when type-attribute is set
+    * Updated web interface to be XHTML compliant.
+    * Removed status2.xsl from release. It was only a broken example file anyway.
+
+Known issues
+
+    * Will crash if certain config tags are left empty.
+    * Webinterface shows Login when using just stream_auth.
+
+
 Icecast 2.4 beta1
 -----------------------------------------------------------------------------
 Note: While WebM and Opus are production grade, there are other pending fixes.
