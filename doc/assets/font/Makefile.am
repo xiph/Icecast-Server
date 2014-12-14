@@ -2,12 +2,12 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-docdir = $(datadir)/doc/icecast/assets/font
-doc_DATA = FiraMono-Bold.eot FiraMono-Regular.eot \
+otherdocdir = $(docdir)/assets/font
+otherdoc_DATA = FiraMono-Bold.eot FiraMono-Regular.eot \
 	   FiraSans-Bold.eot FiraSans-BoldItalic.woff \
 	   FiraSans-Italic.eot FiraSans-Regular.eot \
 	   FiraMono-Bold.woff FiraMono-Regular.woff \
 	   FiraSans-BoldItalic.eot FiraSans-Bold.woff \
     	   FiraSans-Italic.woff FiraSans-Regular.woff
 
-EXTRA_DIST = $(doc_DATA)
+EXTRA_DIST = $(otherdoc_DATA)

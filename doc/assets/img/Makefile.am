@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-docdir = $(datadir)/doc/icecast/assets/img
-doc_DATA = xiph-community.svg
+otherdocdir = $(docdir)/assets/img
+otherdoc_DATA = xiph-community.svg
 
-EXTRA_DIST = $(doc_DATA)
+EXTRA_DIST = $(otherdoc_DATA)
