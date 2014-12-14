@@ -27,6 +27,7 @@ struct _mount_proxy;
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
+#include "auth.h"
 #include "global.h"
 #include "connection.h"
 

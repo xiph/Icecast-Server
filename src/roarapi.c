@@ -16,7 +16,7 @@
 #include <config.h>
 #endif
 
-#include "thread/thread.h"
+#include "common/thread/thread.h"
 #include "logging.h"
 
 #define CATMODULE "roarapi" 

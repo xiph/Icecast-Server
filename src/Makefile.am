@@ -9,6 +9,8 @@ bin_PROGRAMS = icecast
 include_HEADERS = icecastplugin.h
 INCLUDES = -I./common/
 
+INCLUDES = -I./common
+
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h md5.h \
