@@ -1,10 +1,10 @@
 Icecast 2 - README
 ---------------------------------------------------------------------
 
-Icecast is a streaming media server which currently supports Ogg
-streaming including the Vorbis and Theora codecs. Also Icecast can
-handle other streams like MP3/AAC/NSV, but this is not officially
-supported.
+Icecast is a streaming media server which currently supports WebM and
+Ogg streaming including the Opus, Vorbis and Theora codecs. 
+Also Icecast can handle other streams like MP3/AAC/NSV 
+in legacy mode, but this is not officially supported.
 
 It can be used to create an Internet radio station or a privately
 running jukebox and many things in between. It is very versatile in
@@ -47,22 +47,31 @@ Run
     make install
 
 This is the typical procedure if you download the tar file.  If you retrive
-the code from Git or want to rebuild the configure then run the `autogen.sh`
-instead of the configure above. Most people do not need to run autogen.sh
+the code from Git or want to rebuild the configure then run `./autogen.sh`
+instead of configure above. Most people do not need to run autogen.sh
 
-A sample config file will be placed in `/usr/local/etc` (on UNIX) or in 
-the current working directory (on Win32) and is called `icecast.xml`
+A sample config file will be placed in `/usr/local/etc` (on UNIX, 
+also depends on path PREFIX) or in the current working directory 
+(on Win32) and is called `icecast.xml`
 
 Documentation for Icecast is available in the doc directory, by 
-viewing `doc/index.html` in a browser.
-Online documentation can be found on [Icecasts Website][5].
+viewing `doc/index.html` in a browser. It's also installed to 
+`$PREFIX/share/doc/icecast/`. Online documentation can be found 
+on the [Icecast Website][5].
 
-Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
-us at irc.freenode.net, channel [#icecast][6], if you have any troubles.
+If you have problems with setting up Icecast, please join the 
+[Icecast mailing list][6] and then email icecast@xiph.org.
+In case you have patches or want to discuss development issues,
+please join the [Icecast developer mailing list][7] and then
+email icecast-dev@xiph.org.
+Or come and see us on irc.freenode.net, channel [#icecast][8]
+(please be patient, people are not always at their computers).
 
 [1]: http://xmlsoft.org/downloads.html
 [2]: http://xmlsoft.org/XSLT/downloads.html
 [3]: http://curl.haxx.se/download.html
 [4]: http://www.vorbis.com/files
 [5]: http://icecast.org/docs/
-[6]: https://webchat.freenode.net/?channels=#icecast
+[6]: http://lists.xiph.org/mailman/listinfo/icecast
+[7]: 
+[8]: https://webchat.freenode.net/?channels=#icecast
