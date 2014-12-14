@@ -263,7 +263,7 @@ static void *auth_run_thread (void *arg)
                 thread_mutex_unlock (&auth->lock);
                 continue;
             }
-            ICECAST_LOG_DEBUG("%d client(s) pending on %s", auth->pending_count, auth->mount);
+            ICECAST_LOG_DEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
             auth->head = auth_user->next;
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
@@ -308,9 +308,11 @@ static void *auth_run_thread (void *arg)
 static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata), void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata) {
     auth_client *auth_user;
 
+    ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
+
     /* TODO: replace that magic number */
     if (auth->pending_count > 100) {
-        ICECAST_LOG_WARN("too many clients awaiting authentication");
+        ICECAST_LOG_WARN("too many clients awaiting authentication on auth %p", auth);
         client_send_error(client, 403, 1, "busy, please try again later");
         return;
     }
