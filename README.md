@@ -73,5 +73,5 @@ Or come and see us on irc.freenode.net, channel [#icecast][8]
 [4]: http://www.vorbis.com/files
 [5]: http://icecast.org/docs/
 [6]: http://lists.xiph.org/mailman/listinfo/icecast
-[7]: 
+[7]: http://lists.xiph.org/mailman/listinfo/icecast-dev
 [8]: https://webchat.freenode.net/?channels=#icecast
