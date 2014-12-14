@@ -946,8 +946,8 @@ static inline void source_startup (client_t *client, const char *uri)
 /* only called for native icecast source clients */
 static void _handle_source_request (client_t *client, const char *uri)
 {
-    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s",
-        uri, client->con->ip);
+    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s as role %s",
+        uri, client->con->ip, client->role);
 
     if (uri[0] != '/')
     {
@@ -1342,6 +1342,7 @@ static void _handle_authentication_global(client_t *client, void *uri, auth_resu
         return;
     }
 
+    ICECAST_LOG_DEBUG("Trying global authenticators for client %p.", client);
     config = config_get_config();
     auth_stack_add_client(config->authstack, client, _handle_authed_client, uri);
     config_release_config();
@@ -1391,10 +1392,12 @@ static void _handle_authentication_mount_default(client_t *client, void *uri, au
         return;
     }
 
+    ICECAST_LOG_DEBUG("Trying <mount type=\"default\"> specific authenticators for client %p.", client);
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
 }
 
 static void _handle_authentication_mount_normal(client_t *client, char *uri) {
+    ICECAST_LOG_DEBUG("Trying <mount type=\"normal\"> specific authenticators for client %p.", client);
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
 }
 

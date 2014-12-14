@@ -215,7 +215,7 @@ static void __append_old_style_urlauth(auth_stack_t **stack, const char *client_
     xmlNodePtr role;
     auth_t *auth;
 
-    if (!stack || !client_add || !!client_remove)
+    if (!stack || (!client_add && !client_remove))
         return;
 
     role = xmlNewNode(NULL, XMLSTR("role"));
@@ -248,8 +248,13 @@ static void __append_old_style_urlauth(auth_stack_t **stack, const char *client_
     __append_option_tag(role, "header_prefix", header_prefix);
 
     auth = auth_get_authenticator(role);
-    auth_stack_push(stack, auth);
-    auth_release(auth);
+    if (auth) {
+        auth_stack_push(stack, auth);
+        auth_release(auth);
+        ICECAST_LOG_DEBUG("Pushed authenticator %p on stack %p.", auth, stack);
+    } else {
+        ICECAST_LOG_DEBUG("Failed to set up authenticator.");
+    }
 
     xmlFreeNode(role);
 }
@@ -890,9 +895,9 @@ static void _parse_mount_oldstyle_authentication(mount_proxy *mount, xmlNodePtr 
      child = node->xmlChildrenNode;
 
      while (child) {
-         if (xmlStrcmp(node->name, XMLSTR("option")) == 0) {
-             name = (char *)xmlGetProp(node, XMLSTR("name"));
-             value = (char *)xmlGetProp(node, XMLSTR("value"));
+         if (xmlStrcmp(child->name, XMLSTR("option")) == 0) {
+             name = (char *)xmlGetProp(child, XMLSTR("name"));
+             value = (char *)xmlGetProp(child, XMLSTR("value"));
              if (name && value) {
                  if (strcmp(name, "allow_duplicate_users") == 0) {
                      allow_duplicate_users = util_str_to_bool(value);
@@ -942,9 +947,9 @@ static void _parse_mount_oldstyle_authentication(mount_proxy *mount, xmlNodePtr 
 
          child = node->xmlChildrenNode;
          while (child) {
-             if (xmlStrcmp(node->name, XMLSTR("option")) == 0) {
-                 name = (char *)xmlGetProp(node, XMLSTR("name"));
-                 value = (char *)xmlGetProp(node, XMLSTR("value"));
+             if (xmlStrcmp(child->name, XMLSTR("option")) == 0) {
+                 name = (char *)xmlGetProp(child, XMLSTR("name"));
+                 value = (char *)xmlGetProp(child, XMLSTR("value"));
 
                  if (name && value) {
                      if (strcmp(name, "mount_add") == 0) {
@@ -1247,6 +1252,8 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     if (mount->authstack)
         auth_stack_release(mount->authstack);
     auth_stack_addref(mount->authstack = authstack);
+
+    ICECAST_LOG_DEBUG("Mount %p (mountpoint %s) has %sactive roles on authstack.", mount, mount->mountname, authstack ? "" : "no ");
 
     /* make sure we have at least the mountpoint name */
     if (mount->mountname == NULL && mount->mounttype != MOUNT_TYPE_DEFAULT)
