@@ -47,11 +47,12 @@ Run
     make install
 
 This is the typical procedure if you download the tar file.  If you retrive
-the code from Git or want to rebuild the configure then run the `autogen.sh`
-instead of the configure above. Most people do not need to run autogen.sh
+the code from Git or want to rebuild the configure then run `./autogen.sh`
+instead of configure above. Most people do not need to run autogen.sh
 
-A sample config file will be placed in `/usr/local/etc` (on UNIX) or in 
-the current working directory (on Win32) and is called `icecast.xml`
+A sample config file will be placed in `/usr/local/etc` (on UNIX, 
+also depends on path PREFIX) or in the current working directory 
+(on Win32) and is called `icecast.xml`
 
 Documentation for Icecast is available in the doc directory, by 
 viewing `doc/index.html` in a browser.
