@@ -1,10 +1,10 @@
 Icecast 2 - README
 ---------------------------------------------------------------------
 
-Icecast is a streaming media server which currently supports Ogg
-streaming including the Vorbis and Theora codecs. Also Icecast can
-handle other streams like MP3/AAC/NSV, but this is not officially
-supported.
+Icecast is a streaming media server which currently supports WebM and
+Ogg streaming including the Opus, Vorbis and Theora codecs. 
+Also Icecast can handle other streams like MP3/AAC/NSV 
+in legacy mode, but this is not officially supported.
 
 It can be used to create an Internet radio station or a privately
 running jukebox and many things in between. It is very versatile in
@@ -55,7 +55,7 @@ the current working directory (on Win32) and is called `icecast.xml`
 
 Documentation for Icecast is available in the doc directory, by 
 viewing `doc/index.html` in a browser.
-Online documentation can be found on [Icecasts Website][5].
+Online documentation can be found on the [Icecast Website][5].
 
 Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
 us at irc.freenode.net, channel [#icecast][6], if you have any troubles.
