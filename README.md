@@ -72,4 +72,6 @@ Or come and see us on irc.freenode.net, channel [#icecast][8]
 [3]: http://curl.haxx.se/download.html
 [4]: http://www.vorbis.com/files
 [5]: http://icecast.org/docs/
-[6]: https://webchat.freenode.net/?channels=#icecast
+[6]: http://lists.xiph.org/mailman/listinfo/icecast
+[7]: 
+[8]: https://webchat.freenode.net/?channels=#icecast
