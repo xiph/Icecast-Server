@@ -38,13 +38,13 @@ need a development package named something like libxslt-devel
 
 Build/Install
 ---------------------------------------------------------------------
-To build Icecast on a Unix platform, perform the following:
+To build Icecast on a Unix platform, perform the following steps:
 
 Run
 
     ./configure
     make
-    make install
+    make install  # as root
 
 This is the typical procedure if you download the tar file.  If you retrive
 the code from Git or want to rebuild the configure then run `./autogen.sh`
