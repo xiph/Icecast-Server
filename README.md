@@ -59,8 +59,13 @@ viewing `doc/index.html` in a browser. It's also installed to
 `$PREFIX/share/doc/icecast/`. Online documentation can be found 
 on the [Icecast Website][5].
 
-Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
-us at irc.freenode.net, channel [#icecast][6], if you have any troubles.
+If you have problems with setting up Icecast, please join the 
+[Icecast mailing list][6] and then email icecast@xiph.org.
+In case you have patches or want to discuss development issues,
+please join the [Icecast developer mailing list][7] and then
+email icecast-dev@xiph.org.
+Or come and see us on irc.freenode.net, channel [#icecast][8]
+(please be patient, people are not always at their computers).
 
 [1]: http://xmlsoft.org/downloads.html
 [2]: http://xmlsoft.org/XSLT/downloads.html
