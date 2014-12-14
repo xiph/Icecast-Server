@@ -303,12 +303,12 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
 	                             0, 200, NULL,
 				     "text/xml", "utf-8",
 				     NULL, NULL);
-        if (ret == -1) {
+        if (ret < 0) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(client, 500, 0, "Header generation failed.");
             xmlFree(buff);
             return;
-        } else if (buf_len < (len + ret + 64)) {
+        } else if (buf_len < (size_t)(len + ret + 64)) {
             void *new_data;
             buf_len = ret + len + 64;
             new_data = realloc(client->refbuf->data, buf_len);

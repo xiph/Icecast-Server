@@ -103,10 +103,10 @@ static void yp_destroy_ypdata(ypdata_t *ypdata);
 
 
 /* curl callback used to parse headers coming back from the YP server */
-static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
 {
     ypdata_t *yp = stream;
-    unsigned bytes = size * nmemb;
+    size_t bytes = size * nmemb;
 
     /* ICECAST_LOG_DEBUG("header from YP is \"%.*s\"", bytes, ptr); */
     if (strncasecmp (ptr, "YPResponse: 1", 13) == 0)
@@ -114,7 +114,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
 
     if (strncasecmp (ptr, "YPMessage: ", 11) == 0)
     {
-        unsigned len = bytes - 11;
+        size_t len = bytes - 11;
         free (yp->error_msg);
         yp->error_msg = calloc (1, len);
         if (yp->error_msg)
@@ -125,7 +125,7 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
     {
         if (strncasecmp (ptr, "SID: ", 5) == 0)
         {
-            unsigned len = bytes - 5;
+            size_t len = bytes - 5;
             free (yp->sid);
             yp->sid = calloc (1, len);
             if (yp->sid)
@@ -142,14 +142,14 @@ static int handle_returned_header (void *ptr, size_t size, size_t nmemb, void *s
         ICECAST_LOG_DEBUG("server touch interval is %u", secs);
         yp->touch_interval = secs;
     }
-    return (int)bytes;
+    return (size_t)bytes;
 }
 
 
 /* capture returned data, but don't do anything with it, shouldn't be any */
-static int handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    return (int)(size*nmemb);
+    return (size_t)(size*nmemb);
 }
 
 

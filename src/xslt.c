@@ -234,7 +234,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
         ssize_t ret;
         int failed = 0;
         refbuf_t *refbuf;
-        size_t full_len = strlen (mediatype) + len + 1024;
+        ssize_t full_len = strlen(mediatype) + (ssize_t)len + (ssize_t)1024;
         if (full_len < 4096)
             full_len = 4096;
         refbuf = refbuf_new (full_len);
@@ -246,9 +246,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(client, 500, 0, "Header generation failed.");
         } else {
-            if ( full_len < (ret + len + 64) ) {
+            if ( full_len < (ret + (ssize_t)len + (ssize_t)64) ) {
                 void *new_data;
-                full_len = ret + len + 64;
+                full_len = ret + (ssize_t)len + (ssize_t)64;
                 new_data = realloc(refbuf->data, full_len);
                 if (new_data) {
                     ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
