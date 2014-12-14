@@ -55,8 +55,9 @@ also depends on path PREFIX) or in the current working directory
 (on Win32) and is called `icecast.xml`
 
 Documentation for Icecast is available in the doc directory, by 
-viewing `doc/index.html` in a browser.
-Online documentation can be found on the [Icecast Website][5].
+viewing `doc/index.html` in a browser. It's also installed to 
+`$PREFIX/share/doc/icecast/`. Online documentation can be found 
+on the [Icecast Website][5].
 
 Please email us at icecast@xiph.org or icecast-dev@xiph.org, or come and see
 us at irc.freenode.net, channel [#icecast][6], if you have any troubles.
