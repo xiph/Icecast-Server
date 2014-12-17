@@ -38,13 +38,13 @@ need a development package named something like libxslt-devel
 
 Build/Install
 ---------------------------------------------------------------------
-To build Icecast on a Unix platform, perform the following:
+To build Icecast on a Unix platform, perform the following steps:
 
 Run
 
     ./configure
     make
-    make install
+    make install  # as root
 
 This is the typical procedure if you download the tar file.  If you retrive
 the code from Git or want to rebuild the configure then run `./autogen.sh`
@@ -73,5 +73,5 @@ Or come and see us on irc.freenode.net, channel [#icecast][8]
 [4]: http://www.vorbis.com/files
 [5]: http://icecast.org/docs/
 [6]: http://lists.xiph.org/mailman/listinfo/icecast
-[7]: 
+[7]: http://lists.xiph.org/mailman/listinfo/icecast-dev
 [8]: https://webchat.freenode.net/?channels=#icecast

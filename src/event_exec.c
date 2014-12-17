@@ -22,18 +22,88 @@
 #include "logging.h"
 #define CATMODULE "event_exec"
 
+typedef enum event_exec_argvtype_tag {
+    ARGVTYPE_NO_DEFAULTS = 0,
+    ARGVTYPE_ONLY_URI,
+    ARGVTYPE_URI_AND_TRIGGER,
+    ARGVTYPE_LEGACY,
+
+    ARGVTYPE_DFAULT = ARGVTYPE_LEGACY
+} event_exec_argvtype_t;
 
 typedef struct event_exec {
-/* REVIEW: Some ideas for future work:
-   <option type="environ" name="TEST" value="Blubb" />
-   <option name="argument" value="--test" />
-   <option type="argument" value="--test" />
-   <option name="default_arguments" value="false" />
-*/
     /* name and path of executable */
     char *executable;
+
+    /* what to add to argv[] */
+    event_exec_argvtype_t argvtype;
+
+    /* actual argv[] */
+    char **argv;
 } event_exec_t;
 
+/* OS independed code: */
+static inline size_t __argvtype2offset(event_exec_argvtype_t argvtype) {
+    switch (argvtype) {
+        case ARGVTYPE_NO_DEFAULTS:     return 1; break;
+        case ARGVTYPE_ONLY_URI:        return 2; break;
+        case ARGVTYPE_URI_AND_TRIGGER: return 3; break;
+        case ARGVTYPE_LEGACY:          return 2; break;
+        default: return 0; break; /* This should never happen. */
+    }
+}
+
+/* BEFORE RELEASE 2.4.2 DOCUMENT: Document names of possible values. */
+static inline event_exec_argvtype_t __str2argvtype(const char *str) {
+    if (!str)
+        str = "(BAD VALUE)";
+
+    if (strcmp(str, "default") == 0) {
+        return ARGVTYPE_DFAULT;
+    } else if (strcmp(str, "no_defaults") == 0) {
+        return ARGVTYPE_NO_DEFAULTS;
+    } else if (strcmp(str, "uri") == 0) {
+        return ARGVTYPE_ONLY_URI;
+    } else if (strcmp(str, "uri_and_trigger") == 0) {
+        return ARGVTYPE_URI_AND_TRIGGER;
+    } else if (strcmp(str, "legacy") == 0) {
+        return ARGVTYPE_LEGACY;
+    } else {
+        ICECAST_LOG_ERROR("Unknown argument type %s, using \"default\"");
+        return ARGVTYPE_DFAULT;
+    }
+}
+
+static inline char **__setup_argv(event_exec_t *self, event_t *event) {
+    self->argv[0] = self->executable;
+
+    switch (self->argvtype) {
+        case ARGVTYPE_NO_DEFAULTS:
+            /* nothing to do */
+        break;
+        case ARGVTYPE_URI_AND_TRIGGER:
+            self->argv[2] = event->trigger ? event->trigger : "";
+        /* fall through */
+        case ARGVTYPE_ONLY_URI:
+            self->argv[1] = event->uri ? event->uri : "";
+        break;
+        case ARGVTYPE_LEGACY:
+            /* This mode is similar to ARGVTYPE_ONLY_URI
+             * but if URI is unknown the parameter is skipped!
+             */
+            if (event->uri) {
+                self->argv[1] = event->uri;
+            } else {
+                self->argv[1] = self->executable;
+                return &self->argv[1];
+            }
+        break;
+    }
+
+    return self->argv;
+}
+
+/* OS depended code: */
 #ifdef _WIN32
 /* TODO #2101: Implement script executing on win* */
 #else
@@ -48,40 +118,19 @@ static inline void __update_environ(const char *name, const char *value) {
 #else
 #define __update_environ(x,y)
 #endif
-static inline void __setup_empty_script_environment(event_exec_t *self, event_t *event) {
-    ice_config_t * config = config_get_config();
+static inline void __setup_environ(ice_config_t *config, event_exec_t *self, event_t *event) {
     mount_proxy *mountinfo;
     source_t *source;
     char buf[80];
-    int i;
 
-    /* close at least the first 1024 handles */
-    for (i = 0; i < 1024; i++)
-        close(i);
-
-    /* open null device */
-    i = open(config->null_device, O_RDWR);
-    if (i != -1) {
-        /* attach null device to stdin, stdout and stderr */
-        if (i != 0)
-            dup2(i, 0);
-        if (i != 1)
-            dup2(i, 1);
-        if (i != 2)
-            dup2(i, 2);
-
-        /* close null device */
-        if (i > 2)
-            close(i);
-    }
-
+    /* BEFORE RELEASE 2.4.2 DOCUMENT: Document all those env vars. */
     __update_environ("ICECAST_VERSION",   ICECAST_VERSION_STRING);
     __update_environ("ICECAST_HOSTNAME",  config->hostname);
     __update_environ("ICECAST_ADMIN",     config->admin);
     __update_environ("ICECAST_LOGDIR",    config->log_dir);
     __update_environ("EVENT_URI",         event->uri);
     __update_environ("EVENT_TRIGGER",     event->trigger); /* new name */
-    __update_environ("SOURCE_ACTION",     event->trigger); /* old name */
+    __update_environ("SOURCE_ACTION",     event->trigger); /* old name (deprecated) */
     __update_environ("CLIENT_IP",         event->connection_ip);
     __update_environ("CLIENT_ROLE",       event->client_role);
     __update_environ("CLIENT_USERNAME",   event->client_username);
@@ -110,6 +159,37 @@ static inline void __setup_empty_script_environment(event_exec_t *self, event_t 
         __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false");
     }
     avl_tree_unlock(global.source_tree);
+}
+
+static inline void __setup_file_descriptors(ice_config_t *config) {
+    int i;
+
+    /* close at least the first 1024 handles */
+    for (i = 0; i < 1024; i++)
+        close(i);
+
+    /* open null device */
+    i = open(config->null_device, O_RDWR);
+    if (i != -1) {
+        /* attach null device to stdin, stdout and stderr */
+        if (i != 0)
+            dup2(i, 0);
+        if (i != 1)
+            dup2(i, 1);
+        if (i != 2)
+            dup2(i, 2);
+
+        /* close null device */
+        if (i > 2)
+            close(i);
+    }
+}
+
+static inline void __setup_empty_script_environment(event_exec_t *self, event_t *event) {
+    ice_config_t *config = config_get_config();
+
+    __setup_file_descriptors(config);
+    __setup_environ(config, self, event);
 
     config_release_config();
 }
@@ -134,12 +214,7 @@ static void _run_script (event_exec_t *self, event_t *event) {
                     }
                     ICECAST_LOG_DEBUG("Starting command %s", self->executable);
                     __setup_empty_script_environment(self, event);
-                    /* consider to add action here as well */
-                    if (event->uri) {
-                        execl(self->executable, self->executable, event->uri, (char *)NULL);
-                    } else {
-                        execl(self->executable, self->executable, (char *)NULL);
-                    }
+                    execv(self->executable, __setup_argv(self, event));
                     exit(1);
                 default: /* parent */
                     break;
@@ -158,6 +233,7 @@ static void _run_script (event_exec_t *self, event_t *event) {
 static int event_exec_emit(void *state, event_t *event) {
     event_exec_t *self = state;
 #ifdef _WIN32
+    /* BEFORE RELEASE 2.4.2 DOCUMENT: Document this not working on win*. */
     ICECAST_LOG_ERROR("<event type=\"exec\" ...> not supported on win*");
 #else
     _run_script(self, event);
@@ -167,39 +243,91 @@ static int event_exec_emit(void *state, event_t *event) {
 
 static void event_exec_free(void *state) {
     event_exec_t *self = state;
+    size_t i;
+
+    for (i = __argvtype2offset(self->argvtype); self->argv[i]; i++)
+        free(self->argv[i]);
+
+    free(self->argv);
+    free(self->executable);
     free(self);
 }
 
 int event_get_exec(event_registration_t *er, config_options_t *options) {
     event_exec_t *self = calloc(1, sizeof(event_exec_t));
+    config_options_t *cur;
+    size_t extra_argc = 0;
 
     if (!self)
         return -1;
 
-    if (options) {
+    self->argvtype = ARGVTYPE_DFAULT;
+
+    if ((cur = options)) {
         do {
-            if (options->type)
-                continue;
-            if (!options->name)
-                continue;
-            /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
-             * <option name="executable" value="..." />
-             */
-            if (strcmp(options->name, "executable") == 0) {
-                free(self->executable);
-                self->executable = NULL;
-                if (options->value)
-                    self->executable = strdup(options->value);
-            } else {
-                ICECAST_LOG_ERROR("Unknown <option> tag with name %s.", options->name);
+            if (cur->name) {
+                /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
+                 * <option name="executable" value="..." />
+                 * <option name="default_arguments" value="..." /> (for values see near top of documment)
+                 */
+                if (strcmp(cur->name, "executable") == 0) {
+                    free(self->executable);
+                    self->executable = NULL;
+                    if (cur->value)
+                        self->executable = strdup(cur->value);
+                } else if (strcmp(cur->name, "default_arguments") == 0) {
+                    self->argvtype = __str2argvtype(cur->value);
+                } else {
+                    ICECAST_LOG_ERROR("Unknown <option> tag with name %s.", cur->name);
+                }
+            } else if (cur->type) {
+                if (strcmp(cur->type, "argument") == 0) {
+                    extra_argc++;
+                } else {
+                    ICECAST_LOG_ERROR("Unknown <option> tag with type %s.", cur->type);
+                }
             }
-        } while ((options = options->next));
+        } while ((cur = cur->next));
     }
 
     if (!self->executable) {
         ICECAST_LOG_ERROR("No executable given.");
         event_exec_free(self);
         return -1;
+    }
+
+    printf("len=%i\n", (int)__argvtype2offset(self->argvtype) + extra_argc + 1);
+
+    self->argv = calloc(__argvtype2offset(self->argvtype) + extra_argc + 1, sizeof(char*));
+    if (!self->argv) {
+        ICECAST_LOG_ERROR("Can not allocate argv[]");
+        event_exec_free(self);
+        return -1;
+    }
+
+    extra_argc = __argvtype2offset(self->argvtype);
+
+    if ((cur = options)) {
+        do {
+            if (cur->type) {
+                /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
+                 * <option type="argument" value="..." />
+                 */
+                if (strcmp(cur->type, "argument") == 0) {
+                    if (cur->value) {
+                        self->argv[extra_argc] = strdup(cur->value);
+                        if (!self->argv[extra_argc]) {
+                            ICECAST_LOG_ERROR("Can not allocate argv[x]");
+                            event_exec_free(self);
+                            return -1;
+                        }
+                        extra_argc++;
+                    }
+                } else {
+                    ICECAST_LOG_ERROR("Unknown <option> tag with type %s.", cur->type);
+                }
+            }
+        } while ((cur = cur->next));
     }
 
     er->state = self;

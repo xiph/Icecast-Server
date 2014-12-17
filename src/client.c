@@ -203,8 +203,8 @@ void client_send_100(client_t *client)
 static inline void client_send_500(client_t *client, const char *message) {
     const char header[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
                           "500 - Internal Server Error\n---------------------------\n";
-    const size_t header_len = sizeof(header) - 1;
-    int ret;
+    const ssize_t header_len = sizeof(header) - 1;
+    ssize_t ret;
 
     ret = client_send_bytes(client, header, header_len);
 
