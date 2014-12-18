@@ -1270,6 +1270,8 @@ static int _handle_aliases(client_t *client, char **uri) {
            (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
            (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
             new_uri = strdup(alias->destination);
+            if (alias->omode != OMODE_DEFAULT)
+                client->mode = alias->omode;
             ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
             break;
         }
@@ -1507,6 +1509,8 @@ static void _handle_connection(void)
                     client_destroy (client);
                     continue;
                 }
+
+                client->mode = config_str_to_omode(httpp_get_query_param(client->parser, "omode"));
 
                 if (_handle_aliases(client, &uri) != 0) {
                     client_destroy (client);

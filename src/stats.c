@@ -978,7 +978,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
     char *xslpath = util_get_path_from_normalised_uri(uri);
     const char *mount = httpp_get_query_param(client->parser, "mount");
 
-    doc = stats_get_xml(0, mount);
+    doc = stats_get_xml(0, mount, client->mode);
 
     xslt_transform(doc, xslpath, client);
 
@@ -1009,7 +1009,7 @@ static void __add_metadata(xmlNodePtr node, const char *tag) {
     free(name);
 }
 
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
+xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, operation_mode mode)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1029,7 +1029,7 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount)
         source = source_find_mount_raw(show_mount);
         for (i = 0; i < source->format->vc.comments; i++)
             __add_metadata(metadata, source->format->vc.user_comments[i]);
-        admin_add_listeners_to_mount(source, node);
+        admin_add_listeners_to_mount(source, node, mode);
         avl_tree_unlock(global.source_tree);
     }
 

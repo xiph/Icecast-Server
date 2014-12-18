@@ -495,7 +495,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *eol = strrchr (reference, '.');
         if (eol)
             *eol = '\0';
-        doc = stats_get_xml (0, reference);
+        doc = stats_get_xml (0, reference, httpclient->mode);
         free (reference);
         admin_send_response (doc, httpclient, TRANSFORMED, xslt_playlist_requested);
         xmlFreeDoc(doc);

@@ -657,7 +657,7 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlFreeDoc(doc);
 }
 
-static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, time_t now) {
+static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, time_t now, operation_mode mode) {
     const char *tmp;
     xmlNodePtr node;
     char buf[22];
@@ -675,13 +675,13 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
     memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", client->con->id);
     xmlSetProp(node, XMLSTR("id"), XMLSTR(buf));
-    xmlNewChild(node, NULL, XMLSTR("ID"), XMLSTR(buf));
+    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "ID" : "id"), XMLSTR(buf));
 
-    xmlNewChild(node, NULL, XMLSTR("IP"), XMLSTR(client->con->ip));
+    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "IP" : "ip"), XMLSTR(client->con->ip));
 
     tmp = httpp_getvar(client->parser, "user-agent");
     if (tmp)
-        xmlNewChild(node, NULL, XMLSTR("UserAgent"), XMLSTR(tmp));
+        xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "UserAgent" : "useragent"), XMLSTR(tmp));
 
     tmp = httpp_getvar(client->parser, "referer");
     if (tmp)
@@ -689,7 +689,7 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
 
     memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
-    xmlNewChild(node, NULL, XMLSTR("Connected"), XMLSTR(buf));
+    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
 
     if (client->username)
         xmlNewChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
@@ -700,14 +700,14 @@ static inline xmlNodePtr __add_listener(client_t *client, xmlNodePtr parent, tim
     return node;
 }
 
-void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent) {
+void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent, operation_mode mode) {
     time_t now = time(NULL);
     avl_node *client_node;
 
     avl_tree_rlock(source->client_tree);
     client_node = avl_get_first(source->client_tree);
     while(client_node) {
-        __add_listener((client_t *)client_node->key, parent, now);
+        __add_listener((client_t *)client_node->key, parent, now, mode);
         client_node = avl_get_next(client_node);
     }
     avl_tree_unlock(source->client_tree);
@@ -730,7 +730,7 @@ static void command_show_listeners(client_t *client, source_t *source,
     snprintf (buf, sizeof(buf), "%lu", source->listeners);
     xmlNewChild(srcnode, NULL, XMLSTR("Listeners"), XMLSTR(buf));
 
-    admin_add_listeners_to_mount(source, srcnode);
+    admin_add_listeners_to_mount(source, srcnode, client->mode);
 
     admin_send_response(doc, client, response, 
         LISTCLIENTS_TRANSFORMED_REQUEST);
@@ -1078,7 +1078,7 @@ static void command_stats(client_t *client, const char *mount, int response) {
 
     ICECAST_LOG_DEBUG("Stats request, sending xml stats");
 
-    doc = stats_get_xml(1, mount);
+    doc = stats_get_xml(1, mount, client->mode);
     admin_send_response(doc, client, response, STATS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
     return;

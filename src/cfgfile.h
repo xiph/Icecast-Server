@@ -32,6 +32,12 @@ struct _mount_proxy;
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
+typedef enum _operation_mode {
+ OMODE_DEFAULT = 0,
+ OMODE_NORMAL,
+ OMODE_LEGACY
+} operation_mode;
+
 typedef enum _http_header_type {
  /* static: headers are passed as is to the client. */
  HTTP_HEADER_TYPE_STATIC
@@ -125,6 +131,7 @@ typedef struct _aliases {
     int port;
     char *bind_address;
     char *vhost;
+    operation_mode omode;
     struct _aliases *next;
 } aliases;
 
@@ -219,6 +226,8 @@ typedef struct {
 
 void config_initialize(void);
 void config_shutdown(void);
+
+operation_mode config_str_to_omode(const char *str);
 
 void config_reread_config(void);
 int config_parse_file(const char *filename, ice_config_t *configuration);
