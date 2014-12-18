@@ -96,6 +96,7 @@ static stats_node_t *_find_node(avl_tree *tree, const char *name);
 static stats_source_t *_find_source(avl_tree *tree, const char *source);
 static void _free_event(stats_event_t *event);
 static stats_event_t *_get_event_from_queue(event_queue_t *queue);
+static void __add_metadata(xmlNodePtr node, const char *tag);
 
 
 /* simple helper function for creating an event */
@@ -834,9 +835,14 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     while (avlnode)
     {
         stats_source_t *source = (stats_source_t *)avlnode->key;
+
         if (source->hidden <= hidden &&
                 (show_mount == NULL || strcmp (show_mount, source->source) == 0))
         {
+            xmlNodePtr metadata;
+            source_t *source_real;
+            int i;
+
             avl_node *avlnode2 = avl_get_first (source->stats_tree);
             xmlNodePtr xmlnode = xmlNewTextChild (root, NULL, XMLSTR("source"), NULL);
 
@@ -849,6 +855,14 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                 xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
                 avlnode2 = avl_get_next (avlnode2);
             }
+
+
+            metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
+            avl_tree_rlock(global.source_tree);
+            source_real = source_find_mount_raw(source->source);
+            for (i = 0; i < source_real->format->vc.comments; i++)
+                __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+            avl_tree_unlock(global.source_tree);
         }
         avlnode = avl_get_next (avlnode);
     }
@@ -1022,13 +1036,8 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, operation_mode 
     node = _dump_stats_to_doc (node, show_mount, show_hidden);
 
     if (show_mount && node) {
-        xmlNodePtr metadata = xmlNewTextChild(node, NULL, XMLSTR("metadata"), NULL);
-        int i;
-
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(show_mount);
-        for (i = 0; i < source->format->vc.comments; i++)
-            __add_metadata(metadata, source->format->vc.user_comments[i]);
         admin_add_listeners_to_mount(source, node, mode);
         avl_tree_unlock(global.source_tree);
     }
