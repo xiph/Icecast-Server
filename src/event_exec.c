@@ -296,8 +296,6 @@ int event_get_exec(event_registration_t *er, config_options_t *options) {
         return -1;
     }
 
-    printf("len=%i\n", (int)__argvtype2offset(self->argvtype) + extra_argc + 1);
-
     self->argv = calloc(__argvtype2offset(self->argvtype) + extra_argc + 1, sizeof(char*));
     if (!self->argv) {
         ICECAST_LOG_ERROR("Can not allocate argv[]");

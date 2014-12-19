@@ -109,6 +109,22 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
+operation_mode config_str_to_omode(const char *str) {
+    if (!str || !*str)
+        return OMODE_DEFAULT;
+
+    if (strcasecmp(str, "default") == 0) {
+        return OMODE_DEFAULT;
+    } else if (strcasecmp(str, "normal") == 0) {
+        return OMODE_NORMAL;
+    } else if (strcasecmp(str, "legacy-compat") == 0 || strcasecmp(str, "legacy") == 0) {
+        return OMODE_LEGACY;
+    } else {
+        ICECAST_LOG_ERROR("Unknown operation mode \"%s\", falling back to DEFAULT.", str);
+        return OMODE_DEFAULT;
+    }
+}
+
 static void create_locks(void) {
     thread_mutex_create(&_locks.relay_lock);
     thread_rwlock_create(&_locks.config_lock);
@@ -1836,6 +1852,13 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
                 alias->port = -1;
             alias->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
             alias->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
+            temp = (char *)xmlGetProp(node, XMLSTR("omode"));
+            if (temp) {
+                alias->omode = config_str_to_omode(temp);
+                xmlFree(temp);
+            } else {
+                alias->omode = OMODE_DEFAULT;
+            }
             current = configuration->aliases;
             last = NULL;
             while (current) {

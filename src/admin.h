@@ -39,7 +39,7 @@ void admin_handle_request(client_t *client, const char *uri);
 void admin_send_response(xmlDocPtr doc, client_t *client, 
         int response, const char *xslt_template);
 
-void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent);
+void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent, operation_mode mode);
 
 int admin_get_command(const char *command);
 int admin_get_command_type(int command);

@@ -22,6 +22,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "acl.h"
+#include "cfgfile.h"
 #include "common/httpp/httpp.h"
 
 typedef enum _protocol_tag {
@@ -31,6 +32,9 @@ typedef enum _protocol_tag {
 
 typedef struct _client_tag
 {
+    /* mode of operation for this client */
+    operation_mode mode;
+
     /* the client's connection */
     connection_t *con;
     /* the client's http headers */

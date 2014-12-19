@@ -68,6 +68,12 @@ typedef struct auth_client_tag
 
 typedef struct auth_tag
 {
+    /* unique ID */
+    unsigned long id;
+
+    /* URL for any kind of UI used to configure this or NULL. */
+    char *management_url;
+
     char *mount;
 
     /* filters */
@@ -123,6 +129,7 @@ int           auth_stack_next(auth_stack_t **stack); /* returns -1 on error, 0 o
 int           auth_stack_push(auth_stack_t **stack, auth_t *auth);
 int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail);
 auth_t       *auth_stack_get(auth_stack_t *stack);
+auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id);
 acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack);
 
 #endif

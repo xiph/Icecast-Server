@@ -27,9 +27,9 @@
 			</xsl:for-each>
 		</div>
 	</xsl:if>
-	<xsl:for-each select="source">
+	<xsl:for-each select="role">
 		<div class="roundbox">
-			<h3>Mountpoint <xsl:value-of select="@mount" />
+			<h3>Role <xsl:value-of select="@name" /> (<xsl:value-of select="@type" />)
 				<xsl:if test="server_name">
 					<small><xsl:value-of select="server_name" /></small>
 				</xsl:if>
@@ -41,7 +41,7 @@
 				<li><a href="manageauth.xsl?mount={@mount}">Manage Authentication</a></li>
 				<li><a href="killsource.xsl?mount={@mount}">Kill Source</a></li>
 			</ul>
-			<xsl:if test="User">
+			<xsl:if test="users">
 				<table class="colortable">
 					<thead>
 						<tr>
@@ -50,36 +50,44 @@
 						</tr>
 					</thead>
 					<tbody>
-						<xsl:variable name="themount"><xsl:value-of select="@mount" /></xsl:variable>
-						<xsl:for-each select="User">
+						<xsl:for-each select="users/user">
 							<tr>
 								<td>
 									<xsl:value-of select="username" />
 								</td>
 								<td>
-									<a href="manageauth.xsl?mount={$themount}&amp;username={username}&amp;action=delete">Delete</a>
+                                					<xsl:choose>
+                                        					<xsl:when test="../../@can-deleteuser = 'true'">
+											<a href="manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
+										</xsl:when>
+										<xsl:otherwise>
+											<xsl:text disable-output-escaping="yes">&amp;nbsp;</xsl:text>
+										</xsl:otherwise>
+									</xsl:choose>
 								</td>
 							</tr>
 						</xsl:for-each>
 					</tbody>
 				</table>
 			</xsl:if>
-			<form class="alignedform" method="get" action="/admin/manageauth.xsl">
-				<fieldset>
-					<legend>Add new user</legend>
-					<p>
-						<label for="username">Username:</label>
-						<input type="text" id="username" name="username"/>
-					</p>
-					<p>
-						<label for="password">Password:</label>
-						<input type="password" id="password" name="password"/>
-					</p>
-					<input type="hidden" name="mount" value="{@mount}"/>
-					<input type="hidden" name="action" value="add"/>
-					<input type="Submit" value="Add"/>
-				</fieldset>
-			</form>
+			<xsl:if test="@can-adduser = 'true'">
+				<form class="alignedform" method="get" action="/admin/manageauth.xsl">
+					<fieldset>
+						<legend>Add new user</legend>
+						<p>
+							<label for="username">Username:</label>
+							<input type="text" id="username" name="username"/>
+						</p>
+						<p>
+							<label for="password">Password:</label>
+							<input type="password" id="password" name="password"/>
+						</p>
+						<input type="hidden" name="id" value="{@id}"/>
+						<input type="hidden" name="action" value="add"/>
+						<input type="Submit" value="Add"/>
+					</fieldset>
+				</form>
+			</xsl:if>
 		</div>
 	</xsl:for-each>
 	<div id="footer">
