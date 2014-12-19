@@ -26,5 +26,6 @@ static auth_result anonymous_auth (auth_client *auth_user) {
 
 int  auth_get_anonymous_auth (auth_t *authenticator, config_options_t *options) {
     authenticator->authenticate_client = anonymous_auth;
+    authenticator->immediate = 1;
     return 0;
 }
