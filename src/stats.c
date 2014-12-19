@@ -880,6 +880,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                 xmlSetProp(role, XMLSTR("id"), XMLSTR(idbuf));
                 if (auth->role)
                     xmlSetProp(role, XMLSTR("name"), XMLSTR(auth->role));
+                if (auth->management_url)
+                    xmlSetProp(role, XMLSTR("management-url"), XMLSTR(auth->management_url));
                 auth_release(auth);
                 auth_stack_next(&stack);
             }

@@ -71,6 +71,9 @@ typedef struct auth_tag
     /* unique ID */
     unsigned long id;
 
+    /* URL for any kind of UI used to configure this or NULL. */
+    char *management_url;
+
     char *mount;
 
     /* filters */

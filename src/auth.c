@@ -165,6 +165,8 @@ void auth_release (auth_t *authenticator) {
         xmlFree (authenticator->type);
     if (authenticator->role)
         xmlFree (authenticator->role);
+    if (authenticator->management_url)
+        xmlFree (authenticator->management_url);
     thread_mutex_unlock(&authenticator->lock);
     thread_mutex_destroy(&authenticator->lock);
     if (authenticator->mount)
@@ -440,6 +442,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->id = _next_auth_id();
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
     auth->role = (char*)xmlGetProp(node, XMLSTR("name"));
+    auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
 
     if (!auth->type) {
         auth_release(auth);
@@ -536,6 +539,12 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         xmlFree(opt->name);
         xmlFree(opt->value);
         free (opt);
+    }
+
+    if (!auth->management_url && (auth->adduser || auth->deleteuser || auth->listuser)) {
+        char url[128];
+        snprintf(url, sizeof(url), "/admin/manageauth.xsl?id=%lu", auth->id);
+        auth->management_url = (char*)xmlCharStrdup(url);
     }
 
     return auth;
