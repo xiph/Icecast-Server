@@ -68,6 +68,9 @@ typedef struct auth_client_tag
 
 typedef struct auth_tag
 {
+    /* unique ID */
+    unsigned long id;
+
     char *mount;
 
     /* filters */

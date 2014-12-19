@@ -51,6 +51,19 @@ struct auth_stack_tag {
 
 /* code */
 
+static mutex_t _auth_lock; /* protects _current_id */
+static volatile unsigned long _current_id = 0;
+
+static unsigned long _next_auth_id(void) {
+    unsigned long id;
+
+    thread_mutex_lock(&_auth_lock);
+    id = _current_id++;
+    thread_mutex_unlock(&_auth_lock);
+
+    return id;
+}
+
 static auth_client *auth_client_setup (client_t *client)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
@@ -424,6 +437,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
     thread_mutex_create(&auth->lock);
     auth->refcount = 1;
+    auth->id = _next_auth_id();
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
     auth->role = (char*)xmlGetProp(node, XMLSTR("name"));
 
@@ -532,11 +546,13 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
 void auth_initialise (void)
 {
+    thread_mutex_create(&_auth_lock);
 }
 
 void auth_shutdown (void)
 {
     ICECAST_LOG_INFO("Auth shutdown");
+    thread_mutex_destroy(&_auth_lock);
 }
 
 /* authstack functions */
