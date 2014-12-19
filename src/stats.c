@@ -40,6 +40,7 @@
 #include "stats.h"
 #include "xslt.h"
 #include "util.h"
+#include "auth.h"
 #define CATMODULE "stats"
 #include "logging.h"
 
@@ -839,8 +840,11 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
         if (source->hidden <= hidden &&
                 (show_mount == NULL || strcmp (show_mount, source->source) == 0))
         {
-            xmlNodePtr metadata;
+            xmlNodePtr metadata, authentication, role;
             source_t *source_real;
+            ice_config_t *config;
+            mount_proxy *mountproxy;
+            auth_stack_t *stack;
             int i;
 
             avl_node *avlnode2 = avl_get_first (source->stats_tree);
@@ -863,6 +867,22 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             for (i = 0; i < source_real->format->vc.comments; i++)
                 __add_metadata(metadata, source_real->format->vc.user_comments[i]);
             avl_tree_unlock(global.source_tree);
+
+            authentication = xmlNewTextChild(xmlnode, NULL, XMLSTR("authentication"), NULL);
+            config = config_get_config();
+            mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
+            auth_stack_addref(stack = mountproxy->authstack);
+            while (stack) {
+                auth_t *auth = auth_stack_get(stack);
+                char idbuf[32];
+                snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
+                role = xmlNewTextChild(authentication, NULL, XMLSTR("role"), NULL);
+                xmlSetProp(role, XMLSTR("id"), XMLSTR(idbuf));
+                xmlSetProp(role, XMLSTR("name"), XMLSTR(auth->role));
+                auth_release(auth);
+                auth_stack_next(&stack);
+            }
+            config_release_config();
         }
         avlnode = avl_get_next (avlnode);
     }
