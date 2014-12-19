@@ -878,6 +878,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                 snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
                 role = xmlNewTextChild(authentication, NULL, XMLSTR("role"), NULL);
                 xmlSetProp(role, XMLSTR("id"), XMLSTR(idbuf));
+                if (auth->type)
+                    xmlSetProp(role, XMLSTR("type"), XMLSTR(auth->type));
                 if (auth->role)
                     xmlSetProp(role, XMLSTR("name"), XMLSTR(auth->role));
                 if (auth->management_url)
