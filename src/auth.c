@@ -691,6 +691,31 @@ auth_t       *auth_stack_get(auth_stack_t *stack) {
     return auth;
 }
 
+auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id) {
+    auth_t *ret = NULL;
+
+    if (!stack)
+        return NULL;
+
+    auth_stack_addref(stack);
+
+    while (!ret && stack) {
+        auth_t *auth = auth_stack_get(stack);
+        if (auth->id == id) {
+            ret = auth;
+            break;
+        }
+        auth_release(auth);
+        auth_stack_next(&stack);
+    }
+
+    if (stack)
+        auth_stack_release(stack);
+
+    return ret;
+
+}
+
 acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack) {
     acl_t *ret = NULL;
 

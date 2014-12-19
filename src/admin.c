@@ -152,8 +152,8 @@ static const admin_command_t commands[] = {
  {COMMAND_TRANSFORMED_KILL_CLIENT,     KILLCLIENT_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
  {COMMAND_RAW_KILL_SOURCE,             KILLSOURCE_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
  {COMMAND_TRANSFORMED_KILL_SOURCE,     KILLSOURCE_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_MANAGEAUTH,              MANAGEAUTH_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_MANAGEAUTH,      MANAGEAUTH_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
+ {COMMAND_RAW_MANAGEAUTH,              MANAGEAUTH_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
+ {COMMAND_TRANSFORMED_MANAGEAUTH,      MANAGEAUTH_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
  {COMMAND_RAW_UPDATEMETADATA,          UPDATEMETADATA_RAW_REQUEST,         ADMINTYPE_MOUNT,   RAW},
  {COMMAND_TRANSFORMED_UPDATEMETADATA,  UPDATEMETADATA_TRANSFORMED_REQUEST, ADMINTYPE_MOUNT,   TRANSFORMED},
  {COMMAND_BUILDM3U,                    BUILDM3U_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
@@ -197,8 +197,7 @@ static void command_queue_reload(client_t *client, int response);
 static void command_list_mounts(client_t *client, int response);
 static void command_kill_client(client_t *client, source_t *source,
         int response);
-static void command_manageauth(client_t *client, source_t *source,
-        int response);
+static void command_manageauth(client_t *client, int response);
 static void command_buildm3u(client_t *client, const char *mount);
 static void command_kill_source(client_t *client, source_t *source,
         int response);
@@ -486,6 +485,12 @@ static void admin_handle_general_request(client_t *client)
         case COMMAND_TRANSFORMED_MOVE_CLIENTS:
             command_list_mounts(client, TRANSFORMED);
             break;
+        case COMMAND_TRANSFORMED_MANAGEAUTH:
+            command_manageauth(client, TRANSFORMED);
+            break;
+        case COMMAND_RAW_MANAGEAUTH:
+            command_manageauth(client, RAW);
+            break;
         default:
             ICECAST_LOG_WARN("General admin request not recognised");
             client_send_error(client, 400, 0, "Unknown admin request");
@@ -539,12 +544,6 @@ static void admin_handle_mount_request(client_t *client, source_t *source) {
             break;
         case COMMAND_TRANSFORMED_KILL_SOURCE:
             command_kill_source(client, source, TRANSFORMED);
-            break;
-        case COMMAND_TRANSFORMED_MANAGEAUTH:
-            command_manageauth(client, source, TRANSFORMED);
-            break;
-        case COMMAND_RAW_MANAGEAUTH:
-            command_manageauth(client, source, RAW);
             break;
         case COMMAND_TRANSFORMED_UPDATEMETADATA:
             command_updatemetadata(client, source, TRANSFORMED);
@@ -777,35 +776,51 @@ static void command_buildm3u(client_t *client,  const char *mount)
 }
 
 
-static void command_manageauth(client_t *client, source_t *source,
-    int response)
-{
+static void command_manageauth(client_t *client, int response) {
     xmlDocPtr doc;
-    xmlNodePtr node, srcnode, msgnode;
+    xmlNodePtr node, rolenode, usersnode, msgnode;
     const char *action = NULL;
     const char *username = NULL;
+    const char *idstring = NULL;
     char *message = NULL;
     int ret = AUTH_OK;
-    ice_config_t *config = config_get_config ();
-    mount_proxy *mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
+    int error_code = 400;
+    const char *error_message = "missing parameter";
+    long unsigned int id;
+    ice_config_t *config = config_get_config();
     auth_t *auth;
+    char idbuf[32];
 
     do
     {
-#if 0
-        if (mountinfo == NULL || mountinfo->auth == NULL)
-        {
-            ICECAST_LOG_WARN("manage auth request for %s but no facility available", source->mount);
+        /* get id */
+        COMMAND_REQUIRE(client, "id", idstring);
+        id = atol(idstring);
+
+        /* no find a auth_t for that id by looking up the config */
+        /* globals first */
+        auth = auth_stack_getbyid(config->authstack, id);
+        /* now mounts */
+        if (!auth) {
+            mount_proxy *mount = config->mounts;
+            while (mount) {
+                auth = auth_stack_getbyid(mount->authstack, id);
+                if (auth)
+                    break;
+                mount = mount->next;
+            }
+        }
+
+        /* check if we found one */
+        if (auth == NULL) {
+            ICECAST_LOG_WARN("Client requested mangement for unknown role %lu", id);
+            error_code = 404;
+            error_message = "Role not found";
             break;
         }
-        auth = mountinfo->auth;
-#else
-        ICECAST_LOG_WARN("manage auth request for %s but no facility available", source->mount);
-        break;
-#endif
 
         COMMAND_OPTIONAL(client, "action", action);
-        COMMAND_OPTIONAL (client, "username", username);
+        COMMAND_OPTIONAL(client, "username", username);
 
         if (action == NULL)
             action = "list";
@@ -815,42 +830,60 @@ static void command_manageauth(client_t *client, source_t *source,
             const char *password = NULL;
             COMMAND_OPTIONAL(client, "password", password);
 
-            if (username == NULL || password == NULL)
-            {
-                ICECAST_LOG_WARN("manage auth request add for %s but no user/pass", source->mount);
+            if (username == NULL || password == NULL) {
+                ICECAST_LOG_WARN("manage auth request add for %lu but no user/pass", id);
                 break;
             }
+
+            if (!auth->adduser) {
+                error_message = "Adding users to role not supported by role";
+                break;
+            }
+
             ret = auth->adduser(auth, username, password);
             if (ret == AUTH_FAILED) {
                 message = strdup("User add failed - check the icecast error log");
-            }
-            if (ret == AUTH_USERADDED) {
+            } else if (ret == AUTH_USERADDED) {
                 message = strdup("User added");
-            }
-            if (ret == AUTH_USEREXISTS) {
+            } else if (ret == AUTH_USEREXISTS) {
                 message = strdup("User already exists - not added");
             }
         }
         if (!strcmp(action, "delete"))
         {
-            if (username == NULL)
-            {
-                ICECAST_LOG_WARN("manage auth request delete for %s but no username", source->mount);
+            if (username == NULL) {
+                ICECAST_LOG_WARN("manage auth request delete for %lu but no username", id);
                 break;
             }
+
+            if (!auth->deleteuser) {
+                error_message = "Deleting users from role not supported by role";
+                break;
+            }
+
             ret = auth->deleteuser(auth, username);
             if (ret == AUTH_FAILED) {
                 message = strdup("User delete failed - check the icecast error log");
-            }
-            if (ret == AUTH_USERDELETED) {
+            } else if (ret == AUTH_USERDELETED) {
                 message = strdup("User deleted");
             }
         }
 
         doc = xmlNewDoc(XMLSTR("1.0"));
         node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
-        srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
-        xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
+        rolenode = xmlNewChild(node, NULL, XMLSTR("role"), NULL);
+
+        snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
+        xmlSetProp(rolenode, XMLSTR("id"), XMLSTR(idbuf));
+
+        if (auth->type)
+            xmlSetProp(rolenode, XMLSTR("type"), XMLSTR(auth->type));
+        if (auth->role)
+            xmlSetProp(rolenode, XMLSTR("name"), XMLSTR(auth->role));
+
+        xmlSetProp(rolenode, XMLSTR("can-adduser"), XMLSTR(auth->adduser ? "true" : "false"));
+        xmlSetProp(rolenode, XMLSTR("can-deleteuser"), XMLSTR(auth->deleteuser ? "true" : "false"));
+        xmlSetProp(rolenode, XMLSTR("can-listuser"), XMLSTR(auth->listuser ? "true" : "false"));
 
         if (message) {
             msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
@@ -859,10 +892,13 @@ static void command_manageauth(client_t *client, source_t *source,
 
         xmlDocSetRootElement(doc, node);
 
-        if (auth && auth->listuser)
-            auth->listuser(auth, srcnode);
+        if (auth && auth->listuser) {
+            usersnode = xmlNewChild(rolenode, NULL, XMLSTR("users"), NULL);
+            auth->listuser(auth, usersnode);
+        }
 
-        config_release_config ();
+        config_release_config();
+        auth_release(auth);
 
         admin_send_response(doc, client, response, 
                 MANAGEAUTH_TRANSFORMED_REQUEST);
@@ -871,8 +907,9 @@ static void command_manageauth(client_t *client, source_t *source,
         return;
     } while (0);
 
-    config_release_config ();
-    client_send_error(client, 400, 0, "missing parameter");
+    config_release_config();
+    auth_release(auth);
+    client_send_error(client, error_code, 0, error_message);
 }
 
 static void command_kill_source(client_t *client, source_t *source,
