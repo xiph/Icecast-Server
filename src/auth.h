@@ -73,6 +73,11 @@ typedef struct auth_tag
     /* filters */
     int method[httpp_req_unknown+1];
 
+    /* whether authenticate_client() and release_client() will return immediate.
+     * Setting this will result in no thread being started for this.
+     */
+    int immediate;
+
     /* Authenticate using the given username and password */
     auth_result (*authenticate_client)(auth_client *aclient);
     auth_result (*release_client)(auth_client *auth_user);

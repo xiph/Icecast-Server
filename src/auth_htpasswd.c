@@ -226,6 +226,7 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     authenticator->adduser = htpasswd_adduser;
     authenticator->deleteuser = htpasswd_deleteuser;
     authenticator->listuser = htpasswd_userlist;
+    authenticator->immediate = 1;
 
     state = calloc(1, sizeof(htpasswd_auth_state));
 

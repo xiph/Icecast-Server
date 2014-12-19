@@ -77,6 +77,7 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options) {
     authenticator->authenticate_client = static_auth;
     authenticator->free = clear_auth;
     authenticator->state = auth_info;
+    authenticator->immediate = 1;
 
     while (options) {
         if (strcmp(options->name, "username") == 0) {

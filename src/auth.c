@@ -50,6 +50,7 @@ struct auth_stack_tag {
 };
 
 /* code */
+static void __handle_auth_client (auth_t *auth, auth_client *auth_user);
 
 static auth_client *auth_client_setup (client_t *client)
 {
@@ -114,13 +115,17 @@ static void queue_auth_client (auth_client *auth_user)
         return;
     }
     auth = auth_user->client->auth;
-    thread_mutex_lock (&auth->lock);
     ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", auth->mount, (int)auth->refcount);
-    *auth->tailp = auth_user;
-    auth->tailp = &auth_user->next;
-    auth->pending_count++;
-    ICECAST_LOG_INFO("auth on %s has %d pending", auth->mount, auth->pending_count);
-    thread_mutex_unlock (&auth->lock);
+    if (auth->immediate) {
+        __handle_auth_client(auth, auth_user);
+    } else {
+        thread_mutex_lock (&auth->lock);
+        *auth->tailp = auth_user;
+        auth->tailp = &auth_user->next;
+        auth->pending_count++;
+        ICECAST_LOG_INFO("auth on %s has %d pending", auth->mount, auth->pending_count);
+        thread_mutex_unlock (&auth->lock);
+    }
 }
 
 
@@ -240,12 +245,37 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     return ret;
 }
 
+static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
+    auth_result result;
+
+    if (auth_user->process) {
+        result = auth_user->process(auth, auth_user);
+    } else {
+        ICECAST_LOG_ERROR("client auth process not set");
+        result = AUTH_FAILED;
+    }
+
+    if (result == AUTH_OK) {
+        if (auth_user->client->acl)
+            acl_release(auth_user->client->acl);
+        acl_addref(auth_user->client->acl = auth->acl);
+        if (auth->role) /* TODO: Handle errors here */
+            auth_user->client->role = strdup(auth->role);
+    }
+
+    if (result == AUTH_NOMATCH && auth_user->on_no_match) {
+        auth_user->on_no_match(auth_user->client, auth_user->on_result, auth_user->userdata);
+    } else if (auth_user->on_result) {
+        auth_user->on_result(auth_user->client, auth_user->userdata, result);
+    }
+
+    auth_client_free (auth_user);
+}
 
 /* The auth thread main loop. */
 static void *auth_run_thread (void *arg)
 {
     auth_t *auth = arg;
-    auth_result result;
 
     ICECAST_LOG_INFO("Authentication thread started");
     while (auth->running)
@@ -271,28 +301,7 @@ static void *auth_run_thread (void *arg)
             thread_mutex_unlock(&auth->lock);
             auth_user->next = NULL;
 
-            if (auth_user->process) {
-                result = auth_user->process(auth, auth_user);
-            } else {
-                ICECAST_LOG_ERROR("client auth process not set");
-                result = AUTH_FAILED;
-            }
-
-            if (result == AUTH_OK) {
-                if (auth_user->client->acl)
-                    acl_release(auth_user->client->acl);
-                acl_addref(auth_user->client->acl = auth->acl);
-                if (auth->role) /* TODO: Handle errors here */
-                    auth_user->client->role = strdup(auth->role);
-            }
-
-            if (result == AUTH_NOMATCH && auth_user->on_no_match) {
-                auth_user->on_no_match(auth_user->client, auth_user->on_result, auth_user->userdata);
-            } else if (auth_user->on_result) {
-                auth_user->on_result(auth_user->client, auth_user->userdata, result);
-            }
-
-            auth_client_free (auth_user);
+            __handle_auth_client(auth, auth_user);
 
             continue;
         }
@@ -511,8 +520,10 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             auth = NULL;
         } else {
             auth->tailp = &auth->head;
-            auth->running = 1;
-            auth->thread = thread_create("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+            if (!auth->immediate) {
+                auth->running = 1;
+                auth->thread = thread_create("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+            }
         }
     }
 
