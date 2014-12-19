@@ -57,6 +57,17 @@ static void clear_auth (auth_t *auth) {
     auth->state = NULL;
 }
 
+static auth_result static_userlist(auth_t *auth, xmlNodePtr srcnode) {
+    auth_static_t *auth_info = auth->state;
+    xmlNodePtr newnode;
+
+    newnode = xmlNewChild(srcnode, NULL, XMLSTR("User"), NULL);
+    xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(auth_info->username));
+    xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(auth_info->password));
+
+    return AUTH_OK;
+}
+
 int  auth_get_static_auth (auth_t *authenticator, config_options_t *options) {
     auth_static_t *auth_info;
     int need_user;
@@ -75,6 +86,7 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options) {
         return -1;
 
     authenticator->authenticate_client = static_auth;
+    authenticator->listuser = static_userlist;
     authenticator->free = clear_auth;
     authenticator->state = auth_info;
 
