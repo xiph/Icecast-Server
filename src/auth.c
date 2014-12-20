@@ -727,17 +727,17 @@ auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id) {
 
 }
 
-acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack) {
+acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_type_e method) {
     acl_t *ret = NULL;
 
-    if (!stack)
+    if (!stack || method < 0 || method > httpp_req_unknown)
         return NULL;
 
     auth_stack_addref(stack);
 
     while (!ret && stack) {
         auth_t *auth = auth_stack_get(stack);
-        if (strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
+        if (auth->method[method] && strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
             acl_addref(ret = auth->acl);
         }
         auth_release(auth);

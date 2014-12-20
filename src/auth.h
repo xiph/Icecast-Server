@@ -135,6 +135,6 @@ int           auth_stack_push(auth_stack_t **stack, auth_t *auth);
 int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail);
 auth_t       *auth_stack_get(auth_stack_t *stack);
 auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id);
-acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack);
+acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_type_e method);
 
 #endif
