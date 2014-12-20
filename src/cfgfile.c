@@ -421,6 +421,7 @@ void config_clear(ice_config_t *c)
     if (c->log_dir) xmlFree(c->log_dir);
     if (c->webroot_dir) xmlFree(c->webroot_dir);
     if (c->adminroot_dir) xmlFree(c->adminroot_dir);
+    if (c->null_device) xmlFree(c->null_device);
     if (c->cert_file) xmlFree(c->cert_file);
     if (c->cipher_list) xmlFree(c->cipher_list);
     if (c->pidfile)
@@ -821,6 +822,7 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
         } else {
             ICECAST_LOG_ERROR("Can not find nor create default mount but global lagency source password set. Bad.");
         }
+        xmlFree(source_password);
     }
 
     /* drop the first listening socket details if more than one is defined, as we only
