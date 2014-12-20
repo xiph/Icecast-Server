@@ -613,6 +613,7 @@ void          auth_stack_release(auth_stack_t *stack) {
         return;
 
     auth_release(stack->auth);
+    auth_stack_release(stack->next);
     thread_mutex_destroy(&stack->lock);
     free(stack);
 }
@@ -631,9 +632,9 @@ int           auth_stack_next(auth_stack_t **stack) {
         return -1;
     thread_mutex_lock(&(*stack)->lock);
     next = (*stack)->next;
+    auth_stack_addref(next);
     thread_mutex_unlock(&(*stack)->lock);
     auth_stack_release(*stack);
-    auth_stack_addref(next);
     *stack = next;
     if (!next)
         return 1;
@@ -656,7 +657,9 @@ int           auth_stack_push(auth_stack_t **stack, auth_t *auth) {
     auth_addref(auth);
 
     if (*stack) {
-        return auth_stack_append(*stack, next);
+        auth_stack_append(*stack, next);
+        auth_stack_release(next);
+        return 0;
     } else {
         *stack = next;
         return 0;
