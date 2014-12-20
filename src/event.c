@@ -36,11 +36,16 @@ static void event_addref(event_t *event) {
 }
 
 static void event_release(event_t *event) {
+    size_t i;
+
     if (!event)
         return;
     event->refcount--;
     if (event->refcount)
         return;
+
+    for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++)
+        event_registration_release(event->reglist[i]);
 
     free(event->trigger);
     free(event->uri);
