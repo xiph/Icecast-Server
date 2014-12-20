@@ -1118,9 +1118,9 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         stats_event (source->mount, "subtype", mountinfo->subtype);
 
     if (mountinfo)
-        acl = auth_stack_get_anonymous_acl(mountinfo->authstack);
+        acl = auth_stack_get_anonymous_acl(mountinfo->authstack, httpp_req_get);
     if (!acl)
-        auth_stack_get_anonymous_acl(config->authstack);
+        acl = auth_stack_get_anonymous_acl(config->authstack, httpp_req_get);
     if (acl && acl_test_web(acl) == ACL_POLICY_DENY)
         stats_event (source->mount, "authenticator", "(dummy)");
     else

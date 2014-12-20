@@ -10,6 +10,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "event.h"
 #include "logging.h"
 #define CATMODULE "event_log"

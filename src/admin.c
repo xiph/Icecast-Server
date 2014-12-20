@@ -253,9 +253,9 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
             config = config_get_config();
             mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
             if (mountinfo)
-                acl = auth_stack_get_anonymous_acl(mountinfo->authstack);
+                acl = auth_stack_get_anonymous_acl(mountinfo->authstack, httpp_req_get);
             if (!acl)
-                auth_stack_get_anonymous_acl(config->authstack);
+                acl = auth_stack_get_anonymous_acl(config->authstack, httpp_req_get);
             if (acl && acl_test_web(acl) == ACL_POLICY_DENY) {
                 xmlNewChild(srcnode, NULL, XMLSTR("authenticator"), XMLSTR("(dummy)"));
             }
