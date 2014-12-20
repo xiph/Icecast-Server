@@ -1269,7 +1269,8 @@ static int _handle_aliases(client_t *client, char **uri) {
            (alias->port == -1 || alias->port == serverport) &&
            (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
            (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
-            new_uri = strdup(alias->destination);
+            if (alias->destination)
+                new_uri = strdup(alias->destination);
             if (alias->omode != OMODE_DEFAULT)
                 client->mode = alias->omode;
             ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
