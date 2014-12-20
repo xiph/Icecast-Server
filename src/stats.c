@@ -864,8 +864,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
             avl_tree_rlock(global.source_tree);
             source_real = source_find_mount_raw(source->source);
-            for (i = 0; i < source_real->format->vc.comments; i++)
-                __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+            if (source_real->format) {
+                for (i = 0; i < source_real->format->vc.comments; i++)
+                    __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+            }
             avl_tree_unlock(global.source_tree);
 
             authentication = xmlNewTextChild(xmlnode, NULL, XMLSTR("authentication"), NULL);
