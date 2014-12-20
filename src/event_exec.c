@@ -10,6 +10,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+#include <errno.h>
 
 #ifndef _WIN32
 #include <sys/wait.h>
