@@ -191,7 +191,7 @@ static unsigned long _next_connection_id(void)
 #ifdef HAVE_OPENSSL
 static void get_ssl_certificate (ice_config_t *config)
 {
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     long ssl_opts;
     ssl_ok = 0;
 
