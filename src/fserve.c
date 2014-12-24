@@ -35,11 +35,8 @@
 #else
 #include <winsock2.h>
 #include <windows.h>
-#define fseeko fseek
 #define SCN_OFF_T "ld"
 #define PRI_OFF_T "ld"
-#define snprintf _snprintf
-#define strncasecmp _strnicmp
 #ifndef S_ISREG
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
 #endif

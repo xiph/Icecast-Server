@@ -21,8 +21,14 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef HAVE_CURL
+#include <curl/curl.h>
+#endif
+
 #ifdef WIN32
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0400
+#endif
 /* For getpid() */
 #include <process.h>
 #include <windows.h>
@@ -32,9 +38,6 @@
 
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
-#endif
-#ifdef HAVE_CURL
-#include <curl/curl.h>
 #endif
 
 #ifdef HAVE_UNAME

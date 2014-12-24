@@ -174,7 +174,7 @@ void MD5Final(unsigned char digest[HASH_LEN], struct MD5Context *ctx)
     MD5Transform(ctx->buf, (uint32_t *) ctx->in);
     byteReverse((unsigned char *) ctx->buf, 4);
     memcpy(digest, ctx->buf, HASH_LEN);
-    memset(ctx, 0, sizeof(ctx));
+    memset(ctx, 0, sizeof(*ctx));
 	/* In case it's sensitive */
 }
 

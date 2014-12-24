@@ -32,9 +32,6 @@
 #include <netinet/in.h>
 #else
 #include <winsock2.h>
-#define snprintf _snprintf
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
 #endif
 
 #include "compat.h"
