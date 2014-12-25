@@ -31,9 +31,6 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
-#define snprintf _snprintf
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
 #endif
 
 #include "common/net/sock.h"

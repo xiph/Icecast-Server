@@ -55,6 +55,8 @@
 								<thead>
 									<tr>
 										<td>IP</td>
+										<td>Username</td>
+										<td>Role</td>
 										<td>Sec. connected</td>
 										<td>User Agent</td>
 										<td>Action</td>
@@ -64,15 +66,12 @@
 									<xsl:variable name = "themount"><xsl:value-of select="@mount" /></xsl:variable>
 									<xsl:for-each select="listener">
 										<tr>
-											<td>
-												<xsl:value-of select="IP" />
-												<xsl:if test="username">
-													(<xsl:value-of select="username" />)
-												</xsl:if>
-											</td>
-											<td><xsl:value-of select="Connected" /></td>
-											<td><xsl:value-of select="UserAgent" /></td>
-											<td><a href="killclient.xsl?mount={$themount}&amp;id={ID}">Kick</a></td>
+											<td><xsl:value-of select="ip" /></td>
+											<td><xsl:value-of select="username" /></td>
+											<td><xsl:value-of select="role" /></td>
+											<td><xsl:value-of select="connected" /></td>
+											<td><xsl:value-of select="useragent" /></td>
+											<td><a href="killclient.xsl?mount={$themount}&amp;id={id}">Kick</a></td>
 										</tr>
 									</xsl:for-each>
 								</tbody>

@@ -1832,15 +1832,16 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
             alias = malloc(sizeof(aliases));
             alias->next = NULL;
             alias->source = (char *)xmlGetProp(node, XMLSTR("source"));
-            if(alias->source == NULL) {
-                free(alias);
-                continue;
-            }
             alias->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
             if (!alias->destination)
                 alias->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
-            if(alias->destination == NULL) {
+
+            if (!alias->source && alias->destination) {
+                alias->source = alias->destination;
+                alias->destination = NULL;
+            } else if(!alias->source && !alias->destination) {
                 xmlFree(alias->source);
+                xmlFree(alias->destination);
                 free(alias);
                 continue;
             }

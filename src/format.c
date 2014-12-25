@@ -48,12 +48,6 @@
 #include "stats.h"
 #define CATMODULE "format"
 
-#ifdef WIN32
-#define strcasecmp stricmp
-#define strncasecmp strnicmp
-#define snprintf _snprintf
-#endif
-
 static int format_prepare_headers (source_t *source, client_t *client);
 
 
