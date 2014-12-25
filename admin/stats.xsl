@@ -100,11 +100,24 @@
 					<table class="yellowkeys">
 						<tbody>
 							<xsl:for-each select="*">
-								<tr>
-									<td><xsl:value-of select="name()" /></td>
-									<td><xsl:value-of select="." /></td>
-								</tr>
+								<xsl:if test="name() != 'metadata' and name() != 'authentication'">
+									<tr>
+										<td><xsl:value-of select="name()" /></td>
+										<td><xsl:value-of select="." /></td>
+									</tr>
+								</xsl:if>
 							</xsl:for-each>
+							<xsl:if test="metadata">
+								<tr>
+									<th colspan="2">Extra metadata</th>
+								</tr>
+								<xsl:for-each select="metadata/*">
+									<tr>
+										<td><xsl:value-of select="name()" /></td>
+										<td><xsl:value-of select="." /></td>
+									</tr>
+								</xsl:for-each>
+							</xsl:if>
 						</tbody>
 					</table>
 					<xsl:if test="authentication">
