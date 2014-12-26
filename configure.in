@@ -35,6 +35,7 @@ AC_HEADER_TIME
 
 AC_CHECK_HEADERS([alloca.h sys/timeb.h])
 AC_CHECK_HEADERS([pwd.h unistd.h grp.h sys/types.h],,,AC_INCLUDES_DEFAULT)
+AC_CHECK_HEADERS([ldap.h],ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_ldap.o")
 AC_CHECK_FUNCS([setuid])
 AC_CHECK_FUNCS([chroot])
 AC_CHECK_FUNCS([chown])

@@ -15,7 +15,7 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h md5.h \
     event.h event_log.h event_exec.h event_url.h \
-    acl.h auth.h auth_htpasswd.h auth_url.h auth_anonymous.h auth_static.h \
+    acl.h auth.h auth_htpasswd.h auth_ldap.h auth_url.h auth_anonymous.h auth_static.h \
     format.h format_ogg.h format_mp3.h format_ebml.h \
     format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
     format_kate.h format_skeleton.h format_opus.h \
@@ -29,7 +29,7 @@ icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c 
     acl.c auth.c auth_htpasswd.c auth_anonymous.c auth_static.c \
 	roarapi.c plugins.c
 EXTRA_icecast_SOURCES = yp.c \
-    auth_url.c event_url.c \
+    auth_ldap.c auth_url.c event_url.c \
     format_vorbis.c format_theora.c format_speex.c
 
 icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ common/net/libicenet.la common/thread/libicethread.la \
