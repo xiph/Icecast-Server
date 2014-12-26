@@ -19,6 +19,7 @@
 #include "refbuf.h"
 #include "client.h"
 #include "source.h"
+#include "auth.h"
 
 /* types */
 #define ADMINTYPE_ERROR   (-1)
@@ -40,6 +41,7 @@ void admin_send_response(xmlDocPtr doc, client_t *client,
         int response, const char *xslt_template);
 
 void admin_add_listeners_to_mount(source_t *source, xmlNodePtr parent, operation_mode mode);
+xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent);
 
 int admin_get_command(const char *command);
 int admin_get_command_type(int command);

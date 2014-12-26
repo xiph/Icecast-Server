@@ -815,16 +815,29 @@ static int _send_event_to_client(stats_event_t *event, client_t *client)
     return 0;
 }
 
+static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
+    xmlNodePtr authentication;
+    authentication = xmlNewTextChild(parent, NULL, XMLSTR("authentication"), NULL);
 
-static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden)
-{
+    auth_stack_addref(stack);
+
+    while (stack) {
+        auth_t *auth = auth_stack_get(stack);
+        admin_add_role_to_authentication(auth, authentication);
+        auth_release(auth);
+        auth_stack_next(&stack);
+   }
+}
+static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden) {
     avl_node *avlnode;
     xmlNodePtr ret = NULL;
+    ice_config_t *config;
 
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
     avlnode = avl_get_first(_stats.global_tree);
-    while (avlnode)
+    
+while (avlnode)
     {
         stats_node_t *stat = avlnode->key;
         if (stat->hidden <=  hidden)
@@ -833,6 +846,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     }
     /* now per mount stats */
     avlnode = avl_get_first(_stats.source_tree);
+    config = config_get_config();
+    __add_authstack(config->authstack, root);
+    config_release_config();
+
     while (avlnode)
     {
         stats_source_t *source = (stats_source_t *)avlnode->key;
@@ -840,11 +857,9 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
         if (source->hidden <= hidden &&
                 (show_mount == NULL || strcmp (show_mount, source->source) == 0))
         {
-            xmlNodePtr metadata, authentication, role;
+            xmlNodePtr metadata;
             source_t *source_real;
-            ice_config_t *config;
             mount_proxy *mountproxy;
-            auth_stack_t *stack;
             int i;
 
             avl_node *avlnode2 = avl_get_first (source->stats_tree);
@@ -870,25 +885,9 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             }
             avl_tree_unlock(global.source_tree);
 
-            authentication = xmlNewTextChild(xmlnode, NULL, XMLSTR("authentication"), NULL);
             config = config_get_config();
             mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
-            auth_stack_addref(stack = mountproxy->authstack);
-            while (stack) {
-                auth_t *auth = auth_stack_get(stack);
-                char idbuf[32];
-                snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
-                role = xmlNewTextChild(authentication, NULL, XMLSTR("role"), NULL);
-                xmlSetProp(role, XMLSTR("id"), XMLSTR(idbuf));
-                if (auth->type)
-                    xmlSetProp(role, XMLSTR("type"), XMLSTR(auth->type));
-                if (auth->role)
-                    xmlSetProp(role, XMLSTR("name"), XMLSTR(auth->role));
-                if (auth->management_url)
-                    xmlSetProp(role, XMLSTR("management-url"), XMLSTR(auth->management_url));
-                auth_release(auth);
-                auth_stack_next(&stack);
-            }
+            __add_authstack(mountproxy->authstack, xmlnode);
             config_release_config();
         }
         avlnode = avl_get_next (avlnode);

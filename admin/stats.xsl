@@ -38,6 +38,24 @@
 				</xsl:for-each>
 			</tbody>
 		</table>
+		<xsl:if test="authentication">
+			<table>
+				<ul>
+					<xsl:for-each select="authentication/role">
+						<li>
+							Role
+							<xsl:if test="@name">
+								<xsl:value-of select="@name" />
+							</xsl:if>
+							of type <xsl:value-of select="@type" />:
+							<xsl:if test="@management-url">
+								<a href="{@management-url}">Manage Authentication</a>
+							</xsl:if>
+						</li>
+					</xsl:for-each>
+				</ul>
+			</table>
+		</xsl:if>
 	</div>
 	<!--end global server stats-->
 
@@ -82,13 +100,44 @@
 					<table class="yellowkeys">
 						<tbody>
 							<xsl:for-each select="*">
-								<tr>
-									<td><xsl:value-of select="name()" /></td>
-									<td><xsl:value-of select="." /></td>
-								</tr>
+								<xsl:if test="name() != 'metadata' and name() != 'authentication'">
+									<tr>
+										<td><xsl:value-of select="name()" /></td>
+										<td><xsl:value-of select="." /></td>
+									</tr>
+								</xsl:if>
 							</xsl:for-each>
+							<xsl:if test="metadata">
+								<tr>
+									<th colspan="2">Extra metadata</th>
+								</tr>
+								<xsl:for-each select="metadata/*">
+									<tr>
+										<td><xsl:value-of select="name()" /></td>
+										<td><xsl:value-of select="." /></td>
+									</tr>
+								</xsl:for-each>
+							</xsl:if>
 						</tbody>
 					</table>
+					<xsl:if test="authentication">
+						<table>
+							<ul>
+								<xsl:for-each select="authentication/role">
+									<li>
+										Role
+										<xsl:if test="@name">
+											<xsl:value-of select="@name" />
+										</xsl:if>
+										of type <xsl:value-of select="@type" />:
+										<xsl:if test="@management-url">
+											<a href="{@management-url}">Manage Authentication</a>
+										</xsl:if>
+									</li>
+								</xsl:for-each>
+							</ul>
+						</table>
+					</xsl:if>
 				</div>
 			</div>
 		</xsl:if>

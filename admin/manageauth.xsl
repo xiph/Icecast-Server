@@ -34,13 +34,6 @@
 					<small><xsl:value-of select="server_name" /></small>
 				</xsl:if>
 			</h3>
-			<ul class="nav">
-				<li><a href="listclients.xsl?mount={@mount}">List Clients</a></li>
-				<li><a href="moveclients.xsl?mount={@mount}">Move Listeners</a></li>
-				<li><a href="updatemetadata.xsl?mount={@mount}">Update Metadata</a></li>
-				<li><a href="manageauth.xsl?mount={@mount}">Manage Authentication</a></li>
-				<li><a href="killsource.xsl?mount={@mount}">Kill Source</a></li>
-			</ul>
 			<xsl:if test="users">
 				<table class="colortable">
 					<thead>

@@ -775,6 +775,26 @@ static void command_buildm3u(client_t *client,  const char *mount)
     fserve_add_client (client, NULL);
 }
 
+xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent) {
+    xmlNodePtr rolenode = xmlNewChild(parent, NULL, XMLSTR("role"), NULL);
+    char idbuf[32];
+
+    snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
+    xmlSetProp(rolenode, XMLSTR("id"), XMLSTR(idbuf));
+
+    if (auth->type)
+        xmlSetProp(rolenode, XMLSTR("type"), XMLSTR(auth->type));
+    if (auth->role)
+        xmlSetProp(rolenode, XMLSTR("name"), XMLSTR(auth->role));
+    if (auth->management_url)
+        xmlSetProp(rolenode, XMLSTR("management-url"), XMLSTR(auth->management_url));
+
+    xmlSetProp(rolenode, XMLSTR("can-adduser"), XMLSTR(auth->adduser ? "true" : "false"));
+    xmlSetProp(rolenode, XMLSTR("can-deleteuser"), XMLSTR(auth->deleteuser ? "true" : "false"));
+    xmlSetProp(rolenode, XMLSTR("can-listuser"), XMLSTR(auth->listuser ? "true" : "false"));
+
+    return rolenode;
+}
 
 static void command_manageauth(client_t *client, int response) {
     xmlDocPtr doc;
@@ -789,7 +809,6 @@ static void command_manageauth(client_t *client, int response) {
     long unsigned int id;
     ice_config_t *config = config_get_config();
     auth_t *auth;
-    char idbuf[32];
 
     do
     {
@@ -871,19 +890,8 @@ static void command_manageauth(client_t *client, int response) {
 
         doc = xmlNewDoc(XMLSTR("1.0"));
         node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
-        rolenode = xmlNewChild(node, NULL, XMLSTR("role"), NULL);
 
-        snprintf(idbuf, sizeof(idbuf), "%lu", auth->id);
-        xmlSetProp(rolenode, XMLSTR("id"), XMLSTR(idbuf));
-
-        if (auth->type)
-            xmlSetProp(rolenode, XMLSTR("type"), XMLSTR(auth->type));
-        if (auth->role)
-            xmlSetProp(rolenode, XMLSTR("name"), XMLSTR(auth->role));
-
-        xmlSetProp(rolenode, XMLSTR("can-adduser"), XMLSTR(auth->adduser ? "true" : "false"));
-        xmlSetProp(rolenode, XMLSTR("can-deleteuser"), XMLSTR(auth->deleteuser ? "true" : "false"));
-        xmlSetProp(rolenode, XMLSTR("can-listuser"), XMLSTR(auth->listuser ? "true" : "false"));
+        rolenode = admin_add_role_to_authentication(auth, node);
 
         if (message) {
             msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
