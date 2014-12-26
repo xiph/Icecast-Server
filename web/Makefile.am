@@ -4,6 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 webdir = $(pkgdatadir)/web
 dist_web_DATA = status.xsl \
+                favicon.ico \
                 icecast.png \
                 style.css \
                 auth.xsl \
