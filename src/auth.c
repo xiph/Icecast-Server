@@ -29,6 +29,7 @@
 #include "auth_url.h"
 #include "auth_anonymous.h"
 #include "auth_static.h"
+#include "auth_ldap.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
@@ -423,6 +424,10 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             break;
         } else if (strcmp(auth->type, AUTH_TYPE_LEGACY_PASSWORD) == 0) {
             if (auth_get_static_auth(auth, options) < 0)
+                return -1;
+            break;
+        } else if (strcmp(auth->type, AUTH_TYPE_LDAP) == 0) {
+            if (auth_get_ldap_auth(auth, options) < 0)
                 return -1;
             break;
         }

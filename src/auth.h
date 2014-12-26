@@ -34,6 +34,7 @@ struct auth_tag;
 #define AUTH_TYPE_LEGACY_PASSWORD "legacy-password"
 #define AUTH_TYPE_URL             "url"
 #define AUTH_TYPE_HTPASSWD        "htpasswd"
+#define AUTH_TYPE_LDAP            "ldap"
 
 typedef enum
 {
