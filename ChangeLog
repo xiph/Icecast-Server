@@ -1,3 +1,554 @@
+2014-12-28 13:19:29  Marvin Scholz <epirat07@gmail.com>
+
+	* Removed fr_FR xsl files since they aren't used
+
+2014-12-28 11:08:56  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* Preparing for 2.5 beta1 aka 2.4.99.1
+
+2014-12-25 12:45:46  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Nicer display of <metadata>
+	  This adds a little bit nicer display of <metadata> to the stats.xsl
+	  page and avoids broken display of <metadata> and <authentication>.
+
+2014-12-26 21:57:50  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Added support to admin/ interface to list <role>s
+	  This adds support to list global and per mount roles on stats.xsl.
+	  This isn't nicest formated but works.
+	  This also adds <source>-like <authentication> with <role>s to
+	  root node.
+
+2014-12-26 11:04:22  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* height-adjusted logo2 for NSIS installer
+
+2014-12-26 11:02:10  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* Favicon was missing from the Makefile
+
+2014-12-24 09:19:17   Philipp Schafft <lion@lion.leolix.org>
+
+	* Revert "Fix: avoid assignment discards 'const' qualifier warning"
+	  This reverts commit 0dbabcc44c141d0018a6eb6b6d3c78cc6e16491c.
+	  Breaks other(?) OpenSSL versions.
+
+2014-12-24 09:16:15  Philipp Schafft <lion@lion.leolix.org>
+
+	* Prevent various redefined definitions in win32-specific code
+	  From: Erik van Pienbroek <epienbro@fedoraproject.org>
+	  Date: Mon, 22 Dec 2014 18:02:09 +0100
+
+2014-12-24 09:03:26  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: avoid assignment discards 'const' qualifier warning
+	  Untested. Please test.
+
+2014-12-22 09:08:24  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Display username and role in listener listing
+	  This adds display of role name and updates display of username in
+	  listener listing of mount points on admin interface.
+
+2014-12-22 07:58:37  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: corrected xsl to work in omode=normal
+
+2014-12-20 18:48:03  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Allow <resource> to have only one of source and destination
+	  This allows <resource> (former <alias>) to have only one of the
+	  attribues source and destination. In that case other parameters
+	  will be applied to the client but uri is not mapped.
+
+2014-12-20 18:07:04  Philipp Schafft <lion@lion.leolix.org>
+
+	* Merge branch fix for <metadata> of relays.
+
+2014-12-20 18:06:42  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: avoid segfault by generating <metadata> for relays
+
+2014-12-20 16:12:27  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: memory leak and race condition fix
+
+2014-12-20 15:30:26  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: memory leak, now also releasing reglist[] members
+
+2014-12-20 15:29:53  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: memory leak now freeing null_device and global source_password
+
+2014-12-20 13:40:44  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Added missing includes
+
+2014-12-20 09:39:26  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Corrected display of "login" on status page
+	  This corrects the creation of <authenticator> in the status output
+	  and this way fixes the display of login link on status page.
+
+2014-12-19 17:30:37  Philipp Schafft <lion@lion.leolix.org>
+
+	* Merged support for thread-less <role>s
+
+2014-12-19 17:27:54  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: immediate mode for <role>s
+	  This allows a <role> represented by a auth_t to run in "immediate"
+	  mode. In this mode no thread is created for this <role>. This is a
+	  major speedup.
+
+2014-12-19 16:40:41  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Allow mangement of <role>s via admin/ interface
+	  Updated admin/manageauth.xsl the way suggested by
+	  0eb466b76ddd3996f0caad60e4a0a3d64dcf8f24.
+
+2014-12-19 16:14:35  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Allow mangement of <role>s via admin/ interface.
+	  This allows to manage <role>s via admin interface if the role supports.
+	  Also format of admin/manageauth has been changed:
+	  - <source> was renamed to <role>.
+	  - mount parameter was removed.
+	  - <role> got new parameters: type, name,
+	    can-adduser, can-deleteuser, can-listuser.
+	  - can-* parameters are bools ("true" or "false"). They should be used
+	    to show or hide elements on the admin interface.
+
+	* Ticket #2123 is nearly complet with this, just admin/manageauth.xsl
+	  needs up be updated. Please close the bug in the commit that updates
+	  admin/manageauth.xsl.
+
+2014-12-19 11:28:49  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Also export type="" in stats.xml's <role>s
+
+2014-12-19 11:22:36  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Added support to type="static" <role> to list user
+	  This adds support to list the user for a static <role>.
+
+2014-12-19 11:16:13  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Added support for management-url="" in <role>
+	  This adds setting a URL for manegement of roles to the
+	  framework. If no URL is given in the config file this 
+	  defaults to internal (/admin/manageauth.xsl) interface if supported
+	  by the backend.
+
+2014-12-19 11:01:32  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: only export name="" on <role> if set
+
+2014-12-19 10:44:24  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Export <role>s on stats.xml
+	  This exports id and name of <role>s on stats.xml output. The <role>s
+	  are in a <authentication> container tag and mimic the format
+	  used by the config file.
+
+2014-12-19 10:50:52  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Added a unique ID to each auth_t.
+	  This added a unique ID to each auth_t instance so it can be
+	  referred to e.g. by the web interface for mangement functionallity.
+	  Mostly lifted from connection.[ch].
+
+2014-12-19 10:31:08  Philipp Schafft <lion@lion.leolix.org>
+
+	* Cleanup: Removed a printf() leftover from debugging
+
+2014-12-18 10:24:15  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Always export <metadata> in stats.xml
+
+2014-12-18 09:56:54  Philipp Schafft <lion@lion.leolix.org>
+
+	* Added: 'legcay' mode stats.xml.
+	  Add '?omode=legacy' to any URI or <resource ... omode="legacy" />.
+	* Please test.
+
+2014-12-14 19:18:22  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Fixed compiler warnings
+	
+2014-12-14 16:19:32  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Support command line arguments in <event type="exec">
+	  This adds support to pass additional command line parameters
+	  to called processes.
+
+2014-12-14 11:01:39  Philipp Schafft <lion@lion.leolix.org>
+
+	* Fix: Send Content-Disposition:-header correctly
+
+2014-12-14 09:27:49  Philipp Schafft <lion@lion.leolix.org>
+
+	* Regression Fix: Correction of old-style <authentication>.
+	  Old-style <authentication> within <mount> didn't work for type="url"
+	  as well as some other parameters due to confusion between "node"
+	  and "child" variable.
+	* Thanks for trilliot for pointing out! Should work now.
+
+2014-12-14 08:25:16  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* Some minor changes to README.md, added Opus and WebM
+
+2014-12-14 08:19:58  Philipp Schafft <lion@lion.leolix.org>
+
+	* Cleanup: make strcmp() more explicit in _start_logging()
+	  This avoids if(strcmp()) constructs in favor of if(strcmp() == 0)
+	  constructs. This is aligned with coding style and will improve
+	  readability of the code.
+	  Thanks to miksago.
+
+2014-12-14 08:18:24  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* NEWS updated for 2.4.0 and 2.4.1
+
+2014-12-13 19:10:20  Thomas B. Ruecker <thomas@ruecker.fi>
+
+	* Fix for docdir issue with deb/RPM. Fixes #2121
+	  Replaced docdir with otherdocdir and made it relative to
+	  docdir. This seems to work for debian and plain make install.
+	  Will test RPM later.
+
+2014-12-09 16:08:27  Philipp Schafft <lion@lion.leolix.org>
+
+	* Feature: Extract metadata and export them to stats.xml
+	* All metadata is now extracted from Vorbis streams and ICY streams
+	  and exported as new <metadata> tag into admin/stats if specific
+	  mountpoint is requested.
+	* To testers:
+	  - Please test with Ogg Vorbis streams.
+	  - Please test with Ogg Vorbis + Theora streams.
+	  - Please test chained Ogg streams.
+	  - Please test with ICY streams.
+
+2014-12-08 07:58:17  Philipp Schafft <lion@lion.leolix.org>
+
+	* Speedup: Don't copy data into event if there are no registrations
+	* If there are no registrations that are added to an event the event
+	  doesn't need to be emited as nobody cares anyway. We will do this
+	  simple check before we copy data into the event object to avoid
+	  unnecessary calls to strdup() and other allocation functions.
+
+2014-12-08 00:39:57  Philipp Schafft <lion@lion.leolix.org>
+
+	* Added <event>: Unified handling of events.
+	* <event> has been added and can be used within <kartoffelsalat>
+	  both in <icecast> and <mount>.
+	  <event> takes backend depending <option> child tags.
+	  Currently supported backends:
+	  - log: send message to error log.
+	  - exec: executes a program or script.
+	  - url: delivers the event via HTTP.
+
+	* within <mount> <on-connect> and <on-disconnect> has been replaced by
+	  <event>. Config parser can on-the-fly convert old tags.
+	  Also <authentication type="url"> within <mount> has been fixed
+	  for those cases with <option name="mount_add" .../> and
+	  <option name="mount_remove" .../> which are now on-the-fly converted
+	  by the parser to corresponding <event> tags.
+
+	* Please also see TAGs added as per #2098. Some include hints for
+	  documentation updates needed after this change. Those updates
+	  should take place before 2.4.2.
+
+2014-12-07 10:54:34  Philipp Schafft <lion@lion.leolix.org>
+
+	* Cleanup: Moved config re-read function into right place
+	* Renamed event_config_read() into config_reread_config() and moved
+	  it into cfgfile.c. This allowed to delete event.[ch].
+	  event.[ch] will later be used to implement <event>.
+
+2014-12-06 20:24:33  Philipp Schafft <lion@lion.leolix.org>
+
+	* Corrected Makefile.am to refect README rename and TODO deletion
+
+2014-12-06 20:04:21  Philipp Schafft <lion@lion.leolix.org>
+
+	* ACL: added {allow,deny}-all, support bool notation
+	* Added {allow,deny}-all option to ACL parser. Setting this will
+	  set {allow,deny}-{method,admin,web} to *.
+	* Also allow boolean values (insteed of *) for {allow,deny}-{web,all}.
+
+2014-12-06 19:47:54  Philipp Schafft <lion@lion.leolix.org>
+
+	* renamed <alias> to <resource> as it is planned to extend the usage
+	  of this tag. docs and default configs should be updated by those
+	  taking care of them.
+
+2014-12-05 12:57:02  Marvin Scholz <epirat07@gmail.com>
+
+	* Update submodules
+
+2014-12-04 12:41:53  Marvin Scholz <epirat07@gmail.com>
+
+	* Updated README, renamed it so that it is parsed as markdown
+
+2014-12-04 12:14:56  Marvin Scholz <epirat07@gmail.com>
+
+	* Remove old TODO file, using trac tickets instead
+
+2014-12-04 10:24:12  Marvin Scholz <epirat07@gmail.com>
+
+	* Changed URLs to be relative in .gitmodules
+
+2014-12-04 08:12:41  Marvin Scholz <epirat07@gmail.com>
+
+	* Updated submodules to the new repository URLs
+
+2014-12-02 22:50:57  Marvin Scholz <epirat07@gmail.com>
+
+	* Epic Git migration commit
+	* Added .gitignore and submodules
+	* Changed paths to match new location of things
+
+	* [Note from the editor: SVN to Git migration completed]
+
+2014-11-30 20:32:30  Philipp Schafft <lion@lion.leolix.org>
+
+	* better coding style, patch by ePirat.
+
+2014-11-30 18:20:09  Philipp Schafft <lion@lion.leolix.org>
+
+	* s/listener/client/; thanks to micheil.
+
+2014-11-30 18:18:05  Philipp Schafft <lion@lion.leolix.org>
+
+	* cleanup: make use of const
+
+2014-11-30 18:17:10  Philipp Schafft <lion@lion.leolix.org>
+
+	* sock_active() is broken and can not be used
+
+2014-11-30 18:15:40  Philipp Schafft <lion@lion.leolix.org>
+
+	* that error is nonsense
+
+2014-11-30 09:32:06  Philipp Schafft <lion@lion.leolix.org>
+
+	* cleanup: don't include "httpp/httpp.h" if not needed
+
+2014-11-29 12:41:19  Philipp Schafft <lion@lion.leolix.org>
+
+	* cleanup: converted printf() into ICECAST_LOG_DEBUG() but commented
+	out so they do not spam logs for normal users.
+
+2014-11-29 11:39:39  Thomas B. "dm8tbr" Ruecker <thomas@ruecker.fi>
+
+	* Fix trailing spaces in default config.
+	  As pointed out by DalekSec on IRC.
+
+2014-11-29 10:34:07  Philipp Schafft <lion@lion.leolix.org>
+
+	updated chroot and setuid/gid support. Thanks to d26264b9 for
+	reporting.
+
+2014-11-29 10:16:36  Philipp Schafft <lion@lion.leolix.org>
+
+	* in <listener>:
+	    - Added <role>.
+	    - Converted <Referer> to <referer>.
+	    - Set id="nnn" in addition to <ID>nnn</ID>.
+	    - Added TAGged comments about next steps.
+
+2014-11-29 08:28:55  Philipp Schafft <lion@lion.leolix.org>
+
+	* include <string.h>
+
+2014-11-29 08:16:42  Philipp Schafft <lion@lion.leolix.org>
+
+	* ensure vhost is not uninitialized
+
+2014-11-29 08:15:23  Philipp Schafft <lion@lion.leolix.org>
+
+	* include <stdio.h> as FILE* is used in the header
+
+2014-11-28 23:46:08  Philipp Schafft <lion@lion.leolix.org>
+
+	* Wow. Mega patch!
+
+	This patch *replaces* the authentication system completly.
+
+	* What is new:
+	- <authentication> in mount section is now a container object.
+	- <authentication> in root and mount section may hold any number
+	  of <role>-Tags.
+	- <role> tags:
+	  Those tags define a 'role' and it's ACL rules.
+	  A role is a instance of an authentication module (see below).
+	  <role> takes the following options. All but type are optional.
+	  - authentication related:
+	    - type: Type of the authentication module 
+	      (values: anonymous, static, legacy-password, url or htpasswd;
+	      symbolic constants in auth.h)
+	    - name: Name for the role. For later matching. 
+	      (values: any string; default: (none))
+	    - method: rule is only active on the given list of HTTP methods.
+	      (list of enum values: methods as recognized by httpp/ 
+	      [e.g: get,post]; default: *)
+	  - ACL related:
+	    - allow-method: Allowed HTTP methods.
+	      (list of enum values: methods as recognized by httpp/ 
+	      [e.g: get,post]; default: get)
+	    - deny-method: Rejected HTTP methods.
+	      (list of enum values: methods as recognized by httpp/ 
+	      [e.g: get,post]; default: *)
+	    - allow-admin: Allowed admin commands. 
+	      (list of enum values: admin command; default: buildm3u)
+	    - deny-admin: Rejected admin commands. 
+	      (list of enum values: admin command; default: *)
+	    - allow-web: Allowed web pages. 
+	      (values: empty or *; default: *)
+	    - deny-web: Rejected web pages. 
+	      (values: empty or *; default: (empty))
+	    - connections-per-user: maximum number of simultaneous connections 
+	      per role and username. This is only active on active sources.
+	      (values: unlimited or number of connections; default: unlimited)
+	    - connection-duration: maximum time of a connection. 
+	      This is only active on active sources.
+	      (values: unlimited or number of secounds; default: unlimited)
+	  <role> takes <option> child tags. <option> tags contain a name 
+	  and a value option.
+	  Meaning of <option> tags is up to the authentication module.
+	- <role>s are considered to build a stack. 
+	  If a role returns with AUTH_NOMATCH the next one will be tried.
+	- <role>s are tested in this order: mount specific, default mount 
+	  specific, global, internal fallback.
+	  Internal fallback is set to allow web/ access via GET, POST and HEAD
+	  (only GET supported by this time) and rejects all other requests.
+	- New authentication module: anonymous
+	  This module matches all requests. No options taken.
+	- New authentication module: static
+	  This module matches with a static username and password.
+	  It takes two <option>s. One with name="username" and one with 
+	  name="password" to set username and password.
+	  This replaces old style <*-username> and <*-password> tags.
+	- New authentication module: legacy-password
+	  This module matches with a statich password.
+	  It takes one <option> with name="password" to set password.
+	  This replaces old ICE and ICY (shoutcast compat mode)
+	  authentication.
+	- Parsing <authentication> in <mount> with a type set in a special way
+	  to allow 100% backward compatibility.
+	- Parsing of <source-password>, <admin-password>, <admin-user>, 
+	  <relay-password> and <relay-user> in global <authentication>
+	  for 100% backward compatibility.
+	- <alias> is now proccessed very early. This enables them to be used
+	  for all kinds of requests.
+
+	* To Do List & What does not yet work:
+	- type="url" auth: mount_add and mount_remove.
+	  This should be replaced by an unique feature I would call '<event>'.
+	- Admin commands manageauth and manageauth.xsl are disabled as they 
+	  need more review: This code needs to be ported to support 
+	  multiple <role>s per <mount>.
+	- url authentication module can not yet return AUTH_NOMATCH.
+	  This needs to be reviewed and discussed on how to handle this case 
+	  best way.
+	- Default config files needs to be updated to reflect the changes.
+	  As this is quite some political act it should be done in dicussion 
+	  with the whole team and permission of the release manager.
+	- Docs need to be updated to reflect the changes.
+
+	* How does it work:
+	Code has been changed so that authentification is done early 
+	for all clients. This allows accessing the ACL data (client->acl)
+	from nearly everywhere in the code.
+
+	After accept() and initial client setup the request is parsed. 
+	In the next step all <alias>es are resolved. After this the client 
+	is passed for authentication. After authentication it is passed 
+	to the corresponding subsystem depending on kind of request.
+
+	All authentication instances have a thread running for doing 
+	the authentication. This thread works on a queue of clients.
+
+	* Hints for testers:
+	- Test with default config.
+	- Test with diffrent authentication modules in <mount>.
+	- Test shoutcast compatibility mode.
+	- Test with new style <authentication> and any amount of <role> 
+	  (zero to quite some).
+	- Test <alias> lookup on all kinds of objects.
+	- Test source level credential login into the admin interface.
+	- Test shoucast style meta data updates.
+	- Test playlist generation.
+
+	* Thank you for reading this long commit message. 
+	  Have fun reading the full patch!
+
+
+2014-11-22 05:42:36  Philipp Schafft <lion@lion.leolix.org>
+
+	* some more changes for ACL framework: exported admin_get_command()
+	and ADMIN_COMMAND_ERROR as well as introduced ADMIN_COMMAND_ANY
+
+2014-11-22 04:44:47  Philipp Schafft <lion@lion.leolix.org>
+
+	* expose converting of method names to enum values as
+	httpp_str_to_method()
+
+2014-11-22 04:06:26  Philipp Schafft <lion@lion.leolix.org>
+
+	* Changed ABI a bit: updated httpp_request_type_e-type. To avoid any
+	problems do a complet rebuild of your projects. Thank you.
+
+2014-11-22 03:49:36  Philipp Schafft <lion@lion.leolix.org>
+
+	* some smaller stuff needed to get new authing stuff done
+
+2014-11-21 19:52:48  Philipp Schafft <lion@lion.leolix.org>
+
+	* allow symbolc names for bools, public settings and loglevel
+
+2014-11-21 18:05:17  Philipp Schafft <lion@lion.leolix.org>
+
+	* remove client_send_[0-9]{3}() in favor of client_send_error().
+	Please test
+
+2014-11-21 15:37:50  Philipp Schafft <lion@lion.leolix.org>
+
+	* first part of patch to allow kh like admin stats with listener tags
+	inside
+
+2014-11-21 10:08:16  Philipp Schafft <lion@lion.leolix.org>
+
+	* allow comments to be within the <http-headers> block, not just at the
+	end
+
+2014-11-21 09:28:29  Philipp Schafft <lion@lion.leolix.org>
+
+	* Updated handling of <on-connect> and <on-disconnect> in <mount>, see
+	r19305:r19312
+
+2014-11-20 18:41:42  Philipp Schafft <lion@lion.leolix.org>
+
+	* report system name and print better warnings about <hostname> at
+	start of process
+
+2014-11-20 18:36:57  Philipp Schafft <lion@lion.leolix.org>
+
+	* remove threadpool_size in global config, added warnings for
+	<threadpool> and <no-yp> as well as updated warning for
+	<source-password>
+
+2014-11-20 18:34:41  Philipp Schafft <lion@lion.leolix.org>
+
+	* Support for reloading server config using admin interface.
+
+2014-11-20 18:32:14  Philipp Schafft <lion@lion.leolix.org>
+
+	* support vhosting on aliases
+
 2014-11-19 13:42:23  dm8tbr
 
 	* This is Spaaarrr^w Icecast 2.4.1!
