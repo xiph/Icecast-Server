@@ -552,7 +552,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         free (opt);
     }
 
-    if (!auth->management_url && (auth->adduser || auth->deleteuser || auth->listuser)) {
+    if (auth && !auth->management_url && (auth->adduser || auth->deleteuser || auth->listuser)) {
         char url[128];
         snprintf(url, sizeof(url), "/admin/manageauth.xsl?id=%lu", auth->id);
         auth->management_url = (char*)xmlCharStrdup(url);
