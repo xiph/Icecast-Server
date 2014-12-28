@@ -39,22 +39,20 @@
 			</tbody>
 		</table>
 		<xsl:if test="authentication">
-			<table>
-				<ul>
-					<xsl:for-each select="authentication/role">
-						<li>
-							Role
-							<xsl:if test="@name">
-								<xsl:value-of select="@name" />
-							</xsl:if>
-							of type <xsl:value-of select="@type" />:
-							<xsl:if test="@management-url">
-								<a href="{@management-url}">Manage Authentication</a>
-							</xsl:if>
-						</li>
-					</xsl:for-each>
-				</ul>
-			</table>
+			<ul>
+				<xsl:for-each select="authentication/role">
+					<li>
+						Role
+						<xsl:if test="@name">
+							<xsl:value-of select="@name" />
+						</xsl:if>
+						of type <xsl:value-of select="@type" />:
+						<xsl:if test="@management-url">
+							<a href="{@management-url}">Manage Authentication</a>
+						</xsl:if>
+					</li>
+				</xsl:for-each>
+			</ul>
 		</xsl:if>
 	</div>
 	<!--end global server stats-->
