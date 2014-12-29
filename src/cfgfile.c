@@ -940,7 +940,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy *mount, xmlNodePtr 
              auth_release(auth);
          }
 
-         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, "source,put", NULL, 0, NULL);
+         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL, NULL, "get,head,post", NULL, 0, NULL);
      } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
          /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemans take care and watch your children! */
          /* Stuff that was of help:
