@@ -2,6 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+webdir = $(pkgdatadir)/web
 otherwebdir = $(webdir)/assets/font
 
 otherweb_DATA = FiraMono-Bold.eot FiraMono-Regular.eot \

@@ -2,6 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+webdir = $(pkgdatadir)/web
 otherwebdir = $(webdir)/assets/css
 
 otherweb_DATA = style.css

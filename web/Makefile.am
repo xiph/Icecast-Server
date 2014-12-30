@@ -5,7 +5,7 @@ AUTOMAKE_OPTIONS = foreign
 SUBDIRS = assets
 
 webdir = $(pkgdatadir)/web
-dist_web_DATA = status.xsl \
+web_DATA =      status.xsl \
                 favicon.ico \
                 icecast.png \
                 style.css \
@@ -15,3 +15,5 @@ dist_web_DATA = status.xsl \
                 key.png \
                 status-json.xsl \
                 xml2json.xslt
+
+EXTRA_DIST = $(web_DATA)

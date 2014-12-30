@@ -2,6 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+admindir = $(pkgdatadir)/admin
 otheradmindir = $(admindir)/includes
 otheradmin_DATA = footer.xsl head.xsl header.xsl mountnav.xsl
 
