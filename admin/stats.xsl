@@ -101,7 +101,7 @@
 									</tr>
 								</thead>
 								<tbody>
-									<xsl:for-each select="*[not(self::metadata) and not(self::authentication)]">
+									<xsl:for-each select="*[not(self::metadata) and not(self::authentication) and not(self::authenticator)]">
 										<tr>
 											<td><xsl:value-of select="name()" /></td>
 											<td><xsl:value-of select="text()" /></td>
