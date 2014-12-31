@@ -16,116 +16,128 @@
 
     <div class="section">
       
-      <h2>Icecast 2.4.1 Docs &mdash; Changes</h2>
+      <h2>Icecast 2.4.99.1 Docs &mdash; Changes</h2>
       
-<div id="v2.4.1" class="article">
-  <h3 id="version-241">Version 2.4.1</h3>
-
-  <h4 id="fixes">Fixes</h4>
-
+      
+<div id="v2.4.99.1" class="article">
+  <h3 id="version-24991">Version 2.4.99.1</h3>
+  <!-- FIXME -->
   <ul>
-    <li>Fixed cross-corruption of file descriptors by on-connect/on-disconnect scripts, specifically STDIN, STDOUT and STDERRR vs TCP connections.
-      <ul>
-        <li>We actually close not just 0, 1 and 2, but the first 1024 FDs, which seems common trade-off practice, but still not ideal. A more thorough fix will need platform specific logic and significant work.</li>
-        <li>The STDIN/OUT/ERR problem is fixed reliably, but other problems could occur if both the script and the server use FDs &gt;1024 at the same time</li>
-        <li>This is now reasonably safe, but care should be exercised nevertheless. </li>
-      </ul>
-    </li>
-    <li>Disabled SSLv3 and SSL compression explicitly to improve security</li>
-    <li>Updated the default ciphers to be more secure</li>
-    <li>Fixed JSON status API problems
-      <ul>
-        <li>Put the XSLT last item check into every filtered tag.</li>
-        <li>This way we shouldn’t run into problems of this type anymore.</li>
-        <li>Also it should be easier to customize the XSLT this way, if someone wants to filter differently.</li>
-      </ul>
-    </li>
-    <li>Fixed <code>&lt;auth&gt;</code> in <code>&lt;mount type="default"&gt;</code> to work properly.</li>
-    <li>Fixed listener connection duration logging in access.log. Regression was introduced for only some platforms by an earlier security fix.</li>
-    <li>Fixed time zone reporting in _iso8601 fields on Windows.</li>
-    <li>added warnings on empty and default values of <code>&lt;fileserve&gt;</code>, <code>&lt;hostname&gt;</code>, <code>&lt;location&gt;</code>, <code>&lt;admin&gt;</code> and <code>&lt;server-id&gt;</code></li>
-    <li>send errorlog (loglevel WARN) to stderr prior to opening logfiles.</li>
-    <li>Fixed handling of empty strings in config file. Now empty strings are handled in: accesslog, errorlog, logdir, webroot, adminroot and hopefully all kinds of port.</li>
-    <li>Be more verbose in case of fileserve off. People disable fileserve and then wonder why the web interface CSS breaks.</li>
-    <li>More details in log messages
-      <ul>
-        <li>Add source IP adress to startup and source exit logging</li>
-        <li>Add mountpoint to some log lines</li>
-      </ul>
-    </li>
-    <li>Updated the config file to avoid common pitfalls and make some things more obvious.</li>
-    <li>Fixed some compiler warnings</li>
-    <li>Fixed autogen.sh to work properly on Mac OS</li>
-    <li>Fixed JSON access by adding support for global and mount specific custom HTTP headers.
-      <ul>
-        <li>The purpose is to fix JSON access from browsers, by supporting basic CORS use cases. This is both important for some HTML5 <code>&lt;audio&gt;</code> or <code>&lt;video&gt;</code> use cases and accessing the JSON status API.</li>
-        <li>The default icecast config contains the very permissive global header: &lt;header name="Access-Control-Allow-Origin" value="*" /&gt;</li>
-      </ul>
-    </li>
+    <li>Roles</li>
+    <li>Events</li>
+    <li>Stuff</li>
+    <li>Read ChangeLog for details</li>
   </ul>
 
-  <h4 id="known-issues">Known issues</h4>
+  <div id="v2.4.1" class="article">
+    <h3 id="version-241">Version 2.4.1</h3>
 
-  <ul>
-    <li>HTTP PUT implementation currently doesn’t support chunked encoding yet.</li>
-    <li>HTTP PUT with “Expect: 100-Continue” receives first a “100” and soon after a “200”, instead of the “200” at the end of transmission.</li>
-    <li>Caution should be exercised when using <code>&lt;on-connect&gt;</code> or <code>&lt;on-disconnect&gt;</code>, as there is a small chance of stream file descriptors being mixed up with script file descriptors, if the FD numbers go above 1024. This will be further addressed in the next Icecast release.</li>
-    <li>Don’t use comments inside <code>&lt;http-headers&gt;</code> as it will prevent processing of further <code>&lt;header&gt;</code> tags.</li>
-  </ul>
-</div>
+    <h4 id="fixes">Fixes</h4>
 
-<div id="v2.4.0" class="article">
-  <h3 id="version-240">Version 2.4.0</h3>
+    <ul>
+      <li>Fixed cross-corruption of file descriptors by on-connect/on-disconnect scripts, specifically STDIN, STDOUT and STDERRR vs TCP connections.
+        <ul>
+          <li>We actually close not just 0, 1 and 2, but the first 1024 FDs, which seems common trade-off practice, but still not ideal. A more thorough fix will need platform specific logic and significant work.</li>
+          <li>The STDIN/OUT/ERR problem is fixed reliably, but other problems could occur if both the script and the server use FDs &gt;1024 at the same time</li>
+          <li>This is now reasonably safe, but care should be exercised nevertheless. </li>
+        </ul>
+      </li>
+      <li>Disabled SSLv3 and SSL compression explicitly to improve security</li>
+      <li>Updated the default ciphers to be more secure</li>
+      <li>Fixed JSON status API problems
+        <ul>
+          <li>Put the XSLT last item check into every filtered tag.</li>
+          <li>This way we shouldn’t run into problems of this type anymore.</li>
+          <li>Also it should be easier to customize the XSLT this way, if someone wants to filter differently.</li>
+        </ul>
+      </li>
+      <li>Fixed <code>&lt;auth&gt;</code> in <code>&lt;mount type="default"&gt;</code> to work properly.</li>
+      <li>Fixed listener connection duration logging in access.log. Regression was introduced for only some platforms by an earlier security fix.</li>
+      <li>Fixed time zone reporting in _iso8601 fields on Windows.</li>
+      <li>added warnings on empty and default values of <code>&lt;fileserve&gt;</code>, <code>&lt;hostname&gt;</code>, <code>&lt;location&gt;</code>, <code>&lt;admin&gt;</code> and <code>&lt;server-id&gt;</code></li>
+      <li>send errorlog (loglevel WARN) to stderr prior to opening logfiles.</li>
+      <li>Fixed handling of empty strings in config file. Now empty strings are handled in: accesslog, errorlog, logdir, webroot, adminroot and hopefully all kinds of port.</li>
+      <li>Be more verbose in case of fileserve off. People disable fileserve and then wonder why the web interface CSS breaks.</li>
+      <li>More details in log messages
+        <ul>
+          <li>Add source IP adress to startup and source exit logging</li>
+          <li>Add mountpoint to some log lines</li>
+        </ul>
+      </li>
+      <li>Updated the config file to avoid common pitfalls and make some things more obvious.</li>
+      <li>Fixed some compiler warnings</li>
+      <li>Fixed autogen.sh to work properly on Mac OS</li>
+      <li>Fixed JSON access by adding support for global and mount specific custom HTTP headers.
+        <ul>
+          <li>The purpose is to fix JSON access from browsers, by supporting basic CORS use cases. This is both important for some HTML5 <code>&lt;audio&gt;</code> or <code>&lt;video&gt;</code> use cases and accessing the JSON status API.</li>
+          <li>The default icecast config contains the very permissive global header: &lt;header name="Access-Control-Allow-Origin" value="*" /&gt;</li>
+        </ul>
+      </li>
+    </ul>
 
-  <h4 id="new-features">New Features</h4>
+    <h4 id="known-issues">Known issues</h4>
 
-  <ul>
-    <li>Support for Ogg Opus streams</li>
-    <li>Support for WebM streams</li>
-    <li>HTTP 1.1 PUT support for source connections. Deprecating SOURCE method</li>
-    <li><em>Default mount</em><br />
+    <ul>
+      <li>HTTP PUT implementation currently doesn’t support chunked encoding yet.</li>
+      <li>HTTP PUT with “Expect: 100-Continue” receives first a “100” and soon after a “200”, instead of the “200” at the end of transmission.</li>
+      <li>Caution should be exercised when using <code>&lt;on-connect&gt;</code> or <code>&lt;on-disconnect&gt;</code>, as there is a small chance of stream file descriptors being mixed up with script file descriptors, if the FD numbers go above 1024. This will be further addressed in the next Icecast release.</li>
+      <li>Don’t use comments inside <code>&lt;http-headers&gt;</code> as it will prevent processing of further <code>&lt;header&gt;</code> tags.</li>
+    </ul>
+  </div>
+
+  <div id="v2.4.0" class="article">
+    <h3 id="version-240">Version 2.4.0</h3>
+
+    <h4 id="new-features">New Features</h4>
+
+    <ul>
+      <li>Support for Ogg Opus streams</li>
+      <li>Support for WebM streams</li>
+      <li>HTTP 1.1 PUT support for source connections. Deprecating SOURCE method</li>
+      <li><em>Default mount</em><br />
 This allows you to define a global set of defaults for ALL mounts. This way you can use e.g. url-auth for sources and or listeners also for dynamically generated mounts.</li>
-    <li><em>Web interface redone</em>
-      <ul>
-        <li>Web output properly redone, credit to ePirat</li>
-        <li>Added <code>&lt;audio&gt;</code> element for supported audio streams</li>
-        <li>Now validates completely as XHTML1.0 strict</li>
-        <li>Also improves rendering on mobile devices</li>
-      </ul>
-    </li>
-    <li>Added basic JSON API (<code>/status-json.xsl</code>) based on a xml2json template by Doeke Zanstra (see <code>xml2json.xslt</code>). Output is roughly limited to data also visible through <code>status.xsl</code></li>
-    <li>Send charset in HTTP headers for everything, excluding file-serv and streams</li>
-    <li>Allow (standard strftime(3)) <code>%x</code> codes in <code>&lt;dump-file&gt;</code>. Disabled for Win32</li>
-    <li>Added <code>stream_start_iso8601</code>, <code>server_start_iso8601</code> to statitics. ISO8601 compliante timestamps for statistics. Should make usage in e.g. JSON much easier. Added as new variables to avoid breaking backwards compatibility</li>
-    <li>Now compiles for Win32 using mingw</li>
-    <li>Added options <code>headers</code> and <code>header_prefix</code> to URL based listener auth</li>
-    <li>Updated <code>listener_remove</code> handler, added <code>ip=</code> and <code>agent=</code></li>
-    <li>Allow full URLs to be returned by the master server</li>
-  </ul>
+      <li><em>Web interface redone</em>
+        <ul>
+          <li>Web output properly redone, credit to ePirat</li>
+          <li>Added <code>&lt;audio&gt;</code> element for supported audio streams</li>
+          <li>Now validates completely as XHTML1.0 strict</li>
+          <li>Also improves rendering on mobile devices</li>
+        </ul>
+      </li>
+      <li>Added basic JSON API (<code>/status-json.xsl</code>) based on a xml2json template by Doeke Zanstra (see <code>xml2json.xslt</code>). Output is roughly limited to data also visible through <code>status.xsl</code></li>
+      <li>Send charset in HTTP headers for everything, excluding file-serv and streams</li>
+      <li>Allow (standard strftime(3)) <code>%x</code> codes in <code>&lt;dump-file&gt;</code>. Disabled for Win32</li>
+      <li>Added <code>stream_start_iso8601</code>, <code>server_start_iso8601</code> to statitics. ISO8601 compliante timestamps for statistics. Should make usage in e.g. JSON much easier. Added as new variables to avoid breaking backwards compatibility</li>
+      <li>Now compiles for Win32 using mingw</li>
+      <li>Added options <code>headers</code> and <code>header_prefix</code> to URL based listener auth</li>
+      <li>Updated <code>listener_remove</code> handler, added <code>ip=</code> and <code>agent=</code></li>
+      <li>Allow full URLs to be returned by the master server</li>
+    </ul>
 
-  <h4 id="fixes-1">Fixes</h4>
+    <h4 id="fixes-1">Fixes</h4>
 
-  <ul>
-    <li><strong>Security fix</strong>: Override supplementary groups if is used</li>
-    <li>Fixes for some race conditions</li>
-    <li>Dropped debian packaging directory as debian use their own.</li>
-    <li>Send proper HTTP headers in responses to clients.</li>
-    <li>Corrected Content-Length: header in admin (raw) requests. Thanks to paluh for reporting.</li>
-    <li>Escape log entries in access log</li>
-    <li>Fixed a memory leak. Lost headers of stream because of wrong ref counter in associated refbuf objects.</li>
-    <li>Avoid memory leak in <code>_parse_mount()</code> when <code>type</code>-attribute is set</li>
-    <li>Updated web interface to be XHTML compliant.</li>
-    <li>Removed <code>status2.xsl</code> from release. It was only a broken example file anyway.</li>
-  </ul>
+    <ul>
+      <li><strong>Security fix</strong>: Override supplementary groups if is used</li>
+      <li>Fixes for some race conditions</li>
+      <li>Dropped debian packaging directory as debian use their own.</li>
+      <li>Send proper HTTP headers in responses to clients.</li>
+      <li>Corrected Content-Length: header in admin (raw) requests. Thanks to paluh for reporting.</li>
+      <li>Escape log entries in access log</li>
+      <li>Fixed a memory leak. Lost headers of stream because of wrong ref counter in associated refbuf objects.</li>
+      <li>Avoid memory leak in <code>_parse_mount()</code> when <code>type</code>-attribute is set</li>
+      <li>Updated web interface to be XHTML compliant.</li>
+      <li>Removed <code>status2.xsl</code> from release. It was only a broken example file anyway.</li>
+    </ul>
 
-  <h4 id="known-issues-1">Known issues</h4>
+    <h4 id="known-issues-1">Known issues</h4>
 
-  <ul>
-    <li>Will crash if certain config tags are left empty</li>
-  </ul>
+    <ul>
+      <li>Will crash if certain config tags are left empty</li>
+    </ul>
+
+  </div>
 
 </div>
-
 
     </div>
 

@@ -14,9 +14,11 @@
       <h1><a href="#" title="Home page">Icecast</a> <span>documentation</span></h1>
     </div>
 
+
     <div class="section">
       
-      <h2>Icecast 2.4.1 Docs &mdash; Config File</h2>
+      <h2>Icecast 2.4.99.1 Docs &mdash; Config File</h2>
+      
       
 <div class="article">
   <h3 id="overview">Overview</h3>
@@ -27,6 +29,8 @@
     <li><a href="#authentication">Authentication</a></li>
     <li><a href="#yp">Stream Directory Settings</a></li>
     <li><a href="#misc">Misc Server settings</a></li>
+    <li><a href="#ports">TCP-Port settings</a></li>
+    <li><a href="#global-headers">Global HTTP Headers</a></li>
     <li><a href="#relay">Relay settings</a></li>
     <li><a href="#mountsettings">Mount Specific settings</a></li>
     <li><a href="#path">File path settings</a></li>
@@ -109,6 +113,7 @@ initial burst leading to the connection already exceeding the queue-size limit.<
 
 <div class="article">
   <h3 id="authentication">Authentication</h3>
+  <!-- FIXME -->
 
   <div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;authentication&gt;</span>
     <span class="nt">&lt;source-password&gt;</span>hackme<span class="nt">&lt;/source-password&gt;</span>
@@ -118,18 +123,38 @@ initial burst leading to the connection already exceeding the queue-size limit.<
     <span class="nt">&lt;admin-password&gt;</span>hackme<span class="nt">&lt;/admin-password&gt;</span>
 <span class="nt">&lt;/authentication&gt;</span></code></pre></div>
 
+  <!-- FIXME -->
   <p>This section contains all the usernames and passwords used for administration purposes or to connect sources and relays.</p>
 
+  <!-- FIXME -->
+  <dl>
+    <dt>role</dt>
+    <dd>contains role definitions</dd>
+  </dl>
+
+  <!-- FIXME -->
   <dl>
     <dt>source-password</dt>
     <dd>The unencrypted password used by sources to connect to Icecast. The default username for all 
 source connections is ‘source’ but this option allows to specify a default password. This and the
 username can be changed in the individual mount sections.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>relay-user</dt>
     <dd>Used in the master server as part of the authentication when a slave requests the list of streams
 to relay. The default username is <code>relay</code></dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>relay-password</dt>
     <dd>Used in the master server as part of the authentication when a slave requests the list of streams to relay.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>admin-user/admin-password</dt>
     <dd>The username/password used for all administration functions. This includes retrieving statistics, accessing the web-based
 administration screens, etc. A list of these functions can be found in the “Administration” section of the manual.</dd>
@@ -168,7 +193,7 @@ The value for this setting is provided by the owner of the Directory server.</dd
 <span class="nt">&lt;location&gt;</span>earth<span class="nt">&lt;/location&gt;</span>
 <span class="nt">&lt;admin&gt;</span>icemaster@localhost<span class="nt">&lt;/admin&gt;</span>
 <span class="nt">&lt;fileserve&gt;</span>1<span class="nt">&lt;/fileserve&gt;</span>
-<span class="nt">&lt;server-id&gt;</span>icecast 2.4.1<span class="nt">&lt;/server-id&gt;</span></code></pre></div>
+<span class="nt">&lt;server-id&gt;</span>icecast 2.5<span class="nt">&lt;/server-id&gt;</span></code></pre></div>
 
   <dl>
     <dt>hostname</dt>
@@ -200,7 +225,7 @@ setting, unless you have very good reasons and know what you are doing.</dd>
 
   <p>The following shows how you can specify the listening settings for the server.</p>
 
-  <h4 id="generic-port-setup">generic port setup</h4>
+  <h4 id="generic-port-setup">Generic port setup</h4>
 
   <p>The first shows an example of a common and simple way to define a listening socket:</p>
 
@@ -213,7 +238,7 @@ will listen on. Most will not need to use bind-address and often get confused by
 no need. Another possibility is to use an <code>&lt;ssl&gt;</code> boolean setting which informs Icecast that a secured
 connection is to be used. A common use for using a secure connection would be for admin page access.  </p>
 
-  <h4 id="backward-compatibility-with-shoutcast-source-clients">backward compatibility with Shoutcast source clients</h4>
+  <h4 id="backward-compatibility-with-shoutcast-source-clients">Backward compatibility with Shoutcast source clients</h4>
 
   <p>The following shows how we can extend a single listen-socket to work with Shoutcast style source clients.
 There are two issues shoutcast source clients have over icecast source clients, one is the lack of mountpoint
@@ -230,7 +255,7 @@ listening socket whose port number is always one higher than the port defined, t
 of which mountpoint the shoutcast source client on this socket will be using. Using this approach you can
 allow multiple shoutcast source clients to connect at the same time.  </p>
 
-  <h4 id="old-style-shoutcast-source-client-compatible-setup-deprecated">old style Shoutcast source client compatible setup (deprecated)</h4>
+  <h4 id="old-style-shoutcast-source-client-compatible-setup-deprecated">Old style Shoutcast source client compatible setup (deprecated)</h4>
 
   <p>The following is just to show the longer approach to defining shoutcast compatability.</p>
 
@@ -257,8 +282,7 @@ be required and often confuses people.</p>
     <dd>An optional IP address that can be used to bind to a specific network
 card. If not supplied, then it will bind to all interfaces.</dd>
     <dt>ssl</dt>
-    <dd>If set to 1 will enable HTTPS on this listen-socket. Icecast must have been compiled against openSSL to be able
-to do so.</dd>
+    <dd>If set to 1 will enable HTTPS on this listen-socket. Icecast must have been compiled against openSSL to be able to do so.</dd>
     <dt>shoutcast-mount</dt>
     <dd>An optional mountpoint setting to be used when shoutcast DSP compatible clients connect. The default global setting
 is <code>/stream</code> but can be overridden here to use an alternative name which may include an extension that some clients
@@ -296,7 +320,7 @@ of <code>8000</code> and it must not also be defined as <code>shoutcast-compat</
 
   <dl>
     <dt>http-headers</dt>
-    <dd>This element is placed anywhere inside the main section of the icecast config. It will contain <code>&lt;header&gt;</code> child elements, that specify the actual headers one by one.</dd>
+    <dd>This element is placed anywhere inside the main section of the Icecast config. It will contain <code>&lt;header&gt;</code> child elements, that specify the actual headers one by one.</dd>
     <dt>header</dt>
     <dd>This tag specifies the actual header to be sent to a HTTP client in response to every request.
 This tag can contain the following attributes:
@@ -310,7 +334,7 @@ This tag can contain the following attributes:
   </dl>
 
   <p>At the moment only global headers will be sent in case the HTTP status is not “200”. This is subject to change in the future.
-Avoid placing comments inside <code>&lt;http-headers&gt;</code> as, in this release, it will prevent icecast from parsing further <code>&lt;header&gt;</code> tags.</p>
+Avoid placing comments inside <code>&lt;http-headers&gt;</code> as, in this release, it will prevent Icecast from parsing further <code>&lt;header&gt;</code> tags.</p>
 
 </div>
 
@@ -421,6 +445,8 @@ limit bandwidth costs when no one is listening.</dd>
 <div class="article">
   <h3 id="mountsettings">Mount Specific Settings</h3>
 
+  <!-- FIXME -->
+
   <div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;mount</span> <span class="na">type=</span><span class="s">&quot;normal&quot;</span><span class="nt">&gt;</span>
     <span class="nt">&lt;mount-name&gt;</span>/example-complex.ogg<span class="nt">&lt;/mount-name&gt;</span>
     <span class="nt">&lt;username&gt;</span>othersource<span class="nt">&lt;/username&gt;</span>
@@ -445,7 +471,7 @@ limit bandwidth costs when no one is listening.</dd>
     <span class="nt">&lt;burst-size&gt;</span>65536<span class="nt">&lt;/burst-size&gt;</span>
     <span class="nt">&lt;mp3-metadata-interval&gt;</span>4096<span class="nt">&lt;/mp3-metadata-interval&gt;</span>
     <span class="nt">&lt;authentication</span> <span class="na">type=</span><span class="s">&quot;xxxxxx&quot;</span><span class="nt">&gt;</span>
-            <span class="c">&lt;!-- See listener authentiaction documentation --&gt;</span>
+            <span class="c">&lt;!-- See authentication documentation --&gt;</span>
     <span class="nt">&lt;/authentication&gt;</span>
     <span class="nt">&lt;http-headers&gt;</span>
             <span class="nt">&lt;header</span> <span class="na">name=</span><span class="s">&quot;Access-Control-Allow-Origin&quot;</span> <span class="na">value=</span><span class="s">&quot;*&quot;</span> <span class="nt">/&gt;</span>
@@ -477,11 +503,19 @@ corresponding to your mountpoint.</dd>
     <dt>mount-name</dt>
     <dd>The name of the mount point for which these settings apply.
 MUST NOT be used in case of mount type “default”.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>username</dt>
     <dd>An optional value which will set the username that a source must use to connect using this mountpoint.
 Do not set this value unless you are sure that the source clients connecting to the mount point can be
 configured to send a username other than <code>source</code>.<br />
 If this value is not present the default username is <code>source</code>.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>password</dt>
     <dd>An optional value which will set the password that a source must use to connect using this mountpoint.
 There is also a <a href="auth.html#stream-auth">URL based authentication method</a> for sources that can be used instead.</dd>
@@ -568,11 +602,15 @@ default is either the hardcoded server default or the value passed from a relay.
     <dt>hidden</dt>
     <dd>Enable this to prevent this mount from being shown on the xsl pages. This is mainly for cases where a local relay is configured
 and you do not want the source of the local relay to be shown.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>authentication</dt>
     <dd>This specifies that the named mount point will require listener (or source) authentication. Currently, we support a file-based
 authentication scheme (<code>type=htpasswd</code>) and URL based authentication request forwarding. A mountpoint configured with an authenticator
 will display a red key next to the mount point name on the admin screens.<br />
-You can read more about listener authentication and URL based source authentication <a href="auth.html">here</a>.</dd>
+You can read more about authentication and URL based source authentication <a href="auth.html">here</a>.</dd>
     <dt>http-headers</dt>
     <dd>This element is placed anywhere inside the mount section of the icecast config. It will contain <code>&lt;header&gt;</code> child elements, that specify the actual HTTP headers one by one.</dd>
     <dt>header</dt>
@@ -618,7 +656,7 @@ Caution should be exercised as there is a small chance of stream file descriptor
 
   <dl>
     <dt>basedir</dt>
-    <dd>This path is used in conjunction with the chroot settings, and specified the base directory that is chrooted to when the server is started.<br />
+    <dd>This path is used in conjunction with the chroot settings, and specifies the base directory that is chrooted to when the server is started.<br />
 <em>This feature is not supported on Win32.</em></dd>
     <dt>logdir</dt>
     <dd>This path specifies the base directory used for logging. Both the <code>error.log</code> and <code>access.log</code> will be created relative to this directory.</dd>
@@ -640,6 +678,10 @@ The format of the file is simple, one IP per line.</dd>
     <dd>If specified, this points to the location of a file that contains a list of IP addressess that will be dropped immediately.
 This is mainly for problem clients when you have no access to any firewall configuration.<br />
 The format of the file is simple, one IP per line.</dd>
+  </dl>
+
+  <!-- FIXME -->
+  <dl>
     <dt>alias</dt>
     <dd>Aliases are used to provide a way to create multiple mountpoints that refer to the same mountpoint.<br />
 For example: <code>&lt;alias source="/foo" dest="/bar"&gt;</code></dd>
@@ -680,7 +722,7 @@ STDERR instead of a file.</p>
 this file can grow fairly large over time. Currently, there is no log-rotation implemented.</dd>
     <dt>playlistlog</dt>
     <dd>Into this file, a log of all metadata for each mountpoint will be written. The format of the logfile will most likely change over time
-as we narrow in on a standard format for this. Currently, the file is pipe delimited. This option is optional and can be removed entirely
+as we narrow in on a standard format for this. Currently, the file is pipe delimited. This is optional and can be removed entirely
 from the config file.</dd>
     <dt>logsize</dt>
     <dd>This value specifies (in Kbytes) the maxmimum size of any of the log files. When the logfile grows beyond this value, icecast will either
