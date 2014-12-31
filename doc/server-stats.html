@@ -16,7 +16,8 @@
 
     <div class="section">
       
-      <h2>Icecast 2.4.1 Docs &mdash; Server Statistics</h2>
+      <h2>Icecast 2.4.99.1 Docs &mdash; Server Statistics</h2>
+      
       
 <div class="article">
   <h3 id="overview">Overview</h3>
@@ -36,17 +37,22 @@ API and will change it, even completely, between versions!<br />
 <strong>The preferred ways are custom XSLT, JSON and raw XML.</strong></p>
 </div>
 
+<!-- FIXME -->
+<div class="article">
+  <h3 id="json">JSON API, machine readable data</h3>
+
+  <p>Since version 2.4.0 Icecast includes a basic JSON API (<code>/status-json.xsl</code>) based on a xml2json template by Doeke Zanstra
+(see <code>xml2json.xslt</code>). It exposes the same set of server statistics that are available through the web interface and
+should fulfil basic user needs. The intention is to not break backwards compatibility of this interface in the future, 
+still we recommend to design robust software that can deal with possible changes like addition or removal of variables.
+Also note that not all variables are available all the time and availability may change at runtime due to stream type, etc.</p>
+</div>
+
 <div class="article">
   <h3 id="xslt_advanced">Advanced machine readable data, XSLT generated</h3>
 
   <p>Icecast uses the very powerful libXSLT engine to transform its internal raw statistical data into custom tailored interfaces.
 Many people have written custom XSLT code that produces e.g. plain text “now playing”, XSPF, VCLT, munin interface data, etc.  </p>
-
-  <p>Since version 2.4.0 Icecast includes a basic JSON API (<code>/status-json.xsl</code>) based on a xml2json template by Doeke Zanstra
-(see <code>xml2json.xslt</code>). It exposes a basic set of server statistics that should fulfil basic user needs. The intention is
-to not break backwards compatibility of this interface in the future, still we recommend to design robust software that
-can deal with possible changes like addition or removal of variables.</p>
-
 </div>
 
 <div class="article">
@@ -54,6 +60,8 @@ can deal with possible changes like addition or removal of variables.</p>
 
   <p>This section contains information about the raw XML server statistics data available inside Icecast. An example
 stats XML tree will be shown and each element will be described. The following example stats tree will be used:  </p>
+
+  <!-- FIXME -->
 
   <div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;icestats&gt;</span>
 	<span class="nt">&lt;admin&gt;</span>icemaster@localhost<span class="nt">&lt;/admin&gt;</span>
@@ -65,7 +73,7 @@ stats XML tree will be shown and each element will be described. The following e
 	<span class="nt">&lt;listener_connections&gt;</span>90<span class="nt">&lt;/listener_connections&gt;</span>
 	<span class="nt">&lt;listeners&gt;</span>0<span class="nt">&lt;/listeners&gt;</span>
 	<span class="nt">&lt;location&gt;</span>Earth<span class="nt">&lt;/location&gt;</span>
-	<span class="nt">&lt;server_id&gt;</span>Icecast 2.4.0<span class="nt">&lt;/server_id&gt;</span>
+	<span class="nt">&lt;server_id&gt;</span>Icecast 2.5<span class="nt">&lt;/server_id&gt;</span>
 	<span class="nt">&lt;source_client_connections&gt;</span>164<span class="nt">&lt;/source_client_connections&gt;</span>
 	<span class="nt">&lt;source_relay_connections&gt;</span>0<span class="nt">&lt;/source_relay_connections&gt;</span>
 	<span class="nt">&lt;source_total_connections&gt;</span>164<span class="nt">&lt;/source_total_connections&gt;</span>
