@@ -1609,8 +1609,6 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-    if (con->host)
-        free(con->host);
 #ifdef HAVE_OPENSSL
     if (con->ssl) { SSL_shutdown(con->ssl); SSL_free(con->ssl); }
 #endif

@@ -49,8 +49,6 @@ typedef struct connection_tag
     int (*read)(struct connection_tag *handle, void *buf, size_t len);
 
     char *ip;
-    char *host;
-
 } connection_t;
 
 void connection_initialize(void);
