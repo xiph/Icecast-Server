@@ -409,15 +409,13 @@ char *util_bin_to_hex(unsigned char *data, int len)
 }
 
 /* This isn't efficient, but it doesn't need to be */
-char *util_base64_encode(const char *data)
-{
-    int len = strlen(data);
+char *util_base64_encode(const char *data, size_t len) {
     char *out = malloc(len*4/3 + 4);
     char *result = out;
-    int chunk;
+    size_t chunk;
 
     while(len > 0) {
-        chunk = (len >3)?3:len;
+        chunk = len > 3 ? 3 : len;
         *out++ = base64table[(*data & 0xFC)>>2];
         *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
         switch(chunk) {

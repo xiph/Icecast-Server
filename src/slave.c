@@ -176,7 +176,7 @@ static client_t *open_relay_connection (relay_server *relay)
 
         auth_header = malloc (len);
         snprintf (auth_header, len, "%s:%s", relay->username, relay->password);
-        esc_authorisation = util_base64_encode(auth_header);
+        esc_authorisation = util_base64_encode(auth_header, len);
         free(auth_header);
         len = strlen (esc_authorisation) + 24;
         auth_header = malloc (len);
@@ -637,7 +637,7 @@ static int update_from_master(ice_config_t *config)
         len = strlen(username) + strlen(password) + 2;
         authheader = malloc(len);
         snprintf (authheader, len, "%s:%s", username, password);
-        data = util_base64_encode(authheader);
+        data = util_base64_encode(authheader, len);
         sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
                 "Authorization: Basic %s\r\n"
