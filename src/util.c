@@ -240,11 +240,11 @@ char *util_get_path_from_normalised_uri(const char *uri) {
     return fullpath;
 }
 
-static char hexchars[16] = {
+static const char hexchars[16] = {
     '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
 };
 
-static char safechars[256] = {
+static const char safechars[256] = {
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -367,14 +367,14 @@ char *util_normalise_uri(const char *uri) {
     }
 }
 
-static char base64table[64] = {
+static const char base64table[64] = {
     'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
     'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
     'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
     'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'
 };
 
-static signed char base64decode[256] = {
+static const signed char base64decode[256] = {
      -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
      -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,
      -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, 62, -2, -2, -2, 63,
