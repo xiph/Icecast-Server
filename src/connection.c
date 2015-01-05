@@ -25,7 +25,6 @@
 #include <sys/poll.h>
 #endif
 #include <sys/types.h>
-#include <sys/stat.h>
 
 #ifndef _WIN32
 #include <sys/socket.h>
@@ -59,6 +58,7 @@
 #include "format_mp3.h"
 #include "admin.h"
 #include "auth.h"
+#include "matchfile.h"
 
 #define CATMODULE "connection"
 
@@ -91,14 +91,6 @@ typedef struct _thread_queue_tag {
     struct _thread_queue_tag *next;
 } thread_queue_t;
 
-typedef struct
-{
-    char *filename;
-    time_t file_recheck;
-    time_t file_mtime;
-    avl_tree *contents;
-} cache_file_contents;
-
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
@@ -111,27 +103,11 @@ static SSL_CTX *ssl_ctx;
 #endif
 
 /* filtering client connection based on IP */
-static cache_file_contents banned_ip, allowed_ip;
+static matchfile_t *banned_ip, *allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
-
-static int compare_ip (void *arg, void *a, void *b)
-{
-    const char *ip = (const char *)a;
-    const char *pattern = (const char *)b;
-
-    return strcmp (pattern, ip);
-}
-
-
-static int free_filtered_ip (void*x)
-{
-    free (x);
-    return 1;
-}
-
 
 void connection_initialize(void)
 {
@@ -147,12 +123,6 @@ void connection_initialize(void)
     _con_queue = NULL;
     _con_queue_tail = &_con_queue;
 
-    banned_ip.contents = NULL;
-    banned_ip.file_mtime = 0;
-
-    allowed_ip.contents = NULL;
-    allowed_ip.file_mtime = 0;
-
     _initialized = 1;
 }
 
@@ -164,9 +134,9 @@ void connection_shutdown(void)
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
 #endif
-    if (banned_ip.contents)  avl_tree_free (banned_ip.contents, free_filtered_ip);
-    if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_ip);
-
+    matchfile_release(banned_ip);
+    matchfile_release(allowed_ip);
+ 
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy (&_connection_lock);
@@ -305,86 +275,23 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
 }
 
 
-/* function to handle the re-populating of the avl tree containing IP addresses
- * for deciding whether a connection of an incoming request is to be dropped.
- */
-static void recheck_ip_file(cache_file_contents *cache)
-{
-    time_t now = time(NULL);
-    if (now >= cache->file_recheck) {
-        struct      stat file_stat;
-        FILE       *file             = NULL;
-        int         count            = 0;
-        avl_tree   *new_ips;
-        char        line[MAX_LINE_LEN];
-
-        cache->file_recheck = now + 10;
-        if (cache->filename == NULL) {
-            if (cache->contents) {
-                avl_tree_free (cache->contents, free_filtered_ip);
-                cache->contents = NULL;
-            }
-            return;
-        }
-        if (stat(cache->filename, &file_stat) < 0) {
-            ICECAST_LOG_WARN("Failed to check status of \"%s\": %s", cache->filename, strerror(errno));
-            return;
-        }
-        if (file_stat.st_mtime == cache->file_mtime)
-            return; /* common case, no update to file */
-
-        cache->file_mtime = file_stat.st_mtime;
-
-        file = fopen (cache->filename, "r");
-        if (file == NULL) {
-            ICECAST_LOG_WARN("Failed to open file \"%s\": %s", cache->filename, strerror (errno));
-            return;
-        }
-
-        new_ips = avl_tree_new(compare_ip, NULL);
-
-        while (get_line(file, line, MAX_LINE_LEN)) {
-            char *str;
-            if(!line[0] || line[0] == '#')
-                continue;
-            count++;
-            str = strdup (line);
-            if (str)
-                avl_insert(new_ips, str);
-        }
-        fclose (file);
-        ICECAST_LOG_INFO("%d entries read from file \"%s\"", count, cache->filename);
-
-        if (cache->contents)
-            avl_tree_free(cache->contents, free_filtered_ip);
-        cache->contents = new_ips;
-    }
-}
-
-
 /* return 0 if the passed ip address is not to be handled by icecast, non-zero otherwise */
-static int accept_ip_address(char *ip)
-{
-    void *result;
-
-    recheck_ip_file(&banned_ip);
-    recheck_ip_file(&allowed_ip);
-
-    if (banned_ip.contents) {
-        if (avl_get_by_key (banned_ip.contents, ip, &result) == 0) {
-            ICECAST_LOG_DEBUG("%s is banned", ip);
-            return 0;
-        }
+static int accept_ip_address(char *ip) {
+    if (matchfile_match(banned_ip, ip) > 0) {
+        ICECAST_LOG_DEBUG("%s is banned", ip);
+        return 0;
     }
-    if (allowed_ip.contents) {
-        if (avl_get_by_key (allowed_ip.contents, ip, &result) == 0) {
-            ICECAST_LOG_DEBUG("%s is allowed", ip);
-            return 1;
-        } else {
-            ICECAST_LOG_DEBUG("%s is not allowed", ip);
-            return 0;
-        }
+
+    if (matchfile_match(allowed_ip, ip) > 0) {
+        ICECAST_LOG_DEBUG("%s is allowed", ip);
+        return 1;
+    } else if (allowed_ip) {
+        /* we are not on allow list but there is one, so reject */
+        ICECAST_LOG_DEBUG("%s is not allowed", ip);
+        return 0;
     }
+
+    /* default: allow */
     return 1;
 }
 
@@ -1522,11 +1429,6 @@ int connection_setup_sockets (ice_config_t *config)
     int count = 0;
     listener_t *listener, **prev;
 
-    free (banned_ip.filename);
-    banned_ip.filename = NULL;
-    free (allowed_ip.filename);
-    allowed_ip.filename = NULL;
-
     global_lock();
     if (global.serversock) {
         for (; count < global.server_sockets; count++)
@@ -1540,11 +1442,17 @@ int connection_setup_sockets (ice_config_t *config)
     }
 
     /* setup the banned/allowed IP filenames from the xml */
-    if (config->banfile)
-        banned_ip.filename = strdup(config->banfile);
+    if (config->banfile) {
+        matchfile_release(banned_ip);
+        banned_ip = matchfile_new(config->banfile);
+        if (!banned_ip)
+            ICECAST_LOG_ERROR("Can not create ban object, bad!");
+    }
 
-    if (config->allowfile)
-        allowed_ip.filename = strdup(config->allowfile);
+    if (config->allowfile) {
+        matchfile_release(allowed_ip);
+        allowed_ip = matchfile_new(config->allowfile);
+    }
 
     count = 0;
     global.serversock = calloc(config->listen_sock_count, sizeof(sock_t));

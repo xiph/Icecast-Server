@@ -10,7 +10,7 @@ INCLUDES = -I./common/
 
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h curl.h slave.h source.h stats.h refbuf.h client.h playlist.h \
-    compat.h fserve.h xslt.h yp.h md5.h \
+    compat.h fserve.h xslt.h yp.h md5.h matchfile.h \
     event.h event_log.h event_exec.h event_url.h \
     acl.h auth.h \
     format.h format_ogg.h format_mp3.h format_ebml.h \
@@ -18,7 +18,7 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     format_kate.h format_skeleton.h format_opus.h
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
     util.c curl.c slave.c source.c stats.c refbuf.c client.c playlist.c \
-    xslt.c fserve.c admin.c md5.c \
+    xslt.c fserve.c admin.c md5.c matchfile.c \
     format.c format_ogg.c format_mp3.c format_midi.c format_flac.c format_ebml.c \
     format_kate.c format_skeleton.c format_opus.c \
     event.c event_log.c event_exec.c \
