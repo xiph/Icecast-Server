@@ -1337,7 +1337,8 @@ static void _handle_authentication_global(client_t *client, void *uri, auth_resu
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
-    if (result != AUTH_NOMATCH) {
+    if (result != AUTH_NOMATCH && 
+        !(result == AUTH_OK && client->admin_command != -1 && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
         _handle_authed_client(client, uri, result);
         return;
     }
@@ -1387,7 +1388,8 @@ static void _handle_authentication_mount_default(client_t *client, void *uri, au
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
-    if (result != AUTH_NOMATCH) {
+    if (result != AUTH_NOMATCH &&
+        !(result == AUTH_OK && client->admin_command != -1 && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
         _handle_authed_client(client, uri, result);
         return;
     }
