@@ -404,6 +404,7 @@ static void check_relay_stream (relay_server *relay)
             {
                 ice_config_t *config = config_get_config ();
                 mount_proxy *mountinfo = config_find_mount (config, relay->localmount, MOUNT_TYPE_NORMAL);
+                relay->source->on_demand = relay->on_demand;
                 if (mountinfo == NULL)
                     source_update_settings (config, relay->source, mountinfo);
                 config_release_config ();
