@@ -17,4 +17,7 @@ int          matchfile_addref(matchfile_t *file);
 int          matchfile_release(matchfile_t *file);
 int          matchfile_match(matchfile_t *file, char *key);
 
+/* returns 1 for allow or pass and 0 for deny */
+int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, char *key);
+
 #endif  /* __MATCHFILE_H__ */

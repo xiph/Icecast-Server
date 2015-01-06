@@ -158,3 +158,28 @@ int          matchfile_match(matchfile_t *file, char *key) {
 
     return avl_get_by_key(file->contents, (void*)key, &result) == 0 ? 1 : 0;
 }
+
+int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, char *key) {
+    if (!allow && !deny)
+        return 1;
+
+    if (!key)
+        return 0;
+
+    if (matchfile_match(deny, key) > 0) {
+        ICECAST_LOG_DEBUG("%s is banned", key);
+        return 0;
+    }
+
+    if (matchfile_match(allow, key) > 0) {
+        ICECAST_LOG_DEBUG("%s is allowed", key);
+        return 1;
+    } else if (allow) {
+        /* we are not on allow list but there is one, so reject */
+        ICECAST_LOG_DEBUG("%s is not allowed", key);
+        return 0;
+    }
+
+    /* default: allow */
+    return 1;
+}

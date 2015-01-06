@@ -274,28 +274,6 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
     return bytes;
 }
 
-
-/* return 0 if the passed ip address is not to be handled by icecast, non-zero otherwise */
-static int accept_ip_address(char *ip) {
-    if (matchfile_match(banned_ip, ip) > 0) {
-        ICECAST_LOG_DEBUG("%s is banned", ip);
-        return 0;
-    }
-
-    if (matchfile_match(allowed_ip, ip) > 0) {
-        ICECAST_LOG_DEBUG("%s is allowed", ip);
-        return 1;
-    } else if (allowed_ip) {
-        /* we are not on allow list but there is one, so reject */
-        ICECAST_LOG_DEBUG("%s is not allowed", ip);
-        return 0;
-    }
-
-    /* default: allow */
-    return 1;
-}
-
-
 connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 {
     connection_t *con;
@@ -429,8 +407,8 @@ static connection_t *_accept_connection(int duration)
         if (strncmp(ip, "::ffff:", 7) == 0)
             memmove(ip, ip+7, strlen (ip+7)+1);
 
-        if (accept_ip_address(ip))
-            con = connection_create(sock, serversock, ip);
+        if (matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
+            con = connection_create (sock, serversock, ip);
         if (con)
             return con;
         sock_close(sock);
