@@ -117,6 +117,13 @@ typedef struct auth_tag
 
 typedef struct auth_stack_tag auth_stack_t;
 
+/* prototypes for auths that do not need own header file */
+int auth_get_anonymous_auth (auth_t *auth, config_options_t *options);
+int auth_get_static_auth (auth_t *auth, config_options_t *options);
+int auth_get_url_auth (auth_t *authenticator, config_options_t *options);
+int auth_get_htpasswd_auth(auth_t *auth, config_options_t *options);
+
+/* prototypes for auth.c */
 void auth_initialise (void);
 void auth_shutdown (void);
 

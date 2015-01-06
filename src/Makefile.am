@@ -12,7 +12,7 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h slave.h source.h stats.h refbuf.h client.h \
     compat.h fserve.h xslt.h yp.h md5.h \
     event.h event_log.h event_exec.h event_url.h \
-    acl.h auth.h auth_htpasswd.h auth_url.h auth_anonymous.h auth_static.h \
+    acl.h auth.h \
     format.h format_ogg.h format_mp3.h format_ebml.h \
     format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
     format_kate.h format_skeleton.h format_opus.h

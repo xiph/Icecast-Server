@@ -25,10 +25,6 @@
 #include <stdio.h>
 
 #include "auth.h"
-#include "auth_htpasswd.h"
-#include "auth_url.h"
-#include "auth_anonymous.h"
-#include "auth_static.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
