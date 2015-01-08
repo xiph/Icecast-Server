@@ -69,6 +69,8 @@
 
 #define BUFSIZE 4096
 
+static volatile int __inited = 0;
+
 static fserve_t *active_list = NULL;
 static fserve_t *pending_list = NULL;
 
@@ -107,12 +109,17 @@ void fserve_initialize(void)
     fserve_recheck_mime_types (config);
     config_release_config();
 
+    __inited = 1;
+
     stats_event (NULL, "file_connections", "0");
     ICECAST_LOG_INFO("file serving started");
 }
 
 void fserve_shutdown(void)
 {
+    if (!__inited)
+        return;
+
     thread_spin_lock (&pending_lock);
     run_fserv = 0;
     while (pending_list)
