@@ -837,8 +837,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     /* general stats first */
     avlnode = avl_get_first(_stats.global_tree);
     
-while (avlnode)
-    {
+    while (avlnode) {
         stats_node_t *stat = avlnode->key;
         if (stat->hidden <=  hidden)
             xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
@@ -850,8 +849,7 @@ while (avlnode)
     __add_authstack(config->authstack, root);
     config_release_config();
 
-    while (avlnode)
-    {
+    while (avlnode) {
         stats_source_t *source = (stats_source_t *)avlnode->key;
 
         if (source->hidden <= hidden &&
