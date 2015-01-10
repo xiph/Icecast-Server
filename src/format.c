@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -96,7 +96,7 @@ int format_get_plugin(format_type_t type, source_t *source)
         break;
     }
     if (ret < 0)
-        stats_event (source->mount, "content-type", 
+        stats_event (source->mount, "content-type",
                 source->format->contenttype);
 
     return ret;
@@ -104,7 +104,7 @@ int format_get_plugin(format_type_t type, source_t *source)
 
 
 /* clients need to be start from somewhere in the queue so we will look for
- * a refbuf which has been previously marked as a sync point. 
+ * a refbuf which has been previously marked as a sync point.
  */
 static void find_client_start(source_t *source, client_t *client)
 {
@@ -259,7 +259,7 @@ int format_generic_write_to_client(client_t *client)
 
 
 /* This is the commonly used for source streams, here we just progress to
- * the next buffer in the queue if there is no more left to be written from 
+ * the next buffer in the queue if there is no more left to be written from
  * the existing buffer.
  */
 int format_advance_queue(source_t *source, client_t *client)
@@ -338,7 +338,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             if (bitrate_filtered == 0)
                 brfield = strstr(var->value, "bitrate=");
             if (brfield && sscanf (brfield, "bitrate=%u", &bitrate))
-            {           
+            {
                 bytes = snprintf (ptr, remaining, "icy-br:%u\r\n", bitrate);
                 next = 0;
                 bitrate_filtered = 1;

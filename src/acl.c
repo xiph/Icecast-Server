@@ -161,7 +161,7 @@ acl_t * acl_new_from_xml_node(xmlNodePtr node) {
             } else if (strcmp((const char*)prop->name, "deny-all") == 0) {
                 if (strstr(tmp, "*") || util_str_to_bool(tmp)) {
                     acl_set_method_str(ret, ACL_POLICY_DENY, "*");
-                    acl_set_admin_str(ret,  ACL_POLICY_DENY, "*");                    
+                    acl_set_admin_str(ret,  ACL_POLICY_DENY, "*");
                     acl_set_web_policy(ret, ACL_POLICY_DENY);
                 } else {
                     acl_set_method_str(ret, ACL_POLICY_ALLOW, "*");
@@ -307,7 +307,7 @@ int acl_set_max_connection_duration(acl_t * acl, time_t duration) {
 time_t acl_get_max_connection_duration(acl_t * acl) {
     if (!acl)
         return -1;
-    
+
     return acl->max_connection_duration;
 }
 
@@ -323,6 +323,6 @@ int acl_set_max_connections_per_user(acl_t * acl, size_t limit) {
 ssize_t acl_get_max_connections_per_user(acl_t * acl) {
     if (!acl)
         return -1;
-    
+
     return acl->max_connections_per_user;
 }

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -35,7 +35,7 @@
 #include "logging.h"
 
 
-typedef struct vorbis_codec_tag 
+typedef struct vorbis_codec_tag
 {
     vorbis_info    vi;
 
@@ -229,7 +229,7 @@ static void initiate_flush (vorbis_codec_t *source_vorbis)
 }
 
 
-/* process the vorbis audio packets. Here we just take each packet out 
+/* process the vorbis audio packets. Here we just take each packet out
  * and add them into the new stream, flushing after so many samples. We
  * also check if an new headers are requested after each processed page
  */
@@ -410,7 +410,7 @@ ogg_codec_t *initial_vorbis_page (format_plugin_t *plugin, ogg_page *page)
  * and schedule a new set of header pages
  */
 static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset)
-{   
+{
     ogg_state_t *ogg_info = plugin->_state;
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;

@@ -6,7 +6,7 @@
  * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
-/** 
+/**
  * Client authentication functions
  */
 

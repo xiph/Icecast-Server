@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -133,14 +133,14 @@ source_t *source_find_mount_raw(const char *mount)
     while (node) {
         source = (source_t *) node->key;
         cmp = strcmp(mount, source->mount);
-        if (cmp < 0) 
+        if (cmp < 0)
             node = node->left;
         else if (cmp > 0)
             node = node->right;
         else
             return source;
     }
-    
+
     /* didn't find it */
     return NULL;
 }
@@ -394,7 +394,7 @@ void source_move_clients(source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->pending_tree, client, NULL);
 
-            /* when switching a client to a different queue, be wary of the 
+            /* when switching a client to a different queue, be wary of the
              * refbuf it's referring to, if it's http headers then we need
              * to write them so don't release it.
              */
@@ -419,7 +419,7 @@ void source_move_clients(source_t *source, source_t *dest)
             client = (client_t *)(node->key);
             avl_delete (source->client_tree, client, NULL);
 
-            /* when switching a client to a different queue, be wary of the 
+            /* when switching a client to a different queue, be wary of the
              * refbuf it's referring to, if it's http headers then we need
              * to write them so don't release it.
              */
@@ -525,8 +525,8 @@ static refbuf_t *get_next_buffer (source_t *source)
 /* general send routine per listener.  The deletion_expected tells us whether
  * the last in the queue is about to disappear, so if this client is still
  * referring to it after writing then drop the client as it's fallen too far
- * behind 
- */ 
+ * behind
+ */
 static void send_to_listener (source_t *source, client_t *client, int deletion_expected)
 {
     int bytes;
@@ -772,8 +772,8 @@ void source_main (source_t *source)
         client_node = avl_get_first(source->pending_tree);
         while (client_node) {
 
-            if(source->max_listeners != -1 && 
-                    source->listeners >= (unsigned long)source->max_listeners) 
+            if(source->max_listeners != -1 &&
+                    source->listeners >= (unsigned long)source->max_listeners)
             {
                 /* The common case is caught in the main connection handler,
                  * this deals with rarer cases (mostly concerning fallbacks)
@@ -788,7 +788,7 @@ void source_main (source_t *source)
                         "mountpoint (%s).", source->mount);
                 continue;
             }
-            
+
             /* Otherwise, the client is accepted, add it */
             avl_insert(source->client_tree, client_node->key);
 
@@ -801,8 +801,8 @@ void source_main (source_t *source)
 
         /** clear pending tree **/
         while (avl_get_first(source->pending_tree)) {
-            avl_delete(source->pending_tree, 
-                    avl_get_first(source->pending_tree)->key, 
+            avl_delete(source->pending_tree,
+                    avl_get_first(source->pending_tree)->key,
                     source_remove_client);
         }
 
@@ -925,7 +925,7 @@ static int _free_client(void *key)
         client_send_error(client, 404, 0, "Mount unavailable");
     else
         client_destroy(client);
-    
+
     return 1;
 }
 

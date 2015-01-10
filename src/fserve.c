@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -452,7 +452,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *sourceuri = strdup (path);
         char *dot = strrchr(sourceuri, '.');
 
-        /* at least a couple of players (fb2k/winamp) are reported to send a 
+        /* at least a couple of players (fb2k/winamp) are reported to send a
          * host header but without the port number. So if we are missing the
          * port then lets treat it as if no host line was sent */
         if (host && strchr (host, ':') == NULL)
@@ -472,7 +472,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         {
             config = config_get_config();
             snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
-                    "http://%s:%d%s\r\n", 
+                    "http://%s:%d%s\r\n",
                     config->hostname, config->port,
                     sourceuri
                     );
@@ -481,8 +481,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
         else
         {
             snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
-                    "http://%s%s\r\n", 
-                    host, 
+                    "http://%s%s\r\n",
+                    host,
                     sourceuri
                     );
         }
@@ -630,7 +630,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 fail:
     fclose (file);
     httpclient->respcode = 416;
-    sock_write (httpclient->con->sock, 
+    sock_write (httpclient->con->sock,
             "HTTP/1.0 416 Request Range Not Satisfiable\r\n\r\n");
     client_destroy (httpclient);
     return -1;

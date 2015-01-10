@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -11,7 +11,7 @@
  * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
-/** 
+/**
  * Client authentication functions
  */
 
@@ -136,7 +136,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
     passwdfile = fopen (htpasswd->filename, "rb");
     if (passwdfile == NULL)
     {
-        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 htpasswd->filename, strerror(errno));
         return;
     }
@@ -240,7 +240,7 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     }
 
     if (state->filename)
-        ICECAST_LOG_INFO("Configured htpasswd authentication using password file \"%s\"", 
+        ICECAST_LOG_INFO("Configured htpasswd authentication using password file \"%s\"",
                 state->filename);
     else
         ICECAST_LOG_ERROR("No filename given in options for authenticator.");
@@ -278,7 +278,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     if (passwdfile == NULL)
     {
         thread_rwlock_unlock (&state->file_rwlock);
-        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 state->filename, strerror(errno));
         return AUTH_FAILED;
     }
@@ -312,7 +312,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     passwdfile = fopen(state->filename, "rb");
 
     if(passwdfile == NULL) {
-        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 state->filename, strerror(errno));
         thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_FAILED;
@@ -332,7 +332,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     tmp_passwdfile = fopen(tmpfile, "wb");
 
     if(tmp_passwdfile == NULL) {
-        ICECAST_LOG_WARN("Failed to open temporary authentication database \"%s\": %s", 
+        ICECAST_LOG_WARN("Failed to open temporary authentication database \"%s\": %s",
                 tmpfile, strerror(errno));
         fclose(passwdfile);
         free(tmpfile);
@@ -367,12 +367,12 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     /* Windows won't let us rename a file if the destination file
        exists...so, lets remove the original first */
     if (remove(state->filename) != 0) {
-        ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
+        ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s",
                 tmpfile, state->filename, strerror(errno));
     }
     else {
         if (rename(tmpfile, state->filename) != 0) {
-            ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s", 
+            ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s",
                     tmpfile, state->filename, strerror(errno));
         }
     }

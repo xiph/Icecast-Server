@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -107,7 +107,7 @@ int util_read_header(sock_t sock, char *buff, unsigned long len, int entire)
             if ((read_bytes = recv(sock, &c, 1, 0))) {
                 if (c != '\r') buff[pos++] = c;
                 if (entire) {
-                    if ((pos > 1) && (buff[pos - 1] == '\n' && 
+                    if ((pos > 1) && (buff[pos - 1] == '\n' &&
                                       buff[pos - 2] == '\n')) {
                         ret = 1;
                         break;
@@ -126,7 +126,7 @@ int util_read_header(sock_t sock, char *buff, unsigned long len, int entire)
     }
 
     if (ret) buff[pos] = '\0';
-    
+
     return ret;
 }
 
@@ -203,7 +203,7 @@ static int verify_path(char *path) {
             else
                 indotseq = 0;
         }
-        
+
         dir = 0;
         path++;
     }
@@ -266,7 +266,7 @@ char *util_url_escape (const char *src)
 {
     int len = strlen(src);
     /* Efficiency not a big concern here, keep the code simple/conservative */
-    char *dst = calloc(1, len*3 + 1); 
+    char *dst = calloc(1, len*3 + 1);
     unsigned char *source = (unsigned char *)src;
     int i,j=0;
 
@@ -793,8 +793,8 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
     return 1;
 }
 
-/* given a dictionary, URL-encode each val and 
-   stringify it in order as key=val&key=val... if val 
+/* given a dictionary, URL-encode each val and
+   stringify it in order as key=val&key=val... if val
    is set, or just key&key if val is NULL.
   TODO: Memory management needs overhaul. */
 char *util_dict_urlencode(util_dict *dict, char delim)

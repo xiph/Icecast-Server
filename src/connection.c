@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -136,7 +136,7 @@ static int free_filtered_ip (void*x)
 void connection_initialize(void)
 {
     if (_initialized) return;
-    
+
     thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
@@ -158,13 +158,13 @@ void connection_initialize(void)
 void connection_shutdown(void)
 {
     if (!_initialized) return;
-    
+
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
 #endif
     if (banned_ip.contents)  avl_tree_free (banned_ip.contents, free_filtered_ip);
     if (allowed_ip.contents) avl_tree_free (allowed_ip.contents, free_filtered_ip);
- 
+
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy (&_connection_lock);
@@ -223,13 +223,13 @@ static void get_ssl_certificate (ice_config_t *config)
             ICECAST_LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
             break;
         }
-        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) 
-        { 
-            ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list); 
-        } 
+        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0)
+        {
+            ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
+        }
         ssl_ok = 1;
         ICECAST_LOG_INFO("SSL certificate found at %s", config->cert_file);
-        ICECAST_LOG_INFO("SSL using ciphers %s", config->cipher_list); 
+        ICECAST_LOG_INFO("SSL using ciphers %s", config->cipher_list);
         return;
     } while (0);
     ICECAST_LOG_INFO("No SSL capability on any configured ports");
@@ -1337,7 +1337,7 @@ static void _handle_authentication_global(client_t *client, void *uri, auth_resu
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
-    if (result != AUTH_NOMATCH && 
+    if (result != AUTH_NOMATCH &&
         !(result == AUTH_OK && client->admin_command != -1 && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
         _handle_authed_client(client, uri, result);
         return;
@@ -1529,7 +1529,7 @@ static void _handle_connection(void)
                 }
 
                 _handle_authentication(client, uri);
-            } 
+            }
             else
             {
                 free (node);

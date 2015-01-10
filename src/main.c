@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>,
@@ -243,7 +243,7 @@ static int _start_logging(void)
 
     if (errorlog < 0) {
         buf[sizeof(buf)-1] = 0;
-        snprintf(buf, sizeof(buf)-1, 
+        snprintf(buf, sizeof(buf)-1,
                 "FATAL: could not open error logging (%s): %s",
                 log_to_stderr?"standard error":fn_error,
                 strerror(errno));
@@ -277,7 +277,7 @@ static int _start_logging(void)
         playlistlog = log_open(fn_playlist);
         if (playlistlog < 0) {
             buf[sizeof(buf)-1] = 0;
-            snprintf(buf, sizeof(buf)-1, 
+            snprintf(buf, sizeof(buf)-1,
                 "FATAL: could not open playlist logging (%s): %s",
                 log_to_stderr?"standard error":fn_playlist,
                 strerror(errno));
@@ -296,7 +296,7 @@ static int _start_logging(void)
     log_set_level(playlistlog, 4);
 
     if (errorlog >= 0 && accesslog >= 0) return 1;
-    
+
     return 0;
 }
 
@@ -403,7 +403,7 @@ static void _ch_root_uid_setup(void)
        else
            fprintf(stdout, "Changed root successfully to \"%s\".\n", conf->base_dir);
 
-   }   
+   }
 #endif
 
 #if HAVE_SETUID
@@ -514,7 +514,7 @@ int main(int argc, char **argv)
         config_release_config();
         if (ret < 0) {
             memset(pbuf, '\000', sizeof(pbuf));
-            snprintf(pbuf, sizeof(pbuf)-1, 
+            snprintf(pbuf, sizeof(pbuf)-1,
                 "FATAL: error parsing config file (%s)", filename);
             _fatal_error(pbuf);
             switch (ret) {
@@ -540,7 +540,7 @@ int main(int argc, char **argv)
         _print_usage();
         return 1;
     }
-    
+
     /* override config file options with commandline options */
     config_parse_cmdline(argc, argv);
 
@@ -558,7 +558,7 @@ int main(int argc, char **argv)
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */
 
-#ifdef HAVE_SETUID 
+#ifdef HAVE_SETUID
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
     if(!getuid()) /* Running as root! Don't allow this */

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -458,7 +458,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
 }
 
 
-static int create_ogg_client_data (source_t *source, client_t *client) 
+static int create_ogg_client_data (source_t *source, client_t *client)
 {
     struct ogg_client *client_data = calloc (1, sizeof (struct ogg_client));
     int ret = -1;

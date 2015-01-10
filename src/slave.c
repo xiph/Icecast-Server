@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -700,7 +700,7 @@ static int update_from_master(ice_config_t *config)
 
         thread_mutex_lock (&(config_locks()->relay_lock));
         cleanup_relays = update_relays (&global.master_relays, new_relays);
-        
+
         relay_check_streams (global.master_relays, cleanup_relays, 0);
         relay_check_streams (NULL, new_relays, 0);
 

@@ -4,7 +4,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -454,7 +454,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
 
 /* This does the actual reading, making sure the read data is packaged in
  * blocks of 1400 bytes (near the common MTU size). This is because many
- * incoming streams come in small packets which could waste a lot of 
+ * incoming streams come in small packets which could waste a lot of
  * bandwidth with many listeners due to headers and such like.
  */
 static int complete_read(source_t *source)
@@ -469,7 +469,7 @@ static int complete_read(source_t *source)
 
     if (source_mp3->read_data == NULL)
     {
-        source_mp3->read_data = refbuf_new (REFBUF_SIZE); 
+        source_mp3->read_data = refbuf_new (REFBUF_SIZE);
         source_mp3->read_count = 0;
     }
     buf = source_mp3->read_data->data + source_mp3->read_count;
@@ -596,7 +596,7 @@ static refbuf_t *mp3_get_filter_meta(source_t *source)
             source_mp3->build_metadata_offset += bytes;
             break;
         }
-        /* copy all bytes except the last one, that way we 
+        /* copy all bytes except the last one, that way we
          * know a null byte terminates the message */
         memcpy (source_mp3->build_metadata + source_mp3->build_metadata_offset,
                 src, metadata_remaining-1);

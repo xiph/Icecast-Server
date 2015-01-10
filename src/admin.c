@@ -264,13 +264,13 @@ xmlDocPtr admin_build_sourcelist (const char *mount)
 
             if (source->running)
             {
-                if (source->client) 
+                if (source->client)
                 {
                     snprintf (buf, sizeof(buf), "%lu",
                             (unsigned long)(now - source->con->con_time));
                     xmlNewChild (srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
                 }
-                xmlNewChild (srcnode, NULL, XMLSTR("content-type"), 
+                xmlNewChild (srcnode, NULL, XMLSTR("content-type"),
                         XMLSTR(source->format->contenttype));
             }
         }
@@ -330,7 +330,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
                 client_send_error(client, 500, 0, "Buffer reallocation failed.");
                 xmlFree(buff);
                 return;
-            } 
+            }
         }
 
         /* FIXME: in this section we hope no function will ever return -1 */
@@ -347,7 +347,7 @@ void admin_send_response (xmlDocPtr doc, client_t *client,
         int fullpath_xslt_template_len;
         ice_config_t *config = config_get_config();
 
-        fullpath_xslt_template_len = strlen (config->adminroot_dir) + 
+        fullpath_xslt_template_len = strlen (config->adminroot_dir) +
             strlen (xslt_template) + 2;
         fullpath_xslt_template = malloc(fullpath_xslt_template_len);
         snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s",
@@ -417,7 +417,7 @@ void admin_handle_request(client_t *client, const char *uri)
 
         if (source == NULL)
         {
-            ICECAST_LOG_WARN("Admin command %s on non-existent source %s", 
+            ICECAST_LOG_WARN("Admin command %s on non-existent source %s",
                     command_string, mount);
             avl_tree_unlock(global.source_tree);
             client_send_error(client, 400, 0, "Source does not exist");
@@ -441,7 +441,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 client_send_error(client, 400, 0, "illegal metadata call");
                 return;
             }
-            ICECAST_LOG_INFO("Received admin command %s on mount \"%s\"", 
+            ICECAST_LOG_INFO("Received admin command %s on mount \"%s\"",
                     command_string, mount);
             admin_handle_mount_request(client, source);
             avl_tree_unlock(global.source_tree);
@@ -611,7 +611,7 @@ static void command_move_clients(client_t *client, source_t *source,
     ICECAST_LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
         doc = admin_build_sourcelist(source->mount);
-        admin_send_response(doc, client, response, 
+        admin_send_response(doc, client, response,
              MOVECLIENTS_TRANSFORMED_REQUEST);
         xmlFreeDoc(doc);
         return;
@@ -651,7 +651,7 @@ static void command_move_clients(client_t *client, source_t *source,
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -731,7 +731,7 @@ static void command_show_listeners(client_t *client, source_t *source,
 
     admin_add_listeners_to_mount(source, srcnode, client->mode);
 
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         LISTCLIENTS_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
 }
@@ -908,7 +908,7 @@ static void command_manageauth(client_t *client, int response) {
         config_release_config();
         auth_release(auth);
 
-        admin_send_response(doc, client, response, 
+        admin_send_response(doc, client, response,
                 MANAGEAUTH_TRANSFORMED_REQUEST);
         free (message);
         xmlFreeDoc(doc);
@@ -978,7 +978,7 @@ static void command_kill_client(client_t *client, source_t *source,
         xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
         xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
     }
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -1030,7 +1030,7 @@ static void command_metadata(client_t *client, source_t *source,
     {
         xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("No such action"));
         xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
-        admin_send_response(doc, client, response, 
+        admin_send_response(doc, client, response,
             ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
         return;
@@ -1063,10 +1063,10 @@ static void command_metadata(client_t *client, source_t *source,
     }
     else
     {
-        xmlNewChild(node, NULL, XMLSTR("message"), 
+        xmlNewChild(node, NULL, XMLSTR("message"),
             XMLSTR("Mountpoint will not accept URL updates"));
         xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-        admin_send_response(doc, client, response, 
+        admin_send_response(doc, client, response,
             ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
         return;
@@ -1074,7 +1074,7 @@ static void command_metadata(client_t *client, source_t *source,
 
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
     xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -1108,7 +1108,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         source->format->set_tag (source->format, "title", value, NULL);
         source->format->set_tag (source->format, NULL, NULL, NULL);
 
-        ICECAST_LOG_DEBUG("Metadata on mountpoint %s changed to \"%s\"", 
+        ICECAST_LOG_DEBUG("Metadata on mountpoint %s changed to \"%s\"",
                 source->mount, value);
         html_success(client, "Metadata update successful");
     }
@@ -1145,7 +1145,7 @@ static void command_queue_reload(client_t *client, int response) {
 
     admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
-}       
+}
 
 
 static void command_list_mounts(client_t *client, int response)
@@ -1178,7 +1178,7 @@ static void command_list_mounts(client_t *client, int response)
         doc = admin_build_sourcelist(NULL);
         avl_tree_unlock (global.source_tree);
 
-        admin_send_response(doc, client, response, 
+        admin_send_response(doc, client, response,
             LISTMOUNTS_TRANSFORMED_REQUEST);
         xmlFreeDoc(doc);
     }
@@ -1196,7 +1196,7 @@ static void command_updatemetadata(client_t *client, source_t *source,
     xmlSetProp (srcnode, XMLSTR("mount"), XMLSTR(source->mount));
     xmlDocSetRootElement(doc, node);
 
-    admin_send_response(doc, client, response, 
+    admin_send_response(doc, client, response,
         UPDATEMETADATA_TRANSFORMED_REQUEST);
     xmlFreeDoc(doc);
 }

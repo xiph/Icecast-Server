@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -142,7 +142,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     struct stat file;
 
     if(stat(fn, &file)) {
-        ICECAST_LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn, 
+        ICECAST_LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn,
                 strerror(errno));
         return NULL;
     }
@@ -159,7 +159,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                 if(file.st_mtime > cache[i].last_modified)
                 {
                     xsltFreeStylesheet(cache[i].stylesheet);
-                    
+
                     cache[i].last_modified = file.st_mtime;
                     cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
                     cache[i].cache_age = time(NULL);

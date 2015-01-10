@@ -124,11 +124,11 @@ static int send_ebml_header(client_t *client)
     int len = EBML_SLICE_SIZE;
     int ret;
 
-    if (ebml_client_data->header->len - ebml_client_data->header_pos < len) 
+    if (ebml_client_data->header->len - ebml_client_data->header_pos < len)
     {
         len = ebml_client_data->header->len - ebml_client_data->header_pos;
     }
-    ret = client_send_bytes (client, 
+    ret = client_send_bytes (client,
                              ebml_client_data->header->data + ebml_client_data->header_pos,
                              len);
 
@@ -259,7 +259,7 @@ static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
     if (ebml_source_state->file_headers_written == 0)
     {
         if (fwrite (ebml_source_state->header->data, 1,
-                    ebml_source_state->header->len, 
+                    ebml_source_state->header->len,
                     source->dumpfile) != ebml_source_state->header->len)
             ebml_write_buf_to_file_fail(source);
         else
@@ -336,7 +336,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len)
     if (len < 1)
         return 0;
 
-    if (ebml->header_read == 1) 
+    if (ebml->header_read == 1)
     {
         if (ebml->cluster_start > 0)
             read_space = ebml->cluster_start;
@@ -393,13 +393,13 @@ static int ebml_last_was_sync(ebml_t *ebml)
         ebml->cluster_start -= 1;
         return 0;
     }
-  
+
     if (ebml->cluster_start == -1)
     {
         ebml->cluster_start -= 1;
         return 1;
     }
-    
+
     return 0;
 
 }
@@ -425,11 +425,11 @@ static int ebml_wrote(ebml_t *ebml, int len)
             return -1;
         }
 
-/* 
-        ICECAST_LOG_DEBUG("EBML: Adding to header, ofset is %d size is %d adding %d", 
+/*
+        ICECAST_LOG_DEBUG("EBML: Adding to header, ofset is %d size is %d adding %d",
                           ebml->header_size, ebml->header_position, len);
 */
-        
+
         memcpy(ebml->header + ebml->header_position, ebml->input_buffer, len);
         ebml->header_position += len;
     }
@@ -437,7 +437,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
     {
         memcpy(ebml->buffer + ebml->position, ebml->input_buffer, len);
     }
-    
+
     for (b = 0; b < len - 4; b++)
     {
         if (!memcmp(ebml->input_buffer + b, ebml->cluster_id, 4))
@@ -445,7 +445,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
 /*
             ICECAST_LOG_DEBUG("EBML: found cluster");
 */
-        
+
             if (ebml->header_size == 0)
             {
                 ebml->header_size = ebml->header_position - len + b;

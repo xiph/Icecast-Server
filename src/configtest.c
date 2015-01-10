@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -24,7 +24,7 @@ int main(void)
     ice_config_t *config;
 
     config_initialize();
-    
+
     config_parse_file("icecast.xml");
 
     config = config_get_config_unlocked();
@@ -54,7 +54,7 @@ void _dump_config(ice_config_t *config)
     while (node) {
         printf("directory.touch_interval = %d\n", node->touch_interval);
         printf("directory.host = %s\n", node->host);
-        
+
         node = node->next;
     }
 

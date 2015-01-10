@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -35,7 +35,7 @@
 #define snprintf _snprintf
 #endif
 
-#define CATMODULE "yp" 
+#define CATMODULE "yp"
 
 struct yp_server
 {
@@ -223,7 +223,7 @@ void yp_recheck_config (ice_config_t *config)
     client_limit = config->client_limit;
     free ((char*)server_version);
     server_version = strdup (config->server_id);
-    /* for each yp url in config, check to see if one exists 
+    /* for each yp url in config, check to see if one exists
        if not, then add it. */
     for (i=0 ; i < config->num_yp_directories; i++)
     {

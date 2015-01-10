@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -193,7 +193,7 @@ void stats_shutdown(void)
 stats_t *stats_get_stats(void)
 {
     /* lock global stats
-     
+
      copy stats
 
      unlock global stats
@@ -378,14 +378,14 @@ static stats_node_t *_find_node(avl_tree *stats_tree, const char *name)
     while (node) {
         stats = (stats_node_t *) node->key;
         cmp = strcmp(name, stats->name);
-        if (cmp < 0) 
+        if (cmp < 0)
             node = node->left;
         else if (cmp > 0)
             node = node->right;
         else
             return stats;
     }
-    
+
     /* didn't find it */
     return NULL;
 }
@@ -419,7 +419,7 @@ static stats_source_t *_find_source(avl_tree *source_tree, const char *source)
 static stats_event_t *_copy_event(stats_event_t *event)
 {
     stats_event_t *copy = (stats_event_t *)calloc(1, sizeof(stats_event_t));
-    if (event->source) 
+    if (event->source)
         copy->source = (char *)strdup(event->source);
     else
         copy->source = NULL;
@@ -708,7 +708,7 @@ static void *_stats_thread(void *arg)
                 process_global_event (event);
             else
                 process_source_event (event);
-            
+
             /* now we have an event that's been processed into the running stats */
             /* this event should get copied to event listeners' queues */
             listener = (event_listener_t *)_event_listeners;
@@ -759,7 +759,7 @@ static void _unregister_listener(event_listener_t *listener)
 static stats_event_t *_make_event_from_node(stats_node_t *node, char *source)
 {
     stats_event_t *event = (stats_event_t *)malloc(sizeof(stats_event_t));
-    
+
     if (source != NULL)
         event->source = (char *)strdup(source);
     else
@@ -836,7 +836,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
     avlnode = avl_get_first(_stats.global_tree);
-    
+
     while (avlnode) {
         stats_node_t *stat = avlnode->key;
         if (stat->hidden <=  hidden)
@@ -896,7 +896,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 
 
 /* factoring out code for stats loops
-** this function copies all stats to queue, and registers 
+** this function copies all stats to queue, and registers
 ** the queue for all new events atomically.
 ** note: mutex must already be created!
 */
@@ -931,7 +931,7 @@ static void _register_listener (event_listener_t *listener)
 
             node2 = avl_get_next(node2);
         }
-        
+
         node = avl_get_next(node);
     }
 
@@ -1092,7 +1092,7 @@ static int _free_stats(void *key)
     free(node->value);
     free(node->name);
     free(node);
-    
+
     return 1;
 }
 
