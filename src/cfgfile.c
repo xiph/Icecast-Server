@@ -1080,17 +1080,17 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     tmp = (char *)xmlGetProp(node, XMLSTR("type"));
     if (tmp) {
         if (strcmp(tmp, "normal") == 0) {
-	    mount->mounttype = MOUNT_TYPE_NORMAL;
-	}
-	else if (strcmp(tmp, "default") == 0) {
-	    mount->mounttype = MOUNT_TYPE_DEFAULT;
-	}
-	else {
-	    ICECAST_LOG_WARN("Unknown mountpoint type: %s", tmp);
+            mount->mounttype = MOUNT_TYPE_NORMAL;
+        }
+        else if (strcmp(tmp, "default") == 0) {
+            mount->mounttype = MOUNT_TYPE_DEFAULT;
+        }
+        else {
+            ICECAST_LOG_WARN("Unknown mountpoint type: %s", tmp);
             config_clear_mount (mount);
             return;
-	}
-	xmlFree(tmp);
+        }
+        xmlFree(tmp);
     }
 
     node = node->xmlChildrenNode;
@@ -1281,7 +1281,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
     }
     else if (mount->mountname != NULL && mount->mounttype == MOUNT_TYPE_DEFAULT)
     {
-    	ICECAST_LOG_WARN("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
+        ICECAST_LOG_WARN("Default mount %s has mount-name set. This is not supported. Behavior may not be consistent.", mount->mountname);
     }
 
     while (authstack) {
@@ -1364,9 +1364,9 @@ static void _parse_http_headers(xmlDocPtr doc, xmlNodePtr node, ice_config_http_
     } while ((node = node->next));
     /* in case we used break we may need to clean those up */
     if (name)
-	xmlFree(name);
+        xmlFree(name);
     if (value)
-	xmlFree(value);
+        xmlFree(value);
 }
 
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
@@ -1920,54 +1920,54 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src) {
     ice_config_http_header_t **http_header_tail;
 
     if (!dst || !src)
-    	return;
+        return;
 
     if (!dst->dumpfile)
-    	dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
+        dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
     if (!dst->intro_filename)
-    	dst->intro_filename = (char*)xmlStrdup((xmlChar*)src->intro_filename);
+        dst->intro_filename = (char*)xmlStrdup((xmlChar*)src->intro_filename);
     if (!dst->fallback_when_full)
-    	dst->fallback_when_full = src->fallback_when_full;
+        dst->fallback_when_full = src->fallback_when_full;
     if (dst->max_listeners == -1)
-    	dst->max_listeners = src->max_listeners;
+        dst->max_listeners = src->max_listeners;
     if (!dst->fallback_mount)
-    	dst->fallback_mount = (char*)xmlStrdup((xmlChar*)src->fallback_mount);
+        dst->fallback_mount = (char*)xmlStrdup((xmlChar*)src->fallback_mount);
     if (!dst->fallback_override)
-    	dst->fallback_override = src->fallback_override;
+        dst->fallback_override = src->fallback_override;
     if (!dst->no_mount)
-    	dst->no_mount = src->no_mount;
+        dst->no_mount = src->no_mount;
     if (dst->burst_size == -1)
-    	dst->burst_size = src->burst_size;
+        dst->burst_size = src->burst_size;
     if (!dst->queue_size_limit)
-    	dst->queue_size_limit = src->queue_size_limit;
+        dst->queue_size_limit = src->queue_size_limit;
     if (!dst->hidden)
-    	dst->hidden = src->hidden;
+        dst->hidden = src->hidden;
     if (!dst->source_timeout)
-    	dst->source_timeout = src->source_timeout;
+        dst->source_timeout = src->source_timeout;
     if (!dst->charset)
-    	dst->charset = (char*)xmlStrdup((xmlChar*)src->charset);
+        dst->charset = (char*)xmlStrdup((xmlChar*)src->charset);
     if (dst->mp3_meta_interval == -1)
-    	dst->mp3_meta_interval = src->mp3_meta_interval;
+        dst->mp3_meta_interval = src->mp3_meta_interval;
     if (!dst->cluster_password)
-    	dst->cluster_password = (char*)xmlStrdup((xmlChar*)src->cluster_password);
+        dst->cluster_password = (char*)xmlStrdup((xmlChar*)src->cluster_password);
     if (!dst->max_listener_duration)
-    	dst->max_listener_duration = src->max_listener_duration;
+        dst->max_listener_duration = src->max_listener_duration;
     if (!dst->stream_name)
-    	dst->stream_name = (char*)xmlStrdup((xmlChar*)src->stream_name);
+        dst->stream_name = (char*)xmlStrdup((xmlChar*)src->stream_name);
     if (!dst->stream_description)
-    	dst->stream_description = (char*)xmlStrdup((xmlChar*)src->stream_description);
+        dst->stream_description = (char*)xmlStrdup((xmlChar*)src->stream_description);
     if (!dst->stream_url)
-    	dst->stream_url = (char*)xmlStrdup((xmlChar*)src->stream_url);
+        dst->stream_url = (char*)xmlStrdup((xmlChar*)src->stream_url);
     if (!dst->stream_genre)
-    	dst->stream_genre = (char*)xmlStrdup((xmlChar*)src->stream_genre);
+        dst->stream_genre = (char*)xmlStrdup((xmlChar*)src->stream_genre);
     if (!dst->bitrate)
-    	dst->bitrate = (char*)xmlStrdup((xmlChar*)src->bitrate);
+        dst->bitrate = (char*)xmlStrdup((xmlChar*)src->bitrate);
     if (!dst->type)
-    	dst->type = (char*)xmlStrdup((xmlChar*)src->type);
+        dst->type = (char*)xmlStrdup((xmlChar*)src->type);
     if (!dst->subtype)
-    	dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
+        dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
     if (dst->yp_public == -1)
-    	dst->yp_public = src->yp_public;
+        dst->yp_public = src->yp_public;
 
     if (dst->http_headers) {
         http_header_next = dst->http_headers;
@@ -1985,12 +1985,12 @@ static inline void _merge_mounts_all(ice_config_t *c) {
 
     for (; mountinfo; mountinfo = mountinfo->next)
     {
-    	if (mountinfo->mounttype != MOUNT_TYPE_NORMAL)
-	    continue;
+        if (mountinfo->mounttype != MOUNT_TYPE_NORMAL)
+            continue;
 
         default_mount = config_find_mount(c, mountinfo->mountname, MOUNT_TYPE_DEFAULT);
 
-	merge_mounts(mountinfo, default_mount);
+        merge_mounts(mountinfo, default_mount);
     }
 }
 
@@ -2001,16 +2001,16 @@ mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_t
     for (; mountinfo; mountinfo = mountinfo->next)
     {
         if (mountinfo->mounttype != type)
-	    continue;
+            continue;
 
-	if (!mount && !mountinfo->mountname)
+        if (!mount && !mountinfo->mountname)
             break;
 
         if (mountinfo->mounttype == MOUNT_TYPE_NORMAL) {
             if (!mount || !mountinfo->mountname)
                 continue;
 
-	    if (strcmp(mountinfo->mountname, mount) == 0)
+            if (strcmp(mountinfo->mountname, mount) == 0)
                 break;
         } else if (mountinfo->mounttype == MOUNT_TYPE_DEFAULT) {
             if (!mountinfo->mountname)

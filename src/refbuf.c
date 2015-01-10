@@ -75,7 +75,7 @@ static void refbuf_release_associated (refbuf_t *ref)
         refbuf_t *to_go = ref;
         ref = to_go->next;
         if ( to_go->_count == 1 )
-	    to_go->next = NULL;
+            to_go->next = NULL;
         refbuf_release (to_go);
     }
 }

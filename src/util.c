@@ -648,28 +648,28 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     else
     {
         if (!statusmsg)
-	{
-	    switch (status)
-	    {
-	        case 200: statusmsg = "OK"; break;
-		case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
-		case 400: statusmsg = "Bad Request"; break;
-		case 401: statusmsg = "Authentication Required"; break;
-		case 403: statusmsg = "Forbidden"; break;
-		case 404: statusmsg = "File Not Found"; break;
-		case 416: statusmsg = "Request Range Not Satisfiable"; break;
-		default:  statusmsg = "(unknown status code)"; break;
-	    }
-	}
-	snprintf (status_buffer, sizeof (status_buffer), "HTTP/%s %d %s\r\n", http_version, status, statusmsg);
+        {
+            switch (status)
+            {
+                case 200: statusmsg = "OK"; break;
+                case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
+                case 400: statusmsg = "Bad Request"; break;
+                case 401: statusmsg = "Authentication Required"; break;
+                case 403: statusmsg = "Forbidden"; break;
+                case 404: statusmsg = "File Not Found"; break;
+                case 416: statusmsg = "Request Range Not Satisfiable"; break;
+                default:  statusmsg = "(unknown status code)"; break;
+            }
+        }
+        snprintf (status_buffer, sizeof (status_buffer), "HTTP/%s %d %s\r\n", http_version, status, statusmsg);
     }
 
     if (contenttype)
     {
-    	if (charset)
+        if (charset)
             snprintf (contenttype_buffer, sizeof (contenttype_buffer), "Content-Type: %s; charset=%s\r\n",
-	                                                               contenttype, charset);
-	else
+                                                                       contenttype, charset);
+        else
             snprintf (contenttype_buffer, sizeof (contenttype_buffer), "Content-Type: %s\r\n",
                                                                        contenttype);
     }
@@ -697,10 +697,10 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     extra_headers = _build_headers(status, config, source);
     ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
-			      config->server_id,
-			      currenttime_buffer,
-			      contenttype_buffer,
-			      (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
+                              config->server_id,
+                              currenttime_buffer,
+                              contenttype_buffer,
+                              (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
                               (cache     ? "" : "Cache-Control: no-cache\r\n"
                                                 "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n"
                                                 "Pragma: no-cache\r\n"),

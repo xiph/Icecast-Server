@@ -427,7 +427,7 @@ static void _ch_root_uid_setup(void)
            }
            if(!initgroups(conf->user, gid))
                fprintf(stdout, "Changed supplementary groups based on user: %s.\n", conf->user);
-	   else
+           else
                fprintf(stdout, "Error changing supplementary groups: %s.\n", strerror(errno));
 #ifdef HAVE_SETRESUID
            if(!setresuid(uid, uid, uid)) {

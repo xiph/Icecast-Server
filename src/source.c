@@ -1377,7 +1377,7 @@ void source_recheck_mounts (int update_all)
     for (; mount; mount = mount->next)
     {
         if (mount->mounttype != MOUNT_TYPE_NORMAL)
-	    continue;
+            continue;
 
         source_t *source = source_find_mount (mount->mountname);
 

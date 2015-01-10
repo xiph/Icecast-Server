@@ -73,8 +73,8 @@ format_type_t format_get_type (const char *contenttype)
     else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3.
-	   Let's warn that this is not well supported */
-	ICECAST_LOG_WARN("Unsupported or legacy stream type: \"%s\". Falling back to generic minimal handler for best effort.", contenttype);
+           Let's warn that this is not well supported */
+        ICECAST_LOG_WARN("Unsupported or legacy stream type: \"%s\". Falling back to generic minimal handler for best effort.", contenttype);
         return FORMAT_TYPE_GENERIC;
 }
 
@@ -352,21 +352,21 @@ static int format_prepare_headers (source_t *source, client_t *client)
             if (strcasecmp(var->name, "ice-password") &&
                 strcasecmp(var->name, "icy-metaint"))
             {
-		if (!strcasecmp(var->name, "ice-name"))
-		{
-		    ice_config_t *config;
-		    mount_proxy *mountinfo;
+                if (!strcasecmp(var->name, "ice-name"))
+                {
+                    ice_config_t *config;
+                    mount_proxy *mountinfo;
 
-		    config = config_get_config();
-		    mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
+                    config = config_get_config();
+                    mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
 
-		    if (mountinfo && mountinfo->stream_name)
-		        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);
+                    if (mountinfo && mountinfo->stream_name)
+                        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);
                     else
-		        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", var->value);
+                        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", var->value);
 
                     config_release_config();
-		}
+                }
                 else if (!strncasecmp("ice-", var->name, 4))
                 {
                     if (!strcasecmp("ice-public", var->name))

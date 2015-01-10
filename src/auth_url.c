@@ -334,12 +334,12 @@ static auth_result url_add_client (auth_client *auth_user)
         cur_header = pass_headers;
         while (cur_header)
         {
-	    next_header = strstr (cur_header, ",");
-	    if (next_header)
-	    {
-		*next_header=0;
+            next_header = strstr (cur_header, ",");
+            if (next_header)
+            {
+                *next_header=0;
                 next_header++;
-	    }
+            }
 
             header_val = httpp_getvar (client->parser, cur_header);
             if (header_val)
@@ -351,7 +351,7 @@ static auth_result url_add_client (auth_client *auth_user)
                 free (header_valesc);
             }
 
-	    cur_header = next_header;
+            cur_header = next_header;
         }
     }
 

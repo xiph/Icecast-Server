@@ -852,20 +852,20 @@ int connection_complete_source (source_t *source, int response)
             return -1;
         }
 
-	/* For PUT support we check for 100-continue and send back a 100 to stay in spec */
-	expectcontinue = httpp_getvar (source->parser, "expect");
-	if (expectcontinue != NULL)
-	{
+        /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
+        expectcontinue = httpp_getvar (source->parser, "expect");
+        if (expectcontinue != NULL)
+        {
 #ifdef HAVE_STRCASESTR
-	    if (strcasestr (expectcontinue, "100-continue") != NULL)
+            if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-	    ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
-	    if (strstr (expectcontinue, "100-continue") != NULL)
+            ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
+            if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
-	    {
-		client_send_100 (source->client);
-	    }
-	}
+            {
+                client_send_100 (source->client);
+            }
+        }
 
         global.sources++;
         stats_event_args (NULL, "sources", "%d", global.sources);
