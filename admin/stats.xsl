@@ -49,6 +49,12 @@
 					<!-- Global stats table -->
 					<div class="article">
 						<h3>Global server stats</h3>
+						<!-- Global subnav -->
+						<div class="nav">
+							<ul>
+								<li><a href="reloadconfig.xsl">Reload Configuration</a></li>
+							</ul>
+						</div>
 						<table class="table-block">
 							<thead>
 								<tr>
