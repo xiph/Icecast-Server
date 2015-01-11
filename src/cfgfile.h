@@ -81,9 +81,6 @@ typedef struct _mount_proxy {
 
     mount_type mounttype; /* The type of the mount point */
 
-    //char *username; /* Username and password for this mountpoint. If unset, */
-    //char *password; /* falls back to global source password */
-
     char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
                        to not dump. */
     char *intro_filename; /* Send contents of file to client before the stream */
