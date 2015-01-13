@@ -49,7 +49,11 @@
     <shoutcast-mount>/live.nsv</shoutcast-mount>
     -->
 
-    <!-- Uncomment this if you want directory listings -->
+    <!-- Uncommenting this enables publishing to the streaming directory at:
+         http://dir.xiph.org
+         Please read the Icecast documentation about publishing to directories
+         very carefully, as it is not enough to just uncomment this.
+    -->
     <!--
     <directory>
         <yp-url-timeout>15</yp-url-timeout>
