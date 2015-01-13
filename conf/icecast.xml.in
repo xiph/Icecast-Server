@@ -50,7 +50,7 @@
     -->
 
     <!-- Uncommenting this enables publishing to the streaming directory at:
-         http://dir.xiph.org
+	 http://dir.xiph.org/
          Please read the Icecast documentation about publishing to directories
          very carefully, as it is not enough to just uncomment this.
     -->
