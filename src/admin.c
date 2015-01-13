@@ -49,7 +49,7 @@
 #define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
 #define COMMAND_ANY                        ADMIN_COMMAND_ANY
 
-/* Mount-specific commands */
+/* Mount-specific commands (block 1-49 and 50-99) */
 #define COMMAND_RAW_FALLBACK               1
 #define COMMAND_RAW_METADATA_UPDATE        2
 #define COMMAND_RAW_SHOW_LISTENERS         3
@@ -65,7 +65,7 @@
 #define COMMAND_TRANSFORMED_UPDATEMETADATA  56
 #define COMMAND_TRANSFORMED_METADATA_UPDATE 57
 
-/* Global commands */
+/* Global commands (block 101-199 and 201-299) */
 #define COMMAND_RAW_LIST_MOUNTS             101
 #define COMMAND_RAW_STATS                   102
 #define COMMAND_RAW_LISTSTREAM              103
@@ -76,14 +76,18 @@
 #define COMMAND_TRANSFORMED_LISTSTREAM      203
 #define COMMAND_TRANSFORMED_QUEUE_RELOAD    205
 
-/* Client management commands */
+/* Client management commands (block 301-399 and 401-499) */
 #define COMMAND_RAW_KILL_CLIENT             301
 #define COMMAND_RAW_KILL_SOURCE             302
 #define COMMAND_TRANSFORMED_KILL_CLIENT     401
 #define COMMAND_TRANSFORMED_KILL_SOURCE     402
 
-/* Admin commands requiring no auth */
+/* Admin commands requiring no auth (block 501-599) */
 #define COMMAND_BUILDM3U                    501
+
+/* Experimental features (e.g. in feature branches) (block 801-899) */
+
+/* Private features (in branches not for merge with master) (block 901-999) */
 
 #define FALLBACK_RAW_REQUEST "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST "fallbacks.xsl"
