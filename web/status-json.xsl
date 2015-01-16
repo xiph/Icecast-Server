@@ -13,6 +13,7 @@
 <xsl:template match="icestats/source/slow_listeners"><xsl:if test="not(following-sibling::*)">"dummy":null}</xsl:if></xsl:template>
 <xsl:template match="icestats/source/*[contains(name(), 'total_bytes')]"><xsl:if test="not(following-sibling::*)">"dummy":null}</xsl:if></xsl:template>
 <xsl:template match="icestats/source/user_agent" ><xsl:if test="not(following-sibling::*)">"dummy":null}</xsl:if></xsl:template>
+<xsl:template match="icestats/source/listener" ><xsl:if test="not(following-sibling::*)">"dummy":null}</xsl:if></xsl:template>
 
 <!-- hide certain global nodes -->
 <xsl:template match="icestats/sources"><xsl:if test="not(following-sibling::*)">"dummy":null}</xsl:if></xsl:template>
