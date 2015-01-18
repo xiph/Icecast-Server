@@ -389,6 +389,12 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
 {
     int ret;
     char *value;
+    ice_config_t *config;
+    char *admin;
+
+    config = config_get_config();
+    admin = util_url_escape(config->admin);
+    config_release_config();
 
     value = stats_get_value (yp->mount, "server_type");
     add_yp_info (yp, value, YP_SERVER_TYPE);
@@ -424,11 +430,14 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info (yp, value, YP_AUDIO_INFO);
     free (value);
 
-    ret = snprintf (s, len, "action=add&sn=%s&genre=%s&cpswd=%s&desc="
+    ret = snprintf (s, len, "action=add&admin=%s&sn=%s&genre=%s&cpswd=%s&desc="
                     "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
+                    admin,
                     yp->server_name, yp->server_genre, yp->cluster_password,
                     yp->server_desc, yp->url, yp->listen_url,
                     yp->server_type, yp->subtype, yp->bitrate, yp->audio_info);
+    free(admin);
+
     if (ret >= (signed)len)
         return ret+1;
     ret = send_to_yp ("add", yp, s);
