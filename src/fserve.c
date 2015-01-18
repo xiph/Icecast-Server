@@ -503,6 +503,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         free (reference);
         admin_send_response (doc, httpclient, TRANSFORMED, xslt_playlist_requested);
         xmlFreeDoc(doc);
+        free (fullpath);
         return 0;
     }
 
