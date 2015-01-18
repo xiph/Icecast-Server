@@ -99,6 +99,8 @@ static void add_yp_info(ypdata_t *yp, void *info, int type);
 static int do_yp_remove(ypdata_t *yp, char *s, unsigned len);
 static int do_yp_add(ypdata_t *yp, char *s, unsigned len);
 static int do_yp_touch(ypdata_t *yp, char *s, unsigned len);
+static void add_pending_yp (struct yp_server *server);
+static void delete_marked_yp(struct yp_server *server);
 static void yp_destroy_ypdata(ypdata_t *ypdata);
 
 
@@ -178,9 +180,25 @@ static struct yp_server *find_yp_server (const char *url)
 
 static void destroy_yp_server (struct yp_server *server)
 {
+    ypdata_t *yp;
+
     if (server == NULL)
         return;
     ICECAST_LOG_DEBUG("Removing YP server entry for %s", server->url);
+
+    /* delete yps:
+     * first move all pendings into main queue.
+     * then mark all main queue entries for deleting.
+     * then remove all marked entries.
+     */
+    add_pending_yp(server);
+    yp = server->mounts;
+    while (yp) {
+        yp->remove = 1;
+        yp = yp->next;
+    }
+    delete_marked_yp(server);
+
     if (server->curl)
         curl_easy_cleanup (server->curl);
     if (server->mounts) ICECAST_LOG_WARN("active ypdata not freed up");
