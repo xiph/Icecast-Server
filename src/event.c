@@ -161,6 +161,7 @@ static void *event_run_thread (void *arg) {
         if (event_queue) {
             event = event_queue;
             event_queue = event_queue->next;
+            event->next = NULL;
         } else {
             event = NULL;
         }
