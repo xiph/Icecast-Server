@@ -45,8 +45,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username);
 static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode);
 static int _free_user (void *key);
 
-typedef struct
-{
+typedef struct {
     char *name;
     char *pass;
 } htpasswd_user;
@@ -58,7 +57,8 @@ typedef struct {
     time_t mtime;
 } htpasswd_auth_state;
 
-static void htpasswd_clear(auth_t *self) {
+static void htpasswd_clear(auth_t *self)
+{
     htpasswd_auth_state *state = self->state;
     free(state->filename);
     if (state->users)
@@ -84,7 +84,7 @@ static char *get_hash(const char *data, int len)
 }
 
 
-static int compare_users (void *arg, void *a, void *b)
+static int compare_users(void *arg, void *a, void *b)
 {
     htpasswd_user *user1 = (htpasswd_user *)a;
     htpasswd_user *user2 = (htpasswd_user *)b;
@@ -93,7 +93,7 @@ static int compare_users (void *arg, void *a, void *b)
 }
 
 
-static int _free_user (void *key)
+static int _free_user(void *key)
 {
     htpasswd_user *user = (htpasswd_user *)key;
 
@@ -103,7 +103,7 @@ static int _free_user (void *key)
 }
 
 
-static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
+static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
 {
     FILE *passwdfile;
     avl_tree *new_users;
@@ -114,8 +114,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
 
     if (htpasswd->filename == NULL)
         return;
-    if (stat (htpasswd->filename, &file_stat) < 0)
-    {
+    if (stat (htpasswd->filename, &file_stat) < 0) {
         ICECAST_LOG_WARN("failed to check status of %s", htpasswd->filename);
 
         /* Create a dummy users tree for things to use later */
@@ -127,15 +126,13 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
         return;
     }
 
-    if (file_stat.st_mtime == htpasswd->mtime)
-    {
+    if (file_stat.st_mtime == htpasswd->mtime) {
         /* common case, no update to file */
         return;
     }
     ICECAST_LOG_INFO("re-reading htpasswd file \"%s\"", htpasswd->filename);
     passwdfile = fopen (htpasswd->filename, "rb");
-    if (passwdfile == NULL)
-    {
+    if (passwdfile == NULL) {
         ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 htpasswd->filename, strerror(errno));
         return;
@@ -144,8 +141,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
 
     new_users = avl_tree_new (compare_users, NULL);
 
-    while (get_line(passwdfile, line, MAX_LINE_LEN))
-    {
+    while (get_line(passwdfile, line, MAX_LINE_LEN)) {
         int len;
         htpasswd_user *entry;
 
@@ -154,8 +150,7 @@ static void htpasswd_recheckfile (htpasswd_auth_state *htpasswd)
             continue;
 
         sep = strrchr (line, ':');
-        if (sep == NULL)
-        {
+        if (sep == NULL) {
             ICECAST_LOG_WARN("No separator on line %d (%s)", num, htpasswd->filename);
             continue;
         }
@@ -196,15 +191,13 @@ static auth_result htpasswd_auth (auth_client *auth_user)
 
     thread_rwlock_rlock (&htpasswd->file_rwlock);
     entry.name = client->username;
-    if (avl_get_by_key (htpasswd->users, &entry, &result) == 0)
-    {
+    if (avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
         htpasswd_user *found = result;
         char *hashed_pw;
 
         thread_rwlock_unlock (&htpasswd->file_rwlock);
         hashed_pw = get_hash (client->password, strlen (client->password));
-        if (strcmp (found->pass, hashed_pw) == 0)
-        {
+        if (strcmp (found->pass, hashed_pw) == 0) {
             free (hashed_pw);
             return AUTH_OK;
         }
@@ -231,19 +224,19 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
     state = calloc(1, sizeof(htpasswd_auth_state));
 
     while(options) {
-        if(!strcmp(options->name, "filename"))
-        {
+        if(!strcmp(options->name, "filename")) {
             free (state->filename);
             state->filename = strdup(options->value);
         }
         options = options->next;
     }
 
-    if (state->filename)
+    if (state->filename) {
         ICECAST_LOG_INFO("Configured htpasswd authentication using password file \"%s\"",
                 state->filename);
-    else
+    } else {
         ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+    }
 
     authenticator->state = state;
 
@@ -267,16 +260,14 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     thread_rwlock_wlock (&state->file_rwlock);
 
     entry.name = (char*)username;
-    if (avl_get_by_key (state->users, &entry, &result) == 0)
-    {
+    if (avl_get_by_key (state->users, &entry, &result) == 0) {
         thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_USEREXISTS;
     }
 
     passwdfile = fopen(state->filename, "ab");
 
-    if (passwdfile == NULL)
-    {
+    if (passwdfile == NULL) {
         thread_rwlock_unlock (&state->file_rwlock);
         ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 state->filename, strerror(errno));
@@ -320,8 +311,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     tmpfile_len = strlen(state->filename) + 6;
     tmpfile = calloc(1, tmpfile_len);
     snprintf (tmpfile, tmpfile_len, "%s.tmp", state->filename);
-    if (stat (tmpfile, &file_info) == 0)
-    {
+    if (stat (tmpfile, &file_info) == 0) {
         ICECAST_LOG_WARN("temp file \"%s\" exists, rejecting operation", tmpfile);
         free (tmpfile);
         fclose (passwdfile);
@@ -369,8 +359,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     if (remove(state->filename) != 0) {
         ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s",
                 tmpfile, state->filename, strerror(errno));
-    }
-    else {
+    } else {
         if (rename(tmpfile, state->filename) != 0) {
             ICECAST_LOG_ERROR("Problem moving temp authentication file to original \"%s\" - \"%s\": %s",
                     tmpfile, state->filename, strerror(errno));
@@ -392,19 +381,18 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 
     state = auth->state;
 
-    htpasswd_recheckfile (state);
+    htpasswd_recheckfile(state);
 
-    thread_rwlock_rlock (&state->file_rwlock);
-    node = avl_get_first (state->users);
-    while (node)
-    {
+    thread_rwlock_rlock(&state->file_rwlock);
+    node = avl_get_first(state->users);
+    while (node) {
         htpasswd_user *user = (htpasswd_user *)node->key;
-        newnode = xmlNewChild (srcnode, NULL, XMLSTR("user"), NULL);
+        newnode = xmlNewChild(srcnode, NULL, XMLSTR("user"), NULL);
         xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
         xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
-        node = avl_get_next (node);
+        node = avl_get_next(node);
     }
-    thread_rwlock_unlock (&state->file_rwlock);
+    thread_rwlock_unlock(&state->file_rwlock);
 
     return AUTH_OK;
 }

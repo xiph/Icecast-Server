@@ -60,9 +60,9 @@ static inline void client_send_500(client_t *client, const char *message);
  */
 int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
-    ice_config_t *config;
-    client_t *client = (client_t *) calloc(1, sizeof(client_t));
-    int ret = -1;
+    ice_config_t    *config;
+    client_t        *client = (client_t *) calloc(1, sizeof(client_t));
+    int              ret    = -1;
 
     if (client == NULL)
         abort();
@@ -70,10 +70,11 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     config = config_get_config();
 
     global.clients++;
-    if (config->client_limit < global.clients)
+    if (config->client_limit < global.clients) {
         ICECAST_LOG_WARN("server client limit reached (%d/%d)", config->client_limit, global.clients);
-    else
+    } else {
         ret = 0;
+    }
 
     config_release_config ();
 
@@ -99,8 +100,7 @@ void client_destroy(client_t *client)
 
     /* release the buffer now, as the buffer could be on the source queue
      * and may of disappeared after auth completes */
-    if (client->refbuf)
-    {
+    if (client->refbuf) {
         refbuf_release (client->refbuf);
         client->refbuf = NULL;
     }
@@ -113,7 +113,6 @@ void client_destroy(client_t *client)
      */
     if (client->respcode && client->parser)
         logging_access(client);
-
     if (client->con)
         connection_close(client->con);
     if (client->parser)
@@ -141,14 +140,12 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 {
     int bytes;
 
-    if (client->refbuf && client->refbuf->len)
-    {
+    if (client->refbuf && client->refbuf->len) {
         /* we have data to read from a refbuf first */
         if (client->refbuf->len < len)
             len = client->refbuf->len;
         memcpy (buf, client->refbuf->data, len);
-        if (len < client->refbuf->len)
-        {
+        if (len < client->refbuf->len) {
             char *ptr = client->refbuf->data;
             memmove (ptr, ptr+len, client->refbuf->len - len);
         }
@@ -200,7 +197,8 @@ void client_send_100(client_t *client)
 }
 
 /* this function is designed to work even if client is in bad state */
-static inline void client_send_500(client_t *client, const char *message) {
+static inline void client_send_500(client_t *client, const char *message)
+{
     const char header[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
                           "500 - Internal Server Error\n---------------------------\n";
     const ssize_t header_len = sizeof(header) - 1;

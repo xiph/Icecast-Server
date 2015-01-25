@@ -77,32 +77,47 @@ typedef enum _mount_type {
 } mount_type;
 
 typedef struct _mount_proxy {
-    char *mountname; /* The mountpoint this proxy is used for */
-
-    mount_type mounttype; /* The type of the mount point */
-
-    char *dumpfile; /* Filename to dump this stream to (will be appended). NULL
-                       to not dump. */
-    char *intro_filename; /* Send contents of file to client before the stream */
-    int fallback_when_full; /* switch new listener to fallback source
-                               when max listeners reached */
-    int max_listeners; /* Max listeners for this mountpoint only. -1 to not 
-                          limit here (i.e. only use the global limit) */
-    char *fallback_mount; /* Fallback mountname */
-
-    int fallback_override; /* When this source arrives, do we steal back
-                              clients from the fallback? */
-    int no_mount; /* Do we permit direct requests of this mountpoint? (or only
-                     indirect, through fallbacks) */
-    int burst_size; /* amount to send to a new client if possible, -1 take
-                     * from global setting */
+    /* The mountpoint this proxy is used for */
+    char *mountname;
+    /* The type of the mount point */
+    mount_type mounttype;
+    /* Filename to dump this stream to (will be appended).
+     * NULL to not dump.
+     */
+    char *dumpfile;
+    /* Send contents of file to client before the stream */
+    char *intro_filename;
+    /* Switch new listener to fallback source when max listeners reached */
+    int fallback_when_full;
+    /* Max listeners for this mountpoint only.
+     * -1 to not limit here (i.e. only use the global limit)
+     */
+    int max_listeners;
+    /* Fallback mountname */
+    char *fallback_mount;
+    /* When this source arrives, do we steal back
+     * clients from the fallback?
+     */
+    int fallback_override;
+    /* Do we permit direct requests of this mountpoint?
+     * (or only indirect, through fallbacks)
+     */
+    int no_mount;
+    /* amount to send to a new client if possible, -1 take
+     * from global setting
+     */
+    int burst_size;
     unsigned int queue_size_limit;
-    int hidden; /* Do we list this on the xsl pages */
-    unsigned int source_timeout; /* source timeout in seconds */
-    char *charset; /* character set if not utf8 */
-    int mp3_meta_interval; /* outgoing per-stream metadata interval */
-
-    ice_config_http_header_t *http_headers; /* additional HTTP headers */
+    /* Do we list this on the xsl pages */
+    int hidden;
+    /* source timeout in seconds */
+    unsigned int source_timeout;
+    /* character set if not utf8 */
+    char *charset;
+    /* outgoing per-stream metadata interval */
+    int mp3_meta_interval;
+    /* additional HTTP headers */
+    ice_config_http_header_t *http_headers;
 
     struct event_registration_tag *event;
 
@@ -233,8 +248,8 @@ int config_parse_cmdline(int arg, char **argv);
 void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
-mount_proxy *config_find_mount (ice_config_t *config, const char *mount, mount_type type);
-listener_t *config_get_listen_sock (ice_config_t *config, connection_t *con);
+mount_proxy *config_find_mount(ice_config_t *config, const char *mount, mount_type type);
+listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con);
 
 config_options_t *config_parse_options(xmlNodePtr node);
 void config_clear_options(config_options_t *options);

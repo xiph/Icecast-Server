@@ -46,7 +46,7 @@ struct auth_stack_tag {
 };
 
 /* code */
-static void __handle_auth_client (auth_t *auth, auth_client *auth_user);
+static void __handle_auth_client(auth_t *auth, auth_client *auth_user);
 
 static mutex_t _auth_lock; /* protects _current_id */
 static volatile unsigned long _current_id = 0;

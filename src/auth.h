@@ -118,22 +118,27 @@ typedef struct auth_tag
 typedef struct auth_stack_tag auth_stack_t;
 
 /* prototypes for auths that do not need own header file */
-int auth_get_anonymous_auth (auth_t *auth, config_options_t *options);
-int auth_get_static_auth (auth_t *auth, config_options_t *options);
-int auth_get_url_auth (auth_t *authenticator, config_options_t *options);
+int auth_get_anonymous_auth(auth_t *auth, config_options_t *options);
+int auth_get_static_auth(auth_t *auth, config_options_t *options);
+int auth_get_url_auth(auth_t *authenticator, config_options_t *options);
 int auth_get_htpasswd_auth(auth_t *auth, config_options_t *options);
 
 /* prototypes for auth.c */
-void auth_initialise (void);
-void auth_shutdown (void);
+void auth_initialise(void);
+void auth_shutdown(void);
 
-auth_t  *auth_get_authenticator (xmlNodePtr node);
-void    auth_release (auth_t *authenticator);
-void    auth_addref (auth_t *authenticator);
+auth_t  *auth_get_authenticator(xmlNodePtr node);
+void    auth_release(auth_t *authenticator);
+void    auth_addref(auth_t *authenticator);
 
-int  auth_release_client(client_t *client);
+int auth_release_client(client_t *client);
 
-void          auth_stack_add_client(auth_stack_t *stack, client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
+void auth_stack_add_client(auth_stack_t  *stack,
+                           client_t      *client,
+                           void         (*on_result)(client_t      *client,
+                                                     void          *userdata,
+                                                     auth_result   result),
+                           void          *userdata);
 
 void          auth_stack_release(auth_stack_t *stack);
 void          auth_stack_addref(auth_stack_t *stack);

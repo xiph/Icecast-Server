@@ -28,10 +28,11 @@ typedef struct auth_static {
     char *password;
 } auth_static_t;
 
-static auth_result static_auth (auth_client *auth_user) {
-    client_t *client = auth_user->client;
-    auth_t *auth = client->auth;
-    auth_static_t *auth_info = auth->state;
+static auth_result static_auth(auth_client *auth_user)
+{
+    client_t        *client     = auth_user->client;
+    auth_t          *auth       = client->auth;
+    auth_static_t   *auth_info  = auth->state;
 
     if (auth_info->username) {
         if (!client->username)
@@ -49,17 +50,21 @@ static auth_result static_auth (auth_client *auth_user) {
     return AUTH_FAILED;
 }
 
-static void clear_auth (auth_t *auth) {
+static void clear_auth (auth_t *auth)
+{
     auth_static_t *auth_info = auth->state;
-    if (auth_info->username) free(auth_info->username);
-    if (auth_info->password) free(auth_info->password);
+    if (auth_info->username)
+        free(auth_info->username);
+    if (auth_info->password)
+        free(auth_info->password);
     free(auth_info);
     auth->state = NULL;
 }
 
-static auth_result static_userlist(auth_t *auth, xmlNodePtr srcnode) {
+static auth_result static_userlist(auth_t *auth, xmlNodePtr srcnode)
+{
     auth_static_t *auth_info = auth->state;
-    xmlNodePtr newnode;
+    xmlNodePtr    newnode;
 
     newnode = xmlNewChild(srcnode, NULL, XMLSTR("user"), NULL);
     xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(auth_info->username));
@@ -68,9 +73,10 @@ static auth_result static_userlist(auth_t *auth, xmlNodePtr srcnode) {
     return AUTH_OK;
 }
 
-int  auth_get_static_auth (auth_t *authenticator, config_options_t *options) {
+int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
+{
     auth_static_t *auth_info;
-    int need_user;
+    int           need_user;
 
     if (strcmp(authenticator->type, AUTH_TYPE_STATIC) == 0) {
         need_user = 1;
@@ -93,10 +99,12 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options) {
 
     while (options) {
         if (strcmp(options->name, "username") == 0) {
-            if (auth_info->username) free(auth_info->username);
+            if (auth_info->username)
+                free(auth_info->username);
             auth_info->username = strdup(options->value);
         } else if (strcmp(options->name, "password") == 0) {
-            if (auth_info->password) free(auth_info->password);
+            if (auth_info->password)
+                free(auth_info->password);
             auth_info->password = strdup(options->value);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);

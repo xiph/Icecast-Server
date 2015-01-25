@@ -135,7 +135,8 @@ static int free_filtered_ip (void*x)
 
 void connection_initialize(void)
 {
-    if (_initialized) return;
+    if (_initialized)
+        return;
 
     thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
@@ -157,7 +158,8 @@ void connection_initialize(void)
 
 void connection_shutdown(void)
 {
-    if (!_initialized) return;
+    if (!_initialized)
+        return;
 
 #ifdef HAVE_OPENSSL
     SSL_CTX_free (ssl_ctx);
@@ -186,7 +188,7 @@ static unsigned long _next_connection_id(void)
 
 
 #ifdef HAVE_OPENSSL
-static void get_ssl_certificate (ice_config_t *config)
+static void get_ssl_certificate(ice_config_t *config)
 {
     SSL_METHOD *method;
     long ssl_opts;
@@ -196,35 +198,30 @@ static void get_ssl_certificate (ice_config_t *config)
     SSL_library_init(); /* initialize library */
 
     method = SSLv23_server_method();
-    ssl_ctx = SSL_CTX_new (method);
-    ssl_opts = SSL_CTX_get_options (ssl_ctx);
+    ssl_ctx = SSL_CTX_new(method);
+    ssl_opts = SSL_CTX_get_options(ssl_ctx);
 #ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options (ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
+    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
 #else
-    SSL_CTX_set_options (ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
+    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
 #endif
 
-    do
-    {
+    do {
         if (config->cert_file == NULL)
             break;
-        if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0)
-        {
+        if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0) {
             ICECAST_LOG_WARN("Invalid cert file %s", config->cert_file);
             break;
         }
-        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0)
-        {
+        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0) {
             ICECAST_LOG_WARN("Invalid private key file %s", config->cert_file);
             break;
         }
-        if (!SSL_CTX_check_private_key (ssl_ctx))
-        {
+        if (!SSL_CTX_check_private_key (ssl_ctx)) {
             ICECAST_LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
             break;
         }
-        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0)
-        {
+        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) {
             ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
         }
         ssl_ok = 1;
@@ -239,14 +236,12 @@ static void get_ssl_certificate (ice_config_t *config)
 /* handlers for reading and writing a connection_t when there is ssl
  * configured on the listening port
  */
-static int connection_read_ssl (connection_t *con, void *buf, size_t len)
+static int connection_read_ssl(connection_t *con, void *buf, size_t len)
 {
-    int bytes = SSL_read (con->ssl, buf, len);
+    int bytes = SSL_read(con->ssl, buf, len);
 
-    if (bytes < 0)
-    {
-        switch (SSL_get_error (con->ssl, bytes))
-        {
+    if (bytes < 0) {
+        switch (SSL_get_error(con->ssl, bytes)) {
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
             return -1;
@@ -256,22 +251,20 @@ static int connection_read_ssl (connection_t *con, void *buf, size_t len)
     return bytes;
 }
 
-static int connection_send_ssl (connection_t *con, const void *buf, size_t len)
+static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
 {
     int bytes = SSL_write (con->ssl, buf, len);
 
-    if (bytes < 0)
-    {
-        switch (SSL_get_error (con->ssl, bytes))
-        {
+    if (bytes < 0) {
+        switch (SSL_get_error(con->ssl, bytes)){
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
                 return -1;
         }
         con->error = 1;
-    }
-    else
+    } else {
         con->sent_bytes += bytes;
+    }
     return bytes;
 }
 #else
@@ -288,26 +281,25 @@ static void get_ssl_certificate(ice_config_t *config)
 /* handlers (default) for reading and writing a connection_t, no encrpytion
  * used just straight access to the socket
  */
-static int connection_read (connection_t *con, void *buf, size_t len)
+static int connection_read(connection_t *con, void *buf, size_t len)
 {
-    int bytes = sock_read_bytes (con->sock, buf, len);
+    int bytes = sock_read_bytes(con->sock, buf, len);
     if (bytes == 0)
         con->error = 1;
-    if (bytes == -1 && !sock_recoverable (sock_error()))
+    if (bytes == -1 && !sock_recoverable(sock_error()))
         con->error = 1;
     return bytes;
 }
 
-static int connection_send (connection_t *con, const void *buf, size_t len)
+static int connection_send(connection_t *con, const void *buf, size_t len)
 {
-    int bytes = sock_write_bytes (con->sock, buf, len);
-    if (bytes < 0)
-    {
-        if (!sock_recoverable (sock_error()))
+    int bytes = sock_write_bytes(con->sock, buf, len);
+    if (bytes < 0) {
+        if (!sock_recoverable(sock_error()))
             con->error = 1;
-    }
-    else
+    } else {
         con->sent_bytes += bytes;
+    }
     return bytes;
 }
 
@@ -318,26 +310,22 @@ static int connection_send (connection_t *con, const void *buf, size_t len)
 static void recheck_ip_file(cache_file_contents *cache)
 {
     time_t now = time(NULL);
-    if (now >= cache->file_recheck)
-    {
-        struct stat file_stat;
-        FILE *file = NULL;
-        int count = 0;
-        avl_tree *new_ips;
-        char line [MAX_LINE_LEN];
+    if (now >= cache->file_recheck) {
+        struct      stat file_stat;
+        FILE       *file             = NULL;
+        int         count            = 0;
+        avl_tree   *new_ips;
+        char        line[MAX_LINE_LEN];
 
         cache->file_recheck = now + 10;
-        if (cache->filename == NULL)
-        {
-            if (cache->contents)
-            {
+        if (cache->filename == NULL) {
+            if (cache->contents) {
                 avl_tree_free (cache->contents, free_filtered_ip);
                 cache->contents = NULL;
             }
             return;
         }
-        if (stat (cache->filename, &file_stat) < 0)
-        {
+        if (stat(cache->filename, &file_stat) < 0) {
             ICECAST_LOG_WARN("failed to check status of \"%s\": %s", cache->filename, strerror(errno));
             return;
         }
@@ -347,28 +335,27 @@ static void recheck_ip_file(cache_file_contents *cache)
         cache->file_mtime = file_stat.st_mtime;
 
         file = fopen (cache->filename, "r");
-        if (file == NULL)
-        {
+        if (file == NULL) {
             ICECAST_LOG_WARN("Failed to open file \"%s\": %s", cache->filename, strerror (errno));
             return;
         }
 
-        new_ips = avl_tree_new (compare_ip, NULL);
+        new_ips = avl_tree_new(compare_ip, NULL);
 
-        while (get_line (file, line, MAX_LINE_LEN))
-        {
+        while (get_line(file, line, MAX_LINE_LEN)) {
             char *str;
             if(!line[0] || line[0] == '#')
                 continue;
             count++;
             str = strdup (line);
             if (str)
-                avl_insert (new_ips, str);
+                avl_insert(new_ips, str);
         }
         fclose (file);
         ICECAST_LOG_INFO("%d entries read from file \"%s\"", count, cache->filename);
 
-        if (cache->contents) avl_tree_free (cache->contents, free_filtered_ip);
+        if (cache->contents)
+            avl_tree_free(cache->contents, free_filtered_ip);
         cache->contents = new_ips;
     }
 }
@@ -382,23 +369,17 @@ static int accept_ip_address(char *ip)
     recheck_ip_file(&banned_ip);
     recheck_ip_file(&allowed_ip);
 
-    if (banned_ip.contents)
-    {
-        if (avl_get_by_key (banned_ip.contents, ip, &result) == 0)
-        {
+    if (banned_ip.contents) {
+        if (avl_get_by_key (banned_ip.contents, ip, &result) == 0) {
             ICECAST_LOG_DEBUG("%s is banned", ip);
             return 0;
         }
     }
-    if (allowed_ip.contents)
-    {
-        if (avl_get_by_key (allowed_ip.contents, ip, &result) == 0)
-        {
+    if (allowed_ip.contents) {
+        if (avl_get_by_key (allowed_ip.contents, ip, &result) == 0) {
             ICECAST_LOG_DEBUG("%s is allowed", ip);
             return 1;
-        }
-        else
-        {
+        } else {
             ICECAST_LOG_DEBUG("%s is not allowed", ip);
             return 0;
         }
@@ -411,15 +392,14 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 {
     connection_t *con;
     con = (connection_t *)calloc(1, sizeof(connection_t));
-    if (con)
-    {
-        con->sock = sock;
+    if (con) {
+        con->sock       = sock;
         con->serversock = serversock;
-        con->con_time = time(NULL);
-        con->id = _next_connection_id();
-        con->ip = ip;
-        con->read = connection_read;
-        con->send = connection_send;
+        con->con_time   = time(NULL);
+        con->id         = _next_connection_id();
+        con->ip         = ip;
+        con->read       = connection_read;
+        con->send       = connection_send;
     }
 
     return con;
@@ -432,9 +412,9 @@ void connection_uses_ssl(connection_t *con)
 #ifdef HAVE_OPENSSL
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
-    con->ssl = SSL_new (ssl_ctx);
-    SSL_set_accept_state (con->ssl);
-    SSL_set_fd (con->ssl, con->sock);
+    con->ssl = SSL_new(ssl_ctx);
+    SSL_set_accept_state(con->ssl);
+    SSL_set_fd(con->ssl, con->sock);
 #endif
 }
 
@@ -453,19 +433,15 @@ static sock_t wait_for_serversock(int timeout)
     ret = poll(ufds, global.server_sockets, timeout);
     if(ret < 0) {
         return SOCK_ERROR;
-    }
-    else if(ret == 0) {
+    } else if(ret == 0) {
         return SOCK_ERROR;
-    }
-    else {
+    } else {
         int dst;
         for(i=0; i < global.server_sockets; i++) {
             if(ufds[i].revents & POLLIN)
                 return ufds[i].fd;
-            if(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL))
-            {
-                if (ufds[i].revents & (POLLHUP|POLLERR))
-                {
+            if(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL)) {
+                if (ufds[i].revents & (POLLHUP|POLLERR)) {
                     sock_close (global.serversock[i]);
                     ICECAST_LOG_WARN("Had to close a listening socket");
                 }
@@ -473,8 +449,7 @@ static sock_t wait_for_serversock(int timeout)
             }
         }
         /* remove any closed sockets */
-        for(i=0, dst=0; i < global.server_sockets; i++)
-        {
+        for(i=0, dst=0; i < global.server_sockets; i++) {
             if (global.serversock[i] == SOCK_ERROR)
             continue;
             if (i!=dst)
@@ -507,11 +482,9 @@ static sock_t wait_for_serversock(int timeout)
     ret = select(max+1, &rfds, NULL, NULL, p);
     if(ret < 0) {
         return SOCK_ERROR;
-    }
-    else if(ret == 0) {
+    } else if(ret == 0) {
         return SOCK_ERROR;
-    }
-    else {
+    } else {
         for(i=0; i < global.server_sockets; i++) {
             if(FD_ISSET(global.serversock[i], &rfds))
                 return global.serversock[i];
@@ -534,25 +507,21 @@ static connection_t *_accept_connection(int duration)
     ip = (char *)malloc(MAX_ADDR_LEN);
 
     sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock != SOCK_ERROR)
-    {
+    if (sock != SOCK_ERROR) {
         connection_t *con = NULL;
         /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */
-        if (strncmp (ip, "::ffff:", 7) == 0)
-            memmove (ip, ip+7, strlen (ip+7)+1);
+        if (strncmp(ip, "::ffff:", 7) == 0)
+            memmove(ip, ip+7, strlen (ip+7)+1);
 
-        if (accept_ip_address (ip))
-            con = connection_create (sock, serversock, ip);
+        if (accept_ip_address(ip))
+            con = connection_create(sock, serversock, ip);
         if (con)
             return con;
-        sock_close (sock);
-    }
-    else
-    {
-        if (!sock_recoverable(sock_error()))
-        {
+        sock_close(sock);
+    } else {
+        if (!sock_recoverable(sock_error())) {
             ICECAST_LOG_WARN("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-            thread_sleep (500000);
+            thread_sleep(500000);
         }
     }
     free(ip);
@@ -580,10 +549,9 @@ static client_queue_t *_get_connection(void)
 {
     client_queue_t *node = NULL;
 
-    thread_spin_lock (&_connection_lock);
+    thread_spin_lock(&_connection_lock);
 
-    if (_con_queue)
-    {
+    if (_con_queue){
         node = (client_queue_t *)_con_queue;
         _con_queue = node->next;
         if (_con_queue == NULL)
@@ -591,7 +559,7 @@ static client_queue_t *_get_connection(void)
         node->next = NULL;
     }
 
-    thread_spin_unlock (&_connection_lock);
+    thread_spin_unlock(&_connection_lock);
     return node;
 }
 
@@ -600,38 +568,34 @@ static client_queue_t *_get_connection(void)
 static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
-    ice_config_t *config = config_get_config ();
+    ice_config_t *config = config_get_config();
     int timeout = config->header_timeout;
     config_release_config();
 
-    while (*node_ref)
-    {
+    while (*node_ref) {
         client_queue_t *node = *node_ref;
         client_t *client = node->client;
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
 
-        if (len > 0)
-        {
-            if (client->con->con_time + timeout <= time(NULL))
+        if (len > 0) {
+            if (client->con->con_time + timeout <= time(NULL)) {
                 len = 0;
-            else
-                len = client_read_bytes (client, buf, len);
+            } else {
+                len = client_read_bytes(client, buf, len);
+            }
         }
 
-        if (len > 0)
-        {
+        if (len > 0) {
             int pass_it = 1;
             char *ptr;
 
             /* handle \n, \r\n and nsvcap which for some strange reason has
              * EOL as \r\r\n */
             node->offset += len;
-            client->refbuf->data [node->offset] = '\000';
-            do
-            {
-                if (node->shoutcast == 1)
-                {
+            client->refbuf->data[node->offset] = '\000';
+            do {
+                if (node->shoutcast == 1) {
                     /* password line */
                     if (strstr (client->refbuf->data, "\r\r\n") != NULL)
                         break;
@@ -642,46 +606,39 @@ static void process_request_queue (void)
                 }
                 /* stream_offset refers to the start of any data sent after the
                  * http style headers, we don't want to lose those */
-                ptr = strstr (client->refbuf->data, "\r\r\n\r\r\n");
-                if (ptr)
-                {
+                ptr = strstr(client->refbuf->data, "\r\r\n\r\r\n");
+                if (ptr) {
                     node->stream_offset = (ptr+6) - client->refbuf->data;
                     break;
                 }
-                ptr = strstr (client->refbuf->data, "\r\n\r\n");
-                if (ptr)
-                {
+                ptr = strstr(client->refbuf->data, "\r\n\r\n");
+                if (ptr) {
                     node->stream_offset = (ptr+4) - client->refbuf->data;
                     break;
                 }
-                ptr = strstr (client->refbuf->data, "\n\n");
-                if (ptr)
-                {
+                ptr = strstr(client->refbuf->data, "\n\n");
+                if (ptr) {
                     node->stream_offset = (ptr+2) - client->refbuf->data;
                     break;
                 }
                 pass_it = 0;
             } while (0);
 
-            if (pass_it)
-            {
+            if (pass_it) {
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
                 node->next = NULL;
-                _add_connection (node);
+                _add_connection(node);
                 continue;
             }
-        }
-        else
-        {
-            if (len == 0 || client->con->error)
-            {
+        } else {
+            if (len == 0 || client->con->error) {
                 if ((client_queue_t **)_req_queue_tail == &node->next)
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
-                client_destroy (client);
-                free (node);
+                client_destroy(client);
+                free(node);
                 continue;
             }
         }
@@ -694,37 +651,34 @@ static void process_request_queue (void)
 /* add node to the queue of requests. This is where the clients are when
  * initial http details are read.
  */
-static void _add_request_queue (client_queue_t *node)
+static void _add_request_queue(client_queue_t *node)
 {
     *_req_queue_tail = node;
     _req_queue_tail = (volatile client_queue_t **)&node->next;
 }
 
 
-void connection_accept_loop (void)
+void connection_accept_loop(void)
 {
     connection_t *con;
     ice_config_t *config;
     int duration = 300;
 
-    config = config_get_config ();
-    get_ssl_certificate (config);
-    config_release_config ();
+    config = config_get_config();
+    get_ssl_certificate(config);
+    config_release_config();
 
-    while (global.running == ICECAST_RUNNING)
-    {
+    while (global.running == ICECAST_RUNNING) {
         con = _accept_connection (duration);
 
-        if (con)
-        {
+        if (con) {
             client_queue_t *node;
             ice_config_t *config;
             client_t *client = NULL;
             listener_t *listener;
 
             global_lock();
-            if (client_create (&client, con, NULL) < 0)
-            {
+            if (client_create (&client, con, NULL) < 0) {
                 global_unlock();
                 client_send_error(client, 403, 1, "Icecast connection limit reached");
                 /* don't be too eager as this is an imposed hard limit */
@@ -735,48 +689,43 @@ void connection_accept_loop (void)
             /* setup client for reading incoming http */
             client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
 
-            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock))
-            {
+            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock)) {
                 global_unlock();
                 ICECAST_LOG_WARN("failed to set tcp options on client connection, dropping");
-                client_destroy (client);
+                client_destroy(client);
                 continue;
             }
 
             node = calloc (1, sizeof (client_queue_t));
-            if (node == NULL)
-            {
+            if (node == NULL) {
                 global_unlock();
-                client_destroy (client);
+                client_destroy(client);
                 continue;
             }
             node->client = client;
 
             config = config_get_config();
-            listener = config_get_listen_sock (config, client->con);
+            listener = config_get_listen_sock(config, client->con);
 
-            if (listener)
-            {
+            if (listener) {
                 if (listener->shoutcast_compat)
                     node->shoutcast = 1;
                 if (listener->ssl && ssl_ok)
-                    connection_uses_ssl (client->con);
+                    connection_uses_ssl(client->con);
                 if (listener->shoutcast_mount)
-                    node->shoutcast_mount = strdup (listener->shoutcast_mount);
+                    node->shoutcast_mount = strdup(listener->shoutcast_mount);
             }
             global_unlock();
             config_release_config();
 
-            _add_request_queue (node);
-            stats_event_inc (NULL, "connections");
+            _add_request_queue(node);
+            stats_event_inc(NULL, "connections");
             duration = 5;
-        }
-        else
-        {
+        } else {
             if (_req_queue == NULL)
                 duration = 300; /* use longer timeouts when nothing waiting */
         }
-        process_request_queue ();
+        process_request_queue();
     }
 
     /* Give all the other threads notification to shut down */
@@ -791,16 +740,15 @@ void connection_accept_loop (void)
 /* Called when activating a source. Verifies that the source count is not
  * exceeded and applies any initial parameters.
  */
-int connection_complete_source (source_t *source, int response)
+int connection_complete_source(source_t *source, int response)
 {
     ice_config_t *config;
 
-    global_lock ();
+    global_lock();
     ICECAST_LOG_DEBUG("sources count is %d", global.sources);
 
     config = config_get_config();
-    if (global.sources < config->source_limit)
-    {
+    if (global.sources < config->source_limit) {
         const char *contenttype;
         const char *expectcontinue;
         mount_proxy *mountinfo;
@@ -808,12 +756,10 @@ int connection_complete_source (source_t *source, int response)
 
         /* setup format handler */
         contenttype = httpp_getvar (source->parser, "content-type");
-        if (contenttype != NULL)
-        {
-            format_type = format_get_type (contenttype);
+        if (contenttype != NULL) {
+            format_type = format_get_type(contenttype);
 
-            if (format_type == FORMAT_ERROR)
-            {
+            if (format_type == FORMAT_ERROR) {
                 config_release_config();
                 global_unlock();
                 if (response) {
@@ -839,12 +785,10 @@ int connection_complete_source (source_t *source, int response)
             format_type = FORMAT_TYPE_GENERIC;
         }
 
-        if (format_get_plugin (format_type, source) < 0)
-        {
+        if (format_get_plugin (format_type, source) < 0) {
             global_unlock();
             config_release_config();
-            if (response)
-            {
+            if (response) {
                 client_send_error(source->client, 403, 1, "internal format allocation problem");
                 source->client = NULL;
             }
@@ -854,8 +798,7 @@ int connection_complete_source (source_t *source, int response)
 
         /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
         expectcontinue = httpp_getvar (source->parser, "expect");
-        if (expectcontinue != NULL)
-        {
+        if (expectcontinue != NULL) {
 #ifdef HAVE_STRCASESTR
             if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
@@ -868,12 +811,12 @@ int connection_complete_source (source_t *source, int response)
         }
 
         global.sources++;
-        stats_event_args (NULL, "sources", "%d", global.sources);
+        stats_event_args(NULL, "sources", "%d", global.sources);
         global_unlock();
 
         source->running = 1;
-        mountinfo = config_find_mount (config, source->mount, MOUNT_TYPE_NORMAL);
-        source_update_settings (config, source, mountinfo);
+        mountinfo = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
+        source_update_settings(config, source, mountinfo);
         config_release_config();
         slave_rebuild_mounts();
 
@@ -883,13 +826,12 @@ int connection_complete_source (source_t *source, int response)
         return 0;
     }
     ICECAST_LOG_WARN("Request to add source when maximum source limit "
-            "reached %d", global.sources);
+        "reached %d", global.sources);
 
     global_unlock();
     config_release_config();
 
-    if (response)
-    {
+    if (response) {
         client_send_error(source->client, 403, 1, "too many sources connected");
         source->client = NULL;
     }
@@ -897,20 +839,18 @@ int connection_complete_source (source_t *source, int response)
     return -1;
 }
 
-static inline void source_startup (client_t *client, const char *uri)
+static inline void source_startup(client_t *client, const char *uri)
 {
     source_t *source;
-    source = source_reserve (uri);
+    source = source_reserve(uri);
 
-    if (source)
-    {
+    if (source) {
         source->client = client;
         source->parser = client->parser;
         source->con = client->con;
-        if (connection_complete_source (source, 1) < 0)
-        {
-            source_clear_source (source);
-            source_free_source (source);
+        if (connection_complete_source(source, 1) < 0) {
+            source_clear_source(source);
+            source_free_source(source);
             return;
         }
         client->respcode = 200;
@@ -920,34 +860,31 @@ static inline void source_startup (client_t *client, const char *uri)
              * then leave to header timeout */
             sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
             source->shoutcast_compat = 1;
-            source_client_callback (client, source);
+            source_client_callback(client, source);
         } else {
-            refbuf_t *ok = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+            refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
             client->respcode = 200;
-            snprintf (ok->data, PER_CLIENT_REFBUF_SIZE,
+            snprintf(ok->data, PER_CLIENT_REFBUF_SIZE,
                     "HTTP/1.0 200 OK\r\n\r\n");
-            ok->len = strlen (ok->data);
+            ok->len = strlen(ok->data);
             /* we may have unprocessed data read in, so don't overwrite it */
             ok->associated = client->refbuf;
             client->refbuf = ok;
-            fserve_add_client_callback (client, source_client_callback, source);
+            fserve_add_client_callback(client, source_client_callback, source);
         }
-    }
-    else
-    {
+    } else {
         client_send_error(client, 403, 1, "Mountpoint in use");
         ICECAST_LOG_WARN("Mountpoint %s in use", uri);
     }
 }
 
 /* only called for native icecast source clients */
-static void _handle_source_request (client_t *client, const char *uri)
+static void _handle_source_request(client_t *client, const char *uri)
 {
     ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s as role %s",
         uri, client->con->ip, client->role);
 
-    if (uri[0] != '/')
-    {
+    if (uri[0] != '/') {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
         client_send_error(client, 400, 1, "source mountpoint not starting with /");
         return;
@@ -957,42 +894,39 @@ static void _handle_source_request (client_t *client, const char *uri)
 }
 
 
-static void _handle_stats_request (client_t *client, char *uri)
+static void _handle_stats_request(client_t *client, char *uri)
 {
     stats_event_inc(NULL, "stats_connections");
 
     client->respcode = 200;
     snprintf (client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-            "HTTP/1.0 200 OK\r\n\r\n");
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client_callback (client, stats_callback, NULL);
+        "HTTP/1.0 200 OK\r\n\r\n");
+    client->refbuf->len = strlen(client->refbuf->data);
+    fserve_add_client_callback(client, stats_callback, NULL);
 }
 
 /* if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-static int __add_listener_to_source (source_t *source, client_t *client)
+static int __add_listener_to_source(source_t *source, client_t *client)
 {
     size_t loop = 10;
 
-    do
-    {
+    do {
         ICECAST_LOG_DEBUG("max on %s is %ld (cur %lu)", source->mount,
-                source->max_listeners, source->listeners);
+            source->max_listeners, source->listeners);
         if (source->max_listeners == -1)
             break;
         if (source->listeners < (unsigned long)source->max_listeners)
             break;
 
-        if (loop && source->fallback_when_full && source->fallback_mount)
-        {
+        if (loop && source->fallback_when_full && source->fallback_mount) {
             source_t *next = source_find_mount (source->fallback_mount);
             if (!next) {
                 ICECAST_LOG_ERROR("Fallback '%s' for full source '%s' not found",
-                        source->mount, source->fallback_mount);
+                    source->mount, source->fallback_mount);
                 return -1;
             }
-
             ICECAST_LOG_INFO("stream full trying %s", next->mount);
             source = next;
             loop--;
@@ -1005,15 +939,14 @@ static int __add_listener_to_source (source_t *source, client_t *client)
     client->write_to_client = format_generic_write_to_client;
     client->check_buffer = format_check_http_buffer;
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
-    memset (client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
+    memset(client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
 
     /* lets add the client to the active list */
-    avl_tree_wlock (source->pending_tree);
-    avl_insert (source->pending_tree, client);
-    avl_tree_unlock (source->pending_tree);
+    avl_tree_wlock(source->pending_tree);
+    avl_insert(source->pending_tree, client);
+    avl_tree_unlock(source->pending_tree);
 
-    if (source->running == 0 && source->on_demand)
-    {
+    if (source->running == 0 && source->on_demand) {
         /* enable on-demand relay to start, wake up the slave thread */
         ICECAST_LOG_DEBUG("kicking off on-demand relay");
         source->on_demand_req = 1;
@@ -1034,30 +967,30 @@ static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *cl
         if (existing_client->username && client->username &&
             strcmp(existing_client->username, client->username) == 0 &&
             existing_client->role && client->role &&
-            strcmp(existing_client->role, client->role) == 0)
+            strcmp(existing_client->role, client->role) == 0) {
             ret++;
+        }
         node = avl_get_next(node);
     }
     avl_tree_unlock(source->client_tree);
 
     avl_tree_rlock(source->pending_tree);
     node = avl_get_first(source->pending_tree);
-    while (node)
-    {
+    while (node) {
         client_t *existing_client = (client_t *)node->key;
         if (existing_client->username && client->username &&
             strcmp(existing_client->username, client->username) == 0 &&
             existing_client->role && client->role &&
-            strcmp(existing_client->role, client->role) == 0)
+            strcmp(existing_client->role, client->role) == 0){
             ret++;
+        }
         node = avl_get_next(node);
     }
     avl_tree_unlock(source->pending_tree);
-
     return ret;
 }
 
-static void _handle_get_request (client_t *client, char *uri) {
+static void _handle_get_request(client_t *client, char *uri) {
     source_t *source = NULL;
 
     ICECAST_LOG_DEBUG("Got client %p with URI %H", client, uri);
@@ -1106,7 +1039,8 @@ static void _handle_get_request (client_t *client, char *uri) {
         /* check for duplicate_logins */
         if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
             if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
-                client_send_error(client, 403, 1, "Reached limit of concurrent connections on those credentials");
+                client_send_error(client, 403, 1, "Reached limit of concurrent "
+                    "connections on those credentials");
                 in_error = 1;
             }
         }
@@ -1137,7 +1071,7 @@ static void _handle_get_request (client_t *client, char *uri) {
     }
 }
 
-static void _handle_shoutcast_compatible (client_queue_t *node)
+static void _handle_shoutcast_compatible(client_queue_t *node)
 {
     char *http_compliant;
     int http_compliant_len = 0;
@@ -1151,37 +1085,34 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
         char *ptr, *headers;
 
         /* Get rid of trailing \r\n or \n after password */
-        ptr = strstr (client->refbuf->data, "\r\r\n");
-        if (ptr)
+        ptr = strstr(client->refbuf->data, "\r\r\n");
+        if (ptr) {
             headers = ptr+3;
-        else
-        {
-            ptr = strstr (client->refbuf->data, "\r\n");
-            if (ptr)
+        } else {
+            ptr = strstr(client->refbuf->data, "\r\n");
+            if (ptr) {
                 headers = ptr+2;
-            else
-            {
-                ptr = strstr (client->refbuf->data, "\n");
+            } else {
+                ptr = strstr(client->refbuf->data, "\n");
                 if (ptr)
                     headers = ptr+1;
             }
         }
 
-        if (ptr == NULL)
-        {
-            client_destroy (client);
-            free (node->shoutcast_mount);
-            free (node);
+        if (ptr == NULL){
+            client_destroy(client);
+            free(node->shoutcast_mount);
+            free(node);
             return;
         }
         *ptr = '\0';
 
         client->password = strdup(client->refbuf->data);
         node->offset -= (headers - client->refbuf->data);
-        memmove (client->refbuf->data, headers, node->offset+1);
+        memmove(client->refbuf->data, headers, node->offset+1);
         node->shoutcast = 2;
         /* we've checked the password, now send it back for reading headers */
-        _add_request_queue (node);
+        _add_request_queue(node);
         return;
     }
     /* actually make a copy as we are dropping the config lock */
@@ -1202,36 +1133,34 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
 
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
-    if (httpp_parse (parser, http_compliant, strlen(http_compliant)))
-    {
+    if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
         /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset == node->offset)
+        if (node->stream_offset == node->offset) {
             client->refbuf->len = 0;
-        else
-        {
+        } else {
             char *ptr = client->refbuf->data;
             client->refbuf->len = node->offset - node->stream_offset;
-            memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+            memmove(ptr, ptr + node->stream_offset, client->refbuf->len);
         }
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
         node->shoutcast = 0;
         return;
+    } else {
+        httpp_destroy(parser);
+        client_destroy(client);
     }
-    else {
-        httpp_destroy (parser);
-        client_destroy (client);
-    }
-    free (http_compliant);
-    free (node->shoutcast_mount);
-    free (node);
+    free(http_compliant);
+    free(node->shoutcast_mount);
+    free(node);
     return;
 }
 
 /* Handle <alias> lookups here.
  */
 
-static int _handle_aliases(client_t *client, char **uri) {
+static int _handle_aliases(client_t *client, char **uri)
+{
     const char *http_host = httpp_getvar(client->parser, "host");
     char *serverhost = NULL;
     int   serverport = 0;
@@ -1253,8 +1182,7 @@ static int _handle_aliases(client_t *client, char **uri) {
 
     config = config_get_config();
     listen_sock = config_get_listen_sock (config, client->con);
-    if (listen_sock)
-    {
+    if (listen_sock) {
         serverhost = listen_sock->bind_address;
         serverport = listen_sock->port;
     }
@@ -1262,7 +1190,7 @@ static int _handle_aliases(client_t *client, char **uri) {
     alias = config->aliases;
 
     while (alias) {
-        if(strcmp(*uri, alias->source) == 0 &&
+        if (strcmp(*uri, alias->source) == 0 &&
            (alias->port == -1 || alias->port == serverport) &&
            (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
            (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
@@ -1291,7 +1219,8 @@ static int _handle_aliases(client_t *client, char **uri) {
 
 /* Handle any client that passed the authing process.
  */
-static void _handle_authed_client(client_t *client, void *uri, auth_result result) {
+static void _handle_authed_client(client_t *client, void *uri, auth_result result)
+{
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
@@ -1331,7 +1260,8 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
 /* Handle clients that still need to authenticate.
  */
 
-static void _handle_authentication_global(client_t *client, void *uri, auth_result result) {
+static void _handle_authentication_global(client_t *client, void *uri, auth_result result)
+{
     ice_config_t *config;
 
     auth_stack_release(client->authstack);
@@ -1349,14 +1279,16 @@ static void _handle_authentication_global(client_t *client, void *uri, auth_resu
     config_release_config();
 }
 
-static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const char *name, mount_type type) {
+static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const char *name, mount_type type)
+{
     if (strcmp(name, "/admin.cgi") == 0 || strncmp(name, "/admin/", 7) == 0)
         return NULL;
 
     return config_find_mount(config, name, type);
 }
 
-static void _handle_authentication_mount_generic(client_t *client, void *uri, mount_type type, void (*callback)(client_t*, void*, auth_result)) {
+static void _handle_authentication_mount_generic(client_t *client, void *uri, mount_type type, void (*callback)(client_t*, void*, auth_result))
+{
     ice_config_t *config;
     mount_proxy *mountproxy;
     auth_stack_t *stack = NULL;
@@ -1384,7 +1316,8 @@ static void _handle_authentication_mount_generic(client_t *client, void *uri, mo
     }
 }
 
-static void _handle_authentication_mount_default(client_t *client, void *uri, auth_result result) {
+static void _handle_authentication_mount_default(client_t *client, void *uri, auth_result result)
+{
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
@@ -1398,16 +1331,19 @@ static void _handle_authentication_mount_default(client_t *client, void *uri, au
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
 }
 
-static void _handle_authentication_mount_normal(client_t *client, char *uri) {
+static void _handle_authentication_mount_normal(client_t *client, char *uri)
+{
     ICECAST_LOG_DEBUG("Trying <mount type=\"normal\"> specific authenticators for client %p.", client);
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
 }
 
-static void _handle_authentication(client_t *client, char *uri) {
+static void _handle_authentication(client_t *client, char *uri)
+{
     _handle_authentication_mount_normal(client, uri);
 }
 
-static void __prepare_shoutcast_admin_cgi_request(client_t *client) {
+static void __prepare_shoutcast_admin_cgi_request(client_t *client)
+{
     ice_config_t *config;
     const char *sc_mount;
     const char *pass = httpp_get_query_param(client->parser, "pass");
@@ -1448,17 +1384,14 @@ static void _handle_connection(void)
     const char *rawuri;
     client_queue_t *node;
 
-    while (1)
-    {
+    while (1) {
         node = _get_connection();
-        if (node)
-        {
+        if (node) {
             client_t *client = node->client;
             int already_parsed = 0;
 
             /* Check for special shoutcast compatability processing */
-            if (node->shoutcast)
-            {
+            if (node->shoutcast) {
                 _handle_shoutcast_compatible (node);
                 if (node->shoutcast)
                     continue;
@@ -1473,15 +1406,13 @@ static void _handle_connection(void)
                 httpp_initialize(parser, NULL);
                 client->parser = parser;
             }
-            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset))
-            {
+            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
                 char *uri;
 
                 /* we may have more than just headers, so prepare for it */
-                if (node->stream_offset == node->offset)
+                if (node->stream_offset == node->offset) {
                     client->refbuf->len = 0;
-                else
-                {
+                } else {
                     char *ptr = client->refbuf->data;
                     client->refbuf->len = node->offset - node->stream_offset;
                     memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
@@ -1529,9 +1460,7 @@ static void _handle_connection(void)
                 }
 
                 _handle_authentication(client, uri);
-            }
-            else
-            {
+            } else {
                 free (node);
                 ICECAST_LOG_ERROR("HTTP request parsing failed");
                 client_destroy (client);
@@ -1555,15 +1484,13 @@ int connection_setup_sockets (ice_config_t *config)
     allowed_ip.filename = NULL;
 
     global_lock();
-    if (global.serversock)
-    {
+    if (global.serversock) {
         for (; count < global.server_sockets; count++)
             sock_close (global.serversock [count]);
         free (global.serversock);
         global.serversock = NULL;
     }
-    if (config == NULL)
-    {
+    if (config == NULL) {
         global_unlock();
         return 0;
     }
@@ -1580,17 +1507,14 @@ int connection_setup_sockets (ice_config_t *config)
 
     listener = config->listen_sock;
     prev = &config->listen_sock;
-    while (listener)
-    {
+    while (listener) {
         int successful = 0;
 
-        do
-        {
+        do {
             sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
             if (sock == SOCK_ERROR)
                 break;
-            if (sock_listen (sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR)
-            {
+            if (sock_listen (sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR) {
                 sock_close (sock);
                 break;
             }
@@ -1602,22 +1526,23 @@ int connection_setup_sockets (ice_config_t *config)
             global.serversock [count] = sock;
             count++;
         } while(0);
-        if (successful == 0)
-        {
-            if (listener->bind_address)
+        if (successful == 0) {
+            if (listener->bind_address) {
                 ICECAST_LOG_ERROR("Could not create listener socket on port %d bind %s",
                         listener->port, listener->bind_address);
-            else
+            } else {
                 ICECAST_LOG_ERROR("Could not create listener socket on port %d", listener->port);
+            }
             /* remove failed connection */
             *prev = config_clear_listener (listener);
             listener = *prev;
             continue;
         }
-        if (listener->bind_address)
+        if (listener->bind_address) {
             ICECAST_LOG_INFO("listener socket on port %d address %s", listener->port, listener->bind_address);
-        else
+        } else {
             ICECAST_LOG_INFO("listener socket on port %d", listener->port);
+        }
         prev = &listener->next;
         listener = listener->next;
     }
@@ -1634,10 +1559,12 @@ int connection_setup_sockets (ice_config_t *config)
 void connection_close(connection_t *con)
 {
     sock_close(con->sock);
-    if (con->ip) free(con->ip);
-    if (con->host) free(con->host);
+    if (con->ip)
+        free(con->ip);
+    if (con->host)
+        free(con->host);
 #ifdef HAVE_OPENSSL
-    if (con->ssl) { SSL_shutdown (con->ssl); SSL_free (con->ssl); }
+    if (con->ssl) { SSL_shutdown(con->ssl); SSL_free(con->ssl); }
 #endif
     free(con);
 }

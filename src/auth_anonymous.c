@@ -20,11 +20,13 @@
 #include "logging.h"
 #define CATMODULE "auth_anonymous"
 
-static auth_result anonymous_auth (auth_client *auth_user) {
+static auth_result anonymous_auth(auth_client *auth_user)
+{
     return AUTH_OK;
 }
 
-int  auth_get_anonymous_auth (auth_t *authenticator, config_options_t *options) {
+int  auth_get_anonymous_auth(auth_t *authenticator, config_options_t *options)
+{
     authenticator->authenticate_client = anonymous_auth;
     authenticator->immediate = 1;
     return 0;

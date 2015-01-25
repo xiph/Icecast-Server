@@ -79,21 +79,21 @@
 #define CATMODULE "auth_url"
 
 typedef struct {
-    char *pass_headers; // headers passed from client to addurl.
-    char *prefix_headers; // prefix for passed headers.
-    char *addurl;
-    char *removeurl;
-    char *addaction;
-    char *removeaction;
-    char *username;
-    char *password;
-    char *auth_header;
-    int  auth_header_len;
-    char *timelimit_header;
-    int  timelimit_header_len;
-    char *userpwd;
-    CURL *handle;
-    char errormsg [CURL_ERROR_SIZE];
+    char       *pass_headers; // headers passed from client to addurl.
+    char       *prefix_headers; // prefix for passed headers.
+    char       *addurl;
+    char       *removeurl;
+    char       *addaction;
+    char       *removeaction;
+    char       *username;
+    char       *password;
+    char       *auth_header;
+    int         auth_header_len;
+    char       *timelimit_header;
+    int         timelimit_header_len;
+    char       *userpwd;
+    CURL       *handle;
+    char        errormsg[CURL_ERROR_SIZE];
     auth_result result;
 } auth_url;
 
@@ -131,31 +131,32 @@ static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
 #endif
 
 
-static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_header(void      *ptr,
+                                     size_t    size,
+                                     size_t    nmemb,
+                                     void      *stream)
 {
     auth_client *auth_user = stream;
     unsigned bytes = size * nmemb;
     client_t *client = auth_user->client;
 
-    if (client)
-    {
+    if (client) {
         auth_t *auth = client->auth;
         auth_url *url = auth->state;
-        if (strncasecmp (ptr, url->auth_header, url->auth_header_len) == 0)
+        if (strncasecmp(ptr, url->auth_header, url->auth_header_len) == 0)
             url->result = AUTH_OK;
-        if (strncasecmp (ptr, url->timelimit_header, url->timelimit_header_len) == 0)
-        {
+        if (strncasecmp(ptr, url->timelimit_header,
+                url->timelimit_header_len) == 0) {
             unsigned int limit = 0;
             sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
             client->con->discon_time = time(NULL) + limit;
         }
-        if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0)
-        {
+        if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0) {
             char *eol;
-            snprintf (url->errormsg, sizeof (url->errormsg), "%s", (char*)ptr+22);
-            eol = strchr (url->errormsg, '\r');
+            snprintf(url->errormsg, sizeof(url->errormsg), "%s", (char*)ptr+22);
+            eol = strchr(url->errormsg, '\r');
             if (eol == NULL)
-                eol = strchr (url->errormsg, '\n');
+                eol = strchr(url->errormsg, '\n');
             if (eol)
                 *eol = '\0';
         }
@@ -165,273 +166,291 @@ static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void
 }
 
 /* capture returned data, but don't do anything with it */
-static size_t handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
+static size_t handle_returned_data(void        *ptr,
+                                   size_t      size,
+                                   size_t      nmemb,
+                                   void        *stream)
 {
     return (int)(size*nmemb);
 }
 
 
-static auth_result url_remove_client (auth_client *auth_user)
+static auth_result url_remove_client(auth_client *auth_user)
 {
-    client_t *client = auth_user->client;
-    auth_t *auth = client->auth;
-    auth_url *url = auth->state;
-    time_t duration = time(NULL) - client->con->con_time;
-    char *username, *password, *mount, *server;
-    const char *mountreq;
-    ice_config_t *config;
-    int port;
-    char *userpwd = NULL, post [4096];
-    const char *agent;
-    char *user_agent, *ipaddr;
+    client_t       *client      = auth_user->client;
+    auth_t         *auth        = client->auth;
+    auth_url       *url         = auth->state;
+    time_t          duration    = time(NULL) - client->con->con_time;
+    char           *username,
+                   *password,
+                   *mount,
+                   *server;
+    const char     *mountreq;
+    ice_config_t   *config;
+    int             port;
+    char           *userpwd     = NULL,
+                    post[4096];
+    const char     *agent;
+    char           *user_agent,
+                   *ipaddr;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
 
-    config = config_get_config ();
-    server = util_url_escape (config->hostname);
+    config = config_get_config();
+    server = util_url_escape(config->hostname);
     port = config->port;
-    config_release_config ();
+    config_release_config();
 
-    agent = httpp_getvar (client->parser, "user-agent");
-    if (agent)
-        user_agent = util_url_escape (agent);
-    else
-        user_agent = strdup ("-");
+    agent = httpp_getvar(client->parser, "user-agent");
+    if (agent) {
+        user_agent = util_url_escape(agent);
+    } else {
+        user_agent = strdup("-");
+    }
 
-    if (client->username)
-        username = util_url_escape (client->username);
-    else
-        username = strdup ("");
+    if (client->username) {
+        username = util_url_escape(client->username);
+    } else {
+        username = strdup("");
+    }
 
-    if (client->password)
-        password = util_url_escape (client->password);
-    else
-        password = strdup ("");
+    if (client->password) {
+        password = util_url_escape(client->password);
+    } else {
+        password = strdup("");
+    }
 
     /* get the full uri (with query params if available) */
-    mountreq = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
     if (mountreq == NULL)
-        mountreq = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape (mountreq);
-    ipaddr = util_url_escape (client->con->ip);
+        mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape(mountreq);
+    ipaddr = util_url_escape(client->con->ip);
 
-    snprintf (post, sizeof (post),
+    snprintf(post, sizeof (post),
             "action=%s&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
             url->removeaction, /* already escaped */
             server, port, client->con->id, mount, username,
             password, (long unsigned)duration, ipaddr, user_agent);
-    free (server);
-    free (mount);
-    free (username);
-    free (password);
-    free (ipaddr);
-    free (user_agent);
 
-    if (strchr (url->removeurl, '@') == NULL)
-    {
-        if (url->userpwd)
-            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
-        else
-        {
+    free(server);
+    free(mount);
+    free(username);
+    free(password);
+    free(ipaddr);
+    free(user_agent);
+
+    if (strchr (url->removeurl, '@') == NULL) {
+        if (url->userpwd) {
+            curl_easy_setopt(url->handle, CURLOPT_USERPWD, url->userpwd);
+        } else {
             /* auth'd requests may not have a user/pass, but may use query args */
-            if (client->username && client->password)
-            {
-                size_t len = strlen (client->username) + strlen (client->password) + 2;
-                userpwd = malloc (len);
-                snprintf (userpwd, len, "%s:%s", client->username, client->password);
-                curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
+            if (client->username && client->password) {
+                size_t len = strlen(client->username) +
+                    strlen(client->password) + 2;
+                userpwd = malloc(len);
+                snprintf(userpwd, len, "%s:%s",
+                    client->username, client->password);
+                curl_easy_setopt(url->handle, CURLOPT_USERPWD, userpwd);
+            } else {
+                curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
             }
-            else
-                curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
         }
-    }
-    else
-    {
+    } else {
         /* url has user/pass but libcurl may need to clear any existing settings */
-        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+        curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
     }
-    curl_easy_setopt (url->handle, CURLOPT_URL, url->removeurl);
-    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
-    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+    curl_easy_setopt(url->handle, CURLOPT_URL, url->removeurl);
+    curl_easy_setopt(url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
-        ICECAST_LOG_WARN("auth to server %s failed with %s", url->removeurl, url->errormsg);
+        ICECAST_LOG_WARN("auth to server %s failed with %s",
+            url->removeurl, url->errormsg);
 
-    free (userpwd);
+    free(userpwd);
 
     return AUTH_OK;
 }
 
 
-static auth_result url_add_client (auth_client *auth_user)
+static auth_result url_add_client(auth_client *auth_user)
 {
-    client_t *client = auth_user->client;
-    auth_t *auth = client->auth;
-    auth_url *url = auth->state;
-    int res = 0, port;
-    const char *agent;
-    char *user_agent, *username, *password;
-    const char *mountreq;
-    char *mount, *ipaddr, *server;
-    ice_config_t *config;
-    char *userpwd = NULL, post [4096];
-    ssize_t post_offset;
-    char *pass_headers, *cur_header, *next_header;
-    const char *header_val;
-    char *header_valesc;
+    client_t       *client      = auth_user->client;
+    auth_t         *auth        = client->auth;
+    auth_url       *url         = auth->state;
+    int             res         = 0,
+                    port;
+    const char     *agent;
+    char           *user_agent,
+                   *username,
+                   *password;
+    const char     *mountreq;
+    char           *mount,
+                   *ipaddr,
+                   *server;
+    ice_config_t   *config;
+    char           *userpwd    = NULL, post [4096];
+    ssize_t         post_offset;
+    char           *pass_headers,
+                   *cur_header,
+                   *next_header;
+    const char     *header_val;
+    char           *header_valesc;
 
     if (url->addurl == NULL)
         return AUTH_OK;
 
-    config = config_get_config ();
-    server = util_url_escape (config->hostname);
+    config = config_get_config();
+    server = util_url_escape(config->hostname);
     port = config->port;
-    config_release_config ();
+    config_release_config();
 
-    agent = httpp_getvar (client->parser, "user-agent");
-    if (agent)
-        user_agent = util_url_escape (agent);
-    else
-        user_agent = strdup ("-");
+    agent = httpp_getvar(client->parser, "user-agent");
+    if (agent) {
+        user_agent = util_url_escape(agent);
+    } else {
+        user_agent = strdup("-");
+    }
 
-    if (client->username)
-        username = util_url_escape (client->username);
-    else
-        username = strdup ("");
+    if (client->username) {
+        username = util_url_escape(client->username);
+    } else {
+        username = strdup("");
+    }
 
-    if (client->password)
-        password = util_url_escape (client->password);
-    else
-        password = strdup ("");
+    if (client->password) {
+        password = util_url_escape(client->password);
+    } else {
+        password = strdup("");
+    }
 
     /* get the full uri (with query params if available) */
-    mountreq = httpp_getvar (client->parser, HTTPP_VAR_RAWURI);
+    mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
     if (mountreq == NULL)
-        mountreq = httpp_getvar (client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape (mountreq);
-    ipaddr = util_url_escape (client->con->ip);
+        mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
+    mount = util_url_escape(mountreq);
+    ipaddr = util_url_escape(client->con->ip);
 
-    post_offset = snprintf (post, sizeof (post),
+    post_offset = snprintf(post, sizeof (post),
             "action=%s&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&ip=%s&agent=%s",
             url->addaction, /* already escaped */
             server, port, client->con->id, mount, username,
             password, ipaddr, user_agent);
-    free (server);
-    free (mount);
-    free (user_agent);
-    free (username);
-    free (password);
-    free (ipaddr);
+
+    free(server);
+    free(mount);
+    free(user_agent);
+    free(username);
+    free(password);
+    free(ipaddr);
 
     pass_headers = NULL;
     if (url->pass_headers)
-        pass_headers = strdup (url->pass_headers);
-    if (pass_headers)
-    {
+        pass_headers = strdup(url->pass_headers);
+    if (pass_headers) {
         cur_header = pass_headers;
-        while (cur_header)
-        {
-            next_header = strstr (cur_header, ",");
-            if (next_header)
-            {
+        while (cur_header) {
+            next_header = strstr(cur_header, ",");
+            if (next_header) {
                 *next_header=0;
                 next_header++;
             }
 
             header_val = httpp_getvar (client->parser, cur_header);
-            if (header_val)
-            {
+            if (header_val) {
                 header_valesc = util_url_escape (header_val);
-                post_offset += snprintf (post+post_offset, sizeof (post)-post_offset, "&%s%s=%s",
-                                         url->prefix_headers ? url->prefix_headers : "",
-                                         cur_header, header_valesc);
-                free (header_valesc);
+                post_offset += snprintf(post + post_offset,
+                                        sizeof(post) - post_offset,
+                                        "&%s%s=%s",
+                                        url->prefix_headers ? url->prefix_headers : "",
+                                        cur_header, header_valesc);
+                free(header_valesc);
             }
 
             cur_header = next_header;
         }
     }
 
-    if (strchr (url->addurl, '@') == NULL)
-    {
-        if (url->userpwd)
-            curl_easy_setopt (url->handle, CURLOPT_USERPWD, url->userpwd);
-        else
-        {
+    if (strchr(url->addurl, '@') == NULL) {
+        if (url->userpwd) {
+            curl_easy_setopt(url->handle, CURLOPT_USERPWD, url->userpwd);
+        } else {
             /* auth'd requests may not have a user/pass, but may use query args */
-            if (client->username && client->password)
-            {
-                size_t len = strlen (client->username) + strlen (client->password) + 2;
+            if (client->username && client->password) {
+                size_t len = strlen(client->username) + strlen(client->password) + 2;
                 userpwd = malloc (len);
-                snprintf (userpwd, len, "%s:%s", client->username, client->password);
-                curl_easy_setopt (url->handle, CURLOPT_USERPWD, userpwd);
-            }
-            else
+                snprintf(userpwd, len, "%s:%s",
+                    client->username, client->password);
+                curl_easy_setopt(url->handle, CURLOPT_USERPWD, userpwd);
+            } else {
                 curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+            }
         }
-    }
-    else
-    {
+    } else {
         /* url has user/pass but libcurl may need to clear any existing settings */
-        curl_easy_setopt (url->handle, CURLOPT_USERPWD, "");
+        curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
     }
-    curl_easy_setopt (url->handle, CURLOPT_URL, url->addurl);
-    curl_easy_setopt (url->handle, CURLOPT_POSTFIELDS, post);
-    curl_easy_setopt (url->handle, CURLOPT_WRITEHEADER, auth_user);
+    curl_easy_setopt(url->handle, CURLOPT_URL, url->addurl);
+    curl_easy_setopt(url->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
     url->errormsg[0] = '\0';
 
     url->result = AUTH_FAILED;
-    res = curl_easy_perform (url->handle);
+    res = curl_easy_perform(url->handle);
 
-    free (userpwd);
+    free(userpwd);
 
-    if (res)
-    {
-        ICECAST_LOG_WARN("auth to server %s failed with %s", url->addurl, url->errormsg);
+    if (res) {
+        ICECAST_LOG_WARN("auth to server %s failed with %s",
+            url->addurl, url->errormsg);
         return AUTH_FAILED;
     }
     /* we received a response, lets see what it is */
     if (url->result == AUTH_FAILED) {
-        ICECAST_LOG_INFO("client auth (%s) failed with \"%s\"", url->addurl, url->errormsg);
+        ICECAST_LOG_INFO("client auth (%s) failed with \"%s\"",
+            url->addurl, url->errormsg);
     }
     return url->result;
 }
 
-static auth_result auth_url_adduser(auth_t *auth, const char *username, const char *password)
+static auth_result auth_url_adduser(auth_t      *auth,
+                                    const char  *username,
+                                    const char  *password)
 {
     return AUTH_FAILED;
 }
 
-static auth_result auth_url_deleteuser (auth_t *auth, const char *username)
+static auth_result auth_url_deleteuser(auth_t *auth, const char *username)
 {
     return AUTH_FAILED;
 }
 
-static auth_result auth_url_listuser (auth_t *auth, xmlNodePtr srcnode)
+static auth_result auth_url_listuser(auth_t *auth, xmlNodePtr srcnode)
 {
     return AUTH_FAILED;
 }
 
 int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
 {
-    auth_url *url_info;
-    const char * addaction = "listener_add";
-    const char * removeaction = "listener_remove";
+    auth_url    *url_info;
+    const char  *addaction      = "listener_add";
+    const char  *removeaction   = "listener_remove";
 
-    authenticator->free = auth_url_clear;
-    authenticator->adduser = auth_url_adduser;
-    authenticator->deleteuser = auth_url_deleteuser;
-    authenticator->listuser = auth_url_listuser;
+    authenticator->free         = auth_url_clear;
+    authenticator->adduser      = auth_url_adduser;
+    authenticator->deleteuser   = auth_url_deleteuser;
+    authenticator->listuser     = auth_url_listuser;
 
-    url_info = calloc(1, sizeof(auth_url));
-    authenticator->state = url_info;
+    url_info                    = calloc(1, sizeof(auth_url));
+    authenticator->state        = url_info;
 
     /* default headers */
-    url_info->auth_header = strdup("icecast-auth-user: 1\r\n");
-    url_info->timelimit_header = strdup("icecast-auth-timelimit:");
+    url_info->auth_header       = strdup("icecast-auth-user: 1\r\n");
+    url_info->timelimit_header  = strdup("icecast-auth-timelimit:");
 
     /* force auth thread to call function. this makes sure the auth_t is attached to client */
     authenticator->authenticate_client = url_add_client;
@@ -475,10 +494,9 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     url_info->addaction = util_url_escape(addaction);
     url_info->removeaction = util_url_escape(removeaction);
 
-    url_info->handle = curl_easy_init ();
-    if (url_info->handle == NULL)
-    {
-        auth_url_clear (authenticator);
+    url_info->handle = curl_easy_init();
+    if (url_info->handle == NULL) {
+        auth_url_clear(authenticator);
         return -1;
     }
 
@@ -487,22 +505,22 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     if (url_info->timelimit_header)
         url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
-    curl_easy_setopt (url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
-    curl_easy_setopt (url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
-    curl_easy_setopt (url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
-    curl_easy_setopt (url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
-    curl_easy_setopt (url_info->handle, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt (url_info->handle, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
+    curl_easy_setopt(url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
+    curl_easy_setopt(url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
+    curl_easy_setopt(url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
+    curl_easy_setopt(url_info->handle, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(url_info->handle, CURLOPT_TIMEOUT, 15L);
 #ifdef CURLOPT_PASSWDFUNCTION
-    curl_easy_setopt (url_info->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
+    curl_easy_setopt(url_info->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
 #endif
-    curl_easy_setopt (url_info->handle, CURLOPT_ERRORBUFFER, &url_info->errormsg[0]);
+    curl_easy_setopt(url_info->handle, CURLOPT_ERRORBUFFER, &url_info->errormsg[0]);
 
-    if (url_info->username && url_info->password)
-    {
-        int len = strlen (url_info->username) + strlen (url_info->password) + 2;
-        url_info->userpwd = malloc (len);
-        snprintf (url_info->userpwd, len, "%s:%s", url_info->username, url_info->password);
+    if (url_info->username && url_info->password) {
+        int len = strlen(url_info->username) + strlen(url_info->password) + 2;
+        url_info->userpwd = malloc(len);
+        snprintf(url_info->userpwd, len, "%s:%s",
+            url_info->username, url_info->password);
     }
 
     ICECAST_LOG_INFO("URL based authentication setup");
