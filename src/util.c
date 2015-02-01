@@ -43,6 +43,7 @@
 #include "connection.h"
 #include "client.h"
 #include "source.h"
+#include "admin.h"
 
 #define CATMODULE "util"
 
@@ -620,7 +621,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
         const char * datablock,
-        struct source_tag * source) {
+        struct source_tag * source, struct _client_tag * client) {
     const char * http_version = "1.0";
     ice_config_t *config;
     time_t now;
@@ -695,9 +696,11 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
-    ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\nAccept-Encoding: identity\r\nConnection: close\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
+                              (client->admin_command == ADMIN_COMMAND_ERROR ?
+                                                "GET, SOURCE" : "GET"),
                               currenttime_buffer,
                               contenttype_buffer,
                               (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),

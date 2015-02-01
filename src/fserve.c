@@ -462,7 +462,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         httpclient->respcode = 200;
         ret = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
                                       0, 200, NULL,
-                                      "audio/x-mpegurl", NULL, "", NULL);
+                                      "audio/x-mpegurl", NULL, "", NULL, httpclient);
         if (ret == -1 || ret >= (BUFSIZE - 512)) { /* we want at least 512 bytes left for the content of the playlist */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(httpclient, 500, 0, "Header generation failed.");
@@ -577,7 +577,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                 bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
                                                 0, 206, NULL,
                                                 type, NULL,
-                                                NULL, NULL);
+                                                NULL, NULL, httpclient);
                 if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                     client_send_error(httpclient, 500, 0, "Header generation failed.");
@@ -608,7 +608,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
                                         0, 200, NULL,
                                         type, NULL,
-                                        NULL, NULL);
+                                        NULL, NULL, httpclient);
         if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(httpclient, 500, 0, "Header generation failed.");

@@ -306,7 +306,7 @@ void admin_send_response(xmlDocPtr     doc,
         ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                                      0, 200, NULL,
                                      "text/xml", "utf-8",
-                                     NULL, NULL);
+                                     NULL, NULL, client);
         if (ret < 0) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(client, 500, 0, "Header generation failed.");
@@ -323,7 +323,7 @@ void admin_send_response(xmlDocPtr     doc,
                 ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                                              0, 200, NULL,
                                              "text/xml", "utf-8",
-                                             NULL, NULL);
+                                             NULL, NULL, client);
                 if (ret == -1) {
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                     client_send_error(client, 500, 0, "Header generation failed.");
@@ -577,7 +577,7 @@ static void html_success(client_t *client, char *message)
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
                                  0, 0, 200, NULL,
                                  "text/html", "utf-8",
-                                 "", NULL);
+                                 "", NULL, client);
 
     if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
@@ -755,7 +755,7 @@ static void command_buildm3u(client_t *client, const char *mount)
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
                                  0, 0, 200, NULL,
                                  "audio/x-mpegurl", NULL,
-                                 NULL, NULL);
+                                 NULL, NULL, client);
 
     if (ret == -1 || ret >= (PER_CLIENT_REFBUF_SIZE - 512)) {
         /* we want at least 512 Byte left for data */
@@ -1157,7 +1157,7 @@ static void command_list_mounts(client_t *client, int response)
                                              PER_CLIENT_REFBUF_SIZE, 0,
                                              0, 200, NULL,
                                              "text/plain", "utf-8",
-                                             "", NULL);
+                                             "", NULL, client);
 
         if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");

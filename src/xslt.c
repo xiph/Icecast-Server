@@ -241,7 +241,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
+        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
         if (ret == -1) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(client, 500, 0, "Header generation failed.");
@@ -254,7 +254,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
                     ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
                     refbuf->data = new_data;
                     refbuf->len = full_len;
-                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL);
+                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
                     if (ret == -1) {
                         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                         client_send_error(client, 500, 0, "Header generation failed.");

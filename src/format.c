@@ -294,7 +294,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr = client->refbuf->data;
     client->respcode = 200;
 
-    bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source);
+    bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
     if (bytes == -1) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
         client_send_error(client, 500, 0, "Header generation failed.");
@@ -305,7 +305,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
             client->refbuf->data = ptr = new_ptr;
             client->refbuf->len = remaining = bytes + 1024;
-            bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source);
+            bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
             if (bytes == -1 ) {
                 ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                 client_send_error(client, 500, 0, "Header generation failed.");

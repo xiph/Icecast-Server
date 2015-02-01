@@ -172,7 +172,7 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
                                  plain ? "text/plain" : "text/html", "utf-8",
-                                 plain ? message : "", NULL);
+                                 plain ? message : "", NULL, client);
 
     if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
