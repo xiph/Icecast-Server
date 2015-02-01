@@ -92,11 +92,34 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     return ret;
 }
 
+static inline void client_reuseconnection(client_t *client) {
+    connection_t *con;
+    reuse_t reuse;
+
+    if (!client)
+        return;
+
+    con = client->con;
+    con = connection_create(con->sock, con->serversock, strdup(con->ip));
+    reuse = client->reuse;
+    client->con->sock = -1; /* TODO: do not use magic */
+    client->reuse = ICECAST_REUSE_CLOSE;
+
+    client_destroy(client);
+
+    connection_queue(con);
+}
+
 void client_destroy(client_t *client)
 {
     ICECAST_LOG_DEBUG("Called to destory client %p", client);
     if (client == NULL)
         return;
+
+    if (client->reuse != ICECAST_REUSE_CLOSE) {
+        client_reuseconnection(client);
+        return;
+    }
 
     /* release the buffer now, as the buffer could be on the source queue
      * and may of disappeared after auth completes */
@@ -163,8 +186,15 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 void client_send_error(client_t *client, int status, int plain, const char *message)
 {
     ssize_t ret;
+    refbuf_t *data;
 
     if (status == 500) {
+         client_send_500(client, message);
+         return;
+    }
+
+    data = refbuf_new(PER_CLIENT_REFBUF_SIZE);
+    if (!data) {
          client_send_500(client, message);
          return;
     }
@@ -172,7 +202,7 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
                                  plain ? "text/plain" : "text/html", "utf-8",
-                                 plain ? message : "", NULL, client);
+                                 NULL, NULL, client);
 
     if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
@@ -180,13 +210,26 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
         return;
     }
 
-    if (!plain)
-        snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+    if (plain) {
+        strncpy(data->data, message, data->len);
+        data->data[data->len-1] = 0;
+    } else {
+        snprintf(data->data, data->len,
                  "<html><head><title>Error %i</title></head><body><b>%i - %s</b></body></html>\r\n",
                  status, status, message);
+    }
+    data->len = strlen(data->data);
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "Content-Length: %llu\r\nConnection: Keep-Alive\r\n\r\n",
+             (long long unsigned int)data->len);
 
     client->respcode = status;
     client->refbuf->len = strlen (client->refbuf->data);
+    client->refbuf->next = data;
+
+    client->reuse = ICECAST_REUSE_KEEPALIVE;
+
     fserve_add_client (client, NULL);
 }
 

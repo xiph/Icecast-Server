@@ -60,6 +60,7 @@ int connection_setup_sockets(struct ice_config_tag *config);
 void connection_close(connection_t *con);
 connection_t *connection_create(sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source(struct source_tag *source, int response);
+void connection_queue(connection_t *con);
 
 extern rwlock_t _source_shutdown_rwlock;
 

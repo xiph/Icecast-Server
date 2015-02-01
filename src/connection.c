@@ -685,6 +685,41 @@ static client_queue_t *create_client_node(client_t *client)
     return node;
 }
 
+void connection_queue(connection_t *con)
+{
+    client_queue_t *node;
+    client_t *client = NULL;
+
+    global_lock();
+    if (client_create(&client, con, NULL) < 0) {
+        global_unlock();
+        client_send_error(client, 403, 1, "Icecast connection limit reached");
+        /* don't be too eager as this is an imposed hard limit */
+        thread_sleep(400000);
+        return;
+    }
+
+    /* setup client for reading incoming http */
+    client->refbuf->data[PER_CLIENT_REFBUF_SIZE-1] = '\000';
+
+    if (sock_set_blocking(client->con->sock, 0) || sock_set_nodelay(client->con->sock)) {
+        global_unlock();
+        ICECAST_LOG_WARN("failed to set tcp options on client connection, dropping");
+        client_destroy(client);
+        return;
+    }
+    node = create_client_node(client);
+    global_unlock();
+
+    if (node == NULL) {
+        client_destroy(client);
+        return;
+    }
+
+    _add_request_queue(node);
+    stats_event_inc(NULL, "connections");
+}
+
 void connection_accept_loop(void)
 {
     connection_t *con;
@@ -699,38 +734,7 @@ void connection_accept_loop(void)
         con = _accept_connection (duration);
 
         if (con) {
-            client_queue_t *node;
-            client_t *client = NULL;
-
-            global_lock();
-            if (client_create (&client, con, NULL) < 0) {
-                global_unlock();
-                client_send_error(client, 403, 1, "Icecast connection limit reached");
-                /* don't be too eager as this is an imposed hard limit */
-                thread_sleep (400000);
-                continue;
-            }
-
-            /* setup client for reading incoming http */
-            client->refbuf->data [PER_CLIENT_REFBUF_SIZE-1] = '\000';
-
-            if (sock_set_blocking (client->con->sock, 0) || sock_set_nodelay (client->con->sock)) {
-                global_unlock();
-                ICECAST_LOG_WARN("failed to set tcp options on client connection, dropping");
-                client_destroy(client);
-                continue;
-            }
-
-            node = create_client_node(client);
-            global_unlock();
-
-            if (node == NULL) {
-                client_destroy(client);
-                continue;
-            }
-
-            _add_request_queue(node);
-            stats_event_inc(NULL, "connections");
+            connection_queue(con);
             duration = 5;
         } else {
             if (_req_queue == NULL)
@@ -1569,6 +1573,9 @@ int connection_setup_sockets (ice_config_t *config)
 
 void connection_close(connection_t *con)
 {
+    if (!con)
+        return;
+
     sock_close(con->sock);
     if (con->ip)
         free(con->ip);

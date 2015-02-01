@@ -30,6 +30,13 @@ typedef enum _protocol_tag {
     ICECAST_PROTOCOL_SHOUTCAST
 } protocol_t;
 
+typedef enum _reuse_tag {
+    /* do not reuse */
+    ICECAST_REUSE_CLOSE = 0,
+    /* reuse */
+    ICECAST_REUSE_KEEPALIVE
+} reuse_t;
+
 typedef struct _client_tag
 {
     /* mode of operation for this client */
@@ -37,6 +44,10 @@ typedef struct _client_tag
 
     /* the client's connection */
     connection_t *con;
+
+    /* Reuse this connection ... */
+    reuse_t reuse;
+
     /* the client's http headers */
     http_parser_t *parser;
 

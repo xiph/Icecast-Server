@@ -696,7 +696,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
-    ret = snprintf (out, len, "%sServer: %s\r\nAccept-Encoding: identity\r\nConnection: close\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
                               (client->admin_command == ADMIN_COMMAND_ERROR ?
