@@ -657,6 +657,33 @@ static void _add_request_queue(client_queue_t *node)
     _req_queue_tail = (volatile client_queue_t **)&node->next;
 }
 
+static client_queue_t *create_client_node(client_t *client)
+{
+    client_queue_t *node = calloc (1, sizeof (client_queue_t));
+    ice_config_t *config;
+    listener_t *listener;
+
+    if (!node)
+        return NULL;
+
+    node->client = client;
+
+    config = config_get_config();
+    listener = config_get_listen_sock(config, client->con);
+
+    if (listener) {
+        if (listener->shoutcast_compat)
+            node->shoutcast = 1;
+        if (listener->ssl && ssl_ok)
+            connection_uses_ssl(client->con);
+        if (listener->shoutcast_mount)
+            node->shoutcast_mount = strdup(listener->shoutcast_mount);
+    }
+
+    config_release_config();
+
+    return node;
+}
 
 void connection_accept_loop(void)
 {
@@ -673,9 +700,7 @@ void connection_accept_loop(void)
 
         if (con) {
             client_queue_t *node;
-            ice_config_t *config;
             client_t *client = NULL;
-            listener_t *listener;
 
             global_lock();
             if (client_create (&client, con, NULL) < 0) {
@@ -696,27 +721,13 @@ void connection_accept_loop(void)
                 continue;
             }
 
-            node = calloc (1, sizeof (client_queue_t));
+            node = create_client_node(client);
+            global_unlock();
+
             if (node == NULL) {
-                global_unlock();
                 client_destroy(client);
                 continue;
             }
-            node->client = client;
-
-            config = config_get_config();
-            listener = config_get_listen_sock(config, client->con);
-
-            if (listener) {
-                if (listener->shoutcast_compat)
-                    node->shoutcast = 1;
-                if (listener->ssl && ssl_ok)
-                    connection_uses_ssl(client->con);
-                if (listener->shoutcast_mount)
-                    node->shoutcast_mount = strdup(listener->shoutcast_mount);
-            }
-            global_unlock();
-            config_release_config();
 
             _add_request_queue(node);
             stats_event_inc(NULL, "connections");
