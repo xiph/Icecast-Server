@@ -192,7 +192,7 @@ static void get_ssl_certificate(ice_config_t *config)
 {
     SSL_METHOD *method;
     long ssl_opts;
-    ssl_ok = 0;
+    config->tls_ok = ssl_ok = 0;
 
     SSL_load_error_strings(); /* readable error messages */
     SSL_library_init(); /* initialize library */
@@ -224,7 +224,7 @@ static void get_ssl_certificate(ice_config_t *config)
         if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) {
             ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
         }
-        ssl_ok = 1;
+        config->tls_ok = ssl_ok = 1;
         ICECAST_LOG_INFO("SSL certificate found at %s", config->cert_file);
         ICECAST_LOG_INFO("SSL using ciphers %s", config->cipher_list);
         return;

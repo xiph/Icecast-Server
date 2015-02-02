@@ -707,12 +707,13 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
-    ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
                               connection_header,
                               (client->admin_command == ADMIN_COMMAND_ERROR ?
                                                 "GET, SOURCE" : "GET"),
+                              (config->tls_ok ? "Upgrade: TLS/1.0\r\n" : ""),
                               currenttime_buffer,
                               contenttype_buffer,
                               (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),

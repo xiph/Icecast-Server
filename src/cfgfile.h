@@ -197,6 +197,9 @@ typedef struct ice_config_tag {
 
     ice_config_http_header_t *http_headers;
 
+    /* is TLS supported by the server? */
+    int tls_ok;
+
     relay_server *relay;
 
     mount_proxy *mounts;
