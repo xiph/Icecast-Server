@@ -711,7 +711,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               status_buffer,
                               config->server_id,
                               connection_header,
-                              (client->admin_command == ADMIN_COMMAND_ERROR ?
+                              (client && client->admin_command == ADMIN_COMMAND_ERROR ?
                                                 "GET, SOURCE" : "GET"),
                               (config->tls_ok ? "Upgrade: TLS/1.0\r\n" : ""),
                               currenttime_buffer,
