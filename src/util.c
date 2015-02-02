@@ -652,6 +652,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         {
             switch (status)
             {
+                case 101: statusmsg = "Switching Protocols"; http_version = "1.1"; break;
                 case 200: statusmsg = "OK"; break;
                 case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
                 case 400: statusmsg = "Bad Request"; break;
@@ -659,6 +660,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 403: statusmsg = "Forbidden"; break;
                 case 404: statusmsg = "File Not Found"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
+                case 426: statusmsg = "Upgrade Required"; http_version = "1.1"; break;
                 default:  statusmsg = "(unknown status code)"; break;
             }
         }

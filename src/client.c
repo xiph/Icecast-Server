@@ -107,6 +107,8 @@ static inline void client_reuseconnection(client_t *client) {
 
     client_destroy(client);
 
+    if (reuse == ICECAST_REUSE_UPGRADETLS)
+        connection_uses_ssl(con);
     connection_queue(con);
 }
 
@@ -237,6 +239,62 @@ void client_send_100(client_t *client)
 {
     /* On demand inject a HTTP/1.1 100 Continue to make sure clients are happy */
     sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
+}
+
+void client_send_101(client_t *client, reuse_t reuse)
+{
+    ssize_t ret;
+
+    if (!client)
+        return;
+
+    if (reuse != ICECAST_REUSE_UPGRADETLS) {
+        client_send_500(client, "Bad reuse parameter");
+        return;
+    }
+
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 101, NULL,
+                                 "text/plain", "utf-8",
+                                 NULL, NULL, client);
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\nConnection: Upgrade\r\n\r\n");
+
+    client->respcode = 101;
+    client->refbuf->len = strlen(client->refbuf->data);
+
+    client->reuse = reuse;
+
+    fserve_add_client(client, NULL);
+}
+
+void client_send_426(client_t *client, reuse_t reuse)
+{
+    ssize_t ret;
+
+    if (!client)
+        return;
+
+    if (reuse != ICECAST_REUSE_UPGRADETLS) {
+        client_send_500(client, "Bad reuse parameter");
+        return;
+    }
+
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 426, NULL,
+                                 "text/plain", "utf-8",
+                                 NULL, NULL, client);
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\nConnection: Upgrade\r\n\r\n");
+
+    client->respcode = 426;
+    client->refbuf->len = strlen(client->refbuf->data);
+
+    client->reuse = ICECAST_REUSE_KEEPALIVE;
+
+    fserve_add_client(client, NULL);
 }
 
 /* this function is designed to work even if client is in bad state */

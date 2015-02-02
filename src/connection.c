@@ -1423,6 +1423,7 @@ static void _handle_connection(void)
             }
             if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
                 char *uri;
+                const char *upgrade;
 
                 /* we may have more than just headers, so prepare for it */
                 if (node->stream_offset == node->offset) {
@@ -1446,6 +1447,12 @@ static void _handle_connection(void)
                     strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
                     ICECAST_LOG_ERROR("Bad HTTP protocol detected");
                     client_destroy (client);
+                    continue;
+                }
+
+                upgrade = httpp_getvar(parser, "upgrade");
+                if (upgrade && strstr(upgrade, "TLS/1.0") != NULL) {
+                    client_send_101(client, ICECAST_REUSE_UPGRADETLS);
                     continue;
                 }
 

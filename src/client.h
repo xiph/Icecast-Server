@@ -34,7 +34,9 @@ typedef enum _reuse_tag {
     /* do not reuse */
     ICECAST_REUSE_CLOSE = 0,
     /* reuse */
-    ICECAST_REUSE_KEEPALIVE
+    ICECAST_REUSE_KEEPALIVE,
+    /* Upgrade to TLS */
+    ICECAST_REUSE_UPGRADETLS
 } reuse_t;
 
 typedef struct _client_tag
@@ -105,6 +107,8 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
 void client_send_error(client_t *client, int status, int plain, const char *message);
 void client_send_100(client_t *client);
+void client_send_101(client_t *client, reuse_t reuse);
+void client_send_426(client_t *client, reuse_t reuse);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
