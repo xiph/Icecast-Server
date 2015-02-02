@@ -632,9 +632,18 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     char contenttype_buffer[80];
     ssize_t ret;
     char * extra_headers;
+    const char *connection_header = "Close";
 
     if (!out)
         return -1;
+
+    if (client) {
+        switch (client->reuse) {
+            case ICECAST_REUSE_CLOSE:      connection_header = "Close"; break;
+            case ICECAST_REUSE_KEEPALIVE:  connection_header = "Keep-Alive"; break;
+            case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; break;
+        }
+    }
 
     if (offset == -1)
         offset = strlen (out);
@@ -698,9 +707,10 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
-    ret = snprintf (out, len, "%sServer: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
+                              connection_header,
                               (client->admin_command == ADMIN_COMMAND_ERROR ?
                                                 "GET, SOURCE" : "GET"),
                               currenttime_buffer,

@@ -201,6 +201,8 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
          return;
     }
 
+    client->reuse = ICECAST_REUSE_KEEPALIVE;
+
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, status, NULL,
                                  plain ? "text/plain" : "text/html", "utf-8",
@@ -223,14 +225,12 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
     data->len = strlen(data->data);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: %llu\r\nConnection: Keep-Alive\r\n\r\n",
+             "Content-Length: %llu\r\n\r\n",
              (long long unsigned int)data->len);
 
     client->respcode = status;
     client->refbuf->len = strlen (client->refbuf->data);
     client->refbuf->next = data;
-
-    client->reuse = ICECAST_REUSE_KEEPALIVE;
 
     fserve_add_client (client, NULL);
 }
@@ -253,18 +253,18 @@ void client_send_101(client_t *client, reuse_t reuse)
         return;
     }
 
+    client->reuse = reuse;
+
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 101, NULL,
                                  "text/plain", "utf-8",
                                  NULL, NULL, client);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\nConnection: Upgrade\r\n\r\n");
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\n\r\n");
 
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);
-
-    client->reuse = reuse;
 
     fserve_add_client(client, NULL);
 }
@@ -281,13 +281,15 @@ void client_send_426(client_t *client, reuse_t reuse)
         return;
     }
 
+    client->reuse = reuse;
+
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 426, NULL,
                                  "text/plain", "utf-8",
                                  NULL, NULL, client);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\nConnection: Upgrade\r\n\r\n");
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\n\r\n");
 
     client->respcode = 426;
     client->refbuf->len = strlen(client->refbuf->data);
