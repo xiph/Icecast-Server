@@ -1423,7 +1423,7 @@ static void _handle_connection(void)
             }
             if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
                 char *uri;
-                const char *upgrade;
+                const char *upgrade, *connection;
 
                 /* we may have more than just headers, so prepare for it */
                 if (node->stream_offset == node->offset) {
@@ -1451,7 +1451,8 @@ static void _handle_connection(void)
                 }
 
                 upgrade = httpp_getvar(parser, "upgrade");
-                if (upgrade && strstr(upgrade, "TLS/1.0") != NULL) {
+                connection = httpp_getvar(parser, "connection");
+                if (upgrade && connection && strstr(upgrade, "TLS/1.0") != NULL && strcasecmp(connection, "upgrade") == 0) {
                     client_send_101(client, ICECAST_REUSE_UPGRADETLS);
                     continue;
                 }
