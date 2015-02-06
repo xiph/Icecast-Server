@@ -103,6 +103,22 @@ static inline void client_reuseconnection(client_t *client) {
     con = connection_create(con->sock, con->serversock, strdup(con->ip));
     reuse = client->reuse;
     client->con->sock = -1; /* TODO: do not use magic */
+
+    /* handle to keep the TLS connection */
+#ifdef HAVE_OPENSSL
+    if (client->con->ssl) {
+        /* AHhhggrr.. That pain....
+         * stealing SSL state...
+         */
+        con->ssl  = client->con->ssl;
+        con->read = client->con->read;
+        con->send = client->con->send;
+        client->con->ssl  = NULL;
+        client->con->read = NULL;
+        client->con->send = NULL;
+    }
+#endif
+
     client->reuse = ICECAST_REUSE_CLOSE;
 
     client_destroy(client);

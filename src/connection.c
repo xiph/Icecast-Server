@@ -410,6 +410,9 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 void connection_uses_ssl(connection_t *con)
 {
 #ifdef HAVE_OPENSSL
+    if (con->ssl)
+        return;
+
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
     con->ssl = SSL_new(ssl_ctx);
