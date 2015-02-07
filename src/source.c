@@ -508,6 +508,10 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
+#ifdef HAVE_OPENSSL
+       if (source->client->con->ssl && (SSL_get_shutdown(source->client->con->ssl) & SSL_RECEIVED_SHUTDOWN))
+            source->client->con->error = 1;
+#endif
         if (source->client->con && source->client->con->error)
         {
             ICECAST_LOG_INFO("End of Stream %s", source->mount);
