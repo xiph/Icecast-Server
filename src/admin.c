@@ -733,7 +733,8 @@ static void command_show_listeners(client_t *client,
 
     memset(buf, '\000', sizeof(buf));
     snprintf (buf, sizeof(buf), "%lu", source->listeners);
-    xmlNewChild(srcnode, NULL, XMLSTR("Listeners"), XMLSTR(buf));
+    /* BEFORE RELEASE NEXT DOCUMENT #2097: Changed "Listeners" to lower case. */
+    xmlNewChild(srcnode, NULL, XMLSTR(client->mode == OMODE_LEGACY ? "Listeners" : "listeners"), XMLSTR(buf));
 
     admin_add_listeners_to_mount(source, srcnode, client->mode);
 
