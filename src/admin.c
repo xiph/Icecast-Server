@@ -664,9 +664,8 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     char buf[22];
 
     /* TODO: kh has support for a child node "lag". We should add that.
-     * BEFORE RELEASE 2.5.0 REVIEW #2097: Check if we are on-track for lowercasing child nodes.
-     * BEFORE RELEASE 2.6.0 TODO #2097: Change case of child nodes to lower case.
-     * The case of <ID>, <IP>, <UserAgent> and <Connected> should be converted to lower case.
+     * BEFORE RELEASE NEXT DOCUMENT #2097: Changed case of child nodes to lower case.
+     * The case of <ID>, <IP>, <UserAgent> and <Connected> got changed to lower case.
      */
 
     node = xmlNewChild(parent, NULL, XMLSTR("listener"), NULL);
