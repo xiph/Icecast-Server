@@ -773,7 +773,6 @@ int connection_complete_source(source_t *source, int response)
     config = config_get_config();
     if (global.sources < config->source_limit) {
         const char *contenttype;
-        const char *expectcontinue;
         mount_proxy *mountinfo;
         format_type_t format_type;
 
