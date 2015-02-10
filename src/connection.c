@@ -421,6 +421,11 @@ void connection_uses_ssl(connection_t *con)
 #endif
 }
 
+ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
+{
+    return con->read(con, buf, len);
+}
+
 static sock_t wait_for_serversock(int timeout)
 {
 #ifdef HAVE_POLL
@@ -868,7 +873,17 @@ static inline void source_startup(client_t *client, const char *uri)
         } else {
             refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
             const char *expectcontinue;
+            const char *transfer_encoding;
             int status_to_send = 200;
+
+            transfer_encoding = httpp_getvar(source->parser, "transfer-encoding");
+            if (transfer_encoding && strcasecmp(transfer_encoding, HTTPP_ENCODING_IDENTITY) != 0) {
+                client->encoding = httpp_encoding_new(transfer_encoding);
+                if (!client->encoding) {
+                    client_send_error(client, 501, 1, "Unimplemented");
+                    return;
+                }
+            }
 
             /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
             expectcontinue = httpp_getvar (source->parser, "expect");

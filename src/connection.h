@@ -63,6 +63,8 @@ int connection_complete_source(struct source_tag *source, int response);
 void connection_queue(connection_t *con);
 void connection_uses_ssl(connection_t *con);
 
+ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len);
+
 extern rwlock_t _source_shutdown_rwlock;
 
 #endif  /* __CONNECTION_H__ */

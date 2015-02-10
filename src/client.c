@@ -158,6 +158,8 @@ void client_destroy(client_t *client)
         connection_close(client->con);
     if (client->parser)
         httpp_destroy(client->parser);
+    if (client->encoding)
+        httpp_encoding_release(client->encoding);
 
     global_lock();
     global.clients--;
@@ -177,23 +179,36 @@ void client_destroy(client_t *client)
 }
 
 /* helper function for reading data from a client */
+static ssize_t __client_read_bytes_real(client_t *client, void *buf, size_t len)
+{
+    /* we have data to read from a refbuf first */
+    if (client->refbuf->len < len)
+        len = client->refbuf->len;
+    memcpy (buf, client->refbuf->data, len);
+    if (len < client->refbuf->len) {
+        char *ptr = client->refbuf->data;
+        memmove (ptr, ptr+len, client->refbuf->len - len);
+    }
+    client->refbuf->len -= len;
+    return len;
+}
+
 int client_read_bytes(client_t *client, void *buf, unsigned len)
 {
+    ssize_t (*reader)(void*, void*, size_t) = (ssize_t(*)(void*,void*,size_t))__client_read_bytes_real;
+    void *userdata = client;
     int bytes;
 
-    if (client->refbuf && client->refbuf->len) {
-        /* we have data to read from a refbuf first */
-        if (client->refbuf->len < len)
-            len = client->refbuf->len;
-        memcpy (buf, client->refbuf->data, len);
-        if (len < client->refbuf->len) {
-            char *ptr = client->refbuf->data;
-            memmove (ptr, ptr+len, client->refbuf->len - len);
-        }
-        client->refbuf->len -= len;
-        return len;
+    if (!(client->refbuf && client->refbuf->len)) {
+        reader = (ssize_t(*)(void*,void*,size_t))connection_read_bytes;
+        userdata = client->con;
     }
-    bytes = client->con->read (client->con, buf, len);
+
+    if (client->encoding) {
+        bytes = httpp_encoding_read(client->encoding, buf, len, reader, userdata);
+    } else {
+        bytes = reader(userdata, buf, len);
+    }
 
     if (bytes == -1 && client->con->error)
         ICECAST_LOG_DEBUG("reading from connection has failed");

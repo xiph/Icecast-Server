@@ -24,6 +24,7 @@
 #include "acl.h"
 #include "cfgfile.h"
 #include "common/httpp/httpp.h"
+#include "common/httpp/encoding.h"
 
 typedef enum _protocol_tag {
     ICECAST_PROTOCOL_HTTP = 0,
@@ -52,6 +53,9 @@ typedef struct _client_tag
 
     /* the client's http headers */
     http_parser_t *parser;
+
+    /* Transfer Encoding if any */
+    httpp_encoding_t *encoding;
 
     /* protocol client uses */
     protocol_t protocol;

@@ -671,6 +671,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 404: statusmsg = "File Not Found"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
                 case 426: statusmsg = "Upgrade Required"; http_version = "1.1"; break;
+                case 501: statusmsg = "Unimplemented"; break;
                 default:  statusmsg = "(unknown status code)"; break;
             }
         }
