@@ -661,6 +661,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         {
             switch (status)
             {
+                case 100: statusmsg = "Continue"; http_version = "1.1"; break;
                 case 101: statusmsg = "Switching Protocols"; http_version = "1.1"; break;
                 case 200: statusmsg = "OK"; break;
                 case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;

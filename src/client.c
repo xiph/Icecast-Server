@@ -251,12 +251,6 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
     fserve_add_client (client, NULL);
 }
 
-void client_send_100(client_t *client)
-{
-    /* On demand inject a HTTP/1.1 100 Continue to make sure clients are happy */
-    sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
-}
-
 void client_send_101(client_t *client, reuse_t reuse)
 {
     ssize_t ret;

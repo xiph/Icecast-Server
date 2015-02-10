@@ -887,6 +887,31 @@ static void source_shutdown (source_t *source)
     /* delete this sources stats */
     stats_event(source->mount, NULL, NULL);
 
+    if (source->client && source->parser) {
+        /* For PUT support we check for 100-continue and send back a final 200. */
+        const char *expectcontinue = httpp_getvar(source->parser, "expect");
+
+        if (expectcontinue != NULL) {
+#ifdef HAVE_STRCASESTR
+            if (strcasestr (expectcontinue, "100-continue") != NULL)
+#else
+            ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
+            if (strstr (expectcontinue, "100-continue") != NULL)
+#endif
+            {
+                client_t *client = source->client;
+                source->client = NULL; /* detach client from source. */
+
+                util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0, 0, 200, NULL, NULL, NULL, "", NULL, source->client);
+                client->refbuf->len = strlen(client->refbuf->data);
+                refbuf_release(client->refbuf->next);
+                client->refbuf->next = NULL;
+                client->pos = 0;
+                fserve_add_client(client, NULL);
+            }
+        }
+    }
+
     /* we don't remove the source from the tree here, it may be a relay and
      therefore reserved */
     source_clear_source(source);

@@ -814,20 +814,6 @@ int connection_complete_source(source_t *source, int response)
             return -1;
         }
 
-        /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
-        expectcontinue = httpp_getvar (source->parser, "expect");
-        if (expectcontinue != NULL) {
-#ifdef HAVE_STRCASESTR
-            if (strcasestr (expectcontinue, "100-continue") != NULL)
-#else
-            ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
-            if (strstr (expectcontinue, "100-continue") != NULL)
-#endif
-            {
-                client_send_100 (source->client);
-            }
-        }
-
         global.sources++;
         stats_event_args(NULL, "sources", "%d", global.sources);
         global_unlock();
@@ -881,8 +867,26 @@ static inline void source_startup(client_t *client, const char *uri)
             source_client_callback(client, source);
         } else {
             refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
+            const char *expectcontinue;
+            int status_to_send = 200;
+
+            /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
+            expectcontinue = httpp_getvar (source->parser, "expect");
+
+            if (expectcontinue != NULL) {
+#ifdef HAVE_STRCASESTR
+                if (strcasestr (expectcontinue, "100-continue") != NULL)
+#else
+                ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
+                if (strstr (expectcontinue, "100-continue") != NULL)
+#endif
+                {
+                    status_to_send = 100;
+                }
+            }
+
             client->respcode = 200;
-            util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, 200, NULL, NULL, NULL, "", NULL, client);
+            util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, "", NULL, client);
             ok->len = strlen(ok->data);
             /* we may have unprocessed data read in, so don't overwrite it */
             ok->associated = client->refbuf;
