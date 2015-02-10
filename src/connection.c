@@ -882,8 +882,7 @@ static inline void source_startup(client_t *client, const char *uri)
         } else {
             refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
             client->respcode = 200;
-            snprintf(ok->data, PER_CLIENT_REFBUF_SIZE,
-                    "HTTP/1.0 200 OK\r\n\r\n");
+            util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, 200, NULL, NULL, NULL, "", NULL, client);
             ok->len = strlen(ok->data);
             /* we may have unprocessed data read in, so don't overwrite it */
             ok->associated = client->refbuf;
