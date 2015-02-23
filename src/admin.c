@@ -697,7 +697,11 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     if (client->role)
         xmlNewChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
 
+#ifdef HAVE_OPENSSL
     xmlNewChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->ssl ? "true" : "false"));
+#else
+    xmlNewChild(node, NULL, XMLSTR("tls"), XMLSTR("false"));
+#endif
 
     return node;
 }
