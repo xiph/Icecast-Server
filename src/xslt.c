@@ -207,16 +207,19 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
     xsltStylesheet *c;
     ice_config_t *config;
     final_URI = xmlStrdup(URI);
+    struct stat file;
     switch (type) {
         /* In case an include is loaded */
         case XSLT_LOAD_STYLESHEET:
+            /* Not look in admindir if the include file exists */
+            if (stat((char *)URI, &file) == 0)
+                break;
             c = (xsltStylesheet *) ctxt;
             /* Check if we actually have context/path */
             if (ctxt == NULL || c->doc->URL == NULL)
                 break;
             rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
             if (rel_path != NULL && admin_path != NULL) {
-                struct stat file;
                 fn = xmlBuildURI(rel_path, admin_path);
                 if (fn != NULL && stat((char *)fn, &file) == 0) {
                     final_URI = fn;
