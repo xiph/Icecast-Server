@@ -21,10 +21,12 @@
 #include <libxml/xmlIO.h>
 #include <libxml/xinclude.h>
 #include <libxml/catalog.h>
+#include <libxml/uri.h>
 #include <libxslt/xslt.h>
 #include <libxslt/xsltInternals.h>
 #include <libxslt/transform.h>
 #include <libxslt/xsltutils.h>
+#include <libxslt/documents.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -48,6 +50,7 @@
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
+#include "config.h"
 #include "stats.h"
 #include "fserve.h"
 #include "util.h"
@@ -95,6 +98,11 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 static stylesheet_cache_t cache[CACHESIZE];
 static mutex_t xsltlock;
 
+/* Reference to the original xslt loader func */
+static xsltDocLoaderFunc xslt_loader;
+/* Admin path cache */
+static xmlChar *admin_path = NULL;
+
 void xslt_initialize(void)
 {
     memset(cache, 0, sizeof(stylesheet_cache_t) * CACHESIZE);
@@ -103,6 +111,7 @@ void xslt_initialize(void)
     LIBXML_TEST_VERSION
     xmlSubstituteEntitiesDefault(1);
     xmlLoadExtDtdDefaultValue = 1;
+    xslt_loader = xsltDocDefaultLoader;
 }
 
 void xslt_shutdown(void) {
@@ -118,6 +127,8 @@ void xslt_shutdown(void) {
     thread_mutex_destroy (&xsltlock);
     xmlCleanupParser();
     xsltCleanupGlobals();
+    if (admin_path)
+        xmlFree(admin_path);
 }
 
 static int evict_cache_entry(void) {
@@ -184,6 +195,51 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     return cache[i].stylesheet;
 }
 
+/* Custom xslt loader */
+static xmlDocPtr custom_loader(const        xmlChar *URI,
+                               xmlDictPtr   dict,
+                               int          options,
+                               void        *ctxt,
+                               xsltLoadType type)
+{
+    xmlDocPtr ret;
+    xmlChar *rel_path, *fn, *final_URI;
+    xsltStylesheet *c;
+    ice_config_t *config;
+    final_URI = xmlStrdup(URI);
+    switch (type) {
+        /* In case an include is loaded */
+        case XSLT_LOAD_STYLESHEET:
+            c = (xsltStylesheet *) ctxt;
+            /* Check if we actually have context/path */
+            if (ctxt == NULL || c->doc->URL == NULL)
+                break;
+            rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
+            if (rel_path != NULL && admin_path != NULL) {
+                struct stat file;
+                fn = xmlBuildURI(rel_path, admin_path);
+                if (fn != NULL && stat((char *)fn, &file) == 0) {
+                    final_URI = fn;
+                }
+            }
+        break;
+        /* In case a top stylesheet is loaded */
+        case XSLT_LOAD_START:
+            config = config_get_config();
+            admin_path = xmlCharStrdup(config->adminroot_dir);
+            config_release_config();
+            admin_path = xmlStrcat(admin_path, (xmlChar *)"/");
+        break;
+
+        default:
+        break;
+    }
+    /* Get the actual xmlDoc */
+    ret = xslt_loader(final_URI, dict, options, ctxt, type);
+    xmlFree(final_URI);
+    return ret;
+}
+
 void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 {
     xmlDocPtr res;
@@ -195,6 +251,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
     xmlSetGenericErrorFunc("", log_parse_failure);
     xsltSetGenericErrorFunc("", log_parse_failure);
+    xsltSetLoaderFunc(custom_loader);
 
     thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
