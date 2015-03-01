@@ -248,7 +248,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
             if (!admin_path) {
                 size_t len = strlen(config->adminroot_dir);
 
-                admin_path = xmlMemMalloc(len+2);
+                admin_path = xmlMalloc(len+2);
                 if (!admin_path)
                     return NULL;
 
