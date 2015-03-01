@@ -1604,7 +1604,8 @@ void connection_close(connection_t *con)
     if (!con)
         return;
 
-    sock_close(con->sock);
+    if (con->sock != -1) /* TODO: do not use magic */
+        sock_close(con->sock);
     if (con->ip)
         free(con->ip);
     if (con->host)
