@@ -57,7 +57,7 @@ int event_get_log(event_registration_t *er, config_options_t *options) {
                 continue;
             if (!options->name)
                 continue;
-            /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
+            /* BEFORE RELEASE 2.5.0 DOCUMENT: Document supported options:
              * <option name="prefix" value="..." />
              * <option name="level" value="..." />
              */

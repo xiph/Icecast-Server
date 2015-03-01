@@ -225,11 +225,11 @@ static void get_ssl_certificate(ice_config_t *config)
             ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
         }
         config->tls_ok = ssl_ok = 1;
-        ICECAST_LOG_INFO("SSL certificate found at %s", config->cert_file);
-        ICECAST_LOG_INFO("SSL using ciphers %s", config->cipher_list);
+        ICECAST_LOG_INFO("Certificate found at %s", config->cert_file);
+        ICECAST_LOG_INFO("Using ciphers %s", config->cipher_list);
         return;
     } while (0);
-    ICECAST_LOG_INFO("No SSL capability on any configured ports");
+    ICECAST_LOG_INFO("No TLS capability on any configured ports");
 }
 
 
@@ -273,7 +273,8 @@ static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
 static void get_ssl_certificate(ice_config_t *config)
 {
     ssl_ok = 0;
-    ICECAST_LOG_INFO("No SSL capability");
+    ICECAST_LOG_INFO("No TLS capability. "
+                     "Rebuild Icecast with openSSL support to enable this.");
 }
 #endif /* HAVE_OPENSSL */
 
@@ -326,7 +327,7 @@ static void recheck_ip_file(cache_file_contents *cache)
             return;
         }
         if (stat(cache->filename, &file_stat) < 0) {
-            ICECAST_LOG_WARN("failed to check status of \"%s\": %s", cache->filename, strerror(errno));
+            ICECAST_LOG_WARN("Failed to check status of \"%s\": %s", cache->filename, strerror(errno));
             return;
         }
         if (file_stat.st_mtime == cache->file_mtime)
@@ -712,7 +713,7 @@ void connection_queue(connection_t *con)
 
     if (sock_set_blocking(client->con->sock, 0) || sock_set_nodelay(client->con->sock)) {
         global_unlock();
-        ICECAST_LOG_WARN("failed to set tcp options on client connection, dropping");
+        ICECAST_LOG_WARN("Failed to set tcp options on client connection, dropping");
         client_destroy(client);
         return;
     }
@@ -891,7 +892,7 @@ static inline void source_startup(client_t *client, const char *uri)
 #ifdef HAVE_STRCASESTR
                 if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-                ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
+                ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
                 if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
                 {
@@ -962,7 +963,7 @@ static int __add_listener_to_source(source_t *source, client_t *client)
                     source->mount, source->fallback_mount);
                 return -1;
             }
-            ICECAST_LOG_INFO("stream full trying %s", next->mount);
+            ICECAST_LOG_INFO("stream full, trying %s", next->mount);
             source = next;
             loop--;
             continue;

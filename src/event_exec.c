@@ -55,7 +55,7 @@ static inline size_t __argvtype2offset(event_exec_argvtype_t argvtype) {
     }
 }
 
-/* BEFORE RELEASE 2.4.2 DOCUMENT: Document names of possible values. */
+/* BEFORE RELEASE 2.5.0 DOCUMENT: Document names of possible values. */
 static inline event_exec_argvtype_t __str2argvtype(const char *str) {
     if (!str)
         str = "(BAD VALUE)";
@@ -125,7 +125,7 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     source_t *source;
     char buf[80];
 
-    /* BEFORE RELEASE 2.4.2 DOCUMENT: Document all those env vars. */
+    /* BEFORE RELEASE 2.5.0 DOCUMENT: Document all those env vars. */
     __update_environ("ICECAST_VERSION",   ICECAST_VERSION_STRING);
     __update_environ("ICECAST_HOSTNAME",  config->hostname);
     __update_environ("ICECAST_ADMIN",     config->admin);
@@ -235,8 +235,8 @@ static void _run_script (event_exec_t *self, event_t *event) {
 static int event_exec_emit(void *state, event_t *event) {
     event_exec_t *self = state;
 #ifdef _WIN32
-    /* BEFORE RELEASE 2.4.2 DOCUMENT: Document this not working on win*. */
-    ICECAST_LOG_ERROR("<event type=\"exec\" ...> not supported on win*");
+    /* BEFORE RELEASE 2.5.0 DOCUMENT: Document this not working on win*. */
+    ICECAST_LOG_ERROR("<event type=\"exec\" ...> not supported on Windows");
 #else
     _run_script(self, event);
 #endif
@@ -268,7 +268,7 @@ int event_get_exec(event_registration_t *er, config_options_t *options) {
     if ((cur = options)) {
         do {
             if (cur->name) {
-                /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
+                /* BEFORE RELEASE 2.5.0 DOCUMENT: Document supported options:
                  * <option name="executable" value="..." />
                  * <option name="default_arguments" value="..." /> (for values see near top of documment)
                  */
@@ -310,7 +310,7 @@ int event_get_exec(event_registration_t *er, config_options_t *options) {
     if ((cur = options)) {
         do {
             if (cur->type) {
-                /* BEFORE RELEASE 2.4.2 DOCUMENT: Document supported options:
+                /* BEFORE RELEASE 2.5.0 DOCUMENT: Document supported options:
                  * <option type="argument" value="..." />
                  */
                 if (strcmp(cur->type, "argument") == 0) {

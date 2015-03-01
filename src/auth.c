@@ -318,7 +318,7 @@ static void *auth_run_thread (void *arg)
         }
         thread_sleep (150000);
     }
-    ICECAST_LOG_INFO("Authenication thread shutting down");
+    ICECAST_LOG_INFO("Authentication thread shutting down");
     return NULL;
 }
 
@@ -494,7 +494,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             auth->method[i] = 1;
     }
 
-    /* BEFORE RELEASE 2.4.2 TODO: Migrate this to config_parse_options(). */
+    /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
     while (option)
     {

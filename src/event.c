@@ -230,12 +230,12 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
 
     ret->refcount = 1;
 
-    /* BEFORE RELEASE 2.4.2 DOCUMENT: Document <event type="..." trigger="..."> */
+    /* BEFORE RELEASE 2.5.0 DOCUMENT: Document <event type="..." trigger="..."> */
     ret->type     = (char*)xmlGetProp(node, XMLSTR("type"));
     ret->trigger  = (char*)xmlGetProp(node, XMLSTR("trigger"));
 
     if (!ret->type || !ret->trigger) {
-        ICECAST_LOG_ERROR("Event node isn't complet. Type or Trigger missing.");
+        ICECAST_LOG_ERROR("Event node isn't complete. Type or Trigger missing.");
         event_registration_release(ret);
         return NULL;
     }
@@ -250,7 +250,7 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
         rv = event_get_url(ret, options);
 #endif
     } else {
-        ICECAST_LOG_ERROR("Event backend %s is unknown.", ret->type);
+        ICECAST_LOG_ERROR("Unknown Event backend %s.", ret->type);
         rv = -1;
     }
     config_clear_options(options);
@@ -334,7 +334,7 @@ void event_emit(event_t *event) {
     thread_mutex_unlock(&event_lock);
 }
 
-/* this function needs to extract all the infos from the client, source and mount object
+/* this function needs to extract all the info from the client, source and mount object
  * as after return the pointers become invalid.
  */
 void event_emit_clientevent(const char *trigger, client_t *client, const char *uri) {
@@ -359,7 +359,7 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
         event_push_reglist(event, mount->event);
     config_release_config();
 
-    /* This isn't perfectly clean but is a important speedup:
+    /* This isn't perfectly clean but is an important speedup:
      * If first element of reglist is NULL none of the above pushed in
      * some registrations. If there are no registrations we can just drop
      * this event now and here.

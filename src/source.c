@@ -895,7 +895,7 @@ static void source_shutdown (source_t *source)
 #ifdef HAVE_STRCASESTR
             if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-            ICECAST_LOG_WARN("OS doesn't support case insenestive substring checks...");
+            ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
             if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
             {

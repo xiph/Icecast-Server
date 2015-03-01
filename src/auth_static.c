@@ -83,7 +83,7 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
     } else if (strcmp(authenticator->type, AUTH_TYPE_LEGACY_PASSWORD) == 0) {
         need_user = 0;
     } else {
-        ICECAST_LOG_ERROR("Type is not known.");
+        ICECAST_LOG_ERROR("Unknown type.");
         return -1;
     }
 
@@ -113,11 +113,11 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
     }
 
     if (need_user && !auth_info->username) {
-        ICECAST_LOG_ERROR("No Username given but needed.");
+        ICECAST_LOG_ERROR("Username required, but not given.");
         clear_auth(authenticator);
         return -1;
     } else if (!auth_info->password) {
-        ICECAST_LOG_ERROR("No password given but needed.");
+        ICECAST_LOG_ERROR("Password required, but not given.");
         clear_auth(authenticator);
         return -1;
     }

@@ -201,8 +201,8 @@ static void destroy_yp_server (struct yp_server *server)
 
     if (server->curl)
         curl_easy_cleanup (server->curl);
-    if (server->mounts) ICECAST_LOG_WARN("active ypdata not freed up");
-    if (server->pending_mounts) ICECAST_LOG_WARN("pending ypdata not freed up");
+    if (server->mounts) ICECAST_LOG_WARN("active ypdata not freed");
+    if (server->pending_mounts) ICECAST_LOG_WARN("pending ypdata not freed");
     free (server->url);
     free (server->server_id);
     free (server);

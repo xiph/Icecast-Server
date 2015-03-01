@@ -202,7 +202,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
             return AUTH_OK;
         }
         free (hashed_pw);
-        ICECAST_LOG_DEBUG("incorrect password for client");
+        ICECAST_LOG_DEBUG("incorrect password for client with username: %s", client->username);
         return AUTH_FAILED;
     }
     ICECAST_LOG_DEBUG("no such username: %s", client->username);

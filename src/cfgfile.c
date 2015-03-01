@@ -775,11 +775,11 @@ static inline void __check_hostname(ice_config_t *configuration)
 {
     char *p;
 
-    // ensure we have a non-NULL buffer:
+    /* ensure we have a non-NULL buffer: */
     if (!configuration->hostname)
         configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
 
-    // convert to lower case:
+    /* convert to lower case: */
     for (p = configuration->hostname; *p; p++) {
         if ( *p >= 'A' && *p <= 'Z' )
             *p += 'a' - 'A';
@@ -796,13 +796,15 @@ static inline void __check_hostname(ice_config_t *configuration)
         break;
         case HOSTCHECK_NOT_FQDN:
             ICECAST_LOG_WARN("Warning, <hostname> seems not to be set to a "
-                "fully qualified fomain name (FQDN). This may cause problems, "
+                "fully qualified domain name (FQDN). This may cause problems, "
                 "e.g. with YP directory listings.");
         break;
         case HOSTCHECK_IS_LOCALHOST:
             ICECAST_LOG_WARN("Warning, <hostname> not configured, using "
-                "default value \"%s\". This will cause problems, e.g. with "
-                "YP directory listings.", CONFIG_DEFAULT_HOSTNAME);
+                "default value \"%s\". This will cause problems, e.g. "
+                "this breaks YP directory listings. YP directory listing "
+                "support will be disabled.", CONFIG_DEFAULT_HOSTNAME);
+                /* FIXME actually disable YP */
         break;
         case HOSTCHECK_IS_IPV4:
             ICECAST_LOG_WARN("Warning, <hostname> seems to be set to an IPv4 "
@@ -815,7 +817,7 @@ static inline void __check_hostname(ice_config_t *configuration)
                 "listings.");
         break;
         case HOSTCHECK_BADCHAR:
-            ICECAST_LOG_WARN("Warning, <hostname> configured to unusual "
+            ICECAST_LOG_WARN("Warning, <hostname> contains unusual "
                 "characters. This may cause problems, e.g. with YP directory "
                 "listings.");
         break;
@@ -861,12 +863,13 @@ static void _parse_root(xmlDocPtr       doc,
             /* TODO: This is the backwards-compatibility location */
             ICECAST_LOG_WARN("<source-password> defined outside "
                 "<authentication>. This is deprecated and will be removed in "
-                "version 2.5.");
+                "version 2.X.0");
+	    /* FIXME Settle target version for removal of this functionality! */
             if (source_password)
                 xmlFree(source_password);
             source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("icelogin")) == 0) {
-            ICECAST_LOG_ERROR("<icelogin> has been removed.");
+            ICECAST_LOG_ERROR("<icelogin> support has been removed.");
         } else if (xmlStrcmp(node->name, XMLSTR("fileserve")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->fileserve = util_str_to_bool(tmp);
@@ -894,7 +897,7 @@ static void _parse_root(xmlDocPtr       doc,
                 configuration->listen_sock->port = atoi(tmp);
                 xmlFree(tmp);
             } else {
-                ICECAST_LOG_WARN("<port> must not be empty.");
+                ICECAST_LOG_WARN("<port> setting must not be empty.");
             }
         } else if (xmlStrcmp(node->name, XMLSTR("bind-address")) == 0) {
             if (configuration->listen_sock->bind_address)
@@ -970,8 +973,8 @@ static void _parse_root(xmlDocPtr       doc,
                                         "source,put,get", 0, "*");
             }
         } else {
-            ICECAST_LOG_ERROR("Can not find nor create default mount but "
-                "global lagency source password set. Bad.");
+            ICECAST_LOG_ERROR("Can not find nor create default mount, but "
+                "global legacy source password set. This is bad.");
         }
         xmlFree(source_password);
     }
@@ -1003,7 +1006,9 @@ static void _parse_root(xmlDocPtr       doc,
     if (!configuration->admin ||
         strcmp(configuration->admin, CONFIG_DEFAULT_ADMIN) == 0) {
         ICECAST_LOG_WARN("Warning, <admin> contact not configured, using "
-            "default value \"%s\".", CONFIG_DEFAULT_ADMIN);
+            "default value \"%s\". This breaks YP directory listings."
+            "YP directory support will be disabled.", CONFIG_DEFAULT_ADMIN);
+            /* FIXME actually disable YP */
       if (!configuration->admin)
           configuration->admin = (char *) xmlCharStrdup(CONFIG_DEFAULT_ADMIN);
   }
@@ -1036,7 +1041,8 @@ static void _parse_limits(xmlDocPtr     doc,
             if (tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("threadpool")) == 0) {
-            ICECAST_LOG_WARN("<threadpool> deprecated and will be removed in version 2.5.");
+            ICECAST_LOG_WARN("<threadpool> functionality was removed in Icecast"
+			     " version 2.3.0, please remove this from your config.");
         } else if (xmlStrcmp (node->name, XMLSTR("client-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_timeout = atoi(tmp);
@@ -1111,7 +1117,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
          __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS,
              NULL, NULL, "get,head,post", NULL, 0, NULL);
      } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
-         /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemans take care and watch your children! */
+         /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemen take care and watch your children! */
          /* Stuff that was of help:
           * $ sed 's/^.*name="\([^"]*\)".*$/         const char *\1 = NULL;/'
           * $ sed 's/^.*name="\([^"]*\)".*$/         if (\1)\n             xmlFree(\1);/'
@@ -1230,7 +1236,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
              xmlFree(stream_auth);
      } else {
          ICECAST_LOG_ERROR("Unknown authentication type in legacy mode. "
-             "Disable anonymous login listener and global login for source.");
+             "Anonymous listeners and global login for sources disabled.");
          __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
              NULL, NULL, NULL, 0, NULL);
      }
@@ -1327,7 +1333,8 @@ static void _parse_mount(xmlDocPtr      doc,
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-yp")) == 0) {
             ICECAST_LOG_WARN("<no-yp> defined. Please use <public>. This is "
-                "deprecated and will be removed in version 2.5.");
+                "deprecated and will be removed in a future version.");
+                /* FIXME when do we plan to remove this? */
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->yp_public = util_str_to_bool(tmp) == 0 ? -1 : 0;
             if(tmp)
@@ -1606,7 +1613,7 @@ static void _parse_relay(xmlDocPtr      doc,
                 relay->port = atoi(tmp);
                 xmlFree(tmp);
             } else {
-                ICECAST_LOG_WARN("<port> must not be empty.");
+                ICECAST_LOG_WARN("<port> setting must not be empty.");
             }
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             if (relay->mount)
@@ -1674,7 +1681,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
                 listener->port = atoi(tmp);
                 xmlFree(tmp);
             } else {
-                ICECAST_LOG_WARN("<port> must not be empty.");
+                ICECAST_LOG_WARN("<port> setting must not be empty.");
             }
         } else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1870,7 +1877,7 @@ static void _parse_paths(xmlDocPtr      doc,
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("logdir")) == 0) {
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
-                ICECAST_LOG_WARN("<logdir> must not be empty.");
+                ICECAST_LOG_WARN("<logdir> setting must not be empty.");
                 continue;
             }
             if (configuration->log_dir)
@@ -1902,7 +1909,7 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("webroot")) == 0) {
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
-                ICECAST_LOG_WARN("<webroot> must not be empty.");
+                ICECAST_LOG_WARN("<webroot> setting must not be empty.");
                 continue;
             }
             if (configuration->webroot_dir)
@@ -1912,7 +1919,7 @@ static void _parse_paths(xmlDocPtr      doc,
                 configuration->webroot_dir[strlen(configuration->webroot_dir)-1] = 0;
         } else if (xmlStrcmp(node->name, XMLSTR("adminroot")) == 0) {
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
-                ICECAST_LOG_WARN("<adminroot> must not be empty.");
+                ICECAST_LOG_WARN("<adminroot> setting must not be empty.");
                 continue;
             }
             if (configuration->adminroot_dir)
@@ -1982,7 +1989,7 @@ static void _parse_logging(xmlDocPtr        doc,
 
         if (xmlStrcmp (node->name, XMLSTR("accesslog")) == 0) {
             if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
-                ICECAST_LOG_WARN("<accesslog> must not be empty.");
+                ICECAST_LOG_WARN("<accesslog> setting must not be empty.");
                 continue;
             }
             if (configuration->access_log)
@@ -1990,7 +1997,7 @@ static void _parse_logging(xmlDocPtr        doc,
             configuration->access_log = tmp;
         } else if (xmlStrcmp (node->name, XMLSTR("errorlog")) == 0) {
             if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
-                ICECAST_LOG_WARN("<errorlog> must not be empty.");
+                ICECAST_LOG_WARN("<errorlog> setting must not be empty.");
                 continue;
             }
             if (configuration->error_log)
