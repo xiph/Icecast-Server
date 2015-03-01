@@ -202,21 +202,24 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                                void        *ctxt,
                                xsltLoadType type)
 {
-    int len;
     xmlDocPtr ret;
     xmlChar *rel_path, *fn, *final_URI = NULL;
     xsltStylesheet *c;
-    ice_config_t *conf;
+    ice_config_t *config;
+
     switch (type) {
         /* In case an include is loaded */
         case XSLT_LOAD_STYLESHEET:
             /* Not look in admindir if the include file exists */
-            if (access((char *)URI, F_OK) == 0)
+            if (access((const char *)URI, F_OK) == 0)
                 break;
+
             c = (xsltStylesheet *) ctxt;
+
             /* Check if we actually have context/path */
             if (ctxt == NULL || c->doc->URL == NULL)
                 break;
+
             /* Construct the right path */
             rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
             if (rel_path != NULL && admin_path != NULL) {
@@ -224,6 +227,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                 final_URI = fn;
                 xmlFree(rel_path);
             }
+
             /* Fail if there was an error constructing the path */
             if (final_URI == NULL) {
                 if (rel_path)
@@ -233,25 +237,32 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
         break;
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
-            conf = config_get_config();
-            len = strlen(conf->adminroot_dir);
+            config = config_get_config();
+            /* Check if admin path actually changed. If so clear it. */
             if (admin_path != NULL &&
-                strncmp(conf->adminroot_dir, (char *)admin_path, len) != 0) {
+                strcmp(config->adminroot_dir, (char *)admin_path) != 0) {
                 xmlFree(admin_path);
                 admin_path = NULL;
             }
-            if (admin_path == NULL) {
+            /* Do we need to load the admin path? */
+            if (!admin_path) {
+                size_t len = strlen(config->adminroot_dir);
+
                 admin_path = xmlMemMalloc(len+2);
-                if (admin_path == NULL)
+                if (!admin_path)
                     return NULL;
-                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(conf->adminroot_dir));
+
+                /* Copy over admin path and add a tailing slash. */
+                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(config->adminroot_dir));
             }
             config_release_config();
         break;
 
+        /* Avoid warnings about other events we don't care for */
         default:
         break;
     }
+
     /* Get the actual xmlDoc */
     if (final_URI) {
         ret = xslt_loader(final_URI, dict, options, ctxt, type);
