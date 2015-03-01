@@ -202,10 +202,11 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                                void        *ctxt,
                                xsltLoadType type)
 {
+    int len;
     xmlDocPtr ret;
     xmlChar *rel_path, *fn, *final_URI = NULL;
     xsltStylesheet *c;
-    ice_config_t *config;
+    ice_config_t *conf;
     switch (type) {
         /* In case an include is loaded */
         case XSLT_LOAD_STYLESHEET:
@@ -232,10 +233,20 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
         break;
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
-            config = config_get_config();
-            admin_path = xmlCharStrdup(config->adminroot_dir);
+            conf = config_get_config();
+            len = strlen(conf->adminroot_dir);
+            if (admin_path != NULL &&
+                strncmp(conf->adminroot_dir, (char *)admin_path, len) != 0) {
+                xmlFree(admin_path);
+                admin_path = NULL;
+            }
+            if (admin_path == NULL) {
+                admin_path = xmlMemMalloc(len+2);
+                if (admin_path == NULL)
+                    return NULL;
+                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(conf->adminroot_dir));
+            }
             config_release_config();
-            admin_path = xmlStrcat(admin_path, (xmlChar *)"/");
         break;
 
         default:
