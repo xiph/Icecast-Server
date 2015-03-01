@@ -203,27 +203,31 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                                xsltLoadType type)
 {
     xmlDocPtr ret;
-    xmlChar *rel_path, *fn, *final_URI;
+    xmlChar *rel_path, *fn, *final_URI = NULL;
     xsltStylesheet *c;
     ice_config_t *config;
-    final_URI = xmlStrdup(URI);
-    struct stat file;
     switch (type) {
         /* In case an include is loaded */
         case XSLT_LOAD_STYLESHEET:
             /* Not look in admindir if the include file exists */
-            if (stat((char *)URI, &file) == 0)
+            if (access((char *)URI, F_OK) == 0)
                 break;
             c = (xsltStylesheet *) ctxt;
             /* Check if we actually have context/path */
             if (ctxt == NULL || c->doc->URL == NULL)
                 break;
+            /* Construct the right path */
             rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
             if (rel_path != NULL && admin_path != NULL) {
                 fn = xmlBuildURI(rel_path, admin_path);
-                if (fn != NULL && stat((char *)fn, &file) == 0) {
-                    final_URI = fn;
-                }
+                final_URI = fn;
+                xmlFree(rel_path);
+            }
+            /* Fail if there was an error constructing the path */
+            if (final_URI == NULL) {
+                if (rel_path)
+                    xmlFree(rel_path);
+                return NULL;
             }
         break;
         /* In case a top stylesheet is loaded */
@@ -238,8 +242,12 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
         break;
     }
     /* Get the actual xmlDoc */
-    ret = xslt_loader(final_URI, dict, options, ctxt, type);
-    xmlFree(final_URI);
+    if (final_URI) {
+        ret = xslt_loader(final_URI, dict, options, ctxt, type);
+        xmlFree(final_URI);
+    } else {
+        ret = xslt_loader(URI, dict, options, ctxt, type);
+    }
     return ret;
 }
 
