@@ -39,7 +39,7 @@
 void admin_handle_request(client_t *client, const char *uri);
 
 void admin_send_response(xmlDocPtr    doc,
-                         client_t    *client, 
+                         client_t    *client,
                          int          response,
                          const char  *xslt_template);
 
