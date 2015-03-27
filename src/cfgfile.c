@@ -156,6 +156,8 @@ operation_mode config_str_to_omode(const char *str)
         return OMODE_NORMAL;
     } else if (strcasecmp(str, "legacy-compat") == 0 || strcasecmp(str, "legacy") == 0) {
         return OMODE_LEGACY;
+    } else if (strcasecmp(str, "strict") == 0) {
+        return OMODE_STRICT;
     } else {
         ICECAST_LOG_ERROR("Unknown operation mode \"%s\", falling back to DEFAULT.", str);
         return OMODE_DEFAULT;
