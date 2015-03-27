@@ -82,7 +82,7 @@
     <!--
     <listen-socket>
         <port>8443</port>
-        <ssl>1</ssl>
+        <tls>1</tls>
     </listen-socket>
     -->
 
@@ -221,7 +221,7 @@
         <alias source="/" destination="/status.xsl"/>
         <!-- The certificate file needs to contain both public and private part.
              Both should be PEM encoded.
-        <ssl-certificate>@pkgdatadir@/icecast.pem</ssl-certificate>
+        <tls-certificate>@pkgdatadir@/icecast.pem</tls-certificate>
         -->
     </paths>
 

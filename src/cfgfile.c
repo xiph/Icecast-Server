@@ -1683,7 +1683,8 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             } else {
                 ICECAST_LOG_WARN("<port> setting must not be empty.");
             }
-        } else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("tls")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             listener->ssl = util_str_to_bool(tmp);
             if(tmp)
@@ -1899,11 +1900,13 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->allowfile)
                 xmlFree(configuration->allowfile);
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
             if (configuration->cert_file)
                 xmlFree(configuration->cert_file);
             configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
             if (configuration->cipher_list)
                 xmlFree(configuration->cipher_list);
             configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
