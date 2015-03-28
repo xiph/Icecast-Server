@@ -141,6 +141,11 @@ int          playlist_push_track(playlist_t *playlist, vorbis_comment *vc)
         track->creator = __query_vc(vc, "ARTIST");
         track->album = __query_vc(vc, "ALBUM");
         track->trackNum = __query_vc(vc, "TRACKNUMBER");
+
+        if (!track->title && !track->creator && !track->album && !track->trackNum) {
+            /* no useful meta data has been found. try ICY style meta data */
+            track->title = __query_vc(vc, "X_ICY_TITLE");
+        }
     }
 
     return 0;

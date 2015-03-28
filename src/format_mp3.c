@@ -181,6 +181,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
                 stats_event_conv (source->mount, "title", p, source->format->charset);
                 yp_touch (source->mount);
                 free (p);
+                playlist_push_track(source->history, &source->format->vc);
             }
         } while (0);
     }
