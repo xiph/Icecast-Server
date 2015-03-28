@@ -127,6 +127,8 @@ int          playlist_push_track(playlist_t *playlist, vorbis_comment *vc)
     }
     *cur = track;
 
+    num++; /* the extra track we just inserted */
+
     while (playlist->max_tracks > 0 && num > playlist->max_tracks) {
         playlist_track_t *to_free = playlist->first;
         playlist->first = to_free->next;
