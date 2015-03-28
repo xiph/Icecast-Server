@@ -100,7 +100,7 @@ source_t *source_reserve (const char *mount)
 
         src->client_tree = avl_tree_new(_compare_clients, NULL);
         src->pending_tree = avl_tree_new(_compare_clients, NULL);
-        src->history = playlist_new(-1);
+        src->history = playlist_new(4 /* DOCUMENT: default is max_tracks=4. */);
 
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
@@ -1215,6 +1215,9 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
 
     if (mountinfo && mountinfo->fallback_when_full)
         source->fallback_when_full = mountinfo->fallback_when_full;
+
+    if (mountinfo && mountinfo->max_history > 0)
+        playlist_set_max_tracks(source->history, mountinfo->max_history);
 
     avl_tree_unlock(source->client_tree);
 }

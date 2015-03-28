@@ -1263,6 +1263,7 @@ static void _parse_mount(xmlDocPtr      doc,
     mount->burst_size           = -1;
     mount->mp3_meta_interval    = -1;
     mount->yp_public            = -1;
+    mount->max_history          = -1;
     mount->next                 = NULL;
 
     tmp = (char *)xmlGetProp(node, XMLSTR("type"));
@@ -1313,6 +1314,13 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("max-listeners")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_listeners = atoi(tmp);
+            if(tmp)
+                xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("max-history")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->max_history = atoi(tmp);
+            if (mount->max_history < 1 || mount->max_history > 256)
+                mount->max_history = 256; /* deny super huge values */
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("charset")) == 0) {
@@ -2240,6 +2248,8 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src)
         dst->subtype = (char*)xmlStrdup((xmlChar*)src->subtype);
     if (dst->yp_public == -1)
         dst->yp_public = src->yp_public;
+    if (dst->max_history == -1)
+        dst->max_history = src->max_history;
 
     if (dst->http_headers) {
         http_header_next = dst->http_headers;

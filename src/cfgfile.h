@@ -134,6 +134,9 @@ typedef struct _mount_proxy {
     /* additional HTTP headers */
     ice_config_http_header_t *http_headers;
 
+    /* maximum history size of played songs */
+    ssize_t max_history;
+
     struct event_registration_tag *event;
 
     char *cluster_password;
