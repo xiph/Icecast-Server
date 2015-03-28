@@ -18,6 +18,7 @@
 #include "yp.h"
 #include "util.h"
 #include "format.h"
+#include "playlist.h"
 #include "common/thread/thread.h"
 
 #include <stdio.h>
@@ -78,6 +79,8 @@ typedef struct source_tag
 
     refbuf_t *stream_data;
     refbuf_t *stream_data_tail;
+
+    playlist_t *history;
 
 } source_t;
 

@@ -100,6 +100,7 @@ source_t *source_reserve (const char *mount)
 
         src->client_tree = avl_tree_new(_compare_clients, NULL);
         src->pending_tree = avl_tree_new(_compare_clients, NULL);
+        src->history = playlist_new(-1);
 
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
@@ -282,6 +283,9 @@ void source_clear_source (source_t *source)
 
     free(source->dumpfilename);
     source->dumpfilename = NULL;
+
+    playlist_release(source->history);
+    source->history = NULL;
 
     if (source->intro_file)
     {

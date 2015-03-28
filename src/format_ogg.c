@@ -31,6 +31,7 @@
 #include "client.h"
 
 #include "stats.h"
+#include "playlist.h"
 #include "format.h"
 #include "format_ogg.h"
 #include "format_vorbis.h"
@@ -317,6 +318,8 @@ static void update_comments(source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
+
+    playlist_push_track(source->history, &source->format->vc);
 
     codec = ogg_info->codecs;
     while (codec)
