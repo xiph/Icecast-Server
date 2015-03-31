@@ -945,8 +945,8 @@ static void _parse_root(xmlDocPtr       doc,
             _parse_logging(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("security")) == 0) {
             _parse_security(doc, node->xmlChildrenNode, configuration);
-        } else if (xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
-            /* BEFORE RELEASE NEXT REVIEW: Should this tag really be <kartoffelsalat>? */
+        } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&configuration->event, node->xmlChildrenNode);
         }
     } while ((node = node->next));
@@ -1440,10 +1440,8 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             _parse_http_headers(doc, node->xmlChildrenNode,
                 &(mount->http_headers));
-        } else if (xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
-            /* BEFORE RELEASE NEXT REVIEW: Should this tag 
-             * really be <kartoffelsalat>?
-             */
+        } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&mount->event, node->xmlChildrenNode);
         }
     } while ((node = node->next));
