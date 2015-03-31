@@ -451,18 +451,18 @@ static inline ice_config_http_header_t *config_copy_http_header(ice_config_http_
 
 static void config_clear_mount(mount_proxy *mount)
 {
-    if (mount->mountname)           xmlFree (mount->mountname);
-    if (mount->dumpfile)            xmlFree (mount->dumpfile);
-    if (mount->intro_filename)      xmlFree (mount->intro_filename);
-    if (mount->fallback_mount)      xmlFree (mount->fallback_mount);
-    if (mount->stream_name)         xmlFree (mount->stream_name);
-    if (mount->stream_description)  xmlFree (mount->stream_description);
-    if (mount->stream_url)          xmlFree (mount->stream_url);
-    if (mount->stream_genre)        xmlFree (mount->stream_genre);
-    if (mount->bitrate)             xmlFree (mount->bitrate);
-    if (mount->type)                xmlFree (mount->type);
-    if (mount->charset)             xmlFree (mount->charset);
-    if (mount->cluster_password)    xmlFree (mount->cluster_password);
+    if (mount->mountname)           xmlFree(mount->mountname);
+    if (mount->dumpfile)            xmlFree(mount->dumpfile);
+    if (mount->intro_filename)      xmlFree(mount->intro_filename);
+    if (mount->fallback_mount)      xmlFree(mount->fallback_mount);
+    if (mount->stream_name)         xmlFree(mount->stream_name);
+    if (mount->stream_description)  xmlFree(mount->stream_description);
+    if (mount->stream_url)          xmlFree(mount->stream_url);
+    if (mount->stream_genre)        xmlFree(mount->stream_genre);
+    if (mount->bitrate)             xmlFree(mount->bitrate);
+    if (mount->type)                xmlFree(mount->type);
+    if (mount->charset)             xmlFree(mount->charset);
+    if (mount->cluster_password)    xmlFree(mount->cluster_password);
     if (mount->authstack)           auth_stack_release(mount->authstack);
 
     event_registration_release(mount->event);
@@ -476,8 +476,8 @@ listener_t *config_clear_listener(listener_t *listener)
     if (listener)
     {
         next = listener->next;
-        if (listener->bind_address)     xmlFree (listener->bind_address);
-        if (listener->shoutcast_mount)  xmlFree (listener->shoutcast_mount);
+        if (listener->bind_address)     xmlFree(listener->bind_address);
+        if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
         free (listener);
     }
     return next;
@@ -527,7 +527,7 @@ void config_clear(ice_config_t *c)
 
     event_registration_release(c->event);
 
-    while ((c->listen_sock = config_clear_listener (c->listen_sock)));
+    while ((c->listen_sock = config_clear_listener(c->listen_sock)));
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
@@ -569,7 +569,7 @@ void config_clear(ice_config_t *c)
 #ifdef USE_YP
     i = 0;
     while (i < c->num_yp_directories) {
-        xmlFree (c->yp_url[i]);
+        xmlFree(c->yp_url[i]);
         i++;
     }
 #endif
@@ -643,7 +643,7 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
         return CONFIG_ENOROOT;
     }
 
-    if (xmlStrcmp (node->name, XMLSTR("icecast")) != 0) {
+    if (xmlStrcmp(node->name, XMLSTR("icecast")) != 0) {
         xmlFreeDoc(doc);
         return CONFIG_EBADROOT;
     }
@@ -725,9 +725,9 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->dir_list = NULL;
     configuration
-        ->hostname = (char *) xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
+        ->hostname = (char *) xmlCharStrdup(CONFIG_DEFAULT_HOSTNAME);
     configuration
-        ->mimetypes_fn = (char *) xmlCharStrdup (MIMETYPESFILE);
+        ->mimetypes_fn = (char *) xmlCharStrdup(MIMETYPESFILE);
     configuration
         ->master_server = NULL;
     configuration
@@ -735,7 +735,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->master_update_interval = CONFIG_MASTER_UPDATE_INTERVAL;
     configuration
-        ->master_username = (char *) xmlCharStrdup (CONFIG_DEFAULT_MASTER_USERNAME);
+        ->master_username = (char *) xmlCharStrdup(CONFIG_DEFAULT_MASTER_USERNAME);
     configuration
         ->master_password = NULL;
     configuration
@@ -779,7 +779,7 @@ static inline void __check_hostname(ice_config_t *configuration)
 
     /* ensure we have a non-NULL buffer: */
     if (!configuration->hostname)
-        configuration->hostname = (char *)xmlCharStrdup (CONFIG_DEFAULT_HOSTNAME);
+        configuration->hostname = (char *)xmlCharStrdup(CONFIG_DEFAULT_HOSTNAME);
 
     /* convert to lower case: */
     for (p = configuration->hostname; *p; p++) {
@@ -834,7 +834,7 @@ static void _parse_root(xmlDocPtr       doc,
     char *source_password = NULL;
 
     configuration
-        ->listen_sock       = calloc (1, sizeof (*configuration->listen_sock));
+        ->listen_sock       = calloc(1, sizeof(*configuration->listen_sock));
     configuration
         ->listen_sock->port = 8000;
     configuration
@@ -849,11 +849,11 @@ static void _parse_root(xmlDocPtr       doc,
             if (configuration->location)
                 xmlFree(configuration->location);
             configuration->location = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("admin")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("admin")) == 0) {
             if (configuration->admin)
                 xmlFree(configuration->admin);
             configuration->admin = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("server-id")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("server-id")) == 0) {
             xmlFree(configuration->server_id);
             configuration->server_id = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             ICECAST_LOG_WARN("Warning, server version string override "
@@ -1027,46 +1027,46 @@ static void _parse_limits(xmlDocPtr     doc,
         if (xmlIsBlankNode(node))
             continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("clients")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("clients")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_limit = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("sources")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("sources")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->source_limit = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("queue-size")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->queue_size_limit = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("threadpool")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("threadpool")) == 0) {
             ICECAST_LOG_WARN("<threadpool> functionality was removed in Icecast"
 			     " version 2.3.0, please remove this from your config.");
-        } else if (xmlStrcmp (node->name, XMLSTR("client-timeout")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("client-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_timeout = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("header-timeout")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("header-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->header_timeout = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("source-timeout")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->source_timeout = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("burst-on-connect")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (atoi(tmp) == 0)
                 configuration->burst_size = 0;
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("burst-size")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->burst_size = atoi(tmp);
             if (tmp)
@@ -1366,7 +1366,7 @@ static void _parse_mount(xmlDocPtr      doc,
                         break;
                     if (xmlIsBlankNode(child))
                         continue;
-                    if (xmlStrcmp (child->name, XMLSTR("role")) == 0) {
+                    if (xmlStrcmp(child->name, XMLSTR("role")) == 0) {
                         auth_t *auth = auth_get_authenticator(child);
                         auth_stack_push(&authstack, auth);
                         auth_release(auth);
@@ -1392,55 +1392,55 @@ static void _parse_mount(xmlDocPtr      doc,
             mount->max_listener_duration = atoi(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("queue-size")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->queue_size_limit = atoi (tmp);
+            mount->queue_size_limit = atoi(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("source-timeout")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp) {
-                mount->source_timeout = atoi (tmp);
+                mount->source_timeout = atoi(tmp);
                 xmlFree(tmp);
             }
-        } else if (xmlStrcmp (node->name, XMLSTR("burst-size")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->burst_size = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("cluster-password")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("cluster-password")) == 0) {
             mount->cluster_password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("stream-name")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("stream-name")) == 0) {
             mount->stream_name = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("stream-description")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("stream-description")) == 0) {
             mount->stream_description = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("stream-url")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("stream-url")) == 0) {
             mount->stream_url = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("genre")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("genre")) == 0) {
             mount->stream_genre = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("bitrate")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("bitrate")) == 0) {
             mount->bitrate = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("public")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("public")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->yp_public = __parse_public(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("type")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("type")) == 0) {
             mount->type = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("subtype")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("subtype")) == 0) {
             mount->subtype = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("http-headers")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             _parse_http_headers(doc, node->xmlChildrenNode,
                 &(mount->http_headers));
-        } else if (xmlStrcmp (node->name, XMLSTR("kartoffelsalat")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             /* BEFORE RELEASE NEXT REVIEW: Should this tag 
              * really be <kartoffelsalat>?
              */
@@ -1474,7 +1474,7 @@ static void _parse_mount(xmlDocPtr      doc,
 
     /* make sure we have at least the mountpoint name */
     if (mount->mountname == NULL && mount->mounttype != MOUNT_TYPE_DEFAULT) {
-        config_clear_mount (mount);
+        config_clear_mount(mount);
         return;
     } else if (mount->mountname != NULL && mount->mounttype == MOUNT_TYPE_DEFAULT) {
         ICECAST_LOG_WARN("Default mount %s has mount-name set. This is "
@@ -1526,7 +1526,7 @@ static void _parse_http_headers(xmlDocPtr                   doc,
             break;
         if (xmlIsBlankNode(node))
             continue;
-        if (xmlStrcmp (node->name, XMLSTR("header")) != 0)
+        if (xmlStrcmp(node->name, XMLSTR("header")) != 0)
             continue;
         if (!(name = (char *)xmlGetProp(node, XMLSTR("name"))))
             break;
@@ -1614,10 +1614,10 @@ static void _parse_relay(xmlDocPtr      doc,
 
         if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
             if (relay->server)
-                xmlFree (relay->server);
+                xmlFree(relay->server);
             relay->server = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp) {
                 relay->port = atoi(tmp);
@@ -1627,12 +1627,12 @@ static void _parse_relay(xmlDocPtr      doc,
             }
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             if (relay->mount)
-                xmlFree (relay->mount);
+                xmlFree(relay->mount);
             relay->mount = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
             if (relay->localmount)
-                xmlFree (relay->localmount);
+                xmlFree(relay->localmount);
             relay->localmount = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
@@ -1640,30 +1640,30 @@ static void _parse_relay(xmlDocPtr      doc,
             relay->mp3metadata = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("username")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
             if (relay->username)
-                xmlFree (relay->username);
+                xmlFree(relay->username);
             relay->username = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("password")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
             if (relay->password)
-                xmlFree (relay->password);
+                xmlFree(relay->password);
             relay->password = (char *)xmlNodeListGetString(doc, 
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("on-demand")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             relay->on_demand = util_str_to_bool(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("bind")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
             if (relay->bind)
-                xmlFree (relay->bind);
+                xmlFree(relay->bind);
             relay->bind = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
     if (relay->localmount == NULL)
-        relay->localmount = (char *)xmlStrdup (XMLSTR(relay->mount));
+        relay->localmount = (char *)xmlStrdup(XMLSTR(relay->mount));
 }
 
 static void _parse_listen_socket(xmlDocPtr      doc,
@@ -1671,7 +1671,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
                                  ice_config_t  *configuration)
 {
     char        *tmp;
-    listener_t  *listener = calloc (1, sizeof(listener_t));
+    listener_t  *listener = calloc(1, sizeof(listener_t));
 
     if (listener == NULL)
         return;
@@ -1683,7 +1683,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         if (xmlIsBlankNode(node))
             continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("port")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp) {
                 if(configuration->port == 0)
@@ -1699,22 +1699,22 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             listener->ssl = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("shoutcast-compat")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-compat")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             listener->shoutcast_compat = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("shoutcast-mount")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-mount")) == 0) {
             if (listener->shoutcast_mount)
-                xmlFree (listener->shoutcast_mount);
+                xmlFree(listener->shoutcast_mount);
             listener->shoutcast_mount = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("bind-address")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("bind-address")) == 0) {
             if (listener->bind_address)
-                xmlFree (listener->bind_address);
+                xmlFree(listener->bind_address);
             listener->bind_address = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("so-sndbuf")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("so-sndbuf")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             listener->so_sndbuf = atoi(tmp);
             if(tmp)
@@ -1728,7 +1728,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
     configuration->listen_sock->next = listener;
     configuration->listen_sock_count++;
     if (listener->shoutcast_mount) {
-        listener_t *sc_port = calloc (1, sizeof (listener_t));
+        listener_t *sc_port = calloc(1, sizeof(listener_t));
         sc_port->port = listener->port+1;
         sc_port->shoutcast_compat = 1;
         sc_port->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));
@@ -1765,23 +1765,23 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
                     xmlFree(*source_password);
                 *source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             }
-        } else if (xmlStrcmp (node->name, XMLSTR("admin-password")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("admin-password")) == 0) {
             if(admin_password)
                 xmlFree(admin_password);
             admin_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("admin-user")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("admin-user")) == 0) {
             if(admin_username)
                 xmlFree(admin_username);
             admin_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("relay-password")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("relay-password")) == 0) {
             if(relay_password)
                 xmlFree(relay_password);
             relay_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("relay-user")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("relay-user")) == 0) {
             if(relay_username)
                 xmlFree(relay_username);
             relay_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("role")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("role")) == 0) {
             auth_t *auth = auth_get_authenticator(node);
             auth_stack_push(&new_style, auth);
             auth_release(auth);
@@ -1839,20 +1839,20 @@ static void _parse_directory(xmlDocPtr      doc,
         if (xmlIsBlankNode(node))
             continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("yp-url")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("yp-url")) == 0) {
             if (configuration->yp_url[configuration->num_yp_directories])
                 xmlFree(configuration->yp_url[configuration->num_yp_directories]);
             configuration->yp_url[configuration->num_yp_directories] =
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("yp-url-timeout")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->yp_url_timeout[configuration->num_yp_directories] =
                 atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("server")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
             _add_server(doc, node->xmlChildrenNode, configuration);
-        } else if (xmlStrcmp (node->name, XMLSTR("touch-interval")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration
                 ->yp_touch_interval[configuration->num_yp_directories] = 
@@ -1861,7 +1861,7 @@ static void _parse_directory(xmlDocPtr      doc,
                 xmlFree(tmp);
         }
     } while ((node = node->next));
-    if (configuration->yp_url [configuration->num_yp_directories] == NULL)
+    if (configuration->yp_url[configuration->num_yp_directories] == NULL)
         return;
     configuration->num_yp_directories++;
 }
@@ -2000,7 +2000,7 @@ static void _parse_logging(xmlDocPtr        doc,
         if (xmlIsBlankNode(node))
             continue;
 
-        if (xmlStrcmp (node->name, XMLSTR("accesslog")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("accesslog")) == 0) {
             if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
                 ICECAST_LOG_WARN("<accesslog> setting must not be empty.");
                 continue;
@@ -2008,7 +2008,7 @@ static void _parse_logging(xmlDocPtr        doc,
             if (configuration->access_log)
                 xmlFree(configuration->access_log);
             configuration->access_log = tmp;
-        } else if (xmlStrcmp (node->name, XMLSTR("errorlog")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("errorlog")) == 0) {
             if (!(tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
                 ICECAST_LOG_WARN("<errorlog> setting must not be empty.");
                 continue;
@@ -2016,21 +2016,21 @@ static void _parse_logging(xmlDocPtr        doc,
             if (configuration->error_log)
                 xmlFree(configuration->error_log);
             configuration->error_log = tmp;
-        } else if (xmlStrcmp (node->name, XMLSTR("playlistlog")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("playlistlog")) == 0) {
             if (configuration->playlist_log)
                 xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("logsize")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("logsize")) == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->logsize = atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("loglevel")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = util_str_to_loglevel(tmp);
            if (tmp)
                xmlFree(tmp);
-        } else if (xmlStrcmp (node->name, XMLSTR("logarchive")) == 0) {
+        } else if (xmlStrcmp(node->name, XMLSTR("logarchive")) == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->logarchive = atoi(tmp);
             if (tmp)
@@ -2066,11 +2066,11 @@ static void _parse_security(xmlDocPtr       doc,
                    break;
                if (xmlIsBlankNode(node))
                    continue;
-               if (xmlStrcmp (node->name, XMLSTR("user")) == 0) {
+               if (xmlStrcmp(node->name, XMLSTR("user")) == 0) {
                    if (configuration->user)
                        xmlFree(configuration->user);
                    configuration->user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-               } else if (xmlStrcmp (node->name, XMLSTR("group")) == 0) {
+               } else if (xmlStrcmp(node->name, XMLSTR("group")) == 0) {
                    if (configuration->group)
                        xmlFree(configuration->group);
                    configuration->group = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
