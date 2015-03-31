@@ -523,7 +523,7 @@ void config_clear(ice_config_t *c)
     if (c->master_password) xmlFree(c->master_password);
     if (c->user)            xmlFree(c->user);
     if (c->group)           xmlFree(c->group);
-    if (c->mimetypes_fn)    xmlFree (c->mimetypes_fn);
+    if (c->mimetypes_fn)    xmlFree(c->mimetypes_fn);
 
     event_registration_release(c->event);
 
