@@ -58,7 +58,7 @@ int main()
 {
     return 0;
 }
-]),,[curl_ok="no"])
+]),,[curl_ok="no"],[curl_ok="yes"])
 fi
 if test "$curl_ok" = "yes"; then
     AC_MSG_RESULT(yes)
