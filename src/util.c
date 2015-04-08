@@ -267,21 +267,25 @@ static char safechars[256] = {
 
 char *util_url_escape (const char *src)
 {
-    int len = strlen(src);
-    /* Efficiency not a big concern here, keep the code simple/conservative */
-    char *dst = calloc(1, len*3 + 1); 
+    size_t len;
+    char *dst; 
     unsigned char *source = (unsigned char *)src;
-    int i,j=0;
+    size_t i, j;
 
-    for(i=0; i < len; i++) {
+    if (!src)
+        return NULL;
+
+    len = strlen(src);
+    /* Efficiency not a big concern here, keep the code simple/conservative */
+    dst = calloc(1, len*3 + 1);
+
+    for(i = 0, j = 0; i < len; i++) {
         if(safechars[source[i]]) {
             dst[j++] = source[i];
-        }
-        else {
-            dst[j] = '%';
-            dst[j+1] = hexchars[ (source[i] >> 4) & 0xf ];
-            dst[j+2] = hexchars[ source[i] & 0xf ];
-            j+= 3;
+        } else {
+            dst[j++] = '%';
+            dst[j++] = hexchars[(source[i] >> 4) & 0x0F];
+            dst[j++] = hexchars[ source[i]       & 0x0F];
         }
     }
 
