@@ -1,9 +1,32 @@
-2015-04-08 11:32:23  dm8tbr
+2015-04-08 10:07:42  dm8tbr
+
+	* apply fix for documentation (needed by distro packaging)
+
+2015-04-08 09:09:26  ph3-der-loewe
+
+	* Fix: Do not crash URL Auth is used with stream_auth 
+	  and no credentials are given.
+	  This fixes a crash (NULL reference) in case URL Auth is used
+	  and stream_auth is trigged with no credentials passed by the client.
+	  Username and password is now set to empty strings and transmited to
+	  the backend server this way.
+	  See #2191 for more details and to keep track of the problem.
+	  Closes: #2191, DEB#782120
+
+2015-04-08 09:02:20  ph3-der-loewe
+
+	* Fix: Let util_url_escape() handle NULL parameter.
+	  This lets util_url_escape() handle NULL passed as parameter.
+	  In case the parameter is NULL it will also return NULL.
+	  This patch also does some cleanup of the code such as migration
+	  away from int and thus avoiding future failures.
+
+2015-04-08 08:32:23  dm8tbr
 
 	* update version number to 2.4.2 in preparation for release
 	  this will be a strict security release
 
-2015-04-08 11:18:40  dm8tbr
+2015-04-08 08:18:40  dm8tbr
 
 	* applying curl fix for win32 from master
 
