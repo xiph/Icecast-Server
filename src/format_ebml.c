@@ -212,23 +212,21 @@ static refbuf_t *ebml_get_buffer(source_t *source)
 
 static int ebml_create_client_data(source_t *source, client_t *client)
 {
-
-    ebml_client_data_t *ebml_client_data = calloc(1, sizeof(ebml_client_data_t));
+    ebml_client_data_t *ebml_client_data;
     ebml_source_state_t *ebml_source_state = source->format->_state;
 
-    int ret = -1;
+    if (!ebml_source_state->header)
+        return -1;
 
-    if ((ebml_client_data) && (ebml_source_state->header))
-    {
-        ebml_client_data->header = ebml_source_state->header;
-        refbuf_addref(ebml_client_data->header);
-        client->format_data = ebml_client_data;
-        client->free_client_data = ebml_free_client_data;
-        ret = 0;
-    }
+    ebml_client_data = calloc(1, sizeof(ebml_client_data_t));
+    if (!ebml_client_data)
+        return -1;
 
-    return ret;
-
+    ebml_client_data->header = ebml_source_state->header;
+    refbuf_addref(ebml_client_data->header);
+    client->format_data = ebml_client_data;
+    client->free_client_data = ebml_free_client_data;
+    return 0;
 }
 
 

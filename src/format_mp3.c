@@ -277,12 +277,16 @@ static void mp3_set_title(source_t *source)
         int r;
 
         memset (p->data, '\0', size);
-        if (url_artist && url_title)
+        if (url_artist && url_title) {
             r = snprintf (p->data, size, "%c%s%s - %s';", len_byte, streamtitle,
                     url_artist, url_title);
-        else
+        } else if (url_title) {
             r = snprintf (p->data, size, "%c%s%s';", len_byte, streamtitle,
                     url_title);
+        } else {
+            r = snprintf (p->data, size, "%c%s';", len_byte, streamtitle);
+        }
+
         if (r > 0)
         {
             if (source_mp3->inline_url)

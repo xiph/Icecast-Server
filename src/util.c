@@ -563,7 +563,8 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
     size_t headerlen;
     const char *name;
     const char *value;
-    char * r = *ret;
+    char *r = *ret;
+    char *n;
 
     if (!header)
         return;
@@ -590,11 +591,17 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         /* append the header to the buffer */
         headerlen = strlen(name) + strlen(value) + 4;
         *len += headerlen;
-        r = realloc(r, *len);
-        strcat(r, name);
-        strcat(r, ": ");
-        strcat(r, value);
-        strcat(r, "\r\n");
+        n = realloc(r, *len);
+        if (n) {
+            r = n;
+            strcat(r, name);
+            strcat(r, ": ");
+            strcat(r, value);
+            strcat(r, "\r\n");
+        } else {
+            /* FIXME: we skip this header. We should do better. */
+            *len -= headerlen;
+        }
     } while ((header = header->next));
     *ret = r;
 }

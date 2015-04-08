@@ -150,16 +150,21 @@ int fserve_client_waiting (void)
     /* only rebuild ufds if there are clients added/removed */
     if (client_tree_changed)
     {
-        client_tree_changed = 0;
-        ufds = realloc(ufds, fserve_clients * sizeof(struct pollfd));
-        fclient = active_list;
-        while (fclient)
-        {
-            ufds[i].fd = fclient->client->con->sock;
-            ufds[i].events = POLLOUT;
-            ufds[i].revents = 0;
-            fclient = fclient->next;
-            i++;
+        struct pollfd *ufds_new = realloc(ufds, fserve_clients * sizeof(struct pollfd));
+        /* REVIEW: If we can not allocate new ufds, keep old ones for now. */
+        if (ufds_new) {
+            ufds = ufds_new;
+            client_tree_changed = 0;
+            ufds = ufds_new;
+            fclient = active_list;
+            while (fclient)
+            {
+                ufds[i].fd = fclient->client->con->sock;
+                ufds[i].events = POLLOUT;
+                ufds[i].revents = 0;
+                fclient = fclient->next;
+                i++;
+            }
         }
     }
     if (!ufds)
@@ -466,6 +471,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         if (ret == -1 || ret >= (BUFSIZE - 512)) { /* we want at least 512 bytes left for the content of the playlist */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(httpclient, 500, 0, "Header generation failed.");
+            free(sourceuri);
             return -1;
         }
         if (host == NULL)
@@ -612,6 +618,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error(httpclient, 500, 0, "Header generation failed.");
+            fclose(file);
             return -1;
         }
         bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,

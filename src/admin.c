@@ -644,7 +644,6 @@ static void command_move_clients(client_t   *client,
 
     source_move_clients(source, dest);
 
-    memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);
     xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
@@ -687,7 +686,6 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     if (tmp)
         xmlNewChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
-    memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
     xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
 

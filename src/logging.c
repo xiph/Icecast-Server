@@ -47,7 +47,7 @@ int playlistlog = 0;
 int get_clf_time (char *buffer, unsigned len, struct tm *t)
 {
     char sign;
-    char *timezone_string;
+    char timezone_string[7];
     struct tm gmt;
     time_t time1 = time(NULL);
     int time_days, time_hours, time_tz;
@@ -64,6 +64,11 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
       memcpy (&gmt, thetime, sizeof (gmt));
 #endif
     /* FIXME: bail out if gmtime* returns NULL */
+
+    if (!thetime) {
+        snprintf(buffer, len, "<<BAD TIMESTAMP>>");
+        return 0;
+    }
 
     time_days = t->tm_yday - gmt.tm_yday;
 
@@ -91,15 +96,13 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
         sign = '+';
     }
 
-    timezone_string = calloc(1, 7);
-    snprintf(timezone_string, 7, " %c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
+    snprintf(timezone_string, sizeof(timezone_string), " %c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
 
     now = time(NULL);
 
     thetime = localtime(&now);
-    strftime (buffer, len-7, "%d/%b/%Y:%H:%M:%S", thetime);
+    strftime(buffer, len - sizeof(timezone_string), "%d/%b/%Y:%H:%M:%S", thetime);
     strcat(buffer, timezone_string);
-    free(timezone_string);
     return 1;
 }
 #endif

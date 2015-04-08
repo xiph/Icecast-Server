@@ -627,7 +627,6 @@ static void source_init (source_t *source)
         strlen(":") + 6 + strlen(source->mount) + 1;
 
     listenurl = malloc (listen_url_size);
-    memset (listenurl, '\000', listen_url_size);
     snprintf (listenurl, listen_url_size, "http://%s:%d%s",
             config->hostname, config->port, source->mount);
     config_release_config();

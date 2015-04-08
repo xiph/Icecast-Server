@@ -1955,7 +1955,6 @@ static void _parse_paths(xmlDocPtr      doc,
                 free(alias);
                 continue;
             }
-            temp = NULL;
             temp = (char *)xmlGetProp(node, XMLSTR("port"));
             if(temp != NULL) {
                 alias->port = atoi(temp);

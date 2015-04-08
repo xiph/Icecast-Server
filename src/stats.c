@@ -333,7 +333,7 @@ void stats_event_add(const char *source, const char *name, unsigned long value)
     if (event)
     {
         event->value = malloc (16);
-        snprintf (event->value, 16, "%ld", value);
+        snprintf(event->value, 16, "%lu", value);
         event->action = STATS_EVENT_ADD;
         queue_global_event (event);
     }
@@ -345,7 +345,7 @@ void stats_event_sub(const char *source, const char *name, unsigned long value)
     if (event)
     {
         event->value = malloc (16);
-        snprintf (event->value, 16, "%ld", value);
+        snprintf(event->value, 16, "%lu", value);
         event->action = STATS_EVENT_SUB;
         queue_global_event (event);
     }
