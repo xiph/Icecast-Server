@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-docdir = $(datadir)/doc/icecast/img
-doc_DATA = listener_auth1.png listener_auth2.png listener_auth3.png masterslave.png relay.png
+otherdocdir = $(docdir)/img
+otherdoc_DATA = listener_auth1.png listener_auth2.png listener_auth3.png masterslave.png relay.png
 
-EXTRA_DIST = $(doc_DATA)
+EXTRA_DIST = $(otherdoc_DATA)

@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-docdir = $(datadir)/doc/icecast/assets/css
-doc_DATA = style.css
+otherdocdir = $(docdir)/assets/css
+otherdoc_DATA = style.css
 
-EXTRA_DIST = $(doc_DATA)
+EXTRA_DIST = $(otherdoc_DATA)
