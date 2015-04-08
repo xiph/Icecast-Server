@@ -11,8 +11,8 @@
 #endif
 
 #include <string.h>
-#include <curl/curl.h>
 
+#include "curl.h"
 #include "event.h"
 #include "logging.h"
 #define CATMODULE "event_url"
@@ -26,13 +26,6 @@ typedef struct event_url {
     char errormsg[CURL_ERROR_SIZE];
 } event_url_t;
 
-#ifdef CURLOPT_PASSWDFUNCTION
-/* make sure that prompting at the console does not occur */
-static int my_getpass(void *client, char *prompt, char *buffer, int buflen) {
-    buffer[0] = '\0';
-    return 0;
-}
-#endif
 static size_t handle_returned (void *ptr, size_t size, size_t nmemb, void *stream) {
     return size * nmemb;
 }
@@ -47,7 +40,6 @@ static inline char *__escape(const char *src, const char *default_value) {
 static int event_url_emit(void *state, event_t *event) {
     event_url_t *self = state;
     ice_config_t *config;
-    char *url;
     char *action, *mount, *server, *role, *username, *ip, *agent;
     time_t duration;
     char post[4096];
@@ -88,29 +80,18 @@ static int event_url_emit(void *state, event_t *event) {
         curl_easy_setopt(self->handle, CURLOPT_USERPWD, "");
     }
 
-    /* REVIEW: Why do we dup the url here?
-     * auth_url.c does it this way. I just copied the code.
-     * Maybe there is a reason for it, maybe not?
-     * -- Philipp Schafft, 2014-12-07.
-     */
-    url = strdup(self->url);
-
-    curl_easy_setopt(self->handle, CURLOPT_URL, url);
+    curl_easy_setopt(self->handle, CURLOPT_URL, self->url);
     curl_easy_setopt(self->handle, CURLOPT_POSTFIELDS, post);
-    curl_easy_setopt(self->handle, CURLOPT_WRITEHEADER, NULL);
 
     if (curl_easy_perform(self->handle))
-        ICECAST_LOG_WARN("auth to server %s failed with %s", url, self->errormsg);
-
-    free(url);
+        ICECAST_LOG_WARN("auth to server %s failed with %s", self->url, self->errormsg);
 
     return 0;
 }
 
 static void event_url_free(void *state) {
     event_url_t *self = state;
-    if (self->handle)
-        curl_easy_cleanup(self->handle);
+    icecast_curl_free(self->handle);
     free(self->url);
     free(self->action);
     free(self->userpwd);
@@ -157,7 +138,7 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
         } while ((options = options->next));
     }
 
-    self->handle = curl_easy_init();
+    self->handle = icecast_curl_new(NULL, NULL);
 
     /* check if we are in sane state */
     if (!self->url || !self->handle) {
@@ -165,15 +146,7 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
         return -1;
     }
 
-    curl_easy_setopt(self->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
     curl_easy_setopt(self->handle, CURLOPT_HEADERFUNCTION, handle_returned);
-    curl_easy_setopt(self->handle, CURLOPT_WRITEFUNCTION, handle_returned);
-    curl_easy_setopt(self->handle, CURLOPT_WRITEDATA, self->handle);
-    curl_easy_setopt(self->handle, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(self->handle, CURLOPT_TIMEOUT, 15L);
-#ifdef CURLOPT_PASSWDFUNCTION
-    curl_easy_setopt(self->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
-#endif
     curl_easy_setopt(self->handle, CURLOPT_ERRORBUFFER, self->errormsg);
 
     if (username && password) {

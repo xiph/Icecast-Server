@@ -22,7 +22,7 @@
 #include <errno.h>
 
 #ifdef HAVE_CURL
-#include <curl/curl.h>
+#include "curl.h"
 #endif
 
 #ifdef WIN32
@@ -128,8 +128,8 @@ void initialize_subsystems(void)
     refbuf_initialize();
 
     xslt_initialize();
-#ifdef HAVE_CURL_GLOBAL_INIT
-    curl_global_init (CURL_GLOBAL_ALL);
+#ifdef HAVE_CURL
+    icecast_curl_initialize();
 #endif
 }
 
@@ -151,7 +151,7 @@ void shutdown_subsystems(void)
     thread_shutdown();
 
 #ifdef HAVE_CURL
-    curl_global_cleanup();
+    icecast_curl_shutdown();
 #endif
 
     /* Now that these are done, we can stop the loggers. */

@@ -18,10 +18,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <curl/curl.h>
 
 #include "common/thread/thread.h"
 
+#include "curl.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
@@ -148,13 +148,6 @@ static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void
 }
 
 
-/* capture returned data, but don't do anything with it, shouldn't be any */
-static size_t handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    return (size_t)(size*nmemb);
-}
-
-
 /* search the active and pending YP server lists */
 static struct yp_server *find_yp_server (const char *url)
 {
@@ -199,8 +192,7 @@ static void destroy_yp_server (struct yp_server *server)
     }
     delete_marked_yp(server);
 
-    if (server->curl)
-        curl_easy_cleanup (server->curl);
+    icecast_curl_free(server->curl);
     if (server->mounts) ICECAST_LOG_WARN("active ypdata not freed");
     if (server->pending_mounts) ICECAST_LOG_WARN("pending ypdata not freed");
     free (server->url);
@@ -259,7 +251,7 @@ void yp_recheck_config (ice_config_t *config)
             server->url = strdup (config->yp_url[i]);
             server->url_timeout = config->yp_url_timeout[i];
             server->touch_interval = config->yp_touch_interval[i];
-            server->curl = curl_easy_init();
+            server->curl = icecast_curl_new(server->url, &(server->curl_error[0]));
             if (server->curl == NULL)
             {
                 destroy_yp_server (server);
@@ -269,16 +261,7 @@ void yp_recheck_config (ice_config_t *config)
                 server->url_timeout = 6;
             if (server->touch_interval < 30)
                 server->touch_interval = 30;
-            curl_easy_setopt (server->curl, CURLOPT_USERAGENT, server->server_id);
-            curl_easy_setopt (server->curl, CURLOPT_URL, server->url);
             curl_easy_setopt (server->curl, CURLOPT_HEADERFUNCTION, handle_returned_header);
-            curl_easy_setopt (server->curl, CURLOPT_WRITEFUNCTION, handle_returned_data);
-            curl_easy_setopt (server->curl, CURLOPT_WRITEDATA, server->curl);
-            curl_easy_setopt (server->curl, CURLOPT_TIMEOUT, server->url_timeout);
-            curl_easy_setopt (server->curl, CURLOPT_NOSIGNAL, 1L);
-            curl_easy_setopt (server->curl, CURLOPT_FOLLOWLOCATION, 1L);
-            curl_easy_setopt (server->curl, CURLOPT_MAXREDIRS, 3L);
-            curl_easy_setopt (server->curl, CURLOPT_ERRORBUFFER, &(server->curl_error[0]));
             server->next = (struct yp_server *)pending_yps;
             pending_yps = server;
             ICECAST_LOG_INFO("Adding new YP server \"%s\" (timeout %ds, default interval %ds)",
@@ -1007,7 +990,6 @@ void yp_shutdown (void)
     yp_update = 1;
     if (yp_thread)
         thread_join (yp_thread);
-    curl_global_cleanup();
     free ((char*)server_version);
     server_version = NULL;
     ICECAST_LOG_INFO("YP thread down");

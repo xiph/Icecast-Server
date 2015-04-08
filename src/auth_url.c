@@ -67,8 +67,7 @@
 #   define strncasecmp strnicmp
 #endif
 
-#include <curl/curl.h>
-
+#include "curl.h"
 #include "auth.h"
 #include "source.h"
 #include "client.h"
@@ -105,7 +104,7 @@ static void auth_url_clear(auth_t *self)
     ICECAST_LOG_INFO("Doing auth URL cleanup");
     url = self->state;
     self->state = NULL;
-    curl_easy_cleanup(url->handle);
+    icecast_curl_free(url->handle);
     free(url->username);
     free(url->password);
     free(url->pass_headers);
@@ -119,17 +118,6 @@ static void auth_url_clear(auth_t *self)
     free(url->userpwd);
     free(url);
 }
-
-
-#ifdef CURLOPT_PASSWDFUNCTION
-/* make sure that prompting at the console does not occur */
-static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
-{
-    buffer[0] = '\0';
-    return 0;
-}
-#endif
-
 
 static size_t handle_returned_header(void      *ptr,
                                      size_t    size,
@@ -164,16 +152,6 @@ static size_t handle_returned_header(void      *ptr,
 
     return (int)bytes;
 }
-
-/* capture returned data, but don't do anything with it */
-static size_t handle_returned_data(void        *ptr,
-                                   size_t      size,
-                                   size_t      nmemb,
-                                   void        *stream)
-{
-    return (int)(size*nmemb);
-}
-
 
 static auth_result url_remove_client(auth_client *auth_user)
 {
@@ -494,7 +472,7 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     url_info->addaction = util_url_escape(addaction);
     url_info->removeaction = util_url_escape(removeaction);
 
-    url_info->handle = curl_easy_init();
+    url_info->handle = icecast_curl_new(NULL, &url_info->errormsg[0]);
     if (url_info->handle == NULL) {
         auth_url_clear(authenticator);
         return -1;
@@ -505,16 +483,7 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     if (url_info->timelimit_header)
         url_info->timelimit_header_len = strlen (url_info->timelimit_header);
 
-    curl_easy_setopt(url_info->handle, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
     curl_easy_setopt(url_info->handle, CURLOPT_HEADERFUNCTION, handle_returned_header);
-    curl_easy_setopt(url_info->handle, CURLOPT_WRITEFUNCTION, handle_returned_data);
-    curl_easy_setopt(url_info->handle, CURLOPT_WRITEDATA, url_info->handle);
-    curl_easy_setopt(url_info->handle, CURLOPT_NOSIGNAL, 1L);
-    curl_easy_setopt(url_info->handle, CURLOPT_TIMEOUT, 15L);
-#ifdef CURLOPT_PASSWDFUNCTION
-    curl_easy_setopt(url_info->handle, CURLOPT_PASSWDFUNCTION, my_getpass);
-#endif
-    curl_easy_setopt(url_info->handle, CURLOPT_ERRORBUFFER, &url_info->errormsg[0]);
 
     if (url_info->username && url_info->password) {
         int len = strlen(url_info->username) + strlen(url_info->password) + 2;
