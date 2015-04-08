@@ -148,14 +148,12 @@ int fserve_client_waiting (void)
     unsigned int i = 0;
 
     /* only rebuild ufds if there are clients added/removed */
-    if (client_tree_changed)
-    {
+    if (client_tree_changed) {
         struct pollfd *ufds_new = realloc(ufds, fserve_clients * sizeof(struct pollfd));
         /* REVIEW: If we can not allocate new ufds, keep old ones for now. */
-        if (ufds_new) {
+        if (ufds_new || fserve_clients == 0) {
             ufds = ufds_new;
             client_tree_changed = 0;
-            ufds = ufds_new;
             fclient = active_list;
             while (fclient)
             {
@@ -167,15 +165,13 @@ int fserve_client_waiting (void)
             }
         }
     }
-    if (!ufds)
-    {
+
+    if (!ufds) {
         thread_spin_lock (&pending_lock);
         run_fserv = 0;
         thread_spin_unlock (&pending_lock);
         return -1;
-    }
-    else if (poll(ufds, fserve_clients, 200) > 0)
-    {
+    } else if (poll(ufds, fserve_clients, 200) > 0) {
         /* mark any clients that are ready */
         fclient = active_list;
         for (i=0; i<fserve_clients; i++)
@@ -186,6 +182,7 @@ int fserve_client_waiting (void)
         }
         return 1;
     }
+
     return 0;
 }
 #else
