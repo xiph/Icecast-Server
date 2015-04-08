@@ -1,3 +1,12 @@
+2015-04-08 11:32:23  dm8tbr
+
+	* update version number to 2.4.2 in preparation for release
+	  this will be a strict security release
+
+2015-04-08 11:18:40  dm8tbr
+
+	* applying curl fix for win32 from master
+
 2014-11-19 13:42:23  dm8tbr
 
 	* This is Spaaarrr^w Icecast 2.4.1!
