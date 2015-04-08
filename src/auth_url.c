@@ -539,9 +539,19 @@ static void url_stream_auth (auth_client *auth_user)
     host = util_url_escape (config->hostname);
     port = config->port;
     config_release_config ();
-    user = util_url_escape (client->username);
-    pass = util_url_escape (client->password);
     ipaddr = util_url_escape (client->con->ip);
+
+    if (client->username) {
+        user = util_url_escape(client->username);
+    } else {
+        user = strdup("");
+    }
+
+    if (client->password) {
+        pass = util_url_escape(client->password);
+    } else {
+        pass = strdup("");
+    }
 
     snprintf (post, sizeof (post),
             "action=stream_auth&mount=%s&ip=%s&server=%s&port=%d&user=%s&pass=%s%s",
