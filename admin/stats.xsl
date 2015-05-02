@@ -131,6 +131,29 @@
 								</table>
 							</xsl:if>
 
+							<!-- Extra playlist -->
+							<xsl:if test="playlist/*">
+								<h4>Playlist</h4>
+								<table class="table-block">
+									<tbody>
+										<tr>
+											<th>Album</th>
+											<th>Track</th>
+											<th>Creator</th>
+											<th>Title</th>
+										</tr>
+										<xsl:for-each select="playlist/trackList/track">
+											<tr>
+												<td><xsl:value-of select="album" /></td>
+												<td><xsl:value-of select="trackNum" /></td>
+												<td><xsl:value-of select="creator" /></td>
+												<td><xsl:value-of select="title" /></td>
+											</tr>
+										</xsl:for-each>
+									</tbody>
+								</table>
+							</xsl:if>
+
 							<!-- Mount Authentication -->
 							<xsl:if test="authentication">
 								<h4>Mount Authentication</h4>
