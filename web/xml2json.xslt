@@ -126,7 +126,8 @@
   <!-- number (no support for javascript mantissa) -->
   <xsl:template match="text()[not(string(number())='NaN' or
                                  (starts-with(.,'0' ) and . != '0' and not(starts-with(.,'0.' ))) or
-                                 (starts-with(.,'-0' ) and . != '-0' and not(starts-with(.,'-0.' ))))]">
+				 (starts-with(.,'-0' ) and . != '-0' and not(starts-with(.,'-0.' )))) and
+                              not(substring(normalize-space(.), string-length(normalize-space(.))) = '-')]">
     <xsl:choose>
       <xsl:when test="starts-with(.,'.')">
         <xsl:value-of select="concat('0',.)"/>
