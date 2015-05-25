@@ -1,9 +1,9 @@
 Icecast 2 - README
 ---------------------------------------------------------------------
 
-Icecast is a streaming media server which currently supports WebM and
-Ogg streaming including the Opus, Vorbis and Theora codecs. 
-Also Icecast can handle other streams like MP3/AAC/NSV 
+Icecast is a streaming media server which currently supports _WebM_ and
+_Ogg_ streaming including the _Opus_, _Vorbis_ and _Theora_ codecs.
+Also Icecast can handle other streams like MP3/AAC/NSV
 in legacy mode, but this is not officially supported.
 
 It can be used to create an Internet radio station or a privately
@@ -13,6 +13,8 @@ standards for communication and interaction.
 
 Icecast is distributed under the GNU GPL, version 2. A copy of this
 license is included with this software in the COPYING file.
+
+The name of this software is spelled __"Icecast"__ with a leading capital 'I' but with a lower case 'c'. Any other spelling is _incorrect_.
 
 Prerequisites
 ---------------------------------------------------------------------
