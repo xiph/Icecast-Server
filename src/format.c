@@ -405,8 +405,12 @@ static int format_prepare_headers (source_t *source, client_t *client)
 
     client->refbuf->len -= remaining;
     if (source->format->create_client_data)
-        if (source->format->create_client_data (source, client) < 0)
+        if (source->format->create_client_data (source, client) < 0) {
+            ICECAST_LOG_ERROR("Client format header generation failed. "
+                "(Likely not enough or wrong source data) Dropping client.");
+            client->respcode = 500;
             return -1;
+        }
     return 0;
 }
 
