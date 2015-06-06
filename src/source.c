@@ -952,12 +952,18 @@ static int _free_client(void *key)
 {
     client_t *client = (client_t *)key;
 
-    /* if no response has been sent then send a 404 */
-    if (client->respcode == 0)
-        client_send_error(client, 404, 0, "Mount unavailable");
-    else
-        client_destroy(client);
-
+    switch (client->respcode) {
+        case 0:
+            /* if no response has been sent then send a 404 */
+            client_send_error(client, 404, 0, "Mount unavailable");
+            break;
+        case 500:
+            client_send_error(client, 500, 0, "Stream preparation error");
+            break;
+        default:
+            client_destroy(client);
+            break;
+    }
     return 1;
 }
 
