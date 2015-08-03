@@ -25,6 +25,7 @@
 #endif
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <libxml/relaxng.h>
 
 #include "common/thread/thread.h"
 #include "cfgfile.h"
@@ -624,6 +625,27 @@ int config_initial_parse_file(const char *filename)
 {
     /* Since we're already pointing at it, we don't need to copy it in place */
     return config_parse_file(filename, &_current_configuration);
+}
+
+/* Has to be called after xmlParseFile(...) */
+int config_validate(const xmlDocPtr doc)
+{
+    int                     status;
+    xmlRelaxNGPtr           schema;
+    xmlRelaxNGValidCtxtPtr  validctxt;
+    xmlRelaxNGParserCtxtPtr rngparser;
+
+    rngparser   = xmlRelaxNGNewParserCtxt("icecast.rng");
+    schema      = xmlRelaxNGParse(rngparser);
+    validctxt   = xmlRelaxNGNewValidCtxt(schema);
+
+    status      = xmlRelaxNGValidateDoc(validctxt, doc);
+
+    xmlRelaxNGFree(schema);
+    xmlRelaxNGFreeValidCtxt(validctxt);
+    xmlRelaxNGFreeParserCtxt(rngparser);
+
+    return status;
 }
 
 int config_parse_file(const char *filename, ice_config_t *configuration)
