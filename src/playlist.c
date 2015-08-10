@@ -14,6 +14,10 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+/* for free() and strdup() */
+#include <stdlib.h>
+#include <string.h>
+
 #include "playlist.h"
 
 /* for XMLSTR() */
