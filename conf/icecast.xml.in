@@ -63,7 +63,7 @@
     -->
     <hostname>localhost</hostname>
 
-    <!-- You may have multiple <listener> elements -->
+    <!-- You may have multiple <listen-socket> elements -->
     <listen-socket>
         <port>8000</port>
         <!-- <bind-address>127.0.0.1</bind-address> -->
@@ -97,7 +97,7 @@
 
     <!-- Relaying
          You don't need this if you only have one server.
-         Please refer to the config for a detailed explanation.
+         Please refer to the documentation for a detailed explanation.
     -->
     <!--<master-server>127.0.0.1</master-server>-->
     <!--<master-server-port>8001</master-server-port>-->
