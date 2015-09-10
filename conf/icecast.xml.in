@@ -44,8 +44,7 @@
     </authentication>
 
     <!-- set the mountpoint for a shoutcast source to use, the default if not
-         specified is /stream but you can change it here if an alternative is
-         wanted or an extension is required
+         specified is to have none.
     <shoutcast-mount>/live.nsv</shoutcast-mount>
     -->
 
