@@ -2277,6 +2277,10 @@ mount_proxy *config_find_mount (ice_config_t        *config,
 {
     mount_proxy *mountinfo = config->mounts;
 
+    /* invalid args */
+    if (!mount && type != MOUNT_TYPE_DEFAULT)
+        return NULL;
+
     for (; mountinfo; mountinfo = mountinfo->next) {
         if (mountinfo->mounttype != type)
             continue;
@@ -2288,7 +2292,7 @@ mount_proxy *config_find_mount (ice_config_t        *config,
             if (strcmp(mountinfo->mountname, mount) == 0)
                 break;
         } else if (mountinfo->mounttype == MOUNT_TYPE_DEFAULT) {
-            if (!mountinfo->mountname)
+            if (!mount || !mountinfo->mountname)
                 break;
 #ifndef _WIN32
             if (fnmatch(mountinfo->mountname, mount, FNM_PATHNAME) == 0)
