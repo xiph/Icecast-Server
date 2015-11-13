@@ -102,6 +102,7 @@ int format_ebml_get_plugin(source_t *source)
     source->format = plugin;
 
     ebml_source_state->ebml = ebml_create();
+    
     return 0;
 }
 
@@ -117,6 +118,8 @@ static void ebml_free_plugin(format_plugin_t *plugin)
     free(plugin);
 }
 
+/* Write to a client from the header buffer.
+ */
 static int send_ebml_header(client_t *client)
 {
 
@@ -141,6 +144,8 @@ static int send_ebml_header(client_t *client)
 
 }
 
+/* Initial write-to-client function.
+ */
 static int ebml_write_buf_to_client (client_t *client)
 {
 
@@ -152,12 +157,16 @@ static int ebml_write_buf_to_client (client_t *client)
     }
     else
     {
+        /* Now that the header's sent, short-circuit to the generic
+         * write-refbufs function. */
         client->write_to_client = format_generic_write_to_client;
         return client->write_to_client(client);
     }
 
 }
 
+/* Return a refbuf to add to the queue.
+ */
 static refbuf_t *ebml_get_buffer(source_t *source)
 {
 
@@ -173,11 +182,13 @@ static refbuf_t *ebml_get_buffer(source_t *source)
 
         if ((bytes = ebml_read_space(ebml_source_state->ebml)) > 0)
         {
+            /* A chunk is available for reading */
             refbuf = refbuf_new(bytes);
             ebml_read(ebml_source_state->ebml, refbuf->data, bytes);
 
             if (ebml_source_state->header == NULL)
             {
+                /* Capture header before adding clusters to the queue */
                 ebml_source_state->header = refbuf;
                 continue;
             }
@@ -191,7 +202,7 @@ static refbuf_t *ebml_get_buffer(source_t *source)
         }
         else
         {
-
+            /* Feed more bytes into the parser */
             data = ebml_write_buffer(ebml_source_state->ebml, EBML_SLICE_SIZE);
             bytes = client_read_bytes (source->client, data, EBML_SLICE_SIZE);
             if (bytes <= 0)
@@ -210,6 +221,8 @@ static refbuf_t *ebml_get_buffer(source_t *source)
     }
 }
 
+/* Initialize client state.
+ */
 static int ebml_create_client_data(source_t *source, client_t *client)
 {
     ebml_client_data_t *ebml_client_data;
@@ -301,6 +314,9 @@ static ebml_t *ebml_create()
 
 }
 
+/* Return the size of a buffer needed to store the next
+ * chunk that ebml_read can yield.
+ */
 static int ebml_read_space(ebml_t *ebml)
 {
 
@@ -308,73 +324,98 @@ static int ebml_read_space(ebml_t *ebml)
 
     if (ebml->header_read == 1)
     {
-        if (ebml->cluster_start > 0)
+        /* The header has previously been read */
+        if (ebml->cluster_start > 0) {
+            /* return up until just before a new cluster starts */
             read_space = ebml->cluster_start;
-        else
+        } else {
+            /* return most of what we have, but leave enough unread
+             * to detect the next cluster.
+             */
             read_space = ebml->position - 4;
+        }
 
         return read_space;
     }
     else
     {
-        if (ebml->header_size != 0)
+        if (ebml->header_size != 0) {
+            /* The header can be read */
             return ebml->header_size;
-        else
+        } else {
+            /* The header's not ready yet */
             return 0;
+        }
     }
 
 }
 
+/* Return a chunk of the EBML/MKV/WebM stream.
+ * A cluster element's opening tag will always start a new chunk.
+ */
 static int ebml_read(ebml_t *ebml, char *buffer, int len)
 {
 
     int read_space;
     int to_read;
 
-    if (len < 1)
+    if (len < 1) {
         return 0;
+    }
 
     if (ebml->header_read == 1)
     {
-        if (ebml->cluster_start > 0)
+        /* The header has previously been read */
+        if (ebml->cluster_start > 0) {
+            /* return up until just before a new cluster starts */
             read_space = ebml->cluster_start;
-        else
+        } else {
             read_space = ebml->position - 4;
+        }
 
-        if (read_space < 1)
+        if (read_space < 1) {
             return 0;
+        }
 
-        if (read_space >= len )
+        if (read_space >= len ) {
             to_read = len;
-        else
+        } else {
             to_read = read_space;
+        }
 
         memcpy(buffer, ebml->buffer, to_read);
+        
+        /* Shift unread data down to the start of the buffer */
         memmove(ebml->buffer, ebml->buffer + to_read, ebml->position - to_read);
         ebml->position -= to_read;
 
-        if (ebml->cluster_start > 0)
+        if (ebml->cluster_start > 0) {
             ebml->cluster_start -= to_read;
+        }
     }
     else
     {
         if (ebml->header_size != 0)
         {
+            /* Can read a chunk of the header */
             read_space = ebml->header_size - ebml->header_read_position;
 
-            if (read_space >= len)
+            if (read_space >= len) {
                 to_read = len;
-            else
+            } else {
                 to_read = read_space;
+            }
 
             memcpy(buffer, ebml->header, to_read);
             ebml->header_read_position += to_read;
 
-            if (ebml->header_read_position == ebml->header_size)
+            if (ebml->header_read_position == ebml->header_size) {
                 ebml->header_read = 1;
+            }
         }
         else
         {
+            /* The header's not ready yet */
             return 0;
         }
     }
@@ -383,17 +424,24 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len)
 
 }
 
+/* Return nonzero if the chunk last returned by ebml_read was
+ * a sync point.
+ */
 static int ebml_last_was_sync(ebml_t *ebml)
 {
 
-    if (ebml->cluster_start == 0)
-    {
+    if (ebml->cluster_start == 0) {
+        /* The data buffer now starts with a cluster, so the chunk
+         * just removed from it was (probably) not a cluster's start.
+         */
         ebml->cluster_start -= 1;
         return 0;
     }
 
-    if (ebml->cluster_start == -1)
-    {
+    if (ebml->cluster_start == -1) {
+        /* Above logic triggered for the previous chunk, therefore the
+         * chunk just removed was a cluster's start.
+         */
         ebml->cluster_start -= 1;
         return 1;
     }
@@ -409,16 +457,16 @@ static char *ebml_write_buffer(ebml_t *ebml, int len)
 
 }
 
-
+/* Process data that has been written to the EBML parser's input buffer.
+ */
 static int ebml_wrote(ebml_t *ebml, int len)
 {
 
     int b;
 
-    if (ebml->header_size == 0)
-    {
-        if ((ebml->header_position + len) > EBML_HEADER_MAX_SIZE)
-        {
+    if (ebml->header_size == 0) {
+        /* Still reading header */
+        if ((ebml->header_position + len) > EBML_HEADER_MAX_SIZE) {
             ICECAST_LOG_ERROR("EBML Header too large, failing");
             return -1;
         }
@@ -430,14 +478,19 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
         memcpy(ebml->header + ebml->header_position, ebml->input_buffer, len);
         ebml->header_position += len;
-    }
-    else
-    {
+    } else {
+        /* Header's already been determined, read into data buffer */
         memcpy(ebml->buffer + ebml->position, ebml->input_buffer, len);
     }
 
     for (b = 0; b < len - 4; b++)
     {
+        /* Scan for cluster start marker.
+         * False positives are possible, but unlikely, and only
+         * permanently corrupt a stream if they occur while scanning
+         * the initial header. Else, a client can reconnect in a few
+         * seconds and get a real sync point.
+         */
         if (!memcmp(ebml->input_buffer + b, ebml->cluster_id, 4))
         {
 /*
@@ -446,14 +499,18 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
             if (ebml->header_size == 0)
             {
+                /* We were looking for the header end; now we've found it */
                 ebml->header_size = ebml->header_position - len + b;
+                
+                /* Shift data after the header into the data buffer */
                 memcpy(ebml->buffer, ebml->input_buffer + b, len - b);
                 ebml->position = len - b;
+                
+                /* Mark the start of the data as the first sync point */
                 ebml->cluster_start = -1;
                 return len;
-            }
-            else
-            {
+            } else {
+                /* We've located a sync point in the data stream */
                 ebml->cluster_start = ebml->position + b;
             }
         }
