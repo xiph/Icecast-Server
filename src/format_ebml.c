@@ -77,6 +77,7 @@ struct ebml_st {
     unsigned long long copy_len;
     
     int cluster_start;
+    int flush_cluster;
 
     int position;
     unsigned char *buffer;
@@ -377,8 +378,24 @@ static int ebml_read_space(ebml_t *ebml)
                 /* return up until just before a new cluster starts */
                 read_space = ebml->cluster_start;
             } else {
-                /* return what we have */
-                read_space = ebml->position;
+                
+                if (ebml->position == EBML_SLICE_SIZE) {
+                    /* The current cluster fills the buffer,
+                     * we have no choice but to start flushing it.
+                     */
+                    
+                    ebml->flush_cluster = 1;
+                }
+                
+                if (ebml->flush_cluster) {
+                    /* return what we have */
+                    read_space = ebml->position;
+                } else {
+                    /* wait until we've read more, so the parser has
+                     * time to gather metadata
+                     */
+                    read_space = 0;
+                }
             }
 
             return read_space;
@@ -568,6 +585,8 @@ static int ebml_wrote(ebml_t *ebml, int len)
                  * sync point.
                  */
                 if (ebml->cluster_start >= 0) {
+                    /* Allow the cluster in the read buffer to flush. */
+                    ebml->flush_cluster = 1;
                     processing = 0;
                 } else {
                     
@@ -579,6 +598,9 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     
                     /* Mark this sync point */
                     ebml->cluster_start = ebml->position;
+                    
+                    /* Buffer data to give us time to probe for keyframes, etc. */
+                    ebml->flush_cluster = 0;
                     
                     /* Copy cluster tag to read buffer */
                     ebml->copy_len = tag_length;
