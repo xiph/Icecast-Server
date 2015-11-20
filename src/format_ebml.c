@@ -481,8 +481,13 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
             if (ebml->cluster_start == 0) {
                 /* new cluster is starting now */
                 
-                if (ebml->cluster_starts_with_keyframe == EBML_KEYFRAME_STARTS_CLUSTER) {
-                    /* Successfully found a keyframe in this cluster's video track */
+                if (ebml->cluster_starts_with_keyframe != EBML_KEYFRAME_DOES_NOT_START_CLUSTER) {
+                    /* If we positively identified the first video frame as a non-keyframe,
+                     * don't use this cluster as a sync point. Since some files lack
+                     * video tracks completely, or we may have failed to probe
+                     * the first video frame, it's better to be pass through
+                     * ambiguous cases to avoid blocking the stream forever.
+                     */
                     *chunk_type = EBML_CHUNK_CLUSTER_START;
                 }
                 
