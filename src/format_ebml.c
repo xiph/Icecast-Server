@@ -111,6 +111,11 @@ static int ebml_parse_tag(unsigned char      *buffer,
 static int ebml_parse_var_int(unsigned char      *buffer,
                               unsigned char      *buffer_end,
                               unsigned long long *out_value);
+static int ebml_parse_sized_int(unsigned char      *buffer,
+                                unsigned char      *buffer_end,
+                                int                len,
+                                int                is_signed,
+                                unsigned long long *out_value);
 
 int format_ebml_get_plugin(source_t *source)
 {
@@ -768,4 +773,43 @@ static int ebml_parse_var_int(unsigned char *buffer,
 */
     
     return size;
+}
+
+/* Parse a normal int that may be from 1-8 bytes long.
+ * Returns 0 if there's not enough space to read the number;
+ * Returns -1 if the number is mis-sized.
+ * Else, returns the length of the number in bytes and writes the
+ * value to *out_value.
+ */
+static int ebml_parse_sized_int(unsigned char       *buffer,
+                                unsigned char       *buffer_end,
+                                int                 len,
+                                int                 is_signed,
+                                unsigned long long  *out_value)
+{
+    long long value;
+    int i;
+    
+    if (len < 1 || len > 8) {
+        ICECAST_LOG_DEBUG("Sized int of %i bytes", len);
+        return -1;
+    }
+    
+    if (buffer + len >= buffer_end) {
+        return 0;
+    }
+    
+    if (is_signed && ((signed char) buffer[0]) < 0) {
+        value = -1;
+    } else {
+        value = 0;
+    }
+    
+    for (i = 0; i < len; i++) {
+        value = (value << 8) + ((unsigned char) buffer[i]);
+    }
+    
+    *out_value = value;
+    
+    return len;
 }
