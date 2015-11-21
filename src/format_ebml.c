@@ -81,7 +81,7 @@ struct ebml_st {
     ebml_read_mode output_state;
     ebml_parsing_state parse_state;
     unsigned long long copy_len;
-    
+
     int cluster_start;
     ebml_keyframe_status cluster_starts_with_keyframe;
     int flush_cluster;
@@ -91,12 +91,12 @@ struct ebml_st {
 
     int input_position;
     unsigned char *input_buffer;
-    
+
     int header_size;
     int header_position;
     int header_read_position;
     unsigned char *header;
-    
+
     unsigned long long keyframe_track_number;
     unsigned long long parsing_track_number;
     int parsing_track_is_video;
@@ -149,7 +149,7 @@ int format_ebml_get_plugin(source_t *source)
     source->format = plugin;
 
     ebml_source_state->ebml = ebml_create();
-    
+
     return 0;
 }
 
@@ -244,7 +244,7 @@ static refbuf_t *ebml_get_buffer(source_t *source)
 /*            ICECAST_LOG_DEBUG("EBML: generated refbuf, size %i : %hhi %hhi %hhi",
  *                            read_bytes, refbuf->data[0], refbuf->data[1], refbuf->data[2]);
  */
-                              
+
             if (chunk_type == EBML_CHUNK_CLUSTER_START)
             {
                 refbuf->sync_point = 1;
@@ -296,7 +296,6 @@ static int ebml_create_client_data(source_t *source, client_t *client)
     return 0;
 }
 
-
 static void ebml_free_client_data (client_t *client)
 {
 
@@ -307,14 +306,12 @@ static void ebml_free_client_data (client_t *client)
     client->format_data = NULL;
 }
 
-
 static void ebml_write_buf_to_file_fail (source_t *source)
 {
     ICECAST_LOG_WARN("Write to dump file failed, disabling");
     fclose (source->dumpfile);
     source->dumpfile = NULL;
 }
-
 
 static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
 {
@@ -337,7 +334,6 @@ static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
     }
 
 }
-
 
 /* internal ebml parsing */
 
@@ -363,7 +359,7 @@ static ebml_t *ebml_create()
     ebml->input_buffer = calloc(1, EBML_SLICE_SIZE);
 
     ebml->cluster_start = -1;
-    
+
     ebml->keyframe_track_number = EBML_UNKNOWN;
     ebml->parsing_track_number = EBML_UNKNOWN;
     ebml->parsing_track_is_video = 0;
@@ -382,7 +378,7 @@ static int ebml_read_space(ebml_t *ebml)
 
     switch (ebml->output_state) {
         case EBML_STATE_READING_HEADER:
-        
+
             if (ebml->header_size != 0) {
                 /* The header can be read */
                 return ebml->header_size;
@@ -391,22 +387,22 @@ static int ebml_read_space(ebml_t *ebml)
                 return 0;
             }
             break;
-            
+
         case EBML_STATE_READING_CLUSTERS:
-            
+
             if (ebml->cluster_start > 0) {
                 /* return up until just before a new cluster starts */
                 read_space = ebml->cluster_start;
             } else {
-                
+
                 if (ebml->position == EBML_SLICE_SIZE) {
                     /* The current cluster fills the buffer,
                      * we have no choice but to start flushing it.
                      */
-                    
+
                     ebml->flush_cluster = 1;
                 }
-                
+
                 if (ebml->flush_cluster) {
                     /* return what we have */
                     read_space = ebml->position;
@@ -420,7 +416,7 @@ static int ebml_read_space(ebml_t *ebml)
 
             return read_space;
     }
-    
+
     ICECAST_LOG_ERROR("EBML: Invalid parser read state");
     return 0;
 }
@@ -437,7 +433,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
 
     int read_space;
     int to_read;
-    
+
     *chunk_type = EBML_CHUNK_HEADER;
 
     if (len < 1) {
@@ -446,7 +442,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
 
     switch (ebml->output_state) {
         case EBML_STATE_READING_HEADER:
-        
+
             if (ebml->header_size != 0)
             {
                 /* Can read a chunk of the header */
@@ -460,9 +456,9 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
 
                 memcpy(buffer, ebml->header, to_read);
                 ebml->header_read_position += to_read;
-                
+
                 *chunk_type = EBML_CHUNK_HEADER;
-                
+
                 if (ebml->header_read_position == ebml->header_size) {
                     ebml->output_state = EBML_STATE_READING_CLUSTERS;
                 }
@@ -470,17 +466,17 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
                 /* The header's not ready yet */
                 return 0;
             }
-        
+
             break;
-            
+
         case EBML_STATE_READING_CLUSTERS:
-        
+
             *chunk_type = EBML_CHUNK_CLUSTER_CONTINUE;
             read_space = ebml->position;
-            
+
             if (ebml->cluster_start == 0) {
                 /* new cluster is starting now */
-                
+
                 if (ebml->cluster_starts_with_keyframe != EBML_KEYFRAME_DOES_NOT_START_CLUSTER) {
                     /* If we positively identified the first video frame as a non-keyframe,
                      * don't use this cluster as a sync point. Since some files lack
@@ -490,7 +486,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
                      */
                     *chunk_type = EBML_CHUNK_CLUSTER_START;
                 }
-                
+
                 /* mark end of cluster */
                 ebml->cluster_start = -1;
             } else if (ebml->cluster_start > 0) {
@@ -509,7 +505,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
             }
 
             memcpy(buffer, ebml->buffer, to_read);
-            
+
             /* Shift unread data down to the start of the buffer */
             memmove(ebml->buffer, ebml->buffer + to_read, ebml->position - to_read);
             ebml->position -= to_read;
@@ -517,7 +513,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
             if (ebml->cluster_start > 0) {
                 ebml->cluster_start -= to_read;
             }
-        
+
             break;
     }
 
@@ -561,56 +557,56 @@ static int ebml_wrote(ebml_t *ebml, int len)
     char *track_number_id = "\xD7";
     char *track_type_id = "\x83";
     char *simple_block_id = "\xA3";
-    
+
     ebml->input_position += len;
     end_of_buffer = ebml->input_buffer + ebml->input_position;
-    
+
     while (processing) {
-        
+
         /*ICECAST_LOG_DEBUG("Parse State: %i", ebml->parse_state);*/
-        
+
         switch (ebml->parse_state) {
-            
+
             case EBML_STATE_PARSING_HEADER:
             case EBML_STATE_PARSING_CLUSTERS:
-                
+
                 if (ebml->parse_state == EBML_STATE_PARSING_HEADER) {
                     copy_state = EBML_STATE_COPYING_TO_HEADER;
                 } else {
                     copy_state = EBML_STATE_COPYING_TO_DATA;
                 }
-                
+
                 tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
                                             end_of_buffer, &payload_length);
-                
+
                 if (tag_length > 0) {
-                    
+
                     if (payload_length == EBML_UNKNOWN) {
                         /* Parse all children for tags we can't skip */
                         payload_length = 0;
                     }
-                    
+
                     /* Recognize tags of interest */
                     if (tag_length > 4) {
                         if (!memcmp(ebml->input_buffer + cursor, segment_id, 4)) {
                             /* Parse all Segment children */
                             payload_length = 0;
-                            
+
                         } else if (!memcmp(ebml->input_buffer + cursor, tracks_id, 4)) {
                             /* Parse all Tracks children */
                             payload_length = 0;
-                            
+
                         }
-                        
+
                     }
-                    
+
                     if (tag_length > 1) {
                         if (!memcmp(ebml->input_buffer + cursor, simple_block_id, 1)) {
                             /* Probe SimpleBlock header for the keyframe status */
                             if (ebml->cluster_starts_with_keyframe == EBML_KEYFRAME_UNKNOWN) {
                                 track_number_length = ebml_parse_var_int(ebml->input_buffer + cursor + tag_length,
                                                                   end_of_buffer, &track_number);
-                                
+
                                 if (track_number_length == 0) {
                                     /* Wait for more data */
                                     processing = 0;
@@ -618,14 +614,14 @@ static int ebml_wrote(ebml_t *ebml, int len)
                                     return -1;
                                 } else if (track_number == ebml->keyframe_track_number) {
                                     /* this block belongs to the video track */
-                                    
+
                                     /* skip the 16-bit timecode for now, read the flags byte */
                                     if (cursor + tag_length + track_number_length + 2 >= ebml->input_position) {
                                         /* Wait for more data */
                                         processing = 0;
                                     } else {
                                         flags = ebml->input_buffer[cursor + tag_length + track_number_length + 2];
-                                        
+
                                         if (flags & 0x80) {
                                             /* "keyframe" flag is set */
                                             ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_STARTS_CLUSTER;
@@ -635,22 +631,22 @@ static int ebml_wrote(ebml_t *ebml, int len)
                                             /* ICECAST_LOG_DEBUG("Found non-keyframe in track %hhu", track_number); */
                                         }
                                     }
-                                    
+
                                 }
-                                
+
                             }
-                            
+
                         } else if (!memcmp(ebml->input_buffer + cursor, track_entry_id, 1)) {
                             /* Parse all TrackEntry children; reset the state */
                             payload_length = 0;
                             ebml->parsing_track_number = EBML_UNKNOWN;
                             ebml->parsing_track_is_video = 0;
-                            
+
                         } else if (!memcmp(ebml->input_buffer + cursor, track_number_id, 1)) {
                             /* Probe TrackNumber for value */
                             value_length = ebml_parse_sized_int(ebml->input_buffer + cursor + tag_length,
                                                                 end_of_buffer, payload_length, 0, &data_value);
-                            
+
                             if (value_length == 0) {
                                 /* Wait for more data */
                                 processing = 0;
@@ -660,12 +656,12 @@ static int ebml_wrote(ebml_t *ebml, int len)
                                 ebml->parsing_track_number = data_value;
                                 ebml_check_track(ebml);
                             }
-                            
+
                         } else if (!memcmp(ebml->input_buffer + cursor, track_type_id, 1)) {
                             /* Probe TrackType for a video flag */
                             value_length = ebml_parse_sized_int(ebml->input_buffer + cursor + tag_length,
                                                                 end_of_buffer, payload_length, 0, &data_value);
-                            
+
                             if (value_length == 0) {
                                 /* Wait for more data */
                                 processing = 0;
@@ -678,20 +674,20 @@ static int ebml_wrote(ebml_t *ebml, int len)
                                     ebml_check_track(ebml);
                                 }
                             }
-                            
+
                         }
                     }
-                    
+
                     /* Take appropriate next action */
                     if (!memcmp(ebml->input_buffer + cursor, cluster_id, 4)) {
                         /* Found a cluster */
                         ebml->parse_state = EBML_STATE_START_CLUSTER;
-                        
+
                     } else if (processing) {
                         /* Non-cluster tag, copy it & children into buffer */
                         ebml->copy_len = tag_length + payload_length;
                         ebml->parse_state = copy_state;
-                        
+
                     }
 
                 } else if (tag_length == 0) {
@@ -704,7 +700,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     return -1;
                 }
                 break;
-            
+
             case EBML_STATE_START_CLUSTER:
                 /* found a cluster; wait to process it until
                  * any previous cluster tag has been flushed
@@ -716,55 +712,55 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     ebml->flush_cluster = 1;
                     processing = 0;
                 } else {
-                    
+
                     tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
                                                 end_of_buffer, &payload_length);
-                    
+
                     /* The header has been fully read by now, publish its size. */
                     ebml->header_size = ebml->header_position;
-                    
+
                     /* Mark this potential sync point, prepare probe */
                     ebml->cluster_start = ebml->position;
                     ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_UNKNOWN;
-                    
+
                     /* Buffer data to give us time to probe for keyframes, etc. */
                     ebml->flush_cluster = 0;
-                    
+
                     /* Copy cluster tag to read buffer */
                     ebml->copy_len = tag_length;
                     ebml->parse_state = EBML_STATE_COPYING_TO_DATA;
                 }
                 break;
-            
+
             case EBML_STATE_COPYING_TO_HEADER:
             case EBML_STATE_COPYING_TO_DATA:
                 to_copy = ebml->input_position - cursor;
                 if (to_copy > ebml->copy_len) {
                     to_copy = ebml->copy_len;
                 }
-                
+
                 if (ebml->parse_state == EBML_STATE_COPYING_TO_HEADER) {
                     if ((ebml->header_position + to_copy) > EBML_HEADER_MAX_SIZE) {
                         ICECAST_LOG_ERROR("EBML Header too large, failing");
                         return -1;
                     }
-                    
+
                     memcpy(ebml->header + ebml->header_position, ebml->input_buffer + cursor, to_copy);
                     ebml->header_position += to_copy;
-                    
+
                 } else if (ebml->parse_state == EBML_STATE_COPYING_TO_DATA) {
                     if ((ebml->position + to_copy) > EBML_SLICE_SIZE) {
                         to_copy = EBML_SLICE_SIZE - ebml->position;
                     }
-                    
+
                     memcpy(ebml->buffer + ebml->position, ebml->input_buffer + cursor, to_copy);
                     ebml->position += to_copy;
                 }
                 /* ICECAST_LOG_DEBUG("Copied %i of %hhu", to_copy, ebml->copy_len); */
-                
+
                 cursor += to_copy;
                 ebml->copy_len -= to_copy;
-                
+
                 if (ebml->copy_len == 0) {
                     /* resume parsing */
                     if (ebml->parse_state == EBML_STATE_COPYING_TO_HEADER) {
@@ -776,22 +772,22 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     /* wait for more data */
                     processing = 0;
                 }
-                
+
                 break;
-            
+
             default:
                 processing = 0;
-            
+
         }
-    
+
     }
-    
+
     /* Shift unprocessed data down to the start of the buffer */
     memmove(ebml->input_buffer, ebml->input_buffer + cursor, ebml->input_position - cursor);
     ebml->input_position -= cursor;
-    
+
     return len;
-    
+
 }
 
 static inline void ebml_check_track(ebml_t *ebml)
@@ -799,7 +795,7 @@ static inline void ebml_check_track(ebml_t *ebml)
     if (ebml->keyframe_track_number == EBML_UNKNOWN
         && ebml->parsing_track_is_video
         && ebml->parsing_track_number != EBML_UNKNOWN) {
-        
+
         ebml->keyframe_track_number = ebml->parsing_track_number;
         ICECAST_LOG_DEBUG("Identified track #%ffu as the video track", ebml->keyframe_track_number);
     }
@@ -824,23 +820,23 @@ static int ebml_parse_tag(unsigned char *buffer,
     int type_length;
     int size_length;
     unsigned long long value;
-    
+
     *payload_length = 0;
-    
+
     /* read past the type tag */
     type_length = ebml_parse_var_int(buffer, buffer_end, &value);
-    
+
     if (type_length <= 0) {
         return type_length;
     }
-    
+
     /* read the length tag */
     size_length = ebml_parse_var_int(buffer + type_length, buffer_end, payload_length);
-    
+
     if (size_length <= 0) {
         return size_length;
     }
-    
+
     return type_length + size_length;
 }
 
@@ -859,14 +855,14 @@ static int ebml_parse_var_int(unsigned char *buffer,
     unsigned char mask = 0x80;
     unsigned long long value;
     unsigned long long unknown_marker;
-    
+
     if (buffer >= buffer_end) {
         return 0;
     }
-    
+
     /* find the length marker bit in the first byte */
     value = buffer[0];
-    
+
     while (mask) {
         if (value & mask) {
             value = value & ~mask;
@@ -876,26 +872,26 @@ static int ebml_parse_var_int(unsigned char *buffer,
         size++;
         mask = mask >> 1;
     }
-    
+
     /* catch malformed number (no prefix) */
     if (mask == 0) {
         ICECAST_LOG_DEBUG("Corrupt var-int");
         return -1;
     }
-    
+
     /* catch number bigger than parsing buffer */
     if (buffer + size - 1 >= buffer_end) {
         return 0;
     }
-    
+
     /* read remaining bytes of (big-endian) number */
     for (i = 1; i < size; i++) {
         value = (value << 8) + buffer[i];
         unknown_marker = (unknown_marker << 8) + 0xFF;
     }
-    
+
     /* catch special "unknown" length */
-    
+
     if (value == unknown_marker) {
         *out_value = EBML_UNKNOWN;
     } else {
@@ -905,7 +901,7 @@ static int ebml_parse_var_int(unsigned char *buffer,
 /*
     ICECAST_LOG_DEBUG("Varint: value %lli, unknown %llu, mask %hhu, size %i", value, unknown_marker, mask, size);
 */
-    
+
     return size;
 }
 
@@ -923,27 +919,27 @@ static int ebml_parse_sized_int(unsigned char       *buffer,
 {
     long long value;
     int i;
-    
+
     if (len < 1 || len > 8) {
         ICECAST_LOG_DEBUG("Sized int of %i bytes", len);
         return -1;
     }
-    
+
     if (buffer + len >= buffer_end) {
         return 0;
     }
-    
+
     if (is_signed && ((signed char) buffer[0]) < 0) {
         value = -1;
     } else {
         value = 0;
     }
-    
+
     for (i = 0; i < len; i++) {
         value = (value << 8) + ((unsigned char) buffer[i]);
     }
-    
+
     *out_value = value;
-    
+
     return len;
 }
