@@ -39,6 +39,10 @@
 #define EBML_HEADER_MAX_SIZE 131072
 #define EBML_SLICE_SIZE 4096
 
+typedef enum ebml_read_mode {
+    EBML_STATE_READING_HEADER = 0,
+    EBML_STATE_READING_CLUSTERS
+} ebml_read_mode;
 
 typedef struct ebml_client_data_st ebml_client_data_t;
 
@@ -51,14 +55,15 @@ struct ebml_client_data_st {
 
 struct ebml_st {
 
+    ebml_read_mode output_state;
+    
     char *cluster_id;
     int cluster_start;
 
     int position;
     unsigned char *input_buffer;
     unsigned char *buffer;
-
-    int header_read;
+    
     int header_size;
     int header_position;
     int header_read_position;
@@ -302,6 +307,8 @@ static ebml_t *ebml_create()
 
     ebml_t *ebml = calloc(1, sizeof(ebml_t));
 
+    ebml->output_state = EBML_STATE_READING_HEADER;
+
     ebml->header = calloc(1, EBML_HEADER_MAX_SIZE);
     ebml->buffer = calloc(1, EBML_SLICE_SIZE * 4);
     ebml->input_buffer = calloc(1, EBML_SLICE_SIZE);
@@ -322,35 +329,39 @@ static int ebml_read_space(ebml_t *ebml)
 
     int read_space;
 
-    if (ebml->header_read == 1)
-    {
-        /* The header has previously been read */
-        if (ebml->cluster_start > 0) {
-            /* return up until just before a new cluster starts */
-            read_space = ebml->cluster_start;
-        } else {
-            /* return most of what we have, but leave enough unread
-             * to detect the next cluster.
-             */
-            read_space = ebml->position - 4;
-        }
+    switch (ebml->output_state) {
+        case EBML_STATE_READING_HEADER:
+        
+            if (ebml->header_size != 0) {
+                /* The header can be read */
+                return ebml->header_size;
+            } else {
+                /* The header's not ready yet */
+                return 0;
+            }
+            break;
+            
+        case EBML_STATE_READING_CLUSTERS:
+            
+            if (ebml->cluster_start > 0) {
+                /* return up until just before a new cluster starts */
+                read_space = ebml->cluster_start;
+            } else {
+                /* return most of what we have, but leave enough unread
+                 * to detect the next cluster.
+                 */
+                read_space = ebml->position - 4;
+            }
 
-        return read_space;
+            return read_space;
     }
-    else
-    {
-        if (ebml->header_size != 0) {
-            /* The header can be read */
-            return ebml->header_size;
-        } else {
-            /* The header's not ready yet */
-            return 0;
-        }
-    }
-
+    
+    ICECAST_LOG_ERROR("EBML: Invalid parser read state");
+    return 0;
 }
 
 /* Return a chunk of the EBML/MKV/WebM stream.
+ * The header will be buffered until it can be returned as one chunk.
  * A cluster element's opening tag will always start a new chunk.
  */
 static int ebml_read(ebml_t *ebml, char *buffer, int len)
@@ -363,61 +374,63 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len)
         return 0;
     }
 
-    if (ebml->header_read == 1)
-    {
-        /* The header has previously been read */
-        if (ebml->cluster_start > 0) {
-            /* return up until just before a new cluster starts */
-            read_space = ebml->cluster_start;
-        } else {
-            read_space = ebml->position - 4;
-        }
-
-        if (read_space < 1) {
-            return 0;
-        }
-
-        if (read_space >= len ) {
-            to_read = len;
-        } else {
-            to_read = read_space;
-        }
-
-        memcpy(buffer, ebml->buffer, to_read);
+    switch (ebml->output_state) {
+        case EBML_STATE_READING_HEADER:
         
-        /* Shift unread data down to the start of the buffer */
-        memmove(ebml->buffer, ebml->buffer + to_read, ebml->position - to_read);
-        ebml->position -= to_read;
+            if (ebml->header_size != 0)
+            {
+                /* Can read a chunk of the header */
+                read_space = ebml->header_size - ebml->header_read_position;
 
-        if (ebml->cluster_start > 0) {
-            ebml->cluster_start -= to_read;
-        }
-    }
-    else
-    {
-        if (ebml->header_size != 0)
-        {
-            /* Can read a chunk of the header */
-            read_space = ebml->header_size - ebml->header_read_position;
+                if (read_space >= len) {
+                    to_read = len;
+                } else {
+                    to_read = read_space;
+                }
 
-            if (read_space >= len) {
+                memcpy(buffer, ebml->header, to_read);
+                ebml->header_read_position += to_read;
+
+                if (ebml->header_read_position == ebml->header_size) {
+                    ebml->output_state = EBML_STATE_READING_CLUSTERS;
+                }
+            } else {
+                /* The header's not ready yet */
+                return 0;
+            }
+        
+            break;
+            
+        case EBML_STATE_READING_CLUSTERS:
+        
+            if (ebml->cluster_start > 0) {
+                /* return up until just before a new cluster starts */
+                read_space = ebml->cluster_start;
+            } else {
+                read_space = ebml->position - 4;
+            }
+
+            if (read_space < 1) {
+                return 0;
+            }
+
+            if (read_space >= len ) {
                 to_read = len;
             } else {
                 to_read = read_space;
             }
 
-            memcpy(buffer, ebml->header, to_read);
-            ebml->header_read_position += to_read;
+            memcpy(buffer, ebml->buffer, to_read);
+            
+            /* Shift unread data down to the start of the buffer */
+            memmove(ebml->buffer, ebml->buffer + to_read, ebml->position - to_read);
+            ebml->position -= to_read;
 
-            if (ebml->header_read_position == ebml->header_size) {
-                ebml->header_read = 1;
+            if (ebml->cluster_start > 0) {
+                ebml->cluster_start -= to_read;
             }
-        }
-        else
-        {
-            /* The header's not ready yet */
-            return 0;
-        }
+        
+            break;
     }
 
     return to_read;
