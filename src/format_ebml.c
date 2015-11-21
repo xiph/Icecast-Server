@@ -588,7 +588,11 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
                     /* Recognize tags of interest */
                     if (tag_length > 4) {
-                        if (!memcmp(ebml->input_buffer + cursor, segment_id, 4)) {
+                        if (!memcmp(ebml->input_buffer + cursor, cluster_id, 4)) {
+                            /* Found a Cluster */
+                            ebml->parse_state = EBML_STATE_START_CLUSTER;
+                            break;
+                        } else if (!memcmp(ebml->input_buffer + cursor, segment_id, 4)) {
                             /* Parse all Segment children */
                             payload_length = 0;
 
@@ -678,16 +682,11 @@ static int ebml_wrote(ebml_t *ebml, int len)
                         }
                     }
 
-                    /* Take appropriate next action */
-                    if (!memcmp(ebml->input_buffer + cursor, cluster_id, 4)) {
-                        /* Found a cluster */
-                        ebml->parse_state = EBML_STATE_START_CLUSTER;
-
-                    } else if (processing) {
+                    /* Copy any data we don't need to probe any more */
+                    if (processing) {
                         /* Non-cluster tag, copy it & children into buffer */
                         ebml->copy_len = tag_length + payload_length;
                         ebml->parse_state = copy_state;
-
                     }
 
                 } else if (tag_length == 0) {
