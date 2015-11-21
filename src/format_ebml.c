@@ -68,8 +68,10 @@ struct ebml_st {
     int cluster_start;
 
     int position;
-    unsigned char *input_buffer;
     unsigned char *buffer;
+
+    int input_position;
+    unsigned char *input_buffer;
     
     int header_size;
     int header_position;
@@ -89,7 +91,7 @@ static ebml_t *ebml_create();
 static void ebml_destroy(ebml_t *ebml);
 static int ebml_read_space(ebml_t *ebml);
 static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk_type);
-static char *ebml_write_buffer(ebml_t *ebml, int len);
+static unsigned char *ebml_get_write_buffer(ebml_t *ebml, int *bytes);
 static int ebml_wrote(ebml_t *ebml, int len);
 
 int format_ebml_get_plugin(source_t *source)
@@ -183,20 +185,20 @@ static refbuf_t *ebml_get_buffer(source_t *source)
 
     ebml_source_state_t *ebml_source_state = source->format->_state;
     format_plugin_t *format = source->format;
-    char *data = NULL;
-    int bytes = 0;
+    unsigned char *write_buffer = NULL;
+    int read_bytes = 0;
+    int write_bytes = 0;
     ebml_chunk_type chunk_type;
     refbuf_t *refbuf;
     int ret;
 
     while (1)
     {
-
-        if ((bytes = ebml_read_space(ebml_source_state->ebml)) > 0)
-        {
+        read_bytes = ebml_read_space(ebml_source_state->ebml);
+        if (read_bytes > 0) {
             /* A chunk is available for reading */
-            refbuf = refbuf_new(bytes);
-            ebml_read(ebml_source_state->ebml, refbuf->data, bytes, &chunk_type);
+            refbuf = refbuf_new(read_bytes);
+            ebml_read(ebml_source_state->ebml, refbuf->data, read_bytes, &chunk_type);
 
             if (ebml_source_state->header == NULL)
             {
@@ -206,7 +208,7 @@ static refbuf_t *ebml_get_buffer(source_t *source)
             }
 
 /*            ICECAST_LOG_DEBUG("EBML: generated refbuf, size %i : %hhi %hhi %hhi",
- *                            bytes, refbuf->data[0], refbuf->data[1], refbuf->data[2]);
+ *                            read_bytes, refbuf->data[0], refbuf->data[1], refbuf->data[2]);
  */
                               
             if (chunk_type == EBML_CHUNK_CLUSTER_START)
@@ -216,24 +218,25 @@ static refbuf_t *ebml_get_buffer(source_t *source)
             }
             return refbuf;
 
-        }
-        else
-        {
+        } else if(read_bytes == 0) {
             /* Feed more bytes into the parser */
-            data = ebml_write_buffer(ebml_source_state->ebml, EBML_SLICE_SIZE);
-            bytes = client_read_bytes (source->client, data, EBML_SLICE_SIZE);
-            if (bytes <= 0)
-            {
+            write_buffer = ebml_get_write_buffer(ebml_source_state->ebml, &write_bytes);
+            read_bytes = client_read_bytes (source->client, write_buffer, write_bytes);
+            if (read_bytes <= 0) {
                 ebml_wrote (ebml_source_state->ebml, 0);
                 return NULL;
             }
-            format->read_bytes += bytes;
-            ret = ebml_wrote (ebml_source_state->ebml, bytes);
-            if (ret != bytes) {
+            format->read_bytes += read_bytes;
+            ret = ebml_wrote (ebml_source_state->ebml, read_bytes);
+            if (ret != read_bytes) {
                 ICECAST_LOG_ERROR("Problem processing stream");
                 source->running = 0;
                 return NULL;
             }
+        } else {
+            ICECAST_LOG_ERROR("Problem processing stream");
+            source->running = 0;
+            return NULL;
         }
     }
 }
@@ -461,11 +464,15 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
 
 }
 
-static char *ebml_write_buffer(ebml_t *ebml, int len)
+/* Get pointer & length of the buffer able to accept input.
+ * 
+ * Returns the start of the writable space;
+ * Sets bytes to the amount of space available.
+ */
+static unsigned char *ebml_get_write_buffer(ebml_t *ebml, int *bytes)
 {
-
-    return (char *) ebml->input_buffer;
-
+    *bytes = EBML_SLICE_SIZE - ebml->input_position;
+    return ebml->input_buffer + ebml->input_position;
 }
 
 /* Process data that has been written to the EBML parser's input buffer.
