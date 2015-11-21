@@ -42,6 +42,27 @@
 /* A value that no EBML var-int is allowed to take. */
 #define EBML_UNKNOWN ((unsigned long long) -1)
 
+/* The magic numbers for each element we are interested in.
+ * Defined here:
+ * http://www.matroska.org/technical/specs/index.html
+ * http://www.webmproject.org/docs/container/
+ *
+ * Some of the higher-level elements have 4-byte identifiers;
+ * The lower-level elements have 1-byte identifiers.
+ */
+#define UNCOMMON_MAGIC_LEN 4
+
+#define SEGMENT_MAGIC "\x18\x53\x80\x67"
+#define CLUSTER_MAGIC "\x1F\x43\xB6\x75"
+#define TRACKS_MAGIC "\x16\x54\xAE\x6B"
+
+#define COMMON_MAGIC_LEN 1
+
+#define TRACK_ENTRY_MAGIC "\xAE"
+#define TRACK_NUMBER_MAGIC "\xD7"
+#define TRACK_TYPE_MAGIC "\x83"
+#define SIMPLE_BLOCK_MAGIC "\xA3"
+
 typedef enum ebml_read_mode {
     EBML_STATE_READING_HEADER = 0,
     EBML_STATE_READING_CLUSTERS
@@ -550,14 +571,6 @@ static int ebml_wrote(ebml_t *ebml, int len)
     unsigned char flags;
     int copy_state;
 
-    char *segment_id = "\x18\x53\x80\x67";
-    char *cluster_id = "\x1F\x43\xB6\x75";
-    char *tracks_id = "\x16\x54\xAE\x6B";
-    char *track_entry_id = "\xAE";
-    char *track_number_id = "\xD7";
-    char *track_type_id = "\x83";
-    char *simple_block_id = "\xA3";
-
     ebml->input_position += len;
     end_of_buffer = ebml->input_buffer + ebml->input_position;
 
@@ -587,16 +600,16 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     }
 
                     /* Recognize tags of interest */
-                    if (tag_length > 4) {
-                        if (!memcmp(ebml->input_buffer + cursor, cluster_id, 4)) {
+                    if (tag_length > UNCOMMON_MAGIC_LEN) {
+                        if (!memcmp(ebml->input_buffer + cursor, CLUSTER_MAGIC, UNCOMMON_MAGIC_LEN)) {
                             /* Found a Cluster */
                             ebml->parse_state = EBML_STATE_START_CLUSTER;
                             break;
-                        } else if (!memcmp(ebml->input_buffer + cursor, segment_id, 4)) {
+                        } else if (!memcmp(ebml->input_buffer + cursor, SEGMENT_MAGIC, UNCOMMON_MAGIC_LEN)) {
                             /* Parse all Segment children */
                             payload_length = 0;
 
-                        } else if (!memcmp(ebml->input_buffer + cursor, tracks_id, 4)) {
+                        } else if (!memcmp(ebml->input_buffer + cursor, TRACKS_MAGIC, UNCOMMON_MAGIC_LEN)) {
                             /* Parse all Tracks children */
                             payload_length = 0;
 
@@ -604,8 +617,8 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
                     }
 
-                    if (tag_length > 1) {
-                        if (!memcmp(ebml->input_buffer + cursor, simple_block_id, 1)) {
+                    if (tag_length > COMMON_MAGIC_LEN) {
+                        if (!memcmp(ebml->input_buffer + cursor, SIMPLE_BLOCK_MAGIC, COMMON_MAGIC_LEN)) {
                             /* Probe SimpleBlock header for the keyframe status */
                             if (ebml->cluster_starts_with_keyframe == EBML_KEYFRAME_UNKNOWN) {
                                 track_number_length = ebml_parse_var_int(ebml->input_buffer + cursor + tag_length,
@@ -640,13 +653,13 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
                             }
 
-                        } else if (!memcmp(ebml->input_buffer + cursor, track_entry_id, 1)) {
+                        } else if (!memcmp(ebml->input_buffer + cursor, TRACK_ENTRY_MAGIC, COMMON_MAGIC_LEN)) {
                             /* Parse all TrackEntry children; reset the state */
                             payload_length = 0;
                             ebml->parsing_track_number = EBML_UNKNOWN;
                             ebml->parsing_track_is_video = 0;
 
-                        } else if (!memcmp(ebml->input_buffer + cursor, track_number_id, 1)) {
+                        } else if (!memcmp(ebml->input_buffer + cursor, TRACK_NUMBER_MAGIC, COMMON_MAGIC_LEN)) {
                             /* Probe TrackNumber for value */
                             value_length = ebml_parse_sized_int(ebml->input_buffer + cursor + tag_length,
                                                                 end_of_buffer, payload_length, 0, &data_value);
@@ -661,7 +674,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
                                 ebml_check_track(ebml);
                             }
 
-                        } else if (!memcmp(ebml->input_buffer + cursor, track_type_id, 1)) {
+                        } else if (!memcmp(ebml->input_buffer + cursor, TRACK_TYPE_MAGIC, COMMON_MAGIC_LEN)) {
                             /* Probe TrackType for a video flag */
                             value_length = ebml_parse_sized_int(ebml->input_buffer + cursor + tag_length,
                                                                 end_of_buffer, payload_length, 0, &data_value);
