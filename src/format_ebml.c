@@ -61,6 +61,12 @@ typedef enum ebml_chunk_type {
     EBML_CHUNK_CLUSTER_CONTINUE
 } ebml_chunk_type;
 
+typedef enum ebml_keyframe_status {
+    EBML_KEYFRAME_UNKNOWN = -1,
+    EBML_KEYFRAME_DOES_NOT_START_CLUSTER = 0,
+    EBML_KEYFRAME_STARTS_CLUSTER = 1
+} ebml_keyframe_status;
+
 typedef struct ebml_client_data_st ebml_client_data_t;
 
 struct ebml_client_data_st {
@@ -77,6 +83,7 @@ struct ebml_st {
     unsigned long long copy_len;
     
     int cluster_start;
+    ebml_keyframe_status cluster_starts_with_keyframe;
     int flush_cluster;
 
     int position;
@@ -473,7 +480,11 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
             
             if (ebml->cluster_start == 0) {
                 /* new cluster is starting now */
-                *chunk_type = EBML_CHUNK_CLUSTER_START;
+                
+                if (ebml->cluster_starts_with_keyframe == EBML_KEYFRAME_STARTS_CLUSTER) {
+                    /* Successfully found a keyframe in this cluster's video track */
+                    *chunk_type = EBML_CHUNK_CLUSTER_START;
+                }
                 
                 /* mark end of cluster */
                 ebml->cluster_start = -1;
@@ -531,8 +542,11 @@ static int ebml_wrote(ebml_t *ebml, int len)
 
     int tag_length;
     int value_length;
+    int track_number_length;
     unsigned long long payload_length;
     unsigned long long data_value;
+    unsigned long long track_number;
+    unsigned char flags;
     int copy_state;
 
     char *segment_id = "\x18\x53\x80\x67";
@@ -541,6 +555,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
     char *track_entry_id = "\xAE";
     char *track_number_id = "\xD7";
     char *track_type_id = "\x83";
+    char *simple_block_id = "\xA3";
     
     ebml->input_position += len;
     end_of_buffer = ebml->input_buffer + ebml->input_position;
@@ -585,7 +600,42 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     }
                     
                     if (tag_length > 1) {
-                        if (!memcmp(ebml->input_buffer + cursor, track_entry_id, 1)) {
+                        if (!memcmp(ebml->input_buffer + cursor, simple_block_id, 1)) {
+                            /* Probe SimpleBlock header for the keyframe status */
+                            if (ebml->cluster_starts_with_keyframe == EBML_KEYFRAME_UNKNOWN) {
+                                track_number_length = ebml_parse_var_int(ebml->input_buffer + cursor + tag_length,
+                                                                  end_of_buffer, &track_number);
+                                
+                                if (track_number_length == 0) {
+                                    /* Wait for more data */
+                                    processing = 0;
+                                } else if (track_number_length < 0) {
+                                    return -1;
+                                } else if (track_number == ebml->keyframe_track_number) {
+                                    /* this block belongs to the video track */
+                                    
+                                    /* skip the 16-bit timecode for now, read the flags byte */
+                                    if (cursor + tag_length + track_number_length + 2 >= ebml->input_position) {
+                                        /* Wait for more data */
+                                        processing = 0;
+                                    } else {
+                                        flags = ebml->input_buffer[cursor + tag_length + track_number_length + 2];
+                                        
+                                        if (flags & 0x80) {
+                                            /* "keyframe" flag is set */
+                                            ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_STARTS_CLUSTER;
+                                            /* ICECAST_LOG_DEBUG("Found keyframe in track %hhu", track_number); */
+                                        } else {
+                                            ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_DOES_NOT_START_CLUSTER;
+                                            /* ICECAST_LOG_DEBUG("Found non-keyframe in track %hhu", track_number); */
+                                        }
+                                    }
+                                    
+                                }
+                                
+                            }
+                            
+                        } else if (!memcmp(ebml->input_buffer + cursor, track_entry_id, 1)) {
                             /* Parse all TrackEntry children; reset the state */
                             payload_length = 0;
                             ebml->parsing_track_number = EBML_UNKNOWN;
@@ -668,8 +718,9 @@ static int ebml_wrote(ebml_t *ebml, int len)
                     /* The header has been fully read by now, publish its size. */
                     ebml->header_size = ebml->header_position;
                     
-                    /* Mark this sync point */
+                    /* Mark this potential sync point, prepare probe */
                     ebml->cluster_start = ebml->position;
+                    ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_UNKNOWN;
                     
                     /* Buffer data to give us time to probe for keyframes, etc. */
                     ebml->flush_cluster = 0;
