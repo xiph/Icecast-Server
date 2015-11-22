@@ -36,7 +36,17 @@
 
 #include "logging.h"
 
+/* The size of the header buffer; should be large enough to contain
+ * everything before the first Cluster in a reasonable stream
+ */
 #define EBML_HEADER_MAX_SIZE 131072
+
+/* The size of the input/staging buffers; this much of a cluster
+ * will be buffered before being returned. Should be large enough
+ * that the first video block will be encountered before it is full,
+ * to allow probing for the keyframe flag while we still have the
+ * option to mark the cluster as a sync point.
+ */
 #define EBML_SLICE_SIZE 4096
 
 /* A value that no EBML var-int is allowed to take. */
@@ -63,28 +73,55 @@
 #define TRACK_TYPE_MAGIC "\x83"
 #define SIMPLE_BLOCK_MAGIC "\xA3"
 
+/* If support for Tags gets added, it may make sense
+ * to convert this into a pair of flags signaling
+ * "new headers" and "new tags"
+ */
 typedef enum ebml_read_mode {
+    /* The header buffer has not been extracted yet */
     EBML_STATE_READING_HEADER = 0,
+    /* The header buffer has been read, begin normal operation */
     EBML_STATE_READING_CLUSTERS
 } ebml_read_mode;
 
 typedef enum ebml_parsing_state {
+    /* Examine EBML elements, output to header buffer */
     EBML_STATE_PARSING_HEADER = 0,
+
+    /* Blindly copy a specified number of bytes to the header buffer */
     EBML_STATE_COPYING_TO_HEADER,
+
+    /* Finalize header buffer and wait for previous cluster to flush (as necessary) */
     EBML_STATE_START_CLUSTER,
+
+    /* Examine EBML elements, output to data buffer */
     EBML_STATE_PARSING_CLUSTERS,
+
+    /* Blindly copy a specified number of bytes to the data buffer */
     EBML_STATE_COPYING_TO_DATA
 } ebml_parsing_state;
 
 typedef enum ebml_chunk_type {
+    /* This chunk is the header buffer */
     EBML_CHUNK_HEADER = 0,
+
+    /* This chunk starts a cluster that works as a sync point */
     EBML_CHUNK_CLUSTER_START,
+
+    /* This chunk continues the previous cluster, or
+     * else starts a non-sync-point cluster
+     */
     EBML_CHUNK_CLUSTER_CONTINUE
 } ebml_chunk_type;
 
 typedef enum ebml_keyframe_status {
+    /* Have not found a video track block yet */
     EBML_KEYFRAME_UNKNOWN = -1,
+
+    /* Found the first video track block, it was not a keyframe */
     EBML_KEYFRAME_DOES_NOT_START_CLUSTER = 0,
+
+    /* Found the first video track block, it was a keyframe */
     EBML_KEYFRAME_STARTS_CLUSTER = 1
 } ebml_keyframe_status;
 
@@ -695,9 +732,8 @@ static int ebml_wrote(ebml_t *ebml, int len)
                         }
                     }
 
-                    /* Copy any data we don't need to probe any more */
                     if (processing) {
-                        /* Non-cluster tag, copy it & children into buffer */
+                        /* Moving to next element, copy current to buffer */
                         ebml->copy_len = tag_length + payload_length;
                         ebml->parse_state = copy_state;
                     }
