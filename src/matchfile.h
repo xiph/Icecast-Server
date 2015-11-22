@@ -15,9 +15,9 @@ typedef struct matchfile_tag matchfile_t;
 matchfile_t *matchfile_new(const char *filename);
 int          matchfile_addref(matchfile_t *file);
 int          matchfile_release(matchfile_t *file);
-int          matchfile_match(matchfile_t *file, char *key);
+int          matchfile_match(matchfile_t *file, const char *key);
 
 /* returns 1 for allow or pass and 0 for deny */
-int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, char *key);
+int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, const char *key);
 
 #endif  /* __MATCHFILE_H__ */

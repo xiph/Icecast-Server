@@ -144,7 +144,7 @@ int          matchfile_release(matchfile_t *file) {
 }
 
 /* we are not const char *key because of avl_get_by_key()... */
-int          matchfile_match(matchfile_t *file, char *key) {
+int          matchfile_match(matchfile_t *file, const char *key) {
     void *result;
 
     if (!file)
@@ -159,7 +159,7 @@ int          matchfile_match(matchfile_t *file, char *key) {
     return avl_get_by_key(file->contents, (void*)key, &result) == 0 ? 1 : 0;
 }
 
-int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, char *key) {
+int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, const char *key) {
     if (!allow && !deny)
         return 1;
 
