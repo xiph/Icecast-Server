@@ -30,7 +30,7 @@ icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ common/net/libicenet.la common/thread/
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@
 
 AM_CFLAGS = @XIPH_CFLAGS@
-AM_CPPFLAGS = -I./common/ @XIPH_CPPFLAGS@
+AM_CPPFLAGS = -I$(srcdir)/common/ @XIPH_CPPFLAGS@
 AM_LDFLAGS = @XIPH_LDFLAGS@ @KATE_LIBS@
 
 
