@@ -1,11 +1,12 @@
 AC_INIT([Icecast], [2.4.99.1], [icecast@xiph.org])
 
-AC_PREREQ(2.54)
-AC_CONFIG_SRCDIR(src/main.c)
+AC_PREREQ([2.54])
+AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_MACRO_DIRS([m4])
 dnl Process this file with autoconf to produce a configure script.
 
 AM_INIT_AUTOMAKE
-AM_CONFIG_HEADER(config.h)
+AM_CONFIG_HEADER([config.h])
 AM_MAINTAINER_MODE
 
 AC_PROG_CC
@@ -51,9 +52,9 @@ XIPH_C__FUNC__
 dnl Check for types
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(localtime_r poll gettimeofday ftime)
-AC_SEARCH_LIBS(nanosleep, rt posix4, AC_DEFINE(HAVE_NANOSLEEP, 1,
-    [Define if you have nanosleep]))
+AC_CHECK_FUNCS([localtime_r poll gettimeofday ftime])
+
+AC_SEARCH_LIBS([nanosleep], [rt posix4], AC_DEFINE([HAVE_NANOSLEEP], [1], [Define if you have nanosleep]))
 XIPH_NET
 
 dnl -- configure options --
