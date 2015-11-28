@@ -6,8 +6,6 @@ SUBDIRS = common/avl common/net common/thread common/httpp common/log common/tim
 
 bin_PROGRAMS = icecast
 
-INCLUDES = -I./common/
-
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h curl.h slave.h source.h stats.h refbuf.h client.h playlist.h \
     compat.h fserve.h xslt.h yp.h md5.h matchfile.h \
@@ -32,7 +30,7 @@ icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ common/net/libicenet.la common/thread/
 icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@
 
 AM_CFLAGS = @XIPH_CFLAGS@
-AM_CPPFLAGS = @XIPH_CPPFLAGS@
+AM_CPPFLAGS = -I./common/ @XIPH_CPPFLAGS@
 AM_LDFLAGS = @XIPH_LDFLAGS@ @KATE_LIBS@
 
 
