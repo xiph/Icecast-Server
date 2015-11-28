@@ -671,6 +671,8 @@ static void *_stats_thread(void *arg)
     stats_event_t *copy;
     event_listener_t *listener;
 
+    (void)arg;
+
     stats_event_time (NULL, "server_start");
     stats_event_time_iso8601 (NULL, "server_start_iso8601");
 
@@ -995,6 +997,8 @@ void *stats_connection(void *arg)
 
 void stats_callback (client_t *client, void *notused)
 {
+    (void)notused;
+
     if (client->con->error)
     {
         client_destroy (client);
@@ -1078,6 +1082,8 @@ static int _compare_stats(void *arg, void *a, void *b)
     stats_node_t *nodea = (stats_node_t *)a;
     stats_node_t *nodeb = (stats_node_t *)b;
 
+    (void)arg;
+
     return strcmp(nodea->name, nodeb->name);
 }
 
@@ -1085,6 +1091,8 @@ static int _compare_source_stats(void *arg, void *a, void *b)
 {
     stats_source_t *nodea = (stats_source_t *)a;
     stats_source_t *nodeb = (stats_source_t *)b;
+
+    (void)arg;
 
     return strcmp(nodea->source, nodeb->source);
 }

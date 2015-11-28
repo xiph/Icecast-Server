@@ -275,6 +275,8 @@ static void *fserv_thread_function(void *arg)
     fserve_t *fclient, **trail;
     size_t bytes;
 
+    (void)arg;
+
     while (1)
     {
         if (wait_for_fds() < 0)
@@ -716,6 +718,7 @@ static int _delete_mapping(void *mapping) {
 
 static int _compare_mappings(void *arg, void *a, void *b)
 {
+    (void)arg;
     return strcmp(
             ((mime_type *)a)->ext,
             ((mime_type *)b)->ext);

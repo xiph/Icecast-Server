@@ -292,7 +292,7 @@ int format_advance_queue(source_t *source, client_t *client)
  */
 static int format_prepare_headers (source_t *source, client_t *client)
 {
-    unsigned remaining;
+    size_t remaining;
     char *ptr;
     int bytes;
     int bitrate_filtered = 0;
@@ -303,11 +303,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
     client->respcode = 200;
 
     bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
-    if (bytes == -1) {
+    if (bytes < 0) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
         client->respcode = 500;
         return -1;
-    } else if ((bytes + 1024) >= remaining) { /* we don't know yet how much to follow but want at least 1kB free space */
+    } else if (((size_t)bytes + (size_t)1024U) >= remaining) { /* we don't know yet how much to follow but want at least 1kB free space */
         void *new_ptr = realloc(ptr, bytes + 1024);
         if (new_ptr) {
             ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");

@@ -24,6 +24,7 @@ static int my_getpass(void *client, char *prompt, char *buffer, int buflen) {
 #endif
 
 static size_t handle_returned (void *ptr, size_t size, size_t nmemb, void *stream) {
+    (void)ptr, (void)stream;
     return size * nmemb;
 }
 

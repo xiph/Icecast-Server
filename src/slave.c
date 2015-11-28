@@ -724,6 +724,8 @@ static void *_slave_thread(void *arg)
     ice_config_t *config;
     unsigned int interval = 0;
 
+    (void)arg;
+
     thread_mutex_lock(&_slave_mutex);
     update_settings = 0;
     update_all_mounts = 0;

@@ -152,6 +152,8 @@ static inline void _try_registrations(event_registration_t *er, event_t *event) 
 static void *event_run_thread (void *arg) {
     int running = 0;
 
+    (void)arg;
+
     do {
         event_t *event;
         size_t i;

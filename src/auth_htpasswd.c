@@ -89,6 +89,8 @@ static int compare_users(void *arg, void *a, void *b)
     htpasswd_user *user1 = (htpasswd_user *)a;
     htpasswd_user *user2 = (htpasswd_user *)b;
 
+    (void)arg;
+
     return strcmp (user1->name, user2->name);
 }
 

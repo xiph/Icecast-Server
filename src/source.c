@@ -191,6 +191,8 @@ int source_compare_sources(void *arg, void *a, void *b)
     source_t *srca = (source_t *)a;
     source_t *srcb = (source_t *)b;
 
+    (void)arg;
+
     return strcmp(srca->mount, srcb->mount);
 }
 
@@ -933,6 +935,8 @@ static int _compare_clients(void *compare_arg, void *a, void *b)
 {
     client_t *clienta = (client_t *) a;
     client_t *clientb = (client_t *) b;
+
+    (void)compare_arg;
 
     connection_t *cona = clienta->con;
     connection_t *conb = clientb->con;

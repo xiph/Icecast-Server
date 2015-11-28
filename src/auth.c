@@ -243,6 +243,8 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     client_t *client = auth_user->client;
     auth_result ret = AUTH_RELEASED;
 
+    (void)auth;
+
     if (client->auth->release_client)
         ret = client->auth->release_client(auth_user);
 

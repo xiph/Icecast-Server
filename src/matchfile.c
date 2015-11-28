@@ -43,6 +43,7 @@ static int __func_free(void *x) {
 }
 
 static int __func_compare (void *arg, void *a, void *b) {
+    (void)arg;
     return strcmp(b, a);
 }
 
