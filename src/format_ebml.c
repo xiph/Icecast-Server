@@ -130,7 +130,7 @@ typedef struct ebml_client_data_st ebml_client_data_t;
 struct ebml_client_data_st {
 
     refbuf_t *header;
-    int header_pos;
+    size_t header_pos;
 
 };
 
@@ -140,19 +140,19 @@ struct ebml_st {
     ebml_parsing_state parse_state;
     unsigned long long copy_len;
 
-    int cluster_start;
+    ssize_t cluster_start;
     ebml_keyframe_status cluster_starts_with_keyframe;
     int flush_cluster;
 
-    int position;
+    size_t position;
     unsigned char *buffer;
 
-    int input_position;
+    size_t input_position;
     unsigned char *input_buffer;
 
-    int header_size;
-    int header_position;
-    int header_read_position;
+    size_t header_size;
+    size_t header_position;
+    size_t header_read_position;
     unsigned char *header;
 
     unsigned long long keyframe_track_number;
@@ -169,21 +169,21 @@ static void ebml_free_client_data(client_t *client);
 
 static ebml_t *ebml_create();
 static void ebml_destroy(ebml_t *ebml);
-static int ebml_read_space(ebml_t *ebml);
-static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk_type);
-static unsigned char *ebml_get_write_buffer(ebml_t *ebml, int *bytes);
-static int ebml_wrote(ebml_t *ebml, int len);
-static int ebml_parse_tag(unsigned char      *buffer,
-                          unsigned char      *buffer_end,
-                          unsigned long long *payload_length);
-static int ebml_parse_var_int(unsigned char      *buffer,
+static size_t ebml_read_space(ebml_t *ebml);
+static size_t ebml_read(ebml_t *ebml, char *buffer, size_t len, ebml_chunk_type *chunk_type);
+static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes);
+static ssize_t ebml_wrote(ebml_t *ebml, size_t len);
+static ssize_t ebml_parse_tag(unsigned char      *buffer,
                               unsigned char      *buffer_end,
-                              unsigned long long *out_value);
-static int ebml_parse_sized_int(unsigned char      *buffer,
-                                unsigned char      *buffer_end,
-                                int                len,
-                                int                is_signed,
-                                unsigned long long *out_value);
+                              unsigned long long *payload_length);
+static ssize_t ebml_parse_var_int(unsigned char      *buffer,
+                                  unsigned char      *buffer_end,
+                                  unsigned long long *out_value);
+static ssize_t ebml_parse_sized_int(unsigned char      *buffer,
+                                    unsigned char      *buffer_end,
+                                    size_t             len,
+                                    int                is_signed,
+                                    unsigned long long *out_value);
 static inline void ebml_check_track(ebml_t *ebml);
 
 int format_ebml_get_plugin(source_t *source)
@@ -229,7 +229,7 @@ static int send_ebml_header(client_t *client)
 {
 
     ebml_client_data_t *ebml_client_data = client->format_data;
-    int len = EBML_SLICE_SIZE;
+    size_t len = EBML_SLICE_SIZE;
     int ret;
 
     if (ebml_client_data->header->len - ebml_client_data->header_pos < len)
@@ -278,11 +278,11 @@ static refbuf_t *ebml_get_buffer(source_t *source)
     ebml_source_state_t *ebml_source_state = source->format->_state;
     format_plugin_t *format = source->format;
     unsigned char *write_buffer = NULL;
-    int read_bytes = 0;
-    int write_bytes = 0;
+    size_t read_bytes = 0;
+    size_t write_bytes = 0;
     ebml_chunk_type chunk_type;
     refbuf_t *refbuf;
-    int ret;
+    size_t ret;
 
     while (1)
     {
@@ -429,10 +429,10 @@ static ebml_t *ebml_create()
 /* Return the size of a buffer needed to store the next
  * chunk that ebml_read can yield.
  */
-static int ebml_read_space(ebml_t *ebml)
+static size_t ebml_read_space(ebml_t *ebml)
 {
 
-    int read_space;
+    size_t read_space;
 
     switch (ebml->output_state) {
         case EBML_STATE_READING_HEADER:
@@ -486,11 +486,11 @@ static int ebml_read_space(ebml_t *ebml)
  * chunk_type will be set to indicate if the chunk is the header,
  * the start of a cluster, or continuing the current cluster.
  */
-static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk_type)
+static size_t ebml_read(ebml_t *ebml, char *buffer, size_t len, ebml_chunk_type *chunk_type)
 {
 
-    int read_space;
-    int to_read;
+    size_t read_space;
+    size_t to_read;
 
     *chunk_type = EBML_CHUNK_HEADER;
 
@@ -584,7 +584,7 @@ static int ebml_read(ebml_t *ebml, char *buffer, int len, ebml_chunk_type *chunk
  * Returns the start of the writable space;
  * Sets bytes to the amount of space available.
  */
-static unsigned char *ebml_get_write_buffer(ebml_t *ebml, int *bytes)
+static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes)
 {
     *bytes = EBML_SLICE_SIZE - ebml->input_position;
     return ebml->input_buffer + ebml->input_position;
@@ -592,16 +592,16 @@ static unsigned char *ebml_get_write_buffer(ebml_t *ebml, int *bytes)
 
 /* Process data that has been written to the EBML parser's input buffer.
  */
-static int ebml_wrote(ebml_t *ebml, int len)
+static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 {
     int processing = 1;
-    int cursor = 0;
-    int to_copy;
+    size_t cursor = 0;
+    size_t to_copy;
     unsigned char *end_of_buffer;
 
-    int tag_length;
-    int value_length;
-    int track_number_length;
+    ssize_t tag_length;
+    ssize_t value_length;
+    ssize_t track_number_length;
     unsigned long long payload_length;
     unsigned long long data_value;
     unsigned long long track_number;
@@ -861,12 +861,12 @@ static inline void ebml_check_track(ebml_t *ebml)
  * Returns -1 if the tag is corrupt.
  */
 
-static int ebml_parse_tag(unsigned char *buffer,
-                          unsigned char *buffer_end,
-                          unsigned long long *payload_length)
+static ssize_t ebml_parse_tag(unsigned char *buffer,
+                             unsigned char *buffer_end,
+                             unsigned long long *payload_length)
 {
-    int type_length;
-    int size_length;
+    size_t type_length;
+    size_t size_length;
     unsigned long long value;
 
     *payload_length = 0;
@@ -894,12 +894,12 @@ static int ebml_parse_tag(unsigned char *buffer,
  * Else, returns the length of the number in bytes and writes the
  * value to *out_value.
  */
-static int ebml_parse_var_int(unsigned char *buffer,
-                              unsigned char *buffer_end,
-                              unsigned long long *out_value)
+static ssize_t ebml_parse_var_int(unsigned char *buffer,
+                                 unsigned char *buffer_end,
+                                 unsigned long long *out_value)
 {
-    int size = 1;
-    int i;
+    size_t size = 1;
+    size_t i;
     unsigned char mask = 0x80;
     unsigned long long value;
     unsigned long long unknown_marker;
@@ -959,14 +959,14 @@ static int ebml_parse_var_int(unsigned char *buffer,
  * Else, returns the length of the number in bytes and writes the
  * value to *out_value.
  */
-static int ebml_parse_sized_int(unsigned char       *buffer,
-                                unsigned char       *buffer_end,
-                                int                 len,
-                                int                 is_signed,
-                                unsigned long long  *out_value)
+static ssize_t ebml_parse_sized_int(unsigned char       *buffer,
+                                   unsigned char       *buffer_end,
+                                   size_t              len,
+                                   int                 is_signed,
+                                   unsigned long long  *out_value)
 {
     long long value;
-    int i;
+    size_t i;
 
     if (len < 1 || len > 8) {
         ICECAST_LOG_DEBUG("Sized int of %i bytes", len);
