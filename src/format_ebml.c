@@ -606,7 +606,7 @@ static int ebml_wrote(ebml_t *ebml, int len)
     unsigned long long data_value;
     unsigned long long track_number;
     unsigned char flags;
-    int copy_state;
+    ebml_parsing_state copy_state;
 
     ebml->input_position += len;
     end_of_buffer = ebml->input_buffer + ebml->input_position;
