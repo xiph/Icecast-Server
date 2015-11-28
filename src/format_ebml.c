@@ -125,16 +125,7 @@ typedef enum ebml_keyframe_status {
     EBML_KEYFRAME_STARTS_CLUSTER = 1
 } ebml_keyframe_status;
 
-typedef struct ebml_client_data_st ebml_client_data_t;
-
-struct ebml_client_data_st {
-
-    refbuf_t *header;
-    size_t header_pos;
-
-};
-
-struct ebml_st {
+typedef struct ebml_st {
 
     ebml_read_mode output_state;
     ebml_parsing_state parse_state;
@@ -158,7 +149,22 @@ struct ebml_st {
     unsigned long long keyframe_track_number;
     unsigned long long parsing_track_number;
     int parsing_track_is_video;
-};
+} ebml_t;
+
+typedef struct ebml_source_state_st {
+
+    ebml_t *ebml;
+    refbuf_t *header;
+    int file_headers_written;
+
+} ebml_source_state_t;
+
+typedef struct ebml_client_data_st {
+
+    refbuf_t *header;
+    size_t header_pos;
+
+} ebml_client_data_t;
 
 static void ebml_free_plugin(format_plugin_t *plugin);
 static refbuf_t *ebml_get_buffer(source_t *source);
