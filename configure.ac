@@ -2,7 +2,7 @@ AC_INIT([Icecast], [2.4.99.1], [icecast@xiph.org])
 
 AC_PREREQ([2.54])
 AC_CONFIG_SRCDIR([src/main.c])
-AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_MACRO_DIR([m4])
 dnl Process this file with autoconf to produce a configure script.
 
 AM_INIT_AUTOMAKE
