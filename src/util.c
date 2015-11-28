@@ -1,14 +1,15 @@
 /* Icecast
  *
- * This program is distributed under the GNU General Public License, version 2.
- * A copy of this license is included with this source.
- *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org,
+ *  Copyright 2000-2004 Jack Moffitt <jack@xiph.org,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ *  Copyright 2012-2015 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ *
+ *  This program is distributed under the GNU General Public License, version 2.
+ *  A copy of this license is included with this source.
+ *
  */
 
 #ifdef HAVE_CONFIG_H
@@ -20,28 +21,32 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_WINSOCK2_H
+#include <winsock2.h>
+#endif
+
 #ifndef _WIN32
 #include <sys/time.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #ifdef HAVE_POLL
 #include <sys/poll.h>
 #endif
 #else
-#include <winsock2.h>
 #include <windows.h>
-#include <stdio.h>
 #endif
 
 #include "common/net/sock.h"
 #include "common/thread/thread.h"
 
 #include "cfgfile.h"
-#include "util.h"
 #include "compat.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
+#include "util.h"
 #include "source.h"
 #include "admin.h"
 
@@ -245,22 +250,22 @@ static const char hexchars[16] = {
 };
 
 static const char safechars[256] = {
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,
-      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
-      0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-      1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,
+    0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+    0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
+    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 };
 
 char *util_url_escape (const char *src)
@@ -820,10 +825,9 @@ int util_dict_set(util_dict *dict, const char *key, const char *val)
     return 1;
 }
 
-/* given a dictionary, URL-encode each val and
-   stringify it in order as key=val&key=val... if val
-   is set, or just key&key if val is NULL.
-  TODO: Memory management needs overhaul. */
+/* given a dictionary, URL-encode each val and stringify it in order as
+   key=val&key=val... if val is set, or just key&key if val is NULL.
+   TODO: Memory management needs overhaul. */
 char *util_dict_urlencode(util_dict *dict, char delim)
 {
     char *res, *tmp;
@@ -943,4 +947,3 @@ int get_line(FILE *file, char *buf, size_t siz)
     }
     return 0;
 }
-
