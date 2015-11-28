@@ -26,3 +26,4 @@ ltmain.sh
 missing
 mkinstalldirs
 *.tar.gz
+config.h.in~
