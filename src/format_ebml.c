@@ -959,19 +959,23 @@ static ssize_t ebml_parse_var_int(unsigned char *buffer,
     return size;
 }
 
-/* Parse a normal int that may be from 1-8 bytes long.
+/* Parse a big-endian int that may be from 1-8 bytes long.
  * Returns 0 if there's not enough space to read the number;
  * Returns -1 if the number is mis-sized.
  * Else, returns the length of the number in bytes and writes the
  * value to *out_value.
+ * If is_signed is true, then the int is assumed to be two's complement
+ * signed, negative values will be correctly promoted, and the returned
+ * long long can be safely cast to a signed number on systems using
+ * two's complement arithmatic.
  */
 static ssize_t ebml_parse_sized_int(unsigned char       *buffer,
-                                   unsigned char       *buffer_end,
-                                   size_t              len,
-                                   int                 is_signed,
-                                   unsigned long long  *out_value)
+                                    unsigned char       *buffer_end,
+                                    size_t              len,
+                                    int                 is_signed,
+                                    unsigned long long  *out_value)
 {
-    long long value;
+    unsigned long long value;
     size_t i;
 
     if (len < 1 || len > 8) {
