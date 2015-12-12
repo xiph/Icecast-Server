@@ -887,6 +887,7 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->hostname);
             configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("mime-types")) == 0) {
+            ICECAST_LOG_WARN("<mime-types> has been moved into <paths>. Please update your configuration file.");
             if (configuration->mimetypes_fn)
                 xmlFree(configuration->mimetypes_fn);
             configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1900,6 +1901,10 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->null_device)
                 xmlFree(configuration->null_device);
             configuration->null_device = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("mime-types")) == 0) {
+            if (configuration->mimetypes_fn)
+                xmlFree(configuration->mimetypes_fn);
+            configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("deny-ip")) == 0) {
             if (configuration->banfile)
                 xmlFree(configuration->banfile);
