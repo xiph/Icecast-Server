@@ -20,6 +20,7 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,7 +135,7 @@ typedef struct ebml_st {
 
     ssize_t cluster_start;
     ebml_keyframe_status cluster_starts_with_keyframe;
-    int flush_cluster;
+    bool flush_cluster;
 
     size_t position;
     unsigned char *buffer;
@@ -149,14 +150,14 @@ typedef struct ebml_st {
 
     uint_least64_t keyframe_track_number;
     uint_least64_t parsing_track_number;
-    int parsing_track_is_video;
+    bool parsing_track_is_video;
 } ebml_t;
 
 typedef struct ebml_source_state_st {
 
     ebml_t *ebml;
     refbuf_t *header;
-    int file_headers_written;
+    bool file_headers_written;
 
 } ebml_source_state_t;
 
@@ -189,7 +190,7 @@ static ssize_t ebml_parse_var_int(unsigned char      *buffer,
 static ssize_t ebml_parse_sized_int(unsigned char      *buffer,
                                     unsigned char      *buffer_end,
                                     size_t             len,
-                                    int                is_signed,
+                                    bool                is_signed,
                                     uint_least64_t *out_value);
 static inline void ebml_check_track(ebml_t *ebml);
 
@@ -383,14 +384,14 @@ static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
 
     ebml_source_state_t *ebml_source_state = source->format->_state;
 
-    if (ebml_source_state->file_headers_written == 0)
+    if ( ! ebml_source_state->file_headers_written)
     {
         if (fwrite (ebml_source_state->header->data, 1,
                     ebml_source_state->header->len,
                     source->dumpfile) != ebml_source_state->header->len)
             ebml_write_buf_to_file_fail(source);
         else
-            ebml_source_state->file_headers_written = 1;
+            ebml_source_state->file_headers_written = true;
     }
 
     if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) != refbuf->len)
@@ -427,7 +428,7 @@ static ebml_t *ebml_create()
 
     ebml->keyframe_track_number = EBML_UNKNOWN;
     ebml->parsing_track_number = EBML_UNKNOWN;
-    ebml->parsing_track_is_video = 0;
+    ebml->parsing_track_is_video = false;
 
     return ebml;
 
@@ -465,7 +466,7 @@ static size_t ebml_read_space(ebml_t *ebml)
                      * we have no choice but to start flushing it.
                      */
 
-                    ebml->flush_cluster = 1;
+                    ebml->flush_cluster = true;
                 }
 
                 if (ebml->flush_cluster) {
@@ -601,7 +602,7 @@ static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes)
  */
 static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 {
-    int processing = 1;
+    bool processing = true;
     size_t cursor = 0;
     size_t to_copy;
     unsigned char *end_of_buffer;
@@ -670,7 +671,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 
                                 if (track_number_length == 0) {
                                     /* Wait for more data */
-                                    processing = 0;
+                                    processing = false;
                                 } else if (track_number_length < 0) {
                                     return -1;
                                 } else if (track_number == ebml->keyframe_track_number) {
@@ -679,7 +680,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                                     /* skip the 16-bit timecode for now, read the flags byte */
                                     if (cursor + tag_length + track_number_length + 2 >= ebml->input_position) {
                                         /* Wait for more data */
-                                        processing = 0;
+                                        processing = false;
                                     } else {
                                         flags = ebml->input_buffer[cursor + tag_length + track_number_length + 2];
 
@@ -701,7 +702,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                             /* Parse all TrackEntry children; reset the state */
                             payload_length = 0;
                             ebml->parsing_track_number = EBML_UNKNOWN;
-                            ebml->parsing_track_is_video = 0;
+                            ebml->parsing_track_is_video = false;
 
                         } else if (!memcmp(ebml->input_buffer + cursor, TRACK_NUMBER_MAGIC, COMMON_MAGIC_LEN)) {
                             /* Probe TrackNumber for value */
@@ -710,7 +711,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 
                             if (value_length == 0) {
                                 /* Wait for more data */
-                                processing = 0;
+                                processing = false;
                             } else if (value_length < 0) {
                                 return -1;
                             } else {
@@ -725,13 +726,13 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 
                             if (value_length == 0) {
                                 /* Wait for more data */
-                                processing = 0;
+                                processing = false;
                             } else if (value_length < 0) {
                                 return -1;
                             } else {
                                 if (data_value & 0x01) {
                                     /* This is a video track (0x01 flag = video) */
-                                    ebml->parsing_track_is_video = 1;
+                                    ebml->parsing_track_is_video = true;
                                     ebml_check_track(ebml);
                                 }
                             }
@@ -748,7 +749,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 } else if (tag_length == 0) {
                     /* Wait for more data */
                     /* ICECAST_LOG_DEBUG("Wait"); */
-                    processing = 0;
+                    processing = false;
                 } else if (tag_length < 0) {
                     /* Parse error */
                     /* ICECAST_LOG_DEBUG("Stop"); */
@@ -764,8 +765,8 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                  */
                 if (ebml->cluster_start >= 0) {
                     /* Allow the cluster in the read buffer to flush. */
-                    ebml->flush_cluster = 1;
-                    processing = 0;
+                    ebml->flush_cluster = true;
+                    processing = false;
                 } else {
 
                     tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
@@ -779,7 +780,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                     ebml->cluster_starts_with_keyframe = EBML_KEYFRAME_UNKNOWN;
 
                     /* Buffer data to give us time to probe for keyframes, etc. */
-                    ebml->flush_cluster = 0;
+                    ebml->flush_cluster = false;
 
                     /* Copy cluster tag to read buffer */
                     ebml->copy_len = tag_length;
@@ -825,13 +826,13 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                     }
                 } else {
                     /* wait for more data */
-                    processing = 0;
+                    processing = false;
                 }
 
                 break;
 
             default:
-                processing = 0;
+                processing = false;
 
         }
 
@@ -973,7 +974,7 @@ static ssize_t ebml_parse_var_int(unsigned char *buffer,
 static ssize_t ebml_parse_sized_int(unsigned char       *buffer,
                                     unsigned char       *buffer_end,
                                     size_t              len,
-                                    int                 is_signed,
+                                    bool                 is_signed,
                                     uint_least64_t  *out_value)
 {
     uint_least64_t value;
