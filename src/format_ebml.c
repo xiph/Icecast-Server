@@ -20,6 +20,7 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +51,7 @@
 #define EBML_SLICE_SIZE 4096
 
 /* A value that no EBML var-int is allowed to take. */
-#define EBML_UNKNOWN ((unsigned long long) -1)
+#define EBML_UNKNOWN ((uint_least64_t) -1)
 
 /* The magic numbers for each element we are interested in.
  * Defined here:
@@ -129,7 +130,7 @@ typedef struct ebml_st {
 
     ebml_read_mode output_state;
     ebml_parsing_state parse_state;
-    unsigned long long copy_len;
+    uint_least64_t copy_len;
 
     ssize_t cluster_start;
     ebml_keyframe_status cluster_starts_with_keyframe;
@@ -146,8 +147,8 @@ typedef struct ebml_st {
     size_t header_read_position;
     unsigned char *header;
 
-    unsigned long long keyframe_track_number;
-    unsigned long long parsing_track_number;
+    uint_least64_t keyframe_track_number;
+    uint_least64_t parsing_track_number;
     int parsing_track_is_video;
 } ebml_t;
 
@@ -181,15 +182,15 @@ static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes);
 static ssize_t ebml_wrote(ebml_t *ebml, size_t len);
 static ssize_t ebml_parse_tag(unsigned char      *buffer,
                               unsigned char      *buffer_end,
-                              unsigned long long *payload_length);
+                              uint_least64_t *payload_length);
 static ssize_t ebml_parse_var_int(unsigned char      *buffer,
                                   unsigned char      *buffer_end,
-                                  unsigned long long *out_value);
+                                  uint_least64_t *out_value);
 static ssize_t ebml_parse_sized_int(unsigned char      *buffer,
                                     unsigned char      *buffer_end,
                                     size_t             len,
                                     int                is_signed,
-                                    unsigned long long *out_value);
+                                    uint_least64_t *out_value);
 static inline void ebml_check_track(ebml_t *ebml);
 
 int format_ebml_get_plugin(source_t *source)
@@ -608,9 +609,9 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
     ssize_t tag_length;
     ssize_t value_length;
     ssize_t track_number_length;
-    unsigned long long payload_length;
-    unsigned long long data_value;
-    unsigned long long track_number;
+    uint_least64_t payload_length;
+    uint_least64_t data_value;
+    uint_least64_t track_number;
     unsigned char flags;
     ebml_parsing_state copy_state;
 
@@ -869,11 +870,11 @@ static inline void ebml_check_track(ebml_t *ebml)
 
 static ssize_t ebml_parse_tag(unsigned char *buffer,
                              unsigned char *buffer_end,
-                             unsigned long long *payload_length)
+                             uint_least64_t *payload_length)
 {
     size_t type_length;
     size_t size_length;
-    unsigned long long value;
+    uint_least64_t value;
 
     *payload_length = 0;
 
@@ -902,13 +903,13 @@ static ssize_t ebml_parse_tag(unsigned char *buffer,
  */
 static ssize_t ebml_parse_var_int(unsigned char *buffer,
                                  unsigned char *buffer_end,
-                                 unsigned long long *out_value)
+                                 uint_least64_t *out_value)
 {
     size_t size = 1;
     size_t i;
     unsigned char mask = 0x80;
-    unsigned long long value;
-    unsigned long long unknown_marker;
+    uint_least64_t value;
+    uint_least64_t unknown_marker;
 
     if (buffer >= buffer_end) {
         return 0;
@@ -966,16 +967,16 @@ static ssize_t ebml_parse_var_int(unsigned char *buffer,
  * value to *out_value.
  * If is_signed is true, then the int is assumed to be two's complement
  * signed, negative values will be correctly promoted, and the returned
- * long long can be safely cast to a signed number on systems using
+ * unsigned number can be safely cast to a signed number on systems using
  * two's complement arithmatic.
  */
 static ssize_t ebml_parse_sized_int(unsigned char       *buffer,
                                     unsigned char       *buffer_end,
                                     size_t              len,
                                     int                 is_signed,
-                                    unsigned long long  *out_value)
+                                    uint_least64_t  *out_value)
 {
-    unsigned long long value;
+    uint_least64_t value;
     size_t i;
 
     if (len < 1 || len > 8) {
