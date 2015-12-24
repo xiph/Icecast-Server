@@ -379,6 +379,9 @@ char *util_url_unescape (const char *src)
  */
 char *util_normalise_uri(const char *uri) {
     char *path;
+#ifdef _WIN32
+    size_t len;
+#endif
 
     if(uri[0] != '/')
         return NULL;
@@ -389,6 +392,12 @@ char *util_normalise_uri(const char *uri) {
         ICECAST_LOG_WARN("Error decoding URI: %s\n", uri);
         return NULL;
     }
+
+#ifdef _WIN32
+    /* If we are on Windows, strip trailing dots, as Win API strips it anyway */
+    for (len = strlen(path); len > 0 && path[len-1] == '.'; len--)
+        path[len-1] = '\0';
+#endif
 
     /* We now have a full URI-decoded path. Check it for allowability */
     if(verify_path(path))
