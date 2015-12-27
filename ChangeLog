@@ -1,3 +1,13 @@
+2015-12-24 00:38  ph3-der-loewe
+
+	* Windows security fix: remove trailing dots in URI
+	  This addresses CVE-2005-0837 (sic!), which was sadly ignored after
+	  ticket #635 got closed erroneously.
+	* Linux/Unix installations were never affected, Windows only release!
+	* Impact is low: most installations run default XSLT files and
+	  there is nothing to be learned in such a case. Also a majority
+	  of production Icecast servers don't run on Windows.
+
 2015-04-08 10:07:42  dm8tbr
 
 	* apply fix for documentation (needed by distro packaging)
