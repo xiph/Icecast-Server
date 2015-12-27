@@ -16,10 +16,45 @@
 
     <div class="section">
       
-      <h2>Icecast 2.4.2 Docs &mdash; Changes</h2>
+      <h2>Icecast 2.4.3 Docs &mdash; Changes</h2>
       
+<div id="v2.4.3" class="article">
+  <h3 id="version-243">Version 2.4.3</h3>
+
+  <h4 id="fixes-3">Fixes</h4>
+
+  <ul>
+    <li><strong>Security fix</strong>: Windows - remove trailing dots in URI. <br /> A quirk in the Windows API made it possible to request the raw stylesheet file from webroot. Only XSLT files are affected, no internal state data is available this way. <br /> This addresses CVE-2005-0837 (sic!), which was sadly ignored after the initial ticket got closed erroneously.</li>
+    <li>Expected impact is low: most installations run with default XSLT files and there is nothing new to be learned in such a case. Also a majority of production Icecast servers don't run on Windows to start with.</li>
+    <li><strong>Linux/Unix installations were never affected, this is a Windows only release!</strong></li>
+    </li>
+  </ul>
+
+  <h4 id="known-issues-3">Known issues</h4>
+
+  <ul>
+    <li>See <a href="#known-issues">2.4.1</a></li>
+  </ul>
+
+</div>
 <div id="v2.4.2" class="article">
-  <h3 id="version-241">Version 2.4.2</h3>
+  <h3 id="version-242">Version 2.4.2</h3>
+
+  <h4 id="fixes-2">Fixes</h4>
+
+  <ul>
+    <li><strong>Security fix</strong>: Do not crash if URL Auth is used with stream_auth.</li>
+  </ul>
+
+  <h4 id="known-issues-2">Known issues</h4>
+
+  <ul>
+    <li>See <a href="#known-issues">2.4.1</a></li>
+  </ul>
+
+</div>
+<div id="v2.4.1" class="article">
+  <h3 id="version-241">Version 2.4.1</h3>
 
   <h4 id="fixes">Fixes</h4>
 
