@@ -641,12 +641,15 @@ static int update_from_master(ice_config_t *config)
         sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
                 "Authorization: Basic %s\r\n"
-                "\r\n", data);
+                "Host: %s\r\n"
+                "\r\n",
+                data,
+                master);
         free(authheader);
         free(data);
 
         if (sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
-                strncmp (buf, "HTTP/1.0 200", 12) != 0)
+                (strncmp (buf, "HTTP/1.0 200", 12) != 0) && (strncmp (buf, "HTTP/1.1 200", 12) != 0))
         {
             sock_close (mastersock);
             ICECAST_LOG_WARN("Master rejected streamlist request");
