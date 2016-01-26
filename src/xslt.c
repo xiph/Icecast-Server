@@ -204,18 +204,27 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
 {
     xmlDocPtr ret;
     xmlChar *rel_path, *fn, *final_URI = NULL;
+    char *path_URI = NULL;
     xsltStylesheet *c;
     ice_config_t *config;
 
     switch (type) {
         /* In case an include is loaded */
         case XSLT_LOAD_STYLESHEET:
+            /* URI is an escaped URI, make an unescaped version */
+            path_URI = util_url_unescape((const char*)URI);
+            /* Error if we can't unescape */
+            if (path_URI == NULL)
+                return NULL;
+
             /* Not look in admindir if the include file exists */
-            if (access((const char *)URI, F_OK) == 0)
+            if (access(path_URI, F_OK) == 0) {
+                free(path_URI);
                 break;
+            }
+            free(path_URI);
 
             c = (xsltStylesheet *) ctxt;
-
             /* Check if we actually have context/path */
             if (ctxt == NULL || c->doc->URL == NULL)
                 break;
@@ -238,7 +247,11 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
             config = config_get_config();
-            /* Check if admin path actually changed. If so clear it. */
+            /* Admin path is cached, so that we don't need to get it from
+             * the config every time we load a xsl include.
+             * Whenever a new top stylesheet is loaded, we check here
+             * if the path in the config has changed and adjust it, if needed.
+             */
             if (admin_path != NULL &&
                 strcmp(config->adminroot_dir, (char *)admin_path) != 0) {
                 xmlFree(admin_path);
