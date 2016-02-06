@@ -19,17 +19,6 @@
 
 #include "format.h"
 
-typedef struct ebml_st ebml_t;
-typedef struct ebml_source_state_st ebml_source_state_t;
-
-struct ebml_source_state_st {
-
-    ebml_t *ebml;
-    refbuf_t *header;
-    int file_headers_written;
-
-};
-
 int format_ebml_get_plugin (source_t *source);
 
 #endif  /* __FORMAT_EBML_H__ */
