@@ -680,20 +680,20 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     tmp = httpp_getvar(client->parser, "user-agent");
     if (tmp)
-        xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "UserAgent" : "useragent"), XMLSTR(tmp));
+        xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "UserAgent" : "useragent"), XMLSTR(tmp));
 
     tmp = httpp_getvar(client->parser, "referer");
     if (tmp)
-        xmlNewChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
+        xmlNewTextChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
     xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
 
     if (client->username)
-        xmlNewChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
+        xmlNewTextChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
 
     if (client->role)
-        xmlNewChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
+        xmlNewTextChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
 
 #ifdef HAVE_OPENSSL
     xmlNewChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->ssl ? "true" : "false"));
