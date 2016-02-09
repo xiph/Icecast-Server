@@ -1789,7 +1789,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 
     if (admin_password && admin_username)
         __append_old_style_auth(&old_style, "legacy-admin", AUTH_TYPE_STATIC,
-            admin_username, admin_password, NULL, "get,post,head", 1, "*");
+            admin_username, admin_password, NULL, "get,post,head,stats", 1, "*");
 
     if (relay_password && relay_username)
         __append_old_style_auth(&old_style, "legacy-relay", AUTH_TYPE_STATIC,
