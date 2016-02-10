@@ -390,8 +390,8 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
     while (node) {
         htpasswd_user *user = (htpasswd_user *)node->key;
         newnode = xmlNewChild(srcnode, NULL, XMLSTR("user"), NULL);
-        xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
-        xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
+        xmlNewTextChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
+        xmlNewTextChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
         node = avl_get_next(node);
     }
     thread_rwlock_unlock(&state->file_rwlock);

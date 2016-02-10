@@ -229,7 +229,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
     xmlDocSetRootElement(doc, xmlnode);
 
     if (mount) {
-        xmlNewChild (xmlnode, NULL, XMLSTR("current_source"), XMLSTR(mount));
+        xmlNewTextChild (xmlnode, NULL, XMLSTR("current_source"), XMLSTR(mount));
     }
 
     node = avl_get_first(global.source_tree);
@@ -250,11 +250,11 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
             srcnode = xmlNewChild(xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
 
-            xmlNewChild(srcnode, NULL, XMLSTR("fallback"),
+            xmlNewTextChild(srcnode, NULL, XMLSTR("fallback"),
                     (source->fallback_mount != NULL)?
                     XMLSTR(source->fallback_mount):XMLSTR(""));
             snprintf(buf, sizeof(buf), "%lu", source->listeners);
-            xmlNewChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
+            xmlNewTextChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
             config = config_get_config();
             mountinfo = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
@@ -263,7 +263,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
             if (!acl)
                 acl = auth_stack_get_anonymous_acl(config->authstack, httpp_req_get);
             if (acl && acl_test_web(acl) == ACL_POLICY_DENY) {
-                xmlNewChild(srcnode, NULL, XMLSTR("authenticator"), XMLSTR("(dummy)"));
+                xmlNewTextChild(srcnode, NULL, XMLSTR("authenticator"), XMLSTR("(dummy)"));
             }
             acl_release(acl);
             config_release_config();
@@ -272,9 +272,9 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
                 if (source->client) {
                     snprintf(buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
-                    xmlNewChild(srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
+                    xmlNewTextChild(srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
                 }
-                xmlNewChild(srcnode, NULL, XMLSTR("content-type"),
+                xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"),
                     XMLSTR(source->format->contenttype));
             }
         }
@@ -646,8 +646,8 @@ static void command_move_clients(client_t   *client,
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);
-    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
     admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
@@ -674,9 +674,9 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     memset(buf, '\000', sizeof(buf));
     snprintf(buf, sizeof(buf)-1, "%lu", client->con->id);
     xmlSetProp(node, XMLSTR("id"), XMLSTR(buf));
-    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "ID" : "id"), XMLSTR(buf));
+    xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "ID" : "id"), XMLSTR(buf));
 
-    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "IP" : "ip"), XMLSTR(client->con->ip));
+    xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "IP" : "ip"), XMLSTR(client->con->ip));
 
     tmp = httpp_getvar(client->parser, "user-agent");
     if (tmp)
@@ -687,7 +687,7 @@ static inline xmlNodePtr __add_listener(client_t        *client,
         xmlNewTextChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
-    xmlNewChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
+    xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
 
     if (client->username)
         xmlNewTextChild(node, NULL, XMLSTR("username"), XMLSTR(client->username));
@@ -696,9 +696,9 @@ static inline xmlNodePtr __add_listener(client_t        *client,
         xmlNewTextChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
 
 #ifdef HAVE_OPENSSL
-    xmlNewChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->ssl ? "true" : "false"));
+    xmlNewTextChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->ssl ? "true" : "false"));
 #else
-    xmlNewChild(node, NULL, XMLSTR("tls"), XMLSTR("false"));
+    xmlNewTextChild(node, NULL, XMLSTR("tls"), XMLSTR("false"));
 #endif
 
     return node;
@@ -737,7 +737,7 @@ static void command_show_listeners(client_t *client,
     memset(buf, '\000', sizeof(buf));
     snprintf (buf, sizeof(buf), "%lu", source->listeners);
     /* BEFORE RELEASE NEXT DOCUMENT #2097: Changed "Listeners" to lower case. */
-    xmlNewChild(srcnode, NULL, XMLSTR(client->mode == OMODE_LEGACY ? "Listeners" : "listeners"), XMLSTR(buf));
+    xmlNewTextChild(srcnode, NULL, XMLSTR(client->mode == OMODE_LEGACY ? "Listeners" : "listeners"), XMLSTR(buf));
 
     admin_add_listeners_to_mount(source, srcnode, client->mode);
 
@@ -905,7 +905,7 @@ static void command_manageauth(client_t *client, int response)
 
         if (message) {
             msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
-            xmlNewChild(msgnode, NULL, XMLSTR("message"), XMLSTR(message));
+            xmlNewTextChild(msgnode, NULL, XMLSTR("message"), XMLSTR(message));
         }
 
         xmlDocSetRootElement(doc, node);
@@ -939,8 +939,8 @@ static void command_kill_source(client_t *client,
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
-    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Source Removed"));
-    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Source Removed"));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
 
     source->running = 0;
@@ -981,14 +981,14 @@ static void command_kill_client(client_t *client,
         listener->con->error = 1;
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "Client %d removed", id);
-        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     }
     else {
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "Client %d not found", id);
-        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
+        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
+        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
     }
     admin_send_response(doc, client, response,
         ADMIN_XSL_RESPONSE);
@@ -1042,8 +1042,8 @@ static void command_metadata(client_t *client,
     COMMAND_OPTIONAL(client, "charset", charset);
 
     if (strcmp (action, "updinfo") != 0) {
-        xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("No such action"));
-        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
+        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("No such action"));
+        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
         admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
         return;
@@ -1069,17 +1069,17 @@ static void command_metadata(client_t *client,
         /* updates are now done, let them be pushed into the stream */
         plugin->set_tag (plugin, NULL, NULL, NULL);
     } else {
-        xmlNewChild(node, NULL, XMLSTR("message"),
+        xmlNewTextChild(node, NULL, XMLSTR("message"),
             XMLSTR("Mountpoint will not accept URL updates"));
-        xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
         admin_send_response(doc, client, response,
             ADMIN_XSL_RESPONSE);
         xmlFreeDoc(doc);
         return;
     }
 
-    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
-    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
     xmlFreeDoc(doc);
 }
@@ -1143,8 +1143,8 @@ static void command_queue_reload(client_t *client, int response)
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
-    xmlNewChild(node, NULL, XMLSTR("message"), XMLSTR("Config reload queued"));
-    xmlNewChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Config reload queued"));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
 
     admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);

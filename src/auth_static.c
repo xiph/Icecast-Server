@@ -67,8 +67,8 @@ static auth_result static_userlist(auth_t *auth, xmlNodePtr srcnode)
     xmlNodePtr    newnode;
 
     newnode = xmlNewChild(srcnode, NULL, XMLSTR("user"), NULL);
-    xmlNewChild(newnode, NULL, XMLSTR("username"), XMLSTR(auth_info->username));
-    xmlNewChild(newnode, NULL, XMLSTR("password"), XMLSTR(auth_info->password));
+    xmlNewTextChild(newnode, NULL, XMLSTR("username"), XMLSTR(auth_info->username));
+    xmlNewTextChild(newnode, NULL, XMLSTR("password"), XMLSTR(auth_info->password));
 
     return AUTH_OK;
 }
