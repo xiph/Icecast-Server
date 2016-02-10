@@ -1009,7 +1009,7 @@ static void _parse_root(xmlDocPtr       doc,
     if (!configuration->admin ||
         strcmp(configuration->admin, CONFIG_DEFAULT_ADMIN) == 0) {
         ICECAST_LOG_WARN("Warning, <admin> contact not configured, using "
-            "default value \"%s\". This breaks YP directory listings."
+            "default value \"%s\". This breaks YP directory listings. "
             "YP directory support will be disabled.", CONFIG_DEFAULT_ADMIN);
             /* FIXME actually disable YP */
       if (!configuration->admin)
