@@ -286,11 +286,11 @@ static refbuf_t *ebml_get_buffer(source_t *source)
     ebml_source_state_t *ebml_source_state = source->format->_state;
     format_plugin_t *format = source->format;
     unsigned char *write_buffer = NULL;
-    size_t read_bytes = 0;
+    ptrdiff_t read_bytes = 0;
     size_t write_bytes = 0;
     ebml_chunk_type chunk_type;
     refbuf_t *refbuf;
-    size_t ret;
+    ptrdiff_t ret;
 
     while (1)
     {
