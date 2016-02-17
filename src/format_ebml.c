@@ -286,11 +286,11 @@ static refbuf_t *ebml_get_buffer(source_t *source)
     ebml_source_state_t *ebml_source_state = source->format->_state;
     format_plugin_t *format = source->format;
     unsigned char *write_buffer = NULL;
-    ptrdiff_t read_bytes = 0;
+    ssize_t read_bytes = 0;
     size_t write_bytes = 0;
     ebml_chunk_type chunk_type;
     refbuf_t *refbuf;
-    ptrdiff_t ret;
+    ssize_t ret;
 
     while (1)
     {
@@ -870,11 +870,11 @@ static inline void ebml_check_track(ebml_t *ebml)
  */
 
 static ssize_t ebml_parse_tag(unsigned char *buffer,
-                             unsigned char *buffer_end,
-                             uint_least64_t *payload_length)
+                              unsigned char *buffer_end,
+                              uint_least64_t *payload_length)
 {
-    size_t type_length;
-    size_t size_length;
+    ssize_t type_length;
+    ssize_t size_length;
     uint_least64_t value;
 
     *payload_length = 0;
@@ -906,8 +906,8 @@ static ssize_t ebml_parse_var_int(unsigned char *buffer,
                                  unsigned char *buffer_end,
                                  uint_least64_t *out_value)
 {
-    size_t size = 1;
-    size_t i;
+    ssize_t size = 1;
+    ssize_t i;
     unsigned char mask = 0x80;
     uint_least64_t value;
     uint_least64_t unknown_marker;
