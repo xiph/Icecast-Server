@@ -183,6 +183,7 @@ static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes);
 static ssize_t ebml_wrote(ebml_t *ebml, size_t len);
 static ssize_t ebml_parse_tag(unsigned char      *buffer,
                               unsigned char      *buffer_end,
+                              uint_least64_t *tag_id,
                               uint_least64_t *payload_length);
 static ssize_t ebml_parse_var_int(unsigned char      *buffer,
                                   unsigned char      *buffer_end,
@@ -605,6 +606,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
     ssize_t tag_length;
     ssize_t value_length;
     ssize_t track_number_length;
+    uint_least64_t tag_id;
     uint_least64_t payload_length;
     uint_least64_t data_value;
     uint_least64_t track_number;
@@ -628,7 +630,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 }
 
                 tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
-                                            end_of_buffer, &payload_length);
+                                            end_of_buffer, &tag_id, &payload_length);
 
                 if (tag_length == 0) {
                     /* Wait for more data */
@@ -761,7 +763,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 } else {
 
                     tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
-                                                end_of_buffer, &payload_length);
+                                                end_of_buffer, &tag_id, &payload_length);
 
                     /* The header has been fully read by now, publish its size. */
                     ebml->header_size = ebml->header_position;
@@ -861,16 +863,17 @@ static inline void ebml_check_track(ebml_t *ebml)
 
 static ssize_t ebml_parse_tag(unsigned char *buffer,
                               unsigned char *buffer_end,
+                              uint_least64_t *tag_id,
                               uint_least64_t *payload_length)
 {
     ssize_t type_length;
     ssize_t size_length;
-    uint_least64_t value;
 
+    *tag_id = 0;
     *payload_length = 0;
 
     /* read past the type tag */
-    type_length = ebml_parse_var_int(buffer, buffer_end, &value);
+    type_length = ebml_parse_var_int(buffer, buffer_end, tag_id);
 
     if (type_length <= 0) {
         return type_length;
