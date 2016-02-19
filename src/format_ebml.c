@@ -307,14 +307,9 @@ static refbuf_t *ebml_get_buffer(source_t *source)
                 continue;
             }
 
-/*            ICECAST_LOG_DEBUG("EBML: generated refbuf, size %i : %hhi %hhi %hhi",
- *                            read_bytes, refbuf->data[0], refbuf->data[1], refbuf->data[2]);
- */
-
             if (chunk_type == EBML_CHUNK_CLUSTER_START)
             {
                 refbuf->sync_point = 1;
-/*                ICECAST_LOG_DEBUG("EBML: ^ was sync point"); */
             }
             return refbuf;
 
@@ -621,8 +616,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 
     while (processing) {
 
-        /*ICECAST_LOG_DEBUG("Parse State: %i", ebml->parse_state);*/
-
         switch (ebml->parse_state) {
 
             case EBML_STATE_PARSING_HEADER:
@@ -748,11 +741,9 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
 
                 } else if (tag_length == 0) {
                     /* Wait for more data */
-                    /* ICECAST_LOG_DEBUG("Wait"); */
                     processing = false;
                 } else if (tag_length < 0) {
                     /* Parse error */
-                    /* ICECAST_LOG_DEBUG("Stop"); */
                     return -1;
                 }
                 break;
@@ -812,7 +803,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                     memcpy(ebml->buffer + ebml->position, ebml->input_buffer + cursor, to_copy);
                     ebml->position += to_copy;
                 }
-                /* ICECAST_LOG_DEBUG("Copied %i of %hhu", to_copy, ebml->copy_len); */
 
                 cursor += to_copy;
                 ebml->copy_len -= to_copy;
