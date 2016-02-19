@@ -630,12 +630,19 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
                                             end_of_buffer, &payload_length);
 
-                if (tag_length > 0) {
+                if (tag_length == 0) {
+                    /* Wait for more data */
+                    processing = false;
+                    break;
+                } else if (tag_length < 0) {
+                    /* Parse error */
+                    return -1;
+                }
 
-                    if (payload_length == EBML_UNKNOWN) {
-                        /* Parse all children for tags we can't skip */
-                        payload_length = 0;
-                    }
+                if (payload_length == EBML_UNKNOWN) {
+                    /* Parse all children for tags we can't skip */
+                    payload_length = 0;
+                }
 
                     /* Recognize tags of interest */
                     if (tag_length > UNCOMMON_MAGIC_LEN) {
@@ -739,13 +746,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                         ebml->parse_state = copy_state;
                     }
 
-                } else if (tag_length == 0) {
-                    /* Wait for more data */
-                    processing = false;
-                } else if (tag_length < 0) {
-                    /* Parse error */
-                    return -1;
-                }
                 break;
 
             case EBML_STATE_START_CLUSTER:
