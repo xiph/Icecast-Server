@@ -1644,6 +1644,11 @@ static void _parse_master(xmlDocPtr      doc,
                 xmlFree(master->password);
             master->password = (char *)xmlNodeListGetString(doc, 
                 node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("namespace")) == 0) {
+            if (master->namespace)
+                xmlFree(master->namespace);
+            master->namespace = (char *)xmlNodeListGetString(doc, 
+                node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             master->on_demand = util_str_to_bool(tmp);

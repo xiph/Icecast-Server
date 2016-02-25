@@ -118,6 +118,7 @@
         <port>8001</port>
         <username>relay</username>
         <password>hackme</password>
+        <namespace>master1</namespace>
         <on-demand>1</on-demand>
     </master>
     -->
