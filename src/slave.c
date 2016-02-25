@@ -725,6 +725,7 @@ static int update_from_master_legacy(ice_config_t *config)
         if (config->master_server)
             master->server = strdup(config->master_server);
         master->port = config->master_server_port;
+        master->on_demand = config->on_demand;
         ret = update_from_master(master);
         master_free(master);
     }
