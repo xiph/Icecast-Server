@@ -63,6 +63,19 @@ static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
 static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max_interval
 
+master_server *master_free (master_server *master)
+{
+    master_server *next = master->next;
+    ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
+    xmlFree (master->server);
+    if (master->username)
+        xmlFree (master->username);
+    if (master->password)
+        xmlFree (master->password);
+    free (master);
+    return next;
+}
+
 relay_server *relay_free (relay_server *relay)
 {
     relay_server *next = relay->next;
@@ -598,10 +611,8 @@ static void relay_check_streams (relay_server *to_start,
 }
 
 
-static int update_from_master(ice_config_t *config)
+static int update_from_master(master_server *master)
 {
-    char *master = NULL, *password = NULL, *username= NULL;
-    int port;
     sock_t mastersock;
     int ret = 0;
     char buf[256];
@@ -610,23 +621,12 @@ static int update_from_master(ice_config_t *config)
         char *authheader, *data;
         relay_server *new_relays = NULL, *cleanup_relays;
         int len, count = 1;
-        int on_demand;
 
-        username = strdup(config->master_username);
-        if (config->master_password)
-            password = strdup(config->master_password);
-
-        if (config->master_server)
-            master = strdup(config->master_server);
-
-        port = config->master_server_port;
-
-        if (password == NULL || master == NULL || port == 0)
+        if (master->password == NULL || master->server == NULL || master->port == 0)
             break;
-        on_demand = config->on_demand;
         ret = 1;
         config_release_config();
-        mastersock = sock_connect_wto(master, port, 10);
+        mastersock = sock_connect_wto(master->server, master->port, 10);
 
         if (mastersock == SOCK_ERROR)
         {
@@ -634,9 +634,9 @@ static int update_from_master(ice_config_t *config)
             break;
         }
 
-        len = strlen(username) + strlen(password) + 2;
+        len = strlen(master->username) + strlen(master->password) + 2;
         authheader = malloc(len);
-        snprintf (authheader, len, "%s:%s", username, password);
+        snprintf (authheader, len, "%s:%s", master->username, master->password);
         data = util_base64_encode(authheader, len);
         sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
@@ -682,14 +682,14 @@ static int update_from_master(ice_config_t *config)
                 }
                 else
                 {
-                  r->server = (char *)xmlCharStrdup (master);
-                  r->port = port;
+                  r->server = (char *)xmlCharStrdup (master->server);
+                  r->port = master->port;
                 }
 
                 r->mount = strdup(parsed_uri->path);
                 r->localmount = strdup(parsed_uri->path);
                 r->mp3metadata = 1;
-                r->on_demand = on_demand;
+                r->on_demand = master->on_demand;
                 r->next = new_relays;
                 ICECAST_LOG_DEBUG("Added relay host=\"%s\", port=%d, mount=\"%s\"", r->server, r->port, r->mount);
                 new_relays = r;
@@ -708,12 +708,24 @@ static int update_from_master(ice_config_t *config)
 
     } while(0);
 
-    if (master)
-        free (master);
-    if (username)
-        free (username);
-    if (password)
-        free (password);
+    return ret;
+}
+
+static int update_from_master_legacy(ice_config_t *config)
+{
+    master_server *master = calloc (1, sizeof (master_server));
+    int ret = 0;
+
+    if (master) {
+        master->username = strdup(config->master_username);
+        if (config->master_password)
+            master->password = strdup(config->master_password);
+        if (config->master_server)
+            master->server = strdup(config->master_server);
+        master->port = config->master_server_port;
+        ret = update_from_master(master);
+        master_free(master);
+    }
 
     return ret;
 }
@@ -759,6 +771,7 @@ static void *_slave_thread(void *arg)
         thread_mutex_lock(&_slave_mutex);
         if (max_interval <= interval)
         {
+            master_server *master;
             ICECAST_LOG_DEBUG("checking master stream list");
             config = config_get_config();
 
@@ -767,9 +780,16 @@ static void *_slave_thread(void *arg)
             interval = 0;
             max_interval = config->master_update_interval;
             thread_mutex_unlock(&_slave_mutex);
+            
+            /* update all non-legacy master servers */
+            master = config->master;
+            while (master) {
+                update_from_master(master);
+                master = master->next;
+            }
 
             /* the connection could take some time, so the lock can drop */
-            if (update_from_master (config))
+            if (update_from_master_legacy (config))
                 config = config_get_config();
 
             thread_mutex_lock (&(config_locks()->relay_lock));

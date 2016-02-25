@@ -15,6 +15,15 @@
 
 #include "common/thread/thread.h"
 
+typedef struct _master_server {
+    char *server;
+    int port;
+    char *username;
+    char *password;
+    int on_demand;
+    struct _master_server *next;
+} master_server;
+
 typedef struct _relay_server {
     char *server;
     int port;
@@ -33,6 +42,8 @@ typedef struct _relay_server {
     struct _relay_server *next;
 } relay_server;
 
+
+master_server *master_free (master_server *master);
 
 void slave_initialize(void);
 void slave_shutdown(void);
