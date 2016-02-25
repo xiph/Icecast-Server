@@ -1612,7 +1612,8 @@ static void _parse_master(xmlDocPtr      doc,
     master->on_demand    = configuration->on_demand;
     master->server       = (char *) xmlCharStrdup("127.0.0.1");
     master->username     = (char *) xmlCharStrdup(configuration->master_username);
-    master->password     = (char *) xmlCharStrdup(configuration->master_password);
+    if (configuration->master_password)
+        master->password = (char *) xmlCharStrdup(configuration->master_password);
 
     do {
         if (node == NULL)
