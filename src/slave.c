@@ -625,7 +625,6 @@ static int update_from_master(master_server *master)
         if (master->password == NULL || master->server == NULL || master->port == 0)
             break;
         ret = 1;
-        config_release_config();
         mastersock = sock_connect_wto(master->server, master->port, 10);
 
         if (mastersock == SOCK_ERROR)
@@ -782,16 +781,17 @@ static void *_slave_thread(void *arg)
             max_interval = config->master_update_interval;
             thread_mutex_unlock(&_slave_mutex);
             
-            /* update all non-legacy master servers */
+            /* update all non-legacy master servers. the config lock is being
+             * held for the entire update process. consider making a copy of
+             * the master linked list and releasing the lock */
             master = config->master;
             while (master) {
                 update_from_master(master);
                 master = master->next;
             }
 
-            /* the connection could take some time, so the lock can drop */
-            if (update_from_master_legacy (config))
-                config = config_get_config();
+            /* update legacy master server */
+            update_from_master_legacy (config);
 
             thread_mutex_lock (&(config_locks()->relay_lock));
 
