@@ -72,6 +72,8 @@ master_server *master_free (master_server *master)
         xmlFree (master->username);
     if (master->password)
         xmlFree (master->password);
+    if (master->namespace)
+        xmlFree(master->namespace);
     free (master);
     return next;
 }
@@ -688,7 +690,14 @@ static int update_from_master(master_server *master)
                 }
 
                 r->mount = strdup(parsed_uri->path);
-                r->localmount = strdup(parsed_uri->path);
+                if (master->namespace)
+                {
+                    int mountlen = strlen(master->namespace) + strlen(parsed_uri->path) + 1;
+                    r->localmount = malloc(mountlen);
+                    snprintf(r->localmount, mountlen, "%s%s", master->namespace, parsed_uri->path);
+                } else {
+                    r->localmount = strdup(parsed_uri->path);
+                }
                 r->mp3metadata = 1;
                 r->on_demand = master->on_demand;
                 r->next = new_relays;

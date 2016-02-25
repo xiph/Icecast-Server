@@ -35,6 +35,9 @@ can be setup such that all that needs to be done is configure the slave server w
 will also periodically check the master server to see if any new mountpoints have attached and if so will relay those
 as well.  </p>
 
+  <p>This "master-slave" type relay has been extended to support aggregation so that multiple masters can be given
+and the slave will "aggregate" all of the mountpoints for those master servers. </p>
+
   <p>The second type of relay is a “single-broadcast” relay. In this case, the slave server is configured with a
 server IP, port and mount and only the mountpoint specified is relayed. In order to relay a broadcast stream on
 a Shoutcast server, you must use the “single-broadcast” relay and specify a mountpoint of <code>/</code>.</p>
@@ -58,6 +61,36 @@ and will begin to relay all mountpoints connected to the master server. Addition
 (120 seconds in this case) the slave server will poll the master server to see if any new mountpoints have connected,
 and if so, the slave server will relay those as well. Note that the names of the mountpoints on the slave server will
 be identical to those on the master server. </p>
+
+</div>
+
+<div class="article">
+  <h3 id="setting-up-a-master-slave-aggregating-relay">Setting Up a Master-Slave Aggregating Relay</h3>
+  <p>In order to setup a relay of this type all servers (the one you wish to relay and the one doing the relaying)
+need to be Icecast 2 servers. The following configuration snippet is used as an example:</p>
+
+  <div class="highlight"><pre><code class="language-xml" data-lang="xml"><span class="nt">&lt;master-update-interval&gt;</span>120<span class="nt">&lt;/master-update-interval&gt;</span>
+<span class="nt">&lt;master&gt;</span>
+    <span class="nt">&lt;server&gt;</span>192.168.1.11<span class="nt">&lt;/server&gt;</span>
+    <span class="nt">&lt;port&gt;</span>8001<span class="nt">&lt;/port&gt;</span>
+    <span class="nt">&lt;namespace&gt;</span>/upstream1<span class="nt">&lt;/namespace&gt;</span>
+    <span class="nt">&lt;password&gt;</span>hackme<span class="nt">&lt;/password&gt;</span>
+    <span class="nt">&lt;on-demand&gt;</span>1<span class="nt">&lt;/on-demand&gt;</span>
+<span class="nt">&lt;/master&gt;</span>
+<span class="nt">&lt;master&gt;</span>
+    <span class="nt">&lt;server&gt;</span>192.168.1.12<span class="nt">&lt;/server&gt;</span>
+    <span class="nt">&lt;port&gt;</span>8001<span class="nt">&lt;/port&gt;</span>
+    <span class="nt">&lt;password&gt;</span>hackme<span class="nt">&lt;/password&gt;</span>
+<span class="nt">&lt;/master&gt;</span>
+</code></pre></div>
+
+  <p>In this example, this configuration is setup in the server which will be doing the relaying (slave server).
+The master servers in this case need not be configured (and actually they are unaware of the relaying being performed)
+as relays. When the slave server is started, it will connect to each of the master servers located at 192.168.1.11:8001
+and 192.168.1.12:8001 and will begin to relay all mountpoints connected to the master servers. Additionally,
+every master-update-interval (120 seconds in this case) the slave server will poll the master servers to see if any new
+mountpoints have connected, and if so, the slave server will relay those as well. Note that all mountpoints of the master
+server at 192.168.1.11:8001 will have the namespace "/upstream1" prepended to it's mountpoints. </p>
 
 </div>
 

@@ -21,6 +21,7 @@ typedef struct _master_server {
     char *username;
     char *password;
     int on_demand;
+    char *namespace;
     struct _master_server *next;
 } master_server;
 
