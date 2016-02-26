@@ -67,16 +67,20 @@ static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max
 /* free a master and return its next master */
 master_server *master_free(master_server *master)
 {
-    master_server *next = master->next;
-    ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
-    xmlFree(master->server);
-    if (master->username)
-        xmlFree(master->username);
-    if (master->password)
-        xmlFree(master->password);
-    if (master->namespace)
-        xmlFree(master->namespace);
-    free(master);
+    master_server *next = NULL;
+    if (master)
+    {
+        next = master->next;
+        ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
+        xmlFree(master->server);
+        if (master->username)
+            xmlFree(master->username);
+        if (master->password)
+            xmlFree(master->password);
+        if (master->namespace)
+            xmlFree(master->namespace);
+        free(master);
+    }
     return next;
 }
 
@@ -871,8 +875,7 @@ static void *_slave_thread(void *arg)
                 list = list->next;
             }
 
-            if (list)
-                master_list_free(list);
+            master_list_free(list);
 
             config = config_get_config();
 
