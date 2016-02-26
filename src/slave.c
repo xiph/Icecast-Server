@@ -63,20 +63,98 @@ static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
 static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max_interval
 
-master_server *master_free (master_server *master)
+
+/* free a master and return its next master */
+master_server *master_free(master_server *master)
 {
     master_server *next = master->next;
     ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
-    xmlFree (master->server);
+    xmlFree(master->server);
     if (master->username)
-        xmlFree (master->username);
+        xmlFree(master->username);
     if (master->password)
-        xmlFree (master->password);
+        xmlFree(master->password);
     if (master->namespace)
         xmlFree(master->namespace);
-    free (master);
+    free(master);
     return next;
 }
+
+
+/* copy a master and return the copy */
+static master_server *master_copy(master_server *master)
+{
+    master_server *copy = calloc(1, sizeof(*master));
+
+    if (copy)
+    {
+        copy->server = (char *)xmlCharStrdup(master->server);
+        if (master->username)
+            copy->username = (char *)xmlCharStrdup(master->username);
+        if (master->password)
+            copy->password = (char *)xmlCharStrdup(master->password);
+        if (master->namespace)
+            copy->namespace = (char *)xmlCharStrdup(master->namespace);
+        copy->port = master->port;
+        copy->on_demand = master->on_demand;
+    }
+    return copy;
+}
+
+
+/* free master list and return NULL */
+static master_server *master_list_free(master_server *list)
+{
+    while ((list = master_free(list)));
+    return list;
+}
+
+
+/* insert a master into a master list and return the list head */
+static master_server *master_list_insert(master_server *list, master_server *master)
+{
+    master->next = list;
+    return master;
+}
+
+
+/* copy a master list and return copied list */
+static master_server *master_list_copy(master_server *list) {
+    master_server *list_copy = NULL;
+
+    while (list)
+    {
+        master_server *copy = master_copy(list);
+        if (copy == NULL)
+        {
+            list_copy = master_list_free(list_copy);
+            break;
+        }
+        list_copy = master_list_insert(list_copy, copy);
+        list = list->next;
+    }
+
+    return list_copy;
+}
+
+
+/* turn a legacy master (from config) into a master and return it */
+static master_server *master_from_legacy(ice_config_t *config) {
+    master_server *master = calloc(1, sizeof(*master));
+
+    if (master) {
+        master->username = strdup(config->master_username);
+        if (config->master_password)
+            master->password = strdup(config->master_password);
+        if (config->master_server)
+            master->server = strdup(config->master_server);
+        master->port = config->master_server_port;
+        master->on_demand = config->on_demand;
+    }
+
+    return master;
+}
+
 
 relay_server *relay_free (relay_server *relay)
 {
@@ -719,27 +797,6 @@ static int update_from_master(master_server *master)
     return ret;
 }
 
-static int update_from_master_legacy(ice_config_t *config)
-{
-    master_server *master = calloc (1, sizeof (master_server));
-    int ret = 0;
-
-    if (master) {
-        master->username = strdup(config->master_username);
-        if (config->master_password)
-            master->password = strdup(config->master_password);
-        if (config->master_server)
-            master->server = strdup(config->master_server);
-        master->port = config->master_server_port;
-        master->on_demand = config->on_demand;
-        ret = update_from_master(master);
-        master_free(master);
-    }
-
-    return ret;
-}
-
-
 static void *_slave_thread(void *arg)
 {
     ice_config_t *config;
@@ -780,27 +837,42 @@ static void *_slave_thread(void *arg)
         thread_mutex_lock(&_slave_mutex);
         if (max_interval <= interval)
         {
-            master_server *master;
+            master_server *list = NULL;
+
             ICECAST_LOG_DEBUG("checking master stream list");
-            config = config_get_config();
 
             if (max_interval == 0)
                 skip_timer = 1;
             interval = 0;
+
+            config = config_get_config();
             max_interval = config->master_update_interval;
+            config_release_config();
+
             thread_mutex_unlock(&_slave_mutex);
             
-            /* update all non-legacy master servers. the config lock is being
-             * held for the entire update process. consider making a copy of
-             * the master linked list and releasing the lock */
-            master = config->master;
-            while (master) {
-                update_from_master(master);
-                master = master->next;
+            /* copy master list and insert legacy master from config. note:
+             * keeping a global list of master servers that only changes on a
+             * config change would be much more efficient than performing a
+             * copy each time we do an update -- implement this (and the
+             * locking that goes with along with this approach) */
+            config = config_get_config();
+            list = master_list_insert(
+                master_list_copy(config->master),
+                master_from_legacy(config)
+            );
+            config_release_config();
+            
+            /* update all master servers */
+            while (list) {
+                update_from_master(list);
+                list = list->next;
             }
 
-            /* update legacy master server */
-            update_from_master_legacy (config);
+            if (list)
+                master_list_free(list);
+
+            config = config_get_config();
 
             thread_mutex_lock (&(config_locks()->relay_lock));
 
