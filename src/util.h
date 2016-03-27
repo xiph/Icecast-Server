@@ -17,8 +17,9 @@
 /* for FILE* */
 #include <stdio.h>
 
-#define XSLT_CONTENT 1
-#define HTML_CONTENT 2
+#define UNKNOWN_CONTENT 0
+#define XSLT_CONTENT    1
+#define HTML_CONTENT    2
 
 #define READ_ENTIRE_HEADER 1
 #define READ_LINE 0

@@ -197,35 +197,23 @@ char *util_get_extension(const char *path) {
 }
 
 int util_check_valid_extension(const char *uri) {
-    int    ret = 0;
-    char    *p2;
+    const char    *p2;
 
-    if (uri) {
-        p2 = strrchr(uri, '.');
-        if (p2) {
-            p2++;
-            if (strncmp(p2, "xsl", strlen("xsl")) == 0) {
-                /* Build the full path for the request, concatenating the webroot from the config.
-                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-                */
-                ret = XSLT_CONTENT;
-            }
-            if (strncmp(p2, "htm", strlen("htm")) == 0) {
-                /* Build the full path for the request, concatenating the webroot from the config.
-                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-                */
-                ret = HTML_CONTENT;
-            }
-            if (strncmp(p2, "html", strlen("html")) == 0) {
-                /* Build the full path for the request, concatenating the webroot from the config.
-                ** Here would be also a good time to prevent accesses like '../../../../etc/passwd' or somesuch.
-                */
-                ret = HTML_CONTENT;
-            }
+    if (!uri)
+        return UNKNOWN_CONTENT;
 
-        }
+    p2 = strrchr(uri, '.');
+    if (!p2)
+        return UNKNOWN_CONTENT;
+    p2++;
+
+    if (strcmp(p2, "xsl") == 0 || strcmp(p2, "xslt") == 0) {
+        return XSLT_CONTENT;
+    } else if (strcmp(p2, "htm") == 0 || strcmp(p2, "html") == 0) {
+        return HTML_CONTENT;
     }
-    return ret;
+
+    return UNKNOWN_CONTENT;
 }
 
 static int hex(char c)
