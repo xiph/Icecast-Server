@@ -183,6 +183,7 @@ static unsigned char *ebml_get_write_buffer(ebml_t *ebml, size_t *bytes);
 static ssize_t ebml_wrote(ebml_t *ebml, size_t len);
 static ssize_t ebml_parse_tag(unsigned char      *buffer,
                               unsigned char      *buffer_end,
+                              uint_least64_t *tag_id,
                               uint_least64_t *payload_length);
 static ssize_t ebml_parse_var_int(unsigned char      *buffer,
                                   unsigned char      *buffer_end,
@@ -286,11 +287,11 @@ static refbuf_t *ebml_get_buffer(source_t *source)
     ebml_source_state_t *ebml_source_state = source->format->_state;
     format_plugin_t *format = source->format;
     unsigned char *write_buffer = NULL;
-    ptrdiff_t read_bytes = 0;
+    ssize_t read_bytes = 0;
     size_t write_bytes = 0;
     ebml_chunk_type chunk_type;
     refbuf_t *refbuf;
-    ptrdiff_t ret;
+    ssize_t ret;
 
     while (1)
     {
@@ -307,14 +308,9 @@ static refbuf_t *ebml_get_buffer(source_t *source)
                 continue;
             }
 
-/*            ICECAST_LOG_DEBUG("EBML: generated refbuf, size %i : %hhi %hhi %hhi",
- *                            read_bytes, refbuf->data[0], refbuf->data[1], refbuf->data[2]);
- */
-
             if (chunk_type == EBML_CHUNK_CLUSTER_START)
             {
                 refbuf->sync_point = 1;
-/*                ICECAST_LOG_DEBUG("EBML: ^ was sync point"); */
             }
             return refbuf;
 
@@ -610,6 +606,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
     ssize_t tag_length;
     ssize_t value_length;
     ssize_t track_number_length;
+    uint_least64_t tag_id;
     uint_least64_t payload_length;
     uint_least64_t data_value;
     uint_least64_t track_number;
@@ -620,8 +617,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
     end_of_buffer = ebml->input_buffer + ebml->input_position;
 
     while (processing) {
-
-        /*ICECAST_LOG_DEBUG("Parse State: %i", ebml->parse_state);*/
 
         switch (ebml->parse_state) {
 
@@ -635,14 +630,21 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 }
 
                 tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
-                                            end_of_buffer, &payload_length);
+                                            end_of_buffer, &tag_id, &payload_length);
 
-                if (tag_length > 0) {
+                if (tag_length == 0) {
+                    /* Wait for more data */
+                    processing = false;
+                    break;
+                } else if (tag_length < 0) {
+                    /* Parse error */
+                    return -1;
+                }
 
-                    if (payload_length == EBML_UNKNOWN) {
-                        /* Parse all children for tags we can't skip */
-                        payload_length = 0;
-                    }
+                if (payload_length == EBML_UNKNOWN) {
+                    /* Parse all children for tags we can't skip */
+                    payload_length = 0;
+                }
 
                     /* Recognize tags of interest */
                     if (tag_length > UNCOMMON_MAGIC_LEN) {
@@ -746,15 +748,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                         ebml->parse_state = copy_state;
                     }
 
-                } else if (tag_length == 0) {
-                    /* Wait for more data */
-                    /* ICECAST_LOG_DEBUG("Wait"); */
-                    processing = false;
-                } else if (tag_length < 0) {
-                    /* Parse error */
-                    /* ICECAST_LOG_DEBUG("Stop"); */
-                    return -1;
-                }
                 break;
 
             case EBML_STATE_START_CLUSTER:
@@ -770,7 +763,7 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                 } else {
 
                     tag_length = ebml_parse_tag(ebml->input_buffer + cursor,
-                                                end_of_buffer, &payload_length);
+                                                end_of_buffer, &tag_id, &payload_length);
 
                     /* The header has been fully read by now, publish its size. */
                     ebml->header_size = ebml->header_position;
@@ -812,7 +805,6 @@ static ssize_t ebml_wrote(ebml_t *ebml, size_t len)
                     memcpy(ebml->buffer + ebml->position, ebml->input_buffer + cursor, to_copy);
                     ebml->position += to_copy;
                 }
-                /* ICECAST_LOG_DEBUG("Copied %i of %hhu", to_copy, ebml->copy_len); */
 
                 cursor += to_copy;
                 ebml->copy_len -= to_copy;
@@ -870,17 +862,18 @@ static inline void ebml_check_track(ebml_t *ebml)
  */
 
 static ssize_t ebml_parse_tag(unsigned char *buffer,
-                             unsigned char *buffer_end,
-                             uint_least64_t *payload_length)
+                              unsigned char *buffer_end,
+                              uint_least64_t *tag_id,
+                              uint_least64_t *payload_length)
 {
-    size_t type_length;
-    size_t size_length;
-    uint_least64_t value;
+    ssize_t type_length;
+    ssize_t size_length;
 
+    *tag_id = 0;
     *payload_length = 0;
 
     /* read past the type tag */
-    type_length = ebml_parse_var_int(buffer, buffer_end, &value);
+    type_length = ebml_parse_var_int(buffer, buffer_end, tag_id);
 
     if (type_length <= 0) {
         return type_length;
@@ -906,8 +899,8 @@ static ssize_t ebml_parse_var_int(unsigned char *buffer,
                                  unsigned char *buffer_end,
                                  uint_least64_t *out_value)
 {
-    size_t size = 1;
-    size_t i;
+    ssize_t size = 1;
+    ssize_t i;
     unsigned char mask = 0x80;
     uint_least64_t value;
     uint_least64_t unknown_marker;
