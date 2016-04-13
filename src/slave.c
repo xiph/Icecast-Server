@@ -649,11 +649,13 @@ static int update_from_master(ice_config_t *config)
         free(data);
 
         if (sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
-                (strncmp (buf, "HTTP/1.0 200", 12) != 0) && (strncmp (buf, "HTTP/1.1 200", 12) != 0))
+                ((strncmp (buf, "HTTP/1.0 200", 12) != 0) && (strncmp (buf, "HTTP/1.1 200", 12) != 0)))
         {
             sock_close (mastersock);
             ICECAST_LOG_WARN("Master rejected streamlist request");
             break;
+        } else {
+            ICECAST_LOG_INFO("Master accepted streamlist request");
         }
 
         while (sock_read_line(mastersock, buf, sizeof(buf)))
