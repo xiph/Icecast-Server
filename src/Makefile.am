@@ -15,13 +15,13 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     format_vorbis.h format_theora.h format_flac.h format_speex.h format_midi.h \
     format_kate.h format_skeleton.h format_opus.h
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
-    util.c curl.c slave.c source.c stats.c refbuf.c client.c playlist.c \
+    util.c slave.c source.c stats.c refbuf.c client.c playlist.c \
     xslt.c fserve.c admin.c md5.c matchfile.c \
     format.c format_ogg.c format_mp3.c format_midi.c format_flac.c format_ebml.c \
     format_kate.c format_skeleton.c format_opus.c \
     event.c event_log.c event_exec.c \
     acl.c auth.c auth_htpasswd.c auth_anonymous.c auth_static.c
-EXTRA_icecast_SOURCES = yp.c \
+EXTRA_icecast_SOURCES = curl.c yp.c \
     auth_url.c event_url.c \
     format_vorbis.c format_theora.c format_speex.c
 
