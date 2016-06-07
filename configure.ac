@@ -162,7 +162,7 @@ AC_SUBST(KATE_LIBS)
 AC_OUTPUT([Makefile conf/Makefile src/Makefile src/common/avl/Makefile
 src/common/httpp/Makefile src/common/thread/Makefile src/common/log/Makefile
 src/common/net/Makefile src/common/timing/Makefile doc/Makefile doc/img/Makefile
-doc/assets/Makefile doc/assets/css/Makefile doc/assets/font/Makefile 
+doc/assets/Makefile doc/assets/css/Makefile doc/assets/font/Makefile
 doc/assets/img/Makefile web/Makefile web/assets/Makefile web/assets/css/Makefile
-web/assets/font/Makefile admin/Makefile admin/includes/Makefile win32/Makefile 
+web/assets/font/Makefile admin/Makefile admin/includes/Makefile win32/Makefile
  examples/Makefile])

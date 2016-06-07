@@ -397,7 +397,7 @@ static void __append_old_style_url_event(event_registration_t   **list,
 static void config_clear_http_header(ice_config_http_header_t *header)
 {
     ice_config_http_header_t *old;
-    
+
     while (header) {
         xmlFree(header->name);
         xmlFree(header->value);
@@ -997,7 +997,7 @@ static void _parse_root(xmlDocPtr       doc,
             "interface (stylesheets, images).");
 
     __check_hostname(configuration);
-    
+
     if (!configuration->location ||
         strcmp(configuration->location, CONFIG_DEFAULT_LOCATION) == 0) {
         ICECAST_LOG_WARN("Warning, <location> not configured, using default "
@@ -1005,7 +1005,7 @@ static void _parse_root(xmlDocPtr       doc,
       if (!configuration->location)
           configuration->location = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOCATION);
     }
-    
+
     if (!configuration->admin ||
         strcmp(configuration->admin, CONFIG_DEFAULT_ADMIN) == 0) {
         ICECAST_LOG_WARN("Warning, <admin> contact not configured, using "
@@ -1290,7 +1290,7 @@ static void _parse_mount(xmlDocPtr      doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("mount-name")) == 0) {
-            mount->mountname = (char *)xmlNodeListGetString(doc, 
+            mount->mountname = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
             username = (char *)xmlNodeListGetString(doc,
@@ -1647,7 +1647,7 @@ static void _parse_relay(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
             if (relay->password)
                 xmlFree(relay->password);
-            relay->password = (char *)xmlNodeListGetString(doc, 
+            relay->password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1854,7 +1854,7 @@ static void _parse_directory(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration
-                ->yp_touch_interval[configuration->num_yp_directories] = 
+                ->yp_touch_interval[configuration->num_yp_directories] =
                     atoi(tmp);
             if (tmp)
                 xmlFree(tmp);
