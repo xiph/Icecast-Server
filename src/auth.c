@@ -61,6 +61,42 @@ static unsigned long _next_auth_id(void) {
     return id;
 }
 
+static const char *auth_result2str(auth_result res)
+{
+    switch (res) {
+        case AUTH_UNDEFINED:
+            return "undefined";
+        break;
+        case AUTH_OK:
+            return "ok";
+        break;
+        case AUTH_FAILED:
+            return "failed";
+        break;
+        case AUTH_RELEASED:
+            return "released";
+        break;
+        case AUTH_FORBIDDEN:
+            return "forbidden";
+        break;
+        case AUTH_NOMATCH:
+            return "nomatch";
+        break;
+        case AUTH_USERADDED:
+            return "useradded";
+        break;
+        case AUTH_USEREXISTS:
+            return "userexists";
+        break;
+        case AUTH_USERDELETED:
+            return "userdeleted";
+        break;
+        default:
+            return "(unknown)";
+        break;
+    }
+}
+
 static auth_client *auth_client_setup (client_t *client)
 {
     /* This will look something like "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" */
@@ -268,6 +304,8 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         result = AUTH_FAILED;
     }
 
+    ICECAST_LOG_DEBUG("client %p on auth %p role %s processed: %s", auth_user->client, auth, auth->role, auth_result2str(result));
+
     if (result == AUTH_OK) {
         if (auth_user->client->acl)
             acl_release(auth_user->client->acl);
@@ -355,7 +393,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     auth_user->on_no_match = on_no_match;
     auth_user->on_result = on_result;
     auth_user->userdata = userdata;
-    ICECAST_LOG_INFO("adding client for authentication");
+    ICECAST_LOG_INFO("adding client %p for authentication on %p", client);
     queue_auth_client(auth_user);
 }
 
