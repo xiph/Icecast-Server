@@ -1328,6 +1328,15 @@ static void _parse_mount(xmlDocPtr      doc,
             mount->charset = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("mp3-metadata-interval")) == 0) {
+            ICECAST_LOG_WARN("<mp3-metadata-interval> is deprecated and will be "
+                "removed in a future version. "
+                "Please use <icy-metadata-interval> instead.");
+                /* FIXME when do we plan to remove this? */
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->mp3_meta_interval = atoi(tmp);
+            if(tmp)
+                xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("icy-metadata-interval")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->mp3_meta_interval = atoi(tmp);
             if(tmp)
