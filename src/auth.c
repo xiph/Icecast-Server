@@ -80,16 +80,16 @@ static const char *auth_result2str(auth_result res)
             return "forbidden";
         break;
         case AUTH_NOMATCH:
-            return "nomatch";
+            return "no match";
         break;
         case AUTH_USERADDED:
-            return "useradded";
+            return "user added";
         break;
         case AUTH_USEREXISTS:
-            return "userexists";
+            return "user exists";
         break;
         case AUTH_USERDELETED:
-            return "userdeleted";
+            return "user deleted";
         break;
         default:
             return "(unknown)";
