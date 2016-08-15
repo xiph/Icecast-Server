@@ -869,7 +869,11 @@ void source_main (source_t *source)
 static void source_shutdown (source_t *source)
 {
     source->running = 0;
-    ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
+    if (source->con && source->con->ip) {
+        ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
+    } else {
+        ICECAST_LOG_INFO("Source at \"%s\" exiting", source->mount);
+    }
 
     event_emit_clientevent("source-disconnect", source->client, source->mount);
 
