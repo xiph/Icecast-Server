@@ -878,7 +878,11 @@ static void source_shutdown (source_t *source)
     mount_proxy *mountinfo;
 
     source->running = 0;
-    ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
+    if (source->con && source->con->ip) {
+        ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
+    } else {
+        ICECAST_LOG_INFO("Source at \"%s\" exiting", source->mount);
+    }
 
     mountinfo = config_find_mount (config_get_config(), source->mount, MOUNT_TYPE_NORMAL);
     if (mountinfo)
