@@ -58,16 +58,6 @@ static void __handle_header_opushead(ogg_state_t *ogg_info, ogg_packet *packet)
         return; /* Invalid OpusHead */
     }
 
-    ICECAST_LOG_DEBUG("Opus Header: len=%lu, data=%i,%i %i,%i %i,%i %i,%i %i,%i %i,%i %i,%i %i,%i %i,%i %i",
-                        (unsigned long int)packet->bytes,
-                        packet->packet[ 0], packet->packet[ 1], packet->packet[ 2], packet->packet[ 3],
-                        packet->packet[ 4], packet->packet[ 5], packet->packet[ 6], packet->packet[ 7],
-                        packet->packet[ 8], packet->packet[ 9], packet->packet[10], packet->packet[11],
-                        packet->packet[12], packet->packet[13], packet->packet[14], packet->packet[15],
-                        packet->packet[16], packet->packet[17], packet->packet[18]
-                     );
-
-
     if ((packet->packet[8] & 0xF0) != 0) {
         ICECAST_LOG_WARN("Bad Opus header: bad header version, expected major 0, got %i", (int)packet->packet[8]);
         return; /* Invalid OpusHead Version */
@@ -180,8 +170,10 @@ static void __handle_header(ogg_state_t *ogg_info,
     }
 
     if (strncmp((const char*)packet->packet, "OpusHead", 8) == 0) {
+        ICECAST_LOG_DEBUG("Got Opus header: OpusHead");
         __handle_header_opushead(ogg_info, packet);
     } else if (strncmp((const char*)packet->packet, "OpusTags", 8) == 0) {
+        ICECAST_LOG_DEBUG("Got Opus header: OpusTags");
         __handle_header_opustags(ogg_info, packet, plugin);
     } else {
         ICECAST_LOG_DEBUG("Unknown header or data.");
