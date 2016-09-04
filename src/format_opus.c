@@ -72,7 +72,7 @@ ogg_codec_t *initial_opus_page (format_plugin_t *plugin, ogg_page *page)
     ogg_stream_packetout (&codec->os, &packet);
 
     ICECAST_LOG_DEBUG("checking for opus codec");
-    if (strncmp((char *)packet.packet, "OpusHead", 8) != 0)
+    if (packet.bytes < 8 || strncmp((char *)packet.packet, "OpusHead", 8) != 0)
     {
         ogg_stream_clear (&codec->os);
         free (codec);
