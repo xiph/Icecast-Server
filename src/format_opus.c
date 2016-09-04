@@ -34,8 +34,8 @@ static void opus_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     stats_event(ogg_info->mount, "audio_channels", NULL);
     stats_event(ogg_info->mount, "audio_samplerate", NULL);
-    ogg_stream_clear (&codec->os);
-    free (codec);
+    ogg_stream_clear(&codec->os);
+    free(codec);
 }
 
 static uint32_t __read_header_u32be_unaligned(const unsigned char *in)
@@ -209,19 +209,19 @@ static refbuf_t *process_opus_page (ogg_state_t *ogg_info,
 ogg_codec_t *initial_opus_page (format_plugin_t *plugin, ogg_page *page)
 {
     ogg_state_t *ogg_info = plugin->_state;
-    ogg_codec_t *codec = calloc (1, sizeof (ogg_codec_t));
+    ogg_codec_t *codec = calloc(1, sizeof (ogg_codec_t));
     ogg_packet packet;
 
-    ogg_stream_init (&codec->os, ogg_page_serialno (page));
-    ogg_stream_pagein (&codec->os, page);
+    ogg_stream_init(&codec->os, ogg_page_serialno (page));
+    ogg_stream_pagein(&codec->os, page);
 
-    ogg_stream_packetout (&codec->os, &packet);
+    ogg_stream_packetout(&codec->os, &packet);
 
     ICECAST_LOG_DEBUG("checking for opus codec");
     if (packet.bytes < 8 || strncmp((char *)packet.packet, "OpusHead", 8) != 0)
     {
-        ogg_stream_clear (&codec->os);
-        free (codec);
+        ogg_stream_clear(&codec->os);
+        free(codec);
         return NULL;
     }
     __handle_header(ogg_info, codec, &packet, plugin);
