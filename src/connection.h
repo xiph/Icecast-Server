@@ -28,6 +28,17 @@ struct _client_tag;
 struct source_tag;
 struct ice_config_tag;
 
+typedef enum _tlsmode_tag {
+    /* no TLS is used at all */
+    ICECAST_TLSMODE_DISABLED = 0,
+    /* TLS mode is to be detected */
+    ICECAST_TLSMODE_AUTO,
+    /* TLS via HTTP Upgrade:-header [RFC2817] */
+    ICECAST_TLSMODE_RFC2817,
+    /* TLS for transport layer like HTTPS [RFC2818] does */
+    ICECAST_TLSMODE_RFC2818
+} tlsmode_t;
+
 typedef struct connection_tag
 {
     unsigned long id;
@@ -40,6 +51,7 @@ typedef struct connection_tag
     sock_t serversock;
     int error;
 
+    tlsmode_t tlsmode;
     tls_t *tls;
     int (*send)(struct connection_tag *handle, const void *buf, size_t len);
     int (*read)(struct connection_tag *handle, void *buf, size_t len);

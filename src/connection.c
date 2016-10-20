@@ -251,6 +251,7 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
         con->con_time   = time(NULL);
         con->id         = _next_connection_id();
         con->ip         = ip;
+        con->tlsmode    = ICECAST_TLSMODE_AUTO;
         con->read       = connection_read;
         con->send       = connection_send;
     }
@@ -266,6 +267,7 @@ void connection_uses_ssl(connection_t *con)
     if (con->tls)
         return;
 
+    con->tlsmode = ICECAST_TLSMODE_RFC2818;
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
     con->tls = tls_new(tls_ctx);
@@ -429,8 +431,12 @@ static client_queue_t *_get_connection(void)
 static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
-    ice_config_t *config = config_get_config();
-    int timeout = config->header_timeout;
+    ice_config_t *config;
+    int timeout;
+    char peak;
+
+    config = config_get_config();
+    timeout = config->header_timeout;
     config_release_config();
 
     while (*node_ref) {
@@ -438,6 +444,14 @@ static void process_request_queue (void)
         client_t *client = node->client;
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
+
+        if (client->con->tlsmode == ICECAST_TLSMODE_AUTO) {
+            if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
+                if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
+                    connection_uses_ssl(client->con);
+                }
+            }
+        }
 
         if (len > 0) {
             if (client->con->con_time + timeout <= time(NULL)) {
