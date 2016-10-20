@@ -49,6 +49,7 @@ typedef struct connection_tag
 
 void connection_initialize(void);
 void connection_shutdown(void);
+void connection_reread_config(struct ice_config_tag *config);
 void connection_accept_loop(void);
 int connection_setup_sockets(struct ice_config_tag *config);
 void connection_close(connection_t *con);

@@ -107,6 +107,7 @@ static matchfile_t *banned_ip, *allowed_ip;
 rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
+static void get_ssl_certificate(ice_config_t *config);
 
 void connection_initialize(void)
 {
@@ -140,6 +141,11 @@ void connection_shutdown(void)
     thread_mutex_destroy(&move_clients_mutex);
 
     _initialized = 0;
+}
+
+void connection_reread_config(struct ice_config_tag *config)
+{
+    get_ssl_certificate(config);
 }
 
 static unsigned long _next_connection_id(void)
