@@ -27,6 +27,12 @@ struct tls_ctx_tag {
     SSL_CTX *ctx;
 };
 
+struct tls_tag {
+    size_t refc;
+    SSL *ssl;
+    tls_ctx_t *ctx;
+};
+
 void       tls_initialize(void)
 {
     SSL_load_error_strings(); /* readable error messages */
@@ -111,11 +117,119 @@ void       tls_ctx_unref(tls_ctx_t *ctx)
     free(ctx);
 }
 
-SSL       *tls_ctx_SSL_new(tls_ctx_t *ctx)
+tls_t     *tls_new(tls_ctx_t *ctx)
 {
+    tls_t *tls;
+    SSL *ssl;
+
     if (!ctx)
         return NULL;
-    return SSL_new(ctx->ctx);
+
+    ssl = SSL_new(ctx->ctx);
+    if (!ssl)
+        return NULL;
+
+    tls = calloc(1, sizeof(*tls));
+    if (!tls) {
+        SSL_free(ssl);
+        return NULL;
+    }
+
+    tls_ctx_ref(ctx);
+
+    tls->refc = 1;
+    tls->ssl  = ssl;
+    tls->ctx  = ctx;
+
+    return tls;
+}
+void       tls_ref(tls_t *tls)
+{
+    if (!tls)
+        return;
+    
+    tls->refc++;
+}
+void       tls_unref(tls_t *tls)
+{
+    if (!tls)
+        return;
+
+    tls->refc--;
+
+    if (tls->refc)
+        return;
+
+    SSL_shutdown(tls->ssl);
+    SSL_free(tls->ssl);
+
+    if (tls->ctx)
+        tls_ctx_unref(tls->ctx);
+
+    free(tls);
+}
+
+void       tls_set_incoming(tls_t *tls)
+{
+    if (!tls)
+        return;
+
+    SSL_set_accept_state(tls->ssl);
+}
+void       tls_set_socket(tls_t *tls, sock_t sock)
+{
+    if (!tls)
+        return;
+
+    SSL_set_fd(tls->ssl, sock);
+}
+
+int        tls_want_io(tls_t *tls)
+{
+    int what;
+
+    if (!tls)
+        return -1;
+
+    what = SSL_want(tls->ssl);
+
+    switch (what) {
+        case SSL_WRITING:
+        case SSL_READING:
+            return 1;
+        break;
+        case SSL_NOTHING:
+        default:
+            return 0;
+        break;
+    }
+}
+
+int        tls_got_shutdown(tls_t *tls)
+{
+    if (!tls)
+        return -1;
+
+    if (SSL_get_shutdown(tls->ssl) & SSL_RECEIVED_SHUTDOWN) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
+{
+    if (!tls)
+        return -1;
+
+    return SSL_read(tls->ssl, buffer, len);
+}
+ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
+{
+    if (!tls)
+        return -1;
+
+    return SSL_write(tls->ssl, buffer, len);
 }
 #else
 void       tls_initialize(void)
@@ -135,4 +249,42 @@ void       tls_ctx_ref(tls_ctx_t *ctx)
 void       tls_ctx_unref(tls_ctx_t *ctx)
 {
 }
+
+tls_t     *tls_new(tls_ctx_t *ctx)
+{
+    return NULL;
+}
+void       tls_ref(tls_t *tls)
+{
+}
+void       tls_unref(tls_t *tls)
+{
+}
+
+void       tls_set_incoming(tls_t *tls)
+{
+}
+void       tls_set_socket(tls_t *tls, sock_t sock)
+{
+}
+
+int        tls_want_io(tls_t *tls)
+{
+    return -1;
+}
+
+int        tls_got_shutdown(tls_t *tls)
+{
+    return -1;
+}
+
+ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
+{
+    return -1;
+}
+ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
+{
+    return -1;
+}
+
 #endif

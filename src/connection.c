@@ -175,14 +175,11 @@ static void get_ssl_certificate(ice_config_t *config)
  */
 static int connection_read_ssl(connection_t *con, void *buf, size_t len)
 {
-    int bytes = SSL_read(con->ssl, buf, len);
+    ssize_t bytes = tls_read(con->tls, buf, len);
 
     if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)) {
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
+        if (tls_want_io(con->tls) > 0)
             return -1;
-        }
         con->error = 1;
     }
     return bytes;
@@ -190,14 +187,11 @@ static int connection_read_ssl(connection_t *con, void *buf, size_t len)
 
 static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
 {
-    int bytes = SSL_write (con->ssl, buf, len);
+    ssize_t bytes = tls_write(con->tls, buf, len);
 
     if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)){
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                return -1;
-        }
+        if (tls_want_io(con->tls) > 0)
+            return -1;
         con->error = 1;
     } else {
         con->sent_bytes += bytes;
@@ -263,14 +257,14 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
 void connection_uses_ssl(connection_t *con)
 {
 #ifdef HAVE_OPENSSL
-    if (con->ssl)
+    if (con->tls)
         return;
 
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
-    con->ssl = tls_ctx_SSL_new(tls_ctx);
-    SSL_set_accept_state(con->ssl);
-    SSL_set_fd(con->ssl, con->sock);
+    con->tls = tls_new(tls_ctx);
+    tls_set_incoming(con->tls);
+    tls_set_socket(con->tls, con->sock);
 #endif
 }
 
@@ -1462,8 +1456,6 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-#ifdef HAVE_OPENSSL
-    if (con->ssl) { SSL_shutdown(con->ssl); SSL_free(con->ssl); }
-#endif
+    tls_unref(con->tls);
     free(con);
 }

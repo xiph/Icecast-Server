@@ -16,10 +16,8 @@
 
 #include <sys/types.h>
 #include <time.h>
-#ifdef HAVE_OPENSSL
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#endif
+
+#include "tls.h"
 
 #include "compat.h"
 #include "common/httpp/httpp.h"
@@ -42,9 +40,7 @@ typedef struct connection_tag
     sock_t serversock;
     int error;
 
-#ifdef HAVE_OPENSSL
-    SSL *ssl; /* SSL handler */
-#endif
+    tls_t *tls;
     int (*send)(struct connection_tag *handle, const void *buf, size_t len);
     int (*read)(struct connection_tag *handle, void *buf, size_t len);
 

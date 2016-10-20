@@ -14,7 +14,10 @@
 #include <openssl/err.h>
 #endif
 
+#include "common/net/sock.h"
+
 typedef struct tls_ctx_tag tls_ctx_t;
+typedef struct tls_tag tls_t;
 
 void       tls_initialize(void);
 void       tls_shutdown(void);
@@ -23,8 +26,18 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
 void       tls_ctx_ref(tls_ctx_t *ctx);
 void       tls_ctx_unref(tls_ctx_t *ctx);
 
-#ifdef HAVE_OPENSSL
-SSL       *tls_ctx_SSL_new(tls_ctx_t *ctx);
-#endif
+tls_t     *tls_new(tls_ctx_t *ctx);
+void       tls_ref(tls_t *tls);
+void       tls_unref(tls_t *tls);
+
+void       tls_set_incoming(tls_t *tls);
+void       tls_set_socket(tls_t *tls, sock_t sock);
+
+int        tls_want_io(tls_t *tls);
+
+int        tls_got_shutdown(tls_t *tls);
+
+ssize_t    tls_read(tls_t *tls, void *buffer, size_t len);
+ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len);
 
 #endif
