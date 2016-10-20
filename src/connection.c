@@ -59,6 +59,7 @@
 #include "admin.h"
 #include "auth.h"
 #include "matchfile.h"
+#include "tls.h"
 
 #define CATMODULE "connection"
 
@@ -98,9 +99,7 @@ static int _initialized = 0;
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
 static int ssl_ok;
-#ifdef HAVE_OPENSSL
-static SSL_CTX *ssl_ctx;
-#endif
+static tls_ctx_t *tls_ctx;
 
 /* filtering client connection based on IP */
 static matchfile_t *banned_ip, *allowed_ip;
@@ -131,9 +130,7 @@ void connection_shutdown(void)
     if (!_initialized)
         return;
 
-#ifdef HAVE_OPENSSL
-    SSL_CTX_free (ssl_ctx);
-#endif
+    tls_ctx_unref(tls_ctx);
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
  
@@ -160,46 +157,16 @@ static unsigned long _next_connection_id(void)
 #ifdef HAVE_OPENSSL
 static void get_ssl_certificate(ice_config_t *config)
 {
-    SSL_METHOD *method;
-    long ssl_opts;
     config->tls_ok = ssl_ok = 0;
 
-    SSL_load_error_strings(); /* readable error messages */
-    SSL_library_init(); /* initialize library */
-
-    method = SSLv23_server_method();
-    ssl_ctx = SSL_CTX_new(method);
-    ssl_opts = SSL_CTX_get_options(ssl_ctx);
-#ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
-#else
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
-#endif
-
-    do {
-        if (config->cert_file == NULL)
-            break;
-        if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0) {
-            ICECAST_LOG_WARN("Invalid cert file %s", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0) {
-            ICECAST_LOG_WARN("Invalid private key file %s", config->cert_file);
-            break;
-        }
-        if (!SSL_CTX_check_private_key (ssl_ctx)) {
-            ICECAST_LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) {
-            ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
-        }
-        config->tls_ok = ssl_ok = 1;
-        ICECAST_LOG_INFO("Certificate found at %s", config->cert_file);
-        ICECAST_LOG_INFO("Using ciphers %s", config->cipher_list);
+    tls_ctx_unref(tls_ctx);
+    tls_ctx = tls_ctx_new(config->cert_file, config->cert_file, config->cipher_list);
+    if (!tls_ctx) {
+        ICECAST_LOG_INFO("No TLS capability on any configured ports");
         return;
-    } while (0);
-    ICECAST_LOG_INFO("No TLS capability on any configured ports");
+    }
+
+    config->tls_ok = ssl_ok = 1;
 }
 
 
@@ -301,7 +268,7 @@ void connection_uses_ssl(connection_t *con)
 
     con->read = connection_read_ssl;
     con->send = connection_send_ssl;
-    con->ssl = SSL_new(ssl_ctx);
+    con->ssl = tls_ctx_SSL_new(tls_ctx);
     SSL_set_accept_state(con->ssl);
     SSL_set_fd(con->ssl, con->sock);
 #endif

@@ -16,7 +16,7 @@ noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     format_kate.h format_skeleton.h format_opus.h
 icecast_SOURCES = cfgfile.c main.c logging.c sighandler.c connection.c global.c \
     util.c slave.c source.c stats.c refbuf.c client.c playlist.c \
-    xslt.c fserve.c admin.c md5.c matchfile.c \
+    xslt.c fserve.c admin.c md5.c matchfile.c tls.c \
     format.c format_ogg.c format_mp3.c format_midi.c format_flac.c format_ebml.c \
     format_kate.c format_skeleton.c format_opus.c \
     event.c event_log.c event_exec.c \
