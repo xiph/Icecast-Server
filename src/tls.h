@@ -16,6 +16,12 @@
 
 #include "common/net/sock.h"
 
+/* Do we have TLS Support? */
+#if defined(HAVE_OPENSSL)
+#define ICECAST_CAP_TLS
+#endif
+
+
 typedef struct tls_ctx_tag tls_ctx_t;
 typedef struct tls_tag tls_t;
 

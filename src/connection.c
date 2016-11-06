@@ -160,7 +160,7 @@ static unsigned long _next_connection_id(void)
 }
 
 
-#ifdef HAVE_OPENSSL
+#ifdef ICECAST_CAP_TLS
 static void get_ssl_certificate(ice_config_t *config)
 {
     config->tls_ok = ssl_ok = 0;
@@ -213,7 +213,7 @@ static void get_ssl_certificate(ice_config_t *config)
     ICECAST_LOG_INFO("No TLS capability. "
                      "Rebuild Icecast with openSSL support to enable this.");
 }
-#endif /* HAVE_OPENSSL */
+#endif /* ICECAST_CAP_TLS */
 
 
 /* handlers (default) for reading and writing a connection_t, no encrpytion
@@ -263,7 +263,7 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
  */
 void connection_uses_ssl(connection_t *con)
 {
-#ifdef HAVE_OPENSSL
+#ifdef ICECAST_CAP_TLS
     if (con->tls)
         return;
 
