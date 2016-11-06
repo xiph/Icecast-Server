@@ -1678,7 +1678,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->ssl = util_str_to_bool(tmp);
+            listener->tls = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-compat")) == 0) {

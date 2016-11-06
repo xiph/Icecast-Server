@@ -98,7 +98,7 @@ static int _initialized = 0;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
-static int ssl_ok;
+static int tls_ok;
 static tls_ctx_t *tls_ctx;
 
 /* filtering client connection based on IP */
@@ -107,7 +107,7 @@ static matchfile_t *banned_ip, *allowed_ip;
 rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
-static void get_ssl_certificate(ice_config_t *config);
+static void get_tls_certificate(ice_config_t *config);
 
 void connection_initialize(void)
 {
@@ -145,7 +145,7 @@ void connection_shutdown(void)
 
 void connection_reread_config(struct ice_config_tag *config)
 {
-    get_ssl_certificate(config);
+    get_tls_certificate(config);
 }
 
 static unsigned long _next_connection_id(void)
@@ -161,9 +161,9 @@ static unsigned long _next_connection_id(void)
 
 
 #ifdef ICECAST_CAP_TLS
-static void get_ssl_certificate(ice_config_t *config)
+static void get_tls_certificate(ice_config_t *config)
 {
-    config->tls_ok = ssl_ok = 0;
+    config->tls_ok = tls_ok = 0;
 
     tls_ctx_unref(tls_ctx);
     tls_ctx = tls_ctx_new(config->cert_file, config->cert_file, config->cipher_list);
@@ -172,14 +172,14 @@ static void get_ssl_certificate(ice_config_t *config)
         return;
     }
 
-    config->tls_ok = ssl_ok = 1;
+    config->tls_ok = tls_ok = 1;
 }
 
 
-/* handlers for reading and writing a connection_t when there is ssl
+/* handlers for reading and writing a connection_t when there is TLS
  * configured on the listening port
  */
-static int connection_read_ssl(connection_t *con, void *buf, size_t len)
+static int connection_read_tls(connection_t *con, void *buf, size_t len)
 {
     ssize_t bytes = tls_read(con->tls, buf, len);
 
@@ -191,7 +191,7 @@ static int connection_read_ssl(connection_t *con, void *buf, size_t len)
     return bytes;
 }
 
-static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
+static int connection_send_tls(connection_t *con, const void *buf, size_t len)
 {
     ssize_t bytes = tls_write(con->tls, buf, len);
 
@@ -206,10 +206,10 @@ static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
 }
 #else
 
-/* SSL not compiled in, so at least log it */
-static void get_ssl_certificate(ice_config_t *config)
+/* TLS not compiled in, so at least log it */
+static void get_tls_certificate(ice_config_t *config)
 {
-    ssl_ok = 0;
+    tls_ok = 0;
     ICECAST_LOG_INFO("No TLS capability. "
                      "Rebuild Icecast with OpenSSL support to enable this.");
 }
@@ -259,17 +259,17 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
     return con;
 }
 
-/* prepare connection for interacting over a SSL connection
+/* prepare connection for interacting over a TLS connection
  */
-void connection_uses_ssl(connection_t *con)
+void connection_uses_tls(connection_t *con)
 {
 #ifdef ICECAST_CAP_TLS
     if (con->tls)
         return;
 
     con->tlsmode = ICECAST_TLSMODE_RFC2818;
-    con->read = connection_read_ssl;
-    con->send = connection_send_ssl;
+    con->read = connection_read_tls;
+    con->send = connection_send_tls;
     con->tls = tls_new(tls_ctx);
     tls_set_incoming(con->tls);
     tls_set_socket(con->tls, con->sock);
@@ -448,7 +448,7 @@ static void process_request_queue (void)
         if (client->con->tlsmode == ICECAST_TLSMODE_AUTO) {
             if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
                 if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
-                    connection_uses_ssl(client->con);
+                    connection_uses_tls(client->con);
                 }
             }
         }
@@ -549,8 +549,8 @@ static client_queue_t *create_client_node(client_t *client)
     if (listener) {
         if (listener->shoutcast_compat)
             node->shoutcast = 1;
-        if (listener->ssl && ssl_ok)
-            connection_uses_ssl(client->con);
+        if (listener->tls && tls_ok)
+            connection_uses_tls(client->con);
         if (listener->shoutcast_mount)
             node->shoutcast_mount = strdup(listener->shoutcast_mount);
     }
@@ -602,7 +602,7 @@ void connection_accept_loop(void)
     int duration = 300;
 
     config = config_get_config();
-    get_ssl_certificate(config);
+    get_tls_certificate(config);
     config_release_config();
 
     while (global.running == ICECAST_RUNNING) {

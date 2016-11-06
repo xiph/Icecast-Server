@@ -122,7 +122,7 @@ static inline void client_reuseconnection(client_t *client) {
     client_destroy(client);
 
     if (reuse == ICECAST_REUSE_UPGRADETLS)
-        connection_uses_ssl(con);
+        connection_uses_tls(con);
     connection_queue(con);
 }
 

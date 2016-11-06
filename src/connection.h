@@ -68,7 +68,7 @@ void connection_close(connection_t *con);
 connection_t *connection_create(sock_t sock, sock_t serversock, char *ip);
 int connection_complete_source(struct source_tag *source, int response);
 void connection_queue(connection_t *con);
-void connection_uses_ssl(connection_t *con);
+void connection_uses_tls(connection_t *con);
 
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len);
 
