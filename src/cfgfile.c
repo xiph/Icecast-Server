@@ -234,6 +234,40 @@ static inline int __parse_public(const char *str)
     return util_str_to_bool(str);
 }
 
+/* This converts TLS mode strings to (tlsmode_t).
+ * In older versions of Icecast2 this was just a bool.
+ * So we need to handle boolean values as well.
+ * See also: util_str_to_bool().
+ */
+static tlsmode_t str_to_tlsmode(const char *str) {
+    /* consider NULL and empty strings as auto mode */
+    if (!str || !*str)
+        return ICECAST_TLSMODE_AUTO;
+
+    if (strcasecmp(str, "disabled") == 0) {
+        return ICECAST_TLSMODE_DISABLED;
+    } else if (strcasecmp(str, "auto") == 0) {
+        return ICECAST_TLSMODE_AUTO;
+    } else if (strcasecmp(str, "auto_no_plain") == 0) {
+        return ICECAST_TLSMODE_AUTO_NO_PLAIN;
+    } else if (strcasecmp(str, "rfc2817") == 0) {
+        return ICECAST_TLSMODE_RFC2817;
+    } else if (strcasecmp(str, "rfc2818") == 0 ||
+               /* boolean-style values */
+               strcasecmp(str, "true") == 0 ||
+               strcasecmp(str, "yes")  == 0 ||
+               strcasecmp(str, "on")   == 0 ) {
+        return ICECAST_TLSMODE_RFC2818;
+    }
+
+    /* old style numbers: consider everyting non-zero RFC2818 */
+    if (atoi(str))
+        return ICECAST_TLSMODE_RFC2818;
+
+    /* we default to auto mode */
+    return ICECAST_TLSMODE_AUTO;
+}
+
 static void __append_old_style_auth(auth_stack_t       **stack,
                                     const char          *name,
                                     const char          *type,
@@ -1678,7 +1712,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->tls = util_str_to_bool(tmp);
+            listener->tls = str_to_tlsmode(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-compat")) == 0) {

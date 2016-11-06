@@ -445,7 +445,7 @@ static void process_request_queue (void)
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
 
-        if (client->con->tlsmode == ICECAST_TLSMODE_AUTO) {
+        if (client->con->tlsmode == ICECAST_TLSMODE_AUTO || client->con->tlsmode == ICECAST_TLSMODE_AUTO_NO_PLAIN) {
             if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
                 if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
                     connection_uses_tls(client->con);
@@ -549,7 +549,8 @@ static client_queue_t *create_client_node(client_t *client)
     if (listener) {
         if (listener->shoutcast_compat)
             node->shoutcast = 1;
-        if (listener->tls && tls_ok)
+        client->con->tlsmode = listener->tls;
+        if (listener->tls == ICECAST_TLSMODE_RFC2818 && tls_ok)
             connection_uses_tls(client->con);
         if (listener->shoutcast_mount)
             node->shoutcast_mount = strdup(listener->shoutcast_mount);
@@ -1339,8 +1340,16 @@ static void _handle_connection(void)
 
                 upgrade = httpp_getvar(parser, "upgrade");
                 connection = httpp_getvar(parser, "connection");
-                if (upgrade && connection && strstr(upgrade, "TLS/1.0") != NULL && strcasecmp(connection, "upgrade") == 0) {
-                    client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
+                    if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || strstr(upgrade, "TLS/1.0") == NULL) {
+                        client_send_error(client, 400, 1, "Can not upgrade protocol");
+                        continue;
+                    } else {
+                        client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                        continue;
+                    }
+                } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {
+                    client_send_426(client, ICECAST_REUSE_UPGRADETLS);
                     continue;
                 }
 

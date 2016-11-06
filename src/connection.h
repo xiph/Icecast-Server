@@ -33,6 +33,8 @@ typedef enum _tlsmode_tag {
     ICECAST_TLSMODE_DISABLED = 0,
     /* TLS mode is to be detected */
     ICECAST_TLSMODE_AUTO,
+    /* Like ICECAST_TLSMODE_AUTO but enforces TLS */
+    ICECAST_TLSMODE_AUTO_NO_PLAIN,
     /* TLS via HTTP Upgrade:-header [RFC2817] */
     ICECAST_TLSMODE_RFC2817,
     /* TLS for transport layer like HTTPS [RFC2818] does */

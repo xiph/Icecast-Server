@@ -172,7 +172,7 @@ typedef struct _listener_t {
     char *bind_address;
     int shoutcast_compat;
     char *shoutcast_mount;
-    int tls;
+    tlsmode_t tls;
 } listener_t;
 
 typedef struct ice_config_tag {
