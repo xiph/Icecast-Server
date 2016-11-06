@@ -211,7 +211,7 @@ static void get_ssl_certificate(ice_config_t *config)
 {
     ssl_ok = 0;
     ICECAST_LOG_INFO("No TLS capability. "
-                     "Rebuild Icecast with openSSL support to enable this.");
+                     "Rebuild Icecast with OpenSSL support to enable this.");
 }
 #endif /* ICECAST_CAP_TLS */
 
