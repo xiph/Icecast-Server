@@ -550,7 +550,7 @@ static void yp_process_server (struct yp_server *server)
          */
         if (state == -2)
         {
-            ICECAST_LOG_DEBUG("skiping %s on %s", yp->mount, server->url);
+            ICECAST_LOG_DEBUG("skipping %s on %s", yp->mount, server->url);
             yp->process = do_yp_add;
             yp->next_update += 900;
         }
