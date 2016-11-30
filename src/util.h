@@ -51,6 +51,8 @@ util_hostcheck_type util_hostcheck(const char *hostname);
 
 int util_str_to_bool(const char *str);
 int util_str_to_loglevel(const char *str);
+int util_str_to_int(const char *str, const int default_value);
+unsigned int util_str_to_unsigned_int(const char *str, const unsigned int default_value);
 
 char *util_url_unescape(const char *src);
 char *util_url_escape(const char *src);

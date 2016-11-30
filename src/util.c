@@ -565,6 +565,35 @@ int util_str_to_loglevel(const char *str) {
     return atoi(str);
 }
 
+int util_str_to_int(const char *str, const int default_value)
+{
+    /* consider NULL and empty strings default */
+    if (!str || !*str)
+        return default_value;
+    return atoi(str);
+}
+
+unsigned int util_str_to_unsigned_int(const char *str, const unsigned int default_value)
+{
+    long int val;
+    char *rem = NULL;
+
+    /* consider NULL and empty strings default */
+    if (!str || !*str)
+        return default_value;
+
+    val = strtol(str, &rem, 10);
+
+    /* There is a left over */
+    if (rem && *rem)
+        return default_value;
+
+    if (val < 0)
+        return default_value;
+
+    return (unsigned int)(unsigned long int)val;
+}
+
 /* TODO, FIXME: handle memory allocation errors better. */
 static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
     size_t headerlen;
