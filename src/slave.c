@@ -746,8 +746,9 @@ static void *_slave_thread(void *arg)
         global_lock();
         if (global . schedule_config_reread)
         {
-            event_config_read (NULL);
-            global . schedule_config_reread = 0;
+            global.schedule_config_reread = 0;
+            ICECAST_LOG_INFO("Caught config reload request, re-reading config...");
+            event_config_read(NULL);
         }
         global_unlock();
 

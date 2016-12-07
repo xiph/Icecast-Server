@@ -343,6 +343,8 @@ static void _server_proc(void)
     }
     connection_accept_loop();
 
+    ICECAST_LOG_INFO("Caught halt request, shutting down...");
+
     connection_setup_sockets (NULL);
 }
 
