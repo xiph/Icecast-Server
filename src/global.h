@@ -15,8 +15,9 @@
 
 #define ICECAST_LISTEN_QUEUE 5
 
-#define ICECAST_RUNNING 1
-#define ICECAST_HALTING 2
+#define ICECAST_BOOTING 0 /* Still booting  */
+#define ICECAST_RUNNING 1 /* Up and running */
+#define ICECAST_HALTING 2 /* Shutting down  */
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
