@@ -2275,6 +2275,38 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node)
     }
 }
 
+static ice_config_cors_path_t* _cors_sort_paths_by_base_length_desc(ice_config_cors_path_t *cors_paths)
+{
+  ice_config_cors_path_t *curr = cors_paths;
+  ice_config_cors_path_t *prev = cors_paths;
+  ice_config_cors_path_t *largest = cors_paths;
+  ice_config_cors_path_t *largestPrev = cors_paths;
+  ice_config_cors_path_t *tmp;
+
+  // Enf of sorting or only one path or no path
+  if (!cors_paths || !cors_paths->next) {
+    return cors_paths;
+  }
+  // Find the largest base and set it first.
+  while(curr != NULL) {
+    if(strlen(curr->base) > strlen(largest->base)) {
+        largestPrev = prev;
+        largest = curr;
+      }
+      prev = curr;
+      curr = curr->next;
+  }
+  if(largest != cors_paths) {
+    largestPrev->next = cors_paths;
+    tmp = cors_paths->next;
+    cors_paths->next = largest->next;
+    largest->next = tmp;
+  }
+  // Recurse to the rest of the list
+  largest->next = _cors_sort_paths_by_base_length_desc(largest->next);
+  return largest;
+}
+
 static void _parse_cors(xmlDocPtr                 doc,
                         xmlNodePtr                node,
                         ice_config_cors_path_t  **cors_paths)
@@ -2293,8 +2325,11 @@ static void _parse_cors(xmlDocPtr                 doc,
         if (xmlStrcmp(node->name, XMLSTR("path")) != 0) {
             continue;
         }
-        if (!(base = (char *)xmlGetProp(node, XMLSTR("base")))) {
-          ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute");
+        if (
+          !(base = (char *)xmlGetProp(node, XMLSTR("base"))) ||
+          !strlen(base)
+        ) {
+          ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute or empty");
           xmlFree(xmlGetProp(node, XMLSTR("base")));
           continue;
         }
@@ -2323,6 +2358,28 @@ static void _parse_cors(xmlDocPtr                 doc,
     /* in case we used break we may need to clean those up */
     if (base)
         xmlFree(base);
+    *cors_paths = _cors_sort_paths_by_base_length_desc(*cors_paths);
+}
+
+static void _cors_sort_origins_by_length_desc(char **origins)
+{
+  int length;
+  char *temp;
+  
+  if (!origins || !origins[1]) {
+    return;
+  }
+  for (length = 0; origins[length]; length++);
+  for(int step = 0; step <length; step++)
+    for(int i = 0; i < length - step - 1; i++)
+    {
+        if(strlen(origins[i]) < strlen(origins[i+1]))
+        {
+            temp = origins[i];
+            origins[i] = origins[i + 1];
+            origins[i + 1] = temp;
+        }
+    }
 }
 
 static int _parse_cors_path(xmlDocPtr                doc,
@@ -2339,6 +2396,12 @@ static int _parse_cors_path(xmlDocPtr                doc,
         break;
     if (!tmpNode->name)
         continue;
+    if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
+      cors_path->no_cors = 1;
+      return 1;
+    }
+    if (xmlIsBlankNode(tmpNode))
+      continue;
     if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
       allowed_count++;
       continue;
@@ -2350,10 +2413,6 @@ static int _parse_cors_path(xmlDocPtr                doc,
     if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
       exposed_headers_count++;
       continue;
-    }
-    if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
-      cors_path->no_cors = 1;
-      return 1;
     }
   }
   if (!allowed_count && !forbidden_count && !exposed_headers_count) {
@@ -2380,6 +2439,8 @@ static int _parse_cors_path(xmlDocPtr                doc,
         break;
     if (!tmpNode->name)
         continue;
+    if (xmlIsBlankNode(tmpNode))
+      continue;
     if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
       cors_path->allowed[allowed_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
       continue;
@@ -2393,6 +2454,9 @@ static int _parse_cors_path(xmlDocPtr                doc,
       continue;
     }
   }
+  _cors_sort_origins_by_length_desc(cors_path->allowed);
+  _cors_sort_origins_by_length_desc(cors_path->forbidden);
+  _cors_sort_origins_by_length_desc(cors_path->exposed_headers);
   return 1;
 }
 
