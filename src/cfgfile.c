@@ -146,6 +146,17 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
+static void _parse_cors(xmlDocPtr                 doc,
+                        xmlNodePtr                node,
+                        ice_config_cors_path_t  **cors_paths);
+
+static int _parse_cors_path(xmlDocPtr                 doc,
+                             xmlNodePtr               node,
+                             ice_config_cors_path_t  *cors_path);
+
+static void config_clear_cors(ice_config_cors_path_t *cors_paths);
+
+
 operation_mode config_str_to_omode(const char *str)
 {
     if (!str || !*str)
@@ -599,6 +610,7 @@ void config_clear(ice_config_t *c)
 #endif
 
     config_clear_http_header(c->http_headers);
+    config_clear_cors(c->cors_paths);
     memset(c, 0, sizeof(ice_config_t));
 }
 
@@ -969,6 +981,8 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&configuration->event, node->xmlChildrenNode);
+        } else if (xmlStrcmp(node->name, XMLSTR("cors")) == 0) {
+            _parse_cors(doc, node->xmlChildrenNode, &(configuration->cors_paths));
         }
     } while ((node = node->next));
 
@@ -2099,6 +2113,156 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node)
         }
         node = node->next;
     }
+}
+
+static void _parse_cors(xmlDocPtr                 doc,
+                        xmlNodePtr                node,
+                        ice_config_cors_path_t  **cors_paths)
+{
+    ice_config_cors_path_t *path = NULL;
+    ice_config_cors_path_t *next = NULL;
+    char                   *base = NULL;
+
+    do {
+        if (node == NULL)
+            break;
+        if (xmlIsBlankNode(node))
+            continue;
+        if (!node->name)
+            continue;
+        if (xmlStrcmp(node->name, XMLSTR("path")) != 0) {
+            continue;
+        }
+        if (!(base = (char *)xmlGetProp(node, XMLSTR("base")))) {
+          ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute");
+          xmlFree(xmlGetProp(node, XMLSTR("base")));
+          continue;
+        }
+
+        path = calloc(1, sizeof(ice_config_cors_path_t));
+        if (!path) {
+          ICECAST_LOG_ERROR("Out of memory while parsing config file");
+          break;
+        }
+        path->base = base;
+        if (_parse_cors_path(doc, node, path)) {
+          base = NULL;
+          if (!*cors_paths) {
+              *cors_paths = path;
+              continue;
+          }
+          next = *cors_paths;
+          while (next->next) {
+              next = next->next;
+          }
+          next->next = path;
+        } else {
+          free(path);
+        }
+    } while ((node = node->next));
+    /* in case we used break we may need to clean those up */
+    if (base)
+        xmlFree(base);
+}
+
+static int _parse_cors_path(xmlDocPtr                doc,
+                            xmlNodePtr               node,
+                            ice_config_cors_path_t  *cors_path)
+{
+  int        allowed_count         = 0;
+  int        forbidden_count       = 0;
+  int        exposed_headers_count = 0;
+  xmlNodePtr tmpNode               = node->xmlChildrenNode;
+  
+  while ((tmpNode = tmpNode->next)) {
+    if (tmpNode == NULL)
+        break;
+    if (!tmpNode->name)
+        continue;
+    if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+      allowed_count++;
+      continue;
+    }
+    if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+      forbidden_count++;
+      continue;
+    }
+    if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+      exposed_headers_count++;
+      continue;
+    }
+    if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
+      cors_path->no_cors = 1;
+      return 1;
+    }
+  }
+  if (!allowed_count && !forbidden_count && !exposed_headers_count) {
+    return 0;
+  }
+  if (allowed_count) {
+    cors_path->allowed = calloc(allowed_count + 1, sizeof(char *));
+    cors_path->allowed[allowed_count] = NULL;
+  }
+  if (forbidden_count) {
+    cors_path->forbidden = calloc(forbidden_count + 1, sizeof(char *));
+    cors_path->forbidden[forbidden_count] = NULL;
+  }
+  if (exposed_headers_count) {
+    cors_path->exposed_headers = calloc(exposed_headers_count + 1, sizeof(char *));
+    cors_path->exposed_headers[exposed_headers_count] = NULL;
+  }
+  
+  tmpNode       = node->xmlChildrenNode;
+  allowed_count = forbidden_count = exposed_headers_count = 0;
+
+  while ((tmpNode = tmpNode->next)) {
+    if (tmpNode == NULL)
+        break;
+    if (!tmpNode->name)
+        continue;
+    if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+      cors_path->allowed[allowed_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+      continue;
+    }
+    if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+      cors_path->forbidden[forbidden_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+      continue;
+    }
+    if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+      cors_path->exposed_headers[exposed_headers_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+      continue;
+    }
+  }
+  return 1;
+}
+
+void config_clear_cors(ice_config_cors_path_t *cors_paths)
+{
+  while (cors_paths) {
+    ice_config_cors_path_t *path = cors_paths;
+    
+    cors_paths = path->next;
+    if (path->allowed) {
+      for (int i = 0; path->allowed[i]; i++) {
+        xmlFree(path->allowed[i]);
+      }
+      free(path->allowed);
+    }
+    if (path->forbidden) {
+      for (int i = 0; path->forbidden[i]; i++) {
+        xmlFree(path->forbidden[i]);
+      }
+      free(path->forbidden);
+    }
+    if (path->exposed_headers) {
+      for (int i = 0; path->exposed_headers[i]; i++) {
+        xmlFree(path->exposed_headers[i]);
+      }
+      free(path->exposed_headers);
+    }
+    xmlFree(path->base);
+    free(path);
+  }
 }
 
 config_options_t *config_parse_options(xmlNodePtr node)
