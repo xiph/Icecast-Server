@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>, 
+ * Copyright 2000-2004, Jack Moffitt <jack@xiph.org>,
  *                      Michael Smith <msmith@xiph.org>,
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
@@ -30,7 +30,7 @@ struct _mount_proxy;
 #include "global.h"
 #include "connection.h"
 
-#define XMLSTR(str) ((xmlChar *)(str)) 
+#define XMLSTR(str) ((xmlChar *)(str))
 
 typedef enum _operation_mode {
  /* Default operation mode. may depend on context */
@@ -185,7 +185,7 @@ typedef struct ice_config_cors_path {
     /* forbidden origins */
     char **forbidden;
     /* exposed headers */
-    char **exposed_headers;
+    char *exposed_headers;
     /* link to the next list element */
     struct ice_config_cors_path *next;
 } ice_config_cors_path_t;
