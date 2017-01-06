@@ -233,7 +233,7 @@ static inline void __read_unsigned_int(xmlDocPtr doc, xmlNodePtr node, unsigned 
     }
     if (str)
         xmlFree(str);
-}         
+}
 
 static inline int __parse_public(const char *str)
 {
@@ -2365,7 +2365,7 @@ static void _cors_sort_origins_by_length_desc(char **origins)
 {
   int length;
   char *temp;
-  
+
   if (!origins || !origins[1]) {
     return;
   }
@@ -2390,7 +2390,7 @@ static int _parse_cors_path(xmlDocPtr                doc,
   int        forbidden_count       = 0;
   int        exposed_headers_count = 0;
   xmlNodePtr tmpNode               = node->xmlChildrenNode;
-  
+
   while ((tmpNode = tmpNode->next)) {
     if (tmpNode == NULL)
         break;
@@ -2426,11 +2426,7 @@ static int _parse_cors_path(xmlDocPtr                doc,
     cors_path->forbidden = calloc(forbidden_count + 1, sizeof(char *));
     cors_path->forbidden[forbidden_count] = NULL;
   }
-  if (exposed_headers_count) {
-    cors_path->exposed_headers = calloc(exposed_headers_count + 1, sizeof(char *));
-    cors_path->exposed_headers[exposed_headers_count] = NULL;
-  }
-  
+
   tmpNode       = node->xmlChildrenNode;
   allowed_count = forbidden_count = exposed_headers_count = 0;
 
@@ -2450,13 +2446,34 @@ static int _parse_cors_path(xmlDocPtr                doc,
       continue;
     }
     if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
-      cors_path->exposed_headers[exposed_headers_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+      char *orig_value = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+      int first_value = 1;
+
+      if (!cors_path->exposed_headers) {
+        cors_path->exposed_headers = calloc(strlen(orig_value) + 1, sizeof(char));
+      } else {
+        cors_path->exposed_headers = realloc(
+          cors_path->exposed_headers,
+          (strlen(cors_path->exposed_headers) + strlen(orig_value) + 3)
+        );
+        first_value = 0;
+      }
+      if (!cors_path->exposed_headers) {
+        ICECAST_LOG_ERROR("Out of memory while parsing config file");
+        break;
+      }
+      if (!first_value) {
+        cors_path->exposed_headers = strcat(cors_path->exposed_headers, ", ");
+      }
+      cors_path->exposed_headers = strcat(cors_path->exposed_headers, orig_value);
+      xmlFree(orig_value);
       continue;
     }
   }
+
   _cors_sort_origins_by_length_desc(cors_path->allowed);
   _cors_sort_origins_by_length_desc(cors_path->forbidden);
-  _cors_sort_origins_by_length_desc(cors_path->exposed_headers);
+
   return 1;
 }
 
@@ -2464,7 +2481,7 @@ void config_clear_cors(ice_config_cors_path_t *cors_paths)
 {
   while (cors_paths) {
     ice_config_cors_path_t *path = cors_paths;
-    
+
     cors_paths = path->next;
     if (path->allowed) {
       for (int i = 0; path->allowed[i]; i++) {
@@ -2479,9 +2496,6 @@ void config_clear_cors(ice_config_cors_path_t *cors_paths)
       free(path->forbidden);
     }
     if (path->exposed_headers) {
-      for (int i = 0; path->exposed_headers[i]; i++) {
-        xmlFree(path->exposed_headers[i]);
-      }
       free(path->exposed_headers);
     }
     xmlFree(path->base);

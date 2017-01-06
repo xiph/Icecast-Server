@@ -44,7 +44,8 @@ noinst_HEADERS = \
     format_midi.h \
     format_kate.h \
     format_skeleton.h \
-    format_opus.h
+    format_opus.h \
+    cors.h
 
 icecast_SOURCES = \
     main.c \
@@ -83,7 +84,8 @@ icecast_SOURCES = \
     auth.c \
     auth_htpasswd.c \
     auth_anonymous.c \
-    auth_static.c
+    auth_static.c \
+    cors.c
 
 if HAVE_CURL
 icecast_SOURCES += \

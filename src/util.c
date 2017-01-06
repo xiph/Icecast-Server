@@ -49,6 +49,7 @@
 #include "util.h"
 #include "source.h"
 #include "admin.h"
+#include "cors.h"
 
 #define CATMODULE "util"
 
@@ -641,7 +642,11 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
     } while ((header = header->next));
     *ret = r;
 }
-static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
+static inline char * _build_headers(int                 status,
+                                    ice_config_t       *config,
+                                    source_t           *source,
+                                    struct _client_tag *client)
+{
     mount_proxy *mountproxy = NULL;
     char *ret = NULL;
     size_t len = 1;
@@ -655,6 +660,8 @@ static inline char * _build_headers(int status, ice_config_t *config, source_t *
     _build_headers_loop(&ret, &len, config->http_headers, status);
     if (mountproxy && mountproxy->http_headers)
         _build_headers_loop(&ret, &len, mountproxy->http_headers, status);
+
+    cors_set_headers(&ret, &len, config->cors_paths, client);
 
     return ret;
 }
@@ -760,7 +767,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         currenttime_buffer[0] = '\0';
 
     config = config_get_config();
-    extra_headers = _build_headers(status, config, source);
+    extra_headers = _build_headers(status, config, source, client);
     ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
