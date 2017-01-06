@@ -178,6 +178,21 @@ typedef struct _listener_t {
     tlsmode_t tls;
 } listener_t;
 
+typedef struct ice_config_cors_path {
+    /* base path */
+    char *base;
+    /* no-cors path */
+    int no_cors;
+    /* allowed origins */
+    char **allowed;
+    /* forbidden origins */
+    char **forbidden;
+    /* exposed headers */
+    char **exposed_headers;
+    /* link to the next list element */
+    struct ice_config_cors_path *next;
+} ice_config_cors_path_t;
+
 typedef struct _config_tls_context {
     char *cert_file;
     char *key_file;
@@ -224,6 +239,7 @@ typedef struct ice_config_tag {
     char *master_password;
 
     ice_config_http_header_t *http_headers;
+    ice_config_cors_path_t *cors_paths;
 
     /* is TLS supported by the server? */
     int tls_ok;
