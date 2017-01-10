@@ -63,6 +63,13 @@ static int _cors_valid_origin(ice_config_cors_path_t  *path, const char *origin)
   }
   if (path->allowed) {
     for (int i = 0; path->allowed[i]; i++) {
+      if ((strlen(path->allowed[i]) == 1) && path->allowed[i][0] == '*') {
+        ICECAST_LOG_DEBUG(
+          "All (\"*\") allowed origin for \"%s\", sending CORS",
+          origin
+        );
+        return 1;
+      }
       if (strstr(origin, path->allowed[i]) == origin) {
         ICECAST_LOG_DEBUG(
           "Declared origin \"%s\" matches allowed origin \"%s\", sending CORS",
@@ -173,7 +180,7 @@ static void _add_cors(char                   **out,
   _add_header(out, len, "Access-Control-Max-Age", "3600");
   _add_header(out, len, "Access-Control-Allow-Credentials", "true");
   _add_header(out, len, "Access-Control-Allow-Methods", "GET");
-  _add_header(out, len, "Access-Control-Allow-Headers", "Icy-MetaData");
+  _add_header(out, len, "Access-Control-Allow-Headers", "icy-metadata");
   return;
 }
 
