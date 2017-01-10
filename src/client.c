@@ -46,6 +46,8 @@
 /* for ADMIN_COMMAND_ERROR */
 #include "admin.h"
 
+#include "cors.h"
+
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif
@@ -316,6 +318,34 @@ void client_send_101(client_t *client, reuse_t reuse)
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);
 
+    fserve_add_client(client, NULL);
+}
+
+/* Sends an empty 204 response (for OPTIONS) */
+void client_send_204(client_t *client)
+{
+    ssize_t ret;
+
+    ret = util_http_build_header(client->refbuf->data,    // Response buffer
+                                 PER_CLIENT_REFBUF_SIZE,  // Buffer size
+                                 0,                       // Offset
+                                 0,                       // Prevent cache
+                                 204,                     // Status code
+                                 "No Content",            // Status message
+                                 NULL,                    // Content-Type
+                                 NULL,                    // Charset
+                                 NULL,                    // Data
+                                 NULL,                    // Source
+                                 client);
+
+    if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
+      ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+      client_send_500(client, "Header generation failed.");
+      return;
+    }
+    
+    client->respcode = 204;
+    client->refbuf->len = strlen(client->refbuf->data);
     fserve_add_client(client, NULL);
 }
 
