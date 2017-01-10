@@ -136,7 +136,7 @@ void connection_shutdown(void)
 #endif
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
- 
+
     thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy (&_connection_lock);
@@ -1142,6 +1142,7 @@ static int _handle_aliases(client_t *client, char **uri)
  */
 static void _handle_authed_client(client_t *client, void *uri, auth_result result)
 {
+    httpp_request_type_e req_type;
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
@@ -1151,7 +1152,13 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         return;
     }
 
-    if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
+    // If path is not /admin/ OPTIONS should respect the same acl as GET
+    // for preflighted request
+    req_type = client->parser->req_type;
+    if (strstr(client->parser->uri, "/admin/") != client->parser->uri) {
+      req_type = httpp_req_get;
+    }
+    if (acl_test_method(client->acl, req_type) != ACL_POLICY_ALLOW) {
         ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
         client_send_error(client, 401, 1, "You need to authenticate\r\n");
         free(uri);
@@ -1168,6 +1175,9 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         break;
         case httpp_req_get:
             _handle_get_request(client, uri);
+        break;
+        case httpp_req_options:
+              client_send_204(client);
         break;
         default:
             ICECAST_LOG_ERROR("Wrong request type from client");

@@ -764,7 +764,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               config->server_id,
                               connection_header,
                               (client && client->admin_command == ADMIN_COMMAND_ERROR ?
-                                                "GET, SOURCE" : "GET"),
+                                                "GET, OPTIONS, SOURCE" : "GET, OPTIONS"),
                               (config->tls_ok ? "Upgrade: TLS/1.0\r\n" : ""),
                               currenttime_buffer,
                               contenttype_buffer,

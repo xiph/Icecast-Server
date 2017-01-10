@@ -111,6 +111,7 @@ int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
 void client_send_error(client_t *client, int status, int plain, const char *message);
 void client_send_101(client_t *client, reuse_t reuse);
+void client_send_204(client_t *client);
 void client_send_426(client_t *client, reuse_t reuse);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
