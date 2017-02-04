@@ -2277,34 +2277,34 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node)
 
 static ice_config_cors_path_t* _cors_sort_paths_by_base_length_desc(ice_config_cors_path_t *cors_paths)
 {
-  ice_config_cors_path_t *curr = cors_paths;
-  ice_config_cors_path_t *prev = cors_paths;
-  ice_config_cors_path_t *largest = cors_paths;
-  ice_config_cors_path_t *largestPrev = cors_paths;
-  ice_config_cors_path_t *tmp;
+    ice_config_cors_path_t *curr = cors_paths;
+    ice_config_cors_path_t *prev = cors_paths;
+    ice_config_cors_path_t *largest = cors_paths;
+    ice_config_cors_path_t *largestPrev = cors_paths;
+    ice_config_cors_path_t *tmp;
 
-  // Enf of sorting or only one path or no path
-  if (!cors_paths || !cors_paths->next) {
-    return cors_paths;
-  }
-  // Find the largest base and set it first.
-  while(curr != NULL) {
-    if(strlen(curr->base) > strlen(largest->base)) {
-        largestPrev = prev;
-        largest = curr;
-      }
-      prev = curr;
-      curr = curr->next;
-  }
-  if(largest != cors_paths) {
-    largestPrev->next = cors_paths;
-    tmp = cors_paths->next;
-    cors_paths->next = largest->next;
-    largest->next = tmp;
-  }
-  // Recurse to the rest of the list
-  largest->next = _cors_sort_paths_by_base_length_desc(largest->next);
-  return largest;
+    // End of sorting or only one path or no path
+    if (!cors_paths || !cors_paths->next) {
+      return cors_paths;
+    }
+    // Find the largest base and set it first.
+    while(curr != NULL) {
+        if(strlen(curr->base) > strlen(largest->base)) {
+            largestPrev = prev;
+            largest = curr;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    if(largest != cors_paths) {
+        largestPrev->next = cors_paths;
+        tmp = cors_paths->next;
+        cors_paths->next = largest->next;
+        largest->next = tmp;
+    }
+    // Recurse to the rest of the list
+    largest->next = _cors_sort_paths_by_base_length_desc(largest->next);
+    return largest;
 }
 
 static void _parse_cors(xmlDocPtr                 doc,
@@ -2329,30 +2329,30 @@ static void _parse_cors(xmlDocPtr                 doc,
           !(base = (char *)xmlGetProp(node, XMLSTR("base"))) ||
           !strlen(base)
         ) {
-          ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute or empty");
-          xmlFree(xmlGetProp(node, XMLSTR("base")));
-          continue;
+            ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute or empty");
+            xmlFree(xmlGetProp(node, XMLSTR("base")));
+            continue;
         }
 
         path = calloc(1, sizeof(ice_config_cors_path_t));
         if (!path) {
-          ICECAST_LOG_ERROR("Out of memory while parsing config file");
-          break;
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            break;
         }
         path->base = base;
         if (!_parse_cors_path(doc, node, path)) {
-          base = NULL;
-          if (!*cors_paths) {
-              *cors_paths = path;
-              continue;
-          }
-          next = *cors_paths;
-          while (next->next) {
-              next = next->next;
-          }
-          next->next = path;
+            base = NULL;
+            if (!*cors_paths) {
+                *cors_paths = path;
+                continue;
+            }
+            next = *cors_paths;
+            while (next->next) {
+                next = next->next;
+            }
+            next->next = path;
         } else {
-          free(path);
+            free(path);
         }
     } while ((node = node->next));
     /* in case we used break we may need to clean those up */
@@ -2363,14 +2363,14 @@ static void _parse_cors(xmlDocPtr                 doc,
 
 static void _cors_sort_origins_by_length_desc(char **origins)
 {
-  int length;
-  char *temp;
+    int length;
+    char *temp;
 
-  if (!origins || !origins[1]) {
-    return;
-  }
-  for (length = 0; origins[length]; length++);
-  for(int step = 0; step <length; step++)
+    if (!origins || !origins[1]) {
+        return;
+    }
+    for (length = 0; origins[length]; length++);
+    for(int step = 0; step <length; step++)
     for(int i = 0; i < length - step - 1; i++)
     {
         if(strlen(origins[i]) < strlen(origins[i+1]))
