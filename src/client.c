@@ -299,9 +299,16 @@ void client_send_101(client_t *client, reuse_t reuse)
 /* Sends an empty 204 response (for OPTIONS) */
 void client_send_204(client_t *client)
 {
-    ssize_t ret;
+    ssize_t  ret;
+    char    *message;
 
-    ret = util_http_build_header(client->refbuf->data,    // Response buffer
+    message = calloc(PER_CLIENT_REFBUF_SIZE, sizeof(char));
+
+    if (!message) {
+        client_send_500(client, "Unable to allocate memory for response");
+        return;
+    }
+    ret = util_http_build_header(message,                 // Response buffer
                                  PER_CLIENT_REFBUF_SIZE,  // Buffer size
                                  0,                       // Offset
                                  0,                       // Prevent cache
@@ -314,14 +321,15 @@ void client_send_204(client_t *client)
                                  client);
 
     if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
-      ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-      client_send_500(client, "Header generation failed.");
-      return;
+        free(message);
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_500(client, "Header generation failed.");
+        return;
     }
     
-    client->respcode = 204;
-    client->refbuf->len = strlen(client->refbuf->data);
-    fserve_add_client(client, NULL);
+    client_send_bytes(client, message, strlen(message));
+    client_destroy(client);
+    free(message);
 }
 
 void client_send_426(client_t *client, reuse_t reuse)

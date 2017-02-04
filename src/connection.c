@@ -1156,7 +1156,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     // for preflighted request
     req_type = client->parser->req_type;
     if (strstr(client->parser->uri, "/admin/") != client->parser->uri) {
-      req_type = httpp_req_get;
+        req_type = httpp_req_get;
     }
     if (acl_test_method(client->acl, req_type) != ACL_POLICY_ALLOW) {
         ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
@@ -1177,7 +1177,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             _handle_get_request(client, uri);
         break;
         case httpp_req_options:
-              client_send_204(client);
+            client_send_204(client);
         break;
         default:
             ICECAST_LOG_ERROR("Wrong request type from client");
