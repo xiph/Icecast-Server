@@ -2340,7 +2340,7 @@ static void _parse_cors(xmlDocPtr                 doc,
           break;
         }
         path->base = base;
-        if (_parse_cors_path(doc, node, path)) {
+        if (!_parse_cors_path(doc, node, path)) {
           base = NULL;
           if (!*cors_paths) {
               *cors_paths = path;
@@ -2386,95 +2386,108 @@ static int _parse_cors_path(xmlDocPtr                doc,
                             xmlNodePtr               node,
                             ice_config_cors_path_t  *cors_path)
 {
-  int        allowed_count         = 0;
-  int        forbidden_count       = 0;
-  int        exposed_headers_count = 0;
-  xmlNodePtr tmpNode               = node->xmlChildrenNode;
+    int        allowed_count         = 0;
+    int        forbidden_count       = 0;
+    int        exposed_headers_count = 0;
+    xmlNodePtr tmpNode               = node->xmlChildrenNode;
 
-  while ((tmpNode = tmpNode->next)) {
-    if (tmpNode == NULL)
-        break;
-    if (!tmpNode->name)
-        continue;
-    if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
-      cors_path->no_cors = 1;
-      return 1;
+    while ((tmpNode = tmpNode->next)) {
+        if (tmpNode == NULL)
+            break;
+        if (!tmpNode->name)
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
+            cors_path->no_cors = 1;
+            return 0;
+        }
+        if (xmlIsBlankNode(tmpNode))
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+            allowed_count++;
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+            forbidden_count++;
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+            exposed_headers_count++;
+            continue;
+        }
     }
-    if (xmlIsBlankNode(tmpNode))
-      continue;
-    if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
-      allowed_count++;
-      continue;
+    if (!allowed_count && !forbidden_count && !exposed_headers_count) {
+        return 1;
     }
-    if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
-      forbidden_count++;
-      continue;
+    if (allowed_count) {
+        cors_path->allowed = calloc(allowed_count + 1, sizeof(char *));
+        if (!cors_path->allowed) {
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            return 1;
+        }
+        cors_path->allowed[allowed_count] = NULL;
     }
-    if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
-      exposed_headers_count++;
-      continue;
+    if (forbidden_count) {
+        cors_path->forbidden = calloc(forbidden_count + 1, sizeof(char *));
+        if (!cors_path->forbidden) {
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            if (cors_path->allowed)
+                free(cors_path->allowed);
+            return 1;
+        }
+        cors_path->forbidden[forbidden_count] = NULL;
     }
-  }
-  if (!allowed_count && !forbidden_count && !exposed_headers_count) {
+
+    tmpNode       = node->xmlChildrenNode;
+    allowed_count = forbidden_count = exposed_headers_count = 0;
+
+    while ((tmpNode = tmpNode->next)) {
+        if (tmpNode == NULL)
+            break;
+        if (!tmpNode->name)
+            continue;
+        if (xmlIsBlankNode(tmpNode))
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+            cors_path->allowed[allowed_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+            cors_path->forbidden[forbidden_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+            char *orig_value = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            int first_value = 1;
+
+            if (!cors_path->exposed_headers) {
+                cors_path->exposed_headers = calloc(strlen(orig_value) + 1, sizeof(char));
+            } else {
+                cors_path->exposed_headers = realloc(
+                    cors_path->exposed_headers,
+                    (strlen(cors_path->exposed_headers) + strlen(orig_value) + 3)
+                );
+                first_value = 0;
+            }
+            if (!cors_path->exposed_headers) {
+                ICECAST_LOG_ERROR("Out of memory while parsing config file");
+                if (cors_path->allowed)
+                    free(cors_path->allowed);
+                if (cors_path->forbidden)
+                    free(cors_path->forbidden); 
+                return 1;
+            }
+            if (!first_value)
+                cors_path->exposed_headers = strcat(cors_path->exposed_headers, ", ");
+            cors_path->exposed_headers = strcat(cors_path->exposed_headers, orig_value);
+            xmlFree(orig_value);
+            continue;
+        }
+    }
+
+    _cors_sort_origins_by_length_desc(cors_path->allowed);
+    _cors_sort_origins_by_length_desc(cors_path->forbidden);
+
     return 0;
-  }
-  if (allowed_count) {
-    cors_path->allowed = calloc(allowed_count + 1, sizeof(char *));
-    cors_path->allowed[allowed_count] = NULL;
-  }
-  if (forbidden_count) {
-    cors_path->forbidden = calloc(forbidden_count + 1, sizeof(char *));
-    cors_path->forbidden[forbidden_count] = NULL;
-  }
-
-  tmpNode       = node->xmlChildrenNode;
-  allowed_count = forbidden_count = exposed_headers_count = 0;
-
-  while ((tmpNode = tmpNode->next)) {
-    if (tmpNode == NULL)
-        break;
-    if (!tmpNode->name)
-        continue;
-    if (xmlIsBlankNode(tmpNode))
-      continue;
-    if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
-      cors_path->allowed[allowed_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
-      continue;
-    }
-    if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
-      cors_path->forbidden[forbidden_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
-      continue;
-    }
-    if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
-      char *orig_value = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
-      int first_value = 1;
-
-      if (!cors_path->exposed_headers) {
-        cors_path->exposed_headers = calloc(strlen(orig_value) + 1, sizeof(char));
-      } else {
-        cors_path->exposed_headers = realloc(
-          cors_path->exposed_headers,
-          (strlen(cors_path->exposed_headers) + strlen(orig_value) + 3)
-        );
-        first_value = 0;
-      }
-      if (!cors_path->exposed_headers) {
-        ICECAST_LOG_ERROR("Out of memory while parsing config file");
-        break;
-      }
-      if (!first_value) {
-        cors_path->exposed_headers = strcat(cors_path->exposed_headers, ", ");
-      }
-      cors_path->exposed_headers = strcat(cors_path->exposed_headers, orig_value);
-      xmlFree(orig_value);
-      continue;
-    }
-  }
-
-  _cors_sort_origins_by_length_desc(cors_path->allowed);
-  _cors_sort_origins_by_length_desc(cors_path->forbidden);
-
-  return 1;
 }
 
 void config_clear_cors(ice_config_cors_path_t *cors_paths)
