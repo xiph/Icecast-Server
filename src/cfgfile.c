@@ -1614,6 +1614,7 @@ static void _parse_master(xmlDocPtr      doc,
     master->username     = (char *) xmlCharStrdup(configuration->master_username);
     if (configuration->master_password)
         master->password = (char *) xmlCharStrdup(configuration->master_password);
+    master->namespace    = NULL;
 
     do {
         if (node == NULL)
