@@ -72,7 +72,8 @@ master_server *master_free(master_server *master)
     {
         next = master->next;
         ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
-        xmlFree(master->server);
+        if (master->server)
+            xmlFree(master->server);
         if (master->username)
             xmlFree(master->username);
         if (master->password)

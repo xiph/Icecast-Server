@@ -1610,7 +1610,7 @@ static void _parse_master(xmlDocPtr      doc,
 
     master->next         = NULL;
     master->on_demand    = configuration->on_demand;
-    master->server       = (char *) xmlCharStrdup("127.0.0.1");
+    master->server       = NULL;
     master->username     = (char *) xmlCharStrdup(configuration->master_username);
     if (configuration->master_password)
         master->password = (char *) xmlCharStrdup(configuration->master_password);
@@ -1656,6 +1656,10 @@ static void _parse_master(xmlDocPtr      doc,
                 xmlFree(tmp);
         }
     } while ((node = node->next));
+
+    if (master->server == NULL) {
+        ICECAST_LOG_WARN("<server> is required for <master>.");
+    }
 }
 
 static void _parse_relay(xmlDocPtr      doc,
