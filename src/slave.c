@@ -773,9 +773,11 @@ static int update_from_master(master_server *master)
                 r->mount = strdup(parsed_uri->path);
                 if (master->namespace)
                 {
-                    int mountlen = strlen(master->namespace) + strlen(parsed_uri->path) + 1;
+                    int mountlen = strlen(master->namespace) + strlen(parsed_uri->path) + 2;
                     r->localmount = malloc(mountlen);
-                    snprintf(r->localmount, mountlen, "%s%s", master->namespace, parsed_uri->path);
+                    snprintf(r->localmount, mountlen, "%s%s%s",
+                        (master->namespace[0] == '/') ? "" : "/", master->namespace,
+                        parsed_uri->path);
                 } else {
                     r->localmount = strdup(parsed_uri->path);
                 }
