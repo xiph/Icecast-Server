@@ -107,11 +107,10 @@ static master_server *master_copy(master_server *master)
 }
 
 
-/* free master list and return NULL */
-static master_server *master_list_free(master_server *list)
+/* free master list */
+static void master_list_free(master_server *list)
 {
     while ((list = master_free(list)));
-    return list;
 }
 
 
@@ -132,7 +131,8 @@ static master_server *master_list_copy(master_server *list) {
         master_server *copy = master_copy(list);
         if (copy == NULL)
         {
-            list_copy = master_list_free(list_copy);
+            master_list_free(list_copy);
+            list_copy = NULL;
             break;
         }
         list_copy = master_list_insert(list_copy, copy);
