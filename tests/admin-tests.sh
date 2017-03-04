@@ -51,7 +51,7 @@ echo
 echo "Testing admin/manageauth endpoint"
 test_endpoint "admin/manageauth?id=4&username=$L_USER&password=$L_PASS&action=add"                              401
 test_endpoint "admin/manageauth?id=99&username=$L_USER&password=$L_PASS&action=add"                             401
-test_endpoint "admin/manageauth?id=99&username=$L_USER&password=$L_PASS&action=add"                             400 "$AUTH_ADMIN"
+test_endpoint "admin/manageauth?id=99&username=$L_USER&password=$L_PASS&action=add"                             404 "$AUTH_ADMIN"
 test_endpoint "admin/manageauth?id=4&username=$L_USER&password=$L_PASS&action=add"                              200 "$AUTH_ADMIN"
 
 echo
