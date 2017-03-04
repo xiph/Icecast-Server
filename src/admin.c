@@ -49,46 +49,6 @@
 #define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
 #define COMMAND_ANY                        ADMIN_COMMAND_ANY
 
-/* Mount-specific commands (block 1-49 and 50-99) */
-#define COMMAND_RAW_FALLBACK               1
-#define COMMAND_RAW_METADATA_UPDATE        2
-#define COMMAND_RAW_SHOW_LISTENERS         3
-#define COMMAND_RAW_MOVE_CLIENTS           4
-#define COMMAND_RAW_MANAGEAUTH             5
-#define COMMAND_SHOUTCAST_METADATA_UPDATE  6
-#define COMMAND_RAW_UPDATEMETADATA         7
-
-#define COMMAND_TRANSFORMED_FALLBACK        50
-#define COMMAND_TRANSFORMED_SHOW_LISTENERS  53
-#define COMMAND_TRANSFORMED_MOVE_CLIENTS    54
-#define COMMAND_TRANSFORMED_MANAGEAUTH      55
-#define COMMAND_TRANSFORMED_UPDATEMETADATA  56
-#define COMMAND_TRANSFORMED_METADATA_UPDATE 57
-
-/* Global commands (block 101-199 and 201-299) */
-#define COMMAND_RAW_LIST_MOUNTS             101
-#define COMMAND_RAW_STATS                   102
-#define COMMAND_RAW_LISTSTREAM              103
-#define COMMAND_PLAINTEXT_LISTSTREAM        104
-#define COMMAND_RAW_QUEUE_RELOAD            105
-#define COMMAND_TRANSFORMED_LIST_MOUNTS     201
-#define COMMAND_TRANSFORMED_STATS           202
-#define COMMAND_TRANSFORMED_LISTSTREAM      203
-#define COMMAND_TRANSFORMED_QUEUE_RELOAD    205
-
-/* Client management commands (block 301-399 and 401-499) */
-#define COMMAND_RAW_KILL_CLIENT             301
-#define COMMAND_RAW_KILL_SOURCE             302
-#define COMMAND_TRANSFORMED_KILL_CLIENT     401
-#define COMMAND_TRANSFORMED_KILL_SOURCE     402
-
-/* Admin commands requiring no auth (block 501-599) */
-#define COMMAND_BUILDM3U                    501
-
-/* Experimental features (e.g. in feature branches) (block 801-899) */
-
-/* Private features (in branches not for merge with master) (block 901-999) */
-
 #define FALLBACK_RAW_REQUEST                "fallbacks"
 #define FALLBACK_TRANSFORMED_REQUEST        "fallbacks.xsl"
 #define SHOUTCAST_METADATA_REQUEST          "admin.cgi"
@@ -120,97 +80,86 @@
 #define DEFAULT_TRANSFORMED_REQUEST         ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
 
-typedef struct admin_command_tag {
-    const int   id;
-    const char *name;
-    const int   type;
-    const int   format;
-} admin_command_t;
+typedef void (*request_function_ptr)(client_t *, source_t *, int);
 
-/*
-COMMAND_TRANSFORMED_METADATA_UPDATE -> METADATA_TRANSFORMED_REQUEST
-COMMAND_TRANSFORMED_UPDATEMETADATA  -> UPDATEMETADATA_TRANSFORMED_REQUEST
-*/
+typedef struct admin_command_handler {
+    const char                     *route;
+    const int                       type;
+    const int                       format;
+    const request_function_ptr      function;
+} admin_command_handler_t;
 
-static const admin_command_t commands[] = {
- {COMMAND_RAW_FALLBACK,                FALLBACK_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_FALLBACK,        FALLBACK_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_METADATA_UPDATE,         METADATA_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
- {COMMAND_SHOUTCAST_METADATA_UPDATE,   SHOUTCAST_METADATA_REQUEST,         ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_TRANSFORMED_METADATA_UPDATE, METADATA_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_SHOW_LISTENERS,          LISTCLIENTS_RAW_REQUEST,            ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_SHOW_LISTENERS,  LISTCLIENTS_TRANSFORMED_REQUEST,    ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_STATS,                   STATS_RAW_REQUEST,                  ADMINTYPE_HYBRID,  RAW},
- {COMMAND_TRANSFORMED_STATS,           STATS_TRANSFORMED_REQUEST,          ADMINTYPE_HYBRID,  TRANSFORMED},
- {COMMAND_RAW_STATS,                   "stats.xml",                        ADMINTYPE_HYBRID,  RAW}, /* The old way */
- {COMMAND_RAW_QUEUE_RELOAD,            QUEUE_RELOAD_RAW_REQUEST,           ADMINTYPE_GENERAL, RAW},
- {COMMAND_TRANSFORMED_QUEUE_RELOAD,    QUEUE_RELOAD_TRANSFORMED_REQUEST,   ADMINTYPE_GENERAL, TRANSFORMED},
- {COMMAND_RAW_LIST_MOUNTS,             LISTMOUNTS_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
- {COMMAND_TRANSFORMED_LIST_MOUNTS,     LISTMOUNTS_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
- {COMMAND_RAW_LISTSTREAM,              STREAMLIST_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
- {COMMAND_PLAINTEXT_LISTSTREAM,        STREAMLIST_PLAINTEXT_REQUEST,       ADMINTYPE_GENERAL, PLAINTEXT},
- {COMMAND_TRANSFORMED_LISTSTREAM,      STREAMLIST_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
- {COMMAND_RAW_MOVE_CLIENTS,            MOVECLIENTS_RAW_REQUEST,            ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_MOVE_CLIENTS,    MOVECLIENTS_TRANSFORMED_REQUEST,    ADMINTYPE_HYBRID,  TRANSFORMED},
- {COMMAND_RAW_KILL_CLIENT,             KILLCLIENT_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_KILL_CLIENT,     KILLCLIENT_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_KILL_SOURCE,             KILLSOURCE_RAW_REQUEST,             ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_KILL_SOURCE,     KILLSOURCE_TRANSFORMED_REQUEST,     ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_RAW_MANAGEAUTH,              MANAGEAUTH_RAW_REQUEST,             ADMINTYPE_GENERAL, RAW},
- {COMMAND_TRANSFORMED_MANAGEAUTH,      MANAGEAUTH_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL, TRANSFORMED},
- {COMMAND_RAW_UPDATEMETADATA,          UPDATEMETADATA_RAW_REQUEST,         ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_UPDATEMETADATA,  UPDATEMETADATA_TRANSFORMED_REQUEST, ADMINTYPE_MOUNT,   TRANSFORMED},
- {COMMAND_BUILDM3U,                    BUILDM3U_RAW_REQUEST,               ADMINTYPE_MOUNT,   RAW},
- {COMMAND_TRANSFORMED_STATS,           DEFAULT_TRANSFORMED_REQUEST,        ADMINTYPE_HYBRID,  TRANSFORMED},
- {COMMAND_TRANSFORMED_STATS,           DEFAULT_RAW_REQUEST,                ADMINTYPE_HYBRID,  TRANSFORMED},
- {COMMAND_ANY,                         "*",                                ADMINTYPE_GENERAL, TRANSFORMED} /* for ACL framework */
+static void command_fallback            (client_t *, source_t *, int);
+static void command_metadata            (client_t *, source_t *, int);
+static void command_shoutcast_metadata  (client_t *, source_t *, int);
+static void command_show_listeners      (client_t *, source_t *, int);
+static void command_stats               (client_t *, source_t *, int);
+static void command_queue_reload        (client_t *, source_t *, int);
+static void command_list_mounts         (client_t *, source_t *, int);
+static void command_move_clients        (client_t *, source_t *, int);
+static void command_kill_client         (client_t *, source_t *, int);
+static void command_kill_source         (client_t *, source_t *, int);
+static void command_manageauth          (client_t *, source_t *, int);
+static void command_updatemetadata      (client_t *, source_t *, int);
+static void command_buildm3u            (client_t *, source_t *, int);
+
+static const admin_command_handler_t handlers[] = {
+    { "*",                                  ADMINTYPE_GENERAL,      TRANSFORMED,    NULL }, /* for ACL framework */
+    { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        RAW,            &command_fallback },
+    { FALLBACK_TRANSFORMED_REQUEST,         ADMINTYPE_MOUNT,        TRANSFORMED,    &command_fallback },
+    { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        RAW,            &command_metadata },
+    { METADATA_TRANSFORMED_REQUEST,         ADMINTYPE_MOUNT,        TRANSFORMED,    &command_metadata },
+    { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        TRANSFORMED,    &command_shoutcast_metadata },
+    { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        RAW,            &command_show_listeners },
+    { LISTCLIENTS_TRANSFORMED_REQUEST,      ADMINTYPE_MOUNT,        TRANSFORMED,    &command_show_listeners },
+    { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       RAW,            &command_stats },
+    { STATS_TRANSFORMED_REQUEST,            ADMINTYPE_HYBRID,       TRANSFORMED,    &command_stats },
+    { "stats.xml",                          ADMINTYPE_HYBRID,       RAW,            &command_stats },
+    { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      RAW,            &command_queue_reload },
+    { QUEUE_RELOAD_TRANSFORMED_REQUEST,     ADMINTYPE_GENERAL,      TRANSFORMED,    &command_queue_reload },
+    { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      RAW,            &command_list_mounts },
+    { LISTMOUNTS_TRANSFORMED_REQUEST,       ADMINTYPE_GENERAL,      TRANSFORMED,    &command_list_mounts },
+    { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      RAW,            &command_list_mounts },
+    { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      PLAINTEXT,      &command_list_mounts },
+    { STREAMLIST_TRANSFORMED_REQUEST,       ADMINTYPE_GENERAL,      TRANSFORMED,    &command_list_mounts },
+    { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        RAW,            &command_move_clients },
+    { MOVECLIENTS_TRANSFORMED_REQUEST,      ADMINTYPE_HYBRID,       TRANSFORMED,    &command_move_clients },
+    { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        RAW,            &command_kill_client },
+    { KILLCLIENT_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,        TRANSFORMED,    &command_kill_client },
+    { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        RAW,            &command_kill_source },
+    { KILLSOURCE_TRANSFORMED_REQUEST,       ADMINTYPE_MOUNT,        TRANSFORMED,    &command_kill_source },
+    { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      RAW,            &command_manageauth },
+    { MANAGEAUTH_TRANSFORMED_REQUEST,       ADMINTYPE_GENERAL,      TRANSFORMED,    &command_manageauth },
+    { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        RAW,            &command_updatemetadata },
+    { UPDATEMETADATA_TRANSFORMED_REQUEST,   ADMINTYPE_MOUNT,        TRANSFORMED,    &command_updatemetadata },
+    { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        RAW,            &command_buildm3u },
+    { DEFAULT_TRANSFORMED_REQUEST,          ADMINTYPE_HYBRID,       TRANSFORMED,    &command_stats },
+    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       TRANSFORMED,    &command_stats }
 };
+
+#define HANDLERS_COUNT (sizeof(handlers)/sizeof(*handlers))
 
 int admin_get_command(const char *command)
 {
     size_t i;
 
-    for (i = 0; i < (sizeof(commands)/sizeof(*commands)); i++)
-        if (strcmp(commands[i].name, command) == 0)
-            return commands[i].id;
+    for (i = 0; i < HANDLERS_COUNT; i++)
+        if (strcmp(handlers[i].route, command) == 0)
+            return i;
 
     return COMMAND_ERROR;
 }
 
 int admin_get_command_type(int command)
 {
-    size_t i;
-
     if (command == ADMIN_COMMAND_ERROR || command == COMMAND_ANY)
         return ADMINTYPE_ERROR;
 
-    for (i = 0; i < (sizeof(commands)/sizeof(*commands)); i++)
-        if (commands[i].id == command)
-            return commands[i].type;
+    if (command < HANDLERS_COUNT)
+        return handlers[command].type;
 
     return ADMINTYPE_ERROR;
 }
-
-static void command_fallback(client_t *client, source_t *source, int response);
-static void command_metadata(client_t *client, source_t *source, int response);
-static void command_shoutcast_metadata(client_t *client, source_t *source);
-static void command_show_listeners(client_t *client, source_t *source,
-        int response);
-static void command_move_clients(client_t *client, source_t *source,
-        int response);
-static void command_stats(client_t *client, const char *mount, int response);
-static void command_queue_reload(client_t *client, int response);
-static void command_list_mounts(client_t *client, int response);
-static void command_kill_client(client_t *client, source_t *source,
-        int response);
-static void command_manageauth(client_t *client, int response);
-static void command_buildm3u(client_t *client, const char *mount);
-static void command_kill_source(client_t *client, source_t *source,
-        int response);
-static void command_updatemetadata(client_t *client, source_t *source,
-        int response);
-static void admin_handle_mount_request(client_t *client, source_t *source);
-static void admin_handle_general_request(client_t *client);
 
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
@@ -364,37 +313,28 @@ void admin_send_response(xmlDocPtr     doc,
     }
 }
 
-
 void admin_handle_request(client_t *client, const char *uri)
 {
-    const char *mount, *command_string;
+    const char *mount;
+    const admin_command_handler_t* handler;
 
-    ICECAST_LOG_DEBUG("Admin request (%s)", uri);
-    if (!((strcmp(uri, "/admin.cgi") == 0) ||
-         (strncmp("/admin/", uri, 7) == 0))) {
-        ICECAST_LOG_ERROR("Internal error: admin request isn't");
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        return;
-    }
+    ICECAST_LOG_DEBUG("Got admin request '%s'", uri);
 
-    if (strcmp(uri, "/admin.cgi") == 0) {
-        command_string = uri + 1;
-    }
-    else {
-        command_string = uri + 7;
-    }
-
-    ICECAST_LOG_DEBUG("Got command (%s)", command_string);
-
+    /* Check if admin command is valid */
     if (client->admin_command <= 0) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %s",
-                command_string);
+                uri);
         client_send_error(client, 400, 0, "Unrecognised command");
         return;
     }
 
+    handler = &handlers[client->admin_command];
+
+    /* Check ACL */
     if (acl_test_admin(client->acl, client->admin_command) != ACL_POLICY_ALLOW) {
-        if (client->admin_command == COMMAND_RAW_METADATA_UPDATE &&
+
+        /* ACL disallows, check exceptions */
+        if ((handler->function == command_metadata && handler->format == RAW) &&
             (acl_test_method(client->acl, httpp_req_source) == ACL_POLICY_ALLOW ||
              acl_test_method(client->acl, httpp_req_put)    == ACL_POLICY_ALLOW)) {
             ICECAST_LOG_DEBUG("Granted right to call COMMAND_RAW_METADATA_UPDATE to "
@@ -407,155 +347,44 @@ void admin_handle_request(client_t *client, const char *uri)
 
     mount = httpp_get_query_param(client->parser, "mount");
 
-    if(mount != NULL) {
-        source_t *source;
+    source_t *source = NULL;
 
-        /* this request does not require auth but can apply to files on webroot */
-        if (client->admin_command == COMMAND_BUILDM3U) {
-            command_buildm3u(client, mount);
-            return;
-        }
+    /* Find mountpoint source */
+    if(mount != NULL) {
 
         /* This is a mount request, handle it as such */
         avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(mount);
 
+        /* No Source found */
         if (source == NULL) {
-            ICECAST_LOG_WARN("Admin command %s on non-existent source %s",
-                    command_string, mount);
             avl_tree_unlock(global.source_tree);
+            ICECAST_LOG_WARN("Admin command '%s' on non-existent source '%s'",
+                    uri, mount);
             client_send_error(client, 400, 0, "Source does not exist");
-        } else {
-            if (source->running == 0 && source->on_demand == 0) {
-                avl_tree_unlock(global.source_tree);
-                ICECAST_LOG_INFO("Received admin command %s on unavailable mount \"%s\"",
-                        command_string, mount);
-                client_send_error(client, 400, 0, "Source is not available");
-                return;
-            }
-            if (client->admin_command == COMMAND_SHOUTCAST_METADATA_UPDATE &&
-                    source->shoutcast_compat == 0) {
-                avl_tree_unlock(global.source_tree);
-                ICECAST_LOG_ERROR("illegal change of metadata on non-shoutcast "
-                        "compatible stream");
-                client_send_error(client, 400, 0, "illegal metadata call");
-                return;
-            }
-            ICECAST_LOG_INFO("Received admin command %s on mount \"%s\"",
-                    command_string, mount);
-            admin_handle_mount_request(client, source);
+            return;
+        } /* No Source running */
+        else if (source->running == 0 && source->on_demand == 0) {
             avl_tree_unlock(global.source_tree);
+            ICECAST_LOG_INFO("Received admin command '%s' on unavailable mount '%s'",
+                    uri, mount);
+            client_send_error(client, 400, 0, "Source is not available");
+            return;
         }
-    } else {
-        admin_handle_general_request(client);
+        ICECAST_LOG_INFO("Received admin command %s on mount '%s'",
+                    uri, mount);
     }
-}
 
-static void admin_handle_general_request(client_t *client)
-{
-    switch(client->admin_command) {
-        case COMMAND_RAW_STATS:
-            command_stats(client, NULL, RAW);
-        break;
-        case COMMAND_RAW_QUEUE_RELOAD:
-            command_queue_reload(client, RAW);
-        break;
-        case COMMAND_RAW_LIST_MOUNTS:
-            command_list_mounts(client, RAW);
-        break;
-        case COMMAND_RAW_LISTSTREAM:
-            command_list_mounts(client, RAW);
-        break;
-        case COMMAND_PLAINTEXT_LISTSTREAM:
-            command_list_mounts(client, PLAINTEXT);
-        break;
-        case COMMAND_TRANSFORMED_STATS:
-            command_stats(client, NULL, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_QUEUE_RELOAD:
-            command_queue_reload(client, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_LIST_MOUNTS:
-            command_list_mounts(client, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_LISTSTREAM:
-            command_list_mounts(client, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
-            command_list_mounts(client, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_MANAGEAUTH:
-            command_manageauth(client, TRANSFORMED);
-        break;
-        case COMMAND_RAW_MANAGEAUTH:
-            command_manageauth(client, RAW);
-        break;
-        default:
-            ICECAST_LOG_WARN("General admin request not recognised");
-            client_send_error(client, 400, 0, "Unknown admin request");
+    if (handler->type == ADMINTYPE_MOUNT && !source) {
+        client_send_error(client, 400, 0, "Mount parameter mandatory");
         return;
     }
-}
 
-static void admin_handle_mount_request(client_t *client, source_t *source)
-{
-    switch(client->admin_command) {
-        case COMMAND_RAW_STATS:
-            command_stats(client, source->mount, RAW);
-        break;
-        case COMMAND_RAW_FALLBACK:
-            command_fallback(client, source, RAW);
-        break;
-        case COMMAND_RAW_METADATA_UPDATE:
-            command_metadata(client, source, RAW);
-        break;
-        case COMMAND_TRANSFORMED_METADATA_UPDATE:
-            command_metadata(client, source, TRANSFORMED);
-        break;
-        case COMMAND_SHOUTCAST_METADATA_UPDATE:
-            command_shoutcast_metadata(client, source);
-        break;
-        case COMMAND_RAW_SHOW_LISTENERS:
-            command_show_listeners(client, source, RAW);
-        break;
-        case COMMAND_RAW_MOVE_CLIENTS:
-            command_move_clients(client, source, RAW);
-        break;
-        case COMMAND_RAW_KILL_CLIENT:
-            command_kill_client(client, source, RAW);
-        break;
-        case COMMAND_RAW_KILL_SOURCE:
-            command_kill_source(client, source, RAW);
-        break;
-        case COMMAND_TRANSFORMED_STATS:
-            command_stats(client, source->mount, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_FALLBACK:
-            command_fallback(client, source, RAW);
-        break;
-        case COMMAND_TRANSFORMED_SHOW_LISTENERS:
-            command_show_listeners(client, source, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_MOVE_CLIENTS:
-            command_move_clients(client, source, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_KILL_CLIENT:
-            command_kill_client(client, source, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_KILL_SOURCE:
-            command_kill_source(client, source, TRANSFORMED);
-        break;
-        case COMMAND_TRANSFORMED_UPDATEMETADATA:
-            command_updatemetadata(client, source, TRANSFORMED);
-        break;
-        case COMMAND_RAW_UPDATEMETADATA:
-            command_updatemetadata(client, source, RAW);
-        break;
-        default:
-            ICECAST_LOG_WARN("Mount request not recognised");
-            client_send_error(client, 400, 0, "Mount request unknown");
-        break;
+    handler->function(client, source, handler->format);
+    if (source) {
+        avl_tree_unlock(global.source_tree);
     }
+    return;
 }
 
 #define COMMAND_REQUIRE(client,name,var)                                \
@@ -746,8 +575,9 @@ static void command_show_listeners(client_t *client,
     xmlFreeDoc(doc);
 }
 
-static void command_buildm3u(client_t *client, const char *mount)
+static void command_buildm3u(client_t *client, source_t *source, int format)
 {
+    const char *mount = source->mount;
     const char *username = NULL;
     const char *password = NULL;
     ice_config_t *config;
@@ -808,7 +638,7 @@ xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent)
     return rolenode;
 }
 
-static void command_manageauth(client_t *client, int response)
+static void command_manageauth(client_t *client, source_t *source, int response)
 {
     xmlDocPtr doc;
     xmlNodePtr node, rolenode, usersnode, msgnode;
@@ -1051,7 +881,7 @@ static void command_metadata(client_t *client,
 
     plugin = source->format;
     if (source->client && strcmp(client->con->ip, source->client->con->ip) != 0)
-        if (response == RAW && acl_test_admin(client->acl, COMMAND_RAW_METADATA_UPDATE) != ACL_POLICY_ALLOW)
+        if (response == RAW && acl_test_admin(client->acl, client->admin_command) != ACL_POLICY_ALLOW)
             same_ip = 0;
 
     if (same_ip && plugin && plugin->set_tag) {
@@ -1084,13 +914,22 @@ static void command_metadata(client_t *client,
     xmlFreeDoc(doc);
 }
 
-static void command_shoutcast_metadata(client_t *client, source_t *source)
+static void command_shoutcast_metadata(client_t *client,
+                                       source_t *source,
+                                       int format)
 {
     const char *action;
     const char *value;
     int same_ip = 1;
 
     ICECAST_LOG_DEBUG("Got shoutcast metadata update request");
+
+    if (source->shoutcast_compat == 0) {
+        ICECAST_LOG_ERROR("illegal change of metadata on non-shoutcast "
+                        "compatible stream");
+        client_send_error(client, 400, 0, "illegal metadata call");
+        return;
+    }
 
     if (source->parser->req_type == httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
@@ -1105,7 +944,7 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
         return;
     }
     if (source->client && strcmp (client->con->ip, source->client->con->ip) != 0)
-        if (acl_test_admin(client->acl, COMMAND_RAW_METADATA_UPDATE) != ACL_POLICY_ALLOW)
+        if (acl_test_admin(client->acl, client->admin_command) != ACL_POLICY_ALLOW)
             same_ip = 0;
 
     if (same_ip && source->format && source->format->set_tag) {
@@ -1120,8 +959,9 @@ static void command_shoutcast_metadata(client_t *client, source_t *source)
     }
 }
 
-static void command_stats(client_t *client, const char *mount, int response)
+static void command_stats(client_t *client, source_t *source, int response)
 {
+    const char *mount = (source) ? source->mount : NULL;
     xmlDocPtr doc;
 
     ICECAST_LOG_DEBUG("Stats request, sending xml stats");
@@ -1132,7 +972,7 @@ static void command_stats(client_t *client, const char *mount, int response)
     return;
 }
 
-static void command_queue_reload(client_t *client, int response)
+static void command_queue_reload(client_t *client, source_t *source, int response)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1152,7 +992,7 @@ static void command_queue_reload(client_t *client, int response)
 }
 
 
-static void command_list_mounts(client_t *client, int response)
+static void command_list_mounts(client_t *client, source_t *source, int response)
 {
     ICECAST_LOG_DEBUG("List mounts request");
 

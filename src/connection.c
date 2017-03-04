@@ -913,7 +913,6 @@ static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *cl
 
 static void _handle_get_request(client_t *client, char *uri) {
     source_t *source = NULL;
-
     ICECAST_LOG_DEBUG("Got client %p with URI %H", client, uri);
 
     /* there are several types of HTTP GET clients
@@ -924,11 +923,15 @@ static void _handle_get_request(client_t *client, char *uri) {
 
     stats_event_inc(NULL, "client_connections");
 
-    /* Dispatch all admin requests */
-    if ((strcmp(uri, "/admin.cgi") == 0) ||
-        (strncmp(uri, "/admin/", 7) == 0)) {
+    /* Dispatch legacy admin.cgi requests */
+    if (strcmp(uri, "/admin.cgi") == 0) {
         ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
-        admin_handle_request(client, uri);
+        admin_handle_request(client, uri + 1);
+        return;
+    } /* Dispatch all admin requests */
+    else if (strncmp(uri, "/admin/", 7) == 0) {
+        ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
+        admin_handle_request(client, uri + 7);
         return;
     }
 
