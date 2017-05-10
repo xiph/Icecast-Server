@@ -141,6 +141,21 @@ XIPH_PATH_OPENSSL([
     [ AC_MSG_NOTICE([SSL disabled!])
     ])
 
+
+dnl Documentation
+
+AC_PATH_PROG([MKDOCS], [mkdocs], [no])
+
+AS_IF([test "$MKDOCS" = "no"], [
+    AC_MSG_WARN([mkdocs not found - generating docs will be disabled])
+])
+AM_CONDITIONAL([HAVE_MKDOCS], [test ! "$MKDOCS" = "no"])
+
+AM_COND_IF([HAVE_MKDOCS], [
+    AC_CONFIG_FILES([doc/mkdocs.yml])
+])
+
+
 dnl Make substitutions
 
 AC_SUBST(XIPH_CPPFLAGS)
@@ -161,8 +176,6 @@ AC_SUBST(KATE_LIBS)
 
 AC_OUTPUT([Makefile conf/Makefile src/Makefile src/common/avl/Makefile
 src/common/httpp/Makefile src/common/thread/Makefile src/common/log/Makefile
-src/common/net/Makefile src/common/timing/Makefile doc/Makefile doc/img/Makefile
-doc/assets/Makefile doc/assets/css/Makefile doc/assets/font/Makefile
-doc/assets/img/Makefile web/Makefile web/assets/Makefile web/assets/css/Makefile
+src/common/net/Makefile src/common/timing/Makefile doc/Makefile web/Makefile web/assets/Makefile web/assets/css/Makefile
 web/assets/font/Makefile admin/Makefile admin/includes/Makefile win32/Makefile
  examples/Makefile])

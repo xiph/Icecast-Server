@@ -1,0 +1,15 @@
+site_name: @PACKAGE_NAME@ Docs
+theme: readthedocs
+
+pages:
+- [index.md,            Introduction]
+- [basic_setup.md,      Basic Setup]
+- [config_file.md,      Configuration File]
+- [server_stats.md,     Server Statistics]
+- [auth.md,             Authentication]
+- [relaying.md,         Relaying]
+- [yp.md,               Listing in a YellowPage Directory]
+- [admin_interface.md,  Admin Interface]
+- [win32.md,            Windows Specific]
+
+markdown_extensions: [def_list, admonition]
