@@ -3,6 +3,7 @@ AC_INIT([Icecast], [2.4.99.2], [icecast@xiph.org])
 AC_PREREQ([2.54])
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_MACRO_DIR([m4])
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
 dnl Process this file with autoconf to produce a configure script.
 
 AM_INIT_AUTOMAKE
@@ -10,6 +11,7 @@ AM_CONFIG_HEADER([config.h])
 AM_MAINTAINER_MODE
 
 AC_PROG_CC
+AC_PROG_AWK
 AC_CANONICAL_HOST
 AC_PROG_LIBTOOL
 AC_SYS_LARGEFILE
@@ -163,4 +165,4 @@ AC_OUTPUT([Makefile conf/Makefile src/Makefile src/common/avl/Makefile
 src/common/httpp/Makefile src/common/thread/Makefile src/common/log/Makefile
 src/common/net/Makefile src/common/timing/Makefile doc/Makefile web/Makefile
 web/assets/Makefile web/assets/css/Makefile web/assets/font/Makefile
-admin/Makefile admin/includes/Makefile win32/Makefile examples/Makefile])
+admin/Makefile admin/includes/Makefile win32/Makefile examples/Makefile tests/Makefile])

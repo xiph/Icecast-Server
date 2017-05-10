@@ -1,0 +1,19 @@
+#!/bin/sh
+../src/icecast -c ./icecast.xml 2> /dev/null &
+ICECAST_PID=$!
+echo 'ok 1 - Icecast started'
+sleep 3
+
+if kill -0 $ICECAST_PID > /dev/null 2>&1; then
+	echo 'ok 2 - Icecast running'
+else
+	echo 'not ok 2 - Icecast not running'
+fi
+
+if kill $ICECAST_PID > /dev/null 2>&1; then
+	echo 'ok 3 - Icecast stopped'
+else
+	echo 'not ok 3 - Icecast not stopped'
+fi
+
+echo 1..3 # Number of tests to be executed.

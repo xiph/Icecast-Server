@@ -42,6 +42,11 @@
     </mount>
 
     <mount type="normal">
+        <mount-name>/test-on-connect.ogg</mount-name>
+        <on-connect>on-connect.sh</on-connect>
+    </mount>
+
+    <mount type="normal">
         <mount-name>/foo.ogg</mount-name>
         <authentication type="htpasswd">
             <option name="filename" value="myauth"/>

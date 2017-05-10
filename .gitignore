@@ -27,3 +27,10 @@ missing
 mkinstalldirs
 *.tar.gz
 config.h.in~
+
+# Ignore test output files
+/tests/*.log
+/tests/*.trs
+
+# Ignore auxiliary files
+/tap-driver.sh
