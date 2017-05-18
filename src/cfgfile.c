@@ -567,8 +567,6 @@ void config_clear(ice_config_t *c)
     if (c->webroot_dir)     xmlFree(c->webroot_dir);
     if (c->adminroot_dir)   xmlFree(c->adminroot_dir);
     if (c->null_device)     xmlFree(c->null_device);
-    if (c->cert_file)       xmlFree(c->cert_file);
-    if (c->cipher_list)     xmlFree(c->cipher_list);
     if (c->pidfile)         xmlFree(c->pidfile);
     if (c->banfile)         xmlFree(c->banfile);
     if (c->allowfile)       xmlFree(c->allowfile);
@@ -583,6 +581,10 @@ void config_clear(ice_config_t *c)
     if (c->user)            xmlFree(c->user);
     if (c->group)           xmlFree(c->group);
     if (c->mimetypes_fn)    xmlFree(c->mimetypes_fn);
+
+    if (c->tls_context.cert_file)       xmlFree(c->tls_context.cert_file);
+    if (c->tls_context.key_file)        xmlFree(c->tls_context.key_file);
+    if (c->tls_context.cipher_list)     xmlFree(c->tls_context.cipher_list);
 
     event_registration_release(c->event);
 
@@ -803,8 +805,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->log_dir = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOG_DIR);
     configuration
-        ->cipher_list = (char *) xmlCharStrdup(CONFIG_DEFAULT_CIPHER_LIST);
-    configuration
         ->null_device = (char *) xmlCharStrdup(CONFIG_DEFAULT_NULL_FILE);
     configuration
         ->webroot_dir = (char *) xmlCharStrdup(CONFIG_DEFAULT_WEBROOT_DIR);
@@ -831,6 +831,8 @@ static void _set_defaults(ice_config_t *configuration)
     /* default to a typical prebuffer size used by clients */
     configuration
         ->burst_size = CONFIG_DEFAULT_BURST_SIZE;
+    configuration->tls_context
+        .cipher_list = (char *) xmlCharStrdup(CONFIG_DEFAULT_CIPHER_LIST);
 }
 
 static inline void __check_hostname(ice_config_t *configuration)
@@ -1918,14 +1920,14 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
-            if (configuration->cert_file)
-                xmlFree(configuration->cert_file);
-            configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (configuration->tls_context.cert_file)
+                xmlFree(configuration->tls_context.cert_file);
+            configuration->tls_context.cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
-            if (configuration->cipher_list)
-                xmlFree(configuration->cipher_list);
-            configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (configuration->tls_context.cipher_list)
+                xmlFree(configuration->tls_context.cipher_list);
+            configuration->tls_context.cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("webroot")) == 0) {
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
                 ICECAST_LOG_WARN("<webroot> setting must not be empty.");

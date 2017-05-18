@@ -175,6 +175,12 @@ typedef struct _listener_t {
     tlsmode_t tls;
 } listener_t;
 
+typedef struct _config_tls_context {
+    char *cert_file;
+    char *key_file;
+    char *cipher_list;
+} config_tls_config_t;
+
 typedef struct ice_config_tag {
     char *config_filename;
 
@@ -229,8 +235,6 @@ typedef struct ice_config_tag {
     char *null_device;
     char *banfile;
     char *allowfile;
-    char *cert_file;
-    char *cipher_list;
     char *webroot_dir;
     char *adminroot_dir;
     aliases *aliases;
@@ -241,6 +245,8 @@ typedef struct ice_config_tag {
     int loglevel;
     int logsize;
     int logarchive;
+
+    config_tls_config_t tls_context;
 
     int chroot;
     int chuid;

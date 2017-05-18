@@ -163,10 +163,16 @@ static unsigned long _next_connection_id(void)
 #ifdef ICECAST_CAP_TLS
 static void get_tls_certificate(ice_config_t *config)
 {
+    const char *keyfile;
+
     config->tls_ok = tls_ok = 0;
 
+    keyfile = config->tls_context.key_file;
+    if (!keyfile)
+        keyfile = config->tls_context.cert_file;
+
     tls_ctx_unref(tls_ctx);
-    tls_ctx = tls_ctx_new(config->cert_file, config->cert_file, config->cipher_list);
+    tls_ctx = tls_ctx_new(config->tls_context.cert_file, keyfile, config->tls_context.cipher_list);
     if (!tls_ctx) {
         ICECAST_LOG_INFO("No TLS capability on any configured ports");
         return;
