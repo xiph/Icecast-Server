@@ -25,6 +25,9 @@
 typedef struct tls_ctx_tag tls_ctx_t;
 typedef struct tls_tag tls_t;
 
+/* Check for a specific implementation. Returns 0 if supported, 1 if unsupported and -1 on error. */
+int        tls_check_impl(const char *impl);
+
 void       tls_initialize(void);
 void       tls_shutdown(void);
 

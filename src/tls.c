@@ -15,11 +15,27 @@
 #endif
 
 #include <stdlib.h>
+#include <strings.h>
 
 #include "tls.h"
 
 #include "logging.h"
 #define CATMODULE "tls"
+
+/* Check for a specific implementation. Returns 0 if supported, 1 if unsupported and -1 on error. */
+int        tls_check_impl(const char *impl)
+{
+#ifdef HAVE_OPENSSL
+    if (!strcasecmp(impl, "openssl"))
+        return 0;
+#endif
+#ifdef ICECAST_CAP_TLS
+    if (!strcasecmp(impl, "generic"))
+        return 0;
+#endif
+
+    return 1;
+}
 
 #ifdef HAVE_OPENSSL
 struct tls_ctx_tag {
