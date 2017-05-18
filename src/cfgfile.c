@@ -34,6 +34,7 @@
 #include "util.h"
 #include "auth.h"
 #include "event.h"
+#include "tls.h"
 
 /* for config_reread_config() */
 #include "yp.h"
@@ -267,6 +268,26 @@ static tlsmode_t str_to_tlsmode(const char *str) {
     /* we default to auto mode */
     return ICECAST_TLSMODE_AUTO;
 }
+
+/* This checks for the TLS implementation of a node */
+static int __check_node_impl(xmlNodePtr node, const char *def)
+{
+    char *impl;
+    int res;
+
+    impl = (char *)xmlGetProp(node, XMLSTR("implementation"));
+    if (!impl)
+        impl = (char *)xmlGetProp(node, XMLSTR("impl"));
+    if (!impl)
+        impl = (char *)xmlStrdup(XMLSTR(def));
+
+    res = tls_check_impl(impl);
+
+    xmlFree(impl);
+
+    return res;
+}
+
 
 static void __append_old_style_auth(auth_stack_t       **stack,
                                     const char          *name,
@@ -1920,11 +1941,21 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
             if (configuration->tls_context.cert_file)
                 xmlFree(configuration->tls_context.cert_file);
             configuration->tls_context.cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
+            if (__check_node_impl(node, "openssl") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
             if (configuration->tls_context.cipher_list)
                 xmlFree(configuration->tls_context.cipher_list);
             configuration->tls_context.cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -2040,6 +2071,54 @@ static void _parse_logging(xmlDocPtr        doc,
     } while ((node = node->next));
 }
 
+static void _parse_tls_context(xmlDocPtr       doc,
+                               xmlNodePtr      node,
+                               ice_config_t   *configuration)
+{
+    config_tls_context_t *context = &configuration->tls_context;
+
+    node = node->xmlChildrenNode;
+
+   do {
+       if (node == NULL)
+           break;
+       if (xmlIsBlankNode(node))
+           continue;
+
+        if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0) {
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->cert_file)
+                xmlFree(context->cert_file);
+            context->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-key")) == 0) {
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->key_file)
+                xmlFree(context->key_file);
+            context->key_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0) {
+            if (__check_node_impl(node, "openssl") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->cipher_list)
+                xmlFree(context->cipher_list);
+            context->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else {
+            ICECAST_LOG_ERROR("Unknown config tag: %s", node->name);
+        }
+
+   } while ((node = node->next));
+}
+
 static void _parse_security(xmlDocPtr       doc,
                             xmlNodePtr      node,
                             ice_config_t   *configuration)
@@ -2058,6 +2137,8 @@ static void _parse_security(xmlDocPtr       doc,
            configuration->chroot = util_str_to_bool(tmp);
            if (tmp)
                xmlFree(tmp);
+       } else if (xmlStrcmp(node->name, XMLSTR("tls-context")) == 0) {
+            _parse_tls_context(doc, node, configuration);
        } else if (xmlStrcmp(node->name, XMLSTR("changeowner")) == 0) {
            configuration->chuid = 1;
            oldnode = node;
