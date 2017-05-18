@@ -179,7 +179,7 @@ typedef struct _config_tls_context {
     char *cert_file;
     char *key_file;
     char *cipher_list;
-} config_tls_config_t;
+} config_tls_context_t;
 
 typedef struct ice_config_tag {
     char *config_filename;
@@ -246,7 +246,7 @@ typedef struct ice_config_tag {
     int logsize;
     int logarchive;
 
-    config_tls_config_t tls_context;
+    config_tls_context_t tls_context;
 
     int chroot;
     int chuid;
