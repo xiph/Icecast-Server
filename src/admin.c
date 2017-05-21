@@ -45,6 +45,19 @@
 
 #define CATMODULE "admin"
 
+/* Helper macros */
+#define COMMAND_REQUIRE(client,name,var)                                \
+    do {                                                                \
+        (var) = httpp_get_query_param((client)->parser, (name));        \
+        if((var) == NULL) {                                             \
+            client_send_error((client), 400, 0, "Missing parameter");   \
+            return;                                                     \
+        }                                                               \
+    } while(0);
+
+#define COMMAND_OPTIONAL(client,name,var) \
+(var) = httpp_get_query_param((client)->parser, (name))
+
 /* special commands */
 #define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
 #define COMMAND_ANY                        ADMIN_COMMAND_ANY
@@ -557,18 +570,6 @@ static void admin_handle_mount_request(client_t *client, source_t *source)
         break;
     }
 }
-
-#define COMMAND_REQUIRE(client,name,var)                                \
-    do {                                                                \
-        (var) = httpp_get_query_param((client)->parser, (name));        \
-        if((var) == NULL) {                                             \
-            client_send_error((client), 400, 0, "Missing parameter");   \
-            return;                                                     \
-        }                                                               \
-    } while(0);
-
-#define COMMAND_OPTIONAL(client,name,var) \
-    (var) = httpp_get_query_param((client)->parser, (name))
 
 static void html_success(client_t *client, char *message)
 {
