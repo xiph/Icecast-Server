@@ -59,6 +59,7 @@
 #include "admin.h"
 #include "auth.h"
 #include "matchfile.h"
+#include "tls.h"
 
 #define CATMODULE "connection"
 
@@ -97,10 +98,8 @@ static int _initialized = 0;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
-static int ssl_ok;
-#ifdef HAVE_OPENSSL
-static SSL_CTX *ssl_ctx;
-#endif
+static int tls_ok;
+static tls_ctx_t *tls_ctx;
 
 /* filtering client connection based on IP */
 static matchfile_t *banned_ip, *allowed_ip;
@@ -108,6 +107,7 @@ static matchfile_t *banned_ip, *allowed_ip;
 rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
+static void get_tls_certificate(ice_config_t *config);
 
 void connection_initialize(void)
 {
@@ -131,9 +131,7 @@ void connection_shutdown(void)
     if (!_initialized)
         return;
 
-#ifdef HAVE_OPENSSL
-    SSL_CTX_free (ssl_ctx);
-#endif
+    tls_ctx_unref(tls_ctx);
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
  
@@ -143,6 +141,11 @@ void connection_shutdown(void)
     thread_mutex_destroy(&move_clients_mutex);
 
     _initialized = 0;
+}
+
+void connection_reread_config(struct ice_config_tag *config)
+{
+    get_tls_certificate(config);
 }
 
 static unsigned long _next_connection_id(void)
@@ -157,80 +160,50 @@ static unsigned long _next_connection_id(void)
 }
 
 
-#ifdef HAVE_OPENSSL
-static void get_ssl_certificate(ice_config_t *config)
+#ifdef ICECAST_CAP_TLS
+static void get_tls_certificate(ice_config_t *config)
 {
-    SSL_METHOD *method;
-    long ssl_opts;
-    config->tls_ok = ssl_ok = 0;
+    const char *keyfile;
 
-    SSL_load_error_strings(); /* readable error messages */
-    SSL_library_init(); /* initialize library */
+    config->tls_ok = tls_ok = 0;
 
-    method = SSLv23_server_method();
-    ssl_ctx = SSL_CTX_new(method);
-    ssl_opts = SSL_CTX_get_options(ssl_ctx);
-#ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
-#else
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
-#endif
+    keyfile = config->tls_context.key_file;
+    if (!keyfile)
+        keyfile = config->tls_context.cert_file;
 
-    do {
-        if (config->cert_file == NULL)
-            break;
-        if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0) {
-            ICECAST_LOG_WARN("Invalid cert file %s", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0) {
-            ICECAST_LOG_WARN("Invalid private key file %s", config->cert_file);
-            break;
-        }
-        if (!SSL_CTX_check_private_key (ssl_ctx)) {
-            ICECAST_LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) {
-            ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
-        }
-        config->tls_ok = ssl_ok = 1;
-        ICECAST_LOG_INFO("Certificate found at %s", config->cert_file);
-        ICECAST_LOG_INFO("Using ciphers %s", config->cipher_list);
+    tls_ctx_unref(tls_ctx);
+    tls_ctx = tls_ctx_new(config->tls_context.cert_file, keyfile, config->tls_context.cipher_list);
+    if (!tls_ctx) {
+        ICECAST_LOG_INFO("No TLS capability on any configured ports");
         return;
-    } while (0);
-    ICECAST_LOG_INFO("No TLS capability on any configured ports");
+    }
+
+    config->tls_ok = tls_ok = 1;
 }
 
 
-/* handlers for reading and writing a connection_t when there is ssl
+/* handlers for reading and writing a connection_t when there is TLS
  * configured on the listening port
  */
-static int connection_read_ssl(connection_t *con, void *buf, size_t len)
+static int connection_read_tls(connection_t *con, void *buf, size_t len)
 {
-    int bytes = SSL_read(con->ssl, buf, len);
+    ssize_t bytes = tls_read(con->tls, buf, len);
 
     if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)) {
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
+        if (tls_want_io(con->tls) > 0)
             return -1;
-        }
         con->error = 1;
     }
     return bytes;
 }
 
-static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
+static int connection_send_tls(connection_t *con, const void *buf, size_t len)
 {
-    int bytes = SSL_write (con->ssl, buf, len);
+    ssize_t bytes = tls_write(con->tls, buf, len);
 
     if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)){
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                return -1;
-        }
+        if (tls_want_io(con->tls) > 0)
+            return -1;
         con->error = 1;
     } else {
         con->sent_bytes += bytes;
@@ -239,14 +212,14 @@ static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
 }
 #else
 
-/* SSL not compiled in, so at least log it */
-static void get_ssl_certificate(ice_config_t *config)
+/* TLS not compiled in, so at least log it */
+static void get_tls_certificate(ice_config_t *config)
 {
-    ssl_ok = 0;
+    tls_ok = 0;
     ICECAST_LOG_INFO("No TLS capability. "
-                     "Rebuild Icecast with openSSL support to enable this.");
+                     "Rebuild Icecast with OpenSSL support to enable this.");
 }
-#endif /* HAVE_OPENSSL */
+#endif /* ICECAST_CAP_TLS */
 
 
 /* handlers (default) for reading and writing a connection_t, no encrpytion
@@ -284,6 +257,7 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
         con->con_time   = time(NULL);
         con->id         = _next_connection_id();
         con->ip         = ip;
+        con->tlsmode    = ICECAST_TLSMODE_AUTO;
         con->read       = connection_read;
         con->send       = connection_send;
     }
@@ -291,19 +265,20 @@ connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
     return con;
 }
 
-/* prepare connection for interacting over a SSL connection
+/* prepare connection for interacting over a TLS connection
  */
-void connection_uses_ssl(connection_t *con)
+void connection_uses_tls(connection_t *con)
 {
-#ifdef HAVE_OPENSSL
-    if (con->ssl)
+#ifdef ICECAST_CAP_TLS
+    if (con->tls)
         return;
 
-    con->read = connection_read_ssl;
-    con->send = connection_send_ssl;
-    con->ssl = SSL_new(ssl_ctx);
-    SSL_set_accept_state(con->ssl);
-    SSL_set_fd(con->ssl, con->sock);
+    con->tlsmode = ICECAST_TLSMODE_RFC2818;
+    con->read = connection_read_tls;
+    con->send = connection_send_tls;
+    con->tls = tls_new(tls_ctx);
+    tls_set_incoming(con->tls);
+    tls_set_socket(con->tls, con->sock);
 #endif
 }
 
@@ -462,8 +437,12 @@ static client_queue_t *_get_connection(void)
 static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
-    ice_config_t *config = config_get_config();
-    int timeout = config->header_timeout;
+    ice_config_t *config;
+    int timeout;
+    char peak;
+
+    config = config_get_config();
+    timeout = config->header_timeout;
     config_release_config();
 
     while (*node_ref) {
@@ -471,6 +450,14 @@ static void process_request_queue (void)
         client_t *client = node->client;
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
+
+        if (client->con->tlsmode == ICECAST_TLSMODE_AUTO || client->con->tlsmode == ICECAST_TLSMODE_AUTO_NO_PLAIN) {
+            if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
+                if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
+                    connection_uses_tls(client->con);
+                }
+            }
+        }
 
         if (len > 0) {
             if (client->con->con_time + timeout <= time(NULL)) {
@@ -568,8 +555,9 @@ static client_queue_t *create_client_node(client_t *client)
     if (listener) {
         if (listener->shoutcast_compat)
             node->shoutcast = 1;
-        if (listener->ssl && ssl_ok)
-            connection_uses_ssl(client->con);
+        client->con->tlsmode = listener->tls;
+        if (listener->tls == ICECAST_TLSMODE_RFC2818 && tls_ok)
+            connection_uses_tls(client->con);
         if (listener->shoutcast_mount)
             node->shoutcast_mount = strdup(listener->shoutcast_mount);
     }
@@ -621,7 +609,7 @@ void connection_accept_loop(void)
     int duration = 300;
 
     config = config_get_config();
-    get_ssl_certificate(config);
+    get_tls_certificate(config);
     config_release_config();
 
     while (global.running == ICECAST_RUNNING) {
@@ -1358,8 +1346,16 @@ static void _handle_connection(void)
 
                 upgrade = httpp_getvar(parser, "upgrade");
                 connection = httpp_getvar(parser, "connection");
-                if (upgrade && connection && strstr(upgrade, "TLS/1.0") != NULL && strcasecmp(connection, "upgrade") == 0) {
-                    client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
+                    if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || strstr(upgrade, "TLS/1.0") == NULL) {
+                        client_send_error(client, 400, 1, "Can not upgrade protocol");
+                        continue;
+                    } else {
+                        client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                        continue;
+                    }
+                } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {
+                    client_send_426(client, ICECAST_REUSE_UPGRADETLS);
                     continue;
                 }
 
@@ -1495,8 +1491,6 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-#ifdef HAVE_OPENSSL
-    if (con->ssl) { SSL_shutdown(con->ssl); SSL_free(con->ssl); }
-#endif
+    tls_unref(con->tls);
     free(con);
 }

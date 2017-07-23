@@ -105,26 +105,24 @@ static inline void client_reuseconnection(client_t *client) {
     client->con->sock = -1; /* TODO: do not use magic */
 
     /* handle to keep the TLS connection */
-#ifdef HAVE_OPENSSL
-    if (client->con->ssl) {
+    if (client->con->tls) {
         /* AHhhggrr.. That pain....
-         * stealing SSL state...
+         * stealing TLS state...
          */
-        con->ssl  = client->con->ssl;
+        con->tls  = client->con->tls;
         con->read = client->con->read;
         con->send = client->con->send;
-        client->con->ssl  = NULL;
+        client->con->tls  = NULL;
         client->con->read = NULL;
         client->con->send = NULL;
     }
-#endif
 
     client->reuse = ICECAST_REUSE_CLOSE;
 
     client_destroy(client);
 
     if (reuse == ICECAST_REUSE_UPGRADETLS)
-        connection_uses_ssl(con);
+        connection_uses_tls(con);
     connection_queue(con);
 }
 
