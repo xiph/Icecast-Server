@@ -683,6 +683,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     ssize_t ret;
     char * extra_headers;
     const char *connection_header = "Close";
+    const char *upgrade_header = "";
 
     if (!out)
         return -1;
@@ -693,6 +694,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
             case ICECAST_REUSE_KEEPALIVE:  connection_header = "Keep-Alive"; break;
             case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; break;
         }
+        if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED)
+            upgrade_header = "Upgrade: TLS/1.0\r\n";
     }
 
     if (offset == -1)
@@ -764,8 +767,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               config->server_id,
                               connection_header,
                               (client && client->admin_command == ADMIN_COMMAND_ERROR ?
-                                                "GET, OPTIONS, SOURCE" : "GET, OPTIONS"),
-                              (config->tls_ok ? "Upgrade: TLS/1.0\r\n" : ""),
+                                  "GET, OPTIONS, SOURCE" : "GET, OPTIONS"),
+                              upgrade_header,
                               currenttime_buffer,
                               contenttype_buffer,
                               (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),

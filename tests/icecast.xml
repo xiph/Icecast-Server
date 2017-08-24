@@ -1,0 +1,73 @@
+<icecast>
+    <location>Test</location>
+    <admin>foo@example.org</admin>
+
+    <limits>
+        <clients>30</clients>
+        <sources>5</sources>
+        <queue-size>524288</queue-size>
+        <client-timeout>30</client-timeout>
+        <header-timeout>15</header-timeout>
+        <source-timeout>10</source-timeout>
+        <burst-size>65535</burst-size>
+    </limits>
+
+    <authentication>
+        <!-- Sources log in with username 'source' -->
+        <source-password>hackme</source-password>
+
+        <!-- Relays log in with username 'relay' -->
+        <relay-password>hackme</relay-password>
+
+        <!-- Admin logs in with the username given below -->
+        <admin-user>admin</admin-user>
+        <admin-password>hackme</admin-password>
+    </authentication>
+
+    <hostname>localhost</hostname>
+
+    <listen-socket>
+        <port>8000</port>
+        <!-- <shoutcast-mount>/stream</shoutcast-mount> -->
+    </listen-socket>
+
+    <http-headers>
+        <header name="Access-Control-Allow-Origin" value="*" />
+    </http-headers>
+
+    <mount type="normal">
+        <mount-name>/test.ogg</mount-name>
+        <username>foobar</username>
+        <password>hackmemore</password>
+    </mount>
+
+    <mount type="normal">
+        <mount-name>/foo.ogg</mount-name>
+        <authentication type="htpasswd">
+            <option name="filename" value="myauth"/>
+            <option name="allow_duplicate_users" value="0"/>
+        </authentication>
+    </mount>
+
+    <fileserve>1</fileserve>
+
+    <paths>
+        <logdir>./</logdir>
+        <webroot>../web</webroot>
+        <adminroot>../admin</adminroot>
+
+        <alias source="/" destination="/status.xsl"/>
+    </paths>
+
+    <logging>
+        <accesslog>-</accesslog>
+        <errorlog>-</errorlog>
+
+        <loglevel>4</loglevel>
+        <logsize>10000</logsize>
+    </logging>
+
+    <security>
+        <chroot>0</chroot>
+    </security>
+</icecast>

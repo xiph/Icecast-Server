@@ -669,7 +669,7 @@ int fserve_add_client (client_t *client, FILE *file)
 {
     fserve_t *fclient = calloc (1, sizeof(fserve_t));
 
-    ICECAST_LOG_DEBUG("Adding client to file serving engine");
+    ICECAST_LOG_DEBUG("Adding client %p to file serving engine", client);
     if (fclient == NULL)
     {
         client_send_error(client, 404, 0, "memory exhausted");

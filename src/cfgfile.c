@@ -34,11 +34,13 @@
 #include "util.h"
 #include "auth.h"
 #include "event.h"
+#include "tls.h"
 
 /* for config_reread_config() */
 #include "yp.h"
 #include "fserve.h"
 #include "stats.h"
+#include "connection.h"
 
 #define CATMODULE                       "CONFIG"
 #define CONFIG_DEFAULT_LOCATION         "Earth"
@@ -243,6 +245,60 @@ static inline int __parse_public(const char *str)
     /* ok, only normal bool left! */
     return util_str_to_bool(str);
 }
+
+/* This converts TLS mode strings to (tlsmode_t).
+ * In older versions of Icecast2 this was just a bool.
+ * So we need to handle boolean values as well.
+ * See also: util_str_to_bool().
+ */
+static tlsmode_t str_to_tlsmode(const char *str) {
+    /* consider NULL and empty strings as auto mode */
+    if (!str || !*str)
+        return ICECAST_TLSMODE_AUTO;
+
+    if (strcasecmp(str, "disabled") == 0) {
+        return ICECAST_TLSMODE_DISABLED;
+    } else if (strcasecmp(str, "auto") == 0) {
+        return ICECAST_TLSMODE_AUTO;
+    } else if (strcasecmp(str, "auto_no_plain") == 0) {
+        return ICECAST_TLSMODE_AUTO_NO_PLAIN;
+    } else if (strcasecmp(str, "rfc2817") == 0) {
+        return ICECAST_TLSMODE_RFC2817;
+    } else if (strcasecmp(str, "rfc2818") == 0 ||
+               /* boolean-style values */
+               strcasecmp(str, "true") == 0 ||
+               strcasecmp(str, "yes")  == 0 ||
+               strcasecmp(str, "on")   == 0 ) {
+        return ICECAST_TLSMODE_RFC2818;
+    }
+
+    /* old style numbers: consider everyting non-zero RFC2818 */
+    if (atoi(str))
+        return ICECAST_TLSMODE_RFC2818;
+
+    /* we default to auto mode */
+    return ICECAST_TLSMODE_AUTO;
+}
+
+/* This checks for the TLS implementation of a node */
+static int __check_node_impl(xmlNodePtr node, const char *def)
+{
+    char *impl;
+    int res;
+
+    impl = (char *)xmlGetProp(node, XMLSTR("implementation"));
+    if (!impl)
+        impl = (char *)xmlGetProp(node, XMLSTR("impl"));
+    if (!impl)
+        impl = (char *)xmlStrdup(XMLSTR(def));
+
+    res = tls_check_impl(impl);
+
+    xmlFree(impl);
+
+    return res;
+}
+
 
 static void __append_old_style_auth(auth_stack_t       **stack,
                                     const char          *name,
@@ -543,8 +599,6 @@ void config_clear(ice_config_t *c)
     if (c->webroot_dir)     xmlFree(c->webroot_dir);
     if (c->adminroot_dir)   xmlFree(c->adminroot_dir);
     if (c->null_device)     xmlFree(c->null_device);
-    if (c->cert_file)       xmlFree(c->cert_file);
-    if (c->cipher_list)     xmlFree(c->cipher_list);
     if (c->pidfile)         xmlFree(c->pidfile);
     if (c->banfile)         xmlFree(c->banfile);
     if (c->allowfile)       xmlFree(c->allowfile);
@@ -559,6 +613,10 @@ void config_clear(ice_config_t *c)
     if (c->user)            xmlFree(c->user);
     if (c->group)           xmlFree(c->group);
     if (c->mimetypes_fn)    xmlFree(c->mimetypes_fn);
+
+    if (c->tls_context.cert_file)       xmlFree(c->tls_context.cert_file);
+    if (c->tls_context.key_file)        xmlFree(c->tls_context.key_file);
+    if (c->tls_context.cipher_list)     xmlFree(c->tls_context.cipher_list);
 
     event_registration_release(c->event);
 
@@ -648,6 +706,7 @@ void config_reread_config(void)
         config_set_config(&new_config);
         config = config_get_config_unlocked();
         restart_logging(config);
+        connection_reread_config(config);
         yp_recheck_config(config);
         fserve_recheck_mime_types(config);
         stats_global(config);
@@ -779,8 +838,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->log_dir = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOG_DIR);
     configuration
-        ->cipher_list = (char *) xmlCharStrdup(CONFIG_DEFAULT_CIPHER_LIST);
-    configuration
         ->null_device = (char *) xmlCharStrdup(CONFIG_DEFAULT_NULL_FILE);
     configuration
         ->webroot_dir = (char *) xmlCharStrdup(CONFIG_DEFAULT_WEBROOT_DIR);
@@ -807,6 +864,8 @@ static void _set_defaults(ice_config_t *configuration)
     /* default to a typical prebuffer size used by clients */
     configuration
         ->burst_size = CONFIG_DEFAULT_BURST_SIZE;
+    configuration->tls_context
+        .cipher_list = (char *) xmlCharStrdup(CONFIG_DEFAULT_CIPHER_LIST);
 }
 
 static inline void __check_hostname(ice_config_t *configuration)
@@ -1690,7 +1749,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->ssl = util_str_to_bool(tmp);
+            listener->tls = str_to_tlsmode(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-compat")) == 0) {
@@ -1896,14 +1955,24 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
-            if (configuration->cert_file)
-                xmlFree(configuration->cert_file);
-            configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (configuration->tls_context.cert_file)
+                xmlFree(configuration->tls_context.cert_file);
+            configuration->tls_context.cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
-            if (configuration->cipher_list)
-                xmlFree(configuration->cipher_list);
-            configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (__check_node_impl(node, "openssl") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (configuration->tls_context.cipher_list)
+                xmlFree(configuration->tls_context.cipher_list);
+            configuration->tls_context.cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("webroot")) == 0) {
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
                 ICECAST_LOG_WARN("<webroot> setting must not be empty.");
@@ -2016,6 +2085,54 @@ static void _parse_logging(xmlDocPtr        doc,
     } while ((node = node->next));
 }
 
+static void _parse_tls_context(xmlDocPtr       doc,
+                               xmlNodePtr      node,
+                               ice_config_t   *configuration)
+{
+    config_tls_context_t *context = &configuration->tls_context;
+
+    node = node->xmlChildrenNode;
+
+   do {
+       if (node == NULL)
+           break;
+       if (xmlIsBlankNode(node))
+           continue;
+
+        if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0) {
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->cert_file)
+                xmlFree(context->cert_file);
+            context->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-key")) == 0) {
+            if (__check_node_impl(node, "generic") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->key_file)
+                xmlFree(context->key_file);
+            context->key_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0) {
+            if (__check_node_impl(node, "openssl") != 0) {
+                ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                continue;
+            }
+
+            if (context->cipher_list)
+                xmlFree(context->cipher_list);
+            context->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else {
+            ICECAST_LOG_ERROR("Unknown config tag: %s", node->name);
+        }
+
+   } while ((node = node->next));
+}
+
 static void _parse_security(xmlDocPtr       doc,
                             xmlNodePtr      node,
                             ice_config_t   *configuration)
@@ -2034,6 +2151,8 @@ static void _parse_security(xmlDocPtr       doc,
            configuration->chroot = util_str_to_bool(tmp);
            if (tmp)
                xmlFree(tmp);
+       } else if (xmlStrcmp(node->name, XMLSTR("tls-context")) == 0) {
+            _parse_tls_context(doc, node, configuration);
        } else if (xmlStrcmp(node->name, XMLSTR("changeowner")) == 0) {
            configuration->chuid = 1;
            oldnode = node;

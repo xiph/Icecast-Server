@@ -123,6 +123,7 @@ void initialize_subsystems(void)
     sock_initialize();
     resolver_initialize();
     config_initialize();
+    tls_initialize();
     connection_initialize();
     global_initialize();
     refbuf_initialize();
@@ -145,6 +146,7 @@ void shutdown_subsystems(void)
 
     global_shutdown();
     connection_shutdown();
+    tls_shutdown();
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();
