@@ -2363,21 +2363,28 @@ static void _parse_cors(xmlDocPtr                 doc,
 
 static void _cors_sort_origins_by_length_desc(char **origins)
 {
-    int length;
+    uint length;
     char *temp;
 
+    // If there are no origins or only one, no sort.
     if (!origins || !origins[1]) {
         return;
     }
+
+    // Count origins.
     for (length = 0; origins[length]; length++);
-    for(int step = 0; step <length; step++)
-    for(int i = 0; i < length - step - 1; i++)
+
+    // Sort origin by length, descending.
+    for (int step = 0; step < length; step++)
     {
-        if(strlen(origins[i]) < strlen(origins[i+1]))
+        for (int i = 0; i < length - step - 1; i++)
         {
-            temp = origins[i];
-            origins[i] = origins[i + 1];
-            origins[i + 1] = temp;
+            if (strlen(origins[i]) < strlen(origins[i+1]))
+            {
+                temp = origins[i];
+                origins[i] = origins[i + 1];
+                origins[i + 1] = temp;
+            }
         }
     }
 }
