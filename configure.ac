@@ -193,11 +193,29 @@ AC_SUBST(ICECAST_OPTIONAL)
 AC_SUBST(HAVE_KATE)
 AC_SUBST(KATE_LIBS)
 
-AC_OUTPUT([Makefile conf/Makefile src/Makefile src/common/avl/Makefile
-src/common/httpp/Makefile src/common/thread/Makefile src/common/log/Makefile
-src/common/net/Makefile src/common/timing/Makefile doc/Makefile web/Makefile
-web/assets/Makefile web/assets/css/Makefile web/assets/font/Makefile
-admin/Makefile admin/includes/Makefile win32/Makefile examples/Makefile tests/Makefile])
+AC_CONFIG_FILES([
+  Makefile
+  conf/Makefile
+  src/Makefile
+  src/common/avl/Makefile
+  src/common/httpp/Makefile
+  src/common/thread/Makefile
+  src/common/log/Makefile
+  src/common/net/Makefile
+  src/common/timing/Makefile
+  doc/Makefile
+  web/Makefile
+  web/assets/Makefile
+  web/assets/css/Makefile
+  web/assets/font/Makefile
+  admin/Makefile
+  admin/includes/Makefile
+  win32/Makefile
+  examples/Makefile
+  tests/Makefile
+])
+
+AC_OUTPUT
 
 echo "
 Icecast configuration
