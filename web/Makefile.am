@@ -1,9 +1,5 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign
-
-SUBDIRS = assets
-
 webdir = $(pkgdatadir)/web
 web_DATA =      status.xsl \
                 favicon.ico \

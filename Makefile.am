@@ -1,5 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
+ACLOCAL_AMFLAGS = -I m4
+
 SUBDIRS = src conf doc web admin win32 examples tests
 
 EXTRA_DIST = README.md HACKING

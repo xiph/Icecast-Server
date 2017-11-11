@@ -84,15 +84,45 @@ icecast_SOURCES = \
     auth_anonymous.c \
     auth_static.c
 
+if HAVE_CURL
+icecast_SOURCES += \
+    curl.c \
+    auth_url.c \
+    event_url.c
+endif
 
-EXTRA_icecast_SOURCES = curl.c yp.c \
-    auth_url.c event_url.c \
-    format_vorbis.c format_theora.c format_speex.c
+if ENABLE_YP
+icecast_SOURCES += yp.c
+endif
 
-icecast_DEPENDENCIES = @ICECAST_OPTIONAL@ common/net/libicenet.la common/thread/libicethread.la \
-    common/httpp/libicehttpp.la common/log/libicelog.la common/avl/libiceavl.la common/timing/libicetiming.la
-icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@
+if HAVE_OGG
+icecast_SOURCES += format_vorbis.c
+endif
 
-AM_CFLAGS = @XIPH_CFLAGS@
-AM_CPPFLAGS = -I$(srcdir)/common/ @XIPH_CPPFLAGS@
-AM_LDFLAGS = @XIPH_LDFLAGS@ @KATE_LIBS@
+if HAVE_THEORA
+icecast_SOURCES += format_theora.c
+endif
+
+if HAVE_SPEEX
+icecast_SOURCES += format_speex.c
+endif
+
+EXTRA_icecast_SOURCES = \
+    curl.c \
+    yp.c \
+    auth_url.c \
+    event_url.c \
+    format_vorbis.c \
+    format_theora.c \
+    format_speex.c
+
+icecast_DEPENDENCIES = \
+    common/net/libicenet.la \
+    common/thread/libicethread.la \
+    common/httpp/libicehttpp.la \
+    common/log/libicelog.la \
+    common/avl/libiceavl.la \
+    common/timing/libicetiming.la
+
+icecast_LDADD    = $(icecast_DEPENDENCIES)
+icecast_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/common

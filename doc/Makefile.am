@@ -2,7 +2,6 @@
 
 docdir = $(datadir)/doc/$(PACKAGE)
 
-docdir = $(datadir)/doc/icecast
 nobase_doc_DATA = index.html \
 	admin_interface/index.html \
 	auth/index.html \
