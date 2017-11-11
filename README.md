@@ -50,9 +50,14 @@ Run
     make
     make install  # as root
 
-This is the typical procedure if you download the tar file.  If you retrive
-the code from Git or want to rebuild the configure then run `./autogen.sh`
-instead of configure above. Most people do not need to run autogen.sh
+This is the typical procedure if you download the tar file.
+
+If you retrive the code from Git or want to clone recursively:
+
+    git clone --recursive https://git.xiph.org/icecast-server.git
+
+After that, create the configure script by running: `./autogen.sh`.
+Now you can just follow the steps mentioned above.
 
 A sample config file will be placed in `/usr/local/etc` (on UNIX, 
 also depends on path PREFIX) or in the current working directory 
