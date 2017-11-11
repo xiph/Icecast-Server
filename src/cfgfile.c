@@ -148,6 +148,17 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
+static void _parse_cors(xmlDocPtr                 doc,
+                        xmlNodePtr                node,
+                        ice_config_cors_path_t  **cors_paths);
+
+static int _parse_cors_path(xmlDocPtr                 doc,
+                             xmlNodePtr               node,
+                             ice_config_cors_path_t  *cors_path);
+
+static void config_clear_cors(ice_config_cors_path_t *cors_paths);
+
+
 operation_mode config_str_to_omode(const char *str)
 {
     if (!str || !*str)
@@ -219,7 +230,7 @@ static inline void __read_unsigned_int(xmlDocPtr doc, xmlNodePtr node, unsigned 
     }
     if (str)
         xmlFree(str);
-}         
+}
 
 static inline int __parse_public(const char *str)
 {
@@ -657,6 +668,7 @@ void config_clear(ice_config_t *c)
 #endif
 
     config_clear_http_header(c->http_headers);
+    config_clear_cors(c->cors_paths);
     memset(c, 0, sizeof(ice_config_t));
 }
 
@@ -1028,6 +1040,8 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&configuration->event, node->xmlChildrenNode);
+        } else if (xmlStrcmp(node->name, XMLSTR("cors")) == 0) {
+            _parse_cors(doc, node->xmlChildrenNode, &(configuration->cors_paths));
         }
     } while ((node = node->next));
 
@@ -2218,6 +2232,254 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node)
         }
         node = node->next;
     }
+}
+
+static ice_config_cors_path_t* _cors_sort_paths_by_base_length_desc(ice_config_cors_path_t *cors_paths)
+{
+    ice_config_cors_path_t *curr = cors_paths;
+    ice_config_cors_path_t *prev = cors_paths;
+    ice_config_cors_path_t *largest = cors_paths;
+    ice_config_cors_path_t *largestPrev = cors_paths;
+    ice_config_cors_path_t *tmp;
+
+    // End of sorting or only one path or no path
+    if (!cors_paths || !cors_paths->next) {
+      return cors_paths;
+    }
+    // Find the largest base and set it first.
+    while(curr != NULL) {
+        if(strlen(curr->base) > strlen(largest->base)) {
+            largestPrev = prev;
+            largest = curr;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    if(largest != cors_paths) {
+        largestPrev->next = cors_paths;
+        tmp = cors_paths->next;
+        cors_paths->next = largest->next;
+        largest->next = tmp;
+    }
+    // Recurse to the rest of the list
+    largest->next = _cors_sort_paths_by_base_length_desc(largest->next);
+    return largest;
+}
+
+static void _parse_cors(xmlDocPtr                 doc,
+                        xmlNodePtr                node,
+                        ice_config_cors_path_t  **cors_paths)
+{
+    ice_config_cors_path_t *path = NULL;
+    ice_config_cors_path_t *next = NULL;
+    char                   *base = NULL;
+
+    do {
+        if (node == NULL)
+            break;
+        if (xmlIsBlankNode(node))
+            continue;
+        if (!node->name)
+            continue;
+        if (xmlStrcmp(node->name, XMLSTR("path")) != 0) {
+            continue;
+        }
+        if (
+          !(base = (char *)xmlGetProp(node, XMLSTR("base"))) ||
+          !strlen(base)
+        ) {
+            ICECAST_LOG_WARN("Ignoring <cors><path> tag without base attribute or empty");
+            xmlFree(xmlGetProp(node, XMLSTR("base")));
+            continue;
+        }
+
+        path = calloc(1, sizeof(ice_config_cors_path_t));
+        if (!path) {
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            break;
+        }
+        path->base = base;
+        if (!_parse_cors_path(doc, node, path)) {
+            base = NULL;
+            if (!*cors_paths) {
+                *cors_paths = path;
+                continue;
+            }
+            next = *cors_paths;
+            while (next->next) {
+                next = next->next;
+            }
+            next->next = path;
+        } else {
+            free(path);
+        }
+    } while ((node = node->next));
+    /* in case we used break we may need to clean those up */
+    if (base)
+        xmlFree(base);
+    *cors_paths = _cors_sort_paths_by_base_length_desc(*cors_paths);
+}
+
+static void _cors_sort_origins_by_length_desc(char **origins)
+{
+    uint length;
+    char *temp;
+
+    // If there are no origins or only one, no sort.
+    if (!origins || !origins[1]) {
+        return;
+    }
+
+    // Count origins.
+    for (length = 0; origins[length]; length++);
+
+    // Sort origin by length, descending.
+    for (int step = 0; step < length; step++)
+    {
+        for (int i = 0; i < length - step - 1; i++)
+        {
+            if (strlen(origins[i]) < strlen(origins[i+1]))
+            {
+                temp = origins[i];
+                origins[i] = origins[i + 1];
+                origins[i + 1] = temp;
+            }
+        }
+    }
+}
+
+static int _parse_cors_path(xmlDocPtr                doc,
+                            xmlNodePtr               node,
+                            ice_config_cors_path_t  *cors_path)
+{
+    int        allowed_count         = 0;
+    int        forbidden_count       = 0;
+    int        exposed_headers_count = 0;
+    xmlNodePtr tmpNode               = node->xmlChildrenNode;
+
+    while ((tmpNode = tmpNode->next)) {
+        if (tmpNode == NULL)
+            break;
+        if (!tmpNode->name)
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("no-cors")) == 0) {
+            cors_path->no_cors = 1;
+            return 0;
+        }
+        if (xmlIsBlankNode(tmpNode))
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+            allowed_count++;
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+            forbidden_count++;
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+            exposed_headers_count++;
+            continue;
+        }
+    }
+    if (!allowed_count && !forbidden_count && !exposed_headers_count) {
+        return 1;
+    }
+    if (allowed_count) {
+        cors_path->allowed = calloc(allowed_count + 1, sizeof(char *));
+        if (!cors_path->allowed) {
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            return 1;
+        }
+        cors_path->allowed[allowed_count] = NULL;
+    }
+    if (forbidden_count) {
+        cors_path->forbidden = calloc(forbidden_count + 1, sizeof(char *));
+        if (!cors_path->forbidden) {
+            ICECAST_LOG_ERROR("Out of memory while parsing config file");
+            if (cors_path->allowed)
+                free(cors_path->allowed);
+            return 1;
+        }
+        cors_path->forbidden[forbidden_count] = NULL;
+    }
+
+    tmpNode       = node->xmlChildrenNode;
+    allowed_count = forbidden_count = exposed_headers_count = 0;
+
+    while ((tmpNode = tmpNode->next)) {
+        if (tmpNode == NULL)
+            break;
+        if (!tmpNode->name)
+            continue;
+        if (xmlIsBlankNode(tmpNode))
+            continue;
+        if (xmlStrcmp(tmpNode->name, XMLSTR("allowed-origin")) == 0) {
+            cors_path->allowed[allowed_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("forbidden-origin")) == 0) {
+            cors_path->forbidden[forbidden_count++] = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            continue;
+        }
+        if (xmlStrcmp(tmpNode->name, XMLSTR("exposed-header")) == 0) {
+            char *orig_value = (char *)xmlNodeListGetString(doc, tmpNode->xmlChildrenNode, 1);
+            int first_value = 1;
+
+            if (!cors_path->exposed_headers) {
+                cors_path->exposed_headers = calloc(strlen(orig_value) + 1, sizeof(char));
+            } else {
+                cors_path->exposed_headers = realloc(
+                    cors_path->exposed_headers,
+                    (strlen(cors_path->exposed_headers) + strlen(orig_value) + 3)
+                );
+                first_value = 0;
+            }
+            if (!cors_path->exposed_headers) {
+                ICECAST_LOG_ERROR("Out of memory while parsing config file");
+                if (cors_path->allowed)
+                    free(cors_path->allowed);
+                if (cors_path->forbidden)
+                    free(cors_path->forbidden); 
+                return 1;
+            }
+            if (!first_value)
+                cors_path->exposed_headers = strcat(cors_path->exposed_headers, ", ");
+            cors_path->exposed_headers = strcat(cors_path->exposed_headers, orig_value);
+            xmlFree(orig_value);
+            continue;
+        }
+    }
+
+    _cors_sort_origins_by_length_desc(cors_path->allowed);
+    _cors_sort_origins_by_length_desc(cors_path->forbidden);
+
+    return 0;
+}
+
+void config_clear_cors(ice_config_cors_path_t *cors_paths)
+{
+  while (cors_paths) {
+    ice_config_cors_path_t *path = cors_paths;
+
+    cors_paths = path->next;
+    if (path->allowed) {
+      for (int i = 0; path->allowed[i]; i++) {
+        xmlFree(path->allowed[i]);
+      }
+      free(path->allowed);
+    }
+    if (path->forbidden) {
+      for (int i = 0; path->forbidden[i]; i++) {
+        xmlFree(path->forbidden[i]);
+      }
+      free(path->forbidden);
+    }
+    if (path->exposed_headers) {
+      free(path->exposed_headers);
+    }
+    xmlFree(path->base);
+    free(path);
+  }
 }
 
 config_options_t *config_parse_options(xmlNodePtr node)
