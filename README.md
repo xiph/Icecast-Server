@@ -1,6 +1,8 @@
 Icecast 2 - README
 ---------------------------------------------------------------------
 
+[![Build Status](https://travis-ci.org/xiph/Icecast-Server.svg?branch=master)](https://travis-ci.org/xiph/Icecast-Server)
+
 Icecast is a streaming media server which currently supports _WebM_ and
 _Ogg_ streaming including the _Opus_, _Vorbis_ and _Theora_ codecs.
 Also Icecast can handle other streams like MP3/AAC/NSV
