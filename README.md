@@ -52,7 +52,7 @@ Run
 
 This is the typical procedure if you download the tar file.
 
-If you retrive the code from Git or want to clone recursively:
+If you retrive the code from Git, make sure to clone recursively:
 
     git clone --recursive https://git.xiph.org/icecast-server.git
 
