@@ -135,6 +135,7 @@ static void _parse_http_headers(xmlDocPtr                   doc,
                                 xmlNodePtr                  node,
                                 ice_config_http_header_t  **http_headers);
 
+static void _parse_master(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 
@@ -567,6 +568,7 @@ void config_clear(ice_config_t *c)
 {
     ice_config_dir_t    *dirnode,
                         *nextdirnode;
+    master_server        *master;
     relay_server        *relay,
                         *nextrelay;
     mount_proxy         *mount,
@@ -610,6 +612,11 @@ void config_clear(ice_config_t *c)
     event_registration_release(c->event);
 
     while ((c->listen_sock = config_clear_listener(c->listen_sock)));
+
+    master = c->master;
+    while (master) {
+        master = master_free(master);
+    }
 
     thread_mutex_lock(&(_locks.relay_lock));
     relay = c->relay;
@@ -1013,6 +1020,8 @@ static void _parse_root(xmlDocPtr       doc,
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             _parse_http_headers(doc, node->xmlChildrenNode, &(configuration->http_headers));
+        } else if (xmlStrcmp(node->name, XMLSTR("master")) == 0) {
+            _parse_master(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
@@ -1623,6 +1632,81 @@ static void _parse_http_headers(xmlDocPtr                   doc,
         xmlFree(name);
     if (value)
         xmlFree(value);
+}
+
+static void _parse_master(xmlDocPtr      doc,
+                         xmlNodePtr     node,
+                         ice_config_t  *configuration)
+{
+    char         *tmp;
+    master_server *master     = calloc(1, sizeof(master_server));
+    master_server *current   = configuration->master;
+    master_server *last      = NULL;
+
+    while(current) {
+        last = current;
+        current = current->next;
+    }
+
+    if (last) {
+        last->next = master;
+    } else {
+        configuration->master = master;
+    }
+
+    master->next         = NULL;
+    master->on_demand    = configuration->on_demand;
+    master->server       = NULL;
+    master->username     = (char *) xmlCharStrdup(configuration->master_username);
+    if (configuration->master_password)
+        master->password = (char *) xmlCharStrdup(configuration->master_password);
+    master->namespace    = NULL;
+
+    do {
+        if (node == NULL)
+            break;
+        if (xmlIsBlankNode(node))
+            continue;
+
+        if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
+            if (master->server)
+                xmlFree(master->server);
+            master->server = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (tmp) {
+                master->port = atoi(tmp);
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<port> setting must not be empty.");
+            }
+        } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
+            if (master->username)
+                xmlFree(master->username);
+            master->username = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
+            if (master->password)
+                xmlFree(master->password);
+            master->password = (char *)xmlNodeListGetString(doc, 
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("namespace")) == 0) {
+            if (master->namespace)
+                xmlFree(master->namespace);
+            master->namespace = (char *)xmlNodeListGetString(doc, 
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            master->on_demand = util_str_to_bool(tmp);
+            if (tmp)
+                xmlFree(tmp);
+        }
+    } while ((node = node->next));
+
+    if (master->server == NULL) {
+        ICECAST_LOG_WARN("<server> is required for <master>.");
+    }
 }
 
 static void _parse_relay(xmlDocPtr      doc,

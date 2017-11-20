@@ -224,6 +224,7 @@ typedef struct ice_config_tag {
     /* is TLS supported by the server? */
     int tls_ok;
 
+    master_server *master;
     relay_server *relay;
 
     mount_proxy *mounts;

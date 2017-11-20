@@ -108,6 +108,21 @@
     <!--<master-update-interval>120</master-update-interval>-->
     <!--<master-password>hackme</master-password>-->
 
+    <!-- Aggregation
+         useful for aggregating all the mounts of any number of master relays.
+    -->
+
+    <!--
+    <master>
+        <server>127.0.0.1</server>
+        <port>8001</port>
+        <username>relay</username>
+        <password>hackme</password>
+        <namespace>master1</namespace>
+        <on-demand>1</on-demand>
+    </master>
+    -->
+
     <!-- Setting this makes all relays on-demand unless overridden, this is
          useful for master relays which do not have <relay> definitions here.
          The default is 0 -->

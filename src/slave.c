@@ -63,6 +63,104 @@ static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
 static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max_interval
 
+
+/* free a master and return its next master */
+master_server *master_free(master_server *master)
+{
+    master_server *next = NULL;
+    if (master)
+    {
+        next = master->next;
+        ICECAST_LOG_DEBUG("freeing master %s:%d", master->server, master->port);
+        if (master->server)
+            xmlFree(master->server);
+        if (master->username)
+            xmlFree(master->username);
+        if (master->password)
+            xmlFree(master->password);
+        if (master->namespace)
+            xmlFree(master->namespace);
+        free(master);
+    }
+    return next;
+}
+
+
+/* copy a master and return the copy */
+static master_server *master_copy(master_server *master)
+{
+    master_server *copy = calloc(1, sizeof(*master));
+
+    if (copy)
+    {
+        copy->server = (char *)xmlCharStrdup(master->server);
+        if (master->username)
+            copy->username = (char *)xmlCharStrdup(master->username);
+        if (master->password)
+            copy->password = (char *)xmlCharStrdup(master->password);
+        if (master->namespace)
+            copy->namespace = (char *)xmlCharStrdup(master->namespace);
+        copy->port = master->port;
+        copy->on_demand = master->on_demand;
+    }
+    return copy;
+}
+
+
+/* free master list */
+static void master_list_free(master_server *list)
+{
+    while ((list = master_free(list)));
+}
+
+
+/* insert a master into a master list and return the list head */
+static master_server *master_list_insert(master_server *list, master_server *master)
+{
+    master->next = list;
+    return master;
+}
+
+
+/* copy a master list and return copied list */
+static master_server *master_list_copy(master_server *list) {
+    master_server *list_copy = NULL;
+
+    while (list)
+    {
+        master_server *copy = master_copy(list);
+        if (copy == NULL)
+        {
+            master_list_free(list_copy);
+            list_copy = NULL;
+            break;
+        }
+        list_copy = master_list_insert(list_copy, copy);
+        list = list->next;
+    }
+
+    return list_copy;
+}
+
+
+/* turn a legacy master (from config) into a master and return it */
+static master_server *master_from_legacy(ice_config_t *config) {
+    master_server *master = calloc(1, sizeof(*master));
+
+    if (master) {
+        master->username = strdup(config->master_username);
+        if (config->master_password)
+            master->password = strdup(config->master_password);
+        if (config->master_server)
+            master->server = strdup(config->master_server);
+        master->port = config->master_server_port;
+        master->on_demand = config->on_demand;
+    }
+
+    return master;
+}
+
+
 relay_server *relay_free (relay_server *relay)
 {
     relay_server *next = relay->next;
@@ -598,10 +696,8 @@ static void relay_check_streams (relay_server *to_start,
 }
 
 
-static int update_from_master(ice_config_t *config)
+static int update_from_master(master_server *master)
 {
-    char *master = NULL, *password = NULL, *username= NULL;
-    int port;
     sock_t mastersock;
     int ret = 0;
     char buf[256];
@@ -610,23 +706,11 @@ static int update_from_master(ice_config_t *config)
         char *authheader, *data;
         relay_server *new_relays = NULL, *cleanup_relays;
         int len, count = 1;
-        int on_demand;
 
-        username = strdup(config->master_username);
-        if (config->master_password)
-            password = strdup(config->master_password);
-
-        if (config->master_server)
-            master = strdup(config->master_server);
-
-        port = config->master_server_port;
-
-        if (password == NULL || master == NULL || port == 0)
+        if (master->password == NULL || master->server == NULL || master->port == 0)
             break;
-        on_demand = config->on_demand;
         ret = 1;
-        config_release_config();
-        mastersock = sock_connect_wto(master, port, 10);
+        mastersock = sock_connect_wto(master->server, master->port, 10);
 
         if (mastersock == SOCK_ERROR)
         {
@@ -634,9 +718,9 @@ static int update_from_master(ice_config_t *config)
             break;
         }
 
-        len = strlen(username) + strlen(password) + 2;
+        len = strlen(master->username) + strlen(master->password) + 2;
         authheader = malloc(len);
-        snprintf (authheader, len, "%s:%s", username, password);
+        snprintf (authheader, len, "%s:%s", master->username, master->password);
         data = util_base64_encode(authheader, len);
         sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
@@ -684,14 +768,23 @@ static int update_from_master(ice_config_t *config)
                 }
                 else
                 {
-                  r->server = (char *)xmlCharStrdup (master);
-                  r->port = port;
+                  r->server = (char *)xmlCharStrdup (master->server);
+                  r->port = master->port;
                 }
 
                 r->mount = strdup(parsed_uri->path);
-                r->localmount = strdup(parsed_uri->path);
+                if (master->namespace)
+                {
+                    int mountlen = strlen(master->namespace) + strlen(parsed_uri->path) + 2;
+                    r->localmount = malloc(mountlen);
+                    snprintf(r->localmount, mountlen, "%s%s%s",
+                        (master->namespace[0] == '/') ? "" : "/", master->namespace,
+                        parsed_uri->path);
+                } else {
+                    r->localmount = strdup(parsed_uri->path);
+                }
                 r->mp3metadata = 1;
-                r->on_demand = on_demand;
+                r->on_demand = master->on_demand;
                 r->next = new_relays;
                 ICECAST_LOG_DEBUG("Added relay host=\"%s\", port=%d, mount=\"%s\"", r->server, r->port, r->mount);
                 new_relays = r;
@@ -710,16 +803,8 @@ static int update_from_master(ice_config_t *config)
 
     } while(0);
 
-    if (master)
-        free (master);
-    if (username)
-        free (username);
-    if (password)
-        free (password);
-
     return ret;
 }
-
 
 static void *_slave_thread(void *arg)
 {
@@ -761,18 +846,41 @@ static void *_slave_thread(void *arg)
         thread_mutex_lock(&_slave_mutex);
         if (max_interval <= interval)
         {
+            master_server *list = NULL;
+
             ICECAST_LOG_DEBUG("checking master stream list");
-            config = config_get_config();
 
             if (max_interval == 0)
                 skip_timer = 1;
             interval = 0;
-            max_interval = config->master_update_interval;
-            thread_mutex_unlock(&_slave_mutex);
 
-            /* the connection could take some time, so the lock can drop */
-            if (update_from_master (config))
-                config = config_get_config();
+            config = config_get_config();
+            max_interval = config->master_update_interval;
+            config_release_config();
+
+            thread_mutex_unlock(&_slave_mutex);
+            
+            /* copy master list and insert legacy master from config. note:
+             * keeping a global list of master servers that only changes on a
+             * config change would be much more efficient than performing a
+             * copy each time we do an update -- implement this (and the
+             * locking that goes with along with this approach) */
+            config = config_get_config();
+            list = master_list_insert(
+                master_list_copy(config->master),
+                master_from_legacy(config)
+            );
+            config_release_config();
+            
+            /* update all master servers */
+            while (list) {
+                update_from_master(list);
+                list = list->next;
+            }
+
+            master_list_free(list);
+
+            config = config_get_config();
 
             thread_mutex_lock (&(config_locks()->relay_lock));
 
