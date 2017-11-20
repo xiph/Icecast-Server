@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Configuration File - Icecast Docs</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Configuration File";
+    var mkdocs_page_input_path = "config_file.md";
+    var mkdocs_page_url = "/config_file/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> Icecast Docs</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../basic_setup/">Basic Setup</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Configuration File</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#general-settings">General Settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#limits">Limits</a></li>
+    
+
+    <li class="toctree-l2"><a href="#authentication">Authentication</a></li>
+    
+
+    <li class="toctree-l2"><a href="#public-directory-publishing-settings">Public Directory Publishing Settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#tcp-port-settings">TCP Port settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#http-headers">HTTP headers</a></li>
+    
+
+    <li class="toctree-l2"><a href="#relaying-streams">Relaying Streams</a></li>
+    
+
+    <li class="toctree-l2"><a href="#mount-specific-settings">Mount Specific Settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#path-settings">Path Settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#logging-settings">Logging Settings</a></li>
+    
+
+    <li class="toctree-l2"><a href="#security-settings">Security Settings</a></li>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../server_stats/">Server Statistics</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../auth/">Authentication</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../relaying/">Relaying</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../yp/">Listing in a YellowPage Directory</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../admin_interface/">Admin Interface</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../win32/">Windows Specific</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">Icecast Docs</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Configuration File</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p>This section will describe each section of the configuration file.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Especially for new Icecast users, editing the config file can be quite tricky.
+It is thus recommended to make a <strong>backup of the original config file</strong> and then
+<strong>start by just changing all passwords</strong>, nothing else.</p>
+</div>
+<p>Should you need to customize the configuration, then make a backup of your working config file, before you
+make any changes. If Icecast refuses to start it is in most cases due to a malformed config file. In such a
+case running the following command should point out most XML syntax problems:</p>
+<pre><code>xmllint icecast.xml
+</code></pre>
+<p>Also check the Icecast error.log for additional hints in case of problems!</p>
+<h1 id="general-settings">General Settings</h1>
+<pre><code class="xml">&lt;hostname&gt;example.org&lt;/hostname&gt;
+&lt;location&gt;Moon&lt;/location&gt;
+&lt;admin&gt;icemaster@example.org&lt;/admin&gt;
+&lt;fileserve&gt;1&lt;/fileserve&gt;
+&lt;server-id&gt;icecast 2.4.1&lt;/server-id&gt;
+</code></pre>
+
+<dl>
+<dt>hostname</dt>
+<dd>This is the DNS name (or IP address) that will be used for the stream directory lookups or
+  possibily the playlist generation if a Host header is not provided. This should be something
+  that your listeners can use.<br />
+<strong>Note</strong>: This should not the the URL of your stream's website or so, but the hostname for this
+  Icecast server!</dd>
+<dt>location</dt>
+<dd>This sets the location string for this Icecast instance. It will be shown e.g on the web interface.</dd>
+<dt>admin</dt>
+<dd>This should contain contact details for getting in touch with the server administrator.
+  Usually this will be an email address, but as this can be an arbitrary string it could also
+  be a phone number. This will be shown e.g. on the web interface.</dd>
+<dt>fileserve</dt>
+<dd>This flag turns on the Icecast fileserver from which static files can be served. All files
+  are served relative to the path specified in the <a href="#path-settings"><code>&lt;webroot&gt;</code></a> configuration setting.<br />
+  By default the setting is enabled so that requests for the static files needed by the status 
+  and admin pages, such as images and CSS are retrievable.</dd>
+<dt>server-id</dt>
+<dd>This optional setting allows for the administrator of the server to override the default
+  server identification. The default is icecast followed by a version number.<br />
+  It is not recommended to use this setting, unless you have very good reasons and know
+  what you are doing.</dd>
+</dl>
+<h1 id="limits">Limits</h1>
+<pre><code class="xml">&lt;limits&gt;
+    &lt;clients&gt;100&lt;/clients&gt;
+    &lt;sources&gt;2&lt;/sources&gt;
+    &lt;queue-size&gt;102400&lt;/queue-size&gt;
+    &lt;client-timeout&gt;30&lt;/client-timeout&gt;
+    &lt;header-timeout&gt;15&lt;/header-timeout&gt;
+    &lt;source-timeout&gt;10&lt;/source-timeout&gt;
+    &lt;burst-on-connect&gt;1&lt;/burst-on-connect&gt;
+    &lt;burst-size&gt;65536&lt;/burst-size&gt;
+&lt;/limits&gt;
+</code></pre>
+
+<p>This section contains server level settings. Usually only the <code>&lt;clients&gt;</code> and <code>&lt;sources&gt;</code> values
+need to be adjusted.<br />
+Only modify this section if you know what you are doing.</p>
+<dl>
+<dt>clients</dt>
+<dd>Total number of concurrent clients supported by the server. Listeners are considered clients,
+  but so are accesses to any static content (i.e. fileserved content) and also any requests to
+  gather stats. These are max concurrent connections for the entire server (not per mountpoint).</dd>
+<dt>sources</dt>
+<dd>Maximum number of connected sources supported by the server. This includes active relays and source clients.</dd>
+<dt>queue-size</dt>
+<dd>This is the maximum size (in bytes) of the stream queue. A listener may temporarily
+  lag behind due to network congestion and in this case an internal queue is maintained for the
+  listeners. If the queue grows larger than this config value, then it is truncated and any listeners
+  found will be removed from the stream. This will be the default setting for the streams which is
+  512k unless overridden here.<br />
+  You can override this in the individual mount settings as well, which can be
+  useful if you have a mixture of high bandwidth video and low bitrate audio streams.</dd>
+<dt>client-timeout</dt>
+<dd>This does not seem to be used.</dd>
+<dt>header-timeout</dt>
+<dd>The maximum time (in seconds) to wait for a request to come in once the client has made a connection
+  to the server. In general this value should not need to be tweaked.</dd>
+<dt>source-timeout</dt>
+<dd>If a connected source does not send any data within this timeout period (in seconds),
+  then the source connection will be removed from the server.</dd>
+<dt>burst-on-connect</dt>
+<dd>This option is deprecated, use <code>burst-size</code> instead.</dd>
+<dt>burst-size</dt>
+<dd>The burst size is the amount of data (in bytes) to burst to a client at connection time. This is to quickly fill
+  the pre-buffer used by media players. The default is 64 kbytes which is a typical size used by most clients so changing
+  it is usually not required. This setting applies to all mountpoints unless overridden in the mount settings. Ensure that this value is smaller than queue-size, if necessary increase queue-size to be larger than your desired burst-size. Failure to do so might result in aborted listener client connection attempts, due to initial burst leading to the connection already exceeding the queue-size limit.</dd>
+</dl>
+<h1 id="authentication">Authentication</h1>
+<p>This section contains all the usernames and passwords used for administration purposes or to connect sources and relays.
+For more information, refer to the <a href="../auth/">Authentication</a> Page.</p>
+<h1 id="public-directory-publishing-settings">Public Directory Publishing Settings</h1>
+<pre><code class="xml">&lt;directory&gt;
+    &lt;yp-url-timeout&gt;15&lt;/yp-url-timeout&gt;
+    &lt;yp-url&gt;http://dir.xiph.org/cgi-bin/yp-cgi&lt;/yp-url&gt;
+&lt;/directory&gt;
+</code></pre>
+
+<p>This section contains all the settings for listing a stream on any of the Icecast Directory servers.
+Multiple occurances of this section can be specified in order to be listed on multiple directory servers.<br />
+For more Information see the <a href="../yp/">Listing in a Directory</a> Page.</p>
+<dl>
+<dt>yp-url-timeout</dt>
+<dd>This value is the maximum time Icecast will wait for a response from a particular directory server.
+  The recommended value should be sufficient for most directory servers.</dd>
+<dt>yp-url</dt>
+<dd>The URL which Icecast uses to communicate with the Directory server.
+  The value for this setting is provided by the owner of the Directory server.</dd>
+</dl>
+<h1 id="tcp-port-settings">TCP Port settings</h1>
+<p>The following shows how you can specify the listening settings for the server.</p>
+<pre><code class="xml">&lt;listen-socket&gt;
+    &lt;port&gt;8000&lt;/port&gt;
+    &lt;bind-address&gt;127.0.0.1&lt;/bind-address&gt;
+&lt;/listen-socket&gt;
+
+&lt;listen-socket&gt;
+    &lt;port&gt;8443&lt;/port&gt;
+    &lt;tls&gt;1&lt;/tls&gt;
+&lt;/listen-socket&gt;
+
+&lt;listen-socket&gt;
+    &lt;port&gt;8004&lt;/port&gt;
+    &lt;shoutcast-mount&gt;/live.mp3&lt;/shoutcast-mount&gt;
+&lt;/listen-socket&gt;
+</code></pre>
+
+<p>The first listen-socket block shows how to make Icecast listen on port 8000, and additionally specifies
+a <code>&lt;bind-address&gt;</code>, which limits this port to only listen for connections from this address.<br />
+If a bind-address is not specified for a particular listen-socket, then the socket will be bound to all
+interfaces (including IPv6 if available). For most people, the bind-address option will not
+be required and often confuses people.</p>
+<p>Another possibility is to use an <code>&lt;ssl&gt;</code> boolean setting which informs Icecast that a secured
+connection is to be used. A common use for using a secure connection would be for admin page access.</p>
+<p>The last listen-socket block in this example shows how to defined a Shoutcast compatible port. This can
+be done by setting the <code>shoutcast-mount</code> setting. This will implicity define a second listening socket
+whose port number is always one higher than the port defined (because the Shoutcast protocol requires
+two ports) and also informs Icecast of which mountpoint the Shoutcast source client on this port will be using.</p>
+<dl>
+<dt>port</dt>
+<dd>The TCP port that will be used to accept client connections.</dd>
+<dt>bind-address</dt>
+<dd>An optional IP address that can be used to bind to a specific network
+  card. If not supplied, then it will bind to all interfaces.</dd>
+<dt>tls</dt>
+<dd>If set to 1 will enable HTTPS on this listen-socket. Icecast must have been compiled against OpenSSL to be able to do so.</dd>
+<dt>shoutcast-mount</dt>
+<dd>An optional mountpoint setting to be used when Shoutcast DSP compatible clients connect.<br />
+  Defining this within a listen-socket group tells Icecast that this port and the subsequent port are to be used for
+  Shoutcast compatible source clients.</dd>
+</dl>
+<h1 id="http-headers">HTTP headers</h1>
+<pre><code class="xml">&lt;http-headers&gt;
+    &lt;header name=&quot;Access-Control-Allow-Origin&quot; value=&quot;*&quot; /&gt;
+    &lt;header name=&quot;X-Robots-Tag&quot; value=&quot;index, noarchive&quot; status=&quot;200&quot; /&gt;
+&lt;/http-headers&gt;
+</code></pre>
+
+<p>Icecast can be configured to send custom HTTP headers. This is available as a global setting and inside mountpoints. This section explains the global settings.</p>
+<p>This functionality was introduced mainly to enable the use of simplified cross-origin resource sharing. The Icecast default configuration contains the first header, as seen in the above exmple, for this reason.</p>
+<dl>
+    <dt>http-headers</dt>
+    <dd>This element is placed anywhere inside the main section of the Icecast config.
+        It will contain <code>&lt;header&gt;</code> child elements, that specify the actual headers one by one.</dd>
+
+    <dt>header</dt>
+    <dd>This tag specifies the actual header to be sent to a HTTP client in response to every request.<br />
+        This tag can contain the following attributes:
+        <dl>
+            <dt>name</dt>
+            <dd>Specifies the HTTP header field name. (required)</dd>
+            <dt>value</dt>
+            <dd>Specifies the HTTP header field value. (required)</dd>
+            <dt>status</dt>
+            <dd>Limits sending the header to certain HTTP status codes.<br />
+                If not specified, the default is to return the header for every HTTP status code.
+                This attribute is only available for global headers, at the moment. (optional)
+            </dd>
+        </dl>
+    </dd>
+</dl>
+
+<p>At the moment only global headers will be sent in case the HTTP status is not "200". This is subject to change in the future.
+Avoid placing comments inside <code>&lt;http-headers&gt;</code> as, in this release, it will prevent Icecast from parsing further <code>&lt;header&gt;</code> tags.</p>
+<h1 id="relaying-streams">Relaying Streams</h1>
+<p>This section contains the servers relay settings. The relays are implemented using a pull system where the receiving
+server connects as if it's a listener to the sending server.<br />
+There are two types of relay setups, a “Master server relay” or a “Specific Mountpoint relay.”</p>
+<p>For information about the two types and how to configure them, refer to the <a href="../relaying/">Relaying</a> Page.</p>
+<h1 id="mount-specific-settings">Mount Specific Settings</h1>
+<!-- FIXME -->
+
+<pre><code class="xml">&lt;mount type=&quot;normal&quot;&gt;
+    &lt;mount-name&gt;/example-complex.ogg&lt;/mount-name&gt;
+    &lt;username&gt;othersource&lt;/username&gt;
+    &lt;password&gt;hackmemore&lt;/password&gt;
+    &lt;max-listeners&gt;1&lt;/max-listeners&gt;
+    &lt;max-listener-duration&gt;3600&lt;/max-listener-duration&gt;
+    &lt;dump-file&gt;/tmp/dump-example1.ogg&lt;/dump-file&gt;
+    &lt;intro&gt;/intro.ogg&lt;/intro&gt;
+    &lt;fallback-mount&gt;/example2.ogg&lt;/fallback-mount&gt;
+    &lt;fallback-override&gt;1&lt;/fallback-override&gt;
+    &lt;fallback-when-full&gt;1&lt;/fallback-when-full&gt;
+    &lt;charset&gt;ISO-8859-1&lt;/charset&gt;
+    &lt;public&gt;1&lt;/public&gt;
+    &lt;stream-name&gt;My audio stream&lt;/stream-name&gt;
+    &lt;stream-description&gt;My audio description&lt;/stream-description&gt;
+    &lt;stream-url&gt;http://some.place.com&lt;/stream-url&gt;
+    &lt;genre&gt;classical&lt;/genre&gt;
+    &lt;bitrate&gt;64&lt;/bitrate&gt;
+    &lt;type&gt;application/ogg&lt;/type&gt;
+    &lt;subtype&gt;vorbis&lt;/subtype&gt;
+    &lt;hidden&gt;1&lt;/hidden&gt;
+    &lt;burst-size&gt;65536&lt;/burst-size&gt;
+    &lt;icy-metadata-interval&gt;4096&lt;/icy-metadata-interval&gt;
+    &lt;authentication type=&quot;xxxxxx&quot;&gt;
+            &lt;!-- See authentication documentation --&gt;
+    &lt;/authentication&gt;
+    &lt;http-headers&gt;
+            &lt;header name=&quot;Access-Control-Allow-Origin&quot; value=&quot;*&quot; /&gt;
+            &lt;header name=&quot;X-Robots-Tag&quot; value=&quot;index, noarchive&quot; /&gt;
+            &lt;header name=&quot;foo&quot; value=&quot;bar&quot; status=&quot;200&quot; /&gt;
+            &lt;header name=&quot;Nelson&quot; value=&quot;Ha-Ha!&quot; status=&quot;404&quot; /&gt;
+    &lt;/http-headers&gt;
+    &lt;on-connect&gt;/home/icecast/bin/source-start&lt;/on-connect&gt;
+    &lt;on-disconnect&gt;/home/icecast/bin/source-end&lt;/on-disconnect&gt;
+&lt;/mount&gt;
+</code></pre>
+
+<p>This section contains the settings which apply only to a specific mountpoint and applies to an incoming
+stream whether it is a relay or a source client. The purpose of the mount definition is to state certain
+information that can override either global/default settings or settings provided from the incoming stream.</p>
+<p>A mount does not need to be stated for each incoming source although you may want to specific certain settings
+like the maximum number of listeners or a mountpoint specific username/password. As a general rule, only define
+what you need to but each mount definition needs at least the mount-name. Changes to most of these will apply
+across a configuration file re-read even on active streams, however some only apply when the stream starts or
+ends.</p>
+<dl>
+<dt>type</dt>
+<dd>The type of the mount point (default: "normal"). A mount of type "default"
+  can be used to specify common values for multiple mountpoints.<br />
+  Note that default mountpoints won't merge with other mount blocks.
+  You only get those values if no <code>type="normal"</code> mount block exists
+  corresponding to your mountpoint.</dd>
+<dt>mount-name</dt>
+<dd>The name of the mount point for which these settings apply.
+  MUST NOT be used in case of mount type "default".</dd>
+</dl>
+<!-- FIXME -->
+
+<dl>
+<dt>username</dt>
+<dd>An optional value which will set the username that a source must use to connect using this mountpoint.
+  Do not set this value unless you are sure that the source clients connecting to the mount point can be
+  configured to send a username other than <code>source</code>.<br />
+  If this value is not present the default username is <code>source</code>.</dd>
+</dl>
+<!-- FIXME -->
+
+<dl>
+<dt>password</dt>
+<dd>An optional value which will set the password that a source must use to connect using this mountpoint.
+  There is also a <a href="../auth.html#stream-auth">URL based authentication method</a> for sources that can be used instead.</dd>
+<dt>max-listeners</dt>
+<dd>An optional value which will set the maximum number of listeners that can be attached to this mountpoint.</dd>
+<dt>max-listener-duration</dt>
+<dd>An optional value which will set the length of time a listener will stay connected to the stream.<br />
+  An auth component may override this.</dd>
+<dt>dump-file</dt>
+<dd>An optional value which will set the filename which will be a dump of the stream coming through 
+  on this mountpoint. This filename is processed with strftime(3). This allows to use variables like <code>%F</code>.</dd>
+<dt>intro</dt>
+<dd>An optional value which will specify the file those contents will be sent to new listeners when they
+  connect but before the normal stream is sent. Make sure the format of the file specified matches the
+  streaming format. The specified file is appended to webroot before being opened.</dd>
+<dt>fallback-mount</dt>
+<dd>This optional value specifies a mountpoint that clients are automatically moved
+  to if the source shuts down or is not streaming at the time a listener connects. Only one can be
+  listed in each mount and should refer to another mountpoint on the same server that is streaming in
+  the same streaming format.<br />
+  If clients cannot fallback to another mountpoint, due to a missing
+  fallback-mount or it states a mountpoint that is just not available, then those clients will be
+  disconnected. If clients are falling back to a mountpoint and the fallback-mount is not actively
+  streaming but defines a fallback-mount itself then those clients may be moved there instead. This
+  multi-level fallback allows clients to cascade several mountpoints.<br />
+  A fallback mount can also state a file that is located in webroot. This is useful for playing a
+  pre-recorded file in the case of a stream going down. It will repeat until either the listener
+  disconnects or a stream comes back available and takes the listeners back. As per usual, the file
+  format should match the stream format, failing to do so may cause problems with playback.<br />
+  Note that the fallback file is not timed so be careful if you intend to relay this. They are fine
+  on slave streams but don't use them on master streams, if you do then the relay will consume stream
+  data at a faster rate and the listeners on the relay would eventually get kicked off.</dd>
+<dt>fallback-override</dt>
+<dd>When enabled, this allows a connecting source client or relay on this mountpoint to move listening
+  clients back from the fallback mount.</dd>
+<dt>fallback-when-full</dt>
+<dd>When set to <code>1</code>, this will cause new listeners, when the max listener count for the mountpoint has
+  been reached, to move to the fallback mount if there is one specified.</dd>
+<dt>charset</dt>
+<dd>For legacy, non-Ogg streams like MP3, the metadata that is inserted into the stream often has no defined character set.
+  We have traditionally assumed UTF8 as it allows for multiple language sets on the web pages and stream directory,
+  however many source clients for MP3 type streams have assumed Latin1 (ISO-8859-1) or leave it to whatever character
+  set is in use on the source client system.<br />
+  This character mismatch has been known to cause a problem as the stats engine and stream directory servers want UTF8
+  so now we assume Latin1 for non-Ogg streams (to handle the common case) but you can specify an alternative character
+  set with this option.<br />
+  The source clients can also specify a <code>charset=</code> parameter to the metadata update URL if they so wish.</dd>
+<dt>public</dt>
+<dd>The default setting for this is <code>-1</code> indicating that it is up to the source client or relay to determine if this mountpoint
+  should advertise. A setting of <code>0</code> will prevent any advertising and a setting of <code>1</code> will force it to advertise. 
+  If you do force advertising you may need to set other settings listed below as the directory server can refuse to advertise
+  if there is not enough information provided.</dd>
+<dt>stream-name</dt>
+<dd>Setting this will add the specified name to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.</dd>
+<dt>stream-description</dt>
+<dd>Setting this will add the specified description to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.</dd>
+<dt>stream-url</dt>
+<dd>Setting this will add the specified URL to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.
+  The URL is generally for directing people to a website.</dd>
+<dt>genre</dt>
+<dd>Setting this will add the specified genre to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.
+  This can be anything be using certain key words can help searches in the directories.</dd>
+<dt>bitrate</dt>
+<dd>Setting this will add the specified bitrate to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.
+  This is stated in kbps.</dd>
+<dt>type</dt>
+<dd>Setting this will add the specified mime type to the stats (and therefore directory listings) for this mountpoint even if the source client/relay provide one.
+  It is very unlikely that this will be needed.</dd>
+<dt>subtype</dt>
+<dd>Setting this will add the specified subtype to the stats (and therefore directory listings) for this mountpoint.
+  The subtype is really to help the directory server to identify the components of the type.
+  An example setting is vorbis/theora and indicates the codecs in an Ogg stream</dd>
+<dt>burst-size</dt>
+<dd>This optional setting allows for providing a burst size which overrides the default burst size as defined in limits.
+  The value is in bytes.</dd>
+<dt>icy-metadata-interval</dt>
+<dd>Previously <code>mp3-metadata-interval</code>.<br />
+  This optional setting specifies what interval, in bytes, between ICY metadata updates for streams using ICY metadata.
+  This only applies to new listeners connecting on this mountpoint, not existing listeners falling back to this mountpoint. The
+  default is either the hardcoded server default or the value passed from a relay.</dd>
+<dt>hidden</dt>
+<dd>Enable this to prevent this mount from being shown on the xsl pages. This is mainly for cases where a local relay is configured
+  and you do not want the source of the local relay to be shown.</dd>
+</dl>
+<!-- FIXME -->
+
+<dl>
+<dt>authentication</dt>
+<dd>This specifies that the named mount point will require listener (or source) authentication. Currently, we support a file-based
+  authentication scheme (<code>type=htpasswd</code>) and URL based authentication request forwarding. A mountpoint configured with an authenticator
+  will display a red key next to the mount point name on the admin screens.<br />
+  You can read more about authentication and URL based source authentication <a href="../auth.html">here</a>.</dd>
+<dt>http-headers</dt>
+<dd>This element is placed anywhere inside the mount section of the icecast config. It will contain <code>&lt;header&gt;</code> child elements, that specify the actual HTTP headers one by one.</dd>
+<dt>header</dt>
+<dd>This tag specifies the actual header to be sent to a HTTP client in response to every request for this mount point, but currently only if the HTTP status code is "200".
+  This tag can contain the following attributes:</dd>
+</dl>
+<ul>
+<li><code>name</code> is required and its value specifies the HTTP header field name.</li>
+<li><code>value</code> is required and its value specifies the HTTP header field value.</li>
+</ul>
+<dl>
+<dt>on-connect</dt>
+<dd>State a program that is run when the source is started. It is passed a parameter which is the name of the mountpoint that is starting.
+  The processing of the stream does not wait for the script to end.
+  Caution should be exercised as there is a small chance of stream file descriptors being mixed up with script file descriptors, if the FD numbers go above 1024. This will be further addressed in the next Icecast release.
+  <em>This option is not available on Win32</em></dd>
+<dt>on-disconnect</dt>
+<dd>State a program that is run when the source ends. It is passed a parameter which is the name of the mountpoint that has ended.
+  The processing of the stream does not wait for the script to end.<br />
+  Caution should be exercised as there is a small chance of stream file descriptors being mixed up with script file descriptors, if the FD numbers go above 1024. This will be further addressed in the next Icecast release.
+  <em>This option is not available on Win32</em></dd>
+</dl>
+<h1 id="path-settings">Path Settings</h1>
+<pre><code class="xml">&lt;paths&gt;
+    &lt;basedir&gt;./&lt;/basedir&gt;
+    &lt;logdir&gt;./logs&lt;/logdir&gt;
+    &lt;pidfile&gt;./icecast.pid&lt;/pidfile&gt;
+    &lt;webroot&gt;./web&lt;/webroot&gt;
+    &lt;adminroot&gt;./admin&lt;/adminroot&gt;
+    &lt;allow-ip&gt;/path/to/ip_allowlist&lt;/allow-ip&gt;
+    &lt;deny-ip&gt;/path_to_ip_denylist&lt;/deny-ip&gt;
+    &lt;tls-certificate&gt;/path/to/certificate.pem&lt;/tls-certificate&gt;
+    &lt;ssl-allowed-ciphers&gt;ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS&lt;/ssl-allowed-ciphers&gt;
+    &lt;alias source=&quot;/foo&quot; dest=&quot;/bar&quot;/&gt;
+    &lt;mime-types&gt;/path/to/mime.types&lt;/mime-types&gt;
+&lt;/paths&gt;
+</code></pre>
+
+<p>This section contains paths which are used for various things within icecast. All paths (other than any aliases) should not end in a <code>/</code>.</p>
+<dl>
+<dt>basedir</dt>
+<dd>This path is used in conjunction with the chroot settings, and specifies the base directory that is chrooted to when the server is started.<br />
+<em>This feature is not supported on Win32.</em></dd>
+<dt>logdir</dt>
+<dd>This path specifies the base directory used for logging. Both the <code>error.log</code> and <code>access.log</code> will be created relative to this directory.</dd>
+<dt>pidfile</dt>
+<dd>This pathname specifies the file to write at startup and to remove at normal shutdown. The file contains the process id of the icecast process.<br />
+  This could be read and used for sending signals to Icecast.</dd>
+<dt>webroot</dt>
+<dd>This path specifies the base directory used for all static file requests. This directory can contain all standard file types
+  (including mp3s and ogg vorbis files). For example, if webroot is set to <code>/var/share/icecast2</code>, and a request for
+  <code>http://server:port/mp3/stuff.mp3</code> comes in, then the file <code>/var/share/icecast2/mp3/stuff.mp3</code> will be served.</dd>
+<dt>adminroot</dt>
+<dd>This path specifies the base directory used for all admin requests. More specifically, this is used to hold the XSLT scripts used
+  for the web-based admin interface. The admin directory contained within the icecast distribution contains these files.</dd>
+<dt>allow-ip</dt>
+<dd>If specified, this points to the location of a file that contains a list of IP addresses that will be allowed to connect to Icecast.
+  This could be useful in cases where a master only feeds known slaves.<br />
+  The format of the file is simple, one IP per line.</dd>
+<dt>deny-ip</dt>
+<dd>If specified, this points to the location of a file that contains a list of IP addressess that will be dropped immediately.
+  This is mainly for problem clients when you have no access to any firewall configuration.<br />
+  The format of the file is simple, one IP per line.</dd>
+</dl>
+<!-- FIXME -->
+
+<dl>
+<dt>alias</dt>
+<dd>Aliases are used to provide a way to create multiple mountpoints that refer to the same mountpoint.<br />
+  For example: <code>&lt;alias source="/foo" dest="/bar"&gt;</code></dd>
+<dt>tls-certificate</dt>
+<dd>If specified, this points to the location of a file that contains <em>both</em> the X.509 private and public key.
+  This is required for HTTPS support to be enabled. Please note that the user Icecast is running as must be able to read the file. Failing to ensure this will cause a "Invalid cert file" WARN message, just as if the file wasn't there.</dd>
+<dt>tls-allowed-ciphers</dt>
+<dd>This optional tag specifies the list of allowed ciphers passed on to the SSL library.
+  Icecast contains a set of defaults conforming to current best practices and you should <em>only</em> override those, using this tag, if you know exactly what you are doing.</dd>
+<dt>mime-types</dt>
+<dd>This optional tag specified a path to a mimetypes file that Icecast will use to map file extensions to mime-types when serving files.</dd>
+</dl>
+<h1 id="logging-settings">Logging Settings</h1>
+<pre><code class="xml">&lt;logging&gt;
+    &lt;accesslog&gt;access.log&lt;/accesslog&gt;
+    &lt;errorlog&gt;error.log&lt;/errorlog&gt;
+    &lt;playlistlog&gt;playlist.log&lt;/playlistlog&gt;
+    &lt;loglevel&gt;4&lt;/loglevel&gt; &lt;!-- 4 Debug, 3 Info, 2 Warn, 1 Error --&gt;
+&lt;/logging&gt;
+</code></pre>
+
+<p>This section contains information relating to logging within Icecast. There are three logfiles currently generated by Icecast,
+an <code>error.log</code> (where all log messages are placed), an <code>access.log</code> (where all stream/admin/http requests are logged) and an
+optional <code>playlist.log</code>.  </p>
+<p>Note that on non-win32 platforms, a HUP signal can be sent to Icecast in which the log files are re-opened for appending giving the ability move/remove the log files.  </p>
+<p>If you set any of the filenames to a simple dash (e.g. <code>&lt;accesslog&gt;-&lt;/accesslog&gt;</code>) then Icecast will direct the log output to
+STDERR instead of a file.</p>
+<dl>
+<dt>accesslog</dt>
+<dd>Into this file, all requests made to the icecast2 will be logged. This file is relative to the path specified by the <code>&lt;logdir&gt;</code> config value.</dd>
+<dt>errorlog</dt>
+<dd>All Icecast generated log messages will be written to this file. If the loglevel is set too high (Debug for instance) then
+  this file can grow fairly large over time. Currently, there is no log-rotation implemented.</dd>
+<dt>playlistlog</dt>
+<dd>Into this file, a log of all metadata for each mountpoint will be written. The format of the logfile will most likely change over time
+  as we narrow in on a standard format for this. Currently, the file is pipe delimited. This is optional and can be removed entirely
+  from the config file.</dd>
+<dt>logsize</dt>
+<dd>This value specifies (in Kbytes) the maxmimum size of any of the log files. When the logfile grows beyond this value, icecast will either
+  rename it to <code>logfile.old</code>, or add a timestamp to the archived file (if logarchive is enabled).</dd>
+<dt>logarchive</dt>
+<dd>If this value is set, then Icecast will append a timestamp to the end of the logfile name when logsize has been reached. If disabled, then
+  the default behavior is to rename the logfile to <code>logfile.old</code> (overwriting any previously saved logfiles). We disable this by default to
+  prevent the filling up of filesystems for people who don't care (or know) that their logs are growing.</dd>
+<dt>loglevel</dt>
+<dd>Indicates what messages are logged by icecast. Log messages are categorized into one of 4 types, Debug, Info, Warn, and Error.  </dd>
+</dl>
+<p>The following mapping can be used to set the appropriate value:</p>
+<ul>
+<li>loglevel = <code>4</code>: Debug, Info, Warn, Error messages are printed</li>
+<li>loglevel = <code>3</code>: Info, Warn, Error messages are printed</li>
+<li>loglevel = <code>2</code>: Warn, Error messages are printed</li>
+<li>loglevel = <code>1</code>: Error messages only are printed</li>
+</ul>
+<h1 id="security-settings">Security Settings</h1>
+<p>This section contains configuration settings that can be used to secure the icecast server by performing a chroot to a secured location or changing user and group on start-up. The latter allows icecast to bind to priviledged ports like 80 and 443, by being started as root and then dropping to the configured user/group after binding listener-sockets.</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>This is currently not supported on Win32.</p>
+</div>
+<pre><code class="xml">&lt;security&gt;
+    &lt;chroot&gt;0&lt;/chroot&gt;
+    &lt;changeowner&gt;
+        &lt;user&gt;nobody&lt;/user&gt;
+        &lt;group&gt;nogroup&lt;/group&gt;
+    &lt;/changeowner&gt;
+&lt;/security&gt;
+</code></pre>
+
+<dl>
+<dt>chroot</dt>
+<dd>An indicator which specifies whether a <code>chroot()</code> will be done when the server is started.
+  The chrooted path is specified by the <code>&lt;basedir&gt;</code> configuration value.
+  Setting up and using a chroot is an advanced concept and not in the scope of this document.</dd>
+<dt>changeowner</dt>
+<dd>This section indicates the user and group that will own the icecast process when it is started.<br />
+  These need to be valid users on the system. Icecast must be started as root for this to work.</dd>
+</dl>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../server_stats/" class="btn btn-neutral float-right" title="Server Statistics">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../basic_setup/" class="btn btn-neutral" title="Basic Setup"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../basic_setup/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../server_stats/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+
+</body>
+</html>

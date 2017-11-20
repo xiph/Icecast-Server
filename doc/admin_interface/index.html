@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Admin Interface - Icecast Docs</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Admin Interface";
+    var mkdocs_page_input_path = "admin_interface.md";
+    var mkdocs_page_url = "/admin_interface/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> Icecast Docs</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../basic_setup/">Basic Setup</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../config_file/">Configuration File</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../server_stats/">Server Statistics</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../auth/">Authentication</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../relaying/">Relaying</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../yp/">Listing in a YellowPage Directory</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Admin Interface</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#admin-functions-mount-specific">Admin Functions (mount specific)</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#metadata-update">Metadata Update</a></li>
+        
+            <li><a class="toctree-l3" href="#fallback-update">Fallback Update</a></li>
+        
+            <li><a class="toctree-l3" href="#list-clients">List Clients</a></li>
+        
+            <li><a class="toctree-l3" href="#move-clients-listeners">Move Clients (Listeners)</a></li>
+        
+            <li><a class="toctree-l3" href="#kill-client-listener">Kill Client (Listener)</a></li>
+        
+            <li><a class="toctree-l3" href="#kill-source">Kill Source</a></li>
+        
+        </ul>
+    
+
+    <li class="toctree-l2"><a href="#admin-functions-general">Admin Functions (general)</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#stats">Stats</a></li>
+        
+            <li><a class="toctree-l3" href="#list-mounts">List Mounts</a></li>
+        
+        </ul>
+    
+
+    <li class="toctree-l2"><a href="#web-based-admin-interface">Web-Based Admin Interface</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#advanced">Advanced</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../win32/">Windows Specific</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">Icecast Docs</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Admin Interface</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p>This section contains information about the admin interface of Icecast. Through this interface the user can manipulate many server features. From it you can gather statistics, move listeners from one mountpoint to another, disconnect connected sources or listeners and many other activities. Each function is enumerated here as well as an example usage of the function.</p>
+<p>Each of these functions requires HTTP authentication via the appropriate username and password. For mount-specific functions, you may use either the <code>&lt;admin-username&gt;</code> and <code>&lt;admin-password&gt;</code> specified in the Icecast config file, or the username and password specified for that mountpoint (if any). For general functions (not specific to a single mountpoint), you must use the admin username and password.</p>
+<h1 id="admin-functions-mount-specific">Admin Functions (mount specific)</h1>
+<p>All these admin functions are mount specific in that they only apply to a particular mountpoint
+(as opposed to applying to the entire server). Each of these functions requires a mountpoint to
+be specified as input.</p>
+<h2 id="metadata-update">Metadata Update</h2>
+<p>This function provides the ability for either a source client or any external program to update
+the metadata information for a particular mountpoint.</p>
+<p>Example:<br />
+<code>/admin/metadata?mount=/stream&amp;mode=updinfo&amp;song=ACDC+Back+In+Black</code></p>
+<h2 id="fallback-update">Fallback Update</h2>
+<p>This function provides the ability for either a source client or any external program to update the
+“fallback mountpoint” for a particular mountpoint. Fallback mounts are those that are used in the even
+of a source client disconnection. If a source client disconnects for some reason that all currently
+connected clients are sent immediately to the fallback mountpoint.</p>
+<p>Example:<br />
+<code>/admin/fallbacks?mount=/stream.ogg&amp;fallback=/fallback.ogg</code></p>
+<h2 id="list-clients">List Clients</h2>
+<p>This function lists all the clients currently connected to a specific mountpoint. The results are sent
+back in XML form.</p>
+<p>Example:<br />
+<code>/admin/listclients?mount=/stream.ogg</code></p>
+<h2 id="move-clients-listeners">Move Clients (Listeners)</h2>
+<p>This function provides the ability to migrate currently connected listeners from one mountpoint to another.
+This function requires 2 mountpoints to be passed in: mount (the <em>from</em> mountpoint) and destination
+(the <em>to</em> mountpoint). After processing this function all currently connected listeners on mount will
+be connected to destination. Note that the destination mountpoint must exist and have a sounce client
+already feeding it a stream.</p>
+<p>Example:<br />
+<code>/admin/moveclients?mount=/stream.ogg&amp;destination=/newstream.ogg</code></p>
+<h2 id="kill-client-listener">Kill Client (Listener)</h2>
+<p>This function provides the ability to disconnect a specific listener of a currently connected mountpoint.
+Listeners are identified by a unique id that can be retrieved by via the “List Clients” admin function.
+This id must be passed in to the request via the variable <code>id</code>. After processing this request, the listener will no longer be
+connected to the mountpoint.</p>
+<p>Example:<br />
+<code>/admin/killclient?mount=/mystream.ogg&amp;id=21</code></p>
+<h2 id="kill-source">Kill Source</h2>
+<p>This function will provide the ability to disconnect a specific mountpoint from the server. The mountpoint
+to be disconnected is specified via the variable <code>mount</code>.</p>
+<p>Example:<br />
+<code>/admin/killsource?mount=/mystream.ogg</code></p>
+<h1 id="admin-functions-general">Admin Functions (general)</h1>
+<h2 id="stats">Stats</h2>
+<p>The stats function provides the ability to query the internal statistics kept by the Icecast server.
+Almost all information about the internal workings of the server such as the mountpoints connected,
+how many client requests have been served, how many listeners for each mountpoint, etc. are available
+via this admin function.</p>
+<p>Example:<br />
+<code>/admin/stats</code></p>
+<h2 id="list-mounts">List Mounts</h2>
+<p>The list mounts function provides the ability to view all the currently connected mountpoints.</p>
+<p>Example:<br />
+<code>/admin/listmounts</code></p>
+<h1 id="web-based-admin-interface">Web-Based Admin Interface</h1>
+<p>As an alternative to manually invoking these URLs, there is a web-based admin interface.
+This interface provides the same functions that were identified and described above but presents them in
+a nicer way. The web-based admin Interface to Icecast is shipped with Icecast provided in the
+<code>admin</code> directory and comes ready to use.</p>
+<p>The main path for the Web-Based Admin Interface is:<br />
+<code>/admin/stats.xsl</code></p>
+<h2 id="advanced">Advanced</h2>
+<p>The web-based admin interface is a series of XSL-Transform files which are used to display all the XML obtained
+via the URL admin interface. This can be changed and modified to suit the user's need. Knowledge of
+XSLT and transformations from XML to HTML are required in order to make changes to these scripts.</p>
+<p><strong>Modification of existing XSLT transforms in <code>/admin</code> is allowed, but new files cannot be created here.</strong></p>
+<p>Creation of new XSLT transforms as well as modification of existing transforms is allowed in  the <code>/web</code> directory.
+These work using the document returned by the <code>/admin/stats</code> endpoint.<br />
+To see the XML document that is applied to each admin XSLT, just remove the .xsl in your request
+(i.e. <code>/admin/listclients</code>). You can then code your XSL transform accordingly.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../win32/" class="btn btn-neutral float-right" title="Windows Specific">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../yp/" class="btn btn-neutral" title="Listing in a YellowPage Directory"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../yp/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../win32/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+
+</body>
+</html>

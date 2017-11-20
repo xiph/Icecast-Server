@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Basic Setup - Icecast Docs</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Basic Setup";
+    var mkdocs_page_input_path = "basic_setup.md";
+    var mkdocs_page_url = "/basic_setup/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> Icecast Docs</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Basic Setup</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#basic-requirements">Basic Requirements</a></li>
+    
+
+    <li class="toctree-l2"><a href="#the-basics">The Basics</a></li>
+    
+
+    <li class="toctree-l2"><a href="#setting-up-icecast">Setting up Icecast</a></li>
+    
+
+    <li class="toctree-l2"><a href="#setting-up-the-source-client">Setting up the Source Client</a></li>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../config_file/">Configuration File</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../server_stats/">Server Statistics</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../auth/">Authentication</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../relaying/">Relaying</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../yp/">Listing in a YellowPage Directory</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../admin_interface/">Admin Interface</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../win32/">Windows Specific</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">Icecast Docs</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Basic Setup</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="basic-requirements">Basic Requirements</h1>
+<p>This section will describe the essential requirements in setting up a simple Internet radio station. It is by no means a complete list but should give you enough to get started. Please also note that those are generic instructions. If you installed a Linux/Unix distribution package, then it will likely come with different paths, different means of starting it, etc. In that case please also refer to the documentation of that distribution and or a distribution specific How-To.</p>
+<p>As already explained in the Introduction, there are two major components involved: The streaming server (Icecast in this case) and the source client.</p>
+<p>The following diagram shows how Icecast works:</p>
+<p><img alt="Icecast Shema Diagram" src="../img/Icecast_shema.svg" /></p>
+<p>A Source Client (i.e. IceS, RoarAudio, …) connects to a mountpoint on the Icecast server and sends audio or video data to it. Listeners connect to the mountpoint and Icecast send the stream to them.
+The Icecast server will be the place where all listeners of your stream will connect. The source client (in general) runs on a separate machine than Icecast, but does not necessarily need to.</p>
+<h1 id="the-basics">The Basics</h1>
+<p>Each Icecast server can house multiple streams, we call these mountpoints. A mountpoint is a unique name on your server identifying a particular stream - it looks like a filename, such as /stream.ogg and a listener can only listen to a single mountpoint at a time. This means you can have a single Icecast server contain multiple broadcasts with different content, or possibly the same broadcast but with streams of different bitrates or qualities. In this case each broadcast or stream is a separate mountpoint.</p>
+<h1 id="setting-up-icecast">Setting up Icecast</h1>
+<p>At this point, the steps outlined here related to the Unix version or Win32 console version of Icecast. Icecast is also available in a Win32 GUI version, and the steps are similar in setup, but not quite the same.</p>
+<p>The first step in the process is to install the Icecast server itself. The recommended way to do this is using the distro packages, or in case of Win32 download the binary package or installer. How to do this is not contained within this documentation.
+After installation there is placed a sample config file named <code>icecast.xml</code> in either <code>/usr/local/etc</code>, <code>/etc/</code> or <code>/etc/icecast2/</code> (for UNIX) or in the current working directory, in a folder called <code>etc</code>, in case you are using the Window binary package.</p>
+<p>The next step is to edit the <code>icecast.xml</code> config file and set the appropriate values. Most of the specified values in the samples are fine, for a basic setup the following entries should be specified, and if neccessary, changed to suite your situation:</p>
+<p><code>&lt;hostname&gt;</code> - DNS name or IP address used for stream directory listings.<br />
+<code>&lt;source-password&gt;</code> - Will be used for the source client authentication.<br />
+<code>&lt;admin-password&gt;</code> - Will be used for authenticating admin features of Icecast.<br />
+<code>&lt;listen-socket&gt;</code> (both port and bind-address)<br />
+If you expect many listeners, make sure to adjust the <code>&lt;clients&gt;</code> limit in the <code>&lt;limits&gt;</code> block.<br />
+Additionally make sure to note where the Icecast log file is stored, see the <code>&lt;logdir&gt;</code> value in the <code>&lt;paths&gt;</code> section.</p>
+<p>Once the configuration file is modified, you should be able to start the server with the following command</p>
+<pre><code>icecast -c /path/to/icecast.xml
+</code></pre>
+<p>If no error messages are generated, then check the <code>error.log</code> file in the log directory for the ‘server started’ message, it will look something like:</p>
+<pre><code>[2014-11-20  19:17:48] INFO main/main Icecast 2.4.1 server started
+</code></pre>
+<p>You may notice slight variations to the line above, but the key thing here is that the server is started, logging is working and the version is shown.  </p>
+<p>You can also verify that Icecast is started by visiting the following URL <a href="http://localhost:8000/admin/stats.xsl">http://localhost:8000/admin/stats.xsl</a> on the machine running Icecast. Replace localhost with the correct hostname and adjust the port, if you aren't using the default port 8000.</p>
+<p>You should be prompted for a username and password. Enter the username <code>admin</code> and the password you entered for <code>&lt;admin-password&gt;</code> in the config. If all is well, you should see a Status Page which represents Icecast statistics (more about that later).  </p>
+<h1 id="setting-up-the-source-client">Setting up the Source Client</h1>
+<p>Now that the Icecast server is started you must configure your source client. The information you will need for the source client is the following:  </p>
+<ul>
+<li>Hostname (or IP address) and port of the Icecast server - both of these come from <code>&lt;listen-socket&gt;</code>  </li>
+<li>Source password - from <code>&lt;source-password&gt;</code>  </li>
+</ul>
+<p>Additionally, you will need to choose a mountpoint and specify this in the source client. Icecast does not need to know about each mountpoint (although you can configure settings for specific mountpoint, this is covered on Advanced configuration), however some points to mention regarding mountpoints:<br />
+All Ogg Vorbis streams should have mountpoints that end in .ogg (i.e. /mystream.ogg). This is due to the lazy way most media players infer the type of stream.<br />
+MP3 streams usually do not contain an extension (/mystream). Mount points also should not contain any spaces or odd characters (again due to the lazy way many of the media players are coded).</p>
+<p>Once you have configured your source client, you should be able to connect it to the Icecast server. Verify that it is connected by hitting the stats.xsl URL that was mentioned above.</p>
+<p>Now that you have the source connnected, listening to the stream involves simply opening the appropriate following URL in a browser: </p>
+<pre><code>http://yourip:port/mounpoint-you-specified
+</code></pre>
+<p>So for instance, if you attached your source client to an Icecast server located at 192.0.2.23:8000 with a mountpoint of /mystream.ogg, then you would open <code>http://192.0.2.23:8000/mystream.ogg</code> within your media player.<br />
+Alternatively you can use <code>http://192.0.2.23:8000/mystream.ogg.m3u</code>, (note the .m3u extension added) which will serve up a link that opens most media players. It is important to note that m3u need not contain only MP3 stream, it can contain streams of arbitrary content-type and is used by Icecast to serve a playlist that represents your broadcast to listening clients.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../config_file/" class="btn btn-neutral float-right" title="Configuration File">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href=".." class="btn btn-neutral" title="Introduction"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../config_file/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+
+</body>
+</html>
