@@ -688,6 +688,8 @@ static int update_from_master(ice_config_t *config)
                   r->port = port;
                 }
 
+                r->username = strdup(username);
+                r->password = strdup(password);
                 r->mount = strdup(parsed_uri->path);
                 r->localmount = strdup(parsed_uri->path);
                 r->mp3metadata = 1;
