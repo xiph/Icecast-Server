@@ -1,0 +1,27 @@
+# Build Icecast
+build:
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
+  tags:
+    - alpine
+    - docker
+
+  stage: build
+
+  before_script:
+  - apk update
+  - apk add musl-dev git make gcc automake autoconf libtool
+  - apk add curl-dev openssl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
+  # Required for tests
+  #- apk add curl ffmpeg
+  # Create user to run tests
+  #- adduser -s /bin/sh -D -H icecast
+
+  script: 
+    - ./autogen.sh
+    - ./configure || cat config.log
+    - make
+    # Tests
+    #- su -c "./tests/admin-tests.sh" icecast
+
