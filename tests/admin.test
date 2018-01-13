@@ -16,6 +16,10 @@ L_USER="foo"
 L_PASS="bar"
 L_AUTH="$L_USER:$L_PASS"
 
+command -v ffmpeg >/dev/null 2>&1 || {
+    echo >&2 "# ffmpeg required for tests not found.  Aborting."; exit 1;
+}
+
 echo "# Starting Icecast"
 ../src/icecast -c ./icecast.xml 2> /dev/null &
 ICECAST_PID=$!
