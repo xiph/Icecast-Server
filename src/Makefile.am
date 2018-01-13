@@ -8,7 +8,7 @@ bin_PROGRAMS = icecast
 
 noinst_HEADERS = admin.h cfgfile.h logging.h sighandler.h connection.h \
     global.h util.h curl.h slave.h source.h stats.h refbuf.h client.h playlist.h \
-    compat.h fserve.h xslt.h yp.h md5.h matchfile.h \
+    compat.h fserve.h xslt.h yp.h md5.h matchfile.h tls.h \
     event.h event_log.h event_exec.h event_url.h \
     acl.h auth.h \
     format.h format_ogg.h format_mp3.h format_ebml.h \
