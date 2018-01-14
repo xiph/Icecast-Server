@@ -1,5 +1,8 @@
 #!/bin/sh
-../src/icecast -c ./icecast.xml 2> /dev/null &
+
+testdir=$(dirname "$0")
+
+../src/icecast -c "$testdir/icecast.xml" 2> /dev/null &
 ICECAST_PID=$!
 echo 'ok 1 - Icecast started'
 sleep 3

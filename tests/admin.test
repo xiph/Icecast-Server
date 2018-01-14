@@ -1,7 +1,6 @@
 #!/bin/bash
 
 testdir=$(dirname "$0")
-test -n "$testdir" && cd "$testdir" || exit
 
 ICECAST_BASE_URL="http://localhost:8000/"
 counter=1
@@ -21,7 +20,7 @@ command -v ffmpeg >/dev/null 2>&1 || {
 }
 
 echo "# Starting Icecast"
-../src/icecast -c ./icecast.xml 2> /dev/null &
+../src/icecast -c "$testdir/icecast.xml" 2> /dev/null &
 ICECAST_PID=$!
 sleep 5
 
