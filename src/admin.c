@@ -695,6 +695,9 @@ static inline xmlNodePtr __add_listener(client_t        *client,
         case ICECAST_PROTOCOL_SHOUTCAST:
             xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR("icy"));
         break;
+        case ICECAST_PROTOCOL_GOPHER:
+            xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR("gopher"));
+        break;
     }
 
     return node;
