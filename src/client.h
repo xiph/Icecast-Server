@@ -40,7 +40,8 @@ typedef enum _document_domain_tag {
 
 typedef enum _protocol_tag {
     ICECAST_PROTOCOL_HTTP = 0,
-    ICECAST_PROTOCOL_SHOUTCAST
+    ICECAST_PROTOCOL_SHOUTCAST,
+    ICECAST_PROTOCOL_GOPHER
 } protocol_t;
 
 typedef enum _reuse_tag {

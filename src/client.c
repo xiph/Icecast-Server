@@ -81,6 +81,8 @@ protocol_t client_protocol_from_string(const char *str)
         return ICECAST_PROTOCOL_HTTP;
     } else if (strcasecmp(str, "icy") == 0 || strcasecmp(str, "shoutcast") == 0) {
         return ICECAST_PROTOCOL_SHOUTCAST;
+    } else if (strcasecmp(str, "gopher") == 0) {
+        return ICECAST_PROTOCOL_GOPHER;
     } else {
         ICECAST_LOG_ERROR("Unknown protocol \"%H\" string given. Returning ICECAST_PROTOCOL_HTTP.", str);
         return ICECAST_PROTOCOL_HTTP;
@@ -95,6 +97,9 @@ const char * client_protocol_to_string(protocol_t protocol)
         break;
         case ICECAST_PROTOCOL_SHOUTCAST:
             return "icy";
+        break;
+        case ICECAST_PROTOCOL_GOPHER:
+            return "gopher";
         break;
     }
 
