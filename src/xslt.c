@@ -373,7 +373,11 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
             }
 
             if (!failed) {
-                  snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
+                if (client->protocol == ICECAST_PROTOCOL_GOPHER) {
+                    snprintf(refbuf->data + ret, full_len - ret, "%s", string);
+                } else {
+                    snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
+                }
 
                 client->respcode = 200;
                 client_set_queue (client, NULL);

@@ -620,10 +620,12 @@ int fserve_client_create (client_t *httpclient, const char *path)
             fclose(file);
             return -1;
         }
-        bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
-            "Accept-Ranges: bytes\r\n"
-            "Content-Length: %" PRI_OFF_T "\r\n\r\n",
-            content_length);
+        if (httpclient->protocol != ICECAST_PROTOCOL_GOPHER) {
+            bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
+                "Accept-Ranges: bytes\r\n"
+                "Content-Length: %" PRI_OFF_T "\r\n\r\n",
+                content_length);
+        }
         free (type);
     }
     httpclient->refbuf->len = bytes;

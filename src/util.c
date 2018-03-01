@@ -697,6 +697,10 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     out += offset;
     len -= offset;
 
+    if (client && client->protocol == ICECAST_PROTOCOL_GOPHER) {
+        return snprintf(out, len, "%s", (datablock) ? datablock : "");
+    }
+
     if (status == -1)
     {
         status_buffer[0] = '\0';
