@@ -272,7 +272,7 @@ void client_destroy(client_t *client)
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
-    if (client->reuse != ICECAST_REUSE_CLOSE) {
+    if (client->protocol != ICECAST_PROTOCOL_GOPHER && client->reuse != ICECAST_REUSE_CLOSE) {
         /* only reuse the client if we reached the body's EOF. */
         if (client_body_eof(client) == 1) {
             client_reuseconnection(client);
@@ -286,6 +286,10 @@ void client_destroy(client_t *client)
 
     if (auth_release_client(client))
         return;
+
+    if (client->protocol == ICECAST_PROTOCOL_GOPHER && client->respcode != 0) {
+        client_send_bytes(client, "\r\n.\r\n", 5);
+    }
 
     /* write log entry if ip is set (some things don't set it, like outgoing
      * slave requests
@@ -511,19 +515,26 @@ void client_send_426(client_t *client, reuse_t reuse)
 /* this function is designed to work even if client is in bad state */
 static inline void client_send_500(client_t *client, const char *message)
 {
-    const char header[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
-                          "500 - Internal Server Error\n---------------------------\n";
-    const ssize_t header_len = sizeof(header) - 1;
+    const char header_http[] = "HTTP/1.0 500 Internal Server Error\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
+                               "500 - Internal Server Error\n---------------------------\n";
+    const char header_gopher[] = "Internal Server Error\n---------------------------\n";
     ssize_t ret;
+    ssize_t len;
 
     client->respcode = 500;
     client->refbuf->len = 0;
     fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
-    ret = client_send_bytes(client, header, header_len);
+    if (client->protocol == ICECAST_PROTOCOL_GOPHER) {
+        len = sizeof(header_gopher) - 1;
+        ret = client_send_bytes(client, header_gopher, len);
+    } else {
+        len = sizeof(header_http) - 1;
+        ret = client_send_bytes(client, header_http, len);
+    }
 
     /* only send message if we have one AND if header could have transmitted completly */
-    if (message && ret == header_len)
+    if (message && ret == len)
         client_send_bytes(client, message, strlen(message));
 
     client_destroy(client);
@@ -656,10 +667,14 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         }
 
         /* FIXME: in this section we hope no function will ever return -1 */
-        if (location) {
-            ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Location: %s\r\n", location);
+        if (client->protocol == ICECAST_PROTOCOL_GOPHER) {
+            ret += snprintf(client->refbuf->data + ret, buf_len - ret, "%s", buff);
+        } else {
+            if (location) {
+                ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Location: %s\r\n", location);
+            }
+            ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
         }
-        ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
 
         client->refbuf->len = ret;
         xmlFree(buff);

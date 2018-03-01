@@ -503,6 +503,8 @@ static void process_request_queue (void)
                     stream_offset = (ptr+2) - client->refbuf->data;
                     break;
                 }
+                if (client->refbuf->data[0] == '/' && strstr(client->refbuf->data, "\n") != NULL)
+                    break;
                 pass_it = 0;
             } while (0);
 
@@ -1198,6 +1200,49 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     return;
 }
 
+static int _handle_gopher_compatible(client_queue_t *node)
+{
+    size_t n_len;
+    char *n;
+    char *ptr;
+    http_parser_t *parser;
+    client_t *client = node->client;
+
+    ptr = strstr(client->refbuf->data, "\r\n");
+    if (!ptr)
+        ptr = strstr(client->refbuf->data, "\n");
+    if (!ptr)
+        return -1;
+
+    *ptr = 0;
+
+    n_len = strlen(client->refbuf->data) + 80;
+    n = calloc(1, n_len);
+    if (!n) {
+        client_destroy(client);
+        free(node);
+        return 0;
+    }
+
+    snprintf(n, n_len, "GET %s HTTP/1.0\r\n\r\n", client->refbuf->data);
+
+    parser = httpp_create_parser();
+    httpp_initialize(parser, NULL);
+    if (httpp_parse(parser, n, strlen(n))) {
+        client->refbuf->len = 0;
+        client->parser = parser;
+        client->protocol = ICECAST_PROTOCOL_GOPHER;
+        return 1;
+    } else {
+        httpp_destroy(parser);
+        client_destroy(client);
+    }
+    free(n);
+    free(node);
+    return 0;
+}
+
+
 /* Handle <resource> lookups here.
  */
 
@@ -1608,6 +1653,13 @@ static void _handle_connection(void)
                 _handle_shoutcast_compatible (node);
                 if (node->shoutcast)
                     continue;
+            }
+
+            /* check for gopher clients */
+            if (client->refbuf->data[0] == '/') {
+                if (_handle_gopher_compatible(node) == 0) {
+                    continue;
+                }
             }
 
             /* process normal HTTP headers */

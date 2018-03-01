@@ -417,10 +417,14 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
 
             if (!failed) {
                 /* FIXME: in this section we hope no function will ever return -1 */
-                if (location) {
-                    ret += snprintf(refbuf->data + ret, full_len - ret, "Location: %s\r\n", location);
+                if (client->protocol == ICECAST_PROTOCOL_GOPHER) {
+                    snprintf(refbuf->data + ret, full_len - ret, "%s", string);
+                } else {
+                    if (location) {
+                        ret += snprintf(refbuf->data + ret, full_len - ret, "Location: %s\r\n", location);
+                    }
+                    ret += snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
                 }
-                ret += snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
 
                 client->respcode = status;
                 client_set_queue (client, NULL);
