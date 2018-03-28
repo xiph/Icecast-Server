@@ -682,13 +682,13 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         return -1;
 
     if (client) {
+        if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED)
+            upgrade_header = "Upgrade: TLS/1.0\r\n";
         switch (client->reuse) {
             case ICECAST_REUSE_CLOSE:      connection_header = "Close"; break;
             case ICECAST_REUSE_KEEPALIVE:  connection_header = "Keep-Alive"; break;
-            case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; break;
+            case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; upgrade_header = ""; break;
         }
-        if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED)
-            upgrade_header = "Upgrade: TLS/1.0\r\n";
     }
 
     if (offset == -1)
