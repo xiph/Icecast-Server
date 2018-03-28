@@ -267,13 +267,22 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
 void client_send_101(client_t *client, reuse_t reuse)
 {
     ssize_t ret;
+    const char *upgrade_to = NULL;
 
     if (!client)
         return;
 
-    if (reuse != ICECAST_REUSE_UPGRADETLS) {
-        client_send_500(client, "Bad reuse parameter");
-        return;
+    switch (reuse) {
+        case ICECAST_REUSE_UPGRADETLS:
+            upgrade_to = "TLS/1.0, HTTP/1.0";
+        break;
+        case ICECAST_REUSE_UPGRADEICY:
+            upgrade_to = "ICY";
+        break;
+        default:
+            client_send_500(client, "Bad reuse parameter");
+            return;
+        break;
     }
 
     client->reuse = reuse;
@@ -284,7 +293,7 @@ void client_send_101(client_t *client, reuse_t reuse)
                                  NULL, NULL, client);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\n\r\n");
+             "Content-Length: 0\r\nUpgrade: %s\r\n\r\n", upgrade_to);
 
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);

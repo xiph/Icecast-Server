@@ -1349,11 +1349,14 @@ static void _handle_connection(void)
                 upgrade = httpp_getvar(parser, "upgrade");
                 connection = httpp_getvar(parser, "connection");
                 if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
-                    if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || strstr(upgrade, "TLS/1.0") == NULL) {
-                        client_send_error(client, 400, 1, "Can not upgrade protocol");
+                    if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && strstr(upgrade, "TLS/1.0") != NULL) {
+                        client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                        continue;
+                    } else if (strstr(upgrade, "ICY") != NULL) {
+                        client_send_101(client, ICECAST_REUSE_UPGRADEICY);
                         continue;
                     } else {
-                        client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                        client_send_error(client, 400, 1, "Can not upgrade protocol");
                         continue;
                     }
                 } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {

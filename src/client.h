@@ -37,7 +37,9 @@ typedef enum _reuse_tag {
     /* reuse */
     ICECAST_REUSE_KEEPALIVE,
     /* Upgrade to TLS */
-    ICECAST_REUSE_UPGRADETLS
+    ICECAST_REUSE_UPGRADETLS,
+    /* Upgrade to ICY */
+    ICECAST_REUSE_UPGRADEICY
 } reuse_t;
 
 typedef struct _client_tag
