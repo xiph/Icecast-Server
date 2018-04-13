@@ -748,6 +748,7 @@ static inline void source_startup(client_t *client, const char *uri)
             const char *expectcontinue;
             const char *transfer_encoding;
             int status_to_send = 200;
+            ssize_t ret;
 
             transfer_encoding = httpp_getvar(source->parser, "transfer-encoding");
             if (transfer_encoding && strcasecmp(transfer_encoding, HTTPP_ENCODING_IDENTITY) != 0) {
@@ -774,7 +775,8 @@ static inline void source_startup(client_t *client, const char *uri)
             }
 
             client->respcode = 200;
-            util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, "", NULL, client);
+            ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
+            snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
             ok->len = strlen(ok->data);
             /* we may have unprocessed data read in, so don't overwrite it */
             ok->associated = client->refbuf;
