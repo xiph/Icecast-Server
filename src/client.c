@@ -211,7 +211,9 @@ static void client_send_error(client_t *client, int status, int plain, const cha
 void client_send_100(client_t *client)
 {
     /* On demand inject a HTTP/1.1 100 Continue to make sure clients are happy */
-    sock_write (client->con->sock, "HTTP/1.1 100 Continue\r\n\r\n");
+    static const char str[] = "HTTP/1.1 100 Continue\r\n\r\n";
+    const size_t len = strlen(str);
+    client_send_bytes(client, str, len);
 }
 
 void client_send_400(client_t *client, const char *message)
