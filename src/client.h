@@ -122,5 +122,7 @@ admin_format_t client_get_admin_format_by_content_negotiation(client_t *client);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
+ssize_t client_body_read(client_t *client, void *buf, size_t len);
+int client_body_eof(client_t *client);
 
 #endif  /* __CLIENT_H__ */

@@ -32,6 +32,7 @@
 #include "refobject.h"
 #include "cfgfile.h"
 #include "connection.h"
+#include "tls.h"
 #include "refbuf.h"
 #include "format.h"
 #include "stats.h"
@@ -434,4 +435,23 @@ void client_set_queue(client_t *client, refbuf_t *refbuf)
     client->pos = 0;
     if (to_release)
         refbuf_release(to_release);
+}
+
+ssize_t client_body_read(client_t *client, void *buf, size_t len)
+{
+    return client_read_bytes(client, buf, len);
+}
+
+int client_body_eof(client_t *client)
+{
+    if (!client->con)
+        return 0;
+
+    if (client->con->tls && tls_got_shutdown(client->con->tls) > 1)
+        client->con->error = 1;
+
+    if (client->con->error)
+        return 1;
+
+    return 0;
 }
