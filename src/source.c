@@ -516,7 +516,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
-        if (source->client->con->tls && tls_got_shutdown(source->client->con->tls) > 1)
+        if (source->client->con && source->client->con->tls && tls_got_shutdown(source->client->con->tls) > 1)
             source->client->con->error = 1;
         if (source->client->con && source->client->con->error)
         {
