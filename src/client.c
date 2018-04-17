@@ -439,11 +439,16 @@ void client_set_queue(client_t *client, refbuf_t *refbuf)
 
 ssize_t client_body_read(client_t *client, void *buf, size_t len)
 {
+    ICECAST_LOG_DEBUG("Reading from body (client=%p)", client);
     return client_read_bytes(client, buf, len);
 }
 
-int client_body_eof(client_t *client)
+/* we might un-static this if needed at some time in distant future. -- ph3-der-loewe, 2018-04-17 */
+static int client_eof(client_t *client)
 {
+    if (!client)
+        return -1;
+
     if (!client->con)
         return 0;
 
@@ -454,4 +459,23 @@ int client_body_eof(client_t *client)
         return 1;
 
     return 0;
+}
+
+int client_body_eof(client_t *client)
+{
+    int ret = -1;
+
+    if (!client)
+        return -1;
+
+    if (client->encoding) {
+        ICECAST_LOG_DEBUG("Looking for body EOF with encoding (client=%p)", client);
+        ret = httpp_encoding_eof(client->encoding, (int(*)(void*))client_eof, client);
+    } else {
+        ICECAST_LOG_DEBUG("Looking for body EOF without encoding (client=%p)", client);
+        ret = client_eof(client);
+    }
+
+    ICECAST_LOG_DEBUG("... result is: %i (client=%p)", ret, client);
+    return ret;
 }
