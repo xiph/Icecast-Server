@@ -110,7 +110,7 @@ static inline void client_reuseconnection(client_t *client) {
         return;
 
     con = client->con;
-    con = connection_create(con->sock, con->serversock, strdup(con->ip));
+    con = connection_create(con->sock, con->listensocket_real, con->listensocket_effective, strdup(con->ip));
     reuse = client->reuse;
     client->con->sock = -1; /* TODO: do not use magic */
 

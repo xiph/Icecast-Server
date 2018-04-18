@@ -32,6 +32,7 @@ noinst_HEADERS = \
     refobject.h \
     module.h \
     reportxml.h \
+    listensocket.h \
     event.h \
     event_log.h \
     event_exec.h \
@@ -74,6 +75,7 @@ icecast_SOURCES = \
     refobject.c \
     module.c \
     reportxml.c \
+    listensocket.c \
     format.c \
     format_ogg.c \
     format_mp3.c \

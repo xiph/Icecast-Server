@@ -2473,24 +2473,23 @@ mount_proxy *config_find_mount (ice_config_t        *config,
     return mountinfo;
 }
 
-/* Helper function to locate the configuration details of the listening
- * socket
- */
-listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con)
-{
-    listener_t *listener;
-    int i = 0;
+listener_t *config_copy_listener_one(const listener_t *listener) {
+    listener_t *n;
 
-    listener = config->listen_sock;
-    while (listener) {
-        if (i >= global.server_sockets) {
-            listener = NULL;
-        } else {
-            if (global.serversock[i] == con->serversock)
-                break;
-            listener = listener->next;
-            i++;
-        }
-    }
-    return listener;
+    if (listener == NULL)
+        return NULL;
+
+    n = calloc(1, sizeof(*n));
+    if (n == NULL)
+        return NULL;
+
+    n->next = NULL;
+    n->port = listener->port;
+    n->so_sndbuf = listener->so_sndbuf;
+    n->bind_address = (char*)xmlStrdup(XMLSTR(listener->bind_address));
+    n->shoutcast_compat = listener->shoutcast_compat;
+    n->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));
+    n->tls = listener->tls;
+
+    return n;
 }

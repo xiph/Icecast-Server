@@ -58,6 +58,8 @@
 #include "matchfile.h"
 #include "tls.h"
 #include "acl.h"
+#include "refobject.h"
+#include "listensocket.h"
 
 #define CATMODULE "connection"
 
@@ -144,6 +146,13 @@ void connection_shutdown(void)
 void connection_reread_config(ice_config_t *config)
 {
     get_tls_certificate(config);
+    /* This does not work yet.
+     * listensocket_container_configure() should keep sockets that are the same.
+     * Otherwise the Kernel doesn't let us do it.
+     * -- ph3-der-loewe, 2018-04-17
+    listensocket_container_configure(global.listensockets, config);
+    listensocket_container_setup(global.listensockets);
+    */
 }
 
 static unsigned long _next_connection_id(void)
@@ -245,13 +254,21 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
     return bytes;
 }
 
-connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
+connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip)
 {
     connection_t *con;
+
+    if (!matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
+        return NULL;
+
     con = (connection_t *)calloc(1, sizeof(connection_t));
     if (con) {
+        refobject_ref(listensocket_real);
+        refobject_ref(listensocket_effective);
+
         con->sock       = sock;
-        con->serversock = serversock;
+        con->listensocket_real = listensocket_real;
+        con->listensocket_effective = listensocket_effective;
         con->con_time   = time(NULL);
         con->id         = _next_connection_id();
         con->ip         = ip;
@@ -354,117 +371,6 @@ int connection_read_put_back(connection_t *con, const void *buf, size_t len)
         return 0;
     }
 }
-
-static sock_t wait_for_serversock(int timeout)
-{
-#ifdef HAVE_POLL
-    struct pollfd ufds [global.server_sockets];
-    int i, ret;
-
-    for(i=0; i < global.server_sockets; i++) {
-        ufds[i].fd = global.serversock[i];
-        ufds[i].events = POLLIN;
-        ufds[i].revents = 0;
-    }
-
-    ret = poll(ufds, global.server_sockets, timeout);
-    if(ret < 0) {
-        return SOCK_ERROR;
-    } else if(ret == 0) {
-        return SOCK_ERROR;
-    } else {
-        int dst;
-        for(i=0; i < global.server_sockets; i++) {
-            if(ufds[i].revents & POLLIN)
-                return ufds[i].fd;
-            if(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL)) {
-                if (ufds[i].revents & (POLLHUP|POLLERR)) {
-                    sock_close (global.serversock[i]);
-                    ICECAST_LOG_WARN("Had to close a listening socket");
-                }
-                global.serversock[i] = SOCK_ERROR;
-            }
-        }
-        /* remove any closed sockets */
-        for(i=0, dst=0; i < global.server_sockets; i++) {
-            if (global.serversock[i] == SOCK_ERROR)
-            continue;
-            if (i!=dst)
-            global.serversock[dst] = global.serversock[i];
-            dst++;
-        }
-        global.server_sockets = dst;
-        return SOCK_ERROR;
-    }
-#else
-    fd_set rfds;
-    struct timeval tv, *p=NULL;
-    int i, ret;
-    sock_t max = SOCK_ERROR;
-
-    FD_ZERO(&rfds);
-
-    for(i=0; i < global.server_sockets; i++) {
-        FD_SET(global.serversock[i], &rfds);
-        if (max == SOCK_ERROR || global.serversock[i] > max)
-            max = global.serversock[i];
-    }
-
-    if(timeout >= 0) {
-        tv.tv_sec = timeout/1000;
-        tv.tv_usec = (timeout % 1000) * 1000;
-        p = &tv;
-    }
-
-    ret = select(max+1, &rfds, NULL, NULL, p);
-    if(ret < 0) {
-        return SOCK_ERROR;
-    } else if(ret == 0) {
-        return SOCK_ERROR;
-    } else {
-        for(i=0; i < global.server_sockets; i++) {
-            if(FD_ISSET(global.serversock[i], &rfds))
-                return global.serversock[i];
-        }
-        return SOCK_ERROR; /* Should be impossible, stop compiler warnings */
-    }
-#endif
-}
-
-static connection_t *_accept_connection(int duration)
-{
-    sock_t sock, serversock;
-    char *ip;
-
-    serversock = wait_for_serversock (duration);
-    if (serversock == SOCK_ERROR)
-        return NULL;
-
-    /* malloc enough room for a full IP address (including ipv6) */
-    ip = (char *)malloc(MAX_ADDR_LEN);
-
-    sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock != SOCK_ERROR) {
-        connection_t *con = NULL;
-        /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */
-        if (strncmp(ip, "::ffff:", 7) == 0)
-            memmove(ip, ip+7, strlen (ip+7)+1);
-
-        if (matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
-            con = connection_create (sock, serversock, ip);
-        if (con)
-            return con;
-        sock_close(sock);
-    } else {
-        if (!sock_recoverable(sock_error())) {
-            ICECAST_LOG_WARN("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-            thread_sleep(500000);
-        }
-    }
-    free(ip);
-    return NULL;
-}
-
 
 /* add client to connection queue. At this point some header information
  * has been collected, so we now pass it onto the connection thread for
@@ -704,16 +610,14 @@ static void _add_request_queue(client_queue_t *node)
 static client_queue_t *create_client_node(client_t *client)
 {
     client_queue_t *node = calloc (1, sizeof (client_queue_t));
-    ice_config_t *config;
-    listener_t *listener;
+    const listener_t *listener;
 
     if (!node)
         return NULL;
 
     node->client = client;
 
-    config = config_get_config();
-    listener = config_get_listen_sock(config, client->con);
+    listener = listensocket_get_listener(client->con->listensocket_effective);
 
     if (listener) {
         if (listener->shoutcast_compat)
@@ -724,8 +628,6 @@ static client_queue_t *create_client_node(client_t *client)
         if (listener->shoutcast_mount)
             node->shoutcast_mount = strdup(listener->shoutcast_mount);
     }
-
-    config_release_config();
 
     return node;
 }
@@ -776,7 +678,7 @@ void connection_accept_loop(void)
     config_release_config();
 
     while (global.running == ICECAST_RUNNING) {
-        con = _accept_connection (duration);
+        con = listensocket_container_accept(global.listensockets, duration);
 
         if (con) {
             connection_queue(con);
@@ -1234,7 +1136,7 @@ static int _handle_resources(client_t *client, char **uri)
     char *vhost_colon;
     char *new_uri = NULL;
     ice_config_t *config;
-    listener_t *listen_sock;
+    const listener_t *listen_sock;
     resource_t *resource;
 
     if (http_host) {
@@ -1246,8 +1148,8 @@ static int _handle_resources(client_t *client, char **uri)
         }
     }
 
+    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     config = config_get_config();
-    listen_sock = config_get_listen_sock (config, client->con);
     if (listen_sock) {
         serverhost = listen_sock->bind_address;
         serverport = listen_sock->port;
@@ -1497,7 +1399,7 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     ice_config_t *config;
     const char *sc_mount;
     const char *pass = httpp_get_query_param(client->parser, "pass");
-    listener_t *listener;
+    const listener_t *listener;
 
     if (pass == NULL) {
         ICECAST_LOG_ERROR("missing pass parameter");
@@ -1509,10 +1411,10 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
         return;
     }
 
+    listener = listensocket_get_listener(client->con->listensocket_effective);
     global_lock();
     config = config_get_config();
     sc_mount = config->shoutcast_mount;
-    listener = config_get_listen_sock(config, client->con);
 
     if (listener && listener->shoutcast_mount)
         sc_mount = listener->shoutcast_mount;
@@ -1733,21 +1635,14 @@ static void _handle_connection(void)
 
 
 /* called when listening thread is not checking for incoming connections */
-int connection_setup_sockets (ice_config_t *config)
+void connection_setup_sockets (ice_config_t *config)
 {
-    int count = 0;
-    listener_t *listener, **prev;
-
     global_lock();
-    if (global.serversock) {
-        for (; count < global.server_sockets; count++)
-            sock_close (global.serversock [count]);
-        free (global.serversock);
-        global.serversock = NULL;
-    }
+    refobject_unref(global.listensockets);
+
     if (config == NULL) {
         global_unlock();
-        return 0;
+        return;
     }
 
     /* setup the banned/allowed IP filenames from the xml */
@@ -1763,57 +1658,12 @@ int connection_setup_sockets (ice_config_t *config)
         allowed_ip = matchfile_new(config->allowfile);
     }
 
-    count = 0;
-    global.serversock = calloc(config->listen_sock_count, sizeof(sock_t));
+    global.listensockets = listensocket_container_new();
+    listensocket_container_configure(global.listensockets, config);
 
-    listener = config->listen_sock;
-    prev = &config->listen_sock;
-    while (listener) {
-        int successful = 0;
-
-        do {
-            sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
-            if (sock == SOCK_ERROR)
-                break;
-            if (sock_listen (sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR) {
-                sock_close (sock);
-                break;
-            }
-            /* some win32 setups do not do TCP win scaling well, so allow an override */
-            if (listener->so_sndbuf)
-                sock_set_send_buffer (sock, listener->so_sndbuf);
-            sock_set_blocking (sock, 0);
-            successful = 1;
-            global.serversock [count] = sock;
-            count++;
-        } while(0);
-        if (successful == 0) {
-            if (listener->bind_address) {
-                ICECAST_LOG_ERROR("Could not create listener socket on port %d bind %s",
-                        listener->port, listener->bind_address);
-            } else {
-                ICECAST_LOG_ERROR("Could not create listener socket on port %d", listener->port);
-            }
-            /* remove failed connection */
-            *prev = config_clear_listener (listener);
-            listener = *prev;
-            continue;
-        }
-        if (listener->bind_address) {
-            ICECAST_LOG_INFO("listener socket on port %d address %s", listener->port, listener->bind_address);
-        } else {
-            ICECAST_LOG_INFO("listener socket on port %d", listener->port);
-        }
-        prev = &listener->next;
-        listener = listener->next;
-    }
-    global.server_sockets = count;
     global_unlock();
 
-    if (count == 0)
-        ICECAST_LOG_ERROR("No listening sockets established");
-
-    return count;
+    listensocket_container_setup(global.listensockets);;
 }
 
 
@@ -1829,5 +1679,7 @@ void connection_close(connection_t *con)
         free(con->ip);
     if (con->readbufferlen)
         free(con->readbuffer);
+    refobject_unref(con->listensocket_real);
+    refobject_unref(con->listensocket_effective);
     free(con);
 }

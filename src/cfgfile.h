@@ -262,7 +262,8 @@ void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount(ice_config_t *config, const char *mount, mount_type type);
-listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con);
+
+listener_t *config_copy_listener_one(const listener_t *listener);
 
 config_options_t *config_parse_options(xmlNodePtr node);
 void config_clear_options(config_options_t *options);
