@@ -95,9 +95,6 @@ int format_get_plugin(format_type_t type, source_t *source)
         default:
         break;
     }
-    if (ret < 0)
-        stats_event (source->mount, "content-type",
-                source->format->contenttype);
 
     return ret;
 }
