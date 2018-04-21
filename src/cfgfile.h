@@ -198,6 +198,7 @@ typedef struct ice_config_tag {
     int on_demand; /* global setting for all relays */
 
     char *shoutcast_mount;
+    char *shoutcast_user;
     struct auth_stack_tag *authstack;
 
     struct event_registration_tag *event;

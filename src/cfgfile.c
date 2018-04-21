@@ -55,6 +55,7 @@
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT   10
 #define CONFIG_DEFAULT_MASTER_USERNAME  "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
+#define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
 #define CONFIG_DEFAULT_FILESERVE        1
 #define CONFIG_DEFAULT_TOUCH_FREQ       5
 #define CONFIG_DEFAULT_HOSTNAME         "localhost"
@@ -595,6 +596,7 @@ void config_clear(ice_config_t *c)
     if (c->access_log)      xmlFree(c->access_log);
     if (c->error_log)       xmlFree(c->error_log);
     if (c->shoutcast_mount) xmlFree(c->shoutcast_mount);
+    if (c->shoutcast_user)  xmlFree(c->shoutcast_user);
     if (c->authstack)       auth_stack_release(c->authstack);
     if (c->master_server)   xmlFree(c->master_server);
     if (c->master_username) xmlFree(c->master_username);
@@ -799,6 +801,8 @@ static void _set_defaults(ice_config_t *configuration)
         ->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
     configuration
         ->shoutcast_mount = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_MOUNT);
+    configuration
+        ->shoutcast_user = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_USER);
     configuration
         ->fileserve  = CONFIG_DEFAULT_FILESERVE;
     configuration
@@ -1817,6 +1821,10 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
             if(relay_username)
                 xmlFree(relay_username);
             relay_username = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-user")) == 0) {
+            if (configuration->shoutcast_user)
+                xmlFree(configuration->shoutcast_user);
+            configuration->shoutcast_user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("role")) == 0) {
             auth_t *auth = auth_get_authenticator(node);
             auth_stack_push(&new_style, auth);

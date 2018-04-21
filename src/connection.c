@@ -1019,6 +1019,9 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
         *ptr = '\0';
 
         client->password = strdup(client->refbuf->data);
+        config = config_get_config();
+        client->username = strdup(config->shoutcast_user);
+        config_release_config();
         node->offset -= (headers - client->refbuf->data);
         memmove(client->refbuf->data, headers, node->offset+1);
         node->shoutcast = 2;
