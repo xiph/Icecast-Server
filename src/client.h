@@ -80,5 +80,6 @@ int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
 int client_check_source_auth (client_t *client, const char *mount);
+void client_send_error(client_t *client, int status, int plain, const char *message);
 
 #endif  /* __CLIENT_H__ */

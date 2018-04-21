@@ -183,7 +183,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static void client_send_error(client_t *client, int status, int plain, const char *message)
+void client_send_error(client_t *client, int status, int plain, const char *message)
 {
     ssize_t ret;
 
