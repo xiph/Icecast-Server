@@ -740,7 +740,7 @@ static inline void source_startup(client_t *client, const char *uri)
             client->respcode = 200;
             /* send this non-blocking but if there is only a partial write
              * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
+            client_send_bytes(client, "OK2\r\nicy-caps:11\r\n\r\n", 20); /* TODO: Replace Magic Number! */
             source->shoutcast_compat = 1;
             source_client_callback(client, source);
         } else {
