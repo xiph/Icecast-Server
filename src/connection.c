@@ -1249,7 +1249,7 @@ static void _handle_shoutcast_compatible (client_queue_t *node)
             client->respcode = 200;
             /* send this non-blocking but if there is only a partial write
              * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
+            client_send_bytes(client, "OK2\r\nicy-caps:11\r\n\r\n", 20); /* TODO: Replace Magic Number! */
             node->offset -= (headers - client->refbuf->data);
             memmove (client->refbuf->data, headers, node->offset+1);
             node->shoutcast = 2;
