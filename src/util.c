@@ -5,7 +5,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- *  Copyright 2012-2015 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ *  Copyright 2012-2018 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  *
  *  This program is distributed under the GNU General Public License, version 2.
  *  A copy of this license is included with this source.
@@ -819,12 +819,9 @@ static inline void __free_args(struct __args *arg, size_t len)
     size_t i;
 
     for (i = 0; i < len; i++) {
-        free(arg->group);
+        free(arg[i].group);
     }
 }
-
-    // Accept: text/html, application/xhtml+xml, */*
-    // Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
 
 static inline int __parse_q(const char *str)
 {

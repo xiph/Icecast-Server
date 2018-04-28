@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>,
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -46,6 +46,7 @@
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
+#include "errors.h"
 #include "stats.h"
 #include "logging.h"
 #include "xslt.h"
@@ -575,7 +576,7 @@ void connection_queue(connection_t *con)
     global_lock();
     if (client_create(&client, con, NULL) < 0) {
         global_unlock();
-        client_send_error(client, 403, 1, "Icecast connection limit reached");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_LIMIT);
         /* don't be too eager as this is an imposed hard limit */
         thread_sleep(400000);
         return;
@@ -659,7 +660,7 @@ int connection_complete_source(source_t *source, int response)
                 config_release_config();
                 global_unlock();
                 if (response) {
-                    client_send_error(source->client, 403, 1, "Content-type not supported");
+                    client_send_error_by_id(source->client, ICECAST_ERROR_CON_CONTENT_TYPE_NOSYS);
                     source->client = NULL;
                 }
                 ICECAST_LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
@@ -669,7 +670,7 @@ int connection_complete_source(source_t *source, int response)
             config_release_config();
             global_unlock();
             if (response) {
-                client_send_error(source->client, 403, 1, "No Content-type given");
+                client_send_error_by_id(source->client, ICECAST_ERROR_CON_NO_CONTENT_TYPE_GIVEN);
                 source->client = NULL;
             }
             ICECAST_LOG_ERROR("Content-type not given in PUT request, dropping source");
@@ -685,7 +686,7 @@ int connection_complete_source(source_t *source, int response)
             global_unlock();
             config_release_config();
             if (response) {
-                client_send_error(source->client, 403, 1, "internal format allocation problem");
+                client_send_error_by_id(source->client, ICECAST_ERROR_CON_INTERNAL_FORMAT_ALLOC_ERROR);
                 source->client = NULL;
             }
             ICECAST_LOG_WARN("plugin format failed for \"%s\"", source->mount);
@@ -714,7 +715,7 @@ int connection_complete_source(source_t *source, int response)
     config_release_config();
 
     if (response) {
-        client_send_error(source->client, 403, 1, "too many sources connected");
+        client_send_error_by_id(source->client, ICECAST_ERROR_CON_SOURCE_CLIENT_LIMIT);
         source->client = NULL;
     }
 
@@ -754,7 +755,7 @@ static inline void source_startup(client_t *client, const char *uri)
             if (transfer_encoding && strcasecmp(transfer_encoding, HTTPP_ENCODING_IDENTITY) != 0) {
                 client->encoding = httpp_encoding_new(transfer_encoding);
                 if (!client->encoding) {
-                    client_send_error(client, 501, 1, "Unimplemented");
+                    client_send_error_by_id(client, ICECAST_ERROR_CON_UNIMPLEMENTED);
                     return;
                 }
             }
@@ -784,7 +785,7 @@ static inline void source_startup(client_t *client, const char *uri)
             fserve_add_client_callback(client, source_client_callback, source);
         }
     } else {
-        client_send_error(client, 403, 1, "Mountpoint in use");
+        client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_IN_USE);
         ICECAST_LOG_WARN("Mountpoint %s in use", uri);
     }
 }
@@ -797,7 +798,7 @@ static void _handle_source_request(client_t *client, const char *uri)
 
     if (uri[0] != '/') {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
-        client_send_error(client, 400, 1, "source mountpoint not starting with /");
+        client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNTPOINT_NOT_STARTING_WITH_SLASH);
         return;
     }
 
@@ -932,7 +933,7 @@ static void _handle_get_request(client_t *client, char *uri) {
         if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
             client_destroy(client);
         } else {
-            client_send_error(client, 401, 1, "You need to authenticate\r\n");
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         }
         return;
     }
@@ -954,8 +955,7 @@ static void _handle_get_request(client_t *client, char *uri) {
         /* check for duplicate_logins */
         if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
             if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
-                client_send_error(client, 403, 1, "Reached limit of concurrent "
-                    "connections on those credentials");
+                client_send_error_by_id(client, ICECAST_ERROR_CON_PER_CRED_CLIENT_LIMIT);
                 in_error = 1;
             }
         }
@@ -976,7 +976,7 @@ static void _handle_get_request(client_t *client, char *uri) {
                 client->con->discon_time = connection_duration + time(NULL);
         }
         if (!in_error && __add_listener_to_source(source, client) == -1) {
-            client_send_error(client, 403, 1, "Rejecting client for whatever reason");
+            client_send_error_by_id(client, ICECAST_ERROR_CON_rejecting_client_for_whatever_reason);
         }
         avl_tree_unlock(global.source_tree);
     } else {
@@ -1143,14 +1143,14 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     client->authstack = NULL;
 
     if (result != AUTH_OK) {
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         free(uri);
         return;
     }
 
     if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
         ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         free(uri);
         return;
     }
@@ -1168,7 +1168,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         break;
         default:
             ICECAST_LOG_ERROR("Wrong request type from client");
-            client_send_error(client, 400, 0, "unknown request");
+            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
         break;
     }
 
@@ -1357,7 +1357,7 @@ static void _handle_connection(void)
                 connection = httpp_getvar(parser, "connection");
                 if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
                     if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || strstr(upgrade, "TLS/1.0") == NULL) {
-                        client_send_error(client, 400, 1, "Can not upgrade protocol");
+                        client_send_error_by_id(client, ICECAST_ERROR_CON_UPGRADE_ERROR);
                         continue;
                     } else {
                         client_send_101(client, ICECAST_REUSE_UPGRADETLS);
@@ -1386,7 +1386,7 @@ static void _handle_connection(void)
                     client->admin_command = admin_get_command(uri + 1);
                     __prepare_shoutcast_admin_cgi_request(client);
                     if (!client->password) {
-                        client_send_error(client, 400, 0, "missing pass parameter");
+                        client_send_error_by_id(client, ICECAST_ERROR_CON_MISSING_PASS_PARAMETER);
                         continue;
                     }
                 } else if (strncmp("/admin/", uri, 7) == 0) {

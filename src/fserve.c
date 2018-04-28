@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -51,6 +51,7 @@
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
+#include "errors.h"
 #include "stats.h"
 #include "format.h"
 #include "logging.h"
@@ -440,7 +441,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         if (m3u_requested == 0 && xslt_playlist_requested == NULL)
         {
             ICECAST_LOG_WARN("req for file \"%H\" %s", fullpath, strerror (errno));
-            client_send_error(httpclient, 404, 0, "The file you requested could not be found");
+            client_send_error_by_id(httpclient, ICECAST_ERROR_FSERV_FILE_NOT_FOUND);
             free (fullpath);
             return -1;
         }
@@ -469,7 +470,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                                       "audio/x-mpegurl", NULL, "", NULL, httpclient);
         if (ret == -1 || ret >= (BUFSIZE - 512)) { /* we want at least 512 bytes left for the content of the playlist */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error(httpclient, 500, 0, "Header generation failed.");
+            client_send_error_by_id(httpclient, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
             free(sourceuri);
             return -1;
         }
@@ -517,7 +518,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (config->fileserve == 0)
     {
         ICECAST_LOG_DEBUG("on demand file \"%H\" refused. Serving static files has been disabled in the config", fullpath);
-        client_send_error(httpclient, 404, 0, "The file you requested could not be found");
+        client_send_error_by_id(httpclient, ICECAST_ERROR_FSERV_FILE_NOT_FOUND);
         config_release_config();
         free(fullpath);
         return -1;
@@ -526,7 +527,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (S_ISREG (file_buf.st_mode) == 0)
     {
-        client_send_error(httpclient, 404, 0, "The file you requested could not be found");
+        client_send_error_by_id(httpclient, ICECAST_ERROR_FSERV_FILE_NOT_FOUND);
         ICECAST_LOG_WARN("found requested file but there is no handler for it: %H", fullpath);
         free (fullpath);
         return -1;
@@ -536,7 +537,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (file == NULL)
     {
         ICECAST_LOG_WARN("Problem accessing file \"%H\"", fullpath);
-        client_send_error(httpclient, 404, 0, "File not readable");
+        client_send_error_by_id(httpclient, ICECAST_ERROR_FSERV_FILE_NOT_READABLE);
         free (fullpath);
         return -1;
     }
@@ -585,7 +586,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                                                 NULL, NULL, httpclient);
                 if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                    client_send_error(httpclient, 500, 0, "Header generation failed.");
+                    client_send_error_by_id(httpclient, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
                     return -1;
                 }
                 bytes += snprintf (httpclient->refbuf->data + bytes, BUFSIZE - bytes,
@@ -616,7 +617,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                                         NULL, NULL, httpclient);
         if (bytes == -1 || bytes >= (BUFSIZE - 512)) { /* we want at least 512 bytes left */
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error(httpclient, 500, 0, "Header generation failed.");
+            client_send_error_by_id(httpclient, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
             fclose(file);
             return -1;
         }
@@ -636,7 +637,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
 fail:
     fclose (file);
-    client_send_error(httpclient, 416, 1, "Request Range Not Satisfiable\r\n");
+    client_send_error_by_id(httpclient, ICECAST_ERROR_FSERV_REQUEST_RANGE_NOT_SATISFIABLE);
     return -1;
 }
 
@@ -669,7 +670,7 @@ int fserve_add_client (client_t *client, FILE *file)
     ICECAST_LOG_DEBUG("Adding client %p to file serving engine", client);
     if (fclient == NULL)
     {
-        client_send_error(client, 404, 0, "memory exhausted");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_MEMORY_EXHAUSTED);
         return -1;
     }
     fclient->file = file;
@@ -691,7 +692,7 @@ void fserve_add_client_callback (client_t *client, fserve_callback_t callback, v
     ICECAST_LOG_DEBUG("Adding client to file serving engine");
     if (fclient == NULL)
     {
-        client_send_error(client, 404, 0, "memory exhausted");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_MEMORY_EXHAUSTED);
         return;
     }
     fclient->file = NULL;

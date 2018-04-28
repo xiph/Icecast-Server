@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2012-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -48,6 +48,7 @@
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
+#include "errors.h"
 #include "stats.h"
 #include "logging.h"
 #include "cfgfile.h"
@@ -961,10 +962,10 @@ static int _free_client(void *key)
     switch (client->respcode) {
         case 0:
             /* if no response has been sent then send a 404 */
-            client_send_error(client, 404, 0, "Mount unavailable");
+            client_send_error_by_id(client, ICECAST_ERROR_SOURCE_MOUNT_UNAVAILABLE);
             break;
         case 500:
-            client_send_error(client, 500, 0, "Stream preparation error");
+            client_send_error_by_id(client, ICECAST_ERROR_SOURCE_STREAM_PREPARATION_ERROR);
             break;
         default:
             client_destroy(client);

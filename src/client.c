@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* client.c
@@ -34,6 +34,7 @@
 #include "format.h"
 #include "stats.h"
 #include "fserve.h"
+#include "errors.h"
 
 #include "client.h"
 #include "auth.h"
@@ -214,7 +215,7 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-void client_send_error(client_t *client, int status, int plain, const char *message)
+static inline void _client_send_error(client_t *client, int status, int plain, const char *message)
 {
     ssize_t ret;
     refbuf_t *data;
@@ -262,6 +263,30 @@ void client_send_error(client_t *client, int status, int plain, const char *mess
     client->refbuf->next = data;
 
     fserve_add_client (client, NULL);
+}
+
+void client_send_error_by_id(client_t *client, int id)
+{
+    const icecast_error_t *error = error_get_by_id(id);
+    const char *pref;
+    int plain;
+
+    if (!error) {
+         client_send_500(client, "Unknown error ID");
+         return;
+    }
+
+    pref = util_http_select_best(httpp_getvar(client->parser, "accept"), "text/plain", "text/html", (const char*)NULL);
+
+    if (strcmp(pref, "text/plain") == 0) {
+        plain = 1;
+    } else if (strcmp(pref, "text/html") == 0) {
+        plain = 0;
+    } else {
+        plain = 1;
+    }
+
+    _client_send_error(client, error->http_status, plain, error->message);
 }
 
 void client_send_101(client_t *client, reuse_t reuse)

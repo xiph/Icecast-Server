@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2013-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2013-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /**
@@ -27,6 +27,7 @@
 #include "auth.h"
 #include "source.h"
 #include "client.h"
+#include "errors.h"
 #include "cfgfile.h"
 #include "stats.h"
 #include "common/httpp/httpp.h"
@@ -373,7 +374,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     /* TODO: replace that magic number */
     if (auth->pending_count > 100) {
         ICECAST_LOG_WARN("too many clients awaiting authentication on auth %p", auth);
-        client_send_error(client, 403, 1, "busy, please try again later");
+        client_send_error_by_id(client, ICECAST_ERROR_AUTH_BUSY);
         return;
     }
 
