@@ -88,6 +88,24 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         struct source_tag * source,
         struct _client_tag * client);
 
+const char *util_http_select_best(const char *input, const char *first, ...);
+
+typedef struct icecast_kv_tag {
+    char *key;
+    char *value;
+} icecast_kv_t;
+
+typedef struct icecast_kva_tag {
+    void   *_tofree[3];
+    size_t kvlen;
+    size_t indexlen;
+    size_t *index;
+    icecast_kv_t *kv;
+} icecast_kva_t;
+
+icecast_kva_t * util_parse_http_cn(const char *cnstr);
+void util_kva_free(icecast_kva_t *kva);
+
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */
 typedef struct _util_dict {
