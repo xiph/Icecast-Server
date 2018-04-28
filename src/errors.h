@@ -52,6 +52,7 @@
 struct icecast_error_tag {
     const int id;
     const int http_status;
+    const char *uuid;
     const char *message;
 };
 

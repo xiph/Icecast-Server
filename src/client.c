@@ -215,26 +215,26 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static inline void _client_send_error(client_t *client, int status, int plain, const char *message)
+static inline void _client_send_error(client_t *client, int plain, const icecast_error_t *error)
 {
     ssize_t ret;
     refbuf_t *data;
 
-    if (status == 500) {
-         client_send_500(client, message);
+    if (error->http_status == 500) {
+         client_send_500(client, error->message);
          return;
     }
 
     data = refbuf_new(PER_CLIENT_REFBUF_SIZE);
     if (!data) {
-         client_send_500(client, message);
+         client_send_500(client, error->message);
          return;
     }
 
     client->reuse = ICECAST_REUSE_KEEPALIVE;
 
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                                 0, status, NULL,
+                                 0, error->http_status, NULL,
                                  plain ? "text/plain" : "text/html", "utf-8",
                                  NULL, NULL, client);
 
@@ -245,12 +245,13 @@ static inline void _client_send_error(client_t *client, int status, int plain, c
     }
 
     if (plain) {
-        strncpy(data->data, message, data->len);
-        data->data[data->len-1] = 0;
+        snprintf(data->data, data->len, "Error %i\r\n---------\r\n\r\nMessage: %s\r\n\r\nError code: %s\r\n",
+                 error->http_status, error->message, error->uuid
+                );
     } else {
         snprintf(data->data, data->len,
-                 "<html><head><title>Error %i</title></head><body><b>%i - %s</b></body></html>\r\n",
-                 status, status, message);
+                 "<html><head><title>Error %i</title></head><body><h1>Error %i</h1><hr><p><b>%s</b></p><p>Error code: %s</p></body></html>\r\n",
+                 error->http_status, error->http_status, error->message, error->uuid);
     }
     data->len = strlen(data->data);
 
@@ -258,7 +259,7 @@ static inline void _client_send_error(client_t *client, int status, int plain, c
              "Content-Length: %llu\r\n\r\n",
              (long long unsigned int)data->len);
 
-    client->respcode = status;
+    client->respcode = error->http_status;
     client->refbuf->len = strlen (client->refbuf->data);
     client->refbuf->next = data;
 
@@ -286,7 +287,7 @@ void client_send_error_by_id(client_t *client, int id)
         plain = 1;
     }
 
-    _client_send_error(client, error->http_status, plain, error->message);
+    _client_send_error(client, plain, error);
 }
 
 void client_send_101(client_t *client, reuse_t reuse)
