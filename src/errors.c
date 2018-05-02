@@ -15,7 +15,7 @@
 #define CATMODULE "errors"
 
 // cut -d' ' -f2 x | while read x; do printf "    {.id = %-60s .http_status = xxx,\n     .message = \"\"},\n" "$x",; done
-const icecast_error_t __errors[] = {
+static const icecast_error_t __errors[] = {
     {.id = ICECAST_ERROR_ADMIN_DEST_NOT_RUNNING,                        .http_status = 400,
      .uuid = "52735a81-16fe-4d7e-9984-5aed8a941055",
      .message = "Destination not running"},
