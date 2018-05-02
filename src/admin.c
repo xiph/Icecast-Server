@@ -1035,7 +1035,7 @@ static void command_metadata(client_t *client,
 
     ICECAST_LOG_DEBUG("Got metadata update request");
 
-    if (source->parser->req_type == httpp_req_put) {
+    if (source->parser && source->parser->req_type == httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy SOURCE-style metadata update command on "
             "source connected with PUT at mountpoint %s", source->mount);
     }
