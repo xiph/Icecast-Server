@@ -1,11 +1,10 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0">
 	<xsl:output method="html" doctype-system="about:legacy-compat" encoding="UTF-8" />
 	<!-- Import include files -->
-	<xsl:include href="includes/head.xsl"/>
-	<xsl:include href="includes/header.xsl"/>
-	<xsl:include href="includes/footer.xsl"/>
-
+	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
+
+	<xsl:variable name="title">Stats</xsl:variable>
 
 	<!-- Auth template -->
 	<xsl:template name="authlist">
@@ -32,17 +31,7 @@
 	</xsl:template>
 
 
-	<xsl:template match="/icestats">
-		<html>
-
-			<xsl:call-template name="head">
-				<xsl:with-param name="title">Stats</xsl:with-param>
-			</xsl:call-template>
-
-			<body>
-				<!-- Header/Menu -->
-				<xsl:call-template name="header" />
-
+	<xsl:template name="content">
 				<div class="section">
 					<h2>Active Mountpoints</h2>
 					<xsl:choose>
@@ -82,11 +71,5 @@
 						</xsl:otherwise>
 					</xsl:choose>
 				</div>
-
-				<!-- Footer -->
-				<xsl:call-template name="footer" />
-
-			</body>
-		</html>
 	</xsl:template>
 </xsl:stylesheet>

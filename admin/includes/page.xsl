@@ -5,7 +5,7 @@
 	<xsl:include href="includes/header.xsl"/>
 	<xsl:include href="includes/footer.xsl"/>
 
-	<xsl:template match="/iceresponse">
+	<xsl:template match="/node()">
 		<html>
 
 			<xsl:call-template name="head">
