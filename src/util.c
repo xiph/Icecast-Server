@@ -715,9 +715,15 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 401: statusmsg = "Authentication Required"; break;
                 case 403: statusmsg = "Forbidden"; break;
                 case 404: statusmsg = "File Not Found"; break;
+                case 405: statusmsg = "Method Not Allowed"; break;
+                case 409: statusmsg = "Conflict"; break;
+                case 415: statusmsg = "Unsupported Media Type"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
                 case 426: statusmsg = "Upgrade Required"; http_version = "1.1"; break;
+                case 429: statusmsg = "Too Many Requests"; break;
+                /* case of 500 is handled differently. No need to list it here. -- ph3-der-loewe, 2018-05-05 */
                 case 501: statusmsg = "Unimplemented"; break;
+                case 503: statusmsg = "Service Unavailable"; break;
                 default:  statusmsg = "(unknown status code)"; break;
             }
         }
