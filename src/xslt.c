@@ -311,9 +311,12 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     }
 
     res = xsltApplyStylesheet(cur, doc, NULL);
-
-    if (xsltSaveResultToString (&string, &len, res, cur) < 0)
+    if (res != NULL) {
+        if (xsltSaveResultToString(&string, &len, res, cur) < 0)
+            problem = 1;
+    } else {
         problem = 1;
+    }
 
     /* lets find out the content type and character encoding to use */
     if (cur->encoding)
