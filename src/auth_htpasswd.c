@@ -401,7 +401,6 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
         htpasswd_user *user = (htpasswd_user *)node->key;
         newnode = xmlNewChild (srcnode, NULL, XMLSTR("User"), NULL);
         xmlNewTextChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
-        xmlNewTextChild(newnode, NULL, XMLSTR("password"), XMLSTR(user->pass));
         node = avl_get_next (node);
     }
     thread_rwlock_unlock (&state->file_rwlock);
