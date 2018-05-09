@@ -1634,6 +1634,18 @@ static void _handle_connection(void)
 }
 
 
+static void __on_sock_count(size_t count, void *userdata)
+{
+    (void)userdata;
+
+    ICECAST_LOG_DEBUG("Listen socket count is now %zu.", count);
+
+    if (count == 0 && global.running == ICECAST_RUNNING) {
+        ICECAST_LOG_INFO("No more listen sockets. Exiting.");
+        global.running = ICECAST_HALTING;
+    }
+}
+
 /* called when listening thread is not checking for incoming connections */
 void connection_setup_sockets (ice_config_t *config)
 {
@@ -1663,6 +1675,7 @@ void connection_setup_sockets (ice_config_t *config)
 
     global_unlock();
 
+    listensocket_container_set_sockcount_cb(global.listensockets, __on_sock_count, NULL);
     listensocket_container_setup(global.listensockets);;
 }
 

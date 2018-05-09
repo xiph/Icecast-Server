@@ -77,6 +77,7 @@
 #include "yp.h"
 #include "auth.h"
 #include "event.h"
+#include "listensocket.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -376,6 +377,11 @@ static int _server_proc_init(void)
     ice_config_t *config = config_get_config_unlocked();
 
     connection_setup_sockets(config);
+
+    if (listensocket_container_sockcount(global.listensockets) < 1) {
+        ICECAST_LOG_ERROR("Can not listen on any sockets.");
+        return 0;
+    }
 
     pidfile_update(config, 1);
 
