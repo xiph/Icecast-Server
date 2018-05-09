@@ -38,6 +38,8 @@ struct listensocket_container_tag {
     listensocket_t **sock;
     int *sockref;
     size_t sock_len;
+    void (*sockcount_cb)(size_t count, void *userdata);
+    void *sockcount_userdata;
 };
 struct listensocket_tag {
     refobject_base_t __base;
@@ -53,6 +55,14 @@ static int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 static int listensocket__select_set(listensocket_t *self, fd_set *set, int *max);
 static int listensocket__select_isset(listensocket_t *self, fd_set *set);
 #endif
+
+static inline void __call_sockcount_cb(listensocket_container_t *self)
+{
+    if (self->sockcount_cb == NULL)
+        return;
+
+    self->sockcount_cb(listensocket_container_sockcount(self), self->sockcount_userdata);
+}
 
 static void listensocket_container_clear_sockets(listensocket_container_t *self)
 {
@@ -76,6 +86,8 @@ static void listensocket_container_clear_sockets(listensocket_container_t *self)
     free(self->sockref);
     self->sock = NULL;
     self->sockref = NULL;
+
+    __call_sockcount_cb(self);
 }
 
 
@@ -94,6 +106,8 @@ listensocket_container_t *  listensocket_container_new(void)
 
     self->sock = NULL;
     self->sock_len = 0;
+    self->sockcount_cb = NULL;
+    self->sockcount_userdata = NULL;
 
     return self;
 }
@@ -161,9 +175,12 @@ int                         listensocket_container_setup(listensocket_container_
         if (listensocket_refsock(self->sock[i]) == 0) {
             self->sockref[i] = 1;
         } else {
+            ICECAST_LOG_DEBUG("Can not ref socket.");
             ret = 1;
         }
     }
+
+    __call_sockcount_cb(self);
 
     return ret;
 }
@@ -214,6 +231,7 @@ static connection_t *       listensocket_container_accept__inner(listensocket_co
                     ICECAST_LOG_ERROR("Closing listen socket in error state.");
                     listensocket_unrefsock(socks[i]);
                     self->sockref[p] = 0;
+                    __call_sockcount_cb(self);
                 }
             }
         }
@@ -262,6 +280,34 @@ connection_t *              listensocket_container_accept(listensocket_container
         return NULL;
 
     return listensocket_container_accept__inner(self, timeout);
+}
+
+int                         listensocket_container_set_sockcount_cb(listensocket_container_t *self, void (*cb)(size_t count, void *userdata), void *userdata)
+{
+    if (!self)
+        return -1;
+
+    self->sockcount_cb = cb;
+    self->sockcount_userdata = userdata;
+
+    return 0;
+}
+
+ssize_t                     listensocket_container_sockcount(listensocket_container_t *self)
+{
+    ssize_t count = 0;
+    size_t i;
+
+    if (!self)
+        return -1;
+
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sockref[i]) {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 static void __listensocket_free(refobject_t self, void **userdata)
