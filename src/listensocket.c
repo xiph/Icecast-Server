@@ -358,9 +358,10 @@ int                         listensocket_refsock(listensocket_t *self)
     if (self->sock == SOCK_ERROR)
         return -1;
 
-    if (sock_listen(self->sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR) {
+    if (sock_listen(self->sock, ICECAST_LISTEN_QUEUE) == 0) {
         sock_close(self->sock);
         self->sock = SOCK_ERROR;
+        ICECAST_LOG_ERROR("Can not listen on socket: %s port %i", self->listener->bind_address ? self->listener->bind_address : "<ANY>", self->listener->port);
         return -1;
     }
 
