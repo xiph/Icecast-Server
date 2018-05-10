@@ -14,6 +14,7 @@
 
 listensocket_container_t *  listensocket_container_new(void);
 int                         listensocket_container_configure(listensocket_container_t *self, const ice_config_t *config);
+int                         listensocket_container_configure_and_setup(listensocket_container_t *self, const ice_config_t *config);
 int                         listensocket_container_setup(listensocket_container_t *self);
 connection_t *              listensocket_container_accept(listensocket_container_t *self, int timeout);
 int                         listensocket_container_set_sockcount_cb(listensocket_container_t *self, void (*cb)(size_t count, void *userdata), void *userdata);

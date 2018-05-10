@@ -186,6 +186,29 @@ int                         listensocket_container_configure(listensocket_contai
     return 0;
 }
 
+int                         listensocket_container_configure_and_setup(listensocket_container_t *self, const ice_config_t *config)
+{
+    void (*cb)(size_t count, void *userdata);
+    int ret;
+
+    if (!self)
+        return -1;
+
+    cb = self->sockcount_cb;
+    self->sockcount_cb = NULL;
+
+    if (listensocket_container_configure(self, config) == 0) {
+        ret = listensocket_container_setup(self);
+    } else {
+        ret = -1;
+    }
+
+    self->sockcount_cb = cb;
+    __call_sockcount_cb(self);
+
+    return ret;
+}
+
 int                         listensocket_container_setup(listensocket_container_t *self) {
     size_t i;
     int ret = 0;
