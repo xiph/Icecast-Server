@@ -62,6 +62,25 @@ static inline const char * __string_default(const char *str, const char *def)
     return str != NULL ? str : def;
 }
 
+static inline int __listener_cmp(const listener_t *a, const listener_t *b)
+{
+    if (a == b)
+        return 1;
+
+    if (a->port != b->port)
+        return 0;
+
+    if ((a->bind_address == NULL && b->bind_address != NULL) ||
+        (a->bind_address != NULL && b->bind_address == NULL))
+        return 0;
+
+
+    if (a->bind_address != NULL && b->bind_address != NULL && strcmp(a->bind_address, b->bind_address) != 0)
+        return 0;
+
+    return 1;
+}
+
 static inline void __call_sockcount_cb(listensocket_container_t *self)
 {
     if (self->sockcount_cb == NULL)
@@ -358,25 +377,12 @@ static int              listensocket_apply_config(listensocket_t *self, const li
         return -1;
 
     if (listener != self->listener) {
-        if (listener->port != self->listener->port) {
-            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: port missmatch: have %i, got %i", self->listener->port, listener->port);
-            return -1;
-        }
-
-        if ((listener->bind_address == NULL && self->listener->bind_address != NULL) ||
-            (listener->bind_address != NULL && self->listener->bind_address == NULL)
-           ) {
-            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address nature missmatch: have %s, got %s",
+        if (__listener_cmp(listener, self->listener) != 1) {
+            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address missmatch: have %s:%i, got %s:%i",
                                 __string_default(self->listener->bind_address, "<ANY>"),
-                                __string_default(listener->bind_address, "<ANY>")
-                             );
-            return -1;
-        }
-
-        if (listener->bind_address != NULL && self->listener->bind_address != NULL && strcmp(listener->bind_address, self->listener->bind_address) != 0) {
-            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address value missmatch: have %s, got %s",
-                                __string_default(self->listener->bind_address, "<ANY>"),
-                                __string_default(listener->bind_address, "<ANY>")
+                                self->listener->port,
+                                __string_default(listener->bind_address, "<ANY>"),
+                                listener->port
                              );
             return -1;
         }
