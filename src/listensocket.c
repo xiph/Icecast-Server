@@ -49,12 +49,18 @@ struct listensocket_tag {
 };
 
 static listensocket_t * listensocket_new(const listener_t *listener);
+static int              listensocket_apply_config(listensocket_t *self, const listener_t *listener);
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 #else
 static inline int listensocket__select_set(listensocket_t *self, fd_set *set, int *max);
 static inline int listensocket__select_isset(listensocket_t *self, fd_set *set);
 #endif
+
+static inline const char * __string_default(const char *str, const char *def)
+{
+    return str != NULL ? str : def;
+}
 
 static inline void __call_sockcount_cb(listensocket_container_t *self)
 {
@@ -344,6 +350,57 @@ static listensocket_t * listensocket_new(const listener_t *listener) {
     return self;
 }
 
+static int              listensocket_apply_config(listensocket_t *self, const listener_t *listener)
+{
+    listener_t *copy = NULL;
+
+    if (!self || !listener)
+        return -1;
+
+    if (listener != self->listener) {
+        if (listener->port != self->listener->port) {
+            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: port missmatch: have %i, got %i", self->listener->port, listener->port);
+            return -1;
+        }
+
+        if ((listener->bind_address == NULL && self->listener->bind_address != NULL) ||
+            (listener->bind_address != NULL && self->listener->bind_address == NULL)
+           ) {
+            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address nature missmatch: have %s, got %s",
+                                __string_default(self->listener->bind_address, "<ANY>"),
+                                __string_default(listener->bind_address, "<ANY>")
+                             );
+            return -1;
+        }
+
+        if (listener->bind_address != NULL && self->listener->bind_address != NULL && strcmp(listener->bind_address, self->listener->bind_address) != 0) {
+            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address value missmatch: have %s, got %s",
+                                __string_default(self->listener->bind_address, "<ANY>"),
+                                __string_default(listener->bind_address, "<ANY>")
+                             );
+            return -1;
+        }
+
+        copy = config_copy_listener_one(listener);
+        if (copy == NULL) {
+            ICECAST_LOG_ERROR("Can not copy listen socket configuration");
+            return -1;
+        }
+    }
+
+    if (listener->so_sndbuf)
+        sock_set_send_buffer(self->sock, listener->so_sndbuf);
+
+    sock_set_blocking(self->sock, 0);
+
+    if (copy != NULL) {
+        while ((self->listener = config_clear_listener(self->listener)));
+        self->listener = copy;
+    }
+
+    return 0;
+}
+
 int                         listensocket_refsock(listensocket_t *self)
 {
     if (!self)
@@ -361,14 +418,12 @@ int                         listensocket_refsock(listensocket_t *self)
     if (sock_listen(self->sock, ICECAST_LISTEN_QUEUE) == 0) {
         sock_close(self->sock);
         self->sock = SOCK_ERROR;
-        ICECAST_LOG_ERROR("Can not listen on socket: %s port %i", self->listener->bind_address ? self->listener->bind_address : "<ANY>", self->listener->port);
+        ICECAST_LOG_ERROR("Can not listen on socket: %s port %i", __string_default(self->listener->bind_address, "<ANY>"), self->listener->port);
         return -1;
     }
 
-    if (self->listener->so_sndbuf)
-        sock_set_send_buffer(self->sock, self->listener->so_sndbuf);
-
-    sock_set_blocking(self->sock, 0);
+    if (listensocket_apply_config(self, self->listener) == -1)
+        return -1;
 
     self->sockrefc++;
 
