@@ -50,10 +50,10 @@ struct listensocket_tag {
 
 static listensocket_t * listensocket_new(const listener_t *listener);
 #ifdef HAVE_POLL
-static int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
+static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 #else
-static int listensocket__select_set(listensocket_t *self, fd_set *set, int *max);
-static int listensocket__select_isset(listensocket_t *self, fd_set *set);
+static inline int listensocket__select_set(listensocket_t *self, fd_set *set, int *max);
+static inline int listensocket__select_isset(listensocket_t *self, fd_set *set);
 #endif
 
 static inline void __call_sockcount_cb(listensocket_container_t *self)
@@ -435,7 +435,7 @@ const listener_t *          listensocket_get_listener(listensocket_t *self)
 }
 
 #ifdef HAVE_POLL
-static int listensocket__poll_fill(listensocket_t *self, struct pollfd *p)
+static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p)
 {
     if (!self || self->sock == SOCK_ERROR)
         return -1;
@@ -448,7 +448,7 @@ static int listensocket__poll_fill(listensocket_t *self, struct pollfd *p)
     return 0;
 }
 #else
-static int listensocket__select_set(listensocket_t *self, fd_set *set, int *max)
+static inline int listensocket__select_set(listensocket_t *self, fd_set *set, int *max)
 {
     if (!self || self->sock == SOCK_ERROR)
         return -1;
@@ -459,7 +459,7 @@ static int listensocket__select_set(listensocket_t *self, fd_set *set, int *max)
     FD_SET(self->sock, set);
     return 0;
 }
-static int listensocket__select_isset(listensocket_t *self, fd_set *set)
+static inline int listensocket__select_isset(listensocket_t *self, fd_set *set)
 {
     if (!self || self->sock == SOCK_ERROR)
         return -1;
