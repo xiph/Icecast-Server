@@ -146,13 +146,7 @@ void connection_shutdown(void)
 void connection_reread_config(ice_config_t *config)
 {
     get_tls_certificate(config);
-    /* This does not work yet.
-     * listensocket_container_configure() should keep sockets that are the same.
-     * Otherwise the Kernel doesn't let us do it.
-     * -- ph3-der-loewe, 2018-04-17
-    listensocket_container_configure(global.listensockets, config);
-    listensocket_container_setup(global.listensockets);
-    */
+    listensocket_container_configure_and_setup(global.listensockets, config);
 }
 
 static unsigned long _next_connection_id(void)

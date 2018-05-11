@@ -45,11 +45,13 @@ struct listensocket_tag {
     refobject_base_t __base;
     size_t sockrefc;
     listener_t *listener;
+    listener_t *listener_update;
     sock_t sock;
 };
 
 static listensocket_t * listensocket_new(const listener_t *listener);
-static int              listensocket_apply_config(listensocket_t *self, const listener_t *listener);
+static int              listensocket_apply_config(listensocket_t *self);
+static int              listensocket_set_update(listensocket_t *self, const listener_t *listener);
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 #else
@@ -137,11 +139,35 @@ listensocket_container_t *  listensocket_container_new(void)
     return self;
 }
 
+static inline void __find_matching_entry(listensocket_container_t *self, const listener_t *listener, listensocket_t ***found, int **ref)
+{
+    const listener_t *b;
+    size_t i;
+
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            if (self->sockref[i]) {
+                b = listensocket_get_listener(self->sock[i]);
+                if (__listener_cmp(listener, b) == 1) {
+                    *found = &(self->sock[i]);
+                    *ref = &(self->sockref[i]);
+                    return;
+                }
+            }
+        }
+    }
+
+    *found = NULL;
+    *ref = NULL;
+}
+
 int                         listensocket_container_configure(listensocket_container_t *self, const ice_config_t *config)
 {
     listensocket_t **n;
+    listensocket_t **match;
     listener_t *cur;
     int *r;
+    int *m;
     size_t i;
 
     if (!self || !config)
@@ -163,7 +189,16 @@ int                         listensocket_container_configure(listensocket_contai
     cur = config->listen_sock;
     for (i = 0; i < config->listen_sock_count; i++) {
         if (cur) {
-            n[i] = listensocket_new(cur);
+            __find_matching_entry(self, cur, &match, &m);
+            if (match) {
+                n[i] = *match;
+                r[i] = 1;
+                *match = NULL;
+                *m = 0;
+                listensocket_set_update(n[i], cur);
+            } else {
+                n[i] = listensocket_new(cur);
+            }
         } else {
             n[i] = NULL;
         }
@@ -217,14 +252,15 @@ int                         listensocket_container_setup(listensocket_container_
         return -1;
 
     for (i = 0; i < self->sock_len; i++) {
-        if (self->sockref[i])
-            continue;
-
-        if (listensocket_refsock(self->sock[i]) == 0) {
-            self->sockref[i] = 1;
+        if (self->sockref[i]) {
+            listensocket_apply_config(self->sock[i]);
         } else {
-            ICECAST_LOG_DEBUG("Can not ref socket.");
-            ret = 1;
+            if (listensocket_refsock(self->sock[i]) == 0) {
+                self->sockref[i] = 1;
+            } else {
+                ICECAST_LOG_DEBUG("Can not ref socket.");
+                ret = 1;
+            }
         }
     }
 
@@ -369,6 +405,7 @@ static void __listensocket_free(refobject_t self, void **userdata)
     }
 
     while ((listensocket->listener = config_clear_listener(listensocket->listener)));
+    while ((listensocket->listener_update = config_clear_listener(listensocket->listener_update)));
 }
 
 static listensocket_t * listensocket_new(const listener_t *listener) {
@@ -392,29 +429,27 @@ static listensocket_t * listensocket_new(const listener_t *listener) {
     return self;
 }
 
-static int              listensocket_apply_config(listensocket_t *self, const listener_t *listener)
+static int              listensocket_apply_config(listensocket_t *self)
 {
-    listener_t *copy = NULL;
+    const listener_t *listener;
 
-    if (!self || !listener)
+    if (!self)
         return -1;
 
-    if (listener != self->listener) {
-        if (__listener_cmp(listener, self->listener) != 1) {
+    if (self->listener_update) {
+        if (__listener_cmp(self->listener, self->listener_update) != 1) {
             ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address missmatch: have %s:%i, got %s:%i",
                                 __string_default(self->listener->bind_address, "<ANY>"),
                                 self->listener->port,
-                                __string_default(listener->bind_address, "<ANY>"),
-                                listener->port
+                                __string_default(self->listener_update->bind_address, "<ANY>"),
+                                self->listener_update->port
                              );
             return -1;
         }
 
-        copy = config_copy_listener_one(listener);
-        if (copy == NULL) {
-            ICECAST_LOG_ERROR("Can not copy listen socket configuration");
-            return -1;
-        }
+        listener = self->listener_update;
+    } else {
+        listener = self->listener;
     }
 
     if (listener->so_sndbuf)
@@ -422,11 +457,28 @@ static int              listensocket_apply_config(listensocket_t *self, const li
 
     sock_set_blocking(self->sock, 0);
 
-    if (copy != NULL) {
+    if (self->listener_update) {
         while ((self->listener = config_clear_listener(self->listener)));
-        self->listener = copy;
+        self->listener = self->listener_update;
+        self->listener_update = NULL;
     }
 
+    return 0;
+}
+
+static int              listensocket_set_update(listensocket_t *self, const listener_t *listener)
+{
+    listener_t *n;
+
+    if (!self || !listener)
+        return -1;
+
+    n = config_copy_listener_one(listener);
+    if (n == NULL)
+        return -1;
+
+    while ((self->listener_update = config_clear_listener(self->listener_update)));
+    self->listener_update = n;
     return 0;
 }
 
@@ -451,7 +503,7 @@ int                         listensocket_refsock(listensocket_t *self)
         return -1;
     }
 
-    if (listensocket_apply_config(self, self->listener) == -1)
+    if (listensocket_apply_config(self) == -1)
         return -1;
 
     self->sockrefc++;
