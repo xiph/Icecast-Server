@@ -147,8 +147,14 @@ typedef struct _resource {
     struct _resource *next;
 } resource_t;
 
+typedef enum _listener_type_tag {
+    LISTENER_TYPE_NORMAL
+} listener_type_t;
+
 typedef struct _listener_t {
     struct _listener_t *next;
+    char *id;
+    listener_type_t type;
     int port;
     int so_sndbuf;
     char *bind_address;

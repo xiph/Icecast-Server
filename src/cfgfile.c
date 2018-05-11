@@ -172,6 +172,18 @@ operation_mode config_str_to_omode(const char *str)
     }
 }
 
+static listener_type_t config_str_to_listener_type(const char *str)
+{
+    if (!str || !*str) {
+        return LISTENER_TYPE_NORMAL;
+    } else if (strcasecmp(str, "normal") == 0) {
+        return LISTENER_TYPE_NORMAL;
+    } else {
+        ICECAST_LOG_ERROR("Unknown listener type \"%s\", falling back to NORMAL.", str);
+        return LISTENER_TYPE_NORMAL;
+    }
+}
+
 static void create_locks(void)
 {
     thread_mutex_create(&_locks.relay_lock);
@@ -580,6 +592,7 @@ listener_t *config_clear_listener(listener_t *listener)
     if (listener)
     {
         next = listener->next;
+        if (listener->id)               xmlFree(listener->id);
         if (listener->bind_address)     xmlFree(listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
         free (listener);
@@ -999,7 +1012,7 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->mimetypes_fn);
             configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("listen-socket")) == 0) {
-            _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
+            _parse_listen_socket(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp && *tmp) {
@@ -1744,6 +1757,14 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         return;
     listener->port = 8000;
 
+    listener->id  = (char *)xmlGetProp(node, XMLSTR("id"));
+
+    tmp  = (char *)xmlGetProp(node, XMLSTR("type"));
+    listener->type = config_str_to_listener_type(tmp);
+    xmlFree(tmp);
+
+    node = node->xmlChildrenNode;
+
     do {
         if (node == NULL)
             break;
@@ -2486,6 +2507,7 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     n->next = NULL;
     n->port = listener->port;
     n->so_sndbuf = listener->so_sndbuf;
+    n->id = (char*)xmlStrdup(XMLSTR(listener->id));
     n->bind_address = (char*)xmlStrdup(XMLSTR(listener->bind_address));
     n->shoutcast_compat = listener->shoutcast_compat;
     n->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));
