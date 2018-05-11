@@ -1408,6 +1408,7 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
         return;
     }
 
+    /* Why do we acquire a global lock here? -- ph3-der-loewe, 2018-05-11 */
     global_lock();
     config = config_get_config();
     sc_mount = config->shoutcast_mount;
