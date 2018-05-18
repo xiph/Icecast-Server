@@ -2507,6 +2507,7 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     n->next = NULL;
     n->port = listener->port;
     n->so_sndbuf = listener->so_sndbuf;
+    n->type = listener->type;
     n->id = (char*)xmlStrdup(XMLSTR(listener->id));
     n->bind_address = (char*)xmlStrdup(XMLSTR(listener->bind_address));
     n->shoutcast_compat = listener->shoutcast_compat;
