@@ -290,13 +290,19 @@ int                         listensocket_container_setup(listensocket_container_
 }
 static int listensocket_container_setup__unlocked(listensocket_container_t *self)
 {
+    listener_type_t type;
     size_t i;
     int ret = 0;
 
     for (i = 0; i < self->sock_len; i++) {
-        if (self->sockref[i]) {
-            listensocket_apply_config(self->sock[i]);
-        } else {
+        listensocket_apply_config(self->sock[i]);
+
+        type = listensocket_get_type(self->sock[i]);
+        if (self->sockref[i] && type == LISTENER_TYPE_VIRTUAL) {
+            if (listensocket_unrefsock(self->sock[i]) == 0) {
+                self->sockref[i] = 0;
+            }
+        } else if (!self->sockref[i] && type != LISTENER_TYPE_VIRTUAL) {
             if (listensocket_refsock(self->sock[i]) == 0) {
                 self->sockref[i] = 1;
             } else {
@@ -540,10 +546,12 @@ static int              listensocket_apply_config__unlocked(listensocket_t *self
         listener = self->listener;
     }
 
-    if (listener->so_sndbuf)
-        sock_set_send_buffer(self->sock, listener->so_sndbuf);
+    if (self->sock != SOCK_ERROR) {
+        if (listener->so_sndbuf)
+            sock_set_send_buffer(self->sock, listener->so_sndbuf);
 
-    sock_set_blocking(self->sock, 0);
+        sock_set_blocking(self->sock, 0);
+    }
 
     if (self->listener_update) {
         while ((self->listener = config_clear_listener(self->listener)));
@@ -704,6 +712,20 @@ int                         listensocket_release_listener(listensocket_t *self)
     thread_rwlock_unlock(&self->listener_rwlock);
 
     return 0;
+}
+
+listener_type_t             listensocket_get_type(listensocket_t *self)
+{
+    listener_type_t ret;
+
+    if (!self)
+        return LISTENER_TYPE_ERROR;
+
+    thread_mutex_lock(&self->lock);
+    ret = self->listener->type;
+    thread_mutex_unlock(&self->lock);
+
+    return ret;
 }
 
 #ifdef HAVE_POLL

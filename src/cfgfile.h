@@ -148,7 +148,9 @@ typedef struct _resource {
 } resource_t;
 
 typedef enum _listener_type_tag {
-    LISTENER_TYPE_NORMAL
+    LISTENER_TYPE_ERROR,
+    LISTENER_TYPE_NORMAL,
+    LISTENER_TYPE_VIRTUAL
 } listener_type_t;
 
 typedef struct _listener_t {

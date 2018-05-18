@@ -178,6 +178,8 @@ static listener_type_t config_str_to_listener_type(const char *str)
         return LISTENER_TYPE_NORMAL;
     } else if (strcasecmp(str, "normal") == 0) {
         return LISTENER_TYPE_NORMAL;
+    } else if (strcasecmp(str, "virtual") == 0) {
+        return LISTENER_TYPE_VIRTUAL;
     } else {
         ICECAST_LOG_ERROR("Unknown listener type \"%s\", falling back to NORMAL.", str);
         return LISTENER_TYPE_NORMAL;
