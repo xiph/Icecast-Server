@@ -317,7 +317,7 @@ static int listensocket_container_setup__unlocked(listensocket_container_t *self
     return ret;
 }
 
-static connection_t *       listensocket_container_accept__inner(listensocket_container_t *self, int timeout)
+static listensocket_t *       listensocket_container_accept__inner(listensocket_container_t *self, int timeout)
 {
 #ifdef HAVE_POLL
     struct pollfd ufds[self->sock_len];
@@ -351,7 +351,7 @@ static connection_t *       listensocket_container_accept__inner(listensocket_co
 
     for (i = 0; i < found; i++) {
         if (ufds[i].revents & POLLIN) {
-            return listensocket_accept(socks[i]);
+            return socks[i];
         }
 
         if (!(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL)))
@@ -398,7 +398,7 @@ static connection_t *       listensocket_container_accept__inner(listensocket_co
     for (i = 0; i < self->sock_len; i++) {
         if (self->sockref[i]) {
             if (listensocket__select_isset(self->sock[i], &rfds)) {
-                return listensocket_accept(self->sock[i]);
+                return self->sock[i];
             }
         }
     }
@@ -408,14 +408,20 @@ static connection_t *       listensocket_container_accept__inner(listensocket_co
 }
 connection_t *              listensocket_container_accept(listensocket_container_t *self, int timeout)
 {
+    listensocket_t *ls;
     connection_t *ret;
 
     if (!self)
         return NULL;
 
     thread_mutex_lock(&self->lock);
-    ret = listensocket_container_accept__inner(self, timeout);
+    ls = listensocket_container_accept__inner(self, timeout);
+    refobject_ref(ls);
     thread_mutex_unlock(&self->lock);
+
+    ret = listensocket_accept(ls, self);
+    refobject_unref(ls);
+
     return ret;
 }
 
@@ -647,9 +653,10 @@ int                         listensocket_unrefsock(listensocket_t *self)
     return 0;
 }
 
-connection_t *              listensocket_accept(listensocket_t *self)
+connection_t *              listensocket_accept(listensocket_t *self, listensocket_container_t *container)
 {
     connection_t *con;
+    listensocket_t *effective = NULL;
     sock_t sock;
     char *ip;
 
@@ -672,7 +679,15 @@ connection_t *              listensocket_accept(listensocket_t *self)
         memmove(ip, ip+7, strlen(ip+7)+1);
     }
 
-    con = connection_create(sock, self, self, ip);
+    if (!effective) {
+        effective = self;
+        refobject_ref(effective);
+    }
+
+    con = connection_create(sock, self, effective, ip);
+
+    refobject_unref(effective);
+
     if (con == NULL) {
         sock_close(sock);
         free(ip);
