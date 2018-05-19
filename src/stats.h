@@ -18,7 +18,6 @@
 #include <libxml/tree.h>
 
 #include "icecasttypes.h"
-#include "cfgfile.h"
 #include "refbuf.h"
 
 typedef struct _stats_node_tag
@@ -95,7 +94,7 @@ void stats_callback (client_t *client, void *notused);
 
 void stats_transform_xslt(client_t *client, const char *uri);
 void stats_sendxml(client_t *client);
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, operation_mode mode);
+xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, client_t *client);
 char *stats_get_value(const char *source, const char *name);
 
 #endif  /* __STATS_H__ */
