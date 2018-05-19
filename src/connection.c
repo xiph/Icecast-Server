@@ -1496,10 +1496,10 @@ void connection_close(connection_t *con)
     if (!con)
         return;
 
+    tls_unref(con->tls);
     if (con->sock != -1) /* TODO: do not use magic */
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-    tls_unref(con->tls);
     free(con);
 }
