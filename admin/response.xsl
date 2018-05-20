@@ -3,11 +3,11 @@
 	<!-- Import include files -->
 	<xsl:include href="includes/page.xsl"/>
 
-	<xsl:variable name="title">Stats</xsl:variable>
+	<xsl:variable name="title">Server Response</xsl:variable>
 
 	<xsl:template name="content">
 				<div class="section">
-					<h2>Server Response</h2>
+					<h2><xsl:value-of select="$title" /></h2>
 					<xsl:for-each select="/iceresponse">
 						<div class="article">
 							<h3>Response</h3>

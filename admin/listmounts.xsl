@@ -4,7 +4,7 @@
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
 
-	<xsl:variable name="title">Stats</xsl:variable>
+	<xsl:variable name="title">Active Mountpoints</xsl:variable>
 
 	<!-- Auth template -->
 	<xsl:template name="authlist">
@@ -33,7 +33,7 @@
 
 	<xsl:template name="content">
 				<div class="section">
-					<h2>Active Mountpoints</h2>
+					<h2><xsl:value-of select="$title" /></h2>
 					<xsl:choose>
 						<xsl:when test="source">
 							<xsl:for-each select="source">

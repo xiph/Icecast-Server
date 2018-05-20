@@ -4,11 +4,11 @@
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
 
-	<xsl:variable name="title">Stats</xsl:variable>
+	<xsl:variable name="title">Listener Stats</xsl:variable>
 
 	<xsl:template name="content">
 				<div class="section">
-					<h2>Listener Stats</h2>
+					<h2><xsl:value-of select="$title" /></h2>
 
 					<xsl:for-each select="source">
 						<div class="article">
