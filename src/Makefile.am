@@ -29,6 +29,7 @@ noinst_HEADERS = \
     md5.h \
     matchfile.h \
     tls.h \
+    refobject.h \
     event.h \
     event_log.h \
     event_exec.h \
@@ -68,6 +69,7 @@ icecast_SOURCES = \
     md5.c \
     matchfile.c \
     tls.c \
+    refobject.c \
     format.c \
     format_ogg.c \
     format_mp3.c \

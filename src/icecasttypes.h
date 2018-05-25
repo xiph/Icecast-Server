@@ -9,6 +9,10 @@
 #ifndef __ICECASTTYPES_H__
 #define __ICECASTTYPES_H__
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "compat.h"
 
 /* ---[ client.[ch] ]--- */
@@ -87,5 +91,17 @@ typedef enum {
 /* ---[ slave.[ch] ]--- */
 
 typedef struct _relay_server relay_server;
+
+/* ---[ refobject.[ch] ]--- */
+
+typedef struct refobject_base_tag refobject_base_t;
+
+#ifdef HAVE_TYPE_ATTRIBUTE_TRANSPARENT_UNION
+typedef union __attribute__ ((__transparent_union__)) {
+    refobject_base_t *refobject_base;
+} refobject_t;
+#else
+typedef void * refobject_t;
+#endif
 
 #endif
