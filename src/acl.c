@@ -31,7 +31,7 @@ struct acl_tag {
 
     /* admin/ interface */
     struct {
-        int command;
+        admin_command_id_t command;
         acl_policy_t policy;
     } admin_commands[MAX_ADMIN_COMMANDS];
     size_t admin_commands_len;
@@ -253,7 +253,7 @@ int acl_set_admin_str__callbck(acl_t        *acl,
                                const char   *str)
 {
     size_t read_i, write_i;
-    int command = admin_get_command(str);
+    admin_command_id_t command = admin_get_command(str);
 
    if (command == ADMIN_COMMAND_ERROR)
        return -1;
@@ -279,7 +279,7 @@ int acl_set_admin_str__callbck(acl_t        *acl,
    return 0;
 }
 
-acl_policy_t acl_test_admin(acl_t *acl, int command)
+acl_policy_t acl_test_admin(acl_t *acl, admin_command_id_t command)
 {
     size_t i;
 

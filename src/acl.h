@@ -18,6 +18,11 @@
 #include <libxml/tree.h>
 #include "common/httpp/httpp.h"
 
+struct acl_tag;
+typedef struct acl_tag acl_t;
+
+#include "admin.h"
+
 typedef enum acl_policy_tag {
  /* Error on function call */
  ACL_POLICY_ERROR  = -1,
@@ -27,8 +32,6 @@ typedef enum acl_policy_tag {
  ACL_POLICY_DENY  = 1
 } acl_policy_t;
 
-struct acl_tag;
-typedef struct acl_tag acl_t;
 
 /* basic functions to work with ACLs */
 acl_t * acl_new(void);
@@ -48,7 +51,7 @@ acl_policy_t acl_test_method(acl_t * acl, httpp_request_type_e method);
 /* admin/ interface specific functions */
 int acl_set_admin_str__callbck(acl_t * acl, acl_policy_t policy, const char * str);
 #define acl_set_admin_str(acl,policy,str) acl_set_ANY_str((acl), (policy), (str), acl_set_admin_str__callbck)
-acl_policy_t acl_test_admin(acl_t * acl, int command);
+acl_policy_t acl_test_admin(acl_t * acl, admin_command_id_t command);
 
 /* web/ interface specific functions */
 int acl_set_web_policy(acl_t * acl, acl_policy_t policy);

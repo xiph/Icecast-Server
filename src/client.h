@@ -46,8 +46,7 @@ typedef enum _reuse_tag {
     ICECAST_REUSE_UPGRADETLS
 } reuse_t;
 
-struct _client_tag
-{
+struct _client_tag {
     /* mode of operation for this client */
     operation_mode mode;
 
@@ -70,7 +69,7 @@ struct _client_tag
     int respcode;
 
     /* admin command if any. ADMIN_COMMAND_ERROR if not an admin command. */
-    int admin_command;
+    admin_command_id_t admin_command;
 
     /* authentication instances we still need to go thru */
     struct auth_stack_tag *authstack;
@@ -110,7 +109,6 @@ struct _client_tag
 
     /* function to check if refbuf needs updating */
     int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
-
 };
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);

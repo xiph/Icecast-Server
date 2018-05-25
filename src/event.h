@@ -61,7 +61,7 @@ struct event_tag {
     char *client_role; /* from client->role */
     char *client_username; /* from client->username */
     char *client_useragent; /* from httpp_getvar(client->parser, "user-agent") */
-    int client_admin_command; /* from client->admin_command */
+    admin_command_id_t client_admin_command; /* from client->admin_command */
 };
 
 struct event_registration_tag {
