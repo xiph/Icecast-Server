@@ -915,18 +915,6 @@ static void _handle_get_request(client_t *client, char *uri) {
 
     stats_event_inc(NULL, "client_connections");
 
-    /* Dispatch legacy admin.cgi requests */
-    if (strcmp(uri, "/admin.cgi") == 0) {
-        ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
-        admin_handle_request(client, uri + 1);
-        return;
-    } /* Dispatch all admin requests */
-    else if (strncmp(uri, "/admin/", 7) == 0) {
-        ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
-        admin_handle_request(client, uri + 7);
-        return;
-    }
-
     /* this is a web/ request. let's check if we are allowed to do that. */
     if (acl_test_web(client->acl) != ACL_POLICY_ALLOW) {
         /* doesn't seem so, sad client :( */
@@ -1163,6 +1151,23 @@ static int _handle_resources(client_t *client, char **uri)
     return 0;
 }
 
+static void _handle_admin_request(client_t *client, char *adminuri)
+{
+    ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
+
+    stats_event_inc(NULL, "client_connections");
+
+    switch (client->parser->req_type) {
+        case httpp_req_get:
+            admin_handle_request(client, adminuri);
+        break;
+        default:
+            ICECAST_LOG_ERROR("Wrong request type from client");
+            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
+        break;
+    }
+}
+
 /* Handle any client that passed the authing process.
  */
 static void _handle_authed_client(client_t *client, void *uri, auth_result result)
@@ -1180,6 +1185,16 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         free(uri);
+        return;
+    }
+
+    /* Dispatch legacy admin.cgi requests */
+    if (strcmp(uri, "/admin.cgi") == 0) {
+        _handle_admin_request(client, uri + 1);
+        return;
+    } /* Dispatch all admin requests */
+    else if (strncmp(uri, "/admin/", 7) == 0) {
+        _handle_admin_request(client, uri + 7);
         return;
     }
 
