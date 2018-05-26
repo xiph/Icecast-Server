@@ -135,7 +135,7 @@ static const icecast_error_t __errors[] = {
      .message = "XSLT problem"}
 };
 
-const icecast_error_t * error_get_by_id(int id) {
+const icecast_error_t * error_get_by_id(icecast_error_id_t id) {
     size_t i;
 
     for (i = 0; i < (sizeof(__errors)/sizeof(*__errors)); i++) {

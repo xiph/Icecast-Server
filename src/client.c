@@ -266,7 +266,7 @@ static inline void _client_send_error(client_t *client, int plain, const icecast
     fserve_add_client (client, NULL);
 }
 
-void client_send_error_by_id(client_t *client, int id)
+void client_send_error_by_id(client_t *client, icecast_error_id_t id)
 {
     const icecast_error_t *error = error_get_by_id(id);
     const char *pref;
