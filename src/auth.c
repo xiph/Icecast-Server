@@ -394,7 +394,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     auth_user->on_no_match = on_no_match;
     auth_user->on_result = on_result;
     auth_user->userdata = userdata;
-    ICECAST_LOG_INFO("adding client %p for authentication on %p", client, auth);
+    ICECAST_LOG_DEBUG("adding client %p for authentication on %p", client, auth);
     queue_auth_client(auth_user);
 }
 
