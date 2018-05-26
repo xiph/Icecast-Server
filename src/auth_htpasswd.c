@@ -191,6 +191,11 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     }
     htpasswd_recheckfile (htpasswd);
 
+    if (htpasswd->users) {
+        ICECAST_LOG_ERROR("No user list.");
+        return AUTH_NOMATCH;
+    }
+
     thread_rwlock_rlock (&htpasswd->file_rwlock);
     entry.name = client->username;
     if (avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
@@ -257,7 +262,17 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     htpasswd_user entry;
     void *result;
 
+    if (!state->filename) {
+        ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+        return AUTH_FAILED;
+    }
+
     htpasswd_recheckfile (state);
+
+    if (state->users) {
+        ICECAST_LOG_ERROR("No user list.");
+        return AUTH_FAILED;
+    }
 
     thread_rwlock_wlock (&state->file_rwlock);
 
@@ -301,6 +316,17 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
     struct stat file_info;
 
     state = auth->state;
+
+    if (!state->filename) {
+        ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+        return AUTH_FAILED;
+    }
+
+    if (state->users) {
+        ICECAST_LOG_ERROR("No user list.");
+        return AUTH_FAILED;
+    }
+
     thread_rwlock_wlock (&state->file_rwlock);
     passwdfile = fopen(state->filename, "rb");
 
@@ -383,7 +409,17 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 
     state = auth->state;
 
+    if (!state->filename) {
+        ICECAST_LOG_ERROR("No filename given in options for authenticator.");
+        return AUTH_FAILED;
+    }
+
     htpasswd_recheckfile(state);
+
+    if (state->users) {
+        ICECAST_LOG_ERROR("No user list.");
+        return AUTH_FAILED;
+    }
 
     thread_rwlock_rlock(&state->file_rwlock);
     node = avl_get_first(state->users);
