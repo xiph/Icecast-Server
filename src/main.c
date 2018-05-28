@@ -122,12 +122,12 @@ static void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
+    global_initialize();
     sock_initialize();
     resolver_initialize();
     config_initialize();
     tls_initialize();
     connection_initialize();
-    global_initialize();
     refbuf_initialize();
 
     xslt_initialize();
@@ -146,12 +146,12 @@ static void shutdown_subsystems(void)
     yp_shutdown();
     stats_shutdown();
 
-    global_shutdown();
     connection_shutdown();
     tls_shutdown();
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();
+    global_shutdown();
     thread_shutdown();
 
 #ifdef HAVE_CURL
