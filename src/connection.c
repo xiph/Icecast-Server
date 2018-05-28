@@ -1074,10 +1074,10 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     return;
 }
 
-/* Handle <alias> lookups here.
+/* Handle <resource> lookups here.
  */
 
-static int _handle_aliases(client_t *client, char **uri)
+static int _handle_resources(client_t *client, char **uri)
 {
     const char *http_host = httpp_getvar(client->parser, "host");
     char *serverhost = NULL;
@@ -1087,7 +1087,7 @@ static int _handle_aliases(client_t *client, char **uri)
     char *new_uri = NULL;
     ice_config_t *config;
     listener_t *listen_sock;
-    aliases *alias;
+    resource_t *resource;
 
     if (http_host) {
         vhost = strdup(http_host);
@@ -1105,48 +1105,48 @@ static int _handle_aliases(client_t *client, char **uri)
         serverport = listen_sock->port;
     }
 
-    alias = config->aliases;
+    resource = config->resources;
 
-    /* We now go thru all aliases and see if any matches. */
-    for (; alias; alias = alias->next) {
+    /* We now go thru all resources and see if any matches. */
+    for (; resource; resource = resource->next) {
         /* We check for several aspects, if they DO NOT match, we continue with our search. */
 
         /* Check for the URI to match. */
-        if (alias->flags & ALIAS_FLAG_PREFIXMATCH) {
-            size_t len = strlen(alias->source);
-            if (strncmp(*uri, alias->source, len) != 0)
+        if (resource->flags & ALIAS_FLAG_PREFIXMATCH) {
+            size_t len = strlen(resource->source);
+            if (strncmp(*uri, resource->source, len) != 0)
                 continue;
-            ICECAST_LOG_DEBUG("Match: *uri='%s', alias->source='%s', len=%zu", *uri, alias->source, len);
+            ICECAST_LOG_DEBUG("Match: *uri='%s', resource->source='%s', len=%zu", *uri, resource->source, len);
         } else {
-            if (strcmp(*uri, alias->source) != 0)
+            if (strcmp(*uri, resource->source) != 0)
                 continue;
         }
 
         /* Check for the server's port to match. */
-        if (alias->port != -1 && alias->port != serverport)
+        if (resource->port != -1 && resource->port != serverport)
             continue;
 
         /* Check for the server's bind address to match. */
-        if (alias->bind_address != NULL && serverhost != NULL && strcmp(alias->bind_address, serverhost) != 0)
+        if (resource->bind_address != NULL && serverhost != NULL && strcmp(resource->bind_address, serverhost) != 0)
             continue;
 
         /* Check for the vhost to match. */
-        if (alias->vhost != NULL && vhost != NULL && strcmp(alias->vhost, vhost) != 0)
+        if (resource->vhost != NULL && vhost != NULL && strcmp(resource->vhost, vhost) != 0)
             continue;
 
         /* Ok, we found a matching entry. */
 
-        if (alias->destination) {
-            if (alias->flags & ALIAS_FLAG_PREFIXMATCH) {
-                size_t len = strlen(alias->source);
-                asprintf(&new_uri, "%s%s", alias->destination, (*uri) + len);
+        if (resource->destination) {
+            if (resource->flags & ALIAS_FLAG_PREFIXMATCH) {
+                size_t len = strlen(resource->source);
+                asprintf(&new_uri, "%s%s", resource->destination, (*uri) + len);
             } else {
-                new_uri = strdup(alias->destination);
+                new_uri = strdup(resource->destination);
             }
         }
-        if (alias->omode != OMODE_DEFAULT)
-            client->mode = alias->omode;
-        ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
+        if (resource->omode != OMODE_DEFAULT)
+            client->mode = resource->omode;
+        ICECAST_LOG_DEBUG("resource has made %s into %s", *uri, new_uri);
         break;
     }
 
@@ -1405,7 +1405,7 @@ static void _handle_connection(void)
 
                 client->mode = config_str_to_omode(httpp_get_query_param(client->parser, "omode"));
 
-                if (_handle_aliases(client, &uri) != 0) {
+                if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
                     continue;
                 }

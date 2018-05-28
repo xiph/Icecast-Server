@@ -157,7 +157,7 @@ typedef struct _mount_proxy {
 
 #define ALIAS_FLAG_PREFIXMATCH          0x0001
 
-typedef struct _aliases {
+typedef struct _resource {
     char *source;
     char *destination;
     int port;
@@ -165,8 +165,8 @@ typedef struct _aliases {
     char *vhost;
     operation_mode omode;
     unsigned int flags;
-    struct _aliases *next;
-} aliases;
+    struct _resource *next;
+} resource_t;
 
 typedef struct _listener_t {
     struct _listener_t *next;
@@ -241,7 +241,7 @@ typedef struct ice_config_tag {
     char *allowfile;
     char *webroot_dir;
     char *adminroot_dir;
-    aliases *aliases;
+    resource_t *resources;
 
     char *access_log;
     char *error_log;

@@ -573,8 +573,8 @@ void config_clear(ice_config_t *c)
                         *nextrelay;
     mount_proxy         *mount,
                         *nextmount;
-    aliases             *alias,
-                        *nextalias;
+    resource_t          *resource,
+                        *nextresource;
 #ifdef USE_YP
     int                 i;
 #endif
@@ -633,15 +633,15 @@ void config_clear(ice_config_t *c)
         mount = nextmount;
     }
 
-    alias = c->aliases;
-    while (alias) {
-        nextalias = alias->next;
-        xmlFree(alias->source);
-        xmlFree(alias->destination);
-        xmlFree(alias->bind_address);
-        xmlFree(alias->vhost);
-        free(alias);
-        alias = nextalias;
+    resource = c->resources;
+    while (resource) {
+        nextresource = resource->next;
+        xmlFree(resource->source);
+        xmlFree(resource->destination);
+        xmlFree(resource->bind_address);
+        xmlFree(resource->vhost);
+        free(resource);
+        resource = nextresource;
     }
 
     dirnode = c->dir_list;
@@ -1904,10 +1904,10 @@ static void _parse_paths(xmlDocPtr      doc,
                          xmlNodePtr     node,
                          ice_config_t  *configuration)
 {
-    char    *temp;
-    aliases *alias,
-            *current,
-            *last;
+    char        *temp;
+    resource_t  *resource,
+                *current,
+                *last;
 
     do {
         if (node == NULL)
@@ -1989,52 +1989,52 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
-            alias = calloc(1, sizeof(aliases));
-            alias->next = NULL;
-            alias->source = (char *)xmlGetProp(node, XMLSTR("source"));
-            alias->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
-            if (!alias->destination)
-                alias->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
+            resource = calloc(1, sizeof(resource_t));
+            resource->next = NULL;
+            resource->source = (char *)xmlGetProp(node, XMLSTR("source"));
+            resource->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
+            if (!resource->destination)
+                resource->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
 
-            if (!alias->source && alias->destination) {
-                alias->source = alias->destination;
-                alias->destination = NULL;
-            } else if (!alias->source && !alias->destination) {
-                xmlFree(alias->source);
-                xmlFree(alias->destination);
-                free(alias);
+            if (!resource->source && resource->destination) {
+                resource->source = resource->destination;
+                resource->destination = NULL;
+            } else if (!resource->source && !resource->destination) {
+                xmlFree(resource->source);
+                xmlFree(resource->destination);
+                free(resource);
                 continue;
             }
             temp = (char *)xmlGetProp(node, XMLSTR("port"));
             if(temp != NULL) {
-                alias->port = util_str_to_int(temp, alias->port);
+                resource->port = util_str_to_int(temp, resource->port);
                 xmlFree(temp);
             } else {
-                alias->port = -1;
+                resource->port = -1;
             }
-            alias->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
-            alias->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
+            resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
+            resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
             temp = (char *)xmlGetProp(node, XMLSTR("omode"));
             if (temp) {
-                alias->omode = config_str_to_omode(temp);
+                resource->omode = config_str_to_omode(temp);
                 xmlFree(temp);
             } else {
-                alias->omode = OMODE_DEFAULT;
+                resource->omode = OMODE_DEFAULT;
             }
 
             temp = (char *)xmlGetProp(node, XMLSTR("prefixmatch"));
-            alias->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
+            resource->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
 
-            current = configuration->aliases;
+            current = configuration->resources;
             last = NULL;
             while (current) {
                 last = current;
                 current = current->next;
             }
             if(last) {
-                last->next = alias;
+                last->next = resource;
             } else {
-                configuration->aliases = alias;
+                configuration->resources = resource;
             }
         }
     } while ((node = node->next));
