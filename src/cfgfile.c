@@ -552,6 +552,21 @@ static void config_clear_mount(mount_proxy *mount)
     free(mount);
 }
 
+static void config_clear_resource(resource_t *resource)
+{
+    resource_t *nextresource;
+
+    while (resource) {
+        nextresource = resource->next;
+        xmlFree(resource->source);
+        xmlFree(resource->destination);
+        xmlFree(resource->bind_address);
+        xmlFree(resource->vhost);
+        free(resource);
+        resource = nextresource;
+    }
+}
+
 listener_t *config_clear_listener(listener_t *listener)
 {
     listener_t *next = NULL;
@@ -573,8 +588,6 @@ void config_clear(ice_config_t *c)
                         *nextrelay;
     mount_proxy         *mount,
                         *nextmount;
-    resource_t          *resource,
-                        *nextresource;
 #ifdef USE_YP
     int                 i;
 #endif
@@ -633,16 +646,7 @@ void config_clear(ice_config_t *c)
         mount = nextmount;
     }
 
-    resource = c->resources;
-    while (resource) {
-        nextresource = resource->next;
-        xmlFree(resource->source);
-        xmlFree(resource->destination);
-        xmlFree(resource->bind_address);
-        xmlFree(resource->vhost);
-        free(resource);
-        resource = nextresource;
-    }
+    config_clear_resource(c->resources);
 
     dirnode = c->dir_list;
     while (dirnode) {
@@ -1900,14 +1904,79 @@ static void _parse_directory(xmlDocPtr      doc,
     configuration->num_yp_directories++;
 }
 
+static void _parse_resource(xmlDocPtr      doc,
+                            xmlNodePtr     node,
+                            ice_config_t  *configuration)
+{
+    char *temp;
+    resource_t  *resource,
+                *current,
+                *last;
+
+    resource = calloc(1, sizeof(resource_t));
+    if (resource == NULL) {
+        ICECAST_LOG_ERROR("Can not allocate memory for resource.");
+        return;
+    }
+
+    resource->next = NULL;
+
+    resource->source = (char *)xmlGetProp(node, XMLSTR("source"));
+    resource->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
+
+    if (!resource->destination)
+        resource->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
+
+    if (!resource->source && resource->destination) {
+        resource->source = resource->destination;
+        resource->destination = NULL;
+    } else if (!resource->source && !resource->destination) {
+        config_clear_resource(resource);
+        return;
+    }
+
+    temp = (char *)xmlGetProp(node, XMLSTR("port"));
+    if(temp != NULL) {
+        resource->port = util_str_to_int(temp, resource->port);
+        xmlFree(temp);
+    } else {
+        resource->port = -1;
+    }
+
+    resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
+
+    resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
+
+    temp = (char *)xmlGetProp(node, XMLSTR("omode"));
+    if (temp) {
+        resource->omode = config_str_to_omode(temp);
+        xmlFree(temp);
+    } else {
+        resource->omode = OMODE_DEFAULT;
+    }
+
+    temp = (char *)xmlGetProp(node, XMLSTR("prefixmatch"));
+    resource->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
+
+    /* Attach new <resource> as last entry into the global list. */
+    current = configuration->resources;
+    last = NULL;
+    while (current) {
+        last = current;
+        current = current->next;
+    }
+    if (last) {
+        last->next = resource;
+    } else {
+        configuration->resources = resource;
+    }
+}
+
 static void _parse_paths(xmlDocPtr      doc,
                          xmlNodePtr     node,
                          ice_config_t  *configuration)
 {
     char        *temp;
-    resource_t  *resource,
-                *current,
-                *last;
 
     do {
         if (node == NULL)
@@ -1989,53 +2058,7 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
-            resource = calloc(1, sizeof(resource_t));
-            resource->next = NULL;
-            resource->source = (char *)xmlGetProp(node, XMLSTR("source"));
-            resource->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
-            if (!resource->destination)
-                resource->destination = (char *)xmlGetProp(node, XMLSTR("dest"));
-
-            if (!resource->source && resource->destination) {
-                resource->source = resource->destination;
-                resource->destination = NULL;
-            } else if (!resource->source && !resource->destination) {
-                xmlFree(resource->source);
-                xmlFree(resource->destination);
-                free(resource);
-                continue;
-            }
-            temp = (char *)xmlGetProp(node, XMLSTR("port"));
-            if(temp != NULL) {
-                resource->port = util_str_to_int(temp, resource->port);
-                xmlFree(temp);
-            } else {
-                resource->port = -1;
-            }
-            resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
-            resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
-            temp = (char *)xmlGetProp(node, XMLSTR("omode"));
-            if (temp) {
-                resource->omode = config_str_to_omode(temp);
-                xmlFree(temp);
-            } else {
-                resource->omode = OMODE_DEFAULT;
-            }
-
-            temp = (char *)xmlGetProp(node, XMLSTR("prefixmatch"));
-            resource->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
-
-            current = configuration->resources;
-            last = NULL;
-            while (current) {
-                last = current;
-                current = current->next;
-            }
-            if(last) {
-                last->next = resource;
-            } else {
-                configuration->resources = resource;
-            }
+            _parse_resource(doc, node, configuration);
         }
     } while ((node = node->next));
 }
