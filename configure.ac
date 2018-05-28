@@ -30,6 +30,7 @@ AM_MAINTAINER_MODE([enable])
 LT_INIT
 
 dnl Checks for header files.
+AC_HEADER_ASSERT
 AC_HEADER_STDC
 AC_HEADER_TIME
 
@@ -149,7 +150,7 @@ PKG_HAVE_WITH_MODULES([KATE], [kate], [
 dnl
 dnl libcurl
 dnl
-PKG_HAVE_WITH_MODULES([CURL], [curl], [
+PKG_HAVE_WITH_MODULES([CURL], [libcurl], [
   CFLAGS="${CFLAGS} ${CURL_CFLAGS}"
   LIBS="${LIBS} ${CURL_LIBS}"
 ])
@@ -174,7 +175,33 @@ CFLAGS="${CFLAGS} ${PTHREAD_CFLAGS}"
 CPPFLAGS="${CPPFLAGS} ${PTHREAD_CPPFLAGS}"
 LIBS="${LIBS} ${PTHREAD_LIBS}"
 
-#AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
+dnl Feature enable/disable arguments
+
+AC_ARG_ENABLE([yp],
+  AS_HELP_STRING([--enable-yp],
+    [enable yellowpage directory listing support (default: auto)])
+)
+
+AS_IF([test "x$enable_yp" != "xno"], [
+  AS_IF([test "x$have_curl" != "xyes"], [
+    AS_IF([test "x$enable_yp" == "xyes"], [
+      AC_MSG_ERROR([cURL is required for YP support])
+    ])
+    enable_yp="no"
+  ], [
+    AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
+    enable_yp="yes"
+  ])
+])
+
+AC_ARG_ENABLE([client-tests],
+  AS_HELP_STRING([--enable-client-tests],
+    [enable client tests module (default: disabled)])
+)
+
+AS_IF([test "x$enable_client_tests" == "xyes"], [
+  AC_DEFINE([ENABLE_MODULE_CLIENT_TESTS], 1, [Define to compile client test module])
+], [enable_client_tests="no"])
 
 dnl Make substitutions
 AC_SUBST(XIPH_CPPFLAGS)
@@ -220,12 +247,16 @@ AC_OUTPUT
 echo "
 Icecast configuration
 ---------------------
-Version       : ${VERSION}
-cURL          : ${have_curl}
-TLS (openSSL) : ${have_openssl}
+Version        : ${VERSION}
+cURL           : ${have_curl}
+TLS (openSSL)  : ${have_openssl}
 
 Format/Codec support:
-  Ogg         : ${have_ogg}
-  Theora      : ${have_theora}
-  Speex       : ${have_speex}
-  Kate        : ${have_kate}"
+  Ogg          : ${have_ogg}
+  Theora       : ${have_theora}
+  Speex        : ${have_speex}
+  Kate         : ${have_kate}
+
+Features:
+  YP support   : ${enable_yp}
+  Client tests : ${enable_client_tests}"
