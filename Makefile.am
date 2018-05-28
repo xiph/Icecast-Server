@@ -1,8 +1,5 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign dist-zip
-ACLOCAL_AMFLAGS = -I m4
-
 SUBDIRS = src conf doc web admin win32 examples tests
 
 EXTRA_DIST = README.md HACKING m4/acx_pthread.m4 m4/ogg.m4 \

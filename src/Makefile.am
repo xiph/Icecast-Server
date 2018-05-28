@@ -1,7 +1,5 @@
 ## Process this with automake to create Makefile.in
 
-AUTOMAKE_OPTIONS = foreign
-
 SUBDIRS = common/avl common/net common/thread common/httpp common/log common/timing
 
 bin_PROGRAMS = icecast
