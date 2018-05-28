@@ -228,9 +228,6 @@ AC_CONFIG_FILES([
   src/common/timing/Makefile
   doc/Makefile
   web/Makefile
-  web/assets/Makefile
-  web/assets/css/Makefile
-  web/assets/font/Makefile
   admin/Makefile
   admin/includes/Makefile
   win32/Makefile
