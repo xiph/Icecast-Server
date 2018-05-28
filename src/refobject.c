@@ -11,6 +11,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "common/thread/thread.h"
 
