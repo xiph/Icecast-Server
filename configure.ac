@@ -19,8 +19,6 @@ dnl Set build/host to default values
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 
-AC_CONFIG_HEADERS([config.h])
-
 
 AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
 
@@ -215,6 +213,8 @@ AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_CPPFLAGS)
 AC_SUBST(XIPH_CFLAGS)
 AC_SUBST(XIPH_LDFLAGS)
+
+AC_CONFIG_HEADERS([config.h])
 
 AC_CONFIG_FILES([
   Makefile
