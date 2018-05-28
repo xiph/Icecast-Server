@@ -63,6 +63,9 @@ int                     module_container_add_module(module_container_t *self, mo
     if (!self)
         return -1;
 
+    if (refobject_ref(module) != 0)
+        return -1;
+
     thread_mutex_lock(&(self->lock));
     avl_insert(self->module, module);
     thread_mutex_unlock(&(self->lock));
@@ -105,6 +108,7 @@ module_t *              module_container_get_module(module_container_t *self, co
     }
 
     refobject_unref(search);
+    refobject_ref(ret);
 
     return ret;
 }
