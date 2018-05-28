@@ -1191,10 +1191,12 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     /* Dispatch legacy admin.cgi requests */
     if (strcmp(uri, "/admin.cgi") == 0) {
         _handle_admin_request(client, uri + 1);
+        free(uri);
         return;
     } /* Dispatch all admin requests */
     else if (strncmp(uri, "/admin/", 7) == 0) {
         _handle_admin_request(client, uri + 7);
+        free(uri);
         return;
     }
 
