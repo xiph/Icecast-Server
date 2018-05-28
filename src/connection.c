@@ -1112,8 +1112,15 @@ static int _handle_aliases(client_t *client, char **uri)
         /* We check for several aspects, if they DO NOT match, we continue with our search. */
 
         /* Check for the URI to match. */
-        if (strcmp(*uri, alias->source) != 0)
-            continue;
+        if (alias->flags & ALIAS_FLAG_PREFIXMATCH) {
+            size_t len = strlen(alias->source);
+            if (strncmp(*uri, alias->source, len) != 0)
+                continue;
+            ICECAST_LOG_DEBUG("Match: *uri='%s', alias->source='%s', len=%zu", *uri, alias->source, len);
+        } else {
+            if (strcmp(*uri, alias->source) != 0)
+                continue;
+        }
 
         /* Check for the server's port to match. */
         if (alias->port != -1 && alias->port != serverport)
@@ -1129,8 +1136,14 @@ static int _handle_aliases(client_t *client, char **uri)
 
         /* Ok, we found a matching entry. */
 
-        if (alias->destination)
-            new_uri = strdup(alias->destination);
+        if (alias->destination) {
+            if (alias->flags & ALIAS_FLAG_PREFIXMATCH) {
+                size_t len = strlen(alias->source);
+                asprintf(&new_uri, "%s%s", alias->destination, (*uri) + len);
+            } else {
+                new_uri = strdup(alias->destination);
+            }
+        }
         if (alias->omode != OMODE_DEFAULT)
             client->mode = alias->omode;
         ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);

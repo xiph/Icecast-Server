@@ -155,6 +155,8 @@ typedef struct _mount_proxy {
     struct _mount_proxy *next;
 } mount_proxy;
 
+#define ALIAS_FLAG_PREFIXMATCH          0x0001
+
 typedef struct _aliases {
     char *source;
     char *destination;
@@ -162,6 +164,7 @@ typedef struct _aliases {
     char *bind_address;
     char *vhost;
     operation_mode omode;
+    unsigned int flags;
     struct _aliases *next;
 } aliases;
 

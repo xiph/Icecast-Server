@@ -1989,7 +1989,7 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
-            alias = malloc(sizeof(aliases));
+            alias = calloc(1, sizeof(aliases));
             alias->next = NULL;
             alias->source = (char *)xmlGetProp(node, XMLSTR("source"));
             alias->destination = (char *)xmlGetProp(node, XMLSTR("destination"));
@@ -2021,6 +2021,10 @@ static void _parse_paths(xmlDocPtr      doc,
             } else {
                 alias->omode = OMODE_DEFAULT;
             }
+
+            temp = (char *)xmlGetProp(node, XMLSTR("prefixmatch"));
+            alias->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
+
             current = configuration->aliases;
             last = NULL;
             while (current) {
