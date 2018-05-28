@@ -22,7 +22,7 @@ AC_CANONICAL_BUILD
 AC_CONFIG_HEADERS([config.h])
 
 
-AM_INIT_AUTOMAKE([tar-ustar foreign])
+AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
 
 AM_SILENT_RULES([yes])
 AM_MAINTAINER_MODE([enable])
