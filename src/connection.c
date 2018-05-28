@@ -43,6 +43,7 @@
 #include "cfgfile.h"
 #include "global.h"
 #include "util.h"
+#include "refobject.h"
 #include "refbuf.h"
 #include "client.h"
 #include "errors.h"
@@ -1135,6 +1136,28 @@ static int _handle_resources(client_t *client, char **uri)
         }
         if (resource->omode != OMODE_DEFAULT)
             client->mode = resource->omode;
+
+        if (resource->module) {
+            module_t *module = module_container_get_module(global.modulecontainer, resource->module);
+
+            if (module != NULL) {
+                refobject_unref(client->handler_module);
+                client->handler_module = module;
+            } else {
+                ICECAST_LOG_ERROR("Module used in alias not found: %s", resource->module);
+            }
+        }
+
+        if (resource->handler) {
+            char *func = strdup(resource->handler);
+            if (func) {
+                free(client->handler_function);
+                client->handler_function = func;
+            } else {
+                ICECAST_LOG_ERROR("Can not allocate memory.");
+            }
+        }
+
         ICECAST_LOG_DEBUG("resource has made %s into %s", *uri, new_uri);
         break;
     }
@@ -1191,6 +1214,17 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         _handle_admin_request(client, uri + 7);
         free(uri);
         return;
+    }
+
+    if (client->handler_module && client->handler_function) {
+        const module_client_handler_t *handler = module_get_client_handler(client->handler_module, client->handler_function);
+        if (handler) {
+            handler->cb(client->handler_module, client, uri);
+            free(uri);
+            return;
+        } else {
+            ICECAST_LOG_ERROR("No such handler function in module: %s", client->handler_function);
+        }
     }
 
     switch (client->parser->req_type) {

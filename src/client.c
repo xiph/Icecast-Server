@@ -29,6 +29,7 @@
 #include "common/httpp/httpp.h"
 
 #include "global.h"
+#include "refobject.h"
 #include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
@@ -171,6 +172,8 @@ void client_destroy(client_t *client)
     if (client->free_client_data)
         client->free_client_data(client);
 
+    refobject_unref(client->handler_module);
+    free(client->handler_function);
     free(client->username);
     free(client->password);
     free(client->role);

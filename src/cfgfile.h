@@ -139,6 +139,8 @@ typedef struct _resource {
     int port;
     char *bind_address;
     char *vhost;
+    char *module;
+    char *handler;
     operation_mode omode;
     unsigned int flags;
     struct _resource *next;
