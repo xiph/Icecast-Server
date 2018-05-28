@@ -221,7 +221,6 @@ AC_CONFIG_FILES([
   doc/Makefile
   web/Makefile
   admin/Makefile
-  admin/includes/Makefile
   win32/Makefile
   examples/Makefile
   tests/Makefile
