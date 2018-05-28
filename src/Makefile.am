@@ -30,6 +30,7 @@ noinst_HEADERS = \
     matchfile.h \
     tls.h \
     refobject.h \
+    module.h \
     event.h \
     event_log.h \
     event_exec.h \
@@ -70,6 +71,7 @@ icecast_SOURCES = \
     matchfile.c \
     tls.c \
     refobject.c \
+    module.c \
     format.c \
     format_ogg.c \
     format_mp3.c \
