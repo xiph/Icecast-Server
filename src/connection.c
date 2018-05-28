@@ -1107,19 +1107,34 @@ static int _handle_aliases(client_t *client, char **uri)
 
     alias = config->aliases;
 
-    while (alias) {
-        if (strcmp(*uri, alias->source) == 0 &&
-           (alias->port == -1 || alias->port == serverport) &&
-           (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
-           (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
-            if (alias->destination)
-                new_uri = strdup(alias->destination);
-            if (alias->omode != OMODE_DEFAULT)
-                client->mode = alias->omode;
-            ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
-            break;
-        }
-        alias = alias->next;
+    /* We now go thru all aliases and see if any matches. */
+    for (; alias; alias = alias->next) {
+        /* We check for several aspects, if they DO NOT match, we continue with our search. */
+
+        /* Check for the URI to match. */
+        if (strcmp(*uri, alias->source) != 0)
+            continue;
+
+        /* Check for the server's port to match. */
+        if (alias->port != -1 && alias->port != serverport)
+            continue;
+
+        /* Check for the server's bind address to match. */
+        if (alias->bind_address != NULL && serverhost != NULL && strcmp(alias->bind_address, serverhost) != 0)
+            continue;
+
+        /* Check for the vhost to match. */
+        if (alias->vhost != NULL && vhost != NULL && strcmp(alias->vhost, vhost) != 0)
+            continue;
+
+        /* Ok, we found a matching entry. */
+
+        if (alias->destination)
+            new_uri = strdup(alias->destination);
+        if (alias->omode != OMODE_DEFAULT)
+            client->mode = alias->omode;
+        ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
+        break;
     }
 
     config_release_config();
