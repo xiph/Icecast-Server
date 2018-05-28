@@ -27,7 +27,7 @@ struct _mount_proxy;
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "global.h"
+#include "slave.h"
 #include "connection.h"
 
 #define XMLSTR(str) ((xmlChar *)(str)) 

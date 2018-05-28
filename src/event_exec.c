@@ -21,6 +21,7 @@
 #endif
 
 #include "event.h"
+#include "global.h"
 #include "logging.h"
 #define CATMODULE "event_exec"
 

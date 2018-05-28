@@ -28,6 +28,7 @@
 
 #include "common/thread/thread.h"
 #include "cfgfile.h"
+#include "global.h"
 #include "refbuf.h"
 #include "client.h"
 #include "logging.h"

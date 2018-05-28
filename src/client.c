@@ -28,6 +28,7 @@
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
 
+#include "global.h"
 #include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"

@@ -21,6 +21,7 @@
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
 #include "common/thread/thread.h"
+#include "common/avl/avl.h"
 #include "slave.h"
 #include "common/net/sock.h"
 

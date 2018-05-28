@@ -21,6 +21,7 @@
 
 #include "common/thread/thread.h"
 
+#include "global.h"
 #include "curl.h"
 #include "connection.h"
 #include "refbuf.h"
