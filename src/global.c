@@ -19,15 +19,9 @@
 
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "common/httpp/httpp.h"
-
-#include "connection.h"
-#include "refbuf.h"
-#include "client.h"
-#include "source.h"
-#include "format.h"
 
 #include "global.h"
+#include "source.h"
 
 ice_global_t global;
 
