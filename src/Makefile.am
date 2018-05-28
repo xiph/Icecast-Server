@@ -30,10 +30,3 @@ icecast_LDADD = $(icecast_DEPENDENCIES) @XIPH_LIBS@ @KATE_LIBS@
 AM_CFLAGS = @XIPH_CFLAGS@
 AM_CPPFLAGS = -I$(srcdir)/common/ @XIPH_CPPFLAGS@
 AM_LDFLAGS = @XIPH_LDFLAGS@ @KATE_LIBS@
-
-
-debug:
-	$(MAKE) all CFLAGS="@DEBUG@"
-
-profile:
-	$(MAKE) all CFLAGS="@PROFILE@"
