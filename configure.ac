@@ -138,14 +138,6 @@ PKG_HAVE_WITH_MODULES([SPEEX], [speex], [
 ])
 
 dnl
-dnl libkate
-dnl
-PKG_HAVE_WITH_MODULES([KATE], [kate], [
-  CFLAGS="${CFLAGS} ${KATE_CFLAGS}"
-  LIBS="${LIBS} ${KATE_LIBS}"
-])
-
-dnl
 dnl libcurl
 dnl
 PKG_HAVE_WITH_MODULES([CURL], [libcurl], [
@@ -248,7 +240,6 @@ Format/Codec support:
   Ogg          : ${have_ogg}
   Theora       : ${have_theora}
   Speex        : ${have_speex}
-  Kate         : ${have_kate}
 
 Features:
   YP support   : ${enable_yp}
