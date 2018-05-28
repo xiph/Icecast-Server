@@ -194,6 +194,10 @@ AS_IF([test "x$enable_yp" != "xno"], [
   ])
 ])
 
+AM_CONDITIONAL([ENABLE_YP],
+               [test "x$enable_yp" = "xyes"])
+
+
 AC_ARG_ENABLE([client-tests],
   AS_HELP_STRING([--enable-client-tests],
     [enable client tests module (default: disabled)])
@@ -202,6 +206,9 @@ AC_ARG_ENABLE([client-tests],
 AS_IF([test "x$enable_client_tests" == "xyes"], [
   AC_DEFINE([ENABLE_MODULE_CLIENT_TESTS], 1, [Define to compile client test module])
 ], [enable_client_tests="no"])
+
+AM_CONDITIONAL([ENABLE_MODULE_CLIENT_TESTS],
+               [test "x$enable_client_tests" = "xyes"])
 
 dnl Make substitutions
 AC_SUBST(XIPH_LIBS)
