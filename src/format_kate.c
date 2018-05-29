@@ -20,9 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ogg/ogg.h>
-#ifdef HAVE_KATE
-#include <kate/oggkate.h>
-#endif
 
 typedef struct source_tag source_t;
 
@@ -39,10 +36,6 @@ typedef struct source_tag source_t;
 typedef struct _kate_codec_tag
 {
     int             headers_done;
-#ifdef HAVE_KATE
-    kate_info       ki;
-    kate_comment    kc;
-#endif
     int             num_headers;
     int             granule_shift;
     ogg_int64_t     last_iframe;
@@ -61,10 +54,6 @@ static void kate_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
     stats_event (ogg_info->mount, "frame_rate", NULL);
     stats_event (ogg_info->mount, "frame_size", NULL);
     */
-#ifdef HAVE_KATE
-    kate_info_clear (&kate->ki);
-    kate_comment_clear (&kate->kc);
-#endif
     ogg_stream_clear (&codec->os);
     free (kate);
     free (codec);
@@ -93,35 +82,6 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
     {
         if (!kate->headers_done)
         {
-#ifdef HAVE_KATE
-            int ret = kate_ogg_decode_headerin (&kate->ki, &kate->kc, &packet);
-            if (ret < 0)
-            {
-                ogg_info->error = 1;
-                ICECAST_LOG_WARN("problem with kate header");
-                return NULL;
-            }
-            header_page = 1;
-            kate->num_headers = kate->ki.num_headers;
-            codec->headers++;
-            if (ret > 0)
-            {
-                kate->headers_done = 1;
-                /* TODO: what to replace this with ?
-                 ogg_info->bitrate += theora->ti.target_bitrate;
-                 stats_event_args (ogg_info->mount, "video_bitrate", "%ld",
-                 (long)theora->ti.target_bitrate);
-                 stats_event_args (ogg_info->mount, "video_quality", "%ld",
-                 (long)theora->ti.quality);
-                 stats_event_args (ogg_info->mount, "frame_size", "%ld x %ld",
-                 (long)theora->ti.frame_width,
-                 (long)theora->ti.frame_height);
-                 stats_event_args (ogg_info->mount, "frame_rate", "%.2f",
-                 (float)theora->ti.fps_numerator/theora->ti.fps_denominator);
-                 */
-            }
-            continue;
-#else
             header_page = (packet.bytes > 0 && (packet.packet[0] & 0x80));
             if (!header_page)
                 break;
@@ -133,7 +93,6 @@ static refbuf_t *process_kate_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
                 kate->num_headers = packet.packet[11];
             }
             continue;
-#endif
         }
 
         if (codec->headers < kate->num_headers)
@@ -189,25 +148,9 @@ ogg_codec_t *initial_kate_page(format_plugin_t *plugin, ogg_page *page)
     ogg_stream_init(&codec->os, ogg_page_serialno(page));
     ogg_stream_pagein(&codec->os, page);
 
-#ifdef HAVE_KATE
-    kate_info_init (&kate_codec->ki);
-    kate_comment_init (&kate_codec->kc);
-#endif
-
     ogg_stream_packetout(&codec->os, &packet);
 
     ICECAST_LOG_DEBUG("checking for kate codec");
-#ifdef HAVE_KATE
-    if (kate_ogg_decode_headerin (&kate_codec->ki, &kate_codec->kc, &packet) < 0)
-    {
-        kate_info_clear (&kate_codec->ki);
-        kate_comment_clear (&kate_codec->kc);
-        ogg_stream_clear (&codec->os);
-        free (kate_codec);
-        free (codec);
-        return NULL;
-    }
-#else
     /* we don't have libkate, so we examine the packet magic by hand */
     if ((packet.bytes<9) || memcmp(packet.packet, "\x80kate\0\0\0\0", 9))
     {
@@ -216,7 +159,6 @@ ogg_codec_t *initial_kate_page(format_plugin_t *plugin, ogg_page *page)
         free (codec);
         return NULL;
     }
-#endif
 
     ICECAST_LOG_INFO("seen initial kate header");
     codec->specific = kate_codec;
