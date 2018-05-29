@@ -56,8 +56,10 @@ struct tls_tag {
 
 void       tls_initialize(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_load_error_strings(); /* readable error messages */
     SSL_library_init(); /* initialize library */
+#endif
 }
 void       tls_shutdown(void)
 {
@@ -80,7 +82,11 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
     if (!ctx)
         return NULL;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     method = SSLv23_server_method();
+#else
+    method = TLS_server_method();
+#endif
 
     ctx->refc = 1;
     ctx->ctx = SSL_CTX_new(method);
