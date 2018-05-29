@@ -21,8 +21,8 @@ AC_CANONICAL_BUILD
 
 
 AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-AM_SILENT_RULES([yes])
 AM_MAINTAINER_MODE([enable])
 
 LT_INIT
