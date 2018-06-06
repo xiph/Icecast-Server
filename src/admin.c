@@ -161,11 +161,25 @@ static admin_command_table_t command_tables[] = {
     {.prefix = NULL, .length = (sizeof(handlers)/sizeof(*handlers)), .handlers = handlers},
 };
 
+static inline int __is_command_table_valid(const admin_command_table_t * table)
+{
+    if (table == NULL)
+        return 0;
+
+    if (table->length == 0 || table->handlers == NULL)
+        return 0;
+
+    return 1;
+}
+
 static inline const admin_command_table_t * admin_get_table(admin_command_id_t command)
 {
     size_t t = (command & 0x00FF0000) >> 16;
 
     if (t >= (sizeof(command_tables)/sizeof(*command_tables)))
+        return NULL;
+
+    if (!__is_command_table_valid(&(command_tables[t])))
         return NULL;
 
     return &(command_tables[t]);
@@ -181,7 +195,7 @@ static inline const admin_command_table_t * admin_get_table_by_prefix(const char
 
     if (end == NULL) {
         for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++)
-            if (command_tables[i].prefix == NULL)
+            if (command_tables[i].prefix == NULL && __is_command_table_valid(&(command_tables[i])))
                 return &(command_tables[i]);
 
         return NULL;
@@ -190,6 +204,9 @@ static inline const admin_command_table_t * admin_get_table_by_prefix(const char
     len = end - command;
 
     for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (!__is_command_table_valid(&(command_tables[i])))
+            continue;
+
         if (command_tables[i].prefix != NULL && strlen(command_tables[i].prefix) == len && strncmp(command_tables[i].prefix, command, len) == 0) {
             return &(command_tables[i]);
         }
@@ -206,6 +223,9 @@ static inline admin_command_id_t admin_get_command_by_table_and_index(const admi
         return ADMIN_COMMAND_ERROR;
 
     if (index > 0x0FFFF)
+        return ADMIN_COMMAND_ERROR;
+
+    if (!__is_command_table_valid(table))
         return ADMIN_COMMAND_ERROR;
 
     return (t << 16) | index;
