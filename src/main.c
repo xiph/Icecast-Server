@@ -78,6 +78,7 @@
 #include "auth.h"
 #include "event.h"
 #include "listensocket.h"
+#include "fastevent.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -124,6 +125,7 @@ static void initialize_subsystems(void)
     log_initialize();
     thread_initialize();
     global_initialize();
+    fastevent_initialize();
     sock_initialize();
     resolver_initialize();
     config_initialize();
@@ -152,6 +154,7 @@ static void shutdown_subsystems(void)
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();
+    fastevent_shutdown();
     global_shutdown();
     thread_shutdown();
 
