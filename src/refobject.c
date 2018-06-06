@@ -17,11 +17,7 @@
 
 #include "refobject.h"
 
-#ifdef HAVE_TYPE_ATTRIBUTE_TRANSPARENT_UNION
-#define TO_BASE(x) ((x).refobject_base)
-#else
-#define TO_BASE(x) ((refobject_base_t*)(x))
-#endif
+#define TO_BASE(x) REFOBJECT_TO_TYPE((x), refobject_base_t *)
 
 refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t parent)
 {
@@ -44,14 +40,14 @@ refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdat
         ret->name = strdup(name);
         if (!ret->name) {
             refobject_unref(ret);
-            return (refobject_t)(refobject_base_t*)NULL;
+            return REFOBJECT_NULL;
         }
     }
 
-    if (TO_BASE(parent) != NULL) {
+    if (!REFOBJECT_IS_NULL(parent)) {
         if (refobject_ref(parent) != 0) {
             refobject_unref(ret);
-            return (refobject_t)(refobject_base_t*)NULL;
+            return REFOBJECT_NULL;
         }
 
         ret->parent = parent;
@@ -62,7 +58,7 @@ refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdat
 
 int             refobject_ref(refobject_t self)
 {
-    if (TO_BASE(self) == NULL)
+    if (REFOBJECT_IS_NULL(self))
         return -1;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
@@ -76,7 +72,7 @@ int             refobject_unref(refobject_t self)
 {
     register refobject_base_t *base = TO_BASE(self);
 
-    if (base == NULL)
+    if (REFOBJECT_IS_NULL(self))
         return -1;
 
     thread_mutex_lock(&(base->lock));
@@ -107,7 +103,7 @@ void *          refobject_get_userdata(refobject_t self)
 {
     void *ret;
 
-    if (TO_BASE(self) == NULL)
+    if (REFOBJECT_IS_NULL(self))
         return NULL;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
@@ -119,7 +115,7 @@ void *          refobject_get_userdata(refobject_t self)
 
 int             refobject_set_userdata(refobject_t self, void *userdata)
 {
-    if (TO_BASE(self) == NULL)
+    if (REFOBJECT_IS_NULL(self))
         return -1;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
@@ -133,7 +129,7 @@ const char *    refobject_get_name(refobject_t self)
 {
     const char *ret;
 
-    if (TO_BASE(self) == NULL)
+    if (REFOBJECT_IS_NULL(self))
         return NULL;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
@@ -147,8 +143,8 @@ refobject_t     refobject_get_parent(refobject_t self)
 {
     refobject_t ret;
 
-    if (TO_BASE(self) == NULL)
-        return (refobject_t)(refobject_base_t*)NULL;
+    if (REFOBJECT_IS_NULL(self))
+        return REFOBJECT_NULL;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
     ret = TO_BASE(self)->parent;
