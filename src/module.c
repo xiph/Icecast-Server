@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "common/thread/thread.h"
@@ -23,6 +24,8 @@ struct module_tag {
     mutex_t lock;
     const module_client_handler_t *client_handlers;
     size_t client_handlers_len;
+    module_setup_handler_t freecb;
+    void *userdata;
 };
 
 
@@ -116,6 +119,13 @@ module_t *              module_container_get_module(module_container_t *self, co
 static void __module_free(refobject_t self, void **userdata)
 {
     module_t *mod = REFOBJECT_TO_TYPE(self, module_t *);
+
+    if (mod->freecb)
+        mod->freecb(mod, &(mod->userdata));
+
+    if (mod->userdata)
+        free(mod->userdata);
+
     thread_mutex_destroy(&(mod->lock));
 }
 
@@ -127,6 +137,16 @@ module_t *              module_new(const char *name, module_setup_handler_t newc
         return NULL;
 
     thread_mutex_create(&(ret->lock));
+
+    ret->userdata = userdata;
+    ret->freecb = freecb;
+
+    if (newcb) {
+        if (newcb(ret, &(ret->userdata)) != 0) {
+            refobject_unref(ret);
+            return NULL;
+        }
+    }
 
     return ret;
 }
