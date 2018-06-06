@@ -1956,7 +1956,10 @@ static void _parse_resource(xmlDocPtr      doc,
     }
 
     temp = (char *)xmlGetProp(node, XMLSTR("prefixmatch"));
-    resource->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
+    if (temp) {
+        resource->flags |= util_str_to_bool(temp) ? ALIAS_FLAG_PREFIXMATCH : 0;
+        xmlFree(temp);
+    }
 
     /* Attach new <resource> as last entry into the global list. */
     current = configuration->resources;
