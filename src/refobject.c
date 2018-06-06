@@ -98,6 +98,8 @@ int             refobject_unref(refobject_t self)
     thread_mutex_unlock(&(base->lock));
     thread_mutex_destroy(&(base->lock));
 
+    free(base);
+
     return 0;
 }
 
