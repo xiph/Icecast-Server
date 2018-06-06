@@ -46,6 +46,8 @@
 
 #define CATMODULE "admin"
 
+#define ADMIN_MAX_COMMAND_TABLES        8
+
 /* Helper macros */
 #define COMMAND_REQUIRE(client,name,var)                                \
     do {                                                                \
@@ -93,15 +95,6 @@
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_TRANSFORMED_REQUEST         ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
-
-typedef void (*request_function_ptr)(client_t *, source_t *, admin_format_t);
-
-typedef struct admin_command_handler {
-    const char                     *route;
-    const int                       type;
-    const int                       format;
-    const request_function_ptr      function;
-} admin_command_handler_t;
 
 typedef struct {
     const char *prefix;
@@ -157,7 +150,7 @@ static const admin_command_handler_t handlers[] = {
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_TRANSFORMED,    command_stats }
 };
 
-static admin_command_table_t command_tables[] = {
+static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
     {.prefix = NULL, .length = (sizeof(handlers)/sizeof(*handlers)), .handlers = handlers},
 };
 
@@ -286,6 +279,41 @@ int admin_get_command_type(admin_command_id_t command)
         return handler->type;
 
     return ADMINTYPE_ERROR;
+}
+
+int admin_command_table_register(const char *prefix, size_t handlers_length, const admin_command_handler_t *handlers)
+{
+    size_t i;
+
+    if (prefix == NULL || handlers_length == 0 || handlers == NULL)
+        return -1;
+
+    for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (__is_command_table_valid(&(command_tables[i])))
+            continue;
+
+        command_tables[i].prefix    = prefix;
+        command_tables[i].length    = handlers_length;
+        command_tables[i].handlers  = handlers;
+
+        return 0;
+    }
+
+    return -1;
+}
+
+int admin_command_table_unregister(const char *prefix)
+{
+    size_t i;
+
+    for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (command_tables[i].prefix != NULL && strcmp(command_tables[i].prefix, prefix) == 0) {
+            memset(&(command_tables[i]), 0, sizeof(command_tables[i]));
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 /* build an XML doc containing information about currently running sources.
