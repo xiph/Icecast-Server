@@ -9,4 +9,43 @@
 #ifndef __FASTEVENT_H__
 #define __FASTEVENT_H__
 
+/* Add all conditions when to enable fast events here. */
+#if 1
+#define FASTEVENT_ENABLED
+#endif
+
+#include <stdarg.h>
+#include <refobject.h>
+
+typedef enum {
+    FASTEVENT_TYPE_SLOWEVENT = 0,
+    FASTEVENT_TYPE__END /* must be last element */
+} fastevent_type_t;
+
+typedef enum {
+    FASTEVENT_DATATYPE_NONE = 0,
+    FASTEVENT_DATATYPE_EVENT,
+    FASTEVENT_DATATYPE_CLIENT,
+    FASTEVENT_DATATYPE_CONNECTION
+} fastevent_datatype_t;
+
+typedef int fastevent_flag_t;
+#define FASTEVENT_FLAG_NONE                     ((fastevent_flag_t)0x0000)
+#define FASTEVENT_FLAG_MODIFICATION_ALLOWED     ((fastevent_flag_t)0x0001)
+
+typedef void (*fastevent_cb_t)(const void *userdata, fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, va_list ap);
+typedef void (*fastevent_freecb_t)(void **userdata);
+
+#ifdef FASTEVENT_ENABLED
+int fastevent_initialize(void);
+int fastevent_shutdown(void);
+refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata);
+void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, ...);
+#else
+#define fastevent_initialize() 0
+#define fastevent_shutdown() 0
+#define fastevent_register(type,cb,freecb,userdata) REFOBJECT_NULL
+#define fastevent_emit(type,flags,datatype,...)
+#endif
+
 #endif
