@@ -31,6 +31,7 @@ noinst_HEADERS = \
     tls.h \
     refobject.h \
     module.h \
+    reportxml.h \
     event.h \
     event_log.h \
     event_exec.h \
@@ -72,6 +73,7 @@ icecast_SOURCES = \
     tls.c \
     refobject.c \
     module.c \
+    reportxml.c \
     format.c \
     format_ogg.c \
     format_mp3.c \

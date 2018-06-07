@@ -98,6 +98,11 @@ typedef struct module_tag module_t;
 
 typedef struct module_container_tag module_container_t;
 
+/* ---[ reportxml.[ch] ]--- */
+
+typedef struct reportxml_tag reportxml_t;
+typedef struct reportxml_node_tag reportxml_node_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -107,6 +112,8 @@ typedef union __attribute__ ((__transparent_union__)) {
     refobject_base_t *refobject_base;
     module_t *module;
     module_container_t *module_container;
+    reportxml_t *reportxml;
+    reportxml_node_t *reportxml_node;
 } refobject_t;
 #else
 typedef void * refobject_t;
