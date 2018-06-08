@@ -66,6 +66,7 @@ struct nodedef {
     const struct nodeattr *attr[12];
 };
 
+static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth);
 static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_database_t *db, const char *id, ssize_t depth, reportxml_node_type_t *acst_type_ret);
 
 static const struct nodeattr __attr__eol[1]             = {{NULL,           NULL,           NULL,     0,  NULL, {NULL}}};
@@ -73,6 +74,7 @@ static const struct nodeattr __attr_version[1]          = {{"version",      "CDA
 static const struct nodeattr __attr_xmlns[1]            = {{"xmlns",        "URI",          "xxx",    1,  NULL, {"xxx", NULL}}};
 static const struct nodeattr __attr_id[1]               = {{"id",           "ID",           NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_definition[1]       = {{"definition",   "UUID",         NULL,     0,  NULL, {NULL}}};
+static const struct nodeattr __attr__definition[1]      = {{"_definition",  "UUID",         NULL,     0,  NULL, {NULL}}}; /* for internal use only */
 static const struct nodeattr __attr_akindof[1]          = {{"akindof",      "UUIDs",        NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_lang[1]             = {{"lang",         "LanguageCode", NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_dir[1]              = {{"dir",          NULL,           NULL,     0,  NULL, {"ltr", "rtl", NULL}}};
@@ -98,7 +100,7 @@ static const struct nodeattr __attr__reference_type[1]  = {{"type",         NULL
 /* Helper:
  * grep '^ *REPORTXML_NODE_TYPE_' reportxml.h | sed 's/^\( *REPORTXML_NODE_TYPE_\([^,]*\)\),*$/\1 \2/;' | while read l s; do c=$(tr A-Z a-z <<<"$s"); printf "    {%-32s \"%-16s 0, {__attr__eol}},\n" "$l," "$c\","; done
  */
-#define __BASIC_ELEMENT __attr_id, __attr_definition, __attr_akindof
+#define __BASIC_ELEMENT __attr_id, __attr_definition, __attr_akindof, __attr__definition
 static const struct nodedef __nodedef[] = {
     {REPORTXML_NODE_TYPE_REPORT,      "report",         0, {__attr_id, __attr_version, __attr_xmlns, __attr__eol}},
     {REPORTXML_NODE_TYPE_DEFINITION,  "definition",     0, {__BASIC_ELEMENT, __attr_template, __attr_defines, __attr__eol}},
@@ -417,7 +419,7 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
     return node;
 }
 
-reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
+static reportxml_node_t *      __reportxml_node_copy_with_db(reportxml_node_t *node, reportxml_database_t *db, ssize_t depth)
 {
     reportxml_node_t *ret;
     ssize_t count;
@@ -443,25 +445,38 @@ reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
 
     for (i = 0; i < (size_t)count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
-        reportxml_node_t *copy = reportxml_node_copy(child);
 
-        refobject_unref(child);
+        if (db && depth > 0) {
+            if (__attach_copy_of_node_or_definition(ret, child, db, depth) != 0) {
+                refobject_unref(child);
+                refobject_unref(ret);
+                return NULL;
+            }
+            refobject_unref(child);
+        } else {
+            reportxml_node_t *copy = __reportxml_node_copy_with_db(child, NULL, -1);
 
-        if (!copy) {
-            refobject_unref(ret);
-            return NULL;
+            refobject_unref(child);
+
+            if (!copy) {
+                refobject_unref(ret);
+                return NULL;
+            }
+
+            if (reportxml_node_add_child(ret, copy) != 0) {
+                refobject_unref(copy);
+                refobject_unref(ret);
+                return NULL;
+            }
         }
-
-        if (reportxml_node_add_child(ret, copy) != 0) {
-            refobject_unref(copy);
-            refobject_unref(ret);
-            return NULL;
-        }
-
-        refobject_unref(child);
     }
 
     return ret;
+}
+
+reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
+{
+    return __reportxml_node_copy_with_db(node, NULL, -1);
 }
 
 xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
@@ -469,6 +484,7 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
     xmlNodePtr ret;
     ssize_t count;
     size_t i;
+    xmlChar *definition;
 
     if (!node)
         return NULL;
@@ -480,6 +496,13 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
     ret = xmlCopyNode(node->xmlnode, 2);
     if (!ret)
         return NULL;
+
+    definition = xmlGetProp(ret, XMLSTR("_definition"));
+    if (definition) {
+        xmlSetProp(ret, XMLSTR("definition"), definition);
+        xmlUnsetProp(ret, XMLSTR("_definition"));
+        xmlFree(definition);
+    }
 
     for (i = 0; i < (size_t)count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
@@ -600,7 +623,7 @@ int                     reportxml_node_add_child(reportxml_node_t *node, reportx
 
     node->childs[node->childs_len++] = child;
 
-    ICECAST_LOG_DEBUG("Child %p added to Node %p", child, node);
+//    ICECAST_LOG_DEBUG("Child %p added to Node %p", child, node);
 
     return 0;
 }
@@ -754,7 +777,7 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
     return 0;
 }
 
-static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth, const char *norec)
+static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth)
 {
     reportxml_node_t *copy;
     reportxml_node_t *def = NULL;
@@ -767,16 +790,10 @@ static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportx
     if (depth >= 2) {
         definition = reportxml_node_get_attribute(node, "definition");
         if (definition) {
-            if (norec != NULL && strcmp(definition, norec) == 0) {
-                /* we've already proccessed this. No need to look it up. */
-                free(definition);
-            } else {
-                def = reportxml_database_build_node(db, definition, depth - 1);
-                ICECAST_LOG_DEBUG("Definition for \"%H\" at %p", definition, def);
-                if (!def) {
-                    free(definition);
-                }
-            }
+            ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi, definition=\"%H\"", parent, node, depth, definition);
+            def = reportxml_database_build_node(db, definition, depth - 1);
+            ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi, Definition for \"%H\" at %p", parent, node, depth, definition, def);
+            free(definition);
         }
     }
 
@@ -784,20 +801,23 @@ static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportx
         ssize_t count = reportxml_node_count_child(def);
         size_t i;
 
-        ICECAST_LOG_DEBUG("Found definition.");
+        ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi, Found definition.", parent, node, depth);
 
         if (count < 0) {
             refobject_unref(def);
+            ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi <- -1", parent, node, depth);
             return -1;
         }
 
         for (i = 0; i < (size_t)count; i++) {
             reportxml_node_t *child = reportxml_node_get_child(def, i);
 
-            if (__attach_copy_of_node_or_definition(parent, child, db, depth - 1, definition) != 0) {
+            ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi, Itering, child #%zu (%p)", parent, node, depth, i, child);
+
+            if (__attach_copy_of_node_or_definition(parent, child, db, depth - 1) != 0) {
                 refobject_unref(child);
                 refobject_unref(def);
-                free(definition);
+                ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi <- -1", parent, node, depth);
                 return -1;
             }
 
@@ -805,22 +825,25 @@ static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportx
         }
 
         refobject_unref(def);
-        free(definition);
 
+        ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi <- 0", parent, node, depth);
         return 0;
     } else {
         int ret;
 
-        ICECAST_LOG_DEBUG("Found no definition.");
+        ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi, Found no definition.", parent, node, depth);
 
-        copy = reportxml_node_copy(node);
-        if (!copy)
+        copy = __reportxml_node_copy_with_db(node, db, depth - 1);
+        if (!copy) {
+            ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi <- -1", parent, node, depth);
             return -1;
+        }
 
         ret = reportxml_node_add_child(parent, copy);
 
         refobject_unref(copy);
 
+        ICECAST_LOG_DEBUG("parent=%p, node=%p, depth=%zi <- %i", parent, node, depth, ret);
         return ret;
     }
 }
@@ -924,7 +947,7 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
         }
 
         /* We want depth, not depth - 1 here. __attach_copy_of_node_or_definition() takes care of this for us. */
-        if (__attach_copy_of_node_or_definition(ret, node, db, depth, id) != 0) {
+        if (__attach_copy_of_node_or_definition(ret, node, db, depth) != 0) {
             refobject_unref(node);
             refobject_unref(found);
             refobject_unref(ret);
@@ -952,7 +975,7 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
                 return NULL;
             }
 
-            if (reportxml_node_set_attribute(node, "definition", id) != 0) {
+            if (reportxml_node_set_attribute(node, "_definition", id) != 0) {
                 refobject_unref(node);
                 refobject_unref(ret);
                 return NULL;
