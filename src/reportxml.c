@@ -16,6 +16,9 @@
 
 #include <string.h>
 
+#include "common/thread/thread.h"
+#include "common/avl/avl.h"
+
 #include "reportxml.h"
 #include "refobject.h"
 
@@ -37,6 +40,12 @@ struct reportxml_node_tag {
     reportxml_node_t **childs;
     size_t childs_len;
     char *content;
+};
+
+struct reportxml_database_tag {
+    refobject_base_t __base;
+    mutex_t lock;
+    avl_tree *definitions;
 };
 
 struct nodeattr;
@@ -353,6 +362,7 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
 
             if (reportxml_node_set_attribute(node, (const char*)cur->name, (const char*)value) != 0) {
                 refobject_unref(node);
+                ICECAST_LOG_DEBUG("Can not parse XML node: attribute \"%H\" value \"%H\" is invalid on node of type <%s>", cur->name, value, nodedef->name);
                 return NULL;
             }
 
@@ -403,6 +413,50 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
     }
 
     return node;
+}
+
+reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
+{
+    reportxml_node_t *ret;
+    size_t count;
+    size_t i;
+
+    if (!node)
+        return NULL;
+
+    count = reportxml_node_count_child(node);
+    if (count < 0)
+        return NULL;
+
+    ret = reportxml_node_parse_xmlnode(node->xmlnode);
+    if (!ret)
+        return NULL;
+
+    if (node->content) {
+        if (reportxml_node_set_content(ret, node->content) != 0) {
+            refobject_unref(ret);
+            return NULL;
+        }
+    }
+
+    for (i = 0; i < (size_t)count; i++) {
+        reportxml_node_t *child = reportxml_node_copy(reportxml_node_get_child(node, i));
+
+        if (!child) {
+            refobject_unref(ret);
+            return NULL;
+        }
+
+        if (reportxml_node_add_child(ret, child) != 0) {
+            refobject_unref(child);
+            refobject_unref(ret);
+            return NULL;
+        }
+
+        refobject_unref(child);
+    }
+
+    return ret;
 }
 
 xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
@@ -603,4 +657,307 @@ char *              reportxml_node_get_content(reportxml_node_t *node)
     } else {
         return NULL;
     }
+}
+
+static void __database_free(refobject_t self, void **userdata)
+{
+    reportxml_database_t *db = REFOBJECT_TO_TYPE(self, reportxml_database_t *);
+
+    if (db->definitions)
+        avl_tree_free(db->definitions, (avl_free_key_fun_type)refobject_unref);
+
+    thread_mutex_destroy(&(db->lock));
+}
+
+static int __compare_definitions(void *arg, void *a, void *b)
+{
+    char *id_a, *id_b;
+    int ret = 0;
+
+    id_a = reportxml_node_get_attribute(a, "defines");
+    id_b = reportxml_node_get_attribute(b, "defines");
+
+    if (!id_a || !id_b || id_a == id_b) {
+        ret = 0;
+    } else {
+        ret = strcmp(id_a, id_b);
+    }
+
+    free(id_a);
+    free(id_b);
+
+    return ret;
+}
+
+reportxml_database_t *  reportxml_database_new(void)
+{
+    reportxml_database_t *ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(reportxml_database_t), __database_free, NULL, NULL, NULL), reportxml_database_t *);
+
+    if (!ret)
+        return NULL;
+
+    ret->definitions = avl_tree_new(__compare_definitions, NULL);
+    if (!ret->definitions) {
+        refobject_unref(ret);
+        return NULL;
+    }
+
+    thread_mutex_create(&(ret->lock));
+
+    return ret;
+}
+
+int                     reportxml_database_add_report(reportxml_database_t *db, reportxml_t *report)
+{
+    reportxml_node_t *root;
+    size_t count;
+    size_t i;
+
+    if (!db || !report)
+        return -1;
+
+    root = reportxml_get_root_node(report);
+    if (!root)
+        return -1;
+
+    count = reportxml_node_count_child(root);
+    if (count < 0)
+        return -1;
+
+    thread_mutex_lock(&(db->lock));
+
+    for (i = 0; i < (size_t)count; i++) {
+        reportxml_node_t *node = reportxml_node_get_child(root, i);
+        reportxml_node_t *copy;
+
+        if (reportxml_node_get_type(node) != REPORTXML_NODE_TYPE_DEFINITION) {
+            refobject_unref(node);
+            continue;
+        }
+
+        copy = reportxml_node_copy(node);
+        refobject_unref(node);
+
+        if (!copy)
+            continue;
+
+        avl_insert(db->definitions, copy);
+    }
+
+    thread_mutex_unlock(&(db->lock));
+
+    return 0;
+}
+
+reportxml_node_t *      reportxml_database_build_node(reportxml_database_t *db, const char *id, ssize_t depth)
+{
+    reportxml_node_t *search;
+    reportxml_node_t *found;
+    reportxml_node_t *ret;
+    char *template;
+    size_t count;
+    size_t i;
+
+    if (!db || !id)
+        return NULL;
+
+    /* Assign default depth in case it's set to -1 */
+    if (depth < 0)
+        depth = 8;
+
+    if (!depth)
+        return NULL;
+
+    search = reportxml_node_new(REPORTXML_NODE_TYPE_DEFINITION, NULL, NULL, NULL);
+    if (!search)
+        return NULL;
+
+    if (reportxml_node_set_attribute(search, "defines", id) != 0) {
+        refobject_unref(search);
+        return NULL;
+    }
+
+    thread_mutex_lock(&(db->lock));
+    if (avl_get_by_key(db->definitions, REFOBJECT_TO_TYPE(search, void *), (void**)&found) != 0) {
+        thread_mutex_unlock(&(db->lock));
+        refobject_unref(search);
+        return NULL;
+    }
+
+    refobject_unref(search);
+
+    if (refobject_ref(found) != 0) {
+        thread_mutex_unlock(&(db->lock));
+        return NULL;
+    }
+    thread_mutex_unlock(&(db->lock));
+
+    count = reportxml_node_count_child(found);
+    if (count < 0) {
+        refobject_unref(found);
+        return NULL;
+    }
+
+    template = reportxml_node_get_attribute(found, "template");
+    if (template) {
+        reportxml_node_t *tpl = reportxml_database_build_node(db, template, depth - 1);
+
+        if (tpl) {
+            ret = reportxml_node_copy(tpl);
+            refobject_unref(tpl);
+        } else {
+            ret = NULL;
+        }
+    } else {
+        ret = reportxml_node_new(REPORTXML_NODE_TYPE_DEFINITION, NULL, NULL, NULL);
+    }
+
+    if (!ret) {
+        refobject_unref(found);
+        return NULL;
+    }
+
+    for (i = 0; i < (size_t)count; i++) {
+        /* TODO: Look up definitions of our childs and childs' childs. */
+
+        reportxml_node_t *node = reportxml_node_get_child(found, i);
+        reportxml_node_t *copy = reportxml_node_copy(node);
+
+        refobject_unref(node);
+
+        if (!copy) {
+            refobject_unref(found);
+            refobject_unref(ret);
+            return NULL;
+        }
+
+        if (reportxml_node_add_child(ret, copy) != 0) {
+            refobject_unref(found);
+            refobject_unref(ret);
+            return NULL;
+        }
+
+        refobject_unref(copy);
+    }
+
+    return ret;
+}
+
+/* We try to build a a report from the definition. Exat structure depends on what is defined. */
+reportxml_t *           reportxml_database_build_report(reportxml_database_t *db, const char *id, ssize_t depth)
+{
+    reportxml_node_t *definition;
+    reportxml_node_t *child;
+    reportxml_node_t *root;
+    reportxml_node_t *attach_to;
+    reportxml_node_type_t type;
+    reportxml_t *ret;
+    size_t count;
+    size_t i;
+
+    if (!db || !id)
+        return NULL;
+
+    /* first find the definition itself.  This will be some REPORTXML_NODE_TYPE_DEFINITION node. */
+    definition = reportxml_database_build_node(db, id, depth);
+    if (!definition) {
+        ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        return NULL;
+    }
+
+    /* Let's see how many children we have. */
+    count = reportxml_node_count_child(definition);
+    if (count < 0) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Can not get child count from definition. BAD.");
+        return NULL;
+    } else if (count == 0) {
+        /* Empty definition? Not exactly an exciting report... */
+        ICECAST_LOG_WARN("Empty definition for \"%H\". Returning empty report. This is likely an error.", id);
+        refobject_unref(definition);
+        return reportxml_new();
+    }
+
+    /* Now the hard part: find out what level we are. */
+    child = reportxml_node_get_child(definition, 0);
+    if (!child) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Can not get first child. BAD.");
+        return NULL;
+    }
+
+    type = reportxml_node_get_type(child);
+    refobject_unref(child);
+
+    /* check for supported configurations */
+    switch (type) {
+        case REPORTXML_NODE_TYPE_INCIDENT:
+        case REPORTXML_NODE_TYPE_STATE:
+        break;
+        default:
+            refobject_unref(definition);
+            ICECAST_LOG_WARN("Unsupported type of first child.");
+            return NULL;
+        break;
+    }
+
+    ret = reportxml_new();
+    if (!ret) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Can not allocate new report. BAD.");
+        return NULL;
+    }
+
+    root = reportxml_get_root_node(ret);
+    if (!ret) {
+        refobject_unref(definition);
+        refobject_unref(ret);
+        ICECAST_LOG_ERROR("Can not get root node from report. BAD.");
+        return NULL;
+    }
+
+    if (type == REPORTXML_NODE_TYPE_INCIDENT) {
+        refobject_ref(attach_to = root);
+    } else if (type == REPORTXML_NODE_TYPE_STATE) {
+        attach_to = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+        if (attach_to) {
+            if (reportxml_node_add_child(root, attach_to) != 0) {
+                refobject_unref(attach_to);
+                attach_to = NULL;
+            }
+        }
+    } else {
+        attach_to = NULL;
+    }
+
+    refobject_unref(root);
+
+    if (!attach_to) {
+        refobject_unref(definition);
+        refobject_unref(ret);
+        ICECAST_LOG_ERROR("No point to attach to in report. BAD.");
+        return NULL;
+    }
+
+    /* now move nodes. */
+
+    for (i = 0; i < (size_t)count; i++) {
+        child = reportxml_node_get_child(definition, i);
+
+        /* we can directly attach as it's a already a copy. */
+        if (reportxml_node_add_child(attach_to, child) != 0) {
+            refobject_unref(definition);
+            refobject_unref(attach_to);
+            refobject_unref(ret);
+            ICECAST_LOG_ERROR("Can not attach child #%zu (%p) to attachment point (%p) in report. BAD.", i, child, attach_to);
+            return NULL;
+        }
+
+        refobject_unref(child);
+    }
+
+    refobject_unref(definition);
+    refobject_unref(attach_to);
+
+    return ret;
 }

@@ -41,6 +41,7 @@ xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report);
 
 reportxml_node_t *      reportxml_node_new(reportxml_node_type_t type, const char *id, const char *definition, const char *akindof);
 reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode);
+reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node);
 xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node);
 reportxml_node_type_t   reportxml_node_get_type(reportxml_node_t *node);
 int                     reportxml_node_set_attribute(reportxml_node_t *node, const char *key, const char *value);
@@ -50,5 +51,10 @@ ssize_t                 reportxml_node_count_child(reportxml_node_t *node);
 reportxml_node_t *      reportxml_node_get_child(reportxml_node_t *node, size_t idx);
 int                     reportxml_node_set_content(reportxml_node_t *node, const char *value);
 char *                  reportxml_node_get_content(reportxml_node_t *node);
+
+reportxml_database_t *  reportxml_database_new(void);
+int                     reportxml_database_add_report(reportxml_database_t *db, reportxml_t *report);
+reportxml_node_t *      reportxml_database_build_node(reportxml_database_t *db, const char *id, ssize_t depth);
+reportxml_t *           reportxml_database_build_report(reportxml_database_t *db, const char *id, ssize_t depth);
 
 #endif
