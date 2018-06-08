@@ -347,8 +347,10 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
         return NULL;
 
     nodedef = __get_nodedef_by_name((const char *)xmlnode->name);
-    if (!nodedef)
+    if (!nodedef) {
+        ICECAST_LOG_ERROR("Can not parse XML node: Unknown name <%s>", xmlnode->name);
         return NULL;
+    }
 
     node = reportxml_node_new(nodedef->type, NULL, NULL, NULL);
     if (!node)
