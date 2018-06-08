@@ -994,7 +994,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
         return NULL;
 
     /* first find the definition itself.  This will be some REPORTXML_NODE_TYPE_DEFINITION node. */
-    definition = reportxml_database_build_node(db, id, depth);
+    definition = __reportxml_database_build_node_ext(db, id, depth, &type);
     if (!definition) {
         ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
         return NULL;
@@ -1013,16 +1013,18 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
         return reportxml_new();
     }
 
-    /* Now the hard part: find out what level we are. */
-    child = reportxml_node_get_child(definition, 0);
-    if (!child) {
-        refobject_unref(definition);
-        ICECAST_LOG_ERROR("Can not get first child. BAD.");
-        return NULL;
-    }
+    if (type != REPORTXML_NODE_TYPE__ERROR) {
+        /* Now the hard part: find out what level we are. */
+        child = reportxml_node_get_child(definition, 0);
+        if (!child) {
+            refobject_unref(definition);
+            ICECAST_LOG_ERROR("Can not get first child. BAD.");
+            return NULL;
+        }
 
-    type = reportxml_node_get_type(child);
-    refobject_unref(child);
+        type = reportxml_node_get_type(child);
+        refobject_unref(child);
+    }
 
     /* check for supported configurations */
     switch (type) {
