@@ -1038,7 +1038,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
         return reportxml_new();
     }
 
-    if (type != REPORTXML_NODE_TYPE__ERROR) {
+    if (type == REPORTXML_NODE_TYPE__ERROR) {
         /* Now the hard part: find out what level we are. */
         child = reportxml_node_get_child(definition, 0);
         if (!child) {
