@@ -418,7 +418,7 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
 reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
 {
     reportxml_node_t *ret;
-    size_t count;
+    ssize_t count;
     size_t i;
 
     if (!node)
@@ -710,7 +710,7 @@ reportxml_database_t *  reportxml_database_new(void)
 int                     reportxml_database_add_report(reportxml_database_t *db, reportxml_t *report)
 {
     reportxml_node_t *root;
-    size_t count;
+    ssize_t count;
     size_t i;
 
     if (!db || !report)
@@ -755,7 +755,7 @@ reportxml_node_t *      reportxml_database_build_node(reportxml_database_t *db, 
     reportxml_node_t *found;
     reportxml_node_t *ret;
     char *template;
-    size_t count;
+    ssize_t count;
     size_t i;
 
     if (!db || !id)
@@ -854,7 +854,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
     reportxml_node_t *attach_to;
     reportxml_node_type_t type;
     reportxml_t *ret;
-    size_t count;
+    ssize_t count;
     size_t i;
 
     if (!db || !id)
