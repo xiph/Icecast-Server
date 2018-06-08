@@ -440,15 +440,18 @@ reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
     }
 
     for (i = 0; i < (size_t)count; i++) {
-        reportxml_node_t *child = reportxml_node_copy(reportxml_node_get_child(node, i));
+        reportxml_node_t *child = reportxml_node_get_child(node, i);
+        reportxml_node_t *copy = reportxml_node_copy(child);
 
-        if (!child) {
+        refobject_unref(child);
+
+        if (!copy) {
             refobject_unref(ret);
             return NULL;
         }
 
-        if (reportxml_node_add_child(ret, child) != 0) {
-            refobject_unref(child);
+        if (reportxml_node_add_child(ret, copy) != 0) {
+            refobject_unref(copy);
             refobject_unref(ret);
             return NULL;
         }
