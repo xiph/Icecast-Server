@@ -34,6 +34,8 @@
 #include "util.h"
 #include "auth.h"
 #include "event.h"
+#include "refobject.h"
+#include "reportxml.h"
 
 /* for config_reread_config() */
 #include "yp.h"
@@ -199,6 +201,7 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
+    configuration->reportxml_db = reportxml_database_new();
 }
 
 static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const char *warning)
@@ -668,6 +671,9 @@ void config_clear(ice_config_t *c)
 #endif
 
     config_clear_http_header(c->http_headers);
+
+    refobject_unref(c->reportxml_db);
+
     memset(c, 0, sizeof(ice_config_t));
 }
 
@@ -2076,6 +2082,27 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->adminroot_dir = (char *)temp;
             if (configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
+        } else if (xmlStrcmp(node->name, XMLSTR("reportxmldb")) == 0) {
+            reportxml_t *report;
+            xmlDocPtr dbdoc;
+
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<reportxmldb> setting must not be empty.");
+                continue;
+            }
+            dbdoc = xmlParseFile(temp);
+            if (!doc) {
+                ICECAST_LOG_ERROR("Can not read report xml database \"%H\" as XML", temp);
+            } else {
+                report = reportxml_parse_xmldoc(dbdoc);
+                xmlFreeDoc(dbdoc);
+                if (!report) {
+                    ICECAST_LOG_ERROR("Can not parse report xml database \"%H\"", temp);
+                } else {
+                    reportxml_database_add_report(configuration->reportxml_db, report);
+                }
+            }
+            xmlFree(temp);
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
             _parse_resource(doc, node, configuration);
         }
