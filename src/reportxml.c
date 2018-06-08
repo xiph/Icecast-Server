@@ -767,7 +767,7 @@ static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportx
     if (depth >= 2) {
         definition = reportxml_node_get_attribute(node, "definition");
         if (definition) {
-            if (strcmp(definition, norec) == 0) {
+            if (norec != NULL && strcmp(definition, norec) == 0) {
                 /* we've already proccessed this. No need to look it up. */
                 free(definition);
             } else {
