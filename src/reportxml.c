@@ -802,6 +802,8 @@ reportxml_node_t *      reportxml_database_build_node(reportxml_database_t *db, 
     if (template) {
         reportxml_node_t *tpl = reportxml_database_build_node(db, template, depth - 1);
 
+        free(template);
+
         if (tpl) {
             ret = reportxml_node_copy(tpl);
             refobject_unref(tpl);
