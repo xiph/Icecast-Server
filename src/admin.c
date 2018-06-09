@@ -323,11 +323,10 @@ void admin_send_response(xmlDocPtr       doc,
     }
     if (response == ADMIN_FORMAT_TRANSFORMED) {
         char *fullpath_xslt_template;
-        int fullpath_xslt_template_len;
+        size_t fullpath_xslt_template_len;
         ice_config_t *config = config_get_config();
 
-        fullpath_xslt_template_len = strlen (config->adminroot_dir) +
-            strlen (xslt_template) + 2;
+        fullpath_xslt_template_len = strlen(config->adminroot_dir) + strlen(xslt_template) + strlen(PATH_SEPARATOR) + 1;
         fullpath_xslt_template = malloc(fullpath_xslt_template_len);
         snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s",
             config->adminroot_dir, PATH_SEPARATOR, xslt_template);
