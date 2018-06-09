@@ -46,6 +46,8 @@
 
 #define CATMODULE "admin"
 
+#define ADMIN_MAX_COMMAND_TABLES        8
+
 /* Helper macros */
 #define COMMAND_REQUIRE(client,name,var)                                \
     do {                                                                \
@@ -94,14 +96,11 @@
 #define DEFAULT_TRANSFORMED_REQUEST         ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
 
-typedef void (*request_function_ptr)(client_t *, source_t *, admin_format_t);
-
-typedef struct admin_command_handler {
-    const char                     *route;
-    const int                       type;
-    const int                       format;
-    const request_function_ptr      function;
-} admin_command_handler_t;
+typedef struct {
+    const char *prefix;
+    size_t length;
+    const admin_command_handler_t *handlers;
+} admin_command_table_t;
 
 static void command_fallback            (client_t *client, source_t *source, admin_format_t response);
 static void command_metadata            (client_t *client, source_t *source, admin_format_t response);
@@ -151,33 +150,128 @@ static const admin_command_handler_t handlers[] = {
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_TRANSFORMED,    command_stats }
 };
 
-#define HANDLERS_COUNT (sizeof(handlers)/sizeof(*handlers))
+static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
+    {.prefix = NULL, .length = (sizeof(handlers)/sizeof(*handlers)), .handlers = handlers},
+};
 
-int admin_get_command(const char *command)
+static inline int __is_command_table_valid(const admin_command_table_t * table)
+{
+    if (table == NULL)
+        return 0;
+
+    if (table->length == 0 || table->handlers == NULL)
+        return 0;
+
+    return 1;
+}
+
+static inline const admin_command_table_t * admin_get_table(admin_command_id_t command)
+{
+    size_t t = (command & 0x00FF0000) >> 16;
+
+    if (t >= (sizeof(command_tables)/sizeof(*command_tables)))
+        return NULL;
+
+    if (!__is_command_table_valid(&(command_tables[t])))
+        return NULL;
+
+    return &(command_tables[t]);
+}
+
+static inline const admin_command_table_t * admin_get_table_by_prefix(const char *command)
+{
+    const char *end;
+    size_t i;
+    size_t len;
+
+    end = strchr(command, '/');
+
+    if (end == NULL) {
+        for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++)
+            if (command_tables[i].prefix == NULL && __is_command_table_valid(&(command_tables[i])))
+                return &(command_tables[i]);
+
+        return NULL;
+    }
+
+    len = end - command;
+
+    for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (!__is_command_table_valid(&(command_tables[i])))
+            continue;
+
+        if (command_tables[i].prefix != NULL && strlen(command_tables[i].prefix) == len && strncmp(command_tables[i].prefix, command, len) == 0) {
+            return &(command_tables[i]);
+        }
+    }
+
+    return NULL;
+}
+
+static inline admin_command_id_t admin_get_command_by_table_and_index(const admin_command_table_t *table, size_t index)
+{
+    size_t t = table - command_tables;
+
+    if (t >= (sizeof(command_tables)/sizeof(*command_tables)))
+        return ADMIN_COMMAND_ERROR;
+
+    if (index > 0x0FFFF)
+        return ADMIN_COMMAND_ERROR;
+
+    if (!__is_command_table_valid(table))
+        return ADMIN_COMMAND_ERROR;
+
+    return (t << 16) | index;
+}
+
+static inline size_t admin_get_index_by_command(admin_command_id_t command)
+{
+    return command & 0x0FFFF;
+}
+
+admin_command_id_t admin_get_command(const char *command)
 {
     size_t i;
+    const admin_command_table_t *table = admin_get_table_by_prefix(command);
+    const char *suffix;
 
-    for (i = 0; i < HANDLERS_COUNT; i++)
-        if (strcmp(handlers[i].route, command) == 0)
-            return i;
+    if (table == NULL)
+        return COMMAND_ERROR;
+
+    suffix = strchr(command, '/');
+    if (suffix != NULL) {
+        suffix++;
+    } else {
+        suffix = command;
+    }
+
+    for (i = 0; i < table->length; i++)
+        if (strcmp(table->handlers[i].route, suffix) == 0)
+            return admin_get_command_by_table_and_index(table, i);
 
     return COMMAND_ERROR;
 }
 
 /* Get the command handler for command or NULL
  */
-const admin_command_handler_t* admin_get_handler(int command)
+const admin_command_handler_t* admin_get_handler(admin_command_id_t command)
 {
-    if (command > 0 && command < HANDLERS_COUNT)
-        return &handlers[command];
+    const admin_command_table_t *table = admin_get_table(command);
+    size_t index = admin_get_index_by_command(command);
 
-    return NULL;
+    if (table == NULL)
+        return NULL;
+
+    if (index >= table->length)
+        return NULL;
+
+    return &(table->handlers[index]);
 }
 
 /* Get the command type for command
  * If the command is invalid, ADMINTYPE_ERROR is returned.
  */
-int admin_get_command_type(int command)
+int admin_get_command_type(admin_command_id_t command)
 {
     const admin_command_handler_t* handler = admin_get_handler(command);
 
@@ -185,6 +279,41 @@ int admin_get_command_type(int command)
         return handler->type;
 
     return ADMINTYPE_ERROR;
+}
+
+int admin_command_table_register(const char *prefix, size_t handlers_length, const admin_command_handler_t *handlers)
+{
+    size_t i;
+
+    if (prefix == NULL || handlers_length == 0 || handlers == NULL)
+        return -1;
+
+    for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (__is_command_table_valid(&(command_tables[i])))
+            continue;
+
+        command_tables[i].prefix    = prefix;
+        command_tables[i].length    = handlers_length;
+        command_tables[i].handlers  = handlers;
+
+        return 0;
+    }
+
+    return -1;
+}
+
+int admin_command_table_unregister(const char *prefix)
+{
+    size_t i;
+
+    for (i = 0; i < (sizeof(command_tables)/sizeof(*command_tables)); i++) {
+        if (command_tables[i].prefix != NULL && strcmp(command_tables[i].prefix, prefix) == 0) {
+            memset(&(command_tables[i]), 0, sizeof(command_tables[i]));
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 /* build an XML doc containing information about currently running sources.
@@ -350,7 +479,7 @@ void admin_handle_request(client_t *client, const char *uri)
     handler = admin_get_handler(client->admin_command);
 
     /* Check if admin command is valid */
-    if (handler == NULL) {
+    if (handler == NULL || handler->function == NULL) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %H",
                 uri);
         client_send_error_by_id(client, ICECAST_ERROR_ADMIN_UNRECOGNISED_COMMAND);

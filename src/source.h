@@ -25,8 +25,7 @@ typedef struct source_tag source_t;
 
 #include <stdio.h>
 
-struct source_tag
-{
+struct source_tag {
     mutex_t lock;
     client_t *client;
     connection_t *con;
@@ -83,7 +82,6 @@ struct source_tag
     refbuf_t *stream_data_tail;
 
     playlist_t *history;
-
 };
 
 source_t *source_reserve (const char *mount);

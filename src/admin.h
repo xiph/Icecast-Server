@@ -16,6 +16,10 @@
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <stdint.h>
+
+/* Command IDs */
+typedef int32_t admin_command_id_t;
 
 /* formats */
 typedef enum {
@@ -25,6 +29,7 @@ typedef enum {
     ADMIN_FORMAT_PLAINTEXT
 } admin_format_t;
 
+#include "compat.h"
 #include "refbuf.h"
 #include "client.h"
 #include "source.h"
@@ -37,8 +42,17 @@ typedef enum {
 #define ADMINTYPE_HYBRID    (ADMINTYPE_GENERAL|ADMINTYPE_MOUNT)
 
 /* special commands */
-#define ADMIN_COMMAND_ERROR (-1)
-#define ADMIN_COMMAND_ANY   0 /* for ACL framework */
+#define ADMIN_COMMAND_ERROR ((admin_command_id_t)(-1))
+#define ADMIN_COMMAND_ANY   ((admin_command_id_t)0) /* for ACL framework */
+
+typedef void (*admin_request_function_ptr)(client_t * client, source_t * source, admin_format_t format);
+
+typedef struct admin_command_handler {
+    const char                         *route;
+    const int                           type;
+    const int                           format;
+    const admin_request_function_ptr    function;
+} admin_command_handler_t;
 
 void admin_handle_request(client_t *client, const char *uri);
 
@@ -53,7 +67,13 @@ void admin_add_listeners_to_mount(source_t       *source,
 
 xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent);
 
-int admin_get_command(const char *command);
-int admin_get_command_type(int command);
+admin_command_id_t admin_get_command(const char *command);
+int admin_get_command_type(admin_command_id_t command);
+
+/* Register and unregister admin commands below /admin/$prefix/.
+ * All parameters must be kept in memory as long as the registration is valid as there will be no copy made.
+ */
+int admin_command_table_register(const char *prefix, size_t handlers_length, const admin_command_handler_t *handlers);
+int admin_command_table_unregister(const char *prefix);
 
 #endif  /* __ADMIN_H__ */
