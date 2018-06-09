@@ -29,9 +29,11 @@
 #define ADMINTYPE_HYBRID    (ADMINTYPE_GENERAL|ADMINTYPE_MOUNT)
 
 /* formats */
-#define RAW                 1
-#define TRANSFORMED         2
-#define PLAINTEXT           3
+typedef enum {
+    ADMIN_FORMAT_RAW,
+    ADMIN_FORMAT_TRANSFORMED,
+    ADMIN_FORMAT_PLAINTEXT
+} admin_format_t;
 
 /* special commands */
 #define ADMIN_COMMAND_ERROR (-1)
@@ -39,10 +41,10 @@
 
 void admin_handle_request(client_t *client, const char *uri);
 
-void admin_send_response(xmlDocPtr    doc,
-                         client_t    *client,
-                         int          response,
-                         const char  *xslt_template);
+void admin_send_response(xmlDocPtr       doc,
+                         client_t       *client,
+                         admin_format_t  response,
+                         const char     *xslt_template);
 
 void admin_add_listeners_to_mount(source_t       *source,
                                   xmlNodePtr      parent,
