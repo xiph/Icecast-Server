@@ -285,7 +285,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
     return ret;
 }
 
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status)
 {
     xmlDocPtr res;
     xsltStylesheetPtr cur;
@@ -346,7 +346,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
 
         if (string == NULL)
             string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
+        ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
         if (ret == -1) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
@@ -359,7 +359,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
                     ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
                     refbuf->data = new_data;
                     refbuf->len = full_len;
-                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
+                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
                     if (ret == -1) {
                         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                         client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
@@ -375,7 +375,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
             if (!failed) {
                   snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
 
-                client->respcode = 200;
+                client->respcode = status;
                 client_set_queue (client, NULL);
                 client->refbuf = refbuf;
                 refbuf->len = strlen (refbuf->data);

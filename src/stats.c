@@ -1024,7 +1024,7 @@ void stats_transform_xslt(client_t *client, const char *uri)
 
     doc = stats_get_xml(0, mount, client->mode);
 
-    xslt_transform(doc, xslpath, client);
+    xslt_transform(doc, xslpath, client, 200);
 
     xmlFreeDoc(doc);
     free(xslpath);
