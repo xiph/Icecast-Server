@@ -19,13 +19,18 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
+typedef struct _client_tag client_t;
+
 #include "errors.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "acl.h"
 #include "cfgfile.h"
+#include "admin.h"
 #include "common/httpp/httpp.h"
 #include "common/httpp/encoding.h"
+
+#define CLIENT_DEFAULT_ADMIN_FORMAT                     ADMIN_FORMAT_TRANSFORMED
 
 typedef enum _protocol_tag {
     ICECAST_PROTOCOL_HTTP = 0,
@@ -41,7 +46,7 @@ typedef enum _reuse_tag {
     ICECAST_REUSE_UPGRADETLS
 } reuse_t;
 
-typedef struct _client_tag
+struct _client_tag
 {
     /* mode of operation for this client */
     operation_mode mode;
@@ -106,13 +111,14 @@ typedef struct _client_tag
     /* function to check if refbuf needs updating */
     int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
 
-} client_t;
+};
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_destroy(client_t *client);
 void client_send_error_by_id(client_t *client, icecast_error_id_t id);
 void client_send_101(client_t *client, reuse_t reuse);
 void client_send_426(client_t *client, reuse_t reuse);
+admin_format_t client_get_admin_format_by_content_negotiation(client_t *client);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);

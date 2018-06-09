@@ -19,7 +19,7 @@
 #endif
 
 struct source_tag;
-struct auth_tag;
+typedef struct auth_tag auth_t;
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -66,7 +66,7 @@ typedef struct auth_client_tag
 } auth_client;
 
 
-typedef struct auth_tag
+struct auth_tag
 {
     /* unique ID */
     unsigned long id;
@@ -113,7 +113,7 @@ typedef struct auth_tag
     acl_t *acl;
     /* role name for later matching, may be NULL if no role name was given in config */
     char  *role;
-} auth_t;
+};
 
 typedef struct auth_stack_tag auth_stack_t;
 

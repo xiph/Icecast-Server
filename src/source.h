@@ -14,6 +14,8 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
+typedef struct source_tag source_t;
+
 #include "cfgfile.h"
 #include "yp.h"
 #include "util.h"
@@ -23,7 +25,7 @@
 
 #include <stdio.h>
 
-typedef struct source_tag
+struct source_tag
 {
     mutex_t lock;
     client_t *client;
@@ -82,7 +84,7 @@ typedef struct source_tag
 
     playlist_t *history;
 
-} source_t;
+};
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);

@@ -17,6 +17,14 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+/* formats */
+typedef enum {
+    ADMIN_FORMAT_AUTO,
+    ADMIN_FORMAT_RAW,
+    ADMIN_FORMAT_TRANSFORMED,
+    ADMIN_FORMAT_PLAINTEXT
+} admin_format_t;
+
 #include "refbuf.h"
 #include "client.h"
 #include "source.h"
@@ -27,13 +35,6 @@
 #define ADMINTYPE_GENERAL   1
 #define ADMINTYPE_MOUNT     2
 #define ADMINTYPE_HYBRID    (ADMINTYPE_GENERAL|ADMINTYPE_MOUNT)
-
-/* formats */
-typedef enum {
-    ADMIN_FORMAT_RAW,
-    ADMIN_FORMAT_TRANSFORMED,
-    ADMIN_FORMAT_PLAINTEXT
-} admin_format_t;
 
 /* special commands */
 #define ADMIN_COMMAND_ERROR (-1)

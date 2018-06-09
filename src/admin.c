@@ -344,6 +344,7 @@ void admin_handle_request(client_t *client, const char *uri)
     const char *mount;
     const admin_command_handler_t* handler;
     source_t *source = NULL;
+    admin_format_t format;
 
     ICECAST_LOG_DEBUG("Got admin request '%s'", uri);
 
@@ -405,7 +406,13 @@ void admin_handle_request(client_t *client, const char *uri)
         return;
     }
 
-    handler->function(client, source, handler->format);
+    if (handler->format == ADMIN_FORMAT_AUTO) {
+        format = client_get_admin_format_by_content_negotiation(client);
+    } else {
+        format = handler->format;
+    }
+
+    handler->function(client, source, format);
     if (source) {
         avl_tree_unlock(global.source_tree);
     }

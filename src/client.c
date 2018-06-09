@@ -366,6 +366,26 @@ static inline void client_send_500(client_t *client, const char *message)
     client_destroy(client);
 }
 
+admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
+{
+    const char *pref;
+
+    if (!client || !client->parser)
+        return CLIENT_DEFAULT_ADMIN_FORMAT;
+
+    pref = util_http_select_best(httpp_getvar(client->parser, "accept"), "text/xml", "text/html", "text/plain", (const char*)NULL);
+
+    if (strcmp(pref, "text/xml") == 0) {
+        return ADMIN_FORMAT_RAW;
+    } else if (strcmp(pref, "text/html") == 0) {
+        return ADMIN_FORMAT_TRANSFORMED;
+    } else if (strcmp(pref, "text/plain") == 0) {
+        return ADMIN_FORMAT_PLAINTEXT;
+    } else {
+        return CLIENT_DEFAULT_ADMIN_FORMAT;
+    }
+}
+
 /* helper function for sending the data to a client */
 int client_send_bytes(client_t *client, const void *buf, unsigned len)
 {
