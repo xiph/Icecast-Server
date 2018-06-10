@@ -58,6 +58,45 @@
 
 static inline void client_send_500(client_t *client, const char *message);
 
+/* This returns the protocol ID based on the string.
+ * If the string is invalid for any reason we return ICECAST_PROTOCOL_HTTP.
+ */
+protocol_t client_protocol_from_string(const char *str)
+{
+    if (!str) {
+        ICECAST_LOG_ERROR("No protocol string given. Returning ICECAST_PROTOCOL_HTTP.");
+        return ICECAST_PROTOCOL_HTTP;
+    }
+
+    if (strcasecmp(str, "http") == 0) {
+        return ICECAST_PROTOCOL_HTTP;
+    } else if (strcasecmp(str, "icy") == 0 || strcasecmp(str, "shoutcast") == 0) {
+        return ICECAST_PROTOCOL_SHOUTCAST;
+    } else if (strcasecmp(str, "gopher") == 0) {
+        return ICECAST_PROTOCOL_GOPHER;
+    } else {
+        ICECAST_LOG_ERROR("Unknown protocol \"%H\" string given. Returning ICECAST_PROTOCOL_HTTP.", str);
+        return ICECAST_PROTOCOL_HTTP;
+    }
+}
+
+const char * client_protocol_to_string(protocol_t protocol)
+{
+    switch (protocol) {
+        case ICECAST_PROTOCOL_HTTP:
+            return "http";
+        break;
+        case ICECAST_PROTOCOL_SHOUTCAST:
+            return "icy";
+        break;
+        case ICECAST_PROTOCOL_GOPHER:
+            return "gopher";
+        break;
+    }
+
+    return NULL;
+}
+
 /* create a client_t with the provided connection and parser details. Return
  * 0 on success, -1 if server limit has been reached.  In either case a
  * client_t is returned just in case a message needs to be returned. Should
