@@ -1248,7 +1248,7 @@ static int _handle_gopher_compatible(client_queue_t *node)
         return 0;
     }
 
-    snprintf(n, n_len, "GET %s HTTP/1.0\r\n\r\n", client->refbuf->data);
+    snprintf(n, n_len, "GET %s HTTP/1.0\r\nAccept: text/plain,*/*;q=0.9\r\n\r\n", client->refbuf->data);
 
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
