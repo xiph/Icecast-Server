@@ -788,14 +788,7 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->tls ? "true" : "false"));
 
-    switch (client->protocol) {
-        case ICECAST_PROTOCOL_HTTP:
-            xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR("http"));
-        break;
-        case ICECAST_PROTOCOL_SHOUTCAST:
-            xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR("icy"));
-        break;
-    }
+    xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));
 
     return node;
 }

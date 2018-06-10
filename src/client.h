@@ -139,6 +139,9 @@ struct _client_tag {
     int (*check_buffer)(source_t *source, client_t *client);
 };
 
+protocol_t client_protocol_from_string(const char *str);
+const char * client_protocol_to_string(protocol_t protocol);
+
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
 void client_complete(client_t *client);
 void client_destroy(client_t *client);
