@@ -319,7 +319,7 @@ static inline const char *__find_bitrate(const http_var_t *var)
     return NULL;
 }
 
-static int format_prepare_headers (source_t *source, client_t *client)
+static int format_prepare_headers_http (source_t *source, client_t *client)
 {
     size_t remaining;
     char *ptr;
@@ -451,13 +451,34 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr += bytes;
 
     client->refbuf->len -= remaining;
-    if (source->format->create_client_data)
+    return 0;
+}
+
+static int format_prepare_headers (source_t *source, client_t *client)
+{
+
+    switch (client->protocol) {
+        case ICECAST_PROTOCOL_HTTP:
+        case ICECAST_PROTOCOL_SHOUTCAST:
+            if (format_prepare_headers_http(source, client) != 0)
+                return -1;
+        break;
+        case ICECAST_PROTOCOL_GOPHER:
+            client->refbuf->len = 0;
+        break;
+    }
+
+
+    if (source->format->create_client_data) {
         if (source->format->create_client_data (source, client) < 0) {
             ICECAST_LOG_ERROR("Client format header generation failed. "
                 "(Likely not enough or wrong source data) Dropping client.");
             client->respcode = 500;
             return -1;
         }
+    }
+
+
     return 0;
 }
 
