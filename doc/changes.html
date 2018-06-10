@@ -16,8 +16,32 @@
 
     <div class="section">
       
-      <h2>Icecast 2.4.3 Docs &mdash; Changes</h2>
+      <h2>Icecast 2.4.4 Docs &mdash; Changes</h2>
       
+<div id="v2.4.4" class="article">
+  <h3 id="version-244">Version 2.4.4</h3>
+
+  <h4 id="fixes-4">Fixes</h4>
+
+  <ul>
+    <li>Fixed segfault in htpasswd auth, if no filename was set</li>
+    <li>Do not report hashed user passwords in user list</li>
+    <li>Fix two mistakes in the default config's comments</li>
+    <li>Add log message for succesful streamlist requests</li>
+    <li>Fix update_from_master() for receiving HTTP/1.1</li>
+    <li>Spelling fix, thanks to Ukikie</li>
+    <li>Fixed a segfault when xsltApplyStylesheet() returns error</li>
+    <li>Fixed segfault on bad Opus streams</li>
+    <li>Corrected response and fixed TLS for 416 Request Range Not Satisfiable responses</li>
+  </ul>
+
+  <h4 id="known-issues-3">Known issues</h4>
+
+  <ul>
+    <li>See <a href="#known-issues">2.4.1</a></li>
+  </ul>
+
+</div>
 <div id="v2.4.3" class="article">
   <h3 id="version-243">Version 2.4.3</h3>
 
