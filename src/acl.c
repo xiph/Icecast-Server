@@ -101,7 +101,7 @@ acl_t *acl_new(void)
     ret->refcount = 1;
 
     acl_set_method_str(ret, ACL_POLICY_DENY, "*");
-    acl_set_method_str(ret, ACL_POLICY_ALLOW, "get");
+    acl_set_method_str(ret, ACL_POLICY_ALLOW, "get,options");
 
     acl_set_admin_str(ret, ACL_POLICY_DENY, "*");
     acl_set_admin_str(ret, ACL_POLICY_ALLOW, "buildm3u");

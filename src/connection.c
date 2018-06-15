@@ -926,6 +926,11 @@ static void _handle_get_request(client_t *client, char *uri) {
         return;
     }
 
+    if (client->parser->req_type == httpp_req_options) {
+        client_send_204(client);
+        return;
+    }
+
     if (util_check_valid_extension(uri) == XSLT_CONTENT) {
         /* If the file exists, then transform it, otherwise, write a 404 */
         ICECAST_LOG_DEBUG("Stats request, sending XSL transformed stats");
@@ -1209,6 +1214,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             _handle_stats_request(client, uri);
         break;
         case httpp_req_get:
+        case httpp_req_options:
             _handle_get_request(client, uri);
         break;
         default:
@@ -1410,6 +1416,11 @@ static void _handle_connection(void)
                     }
                 } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {
                     client_send_426(client, ICECAST_REUSE_UPGRADETLS);
+                    continue;
+                }
+
+                if (strcmp(rawuri, "*") == 0) {
+                    client_send_204(client);
                     continue;
                 }
 
