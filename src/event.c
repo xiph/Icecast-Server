@@ -247,7 +247,7 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
         rv = event_get_log(ret, options);
     } else if (strcmp(ret->type, EVENT_TYPE_EXEC) == 0) {
         rv = event_get_exec(ret, options);
-#ifdef HAVE_AUTH_URL
+#ifdef HAVE_CURL
     } else if (strcmp(ret->type, EVENT_TYPE_URL) == 0) {
         rv = event_get_url(ret, options);
 #endif

@@ -21,8 +21,6 @@
 #include <ogg/ogg.h>
 #include <theora/theora.h>
 
-typedef struct source_tag source_t;
-
 #include "refbuf.h"
 #include "format_ogg.h"
 #include "format_theora.h"

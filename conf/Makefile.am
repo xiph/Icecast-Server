@@ -1,7 +1,5 @@
 ## Process this with automake to create Makefile.in
 
-AUTOMAKE_OPTIONS = foreign
-
 EXTRA_DIST = icecast.xml.in icecast_minimal.xml.in icecast_shoutcast_compat.xml.in icecast_urlauth.xml.in
 DISTCLEANFILES = icecast.xml.dist icecast_minimal.xml.dist icecast_shoutcast_compat.xml.dist icecast_urlauth.xml.dist
 

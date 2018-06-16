@@ -21,8 +21,6 @@
 #include <ogg/ogg.h>
 #include <string.h>
 
-typedef struct source_tag source_t;
-
 #include "refbuf.h"
 #include "format_ogg.h"
 #include "client.h"

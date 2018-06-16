@@ -438,7 +438,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
         ICECAST_LOG_DEBUG("type is %s", auth->type);
 
         if (strcmp(auth->type, AUTH_TYPE_URL) == 0) {
-#ifdef HAVE_AUTH_URL
+#ifdef HAVE_CURL
             if (auth_get_url_auth(auth, options) < 0)
                 return -1;
             break;

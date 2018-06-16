@@ -1,168 +1,269 @@
 AC_INIT([Icecast], [2.4.99.2], [icecast@xiph.org])
 
 AC_PREREQ([2.54])
+
 AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_MACRO_DIR([m4])
-AC_REQUIRE_AUX_FILE([tap-driver.sh])
-dnl Process this file with autoconf to produce a configure script.
-
-AM_INIT_AUTOMAKE
-AM_CONFIG_HEADER([config.h])
-AM_MAINTAINER_MODE
+AC_CONFIG_AUX_DIR([build-aux])
 
 AC_PROG_CC
-AC_PROG_AWK
-AC_CANONICAL_HOST
-AC_PROG_LIBTOOL
+
+AX_CHECK_COMPILE_FLAG([-std=c99], [
+  AX_APPEND_FLAG([-std=c99])
+], [
+  AC_MSG_WARN([Compiler does not accept -std=c99 flag!])
+])
+
+AC_PROG_CC_C99
+
+AS_IF([test "${ac_cv_prog_cc_c99}" = "no"], [
+  AC_MSG_ERROR([No C99 compiler found!])
+])
+
 AC_SYS_LARGEFILE
+AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
 
-dnl Set some options based on environment
+dnl Set build/host to default values
+AC_CANONICAL_HOST
+AC_CANONICAL_BUILD
 
-DEBUG="-g"
-if test -z "$GCC"; then
-    XIPH_CPPFLAGS="-D_REENTRANT"
-    PROFILE="-g -p"
-else
-    XIPH_CPPFLAGS="-Wall -ffast-math -fsigned-char"
-    PROFILE="-pg -g"
-    AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
-fi
 
-dnl Checks for programs.
+AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-dnl Checks for libraries.
+AM_MAINTAINER_MODE([enable])
+
+LT_INIT
 
 dnl Checks for header files.
+AC_HEADER_ASSERT
 AC_HEADER_STDC
 AC_HEADER_TIME
 
-AC_CHECK_HEADERS([alloca.h sys/timeb.h])
-AC_CHECK_HEADERS([pwd.h unistd.h grp.h sys/types.h],,,AC_INCLUDES_DEFAULT)
+AC_CHECK_HEADERS([stdint.h inttypes.h], [
+  ice_found_int_headers="yes";
+  break;
+])
+
+AS_IF([test "$ice_found_int_headers" != "yes"], [
+  AC_MSG_ERROR([Unable to find the standard integers headers])
+])
+
+AC_CHECK_HEADERS([sys/types.h])
+AC_CHECK_HEADERS([sys/timeb.h])
+AC_CHECK_HEADERS([sys/socket.h])
+AC_CHECK_HEADERS([pwd.h grp.h])
+
+XIPH_NET
+
+dnl Check for functions
+AC_FUNC_FORK
+AC_FUNC_CHOWN
+
 AC_CHECK_FUNCS([setuid])
 AC_CHECK_FUNCS([chroot])
-AC_CHECK_FUNCS([chown])
 AC_CHECK_FUNCS([strcasestr])
 AC_CHECK_FUNCS([gethostname])
 AC_CHECK_FUNCS([uname])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([setresuid])
 AC_CHECK_FUNCS([setresgid])
+AC_CHECK_FUNCS([localtime_r])
+AC_CHECK_FUNCS([poll])
+AC_CHECK_FUNCS([gettimeofday])
+AC_CHECK_FUNCS([ftime])
 
-dnl Checks for typedefs, structures, and compiler characteristics.
-XIPH_C__FUNC__
+AC_SEARCH_LIBS([nanosleep], [rt posix4], [
+  AC_DEFINE([HAVE_NANOSLEEP], [1], [Define if you have nanosleep])
+])
 
-dnl Check for types
+dnl Checks for types and typedefs
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
 
-dnl Checks for library functions.
-AC_CHECK_FUNCS([localtime_r poll gettimeofday ftime])
+dnl Checks for required libraries
 
-AC_SEARCH_LIBS([nanosleep], [rt posix4], AC_DEFINE([HAVE_NANOSLEEP], [1], [Define if you have nanosleep]))
-XIPH_NET
+dnl
+dnl libxml2
+dnl
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], [], [
+  AC_MSG_ERROR([${LIBXML2_PKG_ERRORS}. libxml2 is required.])
+])
 
-dnl -- configure options --
+CFLAGS="${CFLAGS} ${LIBXML2_CFLAGS}"
+LIBS="${LIBS} ${LIBXML2_LIBS}"
 
-XIPH_PATH_XSLT
-XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$XSLT_CFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$XSLT_LIBS])
 
-XIPH_PATH_VORBIS([
-    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$VORBIS_CFLAGS])
-    XIPH_VAR_PREPEND([XIPH_LIBS],[$VORBIS_LIBS])
-    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$VORBIS_LDFLAGS])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_vorbis.o"
-    ],
-    [AC_MSG_ERROR([must have Ogg Vorbis v1.0 or above installed])
-    ])
+dnl
+dnl libxslt
+dnl
+PKG_CHECK_MODULES([LIBXSLT], [libxslt], [], [
+  AC_MSG_ERROR([${LIBXSLT_PKG_ERRORS}. libxslt is required.])
+])
 
-XIPH_PATH_THEORA([
-    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$THEORA_CFLAGS])
-    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$THEORA_LDFLAGS])
-    XIPH_VAR_PREPEND([XIPH_LIBS],[$THEORA_LIBS])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_theora.o"
-    ],
-    [ AC_MSG_WARN([Theora disabled!])
-    ])
+CFLAGS="${CFLAGS} ${LIBXSLT_CFLAGS}"
+LIBS="${LIBS} ${LIBXSLT_LIBS}"
 
-XIPH_PATH_SPEEX(
-    [ XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$SPEEX_CFLAGS])
-    XIPH_VAR_PREPEND([XIPH_LIBS],[$SPEEX_LIBS])
-    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$SPEEX_LDFLAGS])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_speex.o"
-    ],
-    [ AC_MSG_WARN([Speex support disabled!])
-    ])
 
-AC_CHECK_LIB(kate, kate_decode_init,[have_kate=yes],[have_kate=no], -logg)
-if test "x$have_kate" == "xyes"
-then
-  AC_CHECK_LIB(oggkate, kate_ogg_decode_headerin,[have_kate=yes],[have_kate=no],-lkate -logg)
-  if test "x$have_kate" == "xyes"
-  then
-    KATE_LIBS="-loggkate -lkate -logg"
-    AC_DEFINE([HAVE_KATE],[1],[Define if you have libkate])
-  fi
-fi
+dnl
+dnl libvorbis
+dnl
+PKG_CHECK_MODULES([VORBIS], [vorbis >= 1.0], [], [
+  AC_MSG_ERROR([${VORBIS_PKG_ERRORS}. Must have libvorbis v1.0 or above installed.])
+])
+
+CFLAGS="${CFLAGS} ${VORBIS_CFLAGS}"
+LIBS="${LIBS} ${VORBIS_LIBS}"
+
+
+dnl Checks for optional libraries
+
+dnl
+dnl libogg
+dnl
+PKG_HAVE_WITH_MODULES([OGG], [ogg], [
+  CFLAGS="${CFLAGS} ${OGG_CFLAGS}"
+  LIBS="${LIBS} ${OGG_LIBS}"
+])
+
+dnl
+dnl libtheora
+dnl
+PKG_HAVE_WITH_MODULES([THEORA], [theora], [
+  CFLAGS="${CFLAGS} ${THEORA_CFLAGS}"
+  LIBS="${LIBS} ${THEORA_LIBS}"
+])
+
+dnl
+dnl libspeex
+dnl
+PKG_HAVE_WITH_MODULES([SPEEX], [speex], [
+  CFLAGS="${CFLAGS} ${SPEEX_CFLAGS}"
+  LIBS="${LIBS} ${SPEEX_LIBS}"
+])
+
+dnl
+dnl libcurl
+dnl
+PKG_HAVE_WITH_MODULES([CURL], [libcurl], [
+  CFLAGS="${CFLAGS} ${CURL_CFLAGS}"
+  LIBS="${LIBS} ${CURL_LIBS}"
+])
+
+dnl
+dnl openssl
+dnl
+PKG_HAVE_WITH_MODULES([OPENSSL], [openssl], [
+  CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
+  LIBS="${LIBS} ${OPENSSL_LIBS}"
+])
+
+dnl Check for library-specific functions
+AC_CHECK_FUNCS([xsltSaveResultToString])
+
 dnl we still use format_kate as it doesn't need libkate to work
 #ICECAST_OPTIONAL="$ICECAST_OPTIONAL format_kate.o"
 
-ACX_PTHREAD(, AC_MSG_ERROR([POSIX threads missing]))
-XIPH_VAR_APPEND([XIPH_CFLAGS],[$PTHREAD_CFLAGS])
-XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$PTHREAD_CPPFLAGS])
-XIPH_VAR_PREPEND([XIPH_LIBS],[$PTHREAD_LIBS])
+ACX_PTHREAD([], [AC_MSG_ERROR([POSIX threads missing])])
 
-XIPH_PATH_CURL([
-    AC_CHECK_DECL([CURLOPT_NOSIGNAL],
-        [ AC_DEFINE([HAVE_AUTH_URL], 1, [Define to compile in auth URL support code])
-        AC_CHECK_FUNCS([curl_global_init])
-        ICECAST_OPTIONAL="$ICECAST_OPTIONAL auth_url.o event_url.o curl.o"
-        enable_curl="yes"
-        XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$CURL_CFLAGS])
-        XIPH_VAR_PREPEND([XIPH_LIBS],[$CURL_LIBS])
-        ], [ AC_MSG_NOTICE([Your curl dev files are too old (7.10 or above required)])
-        ], [#include <curl/curl.h>
-        ])
-    ],[ AC_MSG_NOTICE([libcurl not found])
-    ])
-dnl -- YP support --
+CFLAGS="${CFLAGS} ${PTHREAD_CFLAGS}"
+CPPFLAGS="${CPPFLAGS} ${PTHREAD_CPPFLAGS}"
+LIBS="${LIBS} ${PTHREAD_LIBS}"
+
+dnl Feature enable/disable arguments
+
 AC_ARG_ENABLE([yp],
-        AC_HELP_STRING([--disable-yp],[disable YP directory support]),
-        enable_yp="$enableval",
-        enable_yp="yes")
-if test "x$enable_yp" = "xyes" -a "x$enable_curl" = xyes
-then
-    AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
-    ICECAST_OPTIONAL="$ICECAST_OPTIONAL yp.o"
-else
-    AC_MSG_NOTICE([YP support disabled])
-fi
-XIPH_PATH_OPENSSL([
-    XIPH_VAR_APPEND([XIPH_CPPFLAGS],[$OPENSSL_CFLAGS])
-    XIPH_VAR_APPEND([XIPH_LDFLAGS],[$OPENSSL_LDFLAGS])
-    XIPH_VAR_PREPEND([XIPH_LIBS],[$OPENSSL_LIBS])
-    ],
-    [ AC_MSG_NOTICE([SSL disabled!])
+  AS_HELP_STRING([--enable-yp],
+    [enable yellowpage directory listing support (default: auto)])
+)
+
+AS_IF([test "x$enable_yp" != "xno"], [
+  AS_IF([test "x$have_curl" != "xyes"], [
+    AS_IF([test "x$enable_yp" == "xyes"], [
+      AC_MSG_ERROR([cURL is required for YP support])
     ])
+    enable_yp="no"
+  ], [
+    AC_DEFINE([USE_YP], 1, [Define to compile in YP support code])
+    enable_yp="yes"
+  ])
+])
+
+AM_CONDITIONAL([ENABLE_YP],
+               [test "x$enable_yp" = "xyes"])
+
+
+AC_ARG_ENABLE([client-tests],
+  AS_HELP_STRING([--enable-client-tests],
+    [enable client tests module (default: disabled)])
+)
+
+AS_IF([test "x$enable_client_tests" == "xyes"], [
+  AC_DEFINE([ENABLE_MODULE_CLIENT_TESTS], 1, [Define to compile client test module])
+], [enable_client_tests="no"])
+
+AM_CONDITIONAL([ENABLE_MODULE_CLIENT_TESTS],
+               [test "x$enable_client_tests" = "xyes"])
+
+AC_ARG_WITH([default-config],
+  AS_HELP_STRING([--with-default-config=PATH],
+    [Sets default Icecast configuration file (used when no configuration file is given)]),
+  [], [with_default_config=no]
+)
+
+AS_IF([test "$with_default_config" != "no"], [
+
+  AS_IF([test "$with_default_config" = "yes"], [
+    AC_MSG_ERROR([You need to supply a path as value for --with-default-config])
+  ])
+
+  AC_DEFINE_UNQUOTED([ICECAST_DEFAULT_CONFIG], ["$with_default_config"], [Define to default config file path])
+  
+])
 
 dnl Make substitutions
-
+AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_CPPFLAGS)
 AC_SUBST(XIPH_CFLAGS)
-AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_LDFLAGS)
-AC_SUBST(PTHREAD_CPPFLAGS)
-AC_SUBST(PTHREAD_CFLAGS)
-AC_SUBST(PTHREAD_LIBS)
-AC_SUBST(LIBTOOL_DEPS)
-AC_SUBST(LIBS)
-AC_SUBST(DEBUG)
-AC_SUBST(CFLAGS)
-AC_SUBST(PROFILE)
-AC_SUBST(ICECAST_OPTIONAL)
-AC_SUBST(HAVE_KATE)
-AC_SUBST(KATE_LIBS)
 
-AC_OUTPUT([Makefile conf/Makefile src/Makefile src/common/avl/Makefile
-src/common/httpp/Makefile src/common/thread/Makefile src/common/log/Makefile
-src/common/net/Makefile src/common/timing/Makefile doc/Makefile web/Makefile
-web/assets/Makefile web/assets/css/Makefile web/assets/font/Makefile
-admin/Makefile admin/includes/Makefile win32/Makefile examples/Makefile tests/Makefile])
+AC_CONFIG_HEADERS([config.h])
+
+AC_CONFIG_FILES([
+  Makefile
+  conf/Makefile
+  src/Makefile
+  src/common/avl/Makefile
+  src/common/httpp/Makefile
+  src/common/thread/Makefile
+  src/common/log/Makefile
+  src/common/net/Makefile
+  src/common/timing/Makefile
+  doc/Makefile
+  web/Makefile
+  admin/Makefile
+  win32/Makefile
+  examples/Makefile
+  tests/Makefile
+])
+
+AC_OUTPUT
+
+echo "
+Icecast configuration
+---------------------
+Version        : ${VERSION}
+cURL           : ${have_curl}
+TLS (openSSL)  : ${have_openssl}
+
+Format/Codec support:
+  Ogg          : ${have_ogg}
+  Theora       : ${have_theora}
+  Speex        : ${have_speex}
+
+Features:
+  YP support   : ${enable_yp}
+  Client tests : ${enable_client_tests}"

@@ -20,8 +20,6 @@
 #include <string.h>
 #include <ogg/ogg.h>
 
-typedef struct source_tag source_t;
-
 #include "format_opus.h"
 #include "stats.h"
 #include "refbuf.h"

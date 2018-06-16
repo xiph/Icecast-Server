@@ -47,10 +47,11 @@
 #  define PRId64  "I64d"
 #else
 #  define PATH_SEPARATOR "/"
-#  if defined(HAVE_INTTYPES_H)
-#    include <inttypes.h>
-#  elif defined(HAVE_STDINT_H)
+#  ifdef HAVE_STDINT_H
 #    include <stdint.h>
+#  endif
+#  ifdef HAVE_INTTYPES_H
+#    include <inttypes.h>
 #  endif
 #endif
 
