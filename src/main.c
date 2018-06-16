@@ -162,7 +162,7 @@ void shutdown_subsystems(void)
     xslt_shutdown();
 }
 
-static int _parse_config_opts(int argc, char **argv, char *filename, int size)
+static int _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
     int i = 1;
     int config_ok = 0;
