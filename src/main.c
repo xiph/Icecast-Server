@@ -324,6 +324,58 @@ static int _start_listening(void)
     return 1;
 }
 
+static void pidfile_update(ice_config_t *config, int always_try)
+{
+    char *newpidfile = NULL;
+
+    if (config->pidfile) {
+        FILE *f;
+
+        /* check if the file actually changed */
+        if (pidfile && strcmp(pidfile, config->pidfile) == 0)
+            return;
+
+        ICECAST_LOG_DEBUG("New pidfile on %H", config->pidfile);
+
+        if (!always_try) {
+            if (config->chuid) {
+                ICECAST_LOG_ERROR("Can not write new pidfile, changeowner in effect.");
+                return;
+            }
+
+            if (config->chroot) {
+                ICECAST_LOG_ERROR("Can not write new pidfile, chroot in effect.");
+                return;
+            }
+        }
+
+        newpidfile = strdup(config->pidfile);
+        if (!newpidfile) {
+            ICECAST_LOG_ERROR("Can not allocate memory for pidfile filename. BAD.");
+            return;
+        }
+
+        f = fopen(newpidfile, "w");
+        if (!f) {
+            free(newpidfile);
+            ICECAST_LOG_ERROR("Can not open new pidfile for writing.");
+            return;
+        }
+
+        fprintf(f, "%lld\n", (long long int)getpid());
+        fclose(f);
+
+        ICECAST_LOG_INFO("pidfile %H updated.");
+    }
+
+    if (newpidfile != pidfile) {
+        if (pidfile)
+            remove(pidfile);
+        free(pidfile);
+        pidfile = newpidfile;
+    }
+}
+
 /* bind the socket and start listening */
 static int _server_proc_init(void)
 {
@@ -337,17 +389,7 @@ static int _server_proc_init(void)
         return 0;
     }
 
-    /* recreate the pid file */
-    if (config->pidfile)
-    {
-        FILE *f;
-        pidfile = strdup (config->pidfile);
-        if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
-        {
-            fprintf (f, "%d\n", (int)getpid());
-            fclose (f);
-        }
-    }
+    pidfile_update(config, 1);
 
     return 1;
 }
