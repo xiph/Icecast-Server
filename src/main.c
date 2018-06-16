@@ -582,6 +582,7 @@ int main(int argc, char **argv)
     }
 
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
+    ICECAST_LOG_INFO("Server's PID is %lli", (long long int)getpid());
     __log_system_name();
 
     /* REM 3D Graphics */
