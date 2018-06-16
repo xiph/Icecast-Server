@@ -710,6 +710,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 100: statusmsg = "Continue"; http_version = "1.1"; break;
                 case 101: statusmsg = "Switching Protocols"; http_version = "1.1"; break;
                 case 200: statusmsg = "OK"; break;
+                case 204: statusmsg = "No Content"; break;
                 case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
                 case 400: statusmsg = "Bad Request"; break;
                 case 401: statusmsg = "Authentication Required"; break;
@@ -766,7 +767,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               config->server_id,
                               connection_header,
                               (client && client->admin_command == ADMIN_COMMAND_ERROR ?
-                                                "GET, SOURCE" : "GET"),
+                                                "GET, SOURCE, OPTIONS" : "GET, OPTIONS"),
                               upgrade_header,
                               currenttime_buffer,
                               contenttype_buffer,

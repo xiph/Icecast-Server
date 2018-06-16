@@ -399,9 +399,9 @@ static void __append_old_style_urlauth(auth_stack_t **stack,
         xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
         xmlSetProp(role, XMLSTR("allow-admin"), XMLSTR("*"));
     } else {
-        xmlSetProp(role, XMLSTR("method"), XMLSTR("get,post,head"));
+        xmlSetProp(role, XMLSTR("method"), XMLSTR("get,post,head,options"));
         xmlSetProp(role, XMLSTR("deny-method"), XMLSTR("*"));
-        xmlSetProp(role, XMLSTR("allow-method"), XMLSTR("get,post,head"));
+        xmlSetProp(role, XMLSTR("allow-method"), XMLSTR("get,post,head,options"));
         xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
         xmlSetProp(role, XMLSTR("deny-admin"), XMLSTR("*"));
     }
@@ -1188,7 +1188,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
          }
 
          __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS,
-             NULL, NULL, "get,head,post", NULL, 0, NULL);
+             NULL, NULL, "get,head,post,options", NULL, 0, NULL);
      } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
          /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemen take care and watch your children! */
          /* Stuff that was of help:
@@ -1280,7 +1280,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
              headers, header_prefix);
          if (listener_add)
              __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-                 NULL, "get,put,head", NULL, 0, NULL);
+                 NULL, "get,put,head,options", NULL, 0, NULL);
          if (stream_auth)
              __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
                  NULL, "source,put", NULL, 0, NULL);
@@ -1841,7 +1841,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 
     if (admin_password && admin_username)
         __append_old_style_auth(&old_style, "legacy-admin", AUTH_TYPE_STATIC,
-            admin_username, admin_password, NULL, "get,post,head,stats", 1, "*");
+            admin_username, admin_password, NULL, "get,post,head,stats,options", 1, "*");
 
     if (relay_password && relay_username)
         __append_old_style_auth(&old_style, "legacy-relay", AUTH_TYPE_STATIC,
@@ -1865,7 +1865,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 
     /* default unauthed anonymous account */
     __append_old_style_auth(&old_style, "anonymous", AUTH_TYPE_ANONYMOUS,
-        NULL, NULL, NULL, "get,post,head", 1, NULL);
+        NULL, NULL, NULL, "get,post,head,options", 1, NULL);
     if (!old_style)
         ICECAST_LOG_ERROR("BAD. old_style=NULL");
 

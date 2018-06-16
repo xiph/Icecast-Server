@@ -926,6 +926,11 @@ static void _handle_get_request(client_t *client, char *uri) {
         return;
     }
 
+    if (client->parser->req_type == httpp_req_options) {
+        client_send_204(client);
+        return;
+    }
+
     if (util_check_valid_extension(uri) == XSLT_CONTENT) {
         /* If the file exists, then transform it, otherwise, write a 404 */
         ICECAST_LOG_DEBUG("Stats request, sending XSL transformed stats");
@@ -1157,15 +1162,7 @@ static void _handle_admin_request(client_t *client, char *adminuri)
 
     stats_event_inc(NULL, "client_connections");
 
-    switch (client->parser->req_type) {
-        case httpp_req_get:
-            admin_handle_request(client, adminuri);
-        break;
-        default:
-            ICECAST_LOG_ERROR("Wrong request type from client");
-            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
-        break;
-    }
+    admin_handle_request(client, adminuri);
 }
 
 /* Handle any client that passed the authing process.
@@ -1209,6 +1206,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             _handle_stats_request(client, uri);
         break;
         case httpp_req_get:
+        case httpp_req_options:
             _handle_get_request(client, uri);
         break;
         default:
@@ -1410,6 +1408,11 @@ static void _handle_connection(void)
                     }
                 } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {
                     client_send_426(client, ICECAST_REUSE_UPGRADETLS);
+                    continue;
+                }
+
+                if (strcmp(rawuri, "*") == 0) {
+                    client_send_204(client);
                     continue;
                 }
 

@@ -319,6 +319,29 @@ void client_send_101(client_t *client, reuse_t reuse)
     fserve_add_client(client, NULL);
 }
 
+void client_send_204(client_t *client)
+{
+    ssize_t ret;
+
+    if (!client)
+        return;
+
+    client->reuse = ICECAST_REUSE_KEEPALIVE;
+
+    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
+                                 0, 204, NULL,
+                                 NULL, NULL,
+                                 NULL, NULL, client);
+
+    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+             "Content-Length: 0\r\n\r\n");
+
+    client->respcode = 204;
+    client->refbuf->len = strlen(client->refbuf->data);
+
+    fserve_add_client(client, NULL);
+}
+
 void client_send_426(client_t *client, reuse_t reuse)
 {
     ssize_t ret;

@@ -540,7 +540,19 @@ void admin_handle_request(client_t *client, const char *uri)
         format = handler->format;
     }
 
-    handler->function(client, source, format);
+    switch (client->parser->req_type) {
+        case httpp_req_get:
+            handler->function(client, source, format);
+        break;
+        case httpp_req_options:
+            client_send_204(client);
+        break;
+        default:
+            ICECAST_LOG_ERROR("Wrong request type from client");
+            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
+        break;
+    }
+
     if (source) {
         avl_tree_unlock(global.source_tree);
     }
