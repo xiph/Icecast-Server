@@ -208,6 +208,21 @@ AS_IF([test "x$enable_client_tests" == "xyes"], [
 AM_CONDITIONAL([ENABLE_MODULE_CLIENT_TESTS],
                [test "x$enable_client_tests" = "xyes"])
 
+AC_ARG_WITH([default-config],
+  AS_HELP_STRING([--with-default-config=PATH],
+    [Sets default Icecast configuration file (used when no configuration file is given)])
+)
+
+AS_IF([test "$with_default_config" != "no"], [
+
+  AS_IF([test "$with_default_config" = "yes"], [
+    AC_MSG_ERROR([You need to supply a path as value for --with-default-config])
+  ])
+
+  AC_DEFINE_UNQUOTED([ICECAST_DEFAULT_CONFIG], ["$with_default_config"], [Define to default config file path])
+  
+])
+
 dnl Make substitutions
 AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_CPPFLAGS)
