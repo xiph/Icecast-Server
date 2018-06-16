@@ -563,7 +563,7 @@ int main(int argc, char **argv)
 #ifdef HAVE_SETUID
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
-    if(!getuid()) /* Running as root! Don't allow this */
+    if(!getuid() && getpid() != 1) /* Running as root! Don't allow this */
     {
         fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
