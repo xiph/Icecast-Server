@@ -1162,15 +1162,7 @@ static void _handle_admin_request(client_t *client, char *adminuri)
 
     stats_event_inc(NULL, "client_connections");
 
-    switch (client->parser->req_type) {
-        case httpp_req_get:
-            admin_handle_request(client, adminuri);
-        break;
-        default:
-            ICECAST_LOG_ERROR("Wrong request type from client");
-            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
-        break;
-    }
+    admin_handle_request(client, adminuri);
 }
 
 /* Handle any client that passed the authing process.
