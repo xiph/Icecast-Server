@@ -170,8 +170,10 @@ static int _parse_config_opts(int argc, char **argv, char *filename, size_t size
     background = 0;
     if (argc < 2) {
         if (filename[0] != 0) {
+            /* We have a default filename, so we can work with no options. */
             return 1;
         } else {
+            /* We need at least a config filename. */
             return -1;
         }
     }
