@@ -499,7 +499,7 @@ int main(int argc, char **argv)
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    res = _parse_config_opts(argc, argv, filename, 512);
+    res = _parse_config_opts(argc, argv, filename, sizeof(filename));
     if (res == 1) {
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
