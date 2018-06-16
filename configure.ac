@@ -7,6 +7,13 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AC_PROG_CC
+
+AX_CHECK_COMPILE_FLAG([-std=c99], [
+  AX_APPEND_FLAG([-std=c99])
+], [
+  AC_MSG_WARN([Compiler does not accept -std=c99 flag!])
+])
+
 AC_PROG_CC_C99
 
 AS_IF([test "${ac_cv_prog_cc_c99}" = "no"], [
