@@ -42,6 +42,7 @@
 #include "fserve.h"
 #include "stats.h"
 #include "connection.h"
+#include "main.h"
 
 #define CATMODULE                       "CONFIG"
 #define CONFIG_DEFAULT_LOCATION         "Earth"
@@ -701,6 +702,7 @@ void config_reread_config(void)
         config_set_config(&new_config);
         config = config_get_config_unlocked();
         restart_logging(config);
+        main_config_reload(config);
         connection_reread_config(config);
         yp_recheck_config(config);
         fserve_recheck_mime_types(config);
