@@ -61,7 +61,11 @@ void       tls_shutdown(void)
 tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *cipher_list)
 {
     tls_ctx_t *ctx;
+#if OPENSSL_VERSION_NUMBER < 0x1000114fL
     SSL_METHOD *method;
+#else
+    const SSL_METHOD *method;
+#endif
     long ssl_opts;
 
     if (!cert_file || !key_file || !cipher_list)
