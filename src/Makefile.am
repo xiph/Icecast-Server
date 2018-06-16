@@ -6,6 +6,7 @@ bin_PROGRAMS = icecast
 
 noinst_HEADERS = \
     admin.h \
+    main.h \
     cfgfile.h \
     logging.h \
     sighandler.h \

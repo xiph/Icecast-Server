@@ -60,6 +60,7 @@
 #include <pwd.h>
 #endif
 
+#include "main.h"
 #include "cfgfile.h"
 #include "util.h"
 #include "sighandler.h"
@@ -85,6 +86,8 @@
 
 static int background;
 static char *pidfile = NULL;
+
+static void pidfile_update(ice_config_t *config, int always_try);
 
 static void _fatal_error(const char *perr)
 {
@@ -160,6 +163,12 @@ static void shutdown_subsystems(void)
     _stop_logging();
     log_shutdown();
     xslt_shutdown();
+}
+
+void main_config_reload(ice_config_t *config)
+{
+    ICECAST_LOG_DEBUG("Reloading configuration.");
+    pidfile_update(config, 0);
 }
 
 static int _parse_config_opts(int argc, char **argv, char *filename, size_t size)
@@ -365,7 +374,7 @@ static void pidfile_update(ice_config_t *config, int always_try)
         fprintf(f, "%lld\n", (long long int)getpid());
         fclose(f);
 
-        ICECAST_LOG_INFO("pidfile %H updated.");
+        ICECAST_LOG_INFO("pidfile %H updated.", pidfile);
     }
 
     if (newpidfile != pidfile) {
