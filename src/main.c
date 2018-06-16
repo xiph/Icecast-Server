@@ -162,13 +162,21 @@ void shutdown_subsystems(void)
     xslt_shutdown();
 }
 
-static int _parse_config_opts(int argc, char **argv, char *filename, int size)
+static int _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
     int i = 1;
     int config_ok = 0;
 
     background = 0;
-    if (argc < 2) return -1;
+    if (argc < 2) {
+        if (filename[0] != 0) {
+            /* We have a default filename, so we can work with no options. */
+            return 1;
+        } else {
+            /* We need at least a config filename. */
+            return -1;
+        }
+    }
 
     while (i < argc) {
         if (strcmp(argv[i], "-b") == 0) {
@@ -493,13 +501,17 @@ int main(int argc, char **argv)
 #endif
 {
     int res, ret;
-    char filename[512];
+#ifdef ICECAST_DEFAULT_CONFIG
+    char filename[512] = ICECAST_DEFAULT_CONFIG;
+#else
+    char filename[512] = "";
+#endif
     char pbuf[1024];
 
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    res = _parse_config_opts(argc, argv, filename, 512);
+    res = _parse_config_opts(argc, argv, filename, sizeof(filename));
     if (res == 1) {
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
@@ -563,7 +575,7 @@ int main(int argc, char **argv)
 #ifdef HAVE_SETUID
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
-    if(!getuid()) /* Running as root! Don't allow this */
+    if(!getuid() && getpid() != 1) /* Running as root! Don't allow this */
     {
         fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
@@ -582,6 +594,7 @@ int main(int argc, char **argv)
     }
 
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
+    ICECAST_LOG_INFO("Server's PID is %lli", (long long int)getpid());
     __log_system_name();
 
     /* REM 3D Graphics */
