@@ -116,7 +116,7 @@ static void _stop_logging(void)
     log_close(playlistlog);
 }
 
-void initialize_subsystems(void)
+static void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
@@ -134,7 +134,7 @@ void initialize_subsystems(void)
 #endif
 }
 
-void shutdown_subsystems(void)
+static void shutdown_subsystems(void)
 {
     event_shutdown();
     fserve_shutdown();
