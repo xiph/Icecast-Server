@@ -210,7 +210,8 @@ AM_CONDITIONAL([ENABLE_MODULE_CLIENT_TESTS],
 
 AC_ARG_WITH([default-config],
   AS_HELP_STRING([--with-default-config=PATH],
-    [Sets default Icecast configuration file (used when no configuration file is given)])
+    [Sets default Icecast configuration file (used when no configuration file is given)]),
+  [], [with_default_config=no]
 )
 
 AS_IF([test "$with_default_config" != "no"], [
