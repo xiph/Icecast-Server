@@ -168,7 +168,13 @@ static int _parse_config_opts(int argc, char **argv, char *filename, size_t size
     int config_ok = 0;
 
     background = 0;
-    if (argc < 2) return -1;
+    if (argc < 2) {
+        if (filename[0] != 0) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
 
     while (i < argc) {
         if (strcmp(argv[i], "-b") == 0) {
@@ -493,7 +499,11 @@ int main(int argc, char **argv)
 #endif
 {
     int res, ret;
-    char filename[512];
+#ifdef ICECAST_DEFAULT_CONFIG
+    char filename[512] = ICECAST_DEFAULT_CONFIG;
+#else
+    char filename[512] = "";
+#endif
     char pbuf[1024];
 
     /* parse the '-c icecast.xml' option
