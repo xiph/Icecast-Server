@@ -21,8 +21,6 @@
 #include <ogg/ogg.h>
 #include <speex/speex_header.h>
 
-typedef struct source_tag source_t;
-
 #include "format_speex.h"
 #include "refbuf.h"
 #include "client.h"

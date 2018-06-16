@@ -21,8 +21,6 @@
 #include <string.h>
 #include <ogg/ogg.h>
 
-typedef struct source_tag source_t;
-
 #include "refbuf.h"
 #include "format_ogg.h"
 #include "format_kate.h"
