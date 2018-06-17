@@ -17,6 +17,7 @@
 /* for FILE* */
 #include <stdio.h>
 
+#include "common/net/sock.h"
 #include "icecasttypes.h"
 
 #define UNKNOWN_CONTENT 0

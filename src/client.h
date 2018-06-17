@@ -21,7 +21,6 @@
 
 #include "icecasttypes.h"
 #include "errors.h"
-#include "connection.h"
 #include "refbuf.h"
 #include "acl.h"
 #include "cfgfile.h"

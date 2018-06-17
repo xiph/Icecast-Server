@@ -22,8 +22,8 @@
 
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "slave.h"
 #include "common/net/sock.h"
+#include "icecasttypes.h"
 
 typedef struct ice_global_tag
 {
@@ -38,9 +38,9 @@ typedef struct ice_global_tag
 
     avl_tree *source_tree;
     /* for locally defined relays */
-    struct _relay_server *relays;
+    relay_server *relays;
     /* relays retrieved from master */
-    struct _relay_server *master_relays;
+    relay_server *master_relays;
 
     cond_t shutdown_cond;
 } ice_global_t;

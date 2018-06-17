@@ -26,8 +26,6 @@
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "icecasttypes.h"
-#include "slave.h"
-#include "connection.h"
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 

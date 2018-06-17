@@ -72,6 +72,7 @@
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
+#include "connection.h"
 #include "common/httpp/httpp.h"
 
 #include "logging.h"

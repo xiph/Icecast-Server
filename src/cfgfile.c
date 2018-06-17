@@ -36,6 +36,7 @@
 #include "auth.h"
 #include "event.h"
 #include "tls.h"
+#include "slave.h"
 
 /* for config_reread_config() */
 #include "yp.h"

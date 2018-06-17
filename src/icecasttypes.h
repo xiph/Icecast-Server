@@ -44,4 +44,25 @@ typedef struct auth_tag auth_t;
 
 typedef struct ice_config_tag ice_config_t;
 
+/* ---[ connection.[ch] ]--- */
+
+typedef struct connection_tag connection_t;
+
+typedef enum {
+    /* no TLS is used at all */
+    ICECAST_TLSMODE_DISABLED = 0,
+    /* TLS mode is to be detected */
+    ICECAST_TLSMODE_AUTO,
+    /* Like ICECAST_TLSMODE_AUTO but enforces TLS */
+    ICECAST_TLSMODE_AUTO_NO_PLAIN,
+    /* TLS via HTTP Upgrade:-header [RFC2817] */
+    ICECAST_TLSMODE_RFC2817,
+    /* TLS for transport layer like HTTPS [RFC2818] does */
+    ICECAST_TLSMODE_RFC2818
+} tlsmode_t;
+
+/* ---[ slave.[ch] ]--- */
+
+typedef struct _relay_server relay_server;
+
 #endif

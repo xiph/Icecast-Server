@@ -25,21 +25,7 @@
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
 
-typedef enum _tlsmode_tag {
-    /* no TLS is used at all */
-    ICECAST_TLSMODE_DISABLED = 0,
-    /* TLS mode is to be detected */
-    ICECAST_TLSMODE_AUTO,
-    /* Like ICECAST_TLSMODE_AUTO but enforces TLS */
-    ICECAST_TLSMODE_AUTO_NO_PLAIN,
-    /* TLS via HTTP Upgrade:-header [RFC2817] */
-    ICECAST_TLSMODE_RFC2817,
-    /* TLS for transport layer like HTTPS [RFC2818] does */
-    ICECAST_TLSMODE_RFC2818
-} tlsmode_t;
-
-typedef struct connection_tag
-{
+struct connection_tag {
     unsigned long id;
 
     time_t con_time;
@@ -52,11 +38,11 @@ typedef struct connection_tag
 
     tlsmode_t tlsmode;
     tls_t *tls;
-    int (*send)(struct connection_tag *handle, const void *buf, size_t len);
-    int (*read)(struct connection_tag *handle, void *buf, size_t len);
+    int (*send)(connection_t *handle, const void *buf, size_t len);
+    int (*read)(connection_t *handle, void *buf, size_t len);
 
     char *ip;
-} connection_t;
+};
 
 void connection_initialize(void);
 void connection_shutdown(void);
