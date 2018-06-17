@@ -34,3 +34,6 @@ config.h.in~
 
 # Ignore auxiliary files
 /tap-driver.sh
+
+# Ignore vim swap files
+.*.swp
