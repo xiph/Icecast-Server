@@ -22,8 +22,6 @@
 
 #define MAX_YP_DIRECTORIES 25
 
-struct _mount_proxy;
-
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
