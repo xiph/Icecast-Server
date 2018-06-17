@@ -44,6 +44,29 @@ typedef struct auth_tag auth_t;
 
 typedef struct ice_config_tag ice_config_t;
 
+typedef struct _config_options config_options_t;
+
+typedef enum _operation_mode {
+ /* Default operation mode. may depend on context */
+ OMODE_DEFAULT = 0,
+ /* The normal mode. */
+ OMODE_NORMAL,
+ /* Mimic some of the behavior of older versions.
+  * This mode should only be used in transition to normal mode,
+  * e.g. to give some clients time to upgrade to new API.
+  */
+ OMODE_LEGACY,
+ /* The struct mode includes some behavior for future versions
+  * that can for some reason not yet be used in the normal mode
+  * e.g. because it may break interfaces in some way.
+  * New applications should test against this mode and developer
+  * of software interacting with Icecast on an API level should
+  * have a look for strict mode behavior to avoid random breakage
+  * with newer versions of Icecast.
+  */
+ OMODE_STRICT
+} operation_mode;
+
 /* ---[ connection.[ch] ]--- */
 
 typedef struct connection_tag connection_t;
