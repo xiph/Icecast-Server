@@ -95,19 +95,19 @@ struct _client_tag {
     unsigned int pos;
 
     /* auth used for this client */
-    struct auth_tag *auth;
+    auth_t *auth;
 
     /* Format-handler-specific data for this client */
     void *format_data;
 
     /* function to call to release format specific resources */
-    void (*free_client_data)(struct _client_tag *client);
+    void (*free_client_data)(client_t *client);
 
     /* write out data associated with client */
-    int (*write_to_client)(struct _client_tag *client);
+    int (*write_to_client)(client_t *client);
 
     /* function to check if refbuf needs updating */
-    int (*check_buffer)(struct source_tag *source, struct _client_tag *client);
+    int (*check_buffer)(source_t *source, client_t *client);
 };
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);

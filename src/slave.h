@@ -14,6 +14,7 @@
 #define __SLAVE_H__
 
 #include "common/thread/thread.h"
+#include "icecasttypes.h"
 
 typedef struct _relay_server {
     char *server;
@@ -23,7 +24,7 @@ typedef struct _relay_server {
     char *password;
     char *localmount;
     char *bind;
-    struct source_tag *source;
+    source_t *source;
     int mp3metadata;
     int on_demand;
     int running;

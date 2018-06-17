@@ -17,6 +17,8 @@
 /* for FILE* */
 #include <stdio.h>
 
+#include "icecasttypes.h"
+
 #define UNKNOWN_CONTENT 0
 #define XSLT_CONTENT    1
 #define HTML_CONTENT    2
@@ -78,15 +80,13 @@ char *util_url_escape(const char *src);
  * If datablock is NULL no end-of-header nor any data is appended.
  * Returns the number of bytes written or -1 on error.
  */
-struct source_tag; /* use forward decleration so we do not need to
-                    * include <source.h> that would cause other conflicts. */
 ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int cache,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
         const char * datablock,
-        struct source_tag * source,
-        struct _client_tag * client);
+        source_t * source,
+        client_t * client);
 
 const char *util_http_select_best(const char *input, const char *first, ...);
 
