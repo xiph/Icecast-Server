@@ -27,6 +27,7 @@ struct _mount_proxy;
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
+#include "icecasttypes.h"
 #include "slave.h"
 #include "connection.h"
 
@@ -184,7 +185,7 @@ typedef struct _config_tls_context {
     char *cipher_list;
 } config_tls_context_t;
 
-typedef struct ice_config_tag {
+struct ice_config_tag {
     char *config_filename;
 
     char *location;
@@ -260,7 +261,7 @@ typedef struct ice_config_tag {
     int yp_url_timeout[MAX_YP_DIRECTORIES];
     int yp_touch_interval[MAX_YP_DIRECTORIES];
     int num_yp_directories;
-} ice_config_t;
+};
 
 typedef struct {
     rwlock_t config_lock;

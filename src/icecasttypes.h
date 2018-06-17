@@ -40,5 +40,8 @@ typedef struct acl_tag acl_t;
 
 typedef struct auth_tag auth_t;
 
+/* ---[ cfgfile.[ch] ]--- */
+
+typedef struct ice_config_tag ice_config_t;
 
 #endif
