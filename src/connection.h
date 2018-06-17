@@ -24,7 +24,6 @@
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
 
-struct _client_tag;
 struct source_tag;
 struct ice_config_tag;
 
