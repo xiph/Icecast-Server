@@ -51,6 +51,7 @@
 #include "logging.h"
 #include "xslt.h"
 #include "fserve.h"
+#include "slave.h"
 #include "sighandler.h"
 
 #include "yp.h"
@@ -61,6 +62,7 @@
 #include "auth.h"
 #include "matchfile.h"
 #include "tls.h"
+#include "acl.h"
 
 #define CATMODULE "connection"
 

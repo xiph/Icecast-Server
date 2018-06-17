@@ -23,6 +23,7 @@
 #include "icecasttypes.h"
 #include "client.h"
 #include "refbuf.h"
+#include "cfgfile.h"
 #include "common/httpp/httpp.h"
 
 typedef enum _format_type_tag

@@ -19,14 +19,12 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
+#include "common/httpp/httpp.h"
+#include "common/httpp/encoding.h"
+
 #include "icecasttypes.h"
 #include "errors.h"
 #include "refbuf.h"
-#include "acl.h"
-#include "cfgfile.h"
-#include "admin.h"
-#include "common/httpp/httpp.h"
-#include "common/httpp/encoding.h"
 
 #define CLIENT_DEFAULT_ADMIN_FORMAT                     ADMIN_FORMAT_TRANSFORMED
 

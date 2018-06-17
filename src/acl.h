@@ -19,7 +19,6 @@
 #include "common/httpp/httpp.h"
 
 #include "icecasttypes.h"
-#include "admin.h"
 
 typedef enum acl_policy_tag {
  /* Error on function call */

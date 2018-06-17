@@ -40,6 +40,7 @@
 
 #include "logging.h"
 #include "auth.h"
+#include "acl.h"
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif

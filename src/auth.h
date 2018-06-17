@@ -21,10 +21,11 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "icecasttypes.h"
-#include "cfgfile.h"
-#include "client.h"
+
 #include "common/thread/thread.h"
+#include "common/httpp/httpp.h"
+
+#include "icecasttypes.h"
 
 /* implemented */
 #define AUTH_TYPE_ANONYMOUS       "anonymous"

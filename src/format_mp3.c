@@ -32,6 +32,7 @@
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
+#include "connection.h"
 
 #include "stats.h"
 #include "format.h"

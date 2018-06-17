@@ -59,6 +59,9 @@
 #include "auth.h"
 #include "event.h"
 #include "compat.h"
+#include "connection.h"
+#include "slave.h"
+#include "acl.h"
 
 #undef CATMODULE
 #define CATMODULE "source"

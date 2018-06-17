@@ -21,7 +21,6 @@
 
 #include "icecasttypes.h"
 #include "compat.h"
-#include "common/httpp/httpp.h"
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
 

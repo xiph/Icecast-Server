@@ -16,14 +16,9 @@
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include <stdint.h>
 
 #include "icecasttypes.h"
 #include "compat.h"
-#include "refbuf.h"
-#include "client.h"
-#include "source.h"
-#include "auth.h"
 
 /* types */
 #define ADMINTYPE_ERROR   (-1)

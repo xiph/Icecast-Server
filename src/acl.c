@@ -16,6 +16,7 @@
 
 #include "acl.h"
 #include "admin.h"
+#include "util.h"
 
 #include <stdio.h>
 

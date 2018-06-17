@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "auth.h"
+#include "cfgfile.h"
 #include "client.h"
 
 #include "logging.h"
