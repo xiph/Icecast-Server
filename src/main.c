@@ -45,7 +45,6 @@
 #endif
 
 #include "common/thread/thread.h"
-#include "common/avl/avl.h"
 #include "common/net/sock.h"
 #include "common/net/resolver.h"
 #include "common/httpp/httpp.h"

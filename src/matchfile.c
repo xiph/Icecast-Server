@@ -19,10 +19,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "common/avl/avl.h"
+
 #include "matchfile.h"
 #include "logging.h"
 #include "util.h" /* for MAX_LINE_LEN and get_line() */
-#include "common/avl/avl.h"
 #define CATMODULE "matchfile"
 
 struct matchfile_tag {

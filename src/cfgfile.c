@@ -27,16 +27,13 @@
 #include <libxml/parser.h>
 
 #include "common/thread/thread.h"
+
 #include "cfgfile.h"
 #include "global.h"
-#include "refbuf.h"
-#include "client.h"
 #include "logging.h"
 #include "util.h"
 #include "auth.h"
 #include "event.h"
-#include "tls.h"
-#include "slave.h"
 
 /* for config_reread_config() */
 #include "yp.h"
@@ -44,6 +41,7 @@
 #include "stats.h"
 #include "connection.h"
 #include "main.h"
+#include "slave.h"
 
 #define CATMODULE                       "CONFIG"
 #define CONFIG_DEFAULT_LOCATION         "Earth"

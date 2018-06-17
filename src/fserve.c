@@ -47,6 +47,8 @@
 #include "common/httpp/httpp.h"
 #include "common/net/sock.h"
 
+#include "fserve.h"
+#include "compat.h"
 #include "connection.h"
 #include "global.h"
 #include "refbuf.h"
@@ -58,9 +60,6 @@
 #include "cfgfile.h"
 #include "util.h"
 #include "admin.h"
-#include "compat.h"
-
-#include "fserve.h"
 
 #undef CATMODULE
 #define CATMODULE "fserve"

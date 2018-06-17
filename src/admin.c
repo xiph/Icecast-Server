@@ -23,6 +23,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "admin.h"
+#include "compat.h"
 #include "cfgfile.h"
 #include "connection.h"
 #include "refbuf.h"
@@ -30,10 +32,8 @@
 #include "source.h"
 #include "global.h"
 #include "stats.h"
-#include "compat.h"
 #include "xslt.h"
 #include "fserve.h"
-#include "admin.h"
 #include "errors.h"
 
 #include "format.h"

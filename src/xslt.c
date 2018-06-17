@@ -46,13 +46,10 @@
 #include "common/httpp/httpp.h"
 #include "common/net/sock.h"
 
-#include "connection.h"
-
-#include "global.h"
+#include "xslt.h"
 #include "refbuf.h"
 #include "client.h"
 #include "errors.h"
-#include "config.h"
 #include "stats.h"
 #include "fserve.h"
 #include "util.h"

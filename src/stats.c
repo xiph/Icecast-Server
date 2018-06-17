@@ -30,14 +30,13 @@
 #include "common/httpp/httpp.h"
 #include "common/net/sock.h"
 
+#include "stats.h"
 #include "connection.h"
-
 #include "source.h"
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
 #include "admin.h"
-#include "stats.h"
 #include "xslt.h"
 #include "util.h"
 #include "auth.h"

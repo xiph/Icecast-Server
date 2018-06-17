@@ -21,13 +21,10 @@
 
 #include "common/thread/thread.h"
 
+#include "yp.h"
 #include "global.h"
 #include "curl.h"
-#include "connection.h"
-#include "refbuf.h"
-#include "client.h"
 #include "logging.h"
-#include "format.h"
 #include "source.h"
 #include "cfgfile.h"
 #include "stats.h"

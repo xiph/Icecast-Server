@@ -41,12 +41,12 @@
 #include "common/net/sock.h"
 #include "common/thread/thread.h"
 
-#include "cfgfile.h"
+#include "util.h"
 #include "compat.h"
+#include "cfgfile.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
-#include "util.h"
 #include "source.h"
 #include "admin.h"
 
