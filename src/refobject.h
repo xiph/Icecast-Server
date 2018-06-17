@@ -36,15 +36,15 @@ struct refobject_base_tag {
     void *userdata;
     refobject_free_t freecb;
     char *name;
-    refobject_t parent;
+    refobject_t associated;
 };
 
-refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t parent);
+refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t associated);
 int             refobject_ref(refobject_t self);
 int             refobject_unref(refobject_t self);
 void *          refobject_get_userdata(refobject_t self);
 int             refobject_set_userdata(refobject_t self, void *userdata);
 const char *    refobject_get_name(refobject_t self);
-refobject_t     refobject_get_parent(refobject_t self);
+refobject_t     refobject_get_associated(refobject_t self);
 
 #endif

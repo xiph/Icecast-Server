@@ -19,7 +19,7 @@
 
 #define TO_BASE(x) REFOBJECT_TO_TYPE((x), refobject_base_t *)
 
-refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t parent)
+refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t associated)
 {
     refobject_base_t *ret = NULL;
 
@@ -44,13 +44,13 @@ refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdat
         }
     }
 
-    if (!REFOBJECT_IS_NULL(parent)) {
-        if (refobject_ref(parent) != 0) {
+    if (!REFOBJECT_IS_NULL(associated)) {
+        if (refobject_ref(associated) != 0) {
             refobject_unref(ret);
             return REFOBJECT_NULL;
         }
 
-        ret->parent = parent;
+        ret->associated = associated;
     }
 
     return (refobject_t)ret;
@@ -139,7 +139,7 @@ const char *    refobject_get_name(refobject_t self)
     return ret;
 }
 
-refobject_t     refobject_get_parent(refobject_t self)
+refobject_t     refobject_get_associated(refobject_t self)
 {
     refobject_t ret;
 
@@ -147,7 +147,7 @@ refobject_t     refobject_get_parent(refobject_t self)
         return REFOBJECT_NULL;
 
     thread_mutex_lock(&(TO_BASE(self)->lock));
-    ret = TO_BASE(self)->parent;
+    ret = TO_BASE(self)->associated;
     thread_mutex_unlock(&(TO_BASE(self)->lock));
 
     return ret;
