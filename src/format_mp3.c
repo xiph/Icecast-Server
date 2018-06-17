@@ -55,7 +55,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
-static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
+static void write_mp3_to_file (source_t *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
@@ -715,7 +715,7 @@ static void free_mp3_client_data (client_t *client)
 }
 
 
-static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf)
+static void write_mp3_to_file (source_t *source, refbuf_t *refbuf)
 {
     if (refbuf->len == 0)
         return;

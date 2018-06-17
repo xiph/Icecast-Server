@@ -60,7 +60,7 @@ static void format_ogg_free_plugin(format_plugin_t *plugin);
 static int create_ogg_client_data(source_t *source, client_t *client);
 static void free_ogg_client_data(client_t *client);
 
-static void write_ogg_to_file(struct source_tag *source, refbuf_t *refbuf);
+static void write_ogg_to_file(source_t *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer(source_t *source);
 static int write_buf_to_client(client_t *client);
 
@@ -563,7 +563,7 @@ static int write_buf_to_client(client_t *client)
 }
 
 
-static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
+static int write_ogg_data (source_t *source, refbuf_t *refbuf)
 {
     int ret = 1;
 
@@ -578,7 +578,7 @@ static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
 }
 
 
-static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
+static void write_ogg_to_file (source_t *source, refbuf_t *refbuf)
 {
     ogg_state_t *ogg_info = source->format->_state;
 
