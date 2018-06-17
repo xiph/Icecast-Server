@@ -14,8 +14,7 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
-typedef struct source_tag source_t;
-
+#include "icecasttypes.h"
 #include "cfgfile.h"
 #include "yp.h"
 #include "util.h"

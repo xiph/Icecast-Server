@@ -19,8 +19,7 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-typedef struct _client_tag client_t;
-
+#include "icecasttypes.h"
 #include "errors.h"
 #include "connection.h"
 #include "refbuf.h"

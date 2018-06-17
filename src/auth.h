@@ -18,12 +18,10 @@
 #include <config.h>
 #endif
 
-struct source_tag;
-typedef struct auth_tag auth_t;
-
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include "icecasttypes.h"
 #include "cfgfile.h"
 #include "client.h"
 #include "common/thread/thread.h"
