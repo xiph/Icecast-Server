@@ -19,13 +19,11 @@
 
 #include "tls.h"
 
+#include "icecasttypes.h"
 #include "compat.h"
 #include "common/httpp/httpp.h"
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
-
-struct source_tag;
-struct ice_config_tag;
 
 typedef enum _tlsmode_tag {
     /* no TLS is used at all */
@@ -62,12 +60,12 @@ typedef struct connection_tag
 
 void connection_initialize(void);
 void connection_shutdown(void);
-void connection_reread_config(struct ice_config_tag *config);
+void connection_reread_config(ice_config_t *config);
 void connection_accept_loop(void);
-int connection_setup_sockets(struct ice_config_tag *config);
+int connection_setup_sockets(ice_config_t *config);
 void connection_close(connection_t *con);
 connection_t *connection_create(sock_t sock, sock_t serversock, char *ip);
-int connection_complete_source(struct source_tag *source, int response);
+int connection_complete_source(source_t *source, int response);
 void connection_queue(connection_t *con);
 void connection_uses_tls(connection_t *con);
 

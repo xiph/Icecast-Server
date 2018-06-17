@@ -144,7 +144,7 @@ void connection_shutdown(void)
     _initialized = 0;
 }
 
-void connection_reread_config(struct ice_config_tag *config)
+void connection_reread_config(ice_config_t *config)
 {
     get_tls_certificate(config);
 }
