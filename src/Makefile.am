@@ -5,6 +5,7 @@ SUBDIRS = common/avl common/net common/thread common/httpp common/log common/tim
 bin_PROGRAMS = icecast
 
 noinst_HEADERS = \
+    icecasttypes.h \
     admin.h \
     main.h \
     cfgfile.h \
