@@ -35,6 +35,9 @@ AM_MAINTAINER_MODE([enable])
 
 LT_INIT
 
+dnl Check for attributes
+AX_GCC_TYPE_ATTRIBUTE([transparent_union])
+
 dnl Checks for header files.
 AC_HEADER_ASSERT
 AC_HEADER_STDC
