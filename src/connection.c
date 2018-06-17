@@ -194,7 +194,11 @@ static unsigned long _next_connection_id(void)
 #ifdef HAVE_OPENSSL
 static void get_ssl_certificate (ice_config_t *config)
 {
+#if OPENSSL_VERSION_NUMBER < 0x1000114fL
     SSL_METHOD *method;
+#else
+    const SSL_METHOD *method;
+#endif
     long ssl_opts;
     ssl_ok = 0;
 
