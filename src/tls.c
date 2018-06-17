@@ -14,6 +14,11 @@
 #include <config.h>
 #endif
 
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
+
 #include <stdlib.h>
 #include <strings.h>
 

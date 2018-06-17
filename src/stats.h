@@ -13,14 +13,13 @@
 #ifndef __STATS_H__
 #define __STATS_H__
 
-#include "cfgfile.h"
-#include "connection.h"
-#include "common/httpp/httpp.h"
-#include "client.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "icecasttypes.h"
+#include "cfgfile.h"
+#include "refbuf.h"
 
 typedef struct _stats_node_tag
 {

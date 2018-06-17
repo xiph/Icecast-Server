@@ -14,16 +14,16 @@
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
-typedef struct source_tag source_t;
+#include <stdio.h>
 
-#include "cfgfile.h"
+#include "common/thread/thread.h"
+#include "common/httpp/httpp.h"
+
+#include "icecasttypes.h"
 #include "yp.h"
 #include "util.h"
 #include "format.h"
 #include "playlist.h"
-#include "common/thread/thread.h"
-
-#include <stdio.h>
 
 struct source_tag {
     mutex_t lock;

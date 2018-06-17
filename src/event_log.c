@@ -13,6 +13,8 @@
 #include <string.h>
 
 #include "event.h"
+#include "util.h"
+#include "cfgfile.h"
 #include "logging.h"
 #define CATMODULE "event_log"
 

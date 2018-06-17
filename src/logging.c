@@ -22,13 +22,13 @@
 #include "common/thread/thread.h"
 #include "common/httpp/httpp.h"
 
+#include "logging.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
 
 #include "compat.h"
 #include "cfgfile.h"
-#include "logging.h"
 #include "util.h"
 
 #ifdef _WIN32

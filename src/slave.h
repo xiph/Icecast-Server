@@ -14,8 +14,9 @@
 #define __SLAVE_H__
 
 #include "common/thread/thread.h"
+#include "icecasttypes.h"
 
-typedef struct _relay_server {
+struct _relay_server {
     char *server;
     int port;
     char *mount;
@@ -23,16 +24,15 @@ typedef struct _relay_server {
     char *password;
     char *localmount;
     char *bind;
-    struct source_tag *source;
+    source_t *source;
     int mp3metadata;
     int on_demand;
     int running;
     int cleanup;
     time_t start;
     thread_type *thread;
-    struct _relay_server *next;
-} relay_server;
-
+    relay_server *next;
+};
 
 void slave_initialize(void);
 void slave_shutdown(void);

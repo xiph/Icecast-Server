@@ -14,9 +14,9 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
-#include "cfgfile.h"
-#include "client.h"
 #include "common/log/log.h"
+
+#include "icecasttypes.h"
 
 /* declare the global log descriptors */
 

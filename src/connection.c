@@ -33,34 +33,30 @@
 #include <winsock2.h>
 #endif
 
-#include "compat.h"
-
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/net/sock.h"
 #include "common/httpp/httpp.h"
 
+#include "compat.h"
+#include "connection.h"
 #include "cfgfile.h"
 #include "global.h"
 #include "util.h"
-#include "connection.h"
 #include "refbuf.h"
 #include "client.h"
 #include "errors.h"
 #include "stats.h"
 #include "logging.h"
-#include "xslt.h"
 #include "fserve.h"
-#include "sighandler.h"
+#include "slave.h"
 
-#include "yp.h"
 #include "source.h"
-#include "format.h"
-#include "format_mp3.h"
 #include "admin.h"
 #include "auth.h"
 #include "matchfile.h"
 #include "tls.h"
+#include "acl.h"
 
 #define CATMODULE "connection"
 
@@ -144,7 +140,7 @@ void connection_shutdown(void)
     _initialized = 0;
 }
 
-void connection_reread_config(struct ice_config_tag *config)
+void connection_reread_config(ice_config_t *config)
 {
     get_tls_certificate(config);
 }

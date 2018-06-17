@@ -42,8 +42,9 @@
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
-#include "common/net/sock.h"
 
+#include "source.h"
+#include "compat.h"
 #include "connection.h"
 #include "global.h"
 #include "refbuf.h"
@@ -53,12 +54,12 @@
 #include "logging.h"
 #include "cfgfile.h"
 #include "util.h"
-#include "source.h"
 #include "format.h"
 #include "fserve.h"
 #include "auth.h"
 #include "event.h"
-#include "compat.h"
+#include "slave.h"
+#include "acl.h"
 
 #undef CATMODULE
 #define CATMODULE "source"

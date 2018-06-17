@@ -18,15 +18,14 @@
 #include <config.h>
 #endif
 
-struct source_tag;
-typedef struct auth_tag auth_t;
-
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "cfgfile.h"
-#include "client.h"
+
 #include "common/thread/thread.h"
+#include "common/httpp/httpp.h"
+
+#include "icecasttypes.h"
 
 /* implemented */
 #define AUTH_TYPE_ANONYMOUS       "anonymous"
@@ -58,7 +57,7 @@ typedef enum
 typedef struct auth_client_tag
 {
     client_t     *client;
-    auth_result (*process)(struct auth_tag *auth, struct auth_client_tag *auth_user);
+    auth_result (*process)(auth_t *auth, struct auth_client_tag *auth_user);
     void        (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
     void        (*on_result)(client_t *client, void *userdata, auth_result result);
     void         *userdata;
@@ -89,11 +88,11 @@ struct auth_tag
     auth_result (*release_client)(auth_client *auth_user);
 
     /* auth state-specific free call */
-    void (*free)(struct auth_tag *self);
+    void (*free)(auth_t *self);
 
-    auth_result (*adduser)(struct auth_tag *auth, const char *username, const char *password);
-    auth_result (*deleteuser)(struct auth_tag *auth, const char *username);
-    auth_result (*listuser)(struct auth_tag *auth, xmlNodePtr srcnode);
+    auth_result (*adduser)(auth_t *auth, const char *username, const char *password);
+    auth_result (*deleteuser)(auth_t *auth, const char *username);
+    auth_result (*listuser)(auth_t *auth, xmlNodePtr srcnode);
 
     mutex_t lock;
     int running;

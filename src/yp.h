@@ -14,6 +14,8 @@
 #ifndef __YP_H__
 #define __YP_H__
 
+#include "icecasttypes.h"
+
 #define  YP_SERVER_NAME         1
 #define  YP_SERVER_DESC         2
 #define  YP_SERVER_GENRE        3

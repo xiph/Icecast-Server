@@ -22,36 +22,12 @@
 
 #define MAX_YP_DIRECTORIES 25
 
-struct _mount_proxy;
-
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "slave.h"
-#include "connection.h"
+#include "icecasttypes.h"
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
-
-typedef enum _operation_mode {
- /* Default operation mode. may depend on context */
- OMODE_DEFAULT = 0,
- /* The normal mode. */
- OMODE_NORMAL,
- /* Mimic some of the behavior of older versions.
-  * This mode should only be used in transition to normal mode,
-  * e.g. to give some clients time to upgrade to new API.
-  */
- OMODE_LEGACY,
- /* The struct mode includes some behavior for future versions
-  * that can for some reason not yet be used in the normal mode
-  * e.g. because it may break interfaces in some way.
-  * New applications should test against this mode and developer
-  * of software interacting with Icecast on an API level should
-  * have a look for strict mode behavior to avoid random breakage
-  * with newer versions of Icecast.
-  */
- OMODE_STRICT
-} operation_mode;
 
 typedef enum _http_header_type {
  /* static: headers are passed as is to the client. */
@@ -79,12 +55,12 @@ typedef struct ice_config_dir_tag {
     struct ice_config_dir_tag *next;
 } ice_config_dir_t;
 
-typedef struct _config_options {
+struct _config_options {
     char *type;
     char *name;
     char *value;
-    struct _config_options *next;
-} config_options_t;
+    config_options_t *next;
+};
 
 typedef enum _mount_type {
  MOUNT_TYPE_NORMAL,
@@ -184,7 +160,7 @@ typedef struct _config_tls_context {
     char *cipher_list;
 } config_tls_context_t;
 
-typedef struct ice_config_tag {
+struct ice_config_tag {
     char *config_filename;
 
     char *location;
@@ -260,7 +236,7 @@ typedef struct ice_config_tag {
     int yp_url_timeout[MAX_YP_DIRECTORIES];
     int yp_touch_interval[MAX_YP_DIRECTORIES];
     int num_yp_directories;
-} ice_config_t;
+};
 
 typedef struct {
     rwlock_t config_lock;

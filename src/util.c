@@ -41,12 +41,12 @@
 #include "common/net/sock.h"
 #include "common/thread/thread.h"
 
-#include "cfgfile.h"
+#include "util.h"
 #include "compat.h"
+#include "cfgfile.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
-#include "util.h"
 #include "source.h"
 #include "admin.h"
 
@@ -664,7 +664,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
         const char * datablock,
-        struct source_tag * source, struct _client_tag * client) {
+        source_t * source, client_t * client) {
     const char * http_version = "1.0";
     ice_config_t *config;
     time_t now;

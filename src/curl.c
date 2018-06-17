@@ -11,6 +11,7 @@
 #endif
 
 #include "curl.h"
+#include "cfgfile.h"
 
 #include "logging.h"
 #define CATMODULE "curl"

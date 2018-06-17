@@ -16,24 +16,9 @@
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include <stdint.h>
 
-/* Command IDs */
-typedef int32_t admin_command_id_t;
-
-/* formats */
-typedef enum {
-    ADMIN_FORMAT_AUTO,
-    ADMIN_FORMAT_RAW,
-    ADMIN_FORMAT_TRANSFORMED,
-    ADMIN_FORMAT_PLAINTEXT
-} admin_format_t;
-
+#include "icecasttypes.h"
 #include "compat.h"
-#include "refbuf.h"
-#include "client.h"
-#include "source.h"
-#include "auth.h"
 
 /* types */
 #define ADMINTYPE_ERROR   (-1)

@@ -20,6 +20,9 @@
 #include "event_url.h"
 #include "logging.h"
 #include "admin.h"
+#include "connection.h"
+#include "client.h"
+#include "cfgfile.h"
 
 #define CATMODULE "event"
 

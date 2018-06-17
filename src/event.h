@@ -9,18 +9,13 @@
 #ifndef __EVENT_H__
 #define __EVENT_H__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "common/httpp/httpp.h"
 
-#include "cfgfile.h"
-#include "client.h"
-#include "source.h"
+#include "common/thread/thread.h"
+
+#include "icecasttypes.h"
 
 /* implemented */
 #define EVENT_TYPE_LOG  "log"

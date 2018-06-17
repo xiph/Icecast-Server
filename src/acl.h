@@ -18,10 +18,7 @@
 #include <libxml/tree.h>
 #include "common/httpp/httpp.h"
 
-struct acl_tag;
-typedef struct acl_tag acl_t;
-
-#include "admin.h"
+#include "icecasttypes.h"
 
 typedef enum acl_policy_tag {
  /* Error on function call */

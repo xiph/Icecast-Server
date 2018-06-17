@@ -22,6 +22,7 @@
 
 #include "event.h"
 #include "global.h"
+#include "source.h"
 #include "logging.h"
 #define CATMODULE "event_exec"
 

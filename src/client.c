@@ -42,6 +42,7 @@
 #include "logging.h"
 
 #include "util.h"
+#include "acl.h"
 
 /* for ADMIN_COMMAND_ERROR */
 #include "admin.h"

@@ -42,6 +42,7 @@
 #include "common/net/sock.h"
 #include "common/httpp/httpp.h"
 
+#include "slave.h"
 #include "cfgfile.h"
 #include "global.h"
 #include "util.h"

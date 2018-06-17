@@ -14,7 +14,8 @@
 #define __FSERVE_H__
 
 #include <stdio.h>
-#include "cfgfile.h"
+
+#include "icecasttypes.h"
 
 typedef void (*fserve_callback_t)(client_t *, void *);
 

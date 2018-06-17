@@ -9,11 +9,6 @@
 #ifndef __TLS_H__
 #define __TLS_H__
 
-#ifdef HAVE_OPENSSL
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#endif
-
 #include "common/net/sock.h"
 
 /* Do we have TLS Support? */

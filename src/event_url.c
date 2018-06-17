@@ -14,6 +14,8 @@
 
 #include "curl.h"
 #include "event.h"
+#include "cfgfile.h"
+#include "util.h"
 #include "logging.h"
 #define CATMODULE "event_url"
 
