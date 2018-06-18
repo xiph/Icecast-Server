@@ -140,8 +140,11 @@ void client_destroy(client_t *client)
         return;
 
     if (client->reuse != ICECAST_REUSE_CLOSE) {
-        client_reuseconnection(client);
-        return;
+        /* only reuse the client if we reached the body's EOF. */
+        if (client_body_eof(client) == 1) {
+            client_reuseconnection(client);
+            return;
+        }
     }
 
     /* release the buffer now, as the buffer could be on the source queue
