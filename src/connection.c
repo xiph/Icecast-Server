@@ -82,6 +82,8 @@ typedef struct client_queue_tag {
     int stream_offset;
     int shoutcast;
     char *shoutcast_mount;
+    char *bodybuffer;
+    size_t bodybufferlen;
     int tried_body;
     struct client_queue_tag *next;
 } client_queue_t;
@@ -634,7 +636,28 @@ static void process_request_body_queue (void)
 
         ICECAST_LOG_DEBUG("Got client %p in body queue.", client);
 
-        res = client_body_skip(client);
+        if (client->parser->req_type == httpp_req_post) {
+            if (node->bodybuffer == NULL && client->request_body_read == 0) {
+                if (client->request_body_length < 0) {
+                    node->bodybufferlen = body_size_limit;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                } else if (client->request_body_length <= (ssize_t)body_size_limit) {
+                    node->bodybufferlen = client->request_body_length;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                }
+            }
+        }
+
+        if (node->bodybuffer) {
+            res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
+            if (res == CLIENT_SLURP_SUCCESS) {
+                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
+                free(node->bodybuffer);
+                node->bodybuffer = NULL;
+            }
+        } else {
+            res = client_body_skip(client);
+        }
 
         if (res != CLIENT_SLURP_NEEDS_MORE_DATA || client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
             ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
@@ -1612,6 +1635,7 @@ static void _handle_connection(void)
                 if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
                     httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
+                free (node->bodybuffer);
                 free (node->shoutcast_mount);
                 free (node);
 
