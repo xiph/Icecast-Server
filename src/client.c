@@ -523,12 +523,11 @@ client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len
     if (client->request_body_length != -1) {
         /* non-streaming mode */
         size_t left = (size_t)client->request_body_length - client->request_body_read;
-        size_t ret;
 
         if (!left)
             return CLIENT_SLURP_SUCCESS;
 
-        if (*len < client->request_body_length)
+        if (*len < (size_t)client->request_body_length)
             return CLIENT_SLURP_BUFFER_TO_SMALL;
 
         if (left > 2048)
@@ -536,7 +535,7 @@ client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len
 
         client_body_read(client, buf + client->request_body_read, left);
 
-        if (client->request_body_length == client->request_body_read) {
+        if ((size_t)client->request_body_length == client->request_body_read) {
             *len = client->request_body_read;
 
             return CLIENT_SLURP_SUCCESS;
@@ -598,7 +597,7 @@ client_slurp_result_t client_body_skip(client_t *client)
 
         client_body_read(client, buf, left);
 
-        if (client->request_body_length == client->request_body_read) {
+        if ((size_t)client->request_body_length == client->request_body_read) {
             ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
             return CLIENT_SLURP_SUCCESS;
         } else {
