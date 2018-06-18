@@ -1381,6 +1381,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             _handle_stats_request(client, uri);
         break;
         case httpp_req_get:
+        case httpp_req_post:
         case httpp_req_options:
             _handle_get_request(client, uri);
         break;
@@ -1434,7 +1435,7 @@ static void _handle_authentication_mount_generic(client_t *client, void *uri, mo
     if (!mountproxy) {
         int command_type = admin_get_command_type(client->admin_command);
         if (command_type == ADMINTYPE_MOUNT || command_type == ADMINTYPE_HYBRID) {
-            const char *mount = httpp_get_query_param(client->parser, "mount");
+            const char *mount = httpp_get_param(client->parser, "mount");
             if (mount)
                 mountproxy = __find_non_admin_mount(config, mount, type);
         }
@@ -1673,7 +1674,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                client->mode = config_str_to_omode(httpp_get_query_param(client->parser, "omode"));
+                client->mode = config_str_to_omode(httpp_get_param(client->parser, "omode"));
 
                 if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
