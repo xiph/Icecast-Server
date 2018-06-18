@@ -85,11 +85,6 @@ typedef struct client_queue_tag {
     struct client_queue_tag *next;
 } client_queue_t;
 
-typedef struct _thread_queue_tag {
-    thread_type *thread_id;
-    struct _thread_queue_tag *next;
-} thread_queue_t;
-
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile unsigned long _current_id = 0;
 static int _initialized = 0;
