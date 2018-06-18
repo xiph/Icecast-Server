@@ -271,6 +271,12 @@ void connection_uses_tls(connection_t *con)
     if (con->tls)
         return;
 
+    if (con->readbufferlen) {
+        ICECAST_LOG_ERROR("Connection is now using TLS but has data put back. BAD. Discarding putback data.");
+        free(con->readbuffer);
+        con->readbufferlen = 0;
+    }
+
     con->tlsmode = ICECAST_TLSMODE_RFC2818;
     con->read = connection_read_tls;
     con->send = connection_send_tls;
@@ -282,7 +288,70 @@ void connection_uses_tls(connection_t *con)
 
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
 {
-    return con->read(con, buf, len);
+    ssize_t done = 0;
+    ssize_t ret;
+
+    if (con->readbufferlen) {
+        ICECAST_LOG_DEBUG("On connection %p we read from putback buffer, filled with %zu bytes, requested are %zu bytes", con, con->readbufferlen, len);
+        if (len >= con->readbufferlen) {
+            memcpy(buf, con->readbuffer, con->readbufferlen);
+            free(con->readbuffer);
+            if (len == con->readbufferlen) {
+                con->readbufferlen = 0;
+                return len;
+            } else {
+                len -= con->readbufferlen;
+                buf += con->readbufferlen;
+                done = con->readbufferlen;
+                con->readbufferlen = 0;
+            }
+        } else {
+            memcpy(buf, con->readbuffer, len);
+            memmove(con->readbuffer, con->readbuffer+len, con->readbufferlen-len);
+            con->readbufferlen -= len;
+            return len;
+        }
+    }
+
+    ret = con->read(con, buf, len);
+
+    if (ret < 0) {
+        if (done == 0) {
+            return ret;
+        } else {
+            return done;
+        }
+    }
+
+    return done + ret;
+}
+
+int connection_read_put_back(connection_t *con, const void *buf, size_t len)
+{
+    void *n;
+
+    if (con->readbufferlen) {
+        n = realloc(con->readbuffer, con->readbufferlen + len);
+        if (!n)
+            return -1;
+
+        memcpy(n + con->readbufferlen, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen += len;
+
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
+    } else {
+        n = malloc(len);
+        if (!n)
+            return -1;
+
+        memcpy(n, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen = len;
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
+    }
 }
 
 static sock_t wait_for_serversock(int timeout)
@@ -1043,13 +1112,10 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     httpp_initialize(parser, NULL);
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
         /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset == node->offset) {
-            client->refbuf->len = 0;
-        } else {
-            char *ptr = client->refbuf->data;
-            client->refbuf->len = node->offset - node->stream_offset;
-            memmove(ptr, ptr + node->stream_offset, client->refbuf->len);
+        if (node->stream_offset != node->offset) {
+            connection_read_put_back(client->con, client->refbuf->data + node->stream_offset, node->offset - node->stream_offset);
         }
+        client->refbuf->len = 0;
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
         node->shoutcast = 0;
@@ -1402,13 +1468,10 @@ static void _handle_connection(void)
                 const char *upgrade, *connection;
 
                 /* we may have more than just headers, so prepare for it */
-                if (node->stream_offset == node->offset) {
-                    client->refbuf->len = 0;
-                } else {
-                    char *ptr = client->refbuf->data;
-                    client->refbuf->len = node->offset - node->stream_offset;
-                    memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+                if (node->stream_offset != node->offset) {
+                    connection_read_put_back(client->con, client->refbuf->data + node->stream_offset, node->offset - node->stream_offset);
                 }
+                client->refbuf->len = 0;
 
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
 
@@ -1579,5 +1642,7 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
+    if (con->readbufferlen)
+        free(con->readbuffer);
     free(con);
 }
