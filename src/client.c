@@ -578,14 +578,20 @@ client_slurp_result_t client_body_skip(client_t *client)
     char buf[2048];
     int ret;
 
-    if (!client)
+    ICECAST_LOG_DEBUG("Slurping client %p");
+
+    if (!client) {
+        ICECAST_LOG_DEBUG("Slurping client %p ... failed");
         return CLIENT_SLURP_ERROR;
+    }
 
     if (client->request_body_length != -1) {
         size_t left = (size_t)client->request_body_length - client->request_body_read;
 
-        if (!left)
+        if (!left) {
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
             return CLIENT_SLURP_SUCCESS;
+        }
 
         if (left > sizeof(buf))
             left = sizeof(buf);
@@ -593,8 +599,10 @@ client_slurp_result_t client_body_skip(client_t *client)
         client_body_read(client, buf, left);
 
         if (client->request_body_length == client->request_body_read) {
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
             return CLIENT_SLURP_SUCCESS;
         } else {
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
             return CLIENT_SLURP_NEEDS_MORE_DATA;
         }
     } else {
@@ -604,12 +612,15 @@ client_slurp_result_t client_body_skip(client_t *client)
     ret = client_body_eof(client);
     switch (ret) {
         case 0:
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
             return CLIENT_SLURP_NEEDS_MORE_DATA;
         break;
         case 1:
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
             return CLIENT_SLURP_SUCCESS;
         break;
         default:
+            ICECAST_LOG_DEBUG("Slurping client %p ... failed");
             return CLIENT_SLURP_ERROR;
         break;
     }
