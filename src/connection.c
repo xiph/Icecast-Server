@@ -82,6 +82,7 @@ typedef struct client_queue_tag {
     int stream_offset;
     int shoutcast;
     char *shoutcast_mount;
+    int tried_body;
     struct client_queue_tag *next;
 } client_queue_t;
 
@@ -628,6 +629,8 @@ static void process_request_body_queue (void)
         client_queue_t *node = *node_ref;
         client_t *client = node->client;
         client_slurp_result_t res;
+
+        node->tried_body = 1;
 
         ICECAST_LOG_DEBUG("Got client %p in body queue.", client);
 
@@ -1529,8 +1532,13 @@ static void _update_client_request_body_length(client_t *client)
 }
 
 /* Check if we need body of client */
-static int _need_body(client_t *client)
+static int _need_body(client_queue_t *node)
 {
+    client_t *client = node->client;
+
+    if (node->tried_body)
+        return 0;
+
     if (client->parser->req_type == httpp_req_source) {
         /* SOURCE connection. */
         return 0;
@@ -1593,7 +1601,7 @@ static void _handle_connection(void)
 
                 /* early check if we need more data */
                 _update_client_request_body_length(client);
-                if (_need_body(client)) {
+                if (_need_body(node)) {
                     _add_body_client(node);
                     continue;
                 }
