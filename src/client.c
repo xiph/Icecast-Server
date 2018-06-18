@@ -124,6 +124,16 @@ static inline void client_reuseconnection(client_t *client) {
         client->con->send = NULL;
     }
 
+    if (client->con->readbufferlen) {
+        /* Aend... moorre paaiin.
+         * stealing putback buffer.
+         */
+        con->readbuffer = client->con->readbuffer;
+        con->readbufferlen = client->con->readbufferlen;
+        client->con->readbuffer = NULL;
+        client->con->readbufferlen = 0;
+    }
+
     client->reuse = ICECAST_REUSE_CLOSE;
 
     client_destroy(client);
