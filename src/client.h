@@ -43,6 +43,13 @@ typedef enum _reuse_tag {
     ICECAST_REUSE_UPGRADETLS
 } reuse_t;
 
+typedef enum {
+    CLIENT_SLURP_ERROR,
+    CLIENT_SLURP_NEEDS_MORE_DATA,
+    CLIENT_SLURP_BUFFER_TO_SMALL,
+    CLIENT_SLURP_SUCCESS
+} client_slurp_result_t;
+
 struct _client_tag {
     /* mode of operation for this client */
     operation_mode mode;
@@ -132,5 +139,7 @@ int client_read_bytes (client_t *client, void *buf, unsigned len);
 void client_set_queue (client_t *client, refbuf_t *refbuf);
 ssize_t client_body_read(client_t *client, void *buf, size_t len);
 int client_body_eof(client_t *client);
+client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len);
+client_slurp_result_t client_body_skip(client_t *client);
 
 #endif  /* __CLIENT_H__ */

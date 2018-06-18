@@ -514,3 +514,103 @@ int client_body_eof(client_t *client)
     ICECAST_LOG_DEBUG("... result is: %i (client=%p)", ret, client);
     return ret;
 }
+
+client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len)
+{
+    if (!client || !buf || !len)
+        return CLIENT_SLURP_ERROR;
+
+    if (client->request_body_length != -1) {
+        /* non-streaming mode */
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+        size_t ret;
+
+        if (!left)
+            return CLIENT_SLURP_SUCCESS;
+
+        if (*len < client->request_body_length)
+            return CLIENT_SLURP_BUFFER_TO_SMALL;
+
+        if (left > 2048)
+            left = 2048;
+
+        client_body_read(client, buf + client->request_body_read, left);
+
+        if (client->request_body_length == client->request_body_read) {
+            *len = client->request_body_read;
+
+            return CLIENT_SLURP_SUCCESS;
+        } else {
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        }
+    } else {
+        /* streaming mode */
+        size_t left = *len - client->request_body_read;
+        int ret;
+
+        if (left) {
+            if (left > 2048)
+                left = 2048;
+
+            client_body_read(client, buf + client->request_body_read, left);
+        }
+
+        ret = client_body_eof(client);
+        switch (ret) {
+            case 0:
+                if (*len == client->request_body_read) {
+                    return CLIENT_SLURP_BUFFER_TO_SMALL;
+                }
+                return CLIENT_SLURP_NEEDS_MORE_DATA;
+            break;
+            case 1:
+                return CLIENT_SLURP_SUCCESS;
+            break;
+            default:
+                return CLIENT_SLURP_ERROR;
+            break;
+        }
+    }
+}
+
+client_slurp_result_t client_body_skip(client_t *client)
+{
+    char buf[2048];
+    int ret;
+
+    if (!client)
+        return CLIENT_SLURP_ERROR;
+
+    if (client->request_body_length != -1) {
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+
+        if (!left)
+            return CLIENT_SLURP_SUCCESS;
+
+        if (left > sizeof(buf))
+            left = sizeof(buf);
+
+        client_body_read(client, buf, left);
+
+        if (client->request_body_length == client->request_body_read) {
+            return CLIENT_SLURP_SUCCESS;
+        } else {
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        }
+    } else {
+        client_body_read(client, buf, sizeof(buf));
+    }
+
+    ret = client_body_eof(client);
+    switch (ret) {
+        case 0:
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        break;
+        case 1:
+            return CLIENT_SLURP_SUCCESS;
+        break;
+        default:
+            return CLIENT_SLURP_ERROR;
+        break;
+    }
+}
