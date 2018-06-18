@@ -611,10 +611,18 @@ static void _add_body_client(client_queue_t *node)
 static void process_request_body_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_body_queue;
+    ice_config_t *config;
+    time_t timeout;
+    size_t body_size_limit;
 
     ICECAST_LOG_DEBUG("Processing body queue.");
 
     ICECAST_LOG_DEBUG("_body_queue=%p, &_body_queue=%p, _body_queue_tail=%p", _body_queue, &_body_queue, _body_queue_tail);
+
+    config = config_get_config();
+    timeout = time(NULL) - config->body_timeout;
+    body_size_limit = config->body_size_limit;
+    config_release_config();
 
     while (*node_ref) {
         client_queue_t *node = *node_ref;
@@ -625,7 +633,7 @@ static void process_request_body_queue (void)
 
         res = client_body_skip(client);
 
-        if (res != CLIENT_SLURP_NEEDS_MORE_DATA) {
+        if (res != CLIENT_SLURP_NEEDS_MORE_DATA || client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
             ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
 
             if ((client_queue_t **)_body_queue_tail == &(node->next))

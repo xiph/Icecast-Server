@@ -26,6 +26,7 @@
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "icecasttypes.h"
+#include "compat.h"
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
@@ -170,11 +171,13 @@ struct ice_config_tag {
 
     int client_limit;
     int source_limit;
+    int body_size_limit;
     unsigned int queue_size_limit;
     unsigned int burst_size;
     int client_timeout;
     int header_timeout;
     int source_timeout;
+    int body_timeout;
     int fileserve;
     int on_demand; /* global setting for all relays */
 
