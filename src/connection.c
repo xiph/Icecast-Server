@@ -1431,6 +1431,50 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     global_unlock();
 }
 
+static void _update_client_request_body_length(client_t *client)
+{
+    const char *header;
+    long long unsigned int scannumber;
+    int have = 0;
+
+    if (!have) {
+        if (client->parser->req_type == httpp_req_source) {
+            client->request_body_length = -1; /* streaming */
+            have = 1;
+        }
+    }
+
+    if (!have) {
+        header = httpp_getvar(client->parser, "transfer-encoding");
+        if (header) {
+            if (strcasecmp(header, "identity") != 0) {
+                client->request_body_length = -1; /* streaming */
+                have = 1;
+            }
+        }
+    }
+
+    if (!have) {
+        header = httpp_getvar(client->parser, "content-length");
+        if (header) {
+            if (sscanf(header, "%llu", &scannumber) == 1) {
+                client->request_body_length = scannumber;
+                have = 1;
+            }
+        }
+    }
+
+    if (!have) {
+        if (client->parser->req_type == httpp_req_put) {
+            /* As we don't know yet, we asume this PUT is in streaming mode */
+            client->request_body_length = -1; /* streaming */
+            have = 1;
+        }
+    }
+
+    ICECAST_LOG_DEBUG("Client %p has request_body_length=%zi", client, client->request_body_length);
+}
+
 /* Connection thread. Here we take clients off the connection queue and check
  * the contents provided. We set up the parser then hand off to the specific
  * request handler.
@@ -1488,6 +1532,8 @@ static void _handle_connection(void)
                     client_destroy (client);
                     continue;
                 }
+
+                _update_client_request_body_length(client);
 
                 upgrade = httpp_getvar(parser, "upgrade");
                 connection = httpp_getvar(parser, "connection");

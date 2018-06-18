@@ -87,6 +87,8 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->con = con;
     client->parser = parser;
     client->protocol = ICECAST_PROTOCOL_HTTP;
+    client->request_body_length = 0;
+    client->request_body_read = 0;
     client->admin_command = ADMIN_COMMAND_ERROR;
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     client->refbuf->len = 0; /* force reader code to ignore buffer contents */
@@ -439,8 +441,25 @@ void client_set_queue(client_t *client, refbuf_t *refbuf)
 
 ssize_t client_body_read(client_t *client, void *buf, size_t len)
 {
+    ssize_t ret;
+
     ICECAST_LOG_DEBUG("Reading from body (client=%p)", client);
-    return client_read_bytes(client, buf, len);
+
+    if (client->request_body_length != -1) {
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+        if (len > left) {
+            ICECAST_LOG_DEBUG("Limiting read request to left over body size: left %zu byte, requested %zu byte", left, len);
+            len = left;
+        }
+    }
+
+    ret = client_read_bytes(client, buf, len);
+
+    if (ret > 0) {
+        client->request_body_read += ret;
+    }
+
+    return ret;
 }
 
 /* we might un-static this if needed at some time in distant future. -- ph3-der-loewe, 2018-04-17 */
@@ -468,7 +487,10 @@ int client_body_eof(client_t *client)
     if (!client)
         return -1;
 
-    if (client->encoding) {
+    if (client->request_body_length != -1 && client->request_body_read == (size_t)client->request_body_length) {
+        ICECAST_LOG_DEBUG("Reached given body length (client=%p)", client);
+        ret = 1;
+    } else if (client->encoding) {
         ICECAST_LOG_DEBUG("Looking for body EOF with encoding (client=%p)", client);
         ret = httpp_encoding_eof(client->encoding, (int(*)(void*))client_eof, client);
     } else {

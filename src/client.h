@@ -62,6 +62,14 @@ struct _client_tag {
     /* protocol client uses */
     protocol_t protocol;
 
+    /* http request body length
+     * -1 for streaming (e.g. chunked), 0 for no body, >0 for NNN bytes
+     */
+    ssize_t request_body_length;
+
+    /* http request body length read so far */
+    size_t request_body_read;
+
     /* http response code for this client */
     int respcode;
 
