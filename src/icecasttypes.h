@@ -92,6 +92,12 @@ typedef enum {
 
 typedef struct _relay_server relay_server;
 
+/* ---[ module.[ch] ]--- */
+
+typedef struct module_tag module_t;
+
+typedef struct module_container_tag module_container_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -99,6 +105,8 @@ typedef struct refobject_base_tag refobject_base_t;
 #ifdef HAVE_TYPE_ATTRIBUTE_TRANSPARENT_UNION
 typedef union __attribute__ ((__transparent_union__)) {
     refobject_base_t *refobject_base;
+    module_t *module;
+    module_container_t *module_container;
 } refobject_t;
 #else
 typedef void * refobject_t;

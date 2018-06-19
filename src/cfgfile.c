@@ -562,6 +562,8 @@ static void config_clear_resource(resource_t *resource)
         xmlFree(resource->destination);
         xmlFree(resource->bind_address);
         xmlFree(resource->vhost);
+        xmlFree(resource->module);
+        xmlFree(resource->handler);
         free(resource);
         resource = nextresource;
     }
@@ -1947,6 +1949,9 @@ static void _parse_resource(xmlDocPtr      doc,
     resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
 
     resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
+
+    resource->module = (char *)xmlGetProp(node, XMLSTR("module"));
+    resource->handler = (char *)xmlGetProp(node, XMLSTR("handler"));
 
     temp = (char *)xmlGetProp(node, XMLSTR("omode"));
     if (temp) {

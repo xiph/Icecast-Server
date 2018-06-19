@@ -42,6 +42,8 @@ typedef struct ice_global_tag
     /* relays retrieved from master */
     relay_server *master_relays;
 
+    module_container_t *modulecontainer;
+
     cond_t shutdown_cond;
 } ice_global_t;
 

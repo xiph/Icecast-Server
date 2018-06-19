@@ -25,6 +25,7 @@
 #include "icecasttypes.h"
 #include "errors.h"
 #include "refbuf.h"
+#include "module.h"
 
 #define CLIENT_DEFAULT_ADMIN_FORMAT                     ADMIN_FORMAT_TRANSFORMED
 
@@ -81,6 +82,10 @@ struct _client_tag {
 
     /* active ACL, set as soon as the client is authenticated */
     acl_t *acl;
+
+    /* Handler module and function */
+    module_t *handler_module;
+    char *handler_function;
 
     /* is client getting intro data */
     long intro_offset;
