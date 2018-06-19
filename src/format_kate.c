@@ -21,6 +21,7 @@
 #include <string.h>
 #include <ogg/ogg.h>
 
+#include "compat.h"
 #include "refbuf.h"
 #include "format_ogg.h"
 #include "format_kate.h"
@@ -34,7 +35,7 @@
 typedef struct _kate_codec_tag
 {
     int             headers_done;
-    int             num_headers;
+    size_t          num_headers;
     int             granule_shift;
     ogg_int64_t     last_iframe;
     ogg_int64_t     prev_granulepos;
