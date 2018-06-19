@@ -20,6 +20,8 @@ AS_IF([test "${ac_cv_prog_cc_c99}" = "no"], [
   AC_MSG_ERROR([No C99 compiler found!])
 ])
 
+AX_APPEND_COMPILE_FLAGS([-Wall -Wextra -Wno-unused-parameter])
+
 AC_SYS_LARGEFILE
 AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
 
