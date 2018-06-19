@@ -15,7 +15,7 @@
 							<h3>Mountpoint  <xsl:value-of select="@mount" /></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
-							<form method="get" action="/admin/metadata.xsl">
+							<form method="post" action="/admin/metadata.xsl">
 								<label for="metadata" class="hidden">Metadata</label>
 								<input type="text" id="metadata" name="song" value="" placeholder="Click to edit" required="required" />
 								<input type="hidden" name="mount" value="{@mount}" />
