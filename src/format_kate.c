@@ -36,7 +36,6 @@ typedef struct _kate_codec_tag
 {
     int             headers_done;
     size_t          num_headers;
-    int             granule_shift;
     ogg_int64_t     last_iframe;
     ogg_int64_t     prev_granulepos;
 } kate_codec_t;
