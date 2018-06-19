@@ -79,7 +79,6 @@
 typedef struct client_queue_tag {
     client_t *client;
     int offset;
-    int stream_offset;
     int shoutcast;
     char *shoutcast_mount;
     char *bodybuffer;
@@ -537,6 +536,7 @@ static void process_request_queue (void)
         }
 
         if (len > 0) {
+            ssize_t stream_offset = -1;
             int pass_it = 1;
             char *ptr;
 
@@ -558,23 +558,27 @@ static void process_request_queue (void)
                  * http style headers, we don't want to lose those */
                 ptr = strstr(client->refbuf->data, "\r\r\n\r\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+6) - client->refbuf->data;
+                    stream_offset = (ptr+6) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\r\n\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+4) - client->refbuf->data;
+                    stream_offset = (ptr+4) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\n\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+2) - client->refbuf->data;
+                    stream_offset = (ptr+2) - client->refbuf->data;
                     break;
                 }
                 pass_it = 0;
             } while (0);
 
             if (pass_it) {
+                if (stream_offset != -1) {
+                    connection_read_put_back(client->con, client->refbuf->data + stream_offset, node->offset - stream_offset);
+                    node->offset = stream_offset;
+                }
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
@@ -923,8 +927,7 @@ static inline void source_startup(client_t *client, const char *uri)
             ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
             snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
             ok->len = strlen(ok->data);
-            /* we may have unprocessed data read in, so don't overwrite it */
-            ok->associated = client->refbuf;
+            refbuf_release(client->refbuf);
             client->refbuf = ok;
             fserve_add_client_callback(client, source_client_callback, source);
         }
@@ -1189,11 +1192,6 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset != node->offset) {
-            connection_read_put_back(client->con, client->refbuf->data + node->stream_offset, node->offset - node->stream_offset);
-            node->offset = node->stream_offset;
-        }
         client->refbuf->len = 0;
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
@@ -1616,11 +1614,6 @@ static void _handle_connection(void)
                 char *uri;
                 const char *upgrade, *connection;
 
-                /* we may have more than just headers, so prepare for it */
-                if (node->stream_offset != node->offset) {
-                    connection_read_put_back(client->con, client->refbuf->data + node->stream_offset, node->offset - node->stream_offset);
-                    node->offset = node->stream_offset;
-                }
                 client->refbuf->len = 0;
 
                 /* early check if we need more data */
