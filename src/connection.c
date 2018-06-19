@@ -613,6 +613,42 @@ static void _add_body_client(client_queue_t *node)
     thread_spin_unlock(&_connection_lock);
 }
 
+static client_slurp_result_t process_request_body_queue_one(client_queue_t *node, time_t timeout, size_t body_size_limit)
+{
+        client_t *client = node->client;
+        client_slurp_result_t res;
+
+        if (client->parser->req_type == httpp_req_post) {
+            if (node->bodybuffer == NULL && client->request_body_read == 0) {
+                if (client->request_body_length < 0) {
+                    node->bodybufferlen = body_size_limit;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                } else if (client->request_body_length <= (ssize_t)body_size_limit) {
+                    node->bodybufferlen = client->request_body_length;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                }
+            }
+        }
+
+        if (node->bodybuffer) {
+            res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
+            if (res == CLIENT_SLURP_SUCCESS) {
+                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
+                free(node->bodybuffer);
+                node->bodybuffer = NULL;
+            }
+        } else {
+            res = client_body_skip(client);
+        }
+
+        if (res != CLIENT_SLURP_SUCCESS) {
+            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
+                return CLIENT_SLURP_ERROR;
+            }
+        }
+
+        return res;
+}
 
 /* This queue reads data from the body of clients. */
 static void process_request_body_queue (void)
@@ -640,30 +676,9 @@ static void process_request_body_queue (void)
 
         ICECAST_LOG_DEBUG("Got client %p in body queue.", client);
 
-        if (client->parser->req_type == httpp_req_post) {
-            if (node->bodybuffer == NULL && client->request_body_read == 0) {
-                if (client->request_body_length < 0) {
-                    node->bodybufferlen = body_size_limit;
-                    node->bodybuffer = malloc(node->bodybufferlen);
-                } else if (client->request_body_length <= (ssize_t)body_size_limit) {
-                    node->bodybufferlen = client->request_body_length;
-                    node->bodybuffer = malloc(node->bodybufferlen);
-                }
-            }
-        }
+        res = process_request_body_queue_one(node, timeout, body_size_limit);
 
-        if (node->bodybuffer) {
-            res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
-            if (res == CLIENT_SLURP_SUCCESS) {
-                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
-                free(node->bodybuffer);
-                node->bodybuffer = NULL;
-            }
-        } else {
-            res = client_body_skip(client);
-        }
-
-        if (res != CLIENT_SLURP_NEEDS_MORE_DATA || client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
+        if (res != CLIENT_SLURP_NEEDS_MORE_DATA) {
             ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
 
             if ((client_queue_t **)_body_queue_tail == &(node->next))
@@ -1619,8 +1634,27 @@ static void _handle_connection(void)
                 /* early check if we need more data */
                 _update_client_request_body_length(client);
                 if (_need_body(node)) {
-                    _add_body_client(node);
-                    continue;
+                    /* Just calling _add_body_client() would do the job.
+                     * However, if the client only has a small body this might work without moving it between queues.
+                     * -> much faster.
+                     */
+                    client_slurp_result_t res;
+                    ice_config_t *config;
+                    time_t timeout;
+                    size_t body_size_limit;
+
+                    config = config_get_config();
+                    timeout = time(NULL) - config->body_timeout;
+                    body_size_limit = config->body_size_limit;
+                    config_release_config();
+
+                    res = process_request_body_queue_one(node, timeout, body_size_limit);
+                    if (res != CLIENT_SLURP_SUCCESS) {
+                        _add_body_client(node);
+                        continue;
+                    } else {
+                        ICECAST_LOG_DEBUG("Success on fast lane");
+                    }
                 }
 
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
