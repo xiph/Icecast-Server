@@ -171,6 +171,8 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
         avl_tree_free (htpasswd->users, _free_user);
     htpasswd->users = new_users;
     thread_rwlock_unlock (&htpasswd->file_rwlock);
+
+    ICECAST_LOG_ERROR("xxx");
 }
 
 
@@ -191,7 +193,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     }
     htpasswd_recheckfile (htpasswd);
 
-    if (htpasswd->users) {
+    if (htpasswd->users == NULL) {
         ICECAST_LOG_ERROR("No user list.");
         return AUTH_NOMATCH;
     }
@@ -262,14 +264,14 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     htpasswd_user entry;
     void *result;
 
-    if (!state->filename) {
+    if (state->filename == NULL) {
         ICECAST_LOG_ERROR("No filename given in options for authenticator.");
         return AUTH_FAILED;
     }
 
     htpasswd_recheckfile (state);
 
-    if (state->users) {
+    if (state->users == NULL) {
         ICECAST_LOG_ERROR("No user list.");
         return AUTH_FAILED;
     }
@@ -322,7 +324,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         return AUTH_FAILED;
     }
 
-    if (state->users) {
+    if (state->users == NULL) {
         ICECAST_LOG_ERROR("No user list.");
         return AUTH_FAILED;
     }
@@ -416,7 +418,7 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 
     htpasswd_recheckfile(state);
 
-    if (state->users) {
+    if (state->users == NULL) {
         ICECAST_LOG_ERROR("No user list.");
         return AUTH_FAILED;
     }
