@@ -1689,7 +1689,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                if (strcmp(rawuri, "*") == 0) {
+                if (parser->req_type == httpp_req_options && strcmp(rawuri, "*") == 0) {
                     client_send_204(client);
                     continue;
                 }
