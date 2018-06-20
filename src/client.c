@@ -32,6 +32,7 @@
 #include "refobject.h"
 #include "cfgfile.h"
 #include "connection.h"
+#include "tls.h"
 #include "refbuf.h"
 #include "format.h"
 #include "stats.h"
@@ -86,6 +87,8 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->con = con;
     client->parser = parser;
     client->protocol = ICECAST_PROTOCOL_HTTP;
+    client->request_body_length = 0;
+    client->request_body_read = 0;
     client->admin_command = ADMIN_COMMAND_ERROR;
     client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
     client->refbuf->len = 0; /* force reader code to ignore buffer contents */
@@ -121,6 +124,16 @@ static inline void client_reuseconnection(client_t *client) {
         client->con->send = NULL;
     }
 
+    if (client->con->readbufferlen) {
+        /* Aend... moorre paaiin.
+         * stealing putback buffer.
+         */
+        con->readbuffer = client->con->readbuffer;
+        con->readbufferlen = client->con->readbufferlen;
+        client->con->readbuffer = NULL;
+        client->con->readbufferlen = 0;
+    }
+
     client->reuse = ICECAST_REUSE_CLOSE;
 
     client_destroy(client);
@@ -137,8 +150,11 @@ void client_destroy(client_t *client)
         return;
 
     if (client->reuse != ICECAST_REUSE_CLOSE) {
-        client_reuseconnection(client);
-        return;
+        /* only reuse the client if we reached the body's EOF. */
+        if (client_body_eof(client) == 1) {
+            client_reuseconnection(client);
+            return;
+        }
     }
 
     /* release the buffer now, as the buffer could be on the source queue
@@ -434,4 +450,177 @@ void client_set_queue(client_t *client, refbuf_t *refbuf)
     client->pos = 0;
     if (to_release)
         refbuf_release(to_release);
+}
+
+ssize_t client_body_read(client_t *client, void *buf, size_t len)
+{
+    ssize_t ret;
+
+    ICECAST_LOG_DEBUG("Reading from body (client=%p)", client);
+
+    if (client->request_body_length != -1) {
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+        if (len > left) {
+            ICECAST_LOG_DEBUG("Limiting read request to left over body size: left %zu byte, requested %zu byte", left, len);
+            len = left;
+        }
+    }
+
+    ret = client_read_bytes(client, buf, len);
+
+    if (ret > 0) {
+        client->request_body_read += ret;
+    }
+
+    return ret;
+}
+
+/* we might un-static this if needed at some time in distant future. -- ph3-der-loewe, 2018-04-17 */
+static int client_eof(client_t *client)
+{
+    if (!client)
+        return -1;
+
+    if (!client->con)
+        return 0;
+
+    if (client->con->tls && tls_got_shutdown(client->con->tls) > 1)
+        client->con->error = 1;
+
+    if (client->con->error)
+        return 1;
+
+    return 0;
+}
+
+int client_body_eof(client_t *client)
+{
+    int ret = -1;
+
+    if (!client)
+        return -1;
+
+    if (client->request_body_length != -1 && client->request_body_read == (size_t)client->request_body_length) {
+        ICECAST_LOG_DEBUG("Reached given body length (client=%p)", client);
+        ret = 1;
+    } else if (client->encoding) {
+        ICECAST_LOG_DEBUG("Looking for body EOF with encoding (client=%p)", client);
+        ret = httpp_encoding_eof(client->encoding, (int(*)(void*))client_eof, client);
+    } else {
+        ICECAST_LOG_DEBUG("Looking for body EOF without encoding (client=%p)", client);
+        ret = client_eof(client);
+    }
+
+    ICECAST_LOG_DEBUG("... result is: %i (client=%p)", ret, client);
+    return ret;
+}
+
+client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len)
+{
+    if (!client || !buf || !len)
+        return CLIENT_SLURP_ERROR;
+
+    if (client->request_body_length != -1) {
+        /* non-streaming mode */
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+
+        if (!left)
+            return CLIENT_SLURP_SUCCESS;
+
+        if (*len < (size_t)client->request_body_length)
+            return CLIENT_SLURP_BUFFER_TO_SMALL;
+
+        if (left > 2048)
+            left = 2048;
+
+        client_body_read(client, buf + client->request_body_read, left);
+
+        if ((size_t)client->request_body_length == client->request_body_read) {
+            *len = client->request_body_read;
+
+            return CLIENT_SLURP_SUCCESS;
+        } else {
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        }
+    } else {
+        /* streaming mode */
+        size_t left = *len - client->request_body_read;
+        int ret;
+
+        if (left) {
+            if (left > 2048)
+                left = 2048;
+
+            client_body_read(client, buf + client->request_body_read, left);
+        }
+
+        ret = client_body_eof(client);
+        switch (ret) {
+            case 0:
+                if (*len == client->request_body_read) {
+                    return CLIENT_SLURP_BUFFER_TO_SMALL;
+                }
+                return CLIENT_SLURP_NEEDS_MORE_DATA;
+            break;
+            case 1:
+                return CLIENT_SLURP_SUCCESS;
+            break;
+            default:
+                return CLIENT_SLURP_ERROR;
+            break;
+        }
+    }
+}
+
+client_slurp_result_t client_body_skip(client_t *client)
+{
+    char buf[2048];
+    int ret;
+
+    ICECAST_LOG_DEBUG("Slurping client %p");
+
+    if (!client) {
+        ICECAST_LOG_DEBUG("Slurping client %p ... failed");
+        return CLIENT_SLURP_ERROR;
+    }
+
+    if (client->request_body_length != -1) {
+        size_t left = (size_t)client->request_body_length - client->request_body_read;
+
+        if (!left) {
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            return CLIENT_SLURP_SUCCESS;
+        }
+
+        if (left > sizeof(buf))
+            left = sizeof(buf);
+
+        client_body_read(client, buf, left);
+
+        if ((size_t)client->request_body_length == client->request_body_read) {
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            return CLIENT_SLURP_SUCCESS;
+        } else {
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        }
+    } else {
+        client_body_read(client, buf, sizeof(buf));
+    }
+
+    ret = client_body_eof(client);
+    switch (ret) {
+        case 0:
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
+            return CLIENT_SLURP_NEEDS_MORE_DATA;
+        break;
+        case 1:
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            return CLIENT_SLURP_SUCCESS;
+        break;
+        default:
+            ICECAST_LOG_DEBUG("Slurping client %p ... failed");
+            return CLIENT_SLURP_ERROR;
+        break;
+    }
 }

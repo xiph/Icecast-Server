@@ -516,10 +516,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         source->last_read = current;
         refbuf = source->format->get_buffer (source);
-        if (source->client->con->tls && tls_got_shutdown(source->client->con->tls) > 1)
-            source->client->con->error = 1;
-        if (source->client->con && source->client->con->error)
-        {
+        if (client_body_eof(source->client)) {
             ICECAST_LOG_INFO("End of Stream %s", source->mount);
             source->running = 0;
             continue;
@@ -1321,7 +1318,6 @@ void source_client_callback (client_t *client, void *arg)
 {
     const char *agent;
     source_t *source = arg;
-    refbuf_t *old_data = client->refbuf;
 
     if (client->con->error)
     {
@@ -1332,9 +1328,9 @@ void source_client_callback (client_t *client, void *arg)
         source_free_source (source);
         return;
     }
-    client->refbuf = old_data->associated;
-    old_data->associated = NULL;
-    refbuf_release (old_data);
+
+    client->refbuf->len = 0;
+
     stats_event (source->mount, "source_ip", source->client->con->ip);
     agent = httpp_getvar (source->client->parser, "user-agent");
     if (agent)

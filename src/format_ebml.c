@@ -317,7 +317,7 @@ static refbuf_t *ebml_get_buffer(source_t *source)
         } else if(read_bytes == 0) {
             /* Feed more bytes into the parser */
             write_buffer = ebml_get_write_buffer(ebml_source_state->ebml, &write_bytes);
-            read_bytes = client_read_bytes (source->client, write_buffer, write_bytes);
+            read_bytes = client_body_read(source->client, write_buffer, write_bytes);
             if (read_bytes <= 0) {
                 ebml_wrote (ebml_source_state->ebml, 0);
                 return NULL;

@@ -53,7 +53,7 @@
 							<!-- Form to add Users -->
 							<xsl:if test="@can-adduser = 'true'">
 								<h4>Add User</h4>
-								<form method="get" action="manageauth.xsl">
+								<form method="post" action="manageauth.xsl">
 									<label for="username" class="hidden">Username</label>
 									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
 									<label for="password" class="hidden">Password</label>

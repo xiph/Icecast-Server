@@ -79,16 +79,13 @@
 typedef struct client_queue_tag {
     client_t *client;
     int offset;
-    int stream_offset;
     int shoutcast;
     char *shoutcast_mount;
+    char *bodybuffer;
+    size_t bodybufferlen;
+    int tried_body;
     struct client_queue_tag *next;
 } client_queue_t;
-
-typedef struct _thread_queue_tag {
-    thread_type *thread_id;
-    struct _thread_queue_tag *next;
-} thread_queue_t;
 
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile unsigned long _current_id = 0;
@@ -96,6 +93,7 @@ static int _initialized = 0;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
+static volatile client_queue_t *_body_queue = NULL, **_body_queue_tail = &_body_queue;
 static int tls_ok;
 static tls_ctx_t *tls_ctx;
 
@@ -120,6 +118,8 @@ void connection_initialize(void)
     _req_queue_tail = &_req_queue;
     _con_queue = NULL;
     _con_queue_tail = &_con_queue;
+    _body_queue = NULL;
+    _body_queue_tail = &_body_queue;
 
     _initialized = 1;
 }
@@ -271,6 +271,12 @@ void connection_uses_tls(connection_t *con)
     if (con->tls)
         return;
 
+    if (con->readbufferlen) {
+        ICECAST_LOG_ERROR("Connection is now using TLS but has data put back. BAD. Discarding putback data.");
+        free(con->readbuffer);
+        con->readbufferlen = 0;
+    }
+
     con->tlsmode = ICECAST_TLSMODE_RFC2818;
     con->read = connection_read_tls;
     con->send = connection_send_tls;
@@ -282,7 +288,71 @@ void connection_uses_tls(connection_t *con)
 
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
 {
-    return con->read(con, buf, len);
+    ssize_t done = 0;
+    ssize_t ret;
+
+    if (con->readbufferlen) {
+        ICECAST_LOG_DEBUG("On connection %p we read from putback buffer, filled with %zu bytes, requested are %zu bytes", con, con->readbufferlen, len);
+        if (len >= con->readbufferlen) {
+            memcpy(buf, con->readbuffer, con->readbufferlen);
+            free(con->readbuffer);
+            ICECAST_LOG_DEBUG("New fill in buffer=<empty>");
+            if (len == con->readbufferlen) {
+                con->readbufferlen = 0;
+                return len;
+            } else {
+                len -= con->readbufferlen;
+                buf += con->readbufferlen;
+                done = con->readbufferlen;
+                con->readbufferlen = 0;
+            }
+        } else {
+            memcpy(buf, con->readbuffer, len);
+            memmove(con->readbuffer, con->readbuffer+len, con->readbufferlen-len);
+            con->readbufferlen -= len;
+            return len;
+        }
+    }
+
+    ret = con->read(con, buf, len);
+
+    if (ret < 0) {
+        if (done == 0) {
+            return ret;
+        } else {
+            return done;
+        }
+    }
+
+    return done + ret;
+}
+
+int connection_read_put_back(connection_t *con, const void *buf, size_t len)
+{
+    void *n;
+
+    if (con->readbufferlen) {
+        n = realloc(con->readbuffer, con->readbufferlen + len);
+        if (!n)
+            return -1;
+
+        memcpy(n + con->readbufferlen, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen += len;
+
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
+    } else {
+        n = malloc(len);
+        if (!n)
+            return -1;
+
+        memcpy(n, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen = len;
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
+    }
 }
 
 static sock_t wait_for_serversock(int timeout)
@@ -466,6 +536,7 @@ static void process_request_queue (void)
         }
 
         if (len > 0) {
+            ssize_t stream_offset = -1;
             int pass_it = 1;
             char *ptr;
 
@@ -487,23 +558,27 @@ static void process_request_queue (void)
                  * http style headers, we don't want to lose those */
                 ptr = strstr(client->refbuf->data, "\r\r\n\r\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+6) - client->refbuf->data;
+                    stream_offset = (ptr+6) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\r\n\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+4) - client->refbuf->data;
+                    stream_offset = (ptr+4) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\n\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+2) - client->refbuf->data;
+                    stream_offset = (ptr+2) - client->refbuf->data;
                     break;
                 }
                 pass_it = 0;
             } while (0);
 
             if (pass_it) {
+                if (stream_offset != -1) {
+                    connection_read_put_back(client->con, client->refbuf->data + stream_offset, node->offset - stream_offset);
+                    node->offset = stream_offset;
+                }
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
@@ -526,6 +601,96 @@ static void process_request_queue (void)
     _handle_connection();
 }
 
+/* add client to body queue.
+ */
+static void _add_body_client(client_queue_t *node)
+{
+    ICECAST_LOG_DEBUG("Putting client %p in body queue.", node->client);
+
+    thread_spin_lock(&_connection_lock);
+    *_body_queue_tail = node;
+    _body_queue_tail = (volatile client_queue_t **) &node->next;
+    thread_spin_unlock(&_connection_lock);
+}
+
+static client_slurp_result_t process_request_body_queue_one(client_queue_t *node, time_t timeout, size_t body_size_limit)
+{
+        client_t *client = node->client;
+        client_slurp_result_t res;
+
+        if (client->parser->req_type == httpp_req_post) {
+            if (node->bodybuffer == NULL && client->request_body_read == 0) {
+                if (client->request_body_length < 0) {
+                    node->bodybufferlen = body_size_limit;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                } else if (client->request_body_length <= (ssize_t)body_size_limit) {
+                    node->bodybufferlen = client->request_body_length;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                }
+            }
+        }
+
+        if (node->bodybuffer) {
+            res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
+            if (res == CLIENT_SLURP_SUCCESS) {
+                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
+                free(node->bodybuffer);
+                node->bodybuffer = NULL;
+            }
+        } else {
+            res = client_body_skip(client);
+        }
+
+        if (res != CLIENT_SLURP_SUCCESS) {
+            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
+                return CLIENT_SLURP_ERROR;
+            }
+        }
+
+        return res;
+}
+
+/* This queue reads data from the body of clients. */
+static void process_request_body_queue (void)
+{
+    client_queue_t **node_ref = (client_queue_t **)&_body_queue;
+    ice_config_t *config;
+    time_t timeout;
+    size_t body_size_limit;
+
+    ICECAST_LOG_DEBUG("Processing body queue.");
+
+    ICECAST_LOG_DEBUG("_body_queue=%p, &_body_queue=%p, _body_queue_tail=%p", _body_queue, &_body_queue, _body_queue_tail);
+
+    config = config_get_config();
+    timeout = time(NULL) - config->body_timeout;
+    body_size_limit = config->body_size_limit;
+    config_release_config();
+
+    while (*node_ref) {
+        client_queue_t *node = *node_ref;
+        client_t *client = node->client;
+        client_slurp_result_t res;
+
+        node->tried_body = 1;
+
+        ICECAST_LOG_DEBUG("Got client %p in body queue.", client);
+
+        res = process_request_body_queue_one(node, timeout, body_size_limit);
+
+        if (res != CLIENT_SLURP_NEEDS_MORE_DATA) {
+            ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
+
+            if ((client_queue_t **)_body_queue_tail == &(node->next))
+                _body_queue_tail = (volatile client_queue_t **)node_ref;
+            *node_ref = node->next;
+            node->next = NULL;
+            _add_connection(node);
+            continue;
+        }
+        node_ref = &node->next;
+    }
+}
 
 /* add node to the queue of requests. This is where the clients are when
  * initial http details are read.
@@ -621,6 +786,7 @@ void connection_accept_loop(void)
                 duration = 300; /* use longer timeouts when nothing waiting */
         }
         process_request_queue();
+        process_request_body_queue();
     }
 
     /* Give all the other threads notification to shut down */
@@ -776,8 +942,7 @@ static inline void source_startup(client_t *client, const char *uri)
             ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
             snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
             ok->len = strlen(ok->data);
-            /* we may have unprocessed data read in, so don't overwrite it */
-            ok->associated = client->refbuf;
+            refbuf_release(client->refbuf);
             client->refbuf = ok;
             fserve_add_client_callback(client, source_client_callback, source);
         }
@@ -1042,14 +1207,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset == node->offset) {
-            client->refbuf->len = 0;
-        } else {
-            char *ptr = client->refbuf->data;
-            client->refbuf->len = node->offset - node->stream_offset;
-            memmove(ptr, ptr + node->stream_offset, client->refbuf->len);
-        }
+        client->refbuf->len = 0;
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
         node->shoutcast = 0;
@@ -1236,6 +1394,7 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             _handle_stats_request(client, uri);
         break;
         case httpp_req_get:
+        case httpp_req_post:
         case httpp_req_options:
             _handle_get_request(client, uri);
         break;
@@ -1289,7 +1448,7 @@ static void _handle_authentication_mount_generic(client_t *client, void *uri, mo
     if (!mountproxy) {
         int command_type = admin_get_command_type(client->admin_command);
         if (command_type == ADMINTYPE_MOUNT || command_type == ADMINTYPE_HYBRID) {
-            const char *mount = httpp_get_query_param(client->parser, "mount");
+            const char *mount = httpp_get_param(client->parser, "mount");
             if (mount)
                 mountproxy = __find_non_admin_mount(config, mount, type);
         }
@@ -1365,6 +1524,75 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     global_unlock();
 }
 
+static void _update_client_request_body_length(client_t *client)
+{
+    const char *header;
+    long long unsigned int scannumber;
+    int have = 0;
+
+    if (!have) {
+        if (client->parser->req_type == httpp_req_source) {
+            client->request_body_length = -1; /* streaming */
+            have = 1;
+        }
+    }
+
+    if (!have) {
+        header = httpp_getvar(client->parser, "transfer-encoding");
+        if (header) {
+            if (strcasecmp(header, "identity") != 0) {
+                client->request_body_length = -1; /* streaming */
+                have = 1;
+            }
+        }
+    }
+
+    if (!have) {
+        header = httpp_getvar(client->parser, "content-length");
+        if (header) {
+            if (sscanf(header, "%llu", &scannumber) == 1) {
+                client->request_body_length = scannumber;
+                have = 1;
+            }
+        }
+    }
+
+    if (!have) {
+        if (client->parser->req_type == httpp_req_put) {
+            /* As we don't know yet, we asume this PUT is in streaming mode */
+            client->request_body_length = -1; /* streaming */
+            have = 1;
+        }
+    }
+
+    ICECAST_LOG_DEBUG("Client %p has request_body_length=%zi", client, client->request_body_length);
+}
+
+/* Check if we need body of client */
+static int _need_body(client_queue_t *node)
+{
+    client_t *client = node->client;
+
+    if (node->tried_body)
+        return 0;
+
+    if (client->parser->req_type == httpp_req_source) {
+        /* SOURCE connection. */
+        return 0;
+    } else if (client->parser->req_type == httpp_req_put) {
+        /* PUT connection.
+         * TODO: We may need body for /admin/ but we do not know if it's an admin request yet.
+         */
+        return 0;
+    } else if (client->request_body_length != -1 && (size_t)client->request_body_length != client->request_body_read) {
+        return 1;
+    } else if (client->request_body_length == -1 && client_body_eof(client) == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 /* Connection thread. Here we take clients off the connection queue and check
  * the contents provided. We set up the parser then hand off to the specific
  * request handler.
@@ -1401,13 +1629,32 @@ static void _handle_connection(void)
                 char *uri;
                 const char *upgrade, *connection;
 
-                /* we may have more than just headers, so prepare for it */
-                if (node->stream_offset == node->offset) {
-                    client->refbuf->len = 0;
-                } else {
-                    char *ptr = client->refbuf->data;
-                    client->refbuf->len = node->offset - node->stream_offset;
-                    memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+                client->refbuf->len = 0;
+
+                /* early check if we need more data */
+                _update_client_request_body_length(client);
+                if (_need_body(node)) {
+                    /* Just calling _add_body_client() would do the job.
+                     * However, if the client only has a small body this might work without moving it between queues.
+                     * -> much faster.
+                     */
+                    client_slurp_result_t res;
+                    ice_config_t *config;
+                    time_t timeout;
+                    size_t body_size_limit;
+
+                    config = config_get_config();
+                    timeout = time(NULL) - config->body_timeout;
+                    body_size_limit = config->body_size_limit;
+                    config_release_config();
+
+                    res = process_request_body_queue_one(node, timeout, body_size_limit);
+                    if (res != CLIENT_SLURP_SUCCESS) {
+                        _add_body_client(node);
+                        continue;
+                    } else {
+                        ICECAST_LOG_DEBUG("Success on fast lane");
+                    }
                 }
 
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
@@ -1416,6 +1663,7 @@ static void _handle_connection(void)
                 if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
                     httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
+                free (node->bodybuffer);
                 free (node->shoutcast_mount);
                 free (node);
 
@@ -1453,7 +1701,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                client->mode = config_str_to_omode(httpp_get_query_param(client->parser, "omode"));
+                client->mode = config_str_to_omode(httpp_get_param(client->parser, "omode"));
 
                 if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
@@ -1579,5 +1827,7 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
+    if (con->readbufferlen)
+        free(con->readbuffer);
     free(con);
 }

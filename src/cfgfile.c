@@ -49,11 +49,13 @@
 #define CONFIG_DEFAULT_CLIENT_LIMIT     256
 #define CONFIG_DEFAULT_SOURCE_LIMIT     16
 #define CONFIG_DEFAULT_QUEUE_SIZE_LIMIT (500*1024)
+#define CONFIG_DEFAULT_BODY_SIZE_LIMIT  (4*1024)
 #define CONFIG_DEFAULT_BURST_SIZE       (64*1024)
 #define CONFIG_DEFAULT_THREADPOOL_SIZE  4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT   30
 #define CONFIG_DEFAULT_HEADER_TIMEOUT   15
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT   10
+#define CONFIG_DEFAULT_BODY_TIMEOUT     (10 + CONFIG_DEFAULT_HEADER_TIMEOUT)
 #define CONFIG_DEFAULT_MASTER_USERNAME  "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
 #define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
@@ -802,11 +804,15 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
     configuration
+        ->body_size_limit = CONFIG_DEFAULT_BODY_SIZE_LIMIT;
+    configuration
         ->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration
         ->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration
         ->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
+    configuration
+        ->source_timeout = CONFIG_DEFAULT_BODY_TIMEOUT;
     configuration
         ->shoutcast_mount = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration
@@ -1123,6 +1129,8 @@ static void _parse_limits(xmlDocPtr     doc,
             __read_int(doc, node, &configuration->client_limit, "<clients> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("sources")) == 0) {
             __read_int(doc, node, &configuration->source_limit, "<sources> must not be empty.");
+        } else if (xmlStrcmp(node->name, XMLSTR("bodysize")) == 0) {
+            __read_int(doc, node, &configuration->body_size_limit, "<bodysize> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
             __read_unsigned_int(doc, node, &configuration->queue_size_limit, "<queue-size> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("threadpool")) == 0) {
@@ -1134,6 +1142,8 @@ static void _parse_limits(xmlDocPtr     doc,
             __read_int(doc, node, &configuration->header_timeout, "<header-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
             __read_int(doc, node, &configuration->source_timeout, "<source-timeout> must not be empty.");
+        } else if (xmlStrcmp(node->name, XMLSTR("body-timeout")) == 0) {
+            __read_int(doc, node, &configuration->body_timeout, "<body-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
             ICECAST_LOG_WARN("<burst-on-connect> is deprecated, use <burst-size> instead.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

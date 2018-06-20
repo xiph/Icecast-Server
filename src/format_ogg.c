@@ -402,7 +402,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
     ogg_state_t *ogg_info = source->format->_state;
     format_plugin_t *format = source->format;
     char *data = NULL;
-    int bytes = 0;
+    ssize_t bytes = 0;
 
     while (1)
     {
@@ -449,7 +449,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
         /* we need more data to continue getting pages */
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
-        bytes = client_read_bytes (source->client, data, 4096);
+        bytes = client_body_read(source->client, data, 4096);
         if (bytes <= 0)
         {
             ogg_sync_wrote (&ogg_info->oy, 0);

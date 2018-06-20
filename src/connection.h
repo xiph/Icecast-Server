@@ -40,6 +40,9 @@ struct connection_tag {
     int (*send)(connection_t *handle, const void *buf, size_t len);
     int (*read)(connection_t *handle, void *buf, size_t len);
 
+    void *readbuffer;
+    size_t readbufferlen;
+
     char *ip;
 };
 
@@ -55,6 +58,7 @@ void connection_queue(connection_t *con);
 void connection_uses_tls(connection_t *con);
 
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len);
+int connection_read_put_back(connection_t *con, const void *buf, size_t len);
 
 extern rwlock_t _source_shutdown_rwlock;
 

@@ -18,7 +18,7 @@
 						<xsl:choose>
 							<xsl:when test="source">
 								<p>Choose the mountpoint to which you want to move the listeners to:</p>
-								<form method="get" action="moveclients.xsl">
+								<form method="post" action="moveclients.xsl">
 									<label for="moveto" class="hidden">
 										Move from <code><xsl:value-of select="current_source" /></code> to
 									</label>

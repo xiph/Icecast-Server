@@ -465,7 +465,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
  */
 static int complete_read(source_t *source)
 {
-    int bytes;
+    ssize_t bytes;
     format_plugin_t *format = source->format;
     mp3_state *source_mp3 = format->_state;
     char *buf;
@@ -480,10 +480,11 @@ static int complete_read(source_t *source)
     }
     buf = source_mp3->read_data->data + source_mp3->read_count;
 
-    bytes = client_read_bytes (source->client, buf, REFBUF_SIZE-source_mp3->read_count);
+    bytes = client_body_read(source->client, buf, REFBUF_SIZE-source_mp3->read_count);
     if (bytes < 0)
     {
-        if (source->client->con->error)
+        /* Why do we do this here (not source.c)? -- ph3-der-loewe, 2018-04-17 */
+        if (client_body_eof(source->client))
         {
             refbuf_release (source_mp3->read_data);
             source_mp3->read_data = NULL;

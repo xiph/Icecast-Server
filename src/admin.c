@@ -52,7 +52,7 @@
 /* Helper macros */
 #define COMMAND_REQUIRE(client,name,var)                                \
     do {                                                                \
-        (var) = httpp_get_query_param((client)->parser, (name));        \
+        (var) = httpp_get_param((client)->parser, (name));        \
         if((var) == NULL) {                                             \
             client_send_error_by_id(client, ICECAST_ERROR_ADMIN_MISSING_PARAMETER); \
             return;                                                     \
@@ -60,7 +60,7 @@
     } while(0);
 
 #define COMMAND_OPTIONAL(client,name,var) \
-(var) = httpp_get_query_param((client)->parser, (name))
+(var) = httpp_get_param((client)->parser, (name))
 
 /* special commands */
 #define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
@@ -502,7 +502,7 @@ void admin_handle_request(client_t *client, const char *uri)
         }
     }
 
-    mount = httpp_get_query_param(client->parser, "mount");
+    COMMAND_OPTIONAL(client, "mount", mount);
 
     /* Find mountpoint source */
     if(mount != NULL) {
@@ -543,6 +543,7 @@ void admin_handle_request(client_t *client, const char *uri)
 
     switch (client->parser->req_type) {
         case httpp_req_get:
+        case httpp_req_post:
             handler->function(client, source, format);
         break;
         case httpp_req_options:
