@@ -845,7 +845,7 @@ static inline void ebml_check_track(ebml_t *ebml)
         && ebml->parsing_track_number != EBML_UNKNOWN) {
 
         ebml->keyframe_track_number = ebml->parsing_track_number;
-        ICECAST_LOG_DEBUG("Identified track #%ffu as the video track", ebml->keyframe_track_number);
+        ICECAST_LOG_DEBUG("Identified track #%llu as the video track", (long long unsigned int)ebml->keyframe_track_number);
     }
 }
 
