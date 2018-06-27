@@ -171,8 +171,6 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
         avl_tree_free (htpasswd->users, _free_user);
     htpasswd->users = new_users;
     thread_rwlock_unlock (&htpasswd->file_rwlock);
-
-    ICECAST_LOG_ERROR("xxx");
 }
 
 
