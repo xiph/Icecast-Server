@@ -73,6 +73,7 @@ struct nodedef {
     const char *name;
     enum nodecontent content;
     const struct nodeattr *attr[12];
+    const reportxml_node_type_t childs[12];
 };
 
 static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth);
@@ -111,22 +112,38 @@ static const struct nodeattr __attr__reference_type[1]  = {{"type",         NULL
  */
 #define __BASIC_ELEMENT __attr_id, __attr_definition, __attr_akindof, __attr__definition
 static const struct nodedef __nodedef[] = {
-    {REPORTXML_NODE_TYPE_REPORT,      "report",         NC_CHILDS,  {__attr_id, __attr_version, __attr_xmlns, __attr__eol}},
-    {REPORTXML_NODE_TYPE_DEFINITION,  "definition",     NC_CHILDS,  {__BASIC_ELEMENT, __attr_template, __attr_defines, __attr__eol}},
-    {REPORTXML_NODE_TYPE_INCIDENT,    "incident",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_STATE,       "state",          NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_BACKTRACE,   "backtrace",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_POSITION,    "position",       NC_CHILDS,  {__BASIC_ELEMENT, __attr_function, __attr_filename, __attr_line, __attr_binary, __attr_offset, __attr__eol}},
-    {REPORTXML_NODE_TYPE_MORE,        "more",           NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_FIX,         "fix",            NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_ACTION,      "action",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__action_type, __attr__eol}},
-    {REPORTXML_NODE_TYPE_REASON,      "reason",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_TEXT,        "text",           NC_CONTENT, {__BASIC_ELEMENT, __attr_lang, __attr_dir, __attr__eol}},
-    {REPORTXML_NODE_TYPE_TIMESTAMP,   "timestamp",      NC_NONE,    {__BASIC_ELEMENT, __attr_absolute, __attr_relative, __attr__eol}},
-    {REPORTXML_NODE_TYPE_RESOURCE,    "resource",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__resource_type, __attr_name, __attr__eol}},
-    {REPORTXML_NODE_TYPE_VALUE,       "value",          NC_CHILDS,  {__BASIC_ELEMENT, __attr_member, __attr_value, __attr_state, __attr__value_type, __attr__eol}},
-    {REPORTXML_NODE_TYPE_REFERENCE,   "reference",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__reference_type, __attr_href, __attr__eol}},
-    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      NC_XML,     {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_REPORT,      "report",         NC_CHILDS,  {__attr_id, __attr_version, __attr_xmlns, __attr__eol},
+        {REPORTXML_NODE_TYPE_INCIDENT, REPORTXML_NODE_TYPE_DEFINITION, REPORTXML_NODE_TYPE_TIMESTAMP, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_DEFINITION,  "definition",     NC_CHILDS,  {__BASIC_ELEMENT, __attr_template, __attr_defines, __attr__eol},
+        {REPORTXML_NODE_TYPE_INCIDENT, REPORTXML_NODE_TYPE_STATE, REPORTXML_NODE_TYPE_TIMESTAMP, REPORTXML_NODE_TYPE_RESOURCE, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_FIX, REPORTXML_NODE_TYPE_RESOURCE, REPORTXML_NODE_TYPE_REASON, REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_INCIDENT,    "incident",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_STATE, REPORTXML_NODE_TYPE_TIMESTAMP, REPORTXML_NODE_TYPE_RESOURCE, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_FIX, REPORTXML_NODE_TYPE_REASON, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_STATE,       "state",          NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_TIMESTAMP, REPORTXML_NODE_TYPE_BACKTRACE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_BACKTRACE,   "backtrace",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_POSITION, REPORTXML_NODE_TYPE_MORE, REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_POSITION,    "position",       NC_CHILDS,  {__BASIC_ELEMENT, __attr_function, __attr_filename, __attr_line, __attr_binary, __attr_offset, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_MORE,        "more",           NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_FIX,         "fix",            NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_ACTION, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_ACTION,      "action",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__action_type, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_TIMESTAMP, REPORTXML_NODE_TYPE_VALUE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_REASON,      "reason",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_RESOURCE, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_TEXT,        "text",           NC_CONTENT, {__BASIC_ELEMENT, __attr_lang, __attr_dir, __attr__eol},
+        {REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_TIMESTAMP,   "timestamp",      NC_NONE,    {__BASIC_ELEMENT, __attr_absolute, __attr_relative, __attr__eol},
+        {REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_RESOURCE,    "resource",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__resource_type, __attr_name, __attr__eol},
+        {REPORTXML_NODE_TYPE_VALUE, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_VALUE,       "value",          NC_CHILDS,  {__BASIC_ELEMENT, __attr_member, __attr_value, __attr_state, __attr__value_type, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_VALUE, REPORTXML_NODE_TYPE_POSITION, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_REFERENCE,   "reference",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__reference_type, __attr_href, __attr__eol},
+        {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
+    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      NC_XML,     {__BASIC_ELEMENT, __attr__eol},
+        {REPORTXML_NODE_TYPE__ERROR}}
 };
 
 static const struct nodedef * __get_nodedef(reportxml_node_type_t type)
@@ -672,6 +689,8 @@ int                     reportxml_node_add_child(reportxml_node_t *node, reportx
 {
     const struct nodedef *nodedef;
     reportxml_node_t **n;
+    size_t i;
+    int found;
 
     if (!node || !child)
         return -1;
@@ -679,6 +698,17 @@ int                     reportxml_node_add_child(reportxml_node_t *node, reportx
     nodedef = __get_nodedef(node->type);
 
     if (nodedef->content != NC_CHILDS)
+        return -1;
+
+    found = 0;
+    for (i = 0; nodedef->childs[i] != REPORTXML_NODE_TYPE__ERROR; i++) {
+        if (nodedef->childs[i] == child->type) {
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found)
         return -1;
 
     n = realloc(node->childs, sizeof(*n)*(node->childs_len + 1));
