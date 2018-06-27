@@ -39,6 +39,8 @@ struct reportxml_node_tag {
     reportxml_node_type_t type;
     reportxml_node_t **childs;
     size_t childs_len;
+    xmlNodePtr *xml_childs;
+    size_t xml_childs_len;
     char *content;
 };
 
@@ -290,8 +292,13 @@ static void __report_node_free(refobject_t self, void **userdata)
         refobject_unref(node->childs[i]);
     }
 
+    for (i = 0; i < node->xml_childs_len; i++) {
+        xmlFreeNode(node->xml_childs[i]);
+    }
+
     free(node->content);
     free(node->childs);
+    free(node->xml_childs);
 }
 
 reportxml_node_t *      reportxml_node_new(reportxml_node_type_t type, const char *id, const char *definition, const char *akindof)
@@ -388,40 +395,47 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
         xmlNodePtr cur = xmlnode->xmlChildrenNode;
 
         do {
-            reportxml_node_t *child;
+            if (node->type == REPORTXML_NODE_TYPE_EXTENSION) {
+                if (reportxml_node_add_xml_child(node, cur) != 0) {
+                    refobject_unref(node);
+                    return NULL;
+                }
+            } else {
+                reportxml_node_t *child;
 
-            if (xmlIsBlankNode(cur))
-                continue;
+                if (xmlIsBlankNode(cur))
+                    continue;
 
-            if (cur->type == XML_COMMENT_NODE)
-                continue;
+                if (cur->type == XML_COMMENT_NODE)
+                    continue;
 
-            if (cur->type == XML_TEXT_NODE) {
-                xmlChar *value = xmlNodeListGetString(xmlnode->doc, cur, 1);
+                if (cur->type == XML_TEXT_NODE) {
+                    xmlChar *value = xmlNodeListGetString(xmlnode->doc, cur, 1);
 
-                if (!value) {
+                    if (!value) {
+                        refobject_unref(node);
+                        return NULL;
+                    }
+
+                    if (reportxml_node_set_content(node, (const char *)value) != 0) {
+                        refobject_unref(node);
+                        return NULL;
+                    }
+
+                    xmlFree(value);
+                    continue;
+                }
+
+                child = reportxml_node_parse_xmlnode(cur);
+                if (!child) {
                     refobject_unref(node);
                     return NULL;
                 }
 
-                if (reportxml_node_set_content(node, (const char *)value) != 0) {
+                if (reportxml_node_add_child(node, child) != 0) {
                     refobject_unref(node);
                     return NULL;
                 }
-
-                xmlFree(value);
-                continue;
-            }
-
-            child = reportxml_node_parse_xmlnode(cur);
-            if (!child) {
-                refobject_unref(node);
-                return NULL;
-            }
-
-            if (reportxml_node_add_child(node, child) != 0) {
-                refobject_unref(node);
-                return NULL;
             }
         } while ((cur = cur->next));
     }
@@ -492,15 +506,20 @@ reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
 xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
 {
     xmlNodePtr ret;
-    ssize_t count;
+    ssize_t child_count;
+    ssize_t xml_child_count;
     size_t i;
     xmlChar *definition;
 
     if (!node)
         return NULL;
 
-    count = reportxml_node_count_child(node);
-    if (count < 0)
+    child_count = reportxml_node_count_child(node);
+    if (child_count < 0)
+        return NULL;
+
+    xml_child_count = reportxml_node_count_xml_child(node);
+    if (xml_child_count < 0)
         return NULL;
 
     ret = xmlCopyNode(node->xmlnode, 2);
@@ -514,7 +533,7 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
         xmlFree(definition);
     }
 
-    for (i = 0; i < (size_t)count; i++) {
+    for (i = 0; i < (size_t)child_count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
         xmlNodePtr xmlchild;
 
@@ -543,6 +562,18 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
 
         xmlAddChild(ret, xmlchild);
     }
+
+    for (i = 0; i < (size_t)xml_child_count; i++) {
+        xmlNodePtr xmlchild = reportxml_node_get_xml_child(node, i);
+
+        if (!xmlchild) {
+            xmlFreeNode(ret);
+            return NULL;
+        }
+
+        xmlAddChild(ret, xmlchild);
+    }
+
 
     return ret;
 }
@@ -729,6 +760,51 @@ char *              reportxml_node_get_content(reportxml_node_t *node)
     } else {
         return NULL;
     }
+}
+
+int                     reportxml_node_add_xml_child(reportxml_node_t *node, xmlNodePtr child)
+{
+    xmlNodePtr *n;
+
+    if (!node || !child)
+        return -1;
+
+    n = realloc(node->xml_childs, sizeof(*n)*(node->xml_childs_len + 1));
+    if (!n)
+        return -1;
+
+    node->xml_childs = n;
+
+    node->xml_childs[node->xml_childs_len] = xmlCopyNode(child, 2);
+    if (node->xml_childs[node->xml_childs_len] == NULL)
+        return -1;
+
+    node->xml_childs_len++;
+
+    return 0;
+}
+
+ssize_t                 reportxml_node_count_xml_child(reportxml_node_t *node)
+{
+    if (!node)
+        return -1;
+
+    return node->xml_childs_len;
+}
+
+xmlNodePtr              reportxml_node_get_xml_child(reportxml_node_t *node, size_t idx)
+{
+    xmlNodePtr ret;
+
+    if (!node)
+        return NULL;
+
+    if (idx >= node->xml_childs_len)
+        return NULL;
+
+    ret = xmlCopyNode(node->xml_childs[idx], 2);
+
+    return ret;
 }
 
 static void __database_free(refobject_t self, void **userdata)
