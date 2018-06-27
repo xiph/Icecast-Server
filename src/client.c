@@ -38,6 +38,9 @@
 #include "stats.h"
 #include "fserve.h"
 #include "errors.h"
+#include "reportxml.h"
+#include "refobject.h"
+#include "xslt.h"
 
 #include "client.h"
 #include "auth.h"
@@ -407,6 +410,151 @@ static inline void client_send_500(client_t *client, const char *message)
         client_send_bytes(client, message, strlen(message));
 
     client_destroy(client);
+}
+
+/* this function sends a reportxml file to the client in the prefered format. */
+void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status)
+{
+    admin_format_t admin_format;
+    xmlDocPtr doc;
+
+    if (!client)
+        return;
+
+    if (!report) {
+        ICECAST_LOG_ERROR("No report xml given. Sending 500 to client %p", client);
+        client_send_500(client, "No report.");
+        return;
+    }
+
+    if (!status)
+        status = 200;
+
+    if (admin_format_hint == ADMIN_FORMAT_AUTO) {
+        admin_format = client_get_admin_format_by_content_negotiation(client);
+    } else {
+        admin_format = admin_format_hint;
+    }
+
+    if (!xsl) {
+        switch (admin_format) {
+            case ADMIN_FORMAT_RAW:
+                /* noop, we don't need to set xsl */
+            break;
+            case ADMIN_FORMAT_TRANSFORMED:
+                xsl = CLIENT_DEFAULT_REPORT_XSL_TRANSFORMED;
+            break;
+            case ADMIN_FORMAT_PLAINTEXT:
+                xsl = CLIENT_DEFAULT_REPORT_XSL_PLAINTEXT;
+            break;
+            default:
+                ICECAST_LOG_ERROR("Unsupported admin format and no XSLT file given. Sending 500 to client %p", client);
+                client_send_500(client, "Unsupported admin format.");
+                return;
+            break;
+        }
+    } else if (admin_format_hint == ADMIN_FORMAT_AUTO) {
+        ICECAST_LOG_ERROR("No explicit admin format but XSLT file given. BUG. Sending 500 to client %p", client);
+        client_send_500(client, "Admin type AUTO but XSLT.");
+        return;
+    }
+
+    doc = reportxml_render_xmldoc(report);
+    if (!doc) {
+        ICECAST_LOG_ERROR("Can not render XML Document from report. Sending 500 to client %p", client);
+        client_send_500(client, "Can not render XML Document from report.");
+        return;
+    }
+
+    if (admin_format == ADMIN_FORMAT_RAW) {
+        xmlChar *buff = NULL;
+        int len = 0;
+        size_t buf_len;
+        ssize_t ret;
+
+        xmlDocDumpMemory(doc, &buff, &len);
+
+        buf_len = len + 1024;
+        if (buf_len < 4096)
+            buf_len = 4096;
+
+        client_set_queue(client, NULL);
+        client->refbuf = refbuf_new(buf_len);
+
+        ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                0, status, NULL,
+                "text/xml", "utf-8",
+                NULL, NULL, client);
+        if (ret < 0) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+            xmlFree(buff);
+            return;
+        } else if (buf_len < (size_t)(len + ret + 64)) {
+            void *new_data;
+            buf_len = ret + len + 64;
+            new_data = realloc(client->refbuf->data, buf_len);
+            if (new_data) {
+                ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
+                client->refbuf->data = new_data;
+                client->refbuf->len = buf_len;
+                ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                        0, status, NULL,
+                        "text/xml", "utf-8",
+                        NULL, NULL, client);
+                if (ret == -1) {
+                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                    client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                    xmlFree(buff);
+                    return;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
+                xmlFree(buff);
+                return;
+            }
+        }
+
+        /* FIXME: in this section we hope no function will ever return -1 */
+        ret += snprintf (client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
+
+        client->refbuf->len = ret;
+        xmlFree(buff);
+        client->respcode = status;
+        fserve_add_client (client, NULL);
+    } else {
+        char *fullpath_xslt_template;
+        const char *document_domain_path;
+        ssize_t fullpath_xslt_template_len;
+        ice_config_t *config;
+
+        config = config_get_config();
+        switch (domain) {
+            case DOCUMENT_DOMAIN_WEB:
+                document_domain_path = config->webroot_dir;
+            break;
+            case DOCUMENT_DOMAIN_ADMIN:
+                document_domain_path = config->adminroot_dir;
+            break;
+            default:
+                config_release_config();
+                ICECAST_LOG_ERROR("Invalid document domain. Sending 500 to client %p", client);
+                client_send_500(client, "Invalid document domain.");
+                return;
+            break;
+        }
+        fullpath_xslt_template_len = strlen(document_domain_path) + strlen(xsl) + strlen(PATH_SEPARATOR) + 1;
+        fullpath_xslt_template = malloc(fullpath_xslt_template_len);
+        snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s", document_domain_path, PATH_SEPARATOR, xsl);
+        config_release_config();
+
+        ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
+        xslt_transform(doc, fullpath_xslt_template, client, status);
+        free(fullpath_xslt_template);
+    }
+
+    xmlFreeDoc(doc);
 }
 
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
