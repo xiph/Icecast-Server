@@ -29,6 +29,8 @@
 
 #define CLIENT_DEFAULT_REPORT_XSL_TRANSFORMED           "report-html.xsl"
 #define CLIENT_DEFAULT_REPORT_XSL_PLAINTEXT             "report-plaintext.xsl"
+#define CLIENT_DEFAULT_ERROR_XSL_TRANSFORMED            "error-html.xsl"
+#define CLIENT_DEFAULT_ERROR_XSL_PLAINTEXT              "error-plaintext.xsl"
 #define CLIENT_DEFAULT_ADMIN_FORMAT                     ADMIN_FORMAT_TRANSFORMED
 
 typedef enum _document_domain_tag {

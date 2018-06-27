@@ -285,6 +285,15 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
     return ret;
 }
 
+static inline void _send_error(client_t *client, icecast_error_id_t id, int old_status) {
+    if (old_status >= 400) {
+        client_send_error_by_id(client, ICECAST_ERROR_RECURSIVE_ERROR);
+        return;
+    }
+
+    client_send_error_by_id(client, id);
+}
+
 void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status)
 {
     xmlDocPtr res;
@@ -305,7 +314,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
     {
         thread_mutex_unlock(&xsltlock);
         ICECAST_LOG_ERROR("problem reading stylesheet \"%s\"", xslfilename);
-        client_send_error_by_id(client, ICECAST_ERROR_XSLT_PARSE);
+        _send_error(client, ICECAST_ERROR_XSLT_PARSE, status);
         return;
     }
 
@@ -349,7 +358,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
         if (ret == -1) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+            _send_error(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED, status);
         } else {
             if ( full_len < (ret + (ssize_t)len + (ssize_t)64) ) {
                 void *new_data;
@@ -362,12 +371,12 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
                     ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
                     if (ret == -1) {
                         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                        client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                        _send_error(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED, status);
                         failed = 1;
                     }
                 } else {
                     ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                    client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
+                    _send_error(client, ICECAST_ERROR_GEN_BUFFER_REALLOC, status);
                     failed = 1;
                 }
             }
@@ -387,7 +396,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
     else
     {
         ICECAST_LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
-        client_send_error_by_id(client, ICECAST_ERROR_XSLT_problem);
+        _send_error(client, ICECAST_ERROR_XSLT_problem, status);
     }
     thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);
