@@ -395,7 +395,7 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
         xmlNodePtr cur = xmlnode->xmlChildrenNode;
 
         do {
-            if (node->type == REPORTXML_NODE_TYPE_EXTENSION) {
+            if (nodedef->type == REPORTXML_NODE_TYPE_EXTENSION) {
                 if (reportxml_node_add_xml_child(node, cur) != 0) {
                     refobject_unref(node);
                     return NULL;
