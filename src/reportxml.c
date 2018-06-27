@@ -446,14 +446,19 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
 static reportxml_node_t *      __reportxml_node_copy_with_db(reportxml_node_t *node, reportxml_database_t *db, ssize_t depth)
 {
     reportxml_node_t *ret;
-    ssize_t count;
+    ssize_t child_count;
+    ssize_t xml_child_count;
     size_t i;
 
     if (!node)
         return NULL;
 
-    count = reportxml_node_count_child(node);
-    if (count < 0)
+    child_count = reportxml_node_count_child(node);
+    if (child_count < 0)
+        return NULL;
+
+    xml_child_count = reportxml_node_count_xml_child(node);
+    if (xml_child_count < 0)
         return NULL;
 
     ret = reportxml_node_parse_xmlnode(node->xmlnode);
@@ -467,7 +472,7 @@ static reportxml_node_t *      __reportxml_node_copy_with_db(reportxml_node_t *n
         }
     }
 
-    for (i = 0; i < (size_t)count; i++) {
+    for (i = 0; i < (size_t)child_count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
 
         if (db && depth > 0) {
@@ -493,6 +498,16 @@ static reportxml_node_t *      __reportxml_node_copy_with_db(reportxml_node_t *n
                 return NULL;
             }
         }
+    }
+
+    for (i = 0; i < (size_t)xml_child_count; i++) {
+        xmlNodePtr child = reportxml_node_get_xml_child(node, i);
+        if (reportxml_node_add_xml_child(ret, child) != 0) {
+            xmlFreeNode(child);
+            refobject_unref(ret);
+            return NULL;
+        }
+        xmlFreeNode(child);
     }
 
     return ret;
