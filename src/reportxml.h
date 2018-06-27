@@ -36,6 +36,7 @@ typedef enum {
 
 reportxml_t *           reportxml_new(void);
 reportxml_node_t *      reportxml_get_root_node(reportxml_t *report);
+reportxml_node_t *      reportxml_get_node_by_attribute(reportxml_t *report, const char *key, const char *value, int include_definitions);
 reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc);
 xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report);
 
@@ -49,6 +50,7 @@ char *                  reportxml_node_get_attribute(reportxml_node_t *node, con
 int                     reportxml_node_add_child(reportxml_node_t *node, reportxml_node_t *child);
 ssize_t                 reportxml_node_count_child(reportxml_node_t *node);
 reportxml_node_t *      reportxml_node_get_child(reportxml_node_t *node, size_t idx);
+reportxml_node_t *      reportxml_node_get_child_by_attribute(reportxml_node_t *node, const char *key, const char *value, int include_definitions);
 int                     reportxml_node_set_content(reportxml_node_t *node, const char *value);
 char *                  reportxml_node_get_content(reportxml_node_t *node);
 
