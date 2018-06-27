@@ -61,10 +61,17 @@ struct nodeattr {
     const char *values[32];
 };
 
+enum nodecontent {
+    NC_NONE,
+    NC_CHILDS,
+    NC_CONTENT,
+    NC_XML
+};
+
 struct nodedef {
     reportxml_node_type_t type;
     const char *name;
-    int has_content;
+    enum nodecontent content;
     const struct nodeattr *attr[12];
 };
 
@@ -104,22 +111,22 @@ static const struct nodeattr __attr__reference_type[1]  = {{"type",         NULL
  */
 #define __BASIC_ELEMENT __attr_id, __attr_definition, __attr_akindof, __attr__definition
 static const struct nodedef __nodedef[] = {
-    {REPORTXML_NODE_TYPE_REPORT,      "report",         0, {__attr_id, __attr_version, __attr_xmlns, __attr__eol}},
-    {REPORTXML_NODE_TYPE_DEFINITION,  "definition",     0, {__BASIC_ELEMENT, __attr_template, __attr_defines, __attr__eol}},
-    {REPORTXML_NODE_TYPE_INCIDENT,    "incident",       0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_STATE,       "state",          0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_BACKTRACE,   "backtrace",      0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_POSITION,    "position",       0, {__BASIC_ELEMENT, __attr_function, __attr_filename, __attr_line, __attr_binary, __attr_offset, __attr__eol}},
-    {REPORTXML_NODE_TYPE_MORE,        "more",           0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_FIX,         "fix",            0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_ACTION,      "action",         0, {__BASIC_ELEMENT, __attr__action_type, __attr__eol}},
-    {REPORTXML_NODE_TYPE_REASON,      "reason",         0, {__BASIC_ELEMENT, __attr__eol}},
-    {REPORTXML_NODE_TYPE_TEXT,        "text",           1, {__BASIC_ELEMENT, __attr_lang, __attr_dir, __attr__eol}},
-    {REPORTXML_NODE_TYPE_TIMESTAMP,   "timestamp",      0, {__BASIC_ELEMENT, __attr_absolute, __attr_relative, __attr__eol}},
-    {REPORTXML_NODE_TYPE_RESOURCE,    "resource",       0, {__BASIC_ELEMENT, __attr__resource_type, __attr_name, __attr__eol}},
-    {REPORTXML_NODE_TYPE_VALUE,       "value",          0, {__BASIC_ELEMENT, __attr_member, __attr_value, __attr_state, __attr__value_type, __attr__eol}},
-    {REPORTXML_NODE_TYPE_REFERENCE,   "reference",      0, {__BASIC_ELEMENT, __attr__reference_type, __attr_href, __attr__eol}},
-    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      0, {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_REPORT,      "report",         NC_CHILDS,  {__attr_id, __attr_version, __attr_xmlns, __attr__eol}},
+    {REPORTXML_NODE_TYPE_DEFINITION,  "definition",     NC_CHILDS,  {__BASIC_ELEMENT, __attr_template, __attr_defines, __attr__eol}},
+    {REPORTXML_NODE_TYPE_INCIDENT,    "incident",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_STATE,       "state",          NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_BACKTRACE,   "backtrace",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_POSITION,    "position",       NC_CHILDS,  {__BASIC_ELEMENT, __attr_function, __attr_filename, __attr_line, __attr_binary, __attr_offset, __attr__eol}},
+    {REPORTXML_NODE_TYPE_MORE,        "more",           NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_FIX,         "fix",            NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_ACTION,      "action",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__action_type, __attr__eol}},
+    {REPORTXML_NODE_TYPE_REASON,      "reason",         NC_CHILDS,  {__BASIC_ELEMENT, __attr__eol}},
+    {REPORTXML_NODE_TYPE_TEXT,        "text",           NC_CONTENT, {__BASIC_ELEMENT, __attr_lang, __attr_dir, __attr__eol}},
+    {REPORTXML_NODE_TYPE_TIMESTAMP,   "timestamp",      NC_NONE,    {__BASIC_ELEMENT, __attr_absolute, __attr_relative, __attr__eol}},
+    {REPORTXML_NODE_TYPE_RESOURCE,    "resource",       NC_CHILDS,  {__BASIC_ELEMENT, __attr__resource_type, __attr_name, __attr__eol}},
+    {REPORTXML_NODE_TYPE_VALUE,       "value",          NC_CHILDS,  {__BASIC_ELEMENT, __attr_member, __attr_value, __attr_state, __attr__value_type, __attr__eol}},
+    {REPORTXML_NODE_TYPE_REFERENCE,   "reference",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__reference_type, __attr_href, __attr__eol}},
+    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      NC_XML,     {__BASIC_ELEMENT, __attr__eol}},
 };
 
 static const struct nodedef * __get_nodedef(reportxml_node_type_t type)
@@ -395,7 +402,7 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
         xmlNodePtr cur = xmlnode->xmlChildrenNode;
 
         do {
-            if (nodedef->type == REPORTXML_NODE_TYPE_EXTENSION) {
+            if (nodedef->content == NC_XML) {
                 if (reportxml_node_add_xml_child(node, cur) != 0) {
                     refobject_unref(node);
                     return NULL;
@@ -663,9 +670,15 @@ char *                  reportxml_node_get_attribute(reportxml_node_t *node, con
 
 int                     reportxml_node_add_child(reportxml_node_t *node, reportxml_node_t *child)
 {
+    const struct nodedef *nodedef;
     reportxml_node_t **n;
 
     if (!node || !child)
+        return -1;
+
+    nodedef = __get_nodedef(node->type);
+
+    if (nodedef->content != NC_CHILDS)
         return -1;
 
     n = realloc(node->childs, sizeof(*n)*(node->childs_len + 1));
@@ -750,7 +763,7 @@ int                     reportxml_node_set_content(reportxml_node_t *node, const
 
     nodedef = __get_nodedef(node->type);
 
-    if (!nodedef->has_content)
+    if (nodedef->content != NC_CONTENT)
         return -1;
 
     if (value) {
@@ -779,9 +792,15 @@ char *              reportxml_node_get_content(reportxml_node_t *node)
 
 int                     reportxml_node_add_xml_child(reportxml_node_t *node, xmlNodePtr child)
 {
+    const struct nodedef *nodedef;
     xmlNodePtr *n;
 
     if (!node || !child)
+        return -1;
+
+    nodedef = __get_nodedef(node->type);
+
+    if (nodedef->content != NC_XML)
         return -1;
 
     n = realloc(node->xml_childs, sizeof(*n)*(node->xml_childs_len + 1));
