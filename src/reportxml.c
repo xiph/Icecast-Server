@@ -102,6 +102,7 @@ static const struct nodeattr __attr_member[1]           = {{"member",       "CDA
 static const struct nodeattr __attr_value[1]            = {{"value",        "CDATA",        NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_state[1]            = {{"state",        NULL,           "set",    1,  NULL, {"declared", "set", "uninitialized", "missing", NULL}}};
 static const struct nodeattr __attr_href[1]             = {{"href",         "URI",          NULL,     0,  NULL, {NULL}}};
+static const struct nodeattr __attr_application[1]      = {{"application",  "URI",          NULL,     1,  NULL, {NULL}}};
 static const struct nodeattr __attr__action_type[1]     = {{"type",         NULL,           NULL,     1,  NULL, {"retry", "choice", "see-other", "authenticate", "pay", "change-protocol", "slow-down", "ask-user", "ask-admin", "bug", NULL}}};
 static const struct nodeattr __attr__resource_type[1]   = {{"type",         NULL,           NULL,     1,  NULL, {"actor", "manipulation-target", "helper", "related", "result", "parameter", NULL}}};
 static const struct nodeattr __attr__value_type[1]      = {{"type",         NULL,           NULL,     1,  NULL, {"null", "int", "float", "uuid", "string", "structure", "uri", "pointer", "version", "protocol", "username", "password", NULL}}};
@@ -142,7 +143,7 @@ static const struct nodedef __nodedef[] = {
         {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_REFERENCE, REPORTXML_NODE_TYPE_VALUE, REPORTXML_NODE_TYPE_POSITION, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
     {REPORTXML_NODE_TYPE_REFERENCE,   "reference",      NC_CHILDS,  {__BASIC_ELEMENT, __attr__reference_type, __attr_href, __attr__eol},
         {REPORTXML_NODE_TYPE_TEXT, REPORTXML_NODE_TYPE_EXTENSION, REPORTXML_NODE_TYPE__ERROR}},
-    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      NC_XML,     {__BASIC_ELEMENT, __attr__eol},
+    {REPORTXML_NODE_TYPE_EXTENSION,   "extension",      NC_XML,     {__BASIC_ELEMENT, __attr_application, __attr__eol},
         {REPORTXML_NODE_TYPE__ERROR}}
 };
 
