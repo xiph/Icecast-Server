@@ -81,7 +81,7 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
 
 static const struct nodeattr __attr__eol[1]             = {{NULL,           NULL,           NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_version[1]          = {{"version",      "CDATA",        "0.0.1",  1,  NULL, {"0.0.1", NULL}}};
-static const struct nodeattr __attr_xmlns[1]            = {{"xmlns",        "URI",          "xxx",    1,  NULL, {"xxx", NULL}}};
+static const struct nodeattr __attr_xmlns[1]            = {{"xmlns",        "URI",          "http://icecast.org/specs/reportxml-0.0.1",    1,  NULL, {"http://icecast.org/specs/reportxml-0.0.1", NULL}}};
 static const struct nodeattr __attr_id[1]               = {{"id",           "ID",           NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_definition[1]       = {{"definition",   "UUID",         NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr__definition[1]      = {{"_definition",  "UUID",         NULL,     0,  NULL, {NULL}}}; /* for internal use only */
