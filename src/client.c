@@ -38,6 +38,9 @@
 #include "stats.h"
 #include "fserve.h"
 #include "errors.h"
+#include "reportxml.h"
+#include "refobject.h"
+#include "xslt.h"
 
 #include "client.h"
 #include "auth.h"
@@ -236,79 +239,73 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static inline void _client_send_error(client_t *client, int plain, const icecast_error_t *error)
+static inline void _client_send_error(client_t *client, const icecast_error_t *error)
 {
-    ssize_t ret;
-    refbuf_t *data;
+    ice_config_t *config;
+    reportxml_t *report;
+    admin_format_t admin_format;
+    const char *xslt = NULL;
 
-    if (error->http_status == 500) {
-         client_send_500(client, error->message);
-         return;
+    admin_format = client_get_admin_format_by_content_negotiation(client);
+
+    switch (admin_format) {
+        case ADMIN_FORMAT_RAW:
+            xslt = NULL;
+        break;
+        case ADMIN_FORMAT_TRANSFORMED:
+            xslt = CLIENT_DEFAULT_ERROR_XSL_TRANSFORMED;
+        break;
+        case ADMIN_FORMAT_PLAINTEXT:
+            xslt = CLIENT_DEFAULT_ERROR_XSL_PLAINTEXT;
+        break;
+        default:
+            client_send_500(client, "Invalid Admin Type");
+        break;
     }
 
-    data = refbuf_new(PER_CLIENT_REFBUF_SIZE);
-    if (!data) {
-         client_send_500(client, error->message);
-         return;
+ 
+    config = config_get_config();
+    report = reportxml_database_build_report(config->reportxml_db, error->uuid, -1);
+    config_release_config();
+
+    if (!report) {
+        reportxml_node_t *root, *incident, *state, *text;
+
+        report = reportxml_new();
+        root = reportxml_get_root_node(report);
+        incident = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+        state = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, error->uuid, NULL);
+        text = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
+        reportxml_node_set_content(text, error->message);
+        reportxml_node_add_child(state, text);
+        reportxml_node_add_child(incident, state);
+        reportxml_node_add_child(root, incident);
+        refobject_unref(text);
+        refobject_unref(state);
+        refobject_unref(incident);
+        refobject_unref(root);
     }
 
-    client->reuse = ICECAST_REUSE_KEEPALIVE;
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, xslt, admin_format, error->http_status);
 
-    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                                 0, error->http_status, NULL,
-                                 plain ? "text/plain" : "text/html", "utf-8",
-                                 NULL, NULL, client);
-
-    if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
-        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_500(client, "Header generation failed.");
-        return;
-    }
-
-    if (plain) {
-        snprintf(data->data, data->len, "Error %i\r\n---------\r\n\r\nMessage: %s\r\n\r\nError code: %s\r\n",
-                 error->http_status, error->message, error->uuid
-                );
-    } else {
-        snprintf(data->data, data->len,
-                 "<html><head><title>Error %i</title></head><body><h1>Error %i</h1><hr><p><b>%s</b></p><p>Error code: %s</p></body></html>\r\n",
-                 error->http_status, error->http_status, error->message, error->uuid);
-    }
-    data->len = strlen(data->data);
-
-    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: %llu\r\n\r\n",
-             (long long unsigned int)data->len);
-
-    client->respcode = error->http_status;
-    client->refbuf->len = strlen (client->refbuf->data);
-    client->refbuf->next = data;
-
-    fserve_add_client (client, NULL);
+    refobject_unref(report);
 }
 
 void client_send_error_by_id(client_t *client, icecast_error_id_t id)
 {
     const icecast_error_t *error = error_get_by_id(id);
-    const char *pref;
-    int plain;
 
     if (!error) {
          client_send_500(client, "Unknown error ID");
          return;
     }
 
-    pref = util_http_select_best(httpp_getvar(client->parser, "accept"), "text/plain", "text/html", (const char*)NULL);
-
-    if (strcmp(pref, "text/plain") == 0) {
-        plain = 1;
-    } else if (strcmp(pref, "text/html") == 0) {
-        plain = 0;
-    } else {
-        plain = 1;
+    if (error->http_status == 500) {
+         client_send_500(client, error->message);
+        return;
     }
 
-    _client_send_error(client, plain, error);
+    _client_send_error(client, error);
 }
 
 void client_send_101(client_t *client, reuse_t reuse)
@@ -407,6 +404,151 @@ static inline void client_send_500(client_t *client, const char *message)
         client_send_bytes(client, message, strlen(message));
 
     client_destroy(client);
+}
+
+/* this function sends a reportxml file to the client in the prefered format. */
+void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status)
+{
+    admin_format_t admin_format;
+    xmlDocPtr doc;
+
+    if (!client)
+        return;
+
+    if (!report) {
+        ICECAST_LOG_ERROR("No report xml given. Sending 500 to client %p", client);
+        client_send_500(client, "No report.");
+        return;
+    }
+
+    if (!status)
+        status = 200;
+
+    if (admin_format_hint == ADMIN_FORMAT_AUTO) {
+        admin_format = client_get_admin_format_by_content_negotiation(client);
+    } else {
+        admin_format = admin_format_hint;
+    }
+
+    if (!xsl) {
+        switch (admin_format) {
+            case ADMIN_FORMAT_RAW:
+                /* noop, we don't need to set xsl */
+            break;
+            case ADMIN_FORMAT_TRANSFORMED:
+                xsl = CLIENT_DEFAULT_REPORT_XSL_TRANSFORMED;
+            break;
+            case ADMIN_FORMAT_PLAINTEXT:
+                xsl = CLIENT_DEFAULT_REPORT_XSL_PLAINTEXT;
+            break;
+            default:
+                ICECAST_LOG_ERROR("Unsupported admin format and no XSLT file given. Sending 500 to client %p", client);
+                client_send_500(client, "Unsupported admin format.");
+                return;
+            break;
+        }
+    } else if (admin_format_hint == ADMIN_FORMAT_AUTO) {
+        ICECAST_LOG_ERROR("No explicit admin format but XSLT file given. BUG. Sending 500 to client %p", client);
+        client_send_500(client, "Admin type AUTO but XSLT.");
+        return;
+    }
+
+    doc = reportxml_render_xmldoc(report);
+    if (!doc) {
+        ICECAST_LOG_ERROR("Can not render XML Document from report. Sending 500 to client %p", client);
+        client_send_500(client, "Can not render XML Document from report.");
+        return;
+    }
+
+    if (admin_format == ADMIN_FORMAT_RAW) {
+        xmlChar *buff = NULL;
+        int len = 0;
+        size_t buf_len;
+        ssize_t ret;
+
+        xmlDocDumpMemory(doc, &buff, &len);
+
+        buf_len = len + 1024;
+        if (buf_len < 4096)
+            buf_len = 4096;
+
+        client_set_queue(client, NULL);
+        client->refbuf = refbuf_new(buf_len);
+
+        ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                0, status, NULL,
+                "text/xml", "utf-8",
+                NULL, NULL, client);
+        if (ret < 0) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+            xmlFree(buff);
+            return;
+        } else if (buf_len < (size_t)(len + ret + 64)) {
+            void *new_data;
+            buf_len = ret + len + 64;
+            new_data = realloc(client->refbuf->data, buf_len);
+            if (new_data) {
+                ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
+                client->refbuf->data = new_data;
+                client->refbuf->len = buf_len;
+                ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                        0, status, NULL,
+                        "text/xml", "utf-8",
+                        NULL, NULL, client);
+                if (ret == -1) {
+                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                    client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                    xmlFree(buff);
+                    return;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
+                xmlFree(buff);
+                return;
+            }
+        }
+
+        /* FIXME: in this section we hope no function will ever return -1 */
+        ret += snprintf (client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
+
+        client->refbuf->len = ret;
+        xmlFree(buff);
+        client->respcode = status;
+        fserve_add_client (client, NULL);
+    } else {
+        char *fullpath_xslt_template;
+        const char *document_domain_path;
+        ssize_t fullpath_xslt_template_len;
+        ice_config_t *config;
+
+        config = config_get_config();
+        switch (domain) {
+            case DOCUMENT_DOMAIN_WEB:
+                document_domain_path = config->webroot_dir;
+            break;
+            case DOCUMENT_DOMAIN_ADMIN:
+                document_domain_path = config->adminroot_dir;
+            break;
+            default:
+                config_release_config();
+                ICECAST_LOG_ERROR("Invalid document domain. Sending 500 to client %p", client);
+                client_send_500(client, "Invalid document domain.");
+                return;
+            break;
+        }
+        fullpath_xslt_template_len = strlen(document_domain_path) + strlen(xsl) + strlen(PATH_SEPARATOR) + 1;
+        fullpath_xslt_template = malloc(fullpath_xslt_template_len);
+        snprintf(fullpath_xslt_template, fullpath_xslt_template_len, "%s%s%s", document_domain_path, PATH_SEPARATOR, xsl);
+        config_release_config();
+
+        ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
+        xslt_transform(doc, fullpath_xslt_template, client, status);
+        free(fullpath_xslt_template);
+    }
+
+    xmlFreeDoc(doc);
 }
 
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)

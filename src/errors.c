@@ -132,7 +132,10 @@ static const icecast_error_t __errors[] = {
      .message = "Could not parse XSLT file"},
     {.id = ICECAST_ERROR_XSLT_problem,                                  .http_status = 500,
      .uuid = "d3c6e4b3-7d6e-4191-a81b-970273067ae3",
-     .message = "XSLT problem"}
+     .message = "XSLT problem"},
+    {.id = ICECAST_ERROR_RECURSIVE_ERROR,                               .http_status = 500,
+     .uuid = "13489d5c-eae6-4bf3-889e-ec1fa9a9b9ac",
+     .message = "Recursive error"}
 };
 
 const icecast_error_t * error_get_by_id(icecast_error_id_t id) {

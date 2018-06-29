@@ -223,6 +223,7 @@ struct ice_config_tag {
     char *webroot_dir;
     char *adminroot_dir;
     resource_t *resources;
+    reportxml_database_t *reportxml_db;
 
     char *access_log;
     char *error_log;
