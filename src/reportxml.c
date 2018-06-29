@@ -1288,8 +1288,11 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
     for (i = 0; i < (size_t)count; i++) {
         child = reportxml_node_get_child(definition, i);
 
-        if (i == 0) {
-            /* Attach definition to the first child only. */
+        if (reportxml_node_get_type(child) == type) {
+            /* Attach definition to all childs that are the same type.
+             * As long as we work to-the-specs all childs are of the same type.
+             * But if we work in relaxed mode, there might be other tags.
+             */
             reportxml_node_set_attribute(child, "definition", id);
         }
 
