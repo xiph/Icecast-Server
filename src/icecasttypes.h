@@ -32,7 +32,7 @@ typedef int32_t admin_command_id_t;
 typedef enum {
     ADMIN_FORMAT_AUTO,
     ADMIN_FORMAT_RAW,
-    ADMIN_FORMAT_TRANSFORMED,
+    ADMIN_FORMAT_HTML,
     ADMIN_FORMAT_PLAINTEXT
 } admin_format_t;
 

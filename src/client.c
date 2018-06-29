@@ -252,8 +252,8 @@ static inline void _client_send_error(client_t *client, const icecast_error_t *e
         case ADMIN_FORMAT_RAW:
             xslt = NULL;
         break;
-        case ADMIN_FORMAT_TRANSFORMED:
-            xslt = CLIENT_DEFAULT_ERROR_XSL_TRANSFORMED;
+        case ADMIN_FORMAT_HTML:
+            xslt = CLIENT_DEFAULT_ERROR_XSL_HTML;
         break;
         case ADMIN_FORMAT_PLAINTEXT:
             xslt = CLIENT_DEFAULT_ERROR_XSL_PLAINTEXT;
@@ -435,8 +435,8 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
             case ADMIN_FORMAT_RAW:
                 /* noop, we don't need to set xsl */
             break;
-            case ADMIN_FORMAT_TRANSFORMED:
-                xsl = CLIENT_DEFAULT_REPORT_XSL_TRANSFORMED;
+            case ADMIN_FORMAT_HTML:
+                xsl = CLIENT_DEFAULT_REPORT_XSL_HTML;
             break;
             case ADMIN_FORMAT_PLAINTEXT:
                 xsl = CLIENT_DEFAULT_REPORT_XSL_PLAINTEXT;
@@ -563,7 +563,7 @@ admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
     if (strcmp(pref, "text/xml") == 0) {
         return ADMIN_FORMAT_RAW;
     } else if (strcmp(pref, "text/html") == 0) {
-        return ADMIN_FORMAT_TRANSFORMED;
+        return ADMIN_FORMAT_HTML;
     } else if (strcmp(pref, "text/plain") == 0) {
         return ADMIN_FORMAT_PLAINTEXT;
     } else {
