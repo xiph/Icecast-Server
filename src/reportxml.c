@@ -1288,6 +1288,11 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
     for (i = 0; i < (size_t)count; i++) {
         child = reportxml_node_get_child(definition, i);
 
+        if (i == 0) {
+            /* Attach definition to the first child only. */
+            reportxml_node_set_attribute(child, "definition", id);
+        }
+
         /* we can directly attach as it's a already a copy. */
         if (reportxml_node_add_child(attach_to, child) != 0) {
             refobject_unref(definition);
