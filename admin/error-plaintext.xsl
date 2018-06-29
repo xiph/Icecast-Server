@@ -5,6 +5,11 @@
             		<xsl:text>Report:&#xa;</xsl:text>
             		<xsl:value-of select="state/text" />
 			<xsl:text>&#xa;</xsl:text>
+			<xsl:if test="state/@definition">
+				<xsl:text>Error code: </xsl:text>
+				<xsl:value-of select="state/@definition" />
+				<xsl:text>&#xa;</xsl:text>
+			</xsl:if>
         	</xsl:for-each>
 	</xsl:template>
 </xsl:stylesheet>

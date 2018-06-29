@@ -10,6 +10,9 @@
 					<h3>Response</h3>
 					<h4>Message</h4>
 					<p><xsl:value-of select="state/text" /></p>
+					<xsl:if test="state/@definition">
+					<p>Error code: <xsl:value-of select="state/@definition" /></p>
+					</xsl:if>
 				</div>
 			</xsl:for-each>
 		</div>
