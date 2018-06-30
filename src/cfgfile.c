@@ -596,6 +596,7 @@ static void config_clear_resource(resource_t *resource)
         xmlFree(resource->vhost);
         xmlFree(resource->module);
         xmlFree(resource->handler);
+        free(resource->listen_socket);
         free(resource);
         resource = nextresource;
     }
@@ -2006,6 +2007,12 @@ static void _parse_resource(xmlDocPtr      doc,
     }
 
     resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
+
+    temp = (char *)xmlGetProp(node, XMLSTR("listen-socket"));
+    if (temp) {
+        resource->listen_socket = config_href_to_id(temp);
+        xmlFree(temp);
+    }
 
     resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
 

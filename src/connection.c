@@ -1176,6 +1176,9 @@ static int _handle_resources(client_t *client, char **uri)
         if (resource->bind_address != NULL && serverhost != NULL && strcmp(resource->bind_address, serverhost) != 0)
             continue;
 
+        if (resource->listen_socket != NULL && (listen_sock->id == NULL || strcmp(resource->listen_socket, listen_sock->id) != 0))
+            continue;
+
         /* Check for the vhost to match. */
         if (resource->vhost != NULL && vhost != NULL && strcmp(resource->vhost, vhost) != 0)
             continue;

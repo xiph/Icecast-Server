@@ -139,6 +139,7 @@ typedef struct _resource {
     char *destination;
     int port;
     char *bind_address;
+    char *listen_socket;
     char *vhost;
     char *module;
     char *handler;
