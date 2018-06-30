@@ -77,6 +77,7 @@
 #include "yp.h"
 #include "auth.h"
 #include "event.h"
+#include "listensocket.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -318,20 +319,6 @@ static int _start_logging(void)
     return 0;
 }
 
-
-static int _start_listening(void)
-{
-    int i;
-    for(i=0; i < global.server_sockets; i++) {
-        if (sock_listen(global.serversock[i], ICECAST_LISTEN_QUEUE) == SOCK_ERROR)
-            return 0;
-
-        sock_set_blocking(global.serversock[i], 0);
-    }
-
-    return 1;
-}
-
 static void pidfile_update(ice_config_t *config, int always_try)
 {
     char *newpidfile = NULL;
@@ -389,11 +376,10 @@ static int _server_proc_init(void)
 {
     ice_config_t *config = config_get_config_unlocked();
 
-    if (connection_setup_sockets (config) < 1)
-        return 0;
+    connection_setup_sockets(config);
 
-    if (!_start_listening()) {
-        _fatal_error("Failed trying to listen on server socket");
+    if (listensocket_container_sockcount(global.listensockets) < 1) {
+        ICECAST_LOG_ERROR("Can not listen on any sockets.");
         return 0;
     }
 

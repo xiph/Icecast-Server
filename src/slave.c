@@ -200,7 +200,7 @@ static client_t *open_relay_connection (relay_server *relay)
             ICECAST_LOG_WARN("Failed to connect to %s:%d", server, port);
             break;
         }
-        con = connection_create (streamsock, -1, strdup (server));
+        con = connection_create(streamsock, NULL, NULL, strdup(server));
 
         /* At this point we may not know if we are relaying an mp3 or vorbis
          * stream, but only send the icy-metadata header if the relay details

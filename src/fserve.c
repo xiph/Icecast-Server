@@ -452,15 +452,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (m3u_requested && m3u_file_available == 0)
     {
-        const char *host = httpp_getvar (httpclient->parser, "host");
         char *sourceuri = strdup (path);
         char *dot = strrchr(sourceuri, '.');
-
-        /* at least a couple of players (fb2k/winamp) are reported to send a
-         * host header but without the port number. So if we are missing the
-         * port then lets treat it as if no host line was sent */
-        if (host && strchr (host, ':') == NULL)
-            host = NULL;
 
         *dot = 0;
         httpclient->respcode = 200;
@@ -473,24 +466,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
             free(sourceuri);
             return -1;
         }
-        if (host == NULL)
-        {
-            config = config_get_config();
-            snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
-                    "http://%s:%d%s\r\n",
-                    config->hostname, config->port,
-                    sourceuri
-                    );
-            config_release_config();
-        }
-        else
-        {
-            snprintf (httpclient->refbuf->data + ret, BUFSIZE - ret,
-                    "http://%s%s\r\n",
-                    host,
-                    sourceuri
-                    );
-        }
+        client_get_baseurl(httpclient, NULL, httpclient->refbuf->data + ret, BUFSIZE - ret, NULL, NULL, NULL, sourceuri, "\r\n");
         httpclient->refbuf->len = strlen (httpclient->refbuf->data);
         fserve_add_client (httpclient, NULL);
         free (sourceuri);
@@ -504,7 +480,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         char *eol = strrchr (reference, '.');
         if (eol)
             *eol = '\0';
-        doc = stats_get_xml (0, reference, httpclient->mode);
+        doc = stats_get_xml (0, reference, httpclient);
         free (reference);
         admin_send_response (doc, httpclient, ADMIN_FORMAT_HTML, xslt_playlist_requested);
         xmlFreeDoc(doc);

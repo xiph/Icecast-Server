@@ -616,19 +616,8 @@ static FILE * source_open_dumpfile(const char * filename) {
  */
 static void source_init (source_t *source)
 {
-    ice_config_t *config = config_get_config();
-    char *listenurl;
+    char listenurl[512];
     const char *str;
-    int listen_url_size;
-
-    /* 6 for max size of port */
-    listen_url_size = strlen("http://") + strlen(config->hostname) +
-        strlen(":") + 6 + strlen(source->mount) + 1;
-
-    listenurl = malloc (listen_url_size);
-    snprintf (listenurl, listen_url_size, "http://%s:%d%s",
-            config->hostname, config->port, source->mount);
-    config_release_config();
 
     str = httpp_getvar(source->parser, "ice-audio-info");
     source->audio_info = util_dict_new();
@@ -638,9 +627,8 @@ static void source_init (source_t *source)
         stats_event (source->mount, "audio_info", str);
     }
 
+    client_get_baseurl(NULL, NULL, listenurl, sizeof(listenurl), NULL, NULL, NULL, NULL, NULL);
     stats_event (source->mount, "listenurl", listenurl);
-
-    free(listenurl);
 
     if (source->dumpfilename != NULL)
     {

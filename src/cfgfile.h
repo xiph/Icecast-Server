@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __CFGFILE_H__
@@ -139,6 +139,7 @@ typedef struct _resource {
     char *destination;
     int port;
     char *bind_address;
+    char *listen_socket;
     char *vhost;
     char *module;
     char *handler;
@@ -147,8 +148,17 @@ typedef struct _resource {
     struct _resource *next;
 } resource_t;
 
+typedef enum _listener_type_tag {
+    LISTENER_TYPE_ERROR,
+    LISTENER_TYPE_NORMAL,
+    LISTENER_TYPE_VIRTUAL
+} listener_type_t;
+
 typedef struct _listener_t {
     struct _listener_t *next;
+    char *id;
+    char *on_behalf_of;
+    listener_type_t type;
     int port;
     int so_sndbuf;
     char *bind_address;
@@ -262,7 +272,8 @@ void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount(ice_config_t *config, const char *mount, mount_type type);
-listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con);
+
+listener_t *config_copy_listener_one(const listener_t *listener);
 
 config_options_t *config_parse_options(xmlNodePtr node);
 void config_clear_options(config_options_t *options);

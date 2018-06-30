@@ -32,7 +32,8 @@ struct connection_tag {
     uint64_t sent_bytes;
 
     sock_t sock;
-    sock_t serversock;
+    listensocket_t *listensocket_real;
+    listensocket_t *listensocket_effective;
     int error;
 
     tlsmode_t tlsmode;
@@ -50,9 +51,9 @@ void connection_initialize(void);
 void connection_shutdown(void);
 void connection_reread_config(ice_config_t *config);
 void connection_accept_loop(void);
-int connection_setup_sockets(ice_config_t *config);
+void connection_setup_sockets(ice_config_t *config);
 void connection_close(connection_t *con);
-connection_t *connection_create(sock_t sock, sock_t serversock, char *ip);
+connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip);
 int connection_complete_source(source_t *source, int response);
 void connection_queue(connection_t *con);
 void connection_uses_tls(connection_t *con);

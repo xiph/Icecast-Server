@@ -10,7 +10,7 @@
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
  * Copyright 2011-2014, Thomas B. "dm8tbr" Ruecker <thomas@ruecker.fi>,
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -170,6 +170,33 @@ operation_mode config_str_to_omode(const char *str)
         ICECAST_LOG_ERROR("Unknown operation mode \"%s\", falling back to DEFAULT.", str);
         return OMODE_DEFAULT;
     }
+}
+
+static listener_type_t config_str_to_listener_type(const char *str)
+{
+    if (!str || !*str) {
+        return LISTENER_TYPE_NORMAL;
+    } else if (strcasecmp(str, "normal") == 0) {
+        return LISTENER_TYPE_NORMAL;
+    } else if (strcasecmp(str, "virtual") == 0) {
+        return LISTENER_TYPE_VIRTUAL;
+    } else {
+        ICECAST_LOG_ERROR("Unknown listener type \"%s\", falling back to NORMAL.", str);
+        return LISTENER_TYPE_NORMAL;
+    }
+}
+
+char * config_href_to_id(const char *href)
+{
+    if (!href || !*href)
+        return NULL;
+
+    if (*href != '#') {
+        ICECAST_LOG_ERROR("Can not convert string \"%H\" to ID.", href);
+        return NULL;
+    }
+
+    return strdup(href+1);
 }
 
 static void create_locks(void)
@@ -569,6 +596,7 @@ static void config_clear_resource(resource_t *resource)
         xmlFree(resource->vhost);
         xmlFree(resource->module);
         xmlFree(resource->handler);
+        free(resource->listen_socket);
         free(resource);
         resource = nextresource;
     }
@@ -580,6 +608,8 @@ listener_t *config_clear_listener(listener_t *listener)
     if (listener)
     {
         next = listener->next;
+        if (listener->id)               xmlFree(listener->id);
+        if (listener->on_behalf_of)     free(listener->on_behalf_of);
         if (listener->bind_address)     xmlFree(listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
         free (listener);
@@ -999,7 +1029,7 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->mimetypes_fn);
             configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("listen-socket")) == 0) {
-            _parse_listen_socket(doc, node->xmlChildrenNode, configuration);
+            _parse_listen_socket(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (tmp && *tmp) {
@@ -1744,6 +1774,20 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         return;
     listener->port = 8000;
 
+    listener->id  = (char *)xmlGetProp(node, XMLSTR("id"));
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("on-behalf-of"));
+    if (tmp) {
+        listener->on_behalf_of = config_href_to_id(tmp);
+        xmlFree(tmp);
+    }
+
+    tmp  = (char *)xmlGetProp(node, XMLSTR("type"));
+    listener->type = config_str_to_listener_type(tmp);
+    xmlFree(tmp);
+
+    node = node->xmlChildrenNode;
+
     do {
         if (node == NULL)
             break;
@@ -1963,6 +2007,12 @@ static void _parse_resource(xmlDocPtr      doc,
     }
 
     resource->bind_address = (char *)xmlGetProp(node, XMLSTR("bind-address"));
+
+    temp = (char *)xmlGetProp(node, XMLSTR("listen-socket"));
+    if (temp) {
+        resource->listen_socket = config_href_to_id(temp);
+        xmlFree(temp);
+    }
 
     resource->vhost = (char *)xmlGetProp(node, XMLSTR("vhost"));
 
@@ -2473,24 +2523,28 @@ mount_proxy *config_find_mount (ice_config_t        *config,
     return mountinfo;
 }
 
-/* Helper function to locate the configuration details of the listening
- * socket
- */
-listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con)
-{
-    listener_t *listener;
-    int i = 0;
+listener_t *config_copy_listener_one(const listener_t *listener) {
+    listener_t *n;
 
-    listener = config->listen_sock;
-    while (listener) {
-        if (i >= global.server_sockets) {
-            listener = NULL;
-        } else {
-            if (global.serversock[i] == con->serversock)
-                break;
-            listener = listener->next;
-            i++;
-        }
+    if (listener == NULL)
+        return NULL;
+
+    n = calloc(1, sizeof(*n));
+    if (n == NULL)
+        return NULL;
+
+    n->next = NULL;
+    n->port = listener->port;
+    n->so_sndbuf = listener->so_sndbuf;
+    n->type = listener->type;
+    n->id = (char*)xmlStrdup(XMLSTR(listener->id));
+    if (listener->on_behalf_of) {
+        n->on_behalf_of = strdup(listener->on_behalf_of);
     }
-    return listener;
+    n->bind_address = (char*)xmlStrdup(XMLSTR(listener->bind_address));
+    n->shoutcast_compat = listener->shoutcast_compat;
+    n->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));
+    n->tls = listener->tls;
+
+    return n;
 }

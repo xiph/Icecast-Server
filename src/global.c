@@ -31,7 +31,7 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-    global.server_sockets = 0;
+    global.listensockets = NULL;
     global.relays = NULL;
     global.master_relays = NULL;
     global.running = 0;

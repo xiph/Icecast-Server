@@ -48,6 +48,7 @@
 
 #include "util.h"
 #include "acl.h"
+#include "listensocket.h"
 
 /* for ADMIN_COMMAND_ERROR */
 #include "admin.h"
@@ -110,7 +111,7 @@ static inline void client_reuseconnection(client_t *client) {
         return;
 
     con = client->con;
-    con = connection_create(con->sock, con->serversock, strdup(con->ip));
+    con = connection_create(con->sock, con->listensocket_real, con->listensocket_effective, strdup(con->ip));
     reuse = client->reuse;
     client->con->sock = -1; /* TODO: do not use magic */
 
@@ -765,4 +766,92 @@ client_slurp_result_t client_body_skip(client_t *client)
             return CLIENT_SLURP_ERROR;
         break;
     }
+}
+
+ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char *buf, size_t len, const char *user, const char *pw, const char *prefix, const char *suffix0, const char *suffix1)
+{
+    const listener_t *listener = NULL;
+    const ice_config_t *config = NULL;
+    const char *host = NULL;
+    const char *proto = "http";
+    int port = 0;
+    ssize_t ret;
+    tlsmode_t tlsmode = ICECAST_TLSMODE_AUTO;
+    protocol_t protocol = ICECAST_PROTOCOL_HTTP;
+
+    if (!buf || !len)
+        return -1;
+
+    if (!prefix)
+        prefix = "";
+
+    if (!suffix0)
+        suffix0 = "";
+
+    if (!suffix1)
+        suffix1 = "";
+
+    if (client) {
+        host = httpp_getvar(client->parser, "host");
+
+        /* at least a couple of players (fb2k/winamp) are reported to send a
+         * host header but without the port number. So if we are missing the
+         * port then lets treat it as if no host line was sent */
+        if (host && strchr(host, ':') == NULL)
+            host = NULL;
+
+        listensocket = client->con->listensocket_effective;
+        tlsmode = client->con->tlsmode;
+        protocol = client->protocol;
+    }
+
+    if (!host && listensocket) {
+        listener = listensocket_get_listener(listensocket);
+        if (listener) {
+            host = listener->bind_address;
+            port = listener->port;
+            if (!client)
+                tlsmode = listener->tls;
+        }
+    }
+
+    if (!host) {
+        config = config_get_config();
+        host = config->hostname;
+        if (!port)
+            port = config->port;
+    }
+
+    switch (tlsmode) {
+        case ICECAST_TLSMODE_DISABLED:
+        case ICECAST_TLSMODE_AUTO:
+            switch (protocol) {
+                case ICECAST_PROTOCOL_HTTP: proto = "http"; break;
+                case ICECAST_PROTOCOL_SHOUTCAST: proto = "icy"; break;
+            }
+            break;
+        case ICECAST_TLSMODE_AUTO_NO_PLAIN:
+        case ICECAST_TLSMODE_RFC2817:
+        case ICECAST_TLSMODE_RFC2818:
+            switch (protocol) {
+                case ICECAST_PROTOCOL_HTTP: proto = "https"; break;
+                case ICECAST_PROTOCOL_SHOUTCAST: proto = "icys"; break;
+            }
+            break;
+    }
+
+    if (host && port) {
+        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s:%i%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, port, suffix0, suffix1);
+    } else if (host) {
+        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, suffix0, suffix1);
+    } else {
+        ret = -1;
+    }
+
+    if (config)
+        config_release_config();
+    if (listener)
+        listensocket_release_listener(listensocket);
+
+    return ret;
 }

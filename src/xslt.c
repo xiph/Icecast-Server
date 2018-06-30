@@ -53,6 +53,7 @@
 #include "stats.h"
 #include "fserve.h"
 #include "util.h"
+#include "cfgfile.h"
 
 #define CATMODULE "xslt"
 

@@ -151,5 +151,6 @@ ssize_t client_body_read(client_t *client, void *buf, size_t len);
 int client_body_eof(client_t *client);
 client_slurp_result_t client_body_slurp(client_t *client, void *buf, size_t *len);
 client_slurp_result_t client_body_skip(client_t *client);
+ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char *buf, size_t len, const char *user, const char *pw, const char *prefix, const char *suffix0, const char *suffix1);
 
 #endif  /* __CLIENT_H__ */
