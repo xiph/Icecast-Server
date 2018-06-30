@@ -156,6 +156,7 @@ typedef enum _listener_type_tag {
 typedef struct _listener_t {
     struct _listener_t *next;
     char *id;
+    char *on_behalf_of;
     listener_type_t type;
     int port;
     int so_sndbuf;

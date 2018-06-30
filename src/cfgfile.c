@@ -186,6 +186,19 @@ static listener_type_t config_str_to_listener_type(const char *str)
     }
 }
 
+char * config_href_to_id(const char *href)
+{
+    if (!href || !*href)
+        return NULL;
+
+    if (*href != '#') {
+        ICECAST_LOG_ERROR("Can not convert string \"%H\" to ID.", href);
+        return NULL;
+    }
+
+    return strdup(href+1);
+}
+
 static void create_locks(void)
 {
     thread_mutex_create(&_locks.relay_lock);
@@ -595,6 +608,7 @@ listener_t *config_clear_listener(listener_t *listener)
     {
         next = listener->next;
         if (listener->id)               xmlFree(listener->id);
+        if (listener->on_behalf_of)     free(listener->on_behalf_of);
         if (listener->bind_address)     xmlFree(listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
         free (listener);
@@ -1761,6 +1775,12 @@ static void _parse_listen_socket(xmlDocPtr      doc,
 
     listener->id  = (char *)xmlGetProp(node, XMLSTR("id"));
 
+    tmp = (char*)xmlGetProp(node, XMLSTR("on-behalf-of"));
+    if (tmp) {
+        listener->on_behalf_of = config_href_to_id(tmp);
+        xmlFree(tmp);
+    }
+
     tmp  = (char *)xmlGetProp(node, XMLSTR("type"));
     listener->type = config_str_to_listener_type(tmp);
     xmlFree(tmp);
@@ -2511,6 +2531,9 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     n->so_sndbuf = listener->so_sndbuf;
     n->type = listener->type;
     n->id = (char*)xmlStrdup(XMLSTR(listener->id));
+    if (listener->on_behalf_of) {
+        n->on_behalf_of = strdup(listener->on_behalf_of);
+    }
     n->bind_address = (char*)xmlStrdup(XMLSTR(listener->bind_address));
     n->shoutcast_compat = listener->shoutcast_compat;
     n->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));

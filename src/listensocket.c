@@ -53,6 +53,7 @@ struct listensocket_tag {
     sock_t sock;
 };
 
+static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
 static int listensocket_container_configure__unlocked(listensocket_container_t *self, const ice_config_t *config);
 static int listensocket_container_setup__unlocked(listensocket_container_t *self);
 static ssize_t listensocket_container_sockcount__unlocked(listensocket_container_t *self);
@@ -466,6 +467,29 @@ static ssize_t listensocket_container_sockcount__unlocked(listensocket_container
     return count;
 }
 
+static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id)
+{
+    size_t i;
+    const listener_t *listener;
+
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            listener = listensocket_get_listener(self->sock[i]);
+            if (listener) {
+                if (strcmp(listener->id, id) == 0) {
+                    listensocket_release_listener(self->sock[i]);
+                    if (refobject_ref(self->sock[i]) == 0) {
+                        return self->sock[i];
+                    }
+                }
+                listensocket_release_listener(self->sock[i]);
+            }
+        }
+    }
+
+    return NULL;
+}
+
 /* ---------------------------------------------------------------------------- */
 
 static void __listensocket_free(refobject_t self, void **userdata)
@@ -677,6 +701,16 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
 
     if (strncmp(ip, "::ffff:", 7) == 0) {
         memmove(ip, ip+7, strlen(ip+7)+1);
+    }
+
+    ICECAST_LOG_DEBUG("Client on socket \"%H\".", self->listener->id);
+
+    if (self->listener->on_behalf_of) {
+        ICECAST_LOG_DEBUG("This socket is acting on behalf of \"%H\"", self->listener->on_behalf_of);
+        effective = listensocket_container_get_by_id(container, self->listener->on_behalf_of);
+        if (!effective) {
+            ICECAST_LOG_ERROR("Can not find listen socket with ID \"%H\". Will continue on behalf of myself.", self->listener->on_behalf_of);
+        }
     }
 
     if (!effective) {
