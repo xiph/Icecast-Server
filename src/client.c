@@ -393,6 +393,8 @@ void client_send_101(client_t *client, reuse_t reuse)
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     fserve_add_client(client, NULL);
 }
 
@@ -415,6 +417,8 @@ void client_send_204(client_t *client)
 
     client->respcode = 204;
     client->refbuf->len = strlen(client->refbuf->data);
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     fserve_add_client(client, NULL);
 }
@@ -446,6 +450,8 @@ void client_send_426(client_t *client, reuse_t reuse)
 
     client->reuse = ICECAST_REUSE_KEEPALIVE;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     fserve_add_client(client, NULL);
 }
 
@@ -456,6 +462,10 @@ static inline void client_send_500(client_t *client, const char *message)
                           "500 - Internal Server Error\n---------------------------\n";
     const ssize_t header_len = sizeof(header) - 1;
     ssize_t ret;
+
+    client->respcode = 500;
+    client->refbuf->len = 0;
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     ret = client_send_bytes(client, header, header_len);
 
@@ -576,6 +586,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         client->refbuf->len = ret;
         xmlFree(buff);
         client->respcode = status;
+        fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
         fserve_add_client (client, NULL);
     } else {
         char *fullpath_xslt_template;
@@ -604,6 +615,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         config_release_config();
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
+        fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
         xslt_transform(doc, fullpath_xslt_template, client, status);
         free(fullpath_xslt_template);
     }

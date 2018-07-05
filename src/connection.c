@@ -1277,6 +1277,8 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_AUTHED, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     if (result != AUTH_OK) {
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         free(uri);
@@ -1417,6 +1419,7 @@ static void _handle_authentication_mount_normal(client_t *client, char *uri)
 
 static void _handle_authentication(client_t *client, char *uri)
 {
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READY_FOR_AUTH, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
     _handle_authentication_mount_normal(client, uri);
 }
 
