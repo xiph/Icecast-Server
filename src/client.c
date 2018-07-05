@@ -49,6 +49,7 @@
 #include "util.h"
 #include "acl.h"
 #include "listensocket.h"
+#include "fastevent.h"
 
 /* for ADMIN_COMMAND_ERROR */
 #include "admin.h"
@@ -99,6 +100,8 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     return ret;
 }
@@ -205,6 +208,8 @@ void client_destroy(client_t *client)
     if (client == NULL)
         return;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     if (client->reuse != ICECAST_REUSE_CLOSE) {
         /* only reuse the client if we reached the body's EOF. */
         if (client_body_eof(client) == 1) {
@@ -288,6 +293,8 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 
     if (bytes == -1 && client->con->error)
         ICECAST_LOG_DEBUG("reading from connection has failed");
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READ, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, client, buf, (size_t)len, (ssize_t)bytes);
 
     return bytes;
 }
@@ -632,6 +639,8 @@ int client_send_bytes(client_t *client, const void *buf, unsigned len)
     if (client->con->error)
         ICECAST_LOG_DEBUG("Client connection died");
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_WRITE, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_OBRD, client, buf, (size_t)len, (ssize_t)ret);
+
     return ret;
 }
 
@@ -666,6 +675,8 @@ ssize_t client_body_read(client_t *client, void *buf, size_t len)
     if (ret > 0) {
         client->request_body_read += ret;
     }
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READ_BODY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, client, buf, len, ret);
 
     return ret;
 }

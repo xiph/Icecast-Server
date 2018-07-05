@@ -19,6 +19,16 @@
 
 typedef enum {
     FASTEVENT_TYPE_SLOWEVENT = 0,
+    FASTEVENT_TYPE_CONNECTION_CREATE,
+    FASTEVENT_TYPE_CONNECTION_DESTROY,
+    FASTEVENT_TYPE_CONNECTION_READ,
+    FASTEVENT_TYPE_CONNECTION_PUTBACK,
+    FASTEVENT_TYPE_CONNECTION_WRITE,
+    FASTEVENT_TYPE_CLIENT_CREATE,
+    FASTEVENT_TYPE_CLIENT_DESTROY,
+    FASTEVENT_TYPE_CLIENT_READ,
+    FASTEVENT_TYPE_CLIENT_WRITE,
+    FASTEVENT_TYPE_CLIENT_READ_BODY,
     FASTEVENT_TYPE__END /* must be last element */
 } fastevent_type_t;
 
@@ -26,7 +36,9 @@ typedef enum {
     FASTEVENT_DATATYPE_NONE = 0,
     FASTEVENT_DATATYPE_EVENT,
     FASTEVENT_DATATYPE_CLIENT,
-    FASTEVENT_DATATYPE_CONNECTION
+    FASTEVENT_DATATYPE_CONNECTION,
+    FASTEVENT_DATATYPE_OBR,             /* Object, const void *Buffer, size_t Request_length */
+    FASTEVENT_DATATYPE_OBRD             /* Object, const void *Buffer, size_t Request_length, ssize_t Done_length */
 } fastevent_datatype_t;
 
 typedef int fastevent_flag_t;
