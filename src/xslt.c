@@ -152,23 +152,20 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     int empty = -1;
     struct stat file;
 
-    if(stat(fn, &file)) {
+    if (stat(fn, &file) != 0) {
         ICECAST_LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn,
                 strerror(errno));
         return NULL;
     }
 
-    for(i=0; i < CACHESIZE; i++) {
-        if(cache[i].filename)
-        {
+    for ( i = 0; i < CACHESIZE; i++) {
+        if(cache[i].filename) {
 #ifdef _WIN32
-            if(!stricmp(fn, cache[i].filename))
+            if(!stricmp(fn, cache[i].filename)) {
 #else
-            if(!strcmp(fn, cache[i].filename))
+            if(!strcmp(fn, cache[i].filename)) {
 #endif
-            {
-                if(file.st_mtime > cache[i].last_modified)
-                {
+                if(file.st_mtime > cache[i].last_modified) {
                     xsltFreeStylesheet(cache[i].stylesheet);
 
                     cache[i].last_modified = file.st_mtime;
@@ -178,20 +175,22 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                 ICECAST_LOG_DEBUG("Using cached sheet %i", i);
                 return cache[i].stylesheet;
             }
-        }
-        else
+        } else {
             empty = i;
+        }
     }
 
-    if(empty>=0)
+    if (empty >= 0) {
         i = empty;
-    else
+    } else {
         i = evict_cache_entry();
+    }
 
     cache[i].last_modified = file.st_mtime;
     cache[i].filename = strdup(fn);
     cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
     cache[i].cache_age = time(NULL);
+
     return cache[i].stylesheet;
 }
 
