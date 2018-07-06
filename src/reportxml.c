@@ -840,7 +840,7 @@ int                     reportxml_node_add_xml_child(reportxml_node_t *node, xml
 
     node->xml_childs = n;
 
-    node->xml_childs[node->xml_childs_len] = xmlCopyNode(child, 2);
+    node->xml_childs[node->xml_childs_len] = xmlCopyNode(child, 1);
     if (node->xml_childs[node->xml_childs_len] == NULL)
         return -1;
 
@@ -867,7 +867,7 @@ xmlNodePtr              reportxml_node_get_xml_child(reportxml_node_t *node, siz
     if (idx >= node->xml_childs_len)
         return NULL;
 
-    ret = xmlCopyNode(node->xml_childs[idx], 2);
+    ret = xmlCopyNode(node->xml_childs[idx], 1);
 
     return ret;
 }
