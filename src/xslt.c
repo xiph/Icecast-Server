@@ -115,20 +115,34 @@ void xslt_initialize(void)
 }
 
 void xslt_shutdown(void) {
-    int i;
 
-    for(i=0; i < CACHESIZE; i++) {
-        if(cache[i].filename)
-            free(cache[i].filename);
-        if(cache[i].stylesheet)
-            xsltFreeStylesheet(cache[i].stylesheet);
-    }
+    xslt_clear_cache();
 
     thread_mutex_destroy (&xsltlock);
     xmlCleanupParser();
     xsltCleanupGlobals();
     if (admin_path)
         xmlFree(admin_path);
+}
+
+static void clear_cache_entry(size_t idx) {
+    free(cache[idx].filename);
+    if (cache[idx].stylesheet)
+        xsltFreeStylesheet(cache[idx].stylesheet);
+}
+
+void xslt_clear_cache(void)
+{
+    size_t i;
+
+    ICECAST_LOG_DEBUG("Clearing stylesheet cache.");
+
+    thread_mutex_lock(&xsltlock);
+
+    for (i = 0; i < CACHESIZE; i++)
+        clear_cache_entry(i);
+
+    thread_mutex_unlock(&xsltlock);
 }
 
 static int evict_cache_entry(void) {
@@ -141,8 +155,7 @@ static int evict_cache_entry(void) {
         }
     }
 
-    xsltFreeStylesheet(cache[oldest].stylesheet);
-    free(cache[oldest].filename);
+    clear_cache_entry(oldest);
 
     return oldest;
 }
@@ -282,9 +295,11 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
 
     /* Get the actual xmlDoc */
     if (final_URI) {
+        ICECAST_LOG_DEBUG("Calling xslt_loader() for \"%s\" (was: \"%s\").", final_URI, URI);
         ret = xslt_loader(final_URI, dict, options, ctxt, type);
         xmlFree(final_URI);
     } else {
+        ICECAST_LOG_DEBUG("Calling xslt_loader() for \"%s\".", URI);
         ret = xslt_loader(URI, dict, options, ctxt, type);
     }
     return ret;

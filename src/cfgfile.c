@@ -44,6 +44,7 @@
 #include "connection.h"
 #include "main.h"
 #include "slave.h"
+#include "xslt.h"
 
 #define CATMODULE                       "CONFIG"
 #define CONFIG_DEFAULT_LOCATION         "Earth"
@@ -748,6 +749,7 @@ void config_reread_config(void)
         stats_global(config);
         config_release_config();
         slave_update_all_mounts();
+        xslt_clear_cache();
     }
 }
 
