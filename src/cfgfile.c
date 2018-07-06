@@ -2150,6 +2150,7 @@ static void _parse_paths(xmlDocPtr      doc,
                     ICECAST_LOG_ERROR("Can not parse report xml database \"%H\"", temp);
                 } else {
                     reportxml_database_add_report(configuration->reportxml_db, report);
+                    refobject_unref(report);
                     ICECAST_LOG_INFO("File \"%H\" added to report xml database", temp);
                 }
             }

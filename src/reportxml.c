@@ -458,9 +458,11 @@ reportxml_node_t *      reportxml_node_parse_xmlnode(xmlNodePtr xmlnode)
                 }
 
                 if (reportxml_node_add_child(node, child) != 0) {
+                    refobject_unref(child);
                     refobject_unref(node);
                     return NULL;
                 }
+                refobject_unref(child);
             }
         } while ((cur = cur->next));
     }
@@ -522,6 +524,8 @@ static reportxml_node_t *      __reportxml_node_copy_with_db(reportxml_node_t *n
                 refobject_unref(ret);
                 return NULL;
             }
+
+            refobject_unref(copy);
         }
     }
 
@@ -958,6 +962,8 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
     }
 
     thread_mutex_unlock(&(db->lock));
+
+    refobject_unref(root);
 
     return 0;
 }
