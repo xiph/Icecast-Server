@@ -158,7 +158,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
         return NULL;
     }
 
-    for ( i = 0; i < CACHESIZE; i++) {
+    for (i = 0; i < CACHESIZE; i++) {
         if(cache[i].filename) {
 #ifdef _WIN32
             if(!stricmp(fn, cache[i].filename)) {
