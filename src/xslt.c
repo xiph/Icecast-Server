@@ -152,6 +152,8 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     int empty = -1;
     struct stat file;
 
+    ICECAST_LOG_DEBUG("Looking up stylesheet file \"%s\".", fn);
+
     if (stat(fn, &file) != 0) {
         ICECAST_LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn,
                 strerror(errno));
@@ -166,6 +168,7 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
             if(!strcmp(fn, cache[i].filename)) {
 #endif
                 if(file.st_mtime > cache[i].last_modified) {
+                    ICECAST_LOG_DEBUG("Source file newer than cached copy. Reloading slot %i", i);
                     xsltFreeStylesheet(cache[i].stylesheet);
 
                     cache[i].last_modified = file.st_mtime;
@@ -182,8 +185,10 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
 
     if (empty >= 0) {
         i = empty;
+        ICECAST_LOG_DEBUG("Using empty slot %i", i);
     } else {
         i = evict_cache_entry();
+        ICECAST_LOG_DEBUG("Using evicted slot %i", i);
     }
 
     cache[i].last_modified = file.st_mtime;
