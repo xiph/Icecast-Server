@@ -90,7 +90,7 @@ typedef struct client_queue_tag {
 } client_queue_t;
 
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
-static volatile unsigned long _current_id = 0;
+static volatile connection_id_t _current_id = 0;
 static int _initialized = 0;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
@@ -149,9 +149,9 @@ void connection_reread_config(ice_config_t *config)
     listensocket_container_configure_and_setup(global.listensockets, config);
 }
 
-static unsigned long _next_connection_id(void)
+static connection_id_t _next_connection_id(void)
 {
-    unsigned long id;
+    connection_id_t id;
 
     thread_spin_lock(&_connection_lock);
     id = _current_id++;

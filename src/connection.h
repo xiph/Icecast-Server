@@ -24,8 +24,10 @@
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
 
+typedef unsigned long connection_id_t;
+
 struct connection_tag {
-    unsigned long id;
+    connection_id_t id;
 
     time_t con_time;
     time_t discon_time;
