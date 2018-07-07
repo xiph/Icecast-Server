@@ -102,7 +102,7 @@ source_t *source_reserve (const char *mount)
 
         src->client_tree = avl_tree_new(_compare_clients, NULL);
         src->pending_tree = avl_tree_new(_compare_clients, NULL);
-        src->history = playlist_new(4 /* DOCUMENT: default is max_tracks=4. */);
+        src->history = playlist_new(10 /* DOCUMENT: default is max_tracks=10. */);
 
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
