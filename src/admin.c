@@ -497,6 +497,7 @@ void admin_handle_request(client_t *client, const char *uri)
             ICECAST_LOG_DEBUG("Granted right to call COMMAND_RAW_METADATA_UPDATE to "
                 "client because it is allowed to do SOURCE or PUT.");
         } else {
+            ICECAST_LOG_DEBUG("Client needs to authenticate.");
             client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
             return;
         }
