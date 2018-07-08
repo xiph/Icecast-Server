@@ -16,7 +16,7 @@
 
 #ifdef HAVE_POLL
 #include <poll.h>
-#else
+#elif HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
 
