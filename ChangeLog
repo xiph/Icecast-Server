@@ -1,5 +1,96 @@
+2018-06-10 18:13 tbr
+
+	* Release preparation for Icecast 2.4.4
+
+2018-05-26 06:15 ph3-der-loewe
+
+	* Fix: Fixed segfault in htpasswd auth if no filename is set
+
+2018-05-08 07:24 ph3-der-loewe
+
+	* Fix: Do not report hashed user passworts in user list.
+
+2018-05-05 07:23 Marvin Scholz
+
+	* Fix two mistakes in the default config's comments
+
+2018-05-05 07:23 Marvin Scholz
+
+	* Add log message for succesful streamlist requests
+
+2018-05-05 07:23 JRS
+
+	* Fix: update_from_master() for receiving HTTP/1.1
+
+2018-05-05 07:23 tbr
+
+	* Fix: Spelling, thanks to Ukikie
+
+2018-05-05 06:41 ph3-der-loewe
+
+	* Fix: Fixed a segfault when xsltApplyStylesheet() returns error
+
+2018-04-21 10:30 ph3-der-loewe
+
+	* Fix: Do not segfaul on bad Opus streams
+
+2018-04-21 10:29 ph3-der-loewe
+
+	* Fix: Corrected response and fixed TLS for 416 Request Range Not Satisfiable 
+	  responses
+
+2018-04-21 10:13 ph3-der-loewe
+
+	* Fix: TLS for ICECAST_PROTOCOL_SHOUTCAST source clients
+
+2018-04-16 13:42 Marvin Scholz
+
+	* Fix: global listener count could be negative under certain circumstances
+	  Thanks a lot to Simeon Völkel (0xBD4E031CDB4043C9) for reporting
+	  and investigating the bug.
+
+2018-04-13 13:46 ph3-der-loewe
+
+	* Fix: Send "Content-Length: 0" on 100-continue
+
+2018-04-13 11:18 ph3-der-loewe
+
+	* Fix: Do not send 100-continue in plain over TLS sockets
+
+2016-12-27 11:49 ph3-der-loewe
+
+	* Fix: Added needed code to announce Opus streams as such to yp.
+	  This fixes the situation at least for Opus. It should be checked
+	  if the same problem applies to other codecs as well.
+	  If so, maybe a better solution should be considered for 2.5.x.
+
+2016-12-07 18:42 ph3-der-loewe
+
+	* Cleanup: Updated usage of global.running to be more clear
+
+2016-12-07 18:38 ph3-der-loewe
+
+	* Fix: Avoid invalid locking in signal handlers.
+
+2016-10-29 11:42 ph3-der-loewe
+
+	* Workaround: avoid libspeex printing warnings on Opus streams.
+
+2016-08-15 11:51 ph3-der-loewe
+
+	* Fix: Fixed regression introduced by r19250.
+	  This fixes the regression introduced by r19250
+	  (461a537561580cb32dac327bae73f7e670188bd4).
+	  The fix checks if the source client is actually
+	  known before printing it's IP-Address.
+
+2016-02-10 10:00  ph3-der-loewe
+
+	* Fix: do not allow unescaped strings in XML output.
+
 2015-12-24 00:38  ph3-der-loewe
 
+	* RELEASE 2.4.3
 	* Windows security fix: remove trailing dots in URI
 	  This addresses CVE-2005-0837 (sic!), which was sadly ignored after
 	  ticket #635 got closed erroneously.
@@ -10,6 +101,7 @@
 
 2015-04-08 10:07:42  dm8tbr
 
+	* RELEASE 2.4.2
 	* apply fix for documentation (needed by distro packaging)
 
 2015-04-08 09:09:26  ph3-der-loewe
