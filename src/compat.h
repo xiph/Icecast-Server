@@ -39,24 +39,29 @@
 #  endif
 #endif
 
-/* Make sure we define 64 bit types */
 #ifdef _WIN32
 #  define PATH_SEPARATOR "\\"
+#else
+#  define PATH_SEPARATOR "/"
+#endif
+
+/* Make sure we define 64 bit types */
+#ifdef HAVE_STDINT_H
+#  include <stdint.h>
+#endif
+#ifdef HAVE_INTTYPES_H
+#  include <inttypes.h>
+#endif
+
+#if defined(_WIN32) && !defined(HAVE_STDINT_H) && !defined(HAVE_INTTYPES_H)
 #  define size_t unsigned int
 #  define ssize_t int
 #  define int64_t __int64
 #  define uint64_t unsigned __int64
-#  define uint32_t unsigned int
+#  define int32_t __int32
+#  define uint32_t unsigned __int32
 #  define PRIu64  "I64u"
 #  define PRId64  "I64d"
-#else
-#  define PATH_SEPARATOR "/"
-#  ifdef HAVE_STDINT_H
-#    include <stdint.h>
-#  endif
-#  ifdef HAVE_INTTYPES_H
-#    include <inttypes.h>
-#  endif
 #endif
 
 /* some defaults if not provided above */
