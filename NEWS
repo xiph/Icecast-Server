@@ -24,6 +24,18 @@ to the ChangeLog
   responses
 - Fix: TLS for ICECAST_PROTOCOL_SHOUTCAST source clients
   and investigating the bug.
+- Fix: global listener count could be negative under certain circumstances
+  Thanks a lot to Simeon Völkel (0xBD4E031CDB4043C9) for reporting
+  and investigating the bug.
+- Fix: Send "Content-Length: 0" on 100-continue
+- Fix: Do not send 100-continue in plain text over TLS sockets
+- Fix: Added needed code to announce Opus streams as such to yp.
+- Fix: Avoid invalid locking in signal handlers.
+- Workaround: avoid libspeex printing warnings on Opus streams.
+- Fix: Fixed regression introduced by r19250.
+  The fix checks if the source client is actually
+  known before printing it's IP-Address.
+- Fix: do not allow unescaped strings in XML output.
 
 ## Known issues
 
