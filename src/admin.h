@@ -19,6 +19,7 @@
 
 #include "icecasttypes.h"
 #include "compat.h"
+#include "resourcematch.h"
 
 /* types */
 #define ADMINTYPE_ERROR   (-1)
@@ -31,12 +32,14 @@
 #define ADMIN_COMMAND_ANY   ((admin_command_id_t)0) /* for ACL framework */
 
 typedef void (*admin_request_function_ptr)(client_t * client, source_t * source, admin_format_t format);
+typedef void (*admin_request_function_with_parameters_ptr)(client_t * client, source_t * source, admin_format_t format, resourcematch_extract_t *parameters);
 
 typedef struct admin_command_handler {
     const char                         *route;
     const int                           type;
     const int                           format;
     const admin_request_function_ptr    function;
+    const admin_request_function_with_parameters_ptr function_with_parameters;
 } admin_command_handler_t;
 
 void admin_handle_request(client_t *client, const char *uri);
