@@ -279,7 +279,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                 /* Append path separator to path */
                 size_t len = strlen(config->adminroot_dir);
                 xmlChar* admin_path = xmlMalloc(len+2);
-                xmlStrPrintf(admin_path, len+2, "%s/", XMLSTR(config->adminroot_dir));
+                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(config->adminroot_dir));
 
                 /* Convert admin path to URI */
                 admin_URI = xmlPathToURI(admin_path);
