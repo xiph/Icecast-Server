@@ -118,37 +118,37 @@ static void command_updatemetadata      (client_t *client, source_t *source, adm
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
-    { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL }, /* for ACL framework */
-    { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_fallback },
-    { FALLBACK_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_fallback },
-    { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_metadata },
-    { METADATA_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_metadata },
-    { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_shoutcast_metadata },
-    { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_show_listeners },
-    { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners },
-    { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats },
-    { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats },
-    { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats },
-    { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload },
-    { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload },
-    { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts },
-    { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts },
-    { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts },
-    { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     command_list_mounts },
-    { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts },
-    { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_move_clients },
-    { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_move_clients },
-    { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_client },
-    { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_client },
-    { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_source },
-    { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_source },
-    { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_manageauth },
-    { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth },
-    { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata },
-    { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata },
-    { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u },
-    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats },
-    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats }
+    { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
+    { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_fallback, NULL},
+    { FALLBACK_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_fallback, NULL},
+    { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_metadata, NULL},
+    { METADATA_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_metadata, NULL},
+    { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_shoutcast_metadata, NULL},
+    { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_show_listeners, NULL},
+    { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners, NULL},
+    { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
+    { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
+    { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
+    { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload, NULL},
+    { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload, NULL},
+    { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
+    { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
+    { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
+    { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     command_list_mounts, NULL},
+    { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
+    { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_move_clients, NULL},
+    { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_move_clients, NULL},
+    { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_client, NULL},
+    { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_client, NULL},
+    { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_source, NULL},
+    { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_source, NULL},
+    { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_manageauth, NULL},
+    { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth, NULL},
+    { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
+    { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata, NULL},
+    { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
+    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
+    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL}
 };
 
 static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
@@ -247,7 +247,7 @@ admin_command_id_t admin_get_command(const char *command)
     }
 
     for (i = 0; i < table->length; i++)
-        if (strcmp(table->handlers[i].route, suffix) == 0)
+        if (resourcematch_match(table->handlers[i].route, suffix, NULL) == RESOURCEMATCH_MATCH)
             return admin_get_command_by_table_and_index(table, i);
 
     return COMMAND_ERROR;
@@ -480,7 +480,7 @@ void admin_handle_request(client_t *client, const char *uri)
     handler = admin_get_handler(client->admin_command);
 
     /* Check if admin command is valid */
-    if (handler == NULL || handler->function == NULL) {
+    if (handler == NULL || (handler->function == NULL && handler->function_with_parameters == NULL)) {
         ICECAST_LOG_ERROR("Error parsing command string or unrecognised command: %H",
                 uri);
         client_send_error_by_id(client, ICECAST_ERROR_ADMIN_UNRECOGNISED_COMMAND);
@@ -545,7 +545,25 @@ void admin_handle_request(client_t *client, const char *uri)
     switch (client->parser->req_type) {
         case httpp_req_get:
         case httpp_req_post:
-            handler->function(client, source, format);
+            if (handler->function) {
+                handler->function(client, source, format);
+            } else {
+                resourcematch_extract_t *extract = NULL;
+                const char *suffix = strchr(uri, '/');
+
+                if (!suffix) {
+                    client_send_error_by_id(client, ICECAST_ERROR_ADMIN_UNRECOGNISED_COMMAND);
+                } else {
+                    suffix++;
+
+                    if (resourcematch_match(handler->route, suffix, &extract) == RESOURCEMATCH_MATCH) {
+                        handler->function_with_parameters(client, source, format, extract);
+                        resourcematch_extract_free(extract);
+                    } else {
+                        client_send_error_by_id(client, ICECAST_ERROR_ADMIN_UNRECOGNISED_COMMAND);
+                    }
+                }
+            }
         break;
         case httpp_req_options:
             client_send_204(client);

@@ -7,6 +7,7 @@ bin_PROGRAMS = icecast
 noinst_HEADERS = \
     icecasttypes.h \
     admin.h \
+    resourcematch.h \
     main.h \
     cfgfile.h \
     logging.h \
@@ -69,6 +70,7 @@ icecast_SOURCES = \
     xslt.c \
     fserve.c \
     admin.c \
+    resourcematch.c \
     md5.c \
     matchfile.c \
     tls.c \
