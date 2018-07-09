@@ -264,16 +264,6 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
             config = config_get_config();
-            /* Admin path is cached, so that we don't need to get it from
-             * the config every time we load a xsl include.
-             * Whenever a new top stylesheet is loaded, we check here
-             * if the path in the config has changed and adjust it, if needed.
-             */
-            if (admin_path != NULL &&
-                strcmp(config->adminroot_dir, (char *)admin_path) != 0) {
-                xmlFree(admin_path);
-                admin_path = NULL;
-            }
             /* Do we need to load the admin path? */
             if (!admin_path) {
                 size_t len = strlen(config->adminroot_dir);
