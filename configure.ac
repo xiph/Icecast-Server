@@ -37,6 +37,35 @@ AM_MAINTAINER_MODE([enable])
 
 LT_INIT
 
+
+dnl Sanitizer flags
+
+AC_ARG_WITH([sanitizer],
+    [AS_HELP_STRING([--with-sanitizer=(address/memory/undefined/thread)],
+        [build with sanitizer flags (default disabled)])],
+     [],
+     [with_sanitizer=no])
+
+AS_VAR_IF(with_sanitizer, no, [], [
+    AX_CHECK_COMPILE_FLAG([-fsanitize=${with_sanitizer}], [
+        AX_APPEND_FLAG([-fsanitize=${with_sanitizer}])
+        AX_APPEND_FLAG([-fsanitize=${with_sanitizer}], [LDFLAGS])
+    ], [
+        AC_MSG_ERROR(["-fsanitize=${with_sanitizer} not supported!"])
+    ])
+    AX_APPEND_FLAG([-g])
+
+    AS_IF([test -z "${with_sanitizer##*address*}" ], [
+       AX_APPEND_COMPILE_FLAGS([-fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=pointer-compare -fsanitize=pointer-subtract])
+    ])
+    AS_IF([test -z "${with_sanitizer##*memory*}" ], [
+        AX_APPEND_COMPILE_FLAGS([-fPIE -pie])
+    ])
+    AS_IF([test -z "${with_sanitizer##*thread*}" ], [
+        AX_APPEND_COMPILE_FLAGS([-fPIE -pie])
+    ])
+])
+
 dnl Check for attributes
 AX_GCC_TYPE_ATTRIBUTE([transparent_union])
 
