@@ -142,6 +142,11 @@ void xslt_clear_cache(void)
     for (i = 0; i < CACHESIZE; i++)
         clear_cache_entry(i);
 
+    if (admin_URI) {
+        xmlFree(admin_URI);
+        admin_URI = NULL;
+    }
+
     thread_mutex_unlock(&xsltlock);
 }
 
