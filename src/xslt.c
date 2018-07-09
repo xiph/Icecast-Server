@@ -100,8 +100,8 @@ static mutex_t xsltlock;
 
 /* Reference to the original xslt loader func */
 static xsltDocLoaderFunc xslt_loader;
-/* Admin path cache */
-static xmlChar *admin_path = NULL;
+/* Admin URI cache */
+static xmlChar *admin_URI = NULL;
 
 void xslt_initialize(void)
 {
@@ -121,8 +121,8 @@ void xslt_shutdown(void) {
     thread_mutex_destroy (&xsltlock);
     xmlCleanupParser();
     xsltCleanupGlobals();
-    if (admin_path)
-        xmlFree(admin_path);
+    if (admin_URI)
+        xmlFree(admin_URI);
 }
 
 static void clear_cache_entry(size_t idx) {
@@ -220,7 +220,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                                xsltLoadType type)
 {
     xmlDocPtr ret;
-    xmlChar *rel_path, *fn, *final_URI = NULL;
+    xmlChar *rel_URI, *fn, *final_URI = NULL;
     char *path_URI = NULL;
     xsltStylesheet *c;
     ice_config_t *config;
@@ -247,33 +247,41 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                 break;
 
             /* Construct the right path */
-            rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
-            if (rel_path != NULL && admin_path != NULL) {
-                fn = xmlBuildURI(rel_path, admin_path);
+            rel_URI = xmlBuildRelativeURI(URI, c->doc->URL);
+            if (rel_URI != NULL && admin_URI != NULL) {
+                fn = xmlBuildURI(rel_URI, admin_URI);
                 final_URI = fn;
-                xmlFree(rel_path);
+                xmlFree(rel_URI);
             }
 
             /* Fail if there was an error constructing the path */
             if (final_URI == NULL) {
-                if (rel_path)
-                    xmlFree(rel_path);
+                if (rel_URI)
+                    xmlFree(rel_URI);
                 return NULL;
             }
         break;
+
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
             config = config_get_config();
-            /* Do we need to load the admin path? */
-            if (!admin_path) {
+
+            /* Check if we need to load the admin path */
+            if (!admin_URI) {
+                /* Append path separator to path */
                 size_t len = strlen(config->adminroot_dir);
+                xmlChar* admin_path = xmlMalloc(len+2);
+                xmlStrPrintf(admin_path, len+2, "%s/", XMLSTR(config->adminroot_dir));
 
-                admin_path = xmlMalloc(len+2);
-                if (!admin_path)
+                /* Convert admin path to URI */
+                admin_URI = xmlPathToURI(admin_path);
+                xmlFree(admin_path);
+
+                if (!admin_URI) {
                     return NULL;
-
-                /* Copy over admin path and add a tailing slash. */
-                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(config->adminroot_dir));
+                } else {
+                    ICECAST_LOG_DEBUG("Loaded and cached admin_URI \"%s\"", admin_URI);
+                }
             }
             config_release_config();
         break;
