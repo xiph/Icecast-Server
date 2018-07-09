@@ -269,10 +269,12 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
 
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
-            config = config_get_config();
+            /* Check if the admin URI is already cached */
+            if (admin_URI != NULL) {
+                break;
+            }
 
-            /* Check if we need to load the admin path */
-            if (!admin_URI) {
+            config = config_get_config();
                 /* Append path separator to path */
                 size_t len = strlen(config->adminroot_dir);
                 xmlChar* admin_path = xmlMalloc(len+2);
@@ -287,7 +289,6 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                 } else {
                     ICECAST_LOG_DEBUG("Loaded and cached admin_URI \"%s\"", admin_URI);
                 }
-            }
             config_release_config();
         break;
 
