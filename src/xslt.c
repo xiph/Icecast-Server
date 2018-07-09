@@ -129,6 +129,7 @@ static void clear_cache_entry(size_t idx) {
     free(cache[idx].filename);
     if (cache[idx].stylesheet)
         xsltFreeStylesheet(cache[idx].stylesheet);
+    cache[idx].filename = NULL;
 }
 
 void xslt_clear_cache(void)
