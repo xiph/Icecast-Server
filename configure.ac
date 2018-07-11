@@ -302,7 +302,7 @@ AC_CONFIG_FILES([
 
 AC_OUTPUT
 
-echo "
+AS_ECHO(["
 Icecast configuration
 ---------------------
 Version        : ${VERSION}
@@ -316,4 +316,4 @@ Format/Codec support:
 
 Features:
   YP support   : ${enable_yp}
-  Client tests : ${enable_client_tests}"
+  Client tests : ${enable_client_tests}"])
