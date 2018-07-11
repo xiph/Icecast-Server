@@ -22,6 +22,9 @@ AS_IF([test "${ac_cv_prog_cc_c99}" = "no"], [
 
 AX_APPEND_COMPILE_FLAGS([-Wall -Wextra -Wno-unused-parameter])
 
+dnl With clang, we want an error for unknown flags instead of just warn
+AX_APPEND_COMPILE_FLAGS([-Werror=unknown-warning-option -Werror=invalid-command-line-argument])
+
 AC_SYS_LARGEFILE
 AC_DEFINE([_GNU_SOURCE], 1, [Define to include GNU extensions to POSIX])
 
