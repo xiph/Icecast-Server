@@ -112,9 +112,13 @@ AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([setresuid])
 AC_CHECK_FUNCS([setresgid])
 AC_CHECK_FUNCS([localtime_r])
-AC_CHECK_FUNCS([poll])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([ftime])
+
+dnl Do not check for poll on Darwin, it is broken in some versions
+AS_IF([test "${SYS}" != "darwin"], [
+  AC_CHECK_FUNCS([poll])
+])
 
 AC_SEARCH_LIBS([nanosleep], [rt posix4], [
   AC_DEFINE([HAVE_NANOSLEEP], [1], [Define if you have nanosleep])
