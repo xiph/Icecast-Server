@@ -64,15 +64,18 @@ AS_VAR_IF(with_sanitizer, no, [], [
     ])
     AX_APPEND_FLAG([-g])
 
-    AS_IF([test -z "${with_sanitizer##*address*}" ], [
-       AX_APPEND_COMPILE_FLAGS([-fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=pointer-compare -fsanitize=pointer-subtract])
-    ])
-    AS_IF([test -z "${with_sanitizer##*memory*}" ], [
+    AS_CASE("${with_sanitizer}",
+      [address], [
+        AX_APPEND_COMPILE_FLAGS([-fsanitize-address-use-after-scope -fno-omit-frame-pointer -fsanitize=pointer-compare -fsanitize=pointer-subtract])
+      ],
+      [memory], [
         AX_APPEND_COMPILE_FLAGS([-fPIE -pie])
-    ])
-    AS_IF([test -z "${with_sanitizer##*thread*}" ], [
+      ],
+      [thread], [
         AX_APPEND_COMPILE_FLAGS([-fPIE -pie])
-    ])
+      ],
+      []
+    )
 ])
 
 dnl Check for attributes
