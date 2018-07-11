@@ -32,6 +32,12 @@ dnl Set build/host to default values
 AC_CANONICAL_HOST
 AC_CANONICAL_BUILD
 
+dnl Check for which host we are compiling
+AS_CASE("${host_os}",
+  [linux*], [SYS="linux"],
+  [darwin*], [SYS="darwin"],
+  [SYS="${host_os}"]
+)
 
 AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
