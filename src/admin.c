@@ -703,6 +703,10 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     if (tmp)
         xmlNewTextChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
+    tmp = httpp_getvar(client->parser, "host");
+    if (tmp)
+        xmlNewTextChild(node, NULL, XMLSTR("host"), XMLSTR(tmp));
+
     snprintf(buf, sizeof(buf), "%lu", (unsigned long)(now - client->con->con_time));
     xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "Connected" : "connected"), XMLSTR(buf));
 
