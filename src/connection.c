@@ -1693,7 +1693,7 @@ void connection_close(connection_t *con)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-    if (con->readbufferlen)
+    if (con->readbuffer)
         free(con->readbuffer);
     refobject_unref(con->listensocket_real);
     refobject_unref(con->listensocket_effective);
