@@ -173,6 +173,24 @@ typedef struct _config_tls_context {
     char *cipher_list;
 } config_tls_context_t;
 
+typedef struct {
+    char *server;
+    int port;
+    char *mount;
+    char *username;
+    char *password;
+    char *bind;
+    int mp3metadata;
+} relay_config_upstream_t;
+
+typedef struct {
+    char *localmount;
+    int on_demand;
+    size_t upstreams;
+    relay_config_upstream_t *upstream;
+    relay_config_upstream_t upstream_default;
+} relay_config_t;
+
 struct ice_config_tag {
     char *config_filename;
 
@@ -219,7 +237,8 @@ struct ice_config_tag {
     /* is TLS supported by the server? */
     int tls_ok;
 
-    relay_server *relay;
+    size_t relay_length;
+    relay_config_t **relay;
 
     mount_proxy *mounts;
 

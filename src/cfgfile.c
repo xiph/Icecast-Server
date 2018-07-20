@@ -622,13 +622,9 @@ void config_clear(ice_config_t *c)
 {
     ice_config_dir_t    *dirnode,
                         *nextdirnode;
-    relay_server        *relay,
-                        *nextrelay;
     mount_proxy         *mount,
                         *nextmount;
-#ifdef USE_YP
-    int                 i;
-#endif
+    size_t              i;
 
     free(c->config_filename);
 
@@ -666,15 +662,10 @@ void config_clear(ice_config_t *c)
     while ((c->listen_sock = config_clear_listener(c->listen_sock)));
 
     thread_mutex_lock(&(_locks.relay_lock));
-    relay = c->relay;
-    while (relay) {
-        nextrelay = relay->next;
-        xmlFree(relay->server);
-        xmlFree(relay->mount);
-        xmlFree(relay->localmount);
-        free(relay);
-        relay = nextrelay;
+    for (i = 0; i < c->relay_length; i++) {
+        relay_config_free(c->relay[i]);
     }
+    free(c->relay);
     thread_mutex_unlock(&(_locks.relay_lock));
 
     mount = c->mounts;
@@ -694,10 +685,8 @@ void config_clear(ice_config_t *c)
         dirnode = nextdirnode;
     }
 #ifdef USE_YP
-    i = 0;
-    while (i < c->num_yp_directories) {
+    for (i = 0; i < c->num_yp_directories; i++) {
         xmlFree(c->yp_url[i]);
-        i++;
     }
 #endif
 
@@ -1690,26 +1679,21 @@ static void _parse_relay(xmlDocPtr      doc,
                          ice_config_t  *configuration)
 {
     char         *tmp;
-    relay_server *relay     = calloc(1, sizeof(relay_server));
-    relay_server *current   = configuration->relay;
-    relay_server *last      = NULL;
+    relay_config_t *relay       = calloc(1, sizeof(relay_config_t));
+    relay_config_t **n          = realloc(configuration->relay, sizeof(*configuration->relay)*(configuration->relay_length + 1));
 
-    while(current) {
-        last = current;
-        current = current->next;
+    if (!n) {
+        ICECAST_LOG_ERROR("Can not allocate memory for additional relay.");
+        return;
     }
 
-    if (last) {
-        last->next = relay;
-    } else {
-        configuration->relay = relay;
-    }
+    configuration->relay = n;
+    configuration->relay[configuration->relay_length++] = relay;
 
-    relay->next         = NULL;
-    relay->mp3metadata  = 1;
-    relay->on_demand    = configuration->on_demand;
-    relay->server       = (char *) xmlCharStrdup("127.0.0.1");
-    relay->mount        = (char *) xmlCharStrdup("/");
+    relay->upstream_default.mp3metadata     = 1;
+    relay->on_demand                        = configuration->on_demand;
+    relay->upstream_default.server          = (char *) xmlCharStrdup("127.0.0.1");
+    relay->upstream_default.mount           = (char *) xmlCharStrdup("/");
 
     do {
         if (node == NULL)
@@ -1718,16 +1702,16 @@ static void _parse_relay(xmlDocPtr      doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
-            if (relay->server)
-                xmlFree(relay->server);
-            relay->server = (char *)xmlNodeListGetString(doc,
+            if (relay->upstream_default.server)
+                xmlFree(relay->upstream_default.server);
+            relay->upstream_default.server = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
-            __read_int(doc, node, &relay->port, "<port> setting must not be empty.");
+            __read_int(doc, node, &relay->upstream_default.port, "<port> setting must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
-            if (relay->mount)
-                xmlFree(relay->mount);
-            relay->mount = (char *)xmlNodeListGetString(doc,
+            if (relay->upstream_default.mount)
+                xmlFree(relay->upstream_default.mount);
+            relay->upstream_default.mount = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
             if (relay->localmount)
@@ -1736,18 +1720,18 @@ static void _parse_relay(xmlDocPtr      doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->mp3metadata = util_str_to_bool(tmp);
+            relay->upstream_default.mp3metadata = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
-            if (relay->username)
-                xmlFree(relay->username);
-            relay->username = (char *)xmlNodeListGetString(doc,
+            if (relay->upstream_default.username)
+                xmlFree(relay->upstream_default.username);
+            relay->upstream_default.username = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
-            if (relay->password)
-                xmlFree(relay->password);
-            relay->password = (char *)xmlNodeListGetString(doc,
+            if (relay->upstream_default.password)
+                xmlFree(relay->upstream_default.password);
+            relay->upstream_default.password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1755,14 +1739,14 @@ static void _parse_relay(xmlDocPtr      doc,
             if (tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
-            if (relay->bind)
-                xmlFree(relay->bind);
-            relay->bind = (char *)xmlNodeListGetString(doc,
+            if (relay->upstream_default.bind)
+                xmlFree(relay->upstream_default.bind);
+            relay->upstream_default.bind = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
     if (relay->localmount == NULL)
-        relay->localmount = (char *)xmlStrdup(XMLSTR(relay->mount));
+        relay->localmount = (char *)xmlStrdup(XMLSTR(relay->upstream_default.mount));
 }
 
 static void _parse_listen_socket(xmlDocPtr      doc,

@@ -90,7 +90,7 @@ typedef enum {
 
 /* ---[ slave.[ch] ]--- */
 
-typedef struct _relay_server relay_server;
+typedef struct relay_tag relay_t;
 
 /* ---[ module.[ch] ]--- */
 

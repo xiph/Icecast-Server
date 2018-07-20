@@ -36,9 +36,9 @@ typedef struct ice_global_tag
 
     avl_tree *source_tree;
     /* for locally defined relays */
-    relay_server *relays;
+    relay_t *relays;
     /* relays retrieved from master */
-    relay_server *master_relays;
+    relay_t *master_relays;
 
     module_container_t *modulecontainer;
 

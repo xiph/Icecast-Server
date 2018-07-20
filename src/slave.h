@@ -15,29 +15,13 @@
 
 #include "common/thread/thread.h"
 #include "icecasttypes.h"
-
-struct _relay_server {
-    char *server;
-    int port;
-    char *mount;
-    char *username;
-    char *password;
-    char *localmount;
-    char *bind;
-    source_t *source;
-    int mp3metadata;
-    int on_demand;
-    int running;
-    int cleanup;
-    time_t start;
-    thread_type *thread;
-    relay_server *next;
-};
+#include "cfgfile.h"
 
 void slave_initialize(void);
 void slave_shutdown(void);
 void slave_update_all_mounts (void);
 void slave_rebuild_mounts (void);
-relay_server *relay_free (relay_server *relay);
+void relay_config_free (relay_config_t *relay);
+relay_t *relay_free (relay_t *relay);
 
 #endif  /* __SLAVE_H__ */
