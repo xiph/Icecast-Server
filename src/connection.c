@@ -1429,50 +1429,6 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     global_unlock();
 }
 
-static void _update_client_request_body_length(client_t *client)
-{
-    const char *header;
-    long long unsigned int scannumber;
-    int have = 0;
-
-    if (!have) {
-        if (client->parser->req_type == httpp_req_source) {
-            client->request_body_length = -1; /* streaming */
-            have = 1;
-        }
-    }
-
-    if (!have) {
-        header = httpp_getvar(client->parser, "transfer-encoding");
-        if (header) {
-            if (strcasecmp(header, "identity") != 0) {
-                client->request_body_length = -1; /* streaming */
-                have = 1;
-            }
-        }
-    }
-
-    if (!have) {
-        header = httpp_getvar(client->parser, "content-length");
-        if (header) {
-            if (sscanf(header, "%llu", &scannumber) == 1) {
-                client->request_body_length = scannumber;
-                have = 1;
-            }
-        }
-    }
-
-    if (!have) {
-        if (client->parser->req_type == httpp_req_put) {
-            /* As we don't know yet, we asume this PUT is in streaming mode */
-            client->request_body_length = -1; /* streaming */
-            have = 1;
-        }
-    }
-
-    ICECAST_LOG_DEBUG("Client %p has request_body_length=%zi", client, client->request_body_length);
-}
-
 /* Check if we need body of client */
 static int _need_body(client_queue_t *node)
 {
@@ -1537,7 +1493,7 @@ static void _handle_connection(void)
                 client->refbuf->len = 0;
 
                 /* early check if we need more data */
-                _update_client_request_body_length(client);
+                client_complete(client);
                 if (_need_body(node)) {
                     /* Just calling _add_body_client() would do the job.
                      * However, if the client only has a small body this might work without moving it between queues.

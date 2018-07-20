@@ -137,6 +137,7 @@ struct _client_tag {
 };
 
 int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
+void client_complete(client_t *client);
 void client_destroy(client_t *client);
 void client_send_error_by_id(client_t *client, icecast_error_id_t id);
 void client_send_101(client_t *client, reuse_t reuse);
