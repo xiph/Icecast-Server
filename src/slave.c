@@ -285,6 +285,7 @@ static client_t *open_relay_connection (relay_server *relay)
             global_unlock ();
             sock_set_blocking (streamsock, 0);
             client_set_queue (client, NULL);
+            client_complete(client);
             free (server);
             free (mount);
             free (server_id);

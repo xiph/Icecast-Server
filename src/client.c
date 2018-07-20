@@ -144,6 +144,14 @@ void client_complete(client_t *client)
         }
     }
 
+    if (!have) {
+        if (client->parser->req_type == httpp_req_none) {
+            /* We are a client. If the server did not tell us, we asume streaming. */
+            client->request_body_length = -1; /* streaming */
+            have = 1;
+        }
+    }
+
     ICECAST_LOG_DEBUG("Client %p has request_body_length=%zi", client, client->request_body_length);
 }
 
