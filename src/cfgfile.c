@@ -75,6 +75,9 @@
 #define CONFIG_DEFAULT_GROUP            NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL   120
 #define CONFIG_YP_URL_TIMEOUT           10
+#define CONFIG_DEFAULT_RELAY_SERVER     "127.0.0.1"
+#define CONFIG_DEFAULT_RELAY_PORT       80
+#define CONFIG_DEFAULT_RELAY_MOUNT      "/"
 #define CONFIG_DEFAULT_CIPHER_LIST      "ECDHE-RSA-AES128-GCM-SHA256:"\
                                         "ECDHE-ECDSA-AES128-GCM-SHA256:"\
                                         "ECDHE-RSA-AES256-GCM-SHA384:"\
@@ -142,8 +145,8 @@ static void _parse_http_headers(xmlDocPtr                   doc,
                                 xmlNodePtr                  node,
                                 ice_config_http_header_t  **http_headers);
 
-static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
-static void _parse_mount(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c, const char *mount);
+static void _parse_mount(xmlDocPtr doc, xmlNodePtr parentnode, ice_config_t *c);
 
 static void _parse_listen_socket(xmlDocPtr                  doc,
                                  xmlNodePtr                 node,
@@ -622,13 +625,9 @@ void config_clear(ice_config_t *c)
 {
     ice_config_dir_t    *dirnode,
                         *nextdirnode;
-    relay_server        *relay,
-                        *nextrelay;
     mount_proxy         *mount,
                         *nextmount;
-#ifdef USE_YP
-    int                 i;
-#endif
+    size_t              i;
 
     free(c->config_filename);
 
@@ -666,15 +665,10 @@ void config_clear(ice_config_t *c)
     while ((c->listen_sock = config_clear_listener(c->listen_sock)));
 
     thread_mutex_lock(&(_locks.relay_lock));
-    relay = c->relay;
-    while (relay) {
-        nextrelay = relay->next;
-        xmlFree(relay->server);
-        xmlFree(relay->mount);
-        xmlFree(relay->localmount);
-        free(relay);
-        relay = nextrelay;
+    for (i = 0; i < c->relay_length; i++) {
+        relay_config_free(c->relay[i]);
     }
+    free(c->relay);
     thread_mutex_unlock(&(_locks.relay_lock));
 
     mount = c->mounts;
@@ -694,10 +688,8 @@ void config_clear(ice_config_t *c)
         dirnode = nextdirnode;
     }
 #ifdef USE_YP
-    i = 0;
-    while (i < c->num_yp_directories) {
+    for (i = 0; i < c->num_yp_directories; i++) {
         xmlFree(c->yp_url[i]);
-        i++;
     }
 #endif
 
@@ -1070,7 +1062,7 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             _parse_http_headers(doc, node->xmlChildrenNode, &(configuration->http_headers));
         } else if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
-            _parse_relay(doc, node->xmlChildrenNode, configuration);
+            _parse_relay(doc, node->xmlChildrenNode, configuration, NULL);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("directory")) == 0) {
@@ -1366,7 +1358,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
 }
 
 static void _parse_mount(xmlDocPtr      doc,
-                         xmlNodePtr     node,
+                         xmlNodePtr     parentnode,
                          ice_config_t  *configuration)
 {
     char         *tmp;
@@ -1376,6 +1368,7 @@ static void _parse_mount(xmlDocPtr      doc,
     char         *username   = NULL;
     char         *password   = NULL;
     auth_stack_t *authstack  = NULL;
+    xmlNodePtr    node;
 
     /* default <mount> settings */
     mount->mounttype            = MOUNT_TYPE_NORMAL;
@@ -1386,7 +1379,7 @@ static void _parse_mount(xmlDocPtr      doc,
     mount->max_history          = -1;
     mount->next                 = NULL;
 
-    tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+    tmp = (char *)xmlGetProp(parentnode, XMLSTR("type"));
     if (tmp) {
         if (strcmp(tmp, "normal") == 0) {
             mount->mounttype = MOUNT_TYPE_NORMAL;
@@ -1400,7 +1393,7 @@ static void _parse_mount(xmlDocPtr      doc,
         xmlFree(tmp);
     }
 
-    node = node->xmlChildrenNode;
+    node = parentnode->xmlChildrenNode;
 
     do {
         if (node == NULL)
@@ -1553,6 +1546,25 @@ static void _parse_mount(xmlDocPtr      doc,
         }
     } while ((node = node->next));
 
+    /* Do a second interation as we need to know mount->mountname, and mount->mounttype first */
+    node = parentnode->xmlChildrenNode;
+
+    do {
+        if (node == NULL)
+            break;
+
+        if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
+            if (mount->mounttype != MOUNT_TYPE_NORMAL) {
+                ICECAST_LOG_WARN("<relay> set within <mount> for mountpoint %s%s%s that is not type=\"normal\"",
+                                 (mount->mountname ? "\"" : ""), (mount->mountname ? mount->mountname : "<no name>"), (mount->mountname ? "\"" : ""));
+            } else if (!mount->mountname || mount->mountname[0] != '/') {
+                ICECAST_LOG_WARN("<relay> set within <mount> with no mountpoint defined.");
+            } else {
+                _parse_relay(doc, node->xmlChildrenNode, configuration, mount->mountname);
+            }
+        }
+    } while ((node = node->next));
+
     if (password) {
         auth_stack_t *old_style = NULL;
         __append_old_style_auth(&old_style, "legacy-mount-source",
@@ -1685,31 +1697,11 @@ static void _parse_http_headers(xmlDocPtr                   doc,
         xmlFree(value);
 }
 
-static void _parse_relay(xmlDocPtr      doc,
-                         xmlNodePtr     node,
-                         ice_config_t  *configuration)
+static void _parse_relay_upstream(xmlDocPtr      doc,
+                                  xmlNodePtr     node,
+                                  relay_config_upstream_t *upstream)
 {
     char         *tmp;
-    relay_server *relay     = calloc(1, sizeof(relay_server));
-    relay_server *current   = configuration->relay;
-    relay_server *last      = NULL;
-
-    while(current) {
-        last = current;
-        current = current->next;
-    }
-
-    if (last) {
-        last->next = relay;
-    } else {
-        configuration->relay = relay;
-    }
-
-    relay->next         = NULL;
-    relay->mp3metadata  = 1;
-    relay->on_demand    = configuration->on_demand;
-    relay->server       = (char *) xmlCharStrdup("127.0.0.1");
-    relay->mount        = (char *) xmlCharStrdup("/");
 
     do {
         if (node == NULL)
@@ -1718,51 +1710,123 @@ static void _parse_relay(xmlDocPtr      doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
-            if (relay->server)
-                xmlFree(relay->server);
-            relay->server = (char *)xmlNodeListGetString(doc,
+            if (upstream->server)
+                xmlFree(upstream->server);
+            upstream->server = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
-            __read_int(doc, node, &relay->port, "<port> setting must not be empty.");
+            __read_int(doc, node, &upstream->port, "<port> setting must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
-            if (relay->mount)
-                xmlFree(relay->mount);
-            relay->mount = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
-            if (relay->localmount)
-                xmlFree(relay->localmount);
-            relay->localmount = (char *)xmlNodeListGetString(doc,
+            if (upstream->mount)
+                xmlFree(upstream->mount);
+            upstream->mount = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->mp3metadata = util_str_to_bool(tmp);
+            upstream->mp3metadata = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
-            if (relay->username)
-                xmlFree(relay->username);
-            relay->username = (char *)xmlNodeListGetString(doc,
+            if (upstream->username)
+                xmlFree(upstream->username);
+            upstream->username = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
-            if (relay->password)
-                xmlFree(relay->password);
-            relay->password = (char *)xmlNodeListGetString(doc,
+            if (upstream->password)
+                xmlFree(upstream->password);
+            upstream->password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
+            if (upstream->bind)
+                xmlFree(upstream->bind);
+            upstream->bind = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        }
+    } while ((node = node->next));
+}
+
+static void _parse_relay_upstream_apply_defaults(relay_config_upstream_t *upstream)
+{
+    if (!upstream->server)
+        upstream->server = (char *)xmlCharStrdup(CONFIG_DEFAULT_RELAY_SERVER);
+    if (!upstream->port)
+        upstream->port = CONFIG_DEFAULT_RELAY_PORT;
+    if (!upstream->mount)
+        upstream->mount = (char *)xmlCharStrdup(CONFIG_DEFAULT_RELAY_MOUNT);
+}
+
+static void _parse_relay(xmlDocPtr      doc,
+                         xmlNodePtr     node,
+                         ice_config_t  *configuration,
+                         const char *mount)
+{
+    char         *tmp;
+    relay_config_t *relay       = calloc(1, sizeof(relay_config_t));
+    relay_config_t **n          = realloc(configuration->relay, sizeof(*configuration->relay)*(configuration->relay_length + 1));
+
+    if (!n) {
+        ICECAST_LOG_ERROR("Can not allocate memory for additional relay.");
+        return;
+    }
+
+    configuration->relay = n;
+    configuration->relay[configuration->relay_length++] = relay;
+
+    relay->upstream_default.mp3metadata     = 1;
+    relay->on_demand                        = configuration->on_demand;
+
+    _parse_relay_upstream(doc, node, &(relay->upstream_default));
+
+    do {
+        if (node == NULL)
+            break;
+        if (xmlIsBlankNode(node))
+            continue;
+
+        if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
+            if (mount) {
+                ICECAST_LOG_WARN("Relay defined within mount \"%s\" defines <local-mount> which is ignored.", mount);
+            } else {
+                if (relay->localmount)
+                    xmlFree(relay->localmount);
+                relay->localmount = (char *)xmlNodeListGetString(doc,
+                        node->xmlChildrenNode, 1);
+            }
         } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             relay->on_demand = util_str_to_bool(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
-            if (relay->bind)
-                xmlFree(relay->bind);
-            relay->bind = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("upstream")) == 0) {
+            tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+
+            if (tmp == NULL || strcmp(tmp, "normal") == 0) {
+                relay_config_upstream_t *n = realloc(relay->upstream, sizeof(*n)*(relay->upstreams + 1));
+                if (n) {
+                    relay->upstream = n;
+                    memset(&(n[relay->upstreams]), 0, sizeof(relay_config_upstream_t));
+                    _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]));
+                    relay->upstreams++;
+                }
+            } else if (strcmp(tmp, "default") == 0) {
+                _parse_relay_upstream(doc, node->xmlChildrenNode, &(relay->upstream_default));
+            } else {
+                ICECAST_LOG_WARN("<upstream> of unknown type is ignored.");
+            }
+
+            if (tmp)
+                xmlFree(tmp);
         }
     } while ((node = node->next));
+
+    _parse_relay_upstream_apply_defaults(&(relay->upstream_default));
+
+    if (mount) {
+        relay->localmount = (char *)xmlStrdup(XMLSTR(mount));
+    }
+
     if (relay->localmount == NULL)
-        relay->localmount = (char *)xmlStrdup(XMLSTR(relay->mount));
+        relay->localmount = (char *)xmlStrdup(XMLSTR(relay->upstream_default.mount));
 }
 
 static void _parse_listen_socket(xmlDocPtr      doc,
