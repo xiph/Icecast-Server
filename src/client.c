@@ -627,7 +627,7 @@ admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
 /* helper function for sending the data to a client */
 int client_send_bytes(client_t *client, const void *buf, unsigned len)
 {
-    int ret = client->con->send(client->con, buf, len);
+    int ret = connection_send_bytes(client->con, buf, len);
 
     if (client->con->error)
         ICECAST_LOG_DEBUG("Client connection died");

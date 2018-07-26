@@ -297,6 +297,11 @@ void connection_uses_tls(connection_t *con)
 #endif
 }
 
+ssize_t connection_send_bytes(connection_t *con, const void *buf, size_t len)
+{
+    return con->send(con, buf, len);
+}
+
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
 {
     ssize_t done = 0;
