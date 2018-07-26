@@ -75,6 +75,9 @@
 #define CONFIG_DEFAULT_GROUP            NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL   120
 #define CONFIG_YP_URL_TIMEOUT           10
+#define CONFIG_DEFAULT_RELAY_SERVER     "127.0.0.1"
+#define CONFIG_DEFAULT_RELAY_PORT       80
+#define CONFIG_DEFAULT_RELAY_MOUNT      "/"
 #define CONFIG_DEFAULT_CIPHER_LIST      "ECDHE-RSA-AES128-GCM-SHA256:"\
                                         "ECDHE-ECDSA-AES128-GCM-SHA256:"\
                                         "ECDHE-RSA-AES256-GCM-SHA384:"\
@@ -1720,11 +1723,16 @@ static void _parse_relay_upstream(xmlDocPtr      doc,
                 node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
+}
 
+static void _parse_relay_upstream_apply_defaults(relay_config_upstream_t *upstream)
+{
     if (!upstream->server)
-        upstream->server = (char *)xmlCharStrdup("127.0.0.1");
+        upstream->server = (char *)xmlCharStrdup(CONFIG_DEFAULT_RELAY_SERVER);
+    if (!upstream->port)
+        upstream->port = CONFIG_DEFAULT_RELAY_PORT;
     if (!upstream->mount)
-        upstream->mount = (char *)xmlCharStrdup("/");
+        upstream->mount = (char *)xmlCharStrdup(CONFIG_DEFAULT_RELAY_MOUNT);
 }
 
 static void _parse_relay(xmlDocPtr      doc,
@@ -1774,6 +1782,8 @@ static void _parse_relay(xmlDocPtr      doc,
             }
         }
     } while ((node = node->next));
+
+    _parse_relay_upstream_apply_defaults(&(relay->upstream_default));
 
     if (relay->localmount == NULL)
         relay->localmount = (char *)xmlStrdup(XMLSTR(relay->upstream_default.mount));
