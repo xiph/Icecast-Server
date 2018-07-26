@@ -402,7 +402,20 @@ static void *start_relay_stream (void *arg)
     ICECAST_LOG_INFO("Starting relayed source at mountpoint \"%s\"", relay->config->localmount);
     do
     {
-        client = open_relay_connection(relay, NULL);
+        size_t i;
+
+        for (i = 0; i < relay->config->upstreams; i++) {
+            ICECAST_LOG_DEBUG("For relay on mount \"%s\", trying upstream #%zu", relay->config->localmount, i);
+            client = open_relay_connection(relay, &(relay->config->upstream[i]));
+            if (client)
+                break;
+        }
+
+        /* if we have no upstreams defined, use the default upstream */
+        if (!relay->config->upstreams) {
+            ICECAST_LOG_DEBUG("For relay on mount \"%s\" with no upstreams trying upstream default", relay->config->localmount);
+            client = open_relay_connection(relay, NULL);
+        }
 
         if (client == NULL)
             continue;
