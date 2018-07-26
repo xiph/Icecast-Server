@@ -154,6 +154,7 @@ static inline relay_config_t *relay_config_copy (relay_config_t *r)
     }
 
     copy->upstream = u;
+    copy->upstreams = r->upstreams;
 
     copy->localmount = (char *)xmlCharStrdup(r->localmount);
     copy->on_demand = r->on_demand;
