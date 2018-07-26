@@ -161,7 +161,7 @@ static inline relay_config_t *relay_config_copy (relay_config_t *r)
     relay_config_upstream_copy(&(copy->upstream_default), &(r->upstream_default));
 
     for (i = 0; i < r->upstreams; i++)
-    relay_config_upstream_copy(&(copy->upstream[i]), &(r->upstream[i]));
+        relay_config_upstream_copy(&(copy->upstream[i]), &(r->upstream[i]));
 
 
     return copy;
