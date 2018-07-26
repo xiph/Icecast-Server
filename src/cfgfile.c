@@ -1773,13 +1773,24 @@ static void _parse_relay(xmlDocPtr      doc,
             if (tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("upstream")) == 0) {
-            relay_config_upstream_t *n = realloc(relay->upstream, sizeof(*n)*(relay->upstreams + 1));
-            if (n) {
-                relay->upstream = n;
-                memset(&(n[relay->upstreams]), 0, sizeof(relay_config_upstream_t));
-                _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]));
-                relay->upstreams++;
+            tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+
+            if (tmp == NULL || strcmp(tmp, "normal") == 0) {
+                relay_config_upstream_t *n = realloc(relay->upstream, sizeof(*n)*(relay->upstreams + 1));
+                if (n) {
+                    relay->upstream = n;
+                    memset(&(n[relay->upstreams]), 0, sizeof(relay_config_upstream_t));
+                    _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]));
+                    relay->upstreams++;
+                }
+            } else if (strcmp(tmp, "default") == 0) {
+                _parse_relay_upstream(doc, node->xmlChildrenNode, &(relay->upstream_default));
+            } else {
+                ICECAST_LOG_WARN("<upstream> of unknown type is ignored.");
             }
+
+            if (tmp)
+                xmlFree(tmp);
         }
     } while ((node = node->next));
 
