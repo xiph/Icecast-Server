@@ -1764,6 +1764,14 @@ static void _parse_relay(xmlDocPtr      doc,
             relay->on_demand = util_str_to_bool(tmp);
             if (tmp)
                 xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("upstream")) == 0) {
+            relay_config_upstream_t *n = realloc(relay->upstream, sizeof(*n)*(relay->upstreams + 1));
+            if (n) {
+                relay->upstream = n;
+                memset(&(n[relay->upstreams]), 0, sizeof(relay_config_upstream_t));
+                _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]));
+                relay->upstreams++;
+            }
         }
     } while ((node = node->next));
 
