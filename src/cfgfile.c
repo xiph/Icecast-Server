@@ -1674,6 +1674,59 @@ static void _parse_http_headers(xmlDocPtr                   doc,
         xmlFree(value);
 }
 
+static void _parse_relay_upstream(xmlDocPtr      doc,
+                                  xmlNodePtr     node,
+                                  relay_config_upstream_t *upstream)
+{
+    char         *tmp;
+
+    do {
+        if (node == NULL)
+            break;
+        if (xmlIsBlankNode(node))
+            continue;
+
+        if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
+            if (upstream->server)
+                xmlFree(upstream->server);
+            upstream->server = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
+            __read_int(doc, node, &upstream->port, "<port> setting must not be empty.");
+        } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
+            if (upstream->mount)
+                xmlFree(upstream->mount);
+            upstream->mount = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            upstream->mp3metadata = util_str_to_bool(tmp);
+            if(tmp)
+                xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
+            if (upstream->username)
+                xmlFree(upstream->username);
+            upstream->username = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
+            if (upstream->password)
+                xmlFree(upstream->password);
+            upstream->password = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
+            if (upstream->bind)
+                xmlFree(upstream->bind);
+            upstream->bind = (char *)xmlNodeListGetString(doc,
+                node->xmlChildrenNode, 1);
+        }
+    } while ((node = node->next));
+
+    if (!upstream->server)
+        upstream->server = (char *)xmlCharStrdup("127.0.0.1");
+    if (!upstream->mount)
+        upstream->mount = (char *)xmlCharStrdup("/");
+}
+
 static void _parse_relay(xmlDocPtr      doc,
                          xmlNodePtr     node,
                          ice_config_t  *configuration)
@@ -1692,8 +1745,8 @@ static void _parse_relay(xmlDocPtr      doc,
 
     relay->upstream_default.mp3metadata     = 1;
     relay->on_demand                        = configuration->on_demand;
-    relay->upstream_default.server          = (char *) xmlCharStrdup("127.0.0.1");
-    relay->upstream_default.mount           = (char *) xmlCharStrdup("/");
+
+    _parse_relay_upstream(doc, node, &(relay->upstream_default));
 
     do {
         if (node == NULL)
@@ -1701,50 +1754,19 @@ static void _parse_relay(xmlDocPtr      doc,
         if (xmlIsBlankNode(node))
             continue;
 
-        if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
-            if (relay->upstream_default.server)
-                xmlFree(relay->upstream_default.server);
-            relay->upstream_default.server = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
-            __read_int(doc, node, &relay->upstream_default.port, "<port> setting must not be empty.");
-        } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
-            if (relay->upstream_default.mount)
-                xmlFree(relay->upstream_default.mount);
-            relay->upstream_default.mount = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
+        if (xmlStrcmp(node->name, XMLSTR("local-mount")) == 0) {
             if (relay->localmount)
                 xmlFree(relay->localmount);
             relay->localmount = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->upstream_default.mp3metadata = util_str_to_bool(tmp);
-            if(tmp)
-                xmlFree(tmp);
-        } else if (xmlStrcmp(node->name, XMLSTR("username")) == 0) {
-            if (relay->upstream_default.username)
-                xmlFree(relay->upstream_default.username);
-            relay->upstream_default.username = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp(node->name, XMLSTR("password")) == 0) {
-            if (relay->upstream_default.password)
-                xmlFree(relay->upstream_default.password);
-            relay->upstream_default.password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             relay->on_demand = util_str_to_bool(tmp);
             if (tmp)
                 xmlFree(tmp);
-        } else if (xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
-            if (relay->upstream_default.bind)
-                xmlFree(relay->upstream_default.bind);
-            relay->upstream_default.bind = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
         }
     } while ((node = node->next));
+
     if (relay->localmount == NULL)
         relay->localmount = (char *)xmlStrdup(XMLSTR(relay->upstream_default.mount));
 }
