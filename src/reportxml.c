@@ -28,57 +28,90 @@
 #include "logging.h"
 #define CATMODULE "reportxml"
 
+/* The report XML document type */
 struct reportxml_tag {
+    /* base object */
     refobject_base_t __base;
+    /* the root report XML node of the document */
     reportxml_node_t *root;
 };
 
+/* The report XML node type */
 struct reportxml_node_tag {
+    /* base object */
     refobject_base_t __base;
+    /* an XML node used to store the attributes */
     xmlNodePtr xmlnode;
+    /* the type of the node */
     reportxml_node_type_t type;
+    /* the report XML childs */
     reportxml_node_t **childs;
     size_t childs_len;
+    /* the XML childs (used by <extension>) */
     xmlNodePtr *xml_childs;
     size_t xml_childs_len;
+    /* the node's text content (used by <text>) */
     char *content;
 };
 
+/* The report XML database type */
 struct reportxml_database_tag {
+    /* base object */
     refobject_base_t __base;
+    /* the lock used to ensure the database object is thread safe. */
     mutex_t lock;
+    /* The tree of definitions */
     avl_tree *definitions;
 };
 
+/* The nodeattr structure is used to store definition of node attributes */
 struct nodeattr;
-
 struct nodeattr {
+    /* name of the attribute */
     const char *name;
+    /* the type of the attribute. This is based on the DTD */
     const char *type;
+    /* the default value for the attribute if any */
     const char *def;
+    /* whether the attribute is required or not */
     int required;
+    /* a function that can be used to check the content of the attribute if any */
     int (*checker)(const struct nodeattr *attr, const char *str);
+    /* NULL terminated list of possible values (if enum) */
     const char *values[32];
 };
 
+/* The type of the content an node has */
 enum nodecontent {
+    /* The node may not have any content */
     NC_NONE,
+    /* The node may have children */
     NC_CHILDS,
+    /* The node may have a text content */
     NC_CONTENT,
+    /* The node may have XML children */
     NC_XML
 };
 
+/* This structure is used to define a node */
 struct nodedef {
+    /* the type of the node */
     reportxml_node_type_t type;
+    /* the name of the corresponding XML node */
     const char *name;
+    /* The type of the content the node may have */
     enum nodecontent content;
+    /* __attr__eol terminated list of attributes the node may have */
     const struct nodeattr *attr[12];
+    /* REPORTXML_NODE_TYPE__ERROR terminated list of child node types the node may have */
     const reportxml_node_type_t childs[12];
 };
 
+/* Prototypes */
 static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth);
 static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_database_t *db, const char *id, ssize_t depth, reportxml_node_type_t *acst_type_ret);
 
+/* definition of known attributes */
 static const struct nodeattr __attr__eol[1]             = {{NULL,           NULL,           NULL,     0,  NULL, {NULL}}};
 static const struct nodeattr __attr_version[1]          = {{"version",      "CDATA",        "0.0.1",  1,  NULL, {"0.0.1", NULL}}};
 static const struct nodeattr __attr_xmlns[1]            = {{"xmlns",        "URI",          "http://icecast.org/specs/reportxml-0.0.1",    1,  NULL, {"http://icecast.org/specs/reportxml-0.0.1", NULL}}};
@@ -108,6 +141,7 @@ static const struct nodeattr __attr__resource_type[1]   = {{"type",         NULL
 static const struct nodeattr __attr__value_type[1]      = {{"type",         NULL,           NULL,     1,  NULL, {"null", "int", "float", "uuid", "string", "structure", "uri", "pointer", "version", "protocol", "username", "password", NULL}}};
 static const struct nodeattr __attr__reference_type[1]  = {{"type",         NULL,           NULL,     1,  NULL, {"documentation", "log", "report", "related", NULL}}};
 
+/* definition of known nodes */
 /* Helper:
  * grep '^ *REPORTXML_NODE_TYPE_' reportxml.h | sed 's/^\( *REPORTXML_NODE_TYPE_\([^,]*\)\),*$/\1 \2/;' | while read l s; do c=$(tr A-Z a-z <<<"$s"); printf "    {%-32s \"%-16s 0, {__attr__eol}},\n" "$l," "$c\","; done
  */
