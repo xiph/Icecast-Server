@@ -32,6 +32,9 @@ config.h.in~
 /tests/*.log
 /tests/*.trs
 
+# Ignore test compiled binary files
+/tests/tests/ctest_*.test
+
 # Ignore auxiliary files
 /tap-driver.sh
 
