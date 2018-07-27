@@ -421,18 +421,20 @@ char *util_base64_encode(const char *data, size_t len) {
     while(len > 0) {
         chunk = (len > 3) ? 3 : len;
         *out++ = base64table[(*data & 0xFC)>>2];
-        *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
 
         switch(chunk) {
             case 3:
+                *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
                 *out++ = base64table[((*(data+1) & 0x0F)<<2) | ((*(data+2) & 0xC0)>>6)];
                 *out++ = base64table[(*(data+2)) & 0x3F];
             break;
             case 2:
+                *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
                 *out++ = base64table[((*(data+1) & 0x0F)<<2)];
                 *out++ = '=';
             break;
             case 1:
+                *out++ = base64table[((*data & 0x03)<<4)];
                 *out++ = '=';
                 *out++ = '=';
             break;
