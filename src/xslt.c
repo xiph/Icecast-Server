@@ -127,9 +127,10 @@ void xslt_shutdown(void) {
 
 static void clear_cache_entry(size_t idx) {
     free(cache[idx].filename);
+    cache[idx].filename = NULL;
     if (cache[idx].stylesheet)
         xsltFreeStylesheet(cache[idx].stylesheet);
-    cache[idx].filename = NULL;
+    cache[idx].stylesheet = NULL;
 }
 
 void xslt_clear_cache(void)
