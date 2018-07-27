@@ -60,7 +60,10 @@ typedef enum {
     REPORTXML_NODE_TYPE_EXTENSION
 } reportxml_node_type_t;
 
+
 /* ---[ Document level ]--- */
+/* The document object is NOT thread safe. */
+
 
 /* This creates a new, empty report XML document */
 reportxml_t *           reportxml_new(void);
@@ -79,7 +82,10 @@ reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc);
 /* This function renders an report XML document as XML structure */
 xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report);
 
+
 /* ---[ Node level ]--- */
+/* The node object is NOT thread safe. */
+
 
 /* This creates a new node of type type.
  * It's id, definition, and akindof attributes can be given as parameters.
@@ -110,7 +116,10 @@ int                     reportxml_node_add_xml_child(reportxml_node_t *node, xml
 ssize_t                 reportxml_node_count_xml_child(reportxml_node_t *node);
 xmlNodePtr              reportxml_node_get_xml_child(reportxml_node_t *node, size_t idx);
 
+
 /* ---[ Database level ]--- */
+/* The database object is thread safe. */
+
 
 /* Create a new database object */
 reportxml_database_t *  reportxml_database_new(void);
