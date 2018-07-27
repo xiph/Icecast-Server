@@ -136,7 +136,7 @@ static inline void print_extract(resourcematch_extract_t *extract)
 {
     size_t i;
 
-    ctest_diagnostic_printf("  Extract with %zu groups:\n", extract->groups);
+    ctest_diagnostic_printf("  Extract with %zu groups:", extract->groups);
 
     for (i = 0; i < extract->groups; i++) {
         print_extract_group(extract, i);
