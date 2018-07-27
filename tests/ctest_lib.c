@@ -11,6 +11,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "ctest_lib.h"
 
@@ -53,6 +54,18 @@ void ctest_test(const char *desc, int res)
 void ctest_diagnostic(const char *line)
 {
     printf("# %s\n", line);
+}
+
+void ctest_diagnostic_printf(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+
+    printf("# ");
+    vprintf(format, ap);
+    printf("\n");
+
+    va_end(ap);
 }
 
 void ctest_bail_out(const char *reason)

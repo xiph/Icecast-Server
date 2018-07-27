@@ -14,6 +14,7 @@ void ctest_fin(void);
 
 void ctest_test(const char *desc, int res);
 void ctest_diagnostic(const char *line);
+void ctest_diagnostic_printf(const char *format, ...);
 void ctest_bail_out(const char *reason);
 int  ctest_bailed_out(void);
 
