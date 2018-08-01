@@ -39,6 +39,33 @@ static void test_create_ref_unref(void)
     ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
 }
 
+static void test_sizes(void)
+{
+    refobject_t a;
+
+    a = refobject_new(sizeof(refobject_base_t) + 1024, NULL, NULL, NULL, REFOBJECT_NULL);
+    ctest_test("refobject created with size=sizeof(refobject_base_t) + 1024", !REFOBJECT_IS_NULL(a));
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+
+    a = refobject_new(sizeof(refobject_base_t) + 131072, NULL, NULL, NULL, REFOBJECT_NULL);
+    ctest_test("refobject created with size=sizeof(refobject_base_t) + 131072", !REFOBJECT_IS_NULL(a));
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+
+    if (sizeof(refobject_base_t) >= 1) {
+        a = refobject_new(sizeof(refobject_base_t) - 1, NULL, NULL, NULL, REFOBJECT_NULL);
+        ctest_test("refobject created with size=sizeof(refobject_base_t) - 1", REFOBJECT_IS_NULL(a));
+        if (!REFOBJECT_IS_NULL(a)) {
+            ctest_test("un-referenced", refobject_unref(a) == 0);
+        }
+    }
+
+    a = refobject_new(0, NULL, NULL, NULL, REFOBJECT_NULL);
+    ctest_test("refobject created with size=0", REFOBJECT_IS_NULL(a));
+    if (!REFOBJECT_IS_NULL(a)) {
+        ctest_test("un-referenced", refobject_unref(a) == 0);
+    }
+}
+
 static void test_name(void)
 {
     refobject_t a;
@@ -137,6 +164,8 @@ int main (void)
     }
 
     test_create_ref_unref();
+
+    test_sizes();
 
     test_name();
     test_userdata();
