@@ -14,3 +14,8 @@ script: ./autogen.sh && ./configure && make
 compiler:
   - clang
   - gcc
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#icecast-mentors"
