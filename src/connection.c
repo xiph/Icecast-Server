@@ -312,6 +312,7 @@ ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
         if (len >= con->readbufferlen) {
             memcpy(buf, con->readbuffer, con->readbufferlen);
             free(con->readbuffer);
+            con->readbuffer = NULL;
             ICECAST_LOG_DEBUG("New fill in buffer=<empty>");
             if (len == con->readbufferlen) {
                 con->readbufferlen = 0;
