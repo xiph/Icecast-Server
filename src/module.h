@@ -9,6 +9,8 @@
 #ifndef __MODULE_H__
 #define __MODULE_H__
 
+#include <libxml/tree.h>
+
 #include "icecasttypes.h"
 
 typedef void (*module_client_handler_function_t)(module_t *self, client_t *client, const char *uri);
@@ -23,6 +25,7 @@ module_container_t *            module_container_new(void);
 int                             module_container_add_module(module_container_t *self, module_t *module);
 int                             module_container_delete_module(module_container_t *self, const char *name);
 module_t *                      module_container_get_module(module_container_t *self, const char *name);
+xmlNodePtr                      module_container_get_modulelist_as_xml(module_container_t *self);
 
 module_t *                      module_new(const char *name, module_setup_handler_t newcb, module_setup_handler_t freecb, void *userdata);
 

@@ -18,6 +18,7 @@
 
 #include "refobject.h"
 #include "module.h"
+#include "cfgfile.h" /* for XMLSTR() */
 
 struct module_tag {
     refobject_base_t __base;
@@ -116,6 +117,33 @@ module_t *              module_container_get_module(module_container_t *self, co
     refobject_ref(ret);
 
     return ret;
+}
+
+xmlNodePtr                      module_container_get_modulelist_as_xml(module_container_t *self)
+{
+    xmlNodePtr root;
+    avl_node *avlnode;
+
+    if (!self)
+        return NULL;
+
+    root = xmlNewNode(NULL, XMLSTR("modules"));
+    if (!root)
+        return NULL;
+
+    thread_mutex_lock(&(self->lock));
+    avlnode = avl_get_first(self->module);
+    while (avlnode) {
+        module_t *module = avlnode->key;
+        xmlNodePtr node = xmlNewChild(root, NULL, XMLSTR("module"), NULL);
+
+        xmlSetProp(node, XMLSTR("name"), XMLSTR(refobject_get_name(module)));
+
+        avlnode = avl_get_next(avlnode);
+    }
+    thread_mutex_unlock(&(self->lock));
+
+    return root;
 }
 
 static void __module_free(refobject_t self, void **userdata)
