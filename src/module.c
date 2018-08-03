@@ -27,6 +27,8 @@ struct module_tag {
     size_t client_handlers_len;
     module_setup_handler_t freecb;
     void *userdata;
+    char *management_link_url;
+    char *management_link_title;
 };
 
 
@@ -138,6 +140,10 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
         xmlNodePtr node = xmlNewChild(root, NULL, XMLSTR("module"), NULL);
 
         xmlSetProp(node, XMLSTR("name"), XMLSTR(refobject_get_name(module)));
+        if (module->management_link_url)
+            xmlSetProp(node, XMLSTR("management-url"), XMLSTR(module->management_link_url));
+        if (module->management_link_title)
+            xmlSetProp(node, XMLSTR("management-title"), XMLSTR(module->management_link_title));
 
         avlnode = avl_get_next(avlnode);
     }
@@ -155,6 +161,9 @@ static void __module_free(refobject_t self, void **userdata)
 
     if (mod->userdata)
         free(mod->userdata);
+
+    free(mod->management_link_url);
+    free(mod->management_link_title);
 
     thread_mutex_destroy(&(mod->lock));
 }
@@ -179,6 +188,42 @@ module_t *              module_new(const char *name, module_setup_handler_t newc
     }
 
     return ret;
+}
+
+int                             module_add_link(module_t *self, const char *type, const char *url, const char *title)
+{
+    char *n_url = NULL;
+    char *n_title = NULL;
+
+    if (!self || !type)
+        return -1;
+
+    if (strcmp(type, "management-url") != 0)
+        return -1;
+
+    if (url) {
+        n_url = strdup(url);
+        if (!n_url)
+            return -1;
+    }
+
+    if (title) {
+        n_title = strdup(title);
+        if (!n_title) {
+            free(n_url);
+            return -1;
+        }
+    }
+
+    thread_mutex_lock(&(self->lock));
+    free(self->management_link_url);
+    free(self->management_link_title);
+
+    self->management_link_url = n_url;
+    self->management_link_title = n_title;
+    thread_mutex_unlock(&(self->lock));
+
+    return 0;
 }
 
 const module_client_handler_t * module_get_client_handler(module_t *self, const char *name)

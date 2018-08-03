@@ -29,6 +29,8 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
 
 module_t *                      module_new(const char *name, module_setup_handler_t newcb, module_setup_handler_t freecb, void *userdata);
 
+int                             module_add_link(module_t *self, const char *type, const char *url, const char *title);
+
 /* Note: Those functions are not really thread safe as (module_client_handler_t) is not thread safe. This is by design. */
 const module_client_handler_t * module_get_client_handler(module_t *self, const char *name);
 int                             module_add_client_handler(module_t *self, const module_client_handler_t *handlers, size_t len);
