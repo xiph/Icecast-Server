@@ -106,9 +106,11 @@ module_t *              module_container_get_module(module_container_t *self, co
 
     search = refobject_new(sizeof(refobject_base_t), NULL, NULL, name, NULL);
 
+    thread_mutex_lock(&(self->lock));
     if (avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
         ret = NULL;
     }
+    thread_mutex_unlock(&(self->lock));
 
     refobject_unref(search);
     refobject_ref(ret);
