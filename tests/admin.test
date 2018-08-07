@@ -66,6 +66,15 @@ function test_sourcing {
     ((counter++))
 }
 
+function manual_test_res {
+    if test $2 -eq 1; then
+        echo "ok $counter - $1"
+    else
+        echo "not ok $counter - $1"
+    fi
+    ((counter++))
+}
+
 echo "#"
 echo "# Testing admin/manageauth endpoint"
 test_endpoint "manageauth-add-noauth"         "admin/manageauth?id=4&username=$L_USER&password=$L_PASS&action=add"     401
