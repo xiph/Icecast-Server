@@ -162,16 +162,27 @@ test_endpoint "killsource-adminauth"           "admin/killsource?mount=%2F$MOUNT
 
 echo "#"
 echo "# Testing on-connect handling with probing"
+
 test_sourcing "on-connect-test-noauth"      "test-on-connect.ogg"  401
-if [ -f "on-connect-success" ]; then
+sleep 3
+
+if [ -f "$testdir/on-connect-success" ]; then
+    manual_test_res "on-connect-notrigger" 0
     echo "# FAIL: on-connect triggered, even though it should not!"
     rm "$testdir/on-connect-success" > /dev/null 2>&1
+else
+    manual_test_res "on-connect-notrigger" 1
 fi
+
 test_sourcing "on-connect-test-sourceauth"  "test-on-connect.ogg"  200 "$AUTH_SOURCE"
-if [ -f "on-connect-success" ]; then
+sleep 3
+
+if [ -f "$testdir/on-connect-success" ]; then
+    manual_test_res "on-connect-trigger" 1
     echo "# OK: on-connect triggered!"
     rm "$testdir/on-connect-success" > /dev/null 2>&1
 else
+    manual_test_res "on-connect-trigger" 0
     echo "# FAIL: on-connect not triggered!"
 fi
 
