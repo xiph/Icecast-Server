@@ -136,7 +136,7 @@ test_endpoint "listmounts-noauth"              "admin/listmounts"               
 test_endpoint "listmounts-sourceauth"          "admin/listmounts"                                 401 "$AUTH_SOURCE"
 test_endpoint "listmounts-listenerauth"        "admin/listmounts"                                 401 "$L_AUTH"
 test_endpoint "listmounts-adminauth"           "admin/listmounts"                                 200 "$AUTH_ADMIN"
-test_endpoint "listmounts-adminauth-mount"     "admin/listmounts?mount=%2F$MOUNT_LISTENER_AUTH"   400 "$AUTH_ADMIN"
+test_endpoint "listmounts-adminauth-mount"     "admin/listmounts?mount=%2F$MOUNT_LISTENER_AUTH"   200 "$AUTH_ADMIN"
 
 echo "#"
 echo "# Testing mountpoint which requires auth"
