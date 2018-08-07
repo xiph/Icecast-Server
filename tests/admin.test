@@ -10,6 +10,7 @@ MOUNT_SOURCE_AUTH="test.ogg"
 AUTH_MOUNT="foobar:hackmemore"
 AUTH_SOURCE="source:hackme"
 AUTH_ADMIN="admin:hackme"
+AUTH_INVALID="somenonsense123:morenonsense321"
 
 L_USER="foo"
 L_PASS="bar"
@@ -144,6 +145,7 @@ test_endpoint "authmount-noauth"        "$MOUNT_LISTENER_AUTH"   401
 test_endpoint "authmount-sourceauth"    "$MOUNT_LISTENER_AUTH"   401 "$AUTH_SOURCE"
 test_endpoint "authmount-listenerauth"  "$MOUNT_LISTENER_AUTH"   200 "$L_AUTH"
 test_endpoint "authmount-adminauth"     "$MOUNT_LISTENER_AUTH"   401 "$AUTH_ADMIN"
+test_endpoint "authmount-invalidauth"   "$MOUNT_LISTENER_AUTH"   401 "$AUTH_INVALID"
 
 echo "#"
 echo "# Testing mountpoint which doesn't require auth"
@@ -151,6 +153,7 @@ test_endpoint "mount-noauth"        "$MOUNT_SOURCE_AUTH"   200
 test_endpoint "mount-sourceauth"    "$MOUNT_SOURCE_AUTH"   200 "$AUTH_SOURCE"
 test_endpoint "mount-listenerauth"  "$MOUNT_SOURCE_AUTH"   200 "$L_AUTH"
 test_endpoint "mount-adminauth"     "$MOUNT_SOURCE_AUTH"   200 "$AUTH_ADMIN"
+test_endpoint "mount-invalidauth"   "$MOUNT_SOURCE_AUTH"   200 "$AUTH_INVALID"
 
 echo "#"
 echo "# Testing admin/killsource endpoint"
