@@ -27,13 +27,18 @@ missing
 mkinstalldirs
 *.tar.gz
 config.h.in~
+/build-aux
 
 # Ignore test output files
 /tests/*.log
 /tests/*.trs
 
-# Ignore test compiled binary files
-/tests/tests/ctest_*.test
+# Ignore test build artifacts
+/tests/*.lo
+/tests/*.la
+/tests/.deps/
+/tests/.libs/
+/tests/ctest_*_test
 
 # Ignore auxiliary files
 /tap-driver.sh
