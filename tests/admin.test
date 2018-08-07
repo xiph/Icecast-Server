@@ -165,12 +165,12 @@ echo "# Testing on-connect handling with probing"
 test_sourcing "on-connect-test-noauth"      "test-on-connect.ogg"  401
 if [ -f "on-connect-success" ]; then
     echo "# FAIL: on-connect triggered, even though it should not!"
-    rm "on-connect-success"
+    rm "$testdir/on-connect-success" > /dev/null 2>&1
 fi
 test_sourcing "on-connect-test-sourceauth"  "test-on-connect.ogg"  200 "$AUTH_SOURCE"
 if [ -f "on-connect-success" ]; then
     echo "# OK: on-connect triggered!"
-    rm "on-connect-success"
+    rm "$testdir/on-connect-success" > /dev/null 2>&1
 else
     echo "# FAIL: on-connect not triggered!"
 fi
@@ -179,7 +179,7 @@ echo "#"
 echo "# All tests done, cleanup..."
 echo "#"
 
-rm "myauth"
+rm "$testdir/myauth" > /dev/null 2>&1
 
 if kill $SOURCE1_PID > /dev/null 2>&1; then
     echo "# Terminated SOURCE1"
