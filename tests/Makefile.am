@@ -30,14 +30,15 @@ ctest_suite_test_SOURCES = ctest_suite.c
 ctest_suite_test_LDADD = libice_ctest.la
 check_PROGRAMS += ctest_suite_test
 
-ctest_resourcematch_test_SOURCES = ctest_resourcematch.c ../src/resourcematch.c
-ctest_resourcematch_test_LDADD = libice_ctest.la
+ctest_resourcematch_test_SOURCES = ctest_resourcematch.c
+ctest_resourcematch_test_LDADD = libice_ctest.la ../src/icecast-resourcematch.o
 check_PROGRAMS += ctest_resourcematch_test
 
-ctest_refobject_test_SOURCES = ctest_refobject.c ../src/refobject.c
+ctest_refobject_test_SOURCES = ctest_refobject.c
 ctest_refobject_test_LDADD = libice_ctest.la \
 	../src/common/thread/libicethread.la \
-	../src/common/avl/libiceavl.la
+	../src/common/avl/libiceavl.la \
+	../src/icecast-refobject.o
 check_PROGRAMS += ctest_refobject_test
 
 
