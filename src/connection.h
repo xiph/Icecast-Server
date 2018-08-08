@@ -27,25 +27,42 @@
 typedef unsigned long connection_id_t;
 
 struct connection_tag {
+    /* Connection ID.
+     * This is uniq until it overflows (typically at least 2^32 clients).
+     */
     connection_id_t id;
 
+    /* Timestamp of client connecting */
     time_t con_time;
+    /* Timestamp of when the client must be disconnected (reached listentime limit) OR 0 for no limit. */
     time_t discon_time;
+    /* Bytes sent on this connection */
     uint64_t sent_bytes;
 
+    /* Physical socket the client is connected on */
     sock_t sock;
+    /* real and effective listen socket the connect used to connect. */
     listensocket_t *listensocket_real;
     listensocket_t *listensocket_effective;
+
+    /* Is the connection in an error condition? */
     int error;
 
+    /* Current TLS mode and state of the client. */
     tlsmode_t tlsmode;
     tls_t *tls;
+
+    /* I/O Callbacks. Should never be called directly.
+     * Use connection_*_bytes() for I/O operations.
+     */
     int (*send)(connection_t *handle, const void *buf, size_t len);
     int (*read)(connection_t *handle, void *buf, size_t len);
 
+    /* Buffers for putback of data into the connection's read queue. */
     void *readbuffer;
     size_t readbufferlen;
 
+    /* IP Address of the client as seen by the server */
     char *ip;
 };
 
