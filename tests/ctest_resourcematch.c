@@ -114,6 +114,8 @@ static inline resourcematch_result_t run_test_base(const struct test *test, reso
     snprintf(name, sizeof(name), "pattern \"%s\" and string \"%s\" %s extract", test->pattern, test->string, extract ? "with" : "without");
     ctest_test(name, test->expected_result == ret && ok);
 
+    ctest_diagnostic_printf("Expected: %s, Got: %s, Ok: %i", res2str(test->expected_result), res2str(ret), ok);
+
     return ret;
 }
 
