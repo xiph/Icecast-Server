@@ -476,7 +476,7 @@ static listensocket_t * listensocket_container_get_by_id(listensocket_container_
         if (self->sock[i] != NULL) {
             listener = listensocket_get_listener(self->sock[i]);
             if (listener) {
-                if (strcmp(listener->id, id) == 0) {
+                if (listener->id != NULL && strcmp(listener->id, id) == 0) {
                     listensocket_release_listener(self->sock[i]);
                     if (refobject_ref(self->sock[i]) == 0) {
                         return self->sock[i];
