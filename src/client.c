@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libxml/tree.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
@@ -51,7 +53,7 @@
 #include "listensocket.h"
 #include "fastevent.h"
 
-/* for ADMIN_COMMAND_ERROR */
+/* for ADMIN_COMMAND_ERROR, and ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION */
 #include "admin.h"
 
 #ifdef _WIN32
@@ -602,6 +604,31 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     xmlFreeDoc(doc);
 }
 
+static void client_get_reportxml__add_basic_stats(reportxml_t *report)
+{
+    reportxml_node_t *rootnode, *extension;
+    xmlNodePtr xmlroot;
+    xmlNodePtr modules;
+
+    rootnode = reportxml_get_root_node(report);
+
+    extension = reportxml_node_new(REPORTXML_NODE_TYPE_EXTENSION, NULL, NULL, NULL);
+    reportxml_node_set_attribute(extension, "application", ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION);
+
+    reportxml_node_add_child(rootnode, extension);
+
+    refobject_unref(rootnode);
+
+    xmlroot = xmlNewNode(NULL, XMLSTR("icestats"));
+    modules = module_container_get_modulelist_as_xml(global.modulecontainer);
+    xmlAddChild(xmlroot, modules);
+
+
+    reportxml_node_add_xml_child(extension, xmlroot);
+    refobject_unref(extension);
+    xmlFreeNode(xmlroot);
+}
+
 reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text)
 {
     reportxml_t *report = NULL;
@@ -637,6 +664,8 @@ reportxml_t *client_get_reportxml(const char *state_definition, const char *stat
         refobject_unref(incidentnode);
         refobject_unref(rootnode);
     }
+
+    client_get_reportxml__add_basic_stats(report);
 
     return report;
 }
