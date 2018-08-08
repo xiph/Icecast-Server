@@ -144,6 +144,7 @@ void client_send_101(client_t *client, reuse_t reuse);
 void client_send_204(client_t *client);
 void client_send_426(client_t *client, reuse_t reuse);
 void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status);
+reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text);
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);

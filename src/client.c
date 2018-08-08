@@ -301,7 +301,6 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 
 static inline void _client_send_error(client_t *client, const icecast_error_t *error)
 {
-    ice_config_t *config;
     reportxml_t *report;
     admin_format_t admin_format;
     const char *xslt = NULL;
@@ -323,28 +322,8 @@ static inline void _client_send_error(client_t *client, const icecast_error_t *e
         break;
     }
 
- 
-    config = config_get_config();
-    report = reportxml_database_build_report(config->reportxml_db, error->uuid, -1);
-    config_release_config();
 
-    if (!report) {
-        reportxml_node_t *root, *incident, *state, *text;
-
-        report = reportxml_new();
-        root = reportxml_get_root_node(report);
-        incident = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
-        state = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, error->uuid, NULL);
-        text = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
-        reportxml_node_set_content(text, error->message);
-        reportxml_node_add_child(state, text);
-        reportxml_node_add_child(incident, state);
-        reportxml_node_add_child(root, incident);
-        refobject_unref(text);
-        refobject_unref(state);
-        refobject_unref(incident);
-        refobject_unref(root);
-    }
+    report = client_get_reportxml(error->uuid, NULL, error->message);
 
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, xslt, admin_format, error->http_status);
 
@@ -621,6 +600,45 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     }
 
     xmlFreeDoc(doc);
+}
+
+reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text)
+{
+    reportxml_t *report = NULL;
+
+    if (state_definition) {
+        ice_config_t *config;
+
+        config = config_get_config();
+        report = reportxml_database_build_report(config->reportxml_db, state_definition, -1);
+        config_release_config();
+    }
+
+    if (!report) {
+        reportxml_node_t *rootnode, *incidentnode, *statenode;
+
+        report = reportxml_new();
+        rootnode = reportxml_get_root_node(report);
+        incidentnode = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+        statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);
+
+        if (state_text) {
+            reportxml_node_t *textnode;
+
+            textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
+            reportxml_node_set_content(textnode, state_text);
+            reportxml_node_add_child(statenode, textnode);
+            refobject_unref(textnode);
+        }
+
+        reportxml_node_add_child(incidentnode, statenode);
+        reportxml_node_add_child(rootnode, incidentnode);
+        refobject_unref(statenode);
+        refobject_unref(incidentnode);
+        refobject_unref(rootnode);
+    }
+
+    return report;
 }
 
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
