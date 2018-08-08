@@ -38,7 +38,7 @@ config.h.in~
 /tests/*.la
 /tests/.deps/
 /tests/.libs/
-/tests/ctest_*_test
+/tests/ctest_*.test
 
 # Ignore auxiliary files
 /tap-driver.sh
