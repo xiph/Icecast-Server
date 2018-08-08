@@ -83,7 +83,7 @@ static inline resourcematch_result_t match_lli(const char **string, resourcematc
     errno = 0;
     ret = strtoll(*string, &endptr, base);
     if (endptr == *string)
-        return RESOURCEMATCH_MATCH;
+        return RESOURCEMATCH_NOMATCH;
     if (errno != 0)
         return RESOURCEMATCH_ERROR;
 
