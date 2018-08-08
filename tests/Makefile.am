@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 TEST_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
-	$(top_srcdir)/tap-driver.sh
+    $(top_srcdir)/tap-driver.sh
 
 check_PROGRAMS =
 
@@ -18,8 +18,8 @@ noinst_LTLIBRARIES = libice_ctest.la
 #
 
 TESTS = \
-	startup.test \
-	admin.test
+    startup.test \
+    admin.test
 
 
 #
@@ -36,9 +36,9 @@ check_PROGRAMS += ctest_resourcematch_test
 
 ctest_refobject_test_SOURCES = ctest_refobject.c
 ctest_refobject_test_LDADD = libice_ctest.la \
-	../src/common/thread/libicethread.la \
-	../src/common/avl/libiceavl.la \
-	../src/icecast-refobject.o
+    ../src/common/thread/libicethread.la \
+    ../src/common/avl/libiceavl.la \
+    ../src/icecast-refobject.o
 check_PROGRAMS += ctest_refobject_test
 
 
@@ -47,7 +47,7 @@ check_PROGRAMS += ctest_refobject_test
 #
 
 EXTRA_DIST = $(TESTS) \
-	icecast.xml \
-	on-connect.sh
+    icecast.xml \
+    on-connect.sh
 
 TESTS += $(check_PROGRAMS)
