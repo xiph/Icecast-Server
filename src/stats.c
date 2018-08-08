@@ -1063,11 +1063,15 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, client_t *clien
 {
     xmlDocPtr doc;
     xmlNodePtr node;
+    xmlNodePtr modules;
     source_t * source;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
+
+    modules = module_container_get_modulelist_as_xml(global.modulecontainer);
+    xmlAddChild(node, modules);
 
     node = _dump_stats_to_doc(node, show_mount, show_hidden, client);
 

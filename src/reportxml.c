@@ -286,6 +286,14 @@ reportxml_node_t *      reportxml_get_node_by_attribute(reportxml_t *report, con
     return reportxml_node_get_child_by_attribute(report->root, key, value, include_definitions);
 }
 
+reportxml_node_t *      reportxml_get_node_by_type(reportxml_t *report, reportxml_node_type_t type, int include_definitions)
+{
+    if (!report)
+        return NULL;
+
+    return reportxml_node_get_child_by_type(report->root, type, include_definitions);
+}
+
 reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc)
 {
     reportxml_node_t *root;
@@ -815,6 +823,33 @@ reportxml_node_t *      reportxml_node_get_child_by_attribute(reportxml_node_t *
 
     for (i = 0; i < node->childs_len; i++) {
         ret = reportxml_node_get_child_by_attribute(node->childs[i], key, value, include_definitions);
+        if (ret != NULL)
+            return ret;
+    }
+
+    return NULL;
+}
+
+reportxml_node_t *      reportxml_node_get_child_by_type(reportxml_node_t *node, reportxml_node_type_t type, int include_definitions)
+{
+    size_t i;
+
+    if (!node)
+        return NULL;
+
+    if (node->type == type) {
+        if (refobject_ref(node) != 0)
+            return NULL;
+        return node;
+    }
+
+    if (node->type == REPORTXML_NODE_TYPE_DEFINITION && !include_definitions)
+        return NULL;
+
+    for (i = 0; i < node->childs_len; i++) {
+        reportxml_node_t *ret;
+
+        ret = reportxml_node_get_child_by_type(node->childs[i], type, include_definitions);
         if (ret != NULL)
             return ret;
     }

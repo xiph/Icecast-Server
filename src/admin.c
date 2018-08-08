@@ -317,6 +317,17 @@ int admin_command_table_unregister(const char *prefix)
     return -1;
 }
 
+/* build an XML root node including some common tags */
+xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
+{
+    xmlNodePtr rootnode = xmlNewDocNode(doc, NULL, XMLSTR(name), NULL);
+    xmlNodePtr modules = module_container_get_modulelist_as_xml(global.modulecontainer);
+
+    xmlAddChild(rootnode, modules);
+
+    return rootnode;
+}
+
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
  * doc even if the source is running */
@@ -330,7 +341,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
     time_t now = time(NULL);
 
     doc = xmlNewDoc (XMLSTR("1.0"));
-    xmlnode = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
+    xmlnode = admin_build_rootnode(doc, "icestats");
     xmlDocSetRootElement(doc, xmlnode);
 
     if (mount) {
@@ -649,7 +660,7 @@ static void command_move_clients(client_t   *client,
     ICECAST_LOG_INFO("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
     doc = xmlNewDoc(XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    node = admin_build_rootnode(doc, "iceresponse");
     xmlDocSetRootElement(doc, node);
 
     source_move_clients(source, dest);
@@ -744,7 +755,7 @@ static void command_show_listeners(client_t *client,
     char buf[22];
 
     doc = xmlNewDoc(XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    node = admin_build_rootnode(doc, "icestats");
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
     xmlDocSetRootElement(doc, node);
@@ -902,12 +913,12 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
         }
 
         doc = xmlNewDoc(XMLSTR("1.0"));
-        node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+        node = admin_build_rootnode(doc, "icestats");
 
         rolenode = admin_add_role_to_authentication(auth, node);
 
         if (message) {
-            msgnode = xmlNewChild(node, NULL, XMLSTR("iceresponse"), NULL);
+            msgnode = admin_build_rootnode(doc, "iceresponse");
             xmlNewTextChild(msgnode, NULL, XMLSTR("message"), XMLSTR(message));
         }
 
@@ -941,7 +952,7 @@ static void command_kill_source(client_t *client,
     xmlNodePtr node;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    node = admin_build_rootnode(doc, "iceresponse");
     xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Source Removed"));
     xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
@@ -971,7 +982,7 @@ static void command_kill_client(client_t *client,
     listener = source_find_client(source, id);
 
     doc = xmlNewDoc(XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    node = admin_build_rootnode(doc, "iceresponse");
     xmlDocSetRootElement(doc, node);
     ICECAST_LOG_DEBUG("Response is %d", response);
 
@@ -1028,7 +1039,7 @@ static void command_metadata(client_t *client,
     int same_ip = 1;
 
     doc = xmlNewDoc(XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    node = admin_build_rootnode(doc, "iceresponse");
     xmlDocSetRootElement(doc, node);
 
     ICECAST_LOG_DEBUG("Got metadata update request");
@@ -1155,7 +1166,7 @@ static void command_queue_reload(client_t *client, source_t *source, admin_forma
     global_unlock();
 
     doc = xmlNewDoc (XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("iceresponse"), NULL);
+    node = admin_build_rootnode(doc, "iceresponse");
     xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Config reload queued"));
     xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
     xmlDocSetRootElement(doc, node);
@@ -1207,7 +1218,7 @@ static void command_updatemetadata(client_t *client,
     xmlNodePtr node, srcnode;
 
     doc = xmlNewDoc(XMLSTR("1.0"));
-    node = xmlNewDocNode(doc, NULL, XMLSTR("icestats"), NULL);
+    node = admin_build_rootnode(doc, "icestats");
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
     xmlDocSetRootElement(doc, node);

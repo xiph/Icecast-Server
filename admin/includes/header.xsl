@@ -14,6 +14,11 @@
 				<ul>
 					<li class="on"><a href="/admin/stats.xsl">Administration</a></li>
 					<li><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
+					<xsl:for-each select="(/report/extension/icestats | /icestats | /iceresponse)/modules/module">
+						<xsl:if test="@management-url and @management-title">
+							<li><a href="{@management-url}"><xsl:value-of select="@management-title" /></a></li>
+						</xsl:if>
+					</xsl:for-each>
 					<li><a href="/status.xsl">Public area</a></li>
 				</ul>
 			</div>

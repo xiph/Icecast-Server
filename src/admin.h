@@ -21,6 +21,8 @@
 #include "compat.h"
 #include "resourcematch.h"
 
+#define ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION     "http://icecast.org/specs/legacy-icestats"
+
 /* types */
 #define ADMINTYPE_ERROR   (-1)
 #define ADMINTYPE_GENERAL   1

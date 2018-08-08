@@ -77,6 +77,8 @@ reportxml_node_t *      reportxml_get_root_node(reportxml_t *report);
  * <definition>s are skipped.
  */
 reportxml_node_t *      reportxml_get_node_by_attribute(reportxml_t *report, const char *key, const char *value, int include_definitions);
+/* This gets a node by it's type. Otherwise identical to reportxml_get_node_by_attribute() */
+reportxml_node_t *      reportxml_get_node_by_type(reportxml_t *report, reportxml_node_type_t type, int include_definitions);
 /* This function parses an XML document and returns the parst report XML document */
 reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc);
 /* This function renders an report XML document as XML structure */
@@ -108,6 +110,8 @@ ssize_t                 reportxml_node_count_child(reportxml_node_t *node);
 reportxml_node_t *      reportxml_node_get_child(reportxml_node_t *node, size_t idx);
 /* This gets an child by it's value of the given attribute. See reportxml_get_node_by_attribute() for more details. */
 reportxml_node_t *      reportxml_node_get_child_by_attribute(reportxml_node_t *node, const char *key, const char *value, int include_definitions);
+/* This gets a child by it's type. Otherwise identical to reportxml_node_get_child_by_attribute() */
+reportxml_node_t *      reportxml_node_get_child_by_type(reportxml_node_t *node, reportxml_node_type_t type, int include_definitions);
 /* This gets and sets the text content of an node (used for <text>) */
 int                     reportxml_node_set_content(reportxml_node_t *node, const char *value);
 char *                  reportxml_node_get_content(reportxml_node_t *node);
