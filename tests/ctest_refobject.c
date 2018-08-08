@@ -127,29 +127,31 @@ static void test_associated(void)
     ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
 }
 
+static size_t test_freecb__called;
+static void test_freecb__freecb(refobject_t self, void **userdata)
+{
+    test_freecb__called++;
+}
+
 static void test_freecb(void)
 {
     refobject_t a;
-    size_t called = 0;
-    void freecb(refobject_t self, void **userdata)
-    {
-        called++;
-    }
 
-    a = refobject_new(sizeof(refobject_base_t), freecb, NULL, NULL, REFOBJECT_NULL);
+    test_freecb__called = 0;
+    a = refobject_new(sizeof(refobject_base_t), test_freecb__freecb, NULL, NULL, REFOBJECT_NULL);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
     ctest_test("un-referenced", refobject_unref(a) == 0);
-    ctest_test("freecb called", called == 1);
+    ctest_test("freecb called", test_freecb__called == 1);
 
-    called = 0;
-    a = refobject_new(sizeof(refobject_base_t), freecb, NULL, NULL, REFOBJECT_NULL);
+    test_freecb__called = 0;
+    a = refobject_new(sizeof(refobject_base_t), test_freecb__freecb, NULL, NULL, REFOBJECT_NULL);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
     ctest_test("referenced", refobject_ref(a) == 0);
-    ctest_test("freecb uncalled", called == 0);
+    ctest_test("freecb uncalled", test_freecb__called == 0);
     ctest_test("un-referenced (1 of 2)", refobject_unref(a) == 0);
-    ctest_test("freecb uncalled", called == 0);
+    ctest_test("freecb uncalled", test_freecb__called == 0);
     ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
-    ctest_test("freecb called", called == 1);
+    ctest_test("freecb called", test_freecb__called == 1);
 }
 
 int main (void)
