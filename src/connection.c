@@ -60,6 +60,7 @@
 #include "acl.h"
 #include "refobject.h"
 #include "listensocket.h"
+#include "fastevent.h"
 
 #define CATMODULE "connection"
 
@@ -209,6 +210,7 @@ static int connection_send_tls(connection_t *con, const void *buf, size_t len)
     } else {
         con->sent_bytes += bytes;
     }
+
     return bytes;
 }
 #else
@@ -245,6 +247,7 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
     } else {
         con->sent_bytes += bytes;
     }
+
     return bytes;
 }
 
@@ -270,6 +273,8 @@ connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, 
         con->read       = connection_read;
         con->send       = connection_send;
     }
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CONNECTION, con);
 
     return con;
 }
@@ -299,10 +304,14 @@ void connection_uses_tls(connection_t *con)
 
 ssize_t connection_send_bytes(connection_t *con, const void *buf, size_t len)
 {
-    return con->send(con, buf, len);
+    ssize_t ret = con->send(con, buf, len);
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_WRITE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, con, buf, len, ret);
+
+    return ret;
 }
 
-ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
+static inline ssize_t connection_read_bytes_real(connection_t *con, void *buf, size_t len)
 {
     ssize_t done = 0;
     ssize_t ret;
@@ -344,9 +353,20 @@ ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
     return done + ret;
 }
 
+ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
+{
+    ssize_t ret = connection_read_bytes_real(con, buf, len);
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_READ, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, con, buf, len, ret);
+
+    return ret;
+}
+
 int connection_read_put_back(connection_t *con, const void *buf, size_t len)
 {
     void *n;
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_PUTBACK, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBR, con, buf, len);
 
     if (con->readbufferlen) {
         n = realloc(con->readbuffer, con->readbufferlen + len);
@@ -1257,6 +1277,8 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_AUTHED, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     if (result != AUTH_OK) {
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         free(uri);
@@ -1397,6 +1419,7 @@ static void _handle_authentication_mount_normal(client_t *client, char *uri)
 
 static void _handle_authentication(client_t *client, char *uri)
 {
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READY_FOR_AUTH, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
     _handle_authentication_mount_normal(client, uri);
 }
 
@@ -1649,6 +1672,8 @@ void connection_close(connection_t *con)
 {
     if (!con)
         return;
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CONNECTION, con);
 
     tls_unref(con->tls);
     if (con->sock != -1) /* TODO: do not use magic */

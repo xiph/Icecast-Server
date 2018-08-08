@@ -78,6 +78,7 @@
 #include "auth.h"
 #include "event.h"
 #include "listensocket.h"
+#include "fastevent.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -119,11 +120,35 @@ static void _stop_logging(void)
     log_close(playlistlog);
 }
 
+#ifndef FASTEVENT_ENABLED
+static void __fastevent_cb(const void *userdata, fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, va_list ap)
+{
+    event_t *event;
+
+    if (datatype != FASTEVENT_DATATYPE_EVENT)
+        return;
+
+    event = va_arg(ap, event_t*);
+
+    if (event == NULL) {
+        ICECAST_LOG_DEBUG("event=%p", event);
+    } else {
+        ICECAST_LOG_DEBUG("event=%p{.trigger='%s', ...}", event, event->trigger);
+    }
+}
+
+static refobject_t fastevent_reg;
+#endif
+
 static void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
     global_initialize();
+#ifndef FASTEVENT_ENABLED
+    fastevent_initialize();
+    fastevent_reg = fastevent_register(FASTEVENT_TYPE_SLOWEVENT, __fastevent_cb, NULL, NULL);
+#endif
     sock_initialize();
     resolver_initialize();
     config_initialize();
@@ -152,6 +177,10 @@ static void shutdown_subsystems(void)
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();
+#ifndef FASTEVENT_ENABLED
+    refobject_unref(fastevent_reg);
+    fastevent_shutdown();
+#endif
     global_shutdown();
     thread_shutdown();
 

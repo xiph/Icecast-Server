@@ -18,6 +18,7 @@
 #include "event_log.h"
 #include "event_exec.h"
 #include "event_url.h"
+#include "fastevent.h"
 #include "logging.h"
 #include "admin.h"
 #include "connection.h"
@@ -334,6 +335,7 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 
 /* event signaling */
 void event_emit(event_t *event) {
+    fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
     thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
     thread_mutex_unlock(&event_lock);
@@ -371,11 +373,13 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
      * We do this before inserting all the data into the object to avoid
      * all the strdups() and stuff in case they aren't needed.
      */
+#ifndef FASTEVENT_ENABLED
     if (event->reglist[0] == NULL) {
         /* we have no registrations, drop this event. */
         event_release(event);
         return;
     }
+#endif
 
     if (client) {
         const char *tmp;

@@ -49,6 +49,7 @@
 #include "util.h"
 #include "acl.h"
 #include "listensocket.h"
+#include "fastevent.h"
 
 /* for ADMIN_COMMAND_ERROR */
 #include "admin.h"
@@ -99,6 +100,8 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     return ret;
 }
@@ -205,6 +208,8 @@ void client_destroy(client_t *client)
     if (client == NULL)
         return;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     if (client->reuse != ICECAST_REUSE_CLOSE) {
         /* only reuse the client if we reached the body's EOF. */
         if (client_body_eof(client) == 1) {
@@ -288,6 +293,8 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 
     if (bytes == -1 && client->con->error)
         ICECAST_LOG_DEBUG("reading from connection has failed");
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READ, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, client, buf, (size_t)len, (ssize_t)bytes);
 
     return bytes;
 }
@@ -386,6 +393,8 @@ void client_send_101(client_t *client, reuse_t reuse)
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     fserve_add_client(client, NULL);
 }
 
@@ -408,6 +417,8 @@ void client_send_204(client_t *client)
 
     client->respcode = 204;
     client->refbuf->len = strlen(client->refbuf->data);
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     fserve_add_client(client, NULL);
 }
@@ -439,6 +450,8 @@ void client_send_426(client_t *client, reuse_t reuse)
 
     client->reuse = ICECAST_REUSE_KEEPALIVE;
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     fserve_add_client(client, NULL);
 }
 
@@ -449,6 +462,10 @@ static inline void client_send_500(client_t *client, const char *message)
                           "500 - Internal Server Error\n---------------------------\n";
     const ssize_t header_len = sizeof(header) - 1;
     ssize_t ret;
+
+    client->respcode = 500;
+    client->refbuf->len = 0;
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     ret = client_send_bytes(client, header, header_len);
 
@@ -569,6 +586,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         client->refbuf->len = ret;
         xmlFree(buff);
         client->respcode = status;
+        fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
         fserve_add_client (client, NULL);
     } else {
         char *fullpath_xslt_template;
@@ -597,6 +615,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         config_release_config();
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
+        fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
         xslt_transform(doc, fullpath_xslt_template, client, status);
         free(fullpath_xslt_template);
     }
@@ -632,6 +651,8 @@ int client_send_bytes(client_t *client, const void *buf, unsigned len)
     if (client->con->error)
         ICECAST_LOG_DEBUG("Client connection died");
 
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_WRITE, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_OBRD, client, buf, (size_t)len, (ssize_t)ret);
+
     return ret;
 }
 
@@ -666,6 +687,8 @@ ssize_t client_body_read(client_t *client, void *buf, size_t len)
     if (ret > 0) {
         client->request_body_read += ret;
     }
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READ_BODY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, client, buf, len, ret);
 
     return ret;
 }
