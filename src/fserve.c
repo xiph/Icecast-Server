@@ -23,7 +23,7 @@
 #include <errno.h>
 
 #ifdef HAVE_POLL
-#include <sys/poll.h>
+#include <poll.h>
 #endif
 
 #ifndef _WIN32

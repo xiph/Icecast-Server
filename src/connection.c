@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <string.h>
 #ifdef HAVE_POLL
-#include <sys/poll.h>
+#include <poll.h>
 #endif
 #include <sys/types.h>
 

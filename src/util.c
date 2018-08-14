@@ -32,7 +32,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #ifdef HAVE_POLL
-#include <sys/poll.h>
+#include <poll.h>
 #endif
 #else
 #include <windows.h>
