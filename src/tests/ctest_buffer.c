@@ -94,6 +94,50 @@ static void test_associated(void)
     ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
 }
 
+static void test_empty(void)
+{
+    buffer_t *a;
+    const void *data = &data;
+    size_t length = 5;
+    const char *string;
+    int ret;
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+
+    ret = buffer_get_data(a, &data, &length);
+    ctest_test("got data and length from buffer", ret == 0);
+    if (ret == 0) {
+        ctest_test("data is updated", data != &data);
+        ctest_test("length is zero", length == 0);
+    }
+
+    data = &data;
+    ret = buffer_get_data(a, &data, NULL);
+    ctest_test("got data from buffer", ret == 0);
+    if (ret == 0) {
+        ctest_test("data is updated", data != &data);
+    }
+
+    length = 5;
+    ret = buffer_get_data(a, NULL, &length);
+    ctest_test("got length from buffer", ret == 0);
+    if (ret == 0) {
+        ctest_test("length is zero", length == 0);
+    }
+
+    ret = buffer_get_string(a, &string);
+    ctest_test("got string from buffer", ret == 0);
+    if (ret == 0) {
+        ctest_test("string is non-NULL", string != NULL);
+        if (string != NULL) {
+            ctest_test("string is empty", *string == 0);
+        }
+    }
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -104,6 +148,8 @@ int main (void)
     test_name();
     test_userdata();
     test_associated();
+
+    test_empty();
 
     ctest_fin();
 
