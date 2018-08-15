@@ -61,9 +61,20 @@ void        buffer_preallocate(buffer_t *buffer, size_t request)
     void *n;
     size_t newlen;
 
-    /* TODO: use this function to clean up the effects of buffer->offset */
+    if (!buffer)
+        return;
 
-    if (!buffer || !request)
+    /* Remove the offset if it makes sense to do so. */
+    if (buffer->offset == buffer->fill) {
+        buffer->offset = 0;
+        buffer->fill = 0;
+    } else if ((2*buffer->offset) < buffer->fill || buffer->offset >= 512 || (buffer->offset > 128 && buffer->offset >= request)) {
+        buffer->fill -= buffer->offset;
+        memmove(buffer->buffer, buffer->buffer + buffer->offset, buffer->fill);
+        buffer->offset = 0;
+    }
+
+    if (!request)
         return;
 
     newlen = buffer->fill + request;
@@ -144,6 +155,9 @@ int         buffer_shift(buffer_t *buffer, size_t amount)
         return -1;
 
     buffer->offset += amount;
+
+    /* run cleanup */
+    buffer_preallocate(buffer, 0);
 
     return 0;
 }
