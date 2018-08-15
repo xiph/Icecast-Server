@@ -715,6 +715,14 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 200: statusmsg = "OK"; break;
                 case 204: statusmsg = "No Content"; break;
                 case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
+                case 300: statusmsg = "Multiple Choices"; break;
+                case 301: statusmsg = "Moved Permanently"; break;
+                case 302: statusmsg = "Found"; break;
+                case 303: statusmsg = "See Other"; break;
+                case 304: statusmsg = "Not Modified"; break;
+                case 305: statusmsg = "Use Proxy"; break;
+                case 307: statusmsg = "Temporary Redirect"; break;
+                case 308: statusmsg = "Permanent Redirect"; break;
                 case 400: statusmsg = "Bad Request"; break;
                 case 401: statusmsg = "Authentication Required"; break;
                 case 403: statusmsg = "Forbidden"; break;
