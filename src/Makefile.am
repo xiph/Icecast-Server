@@ -140,3 +140,5 @@ icecast_DEPENDENCIES = \
 
 icecast_LDADD    = $(icecast_DEPENDENCIES)
 icecast_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/common
+
+include $(srcdir)/tests/Makefile.am

@@ -40,6 +40,18 @@ config.h.in~
 /tests/.libs/
 /tests/ctest_*.test
 
+# Ignore test output files
+/src/ctest_*.log
+/src/ctest_*.trs
+/src/test-suite.log
+
+# Ignore test build artifacts
+/src/tests/*.lo
+/src/libice_ctest.la
+/src/ctest_*.test
+/src/tests/.deps/
+/src/tests/.dirstamp
+
 # Ignore auxiliary files
 /tap-driver.sh
 

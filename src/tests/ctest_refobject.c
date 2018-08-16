@@ -14,7 +14,7 @@
 
 #include "ctest_lib.h"
 
-#include "../src/refobject.h"
+#include "../refobject.h"
 
 static void test_ptr(void)
 {

@@ -39,7 +39,7 @@ AS_CASE("${host_os}",
   [SYS="${host_os}"]
 )
 
-AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip])
+AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AM_MAINTAINER_MODE([enable])
