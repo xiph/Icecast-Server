@@ -15,7 +15,7 @@
 
 #include "ctest_lib.h"
 
-#include "../src/resourcematch.h"
+#include "../resourcematch.h"
 
 struct test {
     const char *pattern;
