@@ -173,6 +173,50 @@ static void test_string(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test_binary(void)
+{
+    buffer_t *a;
+    char pattern_a[8] = {0x01, 0x10, 0x80, 0xFF,  0x00, 0x55, 0xEE, 0xAA};
+    char pattern_b[9] = {0x02, 0x03, 0xF0, 0x80,  0x0F, 0x04, 0x1A, 0x7F, 0x33};
+    int ret;
+    size_t length;
+    const void *data;
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+
+    ctest_test("pushed data pattern a", buffer_push_data(a, pattern_a, sizeof(pattern_a)) == 0);
+    length = sizeof(pattern_a) + 42;
+    data = &data;
+    ret = buffer_get_data(a, &data, &length);
+    ctest_test("got data", ret == 0);
+    if (ret == 0) {
+        ctest_test("correct length was returned", length == sizeof(pattern_a));
+        ctest_test("data is non-NULL", data != NULL);
+        ctest_test("data has been set", data != &data);
+        if (length == sizeof(pattern_a) && data != NULL && data != &data) {
+            ctest_test("data matches pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0);
+        }
+    }
+
+    ctest_test("pushed data pattern b", buffer_push_data(a, pattern_b, sizeof(pattern_b)) == 0);
+    length = sizeof(pattern_a) + sizeof(pattern_b) + 42;
+    data = &data;
+    ret = buffer_get_data(a, &data, &length);
+    ctest_test("got data", ret == 0);
+    if (ret == 0) {
+        ctest_test("correct length was returned", length == (sizeof(pattern_a) + sizeof(pattern_b)));
+        ctest_test("data is non-NULL", data != NULL);
+        ctest_test("data has been set", data != &data);
+        if (length == (sizeof(pattern_a) + sizeof(pattern_b)) && data != NULL && data != &data) {
+            ctest_test("data matches combined pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0 && memcmp(data + sizeof(pattern_a), pattern_b, sizeof(pattern_b)) == 0);
+        }
+    }
+
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -186,6 +230,7 @@ int main (void)
 
     test_empty();
     test_string();
+    test_binary();
 
     ctest_fin();
 
