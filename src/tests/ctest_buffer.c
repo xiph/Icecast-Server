@@ -256,6 +256,31 @@ static void test_shift(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test_length(void)
+{
+    buffer_t *a;
+    const char *pattern = "AABBBCC";
+    const char *match_a = "AABBB";
+    const char *match_b = "AABB";
+    const char *match_c = "";
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+
+    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    test__compare_to_string(a, "string matches input", pattern);
+    ctest_test("Set length to match pattern a", buffer_set_length(a, strlen(match_a)) == 0);
+    test__compare_to_string(a, "string matches pattern a", match_a);
+    ctest_test("Set length to match pattern b", buffer_set_length(a, strlen(match_b)) == 0);
+    test__compare_to_string(a, "string matches pattern a", match_b);
+    ctest_test("Set length to match pattern c", buffer_set_length(a, strlen(match_c)) == 0);
+    test__compare_to_string(a, "string matches pattern a", match_c);
+    ctest_test("Set length to match pattern a (again)", buffer_set_length(a, strlen(match_a)) != 0);
+    test__compare_to_string(a, "string still matches pattern c", match_c);
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -272,6 +297,7 @@ int main (void)
     test_binary();
 
     test_shift();
+    test_length();
 
     ctest_fin();
 
