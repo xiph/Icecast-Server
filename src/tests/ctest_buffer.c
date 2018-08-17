@@ -138,6 +138,41 @@ static void test_empty(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test_string(void)
+{
+    buffer_t *a;
+    const char *hw = "Hello World!";
+    const char *count = "0 1 2 3 4";
+    const char *combined = "Hello World!" "0 1 2 3 4";
+    const char *string = NULL;
+    int ret;
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+    ctest_test("pushed string", buffer_push_string(a, hw) == 0);
+    ret = buffer_get_string(a, &string);
+    ctest_test("got strong", ret == 0);
+    if (ret == 0) {
+        ctest_test("string is non-NULL", string != NULL);
+        if (string != NULL) {
+            ctest_test("string matches input", strcmp(string, hw) == 0);
+        }
+    }
+
+    ctest_test("pushed string", buffer_push_string(a, count) == 0);
+    string = NULL;
+    ret = buffer_get_string(a, &string);
+    ctest_test("got strong", ret == 0);
+    if (ret == 0) {
+        ctest_test("string is non-NULL", string != NULL);
+        if (string != NULL) {
+            ctest_test("string matches combined input", strcmp(string, combined) == 0);
+        }
+    }
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -150,6 +185,7 @@ int main (void)
     test_associated();
 
     test_empty();
+    test_string();
 
     ctest_fin();
 
