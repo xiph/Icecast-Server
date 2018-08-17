@@ -128,7 +128,7 @@ int         buffer_get_string(buffer_t *buffer, const char **string)
     /* Actually add a '\0'-termination. */
     ret = buffer->buffer;
     ret[buffer->fill] = 0;
-    *string = ret;
+    *string = ret + buffer->offset;
 
     return 0;
 }
