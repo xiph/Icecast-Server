@@ -217,6 +217,45 @@ static void test_binary(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test__compare_to_string(buffer_t *a, const char *testname, const char *pattern)
+{
+    const char *string = NULL;
+    int ret;
+
+    ret = buffer_get_string(a, &string);
+    ctest_test("got strong", ret == 0);
+    if (ret == 0) {
+        ctest_test("string is non-NULL", string != NULL);
+        if (string != NULL) {
+            ctest_test(testname, strcmp(string, pattern) == 0);
+            ctest_diagnostic_printf("string=\"%s\", pattern=\"%s\"", string, pattern);
+        }
+    }
+}
+
+static void test_shift(void)
+{
+    buffer_t *a;
+    const char *pattern = "AABBBCC";
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+
+    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    test__compare_to_string(a, "string matches input", pattern);
+    ctest_test("shifted data by 0 bytes", buffer_shift(a, 0) == 0);
+    test__compare_to_string(a, "string matches input (no shift happened)", pattern);
+    ctest_test("shifted data by 2 bytes", buffer_shift(a, 2) == 0);
+    test__compare_to_string(a, "string matches shifted input", pattern + 2);
+    ctest_test("shifted data by 3 bytes", buffer_shift(a, 3) == 0);
+    test__compare_to_string(a, "string matches shifted input", pattern + 2 + 3);
+    ctest_test("shifted data by 3 bytes", buffer_shift(a, 2) == 0);
+    test__compare_to_string(a, "string matches shifted input", pattern + 2 + 3 + 2);
+    ctest_test("shifted data beyond end (42 bytes)", buffer_shift(a, 42) != 0);
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -231,6 +270,8 @@ int main (void)
     test_empty();
     test_string();
     test_binary();
+
+    test_shift();
 
     ctest_fin();
 
