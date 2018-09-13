@@ -13,7 +13,7 @@
 
 #include "icecasttypes.h"
 
-typedef void (*module_client_handler_function_t)(module_t *self, client_t *client, const char *uri);
+typedef void (*module_client_handler_function_t)(module_t *self, client_t *client);
 typedef int  (*module_setup_handler_t)(module_t *self, void **userdata);
 
 typedef struct {

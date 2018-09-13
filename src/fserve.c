@@ -405,7 +405,7 @@ static void fserve_client_destroy(fserve_t *fclient)
 /* client has requested a file, so check for it and send the file.  Do not
  * refer to the client_t afterwards.  return 0 for success, -1 on error.
  */
-int fserve_client_create (client_t *httpclient, const char *path)
+int fserve_client_create (client_t *httpclient)
 {
     int bytes;
     struct stat file_buf;
@@ -421,8 +421,8 @@ int fserve_client_create (client_t *httpclient, const char *path)
     ice_config_t *config;
     FILE *file;
 
-    fullpath = util_get_path_from_normalised_uri (path);
-    ICECAST_LOG_INFO("checking for file %H (%H)", path, fullpath);
+    fullpath = util_get_path_from_normalised_uri(httpclient->uri);
+    ICECAST_LOG_INFO("checking for file %H (%H)", httpclient->uri, fullpath);
 
     if (strcmp (util_get_extension (fullpath), "m3u") == 0)
         m3u_requested = 1;
@@ -452,7 +452,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
 
     if (m3u_requested && m3u_file_available == 0)
     {
-        char *sourceuri = strdup (path);
+        char *sourceuri = strdup(httpclient->uri);
         char *dot = strrchr(sourceuri, '.');
 
         *dot = 0;
@@ -476,7 +476,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
     if (xslt_playlist_requested && xslt_playlist_file_available == 0)
     {
         xmlDocPtr doc;
-        char *reference = strdup (path);
+        char *reference = strdup(httpclient->uri);
         char *eol = strrchr (reference, '.');
         if (eol)
             *eol = '\0';
@@ -554,7 +554,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
                     endpos = 0;
                 }
                 httpclient->respcode = 206;
-                type = fserve_content_type (path);
+                type = fserve_content_type(httpclient->uri);
                 bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
                                                 0, 206, NULL,
                                                 type, NULL,
@@ -584,7 +584,7 @@ int fserve_client_create (client_t *httpclient, const char *path)
         }
     }
     else {
-        char *type = fserve_content_type(path);
+        char *type = fserve_content_type(httpclient->uri);
         httpclient->respcode = 200;
         bytes = util_http_build_header (httpclient->refbuf->data, BUFSIZE, 0,
                                         0, 200, NULL,

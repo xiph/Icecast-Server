@@ -1022,10 +1022,10 @@ typedef struct _source_xml_tag {
 } source_xml_t;
 
 
-void stats_transform_xslt(client_t *client, const char *uri)
+void stats_transform_xslt(client_t *client)
 {
     xmlDocPtr doc;
-    char *xslpath = util_get_path_from_normalised_uri(uri);
+    char *xslpath = util_get_path_from_normalised_uri(client->uri);
     const char *mount = httpp_get_param(client->parser, "mount");
 
     doc = stats_get_xml(0, mount, client);
