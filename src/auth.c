@@ -368,6 +368,7 @@ static void *auth_run_thread (void *arg)
  */
 static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata), void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata) {
     auth_client *auth_user;
+    auth_matchtype_t matchtype;
 
     ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
 
@@ -378,7 +379,35 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
         return;
     }
 
-    if (!auth->method[client->parser->req_type]) {
+    if (auth->filter_method[client->parser->req_type] == AUTH_MATCHTYPE_NOMATCH) {
+        if (on_no_match) {
+           on_no_match(client, on_result, userdata);
+        } else if (on_result) {
+           on_result(client, userdata, AUTH_NOMATCH);
+        }
+        return;
+    }
+
+    if (client->admin_command == ADMIN_COMMAND_ERROR) {
+        /* this is a web/ client */
+        matchtype = auth->filter_web_policy;
+    } else {
+        /* this is a admin/ client */
+        size_t i;
+
+        matchtype = AUTH_MATCHTYPE_UNUSED;
+
+        for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+            if (auth->filter_admin[i].type != AUTH_MATCHTYPE_UNUSED && auth->filter_admin[i].command == client->admin_command) {
+                matchtype = auth->filter_admin[i].type;
+                break;
+            }
+        }
+
+        if (matchtype == AUTH_MATCHTYPE_UNUSED)
+            matchtype = auth->filter_admin_policy;
+    }
+    if (matchtype == AUTH_MATCHTYPE_NOMATCH) {
         if (on_no_match) {
            on_no_match(client, on_result, userdata);
         } else if (on_result) {
@@ -472,13 +501,96 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 }
 
 
+static inline void auth_get_authenticator__filter_admin(auth_t *auth, xmlNodePtr node, size_t *filter_admin_index, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+        char *next;
+
+        while (cur) {
+            next = strstr(cur, ",");
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (*filter_admin_index < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin)))) {
+                auth->filter_admin[*filter_admin_index].command = admin_get_command(cur);
+                switch (auth->filter_admin[*filter_admin_index].command) {
+                    case ADMIN_COMMAND_ERROR:
+                        ICECAST_LOG_ERROR("Can not add unknown %s command to role.", name);
+                    break;
+                    case ADMIN_COMMAND_ANY:
+                        auth->filter_admin_policy = matchtype;
+                    break;
+                    default:
+                        auth->filter_admin[*filter_admin_index].type = matchtype;
+                        (*filter_admin_index)++;
+                    break;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Can not add more %s commands to role.", name);
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+}
+
+static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+
+        while (cur) {
+            char *next = strstr(cur, ",");
+            httpp_request_type_e idx;
+
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                size_t i;
+
+                for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*(auth->filter_method))); i++)
+                    auth->filter_method[i] = matchtype;
+                break;
+            }
+
+            idx = httpp_str_to_method(cur);
+            if (idx == httpp_req_unknown) {
+                ICECAST_LOG_ERROR("Can not add known method \"%H\" to role's %s", cur, name);
+                return -1;
+            }
+            auth->filter_method[idx] = matchtype;
+            cur = next;
+        }
+
+        free(tmp);
+    }
+
+    return 0;
+}
+
 auth_t *auth_get_authenticator(xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
     xmlNodePtr option;
     char *method;
+    char *tmp;
     size_t i;
+    size_t filter_admin_index = 0;
 
     if (auth == NULL)
         return NULL;
@@ -489,6 +601,13 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
     auth->role = (char*)xmlGetProp(node, XMLSTR("name"));
     auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
+    auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+    auth->filter_admin_policy = AUTH_MATCHTYPE_MATCH;
+
+    for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+        auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
+        auth->filter_admin[i].command = ADMIN_COMMAND_ERROR;
+    }
 
     if (!auth->type) {
         auth_release(auth);
@@ -500,8 +619,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         char *cur = method;
         char *next;
 
-        for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-            auth->method[i] = 0;
+        for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+            auth->filter_method[i] = AUTH_MATCHTYPE_NOMATCH;
 
         while (cur) {
             httpp_request_type_e idx;
@@ -514,8 +633,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             }
 
             if (strcmp(cur, "*") == 0) {
-                for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-                    auth->method[i] = 1;
+                for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+                    auth->filter_method[i] = AUTH_MATCHTYPE_MATCH;
                 break;
             }
 
@@ -524,16 +643,42 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
                 auth_release(auth);
                 return NULL;
             }
-            auth->method[idx] = 1;
+            auth->filter_method[idx] = AUTH_MATCHTYPE_MATCH;
 
             cur = next;
         }
 
         xmlFree(method);
     } else {
-        for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-            auth->method[i] = 1;
+        for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+            auth->filter_method[i] = AUTH_MATCHTYPE_MATCH;
     }
+
+    auth_get_authenticator__filter_method(auth, node, "match-method", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_method(auth, node, "nomatch-method", AUTH_MATCHTYPE_NOMATCH);
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("match-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        }
+        free(tmp);
+    }
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("nomatch-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        }
+        free(tmp);
+    }
+
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
 
     /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
@@ -777,7 +922,7 @@ acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_ty
 
     while (!ret && stack) {
         auth_t *auth = auth_stack_get(stack);
-        if (auth->method[method] && strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
+        if (auth->filter_method[method] != AUTH_MATCHTYPE_NOMATCH && strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
             acl_addref(ret = auth->acl);
         }
         auth_release(auth);

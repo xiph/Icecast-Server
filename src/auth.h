@@ -34,6 +34,8 @@
 #define AUTH_TYPE_URL             "url"
 #define AUTH_TYPE_HTPASSWD        "htpasswd"
 
+#define MAX_ADMIN_COMMANDS 32
+
 typedef enum
 {
     /* XXX: ??? */
@@ -53,6 +55,15 @@ typedef enum
     AUTH_USEREXISTS,
     AUTH_USERDELETED
 } auth_result;
+
+typedef enum {
+    /* The slot is not used */
+    AUTH_MATCHTYPE_UNUSED,
+    /* Match on this slot */
+    AUTH_MATCHTYPE_MATCH,
+    /* Do not match on this slot */
+    AUTH_MATCHTYPE_NOMATCH
+} auth_matchtype_t;
 
 typedef struct auth_client_tag
 {
@@ -76,7 +87,13 @@ struct auth_tag
     char *mount;
 
     /* filters */
-    int method[httpp_req_unknown+1];
+    auth_matchtype_t filter_method[httpp_req_unknown+1];
+    auth_matchtype_t filter_web_policy;
+    auth_matchtype_t filter_admin_policy;
+    struct {
+        auth_matchtype_t type;
+        admin_command_id_t command;
+    } filter_admin[MAX_ADMIN_COMMANDS];
 
     /* whether authenticate_client() and release_client() will return immediate.
      * Setting this will result in no thread being started for this.
