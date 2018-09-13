@@ -1281,26 +1281,22 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
 
     if (result != AUTH_OK) {
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
-        free(uri);
         return;
     }
 
     if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
         ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
-        free(uri);
         return;
     }
 
     /* Dispatch legacy admin.cgi requests */
     if (strcmp(uri, "/admin.cgi") == 0) {
         _handle_admin_request(client, uri + 1);
-        free(uri);
         return;
     } /* Dispatch all admin requests */
     else if (strncmp(uri, "/admin/", 7) == 0) {
         _handle_admin_request(client, uri + 7);
-        free(uri);
         return;
     }
 
@@ -1308,7 +1304,6 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
         const module_client_handler_t *handler = module_get_client_handler(client->handler_module, client->handler_function);
         if (handler) {
             handler->cb(client->handler_module, client, uri);
-            free(uri);
             return;
         } else {
             ICECAST_LOG_ERROR("No such handler function in module: %s", client->handler_function);
@@ -1333,8 +1328,6 @@ static void _handle_authed_client(client_t *client, void *uri, auth_result resul
             client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
         break;
     }
-
-    free(uri);
 }
 
 /* Handle clients that still need to authenticate.
@@ -1610,6 +1603,7 @@ static void _handle_connection(void)
                 }
 
                 if (parser->req_type == httpp_req_options && strcmp(rawuri, "*") == 0) {
+                    client->uri = strdup("*");
                     client_send_204(client);
                     continue;
                 }
@@ -1627,6 +1621,8 @@ static void _handle_connection(void)
                     client_destroy (client);
                     continue;
                 }
+
+                client->uri = uri;
 
                 if (strcmp(uri, "/admin.cgi") == 0) {
                     client->admin_command = admin_get_command(uri + 1);

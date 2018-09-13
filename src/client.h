@@ -107,6 +107,9 @@ struct _client_tag {
     /* active ACL, set as soon as the client is authenticated */
     acl_t *acl;
 
+    /* URI */
+    char *uri;
+
     /* Handler module and function */
     module_t *handler_module;
     char *handler_function;

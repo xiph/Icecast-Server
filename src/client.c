@@ -253,6 +253,7 @@ void client_destroy(client_t *client)
 
     refobject_unref(client->handler_module);
     free(client->handler_function);
+    free(client->uri);
     free(client->username);
     free(client->password);
     free(client->role);
