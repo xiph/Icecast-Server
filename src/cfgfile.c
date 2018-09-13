@@ -616,6 +616,7 @@ listener_t *config_clear_listener(listener_t *listener)
         if (listener->on_behalf_of)     free(listener->on_behalf_of);
         if (listener->bind_address)     xmlFree(listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
+        if (listener->authstack)        auth_stack_release(listener->authstack);
         free (listener);
     }
     return next;
@@ -1893,6 +1894,19 @@ static void _parse_listen_socket(xmlDocPtr      doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("so-sndbuf")) == 0) {
             __read_int(doc, node, &listener->so_sndbuf, "<so-sndbuf> must not be empty.");
+        } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
+            xmlNodePtr child = node->xmlChildrenNode;
+            do {
+                if (child == NULL)
+                    break;
+                if (xmlIsBlankNode(child))
+                    continue;
+                if (xmlStrcmp(child->name, XMLSTR("role")) == 0) {
+                    auth_t *auth = auth_get_authenticator(child);
+                    auth_stack_push(&(listener->authstack), auth);
+                    auth_release(auth);
+                }
+            } while ((child = child->next));
         }
     } while ((node = node->next));
 
@@ -2612,6 +2626,10 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     n->shoutcast_compat = listener->shoutcast_compat;
     n->shoutcast_mount = (char*)xmlStrdup(XMLSTR(listener->shoutcast_mount));
     n->tls = listener->tls;
+
+    if (listener->authstack) {
+        auth_stack_addref(n->authstack = listener->authstack);
+    }
 
     return n;
 }
