@@ -87,7 +87,7 @@ struct auth_tag
     char *mount;
 
     /* filters */
-    int method[httpp_req_unknown+1];
+    auth_matchtype_t filter_method[httpp_req_unknown+1];
     auth_matchtype_t filter_web_policy;
     auth_matchtype_t filter_admin_policy;
     struct {
