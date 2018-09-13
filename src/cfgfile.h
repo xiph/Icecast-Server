@@ -165,6 +165,7 @@ typedef struct _listener_t {
     int shoutcast_compat;
     char *shoutcast_mount;
     tlsmode_t tls;
+    auth_stack_t *authstack;
 } listener_t;
 
 typedef struct _config_tls_context {

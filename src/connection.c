@@ -1411,16 +1411,46 @@ static void _handle_authentication_mount_default(client_t *client, void *uri, au
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
 }
 
-static void _handle_authentication_mount_normal(client_t *client, char *uri)
+static void _handle_authentication_mount_normal(client_t *client, void *uri, auth_result result)
 {
+    auth_stack_release(client->authstack);
+    client->authstack = NULL;
+
+    if (result != AUTH_NOMATCH &&
+        !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
+        _handle_authed_client(client, uri, result);
+        return;
+    }
+
     ICECAST_LOG_DEBUG("Trying <mount type=\"normal\"> specific authenticators for client %p.", client);
     _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
+}
+
+static void _handle_authentication_listen_socket(client_t *client, char *uri)
+{
+    auth_stack_t *stack = NULL;
+    const listener_t *listener;
+
+    listener = listensocket_get_listener(client->con->listensocket_effective);
+    if (listener) {
+        if (listener->authstack) {
+            auth_stack_addref(stack = listener->authstack);
+        }
+        listensocket_release_listener(client->con->listensocket_effective);
+    }
+
+    if (stack) {
+        auth_stack_add_client(stack, client, _handle_authentication_mount_normal, uri);
+        auth_stack_release(stack);
+    } else {
+        _handle_authentication_mount_normal(client, uri, AUTH_NOMATCH);
+    }
 }
 
 static void _handle_authentication(client_t *client, char *uri)
 {
     fastevent_emit(FASTEVENT_TYPE_CLIENT_READY_FOR_AUTH, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
-    _handle_authentication_mount_normal(client, uri);
+    _handle_authentication_listen_socket(client, uri);
 }
 
 static void __prepare_shoutcast_admin_cgi_request(client_t *client)
