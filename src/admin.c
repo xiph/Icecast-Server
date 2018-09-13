@@ -62,10 +62,6 @@
 #define COMMAND_OPTIONAL(client,name,var) \
 (var) = httpp_get_param((client)->parser, (name))
 
-/* special commands */
-#define COMMAND_ERROR                      ADMIN_COMMAND_ERROR
-#define COMMAND_ANY                        ADMIN_COMMAND_ANY
-
 #define FALLBACK_RAW_REQUEST                "fallbacks"
 #define FALLBACK_HTML_REQUEST               "fallbacks.xsl"
 #define SHOUTCAST_METADATA_REQUEST          "admin.cgi"
@@ -237,7 +233,7 @@ admin_command_id_t admin_get_command(const char *command)
     const char *suffix;
 
     if (table == NULL)
-        return COMMAND_ERROR;
+        return ADMIN_COMMAND_ERROR;
 
     suffix = strchr(command, '/');
     if (suffix != NULL) {
@@ -250,7 +246,7 @@ admin_command_id_t admin_get_command(const char *command)
         if (resourcematch_match(table->handlers[i].route, suffix, NULL) == RESOURCEMATCH_MATCH)
             return admin_get_command_by_table_and_index(table, i);
 
-    return COMMAND_ERROR;
+    return ADMIN_COMMAND_ERROR;
 }
 
 /* Get the command handler for command or NULL
