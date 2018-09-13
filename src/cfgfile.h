@@ -117,7 +117,7 @@ typedef struct _mount_proxy {
     struct event_registration_tag *event;
 
     char *cluster_password;
-    struct auth_stack_tag *authstack;
+    auth_stack_t *authstack;
     unsigned int max_listener_duration;
 
     char *stream_name;
@@ -211,7 +211,7 @@ struct ice_config_tag {
 
     char *shoutcast_mount;
     char *shoutcast_user;
-    struct auth_stack_tag *authstack;
+    auth_stack_t *authstack;
 
     struct event_registration_tag *event;
 

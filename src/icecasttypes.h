@@ -43,6 +43,7 @@ typedef struct acl_tag acl_t;
 /* ---[ auth.[ch] ]--- */
 
 typedef struct auth_tag auth_t;
+typedef struct auth_stack_tag auth_stack_t;
 
 /* ---[ cfgfile.[ch] ]--- */
 

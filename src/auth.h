@@ -131,8 +131,6 @@ struct auth_tag
     char  *role;
 };
 
-typedef struct auth_stack_tag auth_stack_t;
-
 /* prototypes for auths that do not need own header file */
 int auth_get_anonymous_auth(auth_t *auth, config_options_t *options);
 int auth_get_static_auth(auth_t *auth, config_options_t *options);
