@@ -368,6 +368,7 @@ static void *auth_run_thread (void *arg)
  */
 static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata), void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata) {
     auth_client *auth_user;
+    auth_matchtype_t matchtype;
 
     ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
 
@@ -379,6 +380,34 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     }
 
     if (!auth->method[client->parser->req_type]) {
+        if (on_no_match) {
+           on_no_match(client, on_result, userdata);
+        } else if (on_result) {
+           on_result(client, userdata, AUTH_NOMATCH);
+        }
+        return;
+    }
+
+    if (client->admin_command == ADMIN_COMMAND_ERROR) {
+        /* this is a web/ client */
+        matchtype = auth->filter_web_policy;
+    } else {
+        /* this is a admin/ client */
+        size_t i;
+
+        matchtype = AUTH_MATCHTYPE_UNUSED;
+
+        for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+            if (auth->filter_admin[i].type != AUTH_MATCHTYPE_UNUSED && auth->filter_admin[i].command == client->admin_command) {
+                matchtype = auth->filter_admin[i].type;
+                break;
+            }
+        }
+
+        if (matchtype == AUTH_MATCHTYPE_UNUSED)
+            matchtype = auth->filter_admin_policy;
+    }
+    if (matchtype == AUTH_MATCHTYPE_NOMATCH) {
         if (on_no_match) {
            on_no_match(client, on_result, userdata);
         } else if (on_result) {
@@ -472,13 +501,56 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 }
 
 
+static inline void auth_get_authenticator__filter_admin(auth_t *auth, xmlNodePtr node, size_t *filter_admin_index, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+        char *next;
+
+        while (cur) {
+            next = strstr(cur, ",");
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (*filter_admin_index < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin)))) {
+                auth->filter_admin[*filter_admin_index].command = admin_get_command(cur);
+                switch (auth->filter_admin[*filter_admin_index].command) {
+                    case ADMIN_COMMAND_ERROR:
+                        ICECAST_LOG_ERROR("Can not add unknown %s command to role.", name);
+                    break;
+                    case ADMIN_COMMAND_ANY:
+                        auth->filter_admin_policy = matchtype;
+                    break;
+                    default:
+                        auth->filter_admin[*filter_admin_index].type = matchtype;
+                        (*filter_admin_index)++;
+                    break;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Can not add more %s commands to role.", name);
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+}
+
 auth_t *auth_get_authenticator(xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
     xmlNodePtr option;
     char *method;
+    char *tmp;
     size_t i;
+    size_t filter_admin_index = 0;
 
     if (auth == NULL)
         return NULL;
@@ -489,6 +561,13 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
     auth->role = (char*)xmlGetProp(node, XMLSTR("name"));
     auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
+    auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+    auth->filter_admin_policy = AUTH_MATCHTYPE_MATCH;
+
+    for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+        auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
+        auth->filter_admin[i].command = ADMIN_COMMAND_ERROR;
+    }
 
     if (!auth->type) {
         auth_release(auth);
@@ -534,6 +613,29 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
             auth->method[i] = 1;
     }
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("match-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        }
+        free(tmp);
+    }
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("nomatch-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        }
+        free(tmp);
+    }
+
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
 
     /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
