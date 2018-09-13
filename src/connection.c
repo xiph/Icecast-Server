@@ -1506,6 +1506,23 @@ static int _need_body(client_queue_t *node)
     return 0;
 }
 
+/* Updates client's admin_command */
+static int _update_admin_command(client_t *client)
+{
+    if (strcmp(client->uri, "/admin.cgi") == 0) {
+        client->admin_command = admin_get_command(client->uri + 1);
+        __prepare_shoutcast_admin_cgi_request(client);
+        if (!client->password) {
+            client_send_error_by_id(client, ICECAST_ERROR_CON_MISSING_PASS_PARAMETER);
+            return -1;
+        }
+    } else if (strncmp(client->uri, "/admin/", 7) == 0) {
+        client->admin_command = admin_get_command(client->uri + 7);
+    }
+
+    return 0;
+}
+
 /* Connection thread. Here we take clients off the connection queue and check
  * the contents provided. We set up the parser then hand off to the specific
  * request handler.
@@ -1624,16 +1641,8 @@ static void _handle_connection(void)
 
                 client->uri = uri;
 
-                if (strcmp(uri, "/admin.cgi") == 0) {
-                    client->admin_command = admin_get_command(uri + 1);
-                    __prepare_shoutcast_admin_cgi_request(client);
-                    if (!client->password) {
-                        client_send_error_by_id(client, ICECAST_ERROR_CON_MISSING_PASS_PARAMETER);
-                        continue;
-                    }
-                } else if (strncmp("/admin/", uri, 7) == 0) {
-                    client->admin_command = admin_get_command(uri + 7);
-                }
+                if (_update_admin_command(client) == -1)
+                    continue;
 
                 _handle_authentication(client, uri);
             } else {
