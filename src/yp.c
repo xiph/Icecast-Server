@@ -216,7 +216,7 @@ static ypdata_t *find_yp_mount (ypdata_t *mounts, const char *mount)
 
 void yp_recheck_config (ice_config_t *config)
 {
-    int i;
+    size_t i;
     struct yp_server *server;
 
     ICECAST_LOG_DEBUG("Updating YP configuration");
