@@ -174,6 +174,7 @@ void auth_stack_add_client(auth_stack_t  *stack,
                            void          *userdata);
 
 int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action, const char *arg);
+auth_alter_t auth_str2alter(const char *str);
 
 void          auth_stack_release(auth_stack_t *stack);
 void          auth_stack_addref(auth_stack_t *stack);

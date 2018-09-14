@@ -814,6 +814,30 @@ int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action,
     return 0;
 }
 
+auth_alter_t auth_str2alter(const char *str)
+{
+    if (!str)
+        return AUTH_ALTER_NOOP;
+
+    if (strcasecmp(str, "noop") == 0) {
+        return AUTH_ALTER_NOOP;
+    } else if (strcasecmp(str, "rewrite") == 0) {
+        return AUTH_ALTER_REWRITE;
+    } else if (strcasecmp(str, "redirect") == 0) {
+        return AUTH_ALTER_REDIRECT;
+    } else if (strcasecmp(str, "redirect_see_other") == 0) {
+        return AUTH_ALTER_REDIRECT_SEE_OTHER;
+    } else if (strcasecmp(str, "redirect_temporary") == 0) {
+        return AUTH_ALTER_REDIRECT_TEMPORARY;
+    } else if (strcasecmp(str, "redirect_permanent") == 0) {
+        return AUTH_ALTER_REDIRECT_PERMANENT;
+    } else if (strcasecmp(str, "send_error") == 0) {
+        return AUTH_ALTER_SEND_ERROR;
+    } else {
+        return AUTH_ALTER_NOOP;
+    }
+}
+
 /* these are called at server start and termination */
 
 void auth_initialise (void)
