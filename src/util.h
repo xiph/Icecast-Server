@@ -41,13 +41,13 @@ char *util_base64_decode(const char *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
 typedef enum _util_hostcheck_tag {
- HOSTCHECK_ERROR = -1,
- HOSTCHECK_SANE  = 0,
- HOSTCHECK_NOT_FQDN,
- HOSTCHECK_IS_LOCALHOST,
- HOSTCHECK_IS_IPV4,
- HOSTCHECK_IS_IPV6,
- HOSTCHECK_BADCHAR
+    HOSTCHECK_ERROR = -1,
+    HOSTCHECK_SANE  = 0,
+    HOSTCHECK_NOT_FQDN,
+    HOSTCHECK_IS_LOCALHOST,
+    HOSTCHECK_IS_IPV4,
+    HOSTCHECK_IS_IPV6,
+    HOSTCHECK_BADCHAR
 } util_hostcheck_type;
 
 util_hostcheck_type util_hostcheck(const char *hostname);
@@ -110,9 +110,9 @@ void util_kva_free(icecast_kva_t *kva);
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */
 typedef struct _util_dict {
-  char *key;
-  char *val;
-  struct _util_dict *next;
+    char *key;
+    char *val;
+    struct _util_dict *next;
 } util_dict;
 
 util_dict *util_dict_new(void);
