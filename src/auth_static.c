@@ -64,6 +64,9 @@ static auth_result static_auth(auth_client *auth_user)
 static void clear_auth (auth_t *auth)
 {
     auth_static_t *auth_info = auth->state;
+    if (!auth_info)
+        return;
+
     free(auth_info->username);
     free(auth_info->password);
     free(auth_info->arg);
