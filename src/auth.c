@@ -638,6 +638,52 @@ static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr
     return 0;
 }
 
+static inline int auth_get_authenticator__permission_alter(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+
+        while (cur) {
+            char *next = strstr(cur, ",");
+            auth_alter_t idx;
+
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                size_t i;
+
+                for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+                    auth->permission_alter[i] = matchtype;
+                break;
+            }
+
+            idx = auth_str2alter(cur);
+            if (idx == AUTH_ALTER_NOOP) {
+                ICECAST_LOG_ERROR("Can not add unknown alter action \"%H\" to role's %s", cur, name);
+                return -1;
+            } else if (idx == AUTH_ALTER_REDIRECT) {
+                auth->permission_alter[AUTH_ALTER_REDIRECT] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_SEE_OTHER] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_TEMPORARY] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_PERMANENT] = matchtype;
+            } else {
+                auth->permission_alter[idx] = matchtype;
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+
+    return 0;
+}
 auth_t *auth_get_authenticator(xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
@@ -664,6 +710,9 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
         auth->filter_admin[i].command = ADMIN_COMMAND_ERROR;
     }
+
+    for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+        auth->permission_alter[i] = AUTH_MATCHTYPE_NOMATCH;
 
     if (!auth->type) {
         auth_release(auth);
@@ -736,6 +785,9 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
 
+    auth_get_authenticator__permission_alter(auth, node, "may-alter", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__permission_alter(auth, node, "may-not-alter", AUTH_MATCHTYPE_NOMATCH);
+
     /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
     while (option)
@@ -804,7 +856,11 @@ int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action,
     if (!auth || !auth_user || !arg)
         return -1;
 
-    /* TODO: check if auth backend has the permission for this operation */
+    if (action < 0 || action >= (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))))
+        return -1;
+
+    if (auth->permission_alter[action] != AUTH_MATCHTYPE_MATCH)
+        return -1;
 
     if (replace_string(&(auth_user->alter_client_arg), arg) != 0)
         return -1;

@@ -114,6 +114,9 @@ struct auth_tag
         admin_command_id_t command;
     } filter_admin[MAX_ADMIN_COMMANDS];
 
+    /* permissions */
+    auth_matchtype_t permission_alter[AUTH_ALTER_SEND_ERROR+1];
+
     /* whether authenticate_client() and release_client() will return immediate.
      * Setting this will result in no thread being started for this.
      */
