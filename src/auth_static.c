@@ -20,6 +20,7 @@
 #include "auth.h"
 #include "cfgfile.h"
 #include "client.h"
+#include "util.h"
 
 #include "logging.h"
 #define CATMODULE "auth_static"
@@ -27,6 +28,8 @@
 typedef struct auth_static {
     char *username;
     char *password;
+    auth_alter_t action;
+    char *arg;
 } auth_static_t;
 
 static auth_result static_auth(auth_client *auth_user)
@@ -45,19 +48,25 @@ static auth_result static_auth(auth_client *auth_user)
     if (!client->password)
         return AUTH_NOMATCH;
 
-    if (strcmp(auth_info->password, client->password) == 0)
-        return AUTH_OK;
+    if (strcmp(auth_info->password, client->password) != 0)
+        return AUTH_FAILED;
 
-    return AUTH_FAILED;
+
+    if (auth_info->action != AUTH_ALTER_NOOP) {
+        if (auth_alter_client(auth, auth_user, auth_info->action, auth_info->arg) != 0) {
+            ICECAST_LOG_ERROR("Can not alter client.");
+        }
+    }
+
+    return AUTH_OK;
 }
 
 static void clear_auth (auth_t *auth)
 {
     auth_static_t *auth_info = auth->state;
-    if (auth_info->username)
-        free(auth_info->username);
-    if (auth_info->password)
-        free(auth_info->password);
+    free(auth_info->username);
+    free(auth_info->password);
+    free(auth_info->arg);
     free(auth_info);
     auth->state = NULL;
 }
@@ -106,6 +115,15 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
             if (auth_info->password)
                 free(auth_info->password);
             auth_info->password = strdup(options->value);
+        } else if (strcmp(options->name, "action") == 0) {
+            auth_info->action = auth_str2alter(options->value);
+            if (auth_info->action == AUTH_ALTER_NOOP) {
+                ICECAST_LOG_ERROR("Invalid action given.");
+                clear_auth(authenticator);
+                return -1;
+            }
+        } else if (strcmp(options->name, "argument") == 0) {
+            replace_string(&(auth_info->arg), options->value);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }
