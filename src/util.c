@@ -1429,3 +1429,24 @@ int get_line(FILE *file, char *buf, size_t siz)
     }
     return 0;
 }
+
+int replace_string(char **dst, const char *src)
+{
+    char *n;
+
+    if (!dst)
+        return -1;
+
+    if (src) {
+        n = strdup(src);
+        if (!n)
+            return -1;
+    } else {
+        n = NULL;
+    }
+
+    free(*dst);
+    *dst = n;
+
+    return 0;
+}
