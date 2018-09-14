@@ -65,15 +65,15 @@ typedef enum {
     AUTH_MATCHTYPE_NOMATCH
 } auth_matchtype_t;
 
-typedef struct auth_client_tag
-{
+typedef struct auth_client_tag auth_client;
+struct auth_client_tag {
     client_t     *client;
-    auth_result (*process)(auth_t *auth, struct auth_client_tag *auth_user);
+    auth_result (*process)(auth_t *auth, auth_client *auth_user);
     void        (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
     void        (*on_result)(client_t *client, void *userdata, auth_result result);
     void         *userdata;
-    struct auth_client_tag *next;
-} auth_client;
+    auth_client  *next;
+};
 
 
 struct auth_tag
