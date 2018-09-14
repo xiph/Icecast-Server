@@ -320,7 +320,7 @@ static inline void _send_error(client_t *client, icecast_error_id_t id, int old_
     client_send_error_by_id(client, id);
 }
 
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status)
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status, const char *location)
 {
     xmlDocPtr res;
     xsltStylesheetPtr cur;
@@ -374,7 +374,14 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         ssize_t ret;
         int failed = 0;
         refbuf_t *refbuf;
+        size_t location_length = 0;
         ssize_t full_len = strlen(mediatype) + (ssize_t)len + (ssize_t)1024;
+
+        if (location) {
+            location_length = strlen(location);
+            full_len += location_length;
+        }
+
         if (full_len < 4096)
             full_len = 4096;
         refbuf = refbuf_new (full_len);
@@ -386,9 +393,9 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
             _send_error(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED, status);
         } else {
-            if ( full_len < (ret + (ssize_t)len + (ssize_t)64) ) {
+            if ( full_len < (ret + (ssize_t)len + (ssize_t)128) ) {
                 void *new_data;
-                full_len = ret + (ssize_t)len + (ssize_t)64;
+                full_len = ret + (ssize_t)len + (ssize_t)128;
                 new_data = realloc(refbuf->data, full_len);
                 if (new_data) {
                     ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
@@ -408,7 +415,11 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
             }
 
             if (!failed) {
-                  snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
+                /* FIXME: in this section we hope no function will ever return -1 */
+                if (location) {
+                    ret += snprintf(refbuf->data + ret, full_len - ret, "Location: %s\r\n", location);
+                }
+                ret += snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
 
                 client->respcode = status;
                 client_set_queue (client, NULL);

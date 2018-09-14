@@ -302,7 +302,7 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
     return bytes;
 }
 
-static inline void _client_send_error(client_t *client, const icecast_error_t *error)
+static inline void _client_send_report(client_t *client, const char *uuid, const char *message, int http_status, const char *location)
 {
     reportxml_t *report;
     admin_format_t admin_format;
@@ -325,17 +325,15 @@ static inline void _client_send_error(client_t *client, const icecast_error_t *e
         break;
     }
 
+    report = client_get_reportxml(uuid, NULL, message);
 
-    report = client_get_reportxml(error->uuid, NULL, error->message);
-
-    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, xslt, admin_format, error->http_status);
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, xslt, admin_format, http_status, location);
 
     refobject_unref(report);
 }
 
-void client_send_error_by_id(client_t *client, icecast_error_id_t id)
+void client_send_error_by_error(client_t *client, const icecast_error_t *error)
 {
-    const icecast_error_t *error = error_get_by_id(id);
 
     if (!error) {
          client_send_500(client, "Unknown error ID");
@@ -347,7 +345,15 @@ void client_send_error_by_id(client_t *client, icecast_error_id_t id)
         return;
     }
 
-    _client_send_error(client, error);
+    _client_send_report(client, error->uuid, error->message, error->http_status, NULL);
+}
+void client_send_error_by_uuid(client_t *client, const char *uuid)
+{
+    client_send_error_by_error(client, error_get_by_uuid(uuid));
+}
+void client_send_error_by_id(client_t *client, icecast_error_id_t id)
+{
+    client_send_error_by_error(client, error_get_by_id(id));
 }
 
 void client_send_101(client_t *client, reuse_t reuse)
@@ -458,8 +464,13 @@ static inline void client_send_500(client_t *client, const char *message)
     client_destroy(client);
 }
 
+void client_send_redirect(client_t *client, const char *uuid, int status, const char *location)
+{
+    _client_send_report(client, uuid, "Redirecting", status, location);
+}
+
 /* this function sends a reportxml file to the client in the prefered format. */
-void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status)
+void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status, const char *location)
 {
     admin_format_t admin_format;
     xmlDocPtr doc;
@@ -514,13 +525,18 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
 
     if (admin_format == ADMIN_FORMAT_RAW) {
         xmlChar *buff = NULL;
+        size_t location_length = 0;
         int len = 0;
         size_t buf_len;
         ssize_t ret;
 
         xmlDocDumpMemory(doc, &buff, &len);
 
-        buf_len = len + 1024;
+        if (location) {
+            location_length = strlen(location);
+        }
+
+        buf_len = len + location_length + 1024;
         if (buf_len < 4096)
             buf_len = 4096;
 
@@ -536,9 +552,9 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
             client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
             xmlFree(buff);
             return;
-        } else if (buf_len < (size_t)(len + ret + 64)) {
+        } else if (buf_len < (size_t)(len + location_length + ret + 128)) {
             void *new_data;
-            buf_len = ret + len + 64;
+            buf_len = ret + len + 128;
             new_data = realloc(client->refbuf->data, buf_len);
             if (new_data) {
                 ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
@@ -563,7 +579,10 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         }
 
         /* FIXME: in this section we hope no function will ever return -1 */
-        ret += snprintf (client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
+        if (location) {
+            ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Location: %s\r\n", location);
+        }
+        ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
 
         client->refbuf->len = ret;
         xmlFree(buff);
@@ -598,7 +617,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
         fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
-        xslt_transform(doc, fullpath_xslt_template, client, status);
+        xslt_transform(doc, fullpath_xslt_template, client, status, location);
         free(fullpath_xslt_template);
     }
 

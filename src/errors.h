@@ -62,5 +62,6 @@ struct icecast_error_tag {
 typedef struct icecast_error_tag icecast_error_t;
 
 const icecast_error_t * error_get_by_id(icecast_error_id_t id);
+const icecast_error_t * error_get_by_uuid(const char *uuid);
 
 #endif  /* __ERRORS_H__ */

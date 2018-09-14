@@ -105,6 +105,7 @@ static matchfile_t *banned_ip, *allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
+static int  _update_admin_command(client_t *client);
 static void _handle_connection(void);
 static void get_tls_certificate(ice_config_t *config);
 
@@ -1276,6 +1277,10 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
 {
     auth_stack_release(client->authstack);
     client->authstack = NULL;
+
+    /* Update admin parameters just in case auth changed our URI */
+    if (_update_admin_command(client) == -1)
+        return;
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_AUTHED, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 

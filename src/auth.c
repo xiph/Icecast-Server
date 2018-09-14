@@ -227,9 +227,11 @@ void    auth_addref (auth_t *authenticator) {
 
 static void auth_client_free (auth_client *auth_user)
 {
-    if (auth_user == NULL)
+    if (!auth_user)
         return;
-    free (auth_user);
+
+    free(auth_user->alter_client_arg);
+    free(auth_user);
 }
 
 
@@ -295,6 +297,55 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     return ret;
 }
 
+static inline int __handle_auth_client_alter(auth_t *auth, auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+    const char *uuid = NULL;
+    const char *location = NULL;
+    int http_status = 0;
+
+    void client_send_redirect(client_t *client, const char *uuid, int status, const char *location);
+
+    switch (auth_user->alter_client_action) {
+        case AUTH_ALTER_NOOP:
+            return 0;
+        break;
+        case AUTH_ALTER_REWRITE:
+            free(client->uri);
+            client->uri = auth_user->alter_client_arg;
+            auth_user->alter_client_arg = NULL;
+            return 0;
+        break;
+        case AUTH_ALTER_REDIRECT:
+        /* fall through */
+        case AUTH_ALTER_REDIRECT_SEE_OTHER:
+            uuid = "be7fac90-54fb-4673-9e0d-d15d6a4963a2";
+            http_status = 303;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_REDIRECT_TEMPORARY:
+            uuid = "4b08a03a-ecce-4981-badf-26b0bb6c9d9c";
+            http_status = 307;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_REDIRECT_PERMANENT:
+            uuid = "36bf6815-95cb-4cc8-a7b0-6b4b0c82ac5d";
+            http_status = 308;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_SEND_ERROR:
+            client_send_error_by_uuid(client, auth_user->alter_client_arg);
+            return 1;
+        break;
+    }
+
+    if (uuid && location && http_status) {
+        client_send_redirect(client, uuid, http_status, location);
+        return 1;
+    }
+
+    return -1;
+}
 static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
     auth_result result;
 
@@ -313,6 +364,11 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         acl_addref(auth_user->client->acl = auth->acl);
         if (auth->role) /* TODO: Handle errors here */
             auth_user->client->role = strdup(auth->role);
+    }
+
+    if (result != AUTH_NOMATCH) {
+        if (__handle_auth_client_alter(auth, auth_user) == 1)
+            return;
     }
 
     if (result == AUTH_NOMATCH && auth_user->on_no_match) {
@@ -743,6 +799,20 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     return auth;
 }
 
+int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action, const char *arg)
+{
+    if (!auth || !auth_user || !arg)
+        return -1;
+
+    /* TODO: check if auth backend has the permission for this operation */
+
+    if (replace_string(&(auth_user->alter_client_arg), arg) != 0)
+        return -1;
+
+    auth_user->alter_client_action = action;
+
+    return 0;
+}
 
 /* these are called at server start and termination */
 

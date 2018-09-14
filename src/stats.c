@@ -1030,7 +1030,7 @@ void stats_transform_xslt(client_t *client)
 
     doc = stats_get_xml(0, mount, client);
 
-    xslt_transform(doc, xslpath, client, 200);
+    xslt_transform(doc, xslpath, client, 200, NULL);
 
     xmlFreeDoc(doc);
     free(xslpath);
