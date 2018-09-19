@@ -80,12 +80,14 @@
 #define CATMODULE "auth_url"
 
 /* Default headers */
-#define DEFAULT_HEADER_OLD_RESULT       "icecast-auth-user: 1\r\n"
-#define DEFAULT_HEADER_OLD_TIMELIMIT    "icecast-auth-timelimit:"
-#define DEFAULT_HEADER_OLD_MESSAGE      "icecast-auth-message"
-#define DEFAULT_HEADER_NEW_RESULT       "x-icecast-auth-result"
-#define DEFAULT_HEADER_NEW_TIMELIMIT    "x-icecast-auth-timelimit"
-#define DEFAULT_HEADER_NEW_MESSAGE      "x-icecast-auth-message"
+#define DEFAULT_HEADER_OLD_RESULT           "icecast-auth-user: 1\r\n"
+#define DEFAULT_HEADER_OLD_TIMELIMIT        "icecast-auth-timelimit:"
+#define DEFAULT_HEADER_OLD_MESSAGE          "icecast-auth-message"
+#define DEFAULT_HEADER_NEW_RESULT           "x-icecast-auth-result"
+#define DEFAULT_HEADER_NEW_TIMELIMIT        "x-icecast-auth-timelimit"
+#define DEFAULT_HEADER_NEW_MESSAGE          "x-icecast-auth-message"
+#define DEFAULT_HEADER_NEW_ALTER_ACTION     "x-icecast-auth-alter-action"
+#define DEFAULT_HEADER_NEW_ALTER_ARGUMENT   "x-icecast-auth-alter-argument"
 
 typedef struct {
     char       *pass_headers; // headers passed from client to addurl.
@@ -106,6 +108,8 @@ typedef struct {
     char       *header_auth;
     char       *header_timelimit;
     char       *header_message;
+    char       *header_alter_action;
+    char       *header_alter_argument;
 
     char       *userpwd;
     CURL       *handle;
@@ -118,6 +122,13 @@ typedef struct {
     size_t all_headers_len;
     http_parser_t *parser;
 } auth_user_url_t;
+
+static inline const char * __str_or_default(const char *str, const char *def)
+{
+    if (str)
+        return str;
+    return def;
+}
 
 static void auth_url_clear(auth_t *self)
 {
@@ -140,6 +151,8 @@ static void auth_url_clear(auth_t *self)
     free(url->header_auth);
     free(url->header_timelimit);
     free(url->header_message);
+    free(url->header_alter_action);
+    free(url->header_alter_argument);
     free(url->userpwd);
     free(url);
 }
@@ -163,6 +176,8 @@ static void handle_returned_header__complete(auth_client *auth_user)
 {
     auth_user_url_t *au_url = auth_user->authbackend_userdata;
     const char *tmp;
+    const char *action;
+    const char *argument;
     auth_url *url = auth_user->client->auth->state;
 
     if (!au_url)
@@ -211,6 +226,17 @@ static void handle_returned_header__complete(auth_client *auth_user)
                 ICECAST_LOG_ERROR("Auth backend returned invalid new style timelimit header: % #H", tmp);
             }
         }
+    }
+
+    action   = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_action, DEFAULT_HEADER_NEW_ALTER_ACTION));
+    argument = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_argument, DEFAULT_HEADER_NEW_ALTER_ARGUMENT));
+
+    if (action && argument) {
+        if (auth_alter_client(auth_user->client->auth, auth_user, auth_str2alter(action), argument) != 0) {
+            ICECAST_LOG_ERROR("Auth backend returned invalid alter action/argument.");
+        }
+    } else if (action || argument) {
+        ICECAST_LOG_ERROR("Auth backend returned incomplete alter action/argument.");
     }
 
     if (url->header_message) {
@@ -608,6 +634,12 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
         } else if (strcmp(options->name, "header_message") == 0) {
             replace_string(&(url_info->header_message), options->value);
             util_strtolower(url_info->header_message);
+        } else if (strcmp(options->name, "header_alter_action") == 0) {
+            replace_string(&(url_info->header_alter_action), options->value);
+            util_strtolower(url_info->header_alter_action);
+        } else if (strcmp(options->name, "header_alter_argument") == 0) {
+            replace_string(&(url_info->header_alter_argument), options->value);
+            util_strtolower(url_info->header_alter_argument);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }
