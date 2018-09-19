@@ -493,11 +493,6 @@ int auth_release_client (client_t *client) {
     if (!client->acl)
         return 0;
 
-
-    /* drop any queue reference here, we do not want a race between the source thread
-     * and the auth/fserve thread */
-    client_set_queue (client, NULL);
-
     if (client->auth && client->auth->release_client) {
         auth_client *auth_user = auth_client_setup(client);
         auth_user->process = auth_remove_client;

@@ -222,10 +222,7 @@ void client_destroy(client_t *client)
 
     /* release the buffer now, as the buffer could be on the source queue
      * and may of disappeared after auth completes */
-    if (client->refbuf) {
-        refbuf_release (client->refbuf);
-        client->refbuf = NULL;
-    }
+    client_set_queue(client, NULL);
 
     if (auth_release_client(client))
         return;
