@@ -105,6 +105,7 @@ typedef struct {
     /* new style */
     char       *header_auth;
     char       *header_timelimit;
+    char       *header_message;
 
     char       *userpwd;
     CURL       *handle;
@@ -138,6 +139,7 @@ static void auth_url_clear(auth_t *self)
     free(url->timelimit_header);
     free(url->header_auth);
     free(url->header_timelimit);
+    free(url->header_message);
     free(url->userpwd);
     free(url);
 }
@@ -211,9 +213,13 @@ static void handle_returned_header__complete(auth_client *auth_user)
         }
     }
 
-    tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_NEW_MESSAGE);
-    if (!tmp)
-        tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_OLD_MESSAGE);
+    if (url->header_message) {
+        tmp = httpp_getvar(au_url->parser, url->header_message);
+    } else {
+        tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_NEW_MESSAGE);
+        if (!tmp)
+            tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_OLD_MESSAGE);
+    }
     if (tmp) {
         snprintf(url->errormsg, sizeof(url->errormsg), "%s", tmp);
     }
@@ -597,6 +603,8 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
             replace_string(&(url_info->header_auth), options->value);
         } else if (strcmp(options->name, "header_timelimit") == 0) {
             replace_string(&(url_info->header_timelimit), options->value);
+        } else if (strcmp(options->name, "header_message") == 0) {
+            replace_string(&(url_info->header_message), options->value);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }
