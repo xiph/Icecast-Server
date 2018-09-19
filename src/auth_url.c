@@ -136,6 +136,8 @@ static void auth_url_clear(auth_t *self)
     free(url->removeaction);
     free(url->auth_header);
     free(url->timelimit_header);
+    free(url->header_auth);
+    free(url->header_timelimit);
     free(url->userpwd);
     free(url);
 }
