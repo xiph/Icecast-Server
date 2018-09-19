@@ -524,6 +524,7 @@ static auth_result url_add_client(auth_client *auth_user)
 
             cur_header = next_header;
         }
+        free(pass_headers);
     }
 
     if (strchr(url->addurl, '@') == NULL) {
@@ -668,7 +669,7 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     } else if (!url_info->header_timelimit && !url_info->timelimit_header) {
         ICECAST_LOG_WARN("You do not have enabled old or new style auth option for auth timelimit header. I will enable both. Please set \"header_timelimit\".");
         url_info->timelimit_header = strdup(DEFAULT_HEADER_OLD_TIMELIMIT);
-        url_info->timelimit_header = strdup(DEFAULT_HEADER_NEW_TIMELIMIT);
+        url_info->header_timelimit = strdup(DEFAULT_HEADER_NEW_TIMELIMIT);
     }
 
     if (url_info->auth_header)
