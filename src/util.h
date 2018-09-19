@@ -130,4 +130,5 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
 int get_line(FILE *file, char *buf, size_t siz);
 
 int replace_string(char **dst, const char *src);
+int util_strtolower(char *str);
 #endif  /* __UTIL_H__ */

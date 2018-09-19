@@ -17,6 +17,7 @@
 #endif
 
 #include <sys/types.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1447,6 +1448,17 @@ int replace_string(char **dst, const char *src)
 
     free(*dst);
     *dst = n;
+
+    return 0;
+}
+
+int util_strtolower(char *str)
+{
+    if (!str)
+        return -1;
+
+    for (; *str; str++)
+        *str = tolower(*str);
 
     return 0;
 }
