@@ -67,6 +67,7 @@
 #   define strncasecmp strnicmp
 #endif
 
+#include "util.h"
 #include "curl.h"
 #include "auth.h"
 #include "source.h"
@@ -427,43 +428,31 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     url_info                    = calloc(1, sizeof(auth_url));
     authenticator->state        = url_info;
 
-    /* default headers */
-    url_info->auth_header       = strdup("icecast-auth-user: 1\r\n");
-    url_info->timelimit_header  = strdup("icecast-auth-timelimit:");
-
     /* force auth thread to call function. this makes sure the auth_t is attached to client */
     authenticator->authenticate_client = url_add_client;
 
     while(options) {
         if(strcmp(options->name, "username") == 0) {
-            free(url_info->username);
-            url_info->username = strdup(options->value);
+            replace_string(&(url_info->username), options->value);
         } else if(strcmp(options->name, "password") == 0) {
-            free(url_info->password);
-            url_info->password = strdup(options->value);
+            replace_string(&(url_info->password), options->value);
         } else if(strcmp(options->name, "headers") == 0) {
-            free(url_info->pass_headers);
-            url_info->pass_headers = strdup(options->value);
+            replace_string(&(url_info->pass_headers), options->value);
         } else if(strcmp(options->name, "header_prefix") == 0) {
-            free(url_info->prefix_headers);
-            url_info->prefix_headers = strdup(options->value);
+            replace_string(&(url_info->prefix_headers), options->value);
         } else if(strcmp(options->name, "client_add") == 0) {
-            free(url_info->addurl);
-            url_info->addurl = strdup(options->value);
+            replace_string(&(url_info->addurl), options->value);
         } else if(strcmp(options->name, "client_remove") == 0) {
             authenticator->release_client = url_remove_client;
-            free(url_info->removeurl);
-            url_info->removeurl = strdup(options->value);
+            replace_string(&(url_info->removeurl), options->value);
         } else if(strcmp(options->name, "action_add") == 0) {
             addaction = options->value;
         } else if(strcmp(options->name, "action_remove") == 0) {
             removeaction = options->value;
         } else if(strcmp(options->name, "auth_header") == 0) {
-            free(url_info->auth_header);
-            url_info->auth_header = strdup(options->value);
+            replace_string(&(url_info->auth_header), options->value);
         } else if (strcmp(options->name, "timelimit_header") == 0) {
-            free(url_info->timelimit_header);
-            url_info->timelimit_header = strdup(options->value);
+            replace_string(&(url_info->timelimit_header), options->value);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }
@@ -478,6 +467,12 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
         auth_url_clear(authenticator);
         return -1;
     }
+
+    /* default headers */
+    if (!url_info->auth_header)
+        url_info->auth_header = strdup("icecast-auth-user: 1\r\n");
+    if (!url_info->timelimit_header)
+        url_info->timelimit_header = strdup("icecast-auth-timelimit:");
 
     if (url_info->auth_header)
         url_info->auth_header_len = strlen (url_info->auth_header);
