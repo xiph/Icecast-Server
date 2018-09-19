@@ -89,6 +89,7 @@ struct auth_client_tag {
     void        (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
     void        (*on_result)(client_t *client, void *userdata, auth_result result);
     void         *userdata;
+    void         *authbackend_userdata;
     auth_alter_t  alter_client_action;
     char         *alter_client_arg;
     auth_client  *next;
