@@ -470,7 +470,7 @@ void admin_send_response(xmlDocPtr       doc,
         config_release_config();
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
-        xslt_transform(doc, fullpath_xslt_template, client, 200);
+        xslt_transform(doc, fullpath_xslt_template, client, 200, NULL);
         free(fullpath_xslt_template);
     }
 }

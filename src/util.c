@@ -17,6 +17,7 @@
 #endif
 
 #include <sys/types.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1427,5 +1428,37 @@ int get_line(FILE *file, char *buf, size_t siz)
         }
         return 1;
     }
+    return 0;
+}
+
+int replace_string(char **dst, const char *src)
+{
+    char *n;
+
+    if (!dst)
+        return -1;
+
+    if (src) {
+        n = strdup(src);
+        if (!n)
+            return -1;
+    } else {
+        n = NULL;
+    }
+
+    free(*dst);
+    *dst = n;
+
+    return 0;
+}
+
+int util_strtolower(char *str)
+{
+    if (!str)
+        return -1;
+
+    for (; *str; str++)
+        *str = tolower(*str);
+
     return 0;
 }

@@ -65,6 +65,23 @@ typedef enum {
     AUTH_MATCHTYPE_NOMATCH
 } auth_matchtype_t;
 
+typedef enum {
+    /* Used internally by auth system. */
+    AUTH_ALTER_NOOP = 0,
+    /* Internal rewrite of URI */
+    AUTH_ALTER_REWRITE,
+    /* Redirect to another location. */
+    AUTH_ALTER_REDIRECT,
+    /* See some other resource */
+    AUTH_ALTER_REDIRECT_SEE_OTHER,
+    /* This resource is currently located elsewhere */
+    AUTH_ALTER_REDIRECT_TEMPORARY,
+    /* This resource is now located at new location */
+    AUTH_ALTER_REDIRECT_PERMANENT,
+    /* Send an error report to the client */
+    AUTH_ALTER_SEND_ERROR
+} auth_alter_t;
+
 typedef struct auth_client_tag auth_client;
 struct auth_client_tag {
     client_t     *client;
@@ -72,6 +89,9 @@ struct auth_client_tag {
     void        (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata);
     void        (*on_result)(client_t *client, void *userdata, auth_result result);
     void         *userdata;
+    void         *authbackend_userdata;
+    auth_alter_t  alter_client_action;
+    char         *alter_client_arg;
     auth_client  *next;
 };
 
@@ -94,6 +114,9 @@ struct auth_tag
         auth_matchtype_t type;
         admin_command_id_t command;
     } filter_admin[MAX_ADMIN_COMMANDS];
+
+    /* permissions */
+    auth_matchtype_t permission_alter[AUTH_ALTER_SEND_ERROR+1];
 
     /* whether authenticate_client() and release_client() will return immediate.
      * Setting this will result in no thread being started for this.
@@ -141,6 +164,8 @@ int auth_get_htpasswd_auth(auth_t *auth, config_options_t *options);
 void auth_initialise(void);
 void auth_shutdown(void);
 
+auth_result auth_str2result(const char *str);
+
 auth_t  *auth_get_authenticator(xmlNodePtr node);
 void    auth_release(auth_t *authenticator);
 void    auth_addref(auth_t *authenticator);
@@ -153,6 +178,9 @@ void auth_stack_add_client(auth_stack_t  *stack,
                                                      void          *userdata,
                                                      auth_result   result),
                            void          *userdata);
+
+int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action, const char *arg);
+auth_alter_t auth_str2alter(const char *str);
 
 void          auth_stack_release(auth_stack_t *stack);
 void          auth_stack_addref(auth_stack_t *stack);

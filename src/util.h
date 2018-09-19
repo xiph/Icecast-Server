@@ -128,4 +128,7 @@ struct tm *localtime_r(const time_t *timep, struct tm *result);
 char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 
 int get_line(FILE *file, char *buf, size_t siz);
+
+int replace_string(char **dst, const char *src);
+int util_strtolower(char *str);
 #endif  /* __UTIL_H__ */

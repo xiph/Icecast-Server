@@ -62,40 +62,43 @@ static unsigned long _next_auth_id(void) {
     return id;
 }
 
+static const struct {
+    auth_result result;
+    const char *string;
+} __auth_results[] = {
+    {.result = AUTH_UNDEFINED,      .string = "undefined"},
+    {.result = AUTH_OK,             .string = "ok"},
+    {.result = AUTH_FAILED,         .string = "failed"},
+    {.result = AUTH_RELEASED,       .string = "released"},
+    {.result = AUTH_FORBIDDEN,      .string = "forbidden"},
+    {.result = AUTH_NOMATCH,        .string = "no match"},
+    {.result = AUTH_USERADDED,      .string = "user added"},
+    {.result = AUTH_USEREXISTS,     .string = "user exists"},
+    {.result = AUTH_USERDELETED,    .string = "user deleted"}
+};
+
 static const char *auth_result2str(auth_result res)
 {
-    switch (res) {
-        case AUTH_UNDEFINED:
-            return "undefined";
-        break;
-        case AUTH_OK:
-            return "ok";
-        break;
-        case AUTH_FAILED:
-            return "failed";
-        break;
-        case AUTH_RELEASED:
-            return "released";
-        break;
-        case AUTH_FORBIDDEN:
-            return "forbidden";
-        break;
-        case AUTH_NOMATCH:
-            return "no match";
-        break;
-        case AUTH_USERADDED:
-            return "user added";
-        break;
-        case AUTH_USEREXISTS:
-            return "user exists";
-        break;
-        case AUTH_USERDELETED:
-            return "user deleted";
-        break;
-        default:
-            return "(unknown)";
-        break;
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (__auth_results[i].result == res)
+            return __auth_results[i].string;
     }
+
+    return "(unknown)";
+}
+
+auth_result auth_str2result(const char *str)
+{
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (strcasecmp(__auth_results[i].string, str) == 0)
+            return __auth_results[i].result;
+    }
+
+    return AUTH_FAILED;
 }
 
 static auth_client *auth_client_setup (client_t *client)
@@ -227,9 +230,11 @@ void    auth_addref (auth_t *authenticator) {
 
 static void auth_client_free (auth_client *auth_user)
 {
-    if (auth_user == NULL)
+    if (!auth_user)
         return;
-    free (auth_user);
+
+    free(auth_user->alter_client_arg);
+    free(auth_user);
 }
 
 
@@ -295,6 +300,55 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     return ret;
 }
 
+static inline int __handle_auth_client_alter(auth_t *auth, auth_client *auth_user)
+{
+    client_t *client = auth_user->client;
+    const char *uuid = NULL;
+    const char *location = NULL;
+    int http_status = 0;
+
+    void client_send_redirect(client_t *client, const char *uuid, int status, const char *location);
+
+    switch (auth_user->alter_client_action) {
+        case AUTH_ALTER_NOOP:
+            return 0;
+        break;
+        case AUTH_ALTER_REWRITE:
+            free(client->uri);
+            client->uri = auth_user->alter_client_arg;
+            auth_user->alter_client_arg = NULL;
+            return 0;
+        break;
+        case AUTH_ALTER_REDIRECT:
+        /* fall through */
+        case AUTH_ALTER_REDIRECT_SEE_OTHER:
+            uuid = "be7fac90-54fb-4673-9e0d-d15d6a4963a2";
+            http_status = 303;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_REDIRECT_TEMPORARY:
+            uuid = "4b08a03a-ecce-4981-badf-26b0bb6c9d9c";
+            http_status = 307;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_REDIRECT_PERMANENT:
+            uuid = "36bf6815-95cb-4cc8-a7b0-6b4b0c82ac5d";
+            http_status = 308;
+            location = auth_user->alter_client_arg;
+        break;
+        case AUTH_ALTER_SEND_ERROR:
+            client_send_error_by_uuid(client, auth_user->alter_client_arg);
+            return 1;
+        break;
+    }
+
+    if (uuid && location && http_status) {
+        client_send_redirect(client, uuid, http_status, location);
+        return 1;
+    }
+
+    return -1;
+}
 static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
     auth_result result;
 
@@ -313,6 +367,11 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         acl_addref(auth_user->client->acl = auth->acl);
         if (auth->role) /* TODO: Handle errors here */
             auth_user->client->role = strdup(auth->role);
+    }
+
+    if (result != AUTH_NOMATCH) {
+        if (__handle_auth_client_alter(auth, auth_user) == 1)
+            return;
     }
 
     if (result == AUTH_NOMATCH && auth_user->on_no_match) {
@@ -582,6 +641,52 @@ static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr
     return 0;
 }
 
+static inline int auth_get_authenticator__permission_alter(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+
+        while (cur) {
+            char *next = strstr(cur, ",");
+            auth_alter_t idx;
+
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                size_t i;
+
+                for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+                    auth->permission_alter[i] = matchtype;
+                break;
+            }
+
+            idx = auth_str2alter(cur);
+            if (idx == AUTH_ALTER_NOOP) {
+                ICECAST_LOG_ERROR("Can not add unknown alter action \"%H\" to role's %s", cur, name);
+                return -1;
+            } else if (idx == AUTH_ALTER_REDIRECT) {
+                auth->permission_alter[AUTH_ALTER_REDIRECT] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_SEE_OTHER] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_TEMPORARY] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_PERMANENT] = matchtype;
+            } else {
+                auth->permission_alter[idx] = matchtype;
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+
+    return 0;
+}
 auth_t *auth_get_authenticator(xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
@@ -608,6 +713,9 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
         auth->filter_admin[i].command = ADMIN_COMMAND_ERROR;
     }
+
+    for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+        auth->permission_alter[i] = AUTH_MATCHTYPE_NOMATCH;
 
     if (!auth->type) {
         auth_release(auth);
@@ -680,6 +788,9 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
 
+    auth_get_authenticator__permission_alter(auth, node, "may-alter", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__permission_alter(auth, node, "may-not-alter", AUTH_MATCHTYPE_NOMATCH);
+
     /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
     option = node->xmlChildrenNode;
     while (option)
@@ -743,6 +854,48 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     return auth;
 }
 
+int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action, const char *arg)
+{
+    if (!auth || !auth_user || !arg)
+        return -1;
+
+    if (action < 0 || action >= (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))))
+        return -1;
+
+    if (auth->permission_alter[action] != AUTH_MATCHTYPE_MATCH)
+        return -1;
+
+    if (replace_string(&(auth_user->alter_client_arg), arg) != 0)
+        return -1;
+
+    auth_user->alter_client_action = action;
+
+    return 0;
+}
+
+auth_alter_t auth_str2alter(const char *str)
+{
+    if (!str)
+        return AUTH_ALTER_NOOP;
+
+    if (strcasecmp(str, "noop") == 0) {
+        return AUTH_ALTER_NOOP;
+    } else if (strcasecmp(str, "rewrite") == 0) {
+        return AUTH_ALTER_REWRITE;
+    } else if (strcasecmp(str, "redirect") == 0) {
+        return AUTH_ALTER_REDIRECT;
+    } else if (strcasecmp(str, "redirect_see_other") == 0) {
+        return AUTH_ALTER_REDIRECT_SEE_OTHER;
+    } else if (strcasecmp(str, "redirect_temporary") == 0) {
+        return AUTH_ALTER_REDIRECT_TEMPORARY;
+    } else if (strcasecmp(str, "redirect_permanent") == 0) {
+        return AUTH_ALTER_REDIRECT_PERMANENT;
+    } else if (strcasecmp(str, "send_error") == 0) {
+        return AUTH_ALTER_SEND_ERROR;
+    } else {
+        return AUTH_ALTER_NOOP;
+    }
+}
 
 /* these are called at server start and termination */
 
