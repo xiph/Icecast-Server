@@ -164,6 +164,8 @@ int auth_get_htpasswd_auth(auth_t *auth, config_options_t *options);
 void auth_initialise(void);
 void auth_shutdown(void);
 
+auth_result auth_str2result(const char *str);
+
 auth_t  *auth_get_authenticator(xmlNodePtr node);
 void    auth_release(auth_t *authenticator);
 void    auth_addref(auth_t *authenticator);

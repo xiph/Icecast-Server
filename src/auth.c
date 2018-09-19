@@ -62,40 +62,43 @@ static unsigned long _next_auth_id(void) {
     return id;
 }
 
+static const struct {
+    auth_result result;
+    const char *string;
+} __auth_results[] = {
+    {.result = AUTH_UNDEFINED,      .string = "undefined"},
+    {.result = AUTH_OK,             .string = "ok"},
+    {.result = AUTH_FAILED,         .string = "failed"},
+    {.result = AUTH_RELEASED,       .string = "released"},
+    {.result = AUTH_FORBIDDEN,      .string = "forbidden"},
+    {.result = AUTH_NOMATCH,        .string = "no match"},
+    {.result = AUTH_USERADDED,      .string = "user added"},
+    {.result = AUTH_USEREXISTS,     .string = "user exists"},
+    {.result = AUTH_USERDELETED,    .string = "user deleted"}
+};
+
 static const char *auth_result2str(auth_result res)
 {
-    switch (res) {
-        case AUTH_UNDEFINED:
-            return "undefined";
-        break;
-        case AUTH_OK:
-            return "ok";
-        break;
-        case AUTH_FAILED:
-            return "failed";
-        break;
-        case AUTH_RELEASED:
-            return "released";
-        break;
-        case AUTH_FORBIDDEN:
-            return "forbidden";
-        break;
-        case AUTH_NOMATCH:
-            return "no match";
-        break;
-        case AUTH_USERADDED:
-            return "user added";
-        break;
-        case AUTH_USEREXISTS:
-            return "user exists";
-        break;
-        case AUTH_USERDELETED:
-            return "user deleted";
-        break;
-        default:
-            return "(unknown)";
-        break;
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (__auth_results[i].result == res)
+            return __auth_results[i].string;
     }
+
+    return "(unknown)";
+}
+
+auth_result auth_str2result(const char *str)
+{
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (strcasecmp(__auth_results[i].string, str) == 0)
+            return __auth_results[i].result;
+    }
+
+    return AUTH_FAILED;
 }
 
 static auth_client *auth_client_setup (client_t *client)
