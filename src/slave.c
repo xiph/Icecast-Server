@@ -72,7 +72,7 @@ static int slave_running = 0;
 static volatile int update_settings = 0;
 static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
-static mutex_t _slave_mutex; // protects update_settings, update_all_mounts, max_interval
+static mutex_t _slave_mutex; // protects slave_running, update_settings, update_all_mounts, max_interval
 
 static inline void relay_config_upstream_free (relay_config_upstream_t *upstream)
 {
@@ -222,9 +222,14 @@ void slave_initialize(void)
 
 void slave_shutdown(void)
 {
-    if (!slave_running)
+    thread_mutex_lock(&_slave_mutex);
+    if (!slave_running) {
+        thread_mutex_unlock(&_slave_mutex);
         return;
+    }
     slave_running = 0;
+    thread_mutex_unlock(&_slave_mutex);
+
     ICECAST_LOG_DEBUG("waiting for slave thread");
     thread_join (_slave_thread_id);
 }
@@ -895,8 +900,12 @@ static void *_slave_thread(void *arg)
         global_unlock();
 
         thread_sleep(1000000);
-        if (slave_running == 0)
+        thread_mutex_lock(&_slave_mutex);
+        if (slave_running == 0) {
+            thread_mutex_unlock(&_slave_mutex);
             break;
+        }
+        thread_mutex_unlock(&_slave_mutex);
 
         ++interval;
 

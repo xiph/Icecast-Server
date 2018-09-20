@@ -197,7 +197,9 @@ void auth_release (auth_t *authenticator) {
     /* cleanup auth thread attached to this auth */
     if (authenticator->running) {
         authenticator->running = 0;
+        thread_mutex_unlock(&authenticator->lock);
         thread_join(authenticator->thread);
+        thread_mutex_lock(&authenticator->lock);
     }
 
     if (authenticator->free)
@@ -389,15 +391,18 @@ static void *auth_run_thread (void *arg)
     auth_t *auth = arg;
 
     ICECAST_LOG_INFO("Authentication thread started");
-    while (auth->running)
-    {
-        /* usually no clients are waiting, so don't bother taking locks */
-        if (auth->head)
-        {
+    while (1) {
+        thread_mutex_lock(&auth->lock);
+
+        if (!auth->running) {
+            thread_mutex_unlock(&auth->lock);
+            break;
+        }
+
+        if (auth->head) {
             auth_client *auth_user;
 
             /* may become NULL before lock taken */
-            thread_mutex_lock (&auth->lock);
             auth_user = (auth_client*)auth->head;
             if (auth_user == NULL)
             {
@@ -415,6 +420,8 @@ static void *auth_run_thread (void *arg)
             __handle_auth_client(auth, auth_user);
 
             continue;
+        } else {
+            thread_mutex_unlock(&auth->lock);
         }
         thread_sleep (150000);
     }
