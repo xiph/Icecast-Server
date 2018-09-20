@@ -287,6 +287,37 @@ int format_advance_queue(source_t *source, client_t *client)
  * calling functions will use a already freed client struct and
  * cause a segfault!
  */
+static inline ssize_t __print_var(char *str, size_t remaining, const char *format, const char *first, const http_var_t *var)
+{
+    size_t i;
+    ssize_t done = 0;
+    int ret;
+
+    for (i = 0; i < var->values; i++) {
+        ret = snprintf(str + done, remaining - done, format, first, var->value[i]);
+        if (ret == -1)
+            return -1;
+
+        done += ret;
+    }
+
+    return done;
+}
+
+static inline const char *__find_bitrate(const http_var_t *var)
+{
+    size_t i;
+    const char *ret;
+
+    for (i = 0; i < var->values; i++) {
+        ret = strstr(var->value[i], "bitrate=");
+        if (ret)
+            return ret;
+    }
+
+    return NULL;
+}
+
 static int format_prepare_headers (source_t *source, client_t *client)
 {
     size_t remaining;
@@ -337,11 +368,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
         if (!strcasecmp(var->name, "ice-audio-info"))
         {
             /* convert ice-audio-info to icy-br */
-            char *brfield = NULL;
+            const char *brfield = NULL;
             unsigned int bitrate;
 
             if (bitrate_filtered == 0)
-                brfield = strstr(var->value, "bitrate=");
+                brfield = __find_bitrate(var);
             if (brfield && sscanf (brfield, "bitrate=%u", &bitrate))
             {
                 bytes = snprintf (ptr, remaining, "icy-br:%u\r\n", bitrate);
@@ -350,7 +381,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             }
             else
                 /* show ice-audio_info header as well because of relays */
-                bytes = snprintf (ptr, remaining, "%s: %s\r\n", var->name, var->value);
+                bytes = __print_var(ptr, remaining, "%s: %s\r\n", var->name, var);
         }
         else
         {
@@ -368,26 +399,24 @@ static int format_prepare_headers (source_t *source, client_t *client)
                     if (mountinfo && mountinfo->stream_name)
                         bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);
                     else
-                        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", var->value);
+                        bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "name", var);
 
                     config_release_config();
                 }
                 else if (!strncasecmp("ice-", var->name, 4))
                 {
                     if (!strcasecmp("ice-public", var->name))
-                        bytes = snprintf (ptr, remaining, "icy-pub:%s\r\n", var->value);
+                        bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "pub", var);
                     else
                         if (!strcasecmp ("ice-bitrate", var->name))
-                            bytes = snprintf (ptr, remaining, "icy-br:%s\r\n", var->value);
+                            bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "br", var);
                         else
-                            bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
-                                    var->name + 3, var->value);
+                            bytes = __print_var(ptr, remaining, "icy%s:%s\r\n", var->name + 3, var);
                 }
                 else
                     if (!strncasecmp("icy-", var->name, 4))
                     {
-                        bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
-                                var->name + 3, var->value);
+                        bytes = __print_var(ptr, remaining, "icy%s:%s\r\n", var->name + 3, var);
                     }
             }
         }
