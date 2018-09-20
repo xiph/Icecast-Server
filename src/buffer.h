@@ -18,6 +18,8 @@
 #include <config.h>
 #endif
 
+#include <stdarg.h>
+
 #include "icecasttypes.h"
 #include "compat.h"
 #include "refobject.h"
@@ -126,6 +128,30 @@ int         buffer_push_data(buffer_t *buffer, const void *data, size_t length);
  *  Consider using buffer_zerocopy_*().
  */
 int         buffer_push_string(buffer_t *buffer, const char *string);
+
+/* This pushes a formated string to the end of the buffer.
+ * Parameters:
+ *  buffer
+ *      The buffer to operate on.
+ *  format
+ *      The format string as for printf() family functions.
+ *  ...
+ *      The parameters according to the format string.
+ */
+int         buffer_push_printf(buffer_t *buffer, const char *format, ...);
+
+/* This pushes a formated string to the end of the buffer using a va_list.
+ * Parameters:
+ *  buffer
+ *      The buffer to operate on.
+ *  format
+ *      The format string as for printf() family functions.
+ *  ap
+ *      The parameters according to the format string as va_list.
+ * See also:
+ *  vprintf(3).
+ */
+int         buffer_push_vprintf(buffer_t *buffer, const char *format, va_list ap);
 
 /* This requests for a memory buffer that can be pushed to without the need for copy.
  * Parameters:

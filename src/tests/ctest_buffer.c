@@ -281,6 +281,28 @@ static void test_length(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test_printf(void)
+{
+    buffer_t *a;
+    const char *str = "Hello World!";
+    const int num = -127;
+    const char *match_a = ":Hello World!:";
+    const char *match_b = ":Hello World!:<-127 >";
+    const char *match_c = ":Hello World!:<-127 >? +127?";
+
+    a = buffer_new_simple();
+    ctest_test("buffer created", a != NULL);
+
+    ctest_test("Set length to match pattern a", buffer_push_printf(a, ":%s:", str) == 0);
+    test__compare_to_string(a, "string matches pattern a", match_a);
+    ctest_test("Set length to match pattern a", buffer_push_printf(a, "<%-5i>", num) == 0);
+    test__compare_to_string(a, "string matches pattern b", match_b);
+    ctest_test("Set length to match pattern a", buffer_push_printf(a, "?%+5i?", -num) == 0);
+    test__compare_to_string(a, "string matches pattern c", match_c);
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -298,6 +320,8 @@ int main (void)
 
     test_shift();
     test_length();
+
+    test_printf();
 
     ctest_fin();
 

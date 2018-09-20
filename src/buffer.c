@@ -10,8 +10,10 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "buffer.h"
 #include "refobject.h"
@@ -193,6 +195,73 @@ int         buffer_push_string(buffer_t *buffer, const char *string)
         return -1;
 
     return buffer_push_data(buffer, string, strlen(string));
+}
+
+
+int         buffer_push_printf(buffer_t *buffer, const char *format, ...)
+{
+    int ret;
+    va_list ap;
+
+    if (!buffer || !format)
+        return -1;
+
+    if (!*format)
+        return 0;
+
+    va_start(ap, format);
+    ret = buffer_push_vprintf(buffer, format, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+int         buffer_push_vprintf(buffer_t *buffer, const char *format, va_list ap)
+{
+    void *buf;
+    int ret;
+    size_t length = 1024;
+
+    if (!buffer || !format)
+        return -1;
+
+    if (!*format)
+        return 0;
+
+    ret = buffer_zerocopy_push_request(buffer, &buf, length);
+    if (ret != 0)
+        return ret;
+
+    ret = vsnprintf(buf, length, format, ap);
+    if (ret >= 0 && (size_t)ret < length) {
+        return buffer_zerocopy_push_complete(buffer, ret);
+    } else if (ret < 0) {
+        /* This vsnprintf() likely does not follow POSIX.
+         * We don't know what length we need to asume. So asume a big one and hope for the best. */
+        length = 8192;
+    } else {
+        /* Reallocate the buffer to the size reported plus one for '\0'-termination */
+        length = ret + 1;
+    }
+
+    /* We have not written any data yet. */
+    ret = buffer_zerocopy_push_complete(buffer, 0);
+    if (ret != 0)
+        return ret;
+
+    /* Now let's try again. */
+    ret = buffer_zerocopy_push_request(buffer, &buf, length);
+    if (ret != 0)
+        return ret;
+
+    ret = vsnprintf(buf, length, format, ap);
+    if (ret < 0 || (size_t)ret >= length) {
+        /* This still didn't work. Giving up. */
+        buffer_zerocopy_push_complete(buffer, 0);
+        return -1;
+    }
+
+    return buffer_zerocopy_push_complete(buffer, ret);
 }
 
 int         buffer_zerocopy_push_request(buffer_t *buffer, void **data, size_t request)
