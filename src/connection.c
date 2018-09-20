@@ -1171,8 +1171,8 @@ static int _handle_resources(client_t *client, char **uri)
         }
     }
 
-    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     config = config_get_config();
+    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     if (listen_sock) {
         serverhost = listen_sock->bind_address;
         serverport = listen_sock->port;
