@@ -365,7 +365,7 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         if (auth_user->client->acl)
             acl_release(auth_user->client->acl);
         acl_addref(auth_user->client->acl = auth->acl);
-        if (auth->role) /* TODO: Handle errors here */
+        if (auth->role && !auth_user->client->role) /* TODO: Handle errors here */
             auth_user->client->role = strdup(auth->role);
     }
 
