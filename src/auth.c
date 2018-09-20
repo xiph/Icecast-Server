@@ -1037,7 +1037,7 @@ auth_t       *auth_stack_get(auth_stack_t *stack) {
     if (!stack)
         return NULL;
 
-    thread_mutex_unlock(&stack->lock);
+    thread_mutex_lock(&stack->lock);
     auth_addref(auth = stack->auth);
     thread_mutex_unlock(&stack->lock);
     return auth;
