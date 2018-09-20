@@ -271,7 +271,9 @@ void yp_recheck_config (ice_config_t *config)
         }
     }
     thread_rwlock_unlock (&yp_lock);
+    thread_rwlock_wlock(&yp_lock);
     yp_update = 1;
+    thread_rwlock_unlock(&yp_lock);
 }
 
 
