@@ -147,7 +147,7 @@ int         buffer_zerocopy_push_request(buffer_t *buffer, void **data, size_t r
  *      The buffer to operate on.
  *  done
  *      Amount of data in bytes that has actually been written into the memory area.
- *      Maybe zero to what has been requested with request.
+ *      May be zero to what has been requested with request.
  */
 int         buffer_zerocopy_push_complete(buffer_t *buffer, size_t done);
 
