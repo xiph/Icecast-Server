@@ -843,6 +843,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     xmlNodePtr ret = NULL;
     ice_config_t *config;
 
+    config = config_get_config();
+    __add_authstack(config->authstack, root);
+    config_release_config();
+
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
     avlnode = avl_get_first(_stats.global_tree);
@@ -855,9 +859,6 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     }
     /* now per mount stats */
     avlnode = avl_get_first(_stats.source_tree);
-    config = config_get_config();
-    __add_authstack(config->authstack, root);
-    config_release_config();
 
     while (avlnode) {
         stats_source_t *source = (stats_source_t *)avlnode->key;
