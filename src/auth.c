@@ -365,7 +365,7 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         if (auth_user->client->acl)
             acl_release(auth_user->client->acl);
         acl_addref(auth_user->client->acl = auth->acl);
-        if (auth->role) /* TODO: Handle errors here */
+        if (auth->role && !auth_user->client->role) /* TODO: Handle errors here */
             auth_user->client->role = strdup(auth->role);
     }
 
@@ -486,6 +486,13 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     queue_auth_client(auth_user);
 }
 
+static void __auth_on_result_destroy_client(client_t *client, void *userdata, auth_result result)
+{
+    (void)userdata, (void)result;
+
+    client_destroy(client);
+}
+
 /* determine whether we need to process this client further. This
  * involves any auth exit, typically for external auth servers.
  */
@@ -496,6 +503,7 @@ int auth_release_client (client_t *client) {
     if (client->auth && client->auth->release_client) {
         auth_client *auth_user = auth_client_setup(client);
         auth_user->process = auth_remove_client;
+        auth_user->on_result = __auth_on_result_destroy_client;
         queue_auth_client(auth_user);
         return 1;
     } else if (client->auth) {
