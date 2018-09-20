@@ -264,6 +264,22 @@ int         buffer_push_vprintf(buffer_t *buffer, const char *format, va_list ap
     return buffer_zerocopy_push_complete(buffer, ret);
 }
 
+int         buffer_push_buffer(buffer_t *buffer, buffer_t *source)
+{
+    const void *data;
+    size_t length;
+    int ret;
+
+    if (!buffer || !source)
+        return -1;
+
+    ret = buffer_get_data(source, &data, &length);
+    if (ret != 0)
+        return ret;
+
+    return buffer_push_data(buffer, data, length);
+}
+
 int         buffer_zerocopy_push_request(buffer_t *buffer, void **data, size_t request)
 {
     if (!buffer || !data)

@@ -303,6 +303,31 @@ static void test_printf(void)
     ctest_test("un-referenced", refobject_unref(a) == 0);
 }
 
+static void test_push_buffer(void)
+{
+    buffer_t *a;
+    buffer_t *b;
+    const char *pattern = "AABBBCC";
+    const char *match_a = "AABBBCCAABBBCC";
+
+    a = buffer_new_simple();
+    ctest_test("buffer a created", a != NULL);
+    b = buffer_new_simple();
+    ctest_test("buffer b created", b != NULL);
+
+    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    test__compare_to_string(a, "string matches input", pattern);
+
+    ctest_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
+    test__compare_to_string(b, "string matches input", pattern);
+
+    ctest_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
+    test__compare_to_string(b, "string matches pattern a", match_a);
+
+    ctest_test("un-referenced b", refobject_unref(b) == 0);
+    ctest_test("un-referenced a", refobject_unref(a) == 0);
+}
+
 int main (void)
 {
     ctest_init();
@@ -322,6 +347,7 @@ int main (void)
     test_length();
 
     test_printf();
+    test_push_buffer();
 
     ctest_fin();
 

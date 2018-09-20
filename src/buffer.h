@@ -153,6 +153,15 @@ int         buffer_push_printf(buffer_t *buffer, const char *format, ...);
  */
 int         buffer_push_vprintf(buffer_t *buffer, const char *format, va_list ap);
 
+/* This pushes the content of another buffer to the end of the buffer.
+ * Parameters:
+ *  buffer
+ *      The buffer to operate on.
+ *  source
+ *      The buffer which's content is to be copied.
+ */
+int         buffer_push_buffer(buffer_t *buffer, buffer_t *source);
+
 /* This requests for a memory buffer that can be pushed to without the need for copy.
  * Parameters:
  *  buffer
