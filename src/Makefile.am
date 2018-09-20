@@ -31,6 +31,7 @@ noinst_HEADERS = \
     matchfile.h \
     tls.h \
     refobject.h \
+    buffer.h \
     module.h \
     reportxml.h \
     listensocket.h \
@@ -76,6 +77,7 @@ icecast_SOURCES = \
     matchfile.c \
     tls.c \
     refobject.c \
+    buffer.c \
     module.c \
     reportxml.c \
     listensocket.c \

@@ -35,6 +35,13 @@ ctest_refobject_test_LDADD = libice_ctest.la \
     icecast-refobject.o
 check_PROGRAMS += ctest_refobject.test
 
+ctest_buffer_test_SOURCES = %reldir%/ctest_buffer.c
+ctest_buffer_test_LDADD = libice_ctest.la \
+    common/thread/libicethread.la \
+    common/avl/libiceavl.la \
+    icecast-refobject.o \
+    icecast-buffer.o
+check_PROGRAMS += ctest_buffer.test
 
 # Add all programs to TESTS
 TESTS = $(check_PROGRAMS)
