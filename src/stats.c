@@ -154,7 +154,9 @@ void stats_shutdown(void)
         return;
 
     /* wait for thread to exit */
+    thread_mutex_lock(&_stats_mutex);
     _stats_running = 0;
+    thread_mutex_unlock(&_stats_mutex);
     thread_join(_stats_thread_id);
 
     /* wait for other threads to shut down */
@@ -691,7 +693,14 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "listener_connections", "0");
 
     ICECAST_LOG_INFO("stats thread started");
-    while (_stats_running) {
+    while (1) {
+        thread_mutex_lock(&_stats_mutex);
+        if (!_stats_running) {
+            thread_mutex_unlock(&_stats_mutex);
+            break;
+        }
+        thread_mutex_unlock(&_stats_mutex);
+
         thread_mutex_lock(&_global_event_mutex);
         if (_global_event_queue.head != NULL) {
             /* grab the next event from the queue */
@@ -834,6 +843,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     xmlNodePtr ret = NULL;
     ice_config_t *config;
 
+    config = config_get_config();
+    __add_authstack(config->authstack, root);
+    config_release_config();
+
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
     avlnode = avl_get_first(_stats.global_tree);
@@ -846,9 +859,6 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     }
     /* now per mount stats */
     avlnode = avl_get_first(_stats.source_tree);
-    config = config_get_config();
-    __add_authstack(config->authstack, root);
-    config_release_config();
 
     while (avlnode) {
         stats_source_t *source = (stats_source_t *)avlnode->key;
@@ -971,7 +981,14 @@ void *stats_connection(void *arg)
 
     _register_listener (&listener);
 
-    while (_stats_running) {
+    while (1) {
+        thread_mutex_lock(&_stats_mutex);
+        if (!_stats_running) {
+            thread_mutex_unlock(&_stats_mutex);
+            break;
+        }
+        thread_mutex_unlock(&_stats_mutex);
+
         thread_mutex_lock (&listener.mutex);
         event = _get_event_from_queue (&listener.queue);
         thread_mutex_unlock (&listener.mutex);

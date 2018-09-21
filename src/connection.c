@@ -1171,8 +1171,8 @@ static int _handle_resources(client_t *client, char **uri)
         }
     }
 
-    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     config = config_get_config();
+    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     if (listen_sock) {
         serverhost = listen_sock->bind_address;
         serverport = listen_sock->port;
@@ -1341,6 +1341,7 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
 static void _handle_authentication_global(client_t *client, void *userdata, auth_result result)
 {
     ice_config_t *config;
+    auth_stack_t *authstack;
 
     auth_stack_release(client->authstack);
     client->authstack = NULL;
@@ -1353,8 +1354,11 @@ static void _handle_authentication_global(client_t *client, void *userdata, auth
 
     ICECAST_LOG_DEBUG("Trying global authenticators for client %p.", client);
     config = config_get_config();
-    auth_stack_add_client(config->authstack, client, _handle_authed_client, userdata);
+    authstack = config->authstack;
+    auth_stack_addref(authstack);
     config_release_config();
+    auth_stack_add_client(authstack, client, _handle_authed_client, userdata);
+    auth_stack_release(authstack);
 }
 
 static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const char *name, mount_type type)

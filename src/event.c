@@ -36,7 +36,9 @@ static thread_type *event_thread = NULL;
 static void event_addref(event_t *event) {
     if (!event)
         return;
+    thread_mutex_lock(&event_lock);
     event->refcount++;
+    thread_mutex_unlock(&event_lock);
 }
 
 static void event_release(event_t *event) {
@@ -44,9 +46,13 @@ static void event_release(event_t *event) {
 
     if (!event)
         return;
+
+    thread_mutex_lock(&event_lock);
     event->refcount--;
-    if (event->refcount)
+    if (event->refcount) {
+        thread_mutex_unlock(&event_lock);
         return;
+    }
 
     for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++)
         event_registration_release(event->reglist[i]);
@@ -60,6 +66,7 @@ static void event_release(event_t *event) {
     event_release(event->next);
 
     free(event);
+    thread_mutex_unlock(&event_lock);
 }
 
 static void event_push(event_t **event, event_t *next) {
@@ -78,7 +85,7 @@ static void event_push(event_t **event, event_t *next) {
         return;
     }
 
-    event_addref(*event = next);
+    *event = next;
 }
 
 static void event_push_reglist(event_t *event, event_registration_t *reglist) {
@@ -336,6 +343,7 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 /* event signaling */
 void event_emit(event_t *event) {
     fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
+    event_addref(event);
     thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
     thread_mutex_unlock(&event_lock);

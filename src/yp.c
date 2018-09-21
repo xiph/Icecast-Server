@@ -271,7 +271,9 @@ void yp_recheck_config (ice_config_t *config)
         }
     }
     thread_rwlock_unlock (&yp_lock);
+    thread_rwlock_wlock(&yp_lock);
     yp_update = 1;
+    thread_rwlock_unlock(&yp_lock);
 }
 
 
@@ -721,10 +723,12 @@ static void delete_marked_yp(struct yp_server *server)
 static void *yp_update_thread(void *arg)
 {
     ICECAST_LOG_INFO("YP update thread started");
+    int running;
 
     yp_running = 1;
-    while (yp_running)
-    {
+    running = 1;
+
+    while (running) {
         struct yp_server *server;
 
         thread_sleep (200000);
@@ -738,11 +742,10 @@ static void *yp_update_thread(void *arg)
             yp_process_server (server);
             server = server->next;
         }
-        thread_rwlock_unlock (&yp_lock);
-
         /* update the local YP structure */
         if (yp_update)
         {
+            thread_rwlock_unlock(&yp_lock);
             thread_rwlock_wlock (&yp_lock);
             check_servers ();
             server = (struct yp_server *)active_yps;
@@ -754,8 +757,9 @@ static void *yp_update_thread(void *arg)
                 server = server->next;
             }
             yp_update = 0;
-            thread_rwlock_unlock (&yp_lock);
         }
+        running = yp_running;
+        thread_rwlock_unlock(&yp_lock);
     }
     thread_rwlock_destroy (&yp_lock);
     thread_mutex_destroy (&yp_pending_lock);
@@ -984,8 +988,11 @@ void yp_touch (const char *mount)
 
 void yp_shutdown (void)
 {
+    thread_rwlock_wlock(&yp_lock);
     yp_running = 0;
     yp_update = 1;
+    thread_rwlock_unlock(&yp_lock);
+
     if (yp_thread)
         thread_join (yp_thread);
     free ((char*)server_version);
