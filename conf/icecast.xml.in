@@ -247,7 +247,7 @@
     <!-- Relays can also go into a <mount type="normal"> section -->
     <!--
     <mount type="normal">
-        <mount-name>/auth_example.ogg</mount-name>
+        <mount-name>/relay_example.ogg</mount-name>
         <relay>
             <upstream type="normal">
                 <server>master0.example.org</server>
