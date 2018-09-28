@@ -7,7 +7,7 @@
     -->
 
     <!-- location and admin are two strings that are e.g. visible
-	 on the server info page of the icecast web interface -->
+         on the server info page of the icecast web interface -->
     <location>Earth</location>
     <!-- If you are listing streams on a YP, this MUST be a working email! -->
     <admin>icemaster@localhost</admin>
@@ -49,7 +49,7 @@
     -->
 
     <!-- Uncommenting this enables publishing to the streaming directory at:
-	 http://dir.xiph.org/
+         http://dir.xiph.org/
          Please read the Icecast documentation about publishing to directories
          very carefully, as it is not enough to just uncomment this.
     -->
@@ -128,7 +128,7 @@
 
     <!-- Mountpoints
          Only define <mount> sections if you want to use advanced options,
-	 like alternative usernames or passwords
+         like alternative usernames or passwords
          All <mount> sections below are disabled by default,
          to activate them remove the comment markers around them and restart.
     -->

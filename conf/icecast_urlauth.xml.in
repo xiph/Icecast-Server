@@ -39,7 +39,7 @@
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
-      	<loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
     </logging>
     <security>
         <chroot>0</chroot>
