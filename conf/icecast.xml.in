@@ -199,8 +199,15 @@
                 <header name="Access-Control-Allow-Origin" value="http://webplayer.example.org" />
                 <header name="baz" value="quux" />
         </http-headers>
-        <on-connect>/home/icecast/bin/stream-start</on-connect>
-        <on-disconnect>/home/icecast/bin/stream-stop</on-disconnect>
+
+        <event-bindings>
+            <event type="exec" trigger="source-connect">
+                <option name="executable" value="/home/icecast/bin/stream-start" />
+            </event>
+            <event type="exec" trigger="source-disconnect">
+                <option name="executable" value="/home/icecast/bin/stream-stop" />
+            </event>
+        </event-bindings>
     </mount>
     -->
 
