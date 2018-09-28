@@ -22,7 +22,6 @@
     <listen-socket>
         <port>8000</port>
     </listen-socket>
-    <fileserve>true</fileserve>
     <paths>
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>

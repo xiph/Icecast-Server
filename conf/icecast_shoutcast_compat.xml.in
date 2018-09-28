@@ -33,7 +33,6 @@
         <port>8000</port>
         <shoutcast-mount>/stream</shoutcast-mount>
     </listen-socket>
-    <fileserve>true</fileserve>
     <paths>
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>

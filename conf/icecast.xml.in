@@ -193,8 +193,6 @@
     </mount>
     -->
 
-    <fileserve>true</fileserve>
-
     <paths>
         <!-- basedir is only used if chroot is enabled -->
         <basedir>@pkgdatadir@</basedir>
