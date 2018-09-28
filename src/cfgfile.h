@@ -161,6 +161,7 @@ typedef struct _listener_t {
     listener_type_t type;
     int port;
     int so_sndbuf;
+    int listen_backlog;
     char *bind_address;
     int shoutcast_compat;
     char *shoutcast_mount;

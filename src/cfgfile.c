@@ -1911,6 +1911,8 @@ static void _parse_listen_socket(xmlDocPtr      doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("so-sndbuf")) == 0) {
             __read_int(doc, node, &listener->so_sndbuf, "<so-sndbuf> must not be empty.");
+        } else if (xmlStrcmp(node->name, XMLSTR("listen-backlog")) == 0) {
+            __read_int(doc, node, &listener->listen_backlog, "<listen-backlog> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication_node(node, &(listener->authstack));
         }
@@ -2629,6 +2631,7 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     n->next = NULL;
     n->port = listener->port;
     n->so_sndbuf = listener->so_sndbuf;
+    n->listen_backlog = listener->listen_backlog;
     n->type = listener->type;
     n->id = (char*)xmlStrdup(XMLSTR(listener->id));
     if (listener->on_behalf_of) {

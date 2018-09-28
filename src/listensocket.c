@@ -73,6 +73,20 @@ static inline const char * __string_default(const char *str, const char *def)
     return str != NULL ? str : def;
 }
 
+static inline int __socket_listen(sock_t serversock, const listener_t *listener)
+{
+    int listen_backlog = listener->listen_backlog;
+
+    if (listen_backlog < 1)
+        listen_backlog = ICECAST_LISTEN_QUEUE;
+    if (listen_backlog > 128) {
+        listen_backlog = 128;
+        ICECAST_LOG_WARN("Listen backlog for listen socket on %s port %i is set insanely high. Limiting to sane range.", __string_default(listener->bind_address, "<ANY>"), listener->port);
+    }
+
+    return sock_listen(serversock, listen_backlog);
+}
+
 static inline int __listener_cmp(const listener_t *a, const listener_t *b)
 {
     if (a == b)
@@ -581,6 +595,8 @@ static int              listensocket_apply_config__unlocked(listensocket_t *self
             sock_set_send_buffer(self->sock, listener->so_sndbuf);
 
         sock_set_blocking(self->sock, 0);
+
+        __socket_listen(self->sock, listener);
     }
 
     if (self->listener_update) {
@@ -632,7 +648,7 @@ int                         listensocket_refsock(listensocket_t *self)
         return -1;
     }
 
-    if (sock_listen(self->sock, ICECAST_LISTEN_QUEUE) == 0) {
+    if (__socket_listen(self->sock, self->listener) == 0) {
         sock_close(self->sock);
         self->sock = SOCK_ERROR;
         thread_rwlock_rlock(&self->listener_rwlock);
