@@ -611,12 +611,27 @@ static inline void auth_get_authenticator__filter_admin(auth_t *auth, xmlNodePtr
     }
 }
 
-static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+static inline void auth_get_authenticator__init_method(auth_t *auth, int *method_inited, auth_matchtype_t init_with)
+{
+    size_t i;
+
+    if (*method_inited)
+        return;
+
+    for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+        auth->filter_method[i] = init_with;
+
+    *method_inited = 1;
+}
+
+static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype, int *method_inited, auth_matchtype_t init_with)
 {
     char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
 
     if (tmp) {
         char *cur = tmp;
+
+        auth_get_authenticator__init_method(auth, method_inited, init_with);
 
         while (cur) {
             char *next = strstr(cur, ",");
@@ -706,6 +721,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     char *tmp;
     size_t i;
     size_t filter_admin_index = 0;
+    int method_inited = 0;
 
     if (auth == NULL)
         return NULL;
@@ -739,6 +755,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
         for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
             auth->filter_method[i] = AUTH_MATCHTYPE_NOMATCH;
+	method_inited = 1;
 
         while (cur) {
             httpp_request_type_e idx;
@@ -767,13 +784,12 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         }
 
         xmlFree(method);
-    } else {
-        for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
-            auth->filter_method[i] = AUTH_MATCHTYPE_MATCH;
     }
 
-    auth_get_authenticator__filter_method(auth, node, "match-method", AUTH_MATCHTYPE_MATCH);
-    auth_get_authenticator__filter_method(auth, node, "nomatch-method", AUTH_MATCHTYPE_NOMATCH);
+    auth_get_authenticator__filter_method(auth, node, "match-method", AUTH_MATCHTYPE_MATCH, &method_inited, AUTH_MATCHTYPE_NOMATCH);
+    auth_get_authenticator__filter_method(auth, node, "nomatch-method", AUTH_MATCHTYPE_NOMATCH, &method_inited, AUTH_MATCHTYPE_MATCH);
+
+    auth_get_authenticator__init_method(auth, &method_inited, AUTH_MATCHTYPE_MATCH);
 
     tmp = (char*)xmlGetProp(node, XMLSTR("match-web"));
     if (tmp) {
