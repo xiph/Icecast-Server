@@ -166,10 +166,10 @@
         <intro>/server-wide-intro.ogg</intro>
         <max-listener-duration>3600</max-listener-duration>
         <authentication>
-            <role type="url" method="source,put" allow-web="*" allow-admin="*">
+            <role type="url" match-method="source,put" allow-web="*" allow-admin="*">
                 <option name="client_add" value="http://auth.example.org/stream_start.php"/>
             </role>
-            <role type="anonymous" method="source,put" deny-all="*" />
+            <role type="anonymous" match-method="source,put" deny-all="*" />
         </authentication>
         <http-headers>
                 <header name="foo" value="bar" />
@@ -221,7 +221,7 @@
     <mount type="normal">
         <mount-name>/auth_example.ogg</mount-name>
         <authentication>
-            <role type="url" method="get,post,head,options" allow-web="*" deny-admin="*" may-alter="send_error,redirect">
+            <role type="url" match-method="get,post,head,options" allow-web="*" deny-admin="*" may-alter="send_error,redirect">
                 <option name="client_add"       value="http://myauthserver.net/notify_listener.php"/>
                 <option name="client_remove"    value="http://myauthserver.net/notify_listener.php"/>
                 <option name="action_add"       value="listener_add"/>
@@ -229,7 +229,7 @@
                 <option name="headers"          value="x-pragma,x-token"/>
                 <option name="header_prefix"    value="ClientHeader."/>
             </role>
-            <role type="anonymous" method="get,post,head,options" deny-all="*" />
+            <role type="anonymous" match-method="get,post,head,options" deny-all="*" />
         </authentication>
         <event-bindings>
             <event type="url" trigger="source-connect">
