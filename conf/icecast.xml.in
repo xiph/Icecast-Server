@@ -79,7 +79,7 @@
     <!--
     <listen-socket>
         <port>8443</port>
-        <tls>1</tls>
+        <tls>auto_no_plain</tls>
     </listen-socket>
     -->
 
@@ -110,8 +110,8 @@
 
     <!-- Setting this makes all relays on-demand unless overridden, this is
          useful for master relays which do not have <relay> definitions here.
-         The default is 0 -->
-    <!--<relays-on-demand>1</relays-on-demand>-->
+         The default is false -->
+    <!--<relays-on-demand>true</relays-on-demand>-->
 
     <!--
     <relay>
@@ -119,9 +119,9 @@
         <port>8080</port>
         <mount>/example.ogg</mount>
         <local-mount>/different.ogg</local-mount>
-        <on-demand>0</on-demand>
+        <on-demand>false</on-demand>
 
-        <relay-shoutcast-metadata>0</relay-shoutcast-metadata>
+        <relay-shoutcast-metadata>false</relay-shoutcast-metadata>
     </relay>
     -->
 
@@ -137,7 +137,7 @@
     -->
     <!--
     <mount type="default">
-        <public>0</public>
+        <public>false</public>
         <intro>/server-wide-intro.ogg</intro>
         <max-listener-duration>3600</max-listener-duration>
         <authentication type="url">
@@ -161,14 +161,14 @@
         <dump-file>/tmp/dump-example1.ogg</dump-file>
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
-        <fallback-override>1</fallback-override>
-        <fallback-when-full>1</fallback-when-full>
+        <fallback-override>true</fallback-override>
+        <fallback-when-full>true</fallback-when-full>
         <intro>/example_intro.ogg</intro>
-        <hidden>1</hidden>
-        <public>1</public>
+        <hidden>true</hidden>
+        <public>true</public>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
-                <option name="allow_duplicate_users" value="0"/>
+                <option name="allow_duplicate_users" value="false"/>
         </authentication>
         <http-headers>
                 <header name="Access-Control-Allow-Origin" value="http://webplayer.example.org" />
@@ -193,7 +193,7 @@
     </mount>
     -->
 
-    <fileserve>1</fileserve>
+    <fileserve>true</fileserve>
 
     <paths>
         <!-- basedir is only used if chroot is enabled -->
@@ -228,18 +228,18 @@
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
         <!-- <playlistlog>playlist.log</playlistlog> -->
-        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>information</loglevel> <!-- "debug", "information", "warning", or "error" -->
         <logsize>10000</logsize> <!-- Max size of a logfile -->
         <!-- If logarchive is enabled (1), then when logsize is reached
              the logfile will be moved to [error|access|playlist].log.DATESTAMP,
              otherwise it will be moved to [error|access|playlist].log.old.
              Default is non-archive mode (i.e. overwrite)
         -->
-        <!-- <logarchive>1</logarchive> -->
+        <!-- <logarchive>true</logarchive> -->
     </logging>
 
     <security>
-        <chroot>0</chroot>
+        <chroot>false</chroot>
         <!--
         <changeowner>
             <user>nobody</user>

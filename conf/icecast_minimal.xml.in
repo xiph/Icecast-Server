@@ -22,7 +22,7 @@
     <listen-socket>
         <port>8000</port>
     </listen-socket>
-    <fileserve>1</fileserve>
+    <fileserve>true</fileserve>
     <paths>
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
@@ -32,7 +32,7 @@
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
-        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>information</loglevel> <!-- "debug", "information", "warning", or "error" -->
     </logging>
     <http-headers>
         <header name="Access-Control-Allow-Origin" value="*" />
