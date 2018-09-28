@@ -2,7 +2,8 @@
      and mostly just contains the things you need to change or are
      necessary to get Icecast working for most use cases.  We created
      this for those who got scared away from the rather large and heavily
-     commented icecast.xml.dist file. -->
+     commented icecast.xml.dist file.
+-->
 <icecast>
     <limits>
         <sources>2</sources>
