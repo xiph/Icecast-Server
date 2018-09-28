@@ -47,4 +47,7 @@
     <security>
         <chroot>0</chroot>
     </security>
+    <http-headers>
+        <header name="Access-Control-Allow-Origin" value="*" />
+    </http-headers>
 </icecast>
