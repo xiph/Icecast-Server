@@ -113,18 +113,43 @@
          The default is false -->
     <!--<relays-on-demand>true</relays-on-demand>-->
 
+    <!-- Basic relay with one upstream server -->
     <!--
     <relay>
-        <server>127.0.0.1</server>
-        <port>8080</port>
-        <mount>/example.ogg</mount>
         <local-mount>/different.ogg</local-mount>
         <on-demand>false</on-demand>
 
-        <relay-shoutcast-metadata>false</relay-shoutcast-metadata>
+        <upstream type="normal">
+            <server>127.0.0.1</server>
+            <port>8080</port>
+            <mount>/example.ogg</mount>
+            <relay-shoutcast-metadata>false</relay-shoutcast-metadata>
+        </upstream>
     </relay>
     -->
 
+    <!-- Relay with multiple upstream servers and default settings -->
+    <!--
+    <relay>
+        <local-mount>/different.ogg</local-mount>
+        <on-demand>false</on-demand>
+
+        <upstream type="normal">
+            <server>master0.example.org</server>
+        </upstream>
+        <upstream type="normal">
+            <server>master1.example.org</server>
+        </upstream>
+        <upstream type="normal">
+            <server>master2.example.org</server>
+            <port>8080</port>
+        </upstream>
+        <upstream type="default">
+            <port>8000</port>
+            <mount>/example.ogg</mount>
+        </upstream>
+    </relay>
+    -->
 
     <!-- Mountpoints
          Only define <mount> sections if you want to use advanced options,
@@ -190,6 +215,20 @@
             <option name="headers"         value="x-pragma,x-token"/>
             <option name="header_prefix"   value="ClientHeader."/>
         </authentication>
+    </mount>
+    -->
+
+    <!-- Relays can also go into a <mount type="normal"> section -->
+    <!--
+    <mount type="normal">
+        <mount-name>/auth_example.ogg</mount-name>
+        <relay>
+            <upstream type="normal">
+                <server>master0.example.org</server>
+                <port>8000</port>
+                <mount>/example.ogg</mount>
+            </upstream>
+        </relay>
     </mount>
     -->
 
