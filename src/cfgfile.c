@@ -2286,7 +2286,13 @@ static void _parse_logging(xmlDocPtr        doc,
            if (tmp)
                xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("logarchive")) == 0) {
-            __read_int(doc, node, &configuration->logarchive, "<logarchive> must not be empty.");
+            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            configuration->logarchive = util_str_to_bool(tmp);
+            if (tmp) {
+                xmlFree(tmp);
+            } else {
+                ICECAST_LOG_WARN("<logarchive> must not be empty.");
+            }
         }
     } while ((node = node->next));
 }
