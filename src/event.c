@@ -209,6 +209,8 @@ void event_initialise(void) {
 }
 
 void event_shutdown(void) {
+    event_t *event_queue_to_free = NULL;
+
     /* stop thread */
     if (!event_running)
         return;
@@ -223,9 +225,11 @@ void event_shutdown(void) {
     /* shutdown everything */
     thread_mutex_lock(&event_lock);
     event_thread = NULL;
-    event_release(event_queue);
+    event_queue_to_free = event_queue;
     event_queue = NULL;
     thread_mutex_unlock(&event_lock);
+
+    event_release(event_queue_to_free);
 
     /* destry mutex */
     thread_mutex_destroy(&event_lock);
