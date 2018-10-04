@@ -1347,6 +1347,7 @@ static void _handle_authentication_global(client_t *client, void *userdata, auth
     client->authstack = NULL;
 
     if (result != AUTH_NOMATCH &&
+        /* Allow global admins access to all mount points */
         !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
         _handle_authed_client(client, userdata, result);
         return;
@@ -1404,6 +1405,7 @@ static void _handle_authentication_mount_default(client_t *client, void *userdat
     client->authstack = NULL;
 
     if (result != AUTH_NOMATCH &&
+        /* Allow global admins access to all mount points */
         !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
         _handle_authed_client(client, userdata, result);
         return;
@@ -1418,8 +1420,7 @@ static void _handle_authentication_mount_normal(client_t *client, void *userdata
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
-    if (result != AUTH_NOMATCH &&
-        !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
+    if (result != AUTH_NOMATCH) {
         _handle_authed_client(client, userdata, result);
         return;
     }
