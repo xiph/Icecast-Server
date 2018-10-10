@@ -17,6 +17,8 @@
 #include <config.h>
 #endif
 
+#include <stdarg.h>
+
 #include "common/thread/thread.h"
 
 #include "icecasttypes.h"
@@ -69,6 +71,9 @@ static const refobject_type_t refobject_typedef__ ## type = \
 #define REFOBJECT_DEFINE_TYPE(type, ...)            REFOBJECT_DEFINE_TYPE__RAW(type, ## __VA_ARGS__); const refobject_type_t * refobject_type__ ## type = &refobject_typedef__ ## type
 #define REFOBJECT_DEFINE_PRIVATE_TYPE(type, ...)    REFOBJECT_DEFINE_TYPE__RAW(type, ## __VA_ARGS__); static const refobject_type_t * refobject_type__ ## type = &refobject_typedef__ ## type
 #define REFOBJECT_DEFINE_TYPE_FREE(cb)              .type_freecb = (cb)
+#define REFOBJECT_DEFINE_TYPE_NEW(cb)               .type_newcb = (cb)
+
+typedef struct refobject_type_tag refobject_type_t;
 
 /* Type used for callback called then the object is actually freed
  * That is once all references to it are gone.
@@ -80,11 +85,23 @@ static const refobject_type_t refobject_typedef__ ## type = \
  */
 typedef void (*refobject_free_t)(refobject_t self, void **userdata);
 
+/* Type used for callback called then the object is created
+ * using the generic refobject_new().
+ *
+ * Additional parameters passed to refobject_new() are passed
+ * in the list ap. All limitations of <stdarg.h> apply.
+ *
+ * This function must return zero in case of success and
+ * non-zero in case of error. In case of error refobject_unref()
+ * is called internally to clear the object.
+ */
+typedef int (*refobject_new_t)(refobject_t self, const refobject_type_t *type, va_list ap);
+
 /* Meta type used to defined types.
  * DO NOT use any of the members in here directly!
  */
 
-typedef struct {
+struct refobject_type_tag {
     /* Size of this control structure */
     size_t              control_length;
     /* ABI version of this structure */
@@ -96,7 +113,9 @@ typedef struct {
     const char *        type_name;
     /* Callback to be called on final free() */
     refobject_free_t    type_freecb;
-} refobject_type_t;
+    /* Callback to be callback by refobject_new() */
+    refobject_new_t     type_newcb;
+};
 
 /* Only defined here as the size must be publically known.
  * DO NOT use any of the members in here directly!
@@ -124,6 +143,9 @@ REFOBJECT_FORWARD_TYPE(refobject_base_t);
  */
 #define         refobject_new__new(type, userdata, name, associated) REFOBJECT_TO_TYPE(refobject_new__real((refobject_type__ ## type), (userdata), (name), (associated)), type*)
 refobject_t     refobject_new__real(const refobject_type_t *type, void *userdata, const char *name, refobject_t associated);
+#define         refobject_new(type, ...) REFOBJECT_TO_TYPE(refobject_new__simple((refobject_type__ ## type), NULL, NULL, REFOBJECT_NULL, ## __VA_ARGS__), type*)
+#define         refobject_new_ext(type, userdata, name, associated, ...) REFOBJECT_TO_TYPE(refobject_new__simple((refobject_type__ ## type), (userdata), (name), (associated), ## __VA_ARGS__), type*)
+refobject_t     refobject_new__simple(const refobject_type_t *type, void *userdata, const char *name, refobject_t associated, ...);
 
 /* This increases the reference counter of the object */
 int             refobject_ref(refobject_t self);

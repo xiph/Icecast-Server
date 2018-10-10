@@ -16,6 +16,12 @@
 
 #include "../refobject.h"
 
+static int return_zero(refobject_t self, const refobject_type_t *type, va_list ap)
+{
+    (void)self, (void)type, (void)ap;
+    return 0;
+}
+
 static void test_ptr(void)
 {
     refobject_t a;
@@ -31,7 +37,7 @@ static void test_create_ref_unref(void)
 {
     refobject_base_t *a;
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
     ctest_test("referenced", refobject_ref(a) == 0);
@@ -44,7 +50,7 @@ static void test_typename(void)
     refobject_base_t *a;
     const char *typename;
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
     typename = REFOBJECT_GET_TYPENAME(a);
@@ -66,7 +72,7 @@ static void test_valid(void)
 
     ctest_test("NULL is not valid", !REFOBJECT_IS_VALID(REFOBJECT_NULL, refobject_base_t));
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
     ctest_test("is valid", REFOBJECT_IS_VALID(a, refobject_base_t));
@@ -83,39 +89,47 @@ static void test_sizes(void)
         refobject_base_t __base;
         char padding[1024];
     } ctest_test_type_a_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_a_t);
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_a_t,
+            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            );
 
     typedef struct {
         refobject_base_t __base;
         char padding[131072];
     } ctest_test_type_b_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_b_t);
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_b_t,
+            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            );
 
     typedef struct {
         char padding[sizeof(refobject_base_t) - 1];
     } ctest_test_type_c_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_c_t);
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_c_t,
+            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            );
 
     typedef struct {
         char padding[0];
     } ctest_test_type_d_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_d_t);
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_d_t,
+            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            );
 
-    a = REFOBJECT_FROM_TYPE(refobject_new__new(ctest_test_type_a_t, NULL, NULL, REFOBJECT_NULL));
+    a = REFOBJECT_FROM_TYPE(refobject_new(ctest_test_type_a_t));
     ctest_test("refobject created with size=sizeof(refobject_base_t) + 1024", !REFOBJECT_IS_NULL(a));
     ctest_test("un-referenced", refobject_unref(a) == 0);
 
-    a = REFOBJECT_FROM_TYPE(refobject_new__new(ctest_test_type_b_t, NULL, NULL, REFOBJECT_NULL));
+    a = REFOBJECT_FROM_TYPE(refobject_new(ctest_test_type_b_t));
     ctest_test("refobject created with size=sizeof(refobject_base_t) + 131072", !REFOBJECT_IS_NULL(a));
     ctest_test("un-referenced", refobject_unref(a) == 0);
 
-    a = REFOBJECT_FROM_TYPE(refobject_new__new(ctest_test_type_c_t, NULL, NULL, REFOBJECT_NULL));
+    a = REFOBJECT_FROM_TYPE(refobject_new(ctest_test_type_c_t));
     ctest_test("refobject created with size=sizeof(refobject_base_t) - 1", REFOBJECT_IS_NULL(a));
     if (!REFOBJECT_IS_NULL(a)) {
         ctest_test("un-referenced", refobject_unref(a) == 0);
     }
 
-    a = REFOBJECT_FROM_TYPE(refobject_new__new(ctest_test_type_d_t, NULL, NULL, REFOBJECT_NULL));
+    a = REFOBJECT_FROM_TYPE(refobject_new(ctest_test_type_d_t));
     ctest_test("refobject created with size=0", REFOBJECT_IS_NULL(a));
     if (!REFOBJECT_IS_NULL(a)) {
         ctest_test("un-referenced", refobject_unref(a) == 0);
@@ -128,7 +142,7 @@ static void test_name(void)
     const char *name = "test object name";
     const char *ret;
 
-    a = refobject_new__new(refobject_base_t, NULL, name, REFOBJECT_NULL);
+    a = refobject_new_ext(refobject_base_t, NULL, name, REFOBJECT_NULL);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
     ret = refobject_get_name(a);
@@ -145,7 +159,7 @@ static void test_userdata(void)
     void *userdata = &tmp;
     void *ret;
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
     ret = refobject_get_userdata(a);
@@ -159,7 +173,7 @@ static void test_userdata(void)
 
     ctest_test("un-referenced", refobject_unref(a) == 0);
 
-    a = refobject_new__new(refobject_base_t, userdata, NULL, REFOBJECT_NULL);
+    a = refobject_new_ext(refobject_base_t, userdata, NULL, REFOBJECT_NULL);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
     ret = refobject_get_userdata(a);
     ctest_test("get userdata", ret == userdata);
@@ -173,10 +187,10 @@ static void test_associated(void)
 {
     refobject_base_t *a, *b;
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
-    b = refobject_new__new(refobject_base_t, NULL, NULL, a);
+    b = refobject_new_ext(refobject_base_t, NULL, NULL, a);
     ctest_test("refobject created with associated", !REFOBJECT_IS_NULL(b));
 
     ctest_test("un-referenced (1 of 2)", refobject_unref(b) == 0);
@@ -197,17 +211,18 @@ static void test_freecb(void)
     ctest_test_type_t *a;
 
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_t,
-            REFOBJECT_DEFINE_TYPE_FREE(test_freecb__freecb)
+            REFOBJECT_DEFINE_TYPE_FREE(test_freecb__freecb),
+            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
             );
 
     test_freecb__called = 0;
-    a = refobject_new__new(ctest_test_type_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(ctest_test_type_t);
     ctest_test("refobject created", a != NULL);
     ctest_test("un-referenced", refobject_unref(REFOBJECT_FROM_TYPE(a)) == 0);
     ctest_test("freecb called", test_freecb__called == 1);
 
     test_freecb__called = 0;
-    a = refobject_new__new(ctest_test_type_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(ctest_test_type_t);
     ctest_test("refobject created", a != NULL);
     ctest_test("referenced", refobject_ref(REFOBJECT_FROM_TYPE(a)) == 0);
     ctest_test("freecb uncalled", test_freecb__called == 0);

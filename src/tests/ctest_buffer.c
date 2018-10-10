@@ -83,7 +83,7 @@ static void test_associated(void)
     refobject_base_t *a;
     buffer_t *b;
 
-    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
 

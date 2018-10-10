@@ -19,7 +19,15 @@
 
 #define TO_BASE(x) REFOBJECT_TO_TYPE((x), refobject_base_t *)
 
-REFOBJECT_DEFINE_TYPE(refobject_base_t);
+static int return_zero(refobject_t self, const refobject_type_t *type, va_list ap)
+{
+    (void)self, (void)type, (void)ap;
+    return 0;
+}
+
+REFOBJECT_DEFINE_TYPE(refobject_base_t,
+        REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+        );
 
 static inline int check_type(const refobject_type_t *type)
 {
@@ -62,6 +70,34 @@ refobject_t     refobject_new__real(const refobject_type_t *type, void *userdata
     }
 
     return (refobject_t)ret;
+}
+
+refobject_t     refobject_new__simple(const refobject_type_t *type, void *userdata, const char *name, refobject_t associated, ...)
+{
+    refobject_t ret;
+    int res;
+    va_list ap;
+
+    if (!check_type(type))
+        return REFOBJECT_NULL;
+
+    if (!type->type_newcb)
+        return REFOBJECT_NULL;
+
+    ret = refobject_new__real(type, userdata, name, associated);
+    if (REFOBJECT_IS_NULL(ret))
+        return REFOBJECT_NULL;
+
+    va_start(ap, associated);
+    res = type->type_newcb(ret, type, ap);
+    va_end(ap);
+
+    if (res != 0) {
+        refobject_unref(ret);
+        return REFOBJECT_NULL;
+    }
+
+    return ret;
 }
 
 int             refobject_ref(refobject_t self)
