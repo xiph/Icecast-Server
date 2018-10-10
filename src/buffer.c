@@ -37,15 +37,16 @@ static void __free(refobject_t self, void **userdata)
     free(buffer->buffer);
 }
 
+REFOBJECT_DEFINE_TYPE(buffer_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__free)
+        );
+
 buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, refobject_t associated)
 {
-    buffer_t *buffer = NULL;
-    refobject_t refobject = refobject_new(sizeof(*buffer), __free, userdata, name, associated);
+    buffer_t *buffer = refobject_new__new(buffer_t, userdata, name, associated);
 
-    if (REFOBJECT_IS_NULL(refobject))
+    if (!buffer)
         return NULL;
-
-    buffer = REFOBJECT_TO_TYPE(refobject, buffer_t *);
 
     if (preallocation > 0)
         buffer_preallocate(buffer, preallocation);

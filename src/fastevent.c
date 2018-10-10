@@ -26,19 +26,19 @@
 
 #ifdef FASTEVENT_ENABLED
 
-struct registration {
+typedef struct {
     refobject_base_t __base;
 
     fastevent_type_t type;
     fastevent_cb_t cb;
     fastevent_freecb_t freecb;
     void *userdata;
-};
+} fastevent_registration_t;
 
 struct eventrow {
     size_t length;
     size_t used;
-    struct registration **registrations;
+    fastevent_registration_t **registrations;
 };
 
 static struct eventrow fastevent_registrations[FASTEVENT_TYPE__END];
@@ -54,9 +54,9 @@ static inline struct eventrow * __get_row(fastevent_type_t type)
     return &(fastevent_registrations[idx]);
 }
 
-static int __add_to_row(struct eventrow * row, struct registration *registration)
+static int __add_to_row(struct eventrow * row, fastevent_registration_t *registration)
 {
-    struct registration **n;
+    fastevent_registration_t **n;
 
     if (row == NULL)
         return -1;
@@ -77,7 +77,7 @@ static int __add_to_row(struct eventrow * row, struct registration *registration
     return 0;
 }
 
-static int __remove_from_row(struct eventrow * row, struct registration *registration)
+static int __remove_from_row(struct eventrow * row, fastevent_registration_t *registration)
 {
     size_t i;
 
@@ -98,7 +98,7 @@ static int __remove_from_row(struct eventrow * row, struct registration *registr
 
 static void __unregister(refobject_t self, void **userdata)
 {
-    struct registration *registration = REFOBJECT_TO_TYPE(self, struct registration *);
+    fastevent_registration_t *registration = REFOBJECT_TO_TYPE(self, fastevent_registration_t *);
     struct eventrow * row;
 
     (void)userdata;
@@ -143,11 +143,14 @@ int fastevent_shutdown(void)
     return 0;
 }
 
+REFOBJECT_DEFINE_PRIVATE_TYPE(fastevent_registration_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__unregister)
+        );
+
 refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata)
 {
     struct eventrow * row;
-    struct registration *registration;
-    refobject_t ret;
+    fastevent_registration_t *registration;
 
     if (cb == NULL)
         return REFOBJECT_NULL;
@@ -160,14 +163,12 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
         return REFOBJECT_NULL;
     }
 
-    ret = refobject_new(sizeof(struct registration), __unregister, NULL, NULL, NULL);
+    registration = refobject_new__new(fastevent_registration_t, NULL, NULL, NULL);
 
-    if (REFOBJECT_IS_NULL(ret)) {
+    if (!registration) {
         thread_rwlock_unlock(&fastevent_lock);
         return REFOBJECT_NULL;
     }
-
-    registration = REFOBJECT_TO_TYPE(ret, struct registration *);
 
     registration->type = type;
     registration->cb = cb;
@@ -176,12 +177,12 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
 
     if (__add_to_row(row, registration) != 0) {
         thread_rwlock_unlock(&fastevent_lock);
-        refobject_unref(ret);
+        refobject_unref((refobject_base_t*)registration);
         return REFOBJECT_NULL;
     }
 
     thread_rwlock_unlock(&fastevent_lock);
-    return ret;
+    return (refobject_t)(refobject_base_t*)registration;
 }
 
 void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, ...)

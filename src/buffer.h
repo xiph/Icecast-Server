@@ -28,6 +28,8 @@
  * This set of functions is intentinally not thread safe.
  */
 
+REFOBJECT_FORWARD_TYPE(buffer_t);
+
 /* This creates a new buffer object.
  * Parameters:
  *  preallocation

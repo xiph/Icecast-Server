@@ -236,6 +236,10 @@ static void __report_free(refobject_t self, void **userdata)
     refobject_unref(report->root);
 }
 
+REFOBJECT_DEFINE_TYPE(reportxml_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__report_free)
+        );
+
 static reportxml_t *    reportxml_new_with_root(reportxml_node_t *root)
 {
     reportxml_t *ret;
@@ -243,7 +247,7 @@ static reportxml_t *    reportxml_new_with_root(reportxml_node_t *root)
     if (!root)
         return NULL;
 
-    ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(reportxml_t), __report_free, NULL, NULL, NULL), reportxml_t *);
+    ret = refobject_new__new(reportxml_t, NULL, NULL, NULL);
     ret->root = root;
 
     return ret;
@@ -368,6 +372,10 @@ static void __report_node_free(refobject_t self, void **userdata)
     free(node->xml_childs);
 }
 
+REFOBJECT_DEFINE_TYPE(reportxml_node_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__report_node_free)
+        );
+
 reportxml_node_t *      reportxml_node_new(reportxml_node_type_t type, const char *id, const char *definition, const char *akindof)
 {
     reportxml_node_t *ret;
@@ -377,7 +385,7 @@ reportxml_node_t *      reportxml_node_new(reportxml_node_type_t type, const cha
     if (!nodedef)
         return NULL;
 
-    ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(reportxml_node_t), __report_node_free, NULL, NULL, NULL), reportxml_node_t *);
+    ret = refobject_new__new(reportxml_node_t, NULL, NULL, NULL);
 
     if (ret == NULL)
         return NULL;
@@ -975,9 +983,13 @@ static int __compare_definitions(void *arg, void *a, void *b)
     return ret;
 }
 
+REFOBJECT_DEFINE_TYPE(reportxml_database_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__database_free)
+        );
+
 reportxml_database_t *  reportxml_database_new(void)
 {
-    reportxml_database_t *ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(reportxml_database_t), __database_free, NULL, NULL, NULL), reportxml_database_t *);
+    reportxml_database_t *ret = refobject_new__new(reportxml_database_t, NULL, NULL, NULL);
 
     if (!ret)
         return NULL;

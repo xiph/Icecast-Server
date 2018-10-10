@@ -15,6 +15,7 @@
 
 #include "icecasttypes.h"
 #include "compat.h"
+#include "refobject.h"
 
 /* XML Tag Types
  * While a hint of what the nodes are used for is given, see the specification for more details.
@@ -60,10 +61,12 @@ typedef enum {
     REPORTXML_NODE_TYPE_EXTENSION
 } reportxml_node_type_t;
 
+REFOBJECT_FORWARD_TYPE(reportxml_t);
+REFOBJECT_FORWARD_TYPE(reportxml_node_t);
+REFOBJECT_FORWARD_TYPE(reportxml_database_t);
 
 /* ---[ Document level ]--- */
 /* The document object is NOT thread safe. */
-
 
 /* This creates a new, empty report XML document */
 reportxml_t *           reportxml_new(void);

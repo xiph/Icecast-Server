@@ -150,9 +150,13 @@ static void __listensocket_container_free(refobject_t self, void **userdata)
     thread_mutex_destroy(&container->lock);
 }
 
+REFOBJECT_DEFINE_TYPE(listensocket_container_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_container_free)
+        );
+
 listensocket_container_t *  listensocket_container_new(void)
 {
-    listensocket_container_t *self = REFOBJECT_TO_TYPE(refobject_new(sizeof(listensocket_container_t), __listensocket_container_free, NULL, NULL, NULL), listensocket_container_t *);
+    listensocket_container_t *self = refobject_new__new(listensocket_container_t, NULL, NULL, NULL);
     if (!self)
         return NULL;
 
@@ -527,13 +531,17 @@ static void __listensocket_free(refobject_t self, void **userdata)
     thread_mutex_destroy(&listensocket->lock);
 }
 
+REFOBJECT_DEFINE_TYPE(listensocket_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_free)
+        );
+
 static listensocket_t * listensocket_new(const listener_t *listener) {
     listensocket_t *self;
 
     if (listener == NULL)
         return NULL;
 
-    self = REFOBJECT_TO_TYPE(refobject_new(sizeof(listensocket_t), __listensocket_free, NULL, NULL, NULL), listensocket_t *);
+    self = refobject_new__new(listensocket_t, NULL, NULL, NULL);
     if (!self)
         return NULL;
 

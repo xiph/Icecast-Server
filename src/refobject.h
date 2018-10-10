@@ -46,6 +46,18 @@
 #define REFOBJECT_TO_TYPE(x,y)  ((y)(x))
 #endif
 
+#define REFOBJECT_CONTROL_VERSION           0
+#define REFOBJECT_FORWARD_TYPE(type)        extern const refobject_type_t refobject_type__ ## type;
+#define REFOBJECT_DEFINE_TYPE(type, extra)  const refobject_type_t refobject_type__ ## type = { \
+    .control_length = sizeof(refobject_type_t), \
+    .control_version = REFOBJECT_CONTROL_VERSION, \
+    .type_length = sizeof(type), \
+    .type_name = # type, \
+    extra \
+}
+#define REFOBJECT_DEFINE_PRIVATE_TYPE(type, extra) static REFOBJECT_DEFINE_TYPE(type, extra)
+#define REFOBJECT_DEFINE_TYPE_FREE(cb)      .type_freecb = (cb)
+
 /* Type used for callback called then the object is actually freed
  * That is once all references to it are gone.
  *
@@ -56,17 +68,30 @@
  */
 typedef void (*refobject_free_t)(refobject_t self, void **userdata);
 
+/* Meta type used to defined types.
+ */
+
+typedef struct {
+    size_t              control_length;
+    int                 control_version;
+    size_t              type_length;
+    const char *        type_name;
+    refobject_free_t    type_freecb;
+} refobject_type_t;
+
 /* Only defined here as the size must be publically known.
  * DO NOT use any of the members in here directly!
  */
 struct refobject_base_tag {
+    const refobject_type_t* type;
     size_t refc;
     mutex_t lock;
     void *userdata;
-    refobject_free_t freecb;
     char *name;
     refobject_t associated;
 };
+
+REFOBJECT_FORWARD_TYPE(refobject_base_t);
 
 /* Create a new refobject
  * The total length of the new object is given by len (see malloc(3)),
@@ -78,7 +103,8 @@ struct refobject_base_tag {
  * All parameters beside len are optional and can be NULL/REFOBJECT_NULL.
  * If no freecb is given the userdata is freed (see refobject_free_t above).
  */
-refobject_t     refobject_new(size_t len, refobject_free_t freecb, void *userdata, const char *name, refobject_t associated);
+#define         refobject_new__new(type, userdata, name, associated) REFOBJECT_TO_TYPE(refobject_new__real(&(refobject_type__ ## type), (userdata), (name), (associated)), type*)
+refobject_t     refobject_new__real(const refobject_type_t *type, void *userdata, const char *name, refobject_t associated);
 
 /* This increases the reference counter of the object */
 int             refobject_ref(refobject_t self);
