@@ -1703,7 +1703,7 @@ void connection_setup_sockets (ice_config_t *config)
         allowed_ip = matchfile_new(config->allowfile);
     }
 
-    global.listensockets = listensocket_container_new();
+    global.listensockets = refobject_new(listensocket_container_t);
     listensocket_container_configure(global.listensockets, config);
 
     global_unlock();
