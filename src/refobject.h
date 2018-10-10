@@ -53,19 +53,22 @@
 #define REFOBJECT_GET_TYPE(x)       (REFOBJECT_GET_BASE((x)) == NULL ? NULL : REFOBJECT_GET_BASE((x))->type)
 #define REFOBJECT_GET_TYPENAME(x)   (REFOBJECT_GET_TYPE((x)) == NULL ? NULL : REFOBJECT_GET_TYPE((x))->type_name)
 
-#define REFOBJECT_IS_VALID(x,type)  (!REFOBJECT_IS_NULL((x)) && REFOBJECT_GET_TYPE((x)) == &(refobject_type__ ## type))
+#define REFOBJECT_IS_VALID(x,type)  (!REFOBJECT_IS_NULL((x)) && REFOBJECT_GET_TYPE((x)) == (refobject_type__ ## type))
 
-#define REFOBJECT_CONTROL_VERSION           0
-#define REFOBJECT_FORWARD_TYPE(type)        extern const refobject_type_t refobject_type__ ## type;
-#define REFOBJECT_DEFINE_TYPE(type, extra)  const refobject_type_t refobject_type__ ## type = { \
+#define REFOBJECT_CONTROL_VERSION                   1
+#define REFOBJECT_FORWARD_TYPE(type)                extern const refobject_type_t * refobject_type__ ## type;
+#define REFOBJECT_DEFINE_TYPE__RAW(type, ...)       \
+static const refobject_type_t refobject_typedef__ ## type = \
+{ \
     .control_length = sizeof(refobject_type_t), \
     .control_version = REFOBJECT_CONTROL_VERSION, \
     .type_length = sizeof(type), \
-    .type_name = # type, \
-    extra \
+    .type_name = # type \
+    , ## __VA_ARGS__ \
 }
-#define REFOBJECT_DEFINE_PRIVATE_TYPE(type, extra) static REFOBJECT_DEFINE_TYPE(type, extra)
-#define REFOBJECT_DEFINE_TYPE_FREE(cb)      .type_freecb = (cb)
+#define REFOBJECT_DEFINE_TYPE(type, ...)            REFOBJECT_DEFINE_TYPE__RAW(type, ## __VA_ARGS__); const refobject_type_t * refobject_type__ ## type = &refobject_typedef__ ## type
+#define REFOBJECT_DEFINE_PRIVATE_TYPE(type, ...)    REFOBJECT_DEFINE_TYPE__RAW(type, ## __VA_ARGS__); static const refobject_type_t * refobject_type__ ## type = &refobject_typedef__ ## type
+#define REFOBJECT_DEFINE_TYPE_FREE(cb)              .type_freecb = (cb)
 
 /* Type used for callback called then the object is actually freed
  * That is once all references to it are gone.
@@ -119,7 +122,7 @@ REFOBJECT_FORWARD_TYPE(refobject_base_t);
  * All parameters beside len are optional and can be NULL/REFOBJECT_NULL.
  * If no freecb is given the userdata is freed (see refobject_free_t above).
  */
-#define         refobject_new__new(type, userdata, name, associated) REFOBJECT_TO_TYPE(refobject_new__real(&(refobject_type__ ## type), (userdata), (name), (associated)), type*)
+#define         refobject_new__new(type, userdata, name, associated) REFOBJECT_TO_TYPE(refobject_new__real((refobject_type__ ## type), (userdata), (name), (associated)), type*)
 refobject_t     refobject_new__real(const refobject_type_t *type, void *userdata, const char *name, refobject_t associated);
 
 /* This increases the reference counter of the object */
