@@ -72,8 +72,10 @@ static const refobject_type_t refobject_typedef__ ## type = \
 #define REFOBJECT_DEFINE_PRIVATE_TYPE(type, ...)    REFOBJECT_DEFINE_TYPE__RAW(type, ## __VA_ARGS__); static const refobject_type_t * refobject_type__ ## type = &refobject_typedef__ ## type
 #define REFOBJECT_DEFINE_TYPE_FREE(cb)              .type_freecb = (cb)
 #define REFOBJECT_DEFINE_TYPE_NEW(cb)               .type_newcb = (cb)
+#define REFOBJECT_DEFINE_TYPE_NEW_NOOP()            .type_newcb = refobject_new__return_zero
 
 typedef struct refobject_type_tag refobject_type_t;
+int refobject_new__return_zero(refobject_t self, const refobject_type_t *type, va_list ap);
 
 /* Type used for callback called then the object is actually freed
  * That is once all references to it are gone.

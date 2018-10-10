@@ -19,14 +19,14 @@
 
 #define TO_BASE(x) REFOBJECT_TO_TYPE((x), refobject_base_t *)
 
-static int return_zero(refobject_t self, const refobject_type_t *type, va_list ap)
+int refobject_new__return_zero(refobject_t self, const refobject_type_t *type, va_list ap)
 {
     (void)self, (void)type, (void)ap;
     return 0;
 }
 
 REFOBJECT_DEFINE_TYPE(refobject_base_t,
-        REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+        REFOBJECT_DEFINE_TYPE_NEW_NOOP()
         );
 
 static inline int check_type(const refobject_type_t *type)

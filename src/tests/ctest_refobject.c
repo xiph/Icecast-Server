@@ -16,12 +16,6 @@
 
 #include "../refobject.h"
 
-static int return_zero(refobject_t self, const refobject_type_t *type, va_list ap)
-{
-    (void)self, (void)type, (void)ap;
-    return 0;
-}
-
 static void test_ptr(void)
 {
     refobject_t a;
@@ -90,7 +84,7 @@ static void test_sizes(void)
         char padding[1024];
     } ctest_test_type_a_t;
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_a_t,
-            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            REFOBJECT_DEFINE_TYPE_NEW_NOOP()
             );
 
     typedef struct {
@@ -98,21 +92,21 @@ static void test_sizes(void)
         char padding[131072];
     } ctest_test_type_b_t;
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_b_t,
-            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            REFOBJECT_DEFINE_TYPE_NEW_NOOP()
             );
 
     typedef struct {
         char padding[sizeof(refobject_base_t) - 1];
     } ctest_test_type_c_t;
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_c_t,
-            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            REFOBJECT_DEFINE_TYPE_NEW_NOOP()
             );
 
     typedef struct {
         char padding[0];
     } ctest_test_type_d_t;
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_d_t,
-            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            REFOBJECT_DEFINE_TYPE_NEW_NOOP()
             );
 
     a = REFOBJECT_FROM_TYPE(refobject_new(ctest_test_type_a_t));
@@ -212,7 +206,7 @@ static void test_freecb(void)
 
     REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_t,
             REFOBJECT_DEFINE_TYPE_FREE(test_freecb__freecb),
-            REFOBJECT_DEFINE_TYPE_NEW(return_zero)
+            REFOBJECT_DEFINE_TYPE_NEW_NOOP()
             );
 
     test_freecb__called = 0;
