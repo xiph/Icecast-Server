@@ -50,23 +50,21 @@ static void __module_container_free(refobject_t self, void **userdata)
     avl_tree_free(cont->module, (avl_free_key_fun_type)refobject_unref);
 }
 
-REFOBJECT_DEFINE_TYPE(module_container_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__module_container_free)
-        );
-
-module_container_t *    module_container_new(void)
+int __module_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
 {
-    module_container_t *ret = refobject_new__new(module_container_t, NULL, NULL, NULL);
-
-    if (!ret)
-        return NULL;
+    module_container_t *ret = REFOBJECT_TO_TYPE(self, module_container_t*);
 
     thread_mutex_create(&(ret->lock));
 
     ret->module = avl_tree_new(compare_refobject_t_name, NULL);
 
-    return ret;
+    return 0;
 }
+
+REFOBJECT_DEFINE_TYPE(module_container_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__module_container_free),
+        REFOBJECT_DEFINE_TYPE_NEW(__module_container_new)
+        );
 
 int                     module_container_add_module(module_container_t *self, module_t *module)
 {

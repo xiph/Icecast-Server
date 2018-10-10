@@ -25,7 +25,6 @@ typedef struct {
 REFOBJECT_FORWARD_TYPE(module_container_t);
 REFOBJECT_FORWARD_TYPE(module_t);
 
-module_container_t *            module_container_new(void);
 int                             module_container_add_module(module_container_t *self, module_t *module);
 int                             module_container_delete_module(module_container_t *self, const char *name);
 module_t *                      module_container_get_module(module_container_t *self, const char *name);
