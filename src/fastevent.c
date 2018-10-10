@@ -177,12 +177,12 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
 
     if (__add_to_row(row, registration) != 0) {
         thread_rwlock_unlock(&fastevent_lock);
-        refobject_unref((refobject_base_t*)registration);
+        refobject_unref(REFOBJECT_FROM_TYPE(registration));
         return REFOBJECT_NULL;
     }
 
     thread_rwlock_unlock(&fastevent_lock);
-    return (refobject_t)(refobject_base_t*)registration;
+    return REFOBJECT_FROM_TYPE(registration);
 }
 
 void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, ...)

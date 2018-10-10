@@ -46,6 +46,8 @@
 #define REFOBJECT_TO_TYPE(x,y)  ((y)(x))
 #endif
 
+#define REFOBJECT_FROM_TYPE(x)  ((refobject_t)(refobject_base_t*)(x))
+
 #define REFOBJECT_CONTROL_VERSION           0
 #define REFOBJECT_FORWARD_TYPE(type)        extern const refobject_type_t refobject_type__ ## type;
 #define REFOBJECT_DEFINE_TYPE(type, extra)  const refobject_type_t refobject_type__ ## type = { \
