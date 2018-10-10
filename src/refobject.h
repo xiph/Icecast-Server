@@ -78,13 +78,20 @@
 typedef void (*refobject_free_t)(refobject_t self, void **userdata);
 
 /* Meta type used to defined types.
+ * DO NOT use any of the members in here directly!
  */
 
 typedef struct {
+    /* Size of this control structure */
     size_t              control_length;
+    /* ABI version of this structure */
     int                 control_version;
+
+    /* Total length of the objects to be created */
     size_t              type_length;
+    /* Name of type */
     const char *        type_name;
+    /* Callback to be called on final free() */
     refobject_free_t    type_freecb;
 } refobject_type_t;
 
