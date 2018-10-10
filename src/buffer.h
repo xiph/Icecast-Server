@@ -39,7 +39,9 @@ REFOBJECT_FORWARD_TYPE(buffer_t);
  */
 buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, refobject_t associated);
 
-/* This creates a new buffer with defaults.
+/* Depreciated: This creates a new buffer with defaults.
+ * Do NOT use this. Use refobject_new(buffer_t)
+ *
  * This is the same as:
  *  buffer_new(-1, NULL, NULL, REFOBJECT_NULL)
  */

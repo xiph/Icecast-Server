@@ -38,12 +38,13 @@ static void __free(refobject_t self, void **userdata)
 }
 
 REFOBJECT_DEFINE_TYPE(buffer_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__free)
+        REFOBJECT_DEFINE_TYPE_FREE(__free),
+        REFOBJECT_DEFINE_TYPE_NEW_NOOP()
         );
 
 buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, refobject_t associated)
 {
-    buffer_t *buffer = refobject_new__new(buffer_t, userdata, name, associated);
+    buffer_t *buffer = refobject_new_ext(buffer_t, userdata, name, associated);
 
     if (!buffer)
         return NULL;
@@ -56,7 +57,7 @@ buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, 
 
 buffer_t *  buffer_new_simple(void)
 {
-    return buffer_new(-1, NULL, NULL, REFOBJECT_NULL);
+    return refobject_new(buffer_t);
 }
 
 void        buffer_preallocate(buffer_t *buffer, size_t request)
