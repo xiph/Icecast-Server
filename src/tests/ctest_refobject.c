@@ -39,6 +39,44 @@ static void test_create_ref_unref(void)
     ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
 }
 
+static void test_typename(void)
+{
+    refobject_base_t *a;
+    const char *typename;
+
+    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
+
+    typename = REFOBJECT_GET_TYPENAME(a);
+    ctest_test("got typename", typename != NULL);
+    ctest_test("typename matches", strcmp(typename, "refobject_base_t") == 0);
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
+static void test_valid(void)
+{
+    refobject_base_t *a;
+
+    typedef struct {
+        refobject_base_t __base;
+    } ctest_test_type_t;
+
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_t,
+            REFOBJECT_DEFINE_TYPE_FREE(NULL)
+            );
+
+    ctest_test("NULL is not valid", !REFOBJECT_IS_VALID(REFOBJECT_NULL, refobject_base_t));
+
+    a = refobject_new__new(refobject_base_t, NULL, NULL, REFOBJECT_NULL);
+    ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
+
+    ctest_test("is valid", REFOBJECT_IS_VALID(a, refobject_base_t));
+    ctest_test("is valid as diffrent type", !REFOBJECT_IS_VALID(a, ctest_test_type_t));
+
+    ctest_test("un-referenced", refobject_unref(a) == 0);
+}
+
 static void test_sizes(void)
 {
     refobject_t a;
@@ -201,6 +239,9 @@ int main (void)
     }
 
     test_create_ref_unref();
+
+    test_typename();
+    test_valid();
 
     test_sizes();
 

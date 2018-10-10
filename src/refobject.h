@@ -38,15 +38,22 @@
  */
 #ifdef HAVE_TYPE_ATTRIBUTE_TRANSPARENT_UNION
 #define REFOBJECT_NULL          ((refobject_t)(refobject_base_t*)NULL)
+#define REFOBJECT_GET_BASE(x)   (((refobject_t)(x)).refobject_base)
 #define REFOBJECT_IS_NULL(x)    (((refobject_t)(x)).refobject_base == NULL)
 #define REFOBJECT_TO_TYPE(x,y)  ((y)(((refobject_t)(x)).refobject_base))
 #else
 #define REFOBJECT_NULL          NULL
+#define REFOBJECT_GET_BASE(x)   ((refobject_base_t)(x))
 #define REFOBJECT_IS_NULL(x)    ((x) == NULL)
 #define REFOBJECT_TO_TYPE(x,y)  ((y)(x))
 #endif
 
 #define REFOBJECT_FROM_TYPE(x)  ((refobject_t)(refobject_base_t*)(x))
+
+#define REFOBJECT_GET_TYPE(x)       (REFOBJECT_GET_BASE((x)) == NULL ? NULL : REFOBJECT_GET_BASE((x))->type)
+#define REFOBJECT_GET_TYPENAME(x)   (REFOBJECT_GET_TYPE((x)) == NULL ? NULL : REFOBJECT_GET_TYPE((x))->type_name)
+
+#define REFOBJECT_IS_VALID(x,type)  (!REFOBJECT_IS_NULL((x)) && REFOBJECT_GET_TYPE((x)) == &(refobject_type__ ## type))
 
 #define REFOBJECT_CONTROL_VERSION           0
 #define REFOBJECT_FORWARD_TYPE(type)        extern const refobject_type_t refobject_type__ ## type;
