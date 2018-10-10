@@ -62,9 +62,7 @@ static void test_valid(void)
         refobject_base_t __base;
     } ctest_test_type_t;
 
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_t,
-            REFOBJECT_DEFINE_TYPE_FREE(NULL)
-            );
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_t);
 
     ctest_test("NULL is not valid", !REFOBJECT_IS_VALID(REFOBJECT_NULL, refobject_base_t));
 
@@ -85,31 +83,23 @@ static void test_sizes(void)
         refobject_base_t __base;
         char padding[1024];
     } ctest_test_type_a_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_a_t,
-            REFOBJECT_DEFINE_TYPE_FREE(NULL)
-            );
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_a_t);
 
     typedef struct {
         refobject_base_t __base;
         char padding[131072];
     } ctest_test_type_b_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_b_t,
-            REFOBJECT_DEFINE_TYPE_FREE(NULL)
-            );
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_b_t);
 
     typedef struct {
         char padding[sizeof(refobject_base_t) - 1];
     } ctest_test_type_c_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_c_t,
-            REFOBJECT_DEFINE_TYPE_FREE(NULL)
-            );
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_c_t);
 
     typedef struct {
         char padding[0];
     } ctest_test_type_d_t;
-    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_d_t,
-            REFOBJECT_DEFINE_TYPE_FREE(NULL)
-            );
+    REFOBJECT_DEFINE_PRIVATE_TYPE(ctest_test_type_d_t);
 
     a = REFOBJECT_FROM_TYPE(refobject_new__new(ctest_test_type_a_t, NULL, NULL, REFOBJECT_NULL));
     ctest_test("refobject created with size=sizeof(refobject_base_t) + 1024", !REFOBJECT_IS_NULL(a));

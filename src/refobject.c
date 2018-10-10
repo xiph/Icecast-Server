@@ -19,9 +19,7 @@
 
 #define TO_BASE(x) REFOBJECT_TO_TYPE((x), refobject_base_t *)
 
-REFOBJECT_DEFINE_TYPE(refobject_base_t,
-        REFOBJECT_DEFINE_TYPE_FREE(NULL)
-        );
+REFOBJECT_DEFINE_TYPE(refobject_base_t);
 
 static inline int check_type(const refobject_type_t *type)
 {
