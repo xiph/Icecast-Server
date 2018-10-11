@@ -25,7 +25,7 @@ static void test_create_ref_unref(void)
     ctest_test("buffer created", a != NULL);
     ctest_test("un-referenced", refobject_unref(a) == 0);
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
     ctest_test("un-referenced", refobject_unref(a) == 0);
 
@@ -80,10 +80,10 @@ static void test_userdata(void)
 
 static void test_associated(void)
 {
-    refobject_t a;
+    refobject_base_t *a;
     buffer_t *b;
 
-    a = refobject_new(sizeof(refobject_base_t), NULL, NULL, NULL, REFOBJECT_NULL);
+    a = refobject_new(refobject_base_t);
     ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
 
 
@@ -102,7 +102,7 @@ static void test_empty(void)
     const char *string;
     int ret;
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
 
     ret = buffer_get_data(a, &data, &length);
@@ -147,7 +147,7 @@ static void test_string(void)
     const char *string = NULL;
     int ret;
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
     ctest_test("pushed string", buffer_push_string(a, hw) == 0);
     ret = buffer_get_string(a, &string);
@@ -182,7 +182,7 @@ static void test_binary(void)
     size_t length;
     const void *data;
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
 
     ctest_test("pushed data pattern a", buffer_push_data(a, pattern_a, sizeof(pattern_a)) == 0);
@@ -238,7 +238,7 @@ static void test_shift(void)
     buffer_t *a;
     const char *pattern = "AABBBCC";
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
 
     ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
@@ -264,7 +264,7 @@ static void test_length(void)
     const char *match_b = "AABB";
     const char *match_c = "";
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
 
     ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
@@ -290,7 +290,7 @@ static void test_printf(void)
     const char *match_b = ":Hello World!:<-127 >";
     const char *match_c = ":Hello World!:<-127 >? +127?";
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer created", a != NULL);
 
     ctest_test("Set length to match pattern a", buffer_push_printf(a, ":%s:", str) == 0);
@@ -310,9 +310,9 @@ static void test_push_buffer(void)
     const char *pattern = "AABBBCC";
     const char *match_a = "AABBBCCAABBBCC";
 
-    a = buffer_new_simple();
+    a = refobject_new(buffer_t);
     ctest_test("buffer a created", a != NULL);
-    b = buffer_new_simple();
+    b = refobject_new(buffer_t);
     ctest_test("buffer b created", b != NULL);
 
     ctest_test("pushed string", buffer_push_string(a, pattern) == 0);

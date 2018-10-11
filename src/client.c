@@ -661,7 +661,7 @@ reportxml_t *client_get_reportxml(const char *state_definition, const char *stat
     if (!report) {
         reportxml_node_t *rootnode, *incidentnode, *statenode;
 
-        report = reportxml_new();
+        report = refobject_new(reportxml_t);
         rootnode = reportxml_get_root_node(report);
         incidentnode = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
         statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);

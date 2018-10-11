@@ -150,21 +150,24 @@ static void __listensocket_container_free(refobject_t self, void **userdata)
     thread_mutex_destroy(&container->lock);
 }
 
-listensocket_container_t *  listensocket_container_new(void)
+int __listensocket_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
 {
-    listensocket_container_t *self = REFOBJECT_TO_TYPE(refobject_new(sizeof(listensocket_container_t), __listensocket_container_free, NULL, NULL, NULL), listensocket_container_t *);
-    if (!self)
-        return NULL;
+    listensocket_container_t *ret = REFOBJECT_TO_TYPE(self, listensocket_container_t*);
 
-    self->sock = NULL;
-    self->sock_len = 0;
-    self->sockcount_cb = NULL;
-    self->sockcount_userdata = NULL;
+    ret->sock = NULL;
+    ret->sock_len = 0;
+    ret->sockcount_cb = NULL;
+    ret->sockcount_userdata = NULL;
 
-    thread_mutex_create(&self->lock);
+    thread_mutex_create(&ret->lock);
 
-    return self;
+    return 0;
 }
+
+REFOBJECT_DEFINE_TYPE(listensocket_container_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_container_free),
+        REFOBJECT_DEFINE_TYPE_NEW(__listensocket_container_new)
+        );
 
 static inline void __find_matching_entry(listensocket_container_t *self, const listener_t *listener, listensocket_t ***found, int **ref)
 {
@@ -527,13 +530,17 @@ static void __listensocket_free(refobject_t self, void **userdata)
     thread_mutex_destroy(&listensocket->lock);
 }
 
+REFOBJECT_DEFINE_TYPE(listensocket_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_free)
+        );
+
 static listensocket_t * listensocket_new(const listener_t *listener) {
     listensocket_t *self;
 
     if (listener == NULL)
         return NULL;
 
-    self = REFOBJECT_TO_TYPE(refobject_new(sizeof(listensocket_t), __listensocket_free, NULL, NULL, NULL), listensocket_t *);
+    self = refobject_new__new(listensocket_t, NULL, NULL, NULL);
     if (!self)
         return NULL;
 

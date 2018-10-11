@@ -50,19 +50,21 @@ static void __module_container_free(refobject_t self, void **userdata)
     avl_tree_free(cont->module, (avl_free_key_fun_type)refobject_unref);
 }
 
-module_container_t *    module_container_new(void)
+int __module_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
 {
-    module_container_t *ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(module_container_t), __module_container_free, NULL, NULL, NULL), module_container_t *);
-
-    if (!ret)
-        return NULL;
+    module_container_t *ret = REFOBJECT_TO_TYPE(self, module_container_t*);
 
     thread_mutex_create(&(ret->lock));
 
     ret->module = avl_tree_new(compare_refobject_t_name, NULL);
 
-    return ret;
+    return 0;
 }
+
+REFOBJECT_DEFINE_TYPE(module_container_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__module_container_free),
+        REFOBJECT_DEFINE_TYPE_NEW(__module_container_new)
+        );
 
 int                     module_container_add_module(module_container_t *self, module_t *module)
 {
@@ -101,13 +103,13 @@ int                     module_container_delete_module(module_container_t *self,
 
 module_t *              module_container_get_module(module_container_t *self, const char *name)
 {
-    refobject_t search;
+    refobject_base_t *search;
     module_t *ret;
 
     if (!self || !name)
         return NULL;
 
-    search = refobject_new(sizeof(refobject_base_t), NULL, NULL, name, NULL);
+    search = refobject_new__new(refobject_base_t, NULL, name, NULL);
 
     thread_mutex_lock(&(self->lock));
     if (avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
@@ -168,9 +170,13 @@ static void __module_free(refobject_t self, void **userdata)
     thread_mutex_destroy(&(mod->lock));
 }
 
+REFOBJECT_DEFINE_TYPE(module_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__module_free)
+        );
+
 module_t *              module_new(const char *name, module_setup_handler_t newcb, module_setup_handler_t freecb, void *userdata)
 {
-    module_t *ret = REFOBJECT_TO_TYPE(refobject_new(sizeof(module_t), __module_free, NULL, name, NULL), module_t *);
+    module_t *ret = refobject_new__new(module_t, NULL, name, NULL);
 
     if (!ret)
         return NULL;

@@ -12,6 +12,7 @@
 #include <libxml/tree.h>
 
 #include "icecasttypes.h"
+#include "refobject.h"
 
 typedef void (*module_client_handler_function_t)(module_t *self, client_t *client);
 typedef int  (*module_setup_handler_t)(module_t *self, void **userdata);
@@ -21,7 +22,9 @@ typedef struct {
     module_client_handler_function_t cb;
 } module_client_handler_t;
 
-module_container_t *            module_container_new(void);
+REFOBJECT_FORWARD_TYPE(module_container_t);
+REFOBJECT_FORWARD_TYPE(module_t);
+
 int                             module_container_add_module(module_container_t *self, module_t *module);
 int                             module_container_delete_module(module_container_t *self, const char *name);
 module_t *                      module_container_get_module(module_container_t *self, const char *name);

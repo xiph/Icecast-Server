@@ -15,7 +15,7 @@
 #endif
 
 #include <stdarg.h>
-#include <refobject.h>
+#include "refobject.h"
 
 typedef enum {
     FASTEVENT_TYPE_SLOWEVENT = 0,
