@@ -37,6 +37,15 @@
  *  as the operation is only defined for it's members.
  * REFOBJECT_TO_TYPE(type,x)
  *  This casts the refobject (x) to the type (type).
+ * REFOBJECT_FROM_TYPE(x)
+ *  Converts an object to a (refobject_t). This is the inverse of REFOBJECT_TO_TYPE().
+ * REFOBJECT_GET_TYPENAME(x)
+ *  Get the name of the type of the object.
+ * REFOBJECT_IS_VALID(x,type)
+ *  This returns true if x is not NULL and of type type.
+ * REFOBJECT_GET_BASE(x)
+ * REFOBJECT_GET_TYPE(x)
+ *  Not to be used by the user.
  */
 #ifdef HAVE_TYPE_ATTRIBUTE_TRANSPARENT_UNION
 #define REFOBJECT_NULL          ((refobject_t)(refobject_base_t*)NULL)
@@ -57,6 +66,33 @@
 
 #define REFOBJECT_IS_VALID(x,type)  (!REFOBJECT_IS_NULL((x)) && REFOBJECT_GET_TYPE((x)) == (refobject_type__ ## type))
 
+/* The following macros are used to define types.
+ *
+ * REFOBJECT_FORWARD_TYPE(type)
+ *  Adds a forward decleration for the type. This is useful for non private types.
+ * REFOBJECT_DEFINE_TYPE(type,extras...)
+ *  This defines a public type. One or more of the EXTRA macros be used.
+ * REFOBJECT_DEFINE_PRIVATE_TYPE(type,extras...)
+ *  Same as REFOBJECT_DEFINE_TYPE() but defines private type.
+ *
+ * EXTRA Marcos:
+ * REFOBJECT_DEFINE_TYPE_FREE(cb)
+ *  This defines a callback to be called when the object is freed.
+ *  cb must be of type refobject_free_t.
+ * REFOBJECT_DEFINE_TYPE_NEW(cb)
+ *  This defines a callback to be called when a new object is created.
+ *  cb must be of type refobject_new_t.
+ * REFOBJECT_DEFINE_TYPE_NEW_NOOP()
+ *  This installs a dummy callback for creation. This allows the type
+ *  to be created using refobject_new(type) as with REFOBJECT_DEFINE_TYPE_NEW().
+ *  This is useful for types that do not need to be initialized more than what
+ *  refobject_new() already does.
+ *
+ * Other Macros:
+ * REFOBJECT_CONTROL_VERSION
+ * REFOBJECT_DEFINE_TYPE__RAW()
+ *  Not to be used by the user.
+ */
 #define REFOBJECT_CONTROL_VERSION                   1
 #define REFOBJECT_FORWARD_TYPE(type)                extern const refobject_type_t * refobject_type__ ## type;
 #define REFOBJECT_DEFINE_TYPE__RAW(type, ...)       \
