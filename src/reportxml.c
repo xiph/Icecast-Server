@@ -236,8 +236,22 @@ static void __report_free(refobject_t self, void **userdata)
     refobject_unref(report->root);
 }
 
+static int __report_new(refobject_t self, const refobject_type_t *type, va_list ap)
+{
+    reportxml_t *ret = REFOBJECT_TO_TYPE(self, reportxml_t*);
+    reportxml_node_t *root = reportxml_node_new(REPORTXML_NODE_TYPE_REPORT, NULL, NULL, NULL);
+
+    if (!root)
+        return -1;
+
+    ret->root = root;
+
+    return 0;
+}
+
 REFOBJECT_DEFINE_TYPE(reportxml_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__report_free)
+        REFOBJECT_DEFINE_TYPE_FREE(__report_free),
+        REFOBJECT_DEFINE_TYPE_NEW(__report_new)
         );
 
 static reportxml_t *    reportxml_new_with_root(reportxml_node_t *root)
@@ -255,20 +269,7 @@ static reportxml_t *    reportxml_new_with_root(reportxml_node_t *root)
 
 reportxml_t *           reportxml_new(void)
 {
-    reportxml_node_t *root = reportxml_node_new(REPORTXML_NODE_TYPE_REPORT, NULL, NULL, NULL);
-    reportxml_t *ret;
-
-    if (!root)
-        return NULL;
-
-    ret = reportxml_new_with_root(root);
-
-    if (!ret) {
-        refobject_unref(root);
-        return NULL;
-    }
-
-    return ret;
+    return refobject_new(reportxml_t);
 }
 
 reportxml_node_t *      reportxml_get_root_node(reportxml_t *report)
@@ -983,26 +984,27 @@ static int __compare_definitions(void *arg, void *a, void *b)
     return ret;
 }
 
+static int __database_new(refobject_t self, const refobject_type_t *type, va_list ap)
+{
+    reportxml_database_t *ret = REFOBJECT_TO_TYPE(self, reportxml_database_t*);
+
+    thread_mutex_create(&(ret->lock));
+
+    ret->definitions = avl_tree_new(__compare_definitions, NULL);
+    if (!ret->definitions)
+        return -1;
+
+    return 0;
+}
+
 REFOBJECT_DEFINE_TYPE(reportxml_database_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__database_free)
+        REFOBJECT_DEFINE_TYPE_FREE(__database_free),
+        REFOBJECT_DEFINE_TYPE_NEW(__database_new)
         );
 
 reportxml_database_t *  reportxml_database_new(void)
 {
-    reportxml_database_t *ret = refobject_new__new(reportxml_database_t, NULL, NULL, NULL);
-
-    if (!ret)
-        return NULL;
-
-    ret->definitions = avl_tree_new(__compare_definitions, NULL);
-    if (!ret->definitions) {
-        refobject_unref(ret);
-        return NULL;
-    }
-
-    thread_mutex_create(&(ret->lock));
-
-    return ret;
+    return refobject_new(reportxml_database_t);
 }
 
 int                     reportxml_database_add_report(reportxml_database_t *db, reportxml_t *report)
@@ -1305,7 +1307,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
         /* Empty definition? Not exactly an exciting report... */
         ICECAST_LOG_WARN("Empty definition for \"%H\". Returning empty report. This is likely an error.", id);
         refobject_unref(definition);
-        return reportxml_new();
+        return refobject_new(reportxml_t);
     }
 
     if (type == REPORTXML_NODE_TYPE__ERROR) {
@@ -1333,7 +1335,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
         break;
     }
 
-    ret = reportxml_new();
+    ret = refobject_new(reportxml_t);
     if (!ret) {
         refobject_unref(definition);
         ICECAST_LOG_ERROR("Can not allocate new report. BAD.");

@@ -68,7 +68,9 @@ REFOBJECT_FORWARD_TYPE(reportxml_database_t);
 /* ---[ Document level ]--- */
 /* The document object is NOT thread safe. */
 
-/* This creates a new, empty report XML document */
+/* Depreciated: This creates a new, empty report XML document
+ * Do NOT use this. Use refobject_new(reportxml_t)
+ */
 reportxml_t *           reportxml_new(void);
 /* This gets the root node of a report XML document */
 reportxml_node_t *      reportxml_get_root_node(reportxml_t *report);
@@ -128,7 +130,9 @@ xmlNodePtr              reportxml_node_get_xml_child(reportxml_node_t *node, siz
 /* The database object is thread safe. */
 
 
-/* Create a new database object */
+/* Depreciated: Create a new database object
+ * Do NOT use this. Use refobject_new(reportxml_database_t)
+ */
 reportxml_database_t *  reportxml_database_new(void);
 /* Add an report to the database */
 int                     reportxml_database_add_report(reportxml_database_t *db, reportxml_t *report);

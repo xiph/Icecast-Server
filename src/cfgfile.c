@@ -232,7 +232,7 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
-    configuration->reportxml_db = reportxml_database_new();
+    configuration->reportxml_db = refobject_new(reportxml_database_t);
 }
 
 static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const char *warning)
