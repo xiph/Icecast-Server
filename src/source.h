@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 
-#include "common/thread/thread.h"
-#include "common/httpp/httpp.h"
+#include <permafrost/thread.h>
+#include <permafrost/httpp.h>
 
 #include "icecasttypes.h"
 #include "yp.h"

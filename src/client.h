@@ -19,8 +19,8 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-#include "common/httpp/httpp.h"
-#include "common/httpp/encoding.h"
+#include <permafrost/httpp.h>
+#include <permafrost/encoding.h>
 
 #include "icecasttypes.h"
 #include "errors.h"

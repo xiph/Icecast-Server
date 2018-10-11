@@ -13,7 +13,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include "common/thread/thread.h"
+#include <permafrost/thread.h>
 
 #include "icecasttypes.h"
 

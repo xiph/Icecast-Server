@@ -1,6 +1,3 @@
 [submodule "m4"]
 	path = m4
 	url = ../icecast-m4.git
-[submodule "src/common"]
-	path = src/common
-	url = ../icecast-common.git

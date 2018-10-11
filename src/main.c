@@ -44,10 +44,10 @@
 #include <sys/utsname.h>
 #endif
 
-#include "common/thread/thread.h"
-#include "common/net/sock.h"
-#include "common/net/resolver.h"
-#include "common/httpp/httpp.h"
+#include <permafrost/thread.h>
+#include <permafrost/sock.h>
+#include <permafrost/resolver.h>
+#include <permafrost/httpp.h>
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>

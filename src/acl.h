@@ -16,7 +16,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "common/httpp/httpp.h"
+#include <permafrost/httpp.h>
 
 #include "icecasttypes.h"
 #include "cfgfile.h"

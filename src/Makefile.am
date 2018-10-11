@@ -1,7 +1,5 @@
 ## Process this with automake to create Makefile.in
 
-SUBDIRS = common/avl common/net common/thread common/httpp common/log common/timing
-
 bin_PROGRAMS = icecast
 
 noinst_HEADERS = \
@@ -131,16 +129,5 @@ EXTRA_icecast_SOURCES = \
     format_vorbis.c \
     format_theora.c \
     format_speex.c
-
-icecast_DEPENDENCIES = \
-    common/net/libicenet.la \
-    common/thread/libicethread.la \
-    common/httpp/libicehttpp.la \
-    common/log/libicelog.la \
-    common/avl/libiceavl.la \
-    common/timing/libicetiming.la
-
-icecast_LDADD    = $(icecast_DEPENDENCIES)
-icecast_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/common
 
 include $(srcdir)/tests/Makefile.am

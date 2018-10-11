@@ -17,9 +17,10 @@
 #include <config.h>
 #endif
 
+
 #include <stdarg.h>
 
-#include "common/thread/thread.h"
+#include <permafrost/thread.h>
 
 #include "icecasttypes.h"
 #include "compat.h"

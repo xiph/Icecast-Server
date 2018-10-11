@@ -9,7 +9,7 @@
 #ifndef __TLS_H__
 #define __TLS_H__
 
-#include "common/net/sock.h"
+#include <permafrost/sock.h>
 
 /* Do we have TLS Support? */
 #if defined(HAVE_OPENSSL)

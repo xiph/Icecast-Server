@@ -16,8 +16,8 @@
 
 #include <string.h>
 
-#include "common/thread/thread.h"
-#include "common/avl/avl.h"
+#include <permafrost/thread.h>
+#include <permafrost/avl.h>
 
 #include "reportxml.h"
 #include "refobject.h"

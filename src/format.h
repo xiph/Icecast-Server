@@ -25,7 +25,8 @@
 #include "client.h"
 #include "refbuf.h"
 #include "cfgfile.h"
-#include "common/httpp/httpp.h"
+
+#include <permafrost/httpp.h>
 
 typedef enum _format_type_tag
 {

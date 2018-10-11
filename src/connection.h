@@ -21,8 +21,9 @@
 
 #include "icecasttypes.h"
 #include "compat.h"
-#include "common/thread/thread.h"
-#include "common/net/sock.h"
+
+#include <permafrost/thread.h>
+#include <permafrost/sock.h>
 
 typedef unsigned long connection_id_t;
 

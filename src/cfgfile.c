@@ -26,7 +26,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include "common/thread/thread.h"
+#include <permafrost/thread.h>
 
 #include "cfgfile.h"
 #include "global.h"

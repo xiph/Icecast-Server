@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common/thread/thread.h"
+#include <permafrost/thread.h>
 
 #include "fastevent.h"
 

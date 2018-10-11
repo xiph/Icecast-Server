@@ -74,7 +74,8 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "connection.h"
-#include "common/httpp/httpp.h"
+
+#include <permafrost/httpp.h>
 
 #include "logging.h"
 #define CATMODULE "auth_url"

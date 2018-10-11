@@ -8,6 +8,8 @@ AC_CONFIG_AUX_DIR([build-aux])
 
 AC_PROG_CC
 
+LT_INIT
+
 AX_CHECK_COMPILE_FLAG([-std=c99], [
   AX_APPEND_FLAG([-std=c99])
 ], [
@@ -43,9 +45,6 @@ AM_INIT_AUTOMAKE([tar-ustar foreign dist-zip subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AM_MAINTAINER_MODE([enable])
-
-LT_INIT
-
 
 dnl Sanitizer flags
 
@@ -100,8 +99,6 @@ AC_CHECK_HEADERS([sys/timeb.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
 
-XIPH_NET
-
 dnl Check for functions
 AC_FUNC_FORK
 AC_FUNC_CHOWN
@@ -109,22 +106,15 @@ AC_FUNC_CHOWN
 AC_CHECK_FUNCS([setuid])
 AC_CHECK_FUNCS([chroot])
 AC_CHECK_FUNCS([strcasestr])
-AC_CHECK_FUNCS([gethostname])
 AC_CHECK_FUNCS([uname])
 AC_CHECK_FUNCS([setenv])
 AC_CHECK_FUNCS([setresuid])
 AC_CHECK_FUNCS([setresgid])
 AC_CHECK_FUNCS([localtime_r])
-AC_CHECK_FUNCS([gettimeofday])
-AC_CHECK_FUNCS([ftime])
 
 dnl Do not check for poll on Darwin, it is broken in some versions
 AS_IF([test "${SYS}" != "darwin"], [
   AC_CHECK_FUNCS([poll])
-])
-
-AC_SEARCH_LIBS([nanosleep], [rt posix4], [
-  AC_DEFINE([HAVE_NANOSLEEP], [1], [Define if you have nanosleep])
 ])
 
 dnl Checks for types and typedefs
@@ -135,6 +125,16 @@ AC_TYPE_SSIZE_T
 AC_TYPE_UID_T
 
 dnl Checks for required libraries
+
+dnl
+dnl permafrost
+dnl
+PKG_CHECK_MODULES([PERMAFROST], [permafrost], [], [
+  AC_MSG_ERROR([${PERMAFROST_PKG_ERRORS}. permafrost is required.])
+])
+
+CFLAGS="${CFLAGS} ${PERMAFROST_CFLAGS}"
+LIBS="${LIBS} ${PERMAFROST_LIBS}"
 
 dnl
 dnl libxml2
@@ -274,24 +274,12 @@ AS_IF([test "$with_default_config" != "no"], [
   
 ])
 
-dnl Make substitutions
-AC_SUBST(XIPH_LIBS)
-AC_SUBST(XIPH_CPPFLAGS)
-AC_SUBST(XIPH_CFLAGS)
-AC_SUBST(XIPH_LDFLAGS)
-
 AC_CONFIG_HEADERS([config.h])
 
 AC_CONFIG_FILES([
   Makefile
   conf/Makefile
   src/Makefile
-  src/common/avl/Makefile
-  src/common/httpp/Makefile
-  src/common/thread/Makefile
-  src/common/log/Makefile
-  src/common/net/Makefile
-  src/common/timing/Makefile
   doc/Makefile
   web/Makefile
   admin/Makefile

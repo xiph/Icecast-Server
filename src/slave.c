@@ -38,10 +38,11 @@
 #include "compat.h"
 
 #include <libxml/uri.h>
-#include "common/thread/thread.h"
-#include "common/avl/avl.h"
-#include "common/net/sock.h"
-#include "common/httpp/httpp.h"
+
+#include <permafrost/thread.h>
+#include <permafrost/avl.h>
+#include <permafrost/sock.h>
+#include <permafrost/httpp.h>
 
 #include "slave.h"
 #include "cfgfile.h"

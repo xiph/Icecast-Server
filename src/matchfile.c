@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "common/avl/avl.h"
+#include <permafrost/avl.h>
 
 #include "matchfile.h"
 #include "logging.h"

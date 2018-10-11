@@ -14,7 +14,7 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
-#include "common/log/log.h"
+#include <permafrost/log.h>
 
 #include "icecasttypes.h"
 

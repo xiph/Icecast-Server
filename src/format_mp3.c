@@ -36,7 +36,8 @@
 
 #include "stats.h"
 #include "format.h"
-#include "common/httpp/httpp.h"
+
+#include <permafrost/httpp.h>
 
 #include "logging.h"
 

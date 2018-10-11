@@ -26,11 +26,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <permafrost/httpp.h>
+
 #include "auth.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
-#include "common/httpp/httpp.h"
 #include "md5.h"
 
 #include "logging.h"

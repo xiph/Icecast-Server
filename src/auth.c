@@ -24,13 +24,14 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include <permafrost/httpp.h>
+
 #include "auth.h"
 #include "source.h"
 #include "client.h"
 #include "errors.h"
 #include "cfgfile.h"
 #include "stats.h"
-#include "common/httpp/httpp.h"
 #include "fserve.h"
 #include "admin.h"
 #include "acl.h"

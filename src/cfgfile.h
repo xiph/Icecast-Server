@@ -23,8 +23,9 @@
 #define MAX_YP_DIRECTORIES 25
 
 #include <libxml/tree.h>
-#include "common/thread/thread.h"
-#include "common/avl/avl.h"
+#include <permafrost/thread.h>
+#include <permafrost/avl.h>
+
 #include "icecasttypes.h"
 #include "compat.h"
 

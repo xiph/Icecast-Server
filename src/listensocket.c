@@ -22,8 +22,8 @@
 
 #include <string.h>
 
-#include "common/net/sock.h"
-#include "common/thread/thread.h"
+#include <permafrost/sock.h>
+#include <permafrost/thread.h>
 
 #include "listensocket.h"
 #include "global.h"
