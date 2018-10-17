@@ -513,13 +513,25 @@ static auth_result url_add_client(auth_client *auth_user)
 
             header_val = httpp_getvar (client->parser, cur_header);
             if (header_val) {
+                size_t left = sizeof(post) - post_offset;
+                int ret;
+
                 header_valesc = util_url_escape (header_val);
-                post_offset += snprintf(post + post_offset,
+                ret = snprintf(post + post_offset,
                                         sizeof(post) - post_offset,
                                         "&%s%s=%s",
                                         url->prefix_headers ? url->prefix_headers : "",
                                         cur_header, header_valesc);
                 free(header_valesc);
+
+                if (ret <= 0 || (size_t)ret >= left) {
+                    ICECAST_LOG_ERROR("Authentication failed for client %p as header \"%H\" is too long.", client, cur_header);
+                    free(pass_headers);
+                    auth_user_url_clear(auth_user);
+                    return AUTH_FAILED;
+                } else {
+                    post_offset += ret;
+                }
             }
 
             cur_header = next_header;
