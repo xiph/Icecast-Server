@@ -73,7 +73,7 @@ static inline event_exec_argvtype_t __str2argvtype(const char *str) {
     } else if (strcmp(str, "legacy") == 0) {
         return ARGVTYPE_LEGACY;
     } else {
-        ICECAST_LOG_ERROR("Unknown argument type %s, using \"default\"");
+        ICECAST_LOG_ERROR("Unknown argument type %s, using \"default\"", str);
         return ARGVTYPE_DFAULT;
     }
 }
