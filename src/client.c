@@ -859,10 +859,10 @@ client_slurp_result_t client_body_skip(client_t *client)
     char buf[2048];
     int ret;
 
-    ICECAST_LOG_DEBUG("Slurping client %p");
+    ICECAST_LOG_DEBUG("Slurping client %p", client);
 
     if (!client) {
-        ICECAST_LOG_DEBUG("Slurping client %p ... failed");
+        ICECAST_LOG_DEBUG("Slurping client %p ... failed", client);
         return CLIENT_SLURP_ERROR;
     }
 
@@ -870,7 +870,7 @@ client_slurp_result_t client_body_skip(client_t *client)
         size_t left = (size_t)client->request_body_length - client->request_body_read;
 
         if (!left) {
-            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success", client);
             return CLIENT_SLURP_SUCCESS;
         }
 
@@ -880,10 +880,10 @@ client_slurp_result_t client_body_skip(client_t *client)
         client_body_read(client, buf, left);
 
         if ((size_t)client->request_body_length == client->request_body_read) {
-            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success", client);
             return CLIENT_SLURP_SUCCESS;
         } else {
-            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data", client);
             return CLIENT_SLURP_NEEDS_MORE_DATA;
         }
     } else {
@@ -893,15 +893,15 @@ client_slurp_result_t client_body_skip(client_t *client)
     ret = client_body_eof(client);
     switch (ret) {
         case 0:
-            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data");
+            ICECAST_LOG_DEBUG("Slurping client %p ... needs more data", client);
             return CLIENT_SLURP_NEEDS_MORE_DATA;
         break;
         case 1:
-            ICECAST_LOG_DEBUG("Slurping client %p ... was a success");
+            ICECAST_LOG_DEBUG("Slurping client %p ... was a success", client);
             return CLIENT_SLURP_SUCCESS;
         break;
         default:
-            ICECAST_LOG_DEBUG("Slurping client %p ... failed");
+            ICECAST_LOG_DEBUG("Slurping client %p ... failed", client);
             return CLIENT_SLURP_ERROR;
         break;
     }
