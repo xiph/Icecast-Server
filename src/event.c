@@ -43,6 +43,7 @@ static void event_addref(event_t *event) {
 
 static void event_release(event_t *event) {
     size_t i;
+    event_t *to_free;
 
     if (!event)
         return;
@@ -63,10 +64,12 @@ static void event_release(event_t *event) {
     free(event->client_role);
     free(event->client_username);
     free(event->client_useragent);
-    event_release(event->next);
-
+    to_free = event->next;
     free(event);
     thread_mutex_unlock(&event_lock);
+
+    if (to_free)
+        event_release(to_free);
 }
 
 static void event_push(event_t **event, event_t *next) {
