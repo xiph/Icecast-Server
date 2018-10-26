@@ -43,6 +43,7 @@
 #include "reportxml.h"
 #include "refobject.h"
 #include "xslt.h"
+#include "source.h"
 
 #include "client.h"
 #include "auth.h"
@@ -385,6 +386,7 @@ void client_send_101(client_t *client, reuse_t reuse)
 
 void client_send_204(client_t *client)
 {
+    source_t *source;
     ssize_t ret;
 
     if (!client)
@@ -392,10 +394,16 @@ void client_send_204(client_t *client)
 
     client->reuse = ICECAST_REUSE_KEEPALIVE;
 
+    /* We get a source_t* here as this is likely a reply to OPTIONS and we want
+     * to have as much infos as possible in that case.
+     */
+    avl_tree_rlock(global.source_tree);
+    source = source_find_mount_raw(client->uri);
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 204, NULL,
                                  NULL, NULL,
-                                 NULL, NULL, client);
+                                 NULL, source, client);
+    avl_tree_unlock(global.source_tree);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
              "Content-Length: 0\r\n\r\n");

@@ -680,6 +680,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     char * extra_headers;
     const char *connection_header = "Close";
     const char *upgrade_header = "";
+    const char *allow_header;
 
     if (!out)
         return -1;
@@ -771,14 +772,25 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     else
         currenttime_buffer[0] = '\0';
 
+    if (client) {
+        if (client->admin_command != ADMIN_COMMAND_ERROR) {
+            allow_header = "GET, POST, OPTIONS";
+        } else if (source) {
+            allow_header = "GET, DELETE, OPTIONS";
+        } else {
+            allow_header = "GET, PUT, OPTIONS, SOURCE";
+        }
+    } else {
+        allow_header = "GET, OPTIONS";
+    }
+
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
     ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
                               connection_header,
-                              (client && client->admin_command == ADMIN_COMMAND_ERROR ?
-                                                "GET, SOURCE, OPTIONS" : "GET, OPTIONS"),
+                              allow_header,
                               upgrade_header,
                               currenttime_buffer,
                               contenttype_buffer,
