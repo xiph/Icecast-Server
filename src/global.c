@@ -18,8 +18,8 @@
 
 #include <string.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
 
 #include "global.h"
 #include "refobject.h"
@@ -28,7 +28,7 @@
 
 ice_global_t global;
 
-static mutex_t _global_mutex;
+static igloo_mutex_t _global_mutex;
 
 void global_initialize(void)
 {
@@ -38,16 +38,16 @@ void global_initialize(void)
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
-    global.source_tree = avl_tree_new(source_compare_sources, NULL);
+    global.source_tree = igloo_avl_tree_new(source_compare_sources, NULL);
     global.modulecontainer = refobject_new(module_container_t);
     thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
 {
-    thread_mutex_destroy(&_global_mutex);
+    igloo_thread_mutex_destroy(&_global_mutex);
     refobject_unref(global.modulecontainer);
-    avl_tree_free(global.source_tree, NULL);
+    igloo_avl_tree_free(global.source_tree, NULL);
 }
 
 void global_lock(void)

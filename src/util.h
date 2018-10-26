@@ -17,7 +17,7 @@
 /* for FILE* */
 #include <stdio.h>
 
-#include <permafrost/sock.h>
+#include <igloo/sock.h>
 #include "icecasttypes.h"
 
 #define UNKNOWN_CONTENT 0
@@ -29,8 +29,8 @@
 
 #define MAX_LINE_LEN 512
 
-int util_timed_wait_for_fd(sock_t fd, int timeout);
-int util_read_header(sock_t sock, char *buff, unsigned long len, int entire);
+int util_timed_wait_for_fd(igloo_sock_t fd, int timeout);
+int util_read_header(igloo_sock_t sock, char *buff, unsigned long len, int entire);
 int util_check_valid_extension(const char *uri);
 char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);

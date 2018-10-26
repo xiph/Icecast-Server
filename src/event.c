@@ -27,10 +27,10 @@
 
 #define CATMODULE "event"
 
-static mutex_t event_lock;
+static igloo_mutex_t event_lock;
 static event_t *event_queue = NULL;
 static int event_running = 0;
-static thread_type *event_thread = NULL;
+static igloo_thread_type *event_thread = NULL;
 
 /* work with event_t* */
 static void event_addref(event_t *event) {
@@ -185,7 +185,7 @@ static void *event_run_thread (void *arg) {
 
         /* sleep if nothing todo and then try again */
         if (!event) {
-            thread_sleep(150000);
+            igloo_thread_sleep(150000);
             continue;
         }
 
@@ -208,7 +208,7 @@ void event_initialise(void) {
     thread_mutex_unlock(&event_lock);
 
     /* start thread */
-    event_thread = thread_create("events thread", event_run_thread, NULL, THREAD_ATTACHED);
+    event_thread = thread_create("events thread", event_run_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 void event_shutdown(void) {
@@ -223,7 +223,7 @@ void event_shutdown(void) {
     thread_mutex_unlock(&event_lock);
 
     /* join thread as soon as it stopped */
-    thread_join(event_thread);
+    igloo_thread_join(event_thread);
 
     /* shutdown everything */
     thread_mutex_lock(&event_lock);
@@ -235,7 +235,7 @@ void event_shutdown(void) {
     event_release(event_queue_to_free);
 
     /* destry mutex */
-    thread_mutex_destroy(&event_lock);
+    igloo_thread_mutex_destroy(&event_lock);
 }
 
 
@@ -313,7 +313,7 @@ void event_registration_release(event_registration_t *er) {
         er->free(er->state);
 
     thread_mutex_unlock(&er->lock);
-    thread_mutex_destroy(&er->lock);
+    igloo_thread_mutex_destroy(&er->lock);
     free(er);
 }
 
@@ -406,7 +406,7 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
             event->client_role = strdup(client->role);
         if (client->username)
             event->client_username = strdup(client->username);
-        tmp = httpp_getvar(client->parser, "user-agent");
+        tmp = igloo_httpp_getvar(client->parser, "user-agent");
         if (tmp)
             event->client_useragent = strdup(tmp);
     }

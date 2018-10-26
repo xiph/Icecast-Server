@@ -16,7 +16,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include <permafrost/httpp.h>
+#include <igloo/httpp.h>
 
 #include "icecasttypes.h"
 #include "cfgfile.h"
@@ -44,7 +44,7 @@ int acl_set_ANY_str(acl_t * acl, acl_policy_t policy, const char * str, int (*ca
 /* HTTP Method specific functions */
 int acl_set_method_str__callback(acl_t * acl, acl_policy_t policy, const char * str);
 #define acl_set_method_str(acl,policy,str) acl_set_ANY_str((acl), (policy), (str), acl_set_method_str__callback)
-acl_policy_t acl_test_method(acl_t * acl, httpp_request_type_e method);
+acl_policy_t acl_test_method(acl_t * acl, igloo_httpp_request_type_e method);
 
 /* admin/ interface specific functions */
 int acl_set_admin_str__callbck(acl_t * acl, acl_policy_t policy, const char * str);

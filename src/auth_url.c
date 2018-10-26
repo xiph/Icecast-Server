@@ -75,7 +75,7 @@
 #include "cfgfile.h"
 #include "connection.h"
 
-#include <permafrost/httpp.h>
+#include <igloo/httpp.h>
 
 #include "logging.h"
 #define CATMODULE "auth_url"
@@ -121,7 +121,7 @@ typedef struct {
 typedef struct {
     char *all_headers;
     size_t all_headers_len;
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
 } auth_user_url_t;
 
 static inline const char * __str_or_default(const char *str, const char *def)
@@ -187,15 +187,15 @@ static void handle_returned_header__complete(auth_client *auth_user)
     if (au_url->parser)
         return;
 
-    au_url->parser = httpp_create_parser();
-    httpp_initialize(au_url->parser, NULL);
+    au_url->parser = igloo_httpp_create_parser();
+    igloo_httpp_initialize(au_url->parser, NULL);
 
-    if (!httpp_parse_response(au_url->parser, au_url->all_headers, au_url->all_headers_len, NULL)) {
+    if (!igloo_httpp_parse_response(au_url->parser, au_url->all_headers, au_url->all_headers_len, NULL)) {
         ICECAST_LOG_ERROR("Can not parse auth backend reply.");
         return;
     }
 
-    tmp = httpp_getvar(au_url->parser, HTTPP_VAR_ERROR_CODE);
+    tmp = igloo_httpp_getvar(au_url->parser, igloo_HTTPP_VAR_ERROR_CODE);
     if (tmp[0] == '2') {
         ICECAST_LOG_DEBUG("Got final status: %#H", tmp);
     } else {
@@ -207,14 +207,14 @@ static void handle_returned_header__complete(auth_client *auth_user)
     }
 
     if (url->header_auth) {
-        tmp = httpp_getvar(au_url->parser, url->header_auth);
+        tmp = igloo_httpp_getvar(au_url->parser, url->header_auth);
         if (tmp) {
             url->result = auth_str2result(tmp);
         }
     }
 
     if (url->header_timelimit) {
-        tmp = httpp_getvar(au_url->parser, url->header_timelimit);
+        tmp = igloo_httpp_getvar(au_url->parser, url->header_timelimit);
         if (tmp) {
             long long int ret;
             char *endptr;
@@ -229,8 +229,8 @@ static void handle_returned_header__complete(auth_client *auth_user)
         }
     }
 
-    action   = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_action, DEFAULT_HEADER_NEW_ALTER_ACTION));
-    argument = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_argument, DEFAULT_HEADER_NEW_ALTER_ARGUMENT));
+    action   = igloo_httpp_getvar(au_url->parser, __str_or_default(url->header_alter_action, DEFAULT_HEADER_NEW_ALTER_ACTION));
+    argument = igloo_httpp_getvar(au_url->parser, __str_or_default(url->header_alter_argument, DEFAULT_HEADER_NEW_ALTER_ARGUMENT));
 
     if (action && argument) {
         if (auth_alter_client(auth_user->client->auth, auth_user, auth_str2alter(action), argument) != 0) {
@@ -241,11 +241,11 @@ static void handle_returned_header__complete(auth_client *auth_user)
     }
 
     if (url->header_message) {
-        tmp = httpp_getvar(au_url->parser, url->header_message);
+        tmp = igloo_httpp_getvar(au_url->parser, url->header_message);
     } else {
-        tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_NEW_MESSAGE);
+        tmp = igloo_httpp_getvar(au_url->parser, DEFAULT_HEADER_NEW_MESSAGE);
         if (!tmp)
-            tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_OLD_MESSAGE);
+            tmp = igloo_httpp_getvar(au_url->parser, DEFAULT_HEADER_OLD_MESSAGE);
     }
     if (tmp) {
         snprintf(url->errormsg, sizeof(url->errormsg), "%s", tmp);
@@ -354,7 +354,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     port = config->port;
     config_release_config();
 
-    agent = httpp_getvar(client->parser, "user-agent");
+    agent = igloo_httpp_getvar(client->parser, "user-agent");
     if (agent) {
         user_agent = util_url_escape(agent);
     } else {
@@ -374,9 +374,9 @@ static auth_result url_remove_client(auth_client *auth_user)
     }
 
     /* get the full uri (with query params if available) */
-    mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
+    mountreq = igloo_httpp_getvar(client->parser, igloo_HTTPP_VAR_RAWURI);
     if (mountreq == NULL)
-        mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
+        mountreq = igloo_httpp_getvar(client->parser, igloo_HTTPP_VAR_URI);
     mount = util_url_escape(mountreq);
     ipaddr = util_url_escape(client->con->ip);
 
@@ -467,7 +467,7 @@ static auth_result url_add_client(auth_client *auth_user)
     port = config->port;
     config_release_config();
 
-    agent = httpp_getvar(client->parser, "user-agent");
+    agent = igloo_httpp_getvar(client->parser, "user-agent");
     if (agent) {
         user_agent = util_url_escape(agent);
     } else {
@@ -487,9 +487,9 @@ static auth_result url_add_client(auth_client *auth_user)
     }
 
     /* get the full uri (with query params if available) */
-    mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
+    mountreq = igloo_httpp_getvar(client->parser, igloo_HTTPP_VAR_RAWURI);
     if (mountreq == NULL)
-        mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
+        mountreq = igloo_httpp_getvar(client->parser, igloo_HTTPP_VAR_URI);
     mount = util_url_escape(mountreq);
     ipaddr = util_url_escape(client->con->ip);
 
@@ -526,7 +526,7 @@ static auth_result url_add_client(auth_client *auth_user)
                 next_header++;
             }
 
-            header_val = httpp_getvar (client->parser, cur_header);
+            header_val = igloo_httpp_getvar (client->parser, cur_header);
             if (header_val) {
                 size_t left = sizeof(post) - post_offset;
                 int ret;

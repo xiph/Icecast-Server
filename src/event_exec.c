@@ -155,14 +155,14 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
         __update_environ("MOUNT_GENRE",       mountinfo->stream_genre);
     }
 
-    avl_tree_rlock(global.source_tree);
+    igloo_avl_tree_rlock(global.source_tree);
     source = source_find_mount(event->uri);
     if (source) {
         __update_environ("SOURCE_MOUNTPOINT", source->mount);
         __update_environ("SOURCE_PUBLIC",     source->yp_public ? "true" : "false");
         __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false");
     }
-    avl_tree_unlock(global.source_tree);
+    igloo_avl_tree_unlock(global.source_tree);
 }
 
 static inline void __setup_file_descriptors(ice_config_t *config) {

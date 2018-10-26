@@ -19,8 +19,8 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
-#include <permafrost/httpp.h>
-#include <permafrost/encoding.h>
+#include <igloo/httpp.h>
+#include <igloo/encoding.h>
 
 #include "icecasttypes.h"
 #include "errors.h"
@@ -70,10 +70,10 @@ struct _client_tag {
     reuse_t reuse;
 
     /* the client's http headers */
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
 
     /* Transfer Encoding if any */
-    httpp_encoding_t *encoding;
+    igloo_httpp_encoding_t *encoding;
 
     /* protocol client uses */
     protocol_t protocol;
@@ -139,7 +139,7 @@ struct _client_tag {
     int (*check_buffer)(source_t *source, client_t *client);
 };
 
-int client_create (client_t **c_ptr, connection_t *con, http_parser_t *parser);
+int client_create (client_t **c_ptr, connection_t *con, igloo_http_parser_t *parser);
 void client_complete(client_t *client);
 void client_destroy(client_t *client);
 void client_send_error_by_id(client_t *client, icecast_error_id_t id);

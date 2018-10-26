@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
 
 #include "refobject.h"
 #include "module.h"
@@ -22,7 +22,7 @@
 
 struct module_tag {
     refobject_base_t __base;
-    mutex_t lock;
+    igloo_mutex_t lock;
     const module_client_handler_t *client_handlers;
     size_t client_handlers_len;
     module_setup_handler_t freecb;
@@ -34,8 +34,8 @@ struct module_tag {
 
 struct module_container_tag {
     refobject_base_t __base;
-    mutex_t lock;
-    avl_tree *module;
+    igloo_mutex_t lock;
+    igloo_avl_tree *module;
 };
 
 static int compare_refobject_t_name(void *arg, void *a, void *b)
@@ -46,8 +46,8 @@ static int compare_refobject_t_name(void *arg, void *a, void *b)
 static void __module_container_free(refobject_t self, void **userdata)
 {
     module_container_t *cont = REFOBJECT_TO_TYPE(self, module_container_t *);
-    thread_mutex_destroy(&(cont->lock));
-    avl_tree_free(cont->module, (avl_free_key_fun_type)refobject_unref);
+    igloo_thread_mutex_destroy(&(cont->lock));
+    igloo_avl_tree_free(cont->module, (igloo_avl_free_key_fun_type)refobject_unref);
 }
 
 int __module_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
@@ -56,7 +56,7 @@ int __module_container_new(refobject_t self, const refobject_type_t *type, va_li
 
     thread_mutex_create(&(ret->lock));
 
-    ret->module = avl_tree_new(compare_refobject_t_name, NULL);
+    ret->module = igloo_avl_tree_new(compare_refobject_t_name, NULL);
 
     return 0;
 }
@@ -75,7 +75,7 @@ int                     module_container_add_module(module_container_t *self, mo
         return -1;
 
     thread_mutex_lock(&(self->lock));
-    avl_insert(self->module, module);
+    igloo_avl_insert(self->module, module);
     thread_mutex_unlock(&(self->lock));
 
     return 0;
@@ -93,7 +93,7 @@ int                     module_container_delete_module(module_container_t *self,
         return -1;
 
     thread_mutex_lock(&(self->lock));
-    avl_delete(self->module, module, (avl_free_key_fun_type)refobject_unref);
+    igloo_avl_delete(self->module, module, (igloo_avl_free_key_fun_type)refobject_unref);
     thread_mutex_unlock(&(self->lock));
 
     refobject_unref(module);
@@ -112,7 +112,7 @@ module_t *              module_container_get_module(module_container_t *self, co
     search = refobject_new__new(refobject_base_t, NULL, name, NULL);
 
     thread_mutex_lock(&(self->lock));
-    if (avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
+    if (igloo_avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
         ret = NULL;
     }
     thread_mutex_unlock(&(self->lock));
@@ -126,7 +126,7 @@ module_t *              module_container_get_module(module_container_t *self, co
 xmlNodePtr                      module_container_get_modulelist_as_xml(module_container_t *self)
 {
     xmlNodePtr root;
-    avl_node *avlnode;
+    igloo_avl_node *avlnode;
 
     if (!self)
         return NULL;
@@ -136,7 +136,7 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
         return NULL;
 
     thread_mutex_lock(&(self->lock));
-    avlnode = avl_get_first(self->module);
+    avlnode = igloo_avl_get_first(self->module);
     while (avlnode) {
         module_t *module = avlnode->key;
         xmlNodePtr node = xmlNewChild(root, NULL, XMLSTR("module"), NULL);
@@ -147,7 +147,7 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
         if (module->management_link_title)
             xmlSetProp(node, XMLSTR("management-title"), XMLSTR(module->management_link_title));
 
-        avlnode = avl_get_next(avlnode);
+        avlnode = igloo_avl_get_next(avlnode);
     }
     thread_mutex_unlock(&(self->lock));
 
@@ -167,7 +167,7 @@ static void __module_free(refobject_t self, void **userdata)
     free(mod->management_link_url);
     free(mod->management_link_title);
 
-    thread_mutex_destroy(&(mod->lock));
+    igloo_thread_mutex_destroy(&(mod->lock));
 }
 
 REFOBJECT_DEFINE_TYPE(module_t,

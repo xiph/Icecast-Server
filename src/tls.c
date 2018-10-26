@@ -201,7 +201,7 @@ void       tls_set_incoming(tls_t *tls)
 
     SSL_set_accept_state(tls->ssl);
 }
-void       tls_set_socket(tls_t *tls, sock_t sock)
+void       tls_set_socket(tls_t *tls, igloo_sock_t sock)
 {
     if (!tls)
         return;
@@ -289,7 +289,7 @@ void       tls_unref(tls_t *tls)
 void       tls_set_incoming(tls_t *tls)
 {
 }
-void       tls_set_socket(tls_t *tls, sock_t sock)
+void       tls_set_socket(tls_t *tls, igloo_sock_t sock)
 {
 }
 

@@ -42,10 +42,10 @@
 #endif
 #endif
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/httpp.h>
-#include <permafrost/sock.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/httpp.h>
+#include <igloo/sock.h>
 
 #include "fserve.h"
 #include "compat.h"
@@ -71,8 +71,8 @@ static volatile int __inited = 0;
 static fserve_t *active_list = NULL;
 static fserve_t *pending_list = NULL;
 
-static spin_t pending_lock;
-static avl_tree *mimetypes = NULL;
+static igloo_spin_t pending_lock;
+static igloo_avl_tree *mimetypes = NULL;
 
 static volatile int run_fserv = 0;
 static unsigned int fserve_clients;
@@ -82,7 +82,7 @@ static int client_tree_changed = 0;
 static struct pollfd *ufds = NULL;
 #else
 static fd_set fds;
-static sock_t fd_max = SOCK_ERROR;
+static igloo_sock_t fd_max = igloo_SOCK_ERROR;
 #endif
 
 typedef struct {
@@ -101,7 +101,7 @@ void fserve_initialize(void)
     mimetypes = NULL;
     active_list = NULL;
     pending_list = NULL;
-    thread_spin_create (&pending_lock);
+    igloo_thread_spin_create (&pending_lock);
 
     fserve_recheck_mime_types (config);
     config_release_config();
@@ -117,7 +117,7 @@ void fserve_shutdown(void)
     if (!__inited)
         return;
 
-    thread_spin_lock (&pending_lock);
+    igloo_thread_spin_lock (&pending_lock);
     run_fserv = 0;
     while (pending_list)
     {
@@ -134,10 +134,10 @@ void fserve_shutdown(void)
     }
 
     if (mimetypes)
-        avl_tree_free (mimetypes, _delete_mapping);
+        igloo_avl_tree_free (mimetypes, _delete_mapping);
 
-    thread_spin_unlock (&pending_lock);
-    thread_spin_destroy (&pending_lock);
+    igloo_thread_spin_unlock (&pending_lock);
+    igloo_thread_spin_destroy (&pending_lock);
     ICECAST_LOG_INFO("file serving stopped");
 }
 
@@ -167,9 +167,9 @@ int fserve_client_waiting (void)
     }
 
     if (!ufds) {
-        thread_spin_lock (&pending_lock);
+        igloo_thread_spin_lock (&pending_lock);
         run_fserv = 0;
-        thread_spin_unlock (&pending_lock);
+        igloo_thread_spin_unlock (&pending_lock);
         return -1;
     } else if (poll(ufds, fserve_clients, 200) > 0) {
         /* mark any clients that are ready */
@@ -195,21 +195,21 @@ int fserve_client_waiting(void)
     if (client_tree_changed) {
         client_tree_changed = 0;
         FD_ZERO(&fds);
-        fd_max = SOCK_ERROR;
+        fd_max = igloo_SOCK_ERROR;
         fclient = active_list;
         while (fclient) {
             FD_SET(fclient->client->con->sock, &fds);
-            if (fclient->client->con->sock > fd_max || fd_max == SOCK_ERROR)
+            if (fclient->client->con->sock > fd_max || fd_max == igloo_SOCK_ERROR)
                 fd_max = fclient->client->con->sock;
             fclient = fclient->next;
         }
     }
     /* hack for windows, select needs at least 1 descriptor */
-    if (fd_max == SOCK_ERROR)
+    if (fd_max == igloo_SOCK_ERROR)
     {
-        thread_spin_lock (&pending_lock);
+        igloo_thread_spin_lock (&pending_lock);
         run_fserv = 0;
-        thread_spin_unlock (&pending_lock);
+        igloo_thread_spin_unlock (&pending_lock);
         return -1;
     }
     else
@@ -247,7 +247,7 @@ static int wait_for_fds(void)
         /* add any new clients here */
         if (pending_list)
         {
-            thread_spin_lock (&pending_lock);
+            igloo_thread_spin_lock (&pending_lock);
 
             fclient = (fserve_t*)pending_list;
             while (fclient)
@@ -260,7 +260,7 @@ static int wait_for_fds(void)
                 fserve_clients++;
             }
             pending_list = NULL;
-            thread_spin_unlock(&pending_lock);
+            igloo_thread_spin_unlock(&pending_lock);
         }
         /* drop out of here if someone is ready */
         ret = fserve_client_waiting();
@@ -352,8 +352,8 @@ char *fserve_content_type(const char *path)
     void *result;
     char *type;
 
-    thread_spin_lock (&pending_lock);
-    if (mimetypes && !avl_get_by_key (mimetypes, &exttype, &result))
+    igloo_thread_spin_lock (&pending_lock);
+    if (mimetypes && !igloo_avl_get_by_key (mimetypes, &exttype, &result))
     {
         mime_type *mime = result;
         type = strdup (mime->type);
@@ -381,7 +381,7 @@ char *fserve_content_type(const char *path)
         else
             type = strdup ("application/octet-stream");
     }
-    thread_spin_unlock (&pending_lock);
+    igloo_thread_spin_unlock (&pending_lock);
     return type;
 }
 
@@ -519,7 +519,7 @@ int fserve_client_create (client_t *httpclient)
     free (fullpath);
 
     content_length = file_buf.st_size;
-    range = httpp_getvar (httpclient->parser, "range");
+    range = igloo_httpp_getvar (httpclient->parser, "range");
 
     /* full http range handling is currently not done but we deal with the common case */
     if (range != NULL) {
@@ -622,16 +622,16 @@ fail:
  */
 static void fserve_add_pending (fserve_t *fclient)
 {
-    thread_spin_lock (&pending_lock);
+    igloo_thread_spin_lock (&pending_lock);
     fclient->next = (fserve_t *)pending_list;
     pending_list = fclient;
     if (run_fserv == 0)
     {
         run_fserv = 1;
         ICECAST_LOG_DEBUG("fserve handler waking up");
-        thread_create("File Serving Thread", fserv_thread_function, NULL, THREAD_DETACHED);
+        thread_create("File Serving Thread", fserv_thread_function, NULL, igloo_THREAD_DETACHED);
     }
-    thread_spin_unlock (&pending_lock);
+    igloo_thread_spin_unlock (&pending_lock);
 }
 
 
@@ -703,7 +703,7 @@ void fserve_recheck_mime_types(ice_config_t *config)
     char line[4096];
     char *type, *ext, *cur;
     mime_type *mapping;
-    avl_tree *new_mimetypes;
+    igloo_avl_tree *new_mimetypes;
 
     if (config->mimetypes_fn == NULL)
         return;
@@ -714,7 +714,7 @@ void fserve_recheck_mime_types(ice_config_t *config)
         return;
     }
 
-    new_mimetypes = avl_tree_new(_compare_mappings, NULL);
+    new_mimetypes = igloo_avl_tree_new(_compare_mappings, NULL);
 
     while(fgets(line, 4096, mimefile))
     {
@@ -751,18 +751,18 @@ void fserve_recheck_mime_types(ice_config_t *config)
                 mapping = malloc(sizeof(mime_type));
                 mapping->ext = strdup(ext);
                 mapping->type = strdup(type);
-                if (!avl_get_by_key (new_mimetypes, mapping, &tmp))
-                    avl_delete (new_mimetypes, mapping, _delete_mapping);
-                avl_insert (new_mimetypes, mapping);
+                if (!igloo_avl_get_by_key (new_mimetypes, mapping, &tmp))
+                    igloo_avl_delete (new_mimetypes, mapping, _delete_mapping);
+                igloo_avl_insert (new_mimetypes, mapping);
             }
         }
     }
     fclose(mimefile);
 
-    thread_spin_lock (&pending_lock);
+    igloo_thread_spin_lock (&pending_lock);
     if (mimetypes)
-        avl_tree_free (mimetypes, _delete_mapping);
+        igloo_avl_tree_free (mimetypes, _delete_mapping);
     mimetypes = new_mimetypes;
-    thread_spin_unlock (&pending_lock);
+    igloo_thread_spin_unlock (&pending_lock);
 }
 

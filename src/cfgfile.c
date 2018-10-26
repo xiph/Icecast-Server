@@ -26,7 +26,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "cfgfile.h"
 #include "global.h"
@@ -237,8 +237,8 @@ static void create_locks(void)
 
 static void release_locks(void)
 {
-    thread_mutex_destroy(&_locks.relay_lock);
-    thread_rwlock_destroy(&_locks.config_lock);
+    igloo_thread_mutex_destroy(&_locks.relay_lock);
+    igloo_thread_rwlock_destroy(&_locks.config_lock);
 }
 
 void config_initialize(void)

@@ -34,7 +34,7 @@ typedef struct {
     refbuf_t *metadata;
     refbuf_t *read_data;
     int read_count;
-    mutex_t url_lock;
+    igloo_mutex_t url_lock;
 
     unsigned build_metadata_len;
     unsigned build_metadata_offset;

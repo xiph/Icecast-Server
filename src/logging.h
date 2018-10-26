@@ -14,7 +14,7 @@
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
-#include <permafrost/log.h>
+#include <igloo/log.h>
 
 #include "icecasttypes.h"
 
@@ -39,7 +39,7 @@ extern int playlistlog;
 ** Variadic macros for logging
 */
 
-#define ICECAST_LOG(level,...) log_write(errorlog, (level), CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_LOG(level,...) igloo_log_write(errorlog, (level), CATMODULE "/", __func__, __VA_ARGS__)
 #define ICECAST_LOG_ERROR(...) ICECAST_LOG(ICECAST_LOGLEVEL_ERROR, __VA_ARGS__)
 #define ICECAST_LOG_WARN(...) ICECAST_LOG(ICECAST_LOGLEVEL_WARN, __VA_ARGS__)
 #define ICECAST_LOG_INFO(...) ICECAST_LOG(ICECAST_LOGLEVEL_INFO, __VA_ARGS__)

@@ -13,7 +13,7 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "icecasttypes.h"
 
@@ -55,7 +55,7 @@ struct event_tag {
     time_t connection_time; /* from client->con->con_time */
     char *client_role; /* from client->role */
     char *client_username; /* from client->username */
-    char *client_useragent; /* from httpp_getvar(client->parser, "user-agent") */
+    char *client_useragent; /* from igloo_httpp_getvar(client->parser, "user-agent") */
     admin_command_id_t client_admin_command; /* from client->admin_command */
 };
 
@@ -66,7 +66,7 @@ struct event_registration_tag {
     event_registration_t *next;
 
     /* protection */
-    mutex_t lock;
+    igloo_mutex_t lock;
 
     /* type of event */
     char *type;

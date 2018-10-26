@@ -14,7 +14,7 @@
 #ifndef __SLAVE_H__
 #define __SLAVE_H__
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 #include "icecasttypes.h"
 #include "cfgfile.h"
 

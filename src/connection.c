@@ -33,10 +33,10 @@
 #include <winsock2.h>
 #endif
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/sock.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/sock.h>
+#include <igloo/httpp.h>
 
 #include "compat.h"
 #include "connection.h"
@@ -90,7 +90,7 @@ typedef struct client_queue_tag {
     struct client_queue_tag *next;
 } client_queue_t;
 
-static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
+static igloo_spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile connection_id_t _current_id = 0;
 static int _initialized = 0;
 
@@ -103,7 +103,7 @@ static tls_ctx_t *tls_ctx;
 /* filtering client connection based on IP */
 static matchfile_t *banned_ip, *allowed_ip;
 
-rwlock_t _source_shutdown_rwlock;
+igloo_rwlock_t _source_shutdown_rwlock;
 
 static int  _update_admin_command(client_t *client);
 static void _handle_connection(void);
@@ -114,7 +114,7 @@ void connection_initialize(void)
     if (_initialized)
         return;
 
-    thread_spin_create (&_connection_lock);
+    igloo_thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
     thread_cond_create(&global.shutdown_cond);
@@ -137,10 +137,10 @@ void connection_shutdown(void)
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
  
-    thread_cond_destroy(&global.shutdown_cond);
-    thread_rwlock_destroy(&_source_shutdown_rwlock);
-    thread_spin_destroy (&_connection_lock);
-    thread_mutex_destroy(&move_clients_mutex);
+    igloo_thread_cond_destroy(&global.shutdown_cond);
+    igloo_thread_rwlock_destroy(&_source_shutdown_rwlock);
+    igloo_thread_spin_destroy (&_connection_lock);
+    igloo_thread_mutex_destroy(&move_clients_mutex);
 
     _initialized = 0;
 }
@@ -155,9 +155,9 @@ static connection_id_t _next_connection_id(void)
 {
     connection_id_t id;
 
-    thread_spin_lock(&_connection_lock);
+    igloo_thread_spin_lock(&_connection_lock);
     id = _current_id++;
-    thread_spin_unlock(&_connection_lock);
+    igloo_thread_spin_unlock(&_connection_lock);
 
     return id;
 }
@@ -231,19 +231,19 @@ static void get_tls_certificate(ice_config_t *config)
  */
 static int connection_read(connection_t *con, void *buf, size_t len)
 {
-    int bytes = sock_read_bytes(con->sock, buf, len);
+    int bytes = igloo_sock_read_bytes(con->sock, buf, len);
     if (bytes == 0)
         con->error = 1;
-    if (bytes == -1 && !sock_recoverable(sock_error()))
+    if (bytes == -1 && !igloo_sock_recoverable(igloo_sock_error()))
         con->error = 1;
     return bytes;
 }
 
 static int connection_send(connection_t *con, const void *buf, size_t len)
 {
-    int bytes = sock_write_bytes(con->sock, buf, len);
+    int bytes = igloo_sock_write_bytes(con->sock, buf, len);
     if (bytes < 0) {
-        if (!sock_recoverable(sock_error()))
+        if (!igloo_sock_recoverable(igloo_sock_error()))
             con->error = 1;
     } else {
         con->sent_bytes += bytes;
@@ -252,7 +252,7 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
     return bytes;
 }
 
-connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip)
+connection_t *connection_create(igloo_sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip)
 {
     connection_t *con;
 
@@ -399,10 +399,10 @@ int connection_read_put_back(connection_t *con, const void *buf, size_t len)
  */
 static void _add_connection(client_queue_t *node)
 {
-    thread_spin_lock(&_connection_lock);
+    igloo_thread_spin_lock(&_connection_lock);
     *_con_queue_tail = node;
     _con_queue_tail = (volatile client_queue_t **) &node->next;
-    thread_spin_unlock(&_connection_lock);
+    igloo_thread_spin_unlock(&_connection_lock);
 }
 
 
@@ -413,7 +413,7 @@ static client_queue_t *_get_connection(void)
 {
     client_queue_t *node = NULL;
 
-    thread_spin_lock(&_connection_lock);
+    igloo_thread_spin_lock(&_connection_lock);
 
     if (_con_queue){
         node = (client_queue_t *)_con_queue;
@@ -423,7 +423,7 @@ static client_queue_t *_get_connection(void)
         node->next = NULL;
     }
 
-    thread_spin_unlock(&_connection_lock);
+    igloo_thread_spin_unlock(&_connection_lock);
     return node;
 }
 
@@ -534,10 +534,10 @@ static void _add_body_client(client_queue_t *node)
 {
     ICECAST_LOG_DEBUG("Putting client %p in body queue.", node->client);
 
-    thread_spin_lock(&_connection_lock);
+    igloo_thread_spin_lock(&_connection_lock);
     *_body_queue_tail = node;
     _body_queue_tail = (volatile client_queue_t **) &node->next;
-    thread_spin_unlock(&_connection_lock);
+    igloo_thread_spin_unlock(&_connection_lock);
 }
 
 static client_slurp_result_t process_request_body_queue_one(client_queue_t *node, time_t timeout, size_t body_size_limit)
@@ -560,7 +560,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_t *node
         if (node->bodybuffer) {
             res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
             if (res == CLIENT_SLURP_SUCCESS) {
-                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
+                igloo_httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
                 free(node->bodybuffer);
                 node->bodybuffer = NULL;
             }
@@ -665,14 +665,14 @@ void connection_queue(connection_t *con)
         global_unlock();
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_LIMIT);
         /* don't be too eager as this is an imposed hard limit */
-        thread_sleep(400000);
+        igloo_thread_sleep(400000);
         return;
     }
 
     /* setup client for reading incoming http */
     client->refbuf->data[PER_CLIENT_REFBUF_SIZE-1] = '\000';
 
-    if (sock_set_blocking(client->con->sock, 0) || sock_set_nodelay(client->con->sock)) {
+    if (igloo_sock_set_blocking(client->con->sock, 0) || igloo_sock_set_nodelay(client->con->sock)) {
         global_unlock();
         ICECAST_LOG_WARN("Failed to set tcp options on client connection, dropping");
         client_destroy(client);
@@ -740,7 +740,7 @@ int connection_complete_source(source_t *source, int response)
         format_type_t format_type;
 
         /* setup format handler */
-        contenttype = httpp_getvar (source->parser, "content-type");
+        contenttype = igloo_httpp_getvar (source->parser, "content-type");
         if (contenttype != NULL) {
             format_type = format_get_type(contenttype);
 
@@ -839,9 +839,9 @@ static inline void source_startup(client_t *client)
             int status_to_send = 200;
             ssize_t ret;
 
-            transfer_encoding = httpp_getvar(source->parser, "transfer-encoding");
-            if (transfer_encoding && strcasecmp(transfer_encoding, HTTPP_ENCODING_IDENTITY) != 0) {
-                client->encoding = httpp_encoding_new(transfer_encoding);
+            transfer_encoding = igloo_httpp_getvar(source->parser, "transfer-encoding");
+            if (transfer_encoding && strcasecmp(transfer_encoding, igloo_HTTPP_ENCODING_IDENTITY) != 0) {
+                client->encoding = igloo_httpp_encoding_new(transfer_encoding);
                 if (!client->encoding) {
                     client_send_error_by_id(client, ICECAST_ERROR_CON_UNIMPLEMENTED);
                     return;
@@ -849,7 +849,7 @@ static inline void source_startup(client_t *client)
             }
 
             /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
-            expectcontinue = httpp_getvar (source->parser, "expect");
+            expectcontinue = igloo_httpp_getvar (source->parser, "expect");
 
             if (expectcontinue != NULL) {
 #ifdef HAVE_STRCASESTR
@@ -941,9 +941,9 @@ static int __add_listener_to_source(source_t *source, client_t *client)
     memset(client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
 
     /* lets add the client to the active list */
-    avl_tree_wlock(source->pending_tree);
-    avl_insert(source->pending_tree, client);
-    avl_tree_unlock(source->pending_tree);
+    igloo_avl_tree_wlock(source->pending_tree);
+    igloo_avl_insert(source->pending_tree, client);
+    igloo_avl_tree_unlock(source->pending_tree);
 
     if (source->running == 0 && source->on_demand) {
         /* enable on-demand relay to start, wake up the slave thread */
@@ -957,10 +957,10 @@ static int __add_listener_to_source(source_t *source, client_t *client)
 /* count the number of clients on a mount with same username and same role as the given one */
 static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *client) {
     ssize_t ret = 0;
-    avl_node *node;
+    igloo_avl_node *node;
 
-    avl_tree_rlock(source->client_tree);
-    node = avl_get_first(source->client_tree);
+    igloo_avl_tree_rlock(source->client_tree);
+    node = igloo_avl_get_first(source->client_tree);
     while (node) {
         client_t *existing_client = (client_t *)node->key;
         if (existing_client->username && client->username &&
@@ -969,12 +969,12 @@ static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *cl
             strcmp(existing_client->role, client->role) == 0) {
             ret++;
         }
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
-    avl_tree_unlock(source->client_tree);
+    igloo_avl_tree_unlock(source->client_tree);
 
-    avl_tree_rlock(source->pending_tree);
-    node = avl_get_first(source->pending_tree);
+    igloo_avl_tree_rlock(source->pending_tree);
+    node = igloo_avl_get_first(source->pending_tree);
     while (node) {
         client_t *existing_client = (client_t *)node->key;
         if (existing_client->username && client->username &&
@@ -983,9 +983,9 @@ static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *cl
             strcmp(existing_client->role, client->role) == 0){
             ret++;
         }
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
-    avl_tree_unlock(source->pending_tree);
+    igloo_avl_tree_unlock(source->pending_tree);
     return ret;
 }
 
@@ -1025,7 +1025,7 @@ static void _handle_get_request(client_t *client) {
         return;
     }
 
-    avl_tree_rlock(global.source_tree);
+    igloo_avl_tree_rlock(global.source_tree);
     /* let's see if this is a source or just a random fserve file */
     source = source_find_mount(client->uri);
     if (source) {
@@ -1058,10 +1058,10 @@ static void _handle_get_request(client_t *client) {
         if (!in_error && __add_listener_to_source(source, client) == -1) {
             client_send_error_by_id(client, ICECAST_ERROR_CON_rejecting_client_for_whatever_reason);
         }
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     } else {
         /* file */
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
         fserve_client_create(client);
     }
 }
@@ -1085,7 +1085,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
 {
     char *http_compliant;
     int http_compliant_len = 0;
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
     const char *shoutcast_mount;
     client_t *client = node->client;
     ice_config_t *config;
@@ -1144,9 +1144,9 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
             "SOURCE %s HTTP/1.0\r\n%s", shoutcast_mount, client->refbuf->data);
     config_release_config();
 
-    parser = httpp_create_parser();
-    httpp_initialize(parser, NULL);
-    if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
+    parser = igloo_httpp_create_parser();
+    igloo_httpp_initialize(parser, NULL);
+    if (igloo_httpp_parse(parser, http_compliant, strlen(http_compliant))) {
         client->refbuf->len = 0;
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
@@ -1167,7 +1167,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
 
 static int _handle_resources(client_t *client, char **uri)
 {
-    const char *http_host = httpp_getvar(client->parser, "host");
+    const char *http_host = igloo_httpp_getvar(client->parser, "host");
     char *serverhost = NULL;
     int   serverport = 0;
     char *vhost = NULL;
@@ -1399,7 +1399,7 @@ static void _handle_authentication_mount_generic(client_t *client, void *userdat
     if (!mountproxy) {
         int command_type = admin_get_command_type(client->admin_command);
         if (command_type == ADMINTYPE_MOUNT || command_type == ADMINTYPE_HYBRID) {
-            const char *mount = httpp_get_param(client->parser, "mount");
+            const char *mount = igloo_httpp_get_param(client->parser, "mount");
             if (mount)
                 mountproxy = __find_non_admin_mount(config, mount, type);
         }
@@ -1478,7 +1478,7 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
 {
     ice_config_t *config;
     const char *sc_mount;
-    const char *pass = httpp_get_query_param(client->parser, "pass");
+    const char *pass = igloo_httpp_get_query_param(client->parser, "pass");
     const listener_t *listener;
 
     if (pass == NULL) {
@@ -1500,10 +1500,10 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     if (listener && listener->shoutcast_mount)
         sc_mount = listener->shoutcast_mount;
 
-    httpp_set_query_param(client->parser, "mount", sc_mount);
+    igloo_httpp_set_query_param(client->parser, "mount", sc_mount);
     listensocket_release_listener(client->con->listensocket_effective);
 
-    httpp_setvar(client->parser, HTTPP_VAR_PROTOCOL, "ICY");
+    igloo_httpp_setvar(client->parser, igloo_HTTPP_VAR_PROTOCOL, "ICY");
     client->password = strdup(pass);
     config_release_config();
     global_unlock();
@@ -1557,7 +1557,7 @@ static int _update_admin_command(client_t *client)
  */
 static void _handle_connection(void)
 {
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
     const char *rawuri;
     client_queue_t *node;
 
@@ -1579,11 +1579,11 @@ static void _handle_connection(void)
                 already_parsed = 1;
                 parser = client->parser;
             } else {
-                parser = httpp_create_parser();
-                httpp_initialize(parser, NULL);
+                parser = igloo_httpp_create_parser();
+                igloo_httpp_initialize(parser, NULL);
                 client->parser = parser;
             }
-            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
+            if (already_parsed || igloo_httpp_parse (parser, client->refbuf->data, node->offset)) {
                 char *uri;
                 const char *upgrade, *connection;
 
@@ -1615,25 +1615,25 @@ static void _handle_connection(void)
                     }
                 }
 
-                rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
+                rawuri = igloo_httpp_getvar(parser, igloo_HTTPP_VAR_URI);
 
                 /* assign a port-based shoutcast mountpoint if required */
                 if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
-                    httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
+                    igloo_httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
                 free (node->bodybuffer);
                 free (node->shoutcast_mount);
                 free (node);
 
-                if (strcmp("ICE",  httpp_getvar(parser, HTTPP_VAR_PROTOCOL)) &&
-                    strcmp("HTTP", httpp_getvar(parser, HTTPP_VAR_PROTOCOL))) {
+                if (strcmp("ICE",  igloo_httpp_getvar(parser, igloo_HTTPP_VAR_PROTOCOL)) &&
+                    strcmp("HTTP", igloo_httpp_getvar(parser, igloo_HTTPP_VAR_PROTOCOL))) {
                     ICECAST_LOG_ERROR("Bad HTTP protocol detected");
                     client_destroy (client);
                     continue;
                 }
 
-                upgrade = httpp_getvar(parser, "upgrade");
-                connection = httpp_getvar(parser, "connection");
+                upgrade = igloo_httpp_getvar(parser, "upgrade");
+                connection = igloo_httpp_getvar(parser, "connection");
                 if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
                     if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || client->con->tls || strstr(upgrade, "TLS/1.0") == NULL) {
                         client_send_error_by_id(client, ICECAST_ERROR_CON_UPGRADE_ERROR);
@@ -1660,7 +1660,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                client->mode = config_str_to_omode(httpp_get_param(client->parser, "omode"));
+                client->mode = config_str_to_omode(igloo_httpp_get_param(client->parser, "omode"));
 
                 if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
@@ -1740,7 +1740,7 @@ void connection_close(connection_t *con)
 
     tls_unref(con->tls);
     if (con->sock != -1) /* TODO: do not use magic */
-        sock_close(con->sock);
+        igloo_sock_close(con->sock);
     if (con->ip)
         free(con->ip);
     if (con->readbuffer)

@@ -20,7 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "yp.h"
 #include "global.h"
@@ -82,14 +82,14 @@ typedef struct ypdata_tag
 } ypdata_t;
 
 
-static rwlock_t yp_lock;
-static mutex_t yp_pending_lock;
+static igloo_rwlock_t yp_lock;
+static igloo_mutex_t yp_pending_lock;
 
 static volatile struct yp_server *active_yps = NULL, *pending_yps = NULL;
 static volatile int yp_update = 0;
 static int yp_running;
 static time_t now;
-static thread_type *yp_thread;
+static igloo_thread_type *yp_thread;
 static volatile unsigned client_limit = 0;
 static volatile char *server_version = NULL;
 
@@ -286,7 +286,7 @@ void yp_initialize(void)
     yp_recheck_config (config);
     config_release_config ();
     yp_thread = thread_create("YP Touch Thread", yp_update_thread,
-                            (void *)NULL, THREAD_ATTACHED);
+                            (void *)NULL, igloo_THREAD_ATTACHED);
 }
 
 
@@ -645,7 +645,7 @@ static void check_servers (void)
     /* add new server entries */
     while (pending_yps)
     {
-        avl_node *node;
+        igloo_avl_node *node;
 
         server = (struct yp_server *)pending_yps;
         pending_yps = server->next;
@@ -655,8 +655,8 @@ static void check_servers (void)
         active_yps = server;
 
         /* new YP server configured, need to populate with existing sources */
-        avl_tree_rlock (global.source_tree);
-        node = avl_get_first (global.source_tree);
+        igloo_avl_tree_rlock (global.source_tree);
+        node = igloo_avl_get_first (global.source_tree);
         while (node)
         {
             ypdata_t *yp;
@@ -670,9 +670,9 @@ static void check_servers (void)
                 yp->next = server->mounts;
                 server->mounts = yp;
             }
-            node = avl_get_next (node);
+            node = igloo_avl_get_next (node);
         }
-        avl_tree_unlock (global.source_tree);
+        igloo_avl_tree_unlock (global.source_tree);
     }
 }
 
@@ -732,7 +732,7 @@ static void *yp_update_thread(void *arg)
     while (running) {
         struct yp_server *server;
 
-        thread_sleep (200000);
+        igloo_thread_sleep (200000);
 
         /* do the YP communication */
         thread_rwlock_rlock (&yp_lock);
@@ -762,8 +762,8 @@ static void *yp_update_thread(void *arg)
         running = yp_running;
         thread_rwlock_unlock(&yp_lock);
     }
-    thread_rwlock_destroy (&yp_lock);
-    thread_mutex_destroy (&yp_pending_lock);
+    igloo_thread_rwlock_destroy (&yp_lock);
+    igloo_thread_mutex_destroy (&yp_pending_lock);
     /* free server and ypdata left */
     while (active_yps)
     {
@@ -995,7 +995,7 @@ void yp_shutdown (void)
     thread_rwlock_unlock(&yp_lock);
 
     if (yp_thread)
-        thread_join (yp_thread);
+        igloo_thread_join (yp_thread);
     free ((char*)server_version);
     server_version = NULL;
     ICECAST_LOG_INFO("YP thread down");

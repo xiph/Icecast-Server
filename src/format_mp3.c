@@ -37,7 +37,7 @@
 #include "stats.h"
 #include "format.h"
 
-#include <permafrost/httpp.h>
+#include <igloo/httpp.h>
 
 #include "logging.h"
 
@@ -88,7 +88,7 @@ int format_mp3_get_plugin(source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar(source->parser, "content-type");
+    plugin->contenttype = igloo_httpp_getvar(source->parser, "content-type");
     if (plugin->contenttype == NULL) {
         /* We default to MP3 audio for old clients without content types */
         plugin->contenttype = "audio/mpeg";
@@ -103,7 +103,7 @@ int format_mp3_get_plugin(source_t *source)
     state->metadata = meta;
     state->interval = -1;
 
-    metadata = httpp_getvar (source->parser, "icy-metaint");
+    metadata = igloo_httpp_getvar (source->parser, "icy-metaint");
     if (metadata)
     {
         state->inline_metadata_interval = atoi (metadata);
@@ -207,7 +207,7 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
     }
     if (source_mp3->interval < 0)
     {
-        const char *metadata = httpp_getvar (client->parser, "icy-metaint");
+        const char *metadata = igloo_httpp_getvar (client->parser, "icy-metaint");
         source_mp3->interval = ICY_METADATA_INTERVAL;
         if (metadata)
         {
@@ -449,7 +449,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     /* free the plugin instance */
     mp3_state *state = self->_state;
 
-    thread_mutex_destroy(&state->url_lock);
+    igloo_thread_mutex_destroy(&state->url_lock);
     free(self->charset);
     refbuf_release(state->metadata);
     refbuf_release(state->read_data);
@@ -672,8 +672,8 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     /* hack for flash player, it wants a length.  It has also been reported that the useragent
      * appears as MSIE if run in internet explorer */
-    useragent = httpp_getvar (client->parser, "user-agent");
-    if (httpp_getvar(client->parser, "x-flash-version") ||
+    useragent = igloo_httpp_getvar (client->parser, "user-agent");
+    if (igloo_httpp_getvar(client->parser, "x-flash-version") ||
             (useragent && strstr(useragent, "MSIE")))
     {
         bytes = snprintf (ptr, remaining, "Content-Length: 221183499\r\n");
@@ -683,7 +683,7 @@ static int format_mp3_create_client_data(source_t *source, client_t *client)
 
     client->format_data = client_mp3;
     client->free_client_data = free_mp3_client_data;
-    metadata = httpp_getvar(client->parser, "icy-metadata");
+    metadata = igloo_httpp_getvar(client->parser, "icy-metadata");
     if (metadata && atoi(metadata))
     {
         if (source_mp3->interval >= 0)

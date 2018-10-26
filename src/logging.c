@@ -19,8 +19,8 @@
 #include <time.h>
 #include <string.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/httpp.h>
 
 #include "logging.h"
 #include "connection.h"
@@ -118,7 +118,7 @@ int get_clf_time (char *buffer, unsigned len, struct tm *t)
  ** BYTES = client->con->sent_bytes
  ** REFERER = get from client->parser
  ** AGENT = get from client->parser
- ** TIME = timing_get_time() - client->con->con_time
+ ** TIME = igloo_timing_get_time() - client->con->con_time
  */
 void logging_access(client_t *client)
 {
@@ -146,23 +146,23 @@ void logging_access(client_t *client)
     else
         username = client->username;
 
-    referrer = httpp_getvar (client->parser, "referer");
+    referrer = igloo_httpp_getvar (client->parser, "referer");
     if (referrer == NULL)
         referrer = "-";
 
-    user_agent = httpp_getvar (client->parser, "user-agent");
+    user_agent = igloo_httpp_getvar (client->parser, "user-agent");
     if (user_agent == NULL)
         user_agent = "-";
 
-    log_write_direct (accesslog,
+    igloo_log_write_direct (accesslog,
             "%s - %H [%s] \"%H %H %H/%H\" %d %llu \"% H\" \"% H\" %llu",
             client->con->ip,
             username,
             datebuf,
-            httpp_getvar (client->parser, HTTPP_VAR_REQ_TYPE),
-            httpp_getvar (client->parser, HTTPP_VAR_URI),
-            httpp_getvar (client->parser, HTTPP_VAR_PROTOCOL),
-            httpp_getvar (client->parser, HTTPP_VAR_VERSION),
+            igloo_httpp_getvar (client->parser, igloo_HTTPP_VAR_REQ_TYPE),
+            igloo_httpp_getvar (client->parser, igloo_HTTPP_VAR_URI),
+            igloo_httpp_getvar (client->parser, igloo_HTTPP_VAR_PROTOCOL),
+            igloo_httpp_getvar (client->parser, igloo_HTTPP_VAR_VERSION),
             client->respcode,
             (long long unsigned int)client->con->sent_bytes,
             referrer,
@@ -194,7 +194,7 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
 #endif
     /* This format MAY CHANGE OVER TIME.  We are looking into finding a good
        standard format for this, if you have any ideas, please let us know */
-    log_write_direct (playlistlog, "%s|%s|%ld|%s",
+    igloo_log_write_direct (playlistlog, "%s|%s|%ld|%s",
              datebuf,
              mount,
              listeners,
@@ -213,7 +213,7 @@ void log_parse_failure (void *ctx, const char *fmt, ...)
     eol = strrchr (line, '\n');
     if (eol) *eol='\0';
     va_end (ap);
-    log_write (errorlog, 2, (char*)ctx, "", "%s", line);
+    igloo_log_write (errorlog, 2, (char*)ctx, "", "%s", line);
 }
 
 
@@ -223,30 +223,30 @@ void restart_logging (ice_config_t *config)
     {
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
-        log_set_filename (errorlog, fn_error);
-        log_set_level (errorlog, config->loglevel);
-        log_set_trigger (errorlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
-        log_reopen (errorlog);
+        igloo_log_set_filename (errorlog, fn_error);
+        igloo_log_set_level (errorlog, config->loglevel);
+        igloo_log_set_trigger (errorlog, config->logsize);
+        igloo_log_set_archive_timestamp(errorlog, config->logarchive);
+        igloo_log_reopen (errorlog);
     }
 
     if (strcmp (config->access_log, "-"))
     {
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
-        log_set_filename (accesslog, fn_error);
-        log_set_trigger (accesslog, config->logsize);
-        log_set_archive_timestamp (accesslog, config->logarchive);
-        log_reopen (accesslog);
+        igloo_log_set_filename (accesslog, fn_error);
+        igloo_log_set_trigger (accesslog, config->logsize);
+        igloo_log_set_archive_timestamp (accesslog, config->logarchive);
+        igloo_log_reopen (accesslog);
     }
 
     if (config->playlist_log)
     {
         char fn_error[FILENAME_MAX];
         snprintf (fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
-        log_set_filename (playlistlog, fn_error);
-        log_set_trigger (playlistlog, config->logsize);
-        log_set_archive_timestamp (playlistlog, config->logarchive);
-        log_reopen (playlistlog);
+        igloo_log_set_filename (playlistlog, fn_error);
+        igloo_log_set_trigger (playlistlog, config->logsize);
+        igloo_log_set_archive_timestamp (playlistlog, config->logarchive);
+        igloo_log_reopen (playlistlog);
     }
 }

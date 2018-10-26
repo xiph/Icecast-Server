@@ -39,10 +39,10 @@
 
 #include <libxml/uri.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/sock.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/sock.h>
+#include <igloo/httpp.h>
 
 #include "slave.h"
 #include "cfgfile.h"
@@ -64,17 +64,17 @@ struct relay_tag {
     int running;
     int cleanup;
     time_t start;
-    thread_type *thread;
+    igloo_thread_type *thread;
     relay_t *next;
 };
 
 static void *_slave_thread(void *arg);
-static thread_type *_slave_thread_id;
+static igloo_thread_type *_slave_thread_id;
 static int slave_running = 0;
 static volatile int update_settings = 0;
 static volatile int update_all_mounts = 0;
 static volatile unsigned int max_interval = 0;
-static mutex_t _slave_mutex; // protects slave_running, update_settings, update_all_mounts, max_interval
+static igloo_mutex_t _slave_mutex; // protects slave_running, update_settings, update_all_mounts, max_interval
 
 static inline void relay_config_upstream_free (relay_config_upstream_t *upstream)
 {
@@ -218,7 +218,7 @@ void slave_initialize(void)
     slave_running = 1;
     max_interval = 0;
     thread_mutex_create (&_slave_mutex);
-    _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, THREAD_ATTACHED);
+    _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 
@@ -233,7 +233,7 @@ void slave_shutdown(void)
     thread_mutex_unlock(&_slave_mutex);
 
     ICECAST_LOG_DEBUG("waiting for slave thread");
-    thread_join (_slave_thread_id);
+    igloo_thread_join (_slave_thread_id);
 }
 
 
@@ -246,7 +246,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
     int redirects = 0;
     char *server_id = NULL;
     ice_config_t *config;
-    http_parser_t *parser = NULL;
+    igloo_http_parser_t *parser = NULL;
     connection_t *con=NULL;
     char *server = strdup (_GET_UPSTREAM_SETTING(server));
     char *mount = strdup (_GET_UPSTREAM_SETTING(mount));
@@ -279,12 +279,12 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
 
     while (redirects < 10)
     {
-        sock_t streamsock;
+        igloo_sock_t streamsock;
 
         ICECAST_LOG_INFO("connecting to %s:%d", server, port);
 
-        streamsock = sock_connect_wto_bind (server, port, _GET_UPSTREAM_SETTING(bind), 10);
-        if (streamsock == SOCK_ERROR)
+        streamsock = igloo_sock_connect_wto_bind (server, port, _GET_UPSTREAM_SETTING(bind), 10);
+        if (streamsock == igloo_SOCK_ERROR)
         {
             ICECAST_LOG_WARN("Failed to connect to %s:%d", server, port);
             break;
@@ -296,7 +296,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
          * state so (the typical case).  It's harmless in the vorbis case. If
          * we don't send in this header then relay will not have mp3 metadata.
          */
-        sock_write(streamsock, "GET %s HTTP/1.0\r\n"
+        igloo_sock_write(streamsock, "GET %s HTTP/1.0\r\n"
                 "User-Agent: %s\r\n"
                 "Host: %s\r\n"
                 "%s"
@@ -313,21 +313,21 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
             ICECAST_LOG_ERROR("Header read failed for %s (%s:%d%s)", relay->config->localmount, server, port, mount);
             break;
         }
-        parser = httpp_create_parser();
-        httpp_initialize (parser, NULL);
-        if (! httpp_parse_response (parser, header, strlen(header), relay->config->localmount))
+        parser = igloo_httpp_create_parser();
+        igloo_httpp_initialize (parser, NULL);
+        if (! igloo_httpp_parse_response (parser, header, strlen(header), relay->config->localmount))
         {
             ICECAST_LOG_ERROR("Error parsing relay request for %s (%s:%d%s)", relay->config->localmount,
                     server, port, mount);
             break;
         }
-        if (strcmp (httpp_getvar (parser, HTTPP_VAR_ERROR_CODE), "302") == 0)
+        if (strcmp (igloo_httpp_getvar (parser, igloo_HTTPP_VAR_ERROR_CODE), "302") == 0)
         {
             /* better retry the connection again but with different details */
             const char *uri, *mountpoint;
             int len;
 
-            uri = httpp_getvar (parser, "location");
+            uri = igloo_httpp_getvar (parser, "location");
             ICECAST_LOG_INFO("redirect received %s", uri);
             if (strncmp (uri, "http://", 7) != 0)
                 break;
@@ -355,10 +355,10 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
         {
             client_t *client = NULL;
 
-            if (httpp_getvar (parser, HTTPP_VAR_ERROR_MESSAGE))
+            if (igloo_httpp_getvar (parser, igloo_HTTPP_VAR_ERROR_MESSAGE))
             {
                 ICECAST_LOG_ERROR("Error from relay request: %s (%s)", relay->config->localmount,
-                        httpp_getvar(parser, HTTPP_VAR_ERROR_MESSAGE));
+                        igloo_httpp_getvar(parser, igloo_HTTPP_VAR_ERROR_MESSAGE));
                 break;
             }
             global_lock ();
@@ -372,7 +372,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
                 break;
             }
             global_unlock ();
-            sock_set_blocking (streamsock, 0);
+            igloo_sock_set_blocking (streamsock, 0);
             client_set_queue (client, NULL);
             client_complete(client);
             free (server);
@@ -464,13 +464,13 @@ static void *start_relay_stream (void *arg)
         source_t *fallback_source;
 
         ICECAST_LOG_DEBUG("failed relay, fallback to %s", relay->source->fallback_mount);
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(relay->source->fallback_mount);
 
         if (fallback_source != NULL)
             source_move_clients(relay->source, fallback_source);
 
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     }
 
     source_clear_source(relay->source);
@@ -540,14 +540,14 @@ static void check_relay_stream (relay_t *relay)
             if (source->fallback_mount && source->fallback_override)
             {
                 source_t *fallback;
-                avl_tree_rlock (global.source_tree);
+                igloo_avl_tree_rlock (global.source_tree);
                 fallback = source_find_mount (source->fallback_mount);
                 if (fallback && fallback->running && fallback->listeners)
                 {
                    ICECAST_LOG_DEBUG("fallback running %d with %lu listeners", fallback->running, fallback->listeners);
                    source->on_demand_req = 1;
                 }
-                avl_tree_unlock (global.source_tree);
+                igloo_avl_tree_unlock (global.source_tree);
             }
             if (source->on_demand_req == 0)
                 break;
@@ -556,7 +556,7 @@ static void check_relay_stream (relay_t *relay)
         relay->start = time(NULL) + 5;
         relay->running = 1;
         relay->thread = thread_create ("Relay Thread", start_relay_stream,
-                relay, THREAD_ATTACHED);
+                relay, igloo_THREAD_ATTACHED);
         return;
 
     } while (0);
@@ -566,7 +566,7 @@ static void check_relay_stream (relay_t *relay)
         if (relay->thread)
         {
             ICECAST_LOG_DEBUG("waiting for relay thread for \"%s\"", relay->config->localmount);
-            thread_join (relay->thread);
+            igloo_thread_join (relay->thread);
             relay->thread = NULL;
         }
         relay->cleanup = 0;
@@ -717,7 +717,7 @@ static void relay_check_streams (relay_t *to_start,
                 ICECAST_LOG_DEBUG("source shutdown request on \"%s\"", to_free->config->localmount);
                 to_free->running = 0;
                 to_free->source->running = 0;
-                thread_join (to_free->thread);
+                igloo_thread_join (to_free->thread);
             }
             else
                 stats_event (to_free->config->localmount, NULL, NULL);
@@ -740,7 +740,7 @@ static int update_from_master(ice_config_t *config)
 {
     char *master = NULL, *password = NULL, *username= NULL;
     int port;
-    sock_t mastersock;
+    igloo_sock_t mastersock;
     int ret = 0;
     char buf[256];
     do
@@ -767,9 +767,9 @@ static int update_from_master(ice_config_t *config)
         on_demand = config->on_demand;
         ret = 1;
         config_release_config();
-        mastersock = sock_connect_wto(master, port, 10);
+        mastersock = igloo_sock_connect_wto(master, port, 10);
 
-        if (mastersock == SOCK_ERROR)
+        if (mastersock == igloo_SOCK_ERROR)
         {
             ICECAST_LOG_WARN("Relay slave failed to contact master server to fetch stream list");
             break;
@@ -779,29 +779,29 @@ static int update_from_master(ice_config_t *config)
         authheader = malloc(len);
         snprintf (authheader, len, "%s:%s", username, password);
         data = util_base64_encode(authheader, len);
-        sock_write (mastersock,
+        igloo_sock_write (mastersock,
                 "GET /admin/streamlist.txt HTTP/1.0\r\n"
                 "Authorization: Basic %s\r\n"
                 "\r\n", data);
         free(authheader);
         free(data);
 
-        if (sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
+        if (igloo_sock_read_line(mastersock, buf, sizeof(buf)) == 0 ||
                 ((strncmp (buf, "HTTP/1.0 200", 12) != 0) && (strncmp (buf, "HTTP/1.1 200", 12) != 0)))
         {
-            sock_close (mastersock);
+            igloo_sock_close (mastersock);
             ICECAST_LOG_WARN("Master rejected streamlist request");
             break;
         } else {
             ICECAST_LOG_INFO("Master accepted streamlist request");
         }
 
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
+        while (igloo_sock_read_line(mastersock, buf, sizeof(buf)))
         {
             if (!strlen(buf))
                 break;
         }
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
+        while (igloo_sock_read_line(mastersock, buf, sizeof(buf)))
         {
             relay_config_t *c = NULL;
             relay_config_t **n;
@@ -844,7 +844,7 @@ static int update_from_master(ice_config_t *config)
             }
             xmlFreeURI(parsed_uri);
         }
-        sock_close (mastersock);
+        igloo_sock_close (mastersock);
 
         thread_mutex_lock (&(config_locks()->relay_lock));
         cleanup_relays = update_relays (&global.master_relays, new_relays, new_relays_length);
@@ -901,7 +901,7 @@ static void *_slave_thread(void *arg)
         }
         global_unlock();
 
-        thread_sleep(1000000);
+        igloo_thread_sleep(1000000);
         thread_mutex_lock(&_slave_mutex);
         if (slave_running == 0) {
             thread_mutex_unlock(&_slave_mutex);

@@ -16,8 +16,8 @@
 
 #include <stdio.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/httpp.h>
 
 #include "icecasttypes.h"
 #include "yp.h"
@@ -26,10 +26,10 @@
 #include "playlist.h"
 
 struct source_tag {
-    mutex_t lock;
+    igloo_mutex_t lock;
     client_t *client;
     connection_t *con;
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
     time_t client_stats_update;
     
     char *mount;
@@ -43,10 +43,10 @@ struct source_tag {
 
     struct _format_plugin_tag *format;
 
-    avl_tree *client_tree;
-    avl_tree *pending_tree;
+    igloo_avl_tree *client_tree;
+    igloo_avl_tree *pending_tree;
 
-    rwlock_t *shutdown_rwlock;
+    igloo_rwlock_t *shutdown_rwlock;
     util_dict *audio_info;
 
     FILE *intro_file;
@@ -99,6 +99,6 @@ int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
 
-extern mutex_t move_clients_mutex;
+extern igloo_mutex_t move_clients_mutex;
 
 #endif

@@ -43,12 +43,12 @@ typedef struct _stats_source_tag
 {
     char *source;
     int  hidden;
-    avl_tree *stats_tree;
+    igloo_avl_tree *stats_tree;
 } stats_source_t;
 
 typedef struct _stats_tag
 {
-    avl_tree *global_tree;
+    igloo_avl_tree *global_tree;
 
     /* global stats
     start_time
@@ -60,7 +60,7 @@ typedef struct _stats_tag
     total_source_connections
     */
 
-    avl_tree *source_tree;
+    igloo_avl_tree *source_tree;
 
     /* stats by source, and for stats
     start_time

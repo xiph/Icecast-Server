@@ -23,8 +23,8 @@
 #define MAX_YP_DIRECTORIES 25
 
 #include <libxml/tree.h>
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
 
 #include "icecasttypes.h"
 #include "compat.h"
@@ -279,8 +279,8 @@ struct ice_config_tag {
 };
 
 typedef struct {
-    rwlock_t config_lock;
-    mutex_t relay_lock;
+    igloo_rwlock_t config_lock;
+    igloo_mutex_t relay_lock;
 } ice_config_locks;
 
 void config_initialize(void);

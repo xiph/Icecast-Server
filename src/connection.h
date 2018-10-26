@@ -22,8 +22,8 @@
 #include "icecasttypes.h"
 #include "compat.h"
 
-#include <permafrost/thread.h>
-#include <permafrost/sock.h>
+#include <igloo/thread.h>
+#include <igloo/sock.h>
 
 typedef unsigned long connection_id_t;
 
@@ -41,7 +41,7 @@ struct connection_tag {
     uint64_t sent_bytes;
 
     /* Physical socket the client is connected on */
-    sock_t sock;
+    igloo_sock_t sock;
     /* real and effective listen socket the connect used to connect. */
     listensocket_t *listensocket_real;
     listensocket_t *listensocket_effective;
@@ -73,7 +73,7 @@ void connection_reread_config(ice_config_t *config);
 void connection_accept_loop(void);
 void connection_setup_sockets(ice_config_t *config);
 void connection_close(connection_t *con);
-connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip);
+connection_t *connection_create(igloo_sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip);
 int connection_complete_source(source_t *source, int response);
 void connection_queue(connection_t *con);
 void connection_queue_client(client_t *client);
@@ -83,6 +83,6 @@ ssize_t connection_send_bytes(connection_t *con, const void *buf, size_t len);
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len);
 int connection_read_put_back(connection_t *con, const void *buf, size_t len);
 
-extern rwlock_t _source_shutdown_rwlock;
+extern igloo_rwlock_t _source_shutdown_rwlock;
 
 #endif  /* __CONNECTION_H__ */

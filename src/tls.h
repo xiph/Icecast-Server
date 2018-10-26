@@ -9,7 +9,7 @@
 #ifndef __TLS_H__
 #define __TLS_H__
 
-#include <permafrost/sock.h>
+#include <igloo/sock.h>
 
 /* Do we have TLS Support? */
 #if defined(HAVE_OPENSSL)
@@ -35,7 +35,7 @@ void       tls_ref(tls_t *tls);
 void       tls_unref(tls_t *tls);
 
 void       tls_set_incoming(tls_t *tls);
-void       tls_set_socket(tls_t *tls, sock_t sock);
+void       tls_set_socket(tls_t *tls, igloo_sock_t sock);
 
 int        tls_want_io(tls_t *tls);
 

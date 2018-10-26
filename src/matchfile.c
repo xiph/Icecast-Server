@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <permafrost/avl.h>
+#include <igloo/avl.h>
 
 #include "matchfile.h"
 #include "logging.h"
@@ -35,7 +35,7 @@ struct matchfile_tag {
 
     time_t file_recheck;
     time_t file_mtime;
-    avl_tree *contents;
+    igloo_avl_tree *contents;
 };
 
 static int __func_free(void *x) {
@@ -52,7 +52,7 @@ static void __func_recheck(matchfile_t *file) {
     time_t now = time(NULL);
     struct stat file_stat;
     FILE *input = NULL;
-    avl_tree *new_contents;
+    igloo_avl_tree *new_contents;
     char line[MAX_LINE_LEN];
 
     if (now < file->file_recheck)
@@ -76,7 +76,7 @@ static void __func_recheck(matchfile_t *file) {
         return;
     }
 
-    new_contents = avl_tree_new(__func_compare, NULL);
+    new_contents = igloo_avl_tree_new(__func_compare, NULL);
 
     while (get_line(input, line, MAX_LINE_LEN)) {
         char *str;
@@ -85,12 +85,12 @@ static void __func_recheck(matchfile_t *file) {
             continue;
         str = strdup(line);
         if (str)
-            avl_insert(new_contents, str);
+            igloo_avl_insert(new_contents, str);
     }
 
     fclose(input);
 
-    if (file->contents) avl_tree_free(file->contents, __func_free);
+    if (file->contents) igloo_avl_tree_free(file->contents, __func_free);
     file->contents = new_contents;
 }
 
@@ -139,14 +139,14 @@ int          matchfile_release(matchfile_t *file) {
         return 0;
 
     if (file->contents)
-        avl_tree_free(file->contents, __func_free);
+        igloo_avl_tree_free(file->contents, __func_free);
     free(file->filename);
     free(file);
 
     return 0;
 }
 
-/* we are not const char *key because of avl_get_by_key()... */
+/* we are not const char *key because of igloo_avl_get_by_key()... */
 int          matchfile_match(matchfile_t *file, const char *key) {
     void *result;
 
@@ -159,7 +159,7 @@ int          matchfile_match(matchfile_t *file, const char *key) {
     if (!file->contents)
         return 0;
 
-    return avl_get_by_key(file->contents, (void*)key, &result) == 0 ? 1 : 0;
+    return igloo_avl_get_by_key(file->contents, (void*)key, &result) == 0 ? 1 : 0;
 }
 
 int          matchfile_match_allow_deny(matchfile_t *allow, matchfile_t *deny, const char *key) {

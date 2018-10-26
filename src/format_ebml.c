@@ -209,7 +209,7 @@ int format_ebml_get_plugin(source_t *source)
     plugin->set_tag = NULL;
     plugin->apply_settings = NULL;
 
-    plugin->contenttype = httpp_getvar(source->parser, "content-type");
+    plugin->contenttype = igloo_httpp_getvar(source->parser, "content-type");
 
     plugin->_state = ebml_source_state;
     vorbis_comment_init(&plugin->vc);

@@ -22,8 +22,8 @@
 
 #include <string.h>
 
-#include <permafrost/sock.h>
-#include <permafrost/thread.h>
+#include <igloo/sock.h>
+#include <igloo/thread.h>
 
 #include "listensocket.h"
 #include "global.h"
@@ -36,7 +36,7 @@
 
 struct listensocket_container_tag {
     refobject_base_t __base;
-    mutex_t lock;
+    igloo_mutex_t lock;
     listensocket_t **sock;
     int *sockref;
     size_t sock_len;
@@ -46,11 +46,11 @@ struct listensocket_container_tag {
 struct listensocket_tag {
     refobject_base_t __base;
     size_t sockrefc;
-    mutex_t lock;
-    rwlock_t listener_rwlock;
+    igloo_mutex_t lock;
+    igloo_rwlock_t listener_rwlock;
     listener_t *listener;
     listener_t *listener_update;
-    sock_t sock;
+    igloo_sock_t sock;
 };
 
 static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
@@ -73,7 +73,7 @@ static inline const char * __string_default(const char *str, const char *def)
     return str != NULL ? str : def;
 }
 
-static inline int __socket_listen(sock_t serversock, const listener_t *listener)
+static inline int __socket_listen(igloo_sock_t serversock, const listener_t *listener)
 {
     int listen_backlog = listener->listen_backlog;
 
@@ -84,7 +84,7 @@ static inline int __socket_listen(sock_t serversock, const listener_t *listener)
         ICECAST_LOG_WARN("Listen backlog for listen socket on %s port %i is set insanely high. Limiting to sane range.", __string_default(listener->bind_address, "<ANY>"), listener->port);
     }
 
-    return sock_listen(serversock, listen_backlog);
+    return igloo_sock_listen(serversock, listen_backlog);
 }
 
 static inline int __listener_cmp(const listener_t *a, const listener_t *b)
@@ -147,7 +147,7 @@ static void __listensocket_container_free(refobject_t self, void **userdata)
     thread_mutex_lock(&container->lock);
     __listensocket_container_clear_sockets(container);
     thread_mutex_unlock(&container->lock);
-    thread_mutex_destroy(&container->lock);
+    igloo_thread_mutex_destroy(&container->lock);
 }
 
 int __listensocket_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
@@ -525,9 +525,9 @@ static void __listensocket_free(refobject_t self, void **userdata)
     thread_rwlock_wlock(&listensocket->listener_rwlock);
     while ((listensocket->listener = config_clear_listener(listensocket->listener)));
     thread_rwlock_unlock(&listensocket->listener_rwlock);
-    thread_rwlock_destroy(&listensocket->listener_rwlock);
+    igloo_thread_rwlock_destroy(&listensocket->listener_rwlock);
     thread_mutex_unlock(&listensocket->lock);
-    thread_mutex_destroy(&listensocket->lock);
+    igloo_thread_mutex_destroy(&listensocket->lock);
 }
 
 REFOBJECT_DEFINE_TYPE(listensocket_t,
@@ -544,7 +544,7 @@ static listensocket_t * listensocket_new(const listener_t *listener) {
     if (!self)
         return NULL;
 
-    self->sock = SOCK_ERROR;
+    self->sock = igloo_SOCK_ERROR;
 
     thread_mutex_create(&self->lock);
     thread_rwlock_create(&self->listener_rwlock);
@@ -597,11 +597,11 @@ static int              listensocket_apply_config__unlocked(listensocket_t *self
         listener = self->listener;
     }
 
-    if (self->sock != SOCK_ERROR) {
+    if (self->sock != igloo_SOCK_ERROR) {
         if (listener->so_sndbuf)
-            sock_set_send_buffer(self->sock, listener->so_sndbuf);
+            igloo_sock_set_send_buffer(self->sock, listener->so_sndbuf);
 
-        sock_set_blocking(self->sock, 0);
+        igloo_sock_set_blocking(self->sock, 0);
 
         __socket_listen(self->sock, listener);
     }
@@ -648,16 +648,16 @@ int                         listensocket_refsock(listensocket_t *self)
     }
 
     thread_rwlock_rlock(&self->listener_rwlock);
-    self->sock = sock_get_server_socket(self->listener->port, self->listener->bind_address);
+    self->sock = igloo_sock_get_server_socket(self->listener->port, self->listener->bind_address);
     thread_rwlock_unlock(&self->listener_rwlock);
-    if (self->sock == SOCK_ERROR) {
+    if (self->sock == igloo_SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
         return -1;
     }
 
     if (__socket_listen(self->sock, self->listener) == 0) {
-        sock_close(self->sock);
-        self->sock = SOCK_ERROR;
+        igloo_sock_close(self->sock);
+        self->sock = igloo_SOCK_ERROR;
         thread_rwlock_rlock(&self->listener_rwlock);
         ICECAST_LOG_ERROR("Can not listen on socket: %s port %i", __string_default(self->listener->bind_address, "<ANY>"), self->listener->port);
         thread_rwlock_unlock(&self->listener_rwlock);
@@ -688,13 +688,13 @@ int                         listensocket_unrefsock(listensocket_t *self)
         return 0;
     }
 
-    if (self->sock == SOCK_ERROR) {
+    if (self->sock == igloo_SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
         return 0;
     }
 
-    sock_close(self->sock);
-    self->sock = SOCK_ERROR;
+    igloo_sock_close(self->sock);
+    self->sock = igloo_SOCK_ERROR;
     thread_mutex_unlock(&self->lock);
 
     return 0;
@@ -704,7 +704,7 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
 {
     connection_t *con;
     listensocket_t *effective = NULL;
-    sock_t sock;
+    igloo_sock_t sock;
     char *ip;
 
     if (!self)
@@ -715,9 +715,9 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
         return NULL;
 
     thread_mutex_lock(&self->lock);
-    sock = sock_accept(self->sock, ip, MAX_ADDR_LEN);
+    sock = igloo_sock_accept(self->sock, ip, MAX_ADDR_LEN);
     thread_mutex_unlock(&self->lock);
-    if (sock == SOCK_ERROR) {
+    if (sock == igloo_SOCK_ERROR) {
         free(ip);
         return NULL;
     }
@@ -746,7 +746,7 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
     refobject_unref(effective);
 
     if (con == NULL) {
-        sock_close(sock);
+        igloo_sock_close(sock);
         free(ip);
         return NULL;
     }
@@ -807,7 +807,7 @@ static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p
         return -1;
 
     thread_mutex_lock(&self->lock);
-    if (self->sock == SOCK_ERROR) {
+    if (self->sock == igloo_SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
         return -1;
     }
@@ -828,7 +828,7 @@ static inline int listensocket__select_set(listensocket_t *self, fd_set *set, in
         return -1;
 
     thread_mutex_lock(&self->lock);
-    if (self->sock == SOCK_ERROR) {
+    if (self->sock == igloo_SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
         return -1;
     }
@@ -849,7 +849,7 @@ static inline int listensocket__select_isset(listensocket_t *self, fd_set *set)
         return -1;
 
     thread_mutex_lock(&self->lock);
-    if (self->sock == SOCK_ERROR) {
+    if (self->sock == igloo_SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
         return -1;
     }

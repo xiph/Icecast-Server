@@ -41,10 +41,10 @@
 #define snprintf _snprintf
 #endif
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/httpp.h>
-#include <permafrost/sock.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/httpp.h>
+#include <igloo/sock.h>
 
 #include "xslt.h"
 #include "refbuf.h"
@@ -96,7 +96,7 @@ int xsltSaveResultToString(xmlChar **doc_txt_ptr, int * doc_txt_len, xmlDocPtr r
 #define CACHESIZE 3
 
 static stylesheet_cache_t cache[CACHESIZE];
-static mutex_t xsltlock;
+static igloo_mutex_t xsltlock;
 
 /* Reference to the original xslt loader func */
 static xsltDocLoaderFunc xslt_loader;
@@ -118,7 +118,7 @@ void xslt_shutdown(void) {
 
     xslt_clear_cache();
 
-    thread_mutex_destroy (&xsltlock);
+    igloo_thread_mutex_destroy (&xsltlock);
     xmlCleanupParser();
     xsltCleanupGlobals();
     if (admin_URI)

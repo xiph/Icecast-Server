@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "fastevent.h"
 
@@ -42,7 +42,7 @@ struct eventrow {
 };
 
 static struct eventrow fastevent_registrations[FASTEVENT_TYPE__END];
-static rwlock_t fastevent_lock;
+static igloo_rwlock_t fastevent_lock;
 
 static inline struct eventrow * __get_row(fastevent_type_t type)
 {
@@ -138,7 +138,7 @@ int fastevent_shutdown(void)
         fastevent_registrations[i].registrations = NULL;
     }
     thread_rwlock_unlock(&fastevent_lock);
-    thread_rwlock_destroy(&fastevent_lock);
+    igloo_thread_rwlock_destroy(&fastevent_lock);
 
     return 0;
 }

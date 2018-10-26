@@ -22,8 +22,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/httpp.h>
 
 #include "icecasttypes.h"
 #include "cfgfile.h"
@@ -142,11 +142,11 @@ struct auth_tag
     auth_result (*deleteuser)(auth_t *auth, const char *username);
     auth_result (*listuser)(auth_t *auth, xmlNodePtr srcnode);
 
-    mutex_t lock;
+    igloo_mutex_t lock;
     int running;
     size_t refcount;
 
-    thread_type *thread;
+    igloo_thread_type *thread;
 
     /* per-auth queue for clients */
     auth_client *head, **tailp;
@@ -200,6 +200,6 @@ int           auth_stack_push(auth_stack_t **stack, auth_t *auth);
 int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail);
 auth_t       *auth_stack_get(auth_stack_t *stack);
 auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id);
-acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_type_e method);
+acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, igloo_httpp_request_type_e method);
 
 #endif

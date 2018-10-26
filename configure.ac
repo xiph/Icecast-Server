@@ -127,14 +127,14 @@ AC_TYPE_UID_T
 dnl Checks for required libraries
 
 dnl
-dnl permafrost
+dnl igloo
 dnl
-PKG_CHECK_MODULES([PERMAFROST], [permafrost], [], [
-  AC_MSG_ERROR([${PERMAFROST_PKG_ERRORS}. permafrost is required.])
+PKG_CHECK_MODULES([IGLOO], [igloo], [], [
+  AC_MSG_ERROR([${IGLOO_PKG_ERRORS}. igloo is required.])
 ])
 
-CFLAGS="${CFLAGS} ${PERMAFROST_CFLAGS}"
-LIBS="${LIBS} ${PERMAFROST_LIBS}"
+CFLAGS="${CFLAGS} ${IGLOO_CFLAGS}"
+LIBS="${LIBS} ${IGLOO_LIBS}"
 
 dnl
 dnl libxml2

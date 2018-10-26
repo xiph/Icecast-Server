@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "refobject.h"
 
@@ -136,7 +136,7 @@ int             refobject_unref(refobject_t self)
         free(base->name);
 
     thread_mutex_unlock(&(base->lock));
-    thread_mutex_destroy(&(base->lock));
+    igloo_thread_mutex_destroy(&(base->lock));
 
     free(base);
 

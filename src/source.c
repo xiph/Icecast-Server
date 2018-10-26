@@ -39,9 +39,9 @@
 #define snprintf _snprintf
 #endif
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/httpp.h>
 
 #include "source.h"
 #include "compat.h"
@@ -66,7 +66,7 @@
 
 #define MAX_FALLBACK_DEPTH 10
 
-mutex_t move_clients_mutex;
+igloo_mutex_t move_clients_mutex;
 
 /* avl tree helper */
 static int _compare_clients(void *compare_arg, void *a, void *b);
@@ -88,7 +88,7 @@ source_t *source_reserve (const char *mount)
 
     do
     {
-        avl_tree_wlock (global.source_tree);
+        igloo_avl_tree_wlock (global.source_tree);
         src = source_find_mount_raw (mount);
         if (src)
         {
@@ -100,8 +100,8 @@ source_t *source_reserve (const char *mount)
         if (src == NULL)
             break;
 
-        src->client_tree = avl_tree_new(_compare_clients, NULL);
-        src->pending_tree = avl_tree_new(_compare_clients, NULL);
+        src->client_tree = igloo_avl_tree_new(_compare_clients, NULL);
+        src->pending_tree = igloo_avl_tree_new(_compare_clients, NULL);
         src->history = playlist_new(10 /* DOCUMENT: default is max_tracks=10. */);
 
         /* make duplicates for strings or similar */
@@ -109,11 +109,11 @@ source_t *source_reserve (const char *mount)
         src->max_listeners = -1;
         thread_mutex_create(&src->lock);
 
-        avl_insert(global.source_tree, src);
+        igloo_avl_insert(global.source_tree, src);
 
     } while (0);
 
-    avl_tree_unlock(global.source_tree);
+    igloo_avl_tree_unlock(global.source_tree);
     return src;
 }
 
@@ -124,7 +124,7 @@ source_t *source_reserve (const char *mount)
 source_t *source_find_mount_raw(const char *mount)
 {
     source_t *source;
-    avl_node *node;
+    igloo_avl_node *node;
     int cmp;
 
     if (!mount) {
@@ -205,7 +205,7 @@ void source_clear_source (source_t *source)
 
     ICECAST_LOG_DEBUG("clearing source \"%s\"", source->mount);
 
-    avl_tree_wlock (source->pending_tree);
+    igloo_avl_tree_wlock (source->pending_tree);
     client_destroy(source->client);
     source->client = NULL;
     source->parser = NULL;
@@ -223,17 +223,17 @@ void source_clear_source (source_t *source)
     }
 
     /* lets kick off any clients that are left on here */
-    avl_tree_wlock (source->client_tree);
+    igloo_avl_tree_wlock (source->client_tree);
     c=0;
     while (1)
     {
-        avl_node *node = avl_get_first (source->client_tree);
+        igloo_avl_node *node = igloo_avl_get_first (source->client_tree);
         if (node)
         {
             client_t *client = node->key;
             if (client->respcode == 200)
                 c++; /* only count clients that have had some processing */
-            avl_delete (source->client_tree, client, _free_client);
+            igloo_avl_delete (source->client_tree, client, _free_client);
             continue;
         }
         break;
@@ -243,12 +243,12 @@ void source_clear_source (source_t *source)
         stats_event_sub (NULL, "listeners", source->listeners);
         ICECAST_LOG_INFO("%d active listeners on %s released", c, source->mount);
     }
-    avl_tree_unlock (source->client_tree);
+    igloo_avl_tree_unlock (source->client_tree);
 
-    while (avl_get_first (source->pending_tree))
+    while (igloo_avl_get_first (source->pending_tree))
     {
-        avl_delete (source->pending_tree,
-                avl_get_first(source->pending_tree)->key, _free_client);
+        igloo_avl_delete (source->pending_tree,
+                igloo_avl_get_first(source->pending_tree)->key, _free_client);
     }
 
     if (source->format && source->format->free_plugin)
@@ -298,7 +298,7 @@ void source_clear_source (source_t *source)
     }
 
     source->on_demand_req = 0;
-    avl_tree_unlock (source->pending_tree);
+    igloo_avl_tree_unlock (source->pending_tree);
 }
 
 
@@ -306,12 +306,12 @@ void source_clear_source (source_t *source)
 void source_free_source (source_t *source)
 {
     ICECAST_LOG_DEBUG("freeing source \"%s\"", source->mount);
-    avl_tree_wlock (global.source_tree);
-    avl_delete (global.source_tree, source, NULL);
-    avl_tree_unlock (global.source_tree);
+    igloo_avl_tree_wlock (global.source_tree);
+    igloo_avl_delete (global.source_tree, source, NULL);
+    igloo_avl_tree_unlock (global.source_tree);
 
-    avl_tree_free(source->pending_tree, _free_client);
-    avl_tree_free(source->client_tree, _free_client);
+    igloo_avl_tree_free(source->pending_tree, _free_client);
+    igloo_avl_tree_free(source->client_tree, _free_client);
 
     /* make sure all YP entries have gone */
     yp_remove (source->mount);
@@ -332,14 +332,14 @@ client_t *source_find_client(source_t *source, int id)
     fakeclient.con = &fakecon;
     fakeclient.con->id = id;
 
-    avl_tree_rlock(source->client_tree);
-    if(avl_get_by_key(source->client_tree, &fakeclient, &result) == 0)
+    igloo_avl_tree_rlock(source->client_tree);
+    if(igloo_avl_get_by_key(source->client_tree, &fakeclient, &result) == 0)
     {
-        avl_tree_unlock(source->client_tree);
+        igloo_avl_tree_unlock(source->client_tree);
         return result;
     }
 
-    avl_tree_unlock(source->client_tree);
+    igloo_avl_tree_unlock(source->client_tree);
     return NULL;
 }
 
@@ -362,11 +362,11 @@ void source_move_clients(source_t *source, source_t *dest)
 
     /* if the destination is not running then we can't move clients */
 
-    avl_tree_wlock (dest->pending_tree);
+    igloo_avl_tree_wlock (dest->pending_tree);
     if (dest->running == 0 && dest->on_demand == 0)
     {
         ICECAST_LOG_WARN("destination mount %s not running, unable to move clients ", dest->mount);
-        avl_tree_unlock (dest->pending_tree);
+        igloo_avl_tree_unlock (dest->pending_tree);
         thread_mutex_unlock (&move_clients_mutex);
         return;
     }
@@ -377,8 +377,8 @@ void source_move_clients(source_t *source, source_t *dest)
 
         /* we need to move the client and pending trees - we must take the
          * locks in this order to avoid deadlocks */
-        avl_tree_wlock(source->pending_tree);
-        avl_tree_wlock(source->client_tree);
+        igloo_avl_tree_wlock(source->pending_tree);
+        igloo_avl_tree_wlock(source->client_tree);
 
         if (source->on_demand == 0 && source->format == NULL)
         {
@@ -396,11 +396,11 @@ void source_move_clients(source_t *source, source_t *dest)
 
         while (1)
         {
-            avl_node *node = avl_get_first (source->pending_tree);
+            igloo_avl_node *node = igloo_avl_get_first (source->pending_tree);
             if (node == NULL)
                 break;
             client = (client_t *)(node->key);
-            avl_delete (source->pending_tree, client, NULL);
+            igloo_avl_delete (source->pending_tree, client, NULL);
 
             /* when switching a client to a different queue, be wary of the
              * refbuf it's referring to, if it's http headers then we need
@@ -414,18 +414,18 @@ void source_move_clients(source_t *source, source_t *dest)
                     client->intro_offset = -1;
             }
 
-            avl_insert (dest->pending_tree, (void *)client);
+            igloo_avl_insert (dest->pending_tree, (void *)client);
             count++;
         }
 
         while (1)
         {
-            avl_node *node = avl_get_first (source->client_tree);
+            igloo_avl_node *node = igloo_avl_get_first (source->client_tree);
             if (node == NULL)
                 break;
 
             client = (client_t *)(node->key);
-            avl_delete (source->client_tree, client, NULL);
+            igloo_avl_delete (source->client_tree, client, NULL);
 
             /* when switching a client to a different queue, be wary of the
              * refbuf it's referring to, if it's http headers then we need
@@ -438,7 +438,7 @@ void source_move_clients(source_t *source, source_t *dest)
                 if (source->con == NULL)
                     client->intro_offset = -1;
             }
-            avl_insert (dest->pending_tree, (void *)client);
+            igloo_avl_insert (dest->pending_tree, (void *)client);
             count++;
         }
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
@@ -448,14 +448,14 @@ void source_move_clients(source_t *source, source_t *dest)
 
     } while (0);
 
-    avl_tree_unlock (source->pending_tree);
-    avl_tree_unlock (source->client_tree);
+    igloo_avl_tree_unlock (source->pending_tree);
+    igloo_avl_tree_unlock (source->client_tree);
 
     /* see if we need to wake up an on-demand relay */
     if (dest->running == 0 && dest->on_demand && count)
         dest->on_demand_req = 1;
 
-    avl_tree_unlock (dest->pending_tree);
+    igloo_avl_tree_unlock (dest->pending_tree);
     thread_mutex_unlock (&move_clients_mutex);
 }
 
@@ -480,7 +480,7 @@ static refbuf_t *get_next_buffer (source_t *source)
             fds = util_timed_wait_for_fd (source->con->sock, delay);
         else
         {
-            thread_sleep (delay*1000);
+            igloo_thread_sleep (delay*1000);
             source->last_read = current;
         }
 
@@ -494,7 +494,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         if (fds < 0)
         {
-            if (! sock_recoverable (sock_error()))
+            if (! igloo_sock_recoverable (igloo_sock_error()))
             {
                 ICECAST_LOG_WARN("Error while waiting on socket, Disconnecting source");
                 source->running = 0;
@@ -619,7 +619,7 @@ static void source_init (source_t *source)
     char listenurl[512];
     const char *str;
 
-    str = httpp_getvar(source->parser, "ice-audio-info");
+    str = igloo_httpp_getvar(source->parser, "ice-audio-info");
     source->audio_info = util_dict_new();
     if (str)
     {
@@ -670,13 +670,13 @@ static void source_init (source_t *source)
     {
         source_t *fallback_source;
 
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source)
             source_move_clients (fallback_source, source);
 
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     }
 }
 
@@ -685,7 +685,7 @@ void source_main (source_t *source)
 {
     refbuf_t *refbuf;
     client_t *client;
-    avl_node *client_node;
+    igloo_avl_node *client_node;
 
     source_init (source);
 
@@ -739,31 +739,31 @@ void source_main (source_t *source)
         thread_mutex_unlock(&source->lock);
 
         /* acquire write lock on pending_tree */
-        avl_tree_wlock(source->pending_tree);
+        igloo_avl_tree_wlock(source->pending_tree);
 
         /* acquire write lock on client_tree */
-        avl_tree_wlock(source->client_tree);
+        igloo_avl_tree_wlock(source->client_tree);
 
-        client_node = avl_get_first(source->client_tree);
+        client_node = igloo_avl_get_first(source->client_tree);
         while (client_node) {
             client = (client_t *) client_node->key;
 
             send_to_listener(source, client, remove_from_q);
 
             if (client->con->error) {
-                client_node = avl_get_next(client_node);
+                client_node = igloo_avl_get_next(client_node);
                 if (client->respcode == 200)
                     stats_event_dec(NULL, "listeners");
-                avl_delete(source->client_tree, (void *) client, _free_client);
+                igloo_avl_delete(source->client_tree, (void *) client, _free_client);
                 source->listeners--;
                 ICECAST_LOG_DEBUG("Client removed");
                 continue;
             }
-            client_node = avl_get_next(client_node);
+            client_node = igloo_avl_get_next(client_node);
         }
 
         /** add pending clients **/
-        client_node = avl_get_first(source->pending_tree);
+        client_node = igloo_avl_get_first(source->pending_tree);
         while (client_node) {
 
             if(source->max_listeners != -1 &&
@@ -775,8 +775,8 @@ void source_main (source_t *source)
                  * why they were disconnected
                  */
                 client = (client_t *)client_node->key;
-                client_node = avl_get_next(client_node);
-                avl_delete(source->pending_tree, (void *)client, _free_client);
+                client_node = igloo_avl_get_next(client_node);
+                igloo_avl_delete(source->pending_tree, (void *)client, _free_client);
 
                 ICECAST_LOG_INFO("Client deleted, exceeding maximum listeners for this "
                         "mountpoint (%s).", source->mount);
@@ -784,24 +784,24 @@ void source_main (source_t *source)
             }
 
             /* Otherwise, the client is accepted, add it */
-            avl_insert(source->client_tree, client_node->key);
+            igloo_avl_insert(source->client_tree, client_node->key);
 
             source->listeners++;
             ICECAST_LOG_DEBUG("Client added for mountpoint (%s)", source->mount);
             stats_event_inc(source->mount, "connections");
 
-            client_node = avl_get_next(client_node);
+            client_node = igloo_avl_get_next(client_node);
         }
 
         /** clear pending tree **/
-        while (avl_get_first(source->pending_tree)) {
-            avl_delete(source->pending_tree,
-                    avl_get_first(source->pending_tree)->key,
+        while (igloo_avl_get_first(source->pending_tree)) {
+            igloo_avl_delete(source->pending_tree,
+                    igloo_avl_get_first(source->pending_tree)->key,
                     source_remove_client);
         }
 
         /* release write lock on pending_tree */
-        avl_tree_unlock(source->pending_tree);
+        igloo_avl_tree_unlock(source->pending_tree);
 
         /* update the stats if need be */
         if (source->listeners != source->prev_listeners)
@@ -845,7 +845,7 @@ void source_main (source_t *source)
         }
 
         /* release write lock on client_tree */
-        avl_tree_unlock(source->client_tree);
+        igloo_avl_tree_unlock(source->client_tree);
     }
     source_shutdown (source);
 }
@@ -869,13 +869,13 @@ static void source_shutdown (source_t *source)
     {
         source_t *fallback_source;
 
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source != NULL)
             source_move_clients(source, fallback_source);
 
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     }
 
     /* delete this sources stats */
@@ -883,7 +883,7 @@ static void source_shutdown (source_t *source)
 
     if (source->client && source->parser) {
         /* For PUT support we check for 100-continue and send back a final 200. */
-        const char *expectcontinue = httpp_getvar(source->parser, "expect");
+        const char *expectcontinue = igloo_httpp_getvar(source->parser, "expect");
 
         if (expectcontinue != NULL) {
 #ifdef HAVE_STRCASESTR
@@ -998,11 +998,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
 {
     const char *str;
     int val;
-    http_parser_t *parser = NULL;
+    igloo_http_parser_t *parser = NULL;
     acl_t *acl = NULL;
 
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
-    avl_tree_rlock (source->client_tree);
+    igloo_avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
 
     if (mountinfo)
@@ -1028,14 +1028,14 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-public");
+            str = igloo_httpp_getvar (parser, "ice-public");
             if (str) break;
-            str = httpp_getvar (parser, "icy-pub");
+            str = igloo_httpp_getvar (parser, "icy-pub");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-public");
+            str = igloo_httpp_getvar (parser, "x-audiocast-public");
             if (str) break;
             /* handle header from icecast v2 release */
-            str = httpp_getvar (parser, "icy-public");
+            str = igloo_httpp_getvar (parser, "icy-public");
             if (str) break;
             str = "0";
         } while (0);
@@ -1058,11 +1058,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-name");
+            str = igloo_httpp_getvar (parser, "ice-name");
             if (str) break;
-            str = httpp_getvar (parser, "icy-name");
+            str = igloo_httpp_getvar (parser, "icy-name");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-name");
+            str = igloo_httpp_getvar (parser, "x-audiocast-name");
             if (str) break;
             str = "Unspecified name";
         } while (0);
@@ -1076,11 +1076,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-description");
+            str = igloo_httpp_getvar (parser, "ice-description");
             if (str) break;
-            str = httpp_getvar (parser, "icy-description");
+            str = igloo_httpp_getvar (parser, "icy-description");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-description");
+            str = igloo_httpp_getvar (parser, "x-audiocast-description");
             if (str) break;
             str = "Unspecified description";
         } while (0);
@@ -1094,11 +1094,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-url");
+            str = igloo_httpp_getvar (parser, "ice-url");
             if (str) break;
-            str = httpp_getvar (parser, "icy-url");
+            str = igloo_httpp_getvar (parser, "icy-url");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-url");
+            str = igloo_httpp_getvar (parser, "x-audiocast-url");
             if (str) break;
         } while (0);
         if (str && source->format)
@@ -1111,11 +1111,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-genre");
+            str = igloo_httpp_getvar (parser, "ice-genre");
             if (str) break;
-            str = httpp_getvar (parser, "icy-genre");
+            str = igloo_httpp_getvar (parser, "icy-genre");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-genre");
+            str = igloo_httpp_getvar (parser, "x-audiocast-genre");
             if (str) break;
             str = "various";
         } while (0);
@@ -1129,11 +1129,11 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     else
     {
         do {
-            str = httpp_getvar (parser, "ice-bitrate");
+            str = igloo_httpp_getvar (parser, "ice-bitrate");
             if (str) break;
-            str = httpp_getvar (parser, "icy-br");
+            str = igloo_httpp_getvar (parser, "icy-br");
             if (str) break;
-            str = httpp_getvar (parser, "x-audiocast-bitrate");
+            str = igloo_httpp_getvar (parser, "x-audiocast-bitrate");
         } while (0);
     }
     stats_event (source->mount, "bitrate", str);
@@ -1217,7 +1217,7 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     if (mountinfo && mountinfo->max_history > 0)
         playlist_set_max_tracks(source->history, mountinfo->max_history);
 
-    avl_tree_unlock(source->client_tree);
+    igloo_avl_tree_unlock(source->client_tree);
 }
 
 
@@ -1320,12 +1320,12 @@ void source_client_callback (client_t *client, void *arg)
     client->refbuf->len = 0;
 
     stats_event (source->mount, "source_ip", source->client->con->ip);
-    agent = httpp_getvar (source->client->parser, "user-agent");
+    agent = igloo_httpp_getvar (source->client->parser, "user-agent");
     if (agent)
         stats_event (source->mount, "user_agent", agent);
 
     thread_create ("Source Thread", source_client_thread,
-            source, THREAD_DETACHED);
+            source, igloo_THREAD_DETACHED);
 }
 
 static void *source_fallback_file (void *arg)
@@ -1337,7 +1337,7 @@ static void *source_fallback_file (void *arg)
     FILE *file = NULL;
     source_t *source = NULL;
     ice_config_t *config;
-    http_parser_t *parser;
+    igloo_http_parser_t *parser;
 
     do
     {
@@ -1369,9 +1369,9 @@ static void *source_fallback_file (void *arg)
         }
         ICECAST_LOG_INFO("mountpoint %s is reserved", mount);
         type = fserve_content_type (mount);
-        parser = httpp_create_parser();
-        httpp_initialize (parser, NULL);
-        httpp_setvar (parser, "content-type", type);
+        parser = igloo_httpp_create_parser();
+        igloo_httpp_initialize (parser, NULL);
+        igloo_httpp_setvar (parser, "content-type", type);
         free (type);
 
         source->hidden = 1;
@@ -1400,7 +1400,7 @@ void source_recheck_mounts (int update_all)
     ice_config_t *config;
     mount_proxy *mount;
 
-    avl_tree_rlock (global.source_tree);
+    igloo_avl_tree_rlock (global.source_tree);
     config = config_get_config();
     mount = config->mounts;
 
@@ -1444,10 +1444,10 @@ void source_recheck_mounts (int update_all)
             if (fallback == NULL)
             {
                 thread_create ("Fallback file thread", source_fallback_file,
-                        strdup (mount->fallback_mount), THREAD_DETACHED);
+                        strdup (mount->fallback_mount), igloo_THREAD_DETACHED);
             }
         }
     }
-    avl_tree_unlock (global.source_tree);
+    igloo_avl_tree_unlock (global.source_tree);
     config_release_config();
 }

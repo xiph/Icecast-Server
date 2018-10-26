@@ -20,7 +20,7 @@
 
 #include <stdarg.h>
 
-#include <permafrost/thread.h>
+#include <igloo/thread.h>
 
 #include "icecasttypes.h"
 #include "compat.h"
@@ -162,7 +162,7 @@ struct refobject_type_tag {
 struct refobject_base_tag {
     const refobject_type_t* type;
     size_t refc;
-    mutex_t lock;
+    igloo_mutex_t lock;
     void *userdata;
     char *name;
     refobject_t associated;

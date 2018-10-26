@@ -25,10 +25,10 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/httpp.h>
-#include <permafrost/sock.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/httpp.h>
+#include <igloo/sock.h>
 
 #include "stats.h"
 #include "connection.h"
@@ -68,20 +68,20 @@ typedef struct _event_queue_tag
 typedef struct _event_listener_tag
 {
     event_queue_t queue;
-    mutex_t mutex;
+    igloo_mutex_t mutex;
 
     struct _event_listener_tag *next;
 } event_listener_t;
 
 static volatile int _stats_running = 0;
-static thread_type *_stats_thread_id;
+static igloo_thread_type *_stats_thread_id;
 static volatile int _stats_threads = 0;
 
 static stats_t _stats;
-static mutex_t _stats_mutex;
+static igloo_mutex_t _stats_mutex;
 
 static event_queue_t _global_event_queue;
-mutex_t _global_event_mutex;
+igloo_mutex_t _global_event_mutex;
 
 static volatile event_listener_t *_event_listeners;
 
@@ -92,8 +92,8 @@ static int _compare_source_stats(void *a, void *b, void *arg);
 static int _free_stats(void *key);
 static int _free_source_stats(void *key);
 static void _add_event_to_queue(stats_event_t *event, event_queue_t *queue);
-static stats_node_t *_find_node(avl_tree *tree, const char *name);
-static stats_source_t *_find_source(avl_tree *tree, const char *source);
+static stats_node_t *_find_node(igloo_avl_tree *tree, const char *name);
+static stats_source_t *_find_source(igloo_avl_tree *tree, const char *source);
 static void _free_event(stats_event_t *event);
 static stats_event_t *_get_event_from_queue(event_queue_t *queue);
 static void __add_metadata(xmlNodePtr node, const char *tag);
@@ -131,8 +131,8 @@ void stats_initialize(void)
     _event_listeners = NULL;
 
     /* set up global struct */
-    _stats.global_tree = avl_tree_new(_compare_stats, NULL);
-    _stats.source_tree = avl_tree_new(_compare_source_stats, NULL);
+    _stats.global_tree = igloo_avl_tree_new(_compare_stats, NULL);
+    _stats.source_tree = igloo_avl_tree_new(_compare_source_stats, NULL);
 
     /* set up global mutex */
     thread_mutex_create(&_stats_mutex);
@@ -143,7 +143,7 @@ void stats_initialize(void)
 
     /* fire off the stats thread */
     _stats_running = 1;
-    _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, THREAD_ATTACHED);
+    _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 void stats_shutdown(void)
@@ -157,11 +157,11 @@ void stats_shutdown(void)
     thread_mutex_lock(&_stats_mutex);
     _stats_running = 0;
     thread_mutex_unlock(&_stats_mutex);
-    thread_join(_stats_thread_id);
+    igloo_thread_join(_stats_thread_id);
 
     /* wait for other threads to shut down */
     do {
-        thread_sleep(300000);
+        igloo_thread_sleep(300000);
         thread_mutex_lock(&_stats_mutex);
         n = _stats_threads;
         thread_mutex_unlock(&_stats_mutex);
@@ -171,11 +171,11 @@ void stats_shutdown(void)
     /* free the queues */
 
     /* destroy the queue mutexes */
-    thread_mutex_destroy(&_global_event_mutex);
+    igloo_thread_mutex_destroy(&_global_event_mutex);
 
-    thread_mutex_destroy(&_stats_mutex);
-    avl_tree_free(_stats.source_tree, _free_source_stats);
-    avl_tree_free(_stats.global_tree, _free_stats);
+    igloo_thread_mutex_destroy(&_stats_mutex);
+    igloo_avl_tree_free(_stats.source_tree, _free_source_stats);
+    igloo_avl_tree_free(_stats.global_tree, _free_stats);
 
     while (1)
     {
@@ -365,12 +365,12 @@ void stats_event_dec(const char *source, const char *name)
 }
 
 /* note: you must call this function only when you have exclusive access
-** to the avl_tree
+** to the igloo_avl_tree
 */
-static stats_node_t *_find_node(avl_tree *stats_tree, const char *name)
+static stats_node_t *_find_node(igloo_avl_tree *stats_tree, const char *name)
 {
     stats_node_t *stats;
-    avl_node *node;
+    igloo_avl_node *node;
     int cmp;
 
     /* get the root node */
@@ -392,12 +392,12 @@ static stats_node_t *_find_node(avl_tree *stats_tree, const char *name)
 }
 
 /* note: you must call this function only when you have exclusive access
-** to the avl_tree
+** to the igloo_avl_tree
 */
-static stats_source_t *_find_source(avl_tree *source_tree, const char *source)
+static stats_source_t *_find_source(igloo_avl_tree *source_tree, const char *source)
 {
     stats_source_t *stats;
-    avl_node *node;
+    igloo_avl_node *node;
     int cmp;
 
     /* get the root node */
@@ -498,7 +498,7 @@ static void process_global_event (stats_event_t *event)
         /* we're deleting */
         node = _find_node(_stats.global_tree, event->name);
         if (node != NULL)
-            avl_delete(_stats.global_tree, (void *)node, _free_stats);
+            igloo_avl_delete(_stats.global_tree, (void *)node, _free_stats);
         return;
     }
     node = _find_node(_stats.global_tree, event->name);
@@ -513,7 +513,7 @@ static void process_global_event (stats_event_t *event)
         node->name = (char *)strdup(event->name);
         node->value = (char *)strdup(event->value);
 
-        avl_insert(_stats.global_tree, (void *)node);
+        igloo_avl_insert(_stats.global_tree, (void *)node);
     }
 }
 
@@ -530,13 +530,13 @@ static void process_source_event (stats_event_t *event)
             return;
         ICECAST_LOG_DEBUG("new source stat %s", event->source);
         snode->source = (char *)strdup(event->source);
-        snode->stats_tree = avl_tree_new(_compare_stats, NULL);
+        snode->stats_tree = igloo_avl_tree_new(_compare_stats, NULL);
         if (event->action == STATS_EVENT_HIDDEN)
             snode->hidden = 1;
         else
             snode->hidden = 0;
 
-        avl_insert(_stats.source_tree, (void *) snode);
+        igloo_avl_insert(_stats.source_tree, (void *) snode);
     }
     if (event->name)
     {
@@ -554,14 +554,14 @@ static void process_source_event (stats_event_t *event)
                 node->value = (char *)strdup(event->value);
                 node->hidden = snode->hidden;
 
-                avl_insert(snode->stats_tree, (void *)node);
+                igloo_avl_insert(snode->stats_tree, (void *)node);
             }
             return;
         }
         if (event->action == STATS_EVENT_REMOVE)
         {
             ICECAST_LOG_DEBUG("delete node %s", event->name);
-            avl_delete(snode->stats_tree, (void *)node, _free_stats);
+            igloo_avl_delete(snode->stats_tree, (void *)node, _free_stats);
             return;
         }
         modify_node_event (node, event);
@@ -569,7 +569,7 @@ static void process_source_event (stats_event_t *event)
     }
     if (event->action == STATS_EVENT_HIDDEN)
     {
-        avl_node *node = avl_get_first (snode->stats_tree);
+        igloo_avl_node *node = igloo_avl_get_first (snode->stats_tree);
 
         if (event->value)
             snode->hidden = 1;
@@ -579,14 +579,14 @@ static void process_source_event (stats_event_t *event)
         {
             stats_node_t *stats = (stats_node_t*)node->key;
             stats->hidden = snode->hidden;
-            node = avl_get_next (node);
+            node = igloo_avl_get_next (node);
         }
         return;
     }
     if (event->action == STATS_EVENT_REMOVE)
     {
         ICECAST_LOG_DEBUG("delete source node %s", event->source);
-        avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
+        igloo_avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
     }
 }
 
@@ -742,7 +742,7 @@ static void *_stats_thread(void *arg)
             thread_mutex_unlock(&_global_event_mutex);
         }
 
-        thread_sleep(300000);
+        igloo_thread_sleep(300000);
     }
 
     return NULL;
@@ -839,7 +839,7 @@ static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
    }
 }
 static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden, client_t *client) {
-    avl_node *avlnode;
+    igloo_avl_node *avlnode;
     xmlNodePtr ret = NULL;
     ice_config_t *config;
 
@@ -849,16 +849,16 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
-    avlnode = avl_get_first(_stats.global_tree);
+    avlnode = igloo_avl_get_first(_stats.global_tree);
 
     while (avlnode) {
         stats_node_t *stat = avlnode->key;
         if (stat->hidden <=  hidden)
             xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
-        avlnode = avl_get_next (avlnode);
+        avlnode = igloo_avl_get_next (avlnode);
     }
     /* now per mount stats */
-    avlnode = avl_get_first(_stats.source_tree);
+    avlnode = igloo_avl_get_first(_stats.source_tree);
 
     while (avlnode) {
         stats_source_t *source = (stats_source_t *)avlnode->key;
@@ -871,7 +871,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             mount_proxy *mountproxy;
             int i;
 
-            avl_node *avlnode2 = avl_get_first (source->stats_tree);
+            igloo_avl_node *avlnode2 = igloo_avl_get_first (source->stats_tree);
             xmlNodePtr xmlnode = xmlNewTextChild (root, NULL, XMLSTR("source"), NULL);
 
             xmlSetProp (xmlnode, XMLSTR("mount"), XMLSTR(source->source));
@@ -887,11 +887,11 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                 } else {
                     xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
                 }
-                avlnode2 = avl_get_next (avlnode2);
+                avlnode2 = igloo_avl_get_next (avlnode2);
             }
 
 
-            avl_tree_rlock(global.source_tree);
+            igloo_avl_tree_rlock(global.source_tree);
             source_real = source_find_mount_raw(source->source);
             if (source_real) {
                 history = playlist_render_xspf(source_real->history);
@@ -904,14 +904,14 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                         __add_metadata(metadata, source_real->format->vc.user_comments[i]);
                 }
             }
-            avl_tree_unlock(global.source_tree);
+            igloo_avl_tree_unlock(global.source_tree);
 
             config = config_get_config();
             mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
             __add_authstack(mountproxy->authstack, xmlnode);
             config_release_config();
         }
-        avlnode = avl_get_next (avlnode);
+        avlnode = igloo_avl_get_next (avlnode);
     }
     thread_mutex_unlock(&_stats_mutex);
     return ret;
@@ -925,8 +925,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 */
 static void _register_listener (event_listener_t *listener)
 {
-    avl_node *node;
-    avl_node *node2;
+    igloo_avl_node *node;
+    igloo_avl_node *node2;
     stats_event_t *event;
     stats_source_t *source;
 
@@ -935,27 +935,27 @@ static void _register_listener (event_listener_t *listener)
     /* first we fill our queue with the current stats */
 
     /* start with the global stats */
-    node = avl_get_first(_stats.global_tree);
+    node = igloo_avl_get_first(_stats.global_tree);
     while (node) {
         event = _make_event_from_node((stats_node_t *) node->key, NULL);
         _add_event_to_queue(event, &listener->queue);
 
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
 
     /* now the stats for each source */
-    node = avl_get_first(_stats.source_tree);
+    node = igloo_avl_get_first(_stats.source_tree);
     while (node) {
         source = (stats_source_t *)node->key;
-        node2 = avl_get_first(source->stats_tree);
+        node2 = igloo_avl_get_first(source->stats_tree);
         while (node2) {
             event = _make_event_from_node((stats_node_t *)node2->key, source->source);
             _add_event_to_queue (event, &listener->queue);
 
-            node2 = avl_get_next(node2);
+            node2 = igloo_avl_get_next(node2);
         }
 
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
 
     /* now we register to receive future event notices */
@@ -1003,7 +1003,7 @@ void *stats_connection(void *arg)
             _free_event(event);
             continue;
         }
-        thread_sleep (500000);
+        igloo_thread_sleep (500000);
     }
 
     thread_mutex_lock(&_stats_mutex);
@@ -1012,7 +1012,7 @@ void *stats_connection(void *arg)
     stats_event_args (NULL, "stats", "%d", _stats_threads);
     thread_mutex_unlock(&_stats_mutex);
 
-    thread_mutex_destroy (&listener.mutex);
+    igloo_thread_mutex_destroy (&listener.mutex);
     client_destroy (client);
     ICECAST_LOG_INFO("stats client finished");
 
@@ -1030,7 +1030,7 @@ void stats_callback (client_t *client, void *notused)
         return;
     }
     client_set_queue (client, NULL);
-    thread_create("Stats Connection", stats_connection, (void *)client, THREAD_DETACHED);
+    thread_create("Stats Connection", stats_connection, (void *)client, igloo_THREAD_DETACHED);
 }
 
 
@@ -1046,7 +1046,7 @@ void stats_transform_xslt(client_t *client)
 {
     xmlDocPtr doc;
     char *xslpath = util_get_path_from_normalised_uri(client->uri);
-    const char *mount = httpp_get_param(client->parser, "mount");
+    const char *mount = igloo_httpp_get_param(client->parser, "mount");
 
     doc = stats_get_xml(0, mount, client);
 
@@ -1096,10 +1096,10 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, client_t *clien
     node = _dump_stats_to_doc(node, show_mount, show_hidden, client);
 
     if (show_mount && node) {
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(show_mount);
         admin_add_listeners_to_mount(source, node, client->mode);
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     }
 
     return doc;
@@ -1139,7 +1139,7 @@ static int _free_stats(void *key)
 static int _free_source_stats(void *key)
 {
     stats_source_t *node = (stats_source_t *)key;
-    avl_tree_free(node->stats_tree, _free_stats);
+    igloo_avl_tree_free(node->stats_tree, _free_stats);
     free(node->source);
     free(node);
 
@@ -1158,14 +1158,14 @@ static void _free_event(stats_event_t *event)
 refbuf_t *stats_get_streams (void)
 {
 #define STREAMLIST_BLKSIZE  4096
-    avl_node *node;
+    igloo_avl_node *node;
     unsigned int remaining = STREAMLIST_BLKSIZE;
     refbuf_t *start = refbuf_new (remaining), *cur = start;
     char *buffer = cur->data;
 
     /* now the stats for each source */
     thread_mutex_lock (&_stats_mutex);
-    node = avl_get_first(_stats.source_tree);
+    node = igloo_avl_get_first(_stats.source_tree);
     while (node)
     {
         int ret;
@@ -1188,7 +1188,7 @@ refbuf_t *stats_get_streams (void)
                 remaining -= ret;
             }
         }
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
     thread_mutex_unlock(&_stats_mutex);
     cur->len = STREAMLIST_BLKSIZE - remaining;
@@ -1203,10 +1203,10 @@ refbuf_t *stats_get_streams (void)
  */
 void stats_clear_virtual_mounts (void)
 {
-    avl_node *snode;
+    igloo_avl_node *snode;
 
     thread_mutex_lock (&_stats_mutex);
-    snode = avl_get_first(_stats.source_tree);
+    snode = igloo_avl_get_first(_stats.source_tree);
     while (snode)
     {
         stats_source_t *src = (stats_source_t *)snode->key;
@@ -1215,13 +1215,13 @@ void stats_clear_virtual_mounts (void)
         if (source == NULL)
         {
             /* no source_t is reserved so remove them now */
-            snode = avl_get_next (snode);
+            snode = igloo_avl_get_next (snode);
             ICECAST_LOG_DEBUG("releasing %s stats", src->source);
-            avl_delete (_stats.source_tree, src, _free_source_stats);
+            igloo_avl_delete (_stats.source_tree, src, _free_source_stats);
             continue;
         }
 
-        snode = avl_get_next (snode);
+        snode = igloo_avl_get_next (snode);
     }
     thread_mutex_unlock (&_stats_mutex);
 }

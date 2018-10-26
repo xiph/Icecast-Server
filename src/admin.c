@@ -52,7 +52,7 @@
 /* Helper macros */
 #define COMMAND_REQUIRE(client,name,var)                                \
     do {                                                                \
-        (var) = httpp_get_param((client)->parser, (name));        \
+        (var) = igloo_httpp_get_param((client)->parser, (name));        \
         if((var) == NULL) {                                             \
             client_send_error_by_id(client, ICECAST_ERROR_ADMIN_MISSING_PARAMETER); \
             return;                                                     \
@@ -60,7 +60,7 @@
     } while(0);
 
 #define COMMAND_OPTIONAL(client,name,var) \
-(var) = httpp_get_param((client)->parser, (name))
+(var) = igloo_httpp_get_param((client)->parser, (name))
 
 #define FALLBACK_RAW_REQUEST                "fallbacks"
 #define FALLBACK_HTML_REQUEST               "fallbacks.xsl"
@@ -329,7 +329,7 @@ xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
  * doc even if the source is running */
 xmlDocPtr admin_build_sourcelist(const char *mount)
 {
-    avl_node *node;
+    igloo_avl_node *node;
     source_t *source;
     xmlNodePtr xmlnode, srcnode;
     xmlDocPtr doc;
@@ -344,12 +344,12 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
         xmlNewTextChild (xmlnode, NULL, XMLSTR("current_source"), XMLSTR(mount));
     }
 
-    node = avl_get_first(global.source_tree);
+    node = igloo_avl_get_first(global.source_tree);
     while(node) {
         source = (source_t *)node->key;
         if (mount && strcmp (mount, source->mount) == 0)
         {
-            node = avl_get_next (node);
+            node = igloo_avl_get_next (node);
             continue;
         }
 
@@ -390,7 +390,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
                     XMLSTR(source->format->contenttype));
             }
         }
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
     return(doc);
 }
@@ -516,19 +516,19 @@ void admin_handle_request(client_t *client, const char *uri)
     if(mount != NULL) {
 
         /* This is a mount request, handle it as such */
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         source = source_find_mount_raw(mount);
 
         /* No Source found */
         if (source == NULL) {
-            avl_tree_unlock(global.source_tree);
+            igloo_avl_tree_unlock(global.source_tree);
             ICECAST_LOG_WARN("Admin command \"%H\" on non-existent source \"%H\"",
                     uri, mount);
             client_send_error_by_id(client, ICECAST_ERROR_ADMIN_SOURCE_DOES_NOT_EXIST);
             return;
         } /* No Source running */
         else if (source->running == 0 && source->on_demand == 0) {
-            avl_tree_unlock(global.source_tree);
+            igloo_avl_tree_unlock(global.source_tree);
             ICECAST_LOG_INFO("Received admin command \"%H\" on unavailable mount \"%H\"",
                     uri, mount);
             client_send_error_by_id(client, ICECAST_ERROR_ADMIN_SOURCE_IS_NOT_AVAILABLE);
@@ -582,7 +582,7 @@ void admin_handle_request(client_t *client, const char *uri)
     }
 
     if (source) {
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
     }
     return;
 }
@@ -695,15 +695,15 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "IP" : "ip"), XMLSTR(client->con->ip));
 
-    tmp = httpp_getvar(client->parser, "user-agent");
+    tmp = igloo_httpp_getvar(client->parser, "user-agent");
     if (tmp)
         xmlNewTextChild(node, NULL, XMLSTR(mode == OMODE_LEGACY ? "UserAgent" : "useragent"), XMLSTR(tmp));
 
-    tmp = httpp_getvar(client->parser, "referer");
+    tmp = igloo_httpp_getvar(client->parser, "referer");
     if (tmp)
         xmlNewTextChild(node, NULL, XMLSTR("referer"), XMLSTR(tmp));
 
-    tmp = httpp_getvar(client->parser, "host");
+    tmp = igloo_httpp_getvar(client->parser, "host");
     if (tmp)
         xmlNewTextChild(node, NULL, XMLSTR("host"), XMLSTR(tmp));
 
@@ -735,15 +735,15 @@ void admin_add_listeners_to_mount(source_t          *source,
                                   operation_mode    mode)
 {
     time_t now = time(NULL);
-    avl_node *client_node;
+    igloo_avl_node *client_node;
 
-    avl_tree_rlock(source->client_tree);
-    client_node = avl_get_first(source->client_tree);
+    igloo_avl_tree_rlock(source->client_tree);
+    client_node = igloo_avl_get_first(source->client_tree);
     while(client_node) {
         __add_listener((client_t *)client_node->key, parent, now, mode);
-        client_node = avl_get_next(client_node);
+        client_node = igloo_avl_get_next(client_node);
     }
-    avl_tree_unlock(source->client_tree);
+    igloo_avl_tree_unlock(source->client_tree);
 }
 
 static void command_show_listeners(client_t *client,
@@ -1200,9 +1200,9 @@ static void command_list_mounts(client_t *client, source_t *source, admin_format
         fserve_add_client (client, NULL);
     } else {
         xmlDocPtr doc;
-        avl_tree_rlock(global.source_tree);
+        igloo_avl_tree_rlock(global.source_tree);
         doc = admin_build_sourcelist(NULL);
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
 
         admin_send_response(doc, client, response,
             LISTMOUNTS_HTML_REQUEST);

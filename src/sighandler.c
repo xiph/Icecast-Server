@@ -17,9 +17,9 @@
 
 #include <signal.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
+#include <igloo/httpp.h>
 
 #include "global.h"
 #include "connection.h"

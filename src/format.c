@@ -288,7 +288,7 @@ int format_advance_queue(source_t *source, client_t *client)
  * calling functions will use a already freed client struct and
  * cause a segfault!
  */
-static inline ssize_t __print_var(char *str, size_t remaining, const char *format, const char *first, const http_var_t *var)
+static inline ssize_t __print_var(char *str, size_t remaining, const char *format, const char *first, const igloo_http_var_t *var)
 {
     size_t i;
     ssize_t done = 0;
@@ -305,7 +305,7 @@ static inline ssize_t __print_var(char *str, size_t remaining, const char *forma
     return done;
 }
 
-static inline const char *__find_bitrate(const http_var_t *var)
+static inline const char *__find_bitrate(const igloo_http_var_t *var)
 {
     size_t i;
     const char *ret;
@@ -325,7 +325,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     char *ptr;
     int bytes;
     int bitrate_filtered = 0;
-    avl_node *node;
+    igloo_avl_node *node;
 
     remaining = client->refbuf->len;
     ptr = client->refbuf->data;
@@ -364,12 +364,12 @@ static int format_prepare_headers (source_t *source, client_t *client)
     ptr += bytes;
 
     /* iterate through source http headers and send to client */
-    avl_tree_rlock(source->parser->vars);
-    node = avl_get_first(source->parser->vars);
+    igloo_avl_tree_rlock(source->parser->vars);
+    node = igloo_avl_get_first(source->parser->vars);
     while (node)
     {
         int next = 1;
-        http_var_t *var = (http_var_t *) node->key;
+        igloo_http_var_t *var = (igloo_http_var_t *) node->key;
         bytes = 0;
         if (!strcasecmp(var->name, "ice-audio-info"))
         {
@@ -437,9 +437,9 @@ static int format_prepare_headers (source_t *source, client_t *client)
         remaining -= bytes;
         ptr += bytes;
         if (next)
-            node = avl_get_next(node);
+            node = igloo_avl_get_next(node);
     }
-    avl_tree_unlock(source->parser->vars);
+    igloo_avl_tree_unlock(source->parser->vars);
 
     bytes = snprintf(ptr, remaining, "\r\n");
     if (bytes <= 0 || (size_t)bytes >= remaining) {

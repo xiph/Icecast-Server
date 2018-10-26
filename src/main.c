@@ -44,10 +44,10 @@
 #include <sys/utsname.h>
 #endif
 
-#include <permafrost/thread.h>
-#include <permafrost/sock.h>
-#include <permafrost/resolver.h>
-#include <permafrost/httpp.h>
+#include <igloo/thread.h>
+#include <igloo/sock.h>
+#include <igloo/resolver.h>
+#include <igloo/httpp.h>
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -115,9 +115,9 @@ static void _print_usage(void)
 
 static void _stop_logging(void)
 {
-    log_close(errorlog);
-    log_close(accesslog);
-    log_close(playlistlog);
+    igloo_log_close(errorlog);
+    igloo_log_close(accesslog);
+    igloo_log_close(playlistlog);
 }
 
 #ifndef FASTEVENT_ENABLED
@@ -142,15 +142,15 @@ static refobject_t fastevent_reg;
 
 static void initialize_subsystems(void)
 {
-    log_initialize();
-    thread_initialize();
+    igloo_log_initialize();
+    igloo_thread_initialize();
     global_initialize();
 #ifndef FASTEVENT_ENABLED
     fastevent_initialize();
     fastevent_reg = fastevent_register(FASTEVENT_TYPE_SLOWEVENT, __fastevent_cb, NULL, NULL);
 #endif
-    sock_initialize();
-    resolver_initialize();
+    igloo_sock_initialize();
+    igloo_resolver_initialize();
     config_initialize();
     tls_initialize();
     connection_initialize();
@@ -175,14 +175,14 @@ static void shutdown_subsystems(void)
     connection_shutdown();
     tls_shutdown();
     config_shutdown();
-    resolver_shutdown();
-    sock_shutdown();
+    igloo_resolver_shutdown();
+    igloo_sock_shutdown();
 #ifndef FASTEVENT_ENABLED
     refobject_unref(fastevent_reg);
     fastevent_shutdown();
 #endif
     global_shutdown();
-    thread_shutdown();
+    igloo_thread_shutdown();
 
 #ifdef HAVE_CURL
     icecast_curl_shutdown();
@@ -190,7 +190,7 @@ static void shutdown_subsystems(void)
 
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
-    log_shutdown();
+    igloo_log_shutdown();
     xslt_shutdown();
 }
 
@@ -259,11 +259,11 @@ static int _parse_config_opts(int argc, char **argv, char *filename, size_t size
 }
 
 static int _start_logging_stdout(void) {
-    errorlog = log_open_file(stderr);
+    errorlog = igloo_log_open_file(stderr);
     if ( errorlog < 0 )
         return 0;
 
-    log_set_level(errorlog, ICECAST_LOGLEVEL_WARN);
+    igloo_log_set_level(errorlog, ICECAST_LOGLEVEL_WARN);
 
     return 1;
 }
@@ -282,11 +282,11 @@ static int _start_logging(void)
         /* this is already in place because of _start_logging_stdout() */
     } else {
         snprintf(fn_error, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->error_log);
-        errorlog = log_open(fn_error);
+        errorlog = igloo_log_open(fn_error);
         log_to_stderr = 0;
         if (config->logsize)
-            log_set_trigger (errorlog, config->logsize);
-        log_set_archive_timestamp(errorlog, config->logarchive);
+            igloo_log_set_trigger (errorlog, config->logsize);
+        igloo_log_set_archive_timestamp(errorlog, config->logarchive);
     }
 
     if (errorlog < 0) {
@@ -297,18 +297,18 @@ static int _start_logging(void)
                 strerror(errno));
         _fatal_error(buf);
     }
-    log_set_level(errorlog, config->loglevel);
+    igloo_log_set_level(errorlog, config->loglevel);
 
     if(strcmp(config->access_log, "-") == 0) {
-        accesslog = log_open_file(stderr);
+        accesslog = igloo_log_open_file(stderr);
         log_to_stderr = 1;
     } else {
         snprintf(fn_access, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->access_log);
-        accesslog = log_open(fn_access);
+        accesslog = igloo_log_open(fn_access);
         log_to_stderr = 0;
         if (config->logsize)
-            log_set_trigger (accesslog, config->logsize);
-        log_set_archive_timestamp(accesslog, config->logarchive);
+            igloo_log_set_trigger (accesslog, config->logsize);
+        igloo_log_set_archive_timestamp(accesslog, config->logarchive);
     }
 
     if (accesslog < 0) {
@@ -322,7 +322,7 @@ static int _start_logging(void)
 
     if(config->playlist_log) {
         snprintf(fn_playlist, FILENAME_MAX, "%s%s%s", config->log_dir, PATH_SEPARATOR, config->playlist_log);
-        playlistlog = log_open(fn_playlist);
+        playlistlog = igloo_log_open(fn_playlist);
         if (playlistlog < 0) {
             buf[sizeof(buf)-1] = 0;
             snprintf(buf, sizeof(buf)-1,
@@ -333,15 +333,15 @@ static int _start_logging(void)
         }
         log_to_stderr = 0;
         if (config->logsize)
-            log_set_trigger (playlistlog, config->logsize);
-        log_set_archive_timestamp(playlistlog, config->logarchive);
+            igloo_log_set_trigger (playlistlog, config->logsize);
+        igloo_log_set_archive_timestamp(playlistlog, config->logarchive);
     } else {
         playlistlog = -1;
     }
 
-    log_set_level(errorlog, config->loglevel);
-    log_set_level(accesslog, 4);
-    log_set_level(playlistlog, 4);
+    igloo_log_set_level(errorlog, config->loglevel);
+    igloo_log_set_level(accesslog, 4);
+    igloo_log_set_level(playlistlog, 4);
 
     if (errorlog >= 0 && accesslog >= 0) return 1;
 

@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <permafrost/httpp.h>
+#include <igloo/httpp.h>
 
 #include "auth.h"
 #include "source.h"
@@ -53,8 +53,8 @@ typedef struct {
 
 typedef struct {
     char *filename;
-    rwlock_t file_rwlock;
-    avl_tree *users;
+    igloo_rwlock_t file_rwlock;
+    igloo_avl_tree *users;
     time_t mtime;
 } htpasswd_auth_state;
 
@@ -63,8 +63,8 @@ static void htpasswd_clear(auth_t *self)
     htpasswd_auth_state *state = self->state;
     free(state->filename);
     if (state->users)
-        avl_tree_free (state->users, _free_user);
-    thread_rwlock_destroy(&state->file_rwlock);
+        igloo_avl_tree_free (state->users, _free_user);
+    igloo_thread_rwlock_destroy(&state->file_rwlock);
     free(state);
 }
 
@@ -109,7 +109,7 @@ static int _free_user(void *key)
 static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
 {
     FILE *passwdfile;
-    avl_tree *new_users;
+    igloo_avl_tree *new_users;
     int num = 0;
     struct stat file_stat;
     char *sep;
@@ -123,7 +123,7 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
         /* Create a dummy users tree for things to use later */
         thread_rwlock_wlock (&htpasswd->file_rwlock);
         if(!htpasswd->users)
-            htpasswd->users = avl_tree_new(compare_users, NULL);
+            htpasswd->users = igloo_avl_tree_new(compare_users, NULL);
         thread_rwlock_unlock (&htpasswd->file_rwlock);
 
         return;
@@ -142,7 +142,7 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
     }
     htpasswd->mtime = file_stat.st_mtime;
 
-    new_users = avl_tree_new (compare_users, NULL);
+    new_users = igloo_avl_tree_new (compare_users, NULL);
 
     while (get_line(passwdfile, line, MAX_LINE_LEN)) {
         int len;
@@ -163,13 +163,13 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
         *sep = 0;
         memcpy (entry->name, line, len);
         entry->pass = entry->name + (sep-line) + 1;
-        avl_insert (new_users, entry);
+        igloo_avl_insert (new_users, entry);
     }
     fclose (passwdfile);
 
     thread_rwlock_wlock (&htpasswd->file_rwlock);
     if (htpasswd->users)
-        avl_tree_free (htpasswd->users, _free_user);
+        igloo_avl_tree_free (htpasswd->users, _free_user);
     htpasswd->users = new_users;
     thread_rwlock_unlock (&htpasswd->file_rwlock);
 }
@@ -199,7 +199,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
 
     thread_rwlock_rlock (&htpasswd->file_rwlock);
     entry.name = client->username;
-    if (avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
+    if (igloo_avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
         htpasswd_user *found = result;
         char *hashed_pw;
 
@@ -278,7 +278,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     thread_rwlock_wlock (&state->file_rwlock);
 
     entry.name = (char*)username;
-    if (avl_get_by_key (state->users, &entry, &result) == 0) {
+    if (igloo_avl_get_by_key (state->users, &entry, &result) == 0) {
         thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_USEREXISTS;
     }
@@ -406,7 +406,7 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
 {
     htpasswd_auth_state *state;
     xmlNodePtr newnode;
-    avl_node *node;
+    igloo_avl_node *node;
 
     state = auth->state;
 
@@ -423,12 +423,12 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
     }
 
     thread_rwlock_rlock(&state->file_rwlock);
-    node = avl_get_first(state->users);
+    node = igloo_avl_get_first(state->users);
     while (node) {
         htpasswd_user *user = (htpasswd_user *)node->key;
         newnode = xmlNewChild(srcnode, NULL, XMLSTR("user"), NULL);
         xmlNewTextChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
-        node = avl_get_next(node);
+        node = igloo_avl_get_next(node);
     }
     thread_rwlock_unlock(&state->file_rwlock);
 

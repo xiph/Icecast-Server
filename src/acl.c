@@ -242,14 +242,14 @@ int acl_set_method_str__callback(acl_t          *acl,
                                  acl_policy_t   policy,
                                  const char     *str)
 {
-    httpp_request_type_e method;
+    igloo_httpp_request_type_e method;
     size_t i;
 
     if (strcmp(str, "*") == 0) {
         for (i = 0; i < (sizeof(acl->method)/sizeof(*acl->method)); i++)
             acl->method[i] = policy;
     } else {
-        method = httpp_str_to_method(str);
+        method = igloo_httpp_str_to_method(str);
         if (method == httpp_req_unknown)
             return -1;
 
@@ -259,7 +259,7 @@ int acl_set_method_str__callback(acl_t          *acl,
     return 0;
 }
 
-acl_policy_t acl_test_method(acl_t * acl, httpp_request_type_e method)
+acl_policy_t acl_test_method(acl_t * acl, igloo_httpp_request_type_e method)
 {
     if (!acl || method < httpp_req_none || method > httpp_req_unknown)
         return ACL_POLICY_ERROR;

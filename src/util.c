@@ -39,8 +39,8 @@
 #include <windows.h>
 #endif
 
-#include <permafrost/sock.h>
-#include <permafrost/thread.h>
+#include <igloo/sock.h>
+#include <igloo/thread.h>
 
 #include "util.h"
 #include "compat.h"
@@ -118,7 +118,7 @@ static const signed char base64decode[256] = {
  *           0 if no activity occurs
  *         < 0 for error.
  */
-int util_timed_wait_for_fd(sock_t fd, int timeout)
+int util_timed_wait_for_fd(igloo_sock_t fd, int timeout)
 {
 #ifdef HAVE_POLL
     struct pollfd ufds;
@@ -144,7 +144,7 @@ int util_timed_wait_for_fd(sock_t fd, int timeout)
 #endif
 }
 
-int util_read_header(sock_t sock, char *buff, unsigned long len, int entire)
+int util_read_header(igloo_sock_t sock, char *buff, unsigned long len, int entire)
 {
     int read_bytes, ret;
     unsigned long pos;
@@ -1419,7 +1419,7 @@ char *util_dict_urlencode(util_dict *dict, char delim)
 #ifndef HAVE_LOCALTIME_R
 struct tm *localtime_r (const time_t *timep, struct tm *result)
 {
-     static mutex_t localtime_lock;
+     static igloo_mutex_t localtime_lock;
      static int initialised = 0;
      struct tm *tm;
 

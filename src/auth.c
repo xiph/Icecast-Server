@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include <permafrost/httpp.h>
+#include <igloo/httpp.h>
 
 #include "auth.h"
 #include "source.h"
@@ -43,14 +43,14 @@
 struct auth_stack_tag {
     size_t refcount;
     auth_t *auth;
-    mutex_t lock;
+    igloo_mutex_t lock;
     auth_stack_t *next;
 };
 
 /* code */
 static void __handle_auth_client(auth_t *auth, auth_client *auth_user);
 
-static mutex_t _auth_lock; /* protects _current_id */
+static igloo_mutex_t _auth_lock; /* protects _current_id */
 static volatile unsigned long _current_id = 0;
 
 static unsigned long _next_auth_id(void) {
@@ -116,7 +116,7 @@ static auth_client *auth_client_setup (client_t *client)
         if (client->username || client->password)
             break;
 
-        header = httpp_getvar(client->parser, "authorization");
+        header = igloo_httpp_getvar(client->parser, "authorization");
 
         if (header == NULL)
             break;
@@ -201,7 +201,7 @@ void auth_release (auth_t *authenticator) {
     if (authenticator->running) {
         authenticator->running = 0;
         thread_mutex_unlock(&authenticator->lock);
-        thread_join(authenticator->thread);
+        igloo_thread_join(authenticator->thread);
         thread_mutex_lock(&authenticator->lock);
     }
 
@@ -214,7 +214,7 @@ void auth_release (auth_t *authenticator) {
     if (authenticator->management_url)
         xmlFree (authenticator->management_url);
     thread_mutex_unlock(&authenticator->lock);
-    thread_mutex_destroy(&authenticator->lock);
+    igloo_thread_mutex_destroy(&authenticator->lock);
     if (authenticator->mount)
         free(authenticator->mount);
     acl_release(authenticator->acl);
@@ -252,11 +252,11 @@ static void auth_client_free (auth_client *auth_user)
 
 /* verify that the client is still connected. */
 static int is_client_connected (client_t *client) {
-/* As long as sock_active() is broken we need to disable this:
+/* As long as igloo_sock_active() is broken we need to disable this:
 
     int ret = 1;
     if (client)
-        if (sock_active(client->con->sock) == 0)
+        if (igloo_sock_active(client->con->sock) == 0)
             ret = 0;
     return ret;
 */
@@ -433,7 +433,7 @@ static void *auth_run_thread (void *arg)
         } else {
             thread_mutex_unlock(&auth->lock);
         }
-        thread_sleep (150000);
+        igloo_thread_sleep (150000);
     }
     ICECAST_LOG_INFO("Authentication thread shutting down");
     return NULL;
@@ -715,7 +715,7 @@ static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr
 
         while (cur) {
             char *next = strstr(cur, ",");
-            httpp_request_type_e idx;
+            igloo_httpp_request_type_e idx;
 
             if (next) {
                 *next = 0;
@@ -731,7 +731,7 @@ static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr
                 break;
             }
 
-            idx = httpp_str_to_method(cur);
+            idx = igloo_httpp_str_to_method(cur);
             if (idx == httpp_req_unknown) {
                 ICECAST_LOG_ERROR("Can not add known method \"%H\" to role's %s", cur, name);
                 return -1;
@@ -838,7 +838,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         method_inited = 1;
 
         while (cur) {
-            httpp_request_type_e idx;
+            igloo_httpp_request_type_e idx;
 
             next = strstr(cur, ",");
             if (next) {
@@ -853,7 +853,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
                 break;
             }
 
-            idx = httpp_str_to_method(cur);
+            idx = igloo_httpp_str_to_method(cur);
             if (idx == httpp_req_unknown) {
                 auth_release(auth);
                 return NULL;
@@ -953,7 +953,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             auth->tailp = &auth->head;
             if (!auth->immediate) {
                 auth->running = 1;
-                auth->thread = thread_create("auth thread", auth_run_thread, auth, THREAD_ATTACHED);
+                auth->thread = thread_create("auth thread", auth_run_thread, auth, igloo_THREAD_ATTACHED);
             }
         }
     }
@@ -1028,7 +1028,7 @@ void auth_initialise (void)
 void auth_shutdown (void)
 {
     ICECAST_LOG_INFO("Auth shutdown");
-    thread_mutex_destroy(&_auth_lock);
+    igloo_thread_mutex_destroy(&_auth_lock);
 }
 
 /* authstack functions */
@@ -1070,7 +1070,7 @@ void          auth_stack_release(auth_stack_t *stack) {
 
     auth_release(stack->auth);
     auth_stack_release(stack->next);
-    thread_mutex_destroy(&stack->lock);
+    igloo_thread_mutex_destroy(&stack->lock);
     free(stack);
 }
 
@@ -1186,7 +1186,7 @@ auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id) {
 
 }
 
-acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_type_e method) {
+acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, igloo_httpp_request_type_e method) {
     acl_t *ret = NULL;
 
     if (!stack || method < 0 || method > httpp_req_unknown)

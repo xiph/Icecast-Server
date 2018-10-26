@@ -16,8 +16,8 @@
 
 #include <string.h>
 
-#include <permafrost/thread.h>
-#include <permafrost/avl.h>
+#include <igloo/thread.h>
+#include <igloo/avl.h>
 
 #include "reportxml.h"
 #include "refobject.h"
@@ -59,9 +59,9 @@ struct reportxml_database_tag {
     /* base object */
     refobject_base_t __base;
     /* the lock used to ensure the database object is thread safe. */
-    mutex_t lock;
+    igloo_mutex_t lock;
     /* The tree of definitions */
-    avl_tree *definitions;
+    igloo_avl_tree *definitions;
 };
 
 /* The nodeattr structure is used to store definition of node attributes */
@@ -959,9 +959,9 @@ static void __database_free(refobject_t self, void **userdata)
     reportxml_database_t *db = REFOBJECT_TO_TYPE(self, reportxml_database_t *);
 
     if (db->definitions)
-        avl_tree_free(db->definitions, (avl_free_key_fun_type)refobject_unref);
+        igloo_avl_tree_free(db->definitions, (igloo_avl_free_key_fun_type)refobject_unref);
 
-    thread_mutex_destroy(&(db->lock));
+    igloo_thread_mutex_destroy(&(db->lock));
 }
 
 static int __compare_definitions(void *arg, void *a, void *b)
@@ -990,7 +990,7 @@ static int __database_new(refobject_t self, const refobject_type_t *type, va_lis
 
     thread_mutex_create(&(ret->lock));
 
-    ret->definitions = avl_tree_new(__compare_definitions, NULL);
+    ret->definitions = igloo_avl_tree_new(__compare_definitions, NULL);
     if (!ret->definitions)
         return -1;
 
@@ -1041,7 +1041,7 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
         if (!copy)
             continue;
 
-        avl_insert(db->definitions, copy);
+        igloo_avl_insert(db->definitions, copy);
     }
 
     thread_mutex_unlock(&(db->lock));
@@ -1159,7 +1159,7 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
     }
 
     thread_mutex_lock(&(db->lock));
-    if (avl_get_by_key(db->definitions, REFOBJECT_TO_TYPE(search, void *), (void**)&found) != 0) {
+    if (igloo_avl_get_by_key(db->definitions, REFOBJECT_TO_TYPE(search, void *), (void**)&found) != 0) {
         thread_mutex_unlock(&(db->lock));
         refobject_unref(search);
         return NULL;
