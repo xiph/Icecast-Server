@@ -1066,6 +1066,21 @@ static void _handle_get_request(client_t *client) {
     }
 }
 
+static void _handle_delete_request(client_t *client) {
+    source_t *source;
+
+    avl_tree_wlock(global.source_tree);
+    source = source_find_mount_raw(client->uri);
+    if (source) {
+        source->running = 0;
+        avl_tree_unlock(global.source_tree);
+        client_send_204(client);
+    } else {
+        avl_tree_unlock(global.source_tree);
+        client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
+    }
+}
+
 static void _handle_shoutcast_compatible(client_queue_t *node)
 {
     char *http_compliant;
@@ -1327,6 +1342,9 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
         case httpp_req_post:
         case httpp_req_options:
             _handle_get_request(client);
+        break;
+        case httpp_req_delete:
+            _handle_delete_request(client);
         break;
         default:
             ICECAST_LOG_ERROR("Wrong request type from client");

@@ -1101,7 +1101,7 @@ static void _parse_root(xmlDocPtr       doc,
                                         "legacy-global-source",
                                         AUTH_TYPE_STATIC, "source",
                                         source_password, NULL,
-                                        "source,put,get", 0, "*");
+                                        "source,put,get,delete", 0, "*");
             }
         } else {
             ICECAST_LOG_ERROR("Can not find nor create default mount, but "
@@ -1990,7 +1990,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
 
     if (admin_password && admin_username)
         __append_old_style_auth(&old_style, "legacy-admin", AUTH_TYPE_STATIC,
-            admin_username, admin_password, NULL, "get,post,head,stats,options", 1, "*");
+            admin_username, admin_password, NULL, "get,post,head,stats,options,delete", 1, "*");
 
     if (relay_password && relay_username)
         __append_old_style_auth(&old_style, "legacy-relay", AUTH_TYPE_STATIC,
