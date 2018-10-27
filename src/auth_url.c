@@ -379,6 +379,7 @@ static auth_result url_add_listener (auth_client *auth_user)
 
 	    cur_header = next_header;
         }
+        free(pass_headers);
     }
 
     if (strchr (url->addurl, '@') == NULL)
