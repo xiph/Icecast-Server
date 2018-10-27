@@ -191,6 +191,7 @@ static auth_result url_remove_listener (auth_client *auth_user)
     char *userpwd = NULL, post [4096];
     const char *agent;
     char *user_agent, *ipaddr;
+    int ret;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
@@ -223,17 +224,22 @@ static auth_result url_remove_listener (auth_client *auth_user)
     mount = util_url_escape (mountreq);
     ipaddr = util_url_escape (client->con->ip);
 
-    snprintf (post, sizeof (post),
-            "action=listener_remove&server=%s&port=%d&client=%lu&mount=%s"
-            "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
-            server, port, client->con->id, mount, username,
-            password, (long unsigned)duration, ipaddr, user_agent);
+    ret = snprintf(post, sizeof(post),
+                   "action=listener_remove&server=%s&port=%d&client=%lu&mount=%s"
+                   "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
+                   server, port, client->con->id, mount, username,
+                   password, (long unsigned)duration, ipaddr, user_agent);
     free (server);
     free (mount);
     free (username);
     free (password);
     free (ipaddr);
     free (user_agent);
+
+    if (ret <= 0 || ret >= sizeof(post)) {
+        ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\" client %p.", auth_user->mount, client);
+        return AUTH_FAILED;
+    }
 
     if (strchr (url->removeurl, '@') == NULL)
     {
@@ -331,6 +337,11 @@ static auth_result url_add_listener (auth_client *auth_user)
     free (password);
     free (ipaddr);
 
+    if (post_offset <= 0 || post_offset >= sizeof(post)) {
+        ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\" client %p.", auth_user->mount, client);
+        return AUTH_FAILED;
+    }
+
     pass_headers = NULL;
     if (url->pass_headers)
         pass_headers = strdup (url->pass_headers);
@@ -349,11 +360,21 @@ static auth_result url_add_listener (auth_client *auth_user)
             header_val = httpp_getvar (client->parser, cur_header);
             if (header_val)
             {
+                size_t left = sizeof(post) - post_offset;
+                int ret;
                 header_valesc = util_url_escape (header_val);
-                post_offset += snprintf (post+post_offset, sizeof (post)-post_offset, "&%s%s=%s",
+                ret = snprintf (post+post_offset, left, "&%s%s=%s",
                                          url->prefix_headers ? url->prefix_headers : "",
                                          cur_header, header_valesc);
                 free (header_valesc);
+
+                if (ret <= 0 || ret >= left) {
+                    ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\" client %p.", auth_user->mount, client);
+                    free(pass_headers);
+                    return AUTH_FAILED;
+                } else {
+                    post_offset += ret;
+                }
             }
 
 	    cur_header = next_header;
@@ -418,6 +439,7 @@ static void url_stream_start (auth_client *auth_user)
     char *stream_start_url;
     int port;
     char post [4096];
+    int ret;
 
     if (url->stream_start == NULL)
     {
@@ -433,10 +455,16 @@ static void url_stream_start (auth_client *auth_user)
     config_release_config ();
     mount = util_url_escape (auth_user->mount);
 
-    snprintf (post, sizeof (post),
-            "action=mount_add&mount=%s&server=%s&port=%d", mount, server, port);
+    ret = snprintf(post, sizeof(post), "action=mount_add&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
+
+    if (ret <= 0 || ret >= sizeof(post)) {
+        ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\".", auth_user->mount);
+        auth_release(auth);
+        free(stream_start_url);
+        return;
+    }
 
     if (strchr (url->stream_start, '@') == NULL)
     {
@@ -470,6 +498,7 @@ static void url_stream_end (auth_client *auth_user)
     char *stream_end_url;
     int port;
     char post [4096];
+    int ret;
 
     if (url->stream_end == NULL)
     {
@@ -485,10 +514,16 @@ static void url_stream_end (auth_client *auth_user)
     config_release_config ();
     mount = util_url_escape (auth_user->mount);
 
-    snprintf (post, sizeof (post),
-            "action=mount_remove&mount=%s&server=%s&port=%d", mount, server, port);
+    ret = snprintf(post, sizeof(post), "action=mount_remove&mount=%s&server=%s&port=%d", mount, server, port);
     free (server);
     free (mount);
+
+    if (ret <= 0 || ret >= sizeof(post)) {
+        ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\".", auth_user->mount);
+        auth_release(auth);
+        free(stream_end_url);
+        return;
+    }
 
     if (strchr (url->stream_end, '@') == NULL)
     {
@@ -519,6 +554,7 @@ static void url_stream_auth (auth_client *auth_user)
     auth_url *url = client->auth->state;
     char *mount, *host, *user, *pass, *ipaddr, *admin="";
     char post [4096];
+    int ret;
 
     if (strchr (url->stream_auth, '@') == NULL)
     {
@@ -553,9 +589,9 @@ static void url_stream_auth (auth_client *auth_user)
         pass = strdup("");
     }
 
-    snprintf (post, sizeof (post),
-            "action=stream_auth&mount=%s&ip=%s&server=%s&port=%d&user=%s&pass=%s%s",
-            mount, ipaddr, host, port, user, pass, admin);
+    ret = snprintf(post, sizeof(post),
+                   "action=stream_auth&mount=%s&ip=%s&server=%s&port=%d&user=%s&pass=%s%s",
+                   mount, ipaddr, host, port, user, pass, admin);
     free (ipaddr);
     free (user);
     free (pass);
@@ -563,6 +599,12 @@ static void url_stream_auth (auth_client *auth_user)
     free (host);
 
     client->authenticated = 0;
+
+    if (ret <= 0 || ret >= sizeof(post)) {
+        ICECAST_LOG_ERROR("POST body too long for buffer on mount point \"%H\" client %p.", auth_user->mount, client);
+        return;
+    }
+
     if (curl_easy_perform (url->handle))
         ICECAST_LOG_WARN("auth to server %s failed with %s", url->stream_auth, url->errormsg);
 }
