@@ -141,7 +141,7 @@ static int my_getpass(void *client, char *prompt, char *buffer, int buflen)
 static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void *stream)
 {
     auth_client *auth_user = stream;
-    unsigned bytes = size * nmemb;
+    size_t bytes = size * nmemb;
     client_t *client = auth_user->client;
 
     if (client)
@@ -168,13 +168,13 @@ static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void
         }
     }
 
-    return (int)bytes;
+    return bytes;
 }
 
 /* capture returned data, but don't do anything with it */
 static size_t handle_returned_data (void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    return (int)(size*nmemb);
+    return size * nmemb;
 }
 
 
