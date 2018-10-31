@@ -1,3 +1,37 @@
+2018-10-31 09:07 ph3-der-loewe
+
+	* Update: Changed set of default headers
+	* Improve compatibility with broken clients
+
+2018-10-30 13:53 tbr
+
+	* Win32 clean up
+	* Removed all files related to the removed Windows UI
+	* Added files needed by NSIS
+	* Added batch file used to start icecast on Windows
+	* Include icecast.bat into Makefile
+
+2018-10-28 10:42 ph3-der-loewe
+
+	* Fix: Worked around buffer overflows in URL auth's cURL interface
+
+2018-10-27 17:42 ph3-der-loewe
+
+	* Security fix: Fixed buffer overflows in URL auth code.
+	* CVE-2018-18820
+
+	* Fix: Fixed a memory leak
+	* Fix: Removed integer overflows
+
+2018-10-27 11:59 ph3-der-loewe
+
+	* Fix: Corrected possible bufferoverflows in format_prepare_headers()
+
+2018-06-17 06:50 ph3-der-loewe
+
+	* Fix: Do not shut down fserve engine if not started up
+	* Fix: Corrected const for SSL_METHOD*.
+
 2018-06-10 18:13 tbr
 
 	* Release preparation for Icecast 2.4.4

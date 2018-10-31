@@ -24,6 +24,13 @@
   <h4 id="fixes-4">Fixes</h4>
 
   <ul>
+    <li><strong>Security fix</strong>: Buffer overflow in URL-auth <br />
+       <ul>
+          <li>A malicious client can send long HTTP headers, leading to a buffer overflow and potential remote code execution.</li>
+          <li>The issue has been assigned CVE-2018-18820.</li>
+	  <li>An Icecast server (version &lt;2.4.4) is only vulnerable if a &lt;mount&gt; definition exists that enables URL authentication.</li>
+          <li>The problematic code exists since version 2.4.0 and was now brought to our attention by Nick Rolfe of <a href="https://lgtm.com/security">Semmle Security Research Team</a></li>
+       </ul>
     <li>Fixed segfault in htpasswd auth, if no filename was set</li>
     <li>Do not report hashed user passwords in user list</li>
     <li>Fix two mistakes in the default config's comments</li>
