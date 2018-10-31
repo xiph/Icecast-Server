@@ -87,7 +87,7 @@
 		</div>
 	</xsl:for-each>
 	<div id="footer">
-		Support icecast development at <a href="http://www.icecast.org">www.icecast.org</a>
+		Support icecast development at <a href="https://www.icecast.org/">www.icecast.org</a>
 	</div>
 </body>
 </html>
