@@ -9,4 +9,5 @@ echo Please open http://localhost:8000 in your web browser to see the web interf
 echo.
 echo.
 echo Leave this window open to keep Icecast running and, if necessary, minimize it.
-.\bin\icecast.exe -c .\etc\icecast.xml
+echo.
+.\bin\icecast.exe -c .\icecast.xml
