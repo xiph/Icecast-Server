@@ -638,13 +638,13 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
 
     config = config_get_config();
     extra_headers = _build_headers(status, config, source);
-    ret = snprintf (out, len, "%sServer: %s\r\n%s%s%s%s%s%s%s",
+    ret = snprintf (out, len, "%sServer: %s\r\nConnection: Close\r\n%s%s%s%s%s%s%s",
                               status_buffer,
 			      config->server_id,
 			      currenttime_buffer,
 			      contenttype_buffer,
 			      (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
-                              (cache     ? "" : "Cache-Control: no-cache\r\n"
+                              (cache     ? "" : "Cache-Control: no-cache, no-store\r\n"
                                                 "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n"
                                                 "Pragma: no-cache\r\n"),
                               extra_headers,
