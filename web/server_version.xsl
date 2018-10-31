@@ -43,15 +43,15 @@
 				</xsl:for-each>
 				<tr>
 					<td>Download</td>
-					<td><a href="http://icecast.org/download.php">icecast.org</a></td>
+					<td><a href="https://icecast.org/download/">icecast.org</a></td>
 				</tr>
 				<tr>
-					<td>Subversion</td>
-					<td><a href="http://icecast.org/svn.php">icecast.org/svn.php</a></td>
+					<td>Source code</td>
+					<td><a href="https://icecast.org/download/#git">icecast.org/download/#git</a></td>
 				</tr>
 				<tr>
 					<td>Documentation</td>
-					<td><a href="http://icecast.org/docs.php">icecast.org/docs.php</a></td>
+					<td><a href="https://icecast.org/docs/">icecast.org/docs</a></td>
 				</tr>
 				<tr>
 					<td>Stream Directory</td>
@@ -59,7 +59,7 @@
 				</tr>
 				<tr>
 					<td>Community</td>
-					<td><a href="http://icecast.org/community.php">icecast.org/community.php</a></td>
+					<td><a href="https://icecast.org/contact/">icecast.org/contact</a></td>
 				</tr>
 			</tbody>
 		</table>

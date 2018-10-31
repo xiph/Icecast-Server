@@ -24,7 +24,7 @@
 	 The web interface may change completely between releases.
 	 If you have a need for automatic processing of server data,
 	 please read the appropriate documentation. Latest docs:
-	 http://icecast.org/docs/icecast-latest/icecast2_stats.html
+	 https://icecast.org/docs/icecast-latest/icecast2_stats.html
 	-->
 	</xsl:text>
 	<!--mount point stats-->
@@ -159,7 +159,7 @@
 		</xsl:choose>
 	</xsl:for-each>
 	<div id="footer">
-		Support icecast development at <a href="http://www.icecast.org">www.icecast.org</a>
+		Support icecast development at <a href="https://www.icecast.org">www.icecast.org</a>
 	</div>
 </body>
 </html>
