@@ -795,7 +795,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                               currenttime_buffer,
                               contenttype_buffer,
                               (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
-                              (cache     ? "" : "Cache-Control: no-cache\r\n"
+                              (cache     ? "" : "Cache-Control: no-cache, no-store\r\n"
                                                 "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n"
                                                 "Pragma: no-cache\r\n"),
                               extra_headers,
