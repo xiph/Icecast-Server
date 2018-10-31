@@ -295,7 +295,7 @@ static inline ssize_t __print_var(char *str, size_t remaining, const char *forma
 
     for (i = 0; i < var->values; i++) {
         ret = snprintf(str + done, remaining - done, format, first, var->value[i]);
-        if (ret == -1)
+        if (ret <= 0 || (size_t)ret >= (remaining - done))
             return -1;
 
         done += ret;
@@ -331,7 +331,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     client->respcode = 200;
 
     bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
-    if (bytes < 0) {
+    if (bytes <= 0) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
         client->respcode = 500;
         return -1;
@@ -342,7 +342,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             client->refbuf->data = ptr = new_ptr;
             client->refbuf->len = remaining = bytes + 1024;
             bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
-            if (bytes == -1 ) {
+            if (bytes <= 0 || (size_t)bytes >= remaining) {
                 ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                 client->respcode = 500;
                 return -1;
@@ -354,6 +354,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
         }
     }
 
+    if (bytes <= 0 || (size_t)bytes >= remaining) {
+        ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+        client->respcode = 500;
+        return -1;
+    }
     remaining -= bytes;
     ptr += bytes;
 
@@ -421,6 +426,13 @@ static int format_prepare_headers (source_t *source, client_t *client)
             }
         }
 
+        if (bytes < 0 || (size_t)bytes >= remaining) {
+            avl_tree_unlock(source->parser->vars);
+            ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+            client->respcode = 500;
+            return -1;
+        }
+
         remaining -= bytes;
         ptr += bytes;
         if (next)
@@ -429,6 +441,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
     avl_tree_unlock(source->parser->vars);
 
     bytes = snprintf(ptr, remaining, "\r\n");
+    if (bytes <= 0 || (size_t)bytes >= remaining) {
+        ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+        client->respcode = 500;
+        return -1;
+    }
     remaining -= bytes;
     ptr += bytes;
 

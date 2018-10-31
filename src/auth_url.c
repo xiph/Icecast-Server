@@ -343,6 +343,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     const char     *agent;
     char           *user_agent,
                    *ipaddr;
+    int             ret;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
@@ -378,7 +379,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     mount = util_url_escape(mountreq);
     ipaddr = util_url_escape(client->con->ip);
 
-    snprintf(post, sizeof (post),
+    ret = snprintf(post, sizeof(post),
             "action=%s&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
             url->removeaction, /* already escaped */
@@ -391,6 +392,12 @@ static auth_result url_remove_client(auth_client *auth_user)
     free(password);
     free(ipaddr);
     free(user_agent);
+
+    if (ret <= 0 || ret >= (ssize_t)sizeof(post)) {
+        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
+        auth_user_url_clear(auth_user);
+        return AUTH_FAILED;
+    }
 
     if (strchr (url->removeurl, '@') == NULL) {
         if (url->userpwd) {
@@ -499,6 +506,13 @@ static auth_result url_add_client(auth_client *auth_user)
     free(password);
     free(ipaddr);
 
+
+    if (post_offset <= 0 || post_offset >= (ssize_t)sizeof(post)) {
+        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
+        auth_user_url_clear(auth_user);
+        return AUTH_FAILED;
+    }
+
     pass_headers = NULL;
     if (url->pass_headers)
         pass_headers = strdup(url->pass_headers);
@@ -513,13 +527,25 @@ static auth_result url_add_client(auth_client *auth_user)
 
             header_val = httpp_getvar (client->parser, cur_header);
             if (header_val) {
+                size_t left = sizeof(post) - post_offset;
+                int ret;
+
                 header_valesc = util_url_escape (header_val);
-                post_offset += snprintf(post + post_offset,
+                ret = snprintf(post + post_offset,
                                         sizeof(post) - post_offset,
                                         "&%s%s=%s",
                                         url->prefix_headers ? url->prefix_headers : "",
                                         cur_header, header_valesc);
                 free(header_valesc);
+
+                if (ret <= 0 || (size_t)ret >= left) {
+                    ICECAST_LOG_ERROR("Authentication failed for client %p as header \"%H\" is too long.", client, cur_header);
+                    free(pass_headers);
+                    auth_user_url_clear(auth_user);
+                    return AUTH_FAILED;
+                } else {
+                    post_offset += ret;
+                }
             }
 
             cur_header = next_header;
