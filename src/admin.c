@@ -371,9 +371,9 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
             config = config_get_config();
             mountinfo = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
             if (mountinfo)
-                acl = auth_stack_get_anonymous_acl(mountinfo->authstack, httpp_req_get);
+                acl = auth_stack_get_anonymous_acl(mountinfo->authstack, igloo_httpp_req_get);
             if (!acl)
-                acl = auth_stack_get_anonymous_acl(config->authstack, httpp_req_get);
+                acl = auth_stack_get_anonymous_acl(config->authstack, igloo_httpp_req_get);
             if (acl && acl_test_web(acl) == ACL_POLICY_DENY) {
                 xmlNewTextChild(srcnode, NULL, XMLSTR("authenticator"), XMLSTR("(dummy)"));
             }
@@ -499,8 +499,8 @@ void admin_handle_request(client_t *client, const char *uri)
 
         /* ACL disallows, check exceptions */
         if ((handler->function == command_metadata && handler->format == ADMIN_FORMAT_RAW) &&
-            (acl_test_method(client->acl, httpp_req_source) == ACL_POLICY_ALLOW ||
-             acl_test_method(client->acl, httpp_req_put)    == ACL_POLICY_ALLOW)) {
+            (acl_test_method(client->acl, igloo_httpp_req_source) == ACL_POLICY_ALLOW ||
+             acl_test_method(client->acl, igloo_httpp_req_put)    == ACL_POLICY_ALLOW)) {
             ICECAST_LOG_DEBUG("Granted right to call COMMAND_RAW_METADATA_UPDATE to "
                 "client because it is allowed to do SOURCE or PUT.");
         } else {
@@ -550,8 +550,8 @@ void admin_handle_request(client_t *client, const char *uri)
     }
 
     switch (client->parser->req_type) {
-        case httpp_req_get:
-        case httpp_req_post:
+        case igloo_httpp_req_get:
+        case igloo_httpp_req_post:
             if (handler->function) {
                 handler->function(client, source, format);
             } else {
@@ -572,7 +572,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 }
             }
         break;
-        case httpp_req_options:
+        case igloo_httpp_req_options:
             client_send_204(client);
         break;
         default:
@@ -1044,7 +1044,7 @@ static void command_metadata(client_t *client,
 
     ICECAST_LOG_DEBUG("Got metadata update request");
 
-    if (source->parser && source->parser->req_type == httpp_req_put) {
+    if (source->parser && source->parser->req_type == igloo_httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy SOURCE-style metadata update command on "
             "source connected with PUT at mountpoint %s", source->mount);
     }
@@ -1115,7 +1115,7 @@ static void command_shoutcast_metadata(client_t *client,
         return;
     }
 
-    if (source->parser->req_type == httpp_req_put) {
+    if (source->parser->req_type == igloo_httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
             "on source connected with PUT at mountpoint %s", source->mount);
     }

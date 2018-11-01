@@ -732,7 +732,7 @@ static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr
             }
 
             idx = igloo_httpp_str_to_method(cur);
-            if (idx == httpp_req_unknown) {
+            if (idx == igloo_httpp_req_unknown) {
                 ICECAST_LOG_ERROR("Can not add known method \"%H\" to role's %s", cur, name);
                 return -1;
             }
@@ -854,7 +854,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             }
 
             idx = igloo_httpp_str_to_method(cur);
-            if (idx == httpp_req_unknown) {
+            if (idx == igloo_httpp_req_unknown) {
                 auth_release(auth);
                 return NULL;
             }
@@ -1189,7 +1189,7 @@ auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id) {
 acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, igloo_httpp_request_type_e method) {
     acl_t *ret = NULL;
 
-    if (!stack || method < 0 || method > httpp_req_unknown)
+    if (!stack || method < 0 || method > igloo_httpp_req_unknown)
         return NULL;
 
     auth_stack_addref(stack);

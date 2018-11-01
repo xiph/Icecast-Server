@@ -28,7 +28,7 @@ struct acl_tag {
     size_t refcount;
 
     /* allowed methods */
-    acl_policy_t method[httpp_req_unknown+1];
+    acl_policy_t method[igloo_httpp_req_unknown+1];
 
     /* admin/ interface */
     struct {
@@ -250,7 +250,7 @@ int acl_set_method_str__callback(acl_t          *acl,
             acl->method[i] = policy;
     } else {
         method = igloo_httpp_str_to_method(str);
-        if (method == httpp_req_unknown)
+        if (method == igloo_httpp_req_unknown)
             return -1;
 
         acl->method[method] = policy;
@@ -261,7 +261,7 @@ int acl_set_method_str__callback(acl_t          *acl,
 
 acl_policy_t acl_test_method(acl_t * acl, igloo_httpp_request_type_e method)
 {
-    if (!acl || method < httpp_req_none || method > httpp_req_unknown)
+    if (!acl || method < igloo_httpp_req_none || method > igloo_httpp_req_unknown)
         return ACL_POLICY_ERROR;
 
     return acl->method[method];

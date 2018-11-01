@@ -545,7 +545,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_t *node
         client_t *client = node->client;
         client_slurp_result_t res;
 
-        if (client->parser->req_type == httpp_req_post) {
+        if (client->parser->req_type == igloo_httpp_req_post) {
             if (node->bodybuffer == NULL && client->request_body_read == 0) {
                 if (client->request_body_length < 0) {
                     node->bodybufferlen = body_size_limit;
@@ -754,7 +754,7 @@ int connection_complete_source(source_t *source, int response)
                 ICECAST_LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
                 return -1;
             }
-        } else if (source->parser->req_type == httpp_req_put) {
+        } else if (source->parser->req_type == igloo_httpp_req_put) {
             config_release_config();
             global_unlock();
             if (response) {
@@ -1013,7 +1013,7 @@ static void _handle_get_request(client_t *client) {
         return;
     }
 
-    if (client->parser->req_type == httpp_req_options) {
+    if (client->parser->req_type == igloo_httpp_req_options) {
         client_send_204(client);
         return;
     }
@@ -1331,19 +1331,19 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
     }
 
     switch (client->parser->req_type) {
-        case httpp_req_source:
-        case httpp_req_put:
+        case igloo_httpp_req_source:
+        case igloo_httpp_req_put:
             _handle_source_request(client);
         break;
-        case httpp_req_stats:
+        case igloo_httpp_req_stats:
             _handle_stats_request(client);
         break;
-        case httpp_req_get:
-        case httpp_req_post:
-        case httpp_req_options:
+        case igloo_httpp_req_get:
+        case igloo_httpp_req_post:
+        case igloo_httpp_req_options:
             _handle_get_request(client);
         break;
-        case httpp_req_delete:
+        case igloo_httpp_req_delete:
             _handle_delete_request(client);
         break;
         default:
@@ -1517,10 +1517,10 @@ static int _need_body(client_queue_t *node)
     if (node->tried_body)
         return 0;
 
-    if (client->parser->req_type == httpp_req_source) {
+    if (client->parser->req_type == igloo_httpp_req_source) {
         /* SOURCE connection. */
         return 0;
-    } else if (client->parser->req_type == httpp_req_put) {
+    } else if (client->parser->req_type == igloo_httpp_req_put) {
         /* PUT connection.
          * TODO: We may need body for /admin/ but we do not know if it's an admin request yet.
          */
@@ -1647,7 +1647,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                if (parser->req_type == httpp_req_options && strcmp(rawuri, "*") == 0) {
+                if (parser->req_type == igloo_httpp_req_options && strcmp(rawuri, "*") == 0) {
                     client->uri = strdup("*");
                     client_send_204(client);
                     continue;

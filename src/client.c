@@ -116,7 +116,7 @@ void client_complete(client_t *client)
     int have = 0;
 
     if (!have) {
-        header = httpp_getvar(client->parser, "content-length");
+        header = igloo_httpp_getvar(client->parser, "content-length");
         if (header) {
             if (sscanf(header, "%llu", &scannumber) == 1) {
                 client->request_body_length = scannumber;
@@ -126,7 +126,7 @@ void client_complete(client_t *client)
     }
 
     if (!have) {
-        if (client->parser->req_type == httpp_req_source) {
+        if (client->parser->req_type == igloo_httpp_req_source) {
             client->request_body_length = -1; /* streaming */
             have = 1;
         }
@@ -143,7 +143,7 @@ void client_complete(client_t *client)
     }
 
     if (!have) {
-        if (client->parser->req_type == httpp_req_put) {
+        if (client->parser->req_type == igloo_httpp_req_put) {
             /* As we don't know yet, we asume this PUT is in streaming mode */
             client->request_body_length = -1; /* streaming */
             have = 1;
@@ -151,7 +151,7 @@ void client_complete(client_t *client)
     }
 
     if (!have) {
-        if (client->parser->req_type == httpp_req_none) {
+        if (client->parser->req_type == igloo_httpp_req_none) {
             /* We are a client. If the server did not tell us, we asume streaming. */
             client->request_body_length = -1; /* streaming */
             have = 1;
