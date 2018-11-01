@@ -44,6 +44,8 @@
 #include <sys/utsname.h>
 #endif
 
+#include <igloo/igloo.h>
+#include <igloo/ro.h>
 #include <igloo/thread.h>
 #include <igloo/sock.h>
 #include <igloo/resolver.h>
@@ -87,6 +89,8 @@
 
 static int background;
 static char *pidfile = NULL;
+
+static igloo_ro_t icecast_igloo_instance;
 
 static void pidfile_update(ice_config_t *config, int always_try);
 
@@ -142,15 +146,14 @@ static refobject_t fastevent_reg;
 
 static void initialize_subsystems(void)
 {
-    igloo_log_initialize();
-    igloo_thread_initialize();
+    icecast_igloo_instance = igloo_initialize();
+    /* FIXME: Check for igloo_RO_IS_NULL(icecast_igloo_instance) */
+
     global_initialize();
 #ifndef FASTEVENT_ENABLED
     fastevent_initialize();
     fastevent_reg = fastevent_register(FASTEVENT_TYPE_SLOWEVENT, __fastevent_cb, NULL, NULL);
 #endif
-    igloo_sock_initialize();
-    igloo_resolver_initialize();
     config_initialize();
     tls_initialize();
     connection_initialize();
@@ -175,14 +178,11 @@ static void shutdown_subsystems(void)
     connection_shutdown();
     tls_shutdown();
     config_shutdown();
-    igloo_resolver_shutdown();
-    igloo_sock_shutdown();
 #ifndef FASTEVENT_ENABLED
     refobject_unref(fastevent_reg);
     fastevent_shutdown();
 #endif
     global_shutdown();
-    igloo_thread_shutdown();
 
 #ifdef HAVE_CURL
     icecast_curl_shutdown();
@@ -190,8 +190,9 @@ static void shutdown_subsystems(void)
 
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
-    igloo_log_shutdown();
     xslt_shutdown();
+
+    igloo_ro_unref(icecast_igloo_instance);
 }
 
 void main_config_reload(ice_config_t *config)
