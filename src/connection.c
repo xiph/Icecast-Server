@@ -115,9 +115,9 @@ void connection_initialize(void)
         return;
 
     igloo_thread_spin_create (&_connection_lock);
-    thread_mutex_create(&move_clients_mutex);
-    thread_rwlock_create(&_source_shutdown_rwlock);
-    thread_cond_create(&global.shutdown_cond);
+    igloo_thread_mutex_create(&move_clients_mutex);
+    igloo_thread_rwlock_create(&_source_shutdown_rwlock);
+    igloo_thread_cond_create(&global.shutdown_cond);
     _req_queue = NULL;
     _req_queue_tail = &_req_queue;
     _con_queue = NULL;
@@ -715,11 +715,11 @@ void connection_accept_loop(void)
     }
 
     /* Give all the other threads notification to shut down */
-    thread_cond_broadcast(&global.shutdown_cond);
+    igloo_thread_cond_broadcast(&global.shutdown_cond);
 
     /* wait for all the sources to shutdown */
-    thread_rwlock_wlock(&_source_shutdown_rwlock);
-    thread_rwlock_unlock(&_source_shutdown_rwlock);
+    igloo_thread_rwlock_wlock(&_source_shutdown_rwlock);
+    igloo_thread_rwlock_unlock(&_source_shutdown_rwlock);
 }
 
 
@@ -1069,14 +1069,14 @@ static void _handle_get_request(client_t *client) {
 static void _handle_delete_request(client_t *client) {
     source_t *source;
 
-    avl_tree_wlock(global.source_tree);
+    igloo_avl_tree_wlock(global.source_tree);
     source = source_find_mount_raw(client->uri);
     if (source) {
         source->running = 0;
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
         client_send_204(client);
     } else {
-        avl_tree_unlock(global.source_tree);
+        igloo_avl_tree_unlock(global.source_tree);
         client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
     }
 }

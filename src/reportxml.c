@@ -988,7 +988,7 @@ static int __database_new(refobject_t self, const refobject_type_t *type, va_lis
 {
     reportxml_database_t *ret = REFOBJECT_TO_TYPE(self, reportxml_database_t*);
 
-    thread_mutex_create(&(ret->lock));
+    igloo_thread_mutex_create(&(ret->lock));
 
     ret->definitions = igloo_avl_tree_new(__compare_definitions, NULL);
     if (!ret->definitions)
@@ -1024,7 +1024,7 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
     if (count < 0)
         return -1;
 
-    thread_mutex_lock(&(db->lock));
+    igloo_thread_mutex_lock(&(db->lock));
 
     for (i = 0; i < (size_t)count; i++) {
         reportxml_node_t *node = reportxml_node_get_child(root, i);
@@ -1044,7 +1044,7 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
         igloo_avl_insert(db->definitions, copy);
     }
 
-    thread_mutex_unlock(&(db->lock));
+    igloo_thread_mutex_unlock(&(db->lock));
 
     refobject_unref(root);
 
@@ -1158,9 +1158,9 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
         return NULL;
     }
 
-    thread_mutex_lock(&(db->lock));
+    igloo_thread_mutex_lock(&(db->lock));
     if (igloo_avl_get_by_key(db->definitions, REFOBJECT_TO_TYPE(search, void *), (void**)&found) != 0) {
-        thread_mutex_unlock(&(db->lock));
+        igloo_thread_mutex_unlock(&(db->lock));
         refobject_unref(search);
         return NULL;
     }
@@ -1168,10 +1168,10 @@ static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_dat
     refobject_unref(search);
 
     if (refobject_ref(found) != 0) {
-        thread_mutex_unlock(&(db->lock));
+        igloo_thread_mutex_unlock(&(db->lock));
         return NULL;
     }
-    thread_mutex_unlock(&(db->lock));
+    igloo_thread_mutex_unlock(&(db->lock));
 
     count = reportxml_node_count_child(found);
     if (count < 0) {

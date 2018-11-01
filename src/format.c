@@ -428,7 +428,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
         }
 
         if (bytes < 0 || (size_t)bytes >= remaining) {
-            avl_tree_unlock(source->parser->vars);
+            igloo_avl_tree_unlock(source->parser->vars);
             ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
             client->respcode = 500;
             return -1;

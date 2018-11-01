@@ -40,7 +40,7 @@ void global_initialize(void)
     global.sources = 0;
     global.source_tree = igloo_avl_tree_new(source_compare_sources, NULL);
     global.modulecontainer = refobject_new(module_container_t);
-    thread_mutex_create(&_global_mutex);
+    igloo_thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
@@ -52,10 +52,10 @@ void global_shutdown(void)
 
 void global_lock(void)
 {
-    thread_mutex_lock(&_global_mutex);
+    igloo_thread_mutex_lock(&_global_mutex);
 }
 
 void global_unlock(void)
 {
-    thread_mutex_unlock(&_global_mutex);
+    igloo_thread_mutex_unlock(&_global_mutex);
 }

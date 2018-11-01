@@ -107,7 +107,7 @@ source_t *source_reserve (const char *mount)
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
         src->max_listeners = -1;
-        thread_mutex_create(&src->lock);
+        igloo_thread_mutex_create(&src->lock);
 
         igloo_avl_insert(global.source_tree, src);
 
@@ -358,7 +358,7 @@ void source_move_clients(source_t *source, source_t *dest)
         return;
     }
     /* we don't want the two write locks to deadlock in here */
-    thread_mutex_lock (&move_clients_mutex);
+    igloo_thread_mutex_lock (&move_clients_mutex);
 
     /* if the destination is not running then we can't move clients */
 
@@ -367,7 +367,7 @@ void source_move_clients(source_t *source, source_t *dest)
     {
         ICECAST_LOG_WARN("destination mount %s not running, unable to move clients ", dest->mount);
         igloo_avl_tree_unlock (dest->pending_tree);
-        thread_mutex_unlock (&move_clients_mutex);
+        igloo_thread_mutex_unlock (&move_clients_mutex);
         return;
     }
 
@@ -456,7 +456,7 @@ void source_move_clients(source_t *source, source_t *dest)
         dest->on_demand_req = 1;
 
     igloo_avl_tree_unlock (dest->pending_tree);
-    thread_mutex_unlock (&move_clients_mutex);
+    igloo_thread_mutex_unlock (&move_clients_mutex);
 }
 
 
@@ -503,7 +503,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         if (fds == 0)
         {
-            thread_mutex_lock(&source->lock);
+            igloo_thread_mutex_lock(&source->lock);
             if ((source->last_read + (time_t)source->timeout) < current)
             {
                 ICECAST_LOG_DEBUG("last %ld, timeout %d, now %ld", (long)source->last_read,
@@ -511,7 +511,7 @@ static refbuf_t *get_next_buffer (source_t *source)
                 ICECAST_LOG_WARN("Disconnecting source due to socket timeout");
                 source->running = 0;
             }
-            thread_mutex_unlock(&source->lock);
+            igloo_thread_mutex_unlock(&source->lock);
             break;
         }
         source->last_read = current;
@@ -641,7 +641,7 @@ static void source_init (source_t *source)
     }
 
     /* grab a read lock, to make sure we get a chance to cleanup */
-    thread_rwlock_rlock (source->shutdown_rwlock);
+    igloo_thread_rwlock_rlock (source->shutdown_rwlock);
 
     /* start off the statistics */
     source->listeners = 0;
@@ -733,10 +733,10 @@ void source_main (source_t *source)
                 source->format->write_buf_to_file(source, refbuf);
         }
         /* lets see if we have too much data in the queue, but don't remove it until later */
-        thread_mutex_lock(&source->lock);
+        igloo_thread_mutex_lock(&source->lock);
         if (source->queue_size > source->queue_size_limit)
             remove_from_q = 1;
-        thread_mutex_unlock(&source->lock);
+        igloo_thread_mutex_unlock(&source->lock);
 
         /* acquire write lock on pending_tree */
         igloo_avl_tree_wlock(source->pending_tree);
@@ -916,7 +916,7 @@ static void source_shutdown (source_t *source)
     global_unlock();
 
     /* release our hold on the lock so the main thread can continue cleaning up */
-    thread_rwlock_unlock(source->shutdown_rwlock);
+    igloo_thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
 
@@ -1227,12 +1227,12 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
  */
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo)
 {
-    thread_mutex_lock(&source->lock);
+    igloo_thread_mutex_lock(&source->lock);
     /*  skip if source is a fallback to file */
     if (source->running && source->client == NULL)
     {
         stats_event_hidden (source->mount, NULL, 1);
-        thread_mutex_unlock(&source->lock);
+        igloo_thread_mutex_unlock(&source->lock);
         return;
     }
     /* set global settings first */
@@ -1282,7 +1282,7 @@ void source_update_settings (ice_config_t *config, source_t *source, mount_proxy
     ICECAST_LOG_DEBUG("burst size to %u", source->burst_size);
     ICECAST_LOG_DEBUG("source timeout to %u", source->timeout);
     ICECAST_LOG_DEBUG("fallback_when_full to %u", source->fallback_when_full);
-    thread_mutex_unlock(&source->lock);
+    igloo_thread_mutex_unlock(&source->lock);
 }
 
 
@@ -1324,7 +1324,7 @@ void source_client_callback (client_t *client, void *arg)
     if (agent)
         stats_event (source->mount, "user_agent", agent);
 
-    thread_create ("Source Thread", source_client_thread,
+    igloo_thread_create ("Source Thread", source_client_thread,
             source, igloo_THREAD_DETACHED);
 }
 
@@ -1443,7 +1443,7 @@ void source_recheck_mounts (int update_all)
             source_t *fallback = source_find_mount (mount->fallback_mount);
             if (fallback == NULL)
             {
-                thread_create ("Fallback file thread", source_fallback_file,
+                igloo_thread_create ("Fallback file thread", source_fallback_file,
                         strdup (mount->fallback_mount), igloo_THREAD_DETACHED);
             }
         }

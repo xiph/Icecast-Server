@@ -54,7 +54,7 @@ int __module_container_new(refobject_t self, const refobject_type_t *type, va_li
 {
     module_container_t *ret = REFOBJECT_TO_TYPE(self, module_container_t*);
 
-    thread_mutex_create(&(ret->lock));
+    igloo_thread_mutex_create(&(ret->lock));
 
     ret->module = igloo_avl_tree_new(compare_refobject_t_name, NULL);
 
@@ -74,9 +74,9 @@ int                     module_container_add_module(module_container_t *self, mo
     if (refobject_ref(module) != 0)
         return -1;
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     igloo_avl_insert(self->module, module);
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     return 0;
 }
@@ -92,9 +92,9 @@ int                     module_container_delete_module(module_container_t *self,
     if (!module)
         return -1;
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     igloo_avl_delete(self->module, module, (igloo_avl_free_key_fun_type)refobject_unref);
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     refobject_unref(module);
 
@@ -111,11 +111,11 @@ module_t *              module_container_get_module(module_container_t *self, co
 
     search = refobject_new__new(refobject_base_t, NULL, name, NULL);
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     if (igloo_avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
         ret = NULL;
     }
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     refobject_unref(search);
     refobject_ref(ret);
@@ -135,7 +135,7 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
     if (!root)
         return NULL;
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     avlnode = igloo_avl_get_first(self->module);
     while (avlnode) {
         module_t *module = avlnode->key;
@@ -149,7 +149,7 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
 
         avlnode = igloo_avl_get_next(avlnode);
     }
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     return root;
 }
@@ -181,7 +181,7 @@ module_t *              module_new(const char *name, module_setup_handler_t newc
     if (!ret)
         return NULL;
 
-    thread_mutex_create(&(ret->lock));
+    igloo_thread_mutex_create(&(ret->lock));
 
     ret->userdata = userdata;
     ret->freecb = freecb;
@@ -221,13 +221,13 @@ int                             module_add_link(module_t *self, const char *type
         }
     }
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     free(self->management_link_url);
     free(self->management_link_title);
 
     self->management_link_url = n_url;
     self->management_link_title = n_title;
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     return 0;
 }
@@ -239,14 +239,14 @@ const module_client_handler_t * module_get_client_handler(module_t *self, const 
     if (!self || !name)
         return NULL;
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     for (i = 0; i < self->client_handlers_len; i++) {
         if (self->client_handlers[i].name && strcmp(self->client_handlers[i].name, name) == 0) {
-            thread_mutex_unlock(&(self->lock));
+            igloo_thread_mutex_unlock(&(self->lock));
             return &(self->client_handlers[i]);
         }
     }
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     return NULL;
 }
@@ -256,10 +256,10 @@ int                             module_add_client_handler(module_t *self, const 
     if (!self)
         return -1;
 
-    thread_mutex_lock(&(self->lock));
+    igloo_thread_mutex_lock(&(self->lock));
     self->client_handlers = handlers;
     self->client_handlers_len = len;
-    thread_mutex_unlock(&(self->lock));
+    igloo_thread_mutex_unlock(&(self->lock));
 
     return 0;
 }

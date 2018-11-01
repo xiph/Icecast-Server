@@ -1425,13 +1425,13 @@ struct tm *localtime_r (const time_t *timep, struct tm *result)
 
      if (initialised == 0)
      {
-         thread_mutex_create (&localtime_lock);
+         igloo_thread_mutex_create (&localtime_lock);
          initialised = 1;
      }
-     thread_mutex_lock (&localtime_lock);
+     igloo_thread_mutex_lock (&localtime_lock);
      tm = localtime (timep);
      memcpy (result, tm, sizeof (*result));
-     thread_mutex_unlock (&localtime_lock);
+     igloo_thread_mutex_unlock (&localtime_lock);
      return result;
 }
 #endif

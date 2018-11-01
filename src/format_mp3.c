@@ -117,7 +117,7 @@ int format_mp3_get_plugin(source_t *source)
 
     vorbis_comment_init(&plugin->vc);
     source->format = plugin;
-    thread_mutex_create(&state->url_lock);
+    igloo_thread_mutex_create(&state->url_lock);
 
     return 0;
 }
@@ -129,12 +129,12 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     char *value = NULL;
 
     /* protect against multiple updaters */
-    thread_mutex_lock (&source_mp3->url_lock);
+    igloo_thread_mutex_lock (&source_mp3->url_lock);
 
     if (tag==NULL)
     {
         source_mp3->update_metadata = 1;
-        thread_mutex_unlock (&source_mp3->url_lock);
+        igloo_thread_mutex_unlock (&source_mp3->url_lock);
         return;
     }
 
@@ -156,7 +156,7 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     format_set_vorbiscomment(plugin, tag, value);
     free (value);
 
-    thread_mutex_unlock (&source_mp3->url_lock);
+    igloo_thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 
@@ -242,7 +242,7 @@ static void mp3_set_title(source_t *source)
     mp3_state *source_mp3 = source->format->_state;
 
     /* make sure the url data does not disappear from under us */
-    thread_mutex_lock (&source_mp3->url_lock);
+    igloo_thread_mutex_lock (&source_mp3->url_lock);
 
     /* work out message length */
     if (url_artist)
@@ -262,7 +262,7 @@ static void mp3_set_title(source_t *source)
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
-        thread_mutex_unlock (&source_mp3->url_lock);
+        igloo_thread_mutex_unlock (&source_mp3->url_lock);
         ICECAST_LOG_WARN("Metadata too long at %d chars", len);
         return;
     }
@@ -308,7 +308,7 @@ static void mp3_set_title(source_t *source)
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
-    thread_mutex_unlock (&source_mp3->url_lock);
+    igloo_thread_mutex_unlock (&source_mp3->url_lock);
 }
 
 

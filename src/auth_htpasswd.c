@@ -121,10 +121,10 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
         ICECAST_LOG_WARN("failed to check status of %s", htpasswd->filename);
 
         /* Create a dummy users tree for things to use later */
-        thread_rwlock_wlock (&htpasswd->file_rwlock);
+        igloo_thread_rwlock_wlock (&htpasswd->file_rwlock);
         if(!htpasswd->users)
             htpasswd->users = igloo_avl_tree_new(compare_users, NULL);
-        thread_rwlock_unlock (&htpasswd->file_rwlock);
+        igloo_thread_rwlock_unlock (&htpasswd->file_rwlock);
 
         return;
     }
@@ -167,11 +167,11 @@ static void htpasswd_recheckfile(htpasswd_auth_state *htpasswd)
     }
     fclose (passwdfile);
 
-    thread_rwlock_wlock (&htpasswd->file_rwlock);
+    igloo_thread_rwlock_wlock (&htpasswd->file_rwlock);
     if (htpasswd->users)
         igloo_avl_tree_free (htpasswd->users, _free_user);
     htpasswd->users = new_users;
-    thread_rwlock_unlock (&htpasswd->file_rwlock);
+    igloo_thread_rwlock_unlock (&htpasswd->file_rwlock);
 }
 
 
@@ -197,13 +197,13 @@ static auth_result htpasswd_auth (auth_client *auth_user)
         return AUTH_NOMATCH;
     }
 
-    thread_rwlock_rlock (&htpasswd->file_rwlock);
+    igloo_thread_rwlock_rlock (&htpasswd->file_rwlock);
     entry.name = client->username;
     if (igloo_avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
         htpasswd_user *found = result;
         char *hashed_pw;
 
-        thread_rwlock_unlock (&htpasswd->file_rwlock);
+        igloo_thread_rwlock_unlock (&htpasswd->file_rwlock);
         hashed_pw = get_hash (client->password, strlen (client->password));
         if (strcmp (found->pass, hashed_pw) == 0) {
             free (hashed_pw);
@@ -214,7 +214,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
         return AUTH_FAILED;
     }
     ICECAST_LOG_DEBUG("no such username: %s", client->username);
-    thread_rwlock_unlock (&htpasswd->file_rwlock);
+    igloo_thread_rwlock_unlock (&htpasswd->file_rwlock);
     return AUTH_NOMATCH;
 }
 
@@ -248,7 +248,7 @@ int  auth_get_htpasswd_auth (auth_t *authenticator, config_options_t *options)
 
     authenticator->state = state;
 
-    thread_rwlock_create(&state->file_rwlock);
+    igloo_thread_rwlock_create(&state->file_rwlock);
     htpasswd_recheckfile(state);
 
     return 0;
@@ -275,18 +275,18 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
         return AUTH_FAILED;
     }
 
-    thread_rwlock_wlock (&state->file_rwlock);
+    igloo_thread_rwlock_wlock (&state->file_rwlock);
 
     entry.name = (char*)username;
     if (igloo_avl_get_by_key (state->users, &entry, &result) == 0) {
-        thread_rwlock_unlock (&state->file_rwlock);
+        igloo_thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_USEREXISTS;
     }
 
     passwdfile = fopen(state->filename, "ab");
 
     if (passwdfile == NULL) {
-        thread_rwlock_unlock (&state->file_rwlock);
+        igloo_thread_rwlock_unlock (&state->file_rwlock);
         ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 state->filename, strerror(errno));
         return AUTH_FAILED;
@@ -299,7 +299,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
     }
 
     fclose(passwdfile);
-    thread_rwlock_unlock (&state->file_rwlock);
+    igloo_thread_rwlock_unlock (&state->file_rwlock);
 
     return AUTH_USERADDED;
 }
@@ -328,13 +328,13 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         return AUTH_FAILED;
     }
 
-    thread_rwlock_wlock (&state->file_rwlock);
+    igloo_thread_rwlock_wlock (&state->file_rwlock);
     passwdfile = fopen(state->filename, "rb");
 
     if(passwdfile == NULL) {
         ICECAST_LOG_WARN("Failed to open authentication database \"%s\": %s",
                 state->filename, strerror(errno));
-        thread_rwlock_unlock (&state->file_rwlock);
+        igloo_thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_FAILED;
     }
     tmpfile_len = strlen(state->filename) + 6;
@@ -344,7 +344,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         ICECAST_LOG_WARN("temp file \"%s\" exists, rejecting operation", tmpfile);
         free (tmpfile);
         fclose (passwdfile);
-        thread_rwlock_unlock (&state->file_rwlock);
+        igloo_thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_FAILED;
     }
 
@@ -355,7 +355,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
                 tmpfile, strerror(errno));
         fclose(passwdfile);
         free(tmpfile);
-        thread_rwlock_unlock (&state->file_rwlock);
+        igloo_thread_rwlock_unlock (&state->file_rwlock);
         return AUTH_FAILED;
     }
 
@@ -395,7 +395,7 @@ static auth_result htpasswd_deleteuser(auth_t *auth, const char *username)
         }
     }
     free(tmpfile);
-    thread_rwlock_unlock(&state->file_rwlock);
+    igloo_thread_rwlock_unlock(&state->file_rwlock);
     htpasswd_recheckfile(state);
 
     return AUTH_USERDELETED;
@@ -422,7 +422,7 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
         return AUTH_FAILED;
     }
 
-    thread_rwlock_rlock(&state->file_rwlock);
+    igloo_thread_rwlock_rlock(&state->file_rwlock);
     node = igloo_avl_get_first(state->users);
     while (node) {
         htpasswd_user *user = (htpasswd_user *)node->key;
@@ -430,7 +430,7 @@ static auth_result htpasswd_userlist(auth_t *auth, xmlNodePtr srcnode)
         xmlNewTextChild(newnode, NULL, XMLSTR("username"), XMLSTR(user->name));
         node = igloo_avl_get_next(node);
     }
-    thread_rwlock_unlock(&state->file_rwlock);
+    igloo_thread_rwlock_unlock(&state->file_rwlock);
 
     return AUTH_OK;
 }

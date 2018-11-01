@@ -103,12 +103,12 @@ static void __unregister(refobject_t self, void **userdata)
 
     (void)userdata;
 
-    thread_rwlock_wlock(&fastevent_lock);
+    igloo_thread_rwlock_wlock(&fastevent_lock);
     row = __get_row(registration->type);
     if (__remove_from_row(row, registration) != 0) {
         ICECAST_LOG_ERROR("Can not remove fast event from row. BUG.");
     }
-    thread_rwlock_unlock(&fastevent_lock);
+    igloo_thread_rwlock_unlock(&fastevent_lock);
 
     if (registration->freecb)
         registration->freecb(&(registration->userdata));
@@ -119,7 +119,7 @@ static void __unregister(refobject_t self, void **userdata)
 
 int fastevent_initialize(void)
 {
-    thread_rwlock_create(&fastevent_lock);
+    igloo_thread_rwlock_create(&fastevent_lock);
     return 0;
 }
 
@@ -127,7 +127,7 @@ int fastevent_shutdown(void)
 {
     size_t i;
 
-    thread_rwlock_wlock(&fastevent_lock);
+    igloo_thread_rwlock_wlock(&fastevent_lock);
     for (i = 0; i < FASTEVENT_TYPE__END; i++) {
         if (fastevent_registrations[i].used) {
             ICECAST_LOG_ERROR("Subsystem shutdown but elements still in use. BUG.");
@@ -137,7 +137,7 @@ int fastevent_shutdown(void)
         free(fastevent_registrations[i].registrations);
         fastevent_registrations[i].registrations = NULL;
     }
-    thread_rwlock_unlock(&fastevent_lock);
+    igloo_thread_rwlock_unlock(&fastevent_lock);
     igloo_thread_rwlock_destroy(&fastevent_lock);
 
     return 0;
@@ -155,18 +155,18 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
     if (cb == NULL)
         return REFOBJECT_NULL;
 
-    thread_rwlock_wlock(&fastevent_lock);
+    igloo_thread_rwlock_wlock(&fastevent_lock);
     row = __get_row(type);
 
     if (row == NULL) {
-        thread_rwlock_unlock(&fastevent_lock);
+        igloo_thread_rwlock_unlock(&fastevent_lock);
         return REFOBJECT_NULL;
     }
 
     registration = refobject_new__new(fastevent_registration_t, NULL, NULL, NULL);
 
     if (!registration) {
-        thread_rwlock_unlock(&fastevent_lock);
+        igloo_thread_rwlock_unlock(&fastevent_lock);
         return REFOBJECT_NULL;
     }
 
@@ -176,12 +176,12 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
     registration->userdata = userdata;
 
     if (__add_to_row(row, registration) != 0) {
-        thread_rwlock_unlock(&fastevent_lock);
+        igloo_thread_rwlock_unlock(&fastevent_lock);
         refobject_unref(REFOBJECT_FROM_TYPE(registration));
         return REFOBJECT_NULL;
     }
 
-    thread_rwlock_unlock(&fastevent_lock);
+    igloo_thread_rwlock_unlock(&fastevent_lock);
     return REFOBJECT_FROM_TYPE(registration);
 }
 
@@ -193,10 +193,10 @@ void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_dat
 
     ICECAST_LOG_DEBUG("event: type=%i, flags=%i, datatype=%i, ...", (int)type, (int)flags, (int)datatype);
 
-    thread_rwlock_rlock(&fastevent_lock);
+    igloo_thread_rwlock_rlock(&fastevent_lock);
     row = __get_row(type);
     if (row == NULL || row->used == 0) {
-        thread_rwlock_unlock(&fastevent_lock);
+        igloo_thread_rwlock_unlock(&fastevent_lock);
         return;
     }
 
@@ -208,7 +208,7 @@ void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_dat
         va_end(apx);
     }
 
-    thread_rwlock_unlock(&fastevent_lock);
+    igloo_thread_rwlock_unlock(&fastevent_lock);
 
     va_end(ap);
 }

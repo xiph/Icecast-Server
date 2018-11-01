@@ -629,7 +629,7 @@ static void fserve_add_pending (fserve_t *fclient)
     {
         run_fserv = 1;
         ICECAST_LOG_DEBUG("fserve handler waking up");
-        thread_create("File Serving Thread", fserv_thread_function, NULL, igloo_THREAD_DETACHED);
+        igloo_thread_create("File Serving Thread", fserv_thread_function, NULL, igloo_THREAD_DETACHED);
     }
     igloo_thread_spin_unlock (&pending_lock);
 }

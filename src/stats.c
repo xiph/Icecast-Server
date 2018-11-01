@@ -121,9 +121,9 @@ static stats_event_t *build_event (const char *source, const char *name, const c
 
 static void queue_global_event (stats_event_t *event)
 {
-    thread_mutex_lock(&_global_event_mutex);
+    igloo_thread_mutex_lock(&_global_event_mutex);
     _add_event_to_queue (event, &_global_event_queue);
-    thread_mutex_unlock(&_global_event_mutex);
+    igloo_thread_mutex_unlock(&_global_event_mutex);
 }
 
 void stats_initialize(void)
@@ -135,15 +135,15 @@ void stats_initialize(void)
     _stats.source_tree = igloo_avl_tree_new(_compare_source_stats, NULL);
 
     /* set up global mutex */
-    thread_mutex_create(&_stats_mutex);
+    igloo_thread_mutex_create(&_stats_mutex);
 
     /* set up stats queues */
     event_queue_init(&_global_event_queue);
-    thread_mutex_create(&_global_event_mutex);
+    igloo_thread_mutex_create(&_global_event_mutex);
 
     /* fire off the stats thread */
     _stats_running = 1;
-    _stats_thread_id = thread_create("Stats Thread", _stats_thread, NULL, igloo_THREAD_ATTACHED);
+    _stats_thread_id = igloo_thread_create("Stats Thread", _stats_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 void stats_shutdown(void)
@@ -154,17 +154,17 @@ void stats_shutdown(void)
         return;
 
     /* wait for thread to exit */
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
     _stats_running = 0;
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
     igloo_thread_join(_stats_thread_id);
 
     /* wait for other threads to shut down */
     do {
         igloo_thread_sleep(300000);
-        thread_mutex_lock(&_stats_mutex);
+        igloo_thread_mutex_lock(&_stats_mutex);
         n = _stats_threads;
-        thread_mutex_unlock(&_stats_mutex);
+        igloo_thread_mutex_unlock(&_stats_mutex);
     } while (n > 0);
     ICECAST_LOG_INFO("stats thread finished");
 
@@ -292,7 +292,7 @@ static char *_get_stats(const char *source, const char *name)
     stats_source_t *src = NULL;
     char *value = NULL;
 
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
 
     if (source == NULL) {
         stats = _find_node(_stats.global_tree, name);
@@ -305,7 +305,7 @@ static char *_get_stats(const char *source, const char *name)
 
     if (stats) value = (char *)strdup(stats->value);
 
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
 
     return value;
 }
@@ -694,24 +694,24 @@ static void *_stats_thread(void *arg)
 
     ICECAST_LOG_INFO("stats thread started");
     while (1) {
-        thread_mutex_lock(&_stats_mutex);
+        igloo_thread_mutex_lock(&_stats_mutex);
         if (!_stats_running) {
-            thread_mutex_unlock(&_stats_mutex);
+            igloo_thread_mutex_unlock(&_stats_mutex);
             break;
         }
-        thread_mutex_unlock(&_stats_mutex);
+        igloo_thread_mutex_unlock(&_stats_mutex);
 
-        thread_mutex_lock(&_global_event_mutex);
+        igloo_thread_mutex_lock(&_global_event_mutex);
         if (_global_event_queue.head != NULL) {
             /* grab the next event from the queue */
             event = _get_event_from_queue (&_global_event_queue);
-            thread_mutex_unlock(&_global_event_mutex);
+            igloo_thread_mutex_unlock(&_global_event_mutex);
 
             if (event == NULL)
                 continue;
             event->next = NULL;
 
-            thread_mutex_lock(&_stats_mutex);
+            igloo_thread_mutex_lock(&_stats_mutex);
 
             /* check if we are dealing with a global or source event */
             if (event->source == NULL)
@@ -724,9 +724,9 @@ static void *_stats_thread(void *arg)
             listener = (event_listener_t *)_event_listeners;
             while (listener) {
                 copy = _copy_event(event);
-                thread_mutex_lock (&listener->mutex);
+                igloo_thread_mutex_lock (&listener->mutex);
                 _add_event_to_queue (copy, &listener->queue);
-                thread_mutex_unlock (&listener->mutex);
+                igloo_thread_mutex_unlock (&listener->mutex);
 
                 listener = listener->next;
             }
@@ -734,12 +734,12 @@ static void *_stats_thread(void *arg)
             /* now we need to destroy the event */
             _free_event(event);
 
-            thread_mutex_unlock(&_stats_mutex);
+            igloo_thread_mutex_unlock(&_stats_mutex);
             continue;
         }
         else
         {
-            thread_mutex_unlock(&_global_event_mutex);
+            igloo_thread_mutex_unlock(&_global_event_mutex);
         }
 
         igloo_thread_sleep(300000);
@@ -847,7 +847,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
     __add_authstack(config->authstack, root);
     config_release_config();
 
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
     /* general stats first */
     avlnode = igloo_avl_get_first(_stats.global_tree);
 
@@ -913,7 +913,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
         }
         avlnode = igloo_avl_get_next (avlnode);
     }
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
     return ret;
 }
 
@@ -930,7 +930,7 @@ static void _register_listener (event_listener_t *listener)
     stats_event_t *event;
     stats_source_t *source;
 
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
 
     /* first we fill our queue with the current stats */
 
@@ -962,7 +962,7 @@ static void _register_listener (event_listener_t *listener)
     listener->next = (event_listener_t *)_event_listeners;
     _event_listeners = listener;
 
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
 }
 
 void *stats_connection(void *arg)
@@ -975,26 +975,26 @@ void *stats_connection(void *arg)
 
     event_queue_init (&listener.queue);
     /* increment the thread count */
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
     _stats_threads++;
     stats_event_args (NULL, "stats", "%d", _stats_threads);
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
 
-    thread_mutex_create (&(listener.mutex));
+    igloo_thread_mutex_create (&(listener.mutex));
 
     _register_listener (&listener);
 
     while (1) {
-        thread_mutex_lock(&_stats_mutex);
+        igloo_thread_mutex_lock(&_stats_mutex);
         if (!_stats_running) {
-            thread_mutex_unlock(&_stats_mutex);
+            igloo_thread_mutex_unlock(&_stats_mutex);
             break;
         }
-        thread_mutex_unlock(&_stats_mutex);
+        igloo_thread_mutex_unlock(&_stats_mutex);
 
-        thread_mutex_lock (&listener.mutex);
+        igloo_thread_mutex_lock (&listener.mutex);
         event = _get_event_from_queue (&listener.queue);
-        thread_mutex_unlock (&listener.mutex);
+        igloo_thread_mutex_unlock (&listener.mutex);
         if (event != NULL) {
             if (_send_event_to_client(event, client) < 0) {
                 _free_event(event);
@@ -1006,11 +1006,11 @@ void *stats_connection(void *arg)
         igloo_thread_sleep (500000);
     }
 
-    thread_mutex_lock(&_stats_mutex);
+    igloo_thread_mutex_lock(&_stats_mutex);
     _unregister_listener (&listener);
     _stats_threads--;
     stats_event_args (NULL, "stats", "%d", _stats_threads);
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
 
     igloo_thread_mutex_destroy (&listener.mutex);
     client_destroy (client);
@@ -1030,7 +1030,7 @@ void stats_callback (client_t *client, void *notused)
         return;
     }
     client_set_queue (client, NULL);
-    thread_create("Stats Connection", stats_connection, (void *)client, igloo_THREAD_DETACHED);
+    igloo_thread_create("Stats Connection", stats_connection, (void *)client, igloo_THREAD_DETACHED);
 }
 
 
@@ -1164,7 +1164,7 @@ refbuf_t *stats_get_streams (void)
     char *buffer = cur->data;
 
     /* now the stats for each source */
-    thread_mutex_lock (&_stats_mutex);
+    igloo_thread_mutex_lock (&_stats_mutex);
     node = igloo_avl_get_first(_stats.source_tree);
     while (node)
     {
@@ -1190,7 +1190,7 @@ refbuf_t *stats_get_streams (void)
         }
         node = igloo_avl_get_next(node);
     }
-    thread_mutex_unlock(&_stats_mutex);
+    igloo_thread_mutex_unlock(&_stats_mutex);
     cur->len = STREAMLIST_BLKSIZE - remaining;
     return start;
 }
@@ -1205,7 +1205,7 @@ void stats_clear_virtual_mounts (void)
 {
     igloo_avl_node *snode;
 
-    thread_mutex_lock (&_stats_mutex);
+    igloo_thread_mutex_lock (&_stats_mutex);
     snode = igloo_avl_get_first(_stats.source_tree);
     while (snode)
     {
@@ -1223,6 +1223,6 @@ void stats_clear_virtual_mounts (void)
 
         snode = igloo_avl_get_next (snode);
     }
-    thread_mutex_unlock (&_stats_mutex);
+    igloo_thread_mutex_unlock (&_stats_mutex);
 }
 

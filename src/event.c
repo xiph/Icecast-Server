@@ -36,9 +36,9 @@ static igloo_thread_type *event_thread = NULL;
 static void event_addref(event_t *event) {
     if (!event)
         return;
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event->refcount++;
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 }
 
 static void event_release(event_t *event) {
@@ -48,10 +48,10 @@ static void event_release(event_t *event) {
     if (!event)
         return;
 
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event->refcount--;
     if (event->refcount) {
-        thread_mutex_unlock(&event_lock);
+        igloo_thread_mutex_unlock(&event_lock);
         return;
     }
 
@@ -66,7 +66,7 @@ static void event_release(event_t *event) {
     free(event->client_useragent);
     to_free = event->next;
     free(event);
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 
     if (to_free)
         event_release(to_free);
@@ -144,7 +144,7 @@ static inline void _try_registrations(event_registration_t *er, event_t *event) 
     if (!er)
         return;
 
-    thread_mutex_lock(&er->lock);
+    igloo_thread_mutex_lock(&er->lock);
     while (1) {
         /* try registration */
         _try_event(er, event);
@@ -153,14 +153,14 @@ static inline void _try_registrations(event_registration_t *er, event_t *event) 
        if (er->next) {
            event_registration_t *next = er->next;
 
-           thread_mutex_lock(&next->lock);
-           thread_mutex_unlock(&er->lock);
+           igloo_thread_mutex_lock(&next->lock);
+           igloo_thread_mutex_unlock(&er->lock);
            er = next;
        } else {
            break;
        }
     }
-    thread_mutex_unlock(&er->lock);
+    igloo_thread_mutex_unlock(&er->lock);
 }
 
 static void *event_run_thread (void *arg) {
@@ -172,7 +172,7 @@ static void *event_run_thread (void *arg) {
         event_t *event;
         size_t i;
 
-        thread_mutex_lock(&event_lock);
+        igloo_thread_mutex_lock(&event_lock);
         running = event_running;
         if (event_queue) {
             event = event_queue;
@@ -181,7 +181,7 @@ static void *event_run_thread (void *arg) {
         } else {
             event = NULL;
         }
-        thread_mutex_unlock(&event_lock);
+        igloo_thread_mutex_unlock(&event_lock);
 
         /* sleep if nothing todo and then try again */
         if (!event) {
@@ -200,15 +200,15 @@ static void *event_run_thread (void *arg) {
 
 void event_initialise(void) {
     /* create mutex */
-    thread_mutex_create(&event_lock);
+    igloo_thread_mutex_create(&event_lock);
 
     /* initialise everything */
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event_running = 1;
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 
     /* start thread */
-    event_thread = thread_create("events thread", event_run_thread, NULL, igloo_THREAD_ATTACHED);
+    event_thread = igloo_thread_create("events thread", event_run_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 void event_shutdown(void) {
@@ -218,19 +218,19 @@ void event_shutdown(void) {
     if (!event_running)
         return;
 
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event_running = 0;
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 
     /* join thread as soon as it stopped */
     igloo_thread_join(event_thread);
 
     /* shutdown everything */
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event_thread = NULL;
     event_queue_to_free = event_queue;
     event_queue = NULL;
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 
     event_release(event_queue_to_free);
 
@@ -287,19 +287,19 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
 void event_registration_addref(event_registration_t * er) {
     if(!er)
         return;
-    thread_mutex_lock(&er->lock);
+    igloo_thread_mutex_lock(&er->lock);
     er->refcount++;
-    thread_mutex_unlock(&er->lock);
+    igloo_thread_mutex_unlock(&er->lock);
 }
 
 void event_registration_release(event_registration_t *er) {
     if(!er)
         return;
-    thread_mutex_lock(&er->lock);
+    igloo_thread_mutex_lock(&er->lock);
     er->refcount--;
 
     if (er->refcount) {
-        thread_mutex_unlock(&er->lock);
+        igloo_thread_mutex_unlock(&er->lock);
         return;
     }
 
@@ -312,7 +312,7 @@ void event_registration_release(event_registration_t *er) {
     if (er->free)
         er->free(er->state);
 
-    thread_mutex_unlock(&er->lock);
+    igloo_thread_mutex_unlock(&er->lock);
     igloo_thread_mutex_destroy(&er->lock);
     free(er);
 }
@@ -329,21 +329,21 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
     }
 
     event_registration_addref(cur = *er);
-    thread_mutex_lock(&cur->lock);
+    igloo_thread_mutex_lock(&cur->lock);
     while (1) {
         next = cur->next;
         if (!cur->next)
             break;
 
         event_registration_addref(next);
-        thread_mutex_unlock(&cur->lock);
+        igloo_thread_mutex_unlock(&cur->lock);
         event_registration_release(cur);
         cur = next;
-        thread_mutex_lock(&cur->lock);
+        igloo_thread_mutex_lock(&cur->lock);
     }
 
     event_registration_addref(cur->next = tail);
-    thread_mutex_unlock(&cur->lock);
+    igloo_thread_mutex_unlock(&cur->lock);
     event_registration_release(cur);
 }
 
@@ -351,9 +351,9 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 void event_emit(event_t *event) {
     fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
     event_addref(event);
-    thread_mutex_lock(&event_lock);
+    igloo_thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
-    thread_mutex_unlock(&event_lock);
+    igloo_thread_mutex_unlock(&event_lock);
 }
 
 /* this function needs to extract all the info from the client, source and mount object

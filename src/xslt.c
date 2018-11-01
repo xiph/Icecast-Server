@@ -106,7 +106,7 @@ static xmlChar *admin_URI = NULL;
 void xslt_initialize(void)
 {
     memset(cache, 0, sizeof(stylesheet_cache_t) * CACHESIZE);
-    thread_mutex_create(&xsltlock);
+    igloo_thread_mutex_create(&xsltlock);
     xmlInitParser();
     LIBXML_TEST_VERSION
     xmlSubstituteEntitiesDefault(1);
@@ -139,7 +139,7 @@ void xslt_clear_cache(void)
 
     ICECAST_LOG_DEBUG("Clearing stylesheet cache.");
 
-    thread_mutex_lock(&xsltlock);
+    igloo_thread_mutex_lock(&xsltlock);
 
     for (i = 0; i < CACHESIZE; i++)
         clear_cache_entry(i);
@@ -149,7 +149,7 @@ void xslt_clear_cache(void)
         admin_URI = NULL;
     }
 
-    thread_mutex_unlock(&xsltlock);
+    igloo_thread_mutex_unlock(&xsltlock);
 }
 
 static int evict_cache_entry(void) {
@@ -333,12 +333,12 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
     xsltSetGenericErrorFunc("", log_parse_failure);
     xsltSetLoaderFunc(custom_loader);
 
-    thread_mutex_lock(&xsltlock);
+    igloo_thread_mutex_lock(&xsltlock);
     cur = xslt_get_stylesheet(xslfilename);
 
     if (cur == NULL)
     {
-        thread_mutex_unlock(&xsltlock);
+        igloo_thread_mutex_unlock(&xsltlock);
         ICECAST_LOG_ERROR("problem reading stylesheet \"%s\"", xslfilename);
         _send_error(client, ICECAST_ERROR_XSLT_PARSE, status);
         return;
@@ -436,7 +436,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         ICECAST_LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
         _send_error(client, ICECAST_ERROR_XSLT_problem, status);
     }
-    thread_mutex_unlock (&xsltlock);
+    igloo_thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);
 }
 

@@ -56,9 +56,9 @@ static volatile unsigned long _current_id = 0;
 static unsigned long _next_auth_id(void) {
     unsigned long id;
 
-    thread_mutex_lock(&_auth_lock);
+    igloo_thread_mutex_lock(&_auth_lock);
     id = _current_id++;
-    thread_mutex_unlock(&_auth_lock);
+    igloo_thread_mutex_unlock(&_auth_lock);
 
     return id;
 }
@@ -169,12 +169,12 @@ static void queue_auth_client (auth_client *auth_user)
     if (auth->immediate) {
         __handle_auth_client(auth, auth_user);
     } else {
-        thread_mutex_lock (&auth->lock);
+        igloo_thread_mutex_lock (&auth->lock);
         *auth->tailp = auth_user;
         auth->tailp = &auth_user->next;
         auth->pending_count++;
         ICECAST_LOG_INFO("auth on %s has %d pending", auth->mount, auth->pending_count);
-        thread_mutex_unlock (&auth->lock);
+        igloo_thread_mutex_unlock (&auth->lock);
     }
 }
 
@@ -188,21 +188,21 @@ void auth_release (auth_t *authenticator) {
     if (authenticator == NULL)
         return;
 
-    thread_mutex_lock(&authenticator->lock);
+    igloo_thread_mutex_lock(&authenticator->lock);
     authenticator->refcount--;
     ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
     if (authenticator->refcount)
     {
-        thread_mutex_unlock(&authenticator->lock);
+        igloo_thread_mutex_unlock(&authenticator->lock);
         return;
     }
 
     /* cleanup auth thread attached to this auth */
     if (authenticator->running) {
         authenticator->running = 0;
-        thread_mutex_unlock(&authenticator->lock);
+        igloo_thread_mutex_unlock(&authenticator->lock);
         igloo_thread_join(authenticator->thread);
-        thread_mutex_lock(&authenticator->lock);
+        igloo_thread_mutex_lock(&authenticator->lock);
     }
 
     if (authenticator->free)
@@ -213,7 +213,7 @@ void auth_release (auth_t *authenticator) {
         xmlFree (authenticator->role);
     if (authenticator->management_url)
         xmlFree (authenticator->management_url);
-    thread_mutex_unlock(&authenticator->lock);
+    igloo_thread_mutex_unlock(&authenticator->lock);
     igloo_thread_mutex_destroy(&authenticator->lock);
     if (authenticator->mount)
         free(authenticator->mount);
@@ -234,10 +234,10 @@ void    auth_addref (auth_t *authenticator) {
     if (authenticator == NULL)
         return;
 
-    thread_mutex_lock (&authenticator->lock);
+    igloo_thread_mutex_lock (&authenticator->lock);
     authenticator->refcount++;
     ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
-    thread_mutex_unlock (&authenticator->lock);
+    igloo_thread_mutex_unlock (&authenticator->lock);
 }
 
 static void auth_client_free (auth_client *auth_user)
@@ -402,10 +402,10 @@ static void *auth_run_thread (void *arg)
 
     ICECAST_LOG_INFO("Authentication thread started");
     while (1) {
-        thread_mutex_lock(&auth->lock);
+        igloo_thread_mutex_lock(&auth->lock);
 
         if (!auth->running) {
-            thread_mutex_unlock(&auth->lock);
+            igloo_thread_mutex_unlock(&auth->lock);
             break;
         }
 
@@ -416,7 +416,7 @@ static void *auth_run_thread (void *arg)
             auth_user = (auth_client*)auth->head;
             if (auth_user == NULL)
             {
-                thread_mutex_unlock (&auth->lock);
+                igloo_thread_mutex_unlock (&auth->lock);
                 continue;
             }
             ICECAST_LOG_DEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
@@ -424,14 +424,14 @@ static void *auth_run_thread (void *arg)
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
             auth->pending_count--;
-            thread_mutex_unlock(&auth->lock);
+            igloo_thread_mutex_unlock(&auth->lock);
             auth_user->next = NULL;
 
             __handle_auth_client(auth, auth_user);
 
             continue;
         } else {
-            thread_mutex_unlock(&auth->lock);
+            igloo_thread_mutex_unlock(&auth->lock);
         }
         igloo_thread_sleep (150000);
     }
@@ -806,7 +806,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     if (auth == NULL)
         return NULL;
 
-    thread_mutex_create(&auth->lock);
+    igloo_thread_mutex_create(&auth->lock);
     auth->refcount = 1;
     auth->id = _next_auth_id();
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
@@ -953,7 +953,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             auth->tailp = &auth->head;
             if (!auth->immediate) {
                 auth->running = 1;
-                auth->thread = thread_create("auth thread", auth_run_thread, auth, igloo_THREAD_ATTACHED);
+                auth->thread = igloo_thread_create("auth thread", auth_run_thread, auth, igloo_THREAD_ATTACHED);
             }
         }
     }
@@ -1022,7 +1022,7 @@ auth_alter_t auth_str2alter(const char *str)
 
 void auth_initialise (void)
 {
-    thread_mutex_create(&_auth_lock);
+    igloo_thread_mutex_create(&_auth_lock);
 }
 
 void auth_shutdown (void)
@@ -1061,9 +1061,9 @@ void          auth_stack_release(auth_stack_t *stack) {
     if (!stack)
         return;
 
-    thread_mutex_lock(&stack->lock);
+    igloo_thread_mutex_lock(&stack->lock);
     stack->refcount--;
-    thread_mutex_unlock(&stack->lock);
+    igloo_thread_mutex_unlock(&stack->lock);
 
     if (stack->refcount)
         return;
@@ -1077,19 +1077,19 @@ void          auth_stack_release(auth_stack_t *stack) {
 void          auth_stack_addref(auth_stack_t *stack) {
     if (!stack)
         return;
-    thread_mutex_lock(&stack->lock);
+    igloo_thread_mutex_lock(&stack->lock);
     stack->refcount++;
-    thread_mutex_unlock(&stack->lock);
+    igloo_thread_mutex_unlock(&stack->lock);
 }
 
 int           auth_stack_next(auth_stack_t **stack) {
     auth_stack_t *next;
     if (!stack || !*stack)
         return -1;
-    thread_mutex_lock(&(*stack)->lock);
+    igloo_thread_mutex_lock(&(*stack)->lock);
     next = (*stack)->next;
     auth_stack_addref(next);
-    thread_mutex_unlock(&(*stack)->lock);
+    igloo_thread_mutex_unlock(&(*stack)->lock);
     auth_stack_release(*stack);
     *stack = next;
     if (!next)
@@ -1107,7 +1107,7 @@ int           auth_stack_push(auth_stack_t **stack, auth_t *auth) {
     if (!next) {
         return -1;
     }
-    thread_mutex_create(&next->lock);
+    igloo_thread_mutex_create(&next->lock);
     next->refcount = 1;
     next->auth = auth;
     auth_addref(auth);
@@ -1129,21 +1129,21 @@ int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail) {
         return -1;
 
     auth_stack_addref(cur = stack);
-    thread_mutex_lock(&cur->lock);
+    igloo_thread_mutex_lock(&cur->lock);
     while (1) {
         next = cur->next;
         if (!cur->next)
             break;
 
         auth_stack_addref(next);
-        thread_mutex_unlock(&cur->lock);
+        igloo_thread_mutex_unlock(&cur->lock);
         auth_stack_release(cur);
         cur = next;
-        thread_mutex_lock(&cur->lock);
+        igloo_thread_mutex_lock(&cur->lock);
     }
 
     auth_stack_addref(cur->next = tail);
-    thread_mutex_unlock(&cur->lock);
+    igloo_thread_mutex_unlock(&cur->lock);
     auth_stack_release(cur);
 
     return 0;
@@ -1155,9 +1155,9 @@ auth_t       *auth_stack_get(auth_stack_t *stack) {
     if (!stack)
         return NULL;
 
-    thread_mutex_lock(&stack->lock);
+    igloo_thread_mutex_lock(&stack->lock);
     auth_addref(auth = stack->auth);
-    thread_mutex_unlock(&stack->lock);
+    igloo_thread_mutex_unlock(&stack->lock);
     return auth;
 }
 

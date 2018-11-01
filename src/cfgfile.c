@@ -231,8 +231,8 @@ char * config_href_to_id(const char *href)
 
 static void create_locks(void)
 {
-    thread_mutex_create(&_locks.relay_lock);
-    thread_rwlock_create(&_locks.config_lock);
+    igloo_thread_mutex_create(&_locks.relay_lock);
+    igloo_thread_rwlock_create(&_locks.config_lock);
 }
 
 static void release_locks(void)
@@ -692,12 +692,12 @@ void config_clear(ice_config_t *c)
 
     while ((c->listen_sock = config_clear_listener(c->listen_sock)));
 
-    thread_mutex_lock(&(_locks.relay_lock));
+    igloo_thread_mutex_lock(&(_locks.relay_lock));
     for (i = 0; i < c->relay_length; i++) {
         relay_config_free(c->relay[i]);
     }
     free(c->relay);
-    thread_mutex_unlock(&(_locks.relay_lock));
+    igloo_thread_mutex_unlock(&(_locks.relay_lock));
 
     mount = c->mounts;
     while (mount) {
@@ -821,18 +821,18 @@ ice_config_locks *config_locks(void)
 
 void config_release_config(void)
 {
-    thread_rwlock_unlock(&(_locks.config_lock));
+    igloo_thread_rwlock_unlock(&(_locks.config_lock));
 }
 
 ice_config_t *config_get_config(void)
 {
-    thread_rwlock_rlock(&(_locks.config_lock));
+    igloo_thread_rwlock_rlock(&(_locks.config_lock));
     return &_current_configuration;
 }
 
 ice_config_t *config_grab_config(void)
 {
-    thread_rwlock_wlock(&(_locks.config_lock));
+    igloo_thread_rwlock_wlock(&(_locks.config_lock));
     return &_current_configuration;
 }
 

@@ -191,11 +191,11 @@ static inline relay_t *relay_new(relay_config_t *config)
  */
 void slave_update_all_mounts(void)
 {
-    thread_mutex_lock(&_slave_mutex);
+    igloo_thread_mutex_lock(&_slave_mutex);
     max_interval = 0;
     update_all_mounts = 1;
     update_settings = 1;
-    thread_mutex_unlock(&_slave_mutex);
+    igloo_thread_mutex_unlock(&_slave_mutex);
 }
 
 
@@ -204,9 +204,9 @@ void slave_update_all_mounts(void)
  */
 void slave_rebuild_mounts(void)
 {
-    thread_mutex_lock(&_slave_mutex);
+    igloo_thread_mutex_lock(&_slave_mutex);
     update_settings = 1;
-    thread_mutex_unlock(&_slave_mutex);
+    igloo_thread_mutex_unlock(&_slave_mutex);
 }
 
 
@@ -217,20 +217,20 @@ void slave_initialize(void)
 
     slave_running = 1;
     max_interval = 0;
-    thread_mutex_create (&_slave_mutex);
-    _slave_thread_id = thread_create("Slave Thread", _slave_thread, NULL, igloo_THREAD_ATTACHED);
+    igloo_thread_mutex_create (&_slave_mutex);
+    _slave_thread_id = igloo_thread_create("Slave Thread", _slave_thread, NULL, igloo_THREAD_ATTACHED);
 }
 
 
 void slave_shutdown(void)
 {
-    thread_mutex_lock(&_slave_mutex);
+    igloo_thread_mutex_lock(&_slave_mutex);
     if (!slave_running) {
-        thread_mutex_unlock(&_slave_mutex);
+        igloo_thread_mutex_unlock(&_slave_mutex);
         return;
     }
     slave_running = 0;
-    thread_mutex_unlock(&_slave_mutex);
+    igloo_thread_mutex_unlock(&_slave_mutex);
 
     ICECAST_LOG_DEBUG("waiting for slave thread");
     igloo_thread_join (_slave_thread_id);
@@ -476,13 +476,13 @@ static void *start_relay_stream (void *arg)
     source_clear_source(relay->source);
 
     /* cleanup relay, but prevent this relay from starting up again too soon */
-    thread_mutex_lock(&_slave_mutex);
-    thread_mutex_lock(&(config_locks()->relay_lock));
+    igloo_thread_mutex_lock(&_slave_mutex);
+    igloo_thread_mutex_lock(&(config_locks()->relay_lock));
     relay->source->on_demand = 0;
     relay->start = time(NULL) + max_interval;
     relay->cleanup = 1;
-    thread_mutex_unlock(&(config_locks()->relay_lock));
-    thread_mutex_unlock(&_slave_mutex);
+    igloo_thread_mutex_unlock(&(config_locks()->relay_lock));
+    igloo_thread_mutex_unlock(&_slave_mutex);
 
     return NULL;
 }
@@ -555,7 +555,7 @@ static void check_relay_stream (relay_t *relay)
 
         relay->start = time(NULL) + 5;
         relay->running = 1;
-        relay->thread = thread_create ("Relay Thread", start_relay_stream,
+        relay->thread = igloo_thread_create ("Relay Thread", start_relay_stream,
                 relay, igloo_THREAD_ATTACHED);
         return;
 
@@ -846,7 +846,7 @@ static int update_from_master(ice_config_t *config)
         }
         igloo_sock_close (mastersock);
 
-        thread_mutex_lock (&(config_locks()->relay_lock));
+        igloo_thread_mutex_lock (&(config_locks()->relay_lock));
         cleanup_relays = update_relays (&global.master_relays, new_relays, new_relays_length);
 
         relay_check_streams (global.master_relays, cleanup_relays, 0);
@@ -856,7 +856,7 @@ static int update_from_master(ice_config_t *config)
         }
         free(new_relays);
 
-        thread_mutex_unlock (&(config_locks()->relay_lock));
+        igloo_thread_mutex_unlock (&(config_locks()->relay_lock));
 
     } while(0);
 
@@ -878,10 +878,10 @@ static void *_slave_thread(void *arg)
 
     (void)arg;
 
-    thread_mutex_lock(&_slave_mutex);
+    igloo_thread_mutex_lock(&_slave_mutex);
     update_settings = 0;
     update_all_mounts = 0;
-    thread_mutex_unlock(&_slave_mutex);
+    igloo_thread_mutex_unlock(&_slave_mutex);
 
     config = config_get_config();
     stats_global(config);
@@ -902,17 +902,17 @@ static void *_slave_thread(void *arg)
         global_unlock();
 
         igloo_thread_sleep(1000000);
-        thread_mutex_lock(&_slave_mutex);
+        igloo_thread_mutex_lock(&_slave_mutex);
         if (slave_running == 0) {
-            thread_mutex_unlock(&_slave_mutex);
+            igloo_thread_mutex_unlock(&_slave_mutex);
             break;
         }
-        thread_mutex_unlock(&_slave_mutex);
+        igloo_thread_mutex_unlock(&_slave_mutex);
 
         ++interval;
 
         /* only update relays lists when required */
-        thread_mutex_lock(&_slave_mutex);
+        igloo_thread_mutex_lock(&_slave_mutex);
         if (max_interval <= interval)
         {
             ICECAST_LOG_DEBUG("checking master stream list");
@@ -922,13 +922,13 @@ static void *_slave_thread(void *arg)
                 skip_timer = 1;
             interval = 0;
             max_interval = config->master_update_interval;
-            thread_mutex_unlock(&_slave_mutex);
+            igloo_thread_mutex_unlock(&_slave_mutex);
 
             /* the connection could take some time, so the lock can drop */
             if (update_from_master (config))
                 config = config_get_config();
 
-            thread_mutex_lock (&(config_locks()->relay_lock));
+            igloo_thread_mutex_lock (&(config_locks()->relay_lock));
 
             cleanup_relays = update_relays(&global.relays, config->relay, config->relay_length);
 
@@ -936,22 +936,22 @@ static void *_slave_thread(void *arg)
         }
         else
         {
-            thread_mutex_unlock(&_slave_mutex);
-            thread_mutex_lock (&(config_locks()->relay_lock));
+            igloo_thread_mutex_unlock(&_slave_mutex);
+            igloo_thread_mutex_lock (&(config_locks()->relay_lock));
         }
 
         relay_check_streams (global.relays, cleanup_relays, skip_timer);
         relay_check_streams (global.master_relays, NULL, skip_timer);
-        thread_mutex_unlock (&(config_locks()->relay_lock));
+        igloo_thread_mutex_unlock (&(config_locks()->relay_lock));
 
-        thread_mutex_lock(&_slave_mutex);
+        igloo_thread_mutex_lock(&_slave_mutex);
         if (update_settings)
         {
             source_recheck_mounts (update_all_mounts);
             update_settings = 0;
             update_all_mounts = 0;
         }
-        thread_mutex_unlock(&_slave_mutex);
+        igloo_thread_mutex_unlock(&_slave_mutex);
     }
     ICECAST_LOG_INFO("shutting down current relays");
     relay_check_streams (NULL, global.relays, 0);
