@@ -95,10 +95,6 @@ typedef enum {
 
 typedef struct relay_tag relay_t;
 
-/* ---[ buffer.[ch] ]--- */
-
-typedef struct buffer_tag buffer_t;
-
 /* ---[ module.[ch] ]--- */
 
 typedef struct module_tag module_t;
@@ -119,7 +115,6 @@ typedef struct listensocket_tag listensocket_t;
 /* ---[ refobject.[ch] ]--- */
 
 #define igloo_RO_APPTYPES \
-    igloo_RO_TYPE(buffer_t) \
     igloo_RO_TYPE(module_t) \
     igloo_RO_TYPE(module_container_t) \
     igloo_RO_TYPE(reportxml_t) \
