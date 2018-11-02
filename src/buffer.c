@@ -16,10 +16,10 @@
 #include <stdarg.h>
 
 #include "buffer.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 
 struct buffer_tag {
-    refobject_base_t __base;
+    igloo_ro_base_t __base;
     /* Buffer itself */
     void *buffer;
     /* Length in bytes of buffer */
@@ -30,21 +30,23 @@ struct buffer_tag {
     size_t offset;
 };
 
-static void __free(refobject_t self, void **userdata)
+static void __free(igloo_ro_t self);
+
+igloo_RO_PUBLIC_TYPE(buffer_t,
+        igloo_RO_TYPEDECL_FREE(__free),
+        igloo_RO_TYPEDECL_NEW_NOOP()
+        );
+
+static void __free(igloo_ro_t self)
 {
-    buffer_t *buffer = REFOBJECT_TO_TYPE(self, buffer_t*);
+    buffer_t *buffer = igloo_RO_TO_TYPE(self, buffer_t);
 
     free(buffer->buffer);
 }
 
-REFOBJECT_DEFINE_TYPE(buffer_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__free),
-        REFOBJECT_DEFINE_TYPE_NEW_NOOP()
-        );
-
-buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, refobject_t associated)
+buffer_t *  buffer_new(ssize_t preallocation, const char *name, igloo_ro_t associated)
 {
-    buffer_t *buffer = refobject_new_ext(buffer_t, userdata, name, associated);
+    buffer_t *buffer = igloo_ro_new_ext(buffer_t, name, associated);
 
     if (!buffer)
         return NULL;
@@ -57,7 +59,7 @@ buffer_t *  buffer_new(ssize_t preallocation, void *userdata, const char *name, 
 
 buffer_t *  buffer_new_simple(void)
 {
-    return refobject_new(buffer_t);
+    return igloo_ro_new(buffer_t);
 }
 
 void        buffer_preallocate(buffer_t *buffer, size_t request)

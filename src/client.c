@@ -31,7 +31,7 @@
 #include <igloo/httpp.h>
 
 #include "global.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "cfgfile.h"
 #include "connection.h"
 #include "tls.h"
@@ -41,7 +41,7 @@
 #include "fserve.h"
 #include "errors.h"
 #include "reportxml.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "xslt.h"
 #include "source.h"
 
@@ -266,7 +266,7 @@ void client_destroy(client_t *client)
     if (client->free_client_data)
         client->free_client_data(client);
 
-    refobject_unref(client->handler_module);
+    igloo_ro_unref(client->handler_module);
     free(client->handler_function);
     free(client->uri);
     free(client->username);
@@ -344,7 +344,7 @@ static inline void _client_send_report(client_t *client, const char *uuid, const
 
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, xslt, admin_format, http_status, location);
 
-    refobject_unref(report);
+    igloo_ro_unref(report);
 }
 
 void client_send_error_by_error(client_t *client, const icecast_error_t *error)
@@ -660,7 +660,7 @@ static void client_get_reportxml__add_basic_stats(reportxml_t *report)
 
     reportxml_node_add_child(rootnode, extension);
 
-    refobject_unref(rootnode);
+    igloo_ro_unref(rootnode);
 
     xmlroot = xmlNewNode(NULL, XMLSTR("icestats"));
     modules = module_container_get_modulelist_as_xml(global.modulecontainer);
@@ -668,7 +668,7 @@ static void client_get_reportxml__add_basic_stats(reportxml_t *report)
 
 
     reportxml_node_add_xml_child(extension, xmlroot);
-    refobject_unref(extension);
+    igloo_ro_unref(extension);
     xmlFreeNode(xmlroot);
 }
 
@@ -687,7 +687,7 @@ reportxml_t *client_get_reportxml(const char *state_definition, const char *stat
     if (!report) {
         reportxml_node_t *rootnode, *incidentnode, *statenode;
 
-        report = refobject_new(reportxml_t);
+        report = igloo_ro_new(reportxml_t);
         rootnode = reportxml_get_root_node(report);
         incidentnode = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
         statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);
@@ -698,14 +698,14 @@ reportxml_t *client_get_reportxml(const char *state_definition, const char *stat
             textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
             reportxml_node_set_content(textnode, state_text);
             reportxml_node_add_child(statenode, textnode);
-            refobject_unref(textnode);
+            igloo_ro_unref(textnode);
         }
 
         reportxml_node_add_child(incidentnode, statenode);
         reportxml_node_add_child(rootnode, incidentnode);
-        refobject_unref(statenode);
-        refobject_unref(incidentnode);
-        refobject_unref(rootnode);
+        igloo_ro_unref(statenode);
+        igloo_ro_unref(incidentnode);
+        igloo_ro_unref(rootnode);
     }
 
     client_get_reportxml__add_basic_stats(report);

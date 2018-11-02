@@ -28,7 +28,6 @@ noinst_HEADERS = \
     md5.h \
     matchfile.h \
     tls.h \
-    refobject.h \
     buffer.h \
     module.h \
     reportxml.h \
@@ -74,7 +73,6 @@ icecast_SOURCES = \
     md5.c \
     matchfile.c \
     tls.c \
-    refobject.c \
     buffer.c \
     module.c \
     reportxml.c \

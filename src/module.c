@@ -13,15 +13,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "icecasttypes.h"
+
 #include <igloo/thread.h>
 #include <igloo/avl.h>
 
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "module.h"
 #include "cfgfile.h" /* for XMLSTR() */
 
 struct module_tag {
-    refobject_base_t __base;
+    igloo_ro_base_t __base;
     igloo_mutex_t lock;
     const module_client_handler_t *client_handlers;
     size_t client_handlers_len;
@@ -33,26 +35,38 @@ struct module_tag {
 
 
 struct module_container_tag {
-    refobject_base_t __base;
+    igloo_ro_base_t __base;
     igloo_mutex_t lock;
     igloo_avl_tree *module;
 };
 
+static void __module_container_free(igloo_ro_t self);
+int __module_container_new(igloo_ro_t self, const igloo_ro_type_t *type, va_list ap);
+igloo_RO_PUBLIC_TYPE(module_container_t,
+        igloo_RO_TYPEDECL_FREE(__module_container_free),
+        igloo_RO_TYPEDECL_NEW(__module_container_new)
+        );
+
+static void __module_free(igloo_ro_t self);
+igloo_RO_PUBLIC_TYPE(module_t,
+        igloo_RO_TYPEDECL_FREE(__module_free)
+        );
+
 static int compare_refobject_t_name(void *arg, void *a, void *b)
 {
-    return strcmp(refobject_get_name(a), refobject_get_name(b));
+    return strcmp(igloo_ro_get_name(a), igloo_ro_get_name(b));
 }
 
-static void __module_container_free(refobject_t self, void **userdata)
+static void __module_container_free(igloo_ro_t self)
 {
-    module_container_t *cont = REFOBJECT_TO_TYPE(self, module_container_t *);
+    module_container_t *cont = igloo_RO_TO_TYPE(self, module_container_t);
     igloo_thread_mutex_destroy(&(cont->lock));
-    igloo_avl_tree_free(cont->module, (igloo_avl_free_key_fun_type)refobject_unref);
+    igloo_avl_tree_free(cont->module, (igloo_avl_free_key_fun_type)igloo_ro_unref);
 }
 
-int __module_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
+int __module_container_new(igloo_ro_t self, const igloo_ro_type_t *type, va_list ap)
 {
-    module_container_t *ret = REFOBJECT_TO_TYPE(self, module_container_t*);
+    module_container_t *ret = igloo_RO_TO_TYPE(self, module_container_t);
 
     igloo_thread_mutex_create(&(ret->lock));
 
@@ -61,17 +75,12 @@ int __module_container_new(refobject_t self, const refobject_type_t *type, va_li
     return 0;
 }
 
-REFOBJECT_DEFINE_TYPE(module_container_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__module_container_free),
-        REFOBJECT_DEFINE_TYPE_NEW(__module_container_new)
-        );
-
 int                     module_container_add_module(module_container_t *self, module_t *module)
 {
     if (!self)
         return -1;
 
-    if (refobject_ref(module) != 0)
+    if (igloo_ro_ref(module) != 0)
         return -1;
 
     igloo_thread_mutex_lock(&(self->lock));
@@ -93,32 +102,32 @@ int                     module_container_delete_module(module_container_t *self,
         return -1;
 
     igloo_thread_mutex_lock(&(self->lock));
-    igloo_avl_delete(self->module, module, (igloo_avl_free_key_fun_type)refobject_unref);
+    igloo_avl_delete(self->module, module, (igloo_avl_free_key_fun_type)igloo_ro_unref);
     igloo_thread_mutex_unlock(&(self->lock));
 
-    refobject_unref(module);
+    igloo_ro_unref(module);
 
     return 0;
 }
 
 module_t *              module_container_get_module(module_container_t *self, const char *name)
 {
-    refobject_base_t *search;
+    igloo_ro_base_t *search;
     module_t *ret;
 
     if (!self || !name)
         return NULL;
 
-    search = refobject_new__new(refobject_base_t, NULL, name, NULL);
+    search = igloo_ro_new_ext(igloo_ro_base_t, name, igloo_RO_NULL);
 
     igloo_thread_mutex_lock(&(self->lock));
-    if (igloo_avl_get_by_key(self->module, REFOBJECT_TO_TYPE(search, void *), (void**)&ret) != 0) {
+    if (igloo_avl_get_by_key(self->module, (void*)igloo_RO_TO_TYPE(search, igloo_ro_base_t), (void**)&ret) != 0) {
         ret = NULL;
     }
     igloo_thread_mutex_unlock(&(self->lock));
 
-    refobject_unref(search);
-    refobject_ref(ret);
+    igloo_ro_unref(search);
+    igloo_ro_ref(ret);
 
     return ret;
 }
@@ -141,7 +150,7 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
         module_t *module = avlnode->key;
         xmlNodePtr node = xmlNewChild(root, NULL, XMLSTR("module"), NULL);
 
-        xmlSetProp(node, XMLSTR("name"), XMLSTR(refobject_get_name(module)));
+        xmlSetProp(node, XMLSTR("name"), XMLSTR(igloo_ro_get_name(module)));
         if (module->management_link_url)
             xmlSetProp(node, XMLSTR("management-url"), XMLSTR(module->management_link_url));
         if (module->management_link_title)
@@ -154,9 +163,9 @@ xmlNodePtr                      module_container_get_modulelist_as_xml(module_co
     return root;
 }
 
-static void __module_free(refobject_t self, void **userdata)
+static void __module_free(igloo_ro_t self)
 {
-    module_t *mod = REFOBJECT_TO_TYPE(self, module_t *);
+    module_t *mod = igloo_RO_TO_TYPE(self, module_t);
 
     if (mod->freecb)
         mod->freecb(mod, &(mod->userdata));
@@ -170,13 +179,9 @@ static void __module_free(refobject_t self, void **userdata)
     igloo_thread_mutex_destroy(&(mod->lock));
 }
 
-REFOBJECT_DEFINE_TYPE(module_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__module_free)
-        );
-
 module_t *              module_new(const char *name, module_setup_handler_t newcb, module_setup_handler_t freecb, void *userdata)
 {
-    module_t *ret = refobject_new__new(module_t, NULL, name, NULL);
+    module_t *ret = igloo_ro_new_raw(module_t, name, igloo_RO_NULL);
 
     if (!ret)
         return NULL;
@@ -188,7 +193,7 @@ module_t *              module_new(const char *name, module_setup_handler_t newc
 
     if (newcb) {
         if (newcb(ret, &(ret->userdata)) != 0) {
-            refobject_unref(ret);
+            igloo_ro_unref(ret);
             return NULL;
         }
     }

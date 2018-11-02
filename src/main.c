@@ -141,7 +141,7 @@ static void __fastevent_cb(const void *userdata, fastevent_type_t type, fasteven
     }
 }
 
-static refobject_t fastevent_reg;
+static igloo_ro_t fastevent_reg;
 #endif
 
 static void initialize_subsystems(void)
@@ -179,7 +179,7 @@ static void shutdown_subsystems(void)
     tls_shutdown();
     config_shutdown();
 #ifndef FASTEVENT_ENABLED
-    refobject_unref(fastevent_reg);
+    igloo_ro_unref(fastevent_reg);
     fastevent_shutdown();
 #endif
     global_shutdown();

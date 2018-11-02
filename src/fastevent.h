@@ -15,7 +15,7 @@
 #endif
 
 #include <stdarg.h>
-#include "refobject.h"
+#include <igloo/ro.h>
 
 typedef enum {
     FASTEVENT_TYPE_SLOWEVENT = 0,
@@ -54,7 +54,7 @@ typedef void (*fastevent_freecb_t)(void **userdata);
 #ifdef FASTEVENT_ENABLED
 int fastevent_initialize(void);
 int fastevent_shutdown(void);
-refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata);
+igloo_ro_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata);
 void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, ...);
 #else
 #define fastevent_initialize() 0

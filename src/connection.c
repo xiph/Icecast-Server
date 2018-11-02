@@ -43,7 +43,7 @@
 #include "cfgfile.h"
 #include "global.h"
 #include "util.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "refbuf.h"
 #include "client.h"
 #include "errors.h"
@@ -58,7 +58,7 @@
 #include "matchfile.h"
 #include "tls.h"
 #include "acl.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "listensocket.h"
 #include "fastevent.h"
 
@@ -261,8 +261,8 @@ connection_t *connection_create(igloo_sock_t sock, listensocket_t *listensocket_
 
     con = (connection_t *)calloc(1, sizeof(connection_t));
     if (con) {
-        refobject_ref(listensocket_real);
-        refobject_ref(listensocket_effective);
+        igloo_ro_ref(listensocket_real);
+        igloo_ro_ref(listensocket_effective);
 
         con->sock       = sock;
         con->listensocket_real = listensocket_real;
@@ -1242,7 +1242,7 @@ static int _handle_resources(client_t *client, char **uri)
             module_t *module = module_container_get_module(global.modulecontainer, resource->module);
 
             if (module != NULL) {
-                refobject_unref(client->handler_module);
+                igloo_ro_unref(client->handler_module);
                 client->handler_module = module;
             } else {
                 ICECAST_LOG_ERROR("Module used in alias not found: %s", resource->module);
@@ -1701,7 +1701,7 @@ static void __on_sock_count(size_t count, void *userdata)
 void connection_setup_sockets (ice_config_t *config)
 {
     global_lock();
-    refobject_unref(global.listensockets);
+    igloo_ro_unref(global.listensockets);
 
     if (config == NULL) {
         global_unlock();
@@ -1721,7 +1721,7 @@ void connection_setup_sockets (ice_config_t *config)
         allowed_ip = matchfile_new(config->allowfile);
     }
 
-    global.listensockets = refobject_new(listensocket_container_t);
+    global.listensockets = igloo_ro_new(listensocket_container_t);
     listensocket_container_configure(global.listensockets, config);
 
     global_unlock();
@@ -1745,8 +1745,8 @@ void connection_close(connection_t *con)
         free(con->ip);
     if (con->readbuffer)
         free(con->readbuffer);
-    refobject_unref(con->listensocket_real);
-    refobject_unref(con->listensocket_effective);
+    igloo_ro_unref(con->listensocket_real);
+    igloo_ro_unref(con->listensocket_effective);
     free(con);
 }
 

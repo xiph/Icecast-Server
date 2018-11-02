@@ -22,7 +22,7 @@
 #include <igloo/avl.h>
 
 #include "global.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "module.h"
 #include "source.h"
 
@@ -39,14 +39,14 @@ void global_initialize(void)
     global.clients = 0;
     global.sources = 0;
     global.source_tree = igloo_avl_tree_new(source_compare_sources, NULL);
-    global.modulecontainer = refobject_new(module_container_t);
+    global.modulecontainer = igloo_ro_new(module_container_t);
     igloo_thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
 {
     igloo_thread_mutex_destroy(&_global_mutex);
-    refobject_unref(global.modulecontainer);
+    igloo_ro_unref(global.modulecontainer);
     igloo_avl_tree_free(global.source_tree, NULL);
 }
 

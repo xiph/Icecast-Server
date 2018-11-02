@@ -22,20 +22,22 @@
 
 #include <string.h>
 
+#include "icecasttypes.h"
+
 #include <igloo/sock.h>
 #include <igloo/thread.h>
 
 #include "listensocket.h"
 #include "global.h"
 #include "connection.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 
 #include "logging.h"
 #define CATMODULE "listensocket"
 
 
 struct listensocket_container_tag {
-    refobject_base_t __base;
+    igloo_ro_base_t __base;
     igloo_mutex_t lock;
     listensocket_t **sock;
     int *sockref;
@@ -44,7 +46,7 @@ struct listensocket_container_tag {
     void *sockcount_userdata;
 };
 struct listensocket_tag {
-    refobject_base_t __base;
+    igloo_ro_base_t __base;
     size_t sockrefc;
     igloo_mutex_t lock;
     igloo_rwlock_t listener_rwlock;
@@ -52,6 +54,17 @@ struct listensocket_tag {
     listener_t *listener_update;
     igloo_sock_t sock;
 };
+
+static void __listensocket_container_free(igloo_ro_t self);
+int __listensocket_container_new(igloo_ro_t self, const igloo_ro_type_t *type, va_list ap);
+igloo_RO_PUBLIC_TYPE(listensocket_container_t,
+        igloo_RO_TYPEDECL_FREE(__listensocket_container_free),
+        igloo_RO_TYPEDECL_NEW(__listensocket_container_new)
+        );
+static void __listensocket_free(igloo_ro_t self);
+igloo_RO_PUBLIC_TYPE(listensocket_t,
+        igloo_RO_TYPEDECL_FREE(__listensocket_free)
+        );
 
 static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
 static int listensocket_container_configure__unlocked(listensocket_container_t *self, const ice_config_t *config);
@@ -126,7 +139,7 @@ static void __listensocket_container_clear_sockets(listensocket_container_t *sel
             if (self->sockref[i]) {
                 listensocket_unrefsock(self->sock[i]);
             }
-            refobject_unref(self->sock[i]);
+            igloo_ro_unref(self->sock[i]);
             self->sock[i] = NULL;
         }
     }
@@ -141,18 +154,18 @@ static void __listensocket_container_clear_sockets(listensocket_container_t *sel
 }
 
 
-static void __listensocket_container_free(refobject_t self, void **userdata)
+static void __listensocket_container_free(igloo_ro_t self)
 {
-    listensocket_container_t *container = REFOBJECT_TO_TYPE(self, listensocket_container_t *);
+    listensocket_container_t *container = igloo_RO_TO_TYPE(self, listensocket_container_t);
     igloo_thread_mutex_lock(&container->lock);
     __listensocket_container_clear_sockets(container);
     igloo_thread_mutex_unlock(&container->lock);
     igloo_thread_mutex_destroy(&container->lock);
 }
 
-int __listensocket_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
+int __listensocket_container_new(igloo_ro_t self, const igloo_ro_type_t *type, va_list ap)
 {
-    listensocket_container_t *ret = REFOBJECT_TO_TYPE(self, listensocket_container_t*);
+    listensocket_container_t *ret = igloo_RO_TO_TYPE(self, listensocket_container_t);
 
     ret->sock = NULL;
     ret->sock_len = 0;
@@ -163,11 +176,6 @@ int __listensocket_container_new(refobject_t self, const refobject_type_t *type,
 
     return 0;
 }
-
-REFOBJECT_DEFINE_TYPE(listensocket_container_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_container_free),
-        REFOBJECT_DEFINE_TYPE_NEW(__listensocket_container_new)
-        );
 
 static inline void __find_matching_entry(listensocket_container_t *self, const listener_t *listener, listensocket_t ***found, int **ref)
 {
@@ -251,7 +259,7 @@ static int listensocket_container_configure__unlocked(listensocket_container_t *
         }
         if (n[i] == NULL) {
             for (; i; i--) {
-                refobject_unref(n[i - 1]);
+                igloo_ro_unref(n[i - 1]);
             }
             return -1;
         }
@@ -434,11 +442,11 @@ connection_t *              listensocket_container_accept(listensocket_container
 
     igloo_thread_mutex_lock(&self->lock);
     ls = listensocket_container_accept__inner(self, timeout);
-    refobject_ref(ls);
+    igloo_ro_ref(ls);
     igloo_thread_mutex_unlock(&self->lock);
 
     ret = listensocket_accept(ls, self);
-    refobject_unref(ls);
+    igloo_ro_unref(ls);
 
     return ret;
 }
@@ -495,7 +503,7 @@ static listensocket_t * listensocket_container_get_by_id(listensocket_container_
             if (listener) {
                 if (listener->id != NULL && strcmp(listener->id, id) == 0) {
                     listensocket_release_listener(self->sock[i]);
-                    if (refobject_ref(self->sock[i]) == 0) {
+                    if (igloo_ro_ref(self->sock[i]) == 0) {
                         return self->sock[i];
                     }
                 }
@@ -509,9 +517,9 @@ static listensocket_t * listensocket_container_get_by_id(listensocket_container_
 
 /* ---------------------------------------------------------------------------- */
 
-static void __listensocket_free(refobject_t self, void **userdata)
+static void __listensocket_free(igloo_ro_t self)
 {
-    listensocket_t *listensocket = REFOBJECT_TO_TYPE(self, listensocket_t *);
+    listensocket_t *listensocket = igloo_RO_TO_TYPE(self, listensocket_t);
 
     igloo_thread_mutex_lock(&listensocket->lock);
 
@@ -530,17 +538,13 @@ static void __listensocket_free(refobject_t self, void **userdata)
     igloo_thread_mutex_destroy(&listensocket->lock);
 }
 
-REFOBJECT_DEFINE_TYPE(listensocket_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__listensocket_free)
-        );
-
 static listensocket_t * listensocket_new(const listener_t *listener) {
     listensocket_t *self;
 
     if (listener == NULL)
         return NULL;
 
-    self = refobject_new__new(listensocket_t, NULL, NULL, NULL);
+    self = igloo_ro_new_raw(listensocket_t, NULL, igloo_RO_NULL);
     if (!self)
         return NULL;
 
@@ -551,7 +555,7 @@ static listensocket_t * listensocket_new(const listener_t *listener) {
 
     self->listener = config_copy_listener_one(listener);
     if (self->listener == NULL) {
-        refobject_unref(self);
+        igloo_ro_unref(self);
         return NULL;
     }
 
@@ -738,12 +742,12 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
 
     if (!effective) {
         effective = self;
-        refobject_ref(effective);
+        igloo_ro_ref(effective);
     }
 
     con = connection_create(sock, self, effective, ip);
 
-    refobject_unref(effective);
+    igloo_ro_unref(effective);
 
     if (con == NULL) {
         igloo_sock_close(sock);

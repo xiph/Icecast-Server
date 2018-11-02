@@ -14,6 +14,10 @@
 #include <config.h>
 #endif
 
+#include <igloo/typedef.h>
+typedef struct fastevent_registration_tag fastevent_registration_t;
+#define igloo_RO_PRIVATETYPES igloo_RO_TYPE(fastevent_registration_t)
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,14 +30,19 @@
 
 #ifdef FASTEVENT_ENABLED
 
-typedef struct {
-    refobject_base_t __base;
+struct fastevent_registration_tag {
+    igloo_ro_base_t __base;
 
     fastevent_type_t type;
     fastevent_cb_t cb;
     fastevent_freecb_t freecb;
     void *userdata;
-} fastevent_registration_t;
+};
+
+static void __unregister(igloo_ro_t self);
+igloo_RO_PRIVATE_TYPE(fastevent_registration_t,
+        igloo_RO_TYPEDECL_FREE(__unregister)
+        );
 
 struct eventrow {
     size_t length;
@@ -96,12 +105,10 @@ static int __remove_from_row(struct eventrow * row, fastevent_registration_t *re
 }
 
 
-static void __unregister(refobject_t self, void **userdata)
+static void __unregister(igloo_ro_t self)
 {
-    fastevent_registration_t *registration = REFOBJECT_TO_TYPE(self, fastevent_registration_t *);
+    fastevent_registration_t *registration = igloo_RO_TO_TYPE(self, fastevent_registration_t);
     struct eventrow * row;
-
-    (void)userdata;
 
     igloo_thread_rwlock_wlock(&fastevent_lock);
     row = __get_row(registration->type);
@@ -143,31 +150,28 @@ int fastevent_shutdown(void)
     return 0;
 }
 
-REFOBJECT_DEFINE_PRIVATE_TYPE(fastevent_registration_t,
-        REFOBJECT_DEFINE_TYPE_FREE(__unregister)
-        );
 
-refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata)
+igloo_ro_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fastevent_freecb_t freecb, void *userdata)
 {
     struct eventrow * row;
     fastevent_registration_t *registration;
 
     if (cb == NULL)
-        return REFOBJECT_NULL;
+        return igloo_RO_NULL;
 
     igloo_thread_rwlock_wlock(&fastevent_lock);
     row = __get_row(type);
 
     if (row == NULL) {
         igloo_thread_rwlock_unlock(&fastevent_lock);
-        return REFOBJECT_NULL;
+        return igloo_RO_NULL;
     }
 
-    registration = refobject_new__new(fastevent_registration_t, NULL, NULL, NULL);
+    registration = igloo_ro_new_raw(fastevent_registration_t, NULL, igloo_RO_NULL);
 
     if (!registration) {
         igloo_thread_rwlock_unlock(&fastevent_lock);
-        return REFOBJECT_NULL;
+        return igloo_RO_NULL;
     }
 
     registration->type = type;
@@ -177,12 +181,12 @@ refobject_t fastevent_register(fastevent_type_t type, fastevent_cb_t cb, fasteve
 
     if (__add_to_row(row, registration) != 0) {
         igloo_thread_rwlock_unlock(&fastevent_lock);
-        refobject_unref(REFOBJECT_FROM_TYPE(registration));
-        return REFOBJECT_NULL;
+        igloo_ro_unref(registration);
+        return igloo_RO_NULL;
     }
 
     igloo_thread_rwlock_unlock(&fastevent_lock);
-    return REFOBJECT_FROM_TYPE(registration);
+    return (igloo_ro_t)registration;
 }
 
 void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, ...)

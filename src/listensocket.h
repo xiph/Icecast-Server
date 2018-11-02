@@ -10,10 +10,10 @@
 #define __LISTENSOCKET_H__
 
 #include "icecasttypes.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "cfgfile.h"
 
-REFOBJECT_FORWARD_TYPE(listensocket_container_t);
+igloo_RO_FORWARD_TYPE(listensocket_container_t);
 
 listensocket_container_t *  listensocket_container_new(void);
 int                         listensocket_container_configure(listensocket_container_t *self, const ice_config_t *config);
@@ -23,7 +23,7 @@ connection_t *              listensocket_container_accept(listensocket_container
 int                         listensocket_container_set_sockcount_cb(listensocket_container_t *self, void (*cb)(size_t count, void *userdata), void *userdata);
 ssize_t                     listensocket_container_sockcount(listensocket_container_t *self);
 
-REFOBJECT_FORWARD_TYPE(listensocket_t);
+igloo_RO_FORWARD_TYPE(listensocket_t);
 
 int                         listensocket_refsock(listensocket_t *self);
 int                         listensocket_unrefsock(listensocket_t *self);

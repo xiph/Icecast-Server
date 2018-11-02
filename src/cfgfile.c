@@ -34,7 +34,7 @@
 #include "util.h"
 #include "auth.h"
 #include "event.h"
-#include "refobject.h"
+#include <igloo/ro.h>
 #include "reportxml.h"
 
 /* for config_reread_config() */
@@ -258,7 +258,7 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
-    configuration->reportxml_db = refobject_new(reportxml_database_t);
+    configuration->reportxml_db = igloo_ro_new(reportxml_database_t);
 }
 
 static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const char *warning)
@@ -723,7 +723,7 @@ void config_clear(ice_config_t *c)
 
     config_clear_http_header(c->http_headers);
 
-    refobject_unref(c->reportxml_db);
+    igloo_ro_unref(c->reportxml_db);
 
     memset(c, 0, sizeof(ice_config_t));
 }
@@ -2265,7 +2265,7 @@ static void _parse_paths(xmlDocPtr      doc,
                     ICECAST_LOG_ERROR("Can not parse report xml database \"%H\"", temp);
                 } else {
                     reportxml_database_add_report(configuration->reportxml_db, report);
-                    refobject_unref(report);
+                    igloo_ro_unref(report);
                     ICECAST_LOG_INFO("File \"%H\" added to report xml database", temp);
                 }
             }
