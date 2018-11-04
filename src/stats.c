@@ -893,13 +893,16 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 
             avl_tree_rlock(global.source_tree);
             source_real = source_find_mount_raw(source->source);
-            history = playlist_render_xspf(source_real->history);
-            if (history)
-                xmlAddChild(xmlnode, history);
-            metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
-            if (source_real->format) {
-                for (i = 0; i < source_real->format->vc.comments; i++)
-                    __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+            if (source_real) {
+                history = playlist_render_xspf(source_real->history);
+                if (history)
+                    xmlAddChild(xmlnode, history);
+
+                metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
+                if (source_real->format) {
+                    for (i = 0; i < source_real->format->vc.comments; i++)
+                        __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+                }
             }
             avl_tree_unlock(global.source_tree);
 
