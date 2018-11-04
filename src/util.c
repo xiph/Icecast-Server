@@ -599,7 +599,7 @@ unsigned int util_str_to_unsigned_int(const char *str, const unsigned int defaul
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status, const char *allow, client_t *client) {
+static inline void   _build_headers_loop(char **ret, size_t *len, const ice_config_http_header_t *header, int status, const char *allow, client_t *client) {
     size_t headerlen;
     const char *name;
     const char *value;
