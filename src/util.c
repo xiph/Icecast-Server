@@ -50,6 +50,7 @@
 #include "client.h"
 #include "source.h"
 #include "admin.h"
+#include "auth.h"
 
 #define CATMODULE "util"
 
@@ -674,6 +675,8 @@ static inline char * _build_headers(int status, const char *allow, ice_config_t 
     _build_headers_loop(&ret, &len, config->http_headers, status, allow, client);
     if (mountproxy && mountproxy->http_headers)
         _build_headers_loop(&ret, &len, mountproxy->http_headers, status, allow, client);
+    if (client && client->auth && client->auth->http_headers)
+        _build_headers_loop(&ret, &len, client->auth->http_headers, status, allow, client);
 
     return ret;
 }

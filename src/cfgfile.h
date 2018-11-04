@@ -301,6 +301,10 @@ listener_t *config_copy_listener_one(const listener_t *listener);
 config_options_t *config_parse_options(xmlNodePtr node);
 void config_clear_options(config_options_t *options);
 
+void config_parse_http_headers(xmlNodePtr                  node,
+                               ice_config_http_header_t  **http_headers);
+void config_clear_http_header(ice_config_http_header_t *header);
+
 int config_rehash(void);
 
 ice_config_locks *config_locks(void);

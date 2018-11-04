@@ -26,6 +26,7 @@
 #include "common/httpp/httpp.h"
 
 #include "icecasttypes.h"
+#include "cfgfile.h"
 
 /* implemented */
 #define AUTH_TYPE_ANONYMOUS       "anonymous"
@@ -152,6 +153,9 @@ struct auth_tag
     acl_t *acl;
     /* role name for later matching, may be NULL if no role name was given in config */
     char  *role;
+
+    /* HTTP headers to send to clients using this role */
+    ice_config_http_header_t *http_headers;
 };
 
 /* prototypes for auths that do not need own header file */
