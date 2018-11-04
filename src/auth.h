@@ -116,6 +116,13 @@ struct auth_tag
         admin_command_id_t command;
     } filter_admin[MAX_ADMIN_COMMANDS];
 
+    struct {
+        auth_matchtype_t type;
+        char *origin;
+    } *filter_origin;
+    size_t filter_origin_len;
+    auth_matchtype_t filter_origin_policy;
+
     /* permissions */
     auth_matchtype_t permission_alter[AUTH_ALTER_SEND_ERROR+1];
 

@@ -182,6 +182,8 @@ static void queue_auth_client (auth_client *auth_user)
  * refcounted and only actual freed after the last use
  */
 void auth_release (auth_t *authenticator) {
+    size_t i;
+
     if (authenticator == NULL)
         return;
 
@@ -216,6 +218,12 @@ void auth_release (auth_t *authenticator) {
         free(authenticator->mount);
     acl_release(authenticator->acl);
     config_clear_http_header(authenticator->http_headers);
+
+    for (i = 0; i < authenticator->filter_origin_len; i++) {
+        free(authenticator->filter_origin[i].origin);
+    }
+    free(authenticator->filter_origin);
+
     free(authenticator);
 }
 
@@ -436,6 +444,8 @@ static void *auth_run_thread (void *arg)
 static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata), void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata) {
     auth_client *auth_user;
     auth_matchtype_t matchtype;
+    const char *origin;
+    size_t i;
 
     ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
 
@@ -451,6 +461,31 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
            on_no_match(client, on_result, userdata);
         } else if (on_result) {
            on_result(client, userdata, AUTH_NOMATCH);
+        }
+        return;
+    }
+
+    /* Filter for CORS "Origin".
+     *
+     * CORS actually knows about non-CORS requests and assigned the "null"
+     * location to them.
+     */
+    origin = httpp_getvar(client->parser, "origin");
+    if (!origin)
+        origin = "null";
+
+    matchtype = auth->filter_origin_policy;
+    for (i = 0; i < auth->filter_origin_len; i++) {
+        if (strcmp(auth->filter_origin[i].origin, origin) == 0) {
+            matchtype = auth->filter_origin[i].type;
+            break;
+        }
+    }
+    if (matchtype == AUTH_MATCHTYPE_NOMATCH) {
+        if (on_no_match) {
+            on_no_match(client, on_result, userdata);
+        } else if (on_result) {
+            on_result(client, userdata, AUTH_NOMATCH);
         }
         return;
     }
@@ -603,6 +638,49 @@ static inline void auth_get_authenticator__filter_admin(auth_t *auth, xmlNodePtr
                 }
             } else {
                 ICECAST_LOG_ERROR("Can not add more %s commands to role.", name);
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+}
+
+static inline void auth_get_authenticator__filter_origin(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+        char *next;
+
+        while (cur) {
+            next = strstr(cur, ",");
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                auth->filter_origin_policy = matchtype;
+            } else {
+                void *n = realloc(auth->filter_origin, (auth->filter_origin_len + 1)*sizeof(*auth->filter_origin));
+                if (!n) {
+                    ICECAST_LOG_ERROR("Can not allocate memory. BAD.");
+                    break;
+                }
+
+                auth->filter_origin = n;
+                auth->filter_origin[auth->filter_origin_len].type = matchtype;
+                auth->filter_origin[auth->filter_origin_len].origin = strdup(cur);
+                if (auth->filter_origin[auth->filter_origin_len].origin) {
+                    auth->filter_origin_len++;
+                } else {
+                    ICECAST_LOG_ERROR("Can not allocate memory. BAD.");
+                    break;
+                }
             }
 
             cur = next;
@@ -814,6 +892,10 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
     auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
+
+    auth->filter_origin_policy = AUTH_MATCHTYPE_MATCH;
+    auth_get_authenticator__filter_origin(auth, node, "match-origin", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_origin(auth, node, "nomatch-origin", AUTH_MATCHTYPE_NOMATCH);
 
     auth_get_authenticator__permission_alter(auth, node, "may-alter", AUTH_MATCHTYPE_MATCH);
     auth_get_authenticator__permission_alter(auth, node, "may-not-alter", AUTH_MATCHTYPE_NOMATCH);
