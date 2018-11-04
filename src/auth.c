@@ -716,7 +716,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
-    xmlNodePtr option;
+    xmlNodePtr child;
     char *method;
     char *tmp;
     size_t i;
@@ -817,36 +817,45 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth_get_authenticator__permission_alter(auth, node, "may-alter", AUTH_MATCHTYPE_MATCH);
     auth_get_authenticator__permission_alter(auth, node, "may-not-alter", AUTH_MATCHTYPE_NOMATCH);
 
-    /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
-    option = node->xmlChildrenNode;
-    while (option)
-    {
-        xmlNodePtr current = option;
-        option = option->next;
-        if (xmlStrcmp (current->name, XMLSTR("option")) == 0)
-        {
+    /* sub node parsing */
+    child = node->xmlChildrenNode;
+    do {
+        if (child == NULL)
+            break;
+
+        if (xmlIsBlankNode(child))
+            continue;
+
+        if (xmlStrcmp (child->name, XMLSTR("option")) == 0) {
             config_options_t *opt = calloc(1, sizeof (config_options_t));
-            opt->name = (char *)xmlGetProp(current, XMLSTR("name"));
-            if (opt->name == NULL)
-            {
+            opt->name = (char *)xmlGetProp(child, XMLSTR("name"));
+            if (opt->name == NULL) {
                 free(opt);
                 continue;
             }
-            opt->value = (char *)xmlGetProp(current, XMLSTR("value"));
-            if (opt->value == NULL)
-            {
+            opt->value = (char *)xmlGetProp(child, XMLSTR("value"));
+            if (opt->value == NULL) {
                 xmlFree(opt->name);
                 free(opt);
                 continue;
             }
             *next_option = opt;
             next_option = &opt->next;
+        } else if (xmlStrcmp (child->name, XMLSTR("acl")) == 0) {
+            if (!auth->acl) {
+                auth->acl  = acl_new_from_xml_node(child);
+            } else {
+                ICECAST_LOG_ERROR("More than one ACL defined in role! Not supported (yet).");
+            }
+        } else {
+            ICECAST_LOG_WARN("unknown auth setting (%H)", child->name);
         }
-        else
-            if (xmlStrcmp (current->name, XMLSTR("text")) != 0)
-                ICECAST_LOG_WARN("unknown auth setting (%s)", current->name);
+    } while ((child = child->next));
+
+    if (!auth->acl) {
+        /* If we did not get a <acl> try ACL as part of <role> (old style). */
+        auth->acl  = acl_new_from_xml_node(node);
     }
-    auth->acl  = acl_new_from_xml_node(node);
     if (!auth->acl) {
         auth_release(auth);
         auth = NULL;
