@@ -629,7 +629,6 @@ static inline void   _build_headers_loop(char **ret, size_t *len, const ice_conf
                     if (origin) {
                         value = header->value;
                         if (!value) {
-                            ICECAST_LOG_ERROR("value='%s', name='%s', origin='%s', allow='%s'", value, name, origin, allow);
                             if (strcasecmp(name, "Access-Control-Allow-Origin") == 0) {
                                 value = origin;
                             } else if (strcasecmp(name, "Access-Control-Allow-Methods") == 0) {
