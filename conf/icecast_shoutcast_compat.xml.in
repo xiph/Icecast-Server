@@ -47,6 +47,6 @@
         <chroot>false</chroot>
     </security>
     <http-headers>
-        <header name="Access-Control-Allow-Origin" value="*" />
+        <header type="cors" name="Access-Control-Allow-Origin" />
     </http-headers>
 </icecast>

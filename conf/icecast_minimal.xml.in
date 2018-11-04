@@ -34,6 +34,6 @@
         <loglevel>information</loglevel> <!-- "debug", "information", "warning", or "error" -->
     </logging>
     <http-headers>
-        <header name="Access-Control-Allow-Origin" value="*" />
+        <header type="cors" name="Access-Control-Allow-Origin" />
     </http-headers>
 </icecast>
