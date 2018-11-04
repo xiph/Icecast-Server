@@ -51,6 +51,7 @@
 #include "source.h"
 #include "admin.h"
 #include "auth.h"
+#include "acl.h"
 
 #define CATMODULE "util"
 
@@ -662,6 +663,7 @@ static inline void   _build_headers_loop(char **ret, size_t *len, const ice_conf
     *ret = r;
 }
 static inline char * _build_headers(int status, const char *allow, ice_config_t *config, source_t *source, client_t *client) {
+    const ice_config_http_header_t *header;
     mount_proxy *mountproxy = NULL;
     char *ret = NULL;
     size_t len = 1;
@@ -675,8 +677,10 @@ static inline char * _build_headers(int status, const char *allow, ice_config_t 
     _build_headers_loop(&ret, &len, config->http_headers, status, allow, client);
     if (mountproxy && mountproxy->http_headers)
         _build_headers_loop(&ret, &len, mountproxy->http_headers, status, allow, client);
-    if (client && client->auth && client->auth->http_headers)
-        _build_headers_loop(&ret, &len, client->auth->http_headers, status, allow, client);
+    if (client && client->auth && (header = client->auth->http_headers))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
+    if (client && client->acl && (header = acl_get_http_headers(client->acl)))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
 
     return ret;
 }

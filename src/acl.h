@@ -19,6 +19,7 @@
 #include "common/httpp/httpp.h"
 
 #include "icecasttypes.h"
+#include "cfgfile.h"
 
 typedef enum acl_policy_tag {
  /* Error on function call */
@@ -59,5 +60,8 @@ int acl_set_max_connection_duration(acl_t * acl, time_t duration);
 time_t acl_get_max_connection_duration(acl_t * acl);
 int acl_set_max_connections_per_user(acl_t * acl, size_t limit);
 ssize_t acl_get_max_connections_per_user(acl_t * acl);
+
+/* HTTP specific functions */
+const ice_config_http_header_t *acl_get_http_headers(acl_t * acl);
 
 #endif
