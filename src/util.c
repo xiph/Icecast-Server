@@ -630,9 +630,26 @@ static inline void   _build_headers_loop(char **ret, size_t *len, const ice_conf
                         value = header->value;
                         if (!value) {
                             if (strcasecmp(name, "Access-Control-Allow-Origin") == 0) {
-                                value = origin;
+                                if (status >= 200 && status <= 299) {
+                                    value = origin;
+                                } else if (status >= 400 && status <= 599) {
+                                    value = "null";
+                                } else {
+                                    /* do not set as we do not have a default for that. */
+                                }
                             } else if (strcasecmp(name, "Access-Control-Allow-Methods") == 0) {
-                                value = allow;
+                                if (status >= 200 && status <= 299) {
+                                    /* only use the default if we are posive reply. */
+                                    value = allow;
+                                }
+                            } else if (strcasecmp(name, "Access-Control-Expose-Headers") == 0) {
+                                value = "icy-br, icy-description, icy-genre, icy-name, icy-pub, icy-url";
+                            } else if (strcasecmp(name, "Access-Control-Max-Age") == 0) {
+                                value = "300"; /* 300s = 5 minutes */
+                            /* No default (yet)
+                             * } else if (strcasecmp(name, "Access-Control-Allow-Credentials") == 0) {
+                             * } else if (strcasecmp(name, "Access-Control-Allow-Headers") == 0) {
+                             */
                             }
                         }
                     }
