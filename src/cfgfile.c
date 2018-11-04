@@ -518,7 +518,8 @@ static void config_clear_http_header(ice_config_http_header_t *header)
 
     while (header) {
         xmlFree(header->name);
-        xmlFree(header->value);
+        if (header->value)
+            xmlFree(header->value);
         old = header;
         header = header->next;
         free(old);
@@ -1664,13 +1665,15 @@ static void _parse_http_headers(xmlDocPtr                   doc,
             continue;
         if (!(name = (char *)xmlGetProp(node, XMLSTR("name"))))
             break;
-        if (!(value = (char *)xmlGetProp(node, XMLSTR("value"))))
-            break;
+
+        value = (char *)xmlGetProp(node, XMLSTR("value"));
 
         type = HTTP_HEADER_TYPE_STATIC; /* default */
         if ((tmp = (char *)xmlGetProp(node, XMLSTR("type")))) {
             if (strcmp(tmp, "static") == 0) {
                 type = HTTP_HEADER_TYPE_STATIC;
+            } else if (strcmp(tmp, "cors") == 0 || strcmp(tmp, "corpse") == 0) {
+                type = HTTP_HEADER_TYPE_CORS;
             } else {
                 ICECAST_LOG_WARN("Unknown type %s for "
                     "HTTP Header %s", tmp, name);

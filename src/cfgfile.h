@@ -32,7 +32,9 @@
 
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
-    HTTP_HEADER_TYPE_STATIC
+    HTTP_HEADER_TYPE_STATIC,
+    /* CORS: headers are only sent to the client if it's a CORS request. */
+    HTTP_HEADER_TYPE_CORS
 } http_header_type;
 
 typedef struct ice_config_http_header_tag {

@@ -598,7 +598,7 @@ unsigned int util_str_to_unsigned_int(const char *str, const unsigned int defaul
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
+static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status, const char *allow, client_t *client) {
     size_t headerlen;
     const char *name;
     const char *value;
@@ -620,7 +620,23 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         switch (header->type) {
             case HTTP_HEADER_TYPE_STATIC:
                 value = header->value;
-                break;
+            break;
+            case HTTP_HEADER_TYPE_CORS:
+                if (name && client && client->parser) {
+                    const char *origin = httpp_getvar(client->parser, "origin");
+                    if (origin) {
+                        value = header->value;
+                        if (!value) {
+                            ICECAST_LOG_ERROR("value='%s', name='%s', origin='%s', allow='%s'", value, name, origin, allow);
+                            if (strcasecmp(name, "Access-Control-Allow-Origin") == 0) {
+                                value = origin;
+                            } else if (strcasecmp(name, "Access-Control-Allow-Methods") == 0) {
+                                value = allow;
+                            }
+                        }
+                    }
+                }
+            break;
         }
 
         /* check data */
@@ -644,7 +660,7 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
     } while ((header = header->next));
     *ret = r;
 }
-static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
+static inline char * _build_headers(int status, const char *allow, ice_config_t *config, source_t *source, client_t *client) {
     mount_proxy *mountproxy = NULL;
     char *ret = NULL;
     size_t len = 1;
@@ -655,9 +671,9 @@ static inline char * _build_headers(int status, ice_config_t *config, source_t *
     ret = calloc(1, 1);
     *ret = 0;
 
-    _build_headers_loop(&ret, &len, config->http_headers, status);
+    _build_headers_loop(&ret, &len, config->http_headers, status, allow, client);
     if (mountproxy && mountproxy->http_headers)
-        _build_headers_loop(&ret, &len, mountproxy->http_headers, status);
+        _build_headers_loop(&ret, &len, mountproxy->http_headers, status, allow, client);
 
     return ret;
 }
@@ -785,7 +801,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     }
 
     config = config_get_config();
-    extra_headers = _build_headers(status, config, source);
+    extra_headers = _build_headers(status, allow_header, config, source, client);
     ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
