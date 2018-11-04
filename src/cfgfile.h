@@ -31,8 +31,8 @@
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
 typedef enum _http_header_type {
- /* static: headers are passed as is to the client. */
- HTTP_HEADER_TYPE_STATIC
+    /* static: headers are passed as is to the client. */
+    HTTP_HEADER_TYPE_STATIC
 } http_header_type;
 
 typedef struct ice_config_http_header_tag {
