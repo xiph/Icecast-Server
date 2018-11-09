@@ -101,12 +101,6 @@ typedef struct module_tag module_t;
 
 typedef struct module_container_tag module_container_t;
 
-/* ---[ reportxml.[ch] ]--- */
-
-typedef struct reportxml_tag reportxml_t;
-typedef struct reportxml_node_tag reportxml_node_t;
-typedef struct reportxml_database_tag reportxml_database_t;
-
 /* ---[ listensocket.[ch] ]--- */
 
 typedef struct listensocket_container_tag listensocket_container_t;
@@ -117,9 +111,6 @@ typedef struct listensocket_tag listensocket_t;
 #define igloo_RO_APPTYPES \
     igloo_RO_TYPE(module_t) \
     igloo_RO_TYPE(module_container_t) \
-    igloo_RO_TYPE(reportxml_t) \
-    igloo_RO_TYPE(reportxml_node_t) \
-    igloo_RO_TYPE(reportxml_database_t) \
     igloo_RO_TYPE(listensocket_container_t) \
     igloo_RO_TYPE(listensocket_t)
 

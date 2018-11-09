@@ -40,7 +40,6 @@
 #include "stats.h"
 #include "fserve.h"
 #include "errors.h"
-#include "reportxml.h"
 #include <igloo/ro.h>
 #include "xslt.h"
 #include "source.h"
@@ -319,7 +318,7 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 
 static inline void _client_send_report(client_t *client, const char *uuid, const char *message, int http_status, const char *location)
 {
-    reportxml_t *report;
+    igloo_reportxml_t *report;
     admin_format_t admin_format;
     const char *xslt = NULL;
 
@@ -492,7 +491,7 @@ void client_send_redirect(client_t *client, const char *uuid, int status, const 
 }
 
 /* this function sends a reportxml file to the client in the prefered format. */
-void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status, const char *location)
+void client_send_reportxml(client_t *client, igloo_reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status, const char *location)
 {
     admin_format_t admin_format;
     xmlDocPtr doc;
@@ -538,7 +537,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         return;
     }
 
-    doc = reportxml_render_xmldoc(report);
+    doc = igloo_reportxml_render_xmldoc(report);
     if (!doc) {
         ICECAST_LOG_ERROR("Can not render XML Document from report. Sending 500 to client %p", client);
         client_send_500(client, "Can not render XML Document from report.");
@@ -647,18 +646,18 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     xmlFreeDoc(doc);
 }
 
-static void client_get_reportxml__add_basic_stats(reportxml_t *report)
+static void client_get_reportxml__add_basic_stats(igloo_reportxml_t *report)
 {
-    reportxml_node_t *rootnode, *extension;
+    igloo_reportxml_node_t *rootnode, *extension;
     xmlNodePtr xmlroot;
     xmlNodePtr modules;
 
-    rootnode = reportxml_get_root_node(report);
+    rootnode = igloo_reportxml_get_root_node(report);
 
-    extension = reportxml_node_new(REPORTXML_NODE_TYPE_EXTENSION, NULL, NULL, NULL);
-    reportxml_node_set_attribute(extension, "application", ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION);
+    extension = igloo_reportxml_node_new(igloo_REPORTXML_NODE_TYPE_EXTENSION, NULL, NULL, NULL);
+    igloo_reportxml_node_set_attribute(extension, "application", ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION);
 
-    reportxml_node_add_child(rootnode, extension);
+    igloo_reportxml_node_add_child(rootnode, extension);
 
     igloo_ro_unref(rootnode);
 
@@ -667,42 +666,42 @@ static void client_get_reportxml__add_basic_stats(reportxml_t *report)
     xmlAddChild(xmlroot, modules);
 
 
-    reportxml_node_add_xml_child(extension, xmlroot);
+    igloo_reportxml_node_add_xml_child(extension, xmlroot);
     igloo_ro_unref(extension);
     xmlFreeNode(xmlroot);
 }
 
-reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text)
+igloo_reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text)
 {
-    reportxml_t *report = NULL;
+    igloo_reportxml_t *report = NULL;
 
     if (state_definition) {
         ice_config_t *config;
 
         config = config_get_config();
-        report = reportxml_database_build_report(config->reportxml_db, state_definition, -1);
+        report = igloo_reportxml_database_build_report(config->reportxml_db, state_definition, -1);
         config_release_config();
     }
 
     if (!report) {
-        reportxml_node_t *rootnode, *incidentnode, *statenode;
+        igloo_reportxml_node_t *rootnode, *incidentnode, *statenode;
 
-        report = igloo_ro_new(reportxml_t);
-        rootnode = reportxml_get_root_node(report);
-        incidentnode = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
-        statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);
+        report = igloo_ro_new(igloo_reportxml_t);
+        rootnode = igloo_reportxml_get_root_node(report);
+        incidentnode = igloo_reportxml_node_new(igloo_REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+        statenode = igloo_reportxml_node_new(igloo_REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);
 
         if (state_text) {
-            reportxml_node_t *textnode;
+            igloo_reportxml_node_t *textnode;
 
-            textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
-            reportxml_node_set_content(textnode, state_text);
-            reportxml_node_add_child(statenode, textnode);
+            textnode = igloo_reportxml_node_new(igloo_REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
+            igloo_reportxml_node_set_content(textnode, state_text);
+            igloo_reportxml_node_add_child(statenode, textnode);
             igloo_ro_unref(textnode);
         }
 
-        reportxml_node_add_child(incidentnode, statenode);
-        reportxml_node_add_child(rootnode, incidentnode);
+        igloo_reportxml_node_add_child(incidentnode, statenode);
+        igloo_reportxml_node_add_child(rootnode, incidentnode);
         igloo_ro_unref(statenode);
         igloo_ro_unref(incidentnode);
         igloo_ro_unref(rootnode);

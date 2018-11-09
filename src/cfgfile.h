@@ -25,6 +25,7 @@
 #include <libxml/tree.h>
 #include <igloo/thread.h>
 #include <igloo/avl.h>
+#include <igloo/reportxml.h>
 
 #include "icecasttypes.h"
 #include "compat.h"
@@ -257,7 +258,7 @@ struct ice_config_tag {
     char *webroot_dir;
     char *adminroot_dir;
     resource_t *resources;
-    reportxml_database_t *reportxml_db;
+    igloo_reportxml_database_t *reportxml_db;
 
     char *access_log;
     char *error_log;

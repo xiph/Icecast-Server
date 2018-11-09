@@ -29,7 +29,6 @@ noinst_HEADERS = \
     matchfile.h \
     tls.h \
     module.h \
-    reportxml.h \
     listensocket.h \
     fastevent.h \
     event.h \
@@ -73,7 +72,6 @@ icecast_SOURCES = \
     matchfile.c \
     tls.c \
     module.c \
-    reportxml.c \
     listensocket.c \
     fastevent.c \
     format.c \

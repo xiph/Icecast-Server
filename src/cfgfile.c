@@ -35,7 +35,6 @@
 #include "auth.h"
 #include "event.h"
 #include <igloo/ro.h>
-#include "reportxml.h"
 
 /* for config_reread_config() */
 #include "yp.h"
@@ -258,7 +257,7 @@ void config_init_configuration(ice_config_t *configuration)
 {
     memset(configuration, 0, sizeof(ice_config_t));
     _set_defaults(configuration);
-    configuration->reportxml_db = igloo_ro_new(reportxml_database_t);
+    configuration->reportxml_db = igloo_ro_new(igloo_reportxml_database_t);
 }
 
 static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const char *warning)
@@ -2248,7 +2247,7 @@ static void _parse_paths(xmlDocPtr      doc,
             if (configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] == '/')
                 configuration->adminroot_dir[strlen(configuration->adminroot_dir)-1] = 0;
         } else if (xmlStrcmp(node->name, XMLSTR("reportxmldb")) == 0) {
-            reportxml_t *report;
+            igloo_reportxml_t *report;
             xmlDocPtr dbdoc;
 
             if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
@@ -2259,12 +2258,12 @@ static void _parse_paths(xmlDocPtr      doc,
             if (!doc) {
                 ICECAST_LOG_ERROR("Can not read report xml database \"%H\" as XML", temp);
             } else {
-                report = reportxml_parse_xmldoc(dbdoc);
+                report = igloo_reportxml_parse_xmldoc(dbdoc);
                 xmlFreeDoc(dbdoc);
                 if (!report) {
                     ICECAST_LOG_ERROR("Can not parse report xml database \"%H\"", temp);
                 } else {
-                    reportxml_database_add_report(configuration->reportxml_db, report);
+                    igloo_reportxml_database_add_report(configuration->reportxml_db, report);
                     igloo_ro_unref(report);
                     ICECAST_LOG_INFO("File \"%H\" added to report xml database", temp);
                 }
