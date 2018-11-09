@@ -1164,9 +1164,6 @@ static void _parse_limits(xmlDocPtr     doc,
             __read_int(doc, node, &configuration->body_size_limit, "<bodysize> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
             __read_unsigned_int(doc, node, &configuration->queue_size_limit, "<queue-size> must not be empty.");
-        } else if (xmlStrcmp(node->name, XMLSTR("threadpool")) == 0) {
-            ICECAST_LOG_WARN("<threadpool> functionality was removed in Icecast"
-			     " version 2.3.0, please remove this from your config.");
         } else if (xmlStrcmp(node->name, XMLSTR("client-timeout")) == 0) {
             __read_int(doc, node, &configuration->client_timeout, "<client-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("header-timeout")) == 0) {
@@ -1184,6 +1181,8 @@ static void _parse_limits(xmlDocPtr     doc,
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
             __read_unsigned_int(doc, node, &configuration->burst_size, "<burst-size> must not be empty.");
+        } else if (node->type == XML_ELEMENT_NODE) {
+            ICECAST_LOG_ERROR("Unknown config tag: %s", node->name);
         }
     } while ((node = node->next));
 }
