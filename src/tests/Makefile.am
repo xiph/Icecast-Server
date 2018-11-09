@@ -28,16 +28,5 @@ ctest_resourcematch_test_SOURCES = %reldir%/ctest_resourcematch.c
 ctest_resourcematch_test_LDADD = libice_ctest.la icecast-resourcematch.o
 check_PROGRAMS += ctest_resourcematch.test
 
-ctest_refobject_test_SOURCES = %reldir%/ctest_refobject.c
-ctest_refobject_test_LDADD = libice_ctest.la \
-    icecast-refobject.o
-check_PROGRAMS += ctest_refobject.test
-
-ctest_buffer_test_SOURCES = %reldir%/ctest_buffer.c
-ctest_buffer_test_LDADD = libice_ctest.la \
-    icecast-refobject.o \
-    icecast-buffer.o
-check_PROGRAMS += ctest_buffer.test
-
 # Add all programs to TESTS
 TESTS = $(check_PROGRAMS)
