@@ -25,7 +25,7 @@ ctest_suite_test_LDADD = libice_ctest.la
 check_PROGRAMS += ctest_suite.test
 
 ctest_resourcematch_test_SOURCES = %reldir%/ctest_resourcematch.c
-ctest_resourcematch_test_LDADD = libice_ctest.la icecast-resourcematch.o
+ctest_resourcematch_test_LDADD = libice_ctest.la resourcematch.o
 check_PROGRAMS += ctest_resourcematch.test
 
 # Add all programs to TESTS
