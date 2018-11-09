@@ -668,7 +668,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         const char * contenttype, const char * charset,
         const char * datablock,
         source_t * source, client_t * client) {
-    const char * http_version = "1.0";
+    const char * http_version = "1.1";
     ice_config_t *config;
     time_t now;
     struct tm result;
@@ -711,11 +711,11 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         {
             switch (status)
             {
-                case 100: statusmsg = "Continue"; http_version = "1.1"; break;
-                case 101: statusmsg = "Switching Protocols"; http_version = "1.1"; break;
+                case 100: statusmsg = "Continue"; break;
+                case 101: statusmsg = "Switching Protocols"; break;
                 case 200: statusmsg = "OK"; break;
                 case 204: statusmsg = "No Content"; break;
-                case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
+                case 206: statusmsg = "Partial Content"; break;
                 case 300: statusmsg = "Multiple Choices"; break;
                 case 301: statusmsg = "Moved Permanently"; break;
                 case 302: statusmsg = "Found"; break;
@@ -732,7 +732,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 409: statusmsg = "Conflict"; break;
                 case 415: statusmsg = "Unsupported Media Type"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
-                case 426: statusmsg = "Upgrade Required"; http_version = "1.1"; break;
+                case 426: statusmsg = "Upgrade Required"; break;
                 case 429: statusmsg = "Too Many Requests"; break;
                 /* case of 500 is handled differently. No need to list it here. -- ph3-der-loewe, 2018-05-05 */
                 case 501: statusmsg = "Unimplemented"; break;
