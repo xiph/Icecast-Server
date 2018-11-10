@@ -416,6 +416,8 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     vorbis_codec_t *source_vorbis;
     char *value;
 
+    ICECAST_LOG_WARN("Not officially supported metadata update detected, please inform the source client software vendor that they should fix their software!");
+
     /* avoid updating if multiple codecs in use */
     if (codec && codec->next == NULL)
         source_vorbis = codec->specific;
