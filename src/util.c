@@ -50,6 +50,8 @@
 #include "client.h"
 #include "source.h"
 #include "admin.h"
+#include "auth.h"
+#include "acl.h"
 
 #define CATMODULE "util"
 
@@ -598,7 +600,7 @@ unsigned int util_str_to_unsigned_int(const char *str, const unsigned int defaul
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
+static inline void   _build_headers_loop(char **ret, size_t *len, const ice_config_http_header_t *header, int status, const char *allow, client_t *client) {
     size_t headerlen;
     const char *name;
     const char *value;
@@ -620,7 +622,39 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         switch (header->type) {
             case HTTP_HEADER_TYPE_STATIC:
                 value = header->value;
-                break;
+            break;
+            case HTTP_HEADER_TYPE_CORS:
+                if (name && client && client->parser) {
+                    const char *origin = httpp_getvar(client->parser, "origin");
+                    if (origin) {
+                        value = header->value;
+                        if (!value) {
+                            if (strcasecmp(name, "Access-Control-Allow-Origin") == 0) {
+                                if (status >= 200 && status <= 299) {
+                                    value = origin;
+                                } else if (status >= 400 && status <= 599) {
+                                    value = "null";
+                                } else {
+                                    /* do not set as we do not have a default for that. */
+                                }
+                            } else if (strcasecmp(name, "Access-Control-Allow-Methods") == 0) {
+                                if (status >= 200 && status <= 299) {
+                                    /* only use the default if we are posive reply. */
+                                    value = allow;
+                                }
+                            } else if (strcasecmp(name, "Access-Control-Expose-Headers") == 0) {
+                                value = "icy-br, icy-description, icy-genre, icy-name, icy-pub, icy-url";
+                            } else if (strcasecmp(name, "Access-Control-Max-Age") == 0) {
+                                value = "300"; /* 300s = 5 minutes */
+                            /* No default (yet)
+                             * } else if (strcasecmp(name, "Access-Control-Allow-Credentials") == 0) {
+                             * } else if (strcasecmp(name, "Access-Control-Allow-Headers") == 0) {
+                             */
+                            }
+                        }
+                    }
+                }
+            break;
         }
 
         /* check data */
@@ -644,7 +678,8 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
     } while ((header = header->next));
     *ret = r;
 }
-static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
+static inline char * _build_headers(int status, const char *allow, ice_config_t *config, source_t *source, client_t *client) {
+    const ice_config_http_header_t *header;
     mount_proxy *mountproxy = NULL;
     char *ret = NULL;
     size_t len = 1;
@@ -655,9 +690,13 @@ static inline char * _build_headers(int status, ice_config_t *config, source_t *
     ret = calloc(1, 1);
     *ret = 0;
 
-    _build_headers_loop(&ret, &len, config->http_headers, status);
+    _build_headers_loop(&ret, &len, config->http_headers, status, allow, client);
     if (mountproxy && mountproxy->http_headers)
-        _build_headers_loop(&ret, &len, mountproxy->http_headers, status);
+        _build_headers_loop(&ret, &len, mountproxy->http_headers, status, allow, client);
+    if (client && client->auth && (header = client->auth->http_headers))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
+    if (client && client->acl && (header = acl_get_http_headers(client->acl)))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
 
     return ret;
 }
@@ -785,7 +824,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     }
 
     config = config_get_config();
-    extra_headers = _build_headers(status, config, source);
+    extra_headers = _build_headers(status, allow_header, config, source, client);
     ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,

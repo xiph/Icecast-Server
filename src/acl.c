@@ -44,6 +44,9 @@ struct acl_tag {
     /* mount specific functons */
     time_t max_connection_duration;
     size_t max_connections_per_user;
+
+    /* HTTP headers to send to clients using this role */
+    ice_config_http_header_t *http_headers;
 };
 
 /* some string util functions */
@@ -195,6 +198,20 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
         prop = prop->next;
     }
 
+    /* if we're new style configured try to read child nodes */
+    if (xmlStrcmp(node->name, XMLSTR("acl")) == 0) {
+        xmlNodePtr child = node->xmlChildrenNode;
+        do {
+            if (child == NULL)
+                break;
+            if (xmlIsBlankNode(child))
+                continue;
+            if (xmlStrcmp(child->name, XMLSTR("http-headers")) == 0) {
+                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers));
+            }
+        } while ((child = child->next));
+    }
+
     return ret;
 }
 
@@ -214,6 +231,8 @@ void acl_release(acl_t * acl)
     acl->refcount--;
     if (acl->refcount)
         return;
+
+    config_clear_http_header(acl->http_headers);
 
     free(acl);
 }
@@ -348,4 +367,12 @@ ssize_t acl_get_max_connections_per_user(acl_t *acl)
         return -1;
 
     return acl->max_connections_per_user;
+}
+
+const ice_config_http_header_t *acl_get_http_headers(acl_t * acl)
+{
+    if (!acl)
+        return NULL;
+
+    return acl->http_headers;
 }

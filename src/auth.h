@@ -26,6 +26,7 @@
 #include "common/httpp/httpp.h"
 
 #include "icecasttypes.h"
+#include "cfgfile.h"
 
 /* implemented */
 #define AUTH_TYPE_ANONYMOUS       "anonymous"
@@ -115,6 +116,13 @@ struct auth_tag
         admin_command_id_t command;
     } filter_admin[MAX_ADMIN_COMMANDS];
 
+    struct {
+        auth_matchtype_t type;
+        char *origin;
+    } *filter_origin;
+    size_t filter_origin_len;
+    auth_matchtype_t filter_origin_policy;
+
     /* permissions */
     auth_matchtype_t permission_alter[AUTH_ALTER_SEND_ERROR+1];
 
@@ -152,6 +160,9 @@ struct auth_tag
     acl_t *acl;
     /* role name for later matching, may be NULL if no role name was given in config */
     char  *role;
+
+    /* HTTP headers to send to clients using this role */
+    ice_config_http_header_t *http_headers;
 };
 
 /* prototypes for auths that do not need own header file */

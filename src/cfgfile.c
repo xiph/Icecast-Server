@@ -141,10 +141,6 @@ static void _parse_authentication(xmlDocPtr                 doc,
                                   ice_config_t             *c,
                                   char                    **source_password);
 
-static void _parse_http_headers(xmlDocPtr                   doc,
-                                xmlNodePtr                  node,
-                                ice_config_http_header_t  **http_headers);
-
 static void _parse_relay(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c, const char *mount);
 static void _parse_mount(xmlDocPtr doc, xmlNodePtr parentnode, ice_config_t *c);
 
@@ -512,13 +508,14 @@ static void __append_old_style_url_event(event_registration_t   **list,
     xmlFreeNode(exec);
 }
 
-static void config_clear_http_header(ice_config_http_header_t *header)
+void config_clear_http_header(ice_config_http_header_t *header)
 {
     ice_config_http_header_t *old;
 
     while (header) {
         xmlFree(header->name);
-        xmlFree(header->value);
+        if (header->value)
+            xmlFree(header->value);
         old = header;
         header = header->next;
         free(old);
@@ -1061,7 +1058,7 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("limits")) == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
-            _parse_http_headers(doc, node->xmlChildrenNode, &(configuration->http_headers));
+            config_parse_http_headers(node->xmlChildrenNode, &(configuration->http_headers));
         } else if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration, NULL);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
@@ -1555,7 +1552,7 @@ static void _parse_mount(xmlDocPtr      doc,
             mount->subtype = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
-            _parse_http_headers(doc, node->xmlChildrenNode,
+            config_parse_http_headers(node->xmlChildrenNode,
                 &(mount->http_headers));
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
@@ -1643,9 +1640,8 @@ static void _parse_mount(xmlDocPtr      doc,
     }
 }
 
-static void _parse_http_headers(xmlDocPtr                   doc,
-                                xmlNodePtr                  node,
-                                ice_config_http_header_t  **http_headers)
+void config_parse_http_headers(xmlNodePtr                  node,
+                               ice_config_http_header_t  **http_headers)
 {
     ice_config_http_header_t *header;
     ice_config_http_header_t *next;
@@ -1664,13 +1660,15 @@ static void _parse_http_headers(xmlDocPtr                   doc,
             continue;
         if (!(name = (char *)xmlGetProp(node, XMLSTR("name"))))
             break;
-        if (!(value = (char *)xmlGetProp(node, XMLSTR("value"))))
-            break;
+
+        value = (char *)xmlGetProp(node, XMLSTR("value"));
 
         type = HTTP_HEADER_TYPE_STATIC; /* default */
         if ((tmp = (char *)xmlGetProp(node, XMLSTR("type")))) {
             if (strcmp(tmp, "static") == 0) {
                 type = HTTP_HEADER_TYPE_STATIC;
+            } else if (strcmp(tmp, "cors") == 0 || strcmp(tmp, "corpse") == 0) {
+                type = HTTP_HEADER_TYPE_CORS;
             } else {
                 ICECAST_LOG_WARN("Unknown type %s for "
                     "HTTP Header %s", tmp, name);
