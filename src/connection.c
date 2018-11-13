@@ -253,7 +253,7 @@ static int connection_read_ssl (connection_t *con, void *buf, size_t len)
 {
     int bytes = SSL_read (con->ssl, buf, len);
 
-    if (bytes < 0)
+    if (bytes <= 0)
     {
         switch (SSL_get_error (con->ssl, bytes))
         {
