@@ -391,7 +391,7 @@ void client_send_101(client_t *client, reuse_t reuse)
                                  NULL, NULL, client);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\n\r\n");
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.1\r\n\r\n");
 
     client->respcode = 101;
     client->refbuf->len = strlen(client->refbuf->data);
@@ -453,7 +453,7 @@ void client_send_426(client_t *client, reuse_t reuse)
                                  NULL, NULL, client);
 
     snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.0\r\n\r\n");
+             "Content-Length: 0\r\nUpgrade: TLS/1.0, HTTP/1.1\r\n\r\n");
 
     client->respcode = 426;
     client->refbuf->len = strlen(client->refbuf->data);
