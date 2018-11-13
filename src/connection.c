@@ -192,7 +192,7 @@ static int connection_read_tls(connection_t *con, void *buf, size_t len)
 {
     ssize_t bytes = tls_read(con->tls, buf, len);
 
-    if (bytes < 0) {
+    if (bytes <= 0) {
         if (tls_want_io(con->tls) > 0)
             return -1;
         con->error = 1;
