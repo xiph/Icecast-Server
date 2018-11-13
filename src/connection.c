@@ -1749,3 +1749,9 @@ void connection_close(connection_t *con)
     refobject_unref(con->listensocket_effective);
     free(con);
 }
+
+void connection_queue_client(client_t *client)
+{
+    client_queue_t *node = create_client_node(client);
+    _add_connection(node);
+}

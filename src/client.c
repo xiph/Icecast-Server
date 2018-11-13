@@ -169,8 +169,28 @@ static inline void client_reuseconnection(client_t *client) {
         return;
 
     con = client->con;
-    con = connection_create(con->sock, con->listensocket_real, con->listensocket_effective, strdup(con->ip));
     reuse = client->reuse;
+
+    if (reuse == ICECAST_REUSE_UPGRADETLS) {
+        http_parser_t *parser = client->parser;
+
+        httpp_deletevar(parser, "upgrade");
+        client->reuse = ICECAST_REUSE_CLOSE;
+
+        /* release the buffer now, as the buffer could be on the source queue
+         * and may of disappeared after auth completes */
+        client_set_queue(client, NULL);
+        client->refbuf = refbuf_new (PER_CLIENT_REFBUF_SIZE);
+        client->refbuf->len = 0; /* force reader code to ignore buffer contents */
+        client->pos = 0;
+
+        connection_uses_tls(con);
+        connection_queue_client(client);
+
+        return;
+    }
+
+    con = connection_create(con->sock, con->listensocket_real, con->listensocket_effective, strdup(con->ip));
     client->con->sock = -1; /* TODO: do not use magic */
 
     /* handle to keep the TLS connection */
@@ -199,9 +219,6 @@ static inline void client_reuseconnection(client_t *client) {
     client->reuse = ICECAST_REUSE_CLOSE;
 
     client_destroy(client);
-
-    if (reuse == ICECAST_REUSE_UPGRADETLS)
-        connection_uses_tls(con);
     connection_queue(con);
 }
 

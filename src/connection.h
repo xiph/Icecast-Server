@@ -75,6 +75,7 @@ void connection_close(connection_t *con);
 connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip);
 int connection_complete_source(source_t *source, int response);
 void connection_queue(connection_t *con);
+void connection_queue_client(client_t *client);
 void connection_uses_tls(connection_t *con);
 
 ssize_t connection_send_bytes(connection_t *con, const void *buf, size_t len);
