@@ -840,7 +840,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
     configuration
-        ->source_timeout = CONFIG_DEFAULT_BODY_TIMEOUT;
+        ->body_timeout = CONFIG_DEFAULT_BODY_TIMEOUT;
     configuration
         ->shoutcast_mount = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration
