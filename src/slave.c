@@ -347,7 +347,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
             server = calloc (1, len+1);
             strncpy (server, uri, len);
             connection_close (con);
-            httpp_destroy (parser);
+            igloo_httpp_destroy (parser);
             con = NULL;
             parser = NULL;
         }
@@ -392,7 +392,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
     if (con)
         connection_close (con);
     if (parser)
-        httpp_destroy (parser);
+        igloo_httpp_destroy (parser);
     return NULL;
 }
 

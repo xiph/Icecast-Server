@@ -167,7 +167,7 @@ static void auth_user_url_clear(auth_client *auth_user)
 
     free(au_url->all_headers);
     if (au_url->parser)
-        httpp_destroy(au_url->parser);
+        igloo_httpp_destroy(au_url->parser);
 
     free(au_url);
     auth_user->authbackend_userdata = NULL;
@@ -200,7 +200,7 @@ static void handle_returned_header__complete(auth_client *auth_user)
         ICECAST_LOG_DEBUG("Got final status: %#H", tmp);
     } else {
         ICECAST_LOG_DEBUG("Got non-final status: %#H", tmp);
-        httpp_destroy(au_url->parser);
+        igloo_httpp_destroy(au_url->parser);
         au_url->parser = NULL;
         au_url->all_headers_len = 0;
         return;

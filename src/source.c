@@ -1383,7 +1383,7 @@ static void *source_fallback_file (void *arg)
         if (connection_complete_source (source, 0) < 0)
             break;
         source_client_thread (source);
-        httpp_destroy (parser);
+        igloo_httpp_destroy (parser);
     } while (0);
     if (file)
         fclose (file);

@@ -250,7 +250,7 @@ void client_destroy(client_t *client)
     if (client->con)
         connection_close(client->con);
     if (client->parser)
-        httpp_destroy(client->parser);
+        igloo_httpp_destroy(client->parser);
     if (client->encoding)
         igloo_httpp_encoding_release(client->encoding);
 

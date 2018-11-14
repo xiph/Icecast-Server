@@ -1153,7 +1153,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
         node->shoutcast = 0;
         return;
     } else {
-        httpp_destroy(parser);
+        igloo_httpp_destroy(parser);
         client_destroy(client);
     }
     free(http_compliant);
