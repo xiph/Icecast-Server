@@ -171,9 +171,7 @@ static inline void client_reuseconnection(client_t *client) {
     reuse = client->reuse;
 
     if (reuse == ICECAST_REUSE_UPGRADETLS) {
-        http_parser_t *parser = client->parser;
-
-        httpp_deletevar(parser, "upgrade");
+        igloo_httpp_deletevar(client->parser, "upgrade");
         client->reuse = ICECAST_REUSE_CLOSE;
 
         /* release the buffer now, as the buffer could be on the source queue

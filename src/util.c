@@ -625,7 +625,7 @@ static inline void   _build_headers_loop(char **ret, size_t *len, const ice_conf
             break;
             case HTTP_HEADER_TYPE_CORS:
                 if (name && client && client->parser) {
-                    const char *origin = httpp_getvar(client->parser, "origin");
+                    const char *origin = igloo_httpp_getvar(client->parser, "origin");
                     if (origin) {
                         value = header->value;
                         if (!value) {

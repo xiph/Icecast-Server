@@ -471,7 +471,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
      * CORS actually knows about non-CORS requests and assigned the "null"
      * location to them.
      */
-    origin = httpp_getvar(client->parser, "origin");
+    origin = igloo_httpp_getvar(client->parser, "origin");
     if (!origin)
         origin = "null";
 
