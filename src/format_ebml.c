@@ -7,7 +7,7 @@
  *
  * Copyright 2012,      David Richards, Mozilla Foundation,
  *                      and others (see AUTHORS for details).
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* format_ebml.c
