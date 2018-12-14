@@ -1104,7 +1104,7 @@ static void _parse_root(xmlDocPtr       doc,
                                         "legacy-global-source",
                                         AUTH_TYPE_STATIC, "source",
                                         source_password, NULL,
-                                        "source,put,get,delete", 0, "*");
+                                        "source,put,get,delete,post", 0, "*");
             }
         } else {
             ICECAST_LOG_ERROR("Can not find nor create default mount, but "
@@ -1589,7 +1589,7 @@ static void _parse_mount(xmlDocPtr      doc,
         auth_stack_t *old_style = NULL;
         __append_old_style_auth(&old_style, "legacy-mount-source",
             AUTH_TYPE_STATIC, username ? username : "source", password, NULL,
-            "source,put,get", 0, "*");
+            "source,put,get,delete,post", 0, "*");
         if (authstack) {
             auth_stack_append(old_style, authstack);
             auth_stack_release(authstack);
