@@ -564,6 +564,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
 
         client_set_queue(client, NULL);
         client->refbuf = refbuf_new(buf_len);
+        client->reuse = ICECAST_REUSE_KEEPALIVE;
 
         ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                 0, status, NULL,

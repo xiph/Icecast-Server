@@ -385,6 +385,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         if (full_len < 4096)
             full_len = 4096;
         refbuf = refbuf_new (full_len);
+        client->reuse = ICECAST_REUSE_KEEPALIVE;
 
         if (string == NULL)
             string = xmlCharStrdup ("");
