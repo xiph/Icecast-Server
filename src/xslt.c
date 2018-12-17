@@ -356,19 +356,19 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
     if (cur->encoding)
        charset = (char *)cur->encoding;
 
-    if (cur->mediaType)
+    if (cur->mediaType) {
         mediatype = (char *)cur->mediaType;
-    else
-    {
+    } else {
         /* check method for the default, a missing method assumes xml */
-        if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
+        if (cur->method && xmlStrcmp(cur->method, XMLSTR("html")) == 0) {
             mediatype = "text/html";
-        else
-            if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
-                mediatype = "text/plain";
-            else
-                mediatype = "text/xml";
+        } else if (cur->method && xmlStrcmp(cur->method, XMLSTR("text")) == 0) {
+            mediatype = "text/plain";
+        } else {
+            mediatype = "text/xml";
+        }
     }
+
     if (problem == 0)
     {
         ssize_t ret;
