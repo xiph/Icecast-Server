@@ -116,6 +116,16 @@ void client_complete(client_t *client)
     int have = 0;
 
     if (!have) {
+        header = httpp_getvar(client->parser, "content-length");
+        if (header) {
+            if (sscanf(header, "%llu", &scannumber) == 1) {
+                client->request_body_length = scannumber;
+                have = 1;
+            }
+        }
+    }
+
+    if (!have) {
         if (client->parser->req_type == httpp_req_source) {
             client->request_body_length = -1; /* streaming */
             have = 1;
@@ -127,16 +137,6 @@ void client_complete(client_t *client)
         if (header) {
             if (strcasecmp(header, "identity") != 0) {
                 client->request_body_length = -1; /* streaming */
-                have = 1;
-            }
-        }
-    }
-
-    if (!have) {
-        header = httpp_getvar(client->parser, "content-length");
-        if (header) {
-            if (sscanf(header, "%llu", &scannumber) == 1) {
-                client->request_body_length = scannumber;
                 have = 1;
             }
         }
