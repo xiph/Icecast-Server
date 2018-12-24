@@ -792,7 +792,7 @@ static int client_eof(client_t *client)
     if (!client->con)
         return 0;
 
-    if (client->con->tls && tls_got_shutdown(client->con->tls) > 1)
+    if (client->con->tls && tls_got_shutdown(client->con->tls) > 0)
         client->con->error = 1;
 
     if (client->con->error)
