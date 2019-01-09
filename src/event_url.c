@@ -131,7 +131,7 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
             } else if (strcmp(options->name, "password") == 0) {
                 password = options->value;
             } else if (strcmp(options->name, "action") == 0) {
-                free(self->url);
+                free(self->action);
                 self->action = NULL;
                 if (options->value)
                     self->action = strdup(options->value);
