@@ -274,6 +274,15 @@ AS_IF([test "$with_default_config" != "no"], [
   
 ])
 
+AC_ARG_ENABLE([devel-logging],
+  AS_HELP_STRING([--enable-devel-logging],
+    [enable development logging (default: disabled)])
+)
+
+AS_IF([test "x$enable_devel_logging" == "xyes"], [
+  AC_DEFINE([DEVEL_LOGGING], 1, [Define to enable development logging])
+], [enable_devel_logging="no"])
+
 dnl Make substitutions
 AC_SUBST(XIPH_LIBS)
 AC_SUBST(XIPH_CPPFLAGS)
@@ -316,4 +325,6 @@ Format/Codec support:
 
 Features:
   YP support   : ${enable_yp}
-  Client tests : ${enable_client_tests}"])
+  Client tests : ${enable_client_tests}
+
+Development logging: ${enable_devel_logging}"])
