@@ -131,6 +131,28 @@
 #define MIMETYPESFILE                   ".\\mime.types"
 #endif
 
+/* Legacy values. */
+#define CONFIG_LEGACY_SOURCE_NAME_GLOBAL    "legacy-global-source"
+#define CONFIG_LEGACY_SOURCE_NAME_MOUNT     "legacy-mount-source"
+#define CONFIG_LEGACY_SOURCE_METHODS        "source,put,get,delete,post"
+#define CONFIG_LEGACY_SOURCE_ALLOW_WEB      0
+#define CONFIG_LEGACY_SOURCE_ALLOW_ADMIN    "*"
+
+#define CONFIG_LEGACY_ADMIN_NAME            "legacy-admin"
+#define CONFIG_LEGACY_ADMIN_METHODS         "get,post,head,stats,options,delete"
+#define CONFIG_LEGACY_ADMIN_ALLOW_WEB       1
+#define CONFIG_LEGACY_ADMIN_ALLOW_ADMIN     "*"
+
+#define CONFIG_LEGACY_RELAY_NAME            "legacy-relay"
+#define CONFIG_LEGACY_RELAY_METHODS         "get"
+#define CONFIG_LEGACY_RELAY_ALLOW_WEB       1
+#define CONFIG_LEGACY_RELAY_ALLOW_ADMIN     "streamlist.txt"
+
+#define CONFIG_LEGACY_ANONYMOUS_NAME        "anonymous"
+#define CONFIG_LEGACY_ANONYMOUS_METHODS     "get,post,head,options"
+#define CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB   1
+#define CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN NULL
+
 static ice_config_t _current_configuration;
 static ice_config_locks _locks;
 
@@ -1101,10 +1123,10 @@ static void _parse_root(xmlDocPtr       doc,
         if (mount) {
             if (!mount->authstack) {
                 __append_old_style_auth(&mount->authstack,
-                                        "legacy-global-source",
+                                        CONFIG_LEGACY_SOURCE_NAME_GLOBAL,
                                         AUTH_TYPE_STATIC, "source",
                                         source_password, NULL,
-                                        "source,put,get,delete,post", 0, "*");
+                                        CONFIG_LEGACY_SOURCE_METHODS, CONFIG_LEGACY_SOURCE_ALLOW_WEB, CONFIG_LEGACY_SOURCE_ALLOW_ADMIN);
             }
         } else {
             ICECAST_LOG_ERROR("Can not find nor create default mount, but "
@@ -1260,7 +1282,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
          }
 
          __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS,
-             NULL, NULL, "get,head,post,options", NULL, 0, NULL);
+             NULL, NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, 0, NULL);
      } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
          /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemen take care and watch your children! */
          /* Stuff that was of help:
@@ -1352,10 +1374,10 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
              headers, header_prefix);
          if (listener_add)
              __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-                 NULL, "get,put,head,options", NULL, 0, NULL);
+                 NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, 0, NULL);
          if (stream_auth)
              __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-                 NULL, "source,put", NULL, 0, NULL);
+                 NULL, CONFIG_LEGACY_SOURCE_METHODS, NULL, 0, NULL);
 
          if (mount_add)
              xmlFree(mount_add);
@@ -1587,9 +1609,9 @@ static void _parse_mount(xmlDocPtr      doc,
 
     if (password) {
         auth_stack_t *old_style = NULL;
-        __append_old_style_auth(&old_style, "legacy-mount-source",
+        __append_old_style_auth(&old_style, CONFIG_LEGACY_SOURCE_NAME_MOUNT,
             AUTH_TYPE_STATIC, username ? username : "source", password, NULL,
-            "source,put,get,delete,post", 0, "*");
+            CONFIG_LEGACY_SOURCE_METHODS, CONFIG_LEGACY_SOURCE_ALLOW_WEB, CONFIG_LEGACY_SOURCE_ALLOW_ADMIN);
         if (authstack) {
             auth_stack_append(old_style, authstack);
             auth_stack_release(authstack);
@@ -1992,12 +2014,12 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     } while ((node = node->next));
 
     if (admin_password && admin_username)
-        __append_old_style_auth(&old_style, "legacy-admin", AUTH_TYPE_STATIC,
-            admin_username, admin_password, NULL, "get,post,head,stats,options,delete", 1, "*");
+        __append_old_style_auth(&old_style, CONFIG_LEGACY_ADMIN_NAME, AUTH_TYPE_STATIC,
+            admin_username, admin_password, NULL, CONFIG_LEGACY_ADMIN_METHODS, CONFIG_LEGACY_ADMIN_ALLOW_WEB, CONFIG_LEGACY_ADMIN_ALLOW_ADMIN);
 
     if (relay_password && relay_username)
-        __append_old_style_auth(&old_style, "legacy-relay", AUTH_TYPE_STATIC,
-            relay_username, relay_password, NULL, "get", 1, "streamlist.txt");
+        __append_old_style_auth(&old_style, CONFIG_LEGACY_RELAY_NAME, AUTH_TYPE_STATIC,
+            relay_username, relay_password, NULL, CONFIG_LEGACY_RELAY_METHODS, CONFIG_LEGACY_RELAY_ALLOW_WEB, CONFIG_LEGACY_RELAY_ALLOW_ADMIN);
 
     if (admin_password)
         xmlFree(admin_password);
@@ -2016,8 +2038,8 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     }
 
     /* default unauthed anonymous account */
-    __append_old_style_auth(&old_style, "anonymous", AUTH_TYPE_ANONYMOUS,
-        NULL, NULL, NULL, "get,post,head,options", 1, NULL);
+    __append_old_style_auth(&old_style, CONFIG_LEGACY_ANONYMOUS_NAME, AUTH_TYPE_ANONYMOUS,
+        NULL, NULL, NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB, CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN);
     if (!old_style)
         ICECAST_LOG_ERROR("BAD. old_style=NULL");
 
