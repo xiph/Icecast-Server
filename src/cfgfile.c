@@ -144,7 +144,7 @@
 #define CONFIG_LEGACY_ADMIN_ALLOW_ADMIN     "*"
 
 #define CONFIG_LEGACY_RELAY_NAME            "legacy-relay"
-#define CONFIG_LEGACY_RELAY_METHODS         "get"
+#define CONFIG_LEGACY_RELAY_METHODS         "get,options"
 #define CONFIG_LEGACY_RELAY_ALLOW_WEB       1
 #define CONFIG_LEGACY_RELAY_ALLOW_ADMIN     "streamlist.txt"
 
