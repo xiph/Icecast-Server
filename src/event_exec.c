@@ -275,10 +275,7 @@ int event_get_exec(event_registration_t *er, config_options_t *options) {
                  * <option name="default_arguments" value="..." /> (for values see near top of documment)
                  */
                 if (strcmp(cur->name, "executable") == 0) {
-                    free(self->executable);
-                    self->executable = NULL;
-                    if (cur->value)
-                        self->executable = strdup(cur->value);
+                    util_replace_string(&(self->executable), cur->value);
                 } else if (strcmp(cur->name, "default_arguments") == 0) {
                     self->argvtype = __str2argvtype(cur->value);
                 } else {

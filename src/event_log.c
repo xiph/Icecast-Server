@@ -64,10 +64,7 @@ int event_get_log(event_registration_t *er, config_options_t *options) {
              * <option name="level" value="..." />
              */
             if (strcmp(options->name, "prefix") == 0) {
-                free(self->prefix);
-                self->prefix = NULL;
-                if (options->value)
-                    self->prefix = strdup(options->value);
+                util_replace_string(&(self->prefix), options->value);
             } else if (strcmp(options->name, "level") == 0) {
                 self->level = ICECAST_LOGLEVEL_INFO;
                 if (options->value)

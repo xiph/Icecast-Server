@@ -122,19 +122,13 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
              * <option name="action" value="..." />
              */
             if (strcmp(options->name, "url") == 0) {
-                free(self->url);
-                self->url = NULL;
-                if (options->value)
-                    self->url = strdup(options->value);
+                util_replace_string(&(self->url), options->value);
             } else if (strcmp(options->name, "username") == 0) {
                 username = options->value;
             } else if (strcmp(options->name, "password") == 0) {
                 password = options->value;
             } else if (strcmp(options->name, "action") == 0) {
-                free(self->action);
-                self->action = NULL;
-                if (options->value)
-                    self->action = strdup(options->value);
+                util_replace_string(&(self->action), options->value);
             } else {
                 ICECAST_LOG_ERROR("Unknown <option> tag with name %s.", options->name);
             }
