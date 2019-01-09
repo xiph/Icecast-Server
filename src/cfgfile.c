@@ -134,7 +134,7 @@
 /* Legacy values. */
 #define CONFIG_LEGACY_SOURCE_NAME_GLOBAL    "legacy-global-source"
 #define CONFIG_LEGACY_SOURCE_NAME_MOUNT     "legacy-mount-source"
-#define CONFIG_LEGACY_SOURCE_METHODS        "source,put,get,delete,post"
+#define CONFIG_LEGACY_SOURCE_METHODS        "source,put,get,delete,post,options"
 #define CONFIG_LEGACY_SOURCE_ALLOW_WEB      0
 #define CONFIG_LEGACY_SOURCE_ALLOW_ADMIN    "*"
 
