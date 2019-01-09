@@ -358,7 +358,7 @@ static void __append_old_style_auth(auth_stack_t       **stack,
                                     const char          *type,
                                     const char          *username,
                                     const char          *password,
-                                    const char          *method,
+                                    const char          *match_method,
                                     const char          *allow_method,
                                     int                  allow_web,
                                     const char          *allow_admin)
@@ -381,8 +381,8 @@ static void __append_old_style_auth(auth_stack_t       **stack,
     if (name)
         xmlSetProp(role, XMLSTR("name"), XMLSTR(name));
 
-    if (method)
-        xmlSetProp(role, XMLSTR("method"), XMLSTR(method));
+    if (match_method)
+        xmlSetProp(role, XMLSTR("match-method"), XMLSTR(match_method));
 
     if (allow_web) {
         xmlSetProp(role, XMLSTR("allow-web"), XMLSTR("*"));
