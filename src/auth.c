@@ -164,7 +164,7 @@ static void queue_auth_client (auth_client *auth_user)
         return;
     }
     auth = auth_user->client->auth;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", auth->mount, (int)auth->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", auth->mount, (int)auth->refcount);
     if (auth->immediate) {
         __handle_auth_client(auth, auth_user);
     } else {
@@ -189,7 +189,7 @@ void auth_release (auth_t *authenticator) {
 
     thread_mutex_lock(&authenticator->lock);
     authenticator->refcount--;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
     if (authenticator->refcount)
     {
         thread_mutex_unlock(&authenticator->lock);
@@ -235,7 +235,7 @@ void    auth_addref (auth_t *authenticator) {
 
     thread_mutex_lock (&authenticator->lock);
     authenticator->refcount++;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
     thread_mutex_unlock (&authenticator->lock);
 }
 
@@ -418,7 +418,7 @@ static void *auth_run_thread (void *arg)
                 thread_mutex_unlock (&auth->lock);
                 continue;
             }
-            ICECAST_LOG_DEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
+            ICECAST_LOG_DDEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
             auth->head = auth_user->next;
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
@@ -447,7 +447,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     const char *origin;
     size_t i;
 
-    ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
+    ICECAST_LOG_DDEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
 
     /* TODO: replace that magic number */
     if (auth->pending_count > 100) {
@@ -525,7 +525,7 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     auth_user->on_no_match = on_no_match;
     auth_user->on_result = on_result;
     auth_user->userdata = userdata;
-    ICECAST_LOG_DEBUG("adding client %p for authentication on %p", client, auth);
+    ICECAST_LOG_DDEBUG("adding client %p for authentication on %p", client, auth);
     queue_auth_client(auth_user);
 }
 
@@ -569,7 +569,7 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
     }
     do
     {
-        ICECAST_LOG_DEBUG("type is %s", auth->type);
+        ICECAST_LOG_DDEBUG("type is %s", auth->type);
 
         if (strcmp(auth->type, AUTH_TYPE_URL) == 0) {
 #ifdef HAVE_CURL

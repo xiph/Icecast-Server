@@ -191,7 +191,7 @@ void fastevent_emit(fastevent_type_t type, fastevent_flag_t flags, fastevent_dat
     va_list ap, apx;
     size_t i;
 
-    ICECAST_LOG_DEBUG("event: type=%i, flags=%i, datatype=%i, ...", (int)type, (int)flags, (int)datatype);
+    ICECAST_LOG_DDEBUG("event: type=%i, flags=%i, datatype=%i, ...", (int)type, (int)flags, (int)datatype);
 
     thread_rwlock_rlock(&fastevent_lock);
     row = __get_row(type);

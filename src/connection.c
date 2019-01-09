@@ -585,9 +585,9 @@ static void process_request_body_queue (void)
     time_t timeout;
     size_t body_size_limit;
 
-    ICECAST_LOG_DEBUG("Processing body queue.");
+    ICECAST_LOG_DDEBUG("Processing body queue.");
 
-    ICECAST_LOG_DEBUG("_body_queue=%p, &_body_queue=%p, _body_queue_tail=%p", _body_queue, &_body_queue, _body_queue_tail);
+    ICECAST_LOG_DDEBUG("_body_queue=%p, &_body_queue=%p, _body_queue_tail=%p", _body_queue, &_body_queue, _body_queue_tail);
 
     config = config_get_config();
     timeout = time(NULL) - config->body_timeout;
