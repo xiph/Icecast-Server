@@ -132,24 +132,26 @@
 #endif
 
 /* Legacy values. */
+#define CONFIG_LEGACY_ALL_METHODS           "get,options"
+
 #define CONFIG_LEGACY_SOURCE_NAME_GLOBAL    "legacy-global-source"
 #define CONFIG_LEGACY_SOURCE_NAME_MOUNT     "legacy-mount-source"
-#define CONFIG_LEGACY_SOURCE_METHODS        "source,put,get,delete,post,options"
+#define CONFIG_LEGACY_SOURCE_METHODS        CONFIG_LEGACY_ALL_METHODS ",post,source,put,delete"
 #define CONFIG_LEGACY_SOURCE_ALLOW_WEB      0
 #define CONFIG_LEGACY_SOURCE_ALLOW_ADMIN    "*"
 
 #define CONFIG_LEGACY_ADMIN_NAME            "legacy-admin"
-#define CONFIG_LEGACY_ADMIN_METHODS         "get,post,head,stats,options,delete"
+#define CONFIG_LEGACY_ADMIN_METHODS         CONFIG_LEGACY_ALL_METHODS ",post,head,stats,delete"
 #define CONFIG_LEGACY_ADMIN_ALLOW_WEB       1
 #define CONFIG_LEGACY_ADMIN_ALLOW_ADMIN     "*"
 
 #define CONFIG_LEGACY_RELAY_NAME            "legacy-relay"
-#define CONFIG_LEGACY_RELAY_METHODS         "get,options"
+#define CONFIG_LEGACY_RELAY_METHODS         CONFIG_LEGACY_ALL_METHODS
 #define CONFIG_LEGACY_RELAY_ALLOW_WEB       1
 #define CONFIG_LEGACY_RELAY_ALLOW_ADMIN     "streamlist.txt"
 
 #define CONFIG_LEGACY_ANONYMOUS_NAME        "anonymous"
-#define CONFIG_LEGACY_ANONYMOUS_METHODS     "get,post,head,options"
+#define CONFIG_LEGACY_ANONYMOUS_METHODS     CONFIG_LEGACY_ALL_METHODS ",post,head"
 #define CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB   1
 #define CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN NULL
 
