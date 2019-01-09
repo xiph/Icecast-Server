@@ -834,7 +834,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
         for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
             auth->filter_method[i] = AUTH_MATCHTYPE_NOMATCH;
-	method_inited = 1;
+        method_inited = 1;
 
         while (cur) {
             httpp_request_type_e idx;
