@@ -985,7 +985,7 @@ int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action,
     if (auth->permission_alter[action] != AUTH_MATCHTYPE_MATCH)
         return -1;
 
-    if (replace_string(&(auth_user->alter_client_arg), arg) != 0)
+    if (util_replace_string(&(auth_user->alter_client_arg), arg) != 0)
         return -1;
 
     auth_user->alter_client_action = action;

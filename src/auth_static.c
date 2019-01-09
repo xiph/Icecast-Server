@@ -126,7 +126,7 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
                 return -1;
             }
         } else if (strcmp(options->name, "argument") == 0) {
-            replace_string(&(auth_info->arg), options->value);
+            util_replace_string(&(auth_info->arg), options->value);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }

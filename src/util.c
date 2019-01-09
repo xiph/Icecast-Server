@@ -1490,7 +1490,7 @@ int get_line(FILE *file, char *buf, size_t siz)
     return 0;
 }
 
-int replace_string(char **dst, const char *src)
+int util_replace_string(char **dst, const char *src)
 {
     char *n;
 

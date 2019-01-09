@@ -632,40 +632,40 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
 
     while(options) {
         if(strcmp(options->name, "username") == 0) {
-            replace_string(&(url_info->username), options->value);
+            util_replace_string(&(url_info->username), options->value);
         } else if(strcmp(options->name, "password") == 0) {
-            replace_string(&(url_info->password), options->value);
+            util_replace_string(&(url_info->password), options->value);
         } else if(strcmp(options->name, "headers") == 0) {
-            replace_string(&(url_info->pass_headers), options->value);
+            util_replace_string(&(url_info->pass_headers), options->value);
         } else if(strcmp(options->name, "header_prefix") == 0) {
-            replace_string(&(url_info->prefix_headers), options->value);
+            util_replace_string(&(url_info->prefix_headers), options->value);
         } else if(strcmp(options->name, "client_add") == 0) {
-            replace_string(&(url_info->addurl), options->value);
+            util_replace_string(&(url_info->addurl), options->value);
         } else if(strcmp(options->name, "client_remove") == 0) {
             authenticator->release_client = url_remove_client;
-            replace_string(&(url_info->removeurl), options->value);
+            util_replace_string(&(url_info->removeurl), options->value);
         } else if(strcmp(options->name, "action_add") == 0) {
             addaction = options->value;
         } else if(strcmp(options->name, "action_remove") == 0) {
             removeaction = options->value;
         } else if(strcmp(options->name, "auth_header") == 0) {
-            replace_string(&(url_info->auth_header), options->value);
+            util_replace_string(&(url_info->auth_header), options->value);
         } else if (strcmp(options->name, "timelimit_header") == 0) {
-            replace_string(&(url_info->timelimit_header), options->value);
+            util_replace_string(&(url_info->timelimit_header), options->value);
         } else if (strcmp(options->name, "header_auth") == 0) {
-            replace_string(&(url_info->header_auth), options->value);
+            util_replace_string(&(url_info->header_auth), options->value);
             util_strtolower(url_info->header_message);
         } else if (strcmp(options->name, "header_timelimit") == 0) {
-            replace_string(&(url_info->header_timelimit), options->value);
+            util_replace_string(&(url_info->header_timelimit), options->value);
             util_strtolower(url_info->header_message);
         } else if (strcmp(options->name, "header_message") == 0) {
-            replace_string(&(url_info->header_message), options->value);
+            util_replace_string(&(url_info->header_message), options->value);
             util_strtolower(url_info->header_message);
         } else if (strcmp(options->name, "header_alter_action") == 0) {
-            replace_string(&(url_info->header_alter_action), options->value);
+            util_replace_string(&(url_info->header_alter_action), options->value);
             util_strtolower(url_info->header_alter_action);
         } else if (strcmp(options->name, "header_alter_argument") == 0) {
-            replace_string(&(url_info->header_alter_argument), options->value);
+            util_replace_string(&(url_info->header_alter_argument), options->value);
             util_strtolower(url_info->header_alter_argument);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
