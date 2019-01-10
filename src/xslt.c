@@ -301,11 +301,11 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
 
     /* Get the actual xmlDoc */
     if (final_URI) {
-        ICECAST_LOG_DEBUG("Calling xslt_loader() for \"%s\" (was: \"%s\").", final_URI, URI);
+        ICECAST_LOG_DDEBUG("Calling xslt_loader() for \"%s\" (was: \"%s\").", final_URI, URI);
         ret = xslt_loader(final_URI, dict, options, ctxt, type);
         xmlFree(final_URI);
     } else {
-        ICECAST_LOG_DEBUG("Calling xslt_loader() for \"%s\".", URI);
+        ICECAST_LOG_DDEBUG("Calling xslt_loader() for \"%s\".", URI);
         ret = xslt_loader(URI, dict, options, ctxt, type);
     }
     return ret;

@@ -970,14 +970,14 @@ const char *util_http_select_best(const char *input, const char *first, ...)
         return first;
     }
 
-    ICECAST_LOG_DEBUG("--- DUMP ---");
+    ICECAST_LOG_DDEBUG("--- DUMP ---");
     for (i = 0; i < kv->kvlen; i++) {
-        ICECAST_LOG_DEBUG("kv[%zu] = {.key='%H', .value='%H'}", i, kv->kv[i].key, kv->kv[i].value);
+        ICECAST_LOG_DDEBUG("kv[%zu] = {.key='%H', .value='%H'}", i, kv->kv[i].key, kv->kv[i].value);
     }
     for (i = 0; i < kv->indexlen; i++) {
-        ICECAST_LOG_DEBUG("index[%zu] = %zu", i, kv->index[i]);
+        ICECAST_LOG_DDEBUG("index[%zu] = %zu", i, kv->index[i]);
     }
-    ICECAST_LOG_DEBUG("--- END OF DUMP ---");
+    ICECAST_LOG_DDEBUG("--- END OF DUMP ---");
 
     for (h = 0; h < arglen; h++) {
         for (i = 0; i < kv->indexlen; i++) {
@@ -1224,7 +1224,7 @@ icecast_kva_t * util_parse_http_cn(const char *cnstr)
             case __TOKENIZER_RESULT_EQ:
             /* fall through */
             case __TOKENIZER_RESULT_SEMICOLON:
-                ICECAST_LOG_DEBUG("OK from tokenizer.");
+                ICECAST_LOG_DDEBUG("OK from tokenizer.");
                 /* no-op */
             break;
         }
@@ -1246,21 +1246,21 @@ icecast_kva_t * util_parse_http_cn(const char *cnstr)
 
         switch (res) {
             case __TOKENIZER_RESULT_EOS:
-                ICECAST_LOG_DEBUG("End of string from tokenizer.");
+                ICECAST_LOG_DDEBUG("End of string from tokenizer.");
                 eos = 1;
                 continue;
             break;
             case __TOKENIZER_RESULT_COMMA:
-                ICECAST_LOG_DEBUG("Comma from tokenizer.");
+                ICECAST_LOG_DDEBUG("Comma from tokenizer.");
                 ret->index[ret->indexlen++] = ret->kvlen;
                 ret->kvlen++;
             break;
             case __TOKENIZER_RESULT_EQ:
-                ICECAST_LOG_DEBUG("Eq from tokenizer.");
+                ICECAST_LOG_DDEBUG("Eq from tokenizer.");
                 /* no-op */
             break;
             case __TOKENIZER_RESULT_SEMICOLON:
-                ICECAST_LOG_DEBUG("Semicolon from tokenizer.");
+                ICECAST_LOG_DDEBUG("Semicolon from tokenizer.");
                 ret->kvlen++;
             break;
             default:
@@ -1269,7 +1269,7 @@ icecast_kva_t * util_parse_http_cn(const char *cnstr)
             break;
         }
 
-        ICECAST_LOG_DEBUG("next...");
+        ICECAST_LOG_DDEBUG("next...");
     }
 
     return ret;

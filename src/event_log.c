@@ -27,7 +27,8 @@ typedef struct event_log {
 static int event_log_emit(void *state, event_t *event) {
     event_log_t *self = state;
 
-    ICECAST_LOG(self->level, "%s%strigger=\"%s\" uri=\"%s\" "
+    ICECAST_LOG(self->level, ICECAST_LOGFLAG_NONE,
+                             "%s%strigger=\"%s\" uri=\"%s\" "
                              "connection_id=%lu connection_ip=\"%s\" connection_time=%lli "
                              "client_role=\"%s\" client_username=\"%s\" client_useragent=\"%s\" client_admin_command=%i",
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
