@@ -596,6 +596,10 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             if (auth_get_static_auth(auth, options) < 0)
                 return -1;
             break;
+        } else if (strcmp(auth->type, AUTH_TYPE_ENFORCE_AUTH) == 0) {
+            if (auth_get_enforce_auth_auth(auth, options) < 0)
+                return -1;
+            break;
         }
 
         ICECAST_LOG_ERROR("Unrecognised authenticator type: \"%s\"", auth->type);
