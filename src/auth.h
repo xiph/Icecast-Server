@@ -34,6 +34,7 @@
 #define AUTH_TYPE_LEGACY_PASSWORD "legacy-password"
 #define AUTH_TYPE_URL             "url"
 #define AUTH_TYPE_HTPASSWD        "htpasswd"
+#define AUTH_TYPE_ENFORCE_AUTH    "enforce-auth"
 
 #define MAX_ADMIN_COMMANDS 32
 
@@ -170,6 +171,7 @@ int auth_get_anonymous_auth(auth_t *auth, config_options_t *options);
 int auth_get_static_auth(auth_t *auth, config_options_t *options);
 int auth_get_url_auth(auth_t *authenticator, config_options_t *options);
 int auth_get_htpasswd_auth(auth_t *auth, config_options_t *options);
+int auth_get_enforce_auth_auth(auth_t *auth, config_options_t *options);
 
 /* prototypes for auth.c */
 void auth_initialise(void);

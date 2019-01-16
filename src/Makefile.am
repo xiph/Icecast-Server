@@ -98,7 +98,8 @@ icecast_SOURCES = \
     auth.c \
     auth_htpasswd.c \
     auth_anonymous.c \
-    auth_static.c
+    auth_static.c \
+    auth_enforce_auth.c
 
 if HAVE_CURL
 icecast_SOURCES += \
