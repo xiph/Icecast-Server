@@ -12,7 +12,7 @@ build:
   before_script:
   - apk update
   - apk add musl-dev git make gcc automake autoconf libtool
-  - apk add curl-dev openssl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
+  - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
   # Required for tests
   #- apk add curl ffmpeg
   # Create user to run tests
