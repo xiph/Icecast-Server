@@ -80,12 +80,16 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
     ctx->refc = 1;
     ctx->ctx = SSL_CTX_new(SSLv23_server_method());
 
-    ssl_opts = SSL_CTX_get_options(ctx->ctx);
-    ssl_opts |= SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3; // Disable SSLv2 and SSLv3
+    ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3; // Disable SSLv2 and SSLv3
 #ifdef SSL_OP_NO_COMPRESSION
     ssl_opts |= SSL_OP_NO_COMPRESSION;             // Never use compression
 #endif
 
+    /* Even though this function is called set, it adds the
+     * flags to the already existing flags (possibly default
+     * flags already set by OpenSSL)!
+     * Calling SSL_CTX_get_options is not needed here, therefore.
+     */
     SSL_CTX_set_options(ctx->ctx, ssl_opts);
     do {
         if (SSL_CTX_use_certificate_chain_file(ctx->ctx, cert_file) <= 0) {
