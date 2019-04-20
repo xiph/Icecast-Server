@@ -68,7 +68,7 @@ void       tls_shutdown(void)
 tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *cipher_list)
 {
     tls_ctx_t *ctx;
-    long ssl_opts;
+    long ssl_opts = 0;
 
     if (!cert_file || !key_file || !cipher_list)
         return NULL;
@@ -78,9 +78,15 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
         return NULL;
 
     ctx->refc = 1;
-    ctx->ctx = SSL_CTX_new(SSLv23_server_method());
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ctx->ctx = SSL_CTX_new(SSLv23_server_method());
     ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3; // Disable SSLv2 and SSLv3
+#else
+    ctx->ctx = SSL_CTX_new(TLS_server_method());
+    SSL_CTX_set_min_proto_version(ctx->ctx, TLS1_VERSION);
+#endif
+
 #ifdef SSL_OP_NO_COMPRESSION
     ssl_opts |= SSL_OP_NO_COMPRESSION;             // Never use compression
 #endif
