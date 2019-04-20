@@ -61,8 +61,12 @@ void       tls_initialize(void)
     SSL_library_init(); /* initialize library */
 #endif
 }
+
 void       tls_shutdown(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ERR_free_strings();
+#endif
 }
 
 tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *cipher_list)
