@@ -56,8 +56,10 @@ struct tls_tag {
 
 void       tls_initialize(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_load_error_strings(); /* readable error messages */
     SSL_library_init(); /* initialize library */
+#endif
 }
 void       tls_shutdown(void)
 {
