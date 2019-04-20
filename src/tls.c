@@ -81,12 +81,12 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
     ctx->ctx = SSL_CTX_new(SSLv23_server_method());
 
     ssl_opts = SSL_CTX_get_options(ctx->ctx);
+    ssl_opts |= SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3; // Disable SSLv2 and SSLv3
 #ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options(ctx->ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
-#else
-    SSL_CTX_set_options(ctx->ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
+    ssl_opts |= SSL_OP_NO_COMPRESSION;             // Never use compression
 #endif
 
+    SSL_CTX_set_options(ctx->ctx, ssl_opts);
     do {
         if (SSL_CTX_use_certificate_chain_file(ctx->ctx, cert_file) <= 0) {
             ICECAST_LOG_WARN("Invalid cert file %s", cert_file);
