@@ -56,22 +56,23 @@ struct tls_tag {
 
 void       tls_initialize(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_load_error_strings(); /* readable error messages */
     SSL_library_init(); /* initialize library */
+#endif
 }
+
 void       tls_shutdown(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ERR_free_strings();
+#endif
 }
 
 tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *cipher_list)
 {
     tls_ctx_t *ctx;
-#if OPENSSL_VERSION_NUMBER < 0x1000114fL
-    SSL_METHOD *method;
-#else
-    const SSL_METHOD *method;
-#endif
-    long ssl_opts;
+    long ssl_opts = 0;
 
     if (!cert_file || !key_file || !cipher_list)
         return NULL;
@@ -80,18 +81,26 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
     if (!ctx)
         return NULL;
 
-    method = SSLv23_server_method();
-
     ctx->refc = 1;
-    ctx->ctx = SSL_CTX_new(method);
 
-    ssl_opts = SSL_CTX_get_options(ctx->ctx);
-#ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options(ctx->ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ctx->ctx = SSL_CTX_new(SSLv23_server_method());
+    ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3; // Disable SSLv2 and SSLv3
 #else
-    SSL_CTX_set_options(ctx->ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
+    ctx->ctx = SSL_CTX_new(TLS_server_method());
+    SSL_CTX_set_min_proto_version(ctx->ctx, TLS1_VERSION);
 #endif
 
+#ifdef SSL_OP_NO_COMPRESSION
+    ssl_opts |= SSL_OP_NO_COMPRESSION;             // Never use compression
+#endif
+
+    /* Even though this function is called set, it adds the
+     * flags to the already existing flags (possibly default
+     * flags already set by OpenSSL)!
+     * Calling SSL_CTX_get_options is not needed here, therefore.
+     */
+    SSL_CTX_set_options(ctx->ctx, ssl_opts);
     do {
         if (SSL_CTX_use_certificate_chain_file(ctx->ctx, cert_file) <= 0) {
             ICECAST_LOG_WARN("Invalid cert file %s", cert_file);
