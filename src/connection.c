@@ -836,7 +836,7 @@ static inline void source_startup(client_t *client)
             refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
             const char *expectcontinue;
             const char *transfer_encoding;
-            int status_to_send = 200;
+            int status_to_send = 0;
             ssize_t ret;
 
             transfer_encoding = httpp_getvar(source->parser, "transfer-encoding");
@@ -848,25 +848,33 @@ static inline void source_startup(client_t *client)
                 }
             }
 
-            /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
-            expectcontinue = httpp_getvar (source->parser, "expect");
+            if (source->parser && source->parser->req_type == httpp_req_source) {
+                status_to_send = 200;
+            } else {
+                /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
+                expectcontinue = httpp_getvar (source->parser, "expect");
 
-            if (expectcontinue != NULL) {
+                if (expectcontinue != NULL) {
 #ifdef HAVE_STRCASESTR
-                if (strcasestr (expectcontinue, "100-continue") != NULL)
+                    if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-                ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
-                if (strstr (expectcontinue, "100-continue") != NULL)
+                    ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
+                    if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
-                {
-                    status_to_send = 100;
+                    {
+                        status_to_send = 100;
+                    }
                 }
             }
 
             client->respcode = 200;
-            ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
-            snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
-            ok->len = strlen(ok->data);
+            if (status_to_send) {
+                ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
+                snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
+                ok->len = strlen(ok->data);
+            } else {
+                ok->len = 0;
+            }
             refbuf_release(client->refbuf);
             client->refbuf = ok;
             fserve_add_client_callback(client, source_client_callback, source);
