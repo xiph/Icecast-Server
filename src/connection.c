@@ -880,8 +880,12 @@ static inline void source_startup(client_t *client)
 /* only called for native icecast source clients */
 static void _handle_source_request(client_t *client)
 {
-    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s as role %s",
-        client->uri, client->con->ip, client->role);
+    const char *method = httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE);
+
+    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" using %s%H%s from %s as role %s",
+        client->uri,
+        ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : "<"),
+        client->con->ip, client->role);
 
     if (client->uri[0] != '/') {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
