@@ -887,6 +887,10 @@ static void _handle_source_request(client_t *client)
         ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : "<"),
         client->con->ip, client->role);
 
+    if (client->parser && client->parser->req_type == httpp_req_source) {
+        ICECAST_LOG_DEBUG("Source at mountpoint \"%s\" connected using deprecated SOURCE method.", client->uri);
+    }
+
     if (client->uri[0] != '/') {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
         client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNTPOINT_NOT_STARTING_WITH_SLASH);
