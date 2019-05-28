@@ -892,7 +892,7 @@ static void _handle_source_request(client_t *client)
 
     ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" using %s%H%s from %s as role %s",
         client->uri,
-        ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : "<"),
+        ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : ">"),
         client->con->ip, client->role);
 
     if (client->parser && client->parser->req_type == httpp_req_source) {
