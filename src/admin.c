@@ -1083,6 +1083,9 @@ static void command_metadata(client_t *client,
         /* updates are now done, let them be pushed into the stream */
         plugin->set_tag (plugin, NULL, NULL, NULL);
     } else {
+        ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
+            "on source that does not accept it at mountpoint %s", source->mount);
+
         xmlNewTextChild(node, NULL, XMLSTR("message"),
             XMLSTR("Mountpoint will not accept URL updates"));
         xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
@@ -1139,6 +1142,9 @@ static void command_shoutcast_metadata(client_t *client,
                 source->mount, value);
         html_success(client, "Metadata update successful");
     } else {
+        ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
+            "on source that does not accept it at mountpoint %s", source->mount);
+
         client_send_error_by_id(client, ICECAST_ERROR_ADMIN_MOUNT_NOT_ACCEPT_URL_UPDATES);
     }
 }
