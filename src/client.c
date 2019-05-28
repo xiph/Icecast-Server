@@ -762,7 +762,7 @@ ssize_t client_body_read(client_t *client, void *buf, size_t len)
 {
     ssize_t ret;
 
-    ICECAST_LOG_DEBUG("Reading from body (client=%p)", client);
+    ICECAST_LOG_DDEBUG("Reading from body (client=%p)", client);
 
     if (client->request_body_length != -1) {
         size_t left = (size_t)client->request_body_length - client->request_body_read;
@@ -809,17 +809,17 @@ int client_body_eof(client_t *client)
         return -1;
 
     if (client->request_body_length != -1 && client->request_body_read == (size_t)client->request_body_length) {
-        ICECAST_LOG_DEBUG("Reached given body length (client=%p)", client);
+        ICECAST_LOG_DDEBUG("Reached given body length (client=%p)", client);
         ret = 1;
     } else if (client->encoding) {
-        ICECAST_LOG_DEBUG("Looking for body EOF with encoding (client=%p)", client);
+        ICECAST_LOG_DDEBUG("Looking for body EOF with encoding (client=%p)", client);
         ret = httpp_encoding_eof(client->encoding, (int(*)(void*))client_eof, client);
     } else {
-        ICECAST_LOG_DEBUG("Looking for body EOF without encoding (client=%p)", client);
+        ICECAST_LOG_DDEBUG("Looking for body EOF without encoding (client=%p)", client);
         ret = client_eof(client);
     }
 
-    ICECAST_LOG_DEBUG("... result is: %i (client=%p)", ret, client);
+    ICECAST_LOG_DDEBUG("... result is: %i (client=%p)", ret, client);
     return ret;
 }
 
