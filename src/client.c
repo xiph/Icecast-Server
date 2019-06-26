@@ -104,6 +104,12 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
 
+    ICECAST_LOG_DEBUG("Client %p created on connection %p (connection ID: %llu, socket real: %p \"%H\", socket effective: %p \"%H\")",
+            client, con, (long long unsigned int)con->id,
+            con->listensocket_real, con->listensocket_real ? listensocket_get_listener(con->listensocket_real)->id : NULL,
+            con->listensocket_effective, con->listensocket_effective ? listensocket_get_listener(con->listensocket_effective)->id : NULL
+            );
+
     fastevent_emit(FASTEVENT_TYPE_CLIENT_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     return ret;

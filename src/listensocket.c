@@ -726,7 +726,7 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
         memmove(ip, ip+7, strlen(ip+7)+1);
     }
 
-    ICECAST_LOG_DEBUG("Client on socket \"%H\".", self->listener->id);
+    ICECAST_LOG_DEBUG("Client on socket %p \"%H\".", self, self->listener->id);
 
     if (self->listener->on_behalf_of) {
         ICECAST_LOG_DEBUG("This socket is acting on behalf of \"%H\"", self->listener->on_behalf_of);
