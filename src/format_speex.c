@@ -82,6 +82,9 @@ ogg_codec_t *initial_speex_page (format_plugin_t *plugin, ogg_page *page)
      * again for something else.
      */
     if (packet.bytes < 80) {
+        ICECAST_LOG_DDEBUG("Header too small for Speex, so skipping Speex test.");
+        ogg_stream_clear (&codec->os);
+        free (codec);
         return NULL;
     }
 
