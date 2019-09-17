@@ -464,10 +464,13 @@ static void process_request_queue (void)
             }
         }
 
-        if (len > 0) {
+        if (len > 0 || node->shoutcast > 1) {
             ssize_t stream_offset = -1;
             int pass_it = 1;
             char *ptr;
+
+            if (len < 0 && node->shoutcast > 1)
+                len = 0;
 
             /* handle \n, \r\n and nsvcap which for some strange reason has
              * EOL as \r\r\n */
