@@ -446,6 +446,8 @@ static void process_request_queue (void)
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
 
+        ICECAST_LOG_DDEBUG("Checking on client %p", client);
+
         if (client->con->tlsmode == ICECAST_TLSMODE_AUTO || client->con->tlsmode == ICECAST_TLSMODE_AUTO_NO_PLAIN) {
             if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
                 if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
@@ -500,6 +502,9 @@ static void process_request_queue (void)
                 }
                 pass_it = 0;
             } while (0);
+
+            ICECAST_LOG_DDEBUG("pass_it=%i, len=%i", pass_it, (int)len);
+            ICECAST_LOG_DDEBUG("Client %p has buffer: %H", client, client->refbuf->data);
 
             if (pass_it) {
                 if (stream_offset != -1) {
@@ -1106,9 +1111,13 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     client_t *client = node->client;
     ice_config_t *config;
 
+    ICECAST_LOG_DDEBUG("Client %p is a shoutcast client of stage %i", client, (int)node->shoutcast);
+
     if (node->shoutcast == 1)
     {
         char *ptr, *headers;
+
+        ICECAST_LOG_DDEBUG("Client %p has buffer: %H", client, client->refbuf->data);
 
         /* Get rid of trailing \r\n or \n after password */
         ptr = strstr(client->refbuf->data, "\r\r\n");
@@ -1142,6 +1151,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
         node->shoutcast = 2;
         /* we've checked the password, now send it back for reading headers */
         _add_request_queue(node);
+        ICECAST_LOG_DDEBUG("Client %p re-added to request queue", client);
         return;
     }
     /* actually make a copy as we are dropping the config lock */
