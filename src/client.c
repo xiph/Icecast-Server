@@ -75,6 +75,7 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
 {
     ice_config_t    *config;
     client_t        *client = (client_t *) calloc(1, sizeof(client_t));
+    const listener_t *listener_real, *listener_effective;
     int              ret    = -1;
 
     if (client == NULL)
@@ -104,11 +105,15 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
 
+    listener_real = listensocket_get_listener(con->listensocket_real);
+    listener_effective = listensocket_get_listener(con->listensocket_effective);
     ICECAST_LOG_DEBUG("Client %p created on connection %p (connection ID: %llu, socket real: %p \"%H\", socket effective: %p \"%H\")",
             client, con, (long long unsigned int)con->id,
-            con->listensocket_real, con->listensocket_real ? listensocket_get_listener(con->listensocket_real)->id : NULL,
-            con->listensocket_effective, con->listensocket_effective ? listensocket_get_listener(con->listensocket_effective)->id : NULL
+            con->listensocket_real, con->listensocket_real ? listener_real->id : NULL,
+            con->listensocket_effective, con->listensocket_effective ? listener_effective->id : NULL
             );
+    listensocket_release_listener(con->listensocket_effective);
+    listensocket_release_listener(con->listensocket_real);
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
@@ -983,6 +988,7 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
             port = listener->port;
             if (!client)
                 tlsmode = listener->tls;
+            listensocket_release_listener(listensocket);
         }
     }
 
