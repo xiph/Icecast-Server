@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* client.c
@@ -988,7 +988,6 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
             port = listener->port;
             if (!client)
                 tlsmode = listener->tls;
-            listensocket_release_listener(listensocket);
         }
     }
 

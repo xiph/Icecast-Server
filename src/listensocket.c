@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2018,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2018-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /**
@@ -494,8 +494,8 @@ static listensocket_t * listensocket_container_get_by_id(listensocket_container_
             listener = listensocket_get_listener(self->sock[i]);
             if (listener) {
                 if (listener->id != NULL && strcmp(listener->id, id) == 0) {
-                    listensocket_release_listener(self->sock[i]);
                     if (refobject_ref(self->sock[i]) == 0) {
+                        listensocket_release_listener(self->sock[i]);
                         return self->sock[i];
                     }
                 }
