@@ -87,8 +87,8 @@ static volatile event_listener_t *_event_listeners;
 
 
 static void *_stats_thread(void *arg);
-static int _compare_stats(void *a, void *b, void *arg);
-static int _compare_source_stats(void *a, void *b, void *arg);
+static int _compare_stats(void *arg, void *a, void *b);
+static int _compare_source_stats(void *arg, void *a, void *b);
 static int _free_stats(void *key);
 static int _free_source_stats(void *key);
 static void _add_event_to_queue(stats_event_t *event, event_queue_t *queue);
