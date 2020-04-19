@@ -402,17 +402,17 @@ char *util_normalise_uri(const char *uri) {
 
 char *util_bin_to_hex(unsigned char *data, int len)
 {
-    char *hex = malloc(len*2 + 1);
+    char *hexstr = malloc(len*2 + 1);
     int i;
 
     for (i = 0; i < len; i++) {
-        hex[i*2] = hexchars[(data[i]&0xf0) >> 4];
-        hex[i*2+1] = hexchars[data[i]&0x0f];
+        hexstr[i*2] = hexchars[(data[i]&0xf0) >> 4];
+        hexstr[i*2+1] = hexchars[data[i]&0x0f];
     }
 
-    hex[len*2] = 0;
+    hexstr[len*2] = 0;
 
-    return hex;
+    return hexstr;
 }
 
 /* This isn't efficient, but it doesn't need to be */
