@@ -1343,7 +1343,7 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
     }
 
     root = reportxml_get_root_node(ret);
-    if (!ret) {
+    if (!root) {
         refobject_unref(definition);
         refobject_unref(ret);
         ICECAST_LOG_ERROR("Can not get root node from report. BAD.");
