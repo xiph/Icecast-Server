@@ -924,7 +924,7 @@ static inline int __find_q_in_index(icecast_kva_t *kv, size_t idx)
     }
 
     for (; i <= last; i++) {
-        if (kv->kv[i].key && kv->kv[i].key && strcasecmp(kv->kv[i].key, "q") == 0) {
+        if (kv->kv[i].key && kv->kv[i].value && strcasecmp(kv->kv[i].key, "q") == 0) {
             return __parse_q(kv->kv[i].value);
         }
     }
