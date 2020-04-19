@@ -124,50 +124,41 @@ void client_complete(client_t *client)
 {
     const char *header;
     long long unsigned int scannumber;
-    int have = 0;
 
-    if (!have) {
+    do {
         header = httpp_getvar(client->parser, "content-length");
         if (header) {
             if (sscanf(header, "%llu", &scannumber) == 1) {
                 client->request_body_length = scannumber;
-                have = 1;
+                break;
             }
         }
-    }
 
-    if (!have) {
         if (client->parser->req_type == httpp_req_source) {
             client->request_body_length = -1; /* streaming */
-            have = 1;
+            break;
         }
-    }
 
-    if (!have) {
         header = httpp_getvar(client->parser, "transfer-encoding");
         if (header) {
             if (strcasecmp(header, "identity") != 0) {
                 client->request_body_length = -1; /* streaming */
-                have = 1;
+                break;
             }
         }
-    }
 
-    if (!have) {
         if (client->parser->req_type == httpp_req_put) {
             /* As we don't know yet, we asume this PUT is in streaming mode */
             client->request_body_length = -1; /* streaming */
-            have = 1;
+            break;
         }
-    }
 
-    if (!have) {
         if (client->parser->req_type == httpp_req_none) {
             /* We are a client. If the server did not tell us, we asume streaming. */
             client->request_body_length = -1; /* streaming */
-            have = 1;
+            break;
         }
-    }
+    } while (0);
 
     ICECAST_LOG_DEBUG("Client %p has request_body_length=%zi", client, client->request_body_length);
 }
