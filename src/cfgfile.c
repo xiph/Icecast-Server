@@ -1317,9 +1317,6 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
                      if (strcmp(name, "mount_add") == 0) {
                          mount_add = value;
                          value = NULL;
-                     } else if (strcmp(name, "mount_add") == 0) {
-                         mount_add = value;
-                         value = NULL;
                      } else if (strcmp(name, "mount_remove") == 0) {
                          mount_remove = value;
                          value = NULL;
