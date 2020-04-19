@@ -924,7 +924,7 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
 
         xmlDocSetRootElement(doc, node);
 
-        if (auth && auth->listuser) {
+        if (auth->listuser) {
             usersnode = xmlNewChild(rolenode, NULL, XMLSTR("users"), NULL);
             auth->listuser(auth, usersnode);
         }
