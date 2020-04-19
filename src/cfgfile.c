@@ -1810,6 +1810,7 @@ static void _parse_relay(xmlDocPtr      doc,
     relay_config_t **n          = realloc(configuration->relay, sizeof(*configuration->relay)*(configuration->relay_length + 1));
 
     if (!n) {
+        free(relay);
         ICECAST_LOG_ERROR("Can not allocate memory for additional relay.");
         return;
     }
