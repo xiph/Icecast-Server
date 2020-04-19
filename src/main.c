@@ -634,6 +634,12 @@ int main(int argc, char **argv)
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
 #endif
 
+    if (!_start_logging()) {
+        _fatal_error("FATAL: Could not start logging");
+        shutdown_subsystems();
+        return 1;
+    }
+
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */
 
@@ -651,12 +657,6 @@ int main(int argc, char **argv)
 
     /* setup default signal handlers */
     sighandler_initialize();
-
-    if (!_start_logging()) {
-        _fatal_error("FATAL: Could not start logging");
-        shutdown_subsystems();
-        return 1;
-    }
 
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
     ICECAST_LOG_INFO("Server's PID is %lli", (long long int)getpid());
