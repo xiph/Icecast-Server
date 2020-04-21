@@ -600,9 +600,16 @@ static ypdata_t *create_yp_entry (const char *mount)
         if (ret >= len) {
             // Buffer was too small, allocate a big enough one
             s = realloc (url, ret + 1);
-            if (s) url = s;
-            client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
+            if (!s) {
+                free(url);
+                break;
+            }
+            url = s;
+
+            ret = client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
         }
+        if (ret < 0 || ret >= len)
+            break;
 
         config = config_get_config();
         mountproxy = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
