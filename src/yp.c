@@ -572,7 +572,7 @@ static ypdata_t *create_yp_entry (const char *mount)
     do
     {
         unsigned len = 512;
-        int ret;
+        ssize_t ret;
         char *url;
         mount_proxy *mountproxy = NULL;
         ice_config_t *config;
@@ -595,15 +595,16 @@ static ypdata_t *create_yp_entry (const char *mount)
         url = malloc (len);
         if (url == NULL)
             break;
-        config = config_get_config();
-        ret = snprintf (url, len, "http://%s:%d%s", config->hostname, config->port, mount);
-        if (ret >= (signed)len)
-        {
-            s = realloc (url, ++ret);
+
+        ret = client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
+        if (ret >= len) {
+            // Buffer was too small, allocate a big enough one
+            s = realloc (url, ret + 1);
             if (s) url = s;
-            snprintf (url, ret, "http://%s:%d%s", config->hostname, config->port, mount);
+            client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
         }
 
+        config = config_get_config();
         mountproxy = config_find_mount (config, mount, MOUNT_TYPE_NORMAL);
         if (mountproxy && mountproxy->cluster_password)
             add_yp_info (yp, mountproxy->cluster_password, YP_CLUSTER_PASSWORD);
