@@ -566,7 +566,6 @@ static void yp_process_server (struct yp_server *server)
 static ypdata_t *create_yp_entry (const char *mount)
 {
     ypdata_t *yp;
-    char *s;
 
     yp = calloc (1, sizeof (ypdata_t));
     do
@@ -599,7 +598,7 @@ static ypdata_t *create_yp_entry (const char *mount)
         ret = client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
         if (ret >= len) {
             // Buffer was too small, allocate a big enough one
-            s = realloc (url, ret + 1);
+            char *s = realloc (url, ret + 1);
             if (!s) {
                 free(url);
                 break;
