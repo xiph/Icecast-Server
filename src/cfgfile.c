@@ -63,7 +63,6 @@
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
 #define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
 #define CONFIG_DEFAULT_FILESERVE        1
-#define CONFIG_DEFAULT_TOUCH_FREQ       5
 #define CONFIG_DEFAULT_HOSTNAME         "localhost"
 #define CONFIG_DEFAULT_PLAYLIST_LOG     NULL
 #define CONFIG_DEFAULT_ACCESS_LOG       "access.log"
@@ -867,8 +866,6 @@ static void _set_defaults(ice_config_t *configuration)
         ->shoutcast_user = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_USER);
     configuration
         ->fileserve  = CONFIG_DEFAULT_FILESERVE;
-    configuration
-        ->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
     configuration
         ->on_demand = 0;
     configuration

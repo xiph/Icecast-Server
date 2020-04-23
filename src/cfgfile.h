@@ -213,8 +213,6 @@ struct ice_config_tag {
 
     struct event_registration_tag *event;
 
-    int touch_interval;
-
     char *hostname;
     int sane_hostname;
     int port;

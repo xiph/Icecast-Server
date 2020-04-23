@@ -47,7 +47,6 @@ void _dump_config(ice_config_t *config)
     printf("threadpool_size = %d\n", config->threadpool_size);
     printf("client_timeout = %d\n", config->client_timeout);
     printf("source_password = %s\n", config->source_password);
-    printf("touch_interval = %d\n", config->touch_interval);
     printf("hostname = %s\n", config->hostname);
     printf("port = %d\n", config->port);
     printf("bind_address = %s\n", config->bind_address);
