@@ -160,7 +160,7 @@ static ice_config_locks _locks;
 static void _set_defaults(ice_config_t *c);
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
-static void _parse_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_oldstyle_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
@@ -1079,7 +1079,7 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("directory")) == 0) {
-            _parse_directory(doc, node->xmlChildrenNode, configuration);
+            _parse_oldstyle_directory(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("paths")) == 0) {
             _parse_paths(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("logging")) == 0) {
@@ -2033,9 +2033,9 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     configuration->authstack = old_style;
 }
 
-static void _parse_directory(xmlDocPtr      doc,
-                             xmlNodePtr     node,
-                             ice_config_t  *configuration)
+static void _parse_oldstyle_directory(xmlDocPtr      doc,
+                                      xmlNodePtr     node,
+                                      ice_config_t  *configuration)
 {
     if (configuration->num_yp_directories >= MAX_YP_DIRECTORIES) {
         ICECAST_LOG_ERROR("Maximum number of yp directories exceeded!");
