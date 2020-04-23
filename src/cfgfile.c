@@ -178,7 +178,6 @@ static void _parse_listen_socket(xmlDocPtr                  doc,
                                  xmlNodePtr                 node,
                                  ice_config_t              *c);
 
-static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_events(event_registration_t **events, xmlNodePtr node);
 
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
@@ -651,8 +650,6 @@ listener_t *config_clear_listener(listener_t *listener)
 
 void config_clear(ice_config_t *c)
 {
-    ice_config_dir_t    *dirnode,
-                        *nextdirnode;
     mount_proxy         *mount,
                         *nextmount;
     size_t              i;
@@ -708,13 +705,6 @@ void config_clear(ice_config_t *c)
 
     config_clear_resource(c->resources);
 
-    dirnode = c->dir_list;
-    while (dirnode) {
-        nextdirnode = dirnode->next;
-        xmlFree(dirnode->host);
-        free(dirnode);
-        dirnode = nextdirnode;
-    }
 #ifdef USE_YP
     for (i = 0; i < c->num_yp_directories; i++) {
         xmlFree(c->yp_url[i]);
@@ -881,8 +871,6 @@ static void _set_defaults(ice_config_t *configuration)
         ->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
     configuration
         ->on_demand = 0;
-    configuration
-        ->dir_list = NULL;
     configuration
         ->hostname = (char *) xmlCharStrdup(CONFIG_DEFAULT_HOSTNAME);
     configuration
@@ -2069,8 +2057,6 @@ static void _parse_directory(xmlDocPtr      doc,
                 (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
             __read_int(doc, node, &configuration->yp_url_timeout[configuration->num_yp_directories], "<yp-url-timeout> must not be empty.");
-        } else if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
-            _add_server(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
             __read_int(doc, node, &configuration->yp_touch_interval[configuration->num_yp_directories], "<touch-interval> must not be empty.");
         }
@@ -2414,51 +2400,6 @@ static void _parse_security(xmlDocPtr       doc,
            node = oldnode;
        }
    } while ((node = node->next));
-}
-
-static void _add_server(xmlDocPtr       doc,
-                        xmlNodePtr      node,
-                        ice_config_t   *configuration)
-{
-    ice_config_dir_t   *dirnode,
-                       *server;
-    int                 addnode;
-
-    server = (ice_config_dir_t *)malloc(sizeof(ice_config_dir_t));
-    server->touch_interval = configuration->touch_interval;
-    server->host = NULL;
-    addnode = 0;
-
-    do {
-        if (node == NULL)
-            break;
-        if (xmlIsBlankNode(node))
-            continue;
-
-        if (xmlStrcmp(node->name, XMLSTR("host")) == 0) {
-            server->host = (char *) xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-            addnode = 1;
-        } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(doc, node, &server->touch_interval, "<touch-interval> must not be empty.");
-        }
-        server->next = NULL;
-    } while ((node = node->next));
-
-    if (addnode) {
-        dirnode = configuration->dir_list;
-        if (dirnode == NULL) {
-            configuration->dir_list = server;
-        } else {
-            while (dirnode->next) dirnode = dirnode->next;
-            dirnode->next = server;
-        }
-
-        server = NULL;
-        addnode = 0;
-    } else {
-        free (server);
-    }
 }
 
 static void _parse_events(event_registration_t **events, xmlNodePtr node)

@@ -52,12 +52,6 @@ typedef struct ice_config_http_header_tag {
     struct ice_config_http_header_tag *next;
 } ice_config_http_header_t;
 
-typedef struct ice_config_dir_tag {
-    char *host;
-    int touch_interval;
-    struct ice_config_dir_tag *next;
-} ice_config_dir_t;
-
 struct _config_options {
     char *type;
     char *name;
@@ -220,7 +214,6 @@ struct ice_config_tag {
     struct event_registration_tag *event;
 
     int touch_interval;
-    ice_config_dir_t *dir_list;
 
     char *hostname;
     int sane_hostname;
