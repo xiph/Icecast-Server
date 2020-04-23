@@ -639,7 +639,7 @@ static void check_servers (void)
         if (server->remove)
         {
             struct yp_server *to_go = server;
-            ICECAST_LOG_DEBUG("YP server \"%s\"removed", server->url);
+            ICECAST_LOG_DEBUG("YP server \"%s\" removed", server->url);
             *server_p = server->next;
             server = server->next;
             destroy_yp_server(to_go);
