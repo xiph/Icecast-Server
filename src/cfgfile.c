@@ -631,6 +631,18 @@ static void config_clear_resource(resource_t *resource)
     }
 }
 
+static void config_clear_yp_directories(yp_directory_t *yp_dir)
+{
+    yp_directory_t *next_yp_dir;
+
+    while (yp_dir) {
+        next_yp_dir = yp_dir->next;
+        free(yp_dir->url);
+        free(yp_dir);
+        yp_dir = next_yp_dir;
+    }
+}
+
 listener_t *config_clear_listener(listener_t *listener)
 {
     listener_t *next = NULL;
@@ -705,9 +717,7 @@ void config_clear(ice_config_t *c)
     config_clear_resource(c->resources);
 
 #ifdef USE_YP
-    for (i = 0; i < c->num_yp_directories; i++) {
-        xmlFree(c->yp_url[i]);
-    }
+    config_clear_yp_directories(c->yp_directories);
 #endif
 
     config_clear_http_header(c->http_headers);
@@ -908,8 +918,6 @@ static void _set_defaults(ice_config_t *configuration)
         ->user = NULL;
     configuration
         ->group = NULL;
-    configuration
-        ->num_yp_directories = 0;
     /* default to a typical prebuffer size used by clients */
     configuration
         ->burst_size = CONFIG_DEFAULT_BURST_SIZE;
@@ -2037,10 +2045,15 @@ static void _parse_oldstyle_directory(xmlDocPtr      doc,
                                       xmlNodePtr     node,
                                       ice_config_t  *configuration)
 {
-    if (configuration->num_yp_directories >= MAX_YP_DIRECTORIES) {
-        ICECAST_LOG_ERROR("Maximum number of yp directories exceeded!");
+    yp_directory_t *yp_dir,
+                   *current, *last;
+
+    yp_dir = calloc(1, sizeof(*yp_dir));
+    if (yp_dir == NULL) {
+        ICECAST_LOG_ERROR("Can not allocate memory for YP directory entry.");
         return;
     }
+
     do {
         if (node == NULL)
             break;
@@ -2048,19 +2061,31 @@ static void _parse_oldstyle_directory(xmlDocPtr      doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("yp-url")) == 0) {
-            if (configuration->yp_url[configuration->num_yp_directories])
-                xmlFree(configuration->yp_url[configuration->num_yp_directories]);
-            configuration->yp_url[configuration->num_yp_directories] =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (yp_dir->url)
+                xmlFree(yp_dir->url);
+            yp_dir->url = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
-            __read_int(doc, node, &configuration->yp_url_timeout[configuration->num_yp_directories], "<yp-url-timeout> must not be empty.");
+            __read_int(doc, node, &yp_dir->timeout, "<yp-url-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(doc, node, &configuration->yp_touch_interval[configuration->num_yp_directories], "<touch-interval> must not be empty.");
+            __read_int(doc, node, &yp_dir->touch_interval, "<touch-interval> must not be empty.");
         }
     } while ((node = node->next));
-    if (configuration->yp_url[configuration->num_yp_directories] == NULL)
+
+    if (yp_dir->url == NULL)
         return;
-    configuration->num_yp_directories++;
+
+    /* Append YP directory entry to the global list */
+    current = configuration->yp_directories;
+    last = NULL;
+    while (current) {
+        last = current;
+        current = current->next;
+    }
+    if (last) {
+        last->next = yp_dir;
+    } else {
+        configuration->yp_directories = yp_dir;
+    }
 }
 
 static void _parse_resource(xmlDocPtr      doc,

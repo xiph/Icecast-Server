@@ -217,7 +217,6 @@ static ypdata_t *find_yp_mount (ypdata_t *mounts, const char *mount)
 
 void yp_recheck_config (ice_config_t *config)
 {
-    size_t i;
     struct yp_server *server;
 
     ICECAST_LOG_DEBUG("Updating YP configuration");
@@ -234,9 +233,9 @@ void yp_recheck_config (ice_config_t *config)
     server_version = strdup (config->server_id);
     /* for each yp url in config, check to see if one exists
        if not, then add it. */
-    for (i=0 ; i < config->num_yp_directories; i++)
+    for (yp_directory_t *yp = config->yp_directories; yp; yp = yp->next)
     {
-        server = find_yp_server (config->yp_url[i]);
+        server = find_yp_server (yp->url);
         if (server == NULL)
         {
             server = calloc (1, sizeof (struct yp_server));
@@ -247,9 +246,9 @@ void yp_recheck_config (ice_config_t *config)
                 break;
             }
             server->server_id = strdup ((char *)server_version);
-            server->url = strdup (config->yp_url[i]);
-            server->url_timeout = config->yp_url_timeout[i];
-            server->touch_interval = config->yp_touch_interval[i];
+            server->url = strdup (yp->url);
+            server->url_timeout = yp->timeout;
+            server->touch_interval = yp->touch_interval;
             server->curl = icecast_curl_new(server->url, &(server->curl_error[0]));
             if (server->curl == NULL)
             {

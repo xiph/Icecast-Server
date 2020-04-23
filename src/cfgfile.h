@@ -20,8 +20,6 @@
 #define CONFIG_EBADROOT -3
 #define CONFIG_EPARSE   -4
 
-#define MAX_YP_DIRECTORIES 25
-
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
@@ -144,6 +142,13 @@ typedef struct _resource {
     struct _resource *next;
 } resource_t;
 
+typedef struct _yp_directory {
+    char *url;
+    int timeout;
+    int touch_interval;
+    struct _yp_directory *next;
+} yp_directory_t;
+
 typedef enum _listener_type_tag {
     LISTENER_TYPE_ERROR,
     LISTENER_TYPE_NORMAL,
@@ -262,10 +267,8 @@ struct ice_config_tag {
     int chuid;
     char *user;
     char *group;
-    char *yp_url[MAX_YP_DIRECTORIES];
-    int yp_url_timeout[MAX_YP_DIRECTORIES];
-    int yp_touch_interval[MAX_YP_DIRECTORIES];
-    size_t num_yp_directories;
+
+    yp_directory_t *yp_directories;
 };
 
 typedef struct {
