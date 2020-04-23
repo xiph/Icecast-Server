@@ -161,6 +161,7 @@ static void _set_defaults(ice_config_t *c);
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_oldstyle_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_yp_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
@@ -1088,6 +1089,8 @@ static void _parse_root(xmlDocPtr       doc,
             _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("directory")) == 0) {
             _parse_oldstyle_directory(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp(node->name, XMLSTR("yp-directory")) == 0) {
+            _parse_yp_directory(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("paths")) == 0) {
             _parse_paths(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("logging")) == 0) {
@@ -2073,6 +2076,55 @@ static void _parse_oldstyle_directory(xmlDocPtr      doc,
 
     if (yp_dir->url == NULL)
         return;
+
+    /* Append YP directory entry to the global list */
+    current = configuration->yp_directories;
+    last = NULL;
+    while (current) {
+        last = current;
+        current = current->next;
+    }
+    if (last) {
+        last->next = yp_dir;
+    } else {
+        configuration->yp_directories = yp_dir;
+    }
+}
+
+static void _parse_yp_directory(xmlDocPtr      doc,
+                                xmlNodePtr     node,
+                                ice_config_t  *configuration)
+{
+    char *url;
+    config_options_t *options;
+    yp_directory_t *yp_dir,
+                   *current, *last;
+
+    url = (char *)xmlGetProp(node, XMLSTR("url"));
+    if (url == NULL) {
+        ICECAST_LOG_ERROR("Missing mandatory attribute 'url' for <yp-directory>.");
+        return;
+    }
+
+    yp_dir = calloc(1, sizeof(*yp_dir));
+    if (yp_dir == NULL) {
+        ICECAST_LOG_ERROR("Can not allocate memory for YP directory entry.");
+        return;
+    }
+
+    yp_dir->url = url;
+
+    options = config_parse_options(node);
+    for (config_options_t *opt = options; opt; opt = opt->next) {
+        if (!opt->name || !opt->value)
+            continue;
+        if (strcmp(opt->name, "timeout") == 0) {
+            yp_dir->timeout = util_str_to_int(opt->value, yp_dir->timeout);
+        } else if (strcmp(opt->name, "touch-interval") == 0) {
+            yp_dir->touch_interval = util_str_to_int(opt->value, yp_dir->touch_interval);
+        }
+    }
+    config_clear_options(options);
 
     /* Append YP directory entry to the global list */
     current = configuration->yp_directories;
