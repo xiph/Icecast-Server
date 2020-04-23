@@ -639,6 +639,7 @@ static void config_clear_yp_directories(yp_directory_t *yp_dir)
     while (yp_dir) {
         next_yp_dir = yp_dir->next;
         free(yp_dir->url);
+        free(yp_dir->listen_socket_id);
         free(yp_dir);
         yp_dir = next_yp_dir;
     }
@@ -2122,6 +2123,14 @@ static void _parse_yp_directory(xmlDocPtr      doc,
             yp_dir->timeout = util_str_to_int(opt->value, yp_dir->timeout);
         } else if (strcmp(opt->name, "touch-interval") == 0) {
             yp_dir->touch_interval = util_str_to_int(opt->value, yp_dir->touch_interval);
+        } else if (strcmp(opt->name, "listen-socket") == 0) {
+            if (yp_dir->listen_socket_id) {
+                ICECAST_LOG_ERROR(
+                    "Multiple 'listen-socket' in <yp-directory> currently unsupported. "
+                    "Only the last one will be used.");
+                free(yp_dir->listen_socket_id);
+            }
+            yp_dir->listen_socket_id = config_href_to_id(opt->value);
         }
     }
     config_clear_options(options);

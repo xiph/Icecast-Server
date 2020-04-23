@@ -29,6 +29,7 @@
 #include "source.h"
 #include "cfgfile.h"
 #include "stats.h"
+#include "listensocket.h"
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -43,6 +44,7 @@ struct yp_server
     unsigned    url_timeout;
     unsigned    touch_interval;
     int         remove;
+    char        *listen_socket_id;
 
     CURL *curl;
     struct ypdata_tag *mounts, *pending_mounts;
@@ -249,6 +251,7 @@ void yp_recheck_config (ice_config_t *config)
             server->url = strdup (yp->url);
             server->url_timeout = yp->timeout;
             server->touch_interval = yp->touch_interval;
+            server->listen_socket_id = yp->listen_socket_id;
             server->curl = icecast_curl_new(server->url, &(server->curl_error[0]));
             if (server->curl == NULL)
             {
@@ -562,13 +565,17 @@ static void yp_process_server (struct yp_server *server)
 
 
 
-static ypdata_t *create_yp_entry (const char *mount)
+static ypdata_t *create_yp_entry (struct yp_server *server, const char *mount)
 {
     ypdata_t *yp;
+
+    if (!server)
+        return NULL;
 
     yp = calloc (1, sizeof (ypdata_t));
     do
     {
+        listensocket_t *listen_socket = NULL;
         unsigned len = 512;
         ssize_t ret;
         char *url;
@@ -594,18 +601,28 @@ static ypdata_t *create_yp_entry (const char *mount)
         if (url == NULL)
             break;
 
-        ret = client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
+        if (server->listen_socket_id) {
+            listen_socket = listensocket_container_get_by_id(global.listensockets,
+                                                             server->listen_socket_id);
+            if (!listen_socket)
+                ICECAST_LOG_ERROR("Failure to find listen socket with ID %#H, using default.",
+                    server->listen_socket_id);
+        }
+        ret = client_get_baseurl(NULL, listen_socket, url, len, NULL, NULL, NULL, mount, NULL);
         if (ret >= len) {
             // Buffer was too small, allocate a big enough one
             char *s = realloc (url, ret + 1);
             if (!s) {
+                refobject_unref(listen_socket);
                 free(url);
                 break;
             }
             url = s;
 
-            ret = client_get_baseurl(NULL, NULL, url, len, NULL, NULL, NULL, mount, NULL);
+            ret = client_get_baseurl(NULL, listen_socket, url, len, NULL, NULL, NULL, mount, NULL);
         }
+        refobject_unref(listen_socket);
+
         if (ret < 0 || ret >= len)
             break;
 
@@ -668,10 +685,9 @@ static void check_servers (void)
             ypdata_t *yp;
 
             source_t *source = node->key;
-            if (source->yp_public && (yp = create_yp_entry (source->mount)) != NULL)
+            if (source->yp_public && (yp = create_yp_entry (server, source->mount)) != NULL)
             {
                 ICECAST_LOG_DEBUG("Adding existing mount %s", source->mount);
-                yp->server = server;
                 yp->touch_interval = server->touch_interval;
                 yp->next = server->mounts;
                 server->mounts = yp;
@@ -907,7 +923,7 @@ void yp_add (const char *mount)
         if (yp == NULL)
         {
             /* add new ypdata to each servers pending yp */
-            yp = create_yp_entry (mount);
+            yp = create_yp_entry (server, mount);
             if (yp)
             {
                 ICECAST_LOG_DEBUG("Adding %s to %s", mount, server->url);

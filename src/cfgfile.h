@@ -146,6 +146,7 @@ typedef struct _yp_directory {
     char *url;
     int timeout;
     int touch_interval;
+    char *listen_socket_id;
     struct _yp_directory *next;
 } yp_directory_t;
 
