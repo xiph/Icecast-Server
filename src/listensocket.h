@@ -22,6 +22,7 @@ int                         listensocket_container_setup(listensocket_container_
 connection_t *              listensocket_container_accept(listensocket_container_t *self, int timeout);
 int                         listensocket_container_set_sockcount_cb(listensocket_container_t *self, void (*cb)(size_t count, void *userdata), void *userdata);
 ssize_t                     listensocket_container_sockcount(listensocket_container_t *self);
+listensocket_t *            listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
 
 REFOBJECT_FORWARD_TYPE(listensocket_t);
 

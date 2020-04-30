@@ -63,7 +63,6 @@
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
 #define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
 #define CONFIG_DEFAULT_FILESERVE        1
-#define CONFIG_DEFAULT_TOUCH_FREQ       5
 #define CONFIG_DEFAULT_HOSTNAME         "localhost"
 #define CONFIG_DEFAULT_PLAYLIST_LOG     NULL
 #define CONFIG_DEFAULT_ACCESS_LOG       "access.log"
@@ -161,7 +160,8 @@ static ice_config_locks _locks;
 static void _set_defaults(ice_config_t *c);
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
-static void _parse_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_oldstyle_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
+static void _parse_yp_directory(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_paths(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_logging(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_security(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
@@ -178,7 +178,6 @@ static void _parse_listen_socket(xmlDocPtr                  doc,
                                  xmlNodePtr                 node,
                                  ice_config_t              *c);
 
-static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_events(event_registration_t **events, xmlNodePtr node);
 
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
@@ -633,6 +632,19 @@ static void config_clear_resource(resource_t *resource)
     }
 }
 
+static void config_clear_yp_directories(yp_directory_t *yp_dir)
+{
+    yp_directory_t *next_yp_dir;
+
+    while (yp_dir) {
+        next_yp_dir = yp_dir->next;
+        free(yp_dir->url);
+        free(yp_dir->listen_socket_id);
+        free(yp_dir);
+        yp_dir = next_yp_dir;
+    }
+}
+
 listener_t *config_clear_listener(listener_t *listener)
 {
     listener_t *next = NULL;
@@ -651,8 +663,6 @@ listener_t *config_clear_listener(listener_t *listener)
 
 void config_clear(ice_config_t *c)
 {
-    ice_config_dir_t    *dirnode,
-                        *nextdirnode;
     mount_proxy         *mount,
                         *nextmount;
     size_t              i;
@@ -708,17 +718,8 @@ void config_clear(ice_config_t *c)
 
     config_clear_resource(c->resources);
 
-    dirnode = c->dir_list;
-    while (dirnode) {
-        nextdirnode = dirnode->next;
-        xmlFree(dirnode->host);
-        free(dirnode);
-        dirnode = nextdirnode;
-    }
 #ifdef USE_YP
-    for (i = 0; i < c->num_yp_directories; i++) {
-        xmlFree(c->yp_url[i]);
-    }
+    config_clear_yp_directories(c->yp_directories);
 #endif
 
     config_clear_http_header(c->http_headers);
@@ -878,11 +879,7 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->fileserve  = CONFIG_DEFAULT_FILESERVE;
     configuration
-        ->touch_interval = CONFIG_DEFAULT_TOUCH_FREQ;
-    configuration
         ->on_demand = 0;
-    configuration
-        ->dir_list = NULL;
     configuration
         ->hostname = (char *) xmlCharStrdup(CONFIG_DEFAULT_HOSTNAME);
     configuration
@@ -923,8 +920,6 @@ static void _set_defaults(ice_config_t *configuration)
         ->user = NULL;
     configuration
         ->group = NULL;
-    configuration
-        ->num_yp_directories = 0;
     /* default to a typical prebuffer size used by clients */
     configuration
         ->burst_size = CONFIG_DEFAULT_BURST_SIZE;
@@ -1094,7 +1089,9 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("directory")) == 0) {
-            _parse_directory(doc, node->xmlChildrenNode, configuration);
+            _parse_oldstyle_directory(doc, node->xmlChildrenNode, configuration);
+        } else if (xmlStrcmp(node->name, XMLSTR("yp-directory")) == 0) {
+            _parse_yp_directory(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("paths")) == 0) {
             _parse_paths(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("logging")) == 0) {
@@ -2048,14 +2045,19 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     configuration->authstack = old_style;
 }
 
-static void _parse_directory(xmlDocPtr      doc,
-                             xmlNodePtr     node,
-                             ice_config_t  *configuration)
+static void _parse_oldstyle_directory(xmlDocPtr      doc,
+                                      xmlNodePtr     node,
+                                      ice_config_t  *configuration)
 {
-    if (configuration->num_yp_directories >= MAX_YP_DIRECTORIES) {
-        ICECAST_LOG_ERROR("Maximum number of yp directories exceeded!");
+    yp_directory_t *yp_dir,
+                   *current, *last;
+
+    yp_dir = calloc(1, sizeof(*yp_dir));
+    if (yp_dir == NULL) {
+        ICECAST_LOG_ERROR("Can not allocate memory for YP directory entry.");
         return;
     }
+
     do {
         if (node == NULL)
             break;
@@ -2063,21 +2065,93 @@ static void _parse_directory(xmlDocPtr      doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("yp-url")) == 0) {
-            if (configuration->yp_url[configuration->num_yp_directories])
-                xmlFree(configuration->yp_url[configuration->num_yp_directories]);
-            configuration->yp_url[configuration->num_yp_directories] =
-                (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (yp_dir->url)
+                xmlFree(yp_dir->url);
+            yp_dir->url = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
-            __read_int(doc, node, &configuration->yp_url_timeout[configuration->num_yp_directories], "<yp-url-timeout> must not be empty.");
-        } else if (xmlStrcmp(node->name, XMLSTR("server")) == 0) {
-            _add_server(doc, node->xmlChildrenNode, configuration);
+            __read_int(doc, node, &yp_dir->timeout, "<yp-url-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(doc, node, &configuration->yp_touch_interval[configuration->num_yp_directories], "<touch-interval> must not be empty.");
+            __read_int(doc, node, &yp_dir->touch_interval, "<touch-interval> must not be empty.");
         }
     } while ((node = node->next));
-    if (configuration->yp_url[configuration->num_yp_directories] == NULL)
+
+    if (yp_dir->url == NULL)
         return;
-    configuration->num_yp_directories++;
+
+    /* Append YP directory entry to the global list */
+    current = configuration->yp_directories;
+    last = NULL;
+    while (current) {
+        last = current;
+        current = current->next;
+    }
+    if (last) {
+        last->next = yp_dir;
+    } else {
+        configuration->yp_directories = yp_dir;
+    }
+}
+
+static void _parse_yp_directory(xmlDocPtr      doc,
+                                xmlNodePtr     node,
+                                ice_config_t  *configuration)
+{
+    char *url;
+    config_options_t *options;
+    yp_directory_t *yp_dir,
+                   *current, *last;
+
+    url = (char *)xmlGetProp(node, XMLSTR("url"));
+    if (url == NULL) {
+        ICECAST_LOG_ERROR("Missing mandatory attribute 'url' for <yp-directory>.");
+        return;
+    }
+
+    yp_dir = calloc(1, sizeof(*yp_dir));
+    if (yp_dir == NULL) {
+        ICECAST_LOG_ERROR("Can not allocate memory for YP directory entry.");
+        return;
+    }
+
+    yp_dir->url = url;
+
+    options = config_parse_options(node);
+    for (config_options_t *opt = options; opt; opt = opt->next) {
+        if (!opt->name || !opt->value) {
+            ICECAST_LOG_WARN("Invalid <option>, missing 'name' and 'value' attributes.");
+            continue;
+        }
+
+        if (strcmp(opt->name, "timeout") == 0) {
+            yp_dir->timeout = util_str_to_int(opt->value, yp_dir->timeout);
+        } else if (strcmp(opt->name, "touch-interval") == 0) {
+            yp_dir->touch_interval = util_str_to_int(opt->value, yp_dir->touch_interval);
+        } else if (strcmp(opt->name, "listen-socket") == 0) {
+            if (yp_dir->listen_socket_id) {
+                ICECAST_LOG_ERROR(
+                    "Multiple 'listen-socket' in <yp-directory> currently unsupported. "
+                    "Only the last one will be used.");
+                free(yp_dir->listen_socket_id);
+            }
+            yp_dir->listen_socket_id = config_href_to_id(opt->value);
+        } else {
+            ICECAST_LOG_WARN("Invalid YP <option> with unknown 'name' attribute.");
+        }
+    }
+    config_clear_options(options);
+
+    /* Append YP directory entry to the global list */
+    current = configuration->yp_directories;
+    last = NULL;
+    while (current) {
+        last = current;
+        current = current->next;
+    }
+    if (last) {
+        last->next = yp_dir;
+    } else {
+        configuration->yp_directories = yp_dir;
+    }
 }
 
 static void _parse_resource(xmlDocPtr      doc,
@@ -2414,51 +2488,6 @@ static void _parse_security(xmlDocPtr       doc,
            node = oldnode;
        }
    } while ((node = node->next));
-}
-
-static void _add_server(xmlDocPtr       doc,
-                        xmlNodePtr      node,
-                        ice_config_t   *configuration)
-{
-    ice_config_dir_t   *dirnode,
-                       *server;
-    int                 addnode;
-
-    server = (ice_config_dir_t *)malloc(sizeof(ice_config_dir_t));
-    server->touch_interval = configuration->touch_interval;
-    server->host = NULL;
-    addnode = 0;
-
-    do {
-        if (node == NULL)
-            break;
-        if (xmlIsBlankNode(node))
-            continue;
-
-        if (xmlStrcmp(node->name, XMLSTR("host")) == 0) {
-            server->host = (char *) xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
-            addnode = 1;
-        } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(doc, node, &server->touch_interval, "<touch-interval> must not be empty.");
-        }
-        server->next = NULL;
-    } while ((node = node->next));
-
-    if (addnode) {
-        dirnode = configuration->dir_list;
-        if (dirnode == NULL) {
-            configuration->dir_list = server;
-        } else {
-            while (dirnode->next) dirnode = dirnode->next;
-            dirnode->next = server;
-        }
-
-        server = NULL;
-        addnode = 0;
-    } else {
-        free (server);
-    }
 }
 
 static void _parse_events(event_registration_t **events, xmlNodePtr node)

@@ -53,7 +53,6 @@ struct listensocket_tag {
     sock_t sock;
 };
 
-static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
 static int listensocket_container_configure__unlocked(listensocket_container_t *self, const ice_config_t *config);
 static int listensocket_container_setup__unlocked(listensocket_container_t *self);
 static ssize_t listensocket_container_sockcount__unlocked(listensocket_container_t *self);
@@ -484,7 +483,7 @@ static ssize_t listensocket_container_sockcount__unlocked(listensocket_container
     return count;
 }
 
-static listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id)
+listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self, const char *id)
 {
     size_t i;
     const listener_t *listener;

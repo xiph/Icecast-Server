@@ -20,8 +20,6 @@
 #define CONFIG_EBADROOT -3
 #define CONFIG_EPARSE   -4
 
-#define MAX_YP_DIRECTORIES 25
-
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
@@ -51,12 +49,6 @@ typedef struct ice_config_http_header_tag {
     /* link to the next list element */
     struct ice_config_http_header_tag *next;
 } ice_config_http_header_t;
-
-typedef struct ice_config_dir_tag {
-    char *host;
-    int touch_interval;
-    struct ice_config_dir_tag *next;
-} ice_config_dir_t;
 
 struct _config_options {
     char *type;
@@ -150,6 +142,14 @@ typedef struct _resource {
     struct _resource *next;
 } resource_t;
 
+typedef struct _yp_directory {
+    char *url;
+    int timeout;
+    int touch_interval;
+    char *listen_socket_id;
+    struct _yp_directory *next;
+} yp_directory_t;
+
 typedef enum _listener_type_tag {
     LISTENER_TYPE_ERROR,
     LISTENER_TYPE_NORMAL,
@@ -219,9 +219,6 @@ struct ice_config_tag {
 
     struct event_registration_tag *event;
 
-    int touch_interval;
-    ice_config_dir_t *dir_list;
-
     char *hostname;
     int sane_hostname;
     int port;
@@ -271,10 +268,8 @@ struct ice_config_tag {
     int chuid;
     char *user;
     char *group;
-    char *yp_url[MAX_YP_DIRECTORIES];
-    int yp_url_timeout[MAX_YP_DIRECTORIES];
-    int yp_touch_interval[MAX_YP_DIRECTORIES];
-    size_t num_yp_directories;
+
+    yp_directory_t *yp_directories;
 };
 
 typedef struct {

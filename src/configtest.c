@@ -39,8 +39,6 @@ int main(void)
 
 void _dump_config(ice_config_t *config)
 {
-    ice_config_dir_t *node;
-
     printf("-----\n");
     printf("location = %s\n", config->location);
     printf("admin = %s\n", config->admin);
@@ -49,16 +47,6 @@ void _dump_config(ice_config_t *config)
     printf("threadpool_size = %d\n", config->threadpool_size);
     printf("client_timeout = %d\n", config->client_timeout);
     printf("source_password = %s\n", config->source_password);
-    printf("touch_interval = %d\n", config->touch_interval);
-
-    node = config->dir_list;
-    while (node) {
-        printf("directory.touch_interval = %d\n", node->touch_interval);
-        printf("directory.host = %s\n", node->host);
-
-        node = node->next;
-    }
-
     printf("hostname = %s\n", config->hostname);
     printf("port = %d\n", config->port);
     printf("bind_address = %s\n", config->bind_address);
