@@ -2117,8 +2117,11 @@ static void _parse_yp_directory(xmlDocPtr      doc,
 
     options = config_parse_options(node);
     for (config_options_t *opt = options; opt; opt = opt->next) {
-        if (!opt->name || !opt->value)
+        if (!opt->name || !opt->value) {
+            ICECAST_LOG_WARN("Invalid <option>, missing 'name' and 'value' attributes.");
             continue;
+        }
+
         if (strcmp(opt->name, "timeout") == 0) {
             yp_dir->timeout = util_str_to_int(opt->value, yp_dir->timeout);
         } else if (strcmp(opt->name, "touch-interval") == 0) {
@@ -2131,6 +2134,8 @@ static void _parse_yp_directory(xmlDocPtr      doc,
                 free(yp_dir->listen_socket_id);
             }
             yp_dir->listen_socket_id = config_href_to_id(opt->value);
+        } else {
+            ICECAST_LOG_WARN("Invalid YP <option> with unknown 'name' attribute.");
         }
     }
     config_clear_options(options);
