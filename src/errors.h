@@ -10,7 +10,7 @@
 #define __ERRORS_H__
 
 typedef enum {
-    ICECAST_ERROR_ADMIN_DEST_NOT_RUNNING,
+    ICECAST_ERROR_ADMIN_DEST_NOT_RUNNING = 0,
     ICECAST_ERROR_ADMIN_METADAT_BADCALL,
     ICECAST_ERROR_ADMIN_METADAT_NO_SUCH_ACTION,
     ICECAST_ERROR_ADMIN_MISSING_PARAMETER,
@@ -49,11 +49,12 @@ typedef enum {
     ICECAST_ERROR_SOURCE_STREAM_PREPARATION_ERROR,
     ICECAST_ERROR_XSLT_PARSE,
     ICECAST_ERROR_XSLT_problem,
-    ICECAST_ERROR_RECURSIVE_ERROR
+    ICECAST_ERROR_RECURSIVE_ERROR,
+
+    ICECAST_ERROR_END_SENTINEL  /* This element must always be the last! */
 } icecast_error_id_t;
 
 struct icecast_error_tag {
-    const icecast_error_id_t id;
     const int http_status;
     const char *uuid;
     const char *message;
