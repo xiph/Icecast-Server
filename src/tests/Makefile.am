@@ -35,6 +35,11 @@ ctest_refobject_test_LDADD = libice_ctest.la \
     icecast-refobject.o
 check_PROGRAMS += ctest_refobject.test
 
+ctest_errors_test_SOURCES = %reldir%/ctest_errors.c
+ctest_errors_test_LDADD = libice_ctest.la \
+    icecast-errors.o
+check_PROGRAMS += ctest_errors.test
+
 ctest_buffer_test_SOURCES = %reldir%/ctest_buffer.c
 ctest_buffer_test_LDADD = libice_ctest.la \
     common/thread/libicethread.la \
