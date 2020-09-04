@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <assert.h>
 #include <strings.h>
 
 #include "errors.h"
@@ -232,7 +233,9 @@ const icecast_error_t * error_get_by_uuid(const char *uuid)
     size_t i;
 
     for (i = 0; i < (sizeof(__errors)/sizeof(*__errors)); i++) {
-        if (strcasecmp(__errors[i].uuid, uuid) == 0) {
+        assert(__errors[i].uuid);
+
+        if (__errors[i].uuid && strcasecmp(__errors[i].uuid, uuid) == 0) {
             return &(__errors[i]);
         }
     }
