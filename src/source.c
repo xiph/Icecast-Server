@@ -389,13 +389,13 @@ void source_move_clients(source_t *source, source_t *dest)
         return;
     }
 
+    /* we need to move the client and pending trees - we must take the
+     * locks in this order to avoid deadlocks */
+    avl_tree_wlock(source->pending_tree);
+    avl_tree_wlock(source->client_tree);
+
     do
     {
-        /* we need to move the client and pending trees - we must take the
-         * locks in this order to avoid deadlocks */
-        avl_tree_wlock(source->pending_tree);
-        avl_tree_wlock(source->client_tree);
-
         if (source->on_demand == 0 && source->format == NULL)
         {
             ICECAST_LOG_INFO("source mount %s is not available", source->mount);
