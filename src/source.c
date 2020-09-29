@@ -343,6 +343,24 @@ client_t *source_find_client(source_t *source, int id)
     return NULL;
 }
 
+static inline void source_move_clients__single(source_t *source, avl_tree *from, avl_tree *to, avl_node *node) {
+    client_t *client = (client_t*)node->key;
+
+    avl_delete(from, client, NULL);
+
+    /* when switching a client to a different queue, be wary of the
+     * refbuf it's referring to, if it's http headers then we need
+     * to write them so don't release it.
+     */
+    if (client->check_buffer != format_check_http_buffer) {
+        client_set_queue(client, NULL);
+        client->check_buffer = format_check_file_buffer;
+        if (source->con == NULL)
+            client->intro_offset = -1;
+    }
+
+    avl_insert(to, (void *)client);
+}
 
 /* Move clients from source to dest provided dest is running
  * and that the stream format is the same.
@@ -373,8 +391,6 @@ void source_move_clients(source_t *source, source_t *dest)
 
     do
     {
-        client_t *client;
-
         /* we need to move the client and pending trees - we must take the
          * locks in this order to avoid deadlocks */
         avl_tree_wlock(source->pending_tree);
@@ -396,49 +412,19 @@ void source_move_clients(source_t *source, source_t *dest)
 
         while (1)
         {
-            avl_node *node = avl_get_first (source->pending_tree);
+            avl_node *node = avl_get_first(source->pending_tree);
             if (node == NULL)
                 break;
-            client = (client_t *)(node->key);
-            avl_delete (source->pending_tree, client, NULL);
-
-            /* when switching a client to a different queue, be wary of the
-             * refbuf it's referring to, if it's http headers then we need
-             * to write them so don't release it.
-             */
-            if (client->check_buffer != format_check_http_buffer)
-            {
-                client_set_queue (client, NULL);
-                client->check_buffer = format_check_file_buffer;
-                if (source->con == NULL)
-                    client->intro_offset = -1;
-            }
-
-            avl_insert (dest->pending_tree, (void *)client);
+            source_move_clients__single(source, source->pending_tree, dest->pending_tree, node);
             count++;
         }
 
         while (1)
         {
-            avl_node *node = avl_get_first (source->client_tree);
+            avl_node *node = avl_get_first(source->client_tree);
             if (node == NULL)
                 break;
-
-            client = (client_t *)(node->key);
-            avl_delete (source->client_tree, client, NULL);
-
-            /* when switching a client to a different queue, be wary of the
-             * refbuf it's referring to, if it's http headers then we need
-             * to write them so don't release it.
-             */
-            if (client->check_buffer != format_check_http_buffer)
-            {
-                client_set_queue (client, NULL);
-                client->check_buffer = format_check_file_buffer;
-                if (source->con == NULL)
-                    client->intro_offset = -1;
-            }
-            avl_insert (dest->pending_tree, (void *)client);
+            source_move_clients__single(source, source->client_tree, dest->pending_tree, node);
             count++;
         }
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
