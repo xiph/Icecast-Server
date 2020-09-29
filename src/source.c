@@ -370,22 +370,20 @@ static inline void source_move_clients__single(source_t *source, avl_tree *from,
 void source_move_clients(source_t *source, source_t *dest)
 {
     unsigned long count = 0;
-    if (strcmp (source->mount, dest->mount) == 0)
-    {
+    if (strcmp(source->mount, dest->mount) == 0) {
         ICECAST_LOG_WARN("src and dst are the same \"%s\", skipping", source->mount);
         return;
     }
     /* we don't want the two write locks to deadlock in here */
-    thread_mutex_lock (&move_clients_mutex);
+    thread_mutex_lock(&move_clients_mutex);
 
     /* if the destination is not running then we can't move clients */
 
-    avl_tree_wlock (dest->pending_tree);
-    if (dest->running == 0 && dest->on_demand == 0)
-    {
+    avl_tree_wlock(dest->pending_tree);
+    if (dest->running == 0 && dest->on_demand == 0) {
         ICECAST_LOG_WARN("destination mount %s not running, unable to move clients ", dest->mount);
-        avl_tree_unlock (dest->pending_tree);
-        thread_mutex_unlock (&move_clients_mutex);
+        avl_tree_unlock(dest->pending_tree);
+        thread_mutex_unlock(&move_clients_mutex);
         return;
     }
 
@@ -394,24 +392,20 @@ void source_move_clients(source_t *source, source_t *dest)
     avl_tree_wlock(source->pending_tree);
     avl_tree_wlock(source->client_tree);
 
-    do
-    {
-        if (source->on_demand == 0 && source->format == NULL)
-        {
+    do {
+        if (source->on_demand == 0 && source->format == NULL) {
             ICECAST_LOG_INFO("source mount %s is not available", source->mount);
             break;
         }
-        if (source->format && dest->format)
-        {
-            if (source->format->type != dest->format->type)
-            {
+
+        if (source->format && dest->format) {
+            if (source->format->type != dest->format->type) {
                 ICECAST_LOG_WARN("stream %s and %s are of different types, ignored", source->mount, dest->mount);
                 break;
             }
         }
 
-        while (1)
-        {
+        while (1) {
             avl_node *node = avl_get_first(source->pending_tree);
             if (node == NULL)
                 break;
@@ -419,30 +413,29 @@ void source_move_clients(source_t *source, source_t *dest)
             count++;
         }
 
-        while (1)
-        {
+        while (1) {
             avl_node *node = avl_get_first(source->client_tree);
             if (node == NULL)
                 break;
             source_move_clients__single(source, source->client_tree, dest->pending_tree, node);
             count++;
         }
+
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
 
         source->listeners = 0;
-        stats_event (source->mount, "listeners", "0");
-
+        stats_event(source->mount, "listeners", "0");
     } while (0);
 
-    avl_tree_unlock (source->pending_tree);
-    avl_tree_unlock (source->client_tree);
+    avl_tree_unlock(source->pending_tree);
+    avl_tree_unlock(source->client_tree);
 
     /* see if we need to wake up an on-demand relay */
     if (dest->running == 0 && dest->on_demand && count)
         dest->on_demand_req = 1;
 
-    avl_tree_unlock (dest->pending_tree);
-    thread_mutex_unlock (&move_clients_mutex);
+    avl_tree_unlock(dest->pending_tree);
+    thread_mutex_unlock(&move_clients_mutex);
 }
 
 
