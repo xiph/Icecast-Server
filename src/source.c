@@ -323,7 +323,7 @@ void source_free_source (source_t *source)
 }
 
 
-client_t *source_find_client(source_t *source, int id)
+client_t *source_find_client(source_t *source, connection_id_t id)
 {
     client_t fakeclient;
     void *result;
