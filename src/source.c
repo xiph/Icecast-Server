@@ -423,8 +423,8 @@ void source_move_clients(source_t *source, source_t *dest)
 
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
 
-        source->listeners = 0;
-        stats_event(source->mount, "listeners", "0");
+        source->listeners -= count;
+        stats_event_sub(source->mount, "listeners", count);
     } while (0);
 
     avl_tree_unlock(source->pending_tree);
