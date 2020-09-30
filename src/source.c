@@ -367,7 +367,7 @@ static inline void source_move_clients__single(source_t *source, avl_tree *from,
  * The only lock that should be held when this is called is the
  * source tree lock
  */
-void source_move_clients(source_t *source, source_t *dest)
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
 {
     unsigned long count = 0;
     if (strcmp(source->mount, dest->mount) == 0) {
@@ -405,20 +405,34 @@ void source_move_clients(source_t *source, source_t *dest)
             }
         }
 
-        while (1) {
-            avl_node *node = avl_get_first(source->pending_tree);
-            if (node == NULL)
-                break;
-            source_move_clients__single(source, source->pending_tree, dest->pending_tree, node);
-            count++;
-        }
+        if (id) {
+            client_t fakeclient;
+            connection_t fakecon;
+            void *result;
 
-        while (1) {
-            avl_node *node = avl_get_first(source->client_tree);
-            if (node == NULL)
-                break;
-            source_move_clients__single(source, source->client_tree, dest->pending_tree, node);
-            count++;
+            fakeclient.con = &fakecon;
+            fakeclient.con->id = *id;
+
+            if (avl_get_by_key(source->client_tree, &fakeclient, &result) == 0) {
+                source_move_clients__single(source, source->client_tree, dest->pending_tree, result);
+                count++;
+            }
+        } else {
+            while (1) {
+                avl_node *node = avl_get_first(source->pending_tree);
+                if (node == NULL)
+                    break;
+                source_move_clients__single(source, source->pending_tree, dest->pending_tree, node);
+                count++;
+            }
+
+            while (1) {
+                avl_node *node = avl_get_first(source->client_tree);
+                if (node == NULL)
+                    break;
+                source_move_clients__single(source, source->client_tree, dest->pending_tree, node);
+                count++;
+            }
         }
 
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
@@ -653,7 +667,7 @@ static void source_init (source_t *source)
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source)
-            source_move_clients (fallback_source, source);
+            source_move_clients(fallback_source, source, NULL);
 
         avl_tree_unlock(global.source_tree);
     }
@@ -852,7 +866,7 @@ static void source_shutdown (source_t *source)
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients(source, fallback_source);
+            source_move_clients(source, fallback_source, NULL);
 
         avl_tree_unlock(global.source_tree);
     }

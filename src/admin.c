@@ -659,7 +659,7 @@ static void command_move_clients(client_t   *client,
     node = admin_build_rootnode(doc, "iceresponse");
     xmlDocSetRootElement(doc, node);
 
-    source_move_clients(source, dest);
+    source_move_clients(source, dest, NULL);
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);

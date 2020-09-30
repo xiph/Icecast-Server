@@ -467,7 +467,7 @@ static void *start_relay_stream (void *arg)
         fallback_source = source_find_mount(relay->source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients(relay->source, fallback_source);
+            source_move_clients(relay->source, fallback_source, NULL);
 
         avl_tree_unlock(global.source_tree);
     }

@@ -95,7 +95,7 @@ source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, connection_id_t id);
 int source_compare_sources(void *arg, void *a, void *b);
 void source_free_source(source_t *source);
-void source_move_clients (source_t *source, source_t *dest);
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id);
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
