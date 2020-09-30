@@ -343,9 +343,7 @@ client_t *source_find_client(source_t *source, connection_id_t id)
     return NULL;
 }
 
-static inline void source_move_clients__single(source_t *source, avl_tree *from, avl_tree *to, avl_node *node) {
-    client_t *client = (client_t*)node->key;
-
+static inline void source_move_clients__single(source_t *source, avl_tree *from, avl_tree *to, client_t *client) {
     avl_delete(from, client, NULL);
 
     /* when switching a client to a different queue, be wary of the
@@ -422,7 +420,7 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
                 avl_node *node = avl_get_first(source->pending_tree);
                 if (node == NULL)
                     break;
-                source_move_clients__single(source, source->pending_tree, dest->pending_tree, node);
+                source_move_clients__single(source, source->pending_tree, dest->pending_tree, node->key);
                 count++;
             }
 
@@ -430,7 +428,7 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
                 avl_node *node = avl_get_first(source->client_tree);
                 if (node == NULL)
                     break;
-                source_move_clients__single(source, source->client_tree, dest->pending_tree, node);
+                source_move_clients__single(source, source->client_tree, dest->pending_tree, node->key);
                 count++;
             }
         }
