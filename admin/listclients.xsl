@@ -36,7 +36,11 @@
 													<td><xsl:value-of select="role" /></td>
 													<td><xsl:value-of select="connected" /></td>
 													<td><xsl:value-of select="useragent" /></td>
-													<td><a href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a></td>
+													<td>
+														<a href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
+														&#160;
+														<a href="moveclients.xsl?mount={../@mount}&amp;id={id}">Move</a>
+													</td>
 												</tr>
 											</xsl:for-each>
 										</tbody>
