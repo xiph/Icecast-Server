@@ -617,6 +617,8 @@ static void command_move_clients(client_t   *client,
                                  admin_format_t response)
 {
     const char *dest_source;
+    const char *idtext = NULL;
+    connection_id_t id;
     source_t *dest;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -627,9 +629,18 @@ static void command_move_clients(client_t   *client,
     if((COMMAND_OPTIONAL(client, "destination", dest_source))) {
         parameters_passed = 1;
     }
+    if ((COMMAND_OPTIONAL(client, "id", idtext))) {
+        id = atoi(idtext);
+    } else {
+        idtext = NULL;
+    }
     ICECAST_LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
         doc = admin_build_sourcelist(source->mount);
+        if (idtext) {
+            xmlNodePtr root = xmlDocGetRootElement(doc);
+            xmlNewTextChild(root, NULL, XMLSTR("param-id"), XMLSTR(idtext));
+        }
         admin_send_response(doc, client, response,
              MOVECLIENTS_HTML_REQUEST);
         xmlFreeDoc(doc);
@@ -659,7 +670,7 @@ static void command_move_clients(client_t   *client,
     node = admin_build_rootnode(doc, "iceresponse");
     xmlDocSetRootElement(doc, node);
 
-    source_move_clients(source, dest);
+    source_move_clients(source, dest, idtext ? &id : NULL);
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);

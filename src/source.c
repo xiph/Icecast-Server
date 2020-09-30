@@ -323,7 +323,7 @@ void source_free_source (source_t *source)
 }
 
 
-client_t *source_find_client(source_t *source, int id)
+client_t *source_find_client(source_t *source, connection_id_t id)
 {
     client_t fakeclient;
     void *result;
@@ -343,120 +343,111 @@ client_t *source_find_client(source_t *source, int id)
     return NULL;
 }
 
+static inline void source_move_clients__single(source_t *source, avl_tree *from, avl_tree *to, client_t *client) {
+    avl_delete(from, client, NULL);
+
+    /* when switching a client to a different queue, be wary of the
+     * refbuf it's referring to, if it's http headers then we need
+     * to write them so don't release it.
+     */
+    if (client->check_buffer != format_check_http_buffer) {
+        client_set_queue(client, NULL);
+        client->check_buffer = format_check_file_buffer;
+        if (source->con == NULL)
+            client->intro_offset = -1;
+    }
+
+    avl_insert(to, (void *)client);
+}
 
 /* Move clients from source to dest provided dest is running
  * and that the stream format is the same.
  * The only lock that should be held when this is called is the
  * source tree lock
  */
-void source_move_clients(source_t *source, source_t *dest)
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
 {
     unsigned long count = 0;
-    if (strcmp (source->mount, dest->mount) == 0)
-    {
+    if (strcmp(source->mount, dest->mount) == 0) {
         ICECAST_LOG_WARN("src and dst are the same \"%s\", skipping", source->mount);
         return;
     }
     /* we don't want the two write locks to deadlock in here */
-    thread_mutex_lock (&move_clients_mutex);
+    thread_mutex_lock(&move_clients_mutex);
 
     /* if the destination is not running then we can't move clients */
 
-    avl_tree_wlock (dest->pending_tree);
-    if (dest->running == 0 && dest->on_demand == 0)
-    {
+    avl_tree_wlock(dest->pending_tree);
+    if (dest->running == 0 && dest->on_demand == 0) {
         ICECAST_LOG_WARN("destination mount %s not running, unable to move clients ", dest->mount);
-        avl_tree_unlock (dest->pending_tree);
-        thread_mutex_unlock (&move_clients_mutex);
+        avl_tree_unlock(dest->pending_tree);
+        thread_mutex_unlock(&move_clients_mutex);
         return;
     }
 
-    do
-    {
-        client_t *client;
+    /* we need to move the client and pending trees - we must take the
+     * locks in this order to avoid deadlocks */
+    avl_tree_wlock(source->pending_tree);
+    avl_tree_wlock(source->client_tree);
 
-        /* we need to move the client and pending trees - we must take the
-         * locks in this order to avoid deadlocks */
-        avl_tree_wlock(source->pending_tree);
-        avl_tree_wlock(source->client_tree);
-
-        if (source->on_demand == 0 && source->format == NULL)
-        {
+    do {
+        if (source->on_demand == 0 && source->format == NULL) {
             ICECAST_LOG_INFO("source mount %s is not available", source->mount);
             break;
         }
-        if (source->format && dest->format)
-        {
-            if (source->format->type != dest->format->type)
-            {
+
+        if (source->format && dest->format) {
+            if (source->format->type != dest->format->type) {
                 ICECAST_LOG_WARN("stream %s and %s are of different types, ignored", source->mount, dest->mount);
                 break;
             }
         }
 
-        while (1)
-        {
-            avl_node *node = avl_get_first (source->pending_tree);
-            if (node == NULL)
-                break;
-            client = (client_t *)(node->key);
-            avl_delete (source->pending_tree, client, NULL);
+        if (id) {
+            client_t fakeclient;
+            connection_t fakecon;
+            void *result;
 
-            /* when switching a client to a different queue, be wary of the
-             * refbuf it's referring to, if it's http headers then we need
-             * to write them so don't release it.
-             */
-            if (client->check_buffer != format_check_http_buffer)
-            {
-                client_set_queue (client, NULL);
-                client->check_buffer = format_check_file_buffer;
-                if (source->con == NULL)
-                    client->intro_offset = -1;
+            fakeclient.con = &fakecon;
+            fakeclient.con->id = *id;
+
+            if (avl_get_by_key(source->client_tree, &fakeclient, &result) == 0) {
+                source_move_clients__single(source, source->client_tree, dest->pending_tree, result);
+                count++;
+            }
+        } else {
+            while (1) {
+                avl_node *node = avl_get_first(source->pending_tree);
+                if (node == NULL)
+                    break;
+                source_move_clients__single(source, source->pending_tree, dest->pending_tree, node->key);
+                count++;
             }
 
-            avl_insert (dest->pending_tree, (void *)client);
-            count++;
-        }
-
-        while (1)
-        {
-            avl_node *node = avl_get_first (source->client_tree);
-            if (node == NULL)
-                break;
-
-            client = (client_t *)(node->key);
-            avl_delete (source->client_tree, client, NULL);
-
-            /* when switching a client to a different queue, be wary of the
-             * refbuf it's referring to, if it's http headers then we need
-             * to write them so don't release it.
-             */
-            if (client->check_buffer != format_check_http_buffer)
-            {
-                client_set_queue (client, NULL);
-                client->check_buffer = format_check_file_buffer;
-                if (source->con == NULL)
-                    client->intro_offset = -1;
+            while (1) {
+                avl_node *node = avl_get_first(source->client_tree);
+                if (node == NULL)
+                    break;
+                source_move_clients__single(source, source->client_tree, dest->pending_tree, node->key);
+                count++;
             }
-            avl_insert (dest->pending_tree, (void *)client);
-            count++;
         }
+
         ICECAST_LOG_INFO("passing %lu listeners to \"%s\"", count, dest->mount);
 
-        source->listeners = 0;
-        stats_event (source->mount, "listeners", "0");
-
+        source->listeners -= count;
+        stats_event_sub(source->mount, "listeners", count);
     } while (0);
 
-    avl_tree_unlock (source->pending_tree);
-    avl_tree_unlock (source->client_tree);
+    avl_tree_unlock(source->pending_tree);
+    avl_tree_unlock(source->client_tree);
 
     /* see if we need to wake up an on-demand relay */
     if (dest->running == 0 && dest->on_demand && count)
         dest->on_demand_req = 1;
 
-    avl_tree_unlock (dest->pending_tree);
-    thread_mutex_unlock (&move_clients_mutex);
+    avl_tree_unlock(dest->pending_tree);
+    thread_mutex_unlock(&move_clients_mutex);
 }
 
 
@@ -674,7 +665,7 @@ static void source_init (source_t *source)
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source)
-            source_move_clients (fallback_source, source);
+            source_move_clients(fallback_source, source, NULL);
 
         avl_tree_unlock(global.source_tree);
     }
@@ -873,7 +864,7 @@ static void source_shutdown (source_t *source)
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients(source, fallback_source);
+            source_move_clients(source, fallback_source, NULL);
 
         avl_tree_unlock(global.source_tree);
     }

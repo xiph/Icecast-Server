@@ -17,7 +17,15 @@
 						</xsl:call-template>
 						<xsl:choose>
 							<xsl:when test="source">
-								<p>Choose the mountpoint to which you want to move the listeners to:</p>
+								<xsl:choose>
+									<xsl:when test="param-id">
+										<input type="hidden" name="id" value="{param-id}" />
+										<p>Choose the mountpoint to which you want to move the listener to:</p>
+									</xsl:when>
+									<xsl:otherwise>
+										<p>Choose the mountpoint to which you want to move the listeners to:</p>
+									</xsl:otherwise>
+								</xsl:choose>
 								<form method="post" action="moveclients.xsl">
 									<label for="moveto" class="hidden">
 										Move from <code><xsl:value-of select="current_source" /></code> to
