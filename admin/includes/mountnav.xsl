@@ -4,6 +4,7 @@
 		<xsl:param name="mount" select="@mount"/>
 		<div class="nav">
 			<ul>
+				<li><a href="stats.xsl?mount={$mount}">Details</a></li>
 				<li><a href="listclients.xsl?mount={$mount}">Clients</a></li>
 				<li><a href="moveclients.xsl?mount={$mount}">Move listeners</a></li>
 				<li><a href="updatemetadata.xsl?mount={$mount}">Metadata</a></li>
