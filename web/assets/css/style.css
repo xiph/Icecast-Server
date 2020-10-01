@@ -212,6 +212,10 @@ section.box table tr {
     border-top: 1px solid #e7e7e7;
 }
 
+section.box table tr:hover {
+    background-color: #c0c0c0;
+}
+
 section.box table tr td {
     padding: 0.4em 1.5em;
 }
