@@ -77,7 +77,7 @@
 					<!-- Mount stats -->
 					<xsl:if test="$param-showall or $param-has-mount">
 					<xsl:for-each select="source">
-						<section class="box">
+						<section class="box" id="mount-{position()}">
 							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
