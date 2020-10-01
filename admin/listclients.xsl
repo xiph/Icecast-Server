@@ -26,7 +26,7 @@
 												<th>Role</th>
 												<th>Sec. connected</th>
 												<th>User Agent</th>
-												<th>Action</th>
+												<th class="actions">Action</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -37,9 +37,8 @@
 													<td><xsl:value-of select="role" /></td>
 													<td><xsl:value-of select="connected" /></td>
 													<td><xsl:value-of select="useragent" /></td>
-													<td>
-														<a href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
-														&#160;
+													<td class="actions">
+														<a class="critical" href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
 														<a href="moveclients.xsl?mount={../@mount}&amp;id={id}">Move</a>
 													</td>
 												</tr>

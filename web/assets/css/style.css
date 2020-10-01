@@ -149,8 +149,32 @@ ul.boxnav > li > a {
     display: inline-block;
 }
 
-ul.boxnav > li.critical > a {
-    background-color: #ff704d;
+ul.boxnav > li.critical > a, a.critical {
+    background-color: #ff704d !important;
+}
+
+th.actions {
+    width: 10%;
+}
+
+td.actions {
+    display: flex;
+    flex-direction: column;
+}
+
+td.actions > a {
+    background-color: #4f8cb0;
+    border: none;
+    color: white;
+    padding: 0.5em;
+    margin-top: 0.2em;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+td.actions > a:first-child {
+    margin-top: 0;
 }
 
 /* Playlists list style */
