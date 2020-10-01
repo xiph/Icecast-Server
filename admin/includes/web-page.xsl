@@ -23,8 +23,8 @@
                             <h1>Icecast Server</h1>
                         </a>
                         <ul>
-                            <li><a href="status.xsl">Status</a></li>
-                            <li><a href="server_version.xsl">Version</a></li>
+                            <li><a href="/status.xsl">Status</a></li>
+                            <li><a href="/server_version.xsl">Version</a></li>
                             <li class="right adminlink"><a href="admin/">Administration</a></li>
                         </ul>
                     </nav>
