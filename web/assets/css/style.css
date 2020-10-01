@@ -275,3 +275,13 @@ h1, h2, h3, h5 {
 .error a:hover {
     text-decoration: none;
 }
+
+.warning {
+    border: 1px solid #5C2949;
+    background-color: #FFFF99;
+    padding: .5em 2em;
+}
+
+.warning strong {
+    display: block;
+}
