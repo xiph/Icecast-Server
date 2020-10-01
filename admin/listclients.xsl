@@ -11,10 +11,11 @@
 					<h2><xsl:value-of select="$title" /></h2>
 
 					<xsl:for-each select="source">
-						<div class="article">
-							<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+						<section class="box">
+							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
+							<h4>Listeners</h4>
 							<xsl:choose>
 								<xsl:when test="listener">
 									<table class="table-flipscroll">
@@ -50,7 +51,7 @@
 									<p>No listeners connected</p>
 								</xsl:otherwise>
 							</xsl:choose>
-						</div>
+						</section>
 					</xsl:for-each>
 
 				</div>

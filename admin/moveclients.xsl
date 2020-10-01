@@ -9,8 +9,8 @@
 	<xsl:template name="content">
 				<div class="section">
 					<h2><xsl:value-of select="$title" /></h2>
-					<div class="article">
-						<h3>Mountpoint <xsl:value-of select="current_source" /></h3>
+					<section class="box">
+						<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 						<!-- Mount nav -->
 						<xsl:call-template name="mountnav">
 							<xsl:with-param name="mount" select="current_source"/>
@@ -38,6 +38,7 @@
 										</xsl:for-each>
 									</select>
 									<input type="hidden" name="mount" value="{current_source}" />
+									&#160;
 									<input type="submit" value="Move listeners" />
 								</form>
 							</xsl:when>
@@ -48,7 +49,7 @@
 								</p>
 							</xsl:otherwise>
 						</xsl:choose>
-					</div>
+					</section>
 				</div>
 	</xsl:template>
 </xsl:stylesheet>

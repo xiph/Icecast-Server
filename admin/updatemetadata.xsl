@@ -11,19 +11,22 @@
 					<h2><xsl:value-of select="$title" /></h2>
 
 					<xsl:for-each select="source">
-						<div class="article">
-							<h3>Mountpoint  <xsl:value-of select="@mount" /></h3>
+						<section class="box">
+							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
+							<h4>Update Metadata</h4>
 							<form method="post" action="/admin/metadata.xsl">
-								<label for="metadata" class="hidden">Metadata</label>
-								<input type="text" id="metadata" name="song" value="" placeholder="Click to edit" required="required" />
 								<input type="hidden" name="mount" value="{@mount}" />
 								<input type="hidden" name="mode" value="updinfo" />
 								<input type="hidden" name="charset" value="UTF-8" />
+
+								<label for="metadata" class="hidden">Metadata:</label>
+								<input type="text" id="metadata" name="song" value="" placeholder="Click to edit" required="required" />
+								&#160;
 								<input type="submit" value="Update Metadata" />
 							</form>
-						</div>
+						</section>
 					</xsl:for-each>
 
 				</div>
