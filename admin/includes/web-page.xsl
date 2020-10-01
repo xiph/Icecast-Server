@@ -19,7 +19,7 @@
                 <header>
                     <nav id="main-nav" role="primary">
                         <a href="/" id="branding">
-                            <img src="icecast.png" alt="" />
+                            <img src="/assets/img/icecast.png" alt="Logo" />
                             <h1>Icecast Server</h1>
                         </a>
                         <ul>
