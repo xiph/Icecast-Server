@@ -15,8 +15,8 @@
 						</div>
 					</xsl:if>
 					<xsl:for-each select="role">
-						<div class="article">
-							<h3>Role <xsl:value-of select="@name" /> (<xsl:value-of select="@type" />)
+						<section class="box">
+							<h3 class="box_title">Role <code><xsl:value-of select="@name" /></code> (<code><xsl:value-of select="@type" /></code>)
 								<xsl:if test="server_name">
 									<xsl:text> </xsl:text><small><xsl:value-of select="server_name" /></small>
 								</xsl:if>
@@ -54,16 +54,19 @@
 							<xsl:if test="@can-adduser = 'true'">
 								<h4>Add User</h4>
 								<form method="post" action="manageauth.xsl">
-									<label for="username" class="hidden">Username</label>
-									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
-									<label for="password" class="hidden">Password</label>
-									<input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
 									<input type="hidden" name="id" value="{@id}"/>
 									<input type="hidden" name="action" value="add"/>
+
+									<label for="username" class="hidden">Username: </label>
+									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
+									&#160;
+									<label for="password" class="hidden">Password: </label>
+									<input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
+									&#160;
 									<input type="submit" value="Add new user" />
 								</form>
 							</xsl:if>
-						</div>
+						</section>
 					</xsl:for-each>
 				</div>
 	</xsl:template>
