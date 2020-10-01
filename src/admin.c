@@ -1238,6 +1238,9 @@ static void command_updatemetadata(client_t *client,
     node = admin_build_rootnode(doc, "icestats");
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
+    if (source->running) {
+        xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"), XMLSTR(source->format->contenttype));
+    }
     xmlDocSetRootElement(doc, node);
 
     admin_send_response(doc, client, response,
