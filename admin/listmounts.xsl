@@ -54,7 +54,7 @@
 							</xsl:for-each>
 						</xsl:when>
 						<xsl:otherwise>
-							<div class="aside error">
+							<div class="aside info">
 								<strong>No mounts!</strong> There are no active mountpoints.
 							</div>
 						</xsl:otherwise>

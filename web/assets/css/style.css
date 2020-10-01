@@ -307,8 +307,7 @@ h1, h2, h3, h5 {
 /* Error messages */
 
 .error {
-    background-color: #DBCAD5;
-    color: #5C2949;
+    background-color: #FF9999;
     padding: .5em 2em;
     border: 1px solid #5C2949;
 }
@@ -325,6 +324,12 @@ h1, h2, h3, h5 {
     padding: .5em 2em;
 }
 
-.warning strong {
+.info {
+    border: 1px solid #5C2949;
+    background-color: #ABBBFF;
+    padding: .5em 2em;
+}
+
+.error > strong, .warning > strong, .info > strong {
     display: block;
 }

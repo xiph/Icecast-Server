@@ -133,7 +133,7 @@
 			</xsl:for-each>
 		</xsl:when>
 		<xsl:otherwise>
-			<aside class="error">
+			<aside class="info">
 				<strong>No mounts!</strong> There are no active mountpoints.
 			</aside>
 		</xsl:otherwise>
