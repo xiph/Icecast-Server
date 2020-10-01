@@ -70,7 +70,7 @@ html, body {
     transform: scaleX(0);
 }
 
-#main-nav > ul > li.right > a:after {
+#main-nav > ul > li.adminlink > a:after {
     border-bottom: 2px #ff704d solid;
 }
 
