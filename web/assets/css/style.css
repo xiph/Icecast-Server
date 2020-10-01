@@ -265,7 +265,6 @@ section.box table.table-keys tr td:first-child {
 main {
     display: block;
     clear: both;
-    padding: 0 1.5em;
     /*background: #CAD5DB;*/
     /*background: #FFF;*/
     max-width: 800px;
