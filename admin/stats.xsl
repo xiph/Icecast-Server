@@ -32,12 +32,11 @@
 
 
 	<xsl:template name="content">
-				<div class="section">
 					<h2>Server status</h2>
 
 					<!-- Global stats table -->
-					<div class="article">
-						<h3>Global server stats</h3>
+					<section class="box">
+						<h3 class="box_title">Global server stats</h3>
 						<!-- Global subnav -->
 						<div class="nav">
 							<ul>
@@ -66,12 +65,12 @@
 							<h4>Authentication</h4>
 							<xsl:call-template name="authlist" />
 						</xsl:if>
-					</div>
+					</section>
 
 					<!-- Mount stats -->
 					<xsl:for-each select="source">
-						<div class="article">
-							<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+						<section class="box">
+							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
 							<h4>Play stream</h4>
@@ -149,8 +148,7 @@
 								<xsl:call-template name="authlist" />
 							</xsl:if>
 
-						</div>
+						</section>
 					</xsl:for-each>
-				</div>
 	</xsl:template>
 </xsl:stylesheet>

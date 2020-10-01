@@ -37,8 +37,8 @@
 					<xsl:choose>
 						<xsl:when test="source">
 							<xsl:for-each select="source">
-								<div class="article">
-									<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+								<section class="box">
+									<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 									<!-- Mount nav -->
 									<xsl:call-template name="mountnav" />
 									<h4>Play stream</h4>
@@ -61,7 +61,7 @@
 										<h4>Mount Authentication</h4>
 										<xsl:call-template name="authlist" />
 									</xsl:if>
-								</div>
+								</section>
 							</xsl:for-each>
 						</xsl:when>
 						<xsl:otherwise>

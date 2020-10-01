@@ -6,16 +6,14 @@
 	<xsl:variable name="title">Server Response</xsl:variable>
 
 	<xsl:template name="content">
-				<div class="section">
-					<h2><xsl:value-of select="$title" /></h2>
-					<xsl:for-each select="/iceresponse">
-						<div class="article">
-							<h3>Response</h3>
-							<h4>Message</h4>
-							<p><xsl:value-of select="message" /></p>
-							<p>(Return Code: <xsl:value-of select="return" />)</p>
-						</div>
-					</xsl:for-each>
-				</div>
+		<h2><xsl:value-of select="$title" /></h2>
+		<xsl:for-each select="/iceresponse">
+			<section class="box">
+				<h3 class="box_title">Response</h3>
+				<h4>Message</h4>
+				<p><xsl:value-of select="message" /></p>
+				<p>(Return Code: <xsl:value-of select="return" />)</p>
+			</section>
+		</xsl:for-each>
 	</xsl:template>
 </xsl:stylesheet>
