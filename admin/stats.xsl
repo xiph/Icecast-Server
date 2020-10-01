@@ -55,7 +55,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								<xsl:for-each select="/icestats/*[not(self::source) and not(self::authentication)]">
+								<xsl:for-each select="/icestats/*[not(self::source) and not(self::authentication) and not(self::modules)]">
 									<tr>
 										<td><xsl:value-of select="name()" /></td>
 										<td><xsl:value-of select="text()" /></td>
