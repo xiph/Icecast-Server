@@ -3,6 +3,7 @@
 <xsl:include href="includes/web-page.xsl"/>
 <xsl:variable name="title">Server Information</xsl:variable>
 <xsl:template name="content">
+	<h2>Version</h2>
 	<section class="box">
 		<h3 class="box_title">Server Information</h3>
 		<table class="table-keys">
