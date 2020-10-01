@@ -1,6 +1,7 @@
 <xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" xmlns="http://www.w3.org/1999/xhtml">
 <xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:include href="includes/web-page.xsl"/>
+<xsl:include href="includes/player.xsl"/>
 <xsl:variable name="title">Status</xsl:variable>
 <xsl:template name="content">
 	<xsl:text disable-output-escaping="yes">
@@ -21,23 +22,7 @@
 					<xsl:when test="listeners">
 					<section class="box">
 						<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
-						<ul class="playlists">
-							<li><a href="{@mount}">Direct</a></li>
-							<li><a href="{@mount}.m3u">M3U</a></li>
-							<li><a href="{@mount}.xspf">XSPF</a></li>
-						</ul>
-
-						<!-- Playlists section -->
-						<h4>Play stream</h4>
-
-						<!-- Player -->
-						<xsl:if test="server_type and ((server_type = 'application/ogg') or (server_type = 'audio/ogg') or (server_type = 'audio/webm'))">
-							<div class="audioplayer">
-								<audio controls="controls" preload="none">
-									<source src="{@mount}" type="{server_type}" />
-								</audio>
-							</div>
-						</xsl:if>
+						<xsl:call-template name="player" />
 
 						<!-- Stream info and stats -->
 						<h4>Further information</h4>

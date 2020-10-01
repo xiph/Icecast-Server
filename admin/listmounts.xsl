@@ -3,6 +3,7 @@
 	<!-- Import include files -->
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
+	<xsl:include href="includes/player.xsl"/>
 
 	<xsl:variable name="title">Active Mountpoints</xsl:variable>
 
@@ -41,19 +42,7 @@
 									<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 									<!-- Mount nav -->
 									<xsl:call-template name="mountnav" />
-									<h4>Play stream</h4>
-									<xsl:choose>
-										<xsl:when test="authenticator">
-											<a class="play" href="/auth.xsl">Auth</a>
-										</xsl:when>
-										<xsl:otherwise>
-											<a class="play" href="{@mount}.m3u">&#9658; <span>M3U</span></a>
-											<xsl:text> </xsl:text>
-											<a class="play" href="{@mount}.xspf">&#9658; <span>XSPF</span></a>
-											<xsl:text> </xsl:text>
-											<a class="play" href="{@mount}.vclt">&#9658; <span>VCLT</span></a>
-										</xsl:otherwise>
-									</xsl:choose>
+									<xsl:call-template name="player" />
 									<p><xsl:value-of select="listeners" /> Listener(s)</p>
 
 									<!-- Mount Authentication -->
