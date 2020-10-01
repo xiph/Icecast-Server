@@ -249,7 +249,7 @@ section.box table tr {
 }
 
 section.box table tbody tr:hover {
-    background-color: #c0c0c0;
+    background-color: #cccccc;
 }
 
 section.box table.table-keys tr > * {
