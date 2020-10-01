@@ -274,16 +274,8 @@ section.box table.table-keys tr td:first-child {
 main {
     display: block;
     clear: both;
-    /*background: #CAD5DB;*/
-    /*background: #FFF;*/
     max-width: 800px;
     margin: 0 auto;
-}
-
-main > h2 {
-    /* Blue line below titles */
-    /*border-bottom: 2px #4f8cb0 solid;*/
-    /*text-align: center;*/
 }
 
 footer {
