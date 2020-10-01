@@ -21,14 +21,14 @@
 					<xsl:when test="listeners">
 					<section class="box">
 						<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
-
-						<!-- Playlists section -->
-						<h4>Play stream</h4>
 						<ul class="playlists">
 							<li><a href="{@mount}">Direct</a></li>
 							<li><a href="{@mount}.m3u">M3U</a></li>
 							<li><a href="{@mount}.xspf">XSPF</a></li>
 						</ul>
+
+						<!-- Playlists section -->
+						<h4>Play stream</h4>
 
 						<!-- Player -->
 						<xsl:if test="server_type and ((server_type = 'application/ogg') or (server_type = 'audio/ogg') or (server_type = 'audio/webm'))">
