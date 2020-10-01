@@ -4,7 +4,7 @@
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
 
-	<xsl:variable name="title">Stats</xsl:variable>
+	<xsl:variable name="title">Server status</xsl:variable>
 
 	<!-- Auth template -->
 	<xsl:template name="authlist">
@@ -33,7 +33,7 @@
 
 	<xsl:template name="content">
 				<div class="section">
-					<h2>Administration</h2>
+					<h2>Server status</h2>
 
 					<!-- Global stats table -->
 					<div class="article">
