@@ -17,10 +17,10 @@
 							<xsl:call-template name="mountnav" />
 							<h4>Update Metadata</h4>
 							<xsl:if test="content-type and not((content-type = 'application/mpeg') or (content-type = 'audio/aac') or (content-type = 'audio/aacp'))">
-								<p class="warning">
+								<aside class="warning">
 									<strong>Warning</strong>
 									This is only supported for legacy codecs using ICY as transport such as MP3 and AAC.
-								</p>
+								</aside>
 							</xsl:if>
 							<form method="post" action="/admin/metadata.xsl">
 								<input type="hidden" name="mount" value="{@mount}" />

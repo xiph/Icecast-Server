@@ -43,10 +43,10 @@
 								</form>
 							</xsl:when>
 							<xsl:otherwise>
-								<p class="warning">
+								<aside class="warning">
 									<strong>No mounts!</strong> 
 									There are no other mountpoints you could move the listeners to.
-								</p>
+								</aside>
 							</xsl:otherwise>
 						</xsl:choose>
 					</section>

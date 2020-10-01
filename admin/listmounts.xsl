@@ -54,9 +54,9 @@
 							</xsl:for-each>
 						</xsl:when>
 						<xsl:otherwise>
-							<div class="aside info">
+							<aside class="info">
 								<strong>No mounts!</strong> There are no active mountpoints.
-							</div>
+							</aside>
 						</xsl:otherwise>
 					</xsl:choose>
 				</div>

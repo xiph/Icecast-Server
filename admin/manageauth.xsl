@@ -10,9 +10,9 @@
 				<div class="section">
 					<h2><xsl:value-of select="$title" /></h2>
 					<xsl:if test="iceresponse">
-						<div class="aside error">
+						<aside class="error">
 							<xsl:value-of select="iceresponse/message" />
-						</div>
+						</aside>
 					</xsl:if>
 					<xsl:for-each select="role">
 						<section class="box">
