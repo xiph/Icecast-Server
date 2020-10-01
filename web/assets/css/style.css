@@ -113,6 +113,34 @@ div.nav > h4 {
     margin: 0;
 }
 
+/* Box navigation */
+
+ul.boxnav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+ul.boxnav > li {
+    margin-left: 1em;
+}
+
+ul.boxnav > li > a {
+    background-color: #4f8cb0;
+    border: none;
+    color: white;
+    padding: 0.5em 1em;
+    margin-top: 0.2em;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+ul.boxnav > li.critical > a {
+    background-color: #ff704d;
+}
+
 /* Playlists list style */
 
 ul.playlists {

@@ -39,11 +39,14 @@
 					<section class="box">
 						<h3 class="box_title">Global server stats</h3>
 						<!-- Global subnav -->
-						<div class="nav">
-							<ul>
+						<div class="stats">
+							<ul class="boxnav">
 								<li><a href="reloadconfig.xsl">Reload Configuration</a></li>
 							</ul>
 						</div>
+
+						<h4>Statistics</h4>
+
 						<table class="table-block">
 							<thead>
 								<tr>
