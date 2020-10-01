@@ -22,7 +22,7 @@ body > main {
 
 #main-nav {
     display: block;
-    background: #001826;
+    background: #23282c;
     overflow: hidden;
     padding: 0.5em 2.5em;
     border-bottom: 2px #29495C solid;
@@ -259,7 +259,7 @@ footer {
     padding: 0.25em 1em;
     color: #CCC;
     text-align: center;
-    background: #001826;
+    background: #23282c;
 }
 
 footer a {
