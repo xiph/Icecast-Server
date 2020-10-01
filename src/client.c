@@ -642,7 +642,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
         fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
-        xslt_transform(doc, fullpath_xslt_template, client, status, location);
+        xslt_transform(doc, fullpath_xslt_template, client, status, location, NULL);
         free(fullpath_xslt_template);
     }
 

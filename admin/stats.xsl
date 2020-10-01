@@ -5,6 +5,8 @@
 	<xsl:include href="includes/mountnav.xsl"/>
 	<xsl:include href="includes/player.xsl"/>
 
+	<xsl:param name="param-showall" />
+	<xsl:param name="param-has-mount" />
 	<xsl:variable name="title">Server status</xsl:variable>
 
 	<!-- Auth template -->
@@ -42,6 +44,7 @@
 						<div class="stats">
 							<ul class="boxnav">
 								<li><a href="reloadconfig.xsl">Reload Configuration</a></li>
+								<li><a href="?showall=true">Show all mounts</a></li>
 							</ul>
 						</div>
 
@@ -72,6 +75,7 @@
 					</section>
 
 					<!-- Mount stats -->
+					<xsl:if test="$param-showall or $param-has-mount">
 					<xsl:for-each select="source">
 						<section class="box">
 							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
@@ -142,5 +146,6 @@
 
 						</section>
 					</xsl:for-each>
+						</xsl:if>
 	</xsl:template>
 </xsl:stylesheet>

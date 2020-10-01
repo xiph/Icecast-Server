@@ -320,7 +320,7 @@ static inline void _send_error(client_t *client, icecast_error_id_t id, int old_
     client_send_error_by_id(client, id);
 }
 
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status, const char *location)
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status, const char *location, const char **params)
 {
     xmlDocPtr res;
     xsltStylesheetPtr cur;
@@ -344,7 +344,7 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         return;
     }
 
-    res = xsltApplyStylesheet(cur, doc, NULL);
+    res = xsltApplyStylesheet(cur, doc, params);
     if (res != NULL) {
         if (xsltSaveResultToString(&string, &len, res, cur) < 0)
             problem = 1;
