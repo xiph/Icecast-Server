@@ -3,9 +3,9 @@
 <xsl:include href="includes/web-page.xsl"/>
 <xsl:variable name="title">Server Information</xsl:variable>
 <xsl:template name="content">
-	<div class="roundbox">
-		<h3>Server Information</h3>
-		<table class="yellowkeys">
+	<section class="box">
+		<h3 class="box_title">Server Information</h3>
+		<table class="table-keys">
 			<tbody>
 				<xsl:for-each select="/icestats">
 				<tr>
@@ -47,6 +47,6 @@
 				</tr>
 			</tbody>
 		</table>
-	</div>
+	</section>
 </xsl:template>
 </xsl:stylesheet>
