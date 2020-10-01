@@ -12,10 +12,10 @@
 			<h4>Play stream</h4>
 
 			<!-- Player -->
-			<xsl:if test="server_type and ((server_type = 'application/ogg') or (server_type = 'audio/ogg') or (server_type = 'audio/webm'))">
+			<xsl:if test="content-type and ((content-type = 'application/ogg') or (content-type = 'audio/ogg') or (content-type = 'audio/webm'))">
 				<div class="audioplayer">
 					<audio controls="controls" preload="none">
-						<source src="{@mount}" type="{server_type}" />
+						<source src="{@mount}" type="{content-type}" />
 					</audio>
 				</div>
 			</xsl:if>
