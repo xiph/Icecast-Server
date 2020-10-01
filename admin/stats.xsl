@@ -119,13 +119,15 @@
 							<xsl:if test="playlist/*">
 								<h4>Playlist</h4>
 								<table class="table-block">
-									<tbody>
+									<thead>
 										<tr>
 											<th>Album</th>
 											<th>Track</th>
 											<th>Creator</th>
 											<th>Title</th>
 										</tr>
+									</thead>
+									<tbody>
 										<xsl:for-each select="playlist/trackList/track">
 											<tr>
 												<td><xsl:value-of select="album" /></td>
