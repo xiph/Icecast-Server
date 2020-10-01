@@ -4,6 +4,18 @@ html, body {
     font-family: sans-serif;
     line-height: 1;
     -webkit-text-size-adjust:100%; -moz-text-size-adjust:100%; -ms-text-size-adjust:100%;
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+body > main {
+    width: 100%;
+    flex-grow: 1;
 }
 
 /* Main navigation styles */
@@ -228,7 +240,6 @@ section.box table.table-keys tr td:first-child {
 
 main {
     display: block;
-    overflow: hidden;
     clear: both;
     padding: 0 1.5em;
     /*background: #CAD5DB;*/

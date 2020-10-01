@@ -32,15 +32,15 @@
 
                 <!--<h1 id="header">Icecast <xsl:value-of select="$title"/></h1>-->
 
-                <!-- Content -->
-                <main role="main">
-                    <xsl:call-template name="content" namespace="http://www.w3.org/1999/xhtml" />
-                </main>
+		<!-- Content -->
+		<main role="main">
+			<xsl:call-template name="content" namespace="http://www.w3.org/1999/xhtml" />
+		</main>
 
-                <!-- Footer -->
-                <footer>
-                    <p>Support icecast development at <a href="http://icecast.org">icecast.org</a></p>
-                </footer>
+		<!-- Footer -->
+		<footer>
+			<p>Support icecast development at <a href="http://icecast.org">icecast.org</a></p>
+		</footer>
             </body>
         </html>
     </xsl:template>
