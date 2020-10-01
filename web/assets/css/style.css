@@ -252,12 +252,20 @@ section.box table tbody tr:hover {
     background-color: #c0c0c0;
 }
 
-section.box table tr > * {
+section.box table.table-keys tr > * {
     padding: 0.4em 1.5em;
+}
+
+section.box table.table-block tr > * {
+    padding: 0.4em 0.4em;
 }
 
 section.box table.table-keys tr td:first-child {
     font-weight: bold;
+}
+
+.playlist-container {
+    overflow-x: auto;
 }
 
 /* Main content styling */

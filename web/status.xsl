@@ -2,6 +2,7 @@
 <xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
 <xsl:include href="includes/web-page.xsl"/>
 <xsl:include href="includes/player.xsl"/>
+<xsl:include href="includes/playlist.xsl"/>
 <xsl:variable name="title">Status</xsl:variable>
 <xsl:template name="content">
 	<xsl:text disable-output-escaping="yes">
@@ -121,27 +122,7 @@
 								</tbody>
 							</table>
 							<!-- Extra playlist -->
-							<xsl:if test="playlist/*">
-								<h4>Playlist</h4>
-								<table class="table-block">
-									<tbody>
-										<tr>
-											<th>Album</th>
-											<th>Track</th>
-											<th>Creator</th>
-											<th>Title</th>
-										</tr>
-										<xsl:for-each select="playlist/trackList/track">
-											<tr>
-												<td><xsl:value-of select="album" /></td>
-												<td><xsl:value-of select="trackNum" /></td>
-												<td><xsl:value-of select="creator" /></td>
-												<td><xsl:value-of select="title" /></td>
-											</tr>
-										</xsl:for-each>
-									</tbody>
-								</table>
-							</xsl:if>
+							<xsl:call-template name="playlist" />
 						</div>
 					</section>
 					</xsl:when>

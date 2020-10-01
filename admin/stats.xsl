@@ -4,6 +4,7 @@
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
 	<xsl:include href="includes/player.xsl"/>
+	<xsl:include href="includes/playlist.xsl"/>
 
 	<xsl:param name="param-showall" />
 	<xsl:param name="param-has-mount" />
@@ -116,29 +117,7 @@
 							</xsl:if>
 
 							<!-- Extra playlist -->
-							<xsl:if test="playlist/*">
-								<h4>Playlist</h4>
-								<table class="table-block">
-									<thead>
-										<tr>
-											<th>Album</th>
-											<th>Track</th>
-											<th>Creator</th>
-											<th>Title</th>
-										</tr>
-									</thead>
-									<tbody>
-										<xsl:for-each select="playlist/trackList/track">
-											<tr>
-												<td><xsl:value-of select="album" /></td>
-												<td><xsl:value-of select="trackNum" /></td>
-												<td><xsl:value-of select="creator" /></td>
-												<td><xsl:value-of select="title" /></td>
-											</tr>
-										</xsl:for-each>
-									</tbody>
-								</table>
-							</xsl:if>
+							<xsl:call-template name="playlist" />
 
 							<!-- Mount Authentication -->
 							<xsl:if test="authentication">
