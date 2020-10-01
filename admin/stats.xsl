@@ -120,7 +120,7 @@
 							<xsl:call-template name="playlist" />
 
 							<!-- Mount Authentication -->
-							<xsl:if test="authentication">
+							<xsl:if test="authentication/*">
 								<h4>Mount Authentication</h4>
 								<xsl:call-template name="authlist" />
 							</xsl:if>
