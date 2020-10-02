@@ -138,7 +138,7 @@ static const struct nodeattr __attr_href[1]             = {{"href",         "URI
 static const struct nodeattr __attr_application[1]      = {{"application",  "URI",          NULL,     1,  NULL, {NULL}}};
 static const struct nodeattr __attr__action_type[1]     = {{"type",         NULL,           NULL,     1,  NULL, {"retry", "choice", "see-other", "authenticate", "pay", "change-protocol", "slow-down", "ask-user", "ask-admin", "bug", NULL}}};
 static const struct nodeattr __attr__resource_type[1]   = {{"type",         NULL,           NULL,     1,  NULL, {"actor", "manipulation-target", "helper", "related", "result", "parameter", NULL}}};
-static const struct nodeattr __attr__value_type[1]      = {{"type",         NULL,           NULL,     1,  NULL, {"null", "int", "float", "uuid", "string", "structure", "uri", "pointer", "version", "protocol", "username", "password", NULL}}};
+static const struct nodeattr __attr__value_type[1]      = {{"type",         NULL,           NULL,     1,  NULL, {"null", "int", "float", "uuid", "string", "structure", "uri", "pointer", "version", "protocol", "nodename", "username", "password", "boolean", "list", "unordered-list", "bit-field", "enum", "flag", "blob", "blob-base64", "timestamp", NULL}}};
 static const struct nodeattr __attr__reference_type[1]  = {{"type",         NULL,           NULL,     1,  NULL, {"documentation", "log", "report", "related", NULL}}};
 
 /* definition of known nodes */
