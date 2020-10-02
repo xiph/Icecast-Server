@@ -462,6 +462,8 @@ void admin_send_response(xmlDocPtr       doc,
         char *fullpath_xslt_template;
         size_t fullpath_xslt_template_len;
         ice_config_t *config = config_get_config();
+        const char *showall;
+        const char *mount;
 
         fullpath_xslt_template_len = strlen(config->adminroot_dir) + strlen(xslt_template) + strlen(PATH_SEPARATOR) + 1;
         fullpath_xslt_template = malloc(fullpath_xslt_template_len);
@@ -470,7 +472,17 @@ void admin_send_response(xmlDocPtr       doc,
         config_release_config();
 
         ICECAST_LOG_DEBUG("Sending XSLT (%s)", fullpath_xslt_template);
-        xslt_transform(doc, fullpath_xslt_template, client, 200, NULL);
+
+        COMMAND_OPTIONAL(client, "showall", showall);
+        COMMAND_OPTIONAL(client, "mount", mount);
+
+        if (showall && util_str_to_bool(showall)) {
+            const char *params[] = {"param-has-mount", mount ? "'true'" : NULL, "param-showall", "'true'", NULL};
+            xslt_transform(doc, fullpath_xslt_template, client, 200, NULL, params);
+        } else {
+            const char *params[] = {"param-has-mount", mount ? "'true'" : NULL, "param-showall", NULL, NULL};
+            xslt_transform(doc, fullpath_xslt_template, client, 200, NULL, params);
+        }
         free(fullpath_xslt_template);
     }
 }
@@ -1238,6 +1250,9 @@ static void command_updatemetadata(client_t *client,
     node = admin_build_rootnode(doc, "icestats");
     srcnode = xmlNewChild(node, NULL, XMLSTR("source"), NULL);
     xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
+    if (source->running) {
+        xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"), XMLSTR(source->format->contenttype));
+    }
     xmlDocSetRootElement(doc, node);
 
     admin_send_response(doc, client, response,

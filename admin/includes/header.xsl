@@ -2,27 +2,24 @@
 	<xsl:output method="html" doctype-system="about:legacy-compat" encoding="UTF-8" indent="yes" />
 	<xsl:template name="header">
 
-		<div class="header">
-			<h1>
-				<a href="/" title="Home page">Icecast</a>
-				<xsl:text> </xsl:text>
-				<span>administration</span>
-			</h1>
-			<div class="nav">
-				<label for="toggle-nav" class="nobar" title="Toggle navigation"></label>
-				<input type="checkbox" id="toggle-nav" />
+		<header>
+			<nav id="main-nav" role="primary">
+				<a href="/" id="branding">
+					<img src="/assets/img/icecast.png" alt="Logo" />
+					<h1>Icecast Server administration</h1>
+				</a>
 				<ul>
-					<li class="on"><a href="/admin/stats.xsl">Administration</a></li>
-					<li><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
+					<li class="adminlink"><a href="/admin/stats.xsl">Server status</a></li>
+					<li class="adminlink"><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
 					<xsl:for-each select="(/report/extension/icestats | /icestats | /iceresponse)/modules/module">
 						<xsl:if test="@management-url and @management-title">
-							<li><a href="{@management-url}"><xsl:value-of select="@management-title" /></a></li>
+							<li class="adminlink"><a href="{@management-url}"><xsl:value-of select="@management-title" /></a></li>
 						</xsl:if>
 					</xsl:for-each>
-					<li><a href="/status.xsl">Public area</a></li>
+					<li class="right"><a href="/status.xsl">Public area</a></li>
 				</ul>
-			</div>
-		</div>
+			</nav>
+		</header>
 
 	</xsl:template>
 </xsl:stylesheet>

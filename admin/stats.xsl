@@ -3,8 +3,12 @@
 	<!-- Import include files -->
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
+	<xsl:include href="includes/player.xsl"/>
+	<xsl:include href="includes/playlist.xsl"/>
 
-	<xsl:variable name="title">Stats</xsl:variable>
+	<xsl:param name="param-showall" />
+	<xsl:param name="param-has-mount" />
+	<xsl:variable name="title">Server status</xsl:variable>
 
 	<!-- Auth template -->
 	<xsl:template name="authlist">
@@ -32,18 +36,21 @@
 
 
 	<xsl:template name="content">
-				<div class="section">
-					<h2>Administration</h2>
+					<h2>Server status</h2>
 
 					<!-- Global stats table -->
-					<div class="article">
-						<h3>Global server stats</h3>
+					<section class="box">
+						<h3 class="box_title">Global server stats</h3>
 						<!-- Global subnav -->
-						<div class="nav">
-							<ul>
+						<div class="stats">
+							<ul class="boxnav">
 								<li><a href="reloadconfig.xsl">Reload Configuration</a></li>
+								<li><a href="?showall=true">Show all mounts</a></li>
 							</ul>
 						</div>
+
+						<h4>Statistics</h4>
+
 						<table class="table-block">
 							<thead>
 								<tr>
@@ -52,7 +59,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								<xsl:for-each select="/icestats/*[not(self::source) and not(self::authentication)]">
+								<xsl:for-each select="/icestats/*[not(self::source) and not(self::authentication) and not(self::modules)]">
 									<tr>
 										<td><xsl:value-of select="name()" /></td>
 										<td><xsl:value-of select="text()" /></td>
@@ -66,27 +73,16 @@
 							<h4>Authentication</h4>
 							<xsl:call-template name="authlist" />
 						</xsl:if>
-					</div>
+					</section>
 
 					<!-- Mount stats -->
+					<xsl:if test="$param-showall or $param-has-mount">
 					<xsl:for-each select="source">
-						<div class="article">
-							<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+						<section class="box" id="mount-{position()}">
+							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
-							<h4>Play stream</h4>
-							<xsl:choose>
-								<xsl:when test="authenticator">
-									<a class="play" href="/auth.xsl">Auth</a>
-								</xsl:when>
-								<xsl:otherwise>
-									<a class="play" href="{@mount}.m3u">&#9658; <span>M3U</span></a>
-									<xsl:text> </xsl:text>
-									<a class="play" href="{@mount}.xspf">&#9658; <span>XSPF</span></a>
-									<xsl:text> </xsl:text>
-									<a class="play" href="{@mount}.vclt">&#9658; <span>VCLT</span></a>
-								</xsl:otherwise>
-							</xsl:choose>
+							<xsl:call-template name="player" />
 							<h4>Further information</h4>
 							<table class="table-block">
 								<thead>
@@ -121,36 +117,16 @@
 							</xsl:if>
 
 							<!-- Extra playlist -->
-							<xsl:if test="playlist/*">
-								<h4>Playlist</h4>
-								<table class="table-block">
-									<tbody>
-										<tr>
-											<th>Album</th>
-											<th>Track</th>
-											<th>Creator</th>
-											<th>Title</th>
-										</tr>
-										<xsl:for-each select="playlist/trackList/track">
-											<tr>
-												<td><xsl:value-of select="album" /></td>
-												<td><xsl:value-of select="trackNum" /></td>
-												<td><xsl:value-of select="creator" /></td>
-												<td><xsl:value-of select="title" /></td>
-											</tr>
-										</xsl:for-each>
-									</tbody>
-								</table>
-							</xsl:if>
+							<xsl:call-template name="playlist" />
 
 							<!-- Mount Authentication -->
-							<xsl:if test="authentication">
+							<xsl:if test="authentication/*">
 								<h4>Mount Authentication</h4>
 								<xsl:call-template name="authlist" />
 							</xsl:if>
 
-						</div>
+						</section>
 					</xsl:for-each>
-				</div>
+						</xsl:if>
 	</xsl:template>
 </xsl:stylesheet>

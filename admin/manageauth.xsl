@@ -10,13 +10,13 @@
 				<div class="section">
 					<h2><xsl:value-of select="$title" /></h2>
 					<xsl:if test="iceresponse">
-						<div class="aside error">
+						<aside class="error">
 							<xsl:value-of select="iceresponse/message" />
-						</div>
+						</aside>
 					</xsl:if>
 					<xsl:for-each select="role">
-						<div class="article">
-							<h3>Role <xsl:value-of select="@name" /> (<xsl:value-of select="@type" />)
+						<section class="box">
+							<h3 class="box_title">Role <code><xsl:value-of select="@name" /></code> (<code><xsl:value-of select="@type" /></code>)
 								<xsl:if test="server_name">
 									<xsl:text> </xsl:text><small><xsl:value-of select="server_name" /></small>
 								</xsl:if>
@@ -28,7 +28,7 @@
 											<tr>
 												<th>User</th>
 												<xsl:if test="@can-deleteuser = 'true'">
-													<th>Action</th>
+													<th class="actions">Action</th>
 												</xsl:if>
 											</tr>
 										</thead>
@@ -37,8 +37,8 @@
 												<tr>
 													<td><xsl:value-of select="username" /></td>
 													<xsl:if test="../../@can-deleteuser = 'true'">
-														<td>
-															<a href="manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
+														<td class="actions">
+															<a class="critical" href="manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
 														</td>
 													</xsl:if>
 												</tr>
@@ -54,16 +54,19 @@
 							<xsl:if test="@can-adduser = 'true'">
 								<h4>Add User</h4>
 								<form method="post" action="manageauth.xsl">
-									<label for="username" class="hidden">Username</label>
-									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
-									<label for="password" class="hidden">Password</label>
-									<input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
 									<input type="hidden" name="id" value="{@id}"/>
 									<input type="hidden" name="action" value="add"/>
+
+									<label for="username" class="hidden">Username: </label>
+									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
+									&#160;
+									<label for="password" class="hidden">Password: </label>
+									<input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
+									&#160;
 									<input type="submit" value="Add new user" />
 								</form>
 							</xsl:if>
-						</div>
+						</section>
 					</xsl:for-each>
 				</div>
 	</xsl:template>

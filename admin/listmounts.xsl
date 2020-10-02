@@ -3,6 +3,7 @@
 	<!-- Import include files -->
 	<xsl:include href="includes/page.xsl"/>
 	<xsl:include href="includes/mountnav.xsl"/>
+	<xsl:include href="includes/player.xsl"/>
 
 	<xsl:variable name="title">Active Mountpoints</xsl:variable>
 
@@ -37,23 +38,11 @@
 					<xsl:choose>
 						<xsl:when test="source">
 							<xsl:for-each select="source">
-								<div class="article">
-									<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+								<section class="box">
+									<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 									<!-- Mount nav -->
 									<xsl:call-template name="mountnav" />
-									<h4>Play stream</h4>
-									<xsl:choose>
-										<xsl:when test="authenticator">
-											<a class="play" href="/auth.xsl">Auth</a>
-										</xsl:when>
-										<xsl:otherwise>
-											<a class="play" href="{@mount}.m3u">&#9658; <span>M3U</span></a>
-											<xsl:text> </xsl:text>
-											<a class="play" href="{@mount}.xspf">&#9658; <span>XSPF</span></a>
-											<xsl:text> </xsl:text>
-											<a class="play" href="{@mount}.vclt">&#9658; <span>VCLT</span></a>
-										</xsl:otherwise>
-									</xsl:choose>
+									<xsl:call-template name="player" />
 									<p><xsl:value-of select="listeners" /> Listener(s)</p>
 
 									<!-- Mount Authentication -->
@@ -61,13 +50,13 @@
 										<h4>Mount Authentication</h4>
 										<xsl:call-template name="authlist" />
 									</xsl:if>
-								</div>
+								</section>
 							</xsl:for-each>
 						</xsl:when>
 						<xsl:otherwise>
-							<div class="aside error">
+							<aside class="info">
 								<strong>No mounts!</strong> There are no active mountpoints.
-							</div>
+							</aside>
 						</xsl:otherwise>
 					</xsl:choose>
 				</div>

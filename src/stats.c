@@ -903,6 +903,9 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
                     for (i = 0; i < source_real->format->vc.comments; i++)
                         __add_metadata(metadata, source_real->format->vc.user_comments[i]);
                 }
+
+                if (source_real->running)
+                    xmlNewTextChild(xmlnode, NULL, XMLSTR("content-type"), XMLSTR(source_real->format->contenttype));
             }
             avl_tree_unlock(global.source_tree);
 
@@ -1050,7 +1053,7 @@ void stats_transform_xslt(client_t *client)
 
     doc = stats_get_xml(0, mount, client);
 
-    xslt_transform(doc, xslpath, client, 200, NULL);
+    xslt_transform(doc, xslpath, client, 200, NULL, NULL);
 
     xmlFreeDoc(doc);
     free(xslpath);

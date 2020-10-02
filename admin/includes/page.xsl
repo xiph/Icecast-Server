@@ -16,10 +16,14 @@
 				<!-- Header/Menu -->
 				<xsl:call-template name="header" />
 
-				<xsl:call-template name="content" />
+				<main role="main">
+					<xsl:call-template name="content" />
+				</main>
 
 				<!-- Footer -->
-				<xsl:call-template name="footer" />
+				<footer>
+					<xsl:call-template name="footer" />
+				</footer>
 
 			</body>
 		</html>

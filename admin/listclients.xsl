@@ -11,10 +11,11 @@
 					<h2><xsl:value-of select="$title" /></h2>
 
 					<xsl:for-each select="source">
-						<div class="article">
-							<h3>Mountpoint <xsl:value-of select="@mount" /></h3>
+						<section class="box">
+							<h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
 							<!-- Mount nav -->
 							<xsl:call-template name="mountnav" />
+							<h4>Listeners</h4>
 							<xsl:choose>
 								<xsl:when test="listener">
 									<table class="table-flipscroll">
@@ -25,7 +26,7 @@
 												<th>Role</th>
 												<th>Sec. connected</th>
 												<th>User Agent</th>
-												<th>Action</th>
+												<th class="actions">Action</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -36,9 +37,8 @@
 													<td><xsl:value-of select="role" /></td>
 													<td><xsl:value-of select="connected" /></td>
 													<td><xsl:value-of select="useragent" /></td>
-													<td>
-														<a href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
-														&#160;
+													<td class="actions">
+														<a class="critical" href="killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
 														<a href="moveclients.xsl?mount={../@mount}&amp;id={id}">Move</a>
 													</td>
 												</tr>
@@ -50,7 +50,7 @@
 									<p>No listeners connected</p>
 								</xsl:otherwise>
 							</xsl:choose>
-						</div>
+						</section>
 					</xsl:for-each>
 
 				</div>
