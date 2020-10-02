@@ -35,6 +35,7 @@
 #include "xslt.h"
 #include "fserve.h"
 #include "errors.h"
+#include "reportxml.h"
 
 #include "format.h"
 
@@ -89,6 +90,8 @@
 #define MANAGEAUTH_HTML_REQUEST             "manageauth.xsl"
 #define UPDATEMETADATA_RAW_REQUEST          "updatemetadata"
 #define UPDATEMETADATA_HTML_REQUEST         "updatemetadata.xsl"
+#define SHOWLOG_RAW_REQUEST                 "showlog"
+#define SHOWLOG_HTML_REQUEST                "showlog.xsl"
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
@@ -112,6 +115,7 @@ static void command_kill_source         (client_t *client, source_t *source, adm
 static void command_manageauth          (client_t *client, source_t *source, admin_format_t response);
 static void command_updatemetadata      (client_t *client, source_t *source, admin_format_t response);
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
+static void command_show_log            (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
     { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
@@ -143,6 +147,8 @@ static const admin_command_handler_t handlers[] = {
     { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
     { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata, NULL},
     { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
+    { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_show_log, NULL},
+    { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
     { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL}
 };
@@ -1258,4 +1264,99 @@ static void command_updatemetadata(client_t *client,
     admin_send_response(doc, client, response,
         UPDATEMETADATA_HTML_REQUEST);
     xmlFreeDoc(doc);
+}
+
+static void command_show_log            (client_t *client, source_t *source, admin_format_t response)
+{
+    static const char *logs[] = {"error", "access", "playlist"};
+    reportxml_t *report;
+    reportxml_node_t *incident;
+    reportxml_node_t *resource;
+    reportxml_node_t *loglist_value_list;
+    reportxml_node_t *logfile;
+    reportxml_node_t *parent;
+    const char *logfilestring;
+    char **loglines;
+    int logid;
+    size_t i;
+
+    COMMAND_OPTIONAL(client, "logfile", logfilestring);
+
+    if (!logfilestring || !strcmp(logfilestring, "error")) {
+        logfilestring = "error";
+        logid = errorlog;
+    } else if (!strcmp(logfilestring, "access")) {
+        logid = accesslog;
+    } else if (!strcmp(logfilestring, "playlist")) {
+        logid = playlistlog;
+    } else {
+        logfilestring = "error";
+        logid = errorlog;
+    }
+
+    report = client_get_reportxml("b20a2bf2-1278-448c-81f3-58183d837a86", NULL, NULL);
+
+    incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
+
+
+    resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(resource, "type", "related");
+    reportxml_node_set_attribute(resource, "name", "logfiles");
+
+    loglist_value_list = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(loglist_value_list, "type", "list");
+
+    for (i = 0; i < (sizeof(logs)/sizeof(*logs)); i++) {
+        reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(value, "type", "string");
+        reportxml_node_set_attribute(value, "value", logs[i]);
+        reportxml_node_add_child(loglist_value_list, value);
+        refobject_unref(value);
+    }
+
+    reportxml_node_add_child(resource, loglist_value_list);
+    refobject_unref(loglist_value_list);
+    reportxml_node_add_child(incident, resource);
+    refobject_unref(resource);
+
+
+    resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(resource, "type", "result");
+    reportxml_node_set_attribute(resource, "name", "logcontent");
+
+    logfile = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(logfile, "type", "structure");
+
+    parent = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(parent, "type", "string");
+    reportxml_node_set_attribute(parent, "member", "logfile");
+    reportxml_node_set_attribute(parent, "value", logfilestring);
+    reportxml_node_add_child(logfile, parent);
+    refobject_unref(parent);
+
+    parent = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(parent, "type", "list");
+    reportxml_node_set_attribute(parent, "member", "lines");
+    loglines = log_contents_array(logid);
+    for (i = 0; loglines[i]; i++) {
+        reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(value, "type", "string");
+        reportxml_node_set_attribute(value, "value", loglines[i]);
+        reportxml_node_add_child(parent, value);
+        refobject_unref(value);
+        free(loglines[i]);
+    }
+    free(loglines);
+    reportxml_node_add_child(logfile, parent);
+    refobject_unref(parent);
+
+    reportxml_node_add_child(resource, logfile);
+    refobject_unref(logfile);
+
+    reportxml_node_add_child(incident, resource);
+    refobject_unref(resource);
+
+    refobject_unref(incident);
+
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, SHOWLOG_HTML_REQUEST, response, 200, NULL);
 }

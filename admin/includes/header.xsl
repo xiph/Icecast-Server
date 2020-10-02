@@ -11,6 +11,7 @@
 				<ul>
 					<li class="adminlink"><a href="/admin/stats.xsl">Server status</a></li>
 					<li class="adminlink"><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
+					<li class="adminlink"><a href="/admin/showlog.xsl">Logfiles</a></li>
 					<xsl:for-each select="(/report/extension/icestats | /icestats | /iceresponse)/modules/module">
 						<xsl:if test="@management-url and @management-title">
 							<li class="adminlink"><a href="{@management-url}"><xsl:value-of select="@management-title" /></a></li>

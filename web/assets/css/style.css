@@ -302,6 +302,21 @@ aside {
     margin: 0.4em;
 }
 
+.codeblock {
+    list-style: none;
+    width: 100%;
+    overflow-x: auto;
+    padding: 0 0 0.4em 0;
+}
+
+.codeblock > li > pre {
+    margin: 0;
+}
+
+.codeblock > li > pre:hover {
+    background-color: #cccccc;
+}
+
 /* Error messages */
 
 .error {
