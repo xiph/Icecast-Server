@@ -498,6 +498,22 @@ void admin_send_response(xmlDocPtr       doc,
     }
 }
 
+
+static void admin_send_response_simple(client_t *client, source_t *source, admin_format_t response, const char *message, int success)
+{
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    doc = xmlNewDoc (XMLSTR("1.0"));
+    node = admin_build_rootnode(doc, "iceresponse");
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(message));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR(success ? "1" : "0"));
+    xmlDocSetRootElement(doc, node);
+
+    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
+}
+
 void admin_handle_request(client_t *client, const char *uri)
 {
     const char *mount;
@@ -643,8 +659,6 @@ static void command_move_clients(client_t   *client,
     const char *idtext = NULL;
     connection_id_t id;
     source_t *dest;
-    xmlDocPtr doc;
-    xmlNodePtr node;
     char buf[255];
     int parameters_passed = 0;
 
@@ -659,7 +673,8 @@ static void command_move_clients(client_t   *client,
     }
     ICECAST_LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
-        doc = admin_build_sourcelist(source->mount);
+        xmlDocPtr doc = admin_build_sourcelist(source->mount);
+
         if (idtext) {
             xmlNodePtr root = xmlDocGetRootElement(doc);
             xmlNewTextChild(root, NULL, XMLSTR("param-id"), XMLSTR(idtext));
@@ -689,19 +704,12 @@ static void command_move_clients(client_t   *client,
 
     ICECAST_LOG_INFO("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
-    doc = xmlNewDoc(XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlDocSetRootElement(doc, node);
-
     source_move_clients(source, dest, idtext ? &id : NULL);
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);
-    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
 
-    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
+    admin_send_response_simple(client, source, response, buf, 1);
 }
 
 static inline xmlNodePtr __add_listener(client_t        *client,
@@ -982,20 +990,9 @@ static void command_kill_source(client_t *client,
                                 source_t *source,
                                 admin_format_t response)
 {
-    xmlDocPtr doc;
-    xmlNodePtr node;
-
-    doc = xmlNewDoc (XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Source Removed"));
-    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    xmlDocSetRootElement(doc, node);
-
     source->running = 0;
 
-    admin_send_response(doc, client, response,
-        ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
+    admin_send_response_simple(client, source, response, "Source Removed", 1);
 }
 
 static void command_kill_client(client_t *client,
@@ -1005,8 +1002,6 @@ static void command_kill_client(client_t *client,
     const char *idtext;
     int id;
     client_t *listener;
-    xmlDocPtr doc;
-    xmlNodePtr node;
     char buf[50] = "";
 
     COMMAND_REQUIRE(client, "id", idtext);
@@ -1015,12 +1010,9 @@ static void command_kill_client(client_t *client,
 
     listener = source_find_client(source, id);
 
-    doc = xmlNewDoc(XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlDocSetRootElement(doc, node);
     ICECAST_LOG_DEBUG("Response is %d", response);
 
-    if(listener != NULL) {
+    if (listener != NULL) {
         ICECAST_LOG_INFO("Admin request: client %d removed", id);
 
         /* This tags it for removal on the next iteration of the main source
@@ -1029,18 +1021,12 @@ static void command_kill_client(client_t *client,
         listener->con->error = 1;
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "Client %d removed", id);
-        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    }
-    else {
+        admin_send_response_simple(client, source, response, buf, 1);
+    } else {
         memset(buf, '\000', sizeof(buf));
         snprintf(buf, sizeof(buf)-1, "Client %d not found", id);
-        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR(buf));
-        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
+        admin_send_response_simple(client, source, response, buf, 0);
     }
-    admin_send_response(doc, client, response,
-        ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
 }
 
 static void command_fallback(client_t *client,
@@ -1068,13 +1054,7 @@ static void command_metadata(client_t *client,
     const char *action;
     const char *song, *title, *artist, *charset, *url;
     format_plugin_t *plugin;
-    xmlDocPtr doc;
-    xmlNodePtr node;
     int same_ip = 1;
-
-    doc = xmlNewDoc(XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlDocSetRootElement(doc, node);
 
     ICECAST_LOG_DEBUG("Got metadata update request");
 
@@ -1091,10 +1071,7 @@ static void command_metadata(client_t *client,
     COMMAND_OPTIONAL(client, "url", url);
 
     if (strcmp (action, "updinfo") != 0) {
-        xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("No such action"));
-        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("0"));
-        admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
-        xmlFreeDoc(doc);
+        admin_send_response_simple(client, source, response, "No such action", 0);
         return;
     }
 
@@ -1125,19 +1102,11 @@ static void command_metadata(client_t *client,
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
             "on source that does not accept it at mountpoint %H", source->mount);
 
-        xmlNewTextChild(node, NULL, XMLSTR("message"),
-            XMLSTR("Mountpoint will not accept URL updates"));
-        xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-        admin_send_response(doc, client, response,
-            ADMIN_XSL_RESPONSE);
-        xmlFreeDoc(doc);
+        admin_send_response_simple(client, source, response, "Mountpoint will not accept URL updates", 1);
         return;
     }
 
-    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Metadata update successful"));
-    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
+    admin_send_response_simple(client, source, response, "Metadata update successful", 1);
 }
 
 static void command_shoutcast_metadata(client_t *client,
@@ -1203,21 +1172,11 @@ static void command_stats(client_t *client, source_t *source, admin_format_t res
 
 static void command_queue_reload(client_t *client, source_t *source, admin_format_t response)
 {
-    xmlDocPtr doc;
-    xmlNodePtr node;
-
     global_lock();
     global.schedule_config_reread = 1;
     global_unlock();
 
-    doc = xmlNewDoc (XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Config reload queued"));
-    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    xmlDocSetRootElement(doc, node);
-
-    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
+    admin_send_response_simple(client, source, response, "Config reload queued", 1);
 }
 
 
@@ -1373,17 +1332,7 @@ static void command_show_log            (client_t *client, source_t *source, adm
 
 static void command_mark_log            (client_t *client, source_t *source, admin_format_t response)
 {
-    xmlDocPtr doc;
-    xmlNodePtr node;
-
-    doc = xmlNewDoc (XMLSTR("1.0"));
-    node = admin_build_rootnode(doc, "iceresponse");
-    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Logfiles marked"));
-    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
-    xmlDocSetRootElement(doc, node);
-
     logging_mark(client->username, client->role);
 
-    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
-    xmlFreeDoc(doc);
+    admin_send_response_simple(client, source, response, "Logfiles marked", 1);
 }
