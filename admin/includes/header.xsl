@@ -9,6 +9,7 @@
 					<h1>Icecast Server administration</h1>
 				</a>
 				<ul>
+					<li class="adminlink"><a href="/admin/dashboard.xsl">Dashboard</a></li>
 					<li class="adminlink"><a href="/admin/stats.xsl">Server status</a></li>
 					<li class="adminlink"><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
 					<li class="adminlink"><a href="/admin/showlog.xsl">Logfiles</a></li>
