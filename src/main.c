@@ -343,6 +343,10 @@ static int _start_logging(void)
     log_set_level(accesslog, 4);
     log_set_level(playlistlog, 4);
 
+    log_set_lines_kept(errorlog, config->error_log_lines_kept);
+    log_set_lines_kept(accesslog, config->access_log_lines_kept);
+    log_set_lines_kept(playlistlog, config->playlist_log_lines_kept);
+
     if (errorlog >= 0 && accesslog >= 0) return 1;
 
     return 0;

@@ -68,6 +68,7 @@
 #define CONFIG_DEFAULT_ACCESS_LOG       "access.log"
 #define CONFIG_DEFAULT_ERROR_LOG        "error.log"
 #define CONFIG_DEFAULT_LOG_LEVEL        ICECAST_LOGLEVEL_INFO
+#define CONFIG_DEFAULT_LOG_LINES_KEPT   64
 #define CONFIG_DEFAULT_CHROOT           0
 #define CONFIG_DEFAULT_CHUID            0
 #define CONFIG_DEFAULT_USER             NULL
@@ -912,6 +913,12 @@ static void _set_defaults(ice_config_t *configuration)
         ->error_log = (char *) xmlCharStrdup(CONFIG_DEFAULT_ERROR_LOG);
     configuration
         ->loglevel = CONFIG_DEFAULT_LOG_LEVEL;
+    configuration
+        ->playlist_log_lines_kept = CONFIG_DEFAULT_LOG_LINES_KEPT;
+    configuration
+        ->access_log_lines_kept = CONFIG_DEFAULT_LOG_LINES_KEPT;
+    configuration
+        ->error_log_lines_kept = CONFIG_DEFAULT_LOG_LINES_KEPT;
     configuration
         ->chroot = CONFIG_DEFAULT_CHROOT;
     configuration
@@ -2393,6 +2400,28 @@ static void _parse_logging(xmlDocPtr        doc,
                 xmlFree(tmp);
             } else {
                 ICECAST_LOG_WARN("<logarchive> must not be empty.");
+            }
+        } else if (xmlStrcmp(node->name, XMLSTR("memorybacklog")) == 0) {
+            int val = CONFIG_DEFAULT_LOG_LINES_KEPT;
+            char *logfile = (char *)xmlGetProp(node, XMLSTR("logfile"));
+
+            __read_int(doc, node, &val, "<memorybacklog> must not be empty.");
+
+            if (logfile) {
+                if (!strcmp(logfile, "error")) {
+                    configuration->error_log_lines_kept = val;
+                } else if (!strcmp(logfile, "access")) {
+                    configuration->access_log_lines_kept = val;
+                } else if (!strcmp(logfile, "playlist")) {
+                    configuration->playlist_log_lines_kept = val;
+                } else {
+                    ICECAST_LOG_WARN("Invalid logfile for <memorybacklog>: %H", logfile);
+                }
+                xmlFree(logfile);
+            } else {
+                configuration->error_log_lines_kept = val;
+                configuration->access_log_lines_kept = val;
+                configuration->playlist_log_lines_kept = val;
             }
         }
     } while ((node = node->next));

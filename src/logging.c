@@ -249,4 +249,8 @@ void restart_logging (ice_config_t *config)
         log_set_archive_timestamp (playlistlog, config->logarchive);
         log_reopen (playlistlog);
     }
+
+    log_set_lines_kept(errorlog, config->error_log_lines_kept);
+    log_set_lines_kept(accesslog, config->access_log_lines_kept);
+    log_set_lines_kept(playlistlog, config->playlist_log_lines_kept);
 }

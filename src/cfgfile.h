@@ -261,6 +261,9 @@ struct ice_config_tag {
     int loglevel;
     int logsize;
     int logarchive;
+    size_t access_log_lines_kept;
+    size_t error_log_lines_kept;
+    size_t playlist_log_lines_kept;
 
     config_tls_context_t tls_context;
 
