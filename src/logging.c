@@ -31,6 +31,8 @@
 #include "cfgfile.h"
 #include "util.h"
 
+#define CATMODULE "logging"
+
 #ifdef _WIN32
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
@@ -201,6 +203,11 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
              metadata);
 }
 
+void logging_mark(const char *username, const char *role)
+{
+    ICECAST_LOG_INFO("######## -- MARK -- (requested by %#H with role %#H) ########", username, role);
+    logging_playlist("/admin/", "-- MARK --", 0);
+}
 
 void log_parse_failure (void *ctx, const char *fmt, ...)
 {

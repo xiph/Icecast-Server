@@ -92,6 +92,8 @@
 #define UPDATEMETADATA_HTML_REQUEST         "updatemetadata.xsl"
 #define SHOWLOG_RAW_REQUEST                 "showlog"
 #define SHOWLOG_HTML_REQUEST                "showlog.xsl"
+#define MARKLOG_RAW_REQUEST                 "marklog"
+#define MARKLOG_HTML_REQUEST                "marklog.xsl"
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
@@ -116,6 +118,7 @@ static void command_manageauth          (client_t *client, source_t *source, adm
 static void command_updatemetadata      (client_t *client, source_t *source, admin_format_t response);
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
 static void command_show_log            (client_t *client, source_t *source, admin_format_t response);
+static void command_mark_log            (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
     { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
@@ -149,6 +152,8 @@ static const admin_command_handler_t handlers[] = {
     { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
     { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_show_log, NULL},
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
+    { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_mark_log, NULL},
+    { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
     { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL}
 };
@@ -1364,4 +1369,21 @@ static void command_show_log            (client_t *client, source_t *source, adm
     refobject_unref(incident);
 
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, SHOWLOG_HTML_REQUEST, response, 200, NULL);
+}
+
+static void command_mark_log            (client_t *client, source_t *source, admin_format_t response)
+{
+    xmlDocPtr doc;
+    xmlNodePtr node;
+
+    doc = xmlNewDoc (XMLSTR("1.0"));
+    node = admin_build_rootnode(doc, "iceresponse");
+    xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("Logfiles marked"));
+    xmlNewTextChild(node, NULL, XMLSTR("return"), XMLSTR("1"));
+    xmlDocSetRootElement(doc, node);
+
+    logging_mark(client->username, client->role);
+
+    admin_send_response(doc, client, response, ADMIN_XSL_RESPONSE);
+    xmlFreeDoc(doc);
 }
