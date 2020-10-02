@@ -1061,7 +1061,7 @@ static void command_metadata(client_t *client,
                              admin_format_t response)
 {
     const char *action;
-    const char *song, *title, *artist, *charset;
+    const char *song, *title, *artist, *charset, *url;
     format_plugin_t *plugin;
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1083,6 +1083,7 @@ static void command_metadata(client_t *client,
     COMMAND_OPTIONAL(client, "title", title);
     COMMAND_OPTIONAL(client, "artist", artist);
     COMMAND_OPTIONAL(client, "charset", charset);
+    COMMAND_OPTIONAL(client, "url", url);
 
     if (strcmp (action, "updinfo") != 0) {
         xmlNewTextChild(node, NULL, XMLSTR("message"), XMLSTR("No such action"));
@@ -1108,6 +1109,10 @@ static void command_metadata(client_t *client,
                 ICECAST_LOG_INFO("Metadata on mountpoint %s changed to \"%s - %s\"",
                     source->mount, artist, title);
             }
+        }
+        if (url) {
+            plugin->set_tag(plugin, "url", url, charset);
+            ICECAST_LOG_INFO("Metadata (url) on mountpoint %s changed to \"%H\"", source->mount, url);
         }
         /* updates are now done, let them be pushed into the stream */
         plugin->set_tag (plugin, NULL, NULL, NULL);
