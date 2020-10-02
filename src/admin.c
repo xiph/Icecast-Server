@@ -1075,7 +1075,7 @@ static void command_metadata(client_t *client,
 
     if (source->parser && source->parser->req_type == httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy SOURCE-style metadata update command on "
-            "source connected with PUT at mountpoint %s", source->mount);
+            "source connected with PUT at mountpoint %H", source->mount);
     }
 
     COMMAND_REQUIRE(client, "mode", action);
@@ -1101,24 +1101,24 @@ static void command_metadata(client_t *client,
     if (same_ip && plugin && plugin->set_tag) {
         if (song) {
             plugin->set_tag (plugin, "song", song, charset);
-            ICECAST_LOG_INFO("Metadata on mountpoint %s changed to \"%s\"", source->mount, song);
+            ICECAST_LOG_INFO("Metadata on mountpoint %H changed to \"%H\"", source->mount, song);
         } else {
             if (artist && title) {
                 plugin->set_tag(plugin, "title", title, charset);
                 plugin->set_tag(plugin, "artist", artist, charset);
-                ICECAST_LOG_INFO("Metadata on mountpoint %s changed to \"%s - %s\"",
+                ICECAST_LOG_INFO("Metadata on mountpoint %H changed to \"%H - %H\"",
                     source->mount, artist, title);
             }
         }
         if (url) {
             plugin->set_tag(plugin, "url", url, charset);
-            ICECAST_LOG_INFO("Metadata (url) on mountpoint %s changed to \"%H\"", source->mount, url);
+            ICECAST_LOG_INFO("Metadata (url) on mountpoint %H changed to \"%H\"", source->mount, url);
         }
         /* updates are now done, let them be pushed into the stream */
         plugin->set_tag (plugin, NULL, NULL, NULL);
     } else {
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
-            "on source that does not accept it at mountpoint %s", source->mount);
+            "on source that does not accept it at mountpoint %H", source->mount);
 
         xmlNewTextChild(node, NULL, XMLSTR("message"),
             XMLSTR("Mountpoint will not accept URL updates"));
