@@ -47,7 +47,9 @@ body > main {
 
 #main-nav a#branding > img {
     height: 32px;
+    width: 32px;
     vertical-align: middle;
+    margin-right: 0.4em;
 }
 
 #main-nav > ul > li {
