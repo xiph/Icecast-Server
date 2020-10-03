@@ -1050,15 +1050,12 @@ static void command_fallback(client_t *client,
                              admin_format_t response)
 {
     const char *fallback;
-    char *old;
 
     ICECAST_LOG_DEBUG("Got fallback request");
 
     COMMAND_REQUIRE(client, "fallback", fallback);
 
-    old = source->fallback_mount;
-    source->fallback_mount = strdup(fallback);
-    free(old);
+    util_replace_string(&(source->fallback_mount), fallback);
 
     html_success(client, "Fallback configured");
 }
