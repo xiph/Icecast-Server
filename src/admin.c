@@ -1058,6 +1058,15 @@ static void command_fallback(client_t *client,
 
     ICECAST_LOG_DEBUG("Got fallback request");
 
+    if (client->mode == OMODE_STRICT) {
+        if (!(COMMAND_OPTIONAL(client, "fallback", fallback))) {
+            xmlDocPtr doc = admin_build_sourcelist(source->mount);
+            admin_send_response(doc, client, response, FALLBACK_HTML_REQUEST);
+            xmlFreeDoc(doc);
+            return;
+        }
+    }
+
     COMMAND_REQUIRE(client, "fallback", fallback);
 
     util_replace_string(&(source->fallback_mount), fallback);
