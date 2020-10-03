@@ -1015,6 +1015,7 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
     ssize_t ret;
     tlsmode_t tlsmode = ICECAST_TLSMODE_AUTO;
     protocol_t protocol = ICECAST_PROTOCOL_HTTP;
+    const char *infix = "";
 
     if (!buf || !len)
         return -1;
@@ -1066,6 +1067,7 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
             switch (protocol) {
                 case ICECAST_PROTOCOL_HTTP: proto = "http"; break;
                 case ICECAST_PROTOCOL_SHOUTCAST: proto = "icy"; break;
+                case ICECAST_PROTOCOL_GOPHER: proto = "gopher"; infix = "/s"; break;
             }
             break;
         case ICECAST_TLSMODE_AUTO_NO_PLAIN:
@@ -1074,14 +1076,15 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
             switch (protocol) {
                 case ICECAST_PROTOCOL_HTTP: proto = "https"; break;
                 case ICECAST_PROTOCOL_SHOUTCAST: proto = "icys"; break;
+                case ICECAST_PROTOCOL_GOPHER: proto = "gophers"; infix = "/s"; break;
             }
             break;
     }
 
     if (host && port) {
-        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s:%i%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, port, suffix0, suffix1);
+        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s:%i%s%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, port, infix, suffix0, suffix1);
     } else if (host) {
-        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, suffix0, suffix1);
+        ret = snprintf(buf, len, "%s%s://%s%s%s%s%s%s%s%s", prefix, proto, user ? user : "", pw ? ":" : "", pw ? pw : "", (user || pw) ? "@" : "", host, infix, suffix0, suffix1);
     } else {
         ret = -1;
     }
