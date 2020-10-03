@@ -13,4 +13,14 @@
 
 #include "reportxml.h"
 
+void reportxml_helper_add_value(reportxml_node_t *parent, const char *type, const char *member, const char *str);
+
+#define reportxml_helper_add_value_string(parent,member,str) reportxml_helper_add_value((parent), "string", (member), (str))
+#define reportxml_helper_add_value_enum(parent,member,str) reportxml_helper_add_value((parent), "enum", (member), (str))
+void reportxml_helper_add_value_int(reportxml_node_t *parent, const char *member, long long int val);
+
+void reportxml_helper_add_text(reportxml_node_t *parent, const char *definition, const char *text);
+
+void reportxml_helper_add_reference(reportxml_node_t *parent, const char *type, const char *href);
+
 #endif
