@@ -12,7 +12,7 @@
 					<xsl:for-each select="resource[@name='logfiles']/value/value">
 						<li><a href="?logfile={@value}"><xsl:value-of select="@value" /></a></li>
 					</xsl:for-each>
-					<li class="critical"><a href="marklog.xsl">Mark logfiles</a></li>
+					<li class="critical"><a href="/admin/marklog.xsl">Mark logfiles</a></li>
 				</ul>
 				<ul class="codeblock">
 					<xsl:for-each select="resource[@name='logcontent']/value/value[@member='lines']/value">

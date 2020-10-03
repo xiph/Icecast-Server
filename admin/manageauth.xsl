@@ -38,7 +38,7 @@
 													<td><xsl:value-of select="username" /></td>
 													<xsl:if test="../../@can-deleteuser = 'true'">
 														<td class="actions">
-															<a class="critical" href="manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
+															<a class="critical" href="/admin/manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
 														</td>
 													</xsl:if>
 												</tr>
@@ -53,7 +53,7 @@
 							<!-- Form to add Users -->
 							<xsl:if test="@can-adduser = 'true'">
 								<h4>Add User</h4>
-								<form method="post" action="manageauth.xsl">
+								<form method="post" action="/admin/manageauth.xsl">
 									<input type="hidden" name="id" value="{@id}"/>
 									<input type="hidden" name="action" value="add"/>
 

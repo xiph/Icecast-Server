@@ -10,7 +10,7 @@
 				<section class="box">
 					<h3 class="box_title">Overview for <code><xsl:value-of select="value[@member='global-config']/value[@member='hostname']/@value" /></code></h3>
 					<ul class="boxnav">
-						<li><a href="reloadconfig.xsl">Reload Configuration</a></li>
+						<li><a href="/admin/reloadconfig.xsl">Reload Configuration</a></li>
 					</ul>
 					<div class="side-by-side">
 						<div>
