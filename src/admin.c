@@ -1471,8 +1471,6 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         __reportxml_add_maintenance(resource, "info", "More than 75% of the server's configured maximum clients are connected", NULL);
     }
 
-    __reportxml_add_maintenance(resource, "todo", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", "https://icecast.org/");
-
     reportxml_node_add_child(incident, resource);
     refobject_unref(resource);
 
