@@ -36,6 +36,7 @@
 #include "fserve.h"
 #include "errors.h"
 #include "reportxml.h"
+#include "reportxml_helper.h"
 
 #include "format.h"
 
@@ -1293,11 +1294,7 @@ static void command_show_log            (client_t *client, source_t *source, adm
     reportxml_node_set_attribute(loglist_value_list, "type", "list");
 
     for (i = 0; i < (sizeof(logs)/sizeof(*logs)); i++) {
-        reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
-        reportxml_node_set_attribute(value, "type", "string");
-        reportxml_node_set_attribute(value, "value", logs[i]);
-        reportxml_node_add_child(loglist_value_list, value);
-        refobject_unref(value);
+        reportxml_helper_add_value_string(loglist_value_list, NULL, logs[i]);
     }
 
     reportxml_node_add_child(resource, loglist_value_list);
@@ -1313,23 +1310,14 @@ static void command_show_log            (client_t *client, source_t *source, adm
     logfile = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     reportxml_node_set_attribute(logfile, "type", "structure");
 
-    parent = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
-    reportxml_node_set_attribute(parent, "type", "string");
-    reportxml_node_set_attribute(parent, "member", "logfile");
-    reportxml_node_set_attribute(parent, "value", logfilestring);
-    reportxml_node_add_child(logfile, parent);
-    refobject_unref(parent);
+    reportxml_helper_add_value_string(logfile, "logfile", logfilestring);
 
     parent = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     reportxml_node_set_attribute(parent, "type", "list");
     reportxml_node_set_attribute(parent, "member", "lines");
     loglines = log_contents_array(logid);
     for (i = 0; loglines[i]; i++) {
-        reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
-        reportxml_node_set_attribute(value, "type", "string");
-        reportxml_node_set_attribute(value, "value", loglines[i]);
-        reportxml_node_add_child(parent, value);
-        refobject_unref(value);
+        reportxml_helper_add_value_string(parent, NULL, loglines[i]);
         free(loglines[i]);
     }
     free(loglines);
@@ -1354,27 +1342,6 @@ static void command_mark_log            (client_t *client, source_t *source, adm
     admin_send_response_simple(client, source, response, "Logfiles marked", 1);
 }
 
-static void __reportxml_add_value(reportxml_node_t *parent, const char *type, const char *member, const char *str)
-{
-    reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
-    reportxml_node_set_attribute(value, "type", type);
-    if (member)
-        reportxml_node_set_attribute(value, "member", member);
-    reportxml_node_set_attribute(value, "value", str);
-    reportxml_node_add_child(parent, value);
-    refobject_unref(value);
-}
-
-#define __reportxml_add_value_string(parent,member,value) __reportxml_add_value((parent), "string", (member), (value))
-#define __reportxml_add_value_enum(parent,member,value) __reportxml_add_value((parent), "enum", (member), (value))
-
-static void __reportxml_add_value_int(reportxml_node_t *parent, const char *member, long long int value)
-{
-    char buf[80];
-    snprintf(buf, sizeof(buf), "%lli", value);
-    __reportxml_add_value(parent, "int", member, buf);
-}
-
 static void __reportxml_add_maintenance(reportxml_node_t *parent, const char *type, const char *text, const char *docs)
 {
     reportxml_node_t *maintenance = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
@@ -1382,22 +1349,13 @@ static void __reportxml_add_maintenance(reportxml_node_t *parent, const char *ty
     reportxml_node_set_attribute(maintenance, "type", "structure");
     reportxml_node_add_child(parent, maintenance);
 
-    __reportxml_add_value_enum(maintenance, "type", type);
+    reportxml_helper_add_value_enum(maintenance, "type", type);
 
-    if (text) {
-        reportxml_node_t *textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
-        reportxml_node_set_content(textnode, text);
-        reportxml_node_add_child(maintenance, textnode);
-        refobject_unref(textnode);
-    }
+    if (text)
+        reportxml_helper_add_text(maintenance, NULL, text);
 
-    if (docs) {
-        reportxml_node_t *referenenode = reportxml_node_new(REPORTXML_NODE_TYPE_REFERENCE, NULL, NULL, NULL);
-        reportxml_node_set_attribute(referenenode, "type", "documentation");
-        reportxml_node_set_attribute(referenenode, "href", docs);
-        reportxml_node_add_child(maintenance, referenenode);
-        refobject_unref(referenenode);
-    }
+    if (docs)
+        reportxml_helper_add_reference(maintenance, "documentation", docs);
 
     refobject_unref(maintenance);
 }
@@ -1421,9 +1379,9 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     node = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     reportxml_node_set_attribute(node, "type", "structure");
     reportxml_node_set_attribute(node, "member", "global-config");
-    __reportxml_add_value_string(node, "hostname", config->hostname);
-    __reportxml_add_value_int(node, "clients", config->client_limit);
-    __reportxml_add_value_int(node, "sources", config->source_limit);
+    reportxml_helper_add_value_string(node, "hostname", config->hostname);
+    reportxml_helper_add_value_int(node, "clients", config->client_limit);
+    reportxml_helper_add_value_int(node, "sources", config->source_limit);
     reportxml_node_add_child(resource, node);
     refobject_unref(node);
 
@@ -1431,8 +1389,8 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     reportxml_node_set_attribute(node, "type", "structure");
     reportxml_node_set_attribute(node, "member", "global-current");
     global_lock();
-    __reportxml_add_value_int(node, "clients", global.clients);
-    __reportxml_add_value_int(node, "sources", global.sources);
+    reportxml_helper_add_value_int(node, "clients", global.clients);
+    reportxml_helper_add_value_int(node, "sources", global.sources);
     has_sources = global.sources > 0;
     has_many_clients = global.clients > ((75 * config->client_limit) / 100);
     has_too_many_clients = global.clients > ((90 * config->client_limit) / 100);
@@ -1441,11 +1399,11 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(node);
 
     if (config->config_problems || has_too_many_clients) {
-        __reportxml_add_value_enum(resource, "status", "red");
+        reportxml_helper_add_value_enum(resource, "status", "red");
     } else if (!has_sources || has_many_clients) {
-        __reportxml_add_value_enum(resource, "status", "yellow");
+        reportxml_helper_add_value_enum(resource, "status", "yellow");
     } else {
-        __reportxml_add_value_enum(resource, "status", "green");
+        reportxml_helper_add_value_enum(resource, "status", "green");
     }
 
     reportxml_node_add_child(incident, resource);
