@@ -632,28 +632,32 @@ void admin_handle_request(client_t *client, const char *uri)
     return;
 }
 
-static void html_success(client_t *client, char *message)
+static void html_success(client_t *client, source_t *source, admin_format_t response, char *message)
 {
-    ssize_t ret;
+    if (client->mode == OMODE_STRICT) {
+        admin_send_response_simple(client, source, response, message, 1);
+    } else {
+        ssize_t ret;
 
-    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-                                 0, 0, 200, NULL,
-                                 "text/html", "utf-8",
-                                 "", NULL, client);
+        ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
+                0, 0, 200, NULL,
+                "text/html", "utf-8",
+                "", NULL, client);
 
-    if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
-        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-        return;
+        if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
+            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+            return;
+        }
+
+        snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
+                "<html><head><title>Admin request successful</title></head>"
+                "<body><p>%s</p></body></html>", message);
+
+        client->respcode = 200;
+        client->refbuf->len = strlen(client->refbuf->data);
+        fserve_add_client(client, NULL);
     }
-
-    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-        "<html><head><title>Admin request successful</title></head>"
-        "<body><p>%s</p></body></html>", message);
-
-    client->respcode = 200;
-    client->refbuf->len = strlen(client->refbuf->data);
-    fserve_add_client(client, NULL);
 }
 
 
@@ -1057,7 +1061,7 @@ static void command_fallback(client_t *client,
 
     util_replace_string(&(source->fallback_mount), fallback);
 
-    html_success(client, "Fallback configured");
+    html_success(client, source, response, "Fallback configured");
 }
 
 static void command_metadata(client_t *client,
@@ -1124,7 +1128,7 @@ static void command_metadata(client_t *client,
 
 static void command_shoutcast_metadata(client_t *client,
                                        source_t *source,
-                                       admin_format_t format)
+                                       admin_format_t response)
 {
     const char *action;
     const char *value;
@@ -1161,7 +1165,7 @@ static void command_shoutcast_metadata(client_t *client,
 
         ICECAST_LOG_DEBUG("Metadata on mountpoint %s changed to \"%s\"",
                 source->mount, value);
-        html_success(client, "Metadata update successful");
+        html_success(client, source, response, "Metadata update successful");
     } else {
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
             "on source that does not accept it at mountpoint %s", source->mount);
