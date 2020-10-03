@@ -1349,6 +1349,7 @@ static void command_show_log            (client_t *client, source_t *source, adm
     refobject_unref(incident);
 
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, SHOWLOG_HTML_REQUEST, response, 200, NULL);
+    refobject_unref(report);
 }
 
 static void command_mark_log            (client_t *client, source_t *source, admin_format_t response)
@@ -1454,6 +1455,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 
     config_release_config();
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, DASHBOARD_HTML_REQUEST, response, 200, NULL);
+    refobject_unref(report);
 }
 
 
