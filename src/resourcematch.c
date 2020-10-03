@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 
@@ -96,6 +97,15 @@ static inline resourcematch_result_t match_lli(const char **string, resourcematc
     return RESOURCEMATCH_MATCH;
 }
 
+static inline void match_s(const char **string, resourcematch_extract_t *extract, size_t idx)
+{
+    if (extract) {
+        extract->group[idx].raw = strdup(*string);
+        extract->group[idx].result.string = extract->group[idx].raw;
+    }
+    *string += strlen(*string);
+}
+
 resourcematch_result_t resourcematch_match(const char *pattern, const char *string, resourcematch_extract_t **extract)
 {
     resourcematch_result_t ret;
@@ -165,6 +175,11 @@ resourcematch_result_t resourcematch_match(const char *pattern, const char *stri
             _test_int('x', 16);
             _test_int('o', 8);
 
+            case 's':
+                setup_group(matches, idx, *pattern);
+                match_s(&string, matches, idx);
+                idx++;
+            break;
             default:
                 if (extract)
                     resourcematch_extract_free(matches);
