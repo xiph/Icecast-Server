@@ -106,6 +106,7 @@ typedef struct {
     const admin_command_handler_t *handlers;
 } admin_command_table_t;
 
+static void command_default_selector    (client_t *client, source_t *source, admin_format_t response);
 static void command_fallback            (client_t *client, source_t *source, admin_format_t response);
 static void command_metadata            (client_t *client, source_t *source, admin_format_t response);
 static void command_shoutcast_metadata  (client_t *client, source_t *source, admin_format_t response);
@@ -159,8 +160,8 @@ static const admin_command_handler_t handlers[] = {
     { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
     { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_dashboard, NULL},
     { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_dashboard, NULL},
-    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_dashboard, NULL},
-    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_dashboard, NULL}
+    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL},
+    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL}
 };
 
 static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
@@ -653,6 +654,16 @@ static void html_success(client_t *client, char *message)
     client->respcode = 200;
     client->refbuf->len = strlen(client->refbuf->data);
     fserve_add_client(client, NULL);
+}
+
+
+static void command_default_selector    (client_t *client, source_t *source, admin_format_t response)
+{
+    if (client->mode == OMODE_LEGACY) {
+        command_stats(client, source, response);
+    } else {
+        command_dashboard(client, source, response);
+    }
 }
 
 
