@@ -165,8 +165,15 @@ static const admin_command_handler_t handlers[] = {
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL}
 };
 
+static void ui_command(client_t * client, source_t * source, admin_format_t format, resourcematch_extract_t *parameters);
+
+static const admin_command_handler_t ui_handlers[] = {
+    { "%s",                                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_AUTO,          NULL, ui_command}
+};
+
 static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
     {.prefix = NULL, .length = (sizeof(handlers)/sizeof(*handlers)), .handlers = handlers},
+    {.prefix = "ui", .length = (sizeof(ui_handlers)/sizeof(*ui_handlers)), .handlers = ui_handlers},
 };
 
 static inline int __is_command_table_valid(const admin_command_table_t * table)
@@ -1447,4 +1454,37 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 
     config_release_config();
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, DASHBOARD_HTML_REQUEST, response, 200, NULL);
+}
+
+
+static void ui_command(client_t * client, source_t * source, admin_format_t format, resourcematch_extract_t *parameters)
+{
+    int is_valid = 0;
+
+    if (parameters->groups == 1) {
+        const char *fn = parameters->group[0].result.string;
+
+        if (strlen(fn) < 32) {
+            for (; *fn; fn++) {
+                if (*fn == '.' && strcmp(fn, ".xsl") == 0) {
+                    is_valid = 1;
+                    break;
+                }
+                if (*fn < 'a' || *fn > 'z')
+                    break;
+            }
+        }
+    }
+
+    if (is_valid) {
+        reportxml_t *report = client_get_reportxml("ddb7da7a-7273-4dfb-8090-867cff82bfd2", NULL, NULL);
+        char buffer[80];
+
+        snprintf(buffer, sizeof(buffer), "ui/%s", parameters->group[0].result.string);
+
+        client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, buffer, format, 200, NULL);
+        refobject_unref(report);
+    } else {
+        client_send_error_by_id(client, ICECAST_ERROR_ADMIN_UNRECOGNISED_COMMAND);
+    }
 }
