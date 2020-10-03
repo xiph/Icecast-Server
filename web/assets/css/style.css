@@ -302,6 +302,19 @@ aside {
     margin: 0.4em;
 }
 
+.side-by-side {
+    display: flex;
+    width: 100%;
+}
+
+.side-by-side > *:first-child {
+    margin-top: 0;
+}
+
+.side-by-side > * {
+    padding-right: 1em;
+}
+
 .codeblock {
     list-style: none;
     width: 100%;
@@ -315,6 +328,62 @@ aside {
 
 .codeblock > li > pre:hover {
     background-color: #cccccc;
+}
+
+.barmeter > *:first-child {
+    float: right;
+    display: inline;
+}
+.barmeter > *:nth-child(2) {
+    background: #4f8cb0;
+    display: block;
+}
+
+.maintenance-container {
+    list-style: none;
+}
+
+.maintenance-level-warning > *:first-child::before {
+    font-weight: bold;
+    content: "Warning: ";
+}
+
+.maintenance-level-todo > *:first-child::before {
+    font-weight: bold;
+    content: "Todo: ";
+}
+
+.maintenance-level-info > *:first-child::before {
+    font-weight: bold;
+    content: "Info: ";
+}
+
+.references {
+    list-style: none;
+    padding: 0;
+}
+
+.references > li {
+    display: inline;
+    margin-right: 0.4em;
+}
+
+.trafficlight {
+    width: 4em;
+    height: 4em;
+    border-radius: 2em;
+}
+
+.colour-red {
+    background: red;
+}
+
+.colour-yellow {
+    background: yellow;
+}
+
+.colour-green {
+    background: limegreen;
 }
 
 /* Error messages */

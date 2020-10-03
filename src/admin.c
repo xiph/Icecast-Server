@@ -94,6 +94,8 @@
 #define SHOWLOG_HTML_REQUEST                "showlog.xsl"
 #define MARKLOG_RAW_REQUEST                 "marklog"
 #define MARKLOG_HTML_REQUEST                "marklog.xsl"
+#define DASHBOARD_RAW_REQUEST               "dashboard"
+#define DASHBOARD_HTML_REQUEST              "dashboard.xsl"
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
@@ -104,6 +106,7 @@ typedef struct {
     const admin_command_handler_t *handlers;
 } admin_command_table_t;
 
+static void command_default_selector    (client_t *client, source_t *source, admin_format_t response);
 static void command_fallback            (client_t *client, source_t *source, admin_format_t response);
 static void command_metadata            (client_t *client, source_t *source, admin_format_t response);
 static void command_shoutcast_metadata  (client_t *client, source_t *source, admin_format_t response);
@@ -119,6 +122,7 @@ static void command_updatemetadata      (client_t *client, source_t *source, adm
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
 static void command_show_log            (client_t *client, source_t *source, admin_format_t response);
 static void command_mark_log            (client_t *client, source_t *source, admin_format_t response);
+static void command_dashboard           (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
     { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
@@ -154,8 +158,10 @@ static const admin_command_handler_t handlers[] = {
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
     { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_mark_log, NULL},
     { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
-    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
-    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL}
+    { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_dashboard, NULL},
+    { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_dashboard, NULL},
+    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL},
+    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL}
 };
 
 static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
@@ -648,6 +654,16 @@ static void html_success(client_t *client, char *message)
     client->respcode = 200;
     client->refbuf->len = strlen(client->refbuf->data);
     fserve_add_client(client, NULL);
+}
+
+
+static void command_default_selector    (client_t *client, source_t *source, admin_format_t response)
+{
+    if (client->mode == OMODE_LEGACY) {
+        command_stats(client, source, response);
+    } else {
+        command_dashboard(client, source, response);
+    }
 }
 
 
@@ -1335,4 +1351,132 @@ static void command_mark_log            (client_t *client, source_t *source, adm
     logging_mark(client->username, client->role);
 
     admin_send_response_simple(client, source, response, "Logfiles marked", 1);
+}
+
+static void __reportxml_add_value(reportxml_node_t *parent, const char *type, const char *member, const char *str)
+{
+    reportxml_node_t *value = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(value, "type", type);
+    if (member)
+        reportxml_node_set_attribute(value, "member", member);
+    reportxml_node_set_attribute(value, "value", str);
+    reportxml_node_add_child(parent, value);
+    refobject_unref(value);
+}
+
+#define __reportxml_add_value_string(parent,member,value) __reportxml_add_value((parent), "string", (member), (value))
+#define __reportxml_add_value_enum(parent,member,value) __reportxml_add_value((parent), "enum", (member), (value))
+
+static void __reportxml_add_value_int(reportxml_node_t *parent, const char *member, long long int value)
+{
+    char buf[80];
+    snprintf(buf, sizeof(buf), "%lli", value);
+    __reportxml_add_value(parent, "int", member, buf);
+}
+
+static void __reportxml_add_maintenance(reportxml_node_t *parent, const char *type, const char *text, const char *docs)
+{
+    reportxml_node_t *maintenance = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+
+    reportxml_node_set_attribute(maintenance, "type", "structure");
+    reportxml_node_add_child(parent, maintenance);
+
+    __reportxml_add_value_enum(maintenance, "type", type);
+
+    if (text) {
+        reportxml_node_t *textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
+        reportxml_node_set_content(textnode, text);
+        reportxml_node_add_child(maintenance, textnode);
+        refobject_unref(textnode);
+    }
+
+    if (docs) {
+        reportxml_node_t *referenenode = reportxml_node_new(REPORTXML_NODE_TYPE_REFERENCE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(referenenode, "type", "documentation");
+        reportxml_node_set_attribute(referenenode, "href", docs);
+        reportxml_node_add_child(maintenance, referenenode);
+        refobject_unref(referenenode);
+    }
+
+    refobject_unref(maintenance);
+}
+
+static void command_dashboard           (client_t *client, source_t *source, admin_format_t response)
+{
+    ice_config_t *config = config_get_config();
+    reportxml_t *report = client_get_reportxml("0aa76ea1-bf42-49d1-887e-ca95fb307dc4", NULL, NULL);
+    reportxml_node_t *incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
+    reportxml_node_t *resource;
+    reportxml_node_t *node;
+    int has_sources;
+    int has_many_clients;
+    int has_too_many_clients;
+
+
+    resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(resource, "type", "result");
+    reportxml_node_set_attribute(resource, "name", "overall-status");
+
+    node = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(node, "type", "structure");
+    reportxml_node_set_attribute(node, "member", "global-config");
+    __reportxml_add_value_string(node, "hostname", config->hostname);
+    __reportxml_add_value_int(node, "clients", config->client_limit);
+    __reportxml_add_value_int(node, "sources", config->source_limit);
+    reportxml_node_add_child(resource, node);
+    refobject_unref(node);
+
+    node = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(node, "type", "structure");
+    reportxml_node_set_attribute(node, "member", "global-current");
+    global_lock();
+    __reportxml_add_value_int(node, "clients", global.clients);
+    __reportxml_add_value_int(node, "sources", global.sources);
+    has_sources = global.sources > 0;
+    has_many_clients = global.clients > ((75 * config->client_limit) / 100);
+    has_too_many_clients = global.clients > ((90 * config->client_limit) / 100);
+    global_unlock();
+    reportxml_node_add_child(resource, node);
+    refobject_unref(node);
+
+    if (config->config_problems || has_too_many_clients) {
+        __reportxml_add_value_enum(resource, "status", "red");
+    } else if (!has_sources || has_many_clients) {
+        __reportxml_add_value_enum(resource, "status", "yellow");
+    } else {
+        __reportxml_add_value_enum(resource, "status", "green");
+    }
+
+    reportxml_node_add_child(incident, resource);
+    refobject_unref(resource);
+
+
+    resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+    reportxml_node_set_attribute(resource, "type", "result");
+    reportxml_node_set_attribute(resource, "name", "maintenance");
+
+    if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
+        __reportxml_add_maintenance(resource, "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_LOCATION)
+        __reportxml_add_maintenance(resource, "warning", "No useful location is given in <location>.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_ADMIN)
+        __reportxml_add_maintenance(resource, "warning", "No admin contact given in <admin>. YP directory support will is disabled.", NULL);
+
+    if (!has_sources)
+        __reportxml_add_maintenance(resource, "info", "Currently no sources are connected to this server.", NULL);
+
+    if (has_too_many_clients) {
+        __reportxml_add_maintenance(resource, "warning", "More than 90% of the server's configured maximum clients are connected", NULL);
+    } else if (has_many_clients) {
+        __reportxml_add_maintenance(resource, "info", "More than 75% of the server's configured maximum clients are connected", NULL);
+    }
+
+    reportxml_node_add_child(incident, resource);
+    refobject_unref(resource);
+
+
+    refobject_unref(incident);
+
+    config_release_config();
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, DASHBOARD_HTML_REQUEST, response, 200, NULL);
 }

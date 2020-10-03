@@ -28,6 +28,10 @@
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
+#define CONFIG_PROBLEM_HOSTNAME         0x0001U
+#define CONFIG_PROBLEM_LOCATION         0x0002U
+#define CONFIG_PROBLEM_ADMIN            0x0004U
+
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
     HTTP_HEADER_TYPE_STATIC,
@@ -198,6 +202,8 @@ typedef struct {
 struct ice_config_tag {
     char *config_filename;
 
+    unsigned int config_problems;
+
     char *location;
     char *admin;
 
@@ -220,7 +226,6 @@ struct ice_config_tag {
     struct event_registration_tag *event;
 
     char *hostname;
-    int sane_hostname;
     int port;
     char *mimetypes_fn;
 

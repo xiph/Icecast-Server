@@ -556,7 +556,7 @@ static inline void __log_system_name(void) {
 
    if (have_hostname) {
        config = config_get_config();
-       if (!config->sane_hostname && util_hostcheck(hostname) == HOSTCHECK_SANE) {
+       if ((config->config_problems & CONFIG_PROBLEM_HOSTNAME) && util_hostcheck(hostname) == HOSTCHECK_SANE) {
            ICECAST_LOG_WARN("Hostname is not set to anything useful in <hostname>, Consider setting it to the system's name \"%s\".", hostname);
        }
        config_release_config();

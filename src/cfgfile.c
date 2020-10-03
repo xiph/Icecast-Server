@@ -936,6 +936,7 @@ static void _set_defaults(ice_config_t *configuration)
 
 static inline void __check_hostname(ice_config_t *configuration)
 {
+    int sane_hostname = 0;
     char *p;
 
     /* ensure we have a non-NULL buffer: */
@@ -948,10 +949,9 @@ static inline void __check_hostname(ice_config_t *configuration)
             *p += 'a' - 'A';
     }
 
-    configuration->sane_hostname = 0;
     switch (util_hostcheck(configuration->hostname)) {
         case HOSTCHECK_SANE:
-            configuration->sane_hostname = 1;
+            sane_hostname = 1;
         break;
         case HOSTCHECK_ERROR:
             ICECAST_LOG_ERROR("Can not check hostname \"%s\".",
@@ -985,6 +985,9 @@ static inline void __check_hostname(ice_config_t *configuration)
                 "listings.");
         break;
     }
+
+    if (!sane_hostname)
+        configuration->config_problems |= CONFIG_PROBLEM_HOSTNAME;
 }
 
 static void _parse_root(xmlDocPtr       doc,
@@ -1161,8 +1164,9 @@ static void _parse_root(xmlDocPtr       doc,
         strcmp(configuration->location, CONFIG_DEFAULT_LOCATION) == 0) {
         ICECAST_LOG_WARN("Warning, <location> not configured, using default "
             "value \"%s\".", CONFIG_DEFAULT_LOCATION);
-      if (!configuration->location)
-          configuration->location = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOCATION);
+        if (!configuration->location)
+            configuration->location = (char *) xmlCharStrdup(CONFIG_DEFAULT_LOCATION);
+        configuration->config_problems |= CONFIG_PROBLEM_LOCATION;
     }
 
     if (!configuration->admin ||
@@ -1171,9 +1175,10 @@ static void _parse_root(xmlDocPtr       doc,
             "default value \"%s\". This breaks YP directory listings. "
             "YP directory support will be disabled.", CONFIG_DEFAULT_ADMIN);
             /* FIXME actually disable YP */
-      if (!configuration->admin)
-          configuration->admin = (char *) xmlCharStrdup(CONFIG_DEFAULT_ADMIN);
-  }
+        if (!configuration->admin)
+            configuration->admin = (char *) xmlCharStrdup(CONFIG_DEFAULT_ADMIN);
+        configuration->config_problems |= CONFIG_PROBLEM_ADMIN;
+    }
 }
 
 static void _parse_limits(xmlDocPtr     doc,
