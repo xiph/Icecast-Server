@@ -11,5 +11,29 @@
 #ifndef __JSON_H__
 #define __JSON_H__
 
+#include <stdint.h>
+
+#define JSON_RENDERER_FLAGS_NONE            0
+
+typedef enum {
+    JSON_ELEMENT_TYPE_OBJECT,
+    JSON_ELEMENT_TYPE_ARRAY
+} json_element_type_t;
+
+typedef struct json_renderer_tag json_renderer_t;
+
+json_renderer_t * json_renderer_create(unsigned int flags);
+void json_renderer_destroy(json_renderer_t *renderer);
+
+char * json_renderer_finish(json_renderer_t *renderer);
+
+void json_renderer_begin(json_renderer_t *renderer, json_element_type_t type);
+void json_renderer_end(json_renderer_t *renderer);
+
+void json_renderer_write_null(json_renderer_t *renderer);
+void json_renderer_write_boolean(json_renderer_t *renderer, int val);
+void json_renderer_write_string(json_renderer_t *renderer, const char *string, unsigned int flags);
+void json_renderer_write_int(json_renderer_t *renderer, intmax_t val);
+void json_renderer_write_uint(json_renderer_t *renderer, uintmax_t val);
 
 #endif
