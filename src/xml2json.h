@@ -11,4 +11,8 @@
 #ifndef __XML2JSON_H__
 #define __XML2JSON_H__
 
+#include <libxml/tree.h>
+
+char * xml2json_render_doc_simple(xmlDocPtr doc);
+
 #endif
