@@ -598,7 +598,7 @@ reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
     return __reportxml_node_copy_with_db(node, NULL, -1);
 }
 
-xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
+static xmlNodePtr              reportxml_node_render_xmlnode_with_ns(reportxml_node_t *node, xmlNsPtr ns)
 {
     xmlNodePtr ret;
     ssize_t child_count;
@@ -631,12 +631,13 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
 
     xmlns = xmlGetProp(ret, XMLSTR("xmlns"));
     if (xmlns) {
-        xmlNsPtr ns;
         xmlUnsetProp(ret, XMLSTR("xmlns"));
         ns = xmlNewNs(ret, xmlns, NULL);
-        xmlSetNs(ret, ns);
         xmlFree(xmlns);
     }
+
+    if (ns)
+        xmlSetNs(ret, ns);
 
     for (i = 0; i < (size_t)child_count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
@@ -647,7 +648,7 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
             return NULL;
         }
 
-        xmlchild = reportxml_node_render_xmlnode(child);
+        xmlchild = reportxml_node_render_xmlnode_with_ns(child, ns);
         refobject_unref(child);
         if (!xmlchild) {
             xmlFreeNode(ret);
@@ -681,6 +682,11 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
 
 
     return ret;
+}
+
+xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
+{
+    return reportxml_node_render_xmlnode_with_ns(node, NULL);
 }
 
 reportxml_node_type_t   reportxml_node_get_type(reportxml_node_t *node)
