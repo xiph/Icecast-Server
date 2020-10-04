@@ -24,7 +24,7 @@ typedef struct json_renderer_tag json_renderer_t;
 
 json_renderer_t * json_renderer_create(unsigned int flags);
 
-char * json_renderer_finish(json_renderer_t *renderer);
+char * json_renderer_finish(json_renderer_t **rendererptr);
 
 void json_renderer_begin(json_renderer_t *renderer, json_element_type_t type);
 void json_renderer_end(json_renderer_t *renderer);

@@ -102,9 +102,16 @@ json_renderer_t * json_renderer_create(unsigned int flags)
     return renderer;
 }
 
-char * json_renderer_finish(json_renderer_t *renderer)
+char * json_renderer_finish(json_renderer_t **rendererptr)
 {
+    json_renderer_t *renderer;
     char *ret;
+
+    if (!rendererptr)
+        return NULL;
+
+    renderer = *rendererptr;
+    *rendererptr = NULL;
 
     if (!renderer)
         return NULL;
