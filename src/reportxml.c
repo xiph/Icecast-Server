@@ -605,6 +605,7 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
     ssize_t xml_child_count;
     size_t i;
     xmlChar *definition;
+    xmlChar *xmlns;
 
     if (!node)
         return NULL;
@@ -626,6 +627,15 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
         xmlSetProp(ret, XMLSTR("definition"), definition);
         xmlUnsetProp(ret, XMLSTR("_definition"));
         xmlFree(definition);
+    }
+
+    xmlns = xmlGetProp(ret, XMLSTR("xmlns"));
+    if (xmlns) {
+        xmlNsPtr ns;
+        xmlUnsetProp(ret, XMLSTR("xmlns"));
+        ns = xmlNewNs(ret, xmlns, NULL);
+        xmlSetNs(ret, ns);
+        xmlFree(xmlns);
     }
 
     for (i = 0; i < (size_t)child_count; i++) {
