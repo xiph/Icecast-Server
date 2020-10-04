@@ -577,7 +577,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         return;
     }
 
-    doc = reportxml_render_xmldoc(report);
+    doc = reportxml_render_xmldoc(report, admin_format == ADMIN_FORMAT_RAW || admin_format == ADMIN_FORMAT_JSON);
     if (!doc) {
         ICECAST_LOG_ERROR("Can not render XML Document from report. Sending 500 to client %p", client);
         client_send_500(client, "Can not render XML Document from report.");

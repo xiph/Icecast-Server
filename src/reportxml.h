@@ -87,7 +87,7 @@ reportxml_node_t *      reportxml_get_node_by_type(reportxml_t *report, reportxm
 /* This function parses an XML document and returns the parst report XML document */
 reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc);
 /* This function renders an report XML document as XML structure */
-xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report);
+xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report, int set_namespace);
 
 
 /* ---[ Node level ]--- */
