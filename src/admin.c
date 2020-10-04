@@ -37,6 +37,7 @@
 #include "errors.h"
 #include "reportxml.h"
 #include "reportxml_helper.h"
+#include "xml2json.h"
 
 #include "format.h"
 
@@ -425,13 +426,24 @@ void admin_send_response(xmlDocPtr       doc,
                          admin_format_t  response,
                          const char     *xslt_template)
 {
-    if (response == ADMIN_FORMAT_RAW) {
+    if (response == ADMIN_FORMAT_RAW || response == ADMIN_FORMAT_JSON) {
         xmlChar *buff = NULL;
         int len = 0;
         size_t buf_len;
         ssize_t ret;
+        const char *content_type;
 
-        xmlDocDumpMemory(doc, &buff, &len);
+        if (response == ADMIN_FORMAT_RAW) {
+            xmlDocDumpMemory(doc, &buff, &len);
+            content_type = "text/xml";
+        } else {
+            char *json = xml2json_render_doc_simple(doc, "http://icecast.org/specs/legacyresponse-0.0.1");
+            buff = xmlStrdup(XMLSTR(json));
+            len = strlen(json);
+            free(json);
+            content_type = "application/json";
+        }
+
 
         buf_len = len + 1024;
         if (buf_len < 4096)
@@ -442,7 +454,7 @@ void admin_send_response(xmlDocPtr       doc,
 
         ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                                      0, 200, NULL,
-                                     "text/xml", "utf-8",
+                                     content_type, "utf-8",
                                      NULL, NULL, client);
         if (ret < 0) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
@@ -459,7 +471,7 @@ void admin_send_response(xmlDocPtr       doc,
                 client->refbuf->len = buf_len;
                 ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                                              0, 200, NULL,
-                                             "text/xml", "utf-8",
+                                             content_type, "utf-8",
                                              NULL, NULL, client);
                 if (ret == -1) {
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
