@@ -23,12 +23,13 @@ typedef enum {
 typedef struct json_renderer_tag json_renderer_t;
 
 json_renderer_t * json_renderer_create(unsigned int flags);
-void json_renderer_destroy(json_renderer_t *renderer);
 
 char * json_renderer_finish(json_renderer_t *renderer);
 
 void json_renderer_begin(json_renderer_t *renderer, json_element_type_t type);
 void json_renderer_end(json_renderer_t *renderer);
+
+void json_renderer_write_key(json_renderer_t *renderer, const char *key, unsigned int flags);
 
 void json_renderer_write_null(json_renderer_t *renderer);
 void json_renderer_write_boolean(json_renderer_t *renderer, int val);
