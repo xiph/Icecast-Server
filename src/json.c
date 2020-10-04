@@ -48,6 +48,9 @@ static int allocate_buffer(json_renderer_t *renderer, size_t needed)
     if (!renderer->valid)
         return 1;
 
+    if (have)
+        have--;
+
     if (have < required) {
         size_t want;
         char *n;
@@ -65,6 +68,7 @@ static int allocate_buffer(json_renderer_t *renderer, size_t needed)
             return 1;
 
         renderer->buffer = n;
+        renderer->bufferlen = want;
     }
 
     return 0;
