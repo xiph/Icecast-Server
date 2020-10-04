@@ -13,6 +13,6 @@
 
 #include <libxml/tree.h>
 
-char * xml2json_render_doc_simple(xmlDocPtr doc);
+char * xml2json_render_doc_simple(xmlDocPtr doc, const char *default_namespace);
 
 #endif

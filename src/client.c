@@ -596,7 +596,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
             xmlDocDumpMemory(doc, &buff, &len);
             content_type = "text/xml";
         } else {
-            char *json = xml2json_render_doc_simple(doc);
+            char *json = xml2json_render_doc_simple(doc, NULL);
             buff = xmlStrdup(XMLSTR(json));
             len = strlen(json);
             free(json);

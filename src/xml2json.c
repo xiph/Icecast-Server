@@ -124,7 +124,7 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
     render(renderer, doc, node, parent, cache);
 }
 
-char * xml2json_render_doc_simple(xmlDocPtr doc)
+char * xml2json_render_doc_simple(xmlDocPtr doc, const char *default_namespace)
 {
     struct xml2json_cache cache;
     json_renderer_t *renderer;
