@@ -14,9 +14,13 @@ nobase_dist_admin_DATA = \
     error-plaintext.xsl \
     xspf.xsl \
     vclt.xsl \
+    dashboard.xsl \
+    fallbacks.xsl \
     includes/footer.xsl \
     includes/head.xsl \
     includes/header.xsl \
     includes/page.xsl \
     includes/mountnav.xsl \
+    includes/player.xsl \
+    includes/playlist.xsl \
     includes/web-page.xsl
