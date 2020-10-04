@@ -14,13 +14,22 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "xml2json.h"
 #include "json.h"
 
 #include "logging.h"
 #define CATMODULE "xml2json"
 
-static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent)
+struct xml2json_cache {
+    xmlNsPtr ns;
+    void (*render)(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+};
+
+static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+
+static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
 
@@ -82,7 +91,7 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
         json_renderer_write_key(renderer, "children", JSON_RENDERER_FLAGS_NONE);
         json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
         do {
-            render_node(renderer, doc, cur, node);
+            render_node(renderer, doc, cur, node, cache);
             cur = cur->next;
         } while (cur);
         json_renderer_end(renderer);
@@ -91,8 +100,33 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
     json_renderer_end(renderer);
 }
 
+
+static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    void (*render)(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache) = NULL;
+
+    if (node->ns == cache->ns)
+        render = cache->render;
+
+    if (render == NULL) {
+        if (node->ns) {
+            render = render_node_generic;
+
+            cache->ns = node->ns;
+            cache->render = render;
+        }
+    }
+
+    // If nothing found, use generic render.
+    if (render == NULL)
+        render = render_node_generic;
+
+    render(renderer, doc, node, parent, cache);
+}
+
 char * xml2json_render_doc_simple(xmlDocPtr doc)
 {
+    struct xml2json_cache cache;
     json_renderer_t *renderer;
     xmlNodePtr xmlroot;
 
@@ -107,7 +141,9 @@ char * xml2json_render_doc_simple(xmlDocPtr doc)
     if (!xmlroot)
         return NULL;
 
-    render_node(renderer, doc, xmlroot, NULL);
+    memset(&cache, 0, sizeof(cache));
+
+    render_node(renderer, doc, xmlroot, NULL, &cache);
 
     return json_renderer_finish(&renderer);
 }
