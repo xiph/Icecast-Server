@@ -33,7 +33,8 @@ typedef enum {
     ADMIN_FORMAT_AUTO,
     ADMIN_FORMAT_RAW,
     ADMIN_FORMAT_HTML,
-    ADMIN_FORMAT_PLAINTEXT
+    ADMIN_FORMAT_PLAINTEXT,
+    ADMIN_FORMAT_JSON
 } admin_format_t;
 
 /* ---[ acl.[ch] ]--- */
