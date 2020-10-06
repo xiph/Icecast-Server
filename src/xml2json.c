@@ -23,6 +23,7 @@
 #define CATMODULE "xml2json"
 
 struct xml2json_cache {
+    const char *default_namespace;
     xmlNsPtr ns;
     void (*render)(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
 };
@@ -109,17 +110,21 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
         render = cache->render;
 
     if (render == NULL) {
-        if (node->ns) {
+        const char *href = cache->default_namespace;
+
+        if (node->ns && node->ns->href)
+            href = (const char *)node->ns->href;
+
+        if (href) {
+            // TODO: Select alternative renderer here.
+        }
+
+        if (render == NULL)
             render = render_node_generic;
 
-            cache->ns = node->ns;
-            cache->render = render;
-        }
+        cache->ns = node->ns;
+        cache->render = render;
     }
-
-    // If nothing found, use generic render.
-    if (render == NULL)
-        render = render_node_generic;
 
     render(renderer, doc, node, parent, cache);
 }
@@ -142,6 +147,7 @@ char * xml2json_render_doc_simple(xmlDocPtr doc, const char *default_namespace)
         return NULL;
 
     memset(&cache, 0, sizeof(cache));
+    cache.default_namespace = default_namespace;
 
     render_node(renderer, doc, xmlroot, NULL, &cache);
 
