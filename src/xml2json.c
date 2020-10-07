@@ -31,8 +31,66 @@ struct xml2json_cache {
     void (*render)(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
 };
 
+struct nodelist {
+    xmlNodePtr *nodes;
+    size_t len;
+    size_t fill;
+};
+
 static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+
+static void handle_textchildnode(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    xmlChar *value = xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+    if (value) {
+        json_renderer_write_key(renderer, (const char *)node->name, JSON_RENDERER_FLAGS_NONE);
+        json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+        xmlFree(value);
+    }
+}
+
+static int handle_node_modules(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    if (node->type == XML_ELEMENT_NODE && strcmp((const char *)node->name, "modules") == 0) {
+        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+        if (node->xmlChildrenNode) {
+            xmlNodePtr cur = node->xmlChildrenNode;
+
+            do {
+                if (cur->type == XML_ELEMENT_NODE && cur->name && strcmp((const char *)cur->name, "module") == 0) {
+                    xmlChar *name = xmlGetProp(cur, XMLSTR("name"));
+                    if (name) {
+                        json_renderer_write_key(renderer, (const char *)name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                        if (node->properties) {
+                            xmlAttrPtr prop = node->properties;
+
+                            do {
+                                xmlChar *value = xmlNodeListGetString(doc, prop->children, 1);
+                                if (value) {
+                                    json_renderer_write_key(renderer, (const char*)cur->name, JSON_RENDERER_FLAGS_NONE);
+                                    json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+                                    xmlFree(value);
+                                }
+                            } while ((prop = prop->next));
+                        }
+                        json_renderer_end(renderer);
+                        xmlFree(name);
+                    }
+                } else {
+                    json_renderer_write_key(renderer, "unhandled-child", JSON_RENDERER_FLAGS_NONE);
+                    render_node(renderer, doc, cur, node, cache);
+                }
+                cur = cur->next;
+            } while (cur);
+        }
+        json_renderer_end(renderer);
+        return 1;
+    }
+
+    return 0;
+}
 
 static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
@@ -51,12 +109,7 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
 
                     if (cur->type == XML_ELEMENT_NODE && cur->name) {
                         if (strcmp((const char *)cur->name, "message") == 0) {
-                            xmlChar *value = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-                            if (value) {
-                                json_renderer_write_key(renderer, "message", JSON_RENDERER_FLAGS_NONE);
-                                json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
-                                xmlFree(value);
-                            }
+                            handle_textchildnode(renderer, doc, cur, node, cache);
                         } else if (strcmp((const char *)cur->name, "return") == 0) {
                             xmlChar *value = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
                             if (value) {
@@ -83,39 +136,7 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
             }
             json_renderer_end(renderer);
         } else if (strcmp(nodename, "modules") == 0) {
-            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-            if (node->xmlChildrenNode) {
-                xmlNodePtr cur = node->xmlChildrenNode;
-
-                do {
-                    if (cur->type == XML_ELEMENT_NODE && cur->name && strcmp((const char *)cur->name, "module") == 0) {
-                        xmlChar *name = xmlGetProp(cur, XMLSTR("name"));
-                        if (name) {
-                            json_renderer_write_key(renderer, (const char *)name, JSON_RENDERER_FLAGS_NONE);
-                            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-                            if (node->properties) {
-                                xmlAttrPtr prop = node->properties;
-
-                                do {
-                                    xmlChar *value = xmlNodeListGetString(doc, prop->children, 1);
-                                    if (value) {
-                                        json_renderer_write_key(renderer, (const char*)cur->name, JSON_RENDERER_FLAGS_NONE);
-                                        json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
-                                        xmlFree(value);
-                                    }
-                                } while ((prop = prop->next));
-                            }
-                            json_renderer_end(renderer);
-                            xmlFree(name);
-                        }
-                    } else {
-                        json_renderer_write_key(renderer, "unhandled-child", JSON_RENDERER_FLAGS_NONE);
-                        render_node(renderer, doc, cur, node, cache);
-                    }
-                    cur = cur->next;
-                } while (cur);
-            }
-            json_renderer_end(renderer);
+            handled = handle_node_modules(renderer, doc, node, parent, cache);
         } else {
             handled = 0;
         }
