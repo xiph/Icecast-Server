@@ -15,6 +15,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "xml2json.h"
 #include "json.h"
@@ -39,6 +40,63 @@ struct nodelist {
 
 static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+
+static void nodelist_init(struct nodelist *list)
+{
+    memset(list, 0, sizeof(*list));
+}
+
+static void nodelist_free(struct nodelist *list)
+{
+    free(list->nodes);
+    memset(list, 0, sizeof(*list));
+}
+
+static void nodelist_push(struct nodelist *list, xmlNodePtr node)
+{
+    if (list->fill == list->len) {
+        xmlNodePtr *n = realloc(list->nodes, sizeof(xmlNodePtr)*(list->len + 16));
+        if (!n) {
+            ICECAST_LOG_ERROR("Can not allocate memory for node list. BAD.");
+            return;
+        }
+
+        list->nodes = n;
+        list->len += 16;
+    }
+
+    list->nodes[list->fill++] = node;
+}
+
+static xmlNodePtr nodelist_get(struct nodelist *list, size_t idx)
+{
+    if (idx >= list->fill)
+        return NULL;
+    return list->nodes[idx];
+}
+
+static void nodelist_unset(struct nodelist *list, size_t idx)
+{
+    if (idx >= list->fill)
+        return;
+    list->nodes[idx] = NULL;
+}
+
+static size_t nodelist_fill(struct nodelist *list)
+{
+    return list->fill;
+}
+
+static int nodelist_is_empty(struct nodelist *list)
+{
+    size_t i;
+
+    for (i = 0; i < list->fill; i++)
+        if (list->nodes[i])
+            return 0;
+
+    return 1;
+}
 
 static void handle_textchildnode(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
