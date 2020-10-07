@@ -290,7 +290,7 @@ static void write_string(json_renderer_t *renderer, const char *string, unsigned
                 return;
         }
 
-        if (*string < 0x20) {
+        if (((unsigned char)*string) < 0x20) {
             char buf[7];
             snprintf(buf, sizeof(buf), "\\u%.4x", (unsigned int)*string);
             write_raw(renderer, buf, 0);
