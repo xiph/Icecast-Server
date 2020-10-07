@@ -502,8 +502,9 @@ static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNod
 static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     void (*render)(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache) = NULL;
+    xmlChar * workaroundProp = xmlGetProp(node, XMLSTR("xmlns"));
 
-    if (node->ns == cache->ns)
+    if (node->ns == cache->ns && !workaroundProp)
         render = cache->render;
 
     if (render == NULL) {
@@ -511,6 +512,10 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
 
         if (node->ns && node->ns->href)
             href = (const char *)node->ns->href;
+
+        if (!href) {
+            href = (const char *)workaroundProp;
+        }
 
         if (href) {
             if (strcmp(href, "http://icecast.org/specs/legacyresponse-0.0.1") == 0) {
@@ -526,6 +531,9 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
         cache->ns = node->ns;
         cache->render = render;
     }
+
+    if (workaroundProp)
+        xmlFree(workaroundProp);
 
     render(renderer, doc, node, parent, cache);
 }
