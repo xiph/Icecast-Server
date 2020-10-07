@@ -427,6 +427,91 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
         render_node_generic(renderer, doc, node, parent, cache);
 }
 
+static void render_node_xspf(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    const char * text_keys[] = {"title", "creator", "annotation", "info", "identifier", "image", "date", "license", "album", NULL};
+    const char * uint_keys[] = {"trackNum", "duration", NULL};
+    int handled = 0;
+
+    if (node->type == XML_ELEMENT_NODE) {
+        const char *nodename = (const char *)node->name;
+        int handle_childs = 0;
+        int close_after_me = 0;
+        size_t i;
+
+        handled = 1;
+
+        for (i = 0; text_keys[i]; i++) {
+            if (strcmp(nodename, text_keys[i]) == 0) {
+                handle_textchildnode(renderer, doc, node, parent, cache);
+                return;
+            }
+        }
+
+        for (i = 0; uint_keys[i]; i++) {
+            if (strcmp(nodename, uint_keys[i]) == 0) {
+                xmlChar *value = xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+                if (value) {
+                    long long int val = strtoll((const char*)value, NULL, 10);
+                    if (val < 0)
+                        return;
+
+                    json_renderer_write_key(renderer, nodename, JSON_RENDERER_FLAGS_NONE);
+                    json_renderer_write_uint(renderer, val);
+                    xmlFree(value);
+                    return ;
+                }
+                return;
+            }
+        }
+
+        for (i = 0; text_keys[i]; i++) {
+            if (strcmp(nodename, text_keys[i]) == 0) {
+                handle_textchildnode(renderer, doc, node, parent, cache);
+                return;
+            }
+        }
+
+        if (strcmp(nodename, "playlist") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            json_renderer_write_key(renderer, "playlist", JSON_RENDERER_FLAGS_NONE);
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+
+            handle_childs = 1;
+            close_after_me = 2;
+        } else if (strcmp(nodename, "trackList") == 0) {
+            json_renderer_write_key(renderer, "track", JSON_RENDERER_FLAGS_NONE);
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+
+            handle_childs = 1;
+            close_after_me = 1;
+        } else if (strcmp(nodename, "track") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+
+            handle_childs = 1;
+            close_after_me = 1;
+        } else {
+            handled = 0;
+        }
+
+        if (handled) {
+            if (handle_childs) {
+                xmlNodePtr child = node->xmlChildrenNode;
+                while (child) {
+                    render_node_xspf(renderer, doc, child, node, cache);
+                    child = child->next;
+                };
+            }
+
+            for (; close_after_me; close_after_me--)
+                json_renderer_end(renderer);
+        }
+    }
+
+    if (!handled)
+        render_node_generic(renderer, doc, node, parent, cache);
+}
+
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
