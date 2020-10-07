@@ -19,6 +19,7 @@
 
 #include "xml2json.h"
 #include "json.h"
+#include "util.h"
 
 /* For XMLSTR() */
 #include "cfgfile.h"
@@ -104,6 +105,16 @@ static void handle_textchildnode(json_renderer_t *renderer, xmlDocPtr doc, xmlNo
     if (value) {
         json_renderer_write_key(renderer, (const char *)node->name, JSON_RENDERER_FLAGS_NONE);
         json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+        xmlFree(value);
+    }
+}
+
+static void handle_booleanchildnode(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    xmlChar *value = xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+    if (value) {
+        json_renderer_write_key(renderer, (const char *)node->name, JSON_RENDERER_FLAGS_NONE);
+        json_renderer_write_boolean(renderer, util_str_to_bool((const char*)value));
         xmlFree(value);
     }
 }
