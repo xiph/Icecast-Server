@@ -215,6 +215,218 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
         render_node_generic(renderer, doc, node, parent, cache);
 }
 
+static int handle_simple_child(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache, xmlNodePtr child, const char * number_keys[], const char * boolean_keys[])
+{
+    if (child->type == XML_ELEMENT_NODE && child->name) {
+        size_t i;
+
+        for (i = 0; number_keys[i]; i++) {
+            if (strcmp((const char *)child->name, number_keys[i]) == 0) {
+                xmlChar *value = xmlNodeListGetString(doc, child->xmlChildrenNode, 1);
+                if (value) {
+                    json_renderer_write_key(renderer, (const char *)child->name, JSON_RENDERER_FLAGS_NONE);
+                    json_renderer_write_int(renderer, strtoll((const char*)value, NULL, 10));
+                    xmlFree(value);
+                    return 1;
+                }
+            }
+        }
+
+        for (i = 0; boolean_keys[i]; i++) {
+            if (strcmp((const char *)child->name, boolean_keys[i]) == 0) {
+                handle_booleanchildnode(renderer, doc, child, node, cache);
+                return 1;
+            }
+        }
+
+        if (child->xmlChildrenNode && !child->xmlChildrenNode->next && child->xmlChildrenNode->type == XML_TEXT_NODE) {
+            handle_textchildnode(renderer, doc, child, node, cache);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    static const char * number_keys_global[] = {
+        "listeners", "clients", "client_connections", "connections", "file_connections", "listener_connections",
+        "source_client_connections", "source_relay_connections", "source_total_connections", "sources", "stats", "stats_connections", NULL
+    };
+    static const char * boolean_keys_global[] = {
+        NULL
+    };
+    static const char * number_keys_source[] = {
+        "audio_bitrate", "audio_channels", "audio_samplerate", "ice-bitrate", "listener_peak", "listeners", "slow_listeners",
+        "total_bytes_read", "total_bytes_sent", NULL
+    };
+    static const char * boolean_keys_source[] = {
+        "public", NULL
+    };
+
+    int handled = 0;
+
+    if (node->type == XML_ELEMENT_NODE) {
+        const char *nodename = (const char *)node->name;
+        handled = 1;
+        if (strcmp(nodename, "icestats") == 0 || strcmp(nodename, "source") == 0) {
+            int is_icestats = strcmp(nodename, "icestats") == 0;
+            struct nodelist nodelist;
+            size_t i;
+            size_t len;
+
+            nodelist_init(&nodelist);
+
+            if (is_icestats)
+                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (node->xmlChildrenNode) {
+                xmlNodePtr cur = node->xmlChildrenNode;
+                do {
+                    if (!handle_simple_child(renderer, doc, node, parent, cache, cur,
+                                is_icestats ? number_keys_global : number_keys_source,
+                                is_icestats ? boolean_keys_global : boolean_keys_source
+                                )) {
+                        nodelist_push(&nodelist, cur);
+                    }
+                    cur = cur->next;
+                } while (cur);
+            }
+
+            len = nodelist_fill(&nodelist);
+            for (i = 0; i < len; i++) {
+                xmlNodePtr cur = nodelist_get(&nodelist, i);
+                if (cur == NULL)
+                    continue;
+
+                if (cur->type == XML_ELEMENT_NODE && cur->name) {
+                    if (strcmp((const char *)cur->name, "modules") == 0) {
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        handle_node_modules(renderer, doc, cur, node, cache);
+                        nodelist_unset(&nodelist, i);
+                    } else if (strcmp((const char *)cur->name, "source") == 0) {
+                        size_t j;
+
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+
+                        for (j = i; j < len; j++) {
+                            xmlNodePtr subcur = nodelist_get(&nodelist, j);
+                            if (subcur == NULL)
+                                continue;
+
+                            if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
+                                xmlChar *mount = xmlGetProp(subcur, XMLSTR("mount"));
+                                if (mount) {
+                                    json_renderer_write_key(renderer, (const char *)mount, JSON_RENDERER_FLAGS_NONE);
+                                    xmlFree(mount);
+                                    nodelist_unset(&nodelist, j);
+                                    render_node_legacystats(renderer, doc, cur, node, cache);
+                                }
+                            }
+                        }
+
+                        json_renderer_end(renderer);
+                        nodelist_unset(&nodelist, i);
+                    } else if (strcmp((const char *)cur->name, "metadata") == 0) {
+                        size_t j;
+
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                        for (j = i; j < len; j++) {
+                            xmlNodePtr subcur = nodelist_get(&nodelist, j);
+                            if (subcur == NULL)
+                                continue;
+
+                            if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
+                                xmlNodePtr child = subcur->xmlChildrenNode;
+                                while (child) {
+                                    handle_textchildnode(renderer, doc, child, subcur, cache);
+                                    child = child->next;
+                                }
+                                nodelist_unset(&nodelist, j);
+                            }
+                        }
+                        json_renderer_end(renderer);
+                    } else if (strcmp((const char *)cur->name, "authentication") == 0) {
+                        size_t j;
+
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                        for (j = i; j < len; j++) {
+                            xmlNodePtr subcur = nodelist_get(&nodelist, j);
+                            if (subcur == NULL)
+                                continue;
+
+                            if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
+                                xmlNodePtr child = subcur->xmlChildrenNode;
+                                while (child) {
+                                    render_node_legacystats(renderer, doc, child, subcur, cache);
+                                    child = child->next;
+                                }
+                                nodelist_unset(&nodelist, j);
+                            }
+                        }
+                        json_renderer_end(renderer);
+                    } else if (strcmp((const char *)cur->name, "playlist") == 0) {
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        render_node(renderer, doc, cur, node, cache);
+                        nodelist_unset(&nodelist, i);
+                    }
+                }
+                //render_node_generic(renderer, doc, node, parent, cache);
+            }
+
+            if (!nodelist_is_empty(&nodelist)) {
+                json_renderer_write_key(renderer, "unhandled-child", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                len = nodelist_fill(&nodelist);
+                for (i = 0; i < len; i++) {
+                    xmlNodePtr cur = nodelist_get(&nodelist, i);
+                    if (cur == NULL)
+                        continue;
+
+                    render_node(renderer, doc, cur, node, cache);
+                }
+                json_renderer_end(renderer);
+            }
+
+            json_renderer_end(renderer);
+            if (is_icestats)
+                json_renderer_end(renderer);
+
+            nodelist_free(&nodelist);
+        } else if (strcmp(nodename, "role") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (node->properties) {
+                xmlAttrPtr cur = node->properties;
+
+                do {
+                    const char *name = (const char*)cur->name;
+                    xmlChar *value = xmlNodeListGetString(doc, cur->children, 1);
+
+                    if (value) {
+                        json_renderer_write_key(renderer, name, JSON_RENDERER_FLAGS_NONE);
+                        if (strncmp(name, "can-", 4) == 0) {
+                            json_renderer_write_boolean(renderer, util_str_to_bool((const char *)value));
+                        } else {
+                            json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+                        }
+                        xmlFree(value);
+                    }
+                } while ((cur = cur->next));
+            }
+            json_renderer_end(renderer);
+        } else {
+            handled = 0;
+        }
+    }
+
+    if (!handled)
+        render_node_generic(renderer, doc, node, parent, cache);
+}
+
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
@@ -303,6 +515,8 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
         if (href) {
             if (strcmp(href, "http://icecast.org/specs/legacyresponse-0.0.1") == 0) {
                 render = render_node_legacyresponse;
+            } else if (strcmp(href, "http://icecast.org/specs/legacystats-0.0.1") == 0) {
+                render = render_node_legacystats;
             }
         }
 
