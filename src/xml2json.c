@@ -218,13 +218,14 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
 static int handle_simple_child(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache, xmlNodePtr child, const char * number_keys[], const char * boolean_keys[])
 {
     if (child->type == XML_ELEMENT_NODE && child->name) {
+        const char *childname = (const char *)child->name;
         size_t i;
 
         for (i = 0; number_keys[i]; i++) {
-            if (strcmp((const char *)child->name, number_keys[i]) == 0) {
+            if (strcmp(childname, number_keys[i]) == 0) {
                 xmlChar *value = xmlNodeListGetString(doc, child->xmlChildrenNode, 1);
                 if (value) {
-                    json_renderer_write_key(renderer, (const char *)child->name, JSON_RENDERER_FLAGS_NONE);
+                    json_renderer_write_key(renderer, childname, JSON_RENDERER_FLAGS_NONE);
                     json_renderer_write_int(renderer, strtoll((const char*)value, NULL, 10));
                     xmlFree(value);
                     return 1;
@@ -233,8 +234,32 @@ static int handle_simple_child(json_renderer_t *renderer, xmlDocPtr doc, xmlNode
         }
 
         for (i = 0; boolean_keys[i]; i++) {
-            if (strcmp((const char *)child->name, boolean_keys[i]) == 0) {
+            if (strcmp(childname, boolean_keys[i]) == 0) {
                 handle_booleanchildnode(renderer, doc, child, node, cache);
+                return 1;
+            }
+        }
+
+        if (strcmp(childname, "max_listeners") == 0) {
+            xmlChar *value = xmlNodeListGetString(doc, child->xmlChildrenNode, 1);
+            if (value) {
+                json_renderer_write_key(renderer, childname, JSON_RENDERER_FLAGS_NONE);
+                if (strcmp((const char *)value, "unlimited") == 0) {
+                    json_renderer_write_null(renderer);
+                } else {
+                    json_renderer_write_int(renderer, strtoll((const char*)value, NULL, 10));
+                }
+                xmlFree(value);
+                return 1;
+            }
+        }
+
+        if (strcmp(childname, "authenticator") == 0) {
+            xmlChar *value = xmlNodeListGetString(doc, child->xmlChildrenNode, 1);
+            if (value) {
+                json_renderer_write_key(renderer, childname, JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_boolean(renderer, strlen((const char *)value));
+                xmlFree(value);
                 return 1;
             }
         }
