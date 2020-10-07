@@ -513,15 +513,16 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
         if (node->ns && node->ns->href)
             href = (const char *)node->ns->href;
 
-        if (!href) {
+        if (workaroundProp)
             href = (const char *)workaroundProp;
-        }
 
         if (href) {
             if (strcmp(href, "http://icecast.org/specs/legacyresponse-0.0.1") == 0) {
                 render = render_node_legacyresponse;
             } else if (strcmp(href, "http://icecast.org/specs/legacystats-0.0.1") == 0) {
                 render = render_node_legacystats;
+            } else if (strcmp(href, "http://xspf.org/ns/0/") == 0) {
+                render = render_node_xspf;
             }
         }
 
