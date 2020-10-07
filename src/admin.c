@@ -67,15 +67,18 @@
 
 #define FALLBACK_RAW_REQUEST                "fallbacks"
 #define FALLBACK_HTML_REQUEST               "fallbacks.xsl"
+#define FALLBACK_JSON_REQUEST               "fallbacks.json"
 #define SHOUTCAST_METADATA_REQUEST          "admin.cgi"
 #define METADATA_RAW_REQUEST                "metadata"
 #define METADATA_HTML_REQUEST               "metadata.xsl"
+#define METADATA_JSON_REQUEST               "metadata.json"
 #define LISTCLIENTS_RAW_REQUEST             "listclients"
 #define LISTCLIENTS_HTML_REQUEST            "listclients.xsl"
 #define STATS_RAW_REQUEST                   "stats"
 #define STATS_HTML_REQUEST                  "stats.xsl"
 #define QUEUE_RELOAD_RAW_REQUEST            "reloadconfig"
 #define QUEUE_RELOAD_HTML_REQUEST           "reloadconfig.xsl"
+#define QUEUE_RELOAD_JSON_REQUEST           "reloadconfig.json"
 #define LISTMOUNTS_RAW_REQUEST              "listmounts"
 #define LISTMOUNTS_HTML_REQUEST             "listmounts.xsl"
 #define STREAMLIST_RAW_REQUEST              "streamlist"
@@ -85,8 +88,10 @@
 #define MOVECLIENTS_HTML_REQUEST            "moveclients.xsl"
 #define KILLCLIENT_RAW_REQUEST              "killclient"
 #define KILLCLIENT_HTML_REQUEST             "killclient.xsl"
+#define KILLCLIENT_JSON_REQUEST             "killclient.json"
 #define KILLSOURCE_RAW_REQUEST              "killsource"
 #define KILLSOURCE_HTML_REQUEST             "killsource.xsl"
+#define KILLSOURCE_JSON_REQUEST             "killsource.json"
 #define ADMIN_XSL_RESPONSE                  "response.xsl"
 #define MANAGEAUTH_RAW_REQUEST              "manageauth"
 #define MANAGEAUTH_HTML_REQUEST             "manageauth.xsl"
@@ -96,6 +101,7 @@
 #define SHOWLOG_HTML_REQUEST                "showlog.xsl"
 #define MARKLOG_RAW_REQUEST                 "marklog"
 #define MARKLOG_HTML_REQUEST                "marklog.xsl"
+#define MARKLOG_JSON_REQUEST                "marklog.json"
 #define DASHBOARD_RAW_REQUEST               "dashboard"
 #define DASHBOARD_HTML_REQUEST              "dashboard.xsl"
 #define DEFAULT_RAW_REQUEST                 ""
@@ -130,8 +136,10 @@ static const admin_command_handler_t handlers[] = {
     { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
     { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_fallback, NULL},
     { FALLBACK_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_fallback, NULL},
+    { FALLBACK_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_fallback, NULL},
     { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_metadata, NULL},
     { METADATA_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_metadata, NULL},
+    { METADATA_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_metadata, NULL},
     { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_shoutcast_metadata, NULL},
     { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_show_listeners, NULL},
     { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners, NULL},
@@ -140,6 +148,7 @@ static const admin_command_handler_t handlers[] = {
     { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
     { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload, NULL},
     { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload, NULL},
+    { QUEUE_RELOAD_JSON_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_queue_reload, NULL},
     { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
     { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
     { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
@@ -149,8 +158,10 @@ static const admin_command_handler_t handlers[] = {
     { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_move_clients, NULL},
     { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_client, NULL},
     { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_client, NULL},
+    { KILLCLIENT_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_client, NULL},
     { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_source, NULL},
     { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_source, NULL},
+    { KILLSOURCE_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_source, NULL},
     { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_manageauth, NULL},
     { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth, NULL},
     { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
@@ -160,6 +171,7 @@ static const admin_command_handler_t handlers[] = {
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
     { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_mark_log, NULL},
     { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
+    { MARKLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_mark_log, NULL},
     { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_dashboard, NULL},
     { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_dashboard, NULL},
     { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL},
@@ -654,7 +666,7 @@ void admin_handle_request(client_t *client, const char *uri)
 
 static void html_success(client_t *client, source_t *source, admin_format_t response, char *message)
 {
-    if (client->mode == OMODE_STRICT) {
+    if (client->mode == OMODE_STRICT || (response != ADMIN_FORMAT_RAW && response != ADMIN_FORMAT_HTML)) {
         admin_send_response_simple(client, source, response, message, 1);
     } else {
         ssize_t ret;
