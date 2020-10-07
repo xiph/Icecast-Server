@@ -19,6 +19,9 @@
 #include "xml2json.h"
 #include "json.h"
 
+/* For XMLSTR() */
+#include "cfgfile.h"
+
 #include "logging.h"
 #define CATMODULE "xml2json"
 
@@ -29,6 +32,98 @@ struct xml2json_cache {
 };
 
 static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache);
+
+static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    int handled = 0;
+
+    if (node->type == XML_ELEMENT_NODE) {
+        const char *nodename = (const char *)node->name;
+        handled = 1;
+        if (strcmp(nodename, "iceresponse") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (node->xmlChildrenNode) {
+                xmlNodePtr cur = node->xmlChildrenNode;
+
+                do {
+                    int handled_child = 1;
+
+                    if (cur->type == XML_ELEMENT_NODE && cur->name) {
+                        if (strcmp((const char *)cur->name, "message") == 0) {
+                            xmlChar *value = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+                            if (value) {
+                                json_renderer_write_key(renderer, "message", JSON_RENDERER_FLAGS_NONE);
+                                json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+                                xmlFree(value);
+                            }
+                        } else if (strcmp((const char *)cur->name, "return") == 0) {
+                            xmlChar *value = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+                            if (value) {
+                                json_renderer_write_key(renderer, "success", JSON_RENDERER_FLAGS_NONE);
+                                json_renderer_write_boolean(renderer, strcmp((const char *)value, "1") == 0);
+                                xmlFree(value);
+                            }
+                        } else if (strcmp((const char *)cur->name, "modules") == 0) {
+                            json_renderer_write_key(renderer, "modules", JSON_RENDERER_FLAGS_NONE);
+                            render_node(renderer, doc, cur, node, cache);
+                        } else {
+                            handled_child = 0;
+                        }
+                    } else {
+                        handled_child = 0;
+                    }
+
+                    if (!handled_child) {
+                        json_renderer_write_key(renderer, "unhandled-child", JSON_RENDERER_FLAGS_NONE);
+                        render_node(renderer, doc, cur, node, cache);
+                    }
+                    cur = cur->next;
+                } while (cur);
+            }
+            json_renderer_end(renderer);
+        } else if (strcmp(nodename, "modules") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (node->xmlChildrenNode) {
+                xmlNodePtr cur = node->xmlChildrenNode;
+
+                do {
+                    if (cur->type == XML_ELEMENT_NODE && cur->name && strcmp((const char *)cur->name, "module") == 0) {
+                        xmlChar *name = xmlGetProp(cur, XMLSTR("name"));
+                        if (name) {
+                            json_renderer_write_key(renderer, (const char *)name, JSON_RENDERER_FLAGS_NONE);
+                            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                            if (node->properties) {
+                                xmlAttrPtr prop = node->properties;
+
+                                do {
+                                    xmlChar *value = xmlNodeListGetString(doc, prop->children, 1);
+                                    if (value) {
+                                        json_renderer_write_key(renderer, (const char*)cur->name, JSON_RENDERER_FLAGS_NONE);
+                                        json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+                                        xmlFree(value);
+                                    }
+                                } while ((prop = prop->next));
+                            }
+                            json_renderer_end(renderer);
+                            xmlFree(name);
+                        }
+                    } else {
+                        json_renderer_write_key(renderer, "unhandled-child", JSON_RENDERER_FLAGS_NONE);
+                        render_node(renderer, doc, cur, node, cache);
+                    }
+                    cur = cur->next;
+                } while (cur);
+            }
+            json_renderer_end(renderer);
+        } else {
+            handled = 0;
+        }
+    }
+
+    if (!handled)
+        render_node_generic(renderer, doc, node, parent, cache);
+}
 
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
@@ -116,7 +211,9 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
             href = (const char *)node->ns->href;
 
         if (href) {
-            // TODO: Select alternative renderer here.
+            if (strcmp(href, "http://icecast.org/specs/legacyresponse-0.0.1") == 0) {
+                render = render_node_legacyresponse;
+            }
         }
 
         if (render == NULL)
