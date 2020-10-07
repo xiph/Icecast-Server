@@ -322,7 +322,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                                     json_renderer_write_key(renderer, (const char *)mount, JSON_RENDERER_FLAGS_NONE);
                                     xmlFree(mount);
                                     nodelist_unset(&nodelist, j);
-                                    render_node_legacystats(renderer, doc, cur, node, cache);
+                                    render_node_legacystats(renderer, doc, subcur, cur, cache);
                                 }
                             }
                         }
