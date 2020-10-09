@@ -8,7 +8,7 @@
                 <li><a href="/admin/moveclients.xsl?mount={$mount}">Move listeners</a></li>
                 <li><a href="/admin/updatemetadata.xsl?mount={$mount}">Metadata</a></li>
                 <li><a href="/admin/fallbacks.xsl?mount={$mount}&amp;omode=strict">Set fallback</a></li>
-                <li class="critical"><a href="/admin/killsource.xsl?mount={$mount}">Kill source</a></li>
+                <li class="critical"><a href="/admin/ui/confirmkillsource.xsl?mount={$mount}">Kill source</a></li>
             </ul>
         </div>
     </xsl:template>
