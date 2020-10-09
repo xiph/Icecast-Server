@@ -838,7 +838,8 @@ static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
         auth_stack_next(&stack);
    }
 }
-static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden, client_t *client) {
+static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const char *show_mount, client_t *client) {
+    int hidden = flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0;
     avl_node *avlnode;
     xmlNodePtr ret = NULL;
     ice_config_t *config;
@@ -906,6 +907,9 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 
                 if (source_real->running)
                     xmlNewTextChild(xmlnode, NULL, XMLSTR("content-type"), XMLSTR(source_real->format->contenttype));
+
+                if (flags & STATS_XML_FLAG_SHOW_LISTENERS)
+                    admin_add_listeners_to_mount(source_real, xmlnode, client->mode);
             }
             avl_tree_unlock(global.source_tree);
 
@@ -1087,7 +1091,6 @@ xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *cl
     xmlDocPtr doc;
     xmlNodePtr node;
     xmlNodePtr modules;
-    source_t * source;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
@@ -1096,14 +1099,7 @@ xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *cl
     modules = module_container_get_modulelist_as_xml(global.modulecontainer);
     xmlAddChild(node, modules);
 
-    node = _dump_stats_to_doc(node, show_mount, flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0, client);
-
-    if (show_mount && node) {
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount_raw(show_mount);
-        admin_add_listeners_to_mount(source, node, client->mode);
-        avl_tree_unlock(global.source_tree);
-    }
+    node = _dump_stats_to_doc(node, flags, show_mount, client);
 
     return doc;
 }

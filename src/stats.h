@@ -21,8 +21,9 @@
 #include "icecasttypes.h"
 #include "refbuf.h"
 
-#define STATS_XML_FLAG_NONE         0x0000U
-#define STATS_XML_FLAG_SHOW_HIDDEN  0x0001U
+#define STATS_XML_FLAG_NONE             0x0000U
+#define STATS_XML_FLAG_SHOW_HIDDEN      0x0001U
+#define STATS_XML_FLAG_SHOW_LISTENERS   0x0002U
 
 typedef struct _stats_node_tag
 {
