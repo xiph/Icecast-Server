@@ -24,4 +24,7 @@ nobase_dist_admin_DATA = \
     includes/mountnav.xsl \
     includes/player.xsl \
     includes/playlist.xsl \
-    includes/web-page.xsl
+    includes/web-page.xsl \
+    ui/confirmdeleteuser.xsl \
+    ui/confirmkillclient.xsl \
+    ui/confirmkillsource.xsl
