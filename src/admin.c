@@ -76,6 +76,7 @@
 #define LISTCLIENTS_HTML_REQUEST            "listclients.xsl"
 #define STATS_RAW_REQUEST                   "stats"
 #define STATS_HTML_REQUEST                  "stats.xsl"
+#define STATS_JSON_REQUEST                  "stats.json"
 #define QUEUE_RELOAD_RAW_REQUEST            "reloadconfig"
 #define QUEUE_RELOAD_HTML_REQUEST           "reloadconfig.xsl"
 #define QUEUE_RELOAD_JSON_REQUEST           "reloadconfig.json"
@@ -145,6 +146,7 @@ static const admin_command_handler_t handlers[] = {
     { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners, NULL},
     { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
     { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
+    { STATS_JSON_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_stats, NULL},
     { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
     { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload, NULL},
     { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload, NULL},
