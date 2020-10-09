@@ -37,7 +37,7 @@
                                             <td><xsl:value-of select="connected" /></td>
                                             <td><xsl:value-of select="useragent" /></td>
                                             <td class="actions">
-                                                <a class="critical" href="/admin/killclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
+                                                <a class="critical" href="/admin/ui/confirmkillclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
                                                 <a href="/admin/moveclients.xsl?mount={../@mount}&amp;id={id}">Move</a>
                                             </td>
                                         </tr>

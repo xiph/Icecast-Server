@@ -37,7 +37,7 @@
                                             <td><xsl:value-of select="username" /></td>
                                             <xsl:if test="../../@can-deleteuser = 'true'">
                                                 <td class="actions">
-                                                    <a class="critical" href="/admin/manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
+                                                    <a class="critical" href="/admin/ui/confirmdeleteuser.xsl?id={../../@id}&amp;username={username}">Delete</a>
                                                 </td>
                                             </xsl:if>
                                         </tr>
