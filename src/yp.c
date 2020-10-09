@@ -398,7 +398,7 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info (yp, value, YP_SERVER_GENRE);
     free (value);
 
-    value = stats_get_value (yp->mount, "bitrate");
+    value = stats_get_value (yp->mount, "audio_bitrate");
     if (value == NULL)
         value = stats_get_value (yp->mount, "ice-bitrate");
     add_yp_info (yp, value, YP_BITRATE);

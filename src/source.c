@@ -975,7 +975,6 @@ static void _parse_audio_info (source_t *source, const char *s)
             if (esc)
             {
                 util_dict_set (source->audio_info, name, esc);
-                stats_event (source->mount, name, esc);
                 free (esc);
             }
         }
