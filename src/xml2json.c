@@ -303,8 +303,15 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
 
             nodelist_init(&nodelist);
 
-            if (is_icestats)
+            if (is_icestats) {
                 json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                json_renderer_write_key(renderer, "name", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, "icestats", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_key(renderer, "ns", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, "http://icecast.org/specs/legacystats-0.0.1", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_end(renderer);
+            }
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
             if (node->xmlChildrenNode) {
                 xmlNodePtr cur = node->xmlChildrenNode;
