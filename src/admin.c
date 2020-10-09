@@ -449,7 +449,17 @@ void admin_send_response(xmlDocPtr       doc,
             xmlDocDumpMemory(doc, &buff, &len);
             content_type = "text/xml";
         } else {
-            char *json = xml2json_render_doc_simple(doc, "http://icecast.org/specs/legacyresponse-0.0.1");
+            xmlNodePtr xmlroot = xmlDocGetRootElement(doc);
+            const char *ns;
+            char *json;
+
+            if (strcmp((const char *)xmlroot->name, "iceresponse") == 0) {
+                ns = "http://icecast.org/specs/legacyresponse-0.0.1";
+            } else {
+                ns = "http://icecast.org/specs/legacystats-0.0.1";
+            }
+
+            json = xml2json_render_doc_simple(doc, ns);
             buff = xmlStrdup(XMLSTR(json));
             len = strlen(json);
             free(json);
