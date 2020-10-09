@@ -1051,7 +1051,7 @@ void stats_transform_xslt(client_t *client)
     char *xslpath = util_get_path_from_normalised_uri(client->uri);
     const char *mount = httpp_get_param(client->parser, "mount");
 
-    doc = stats_get_xml(0, mount, client);
+    doc = stats_get_xml(STATS_XML_FLAG_NONE, mount, client);
 
     xslt_transform(doc, xslpath, client, 200, NULL, NULL);
 
@@ -1082,7 +1082,7 @@ static void __add_metadata(xmlNodePtr node, const char *tag) {
     free(name);
 }
 
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, client_t *client)
+xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *client)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
@@ -1096,7 +1096,7 @@ xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, client_t *clien
     modules = module_container_get_modulelist_as_xml(global.modulecontainer);
     xmlAddChild(node, modules);
 
-    node = _dump_stats_to_doc(node, show_mount, show_hidden, client);
+    node = _dump_stats_to_doc(node, show_mount, flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0, client);
 
     if (show_mount && node) {
         avl_tree_rlock(global.source_tree);

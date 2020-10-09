@@ -1191,7 +1191,7 @@ static void command_stats(client_t *client, source_t *source, admin_format_t res
 
     ICECAST_LOG_DEBUG("Stats request, sending xml stats");
 
-    doc = stats_get_xml(1, mount, client);
+    doc = stats_get_xml(STATS_XML_FLAG_SHOW_HIDDEN, mount, client);
     admin_send_response(doc, client, response, STATS_HTML_REQUEST);
     xmlFreeDoc(doc);
     return;
