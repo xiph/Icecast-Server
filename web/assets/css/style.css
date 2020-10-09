@@ -141,7 +141,7 @@ ul.boxnav > li {
     margin-left: 1em;
 }
 
-ul.boxnav > li > a {
+ul.boxnav > li > a, ul.boxnav > li input[type='submit'] {
     background-color: #4f8cb0;
     border: none;
     color: white;
@@ -152,7 +152,7 @@ ul.boxnav > li > a {
     display: inline-block;
 }
 
-ul.boxnav > li.critical > a, a.critical {
+ul.boxnav > li.critical > a, a.critical, input[type='submit'].critical {
     background-color: #ff704d !important;
 }
 

@@ -1,5 +1,5 @@
-<xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" xmlns="http://www.w3.org/1999/xhtml">
-    <xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+    <xsl:output method="html" doctype-system="about:legacy-compat" encoding="utf-8" />
     <!-- Import include files -->
 
     <xsl:template match="/node()">
@@ -15,6 +15,15 @@
                 <meta name="description" content="Icecast is free server software for streaming multimedia." />
             </head>
             <body>
+                <xsl:text disable-output-escaping="yes">
+                    &lt;!-- WARNING:
+                    DO NOT ATTEMPT TO PARSE ICECAST HTML OUTPUT!
+                    The web interface may change completely between releases.
+                    If you have a need for automatic processing of server data,
+                    please read the appropriate documentation. Latest docs:
+                    https://icecast.org/docs/icecast-latest/icecast2_stats.html
+                    -->
+                </xsl:text>
                 <!-- Header and menu -->
                 <header>
                     <nav id="main-nav" role="primary">
@@ -32,15 +41,15 @@
 
                 <!--<h1 id="header">Icecast <xsl:value-of select="$title"/></h1>-->
 
-		<!-- Content -->
-		<main role="main">
-			<xsl:call-template name="content" namespace="http://www.w3.org/1999/xhtml" />
-		</main>
+                <!-- Content -->
+                <main role="main">
+                    <xsl:call-template name="content" namespace="http://www.w3.org/1999/xhtml" />
+                </main>
 
-		<!-- Footer -->
-		<footer>
-			<p>Support icecast development at <a href="http://icecast.org">icecast.org</a></p>
-		</footer>
+                <!-- Footer -->
+                <footer>
+                    <p>Support icecast development at <a href="http://icecast.org">icecast.org</a></p>
+                </footer>
             </body>
         </html>
     </xsl:template>

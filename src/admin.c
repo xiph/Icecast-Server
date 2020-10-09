@@ -1473,9 +1473,37 @@ static void ui_command(client_t * client, source_t * source, admin_format_t form
 
     if (is_valid) {
         reportxml_t *report = client_get_reportxml("ddb7da7a-7273-4dfb-8090-867cff82bfd2", NULL, NULL);
+        reportxml_node_t *incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
+        reportxml_node_t *resource;
+        reportxml_node_t *param;
+        char **params;
         char buffer[80];
+        size_t i;
 
         snprintf(buffer, sizeof(buffer), "ui/%s", parameters->group[0].result.string);
+
+        resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(resource, "type", "parameter");
+        reportxml_node_add_child(incident, resource);
+
+        param = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(param, "type", "structure");
+        reportxml_node_set_attribute(param, "member", "get-parameters");
+        reportxml_node_add_child(resource, param);
+
+        params = httpp_get_any_key(client->parser, HTTPP_NS_QUERY_STRING);
+        if (params) {
+            for (i = 0; params[i]; i++) {
+                const char *value = httpp_get_query_param(client->parser, params[i]);
+                if (value) {
+                    reportxml_helper_add_value_string(param, params[i], value);
+                }
+            }
+            httpp_free_any_key(params);
+        }
+
+        refobject_unref(param);
+        refobject_unref(resource);
 
         client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, buffer, format, 200, NULL);
         refobject_unref(report);
