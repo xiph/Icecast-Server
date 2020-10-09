@@ -16,6 +16,7 @@ nobase_dist_admin_DATA = \
     vclt.xsl \
     dashboard.xsl \
     fallbacks.xsl \
+    showlog.xsl \
     includes/footer.xsl \
     includes/head.xsl \
     includes/header.xsl \
