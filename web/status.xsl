@@ -1,19 +1,9 @@
-<xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0" xmlns="http://www.w3.org/1999/xhtml">
-<xsl:output omit-xml-declaration="no" method="xml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" indent="yes" encoding="UTF-8" />
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 <xsl:include href="includes/web-page.xsl"/>
 <xsl:include href="includes/player.xsl"/>
 <xsl:include href="includes/playlist.xsl"/>
 <xsl:variable name="title">Status</xsl:variable>
 <xsl:template name="content">
-	<xsl:text disable-output-escaping="yes">
-	&lt;!-- WARNING:
-	 DO NOT ATTEMPT TO PARSE ICECAST HTML OUTPUT!
-	 The web interface may change completely between releases.
-	 If you have a need for automatic processing of server data,
-	 please read the appropriate documentation. Latest docs:
-	 http://icecast.org/docs/icecast-latest/icecast2_stats.html
-	-->
-	</xsl:text>
 	<!--mount point stats-->
 	<h2>Status</h2>
 	<xsl:choose>
