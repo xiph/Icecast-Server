@@ -3,7 +3,7 @@
 
         <header>
             <nav id="main-nav" role="primary">
-                <a href="/" id="branding">
+                <a href="/admin/" id="branding">
                     <img src="/assets/img/icecast.png" alt="Logo" />
                     <h1>Icecast Server administration</h1>
                 </a>
