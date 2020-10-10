@@ -100,11 +100,13 @@
 #define UPDATEMETADATA_HTML_REQUEST         "updatemetadata.xsl"
 #define SHOWLOG_RAW_REQUEST                 "showlog"
 #define SHOWLOG_HTML_REQUEST                "showlog.xsl"
+#define SHOWLOG_JSON_REQUEST                "showlog.json"
 #define MARKLOG_RAW_REQUEST                 "marklog"
 #define MARKLOG_HTML_REQUEST                "marklog.xsl"
 #define MARKLOG_JSON_REQUEST                "marklog.json"
 #define DASHBOARD_RAW_REQUEST               "dashboard"
 #define DASHBOARD_HTML_REQUEST              "dashboard.xsl"
+#define DASHBOARD_JSON_REQUEST              "dashboard.json"
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
@@ -171,11 +173,13 @@ static const admin_command_handler_t handlers[] = {
     { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
     { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_show_log, NULL},
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
+    { SHOWLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_show_log, NULL},
     { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_mark_log, NULL},
     { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
     { MARKLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_mark_log, NULL},
     { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_dashboard, NULL},
     { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_dashboard, NULL},
+    { DASHBOARD_JSON_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_dashboard, NULL},
     { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL},
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL}
 };
