@@ -712,6 +712,7 @@ static void client_get_reportxml__add_basic_stats(reportxml_t *report)
     refobject_unref(rootnode);
 
     xmlroot = xmlNewNode(NULL, XMLSTR("icestats"));
+    xmlSetProp(xmlroot, XMLSTR("xmlns"), XMLSTR(XMLNS_LEGACY_STATS));
     modules = module_container_get_modulelist_as_xml(global.modulecontainer);
     xmlAddChild(xmlroot, modules);
 
