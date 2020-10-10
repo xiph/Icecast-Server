@@ -187,6 +187,8 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
         const char *nodename = (const char *)node->name;
         handled = 1;
         if (strcmp(nodename, "iceresponse") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+            handle_node_identification(renderer, "iceresponse", XMLNS_LEGACY_RESPONSE, NULL);
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
             if (node->xmlChildrenNode) {
                 xmlNodePtr cur = node->xmlChildrenNode;
@@ -221,6 +223,7 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
                     cur = cur->next;
                 } while (cur);
             }
+            json_renderer_end(renderer);
             json_renderer_end(renderer);
         } else if (strcmp(nodename, "modules") == 0) {
             handled = handle_node_modules(renderer, doc, node, parent, cache);
