@@ -99,21 +99,21 @@ static int nodelist_is_empty(struct nodelist *list)
     return 1;
 }
 
-static void handle_node_identification(json_renderer_t *renderer, const char *name, const char *ns, const char *id)
+static void handle_node_identification(json_renderer_t *renderer, const char *name, const char *ns, const char *id, const char *definition, const char *akindof)
 {
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-            if (name) {
-                json_renderer_write_key(renderer, "name", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, name, JSON_RENDERER_FLAGS_NONE);
+#define handle_node_identification__single(name) \
+            if ((name)) { \
+                json_renderer_write_key(renderer, ( # name ), JSON_RENDERER_FLAGS_NONE); \
+                json_renderer_write_string(renderer, (name), JSON_RENDERER_FLAGS_NONE); \
             }
-            if (ns) {
-                json_renderer_write_key(renderer, "ns", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, ns, JSON_RENDERER_FLAGS_NONE);
-            }
-            if (id) {
-                json_renderer_write_key(renderer, "id", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, id, JSON_RENDERER_FLAGS_NONE);
-            }
+
+            handle_node_identification__single(name)
+            handle_node_identification__single(ns)
+            handle_node_identification__single(id)
+            handle_node_identification__single(definition)
+            handle_node_identification__single(akindof)
+
             json_renderer_end(renderer);
 }
 
@@ -188,7 +188,7 @@ static void render_node_legacyresponse(json_renderer_t *renderer, xmlDocPtr doc,
         handled = 1;
         if (strcmp(nodename, "iceresponse") == 0) {
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
-            handle_node_identification(renderer, "iceresponse", XMLNS_LEGACY_RESPONSE, NULL);
+            handle_node_identification(renderer, "iceresponse", XMLNS_LEGACY_RESPONSE, NULL, NULL, NULL);
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
             if (node->xmlChildrenNode) {
                 xmlNodePtr cur = node->xmlChildrenNode;
@@ -326,7 +326,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
 
             if (is_icestats) {
                 json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
-                handle_node_identification(renderer, "icestats", XMLNS_LEGACY_STATS, NULL);
+                handle_node_identification(renderer, "icestats", XMLNS_LEGACY_STATS, NULL, NULL, NULL);
             }
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
             if (node->xmlChildrenNode) {
