@@ -666,6 +666,7 @@ static void render_node_reportxml(json_renderer_t *renderer, xmlDocPtr doc, xmlN
 
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
+    json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
     json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
 
     json_renderer_write_key(renderer, "type", JSON_RENDERER_FLAGS_NONE);
@@ -703,27 +704,28 @@ static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNod
     } else {
         json_renderer_write_null(renderer);
     }
+    json_renderer_end(renderer);
 
-    if (node->properties) {
+    if (node->properties || node->xmlChildrenNode) {
         xmlAttrPtr cur = node->properties;
-
-        json_renderer_write_key(renderer, "properties", JSON_RENDERER_FLAGS_NONE);
         json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-        do {
+
+        while (cur) {
             xmlChar *value = xmlNodeListGetString(doc, cur->children, 1);
             if (value) {
                 json_renderer_write_key(renderer, (const char*)cur->name, JSON_RENDERER_FLAGS_NONE);
                 json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
                 xmlFree(value);
             }
-        } while ((cur = cur->next));
+
+            cur = cur->next;
+        }
         json_renderer_end(renderer);
     }
 
     if (node->xmlChildrenNode) {
         xmlNodePtr cur = node->xmlChildrenNode;
 
-        json_renderer_write_key(renderer, "children", JSON_RENDERER_FLAGS_NONE);
         json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
         do {
             render_node(renderer, doc, cur, node, cache);
