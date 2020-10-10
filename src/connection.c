@@ -1064,6 +1064,10 @@ static void _handle_get_request(client_t *client) {
                 }
             }
 
+            if (source->no_mount) {
+                client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_NO_FOR_DIRECT_ACCESS);
+                break;
+            }
 
             /* Set max listening duration in case not already set. */
             if (client->con->discon_time == 0) {

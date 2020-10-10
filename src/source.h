@@ -76,6 +76,7 @@ struct source_tag {
     int on_demand;
     int on_demand_req;
     int hidden;
+    int no_mount; // copy of mount_proxy->no_mount
     time_t last_read;
     int short_delay;
 

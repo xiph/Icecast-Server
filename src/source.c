@@ -1000,6 +1000,7 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         source->max_listeners = mountinfo->max_listeners;
         source->fallback_override = mountinfo->fallback_override;
         source->hidden = mountinfo->hidden;
+        source->no_mount = mountinfo->no_mount;
     }
 
     /* if a setting is available in the mount details then use it, else
