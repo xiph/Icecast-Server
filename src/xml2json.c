@@ -309,7 +309,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                 json_renderer_write_key(renderer, "name", JSON_RENDERER_FLAGS_NONE);
                 json_renderer_write_string(renderer, "icestats", JSON_RENDERER_FLAGS_NONE);
                 json_renderer_write_key(renderer, "ns", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, "http://icecast.org/specs/legacystats-0.0.1", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, XMLNS_LEGACY_STATS, JSON_RENDERER_FLAGS_NONE);
                 json_renderer_end(renderer);
             }
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
@@ -634,11 +634,11 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
             href = (const char *)workaroundProp;
 
         if (href) {
-            if (strcmp(href, "http://icecast.org/specs/legacyresponse-0.0.1") == 0) {
+            if (strcmp(href, XMLNS_LEGACY_RESPONSE) == 0) {
                 render = render_node_legacyresponse;
-            } else if (strcmp(href, "http://icecast.org/specs/legacystats-0.0.1") == 0) {
+            } else if (strcmp(href, XMLNS_LEGACY_STATS) == 0) {
                 render = render_node_legacystats;
-            } else if (strcmp(href, "http://xspf.org/ns/0/") == 0) {
+            } else if (strcmp(href, XMLNS_XSPF) == 0) {
                 render = render_node_xspf;
             }
         }

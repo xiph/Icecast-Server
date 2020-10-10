@@ -15,6 +15,13 @@
 
 #include "compat.h"
 
+/* ---[ * ]--- */
+/* XML namespaces */
+#define XMLNS_REPORTXML         "http://icecast.org/specs/reportxml-0.0.1"
+#define XMLNS_XSPF              "http://xspf.org/ns/0/"
+#define XMLNS_LEGACY_STATS      "http://icecast.org/specs/legacystats-0.0.1"
+#define XMLNS_LEGACY_RESPONSE   "http://icecast.org/specs/legacyresponse-0.0.1"
+
 /* ---[ client.[ch] ]--- */
 
 typedef struct _client_tag client_t;

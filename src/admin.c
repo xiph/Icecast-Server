@@ -456,9 +456,9 @@ void admin_send_response(xmlDocPtr       doc,
             char *json;
 
             if (strcmp((const char *)xmlroot->name, "iceresponse") == 0) {
-                ns = "http://icecast.org/specs/legacyresponse-0.0.1";
+                ns = XMLNS_LEGACY_RESPONSE;
             } else {
-                ns = "http://icecast.org/specs/legacystats-0.0.1";
+                ns = XMLNS_LEGACY_STATS;
             }
 
             json = xml2json_render_doc_simple(doc, ns);
