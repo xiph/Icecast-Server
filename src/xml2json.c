@@ -99,6 +99,24 @@ static int nodelist_is_empty(struct nodelist *list)
     return 1;
 }
 
+static void handle_node_identification(json_renderer_t *renderer, const char *name, const char *ns, const char *id)
+{
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (name) {
+                json_renderer_write_key(renderer, "name", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, name, JSON_RENDERER_FLAGS_NONE);
+            }
+            if (ns) {
+                json_renderer_write_key(renderer, "ns", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, ns, JSON_RENDERER_FLAGS_NONE);
+            }
+            if (id) {
+                json_renderer_write_key(renderer, "id", JSON_RENDERER_FLAGS_NONE);
+                json_renderer_write_string(renderer, id, JSON_RENDERER_FLAGS_NONE);
+            }
+            json_renderer_end(renderer);
+}
+
 static void handle_textchildnode(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     xmlChar *value = xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -305,12 +323,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
 
             if (is_icestats) {
                 json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
-                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-                json_renderer_write_key(renderer, "name", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, "icestats", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_key(renderer, "ns", JSON_RENDERER_FLAGS_NONE);
-                json_renderer_write_string(renderer, XMLNS_LEGACY_STATS, JSON_RENDERER_FLAGS_NONE);
-                json_renderer_end(renderer);
+                handle_node_identification(renderer, "icestats", XMLNS_LEGACY_STATS, NULL);
             }
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
             if (node->xmlChildrenNode) {
