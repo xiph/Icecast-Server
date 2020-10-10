@@ -99,6 +99,31 @@ static int nodelist_is_empty(struct nodelist *list)
     return 1;
 }
 
+static int has_ns_changed(xmlNodePtr node, xmlNodePtr parent)
+{
+    xmlChar *xmlns;
+
+    if (parent == NULL)
+        return 1;
+
+    if (node->ns != parent->ns) {
+        if (node->ns && parent->ns && node->ns->href && parent->ns->href) {
+            if (strcmp((const char *)node->ns->href, (const char *)parent->ns->href) != 0)
+                return 1;
+        } else {
+            return 1;
+        }
+    }
+
+    xmlns = xmlGetProp(node, XMLSTR("xmlns"));
+    if (xmlns) {
+        xmlFree(xmlns);
+        return 1;
+    }
+
+    return 0;
+}
+
 static void handle_node_identification(json_renderer_t *renderer, const char *name, const char *ns, const char *id, const char *definition, const char *akindof)
 {
             json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
@@ -560,6 +585,85 @@ static void render_node_xspf(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePt
         render_node_generic(renderer, doc, node, parent, cache);
 }
 
+static void render_node_reportxml(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
+{
+    static const char * valid_tags[] = {
+        "report", "definition", "incident", "state", "backtrace", "position", "more", "fix",
+        "action", "reason", "text", "timestamp", "resource", "value", "reference", "extension", NULL
+    };
+    static const char * skip_props[] = {
+        "id", "definition", "akindof", NULL
+    };
+
+    if (node->type == XML_ELEMENT_NODE) {
+        const char *nodename = (const char *)node->name;
+        size_t i;
+
+        for (i = 0; valid_tags[i]; i++) {
+            if (strcmp(nodename, valid_tags[i]) == 0) {
+                xmlChar *id = xmlGetProp(node, XMLSTR("id"));
+                xmlChar *definition = xmlGetProp(node, XMLSTR("definition"));
+                xmlChar *akindof = xmlGetProp(node, XMLSTR("akindof"));
+
+                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                handle_node_identification(renderer, nodename, has_ns_changed(node, parent) ? XMLNS_REPORTXML : NULL, (const char *)id, (const char *)definition, (const char *)akindof);
+
+                if (id)
+                    xmlFree(id);
+                if (definition)
+                    xmlFree(definition);
+                if (akindof)
+                    xmlFree(akindof);
+
+                if (node->properties || node->xmlChildrenNode) {
+                    json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                    if (node->properties) {
+                        xmlAttrPtr cur = node->properties;
+
+                        do {
+                            int found = 0;
+                            size_t j;
+
+                            for (j = 0; skip_props[j]; j++) {
+                                if (strcmp((const char*)cur->name, skip_props[j]) == 0) {
+                                    found = 1;
+                                    break;
+                                }
+                            }
+
+                            if (!found) {
+                                xmlChar *value = xmlNodeListGetString(doc, cur->children, 1);
+                                if (value) {
+                                    json_renderer_write_key(renderer, (const char*)cur->name, JSON_RENDERER_FLAGS_NONE);
+                                    json_renderer_write_string(renderer, (const char*)value, JSON_RENDERER_FLAGS_NONE);
+                                    xmlFree(value);
+                                }
+                            }
+                        } while ((cur = cur->next));
+                    }
+                    json_renderer_end(renderer);
+                }
+
+                if (node->xmlChildrenNode) {
+                    json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                    xmlNodePtr child = node->xmlChildrenNode;
+                    while (child) {
+                        render_node(renderer, doc, child, node, cache);
+                        child = child->next;
+                    };
+                    json_renderer_end(renderer);
+                }
+
+                json_renderer_end(renderer);
+
+                return;
+            }
+        }
+    }
+
+    render_node_generic(renderer, doc, node, parent, cache);
+}
+
 static void render_node_generic(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr node, xmlNodePtr parent, struct xml2json_cache *cache)
 {
     json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
@@ -656,6 +760,8 @@ static void render_node(json_renderer_t *renderer, xmlDocPtr doc, xmlNodePtr nod
                 render = render_node_legacystats;
             } else if (strcmp(href, XMLNS_XSPF) == 0) {
                 render = render_node_xspf;
+            } else if (strcmp(href, XMLNS_REPORTXML) == 0) {
+                render = render_node_reportxml;
             }
         }
 
