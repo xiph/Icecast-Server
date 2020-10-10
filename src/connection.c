@@ -1054,34 +1054,37 @@ static void _handle_get_request(client_t *client) {
     source = source_find_mount(client->uri);
     if (source) {
         /* true mount */
-        int in_error = 0;
-        ssize_t max_connections_per_user = acl_get_max_connections_per_user(client->acl);
-        /* check for duplicate_logins */
-        if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
-            if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
-                client_send_error_by_id(client, ICECAST_ERROR_CON_PER_CRED_CLIENT_LIMIT);
-                in_error = 1;
-            }
-        }
-
-
-        /* Set max listening duration in case not already set. */
-        if (!in_error && client->con->discon_time == 0) {
-            time_t connection_duration = acl_get_max_connection_duration(client->acl);
-            if (connection_duration == -1) {
-                ice_config_t *config = config_get_config();
-                mount_proxy *mount = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
-                if (mount && mount->max_listener_duration)
-                    connection_duration = mount->max_listener_duration;
-                config_release_config();
+        do {
+            ssize_t max_connections_per_user = acl_get_max_connections_per_user(client->acl);
+            /* check for duplicate_logins */
+            if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
+                if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
+                    client_send_error_by_id(client, ICECAST_ERROR_CON_PER_CRED_CLIENT_LIMIT);
+                    break;
+                }
             }
 
-            if (connection_duration > 0) /* -1 = not set (-> default=unlimited), 0 = unlimited */
-                client->con->discon_time = connection_duration + time(NULL);
-        }
-        if (!in_error && __add_listener_to_source(source, client) == -1) {
-            client_send_error_by_id(client, ICECAST_ERROR_CON_rejecting_client_for_whatever_reason);
-        }
+
+            /* Set max listening duration in case not already set. */
+            if (client->con->discon_time == 0) {
+                time_t connection_duration = acl_get_max_connection_duration(client->acl);
+                if (connection_duration == -1) {
+                    ice_config_t *config = config_get_config();
+                    mount_proxy *mount = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
+                    if (mount && mount->max_listener_duration)
+                        connection_duration = mount->max_listener_duration;
+                    config_release_config();
+                }
+
+                if (connection_duration > 0) /* -1 = not set (-> default=unlimited), 0 = unlimited */
+                    client->con->discon_time = connection_duration + time(NULL);
+            }
+
+            if (__add_listener_to_source(source, client) == -1) {
+                client_send_error_by_id(client, ICECAST_ERROR_CON_rejecting_client_for_whatever_reason);
+                break;
+            }
+        } while (0);
         avl_tree_unlock(global.source_tree);
     } else {
         /* file */
