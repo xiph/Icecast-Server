@@ -1957,7 +1957,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
     listener->next = configuration->listen_sock->next;
     configuration->listen_sock->next = listener;
     configuration->listen_sock_count++;
-    if (listener->shoutcast_mount) {
+    if (listener->shoutcast_mount && !listener->shoutcast_compat) {
         listener_t *sc_port = calloc(1, sizeof(listener_t));
         sc_port->port = listener->port+1;
         sc_port->shoutcast_compat = 1;
