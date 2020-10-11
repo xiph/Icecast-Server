@@ -15,7 +15,7 @@
                     <!-- Mount nav -->
                     <xsl:call-template name="mountnav" />
                     <h4>Update Metadata</h4>
-                    <xsl:if test="content-type and not((content-type = 'application/mpeg') or (content-type = 'audio/aac') or (content-type = 'audio/aacp'))">
+                    <xsl:if test="content-type and not((content-type = 'audio/mpeg') or (content-type = 'audio/aac') or (content-type = 'audio/aacp'))">
                         <aside class="warning">
                             <strong>Warning</strong>
                             This is only supported for legacy codecs using ICY as transport such as MP3 and AAC.
