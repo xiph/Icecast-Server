@@ -74,6 +74,7 @@
 #define METADATA_JSON_REQUEST               "metadata.json"
 #define LISTCLIENTS_RAW_REQUEST             "listclients"
 #define LISTCLIENTS_HTML_REQUEST            "listclients.xsl"
+#define LISTCLIENTS_JSON_REQUEST            "listclients.json"
 #define STATS_RAW_REQUEST                   "stats"
 #define STATS_HTML_REQUEST                  "stats.xsl"
 #define STATS_JSON_REQUEST                  "stats.json"
@@ -82,11 +83,14 @@
 #define QUEUE_RELOAD_JSON_REQUEST           "reloadconfig.json"
 #define LISTMOUNTS_RAW_REQUEST              "listmounts"
 #define LISTMOUNTS_HTML_REQUEST             "listmounts.xsl"
+#define LISTMOUNTS_JSON_REQUEST             "listmounts.json"
 #define STREAMLIST_RAW_REQUEST              "streamlist"
 #define STREAMLIST_HTML_REQUEST             "streamlist.xsl"
+#define STREAMLIST_JSON_REQUEST             "streamlist.json"
 #define STREAMLIST_PLAINTEXT_REQUEST        "streamlist.txt"
 #define MOVECLIENTS_RAW_REQUEST             "moveclients"
 #define MOVECLIENTS_HTML_REQUEST            "moveclients.xsl"
+#define MOVECLIENTS_JSON_REQUEST            "moveclients.json"
 #define KILLCLIENT_RAW_REQUEST              "killclient"
 #define KILLCLIENT_HTML_REQUEST             "killclient.xsl"
 #define KILLCLIENT_JSON_REQUEST             "killclient.json"
@@ -98,6 +102,7 @@
 #define MANAGEAUTH_HTML_REQUEST             "manageauth.xsl"
 #define UPDATEMETADATA_RAW_REQUEST          "updatemetadata"
 #define UPDATEMETADATA_HTML_REQUEST         "updatemetadata.xsl"
+#define UPDATEMETADATA_JSON_REQUEST         "updatemetadata.json"
 #define SHOWLOG_RAW_REQUEST                 "showlog"
 #define SHOWLOG_HTML_REQUEST                "showlog.xsl"
 #define SHOWLOG_JSON_REQUEST                "showlog.json"
@@ -146,6 +151,7 @@ static const admin_command_handler_t handlers[] = {
     { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_shoutcast_metadata, NULL},
     { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_show_listeners, NULL},
     { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners, NULL},
+    { LISTCLIENTS_JSON_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_show_listeners, NULL},
     { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
     { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
     { STATS_JSON_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_stats, NULL},
@@ -155,11 +161,14 @@ static const admin_command_handler_t handlers[] = {
     { QUEUE_RELOAD_JSON_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_queue_reload, NULL},
     { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
     { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
+    { LISTMOUNTS_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_list_mounts, NULL},
     { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
     { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     command_list_mounts, NULL},
     { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
+    { STREAMLIST_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_list_mounts, NULL},
     { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_move_clients, NULL},
     { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_move_clients, NULL},
+    { MOVECLIENTS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_move_clients, NULL},
     { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_client, NULL},
     { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_client, NULL},
     { KILLCLIENT_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_client, NULL},
@@ -170,6 +179,7 @@ static const admin_command_handler_t handlers[] = {
     { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth, NULL},
     { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
     { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata, NULL},
+    { UPDATEMETADATA_JSON_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_updatemetadata, NULL},
     { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
     { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_show_log, NULL},
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
@@ -371,7 +381,7 @@ xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
  * doc even if the source is running */
-xmlDocPtr admin_build_sourcelist(const char *mount)
+xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_format_t format)
 {
     avl_node *node;
     source_t *source;
@@ -406,9 +416,12 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
             srcnode = xmlNewChild(xmlnode, NULL, XMLSTR("source"), NULL);
             xmlSetProp(srcnode, XMLSTR("mount"), XMLSTR(source->mount));
 
-            xmlNewTextChild(srcnode, NULL, XMLSTR("fallback"),
-                    (source->fallback_mount != NULL)?
-                    XMLSTR(source->fallback_mount):XMLSTR(""));
+            if (source->fallback_mount) {
+                xmlNewTextChild(srcnode, NULL, XMLSTR("fallback"), XMLSTR(source->fallback_mount));
+            } else {
+                if (format == ADMIN_FORMAT_RAW && client->mode != OMODE_STRICT)
+                    xmlNewTextChild(srcnode, NULL, XMLSTR("fallback"), XMLSTR(""));
+            }
             snprintf(buf, sizeof(buf), "%lu", source->listeners);
             xmlNewTextChild(srcnode, NULL, XMLSTR("listeners"), XMLSTR(buf));
 
@@ -428,7 +441,11 @@ xmlDocPtr admin_build_sourcelist(const char *mount)
                 if (source->client) {
                     snprintf(buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
-                    xmlNewTextChild(srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
+                    if (format == ADMIN_FORMAT_RAW && client->mode != OMODE_STRICT) {
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("Connected"), XMLSTR(buf));
+                    } else {
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("connected"), XMLSTR(buf));
+                    }
                 }
                 xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"),
                     XMLSTR(source->format->contenttype));
@@ -741,7 +758,7 @@ static void command_move_clients(client_t   *client,
     }
     ICECAST_LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
-        xmlDocPtr doc = admin_build_sourcelist(source->mount);
+        xmlDocPtr doc = admin_build_sourcelist(source->mount, client, response);
 
         if (idtext) {
             xmlNodePtr root = xmlDocGetRootElement(doc);
@@ -1100,7 +1117,7 @@ static void command_fallback(client_t *client,
 
     if (client->mode == OMODE_STRICT) {
         if (!(COMMAND_OPTIONAL(client, "fallback", fallback))) {
-            xmlDocPtr doc = admin_build_sourcelist(source->mount);
+            xmlDocPtr doc = admin_build_sourcelist(source->mount, client, response);
             admin_send_response(doc, client, response, FALLBACK_HTML_REQUEST);
             xmlFreeDoc(doc);
             return;
@@ -1273,7 +1290,7 @@ static void command_list_mounts(client_t *client, source_t *source, admin_format
     } else {
         xmlDocPtr doc;
         avl_tree_rlock(global.source_tree);
-        doc = admin_build_sourcelist(NULL);
+        doc = admin_build_sourcelist(NULL, client, response);
         avl_tree_unlock(global.source_tree);
 
         admin_send_response(doc, client, response,

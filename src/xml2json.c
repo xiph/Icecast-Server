@@ -330,7 +330,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
     };
     static const char * number_keys_source[] = {
         "audio_bitrate", "audio_channels", "audio_samplerate", "ice-bitrate", "listener_peak", "listeners", "slow_listeners",
-        "total_bytes_read", "total_bytes_sent", NULL
+        "total_bytes_read", "total_bytes_sent", "connected", NULL
     };
     static const char * boolean_keys_source[] = {
         "public", NULL
@@ -341,7 +341,7 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
     if (node->type == XML_ELEMENT_NODE) {
         const char *nodename = (const char *)node->name;
         handled = 1;
-        if (strcmp(nodename, "icestats") == 0 || strcmp(nodename, "source") == 0) {
+        if (strcmp(nodename, "icestats") == 0 || strcmp(nodename, "source") == 0 || strcmp(nodename, "listener") == 0) {
             int is_icestats = strcmp(nodename, "icestats") == 0;
             struct nodelist nodelist;
             size_t i;
@@ -402,6 +402,24 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
 
                         json_renderer_end(renderer);
                         nodelist_unset(&nodelist, i);
+                    } else if (strcmp((const char *)cur->name, "listener") == 0) {
+                        size_t j;
+
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+
+                        for (j = i; j < len; j++) {
+                            xmlNodePtr subcur = nodelist_get(&nodelist, j);
+                            if (subcur == NULL)
+                                continue;
+
+                            if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
+                                nodelist_unset(&nodelist, j);
+                                render_node_legacystats(renderer, doc, subcur, cur, cache);
+                            }
+                        }
+
+                        json_renderer_end(renderer);
                     } else if (strcmp((const char *)cur->name, "metadata") == 0) {
                         size_t j;
 
