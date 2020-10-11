@@ -949,11 +949,10 @@ xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent)
 static void command_manageauth(client_t *client, source_t *source, admin_format_t response)
 {
     xmlDocPtr doc;
-    xmlNodePtr node, rolenode, usersnode, msgnode;
+    xmlNodePtr node, rolenode, usersnode;
     const char *action = NULL;
     const char *username = NULL;
     const char *idstring = NULL;
-    char *message = NULL;
     int ret = AUTH_OK;
     int error_id = ICECAST_ERROR_ADMIN_missing_parameter;
     long unsigned int id;
@@ -1007,12 +1006,17 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
             }
 
             ret = auth->adduser(auth, username, password);
-            if (ret == AUTH_FAILED) {
-                message = strdup("User add failed - check the icecast error log");
-            } else if (ret == AUTH_USERADDED) {
-                message = strdup("User added");
-            } else if (ret == AUTH_USEREXISTS) {
-                message = strdup("User already exists - not added");
+            if (response == ADMIN_FORMAT_JSON || client->mode == OMODE_STRICT) {
+                if (ret == AUTH_FAILED) {
+                    admin_send_response_simple(client, source, response, "User add failed - check the icecast error log", 0);
+                } else if (ret == AUTH_USERADDED) {
+                    admin_send_response_simple(client, source, response, "User added", 1);
+                } else if (ret == AUTH_USEREXISTS) {
+                    admin_send_response_simple(client, source, response, "User already exists - not added", 0);
+                }
+                config_release_config();
+                auth_release(auth);
+                return;
             }
         }
         if (!strcmp(action, "delete")) {
@@ -1027,10 +1031,15 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
             }
 
             ret = auth->deleteuser(auth, username);
-            if (ret == AUTH_FAILED) {
-                message = strdup("User delete failed - check the icecast error log");
-            } else if (ret == AUTH_USERDELETED) {
-                message = strdup("User deleted");
+            if (response == ADMIN_FORMAT_JSON || client->mode == OMODE_STRICT) {
+                if (ret == AUTH_FAILED) {
+                    admin_send_response_simple(client, source, response, "User delete failed - check the icecast error log", 0);
+                } else if (ret == AUTH_USERDELETED) {
+                    admin_send_response_simple(client, source, response, "User deleted", 1);
+                }
+                config_release_config();
+                auth_release(auth);
+                return;
             }
         }
 
@@ -1038,11 +1047,6 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
         node = admin_build_rootnode(doc, "icestats");
 
         rolenode = admin_add_role_to_authentication(auth, node);
-
-        if (message) {
-            msgnode = admin_build_rootnode(doc, "iceresponse");
-            xmlNewTextChild(msgnode, NULL, XMLSTR("message"), XMLSTR(message));
-        }
 
         xmlDocSetRootElement(doc, node);
 
@@ -1056,7 +1060,6 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
 
         admin_send_response(doc, client, response,
             MANAGEAUTH_HTML_REQUEST);
-        free(message);
         xmlFreeDoc(doc);
         return;
     } while (0);
