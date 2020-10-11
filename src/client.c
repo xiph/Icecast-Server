@@ -1025,7 +1025,8 @@ ssize_t client_get_baseurl(client_t *client, listensocket_t *listensocket, char 
     if (!host && listensocket) {
         listener = listensocket_get_listener(listensocket);
         if (listener) {
-            host = listener->bind_address;
+            if (listener->bind_address && strncmp(listener->bind_address, "0.", 2) != 0 && strncmp(listener->bind_address, "::", 2) != 0)
+                host = listener->bind_address;
             port = listener->port;
             if (!client)
                 tlsmode = listener->tls;
