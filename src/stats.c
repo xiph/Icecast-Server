@@ -855,7 +855,7 @@ static inline int __include_node(unsigned int flags, const char *key, const char
 
 static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const char *show_mount, client_t *client) {
     static const char *public_keys_global[] = {"admin", "location", "host", "server_id", "server_start_iso8601", NULL};
-    static const char *public_keys_source[] = {"listeners", "server_name", "server_description", "stream_start_iso8601", "subtype", "content-type", "listenurl", "genre", NULL};
+    static const char *public_keys_source[] = {"listeners", "server_name", "server_description", "stream_start_iso8601", "subtype", "content-type", "listenurl", "genre", "display-title", NULL};
     int hidden = flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0;
     avl_node *avlnode;
     xmlNodePtr ret = NULL;

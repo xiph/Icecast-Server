@@ -102,12 +102,7 @@
                                             </xsl:if>
                                             <tr>
                                                 <td>Currently playing:</td>
-                                                <td class="streamstats">
-                                                    <xsl:if test="artist">
-                                                        <xsl:value-of select="artist" /> -
-                                                    </xsl:if>
-                                                    <xsl:value-of select="title" />
-                                                </td>
+                                                <td class="streamstats"><xsl:value-of select="display-title" /></td>
                                             </tr>
                                         </tbody>
                                     </table>

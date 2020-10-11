@@ -319,6 +319,7 @@ static void update_comments(source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
+    stats_event (source->mount, "display-title", title);
 
     playlist_push_track(source->history, &source->format->vc);
 
