@@ -180,6 +180,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
                 memcpy (p, metadata+13, len);
                 logging_playlist (source->mount, p, source->listeners);
                 stats_event_conv (source->mount, "title", p, source->format->charset);
+                format_set_vorbiscomment(source->format, MP3_METADATA_TITLE, p);
                 yp_touch (source->mount);
                 free (p);
                 playlist_push_track(source->history, &source->format->vc);
