@@ -24,6 +24,7 @@
 #define STATS_XML_FLAG_NONE             0x0000U
 #define STATS_XML_FLAG_SHOW_HIDDEN      0x0001U
 #define STATS_XML_FLAG_SHOW_LISTENERS   0x0002U
+#define STATS_XML_FLAG_PUBLIC_VIEW      0x0004U
 
 typedef struct _stats_node_tag
 {

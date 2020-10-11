@@ -838,15 +838,37 @@ static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
         auth_stack_next(&stack);
    }
 }
+
+static inline int __is_in_list(const char *key, const char *list[])
+{
+    size_t i;
+    for (i = 0; list[i]; i++)
+        if (strcmp(key, list[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static inline int __include_node(unsigned int flags, const char *key, const char *list[])
+{
+    return !(flags & STATS_XML_FLAG_PUBLIC_VIEW) || __is_in_list(key, list);
+}
+
 static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const char *show_mount, client_t *client) {
+    static const char *public_keys_global[] = {"admin", "location", "host", "server_id", "server_start_iso8601", NULL};
+    static const char *public_keys_source[] = {"listeners", "server_name", "server_description", "stream_start_iso8601", "subtype", "content-type", "listenurl", "genre", NULL};
     int hidden = flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0;
     avl_node *avlnode;
     xmlNodePtr ret = NULL;
     ice_config_t *config;
 
-    config = config_get_config();
-    __add_authstack(config->authstack, root);
-    config_release_config();
+    if (flags & STATS_XML_FLAG_PUBLIC_VIEW) {
+        /* Ensure those flags are clear when rendering a public view */
+        flags &= ~(STATS_XML_FLAG_SHOW_LISTENERS|STATS_XML_FLAG_SHOW_HIDDEN);
+    } else {
+        config = config_get_config();
+        __add_authstack(config->authstack, root);
+        config_release_config();
+    }
 
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
@@ -854,7 +876,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
 
     while (avlnode) {
         stats_node_t *stat = avlnode->key;
-        if (stat->hidden <=  hidden)
+        if (stat->hidden <=  hidden && __include_node(flags, stat->name, public_keys_global))
             xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
         avlnode = avl_get_next (avlnode);
     }
@@ -881,12 +903,14 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
             while (avlnode2)
             {
                 stats_node_t *stat = avlnode2->key;
-                if (client && strcmp(stat->name, "listenurl") == 0) {
-                    char buf[512];
-                    client_get_baseurl(client, NULL, buf, sizeof(buf), NULL, NULL, NULL, source->source, NULL);
-                    xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(buf));
-                } else {
-                    xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                if (__include_node(flags, stat->name, public_keys_source)) {
+                    if (client && strcmp(stat->name, "listenurl") == 0) {
+                        char buf[512];
+                        client_get_baseurl(client, NULL, buf, sizeof(buf), NULL, NULL, NULL, source->source, NULL);
+                        xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(buf));
+                    } else {
+                        xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                    }
                 }
                 avlnode2 = avl_get_next (avlnode2);
             }
@@ -913,10 +937,12 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
             }
             avl_tree_unlock(global.source_tree);
 
-            config = config_get_config();
-            mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
-            __add_authstack(mountproxy->authstack, xmlnode);
-            config_release_config();
+            if (!(flags & STATS_XML_FLAG_PUBLIC_VIEW)) {
+                config = config_get_config();
+                mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
+                __add_authstack(mountproxy->authstack, xmlnode);
+                config_release_config();
+            }
         }
         avlnode = avl_get_next (avlnode);
     }

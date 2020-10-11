@@ -78,6 +78,8 @@
 #define STATS_RAW_REQUEST                   "stats"
 #define STATS_HTML_REQUEST                  "stats.xsl"
 #define STATS_JSON_REQUEST                  "stats.json"
+#define PUBLICSTATS_RAW_REQUEST             "publicstats"
+#define PUBLICSTATS_JSON_REQUEST            "publicstats.json"
 #define QUEUE_RELOAD_RAW_REQUEST            "reloadconfig"
 #define QUEUE_RELOAD_HTML_REQUEST           "reloadconfig.xsl"
 #define QUEUE_RELOAD_JSON_REQUEST           "reloadconfig.json"
@@ -129,6 +131,7 @@ static void command_metadata            (client_t *client, source_t *source, adm
 static void command_shoutcast_metadata  (client_t *client, source_t *source, admin_format_t response);
 static void command_show_listeners      (client_t *client, source_t *source, admin_format_t response);
 static void command_stats               (client_t *client, source_t *source, admin_format_t response);
+static void command_public_stats        (client_t *client, source_t *source, admin_format_t response);
 static void command_queue_reload        (client_t *client, source_t *source, admin_format_t response);
 static void command_list_mounts         (client_t *client, source_t *source, admin_format_t response);
 static void command_move_clients        (client_t *client, source_t *source, admin_format_t response);
@@ -157,6 +160,8 @@ static const admin_command_handler_t handlers[] = {
     { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
     { STATS_JSON_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_stats, NULL},
     { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
+    { PUBLICSTATS_RAW_REQUEST,              ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_public_stats, NULL},
+    { PUBLICSTATS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_public_stats, NULL},
     { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload, NULL},
     { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload, NULL},
     { QUEUE_RELOAD_JSON_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_queue_reload, NULL},
@@ -1255,6 +1260,15 @@ static void command_stats(client_t *client, source_t *source, admin_format_t res
     ICECAST_LOG_DEBUG("Stats request, sending xml stats");
 
     doc = stats_get_xml(flags, mount, client);
+    admin_send_response(doc, client, response, STATS_HTML_REQUEST);
+    xmlFreeDoc(doc);
+    return;
+}
+
+static void command_public_stats        (client_t *client, source_t *source, admin_format_t response)
+{
+    const char *mount = (source) ? source->mount : NULL;
+    xmlDocPtr doc = stats_get_xml(STATS_XML_FLAG_PUBLIC_VIEW, mount, client);
     admin_send_response(doc, client, response, STATS_HTML_REQUEST);
     xmlFreeDoc(doc);
     return;

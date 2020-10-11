@@ -108,7 +108,7 @@ acl_t *acl_new(void)
     acl_set_method_str(ret, ACL_POLICY_ALLOW, "get,options");
 
     acl_set_admin_str(ret, ACL_POLICY_DENY, "*");
-    acl_set_admin_str(ret, ACL_POLICY_ALLOW, "buildm3u");
+    acl_set_admin_str(ret, ACL_POLICY_ALLOW, "buildm3u,publicstats,publicstats.json");
 
     acl_set_web_policy(ret, ACL_POLICY_ALLOW);
 
