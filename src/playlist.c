@@ -165,7 +165,7 @@ xmlNodePtr   playlist_render_xspf(playlist_t *playlist)
 
     rootnode = xmlNewNode(NULL, XMLSTR("playlist"));
     xmlSetProp(rootnode, XMLSTR("version"), XMLSTR("1"));
-    xmlSetProp(rootnode, XMLSTR("xmlns"), XMLSTR("http://xspf.org/ns/0/"));
+    xmlSetProp(rootnode, XMLSTR("xmlns"), XMLSTR(XMLNS_XSPF));
 
     tracklist = xmlNewNode(NULL, XMLSTR("trackList"));
     xmlAddChild(rootnode, tracklist);

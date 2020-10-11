@@ -35,6 +35,8 @@ noinst_HEADERS = \
     module.h \
     reportxml.h \
     reportxml_helper.h \
+    json.h \
+    xml2json.h \
     listensocket.h \
     fastevent.h \
     event.h \
@@ -82,6 +84,8 @@ icecast_SOURCES = \
     module.c \
     reportxml.c \
     reportxml_helper.c \
+    json.c \
+    xml2json.c \
     listensocket.c \
     fastevent.c \
     format.c \

@@ -110,6 +110,7 @@ struct nodedef {
 /* Prototypes */
 static int __attach_copy_of_node_or_definition(reportxml_node_t *parent, reportxml_node_t *node, reportxml_database_t *db, ssize_t depth);
 static reportxml_node_t *      __reportxml_database_build_node_ext(reportxml_database_t *db, const char *id, ssize_t depth, reportxml_node_type_t *acst_type_ret);
+static xmlNodePtr              reportxml_node_render_xmlnode_with_ns(reportxml_node_t *node, xmlNsPtr ns, int set_namespace);
 
 /* definition of known attributes */
 static const struct nodeattr __attr__eol[1]             = {{NULL,           NULL,           NULL,     0,  NULL, {NULL}}};
@@ -330,7 +331,7 @@ reportxml_t *           reportxml_parse_xmldoc(xmlDocPtr doc)
     return ret;
 }
 
-xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report)
+xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report, int set_namespace)
 {
     xmlDocPtr ret;
     xmlNodePtr node;
@@ -338,7 +339,7 @@ xmlDocPtr               reportxml_render_xmldoc(reportxml_t *report)
     if (!report)
         return NULL;
 
-    node = reportxml_node_render_xmlnode(report->root);
+    node = reportxml_node_render_xmlnode_with_ns(report->root, NULL, set_namespace);
     if (!node)
         return NULL;
 
@@ -598,13 +599,14 @@ reportxml_node_t *      reportxml_node_copy(reportxml_node_t *node)
     return __reportxml_node_copy_with_db(node, NULL, -1);
 }
 
-xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
+static xmlNodePtr              reportxml_node_render_xmlnode_with_ns(reportxml_node_t *node, xmlNsPtr ns, int set_namespace)
 {
     xmlNodePtr ret;
     ssize_t child_count;
     ssize_t xml_child_count;
     size_t i;
     xmlChar *definition;
+    xmlChar *xmlns;
 
     if (!node)
         return NULL;
@@ -628,6 +630,16 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
         xmlFree(definition);
     }
 
+    xmlns = xmlGetProp(ret, XMLSTR("xmlns"));
+    if (xmlns) {
+        xmlUnsetProp(ret, XMLSTR("xmlns"));
+        ns = xmlNewNs(ret, xmlns, NULL);
+        xmlFree(xmlns);
+    }
+
+    if (ns && set_namespace)
+        xmlSetNs(ret, ns);
+
     for (i = 0; i < (size_t)child_count; i++) {
         reportxml_node_t *child = reportxml_node_get_child(node, i);
         xmlNodePtr xmlchild;
@@ -637,7 +649,7 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
             return NULL;
         }
 
-        xmlchild = reportxml_node_render_xmlnode(child);
+        xmlchild = reportxml_node_render_xmlnode_with_ns(child, ns, set_namespace);
         refobject_unref(child);
         if (!xmlchild) {
             xmlFreeNode(ret);
@@ -671,6 +683,11 @@ xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
 
 
     return ret;
+}
+
+xmlNodePtr              reportxml_node_render_xmlnode(reportxml_node_t *node)
+{
+    return reportxml_node_render_xmlnode_with_ns(node, NULL, 1);
 }
 
 reportxml_node_type_t   reportxml_node_get_type(reportxml_node_t *node)

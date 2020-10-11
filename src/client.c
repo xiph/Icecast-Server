@@ -43,6 +43,7 @@
 #include "reportxml.h"
 #include "refobject.h"
 #include "xslt.h"
+#include "xml2json.h"
 #include "source.h"
 
 #include "client.h"
@@ -363,6 +364,7 @@ static inline void _client_send_report(client_t *client, const char *uuid, const
 
     switch (admin_format) {
         case ADMIN_FORMAT_RAW:
+        case ADMIN_FORMAT_JSON:
             xslt = NULL;
         break;
         case ADMIN_FORMAT_HTML:
@@ -554,6 +556,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     if (!xsl) {
         switch (admin_format) {
             case ADMIN_FORMAT_RAW:
+            case ADMIN_FORMAT_JSON:
                 /* noop, we don't need to set xsl */
             break;
             case ADMIN_FORMAT_HTML:
@@ -574,21 +577,31 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
         return;
     }
 
-    doc = reportxml_render_xmldoc(report);
+    doc = reportxml_render_xmldoc(report, admin_format == ADMIN_FORMAT_RAW || admin_format == ADMIN_FORMAT_JSON);
     if (!doc) {
         ICECAST_LOG_ERROR("Can not render XML Document from report. Sending 500 to client %p", client);
         client_send_500(client, "Can not render XML Document from report.");
         return;
     }
 
-    if (admin_format == ADMIN_FORMAT_RAW) {
+    if (admin_format == ADMIN_FORMAT_RAW || admin_format == ADMIN_FORMAT_JSON) {
         xmlChar *buff = NULL;
         size_t location_length = 0;
         int len = 0;
         size_t buf_len;
         ssize_t ret;
+        const char *content_type;
 
-        xmlDocDumpMemory(doc, &buff, &len);
+        if (admin_format == ADMIN_FORMAT_RAW) {
+            xmlDocDumpMemory(doc, &buff, &len);
+            content_type = "text/xml";
+        } else {
+            char *json = xml2json_render_doc_simple(doc, NULL);
+            buff = xmlStrdup(XMLSTR(json));
+            len = strlen(json);
+            free(json);
+            content_type = "application/json";
+        }
 
         if (location) {
             location_length = strlen(location);
@@ -604,7 +617,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
 
         ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                 0, status, NULL,
-                "text/xml", "utf-8",
+                content_type, "utf-8",
                 NULL, NULL, client);
         if (ret < 0) {
             ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
@@ -621,7 +634,7 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
                 client->refbuf->len = buf_len;
                 ret = util_http_build_header(client->refbuf->data, buf_len, 0,
                         0, status, NULL,
-                        "text/xml", "utf-8",
+                        content_type, "utf-8",
                         NULL, NULL, client);
                 if (ret == -1) {
                     ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
@@ -699,6 +712,7 @@ static void client_get_reportxml__add_basic_stats(reportxml_t *report)
     refobject_unref(rootnode);
 
     xmlroot = xmlNewNode(NULL, XMLSTR("icestats"));
+    xmlSetProp(xmlroot, XMLSTR("xmlns"), XMLSTR(XMLNS_LEGACY_STATS));
     modules = module_container_get_modulelist_as_xml(global.modulecontainer);
     xmlAddChild(xmlroot, modules);
 
@@ -756,7 +770,7 @@ admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
     if (!client || !client->parser)
         return CLIENT_DEFAULT_ADMIN_FORMAT;
 
-    pref = util_http_select_best(httpp_getvar(client->parser, "accept"), "text/xml", "text/html", "text/plain", (const char*)NULL);
+    pref = util_http_select_best(httpp_getvar(client->parser, "accept"), "text/xml", "text/html", "text/plain", "application/json", (const char*)NULL);
 
     if (strcmp(pref, "text/xml") == 0) {
         return ADMIN_FORMAT_RAW;
@@ -764,6 +778,8 @@ admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
         return ADMIN_FORMAT_HTML;
     } else if (strcmp(pref, "text/plain") == 0) {
         return ADMIN_FORMAT_PLAINTEXT;
+    } else if (strcmp(pref, "application/json") == 0) {
+        return ADMIN_FORMAT_JSON;
     } else {
         return CLIENT_DEFAULT_ADMIN_FORMAT;
     }
