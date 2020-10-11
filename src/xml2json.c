@@ -378,8 +378,12 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                         json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
                         handle_node_modules(renderer, doc, cur, node, cache);
                         nodelist_unset(&nodelist, i);
-                    } else if (strcmp((const char *)cur->name, "source") == 0) {
+                    } else if (strcmp((const char *)cur->name, "source") == 0 || strcmp((const char *)cur->name, "role") == 0) {
+                        const char *key = "id";
                         size_t j;
+
+                        if (strcmp((const char *)cur->name, "source") == 0)
+                            key = "mount";
 
                         json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
                         json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
@@ -390,10 +394,10 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                                 continue;
 
                             if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
-                                xmlChar *mount = xmlGetProp(subcur, XMLSTR("mount"));
-                                if (mount) {
-                                    json_renderer_write_key(renderer, (const char *)mount, JSON_RENDERER_FLAGS_NONE);
-                                    xmlFree(mount);
+                                xmlChar *keyval = xmlGetProp(subcur, XMLSTR(key));
+                                if (keyval) {
+                                    json_renderer_write_key(renderer, (const char *)keyval, JSON_RENDERER_FLAGS_NONE);
+                                    xmlFree(keyval);
                                     nodelist_unset(&nodelist, j);
                                     render_node_legacystats(renderer, doc, subcur, cur, cache);
                                 }
@@ -401,7 +405,6 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                         }
 
                         json_renderer_end(renderer);
-                        nodelist_unset(&nodelist, i);
                     } else if (strcmp((const char *)cur->name, "listener") == 0) {
                         size_t j;
 
@@ -507,6 +510,38 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                         xmlFree(value);
                     }
                 } while ((cur = cur->next));
+            }
+            if (node->xmlChildrenNode) {
+                xmlNodePtr cur = node->xmlChildrenNode;
+                do {
+                    if (cur->type == XML_ELEMENT_NODE && cur->name) {
+                        if (strcmp((const char *)cur->name, "users") == 0) {
+                            json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                            if (cur->xmlChildrenNode) {
+                                xmlNodePtr subcur = cur->xmlChildrenNode;
+                                do {
+                                    render_node_legacystats(renderer, doc, subcur, cur, cache);
+                                    subcur = subcur->next;
+                                } while (subcur);
+                            }
+                            json_renderer_end(renderer);
+                        }
+                    }
+                    cur = cur->next;
+                } while (cur);
+            }
+            json_renderer_end(renderer);
+        } else if (strcmp(nodename, "user") == 0) {
+            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+            if (node->xmlChildrenNode) {
+                xmlNodePtr cur = node->xmlChildrenNode;
+                do {
+                    if (cur->xmlChildrenNode && !cur->xmlChildrenNode->next && cur->xmlChildrenNode->type == XML_TEXT_NODE) {
+                        handle_textchildnode(renderer, doc, cur, node, cache);
+                    }
+                    cur = cur->next;
+                } while (cur);
             }
             json_renderer_end(renderer);
         } else {

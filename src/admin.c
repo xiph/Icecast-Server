@@ -100,6 +100,7 @@
 #define ADMIN_XSL_RESPONSE                  "response.xsl"
 #define MANAGEAUTH_RAW_REQUEST              "manageauth"
 #define MANAGEAUTH_HTML_REQUEST             "manageauth.xsl"
+#define MANAGEAUTH_JSON_REQUEST             "manageauth.json"
 #define UPDATEMETADATA_RAW_REQUEST          "updatemetadata"
 #define UPDATEMETADATA_HTML_REQUEST         "updatemetadata.xsl"
 #define UPDATEMETADATA_JSON_REQUEST         "updatemetadata.json"
@@ -177,6 +178,7 @@ static const admin_command_handler_t handlers[] = {
     { KILLSOURCE_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_source, NULL},
     { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_manageauth, NULL},
     { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth, NULL},
+    { MANAGEAUTH_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_manageauth, NULL},
     { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
     { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata, NULL},
     { UPDATEMETADATA_JSON_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_updatemetadata, NULL},
