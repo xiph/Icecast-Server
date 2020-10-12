@@ -653,26 +653,16 @@ static void html_success(client_t *client, source_t *source, admin_format_t resp
     if (client->mode == OMODE_STRICT || (response != ADMIN_FORMAT_RAW && response != ADMIN_FORMAT_HTML)) {
         admin_send_response_simple(client, source, response, message, 1);
     } else {
-        ssize_t ret;
+        char buf[256];
+        int ret;
 
-        ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-                0, 0, 200, NULL,
-                "text/html", "utf-8",
-                "", NULL, client);
-
-        if (ret == -1 || ret >= PER_CLIENT_REFBUF_SIZE) {
-            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        ret = snprintf(buf, sizeof(buf), "<html><head><title>Admin request successful</title></head><body><p>%s</p></body></html>", message);
+        if (ret < 0 || ret >= (ssize_t)sizeof(buf)) {
             client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
             return;
         }
 
-        snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-                "<html><head><title>Admin request successful</title></head>"
-                "<body><p>%s</p></body></html>", message);
-
-        client->respcode = 200;
-        client->refbuf->len = strlen(client->refbuf->data);
-        fserve_add_client(client, NULL);
+        client_send_buffer(client, 200, "text/html", "utf-8", buf, ret, NULL);
     }
 }
 
