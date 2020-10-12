@@ -469,15 +469,13 @@ void admin_send_response(xmlDocPtr       doc,
                          const char     *xslt_template)
 {
     if (response == ADMIN_FORMAT_RAW || response == ADMIN_FORMAT_JSON) {
-        xmlChar *buff = NULL;
-        int len = 0;
-        size_t buf_len;
-        ssize_t ret;
-        const char *content_type;
 
         if (response == ADMIN_FORMAT_RAW) {
+            xmlChar *buff = NULL;
+            int len = 0;
             xmlDocDumpMemory(doc, &buff, &len);
-            content_type = "text/xml";
+            client_send_buffer(client, 200, "text/xml", "utf-8", (const char *)buff, len, NULL);
+            xmlFree(buff);
         } else {
             xmlNodePtr xmlroot = xmlDocGetRootElement(doc);
             const char *ns;
@@ -490,64 +488,10 @@ void admin_send_response(xmlDocPtr       doc,
             }
 
             json = xml2json_render_doc_simple(doc, ns);
-            buff = xmlStrdup(XMLSTR(json));
-            len = strlen(json);
+            client_send_buffer(client, 200, "application/json", "utf-8", json, -1, NULL);
             free(json);
-            content_type = "application/json";
         }
-
-
-        buf_len = len + 1024;
-        if (buf_len < 4096)
-            buf_len = 4096;
-
-        client_set_queue(client, NULL);
-        client->refbuf = refbuf_new(buf_len);
-
-        ret = util_http_build_header(client->refbuf->data, buf_len, 0,
-                                     0, 200, NULL,
-                                     content_type, "utf-8",
-                                     NULL, NULL, client);
-        if (ret < 0) {
-            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-            xmlFree(buff);
-            return;
-        } else if (buf_len < (size_t)(len + ret + 64)) {
-            void *new_data;
-            buf_len = ret + len + 64;
-            new_data = realloc(client->refbuf->data, buf_len);
-            if (new_data) {
-                ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
-                client->refbuf->data = new_data;
-                client->refbuf->len = buf_len;
-                ret = util_http_build_header(client->refbuf->data, buf_len, 0,
-                                             0, 200, NULL,
-                                             content_type, "utf-8",
-                                             NULL, NULL, client);
-                if (ret == -1) {
-                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                    client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-                    xmlFree(buff);
-                    return;
-                }
-            } else {
-                ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
-                xmlFree(buff);
-                return;
-            }
-        }
-
-        /* FIXME: in this section we hope no function will ever return -1 */
-        ret += snprintf (client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
-
-        client->refbuf->len = ret;
-        xmlFree(buff);
-        client->respcode = 200;
-        fserve_add_client (client, NULL);
-    }
-    if (response == ADMIN_FORMAT_HTML) {
+    } else if (response == ADMIN_FORMAT_HTML) {
         char *fullpath_xslt_template;
         size_t fullpath_xslt_template_len;
         ice_config_t *config = config_get_config();
@@ -904,29 +848,13 @@ static void command_buildm3u(client_t *client, source_t *source, admin_format_t 
     const char *mount = source->mount;
     const char *username = NULL;
     const char *password = NULL;
-    ssize_t ret;
+    char buffer[512];
 
     COMMAND_REQUIRE(client, "username", username);
     COMMAND_REQUIRE(client, "password", password);
 
-    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE,
-                                 0, 0, 200, NULL,
-                                 "audio/x-mpegurl", NULL,
-                                 NULL, NULL, client);
-
-    if (ret == -1 || ret >= (PER_CLIENT_REFBUF_SIZE - 512)) {
-        /* we want at least 512 Byte left for data */
-        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-        client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-        return;
-    }
-
-
-    client_get_baseurl(client, NULL, client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret, username, password, "Content-Disposition: attachment; filename=listen.m3u\r\n\r\n", mount, "\r\n");
-
-    client->respcode = 200;
-    client->refbuf->len = strlen (client->refbuf->data);
-    fserve_add_client (client, NULL);
+    client_get_baseurl(client, NULL, buffer, sizeof(buffer), username, password, NULL, mount, "\r\n");
+    client_send_buffer(client, 200, "audio/x-mpegurl", NULL, buffer, -1, "Content-Disposition: attachment; filename=listen.m3u\r\n");
 }
 
 xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent)

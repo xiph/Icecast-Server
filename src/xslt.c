@@ -369,70 +369,20 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, in
         }
     }
 
-    if (problem == 0)
-    {
-        ssize_t ret;
-        int failed = 0;
-        refbuf_t *refbuf;
-        size_t location_length = 0;
-        ssize_t full_len = strlen(mediatype) + (ssize_t)len + (ssize_t)1024;
+    if (problem == 0) {
+        char extra_header[512] = "";
 
         if (location) {
-            location_length = strlen(location);
-            full_len += location_length;
-        }
-
-        if (full_len < 4096)
-            full_len = 4096;
-        refbuf = refbuf_new (full_len);
-        client->reuse = ICECAST_REUSE_KEEPALIVE;
-
-        if (string == NULL)
-            string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
-        if (ret == -1) {
-            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            _send_error(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED, status);
-        } else {
-            if ( full_len < (ret + (ssize_t)len + (ssize_t)128) ) {
-                void *new_data;
-                full_len = ret + (ssize_t)len + (ssize_t)128;
-                new_data = realloc(refbuf->data, full_len);
-                if (new_data) {
-                    ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
-                    refbuf->data = new_data;
-                    refbuf->len = full_len;
-                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, status, NULL, mediatype, charset, NULL, NULL, client);
-                    if (ret == -1) {
-                        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                        _send_error(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED, status);
-                        failed = 1;
-                    }
-                } else {
-                    ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                    _send_error(client, ICECAST_ERROR_GEN_BUFFER_REALLOC, status);
-                    failed = 1;
-                }
-            }
-
-            if (!failed) {
-                /* FIXME: in this section we hope no function will ever return -1 */
-                if (location) {
-                    ret += snprintf(refbuf->data + ret, full_len - ret, "Location: %s\r\n", location);
-                }
-                ret += snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
-
-                client->respcode = status;
-                client_set_queue (client, NULL);
-                client->refbuf = refbuf;
-                refbuf->len = strlen (refbuf->data);
-                fserve_add_client (client, NULL);
+            int res = snprintf(extra_header, sizeof(extra_header), "Location: %s\r\n", location);
+            if (res < 0 || res >= (ssize_t)sizeof(extra_header)) {
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                return;
             }
         }
-        xmlFree (string);
-    }
-    else
-    {
+
+        client_send_buffer(client, status, mediatype, charset, (const char *)string, len, extra_header);
+        xmlFree(string);
+    } else {
         ICECAST_LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
         _send_error(client, ICECAST_ERROR_XSLT_problem, status);
     }

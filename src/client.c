@@ -441,34 +441,7 @@ void client_send_101(client_t *client, reuse_t reuse)
 
 void client_send_204(client_t *client)
 {
-    source_t *source;
-    ssize_t ret;
-
-    if (!client)
-        return;
-
-    client->reuse = ICECAST_REUSE_KEEPALIVE;
-
-    /* We get a source_t* here as this is likely a reply to OPTIONS and we want
-     * to have as much infos as possible in that case.
-     */
-    avl_tree_rlock(global.source_tree);
-    source = source_find_mount_raw(client->uri);
-    ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
-                                 0, 204, NULL,
-                                 NULL, NULL,
-                                 NULL, source, client);
-    avl_tree_unlock(global.source_tree);
-
-    snprintf(client->refbuf->data + ret, PER_CLIENT_REFBUF_SIZE - ret,
-             "Content-Length: 0\r\n\r\n");
-
-    client->respcode = 204;
-    client->refbuf->len = strlen(client->refbuf->data);
-
-    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
-
-    fserve_add_client(client, NULL);
+    client_send_buffer(client, 204, NULL, NULL, NULL, 0, NULL);
 }
 
 void client_send_426(client_t *client, reuse_t reuse)
@@ -484,7 +457,6 @@ void client_send_426(client_t *client, reuse_t reuse)
     }
 
     client->reuse = reuse;
-
     ret = util_http_build_header(client->refbuf->data, PER_CLIENT_REFBUF_SIZE, 0,
                                  0, 426, NULL,
                                  "text/plain", "utf-8",
@@ -522,6 +494,110 @@ static inline void client_send_500(client_t *client, const char *message)
         client_send_bytes(client, message, strlen(message));
 
     client_destroy(client);
+}
+
+void client_send_buffer(client_t *client, int status, const char *mediatype, const char *charset, const char *buffer, ssize_t len, const char *extra_headers)
+{
+    source_t *source;
+    size_t buf_len_ours;
+    size_t buf_len;
+    ssize_t ret;
+    int headerlen;
+    char header[128];
+    size_t extra_headers_len;
+
+    if (!client)
+        return;
+
+    if (status < 200 || status > 599 || (!buffer && len)) {
+        client_send_500(client, "BUG.");
+        return;
+    }
+
+    if (len < 0)
+        len = strlen(buffer);
+
+    if (!extra_headers)
+        extra_headers = "";
+
+    extra_headers_len = strlen(extra_headers);
+
+    headerlen = snprintf(header, sizeof(header), "Content-Length: %lld\r\n", (long long int)len);
+    if (headerlen < 1 || headerlen >= (ssize_t)sizeof(header)) {
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+    }
+
+    buf_len_ours = len + headerlen + extra_headers_len + 2;
+    buf_len = buf_len_ours + 1024;
+
+    if (buf_len < 4096)
+        buf_len = 4096;
+
+    client_set_queue(client, NULL);
+    client->refbuf = refbuf_new(buf_len);
+    client->reuse = ICECAST_REUSE_KEEPALIVE;
+
+    avl_tree_rlock(global.source_tree);
+    source = source_find_mount_raw(client->uri);
+
+    ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+            0, status, NULL,
+            mediatype, charset,
+            NULL, source, client);
+
+    if (ret < 0) {
+        avl_tree_unlock(global.source_tree);
+        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+        return;
+    } else if (buf_len < (ret + buf_len_ours)) {
+        void *new_data;
+        buf_len = buf_len_ours + ret + 64;
+        new_data = realloc(client->refbuf->data, buf_len);
+        if (new_data) {
+            ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
+            client->refbuf->data = new_data;
+            client->refbuf->len = buf_len;
+            ret = util_http_build_header(client->refbuf->data, buf_len, 0,
+                    0, status, NULL,
+                    mediatype, charset,
+                    NULL, source, client);
+            if (ret == -1 || buf_len < (ret + buf_len_ours)) {
+                avl_tree_unlock(global.source_tree);
+                ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                return;
+            }
+        } else {
+            avl_tree_unlock(global.source_tree);
+            ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
+            return;
+        }
+    }
+    avl_tree_unlock(global.source_tree);
+
+    memcpy(client->refbuf->data + ret, header, headerlen);
+    ret += headerlen;
+
+    memcpy(client->refbuf->data + ret, extra_headers, extra_headers_len);
+    ret += extra_headers_len;
+
+    memcpy(client->refbuf->data + ret, "\r\n", 2);
+    ret += 2;
+
+    if (len) {
+        memcpy(client->refbuf->data + ret, buffer, len);
+        ret += len;
+    }
+
+    client->refbuf->len = ret;
+    client->respcode = status;
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
+    fserve_add_client(client, NULL);
 }
 
 void client_send_redirect(client_t *client, const char *uuid, int status, const char *location)
@@ -585,82 +661,27 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     }
 
     if (admin_format == ADMIN_FORMAT_RAW || admin_format == ADMIN_FORMAT_JSON) {
-        xmlChar *buff = NULL;
-        size_t location_length = 0;
-        int len = 0;
-        size_t buf_len;
-        ssize_t ret;
-        const char *content_type;
-
-        if (admin_format == ADMIN_FORMAT_RAW) {
-            xmlDocDumpMemory(doc, &buff, &len);
-            content_type = "text/xml";
-        } else {
-            char *json = xml2json_render_doc_simple(doc, NULL);
-            buff = xmlStrdup(XMLSTR(json));
-            len = strlen(json);
-            free(json);
-            content_type = "application/json";
-        }
+        char extra_header[512] = "";
 
         if (location) {
-            location_length = strlen(location);
-        }
-
-        buf_len = len + location_length + 1024;
-        if (buf_len < 4096)
-            buf_len = 4096;
-
-        client_set_queue(client, NULL);
-        client->refbuf = refbuf_new(buf_len);
-        client->reuse = ICECAST_REUSE_KEEPALIVE;
-
-        ret = util_http_build_header(client->refbuf->data, buf_len, 0,
-                0, status, NULL,
-                content_type, "utf-8",
-                NULL, NULL, client);
-        if (ret < 0) {
-            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-            xmlFree(buff);
-            return;
-        } else if (buf_len < (size_t)(len + location_length + ret + 128)) {
-            void *new_data;
-            buf_len = ret + len + 128;
-            new_data = realloc(client->refbuf->data, buf_len);
-            if (new_data) {
-                ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
-                client->refbuf->data = new_data;
-                client->refbuf->len = buf_len;
-                ret = util_http_build_header(client->refbuf->data, buf_len, 0,
-                        0, status, NULL,
-                        content_type, "utf-8",
-                        NULL, NULL, client);
-                if (ret == -1) {
-                    ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                    client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
-                    xmlFree(buff);
-                    return;
-                }
-            } else {
-                ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                client_send_error_by_id(client, ICECAST_ERROR_GEN_BUFFER_REALLOC);
-                xmlFree(buff);
+            int res = snprintf(extra_header, sizeof(extra_header), "Location: %s\r\n", location);
+            if (res < 0 || res >= (ssize_t)sizeof(extra_header)) {
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
                 return;
             }
         }
 
-        /* FIXME: in this section we hope no function will ever return -1 */
-        if (location) {
-            ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Location: %s\r\n", location);
+        if (admin_format == ADMIN_FORMAT_RAW) {
+            xmlChar *buff = NULL;
+            int len = 0;
+            xmlDocDumpMemory(doc, &buff, &len);
+            client_send_buffer(client, status, "text/xml", "utf-8", (const char *)buff, len, extra_header);
+            xmlFree(buff);
+        } else {
+            char *json = xml2json_render_doc_simple(doc, NULL);
+            client_send_buffer(client, status, "application/json", "utf-8", json, -1, extra_header);
+            free(json);
         }
-        ret += snprintf(client->refbuf->data + ret, buf_len - ret, "Content-Length: %d\r\n\r\n%s", xmlStrlen(buff), buff);
-
-        client->refbuf->len = ret;
-        xmlFree(buff);
-        client->respcode = status;
-        fastevent_emit(FASTEVENT_TYPE_CLIENT_SEND_RESPONSE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
-        fserve_add_client (client, NULL);
     } else {
         char *fullpath_xslt_template;
         const char *document_domain_path;
