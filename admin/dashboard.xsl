@@ -37,30 +37,28 @@
                     </div>
                 </section>
             </xsl:for-each>
-            <xsl:for-each select="resource[@name='maintenance']">
-                <section class="box">
-                    <h3 class="box_title">Maintenance</h3>
-                    <xsl:choose>
-                        <xsl:when test="value">
-                            <ul class="maintenance-container">
-                                <xsl:for-each select="value">
-                                    <li class="maintenance-level-{value[@member='type']/@value}">
-                                        <p><xsl:value-of select="text/text()" /></p>
-                                        <ul class="references">
-                                            <xsl:for-each select="reference">
-                                                <li><a href="{@href}"><xsl:value-of select="concat(translate(substring(@type, 1, 1), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), substring(@type, 2))" /></a></li>
-                                            </xsl:for-each>
-                                        </ul>
-                                    </li>
-                                </xsl:for-each>
-                            </ul>
-                        </xsl:when>
-                        <xsl:otherwise>
-                            <p>Nothing to do.</p>
-                        </xsl:otherwise>
-                    </xsl:choose>
-                </section>
-            </xsl:for-each>
         </xsl:for-each>
+        <section class="box">
+            <h3 class="box_title">Maintenance</h3>
+            <xsl:choose>
+                <xsl:when test="/report/incident/state/text">
+                    <ul class="maintenance-container">
+                        <xsl:for-each select="/report/incident">
+                            <li class="maintenance-level-{resource[@name='maintenance']/value[@member='type']/@value}">
+                                <p><xsl:value-of select="state/text/text()" /></p>
+                                <ul class="references">
+                                    <xsl:for-each select="reference">
+                                        <li><a href="{@href}"><xsl:value-of select="concat(translate(substring(@type, 1, 1), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), substring(@type, 2))" /></a></li>
+                                    </xsl:for-each>
+                                </ul>
+                            </li>
+                        </xsl:for-each>
+                    </ul>
+                </xsl:when>
+                <xsl:otherwise>
+                    <p>Nothing to do.</p>
+                </xsl:otherwise>
+            </xsl:choose>
+        </section>
     </xsl:template>
 </xsl:stylesheet>
