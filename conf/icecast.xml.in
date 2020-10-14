@@ -267,6 +267,7 @@
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
         <adminroot>@pkgdatadir@/admin</adminroot>
+	<reportxmldb>@pkgdatadir@/report-db.xml</reportxmldb>
         <!-- <pidfile>@pkgdatadir@/icecast.pid</pidfile> -->
 
         <!-- Aliases: treat requests for 'source' path as being for 'dest' path
