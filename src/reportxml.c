@@ -1420,3 +1420,67 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
 
     return ret;
 }
+
+reportxml_node_t *      reportxml_database_build_fragment(reportxml_database_t *db, const char *id, ssize_t depth, reportxml_node_type_t type)
+{
+    reportxml_node_t *definition;
+    reportxml_node_t *ret;
+    reportxml_node_type_t got;
+    ssize_t count;
+    size_t i;
+
+    if (!db || !id)
+        return NULL;
+
+    /* first find the definition itself.  This will be some REPORTXML_NODE_TYPE_DEFINITION node. */
+    definition = __reportxml_database_build_node_ext(db, id, depth, &got);
+    if (!definition) {
+        ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        return NULL;
+    }
+
+    /* Let's see how many children we have. */
+    count = reportxml_node_count_child(definition);
+    if (count < 0) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Can not get child count from definition. BAD.");
+        return NULL;
+    } else if (count == 0) {
+        /* Empty definition? Not exactly an exciting report... */
+        ICECAST_LOG_WARN("Empty definition for \"%H\". Returning empty node. This is likely an error.", id);
+        refobject_unref(definition);
+        return reportxml_node_new(type, NULL, id, NULL);
+    } else if (count == 1 && got == type) {
+        ret = reportxml_node_get_child(definition, 0);
+        refobject_unref(definition);
+        return ret;
+    } else if (got == type) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Definition lists multiple childs of target type. BAD.");
+        return NULL;
+    }
+
+    ret = reportxml_node_new(type, NULL, NULL, NULL);
+    if (!ret) {
+        refobject_unref(definition);
+        ICECAST_LOG_ERROR("Can not allocate new node. BAD.");
+        return NULL;
+    }
+
+    for (i = 0; i < (size_t)count; i++) {
+        reportxml_node_t *child = reportxml_node_get_child(definition, i);
+
+        /* we can directly attach as it's a already a copy. */
+        if (reportxml_node_add_child(ret, child) != 0) {
+            refobject_unref(definition);
+            refobject_unref(ret);
+            ICECAST_LOG_ERROR("Can not attach child #%zu (%p) to attachment point (%p). BAD.", i, child, ret);
+            return NULL;
+        }
+
+        refobject_unref(child);
+    }
+
+    refobject_unref(definition);
+    return ret;
+}

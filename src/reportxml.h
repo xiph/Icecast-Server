@@ -143,5 +143,7 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
 reportxml_node_t *      reportxml_database_build_node(reportxml_database_t *db, const char *id, ssize_t depth);
 /* This does the same as reportxml_database_build_node() except that a new report document is returned. */
 reportxml_t *           reportxml_database_build_report(reportxml_database_t *db, const char *id, ssize_t depth);
+/* This does the same reportxml_database_add_report() but does not return a node of a given type compiled from the definition. */
+reportxml_node_t *      reportxml_database_build_fragment(reportxml_database_t *db, const char *id, ssize_t depth, reportxml_node_type_t type);
 
 #endif
