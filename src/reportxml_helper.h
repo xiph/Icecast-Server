@@ -23,4 +23,6 @@ void reportxml_helper_add_text(reportxml_node_t *parent, const char *definition,
 
 void reportxml_helper_add_reference(reportxml_node_t *parent, const char *type, const char *href);
 
+reportxml_node_t * reportxml_helper_add_incident(const char *state, const char *text, const char *docs, reportxml_database_t *db);
+
 #endif

@@ -55,3 +55,33 @@ void reportxml_helper_add_reference(reportxml_node_t *parent, const char *type, 
     reportxml_node_add_child(parent, referenenode);
     refobject_unref(referenenode);
 }
+
+reportxml_node_t * reportxml_helper_add_incident(const char *state, const char *text, const char *docs, reportxml_database_t *db)
+{
+    reportxml_node_t *ret;
+    reportxml_node_t *statenode;
+
+    if (db && state) {
+        ret = reportxml_database_build_fragment(db, state, -1, REPORTXML_NODE_TYPE_INCIDENT);
+        if (ret) {
+            statenode = reportxml_node_get_child_by_type(ret, REPORTXML_NODE_TYPE_STATE, 0);
+            reportxml_node_set_attribute(statenode, "definition", state);
+            refobject_unref(statenode);
+            return ret;
+        }
+    }
+
+    ret = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+    statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state, NULL);
+
+    if (text)
+        reportxml_helper_add_text(statenode, NULL, text);
+
+    reportxml_node_add_child(ret, statenode);
+    refobject_unref(statenode);
+
+    if (docs)
+        reportxml_helper_add_reference(ret, "documentation", docs);
+
+    return ret;
+}

@@ -1347,14 +1347,12 @@ static void command_mark_log            (client_t *client, source_t *source, adm
     admin_send_response_simple(client, source, response, "Logfiles marked", 1);
 }
 
-static void __reportxml_add_maintenance(reportxml_node_t *parent, const char *type, const char *text, const char *docs)
+static void __reportxml_add_maintenance(reportxml_node_t *parent, reportxml_database_t *db, const char *state, const char *type, const char *text, const char *docs)
 {
-    reportxml_node_t *incident = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
-    reportxml_node_t *state = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, NULL, NULL);
+    reportxml_node_t *incident = reportxml_helper_add_incident(state, text, docs, db);
     reportxml_node_t *resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
 
     reportxml_node_add_child(parent, incident);
-    reportxml_node_add_child(incident, state);
     reportxml_node_add_child(incident, resource);
 
     reportxml_node_set_attribute(resource, "type", "result");
@@ -1362,13 +1360,6 @@ static void __reportxml_add_maintenance(reportxml_node_t *parent, const char *ty
 
     reportxml_helper_add_value_enum(resource, "type", type);
 
-    if (text)
-        reportxml_helper_add_text(state, NULL, text);
-
-    if (docs)
-        reportxml_helper_add_reference(incident, "documentation", docs);
-
-    refobject_unref(state);
     refobject_unref(resource);
     refobject_unref(incident);
 }
@@ -1424,19 +1415,19 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(resource);
 
     if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
-        __reportxml_add_maintenance(reportnode, "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "c4f25c51-2720-4b38-a806-19ef024b5289", "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_LOCATION)
-        __reportxml_add_maintenance(reportnode, "warning", "No useful location is given in <location>.", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "8defae31-a52e-4bba-b904-76db5362860f", "warning", "No useful location is given in <location>.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_ADMIN)
-        __reportxml_add_maintenance(reportnode, "warning", "No admin contact given in <admin>. YP directory support will is disabled.", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "cf86d88e-dc20-4359-b446-110e7065d17a", "warning", "No admin contact given in <admin>. YP directory support will is disabled.", NULL);
 
     if (!has_sources)
-        __reportxml_add_maintenance(reportnode, "info", "Currently no sources are connected to this server.", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);
 
     if (has_too_many_clients) {
-        __reportxml_add_maintenance(reportnode, "warning", "More than 90% of the server's configured maximum clients are connected", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "08676614-50b4-4ea7-ba99-7c2ffcecf705", "warning", "More than 90% of the server's configured maximum clients are connected", NULL);
     } else if (has_many_clients) {
-        __reportxml_add_maintenance(reportnode, "info", "More than 75% of the server's configured maximum clients are connected", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "417ae59c-de19-4ed1-ade1-429c689f1152", "info", "More than 75% of the server's configured maximum clients are connected", NULL);
     }
 
     refobject_unref(incident);
