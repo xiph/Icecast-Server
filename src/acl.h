@@ -38,6 +38,8 @@ acl_t * acl_new_from_xml_node(xmlNodePtr node);
 void acl_addref(acl_t * acl);
 void acl_release(acl_t * acl);
 
+const char *acl_get_name(acl_t * acl);
+
 /* special functions */
 int acl_set_ANY_str(acl_t * acl, acl_policy_t policy, const char * str, int (*callback)(acl_t *, acl_policy_t, const char *));
 

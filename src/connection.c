@@ -898,10 +898,10 @@ static void _handle_source_request(client_t *client)
 {
     const char *method = httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE);
 
-    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" using %s%H%s from %s as role %s",
+    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" using %s%H%s from %s as role %s with acl %s",
         client->uri,
         ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : ">"),
-        client->con->ip, client->role);
+        client->con->ip, client->role, acl_get_name(client->acl));
 
     if (client->parser && client->parser->req_type == httpp_req_source) {
         ICECAST_LOG_DEBUG("Source at mountpoint \"%s\" connected using deprecated SOURCE method.", client->uri);
@@ -1339,7 +1339,7 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
     }
 
     if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
-        ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, client->uri);
+        ICECAST_LOG_ERROR("Client (role=%s, acl=%s, username=%s) not allowed to use this request method on %H", client->role, acl_get_name(client->acl), client->username, client->uri);
         client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
         return;
     }

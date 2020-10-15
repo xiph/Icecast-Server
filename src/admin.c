@@ -784,6 +784,9 @@ static inline xmlNodePtr __add_listener(client_t        *client,
     if (client->role)
         xmlNewTextChild(node, NULL, XMLSTR("role"), XMLSTR(client->role));
 
+    if (client->acl && acl_get_name(client->acl))
+        xmlNewTextChild(node, NULL, XMLSTR("acl"), XMLSTR(acl_get_name(client->acl)));
+
     xmlNewTextChild(node, NULL, XMLSTR("tls"), XMLSTR(client->con->tls ? "true" : "false"));
 
     xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));

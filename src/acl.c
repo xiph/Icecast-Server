@@ -27,6 +27,9 @@ struct acl_tag {
     /* reference counter */
     size_t refcount;
 
+    /* name, may be NULL if name was given in config */
+    char *name;
+
     /* allowed methods */
     acl_policy_t method[httpp_req_unknown+1];
 
@@ -131,6 +134,8 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
     if (!ret)
         return NULL;
 
+    ret->name = (char*)xmlGetProp(node, XMLSTR("name"));
+
     prop = node->properties;
     while (prop) {
         tmp = (char*)xmlGetProp(node, prop->name);
@@ -234,7 +239,17 @@ void acl_release(acl_t * acl)
 
     config_clear_http_header(acl->http_headers);
 
+    if (acl->name)
+        xmlFree(acl->name);
+
     free(acl);
+}
+
+const char *acl_get_name(acl_t * acl)
+{
+    if (!acl)
+        return NULL;
+    return acl->name;
 }
 
 /* HTTP Method specific functions */
