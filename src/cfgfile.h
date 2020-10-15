@@ -173,6 +173,8 @@ typedef struct _listener_t {
     char *shoutcast_mount;
     tlsmode_t tls;
     auth_stack_t *authstack;
+    /* additional HTTP headers */
+    ice_config_http_header_t *http_headers;
 } listener_t;
 
 typedef struct _config_tls_context {

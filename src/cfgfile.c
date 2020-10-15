@@ -657,6 +657,7 @@ listener_t *config_clear_listener(listener_t *listener)
         if (listener->bind_address)     xmlFree(listener->bind_address);
         if (listener->shoutcast_mount)  xmlFree(listener->shoutcast_mount);
         if (listener->authstack)        auth_stack_release(listener->authstack);
+        if (listener->http_headers)     config_clear_http_header(listener->http_headers);
         free (listener);
     }
     return next;
@@ -1949,6 +1950,8 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             __read_int(doc, node, &listener->listen_backlog, "<listen-backlog> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication_node(node, &(listener->authstack));
+        } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
+            config_parse_http_headers(node->xmlChildrenNode, &(listener->http_headers));
         }
     } while ((node = node->next));
 
@@ -2733,6 +2736,8 @@ listener_t *config_copy_listener_one(const listener_t *listener) {
     if (listener->authstack) {
         auth_stack_addref(n->authstack = listener->authstack);
     }
+    if (listener->http_headers)
+        n->http_headers = config_copy_http_header(listener->http_headers);
 
     return n;
 }

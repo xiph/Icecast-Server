@@ -52,6 +52,7 @@
 #include "admin.h"
 #include "auth.h"
 #include "acl.h"
+#include "listensocket.h"
 
 #define CATMODULE "util"
 
@@ -697,6 +698,14 @@ static inline char * _build_headers(int status, const char *allow, ice_config_t 
         _build_headers_loop(&ret, &len, header, status, allow, client);
     if (client && client->acl && (header = acl_get_http_headers(client->acl)))
         _build_headers_loop(&ret, &len, header, status, allow, client);
+
+    if (client && client->con && client->con->listensocket_effective) {
+        const listener_t * listener = listensocket_get_listener(client->con->listensocket_effective);
+
+        if ((header = listener->http_headers))
+            _build_headers_loop(&ret, &len, header, status, allow, client);
+        listensocket_release_listener(client->con->listensocket_effective);
+    }
 
     return ret;
 }
