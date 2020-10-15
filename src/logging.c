@@ -43,6 +43,23 @@ int errorlog = 0;
 int accesslog = 0;
 int playlistlog = 0;
 
+int logging_str2logid(const char *str)
+{
+    if (!str)
+        return -1;
+
+    if (!strcmp(str, "error")) {
+        return errorlog;
+    } else if (!strcmp(str, "access")) {
+        return accesslog;
+    } else if (!strcmp(str, "playlist")) {
+        return playlistlog;
+    }
+
+    return -1;
+}
+
+
 #ifdef _WIN32
 /* Since strftime's %z option on win32 is different, we need
  to go through a few loops to get the same info as %z */

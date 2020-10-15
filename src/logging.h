@@ -96,6 +96,8 @@ extern int playlistlog;
 
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
+int logging_str2logid(const char *str);
+
 void logging_access(client_t *client);
 void logging_playlist(const char *mount, const char *metadata, long listeners);
 void logging_mark(const char *username, const char *role);

@@ -1273,16 +1273,16 @@ static void command_show_log            (client_t *client, source_t *source, adm
 
     COMMAND_OPTIONAL(client, "logfile", logfilestring);
 
-    if (!logfilestring || !strcmp(logfilestring, "error")) {
+    if (!logfilestring) {
         logfilestring = "error";
         logid = errorlog;
-    } else if (!strcmp(logfilestring, "access")) {
-        logid = accesslog;
-    } else if (!strcmp(logfilestring, "playlist")) {
-        logid = playlistlog;
     } else {
-        logfilestring = "error";
-        logid = errorlog;
+        logid = logging_str2logid(logfilestring);
+    }
+
+    if (logid < 0) {
+        client_send_error_by_id(client, ICECAST_ERROR_FSERV_FILE_NOT_FOUND);
+        return;
     }
 
     report = client_get_reportxml("b20a2bf2-1278-448c-81f3-58183d837a86", NULL, NULL);
@@ -1298,7 +1298,8 @@ static void command_show_log            (client_t *client, source_t *source, adm
     reportxml_node_set_attribute(loglist_value_list, "type", "list");
 
     for (i = 0; i < (sizeof(logs)/sizeof(*logs)); i++) {
-        reportxml_helper_add_value_string(loglist_value_list, NULL, logs[i]);
+        if (logging_str2logid(logs[i]) >= 0)
+            reportxml_helper_add_value_string(loglist_value_list, NULL, logs[i]);
     }
 
     reportxml_node_add_child(resource, loglist_value_list);
@@ -1313,6 +1314,7 @@ static void command_show_log            (client_t *client, source_t *source, adm
 
     logfile = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     reportxml_node_set_attribute(logfile, "type", "structure");
+    reportxml_helper_add_value_int(logfile, "logid", logid);
 
     reportxml_helper_add_value_string(logfile, "logfile", logfilestring);
 
@@ -1320,11 +1322,13 @@ static void command_show_log            (client_t *client, source_t *source, adm
     reportxml_node_set_attribute(parent, "type", "list");
     reportxml_node_set_attribute(parent, "member", "lines");
     loglines = log_contents_array(logid);
-    for (i = 0; loglines[i]; i++) {
-        reportxml_helper_add_value_string(parent, NULL, loglines[i]);
-        free(loglines[i]);
+    if (loglines) {
+        for (i = 0; loglines[i]; i++) {
+            reportxml_helper_add_value_string(parent, NULL, loglines[i]);
+            free(loglines[i]);
+        }
+        free(loglines);
     }
-    free(loglines);
     reportxml_node_add_child(logfile, parent);
     refobject_unref(parent);
 
