@@ -155,7 +155,6 @@ struct auth_tag
 
     void *state;
     char *type;
-    char *unique_tag;
 
     /* acl to set on succsessful auth */
     acl_t *acl;
