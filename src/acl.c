@@ -52,10 +52,10 @@ struct acl_tag {
 /* some string util functions */
 static inline void __skip_spaces(const char **str)
 {
- register const char * p;
+    register const char * p;
 
- for (p = *str; *p == ' '; p++);
- *str = p;
+    for (p = *str; *p == ' '; p++);
+    *str = p;
 }
 
 int acl_set_ANY_str(acl_t           *acl,

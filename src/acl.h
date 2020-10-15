@@ -22,12 +22,12 @@
 #include "cfgfile.h"
 
 typedef enum acl_policy_tag {
- /* Error on function call */
- ACL_POLICY_ERROR  = -1,
- /* Client is allowed to do operation, go ahead! */
- ACL_POLICY_ALLOW = 0,
- /* Client is not allowed to do so, send error! */
- ACL_POLICY_DENY  = 1
+    /* Error on function call */
+    ACL_POLICY_ERROR  = -1,
+    /* Client is allowed to do operation, go ahead! */
+    ACL_POLICY_ALLOW = 0,
+    /* Client is not allowed to do so, send error! */
+    ACL_POLICY_DENY  = 1
 } acl_policy_t;
 
 
