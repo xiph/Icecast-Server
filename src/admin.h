@@ -29,6 +29,11 @@
 #define ADMINTYPE_MOUNT     2
 #define ADMINTYPE_HYBRID    (ADMINTYPE_GENERAL|ADMINTYPE_MOUNT)
 
+/* HTTP safeness */
+#define ADMINSAFE_SAFE      1
+#define ADMINSAFE_UNSAFE    2
+#define ADMINSAFE_HYBRID    (ADMINSAFE_SAFE|ADMINSAFE_UNSAFE)
+
 /* special commands */
 #define ADMIN_COMMAND_ERROR ((admin_command_id_t)(-1))
 #define ADMIN_COMMAND_ANY   ((admin_command_id_t)0) /* for ACL framework */
@@ -40,6 +45,7 @@ typedef struct admin_command_handler {
     const char                         *route;
     const int                           type;
     const int                           format;
+    const int                           safeness;
     const admin_request_function_ptr    function;
     const admin_request_function_with_parameters_ptr function_with_parameters;
 } admin_command_handler_t;

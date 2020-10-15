@@ -43,7 +43,7 @@
             <!-- Global subnav -->
             <div class="stats">
                 <ul class="boxnav">
-                    <li><a href="/admin/reloadconfig.xsl">Reload Configuration</a></li>
+                    <li><a href="/admin/reloadconfig.xsl?omode=normal">Reload Configuration</a></li>
                     <li><a href="/admin/stats.xsl?showall=true">Show all mounts</a></li>
                 </ul>
             </div>

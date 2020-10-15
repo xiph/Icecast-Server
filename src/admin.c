@@ -145,66 +145,66 @@ static void command_mark_log            (client_t *client, source_t *source, adm
 static void command_dashboard           (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
-    { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          NULL, NULL}, /* for ACL framework */
-    { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_fallback, NULL},
-    { FALLBACK_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_fallback, NULL},
-    { FALLBACK_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_fallback, NULL},
-    { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_metadata, NULL},
-    { METADATA_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_metadata, NULL},
-    { METADATA_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_metadata, NULL},
-    { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_shoutcast_metadata, NULL},
-    { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_show_listeners, NULL},
-    { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_show_listeners, NULL},
-    { LISTCLIENTS_JSON_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_show_listeners, NULL},
-    { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
-    { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_stats, NULL},
-    { STATS_JSON_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_stats, NULL},
-    { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_stats, NULL},
-    { PUBLICSTATS_RAW_REQUEST,              ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           command_public_stats, NULL},
-    { PUBLICSTATS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_public_stats, NULL},
-    { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_queue_reload, NULL},
-    { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_queue_reload, NULL},
-    { QUEUE_RELOAD_JSON_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_queue_reload, NULL},
-    { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
-    { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
-    { LISTMOUNTS_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_list_mounts, NULL},
-    { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_list_mounts, NULL},
-    { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     command_list_mounts, NULL},
-    { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_list_mounts, NULL},
-    { STREAMLIST_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_list_mounts, NULL},
-    { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_move_clients, NULL},
-    { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_move_clients, NULL},
-    { MOVECLIENTS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          command_move_clients, NULL},
-    { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_client, NULL},
-    { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_client, NULL},
-    { KILLCLIENT_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_client, NULL},
-    { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_kill_source, NULL},
-    { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_kill_source, NULL},
-    { KILLSOURCE_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_kill_source, NULL},
-    { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_manageauth, NULL},
-    { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_manageauth, NULL},
-    { MANAGEAUTH_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_manageauth, NULL},
-    { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_updatemetadata, NULL},
-    { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          command_updatemetadata, NULL},
-    { UPDATEMETADATA_JSON_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          command_updatemetadata, NULL},
-    { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           command_buildm3u, NULL},
-    { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_show_log, NULL},
-    { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_show_log, NULL},
-    { SHOWLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_show_log, NULL},
-    { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_mark_log, NULL},
-    { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_mark_log, NULL},
-    { MARKLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_mark_log, NULL},
-    { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           command_dashboard, NULL},
-    { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          command_dashboard, NULL},
-    { DASHBOARD_JSON_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          command_dashboard, NULL},
-    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL},
-    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          command_default_selector, NULL}
+    { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   NULL, NULL}, /* for ACL framework */
+    { FALLBACK_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_HYBRID,   command_fallback, NULL},
+    { FALLBACK_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_HYBRID,   command_fallback, NULL},
+    { FALLBACK_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_HYBRID,   command_fallback, NULL},
+    { METADATA_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_metadata, NULL},
+    { METADATA_HTML_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_metadata, NULL},
+    { METADATA_JSON_REQUEST,                ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_metadata, NULL},
+    { SHOUTCAST_METADATA_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_shoutcast_metadata, NULL},
+    { LISTCLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_show_listeners, NULL},
+    { LISTCLIENTS_HTML_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_show_listeners, NULL},
+    { LISTCLIENTS_JSON_REQUEST,             ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_show_listeners, NULL},
+    { STATS_RAW_REQUEST,                    ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_stats, NULL},
+    { STATS_HTML_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_stats, NULL},
+    { STATS_JSON_REQUEST,                   ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_stats, NULL},
+    { "stats.xml",                          ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_stats, NULL},
+    { PUBLICSTATS_RAW_REQUEST,              ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_public_stats, NULL},
+    { PUBLICSTATS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_public_stats, NULL},
+    { QUEUE_RELOAD_RAW_REQUEST,             ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_queue_reload, NULL},
+    { QUEUE_RELOAD_HTML_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_queue_reload, NULL},
+    { QUEUE_RELOAD_JSON_REQUEST,            ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_queue_reload, NULL},
+    { LISTMOUNTS_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { LISTMOUNTS_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { LISTMOUNTS_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { STREAMLIST_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { STREAMLIST_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_HYBRID,   command_move_clients, NULL},
+    { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_HYBRID,   command_move_clients, NULL},
+    { MOVECLIENTS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          ADMINSAFE_HYBRID,   command_move_clients, NULL},
+    { KILLCLIENT_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_kill_client, NULL},
+    { KILLCLIENT_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_kill_client, NULL},
+    { KILLCLIENT_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_kill_client, NULL},
+    { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_kill_source, NULL},
+    { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_kill_source, NULL},
+    { KILLSOURCE_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_kill_source, NULL},
+    { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_HYBRID,   command_manageauth, NULL},
+    { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_HYBRID,   command_manageauth, NULL},
+    { MANAGEAUTH_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_HYBRID,   command_manageauth, NULL},
+    { UPDATEMETADATA_RAW_REQUEST,           ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_updatemetadata, NULL},
+    { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_updatemetadata, NULL},
+    { UPDATEMETADATA_JSON_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_updatemetadata, NULL},
+    { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_buildm3u, NULL},
+    { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_show_log, NULL},
+    { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_show_log, NULL},
+    { SHOWLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_show_log, NULL},
+    { MARKLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_mark_log, NULL},
+    { MARKLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_mark_log, NULL},
+    { MARKLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_mark_log, NULL},
+    { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_dashboard, NULL},
+    { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_dashboard, NULL},
+    { DASHBOARD_JSON_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_dashboard, NULL},
+    { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_default_selector, NULL},
+    { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_default_selector, NULL}
 };
 
 static void ui_command(client_t * client, source_t * source, admin_format_t format, resourcematch_extract_t *parameters);
 
 static const admin_command_handler_t ui_handlers[] = {
-    { "%s",                                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_AUTO,          NULL, ui_command}
+    { "%s",                                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_AUTO,          ADMINSAFE_SAFE,     NULL, ui_command}
 };
 
 static admin_command_table_t command_tables[ADMIN_MAX_COMMAND_TABLES] = {
@@ -372,6 +372,34 @@ int admin_command_table_unregister(const char *prefix)
     }
 
     return -1;
+}
+
+/* Enforces requests HTTP unsafe (e.g. POST not GET).
+ * Returns true if the request has been handled (rejected) and false if the request is still for open for handling (passed).
+ */
+static int admin_enforce_unsafe(client_t *client)
+{
+    // check if the client is using an unsafe method, if so just return.
+    if (!(httpp_request_info(client->parser->req_type) & HTTPP_REQUEST_IS_SAFE))
+        return 0;
+
+    switch (client->mode) {
+        case OMODE_LEGACY:
+            // no-op
+        break;
+        case OMODE_STRICT:
+            ICECAST_LOG_WARN("Client %p (role=%H, acl=%H, username=%H) rejected for use of safe method %s on %H",
+                    client, client->role, acl_get_name(client->acl), client->username, httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE), client->uri);
+            client_send_error_by_id(client, ICECAST_ERROR_GEN_SAFE_METHOD_ON_UNSAFE_CALL);
+            return 1;
+        break;
+        default:
+            ICECAST_LOG_WARN("Client %p (role=%H, acl=%H, username=%H) uses safe method %s on %H",
+                    client, client->role, acl_get_name(client->acl), client->username, httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE), client->uri);
+        break;
+    }
+
+    return 0;
 }
 
 /* build an XML root node including some common tags */
@@ -604,6 +632,11 @@ void admin_handle_request(client_t *client, const char *uri)
         return;
     }
 
+    if (handler->safeness == ADMINSAFE_UNSAFE) {
+        if (admin_enforce_unsafe(client))
+            return;
+    }
+
     if (handler->format == ADMIN_FORMAT_AUTO) {
         format = client_get_admin_format_by_content_negotiation(client);
     } else {
@@ -710,6 +743,9 @@ static void command_move_clients(client_t   *client,
         xmlFreeDoc(doc);
         return;
     }
+
+    if (admin_enforce_unsafe(client))
+        return;
 
     dest = source_find_mount(dest_source);
 
@@ -919,6 +955,10 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
 
         if (!strcmp(action, "add")) {
             const char *password = NULL;
+
+            if (admin_enforce_unsafe(client))
+                return;
+
             COMMAND_OPTIONAL(client, "password", password);
 
             if (username == NULL || password == NULL) {
@@ -944,8 +984,10 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
                 auth_release(auth);
                 return;
             }
-        }
-        if (!strcmp(action, "delete")) {
+        } else if (!strcmp(action, "delete")) {
+            if (admin_enforce_unsafe(client))
+                return;
+
             if (username == NULL) {
                 ICECAST_LOG_WARN("manage auth request delete for %lu but no username", id);
                 break;
@@ -1054,6 +1096,9 @@ static void command_fallback(client_t *client,
             return;
         }
     }
+
+    if (admin_enforce_unsafe(client))
+        return;
 
     COMMAND_REQUIRE(client, "fallback", fallback);
 
