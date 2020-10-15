@@ -771,6 +771,7 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
                 case 409: statusmsg = "Conflict"; break;
                 case 415: statusmsg = "Unsupported Media Type"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
+                case 422: statusmsg = "Unprocessable Entity"; break;
                 case 426: statusmsg = "Upgrade Required"; break;
                 case 429: statusmsg = "Too Many Requests"; break;
                 /* case of 500 is handled differently. No need to list it here. -- ph3-der-loewe, 2018-05-05 */

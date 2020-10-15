@@ -33,7 +33,7 @@ static const icecast_error_t __errors[] = {
     {.id = ICECAST_ERROR_ADMIN_missing_parameter,                       .http_status = 400,
      .uuid = "8be9ef0a-2b32-450c-aec9-a414ca0c074c",
      .message = "missing parameter"},
-    {.id = ICECAST_ERROR_ADMIN_MOUNT_NOT_ACCEPT_URL_UPDATES,            .http_status = 501,
+    {.id = ICECAST_ERROR_ADMIN_MOUNT_NOT_ACCEPT_URL_UPDATES,            .http_status = 422,
      .uuid = "3bed51bb-a10f-4af3-9965-4e67181de7d6",
      .message = "mountpoint will not accept URL updates"},
     {.id = ICECAST_ERROR_ADMIN_NO_SUCH_DESTINATION,                     .http_status = 404,
