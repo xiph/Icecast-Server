@@ -931,7 +931,7 @@ static void _handle_stats_request(client_t *client)
 /* if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-static int __add_listener_to_source(source_t *source, client_t *client)
+static void __add_listener_to_source(source_t *source, client_t *client)
 {
     size_t loop = 10;
 
@@ -948,7 +948,8 @@ static int __add_listener_to_source(source_t *source, client_t *client)
             if (!next) {
                 ICECAST_LOG_ERROR("Fallback '%s' for full source '%s' not found",
                     source->mount, source->fallback_mount);
-                return -1;
+                client_send_error_by_id(client, ICECAST_ERROR_SOURCE_MAX_LISTENERS);
+                return;
             }
             ICECAST_LOG_INFO("stream full, trying %s", next->mount);
             source = next;
@@ -956,7 +957,8 @@ static int __add_listener_to_source(source_t *source, client_t *client)
             continue;
         }
         /* now we fail the client */
-        return -1;
+        client_send_error_by_id(client, ICECAST_ERROR_SOURCE_MAX_LISTENERS);
+        return;
     } while (1);
 
     client->write_to_client = format_generic_write_to_client;
@@ -975,7 +977,6 @@ static int __add_listener_to_source(source_t *source, client_t *client)
         source->on_demand_req = 1;
     }
     ICECAST_LOG_DEBUG("Added client to %s", source->mount);
-    return 0;
 }
 
 /* count the number of clients on a mount with same username and same role as the given one */
@@ -1084,10 +1085,7 @@ static void _handle_get_request(client_t *client) {
                     client->con->discon_time = connection_duration + time(NULL);
             }
 
-            if (__add_listener_to_source(source, client) == -1) {
-                client_send_error_by_id(client, ICECAST_ERROR_CON_rejecting_client_for_whatever_reason);
-                break;
-            }
+            __add_listener_to_source(source, client);
         } while (0);
         avl_tree_unlock(global.source_tree);
     } else {
