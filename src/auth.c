@@ -212,6 +212,10 @@ void auth_release (auth_t *authenticator) {
         xmlFree (authenticator->role);
     if (authenticator->management_url)
         xmlFree (authenticator->management_url);
+    if (authenticator->failed_arg)
+        xmlFree (authenticator->failed_arg);
+    if (authenticator->deny_arg)
+        xmlFree (authenticator->deny_arg);
     thread_mutex_unlock(&authenticator->lock);
     thread_mutex_destroy(&authenticator->lock);
     if (authenticator->mount)
@@ -311,23 +315,18 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     return ret;
 }
 
-static inline int __handle_auth_client_alter(auth_t *auth, auth_client *auth_user)
+static inline int __handle_auth_client_alter(client_t *client, auth_alter_t action, const char *arg)
 {
-    client_t *client = auth_user->client;
     const char *uuid = NULL;
     const char *location = NULL;
     int http_status = 0;
 
-    void client_send_redirect(client_t *client, const char *uuid, int status, const char *location);
-
-    switch (auth_user->alter_client_action) {
+    switch (action) {
         case AUTH_ALTER_NOOP:
             return 0;
         break;
         case AUTH_ALTER_REWRITE:
-            free(client->uri);
-            client->uri = auth_user->alter_client_arg;
-            auth_user->alter_client_arg = NULL;
+            util_replace_string(&(client->uri), arg);
             return 0;
         break;
         case AUTH_ALTER_REDIRECT:
@@ -335,20 +334,20 @@ static inline int __handle_auth_client_alter(auth_t *auth, auth_client *auth_use
         case AUTH_ALTER_REDIRECT_SEE_OTHER:
             uuid = "be7fac90-54fb-4673-9e0d-d15d6a4963a2";
             http_status = 303;
-            location = auth_user->alter_client_arg;
+            location = arg;
         break;
         case AUTH_ALTER_REDIRECT_TEMPORARY:
             uuid = "4b08a03a-ecce-4981-badf-26b0bb6c9d9c";
             http_status = 307;
-            location = auth_user->alter_client_arg;
+            location = arg;
         break;
         case AUTH_ALTER_REDIRECT_PERMANENT:
             uuid = "36bf6815-95cb-4cc8-a7b0-6b4b0c82ac5d";
             http_status = 308;
-            location = auth_user->alter_client_arg;
+            location = arg;
         break;
         case AUTH_ALTER_SEND_ERROR:
-            client_send_error_by_uuid(client, auth_user->alter_client_arg);
+            client_send_error_by_uuid(client, arg);
             return 1;
         break;
     }
@@ -360,6 +359,7 @@ static inline int __handle_auth_client_alter(auth_t *auth, auth_client *auth_use
 
     return -1;
 }
+
 static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
     auth_result result;
 
@@ -381,7 +381,7 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
     }
 
     if (result != AUTH_NOMATCH) {
-        if (__handle_auth_client_alter(auth, auth_user) == 1)
+        if (__handle_auth_client_alter(auth_user->client, auth_user->alter_client_action, auth_user->alter_client_arg) == 1)
             return;
     }
 
@@ -817,6 +817,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
     auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
     auth->filter_admin_policy = AUTH_MATCHTYPE_MATCH;
+    auth->failed_arg = AUTH_ALTER_NOOP;
+    auth->deny_arg = AUTH_ALTER_NOOP;
 
     for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
         auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
@@ -936,6 +938,32 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             } else {
                 ICECAST_LOG_ERROR("More than one ACL defined in role! Not supported (yet).");
             }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-failed-action")) == 0) {
+            tmp = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+            if (tmp) {
+                auth->failed_action = auth_str2alter(tmp);
+                if (auth->failed_action == AUTH_ALTER_NOOP) {
+                    ICECAST_LOG_WARN("Can not parse <on-failed-action> with value: %s", tmp);
+                }
+                xmlFree(tmp);
+            }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-failed-argument")) == 0) {
+            if (auth->failed_arg)
+                xmlFree(auth->failed_arg);
+            auth->failed_arg = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (child->name, XMLSTR("on-deny-action")) == 0) {
+            tmp = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+            if (tmp) {
+                auth->deny_action = auth_str2alter(tmp);
+                if (auth->deny_action == AUTH_ALTER_NOOP) {
+                    ICECAST_LOG_WARN("Can not parse <on-deny-action> with value: %s", tmp);
+                }
+                xmlFree(tmp);
+            }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-deny-argument")) == 0) {
+            if (auth->deny_arg)
+                xmlFree(auth->deny_arg);
+            auth->deny_arg = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
         } else {
             ICECAST_LOG_WARN("unknown auth setting (%H)", child->name);
         }
@@ -1212,4 +1240,40 @@ acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_ty
         auth_stack_release(stack);
 
     return ret;
+}
+
+
+static void          auth_reject_client(client_t *client, int fail)
+{
+    auth_t *auth;
+
+    if (!client)
+        return;
+
+    auth = client->auth;
+    if (auth) {
+        if (fail) {
+            if (__handle_auth_client_alter(client, auth->failed_action, auth->failed_arg) == 1)
+                return;
+        } else {
+            if (__handle_auth_client_alter(client, auth->deny_action, auth->deny_arg) == 1)
+                return;
+        }
+    }
+
+    if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
+        client_destroy(client);
+    } else {
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
+    }
+}
+
+void          auth_reject_client_on_fail(client_t *client)
+{
+    auth_reject_client(client, 1);
+}
+
+void          auth_reject_client_on_deny(client_t *client)
+{
+    auth_reject_client(client, 0);
 }

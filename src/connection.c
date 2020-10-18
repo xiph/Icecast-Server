@@ -1030,11 +1030,7 @@ static void _handle_get_request(client_t *client) {
     /* this is a web/ request. let's check if we are allowed to do that. */
     if (acl_test_web(client->acl) != ACL_POLICY_ALLOW) {
         /* doesn't seem so, sad client :( */
-        if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
-            client_destroy(client);
-        } else {
-            client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
-        }
+        auth_reject_client_on_deny(client);
         return;
     }
 
@@ -1334,13 +1330,13 @@ static void _handle_authed_client(client_t *client, void *userdata, auth_result 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_AUTHED, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 
     if (result != AUTH_OK) {
-        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
+        auth_reject_client_on_fail(client);
         return;
     }
 
     if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
         ICECAST_LOG_ERROR("Client (role=%s, acl=%s, username=%s) not allowed to use this request method on %H", client->role, acl_get_name(client->acl), client->username, client->uri);
-        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
+        auth_reject_client_on_deny(client);
         return;
     }
 

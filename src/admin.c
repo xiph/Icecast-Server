@@ -594,7 +594,7 @@ void admin_handle_request(client_t *client, const char *uri)
                 "client because it is allowed to do SOURCE or PUT.");
         } else {
             ICECAST_LOG_DEBUG("Client needs to authenticate.");
-            client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
+            auth_reject_client_on_deny(client);
             return;
         }
     }

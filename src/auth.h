@@ -124,6 +124,14 @@ struct auth_tag
     size_t filter_origin_len;
     auth_matchtype_t filter_origin_policy;
 
+    /* Action on failed if any */
+    auth_alter_t failed_action;
+    char *failed_arg;
+
+    /* Action on deny if any */
+    auth_alter_t deny_action;
+    char *deny_arg;
+
     /* permissions */
     auth_matchtype_t permission_alter[AUTH_ALTER_SEND_ERROR+1];
 
@@ -202,5 +210,9 @@ int           auth_stack_append(auth_stack_t *stack, auth_stack_t *tail);
 auth_t       *auth_stack_get(auth_stack_t *stack);
 auth_t       *auth_stack_getbyid(auth_stack_t *stack, unsigned long id);
 acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_type_e method);
+
+/* Rejects a client based on auth results. */
+void          auth_reject_client_on_fail(client_t *client);
+void          auth_reject_client_on_deny(client_t *client);
 
 #endif
