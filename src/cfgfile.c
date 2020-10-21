@@ -664,6 +664,15 @@ listener_t *config_clear_listener(listener_t *listener)
     return next;
 }
 
+static void config_clear_prng_seed(prng_seed_config_t *seed)
+{
+    while (seed) {
+        prng_seed_config_t *next = seed->next;
+        if (seed->filename) xmlFree(seed->filename);
+        seed = next;
+    }
+}
+
 void config_clear(ice_config_t *c)
 {
     mount_proxy         *mount,
@@ -728,6 +737,8 @@ void config_clear(ice_config_t *c)
     config_clear_http_header(c->http_headers);
 
     refobject_unref(c->reportxml_db);
+
+    config_clear_prng_seed(c->prng_seed);
 
     memset(c, 0, sizeof(ice_config_t));
 }
@@ -2525,6 +2536,38 @@ static void _parse_security(xmlDocPtr       doc,
                }
            } while((node = node->next));
            node = oldnode;
+       } else if (xmlStrcmp(node->name, XMLSTR("prng-seed")) == 0) {
+           tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+           if (tmp) {
+               prng_seed_config_t *seed = calloc(1, sizeof(prng_seed_config_t));
+               seed->filename = tmp;
+               seed->type = PRNG_SEED_TYPE_READ_ONCE;
+               seed->size = -1;
+
+               tmp = (char *)xmlGetProp(node, XMLSTR("type"));
+               if (tmp) {
+                   if (strcmp(tmp, "read-once") == 0) {
+                       seed->type = PRNG_SEED_TYPE_READ_ONCE;
+                   } else if (strcmp(tmp, "read-write") == 0) {
+                       seed->type = PRNG_SEED_TYPE_READ_WRITE;
+                   } else if (strcmp(tmp, "device") == 0) {
+                       seed->type = PRNG_SEED_TYPE_DEVICE;
+                   } else {
+                       ICECAST_LOG_WARN("Unknown type for <prng-seed>: %s", tmp);
+                   }
+                   xmlFree(tmp);
+               }
+
+               tmp = (char *)xmlGetProp(node, XMLSTR("size"));
+               if (tmp) {
+                   seed->size = atoi(tmp);
+                   xmlFree(tmp);
+               }
+
+               if (configuration->prng_seed)
+                   seed->next = configuration->prng_seed;
+               configuration->prng_seed = seed;
+           }
        }
    } while ((node = node->next));
 }

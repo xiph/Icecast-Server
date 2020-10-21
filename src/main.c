@@ -176,6 +176,7 @@ static void shutdown_subsystems(void)
 
     connection_shutdown();
     tls_shutdown();
+    prng_deconfigure();
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();

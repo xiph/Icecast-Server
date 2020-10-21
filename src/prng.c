@@ -24,6 +24,7 @@
 
 #include "prng.h"
 #include "digest.h"
+#include "cfgfile.h"
 
 #include "logging.h"
 #define CATMODULE "prng"
@@ -95,10 +96,34 @@ void prng_shutdown(void)
 
 void prng_configure(ice_config_t *config)
 {
+    prng_seed_config_t *seed = config->prng_seed;
+
     if (!initialized)
         return;
 
-    // no-op at the moment.
+    while (seed) {
+        prng_read_file(seed->filename, seed->size);
+        seed = seed->next;
+    }
+}
+
+void prng_deconfigure(void)
+{
+    ice_config_t *config;
+    prng_seed_config_t *seed;
+
+    if (!initialized)
+        return;
+
+    config = config_get_config();
+    seed = config->prng_seed;
+    while (seed) {
+        if (seed->type == PRNG_SEED_TYPE_READ_WRITE) {
+            prng_write_file(seed->filename, seed->size);
+        }
+        seed = seed->next;
+    }
+    config_release_config();
 }
 
 void prng_write(const void *buffer, size_t len)

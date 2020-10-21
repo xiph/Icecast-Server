@@ -201,6 +201,20 @@ typedef struct {
     relay_config_upstream_t upstream_default;
 } relay_config_t;
 
+typedef enum {
+    PRNG_SEED_TYPE_READ_ONCE,
+    PRNG_SEED_TYPE_READ_WRITE,
+    PRNG_SEED_TYPE_DEVICE
+} prng_seed_type_t;
+
+typedef struct prng_seed_config_tag prng_seed_config_t;
+struct prng_seed_config_tag {
+    char *filename;
+    prng_seed_type_t type;
+    ssize_t size;
+    prng_seed_config_t *next;
+};
+
 struct ice_config_tag {
     char *config_filename;
 
@@ -259,6 +273,7 @@ struct ice_config_tag {
     char *allowfile;
     char *webroot_dir;
     char *adminroot_dir;
+    prng_seed_config_t *prng_seed;
     resource_t *resources;
     reportxml_database_t *reportxml_db;
 
