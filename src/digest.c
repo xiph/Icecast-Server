@@ -36,7 +36,7 @@ struct digest_tag {
             /* 1600 bits algorithm hashing state */
             uint64_t hash[25];
             /* 1536-bit buffer for leftovers */
-            uint64_t message[24];
+            char message[24*8];
             /* count of bytes in the message[] buffer */
             size_t rest;
             /* size of a message block processed at once */
@@ -240,35 +240,35 @@ static inline void sha3_process_block(uint64_t hash[25], const uint64_t *block, 
     }
 }
 
-void sha3_write(digest_t *digest, const unsigned char *msg, size_t size)
+void sha3_write(digest_t *digest, const char *msg, size_t size)
 {
-    size_t index = digest->state.sha3.rest;
+    size_t rest = digest->state.sha3.rest;
     size_t block_size = digest->state.sha3.block_size;
 
-    digest->state.sha3.rest = (index + size) % block_size;
+    digest->state.sha3.rest = (rest + size) % block_size;
 
     /* fill partial block */
-    if (index) {
-        size_t left = block_size - index;
-        memcpy(digest->state.sha3.message + index, msg, (size < left ? size : left));
+    if (rest) {
+        size_t left = block_size - rest;
+        memcpy(digest->state.sha3.message + rest, msg, (size < left ? size : left));
         if (size < left) return;
 
         /* process partial block */
-        sha3_process_block(digest->state.sha3.hash, digest->state.sha3.message, block_size);
+        sha3_process_block(digest->state.sha3.hash, (uint64_t*)digest->state.sha3.message, block_size);
         msg  += left;
         size -= left;
     }
     while (size >= block_size) {
-        uint64_t *aligned_message_block;
+        const char *aligned_message_block;
 
         if (((intptr_t)(void*)msg) & 7) {
             memcpy(digest->state.sha3.message, msg, block_size);
             aligned_message_block = digest->state.sha3.message;
         } else {
-            aligned_message_block = (uint64_t*)msg;
+            aligned_message_block = msg;
         }
 
-        sha3_process_block(digest->state.sha3.hash, aligned_message_block, block_size);
+        sha3_process_block(digest->state.sha3.hash, (uint64_t*)aligned_message_block, block_size);
         msg  += block_size;
         size -= block_size;
     }
@@ -281,11 +281,11 @@ static inline size_t sha3_read(digest_t *digest, void *buf, size_t len)
 {
     const size_t block_size = digest->state.sha3.block_size;
 
-    memset(((char*)digest->state.sha3.message) + digest->state.sha3.rest, 0, block_size - digest->state.sha3.rest);
-    ((char*)digest->state.sha3.message)[digest->state.sha3.rest] |= 0x06;
-    ((char*)digest->state.sha3.message)[block_size - 1] |= 0x80;
+    memset(digest->state.sha3.message + digest->state.sha3.rest, 0, block_size - digest->state.sha3.rest);
+    digest->state.sha3.message[digest->state.sha3.rest] |= 0x06;
+    digest->state.sha3.message[block_size - 1] |= 0x80;
 
-    sha3_process_block(digest->state.sha3.hash, digest->state.sha3.message, block_size);
+    sha3_process_block(digest->state.sha3.hash, (uint64_t*)digest->state.sha3.message, block_size);
 
 #ifdef WORDS_BIGENDIAN
     do {
