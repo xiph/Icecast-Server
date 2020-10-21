@@ -51,6 +51,8 @@ static void prng_initial_seed(void)
 #endif
     } seed;
 
+    memset(&seed, 0, sizeof(seed));
+
     seed.debian = 4;
     seed.t = time(NULL);
 #ifdef HAVE_UNAME
@@ -158,12 +160,12 @@ ssize_t prng_read(void *buffer, size_t len)
     while (ret < len) {
         res = prng_read_block(froma, buffer + ret, len - ret);
         if (res < 0) {
-            thread_mutex_unlock(&digest_a_lock);
+            thread_mutex_unlock(&digest_b_lock);
             return -1;
         }
         ret += res;
     }
-    thread_mutex_unlock(&digest_a_lock);
+    thread_mutex_unlock(&digest_b_lock);
 
     return ret;
 }
