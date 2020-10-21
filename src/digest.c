@@ -381,6 +381,21 @@ digest_t * digest_new(digest_algo_t algo)
     return digest;
 }
 
+digest_t *  digest_copy(digest_t *digest)
+{
+    digest_t *n;
+
+    if (!digest)
+        return NULL;
+
+    n = refobject_new__new(digest_t, NULL, NULL, NULL);
+    n->algo = digest->algo;
+    n->done = digest->done;
+    n->state = digest->state;
+
+    return n;
+}
+
 ssize_t digest_write(digest_t *digest, const void *data, size_t len)
 {
     if (!digest || !data)

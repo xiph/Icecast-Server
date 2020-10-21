@@ -25,6 +25,7 @@ const char *digest_algo_id2str(digest_algo_t algo);
 ssize_t     digest_algo_length_bytes(digest_algo_t algo);
 
 digest_t *  digest_new(digest_algo_t algo);
+digest_t *  digest_copy(digest_t *digest);
 ssize_t     digest_write(digest_t *digest, const void *data, size_t len);
 ssize_t     digest_read(digest_t *digest, void *buf, size_t len);
 
