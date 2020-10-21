@@ -100,6 +100,8 @@ AC_CHECK_HEADERS([sys/timeb.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
 
+AC_C_BIGENDIAN
+
 XIPH_NET
 
 dnl Check for functions

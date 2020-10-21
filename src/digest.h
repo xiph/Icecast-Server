@@ -14,7 +14,11 @@
 REFOBJECT_FORWARD_TYPE(digest_t);
 
 typedef enum {
-    DIGEST_ALGO_MD5
+    DIGEST_ALGO_MD5,
+    DIGEST_ALGO_SHA3_224,
+    DIGEST_ALGO_SHA3_256,
+    DIGEST_ALGO_SHA3_384,
+    DIGEST_ALGO_SHA3_512
 } digest_algo_t;
 
 digest_t * digest_new(digest_algo_t algo);
