@@ -281,7 +281,7 @@ static inline size_t sha3_read(digest_t *digest, void *buf, size_t len)
 {
     const size_t block_size = digest->state.sha3.block_size;
 
-    memset(digest->state.sha3.message + digest->state.sha3.rest, 0, block_size - digest->state.sha3.rest);
+    memset(((char*)digest->state.sha3.message) + digest->state.sha3.rest, 0, block_size - digest->state.sha3.rest);
     ((char*)digest->state.sha3.message)[digest->state.sha3.rest] |= 0x06;
     ((char*)digest->state.sha3.message)[block_size - 1] |= 0x80;
 
