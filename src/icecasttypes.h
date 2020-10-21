@@ -122,6 +122,10 @@ typedef struct reportxml_database_tag reportxml_database_t;
 typedef struct listensocket_container_tag listensocket_container_t;
 typedef struct listensocket_tag listensocket_t;
 
+/* ---[ digest.[ch] ]--- */
+
+typedef struct digest_tag digest_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -137,6 +141,7 @@ typedef union __attribute__ ((__transparent_union__)) {
     reportxml_database_t *reportxml_database;
     listensocket_container_t *listensocket_container;
     listensocket_t *listensocket;
+    digest_t *digest;
 } refobject_t;
 #else
 typedef void * refobject_t;
