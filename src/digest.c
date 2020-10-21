@@ -302,6 +302,52 @@ static inline size_t sha3_read(digest_t *digest, void *buf, size_t len)
 }
 
 
+const char *digest_algo_id2str(digest_algo_t algo)
+{
+    switch (algo) {
+
+        case DIGEST_ALGO_MD5:
+            return "MD5";
+        break;
+        case DIGEST_ALGO_SHA3_224:
+            return "SHA3-224";
+        break;
+        case DIGEST_ALGO_SHA3_256:
+            return "SHA3-256";
+        break;
+        case DIGEST_ALGO_SHA3_384:
+            return "SHA3-384";
+        break;
+        case DIGEST_ALGO_SHA3_512:
+            return "SHA3-512";
+        break;
+    }
+
+    return NULL;
+}
+ssize_t     digest_algo_length_bytes(digest_algo_t algo)
+{
+    switch (algo) {
+        case DIGEST_ALGO_MD5:
+            return 16;
+        break;
+        case DIGEST_ALGO_SHA3_224:
+            return 224/8;
+        break;
+        case DIGEST_ALGO_SHA3_256:
+            return 256/8;
+        break;
+        case DIGEST_ALGO_SHA3_384:
+            return 384/8;
+        break;
+        case DIGEST_ALGO_SHA3_512:
+            return 512/8;
+        break;
+    }
+
+    return -1;
+}
+
 digest_t * digest_new(digest_algo_t algo)
 {
     digest_t *digest = refobject_new__new(digest_t, NULL, NULL, NULL);
@@ -400,12 +446,5 @@ ssize_t digest_length_bytes(digest_t *digest)
     if (!digest)
         return -1;
 
-    switch (digest->algo) {
-        case DIGEST_ALGO_MD5:
-            return 16;
-        break;
-        default:
-            return -1;
-        break;
-    }
+    return digest_algo_length_bytes(digest->algo);
 }
