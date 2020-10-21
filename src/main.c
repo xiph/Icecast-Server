@@ -79,6 +79,7 @@
 #include "event.h"
 #include "listensocket.h"
 #include "fastevent.h"
+#include "prng.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -144,6 +145,7 @@ static void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
+    prng_initialize();
     global_initialize();
 #ifndef FASTEVENT_ENABLED
     fastevent_initialize();
@@ -181,6 +183,7 @@ static void shutdown_subsystems(void)
     refobject_unref(fastevent_reg);
     fastevent_shutdown();
 #endif
+    prng_shutdown();
     global_shutdown();
     thread_shutdown();
 
@@ -576,6 +579,7 @@ int main(int argc, char **argv)
     char filename[512] = "";
 #endif
     char pbuf[1024];
+    ice_config_t *config;
 
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
@@ -643,6 +647,10 @@ int main(int argc, char **argv)
         shutdown_subsystems();
         return 1;
     }
+
+    config = config_get_config();
+    prng_configure(config);
+    config_release_config();
 
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */

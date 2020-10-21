@@ -29,6 +29,7 @@ noinst_HEADERS = \
     yp.h \
     md5.h \
     digest.h \
+    prng.h \
     matchfile.h \
     tls.h \
     refobject.h \
@@ -79,6 +80,7 @@ icecast_SOURCES = \
     resourcematch.c \
     md5.c \
     digest.c \
+    prng.c \
     matchfile.c \
     tls.c \
     refobject.c \
