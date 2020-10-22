@@ -29,6 +29,7 @@
 #endif
 
 #include "common/thread/thread.h"
+#include "common/timing/timing.h"
 
 #include "prng.h"
 #include "digest.h"
@@ -53,7 +54,7 @@ static void prng_initial_seed(void)
 {
     struct {
         int debian;
-        time_t t;
+        uint64_t t;
 #ifdef HAVE_UNAME
         struct utsname utsname;
 #endif
@@ -67,7 +68,7 @@ static void prng_initial_seed(void)
     memset(&seed, 0, sizeof(seed));
 
     seed.debian = 4;
-    seed.t = time(NULL);
+    seed.t = timing_get_time();
 #ifdef HAVE_UNAME
     uname(&seed.utsname);
 #endif
