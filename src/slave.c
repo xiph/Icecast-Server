@@ -839,6 +839,16 @@ static int update_from_master(ice_config_t *config)
                     c->upstream_default.server = (char *)xmlCharStrdup(master);
                     c->upstream_default.port = port;
                 }
+                if (parsed_uri->user && strchr(parsed_uri->user, ':')) {
+                    char *pw;
+
+                    c->upstream_default.username = (char *)xmlCharStrdup(parsed_uri->user);
+                    pw = strchr(c->upstream_default.username, ':');
+                    if (pw) {
+                        *(pw++) = 0;
+                        c->upstream_default.password = (char *)xmlCharStrdup(pw);
+                    }
+                }
 
                 c->upstream_default.mount = (char *)xmlCharStrdup(parsed_uri->path);
                 c->localmount = (char *)xmlCharStrdup(parsed_uri->path);
