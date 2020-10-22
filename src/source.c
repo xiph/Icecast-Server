@@ -69,7 +69,6 @@
 mutex_t move_clients_mutex;
 
 /* avl tree helper */
-static int _compare_clients(void *compare_arg, void *a, void *b);
 static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
@@ -100,8 +99,8 @@ source_t *source_reserve (const char *mount)
         if (src == NULL)
             break;
 
-        src->client_tree = avl_tree_new(_compare_clients, NULL);
-        src->pending_tree = avl_tree_new(_compare_clients, NULL);
+        src->client_tree = avl_tree_new(client_compare, NULL);
+        src->pending_tree = avl_tree_new(client_compare, NULL);
         src->history = playlist_new(10 /* DOCUMENT: default is max_tracks=10. */);
 
         /* make duplicates for strings or similar */
@@ -910,22 +909,6 @@ static void source_shutdown (source_t *source)
     thread_rwlock_unlock(source->shutdown_rwlock);
 }
 
-
-static int _compare_clients(void *compare_arg, void *a, void *b)
-{
-    client_t *clienta = (client_t *) a;
-    client_t *clientb = (client_t *) b;
-
-    (void)compare_arg;
-
-    connection_t *cona = clienta->con;
-    connection_t *conb = clientb->con;
-
-    if (cona->id < conb->id) return -1;
-    if (cona->id > conb->id) return 1;
-
-    return 0;
-}
 
 int source_remove_client(void *key)
 {

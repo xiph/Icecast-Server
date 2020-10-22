@@ -155,6 +155,7 @@ static void initialize_subsystems(void)
     resolver_initialize();
     config_initialize();
     tls_initialize();
+    client_initialize();
     connection_initialize();
     refbuf_initialize();
 
@@ -175,6 +176,7 @@ static void shutdown_subsystems(void)
     stats_shutdown();
 
     connection_shutdown();
+    client_shutdown();
     tls_shutdown();
     prng_deconfigure();
     config_shutdown();

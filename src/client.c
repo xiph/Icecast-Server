@@ -101,6 +101,32 @@ const char * client_protocol_to_string(protocol_t protocol)
     return NULL;
 }
 
+int client_compare(void *compare_arg, void *a, void *b)
+{
+    client_t *clienta = (client_t *) a;
+    client_t *clientb = (client_t *) b;
+
+    (void)compare_arg;
+
+    connection_t *cona = clienta->con;
+    connection_t *conb = clientb->con;
+
+    if (cona->id < conb->id) return -1;
+    if (cona->id > conb->id) return 1;
+
+    return 0;
+}
+
+void client_initialize(void)
+{
+    global_client_list = avl_tree_new(client_compare, NULL);
+}
+
+void client_shutdown(void)
+{
+    avl_tree_free(global_client_list, NULL);
+}
+
 /* create a client_t with the provided connection and parser details. Return
  * 0 on success, -1 if server limit has been reached.  In either case a
  * client_t is returned just in case a message needs to be returned. Should
@@ -139,6 +165,10 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
     *c_ptr = client;
+
+    avl_tree_wlock(global_client_list);
+    avl_insert(global_client_list, client);
+    avl_tree_unlock(global_client_list);
 
     listener_real = listensocket_get_listener(con->listensocket_real);
     listener_effective = listensocket_get_listener(con->listensocket_effective);
@@ -266,6 +296,10 @@ void client_destroy(client_t *client)
         return;
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
+    avl_tree_wlock(global_client_list);
+    avl_delete(global_client_list, client, NULL);
+    avl_tree_unlock(global_client_list);
 
     if (client->reuse != ICECAST_REUSE_CLOSE) {
         /* only reuse the client if we reached the body's EOF. */
