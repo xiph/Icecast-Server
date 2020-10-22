@@ -133,6 +133,7 @@ void prng_write(const void *buffer, size_t len)
 
     thread_mutex_lock(&digest_a_lock);
     digest_write(digest_a, buffer, len);
+    digest_write(digest_a, &len, sizeof(len));
     thread_mutex_unlock(&digest_a_lock);
 }
 
