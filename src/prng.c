@@ -47,7 +47,7 @@ static int initialized = 0;
 static mutex_t digest_a_lock;
 static mutex_t digest_b_lock;
 static digest_t * digest_a; // protected by digest_a_lock
-static digest_t * digest_b; // protected by digest_h_lock
+static digest_t * digest_b; // protected by digest_b_lock
 static size_t before_reseed; // protected by digest_a_lock
 
 static void prng_initial_seed(void)
