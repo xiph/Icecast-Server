@@ -1472,6 +1472,8 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "8defae31-a52e-4bba-b904-76db5362860f", "warning", "No useful location is given in <location>.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_ADMIN)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "cf86d88e-dc20-4359-b446-110e7065d17a", "warning", "No admin contact given in <admin>. YP directory support will is disabled.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_PRNG)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "e2ba5a8b-4e4f-41ca-b455-68ae5fb6cae0", "error", "No PRNG seed configured. PRNG is insecure.", NULL);
 
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);

@@ -1166,6 +1166,23 @@ static void _parse_root(xmlDocPtr       doc,
     if (configuration->port == 0)
         configuration->port = 8000;
 
+    if (!configuration->prng_seed) {
+        configuration->config_problems |= CONFIG_PROBLEM_PRNG;
+#ifndef _WIN32
+        configuration->prng_seed = calloc(1, sizeof(prng_seed_config_t));
+        if (configuration->prng_seed) {
+            configuration->prng_seed->filename = (char*)xmlStrdup(XMLSTR("linux")); // the linux profile is also fine on BSD.
+            configuration->prng_seed->type = PRNG_SEED_TYPE_PROFILE;
+            configuration->prng_seed->size = -1;
+            ICECAST_LOG_WARN("Warning, no PRNG seed configured, using default profile \"linux\".");
+        } else {
+            ICECAST_LOG_ERROR("No PRNG seed configured and unable to add one. PRNG is insecure.");
+        }
+#else
+        ICECAST_LOG_ERROR("No PRNG seed configured and unable to add one. PRNG is insecure.");
+#endif
+    }
+
     /* issue some warnings on bad configurations */
     if (!configuration->fileserve)
         ICECAST_LOG_WARN("Warning, serving of static files has been disabled "

@@ -343,6 +343,11 @@ aside {
     list-style: none;
 }
 
+.maintenance-level-error > *:first-child::before {
+    font-weight: bold;
+    content: "Error: ";
+}
+
 .maintenance-level-warning > *:first-child::before {
     font-weight: bold;
     content: "Warning: ";
