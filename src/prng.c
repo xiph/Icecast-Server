@@ -23,6 +23,11 @@
 #include <sys/utsname.h>
 #endif
 
+#ifdef HAVE_OPENSSL
+#include <openssl/rand.h>
+#include <openssl/err.h>
+#endif
+
 #include "common/thread/thread.h"
 
 #include "prng.h"
@@ -75,6 +80,23 @@ static void prng_initial_seed(void)
     prng_write(&seed, sizeof(seed));
 }
 
+static void prng_cross_seed(void)
+{
+    char buffer[1024];
+    ssize_t len;
+
+#ifdef HAVE_OPENSSL
+    if (RAND_bytes((unsigned char*)buffer, sizeof(buffer)) == 1) {
+        prng_write(buffer, sizeof(buffer));
+    } else {
+        ERR_get_error(); // clear error
+    }
+    len = prng_read(buffer, sizeof(buffer));
+    if (len > 0)
+        RAND_add(buffer, len, len/10.);
+#endif
+}
+
 void prng_initialize(void)
 {
     if (initialized)
@@ -86,6 +108,7 @@ void prng_initialize(void)
     digest_b = digest_new(DIGEST_ALGO_SHA3_512);
     initialized = 1;
     prng_initial_seed();
+    prng_cross_seed();
 }
 
 void prng_shutdown(void)
@@ -112,6 +135,7 @@ void prng_configure(ice_config_t *config)
         prng_read_file(seed->filename, seed->size);
         seed = seed->next;
     }
+    prng_cross_seed();
 }
 
 void prng_deconfigure(void)
@@ -155,6 +179,7 @@ void prng_auto_reseed(void)
         seed = seed->next;
     }
     config_release_config();
+    prng_cross_seed();
 }
 
 void prng_write(const void *buffer, size_t len)
