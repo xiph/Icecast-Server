@@ -54,6 +54,7 @@
 #include "logging.h"
 #include "source.h"
 #include "format.h"
+#include "prng.h"
 
 #define CATMODULE "slave"
 
@@ -901,6 +902,7 @@ static void *_slave_thread(void *arg)
         global_unlock();
 
         thread_sleep(1000000);
+        prng_auto_reseed();
         thread_mutex_lock(&_slave_mutex);
         if (slave_running == 0) {
             thread_mutex_unlock(&_slave_mutex);
