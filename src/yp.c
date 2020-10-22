@@ -30,6 +30,7 @@
 #include "cfgfile.h"
 #include "stats.h"
 #include "listensocket.h"
+#include "prng.h"
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -110,6 +111,8 @@ static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void
 {
     ypdata_t *yp = stream;
     size_t bytes = size * nmemb;
+
+    prng_write(ptr, bytes);
 
     /* ICECAST_LOG_DEBUG("header from YP is \"%.*s\"", bytes, ptr); */
     if (strncasecmp (ptr, "YPResponse: 1", 13) == 0)
