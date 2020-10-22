@@ -64,6 +64,10 @@ static void prng_initial_seed(void)
         pid_t ppid;
 #endif
     } seed;
+#ifdef HAVE_OPENSSL
+    char buffer[1024];
+    const char *filename;
+#endif
 
     memset(&seed, 0, sizeof(seed));
 
@@ -79,6 +83,13 @@ static void prng_initial_seed(void)
 #endif
 
     prng_write(&seed, sizeof(seed));
+
+#ifdef HAVE_OPENSSL
+    filename = RAND_file_name(buffer, sizeof(buffer));
+    if (filename)
+        RAND_load_file(filename, -1);
+    ERR_get_error(); // clear error if any
+#endif
 }
 
 static void prng_cross_seed(void)
