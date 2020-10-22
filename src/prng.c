@@ -32,13 +32,17 @@
 #include "logging.h"
 #define CATMODULE "prng"
 
-#define BLOCK_LENGTH (512/8)
+#define BLOCK_LENGTH                (512/8)
+
+#define SEEDING_FACTOR              128
+#define SEEDING_MAX_BEFORE_RESEED   32768
 
 static int initialized = 0;
 static mutex_t digest_a_lock;
 static mutex_t digest_b_lock;
-static digest_t * digest_a;
-static digest_t * digest_b;
+static digest_t * digest_a; // protected by digest_a_lock
+static digest_t * digest_b; // protected by digest_h_lock
+static size_t before_reseed; // protected by digest_a_lock
 
 static void prng_initial_seed(void)
 {
@@ -129,6 +133,30 @@ void prng_deconfigure(void)
     config_release_config();
 }
 
+void prng_auto_reseed(void)
+{
+    int need_seeding;
+    ice_config_t *config;
+    prng_seed_config_t *seed;
+
+    thread_mutex_lock(&digest_a_lock);
+    need_seeding = before_reseed == 0;
+    thread_mutex_unlock(&digest_a_lock);
+
+    if (!need_seeding)
+        return;
+
+    config = config_get_config();
+    seed = config->prng_seed;
+    while (seed) {
+        if (seed->type == PRNG_SEED_TYPE_DEVICE) {
+            prng_read_file(seed->filename, seed->size);
+        }
+        seed = seed->next;
+    }
+    config_release_config();
+}
+
 void prng_write(const void *buffer, size_t len)
 {
     if (!initialized)
@@ -137,6 +165,9 @@ void prng_write(const void *buffer, size_t len)
     thread_mutex_lock(&digest_a_lock);
     digest_write(digest_a, buffer, len);
     digest_write(digest_a, &len, sizeof(len));
+    before_reseed += len * SEEDING_FACTOR;
+    if (before_reseed > SEEDING_MAX_BEFORE_RESEED)
+        before_reseed = SEEDING_MAX_BEFORE_RESEED;
     thread_mutex_unlock(&digest_a_lock);
 }
 
@@ -175,6 +206,11 @@ ssize_t prng_read(void *buffer, size_t len)
     thread_mutex_lock(&digest_a_lock);
     digest_write(digest_a, &len, sizeof(len));
     copy = digest_copy(digest_a);
+    if (before_reseed > len) {
+        before_reseed -= len;
+    } else {
+        before_reseed = 0;
+    }
     thread_mutex_unlock(&digest_a_lock);
 
     if (!copy)
