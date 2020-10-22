@@ -313,6 +313,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
             ICECAST_LOG_ERROR("Header read failed for %s (%s:%d%s)", relay->config->localmount, server, port, mount);
             break;
         }
+        prng_write(header, strlen(header));
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
         if (! httpp_parse_response (parser, header, strlen(header), relay->config->localmount))
@@ -796,18 +797,21 @@ static int update_from_master(ice_config_t *config)
             ICECAST_LOG_INFO("Master accepted streamlist request");
         }
 
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
-        {
-            if (!strlen(buf))
+        while (sock_read_line(mastersock, buf, sizeof(buf))) {
+            size_t len = strlen(buf);
+            if (!len)
                 break;
+            prng_write(buf, len);
         }
-        while (sock_read_line(mastersock, buf, sizeof(buf)))
-        {
+        while (sock_read_line(mastersock, buf, sizeof(buf))) {
+            size_t len = strlen(buf);
             relay_config_t *c = NULL;
             relay_config_t **n;
 
-            if (!strlen(buf))
+            if (!len)
                 continue;
+            prng_write(buf, len);
+
             ICECAST_LOG_DEBUG("read %d from master \"%s\"", count++, buf);
             xmlURIPtr parsed_uri = xmlParseURI(buf);
             if (parsed_uri == NULL) {
