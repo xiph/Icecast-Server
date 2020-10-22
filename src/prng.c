@@ -13,6 +13,9 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -233,21 +236,25 @@ int prng_read_file(const char *filename, ssize_t len)
 {
     char buffer[BLOCK_LENGTH*16];
     size_t done = 0;
-    FILE *file;
+    int fh;
 
     if (len < 0 || len > 1048576)
         len = 1048576;
 
-    file = fopen(filename, "rb");
-    if (!file)
+#ifdef O_CLOEXEC
+    fh = open(filename, O_RDONLY|O_CLOEXEC, 0);
+#else
+    fh = open(filename, O_RDONLY, 0);
+#endif
+    if (fh < 0)
         return -1;
 
     while (done < (size_t)len) {
         size_t todo = (size_t)len < sizeof(buffer) ? (size_t)len : sizeof(buffer);
-        size_t res = fread(buffer, 1, todo, file);
+        size_t res = read(fh, buffer, todo);
 
         if (res < 1) {
-            fclose(file);
+            close(fh);
             return 0;
         }
 
@@ -256,6 +263,6 @@ int prng_read_file(const char *filename, ssize_t len)
         done += res;
     }
 
-    fclose(file);
+    close(fh);
     return 0;
 }
