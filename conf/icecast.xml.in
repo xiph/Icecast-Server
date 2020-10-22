@@ -310,5 +310,35 @@
             <group>nogroup</group>
         </changeowner>
         -->
+
+        <!-- It is generally helpful to set a PRNG seed, what seed to set depends on your OS. -->
+        <!-- Useful on all operating systems is a seed file for Icecast to update.
+             This should be at some location that is (semi-)permanent such as /var/lib or /var/cache
+             A size of 1024 [byte] is suggested.
+             The file can be shared with trusted applications (other instances of Icecast).
+             But should be protected against read and write access by untrusted applications.
+        <prng-seed type="read-write" size="1024">/path/to/storage/icecast.prng-seed</prng-seed>
+        -->
+        <!-- A profile includes common sources of entropy therefore provides a good way to
+             seed the PRNG.
+             Currently defined profiles are: bsd, linux.
+             The bsd profile expects /dev/urandom to be readable.
+             The linux profile includes the bsd profile but adds linux specific interfaces (such as /proc).
+        <prng-seed type="profile">linux</prng-seed>
+        -->
+        <!-- If your OS provides a urandom style device and there is no profile for your OS you can
+             provide a custom device name.
+             The size parameter defines how many bytes are read per (re)seeding. The optimal setting
+             depends on the quality of your device, a general good default is 32 [byte].
+        <prng-seed type="device" size="32">/dev/urandom</prng-seed>
+        -->
+        <!-- If none of above is available on your OS you can add a static seed.
+             This is by far not as secure as the above.
+             The value should be at least 64 characters long if from [a-zA-Z0-9].
+             You MUST keep this parameter secret. It MUST NOT be shared with other instances.
+             You SHOULD change this parameter often.
+        <prng-seed type="static">U4V5etZF...</prng-seed>
+        -->
+
     </security>
 </icecast>
