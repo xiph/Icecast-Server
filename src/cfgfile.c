@@ -2552,6 +2552,10 @@ static void _parse_security(xmlDocPtr       doc,
                        seed->type = PRNG_SEED_TYPE_READ_WRITE;
                    } else if (strcmp(tmp, "device") == 0) {
                        seed->type = PRNG_SEED_TYPE_DEVICE;
+                   } else if (strcmp(tmp, "static") == 0) {
+                       seed->type = PRNG_SEED_TYPE_STATIC;
+                   } else if (strcmp(tmp, "profile") == 0) {
+                       seed->type = PRNG_SEED_TYPE_PROFILE;
                    } else {
                        ICECAST_LOG_WARN("Unknown type for <prng-seed>: %s", tmp);
                    }

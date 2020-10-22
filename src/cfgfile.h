@@ -204,7 +204,9 @@ typedef struct {
 typedef enum {
     PRNG_SEED_TYPE_READ_ONCE,
     PRNG_SEED_TYPE_READ_WRITE,
-    PRNG_SEED_TYPE_DEVICE
+    PRNG_SEED_TYPE_DEVICE,
+    PRNG_SEED_TYPE_STATIC,
+    PRNG_SEED_TYPE_PROFILE
 } prng_seed_type_t;
 
 typedef struct prng_seed_config_tag prng_seed_config_t;

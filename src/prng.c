@@ -98,6 +98,38 @@ static void prng_cross_seed(void)
 #endif
 }
 
+static void prng_read_seeds(prng_seed_config_t *seed, int configure_time)
+{
+    while (seed) {
+        switch (seed->type) {
+            case PRNG_SEED_TYPE_READ_ONCE:
+            case PRNG_SEED_TYPE_READ_WRITE:
+                if (configure_time)
+                    prng_read_file(seed->filename, seed->size);
+                break;
+            case PRNG_SEED_TYPE_DEVICE:
+                prng_read_file(seed->filename, seed->size);
+                break;
+            case PRNG_SEED_TYPE_STATIC:
+                prng_write(seed->filename, strlen(seed->filename));
+                break;
+            case PRNG_SEED_TYPE_PROFILE:
+                if (strcmp(seed->filename, "linux") == 0) {
+                    if (configure_time) {
+                        prng_read_file("/proc/sys/kernel/random/boot_id", -1);
+                        prng_read_file("/etc/machine-id", -1);
+                    }
+                    prng_read_file("/proc/sys/kernel/random/uuid", -1);
+                }
+                if (strcmp(seed->filename, "linux") == 0 || strcmp(seed->filename, "bsd") == 0) {
+                    prng_read_file("/dev/urandom", 64);
+                }
+                break;
+        }
+        seed = seed->next;
+    }
+}
+
 void prng_initialize(void)
 {
     if (initialized)
@@ -127,15 +159,10 @@ void prng_shutdown(void)
 
 void prng_configure(ice_config_t *config)
 {
-    prng_seed_config_t *seed = config->prng_seed;
-
     if (!initialized)
         return;
 
-    while (seed) {
-        prng_read_file(seed->filename, seed->size);
-        seed = seed->next;
-    }
+    prng_read_seeds(config->prng_seed, 1);
     prng_cross_seed();
 }
 
@@ -162,7 +189,6 @@ void prng_auto_reseed(void)
 {
     int need_seeding;
     ice_config_t *config;
-    prng_seed_config_t *seed;
 
     thread_mutex_lock(&digest_a_lock);
     need_seeding = before_reseed == 0;
@@ -172,13 +198,7 @@ void prng_auto_reseed(void)
         return;
 
     config = config_get_config();
-    seed = config->prng_seed;
-    while (seed) {
-        if (seed->type == PRNG_SEED_TYPE_DEVICE) {
-            prng_read_file(seed->filename, seed->size);
-        }
-        seed = seed->next;
-    }
+    prng_read_seeds(config->prng_seed, 0);
     config_release_config();
     prng_cross_seed();
 }
