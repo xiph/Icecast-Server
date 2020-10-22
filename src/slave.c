@@ -829,19 +829,19 @@ static int update_from_master(ice_config_t *config)
 
             if (c) {
                 if (parsed_uri->server != NULL) {
-                    c->upstream_default.server = strdup(parsed_uri->server);
+                    c->upstream_default.server = (char *)xmlCharStrdup(parsed_uri->server);
                     if (parsed_uri->port == 0) {
                         c->upstream_default.port = 80;
                     } else {
                         c->upstream_default.port = parsed_uri->port;
                     }
                 } else {
-                    c->upstream_default.server = (char *)xmlCharStrdup (master);
+                    c->upstream_default.server = (char *)xmlCharStrdup(master);
                     c->upstream_default.port = port;
                 }
 
-                c->upstream_default.mount = strdup(parsed_uri->path);
-                c->localmount = strdup(parsed_uri->path);
+                c->upstream_default.mount = (char *)xmlCharStrdup(parsed_uri->path);
+                c->localmount = (char *)xmlCharStrdup(parsed_uri->path);
                 c->upstream_default.mp3metadata = 1;
                 c->on_demand = on_demand;
                 ICECAST_LOG_DEBUG("Added relay host=\"%s\", port=%d, mount=\"%s\"", c->upstream_default.server, c->upstream_default.port, c->upstream_default.mount);
