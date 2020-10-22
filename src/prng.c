@@ -173,6 +173,10 @@ void prng_configure(ice_config_t *config)
     if (!initialized)
         return;
 
+    prng_write(config->location, strlen(config->location));
+    prng_write(config->admin, strlen(config->admin));
+    prng_write(config->hostname, strlen(config->hostname));
+    prng_write(config, sizeof(*config));
     prng_read_seeds(config->prng_seed, 1);
     prng_cross_seed();
 }
