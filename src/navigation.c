@@ -24,6 +24,18 @@ struct mount_identifier_tag {
 
 REFOBJECT_DEFINE_TYPE(mount_identifier_t);
 
+static inline const char * navigation_direction_id2str(navigation_direction_t dir)
+{
+    switch (dir) {
+        case NAVIGATION_DIRECTION_UP: return "up"; break;
+        case NAVIGATION_DIRECTION_DOWN: return "down"; break;
+        case NAVIGATION_DIRECTION_REPLACE_CURRENT: return "replace-current"; break;
+        case NAVIGATION_DIRECTION_REPLACE_ALL: return "replace-all"; break;
+    }
+
+    return NULL;
+}
+
 static int mount_identifier_compare__for_tree(void *compare_arg, void *a, void *b)
 {
     const char *id_a, *id_b;
@@ -115,6 +127,8 @@ mount_identifier_t *    navigation_history_get_up(navigation_history_t *history)
 
 int                     navigation_history_navigate_to(navigation_history_t *history, mount_identifier_t *identifier, navigation_direction_t direction)
 {
+    ICECAST_LOG_DDEBUG("Called with history=%p, identifier=%p (%#H), direction=%s", history, identifier, mount_identifier_get_mount(identifier), navigation_direction_id2str(direction));
+
     if (!history || !identifier)
         return -1;
 
