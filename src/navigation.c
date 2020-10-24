@@ -26,8 +26,6 @@ struct mount_identifier_tag {
 
 REFOBJECT_DEFINE_TYPE(mount_identifier_t);
 
-static avl_tree *mount_identifier_list;
-
 static int mount_identifier_compare(void *compare_arg, void *a, void *b)
 {
     const char *id_a, *id_b;
@@ -44,19 +42,16 @@ static int mount_identifier_compare(void *compare_arg, void *a, void *b)
 
 void navigation_initialize(void)
 {
-    mount_identifier_list = avl_tree_new(mount_identifier_compare, NULL);
 }
 
 void navigation_shutdown(void)
 {
-    avl_tree_free(mount_identifier_list, (avl_free_key_fun_type)refobject_unref);
 }
 
 
 mount_identifier_t * mount_identifier_new(const char *mount)
 {
     mount_identifier_t *n;
-    void *result;
 
     if (!mount)
         return NULL;
@@ -64,17 +59,6 @@ mount_identifier_t * mount_identifier_new(const char *mount)
     n = refobject_new_ext(mount_identifier_t, NULL, mount, NULL);
     if (!n)
         return NULL;
-
-    avl_tree_wlock(mount_identifier_list);
-    if (avl_get_by_key(mount_identifier_list, n, &result) == 0) {
-        refobject_unref(n);
-        n = result;
-        refobject_ref(n);
-    } else {
-        refobject_ref(n);
-        avl_insert(mount_identifier_list, n); 
-    }
-    avl_tree_unlock(mount_identifier_list);
 
     return n;
 }
