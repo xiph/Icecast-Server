@@ -54,7 +54,7 @@ mount_identifier_t * mount_identifier_new(const char *mount)
     if (!mount)
         return NULL;
 
-    n = refobject_new_ext(mount_identifier_t, NULL, mount, NULL);
+    n = refobject_new__new(mount_identifier_t, NULL, mount, NULL);
     if (!n)
         return NULL;
 
