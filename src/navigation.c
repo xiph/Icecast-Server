@@ -10,8 +10,6 @@
 #include <config.h>
 #endif
 
-#include <string.h>
-
 #include "common/avl/avl.h"
 
 #include "navigation.h"
@@ -66,4 +64,89 @@ mount_identifier_t * mount_identifier_new(const char *mount)
 int                     mount_identifier_compare(mount_identifier_t *a, mount_identifier_t *b)
 {
     return mount_identifier_compare__for_tree(NULL, a, b);
+}
+
+static inline int navigation_history_pop(navigation_history_t *history)
+{
+    if (history->fill == 0)
+        return 0;
+    history->fill--;
+    refobject_unref(history->history[history->fill]);
+    history->history[history->fill] = NULL;
+    return 1;
+}
+
+static inline int navigation_history_push(navigation_history_t *history, mount_identifier_t *identifier)
+{
+    if (refobject_ref(identifier) != 0)
+        return -1;
+
+    if (history->fill == (sizeof(history->history)/sizeof(*history->history))) {
+        refobject_unref(history->history[0]);
+        memmove(history->history, &(history->history[1]), sizeof(history->history) - sizeof(*history->history));
+        history->fill--;
+    }
+
+    history->history[history->fill++] = identifier;
+
+    return 0;
+}
+
+void                    navigation_history_clear(navigation_history_t *history)
+{
+    if (!history)
+        return;
+    while (navigation_history_pop(history));
+}
+
+mount_identifier_t *    navigation_history_get_up(navigation_history_t *history)
+{
+    if (!history)
+        return NULL;
+
+    if (history->fill < 2)
+        return NULL;
+
+    if (refobject_ref(history->history[history->fill - 2]) != 0)
+        return NULL;
+
+    return history->history[history->fill - 2];
+}
+
+int                     navigation_history_navigate_to(navigation_history_t *history, mount_identifier_t *identifier, navigation_direction_t direction)
+{
+    if (!history || !identifier)
+        return -1;
+
+    switch (direction) {
+        case NAVIGATION_DIRECTION_UP:
+            if (history->fill < 2)
+                return -1;
+            if (mount_identifier_compare(history->history[history->fill - 2], identifier) != 0)
+                return -1;
+            return navigation_history_pop(history);
+        break;
+        case NAVIGATION_DIRECTION_DOWN:
+            return navigation_history_push(history, identifier);
+        break;
+        case NAVIGATION_DIRECTION_REPLACE_CURRENT:
+            if (history->fill == 0) {
+                return navigation_history_push(history, identifier);
+            } else {
+                if (refobject_ref(identifier) != 0)
+                    return -1;
+                refobject_unref(history->history[history->fill - 1]);
+                history->history[history->fill - 1] = identifier;
+                return 0;
+            }
+        break;
+        case NAVIGATION_DIRECTION_REPLACE_ALL:
+            navigation_history_clear(history);
+            if (history->fill != 0)
+                return -1;
+            return navigation_history_push(history, identifier);
+        break;
+    }
+
+    return -1;
 }
