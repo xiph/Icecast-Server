@@ -33,7 +33,8 @@ struct source_tag {
     http_parser_t *parser;
     time_t client_stats_update;
     
-    char *mount;
+    char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
+    mount_identifier_t *identifier;
 
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;

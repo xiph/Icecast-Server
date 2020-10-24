@@ -60,6 +60,7 @@
 #include "event.h"
 #include "slave.h"
 #include "acl.h"
+#include "navigation.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -105,6 +106,7 @@ source_t *source_reserve (const char *mount)
 
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
+        src->identifier = mount_identifier_new(mount);
         src->max_listeners = -1;
         thread_mutex_create(&src->lock);
 
@@ -315,6 +317,7 @@ void source_free_source (source_t *source)
     /* make sure all YP entries have gone */
     yp_remove (source->mount);
 
+    refobject_unref(source->identifier);
     free (source->mount);
     free (source);
 
