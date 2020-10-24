@@ -16,6 +16,8 @@ REFOBJECT_FORWARD_TYPE(mount_identifier_t);
 void navigation_initialize(void);
 void navigation_shutdown(void);
 
-mount_identifier_t * mount_identifier_new(const char *mount);
+mount_identifier_t *    mount_identifier_new(const char *mount);
+#define mount_identifier_get_mount(identifier)  refobject_get_name((identifier))
+int                     mount_identifier_compare(mount_identifier_t *a, mount_identifier_t *b);
 
 #endif

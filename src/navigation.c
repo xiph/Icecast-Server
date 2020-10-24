@@ -26,12 +26,12 @@ struct mount_identifier_tag {
 
 REFOBJECT_DEFINE_TYPE(mount_identifier_t);
 
-static int mount_identifier_compare(void *compare_arg, void *a, void *b)
+static int mount_identifier_compare__for_tree(void *compare_arg, void *a, void *b)
 {
     const char *id_a, *id_b;
 
-    id_a = refobject_get_name(a);
-    id_b = refobject_get_name(b);
+    id_a = mount_identifier_get_mount(a);
+    id_b = mount_identifier_get_mount(b);
 
     if (!id_a || !id_b || id_a == id_b) {
         return 0;
@@ -61,4 +61,9 @@ mount_identifier_t * mount_identifier_new(const char *mount)
         return NULL;
 
     return n;
+}
+
+int                     mount_identifier_compare(mount_identifier_t *a, mount_identifier_t *b)
+{
+    return mount_identifier_compare__for_tree(NULL, a, b);
 }
