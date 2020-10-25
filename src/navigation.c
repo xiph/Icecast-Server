@@ -93,8 +93,10 @@ static inline int navigation_history_push(navigation_history_t *history, mount_i
     if (history->fill > 0 && mount_identifier_compare(history->history[history->fill - 1], identifier) == 0)
         return 0;
 
-    if (refobject_ref(identifier) != 0)
+    if (refobject_ref(identifier) != 0) {
+        ICECAST_LOG_ERROR("Can not reference identifier=%p, BAD.", identifier);
         return -1;
+    }
 
     if (history->fill == (sizeof(history->history)/sizeof(*history->history))) {
         refobject_unref(history->history[0]);
@@ -130,7 +132,7 @@ mount_identifier_t *    navigation_history_get_up(navigation_history_t *history)
 
 int                     navigation_history_navigate_to(navigation_history_t *history, mount_identifier_t *identifier, navigation_direction_t direction)
 {
-    ICECAST_LOG_DDEBUG("Called with history=%p, identifier=%p (%#H), direction=%s", history, identifier, mount_identifier_get_mount(identifier), navigation_direction_id2str(direction));
+    ICECAST_LOG_DDEBUG("Called with history=%p, identifier=%p (%#H), direction=%s", history, identifier, mount_identifier_get_mount(identifier), navigation_direction_to_str(direction));
 
     if (!history || !identifier)
         return -1;
@@ -157,8 +159,10 @@ int                     navigation_history_navigate_to(navigation_history_t *his
                     return navigation_history_pop(history);
                 }
 
-                if (refobject_ref(identifier) != 0)
+                if (refobject_ref(identifier) != 0) {
+                    ICECAST_LOG_ERROR("Can not reference identifier=%p, BAD.", identifier);
                     return -1;
+                }
                 refobject_unref(history->history[history->fill - 1]);
                 history->history[history->fill - 1] = identifier;
                 return 0;
