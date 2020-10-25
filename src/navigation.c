@@ -24,7 +24,7 @@ struct mount_identifier_tag {
 
 REFOBJECT_DEFINE_TYPE(mount_identifier_t);
 
-static inline const char * navigation_direction_id2str(navigation_direction_t dir)
+const char * navigation_direction_to_str(navigation_direction_t dir)
 {
     switch (dir) {
         case NAVIGATION_DIRECTION_UP: return "up"; break;
