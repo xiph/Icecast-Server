@@ -61,7 +61,7 @@ struct source_tag {
     unsigned long prev_listeners;
     long max_listeners;
     int yp_public;
-    int fallback_override;
+    fallback_override_t fallback_override;
     int fallback_when_full;
     int shoutcast_compat;
 

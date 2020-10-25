@@ -67,6 +67,12 @@ typedef enum _mount_type {
  MOUNT_TYPE_DEFAULT
 } mount_type;
 
+typedef enum {
+    FALLBACK_OVERRIDE_NONE = 0,
+    FALLBACK_OVERRIDE_ALL,
+    FALLBACK_OVERRIDE_OWN
+} fallback_override_t;
+
 typedef struct _mount_proxy {
     /* The mountpoint this proxy is used for */
     char *mountname;
@@ -89,7 +95,7 @@ typedef struct _mount_proxy {
     /* When this source arrives, do we steal back
      * clients from the fallback?
      */
-    int fallback_override;
+    fallback_override_t fallback_override;
     /* Do we permit direct requests of this mountpoint?
      * (or only indirect, through fallbacks)
      */

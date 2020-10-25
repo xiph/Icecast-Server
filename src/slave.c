@@ -538,7 +538,7 @@ static void check_relay_stream (relay_t *relay)
         {
             relay->source->on_demand = relay->config->on_demand;
 
-            if (source->fallback_mount && source->fallback_override)
+            if (source->fallback_mount && source->fallback_override != FALLBACK_OVERRIDE_NONE)
             {
                 source_t *fallback;
                 avl_tree_rlock (global.source_tree);

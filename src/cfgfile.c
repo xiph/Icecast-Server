@@ -217,6 +217,25 @@ static listener_type_t config_str_to_listener_type(const char *str)
     }
 }
 
+static fallback_override_t config_str_to_fallback_override_t(const char *str)
+{
+    if (!str || !*str || strcmp(str, "none") == 0) {
+        return FALLBACK_OVERRIDE_NONE;
+    } else if (strcasecmp(str, "all") == 0) {
+        return FALLBACK_OVERRIDE_ALL;
+    } else if (strcasecmp(str, "own") == 0) {
+        return FALLBACK_OVERRIDE_OWN;
+    } else {
+        if (util_str_to_bool(str)) {
+            ICECAST_LOG_WARN("Old style fallback override setting. Please replace %#H with \"all\".", str);
+            return FALLBACK_OVERRIDE_ALL;
+        } else {
+            ICECAST_LOG_WARN("Old style fallback override setting. Please replace %#H with \"none\".", str);
+            return FALLBACK_OVERRIDE_NONE;
+        }
+    }
+}
+
 char * config_href_to_id(const char *href)
 {
     if (!href || !*href)
@@ -1538,7 +1557,7 @@ static void _parse_mount(xmlDocPtr      doc,
             __read_int(doc, node, &mount->mp3_meta_interval, "<icy-metadata-interval> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_override = util_str_to_bool(tmp);
+            mount->fallback_override = config_str_to_fallback_override_t(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-mount")) == 0) {
@@ -1695,7 +1714,7 @@ static void _parse_mount(xmlDocPtr      doc,
         current = current->next;
     }
 
-    if (!mount->fallback_mount && (mount->fallback_when_full || mount->fallback_override)) {
+    if (!mount->fallback_mount && (mount->fallback_when_full || mount->fallback_override != FALLBACK_OVERRIDE_NONE)) {
         ICECAST_LOG_WARN("Config for mount %s contains fallback options "
             "but no fallback mount.", mount->mountname);
     }
@@ -2675,7 +2694,7 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src)
         dst->max_listeners = src->max_listeners;
     if (!dst->fallback_mount)
         dst->fallback_mount = (char*)xmlStrdup((xmlChar*)src->fallback_mount);
-    if (!dst->fallback_override)
+    if (dst->fallback_override == FALLBACK_OVERRIDE_NONE)
         dst->fallback_override = src->fallback_override;
     if (!dst->no_mount)
         dst->no_mount = src->no_mount;

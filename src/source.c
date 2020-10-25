@@ -660,15 +660,27 @@ static void source_init (source_t *source)
     ** loop or jingle track or whatever the fallback is used for
     */
 
-    if (source->fallback_override && source->fallback_mount)
-    {
+    ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .fallback_override=%i, .fallback_mount=%#H, ...}", source, source->mount, (int)source->fallback_override, source->fallback_mount);
+    if (source->fallback_override != FALLBACK_OVERRIDE_NONE && source->fallback_mount) {
         source_t *fallback_source;
 
         avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(source->fallback_mount);
 
-        if (fallback_source)
-            source_move_clients(fallback_source, source, NULL, NAVIGATION_DIRECTION_UP);
+        if (fallback_source) {
+            ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .fallback_override=%i, ...}, fallback_source=%p{.mount=%#H, ...}", source, source->mount, (int)source->fallback_override, fallback_source, fallback_source->mount);
+            switch (source->fallback_override) {
+                case FALLBACK_OVERRIDE_NONE:
+                    /* no-op */
+                break;
+                case FALLBACK_OVERRIDE_ALL:
+                    source_move_clients(fallback_source, source, NULL, NAVIGATION_DIRECTION_REPLACE_CURRENT);
+                break;
+                case FALLBACK_OVERRIDE_OWN:
+                    source_move_clients(fallback_source, source, NULL, NAVIGATION_DIRECTION_UP);
+                break;
+            }
+        }
 
         avl_tree_unlock(global.source_tree);
     }
