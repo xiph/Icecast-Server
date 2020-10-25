@@ -345,7 +345,13 @@ client_t *source_find_client(source_t *source, connection_id_t id)
     return NULL;
 }
 
-static inline void source_move_clients__single(source_t *source, source_t *dest, avl_tree *from, avl_tree *to, client_t *client, navigation_direction_t direction) {
+static inline int source_move_clients__single(source_t *source, source_t *dest, avl_tree *from, avl_tree *to, client_t *client, navigation_direction_t direction) {
+    if (navigation_history_navigate_to(&(client->history), dest->identifier, direction) != 0) {
+        ICECAST_LOG_DWARN("Can not change history: navigation of client=%p{.con->id=%llu, ...} from source=%p{.mount=%#H, ...} to dest=%p{.mount=%#H, ...} with direction %s failed",
+                client, (unsigned long long int)client->con->id, source, source->mount, dest, dest->mount, navigation_direction_to_str(direction));
+        return -1;
+    }
+
     avl_delete(from, client, NULL);
 
     /* when switching a client to a different queue, be wary of the
@@ -360,7 +366,7 @@ static inline void source_move_clients__single(source_t *source, source_t *dest,
     }
 
     avl_insert(to, (void *)client);
-    navigation_history_navigate_to(&(client->history), dest->identifier, direction);
+    return 0;
 }
 
 /* Move clients from source to dest provided dest is running
@@ -415,24 +421,30 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, 
             fakeclient.con->id = *id;
 
             if (avl_get_by_key(source->client_tree, &fakeclient, &result) == 0) {
-                source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, result, direction);
-                count++;
+                if (source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, result, direction) == 0)
+                    count++;
             }
         } else {
-            while (1) {
-                avl_node *node = avl_get_first(source->pending_tree);
-                if (node == NULL)
-                    break;
-                source_move_clients__single(source, dest, source->pending_tree, dest->pending_tree, node->key, direction);
-                count++;
+            avl_node *next;
+
+            next = avl_get_first(source->pending_tree);
+            while (next) {
+                avl_node *node = next;
+
+                next = avl_get_next(next);
+
+                if (source_move_clients__single(source, dest, source->pending_tree, dest->pending_tree, node->key, direction) == 0)
+                    count++;
             }
 
-            while (1) {
-                avl_node *node = avl_get_first(source->client_tree);
-                if (node == NULL)
-                    break;
-                source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, node->key, direction);
-                count++;
+            next = avl_get_first(source->client_tree);
+            while (next) {
+                avl_node *node = next;
+
+                next = avl_get_next(next);
+
+                if (source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, node->key, direction) == 0)
+                    count++;
             }
         }
 
