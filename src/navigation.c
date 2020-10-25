@@ -90,6 +90,9 @@ static inline int navigation_history_pop(navigation_history_t *history)
 
 static inline int navigation_history_push(navigation_history_t *history, mount_identifier_t *identifier)
 {
+    if (history->fill > 0 && mount_identifier_compare(history->history[history->fill - 1], identifier) == 0)
+        return 0;
+
     if (refobject_ref(identifier) != 0)
         return -1;
 
@@ -132,6 +135,9 @@ int                     navigation_history_navigate_to(navigation_history_t *his
     if (!history || !identifier)
         return -1;
 
+    if (direction == NAVIGATION_DIRECTION_UP && history->fill < 2)
+        direction = NAVIGATION_DIRECTION_REPLACE_ALL;
+
     switch (direction) {
         case NAVIGATION_DIRECTION_UP:
             if (history->fill < 2)
@@ -147,6 +153,10 @@ int                     navigation_history_navigate_to(navigation_history_t *his
             if (history->fill == 0) {
                 return navigation_history_push(history, identifier);
             } else {
+                if (history->fill > 1 && mount_identifier_compare(history->history[history->fill - 2], identifier) == 0) {
+                    return navigation_history_pop(history);
+                }
+
                 if (refobject_ref(identifier) != 0)
                     return -1;
                 refobject_unref(history->history[history->fill - 1]);

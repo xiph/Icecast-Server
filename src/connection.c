@@ -936,6 +936,9 @@ static void __add_listener_to_source(source_t *source, client_t *client)
 {
     size_t loop = 10;
 
+    if (navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_REPLACE_ALL) != 0)
+        ICECAST_LOG_ERROR("Can not change history: navigation of client=%p{.con.id=%llu, ...} to source=%p{.mount=%#H, ...} failed", client, (unsigned long long int)client->con->id, source, source->mount);
+
     do {
         ICECAST_LOG_DEBUG("max on %s is %ld (cur %lu)", source->mount,
             source->max_listeners, source->listeners);
@@ -954,6 +957,7 @@ static void __add_listener_to_source(source_t *source, client_t *client)
             }
             ICECAST_LOG_INFO("stream full, trying %s", next->mount);
             source = next;
+            navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_DOWN);
             loop--;
             continue;
         }
@@ -966,9 +970,6 @@ static void __add_listener_to_source(source_t *source, client_t *client)
     client->check_buffer = format_check_http_buffer;
     client->refbuf->len = PER_CLIENT_REFBUF_SIZE;
     memset(client->refbuf->data, 0, PER_CLIENT_REFBUF_SIZE);
-
-    if (navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_REPLACE_ALL) != 0)
-        ICECAST_LOG_ERROR("Can not change history: navigation of client=%p{.con.id=%llu, ...} to source=%p{.mount=%#H, ...} failed", client, (unsigned long long int)client->con->id, source, source->mount);
 
     /* lets add the client to the active list */
     avl_tree_wlock(source->pending_tree);
