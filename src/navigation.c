@@ -85,7 +85,7 @@ static inline int navigation_history_pop(navigation_history_t *history)
     history->fill--;
     refobject_unref(history->history[history->fill]);
     history->history[history->fill] = NULL;
-    return 1;
+    return 0;
 }
 
 static inline int navigation_history_push(navigation_history_t *history, mount_identifier_t *identifier)
