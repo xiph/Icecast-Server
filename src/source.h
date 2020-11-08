@@ -92,7 +92,8 @@ void *source_client_thread (void *arg);
 void source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
-source_t *source_find_mount(const char *mount);
+#define source_find_mount(mount) source_find_mount_with_history((mount), NULL)
+source_t *source_find_mount_with_history(const char *mount, navigation_history_t *history);
 source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, connection_id_t id);
 int source_compare_sources(void *arg, void *a, void *b);

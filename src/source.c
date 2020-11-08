@@ -154,7 +154,7 @@ source_t *source_find_mount_raw(const char *mount)
  * check the fallback, and so on.  Must have a global source lock to call
  * this function.
  */
-source_t *source_find_mount(const char *mount)
+source_t *source_find_mount_with_history(const char *mount, navigation_history_t *history)
 {
     source_t *source = NULL;
     ice_config_t *config;
@@ -166,10 +166,20 @@ source_t *source_find_mount(const char *mount)
     {
         source = source_find_mount_raw(mount);
 
-        if (source)
-        {
+        if (source) {
+            if (history)
+                navigation_history_navigate_to(history, source->identifier, NAVIGATION_DIRECTION_DOWN);
+
             if (source->running || source->on_demand)
                 break;
+        } else {
+            if (history) {
+                mount_identifier_t *identifier = mount_identifier_new(mount);
+                if (identifier) {
+                    navigation_history_navigate_to(history, identifier, NAVIGATION_DIRECTION_DOWN);
+                    refobject_unref(identifier);
+                }
+            }
         }
 
         /* we either have a source which is not active (relay) or no source
@@ -187,7 +197,6 @@ source_t *source_find_mount(const char *mount)
     config_release_config();
     return source;
 }
-
 
 int source_compare_sources(void *arg, void *a, void *b)
 {

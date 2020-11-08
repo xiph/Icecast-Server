@@ -936,9 +936,6 @@ static void __add_listener_to_source(source_t *source, client_t *client)
 {
     size_t loop = 10;
 
-    if (navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_REPLACE_ALL) != 0)
-        ICECAST_LOG_ERROR("Can not change history: navigation of client=%p{.con.id=%llu, ...} to source=%p{.mount=%#H, ...} failed", client, (unsigned long long int)client->con->id, source, source->mount);
-
     do {
         ICECAST_LOG_DEBUG("max on %s is %ld (cur %lu)", source->mount,
             source->max_listeners, source->listeners);
@@ -1053,7 +1050,7 @@ static void _handle_get_request(client_t *client) {
 
     avl_tree_rlock(global.source_tree);
     /* let's see if this is a source or just a random fserve file */
-    source = source_find_mount(client->uri);
+    source = source_find_mount_with_history(client->uri, &(client->history));
     if (source) {
         /* true mount */
         do {
