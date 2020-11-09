@@ -36,6 +36,24 @@ const char * navigation_direction_to_str(navigation_direction_t dir)
     return NULL;
 }
 
+navigation_direction_t navigation_str_to_direction(const char *str, navigation_direction_t def)
+{
+    if (!str || !*str)
+        return def;
+
+    if (strcasecmp(str, "up") == 0) {
+        return NAVIGATION_DIRECTION_UP;
+    } else if (strcasecmp(str, "down") == 0) {
+        return NAVIGATION_DIRECTION_DOWN;
+    } else if (strcasecmp(str, "replace_current") == 0 || strcasecmp(str, "replace-current") == 0) {
+        return NAVIGATION_DIRECTION_REPLACE_CURRENT;
+    } else if (strcasecmp(str, "replace_all") == 0 || strcasecmp(str, "replace-all") == 0) {
+        return NAVIGATION_DIRECTION_REPLACE_ALL;
+    } else {
+        return def;
+    }
+}
+
 static int mount_identifier_compare__for_tree(void *compare_arg, void *a, void *b)
 {
     const char *id_a, *id_b;

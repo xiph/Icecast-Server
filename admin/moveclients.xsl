@@ -26,15 +26,22 @@
                             </xsl:otherwise>
                         </xsl:choose>
                         <form method="post" action="/admin/moveclients.xsl">
-                            <label for="moveto" class="hidden">
-                                Move from <code><xsl:value-of select="current_source" /></code> to
-                            </label>
+                            Move from
+                            <code><xsl:value-of select="current_source" /></code>
+                            to
                             <select name="destination" id="moveto">
                                 <xsl:for-each select="source">
                                     <option value="{@mount}">
                                         <xsl:value-of select="@mount" />
                                     </option>
                                 </xsl:for-each>
+                            </select>
+                            with direction
+                            <select name="direction">
+                                <option value="up">up</option>
+                                <option value="down">down</option>
+                                <option value="replace-current">replace</option>
+                                <option value="replace-all">forget and replace</option>
                             </select>
                             <input type="hidden" name="mount" value="{current_source}" />
                             &#160;

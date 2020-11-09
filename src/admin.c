@@ -716,6 +716,7 @@ static void command_move_clients(client_t   *client,
 {
     const char *dest_source;
     const char *idtext = NULL;
+    const char *directiontext = NULL;
     connection_id_t id;
     source_t *dest;
     char buf[255];
@@ -730,6 +731,8 @@ static void command_move_clients(client_t   *client,
     } else {
         idtext = NULL;
     }
+    COMMAND_OPTIONAL(client, "direction", directiontext);
+
     ICECAST_LOG_DEBUG("Done optional check (%d)", parameters_passed);
     if (!parameters_passed) {
         xmlDocPtr doc = admin_build_sourcelist(source->mount, client, response);
@@ -766,7 +769,7 @@ static void command_move_clients(client_t   *client,
 
     ICECAST_LOG_INFO("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
-    source_move_clients(source, dest, idtext ? &id : NULL);
+    source_move_clients(source, dest, idtext ? &id : NULL, navigation_str_to_direction(directiontext, NAVIGATION_DIRECTION_DOWN));
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);

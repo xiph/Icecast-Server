@@ -30,6 +30,7 @@ typedef enum {
 REFOBJECT_FORWARD_TYPE(mount_identifier_t);
 
 const char * navigation_direction_to_str(navigation_direction_t dir);
+navigation_direction_t navigation_str_to_direction(const char *str, navigation_direction_t def);
 
 void navigation_initialize(void);
 void navigation_shutdown(void);
