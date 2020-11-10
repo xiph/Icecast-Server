@@ -769,7 +769,7 @@ static void command_move_clients(client_t   *client,
 
     ICECAST_LOG_INFO("source is \"%s\", destination is \"%s\"", source->mount, dest->mount);
 
-    source_move_clients(source, dest, idtext ? &id : NULL, navigation_str_to_direction(directiontext, NAVIGATION_DIRECTION_DOWN));
+    source_move_clients(source, dest, idtext ? &id : NULL, navigation_str_to_direction(directiontext, NAVIGATION_DIRECTION_REPLACE_ALL));
 
     snprintf(buf, sizeof(buf), "Clients moved from %s to %s",
         source->mount, dest_source);

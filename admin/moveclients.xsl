@@ -41,7 +41,7 @@
                                 <option value="up">up</option>
                                 <option value="down">down</option>
                                 <option value="replace-current">replace</option>
-                                <option value="replace-all">forget and replace</option>
+                                <option value="replace-all" selected="selected">forget and replace</option>
                             </select>
                             <input type="hidden" name="mount" value="{current_source}" />
                             &#160;
