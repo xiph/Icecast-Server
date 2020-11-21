@@ -830,6 +830,15 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));
 
+    do {
+        xmlNodePtr history = xmlNewChild(node, NULL, XMLSTR("history"), NULL);
+        size_t i;
+
+        for (i = 0; i < client->history.fill; i++) {
+            xmlNewTextChild(history, NULL, XMLSTR("mount"), XMLSTR(mount_identifier_get_mount(client->history.history[i])));
+        }
+    } while (0);
+
     return node;
 }
 
