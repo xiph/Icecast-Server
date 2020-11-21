@@ -14,6 +14,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "digest.h"
 #include "md5.h"
@@ -45,7 +46,28 @@ struct digest_tag {
     } state;
 };
 
+
+struct hmac_tag {
+    /* base object */
+    refobject_base_t __base;
+
+    digest_algo_t algo;
+    char *key;
+    size_t key_len;
+    digest_t * inner;
+};
+
+static void __hmac_free(refobject_t self, void **userdata)
+{
+    hmac_t *hmac = REFOBJECT_TO_TYPE(self, hmac_t *);
+    free(hmac->key);
+    refobject_unref(hmac->inner);
+}
+
 REFOBJECT_DEFINE_TYPE(digest_t);
+REFOBJECT_DEFINE_TYPE(hmac_t,
+        REFOBJECT_DEFINE_TYPE_FREE(__hmac_free)
+        );
 
 #define ROTL64(qword, n) ((qword) << (n) ^ ((qword) >> (64 - (n))))
 
@@ -462,4 +484,161 @@ ssize_t digest_length_bytes(digest_t *digest)
         return -1;
 
     return digest_algo_length_bytes(digest->algo);
+}
+
+
+static size_t __digest_algo_blocklength(digest_algo_t algo)
+{
+    switch (algo) {
+        case DIGEST_ALGO_MD5: return 64; break;
+        case DIGEST_ALGO_SHA3_224: return 144; break;
+        case DIGEST_ALGO_SHA3_256: return 136; break;
+        case DIGEST_ALGO_SHA3_384: return 104; break;
+        case DIGEST_ALGO_SHA3_512: return 72; break;
+    }
+
+    return 0;
+}
+
+hmac_t *    hmac_new(digest_algo_t algo, const void *key, size_t keylen)
+{
+    hmac_t *hmac;
+    size_t blocklen = __digest_algo_blocklength(algo);
+    char *keycopy = calloc(1, blocklen);
+    size_t i;
+
+    if (!blocklen)
+        return NULL;
+
+    if (keylen > blocklen) {
+        size_t digestlen = digest_algo_length_bytes(algo);
+        digest_t *digest = digest_new(algo);
+
+        if (!digest) {
+            free(keycopy);
+            return NULL;
+        }
+        if (digest_write(digest, key, keylen) != (ssize_t)keylen) {
+            refobject_unref(digest);
+            free(keycopy);
+            return NULL;
+        }
+        if (digest_read(digest, keycopy, digestlen) != (ssize_t)digestlen) {
+            refobject_unref(digest);
+            free(keycopy);
+            return NULL;
+        }
+        refobject_unref(digest);
+    } else {
+        memcpy(keycopy, key, keylen);
+    }
+
+    hmac = refobject_new__new(hmac_t, NULL, NULL, NULL);
+    if (!hmac)
+        return NULL;
+
+    hmac->algo = algo;
+    hmac->key = keycopy;
+    hmac->key_len = blocklen;
+    hmac->inner = digest_new(algo);
+
+    if (!hmac->inner) {
+        refobject_unref(hmac);
+        return NULL;
+    }
+
+    for (i = 0; i < blocklen; i++) {
+        char x = keycopy[i] ^ 0x36;
+        if (digest_write(hmac->inner, &x, 1) != 1) {
+            refobject_unref(hmac);
+            return NULL;
+        }
+    }
+
+    return hmac;
+}
+
+hmac_t *    hmac_copy(hmac_t *hmac)
+{
+    hmac_t *n;
+
+    if (!hmac)
+        return NULL;
+
+    n = refobject_new__new(hmac_t, NULL, NULL, NULL);
+    n->algo = hmac->algo;
+    n->key = malloc(n->key_len);
+    if (!n->key) {
+        refobject_unref(n);
+        return NULL;
+    }
+    memcpy(n->key, hmac->key, hmac->key_len);
+    n->key_len = hmac->key_len;
+    n->inner = digest_copy(hmac->inner);
+    if (!n->inner) {
+        refobject_unref(n);
+        return NULL;
+    }
+
+    return n;
+}
+
+ssize_t     hmac_write(hmac_t *hmac, const void *data, size_t len)
+{
+    if (!hmac)
+        return -1;
+
+    return digest_write(hmac->inner, data, len);
+}
+
+ssize_t     hmac_read(hmac_t *hmac, void *buf, size_t len)
+{
+    size_t digestlen;
+    digest_t *digest;
+    char *res;
+    size_t i;
+    ssize_t ret;
+
+    if (!hmac)
+        return -1;
+
+    digestlen = digest_algo_length_bytes(hmac->algo);
+
+    digest = digest_new(hmac->algo);
+    if (!digest)
+        return -1;
+
+    res = malloc(digestlen);
+    if (!res) {
+        refobject_unref(digest);
+        return -1;
+    }
+
+    for (i = 0; i < hmac->key_len; i++) {
+        char x = hmac->key[i] ^ 0x5C;
+        if (digest_write(digest, &x, 1) != 1) {
+            free(res);
+            refobject_unref(digest);
+            return -1;
+        }
+    }
+
+    if (digest_read(hmac->inner, res, digestlen) != (ssize_t)digestlen) {
+        free(res);
+        refobject_unref(digest);
+        return -1;
+    }
+
+    if (digest_write(digest, res, digestlen) != (ssize_t)digestlen) {
+        free(res);
+        refobject_unref(digest);
+        return -1;
+    }
+
+    ret = digest_read(digest, buf, len);
+
+    free(res);
+    refobject_unref(digest);
+
+    return ret;
 }

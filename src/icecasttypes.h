@@ -125,6 +125,7 @@ typedef struct listensocket_tag listensocket_t;
 /* ---[ digest.[ch] ]--- */
 
 typedef struct digest_tag digest_t;
+typedef struct hmac_tag hmac_t;
 
 /* ---[ navigation.[ch] ]--- */
 
@@ -146,6 +147,7 @@ typedef union __attribute__ ((__transparent_union__)) {
     listensocket_container_t *listensocket_container;
     listensocket_t *listensocket;
     digest_t *digest;
+    hmac_t *hmac;
     mount_identifier_t *mount_identifier;
 } refobject_t;
 #else
