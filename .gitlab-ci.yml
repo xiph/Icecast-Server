@@ -4,8 +4,9 @@ build:
     GIT_SUBMODULE_STRATEGY: recursive
 
   tags:
-    - alpine
     - docker
+
+  image: alpine:3.12
 
   stage: build
 
