@@ -156,6 +156,11 @@
 #define CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB   1
 #define CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN NULL
 
+enum bad_tag_reason {
+    BTR_UNKNOWN,
+    BTR_OBSOLETE
+};
+
 static ice_config_t _current_configuration;
 static ice_config_locks _locks;
 
@@ -372,6 +377,118 @@ static int __check_node_impl(xmlNodePtr node, const char *def)
     return res;
 }
 
+static char *__build_node_name(xmlNodePtr node)
+{
+    char *buf[4];
+    size_t have;
+    size_t i;
+    size_t len = 4;
+    char *ret;
+    char *p;
+
+    memset(buf, 0, sizeof(buf));
+
+    for (have = 0; have < (sizeof(buf)/sizeof(*buf)); have++) {
+        int ret = -1;
+        xmlChar *id;
+
+        id = xmlGetProp(node, XMLSTR("id"));
+        if (id) {
+            ret = asprintf(&(buf[have]), "%s[@id=\"%s\"]", node->name, id);
+            xmlFree(id);
+        } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
+            xmlChar *mount = NULL;
+            xmlNodePtr child = node->xmlChildrenNode;
+            while (child && !mount) {
+                if (xmlStrcmp(child->name, XMLSTR("mount-name")) == 0) {
+                    mount = xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+                }
+                child = child->next;
+            }
+            if (mount) {
+                ret = asprintf(&(buf[have]), "%s[mount-name/text()=\"%s\"]", node->name, mount);
+                xmlFree(mount);
+            } else {
+                ret = asprintf(&(buf[have]), "%s", node->name);
+            }
+        } else {
+            ret = asprintf(&(buf[have]), "%s", node->name);
+        }
+
+        if (ret < 1) {
+            buf[have] = NULL;
+            for (i = 0; i < (sizeof(buf)/sizeof(*buf)); i++)
+                free(buf[i]);
+            return "<error>";
+        }
+
+        node = node->parent;
+        if (!node)
+            break;
+    }
+
+    for (i = 0; i < (sizeof(buf)/sizeof(*buf)); i++) {
+        if (buf[i])
+            len += strlen(buf[i]) + 1;
+    }
+
+    p = ret = malloc(len);
+    if (!ret) {
+        for (i = 0; i < (sizeof(buf)/sizeof(*buf)); i++)
+            free(buf[i]);
+        return "<error>";
+    }
+
+    if (node && node->type != XML_DOCUMENT_NODE) {
+        memcpy(p, "...", 3);
+        p += 3;
+    }
+
+    for (i = have; i > 0; i--) {
+        char *b = buf[i - 1];
+
+        if (b) {
+            size_t l = strlen(b);
+
+            *p = '/';
+            p++;
+            memcpy(p, b, l);
+            p += l;
+            free(b);
+        }
+    }
+
+    *p = 0;
+
+    return ret;
+}
+
+static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum bad_tag_reason reason, const char *replacement)
+{
+    char *name;
+
+    // ignore comments.
+    if (node->type == XML_COMMENT_NODE)
+        return;
+
+    name = __build_node_name(node);
+
+    switch (reason) {
+        case BTR_UNKNOWN:
+            configuration->config_problems |= CONFIG_PROBLEM_UNKNOWN_NODE;
+            ICECAST_LOG_WARN("Unknown tag in config: %s", name);
+        break;
+        case BTR_OBSOLETE:
+            configuration->config_problems |= CONFIG_PROBLEM_OBSOLETE_NODE;
+            ICECAST_LOG_WARN("Obsolete tag in config: %s", name);
+            if (replacement) {
+                ICECAST_LOG_WARN("Obsolete tag %s can be replaced: %s", name, replacement);
+            }
+        break;
+    }
+
+    free(name);
+}
 
 static void __append_old_style_auth(auth_stack_t       **stack,
                                     const char          *name,
@@ -1063,12 +1180,14 @@ static void _parse_root(xmlDocPtr       doc,
             ICECAST_LOG_WARN("<source-password> defined outside "
                 "<authentication>. This is deprecated and will be removed in "
                 "version 2.X.0");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <source-password> in <authentication>.");
 	    /* FIXME Settle target version for removal of this functionality! */
             if (source_password)
                 xmlFree(source_password);
             source_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("icelogin")) == 0) {
             ICECAST_LOG_ERROR("<icelogin> support has been removed.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, NULL);
         } else if (xmlStrcmp(node->name, XMLSTR("fileserve")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->fileserve = util_str_to_bool(tmp);
@@ -1084,7 +1203,7 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->hostname);
             configuration->hostname = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("mime-types")) == 0) {
-            ICECAST_LOG_WARN("<mime-types> has been moved into <paths>. Please update your configuration file.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <mime-types> in <paths>.");
             if (configuration->mimetypes_fn)
                 xmlFree(configuration->mimetypes_fn);
             configuration->mimetypes_fn = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1144,6 +1263,8 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&configuration->event, node->xmlChildrenNode);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 
@@ -1259,7 +1380,7 @@ static void _parse_limits(xmlDocPtr     doc,
         } else if (xmlStrcmp(node->name, XMLSTR("body-timeout")) == 0) {
             __read_int(doc, node, &configuration->body_timeout, "<body-timeout> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
-            ICECAST_LOG_WARN("<burst-on-connect> is deprecated, use <burst-size> instead.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <burst-size>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (util_str_to_int(tmp, 0) == 0)
                 configuration->burst_size = 0;
@@ -1267,8 +1388,8 @@ static void _parse_limits(xmlDocPtr     doc,
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
             __read_unsigned_int(doc, node, &configuration->burst_size, "<burst-size> must not be empty.");
-        } else if (node->type == XML_ELEMENT_NODE) {
-            ICECAST_LOG_ERROR("Unknown config tag: %s", node->name);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 }
@@ -1548,9 +1669,7 @@ static void _parse_mount(xmlDocPtr      doc,
             mount->charset = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("mp3-metadata-interval")) == 0) {
-            ICECAST_LOG_WARN("<mp3-metadata-interval> is deprecated and will be "
-                "removed in a future version. "
-                "Please use <icy-metadata-interval> instead.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <icy-metadata-interval>.");
                 /* FIXME when do we plan to remove this? */
             __read_int(doc, node, &mount->mp3_meta_interval, "<mp3-metadata-interval> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("icy-metadata-interval")) == 0) {
@@ -1566,8 +1685,7 @@ static void _parse_mount(xmlDocPtr      doc,
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-yp")) == 0) {
-            ICECAST_LOG_WARN("<no-yp> defined. Please use <public>. This is "
-                "deprecated and will be removed in a future version.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <public>.");
                 /* FIXME when do we plan to remove this? */
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->yp_public = util_str_to_bool(tmp) == 0 ? -1 : 0;
@@ -1643,6 +1761,8 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&mount->event, node->xmlChildrenNode);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 
@@ -1918,6 +2038,8 @@ static void _parse_relay(xmlDocPtr      doc,
 
             if (tmp)
                 xmlFree(tmp);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 
@@ -2001,6 +2123,8 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             _parse_authentication_node(node, &(listener->authstack));
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             config_parse_http_headers(node->xmlChildrenNode, &(listener->http_headers));
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 
@@ -2071,6 +2195,8 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
             auth_t *auth = auth_get_authenticator(node);
             auth_stack_push(&new_style, auth);
             auth_release(auth);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 
@@ -2408,6 +2534,8 @@ static void _parse_paths(xmlDocPtr      doc,
             xmlFree(temp);
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
             _parse_resource(doc, node, configuration);
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 }
@@ -2480,6 +2608,8 @@ static void _parse_logging(xmlDocPtr        doc,
                 configuration->access_log_lines_kept = val;
                 configuration->playlist_log_lines_kept = val;
             }
+        } else {
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
     } while ((node = node->next));
 }
@@ -2526,7 +2656,7 @@ static void _parse_tls_context(xmlDocPtr       doc,
                 xmlFree(context->cipher_list);
             context->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else {
-            ICECAST_LOG_ERROR("Unknown config tag: %s", node->name);
+            __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
 
    } while ((node = node->next));
@@ -2608,6 +2738,8 @@ static void _parse_security(xmlDocPtr       doc,
                    seed->next = configuration->prng_seed;
                configuration->prng_seed = seed;
            }
+       } else {
+           __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
        }
    } while ((node = node->next));
 }

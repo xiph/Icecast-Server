@@ -32,6 +32,8 @@
 #define CONFIG_PROBLEM_LOCATION         0x0002U
 #define CONFIG_PROBLEM_ADMIN            0x0004U
 #define CONFIG_PROBLEM_PRNG             0x0008U
+#define CONFIG_PROBLEM_UNKNOWN_NODE     0x0010U
+#define CONFIG_PROBLEM_OBSOLETE_NODE    0x0020U
 
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
