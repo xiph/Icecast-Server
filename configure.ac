@@ -134,6 +134,8 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UID_T
 
+AC_CHECK_SIZEOF([off_t])
+
 dnl Checks for required libraries
 
 dnl

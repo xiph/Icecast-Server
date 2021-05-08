@@ -21,22 +21,27 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #ifdef HAVE_POLL
 #include <poll.h>
+#endif
+
+#if SIZEOF_OFF_T >= 8
+#define SCN_OFF_T  SCNd64
+#define PRI_OFF_T  PRId64
+#else
+#define SCN_OFF_T  SCNd32
+#define PRI_OFF_T  PRId32
 #endif
 
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-#define SCN_OFF_T SCNdMAX
-#define PRI_OFF_T PRIdMAX
 #else
 #include <winsock2.h>
 #include <windows.h>
-#define SCN_OFF_T "ld"
-#define PRI_OFF_T "ld"
 #ifndef S_ISREG
 #define S_ISREG(mode)  ((mode) & _S_IFREG)
 #endif
