@@ -817,8 +817,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
     auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
     auth->filter_admin_policy = AUTH_MATCHTYPE_MATCH;
-    auth->failed_arg = AUTH_ALTER_NOOP;
-    auth->deny_arg = AUTH_ALTER_NOOP;
+    auth->failed_arg = NULL;
+    auth->deny_arg = NULL;
 
     for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
         auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
