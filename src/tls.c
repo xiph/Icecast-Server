@@ -91,6 +91,11 @@ tls_ctx_t *tls_ctx_new(const char *cert_file, const char *key_file, const char *
     SSL_CTX_set_min_proto_version(ctx->ctx, TLS1_VERSION);
 #endif
 
+#ifdef SSL_OP_NO_RENEGOTIATION
+    // Disable TLSv1.2 renegotiation
+    ssl_opts |= SSL_OP_NO_RENEGOTIATION;
+#endif
+
 #ifdef SSL_OP_NO_COMPRESSION
     ssl_opts |= SSL_OP_NO_COMPRESSION;             // Never use compression
 #endif
