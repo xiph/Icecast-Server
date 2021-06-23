@@ -34,6 +34,7 @@
 #define CONFIG_PROBLEM_PRNG             0x0008U
 #define CONFIG_PROBLEM_UNKNOWN_NODE     0x0010U
 #define CONFIG_PROBLEM_OBSOLETE_NODE    0x0020U
+#define CONFIG_PROBLEM_INVALID_NODE     0x0040U
 
 typedef enum _http_header_type {
     /* static: headers are passed as is to the client. */
@@ -316,7 +317,7 @@ typedef struct {
 void config_initialize(void);
 void config_shutdown(void);
 
-operation_mode config_str_to_omode(const char *str);
+operation_mode config_str_to_omode(ice_config_t *configuration, xmlNodePtr node, const char *str);
 
 void config_reread_config(void);
 int config_parse_file(const char *filename, ice_config_t *configuration);

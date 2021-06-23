@@ -158,12 +158,14 @@
 
 enum bad_tag_reason {
     BTR_UNKNOWN,
-    BTR_OBSOLETE
+    BTR_OBSOLETE,
+    BTR_INVALID
 };
 
 static ice_config_t _current_configuration;
 static ice_config_locks _locks;
 
+static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum bad_tag_reason reason, const char *extra);
 static void _set_defaults(ice_config_t *c);
 static void _parse_root(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void _parse_limits(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
@@ -190,7 +192,7 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
-operation_mode config_str_to_omode(const char *str)
+operation_mode config_str_to_omode(ice_config_t *configuration, xmlNodePtr node, const char *str)
 {
     if (!str || !*str)
         return OMODE_DEFAULT;
@@ -203,12 +205,13 @@ operation_mode config_str_to_omode(const char *str)
     } else if (strcasecmp(str, "strict") == 0) {
         return OMODE_STRICT;
     } else {
+        __found_bad_tag(configuration, node, BTR_INVALID, str);
         ICECAST_LOG_ERROR("Unknown operation mode \"%s\", falling back to DEFAULT.", str);
         return OMODE_DEFAULT;
     }
 }
 
-static listener_type_t config_str_to_listener_type(const char *str)
+static listener_type_t config_str_to_listener_type(ice_config_t *configuration, xmlNodePtr node, const char *str)
 {
     if (!str || !*str) {
         return LISTENER_TYPE_NORMAL;
@@ -217,12 +220,13 @@ static listener_type_t config_str_to_listener_type(const char *str)
     } else if (strcasecmp(str, "virtual") == 0) {
         return LISTENER_TYPE_VIRTUAL;
     } else {
+        __found_bad_tag(configuration, node, BTR_INVALID, str);
         ICECAST_LOG_ERROR("Unknown listener type \"%s\", falling back to NORMAL.", str);
         return LISTENER_TYPE_NORMAL;
     }
 }
 
-static fallback_override_t config_str_to_fallback_override_t(const char *str)
+static fallback_override_t config_str_to_fallback_override_t(ice_config_t *configuration, xmlNodePtr node, const char *str)
 {
     if (!str || !*str || strcmp(str, "none") == 0) {
         return FALLBACK_OVERRIDE_NONE;
@@ -241,12 +245,13 @@ static fallback_override_t config_str_to_fallback_override_t(const char *str)
     }
 }
 
-char * config_href_to_id(const char *href)
+char * config_href_to_id(ice_config_t *configuration, xmlNodePtr node, const char *href)
 {
     if (!href || !*href)
         return NULL;
 
     if (*href != '#') {
+        __found_bad_tag(configuration, node, BTR_INVALID, href);
         ICECAST_LOG_ERROR("Can not convert string \"%H\" to ID.", href);
         return NULL;
     }
@@ -463,26 +468,51 @@ static char *__build_node_name(xmlNodePtr node)
     return ret;
 }
 
-static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum bad_tag_reason reason, const char *replacement)
+static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum bad_tag_reason reason, const char *extra)
 {
-    char *name;
+    char *name = NULL;
+
+    /* ignore non-configuration errors */
+    if (!configuration)
+        return;
 
     // ignore comments.
     if (node->type == XML_COMMENT_NODE)
         return;
 
-    name = __build_node_name(node);
+    if (node)
+        name = __build_node_name(node);
 
     switch (reason) {
         case BTR_UNKNOWN:
             configuration->config_problems |= CONFIG_PROBLEM_UNKNOWN_NODE;
-            ICECAST_LOG_WARN("Unknown tag in config: %s", name);
+            if (name) {
+                ICECAST_LOG_WARN("Unknown tag in config: %s", name);
+            } else {
+                ICECAST_LOG_WARN("Unknown tag in config");
+            }
         break;
         case BTR_OBSOLETE:
             configuration->config_problems |= CONFIG_PROBLEM_OBSOLETE_NODE;
-            ICECAST_LOG_WARN("Obsolete tag in config: %s", name);
-            if (replacement) {
-                ICECAST_LOG_WARN("Obsolete tag %s can be replaced: %s", name, replacement);
+            if (name) {
+                ICECAST_LOG_WARN("Obsolete tag in config: %s", name);
+                if (extra) {
+                    ICECAST_LOG_WARN("Obsolete tag %s can be replaced: %s", name, extra);
+                }
+            } else {
+                ICECAST_LOG_WARN("Obsolete tag in config");
+            }
+        break;
+        case BTR_INVALID:
+            configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
+            if (name) {
+                if (extra) {
+                    ICECAST_LOG_WARN("Invalid content for tag: %s: %s", name, extra);
+                } else {
+                    ICECAST_LOG_WARN("Invalid content for tag: %s", name);
+                }
+            } else {
+                ICECAST_LOG_WARN("Invalid content for tag");
             }
         break;
     }
@@ -1676,7 +1706,7 @@ static void _parse_mount(xmlDocPtr      doc,
             __read_int(doc, node, &mount->mp3_meta_interval, "<icy-metadata-interval> must not be empty.");
         } else if (xmlStrcmp(node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_override = config_str_to_fallback_override_t(tmp);
+            mount->fallback_override = config_str_to_fallback_override_t(configuration, node, tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-mount")) == 0) {
@@ -2068,12 +2098,12 @@ static void _parse_listen_socket(xmlDocPtr      doc,
 
     tmp = (char*)xmlGetProp(node, XMLSTR("on-behalf-of"));
     if (tmp) {
-        listener->on_behalf_of = config_href_to_id(tmp);
+        listener->on_behalf_of = config_href_to_id(configuration, node, tmp);
         xmlFree(tmp);
     }
 
     tmp  = (char *)xmlGetProp(node, XMLSTR("type"));
-    listener->type = config_str_to_listener_type(tmp);
+    listener->type = config_str_to_listener_type(configuration, node, tmp);
     xmlFree(tmp);
 
     node = node->xmlChildrenNode;
@@ -2323,7 +2353,8 @@ static void _parse_yp_directory(xmlDocPtr      doc,
                     "Only the last one will be used.");
                 free(yp_dir->listen_socket_id);
             }
-            yp_dir->listen_socket_id = config_href_to_id(opt->value);
+            /* FIXME: Pass the correct node to config_href_to_id(). */
+            yp_dir->listen_socket_id = config_href_to_id(configuration, NULL, opt->value);
         } else {
             ICECAST_LOG_WARN("Invalid YP <option> with unknown 'name' attribute.");
         }
@@ -2387,7 +2418,7 @@ static void _parse_resource(xmlDocPtr      doc,
 
     temp = (char *)xmlGetProp(node, XMLSTR("listen-socket"));
     if (temp) {
-        resource->listen_socket = config_href_to_id(temp);
+        resource->listen_socket = config_href_to_id(configuration, node, temp);
         xmlFree(temp);
     }
 
@@ -2398,7 +2429,7 @@ static void _parse_resource(xmlDocPtr      doc,
 
     temp = (char *)xmlGetProp(node, XMLSTR("omode"));
     if (temp) {
-        resource->omode = config_str_to_omode(temp);
+        resource->omode = config_str_to_omode(configuration, node, temp);
         xmlFree(temp);
     } else {
         resource->omode = OMODE_DEFAULT;
