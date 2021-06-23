@@ -529,7 +529,8 @@ static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum b
     free(name);
 }
 
-static void __append_old_style_auth(auth_stack_t       **stack,
+static void __append_old_style_auth(ice_config_t        *configuration,
+                                    auth_stack_t       **stack,
                                     const char          *name,
                                     const char          *type,
                                     const char          *username,
@@ -585,7 +586,7 @@ static void __append_old_style_auth(auth_stack_t       **stack,
         xmlSetProp(pass, XMLSTR("value"), XMLSTR(password));
     }
 
-    auth = auth_get_authenticator(role);
+    auth = auth_get_authenticator(configuration, role);
     auth_stack_push(stack, auth);
     auth_release(auth);
 
@@ -606,7 +607,8 @@ static void __append_option_tag(xmlNodePtr  parent,
     xmlSetProp(node, XMLSTR("value"), XMLSTR(value));
 }
 
-static void __append_old_style_urlauth(auth_stack_t **stack,
+static void __append_old_style_urlauth(ice_config_t  *configuration,
+                                       auth_stack_t **stack,
                                        const char    *client_add,
                                        const char    *client_remove,
                                        const char    *action_add,
@@ -654,7 +656,7 @@ static void __append_old_style_urlauth(auth_stack_t **stack,
     __append_option_tag(role, "headers", headers);
     __append_option_tag(role, "header_prefix", header_prefix);
 
-    auth = auth_get_authenticator(role);
+    auth = auth_get_authenticator(configuration, role);
     if (auth) {
         auth_stack_push(stack, auth);
         auth_release(auth);
@@ -1324,7 +1326,7 @@ static void _parse_root(xmlDocPtr       doc,
         }
         if (mount) {
             if (!mount->authstack) {
-                __append_old_style_auth(&mount->authstack,
+                __append_old_style_auth(configuration, &mount->authstack,
                                         CONFIG_LEGACY_SOURCE_NAME_GLOBAL,
                                         AUTH_TYPE_STATIC, "source",
                                         source_password, NULL,
@@ -1433,7 +1435,7 @@ static void _parse_limits(xmlDocPtr     doc,
     } while ((node = node->next));
 }
 
-static void _parse_authentication_node(xmlNodePtr node, auth_stack_t  **authstack)
+static void _parse_authentication_node(ice_config_t *configuration, xmlNodePtr node, auth_stack_t  **authstack)
 {
     xmlChar *tmp;
 
@@ -1454,7 +1456,7 @@ static void _parse_authentication_node(xmlNodePtr node, auth_stack_t  **authstac
         if (xmlIsBlankNode(child))
             continue;
         if (xmlStrcmp(child->name, XMLSTR("role")) == 0) {
-            auth_t *auth = auth_get_authenticator(child);
+            auth_t *auth = auth_get_authenticator(configuration, child);
             auth_stack_push(authstack, auth);
             auth_release(auth);
         }
@@ -1463,7 +1465,8 @@ static void _parse_authentication_node(xmlNodePtr node, auth_stack_t  **authstac
 
 static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
                                                  xmlNodePtr      node,
-                                                 auth_stack_t  **authstack)
+                                                 auth_stack_t  **authstack,
+                                                 ice_config_t   *configuration)
 {
      int        allow_duplicate_users = 1;
      auth_t    *auth;
@@ -1496,13 +1499,13 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
          if (!allow_duplicate_users)
              xmlSetProp(node, XMLSTR("connections-per-user"), XMLSTR("0"));
 
-         auth = auth_get_authenticator(node);
+         auth = auth_get_authenticator(configuration, node);
          if (auth) {
              auth_stack_push(authstack, auth);
              auth_release(auth);
          }
 
-         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS,
+         __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS,
              NULL, NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, 0, NULL);
      } else if (strcmp(type, AUTH_TYPE_URL) == 0) {
          /* This block is super fun! Attention! Super fun ahead! Ladies and Gentlemen take care and watch your children! */
@@ -1584,17 +1587,17 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
              __append_old_style_url_event(&mount->event, "source-disconnect",
                  mount_add, "mount_remove", username, password);
 
-         __append_old_style_urlauth(authstack, listener_add, listener_remove,
+         __append_old_style_urlauth(configuration, authstack, listener_add, listener_remove,
              "listener_add", "listener_remove", username, password, 0,
              auth_header, timelimit_header, headers, header_prefix);
-         __append_old_style_urlauth(authstack, stream_auth, NULL, "stream_auth",
+         __append_old_style_urlauth(configuration, authstack, stream_auth, NULL, "stream_auth",
              NULL, username, password, 1, auth_header, timelimit_header,
              headers, header_prefix);
          if (listener_add)
-             __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
+             __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
                  NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, 0, NULL);
          if (stream_auth)
-             __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
+             __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
                  NULL, CONFIG_LEGACY_SOURCE_METHODS, NULL, 0, NULL);
 
          if (mount_add)
@@ -1622,7 +1625,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
      } else {
          ICECAST_LOG_ERROR("Unknown authentication type in legacy mode. "
              "Anonymous listeners and global login for sources disabled.");
-         __append_old_style_auth(authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
+         __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
              NULL, NULL, NULL, 0, NULL);
      }
      xmlFree(type);
@@ -1739,9 +1742,9 @@ static void _parse_mount(xmlDocPtr      doc,
             tmp = (char *)xmlGetProp(node, XMLSTR("type"));
             if (tmp) {
                 xmlFree(tmp);
-                _parse_mount_oldstyle_authentication(mount, node, &authstack);
+                _parse_mount_oldstyle_authentication(mount, node, &authstack, configuration);
             } else {
-                _parse_authentication_node(node, &authstack);
+                _parse_authentication_node(configuration, node, &authstack);
             }
         } else if (xmlStrcmp(node->name, XMLSTR("on-connect")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1826,7 +1829,7 @@ static void _parse_mount(xmlDocPtr      doc,
 
     if (password) {
         auth_stack_t *old_style = NULL;
-        __append_old_style_auth(&old_style, CONFIG_LEGACY_SOURCE_NAME_MOUNT,
+        __append_old_style_auth(configuration, &old_style, CONFIG_LEGACY_SOURCE_NAME_MOUNT,
             AUTH_TYPE_STATIC, username ? username : "source", password, NULL,
             CONFIG_LEGACY_SOURCE_METHODS, CONFIG_LEGACY_SOURCE_ALLOW_WEB, CONFIG_LEGACY_SOURCE_ALLOW_ADMIN);
         if (authstack) {
@@ -2166,7 +2169,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("listen-backlog")) == 0) {
             __read_int(configuration, doc, node, &listener->listen_backlog);
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
-            _parse_authentication_node(node, &(listener->authstack));
+            _parse_authentication_node(configuration, node, &(listener->authstack));
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             config_parse_http_headers(node->xmlChildrenNode, &(listener->http_headers), configuration);
         } else {
@@ -2238,7 +2241,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
                 xmlFree(configuration->shoutcast_user);
             configuration->shoutcast_user = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("role")) == 0) {
-            auth_t *auth = auth_get_authenticator(node);
+            auth_t *auth = auth_get_authenticator(configuration, node);
             auth_stack_push(&new_style, auth);
             auth_release(auth);
         } else {
@@ -2247,11 +2250,11 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     } while ((node = node->next));
 
     if (admin_password && admin_username)
-        __append_old_style_auth(&old_style, CONFIG_LEGACY_ADMIN_NAME, AUTH_TYPE_STATIC,
+        __append_old_style_auth(configuration, &old_style, CONFIG_LEGACY_ADMIN_NAME, AUTH_TYPE_STATIC,
             admin_username, admin_password, NULL, CONFIG_LEGACY_ADMIN_METHODS, CONFIG_LEGACY_ADMIN_ALLOW_WEB, CONFIG_LEGACY_ADMIN_ALLOW_ADMIN);
 
     if (relay_password && relay_username)
-        __append_old_style_auth(&old_style, CONFIG_LEGACY_RELAY_NAME, AUTH_TYPE_STATIC,
+        __append_old_style_auth(configuration, &old_style, CONFIG_LEGACY_RELAY_NAME, AUTH_TYPE_STATIC,
             relay_username, relay_password, NULL, CONFIG_LEGACY_RELAY_METHODS, CONFIG_LEGACY_RELAY_ALLOW_WEB, CONFIG_LEGACY_RELAY_ALLOW_ADMIN);
 
     if (admin_password)
@@ -2271,7 +2274,7 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
     }
 
     /* default unauthed anonymous account */
-    __append_old_style_auth(&old_style, CONFIG_LEGACY_ANONYMOUS_NAME, AUTH_TYPE_ANONYMOUS,
+    __append_old_style_auth(configuration, &old_style, CONFIG_LEGACY_ANONYMOUS_NAME, AUTH_TYPE_ANONYMOUS,
         NULL, NULL, NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB, CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN);
     if (!old_style)
         ICECAST_LOG_ERROR("BAD. old_style=NULL");

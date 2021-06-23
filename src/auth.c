@@ -795,7 +795,7 @@ static inline int auth_get_authenticator__permission_alter(auth_t *auth, xmlNode
 
     return 0;
 }
-auth_t *auth_get_authenticator(xmlNodePtr node)
+auth_t *auth_get_authenticator(ice_config_t *configuration, xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
@@ -931,11 +931,10 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             *next_option = opt;
             next_option = &opt->next;
         } else if (xmlStrcmp (child->name, XMLSTR("http-headers")) == 0) {
-            /* FIXME: Pass real configuration parameter here. */
-            config_parse_http_headers(child->xmlChildrenNode, &(auth->http_headers), NULL);
+            config_parse_http_headers(child->xmlChildrenNode, &(auth->http_headers), configuration);
         } else if (xmlStrcmp (child->name, XMLSTR("acl")) == 0) {
             if (!auth->acl) {
-                auth->acl  = acl_new_from_xml_node(child);
+                auth->acl  = acl_new_from_xml_node(configuration, child);
             } else {
                 ICECAST_LOG_ERROR("More than one ACL defined in role! Not supported (yet).");
             }
@@ -972,7 +971,7 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
 
     if (!auth->acl) {
         /* If we did not get a <acl> try ACL as part of <role> (old style). */
-        auth->acl  = acl_new_from_xml_node(node);
+        auth->acl  = acl_new_from_xml_node(configuration, node);
     }
     if (!auth->acl) {
         auth_release(auth);
