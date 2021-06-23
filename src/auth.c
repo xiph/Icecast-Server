@@ -931,7 +931,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             *next_option = opt;
             next_option = &opt->next;
         } else if (xmlStrcmp (child->name, XMLSTR("http-headers")) == 0) {
-            config_parse_http_headers(child->xmlChildrenNode, &(auth->http_headers));
+            /* FIXME: Pass real configuration parameter here. */
+            config_parse_http_headers(child->xmlChildrenNode, &(auth->http_headers), NULL);
         } else if (xmlStrcmp (child->name, XMLSTR("acl")) == 0) {
             if (!auth->acl) {
                 auth->acl  = acl_new_from_xml_node(child);

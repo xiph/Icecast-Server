@@ -212,7 +212,8 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
             if (xmlIsBlankNode(child))
                 continue;
             if (xmlStrcmp(child->name, XMLSTR("http-headers")) == 0) {
-                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers));
+                /* FIXME: Pass real configuration parameter here. */
+                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers), NULL);
             }
         } while ((child = child->next));
     }

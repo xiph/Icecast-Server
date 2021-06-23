@@ -1284,7 +1284,7 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("limits")) == 0) {
             _parse_limits(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
-            config_parse_http_headers(node->xmlChildrenNode, &(configuration->http_headers));
+            config_parse_http_headers(node->xmlChildrenNode, &(configuration->http_headers), configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
             _parse_relay(doc, node->xmlChildrenNode, configuration, NULL);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
@@ -1796,7 +1796,7 @@ static void _parse_mount(xmlDocPtr      doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
             config_parse_http_headers(node->xmlChildrenNode,
-                &(mount->http_headers));
+                &(mount->http_headers), configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&mount->event, node->xmlChildrenNode);
@@ -1886,7 +1886,8 @@ static void _parse_mount(xmlDocPtr      doc,
 }
 
 void config_parse_http_headers(xmlNodePtr                  node,
-                               ice_config_http_header_t  **http_headers)
+                               ice_config_http_header_t  **http_headers,
+                               ice_config_t               *configuration)
 {
     ice_config_http_header_t *header;
     ice_config_http_header_t *next;
@@ -1915,8 +1916,7 @@ void config_parse_http_headers(xmlNodePtr                  node,
             } else if (strcmp(tmp, "cors") == 0 || strcmp(tmp, "corpse") == 0) {
                 type = HTTP_HEADER_TYPE_CORS;
             } else {
-                ICECAST_LOG_WARN("Unknown type %s for "
-                    "HTTP Header %s", tmp, name);
+                __found_bad_tag(configuration, node, BTR_INVALID, tmp);
                 xmlFree(tmp);
                 break;
             }
@@ -2162,7 +2162,7 @@ static void _parse_listen_socket(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication_node(node, &(listener->authstack));
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
-            config_parse_http_headers(node->xmlChildrenNode, &(listener->http_headers));
+            config_parse_http_headers(node->xmlChildrenNode, &(listener->http_headers), configuration);
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
