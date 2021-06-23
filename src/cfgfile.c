@@ -159,7 +159,8 @@
 enum bad_tag_reason {
     BTR_UNKNOWN,
     BTR_OBSOLETE,
-    BTR_INVALID
+    BTR_INVALID,
+    BTR_EMPTY
 };
 
 static ice_config_t _current_configuration;
@@ -291,11 +292,11 @@ void config_init_configuration(ice_config_t *configuration)
     configuration->reportxml_db = refobject_new(reportxml_database_t);
 }
 
-static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const char *warning)
+static inline void __read_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, int *val)
 {
     char *str = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
     if (!str || !*str) {
-        ICECAST_LOG_WARN("%s", warning);
+        __found_bad_tag(configuration, node, BTR_EMPTY, NULL);
     } else {
         *val = util_str_to_int(str, *val);
     }
@@ -303,11 +304,11 @@ static inline void __read_int(xmlDocPtr doc, xmlNodePtr node, int *val, const ch
         xmlFree(str);
 }
 
-static inline void __read_unsigned_int(xmlDocPtr doc, xmlNodePtr node, unsigned int *val, const char *warning)
+static inline void __read_unsigned_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, unsigned int *val)
 {
     char *str = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
     if (!str || !*str) {
-        ICECAST_LOG_WARN("%s", warning);
+        __found_bad_tag(configuration, node, BTR_EMPTY, NULL);
     } else {
         *val = util_str_to_unsigned_int(str, *val);
     }
@@ -513,6 +514,14 @@ static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum b
                 }
             } else {
                 ICECAST_LOG_WARN("Invalid content for tag");
+            }
+        break;
+        case BTR_EMPTY:
+            configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
+            if (name) {
+                ICECAST_LOG_WARN("Invalid empty tag: %s", name);
+            } else {
+                ICECAST_LOG_WARN("Invalid empty tag");
             }
         break;
     }
@@ -1265,9 +1274,9 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->master_password);
             configuration->master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("master-server-port")) == 0) {
-            __read_int(doc, node, &configuration->master_server_port, "<master-server-port> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->master_server_port);
         } else if (xmlStrcmp(node->name, XMLSTR("master-update-interval")) == 0) {
-            __read_int(doc, node, &configuration->master_update_interval, "<master-update-interval> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->master_update_interval);
         } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-mount")) == 0) {
             if (configuration->shoutcast_mount)
                 xmlFree(configuration->shoutcast_mount);
@@ -1394,21 +1403,21 @@ static void _parse_limits(xmlDocPtr     doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("clients")) == 0) {
-            __read_int(doc, node, &configuration->client_limit, "<clients> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->client_limit);
         } else if (xmlStrcmp(node->name, XMLSTR("sources")) == 0) {
-            __read_int(doc, node, &configuration->source_limit, "<sources> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->source_limit);
         } else if (xmlStrcmp(node->name, XMLSTR("bodysize")) == 0) {
-            __read_int(doc, node, &configuration->body_size_limit, "<bodysize> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->body_size_limit);
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
-            __read_unsigned_int(doc, node, &configuration->queue_size_limit, "<queue-size> must not be empty.");
+            __read_unsigned_int(configuration, doc, node, &configuration->queue_size_limit);
         } else if (xmlStrcmp(node->name, XMLSTR("client-timeout")) == 0) {
-            __read_int(doc, node, &configuration->client_timeout, "<client-timeout> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->client_timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("header-timeout")) == 0) {
-            __read_int(doc, node, &configuration->header_timeout, "<header-timeout> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->header_timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
-            __read_int(doc, node, &configuration->source_timeout, "<source-timeout> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->source_timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("body-timeout")) == 0) {
-            __read_int(doc, node, &configuration->body_timeout, "<body-timeout> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->body_timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <burst-size>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1417,7 +1426,7 @@ static void _parse_limits(xmlDocPtr     doc,
             if (tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
-            __read_unsigned_int(doc, node, &configuration->burst_size, "<burst-size> must not be empty.");
+            __read_unsigned_int(configuration, doc, node, &configuration->burst_size);
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
@@ -1687,7 +1696,7 @@ static void _parse_mount(xmlDocPtr      doc,
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("max-listeners")) == 0) {
-            __read_int(doc, node, &mount->max_listeners, "<max-listeners> must not be empty.");
+            __read_int(configuration, doc, node, &mount->max_listeners);
         } else if (xmlStrcmp(node->name, XMLSTR("max-history")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_history = util_str_to_int(tmp, mount->max_history);
@@ -1701,9 +1710,9 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("mp3-metadata-interval")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <icy-metadata-interval>.");
                 /* FIXME when do we plan to remove this? */
-            __read_int(doc, node, &mount->mp3_meta_interval, "<mp3-metadata-interval> must not be empty.");
+            __read_int(configuration, doc, node, &mount->mp3_meta_interval);
         } else if (xmlStrcmp(node->name, XMLSTR("icy-metadata-interval")) == 0) {
-            __read_int(doc, node, &mount->mp3_meta_interval, "<icy-metadata-interval> must not be empty.");
+            __read_int(configuration, doc, node, &mount->mp3_meta_interval);
         } else if (xmlStrcmp(node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->fallback_override = config_str_to_fallback_override_t(configuration, node, tmp);
@@ -1749,13 +1758,13 @@ static void _parse_mount(xmlDocPtr      doc,
                 xmlFree(tmp);
             }
         } else if (xmlStrcmp(node->name, XMLSTR("max-listener-duration")) == 0) {
-            __read_unsigned_int(doc, node, &mount->max_listener_duration, "<max-listener-duration> must not be empty.");
+            __read_unsigned_int(configuration, doc, node, &mount->max_listener_duration);
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
-            __read_unsigned_int(doc, node, &mount->queue_size_limit, "<queue-size> must not be empty.");
+            __read_unsigned_int(configuration, doc, node, &mount->queue_size_limit);
         } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
-            __read_unsigned_int(doc, node, &mount->source_timeout, "<source-timeout> must not be empty.");
+            __read_unsigned_int(configuration, doc, node, &mount->source_timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
-            __read_int(doc, node, &mount->burst_size, "<burst-size> must not be empty.");
+            __read_int(configuration, doc, node, &mount->burst_size);
         } else if (xmlStrcmp(node->name, XMLSTR("cluster-password")) == 0) {
             mount->cluster_password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
@@ -1950,7 +1959,8 @@ void config_parse_http_headers(xmlNodePtr                  node,
 
 static void _parse_relay_upstream(xmlDocPtr      doc,
                                   xmlNodePtr     node,
-                                  relay_config_upstream_t *upstream)
+                                  relay_config_upstream_t *upstream,
+                                  ice_config_t  *configuration)
 {
     char         *tmp;
 
@@ -1966,7 +1976,7 @@ static void _parse_relay_upstream(xmlDocPtr      doc,
             upstream->server = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
-            __read_int(doc, node, &upstream->port, "<port> setting must not be empty.");
+            __read_int(configuration, doc, node, &upstream->port);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             if (upstream->mount)
                 xmlFree(upstream->mount);
@@ -2027,7 +2037,7 @@ static void _parse_relay(xmlDocPtr      doc,
     relay->upstream_default.mp3metadata     = 1;
     relay->on_demand                        = configuration->on_demand;
 
-    _parse_relay_upstream(doc, node, &(relay->upstream_default));
+    _parse_relay_upstream(doc, node, &(relay->upstream_default), configuration);
 
     do {
         if (node == NULL)
@@ -2057,11 +2067,11 @@ static void _parse_relay(xmlDocPtr      doc,
                 if (n) {
                     relay->upstream = n;
                     memset(&(n[relay->upstreams]), 0, sizeof(relay_config_upstream_t));
-                    _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]));
+                    _parse_relay_upstream(doc, node->xmlChildrenNode, &(n[relay->upstreams]), configuration);
                     relay->upstreams++;
                 }
             } else if (strcmp(tmp, "default") == 0) {
-                _parse_relay_upstream(doc, node->xmlChildrenNode, &(relay->upstream_default));
+                _parse_relay_upstream(doc, node->xmlChildrenNode, &(relay->upstream_default), configuration);
             } else {
                 ICECAST_LOG_WARN("<upstream> of unknown type is ignored.");
             }
@@ -2146,9 +2156,9 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             listener->bind_address = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("so-sndbuf")) == 0) {
-            __read_int(doc, node, &listener->so_sndbuf, "<so-sndbuf> must not be empty.");
+            __read_int(configuration, doc, node, &listener->so_sndbuf);
         } else if (xmlStrcmp(node->name, XMLSTR("listen-backlog")) == 0) {
-            __read_int(doc, node, &listener->listen_backlog, "<listen-backlog> must not be empty.");
+            __read_int(configuration, doc, node, &listener->listen_backlog);
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication_node(node, &(listener->authstack));
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
@@ -2289,9 +2299,9 @@ static void _parse_oldstyle_directory(xmlDocPtr      doc,
                 xmlFree(yp_dir->url);
             yp_dir->url = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
-            __read_int(doc, node, &yp_dir->timeout, "<yp-url-timeout> must not be empty.");
+            __read_int(configuration, doc, node, &yp_dir->timeout);
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(doc, node, &yp_dir->touch_interval, "<touch-interval> must not be empty.");
+            __read_int(configuration, doc, node, &yp_dir->touch_interval);
         }
     } while ((node = node->next));
 
@@ -2603,7 +2613,7 @@ static void _parse_logging(xmlDocPtr        doc,
                 xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("logsize")) == 0) {
-            __read_int(doc, node, &configuration->logsize, "<logsize> must not be empty.");
+            __read_int(configuration, doc, node, &configuration->logsize);
         } else if (xmlStrcmp(node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = util_str_to_loglevel(tmp);
@@ -2621,7 +2631,7 @@ static void _parse_logging(xmlDocPtr        doc,
             int val = CONFIG_DEFAULT_LOG_LINES_KEPT;
             char *logfile = (char *)xmlGetProp(node, XMLSTR("logfile"));
 
-            __read_int(doc, node, &val, "<memorybacklog> must not be empty.");
+            __read_int(configuration, doc, node, &val);
 
             if (logfile) {
                 if (!strcmp(logfile, "error")) {
