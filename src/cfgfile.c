@@ -2073,11 +2073,17 @@ static void _parse_relay(xmlDocPtr      doc,
             } else if (strcmp(tmp, "default") == 0) {
                 _parse_relay_upstream(doc, node->xmlChildrenNode, &(relay->upstream_default), configuration);
             } else {
+                __found_bad_tag(configuration, node, BTR_INVALID, tmp);
                 ICECAST_LOG_WARN("<upstream> of unknown type is ignored.");
             }
 
             if (tmp)
                 xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("server")) == 0 || xmlStrcmp(node->name, XMLSTR("port")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("mount")) == 0 || xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("username")) == 0 || xmlStrcmp(node->name, XMLSTR("password")) == 0 ||
+                   xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <upstream type=\"default\"> block.");
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
