@@ -51,6 +51,7 @@ noinst_HEADERS = \
     format_ogg.h \
     format_mp3.h \
     format_ebml.h \
+    format_text.h \
     format_vorbis.h \
     format_theora.h \
     format_flac.h \
@@ -100,6 +101,7 @@ icecast_SOURCES = \
     format_midi.c \
     format_flac.c \
     format_ebml.c \
+    format_text.c \
     format_kate.c \
     format_skeleton.c \
     format_opus.c \
