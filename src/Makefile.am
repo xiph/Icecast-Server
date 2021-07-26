@@ -41,6 +41,7 @@ noinst_HEADERS = \
     xml2json.h \
     listensocket.h \
     fastevent.h \
+    navigation.h \
     event.h \
     event_log.h \
     event_exec.h \
@@ -92,6 +93,7 @@ icecast_SOURCES = \
     xml2json.c \
     listensocket.c \
     fastevent.c \
+    navigation.c \
     format.c \
     format_ogg.c \
     format_mp3.c \

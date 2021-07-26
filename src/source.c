@@ -60,6 +60,7 @@
 #include "event.h"
 #include "slave.h"
 #include "acl.h"
+#include "navigation.h"
 
 #undef CATMODULE
 #define CATMODULE "source"
@@ -105,6 +106,7 @@ source_t *source_reserve (const char *mount)
 
         /* make duplicates for strings or similar */
         src->mount = strdup(mount);
+        src->identifier = mount_identifier_new(mount);
         src->max_listeners = -1;
         thread_mutex_create(&src->lock);
 
@@ -152,7 +154,7 @@ source_t *source_find_mount_raw(const char *mount)
  * check the fallback, and so on.  Must have a global source lock to call
  * this function.
  */
-source_t *source_find_mount(const char *mount)
+source_t *source_find_mount_with_history(const char *mount, navigation_history_t *history)
 {
     source_t *source = NULL;
     ice_config_t *config;
@@ -164,10 +166,20 @@ source_t *source_find_mount(const char *mount)
     {
         source = source_find_mount_raw(mount);
 
-        if (source)
-        {
+        if (source) {
+            if (history)
+                navigation_history_navigate_to(history, source->identifier, NAVIGATION_DIRECTION_DOWN);
+
             if (source->running || source->on_demand)
                 break;
+        } else {
+            if (history) {
+                mount_identifier_t *identifier = mount_identifier_new(mount);
+                if (identifier) {
+                    navigation_history_navigate_to(history, identifier, NAVIGATION_DIRECTION_DOWN);
+                    refobject_unref(identifier);
+                }
+            }
         }
 
         /* we either have a source which is not active (relay) or no source
@@ -185,7 +197,6 @@ source_t *source_find_mount(const char *mount)
     config_release_config();
     return source;
 }
-
 
 int source_compare_sources(void *arg, void *a, void *b)
 {
@@ -315,6 +326,7 @@ void source_free_source (source_t *source)
     /* make sure all YP entries have gone */
     yp_remove (source->mount);
 
+    refobject_unref(source->identifier);
     free (source->mount);
     free (source);
 
@@ -342,7 +354,13 @@ client_t *source_find_client(source_t *source, connection_id_t id)
     return NULL;
 }
 
-static inline void source_move_clients__single(source_t *source, avl_tree *from, avl_tree *to, client_t *client) {
+static inline int source_move_clients__single(source_t *source, source_t *dest, avl_tree *from, avl_tree *to, client_t *client, navigation_direction_t direction) {
+    if (navigation_history_navigate_to(&(client->history), dest->identifier, direction) != 0) {
+        ICECAST_LOG_DWARN("Can not change history: navigation of client=%p{.con->id=%llu, ...} from source=%p{.mount=%#H, ...} to dest=%p{.mount=%#H, ...} with direction %s failed",
+                client, (unsigned long long int)client->con->id, source, source->mount, dest, dest->mount, navigation_direction_to_str(direction));
+        return -1;
+    }
+
     avl_delete(from, client, NULL);
 
     /* when switching a client to a different queue, be wary of the
@@ -357,6 +375,7 @@ static inline void source_move_clients__single(source_t *source, avl_tree *from,
     }
 
     avl_insert(to, (void *)client);
+    return 0;
 }
 
 /* Move clients from source to dest provided dest is running
@@ -364,7 +383,7 @@ static inline void source_move_clients__single(source_t *source, avl_tree *from,
  * The only lock that should be held when this is called is the
  * source tree lock
  */
-void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, navigation_direction_t direction)
 {
     unsigned long count = 0;
     if (strcmp(source->mount, dest->mount) == 0) {
@@ -411,24 +430,30 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id)
             fakeclient.con->id = *id;
 
             if (avl_get_by_key(source->client_tree, &fakeclient, &result) == 0) {
-                source_move_clients__single(source, source->client_tree, dest->pending_tree, result);
-                count++;
+                if (source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, result, direction) == 0)
+                    count++;
             }
         } else {
-            while (1) {
-                avl_node *node = avl_get_first(source->pending_tree);
-                if (node == NULL)
-                    break;
-                source_move_clients__single(source, source->pending_tree, dest->pending_tree, node->key);
-                count++;
+            avl_node *next;
+
+            next = avl_get_first(source->pending_tree);
+            while (next) {
+                avl_node *node = next;
+
+                next = avl_get_next(next);
+
+                if (source_move_clients__single(source, dest, source->pending_tree, dest->pending_tree, node->key, direction) == 0)
+                    count++;
             }
 
-            while (1) {
-                avl_node *node = avl_get_first(source->client_tree);
-                if (node == NULL)
-                    break;
-                source_move_clients__single(source, source->client_tree, dest->pending_tree, node->key);
-                count++;
+            next = avl_get_first(source->client_tree);
+            while (next) {
+                avl_node *node = next;
+
+                next = avl_get_next(next);
+
+                if (source_move_clients__single(source, dest, source->client_tree, dest->pending_tree, node->key, direction) == 0)
+                    count++;
             }
         }
 
@@ -656,15 +681,27 @@ static void source_init (source_t *source)
     ** loop or jingle track or whatever the fallback is used for
     */
 
-    if (source->fallback_override && source->fallback_mount)
-    {
+    ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .fallback_override=%i, .fallback_mount=%#H, ...}", source, source->mount, (int)source->fallback_override, source->fallback_mount);
+    if (source->fallback_override != FALLBACK_OVERRIDE_NONE && source->fallback_mount) {
         source_t *fallback_source;
 
         avl_tree_rlock(global.source_tree);
         fallback_source = source_find_mount(source->fallback_mount);
 
-        if (fallback_source)
-            source_move_clients(fallback_source, source, NULL);
+        if (fallback_source) {
+            ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .fallback_override=%i, ...}, fallback_source=%p{.mount=%#H, ...}", source, source->mount, (int)source->fallback_override, fallback_source, fallback_source->mount);
+            switch (source->fallback_override) {
+                case FALLBACK_OVERRIDE_NONE:
+                    /* no-op */
+                break;
+                case FALLBACK_OVERRIDE_ALL:
+                    source_move_clients(fallback_source, source, NULL, NAVIGATION_DIRECTION_REPLACE_CURRENT);
+                break;
+                case FALLBACK_OVERRIDE_OWN:
+                    source_move_clients(fallback_source, source, NULL, NAVIGATION_DIRECTION_UP);
+                break;
+            }
+        }
 
         avl_tree_unlock(global.source_tree);
     }
@@ -863,7 +900,7 @@ static void source_shutdown (source_t *source)
         fallback_source = source_find_mount(source->fallback_mount);
 
         if (fallback_source != NULL)
-            source_move_clients(source, fallback_source, NULL);
+            source_move_clients(source, fallback_source, NULL, NAVIGATION_DIRECTION_DOWN);
 
         avl_tree_unlock(global.source_tree);
     }

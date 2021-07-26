@@ -33,7 +33,8 @@ struct source_tag {
     http_parser_t *parser;
     time_t client_stats_update;
     
-    char *mount;
+    char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
+    mount_identifier_t *identifier;
 
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;
@@ -60,7 +61,7 @@ struct source_tag {
     unsigned long prev_listeners;
     long max_listeners;
     int yp_public;
-    int fallback_override;
+    fallback_override_t fallback_override;
     int fallback_when_full;
     int shoutcast_compat;
 
@@ -91,12 +92,13 @@ void *source_client_thread (void *arg);
 void source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
-source_t *source_find_mount(const char *mount);
+#define source_find_mount(mount) source_find_mount_with_history((mount), NULL)
+source_t *source_find_mount_with_history(const char *mount, navigation_history_t *history);
 source_t *source_find_mount_raw(const char *mount);
 client_t *source_find_client(source_t *source, connection_id_t id);
 int source_compare_sources(void *arg, void *a, void *b);
 void source_free_source(source_t *source);
-void source_move_clients(source_t *source, source_t *dest, connection_id_t *id);
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, navigation_direction_t direction);
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);

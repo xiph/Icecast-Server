@@ -164,6 +164,7 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     client->refbuf->len = 0; /* force reader code to ignore buffer contents */
     client->pos = 0;
     client->write_to_client = format_generic_write_to_client;
+    navigation_history_init(&(client->history));
     *c_ptr = client;
 
     avl_tree_wlock(global_client_list);
@@ -344,6 +345,7 @@ void client_destroy(client_t *client)
     free(client->password);
     free(client->role);
     acl_release(client->acl);
+    navigation_history_clear(&(client->history));
 
     free(client);
 }

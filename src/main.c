@@ -80,6 +80,7 @@
 #include "listensocket.h"
 #include "fastevent.h"
 #include "prng.h"
+#include "navigation.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -146,6 +147,7 @@ static void initialize_subsystems(void)
     log_initialize();
     thread_initialize();
     prng_initialize();
+    navigation_initialize();
     global_initialize();
 #ifndef FASTEVENT_ENABLED
     fastevent_initialize();
@@ -186,6 +188,7 @@ static void shutdown_subsystems(void)
     refobject_unref(fastevent_reg);
     fastevent_shutdown();
 #endif
+    navigation_shutdown();
     prng_shutdown();
     global_shutdown();
     thread_shutdown();

@@ -23,6 +23,7 @@
 #include "common/httpp/encoding.h"
 
 #include "icecasttypes.h"
+#include "navigation.h"
 #include "errors.h"
 #include "refbuf.h"
 #include "module.h"
@@ -113,6 +114,9 @@ struct _client_tag {
     /* Handler module and function */
     module_t *handler_module;
     char *handler_function;
+
+    /* History of navigated mount points */
+    navigation_history_t history;
 
     /* is client getting intro data */
     long intro_offset;

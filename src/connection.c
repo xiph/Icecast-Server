@@ -61,6 +61,7 @@
 #include "refobject.h"
 #include "listensocket.h"
 #include "fastevent.h"
+#include "navigation.h"
 
 #define CATMODULE "connection"
 
@@ -953,6 +954,7 @@ static void __add_listener_to_source(source_t *source, client_t *client)
             }
             ICECAST_LOG_INFO("stream full, trying %s", next->mount);
             source = next;
+            navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_DOWN);
             loop--;
             continue;
         }
@@ -1048,7 +1050,7 @@ static void _handle_get_request(client_t *client) {
 
     avl_tree_rlock(global.source_tree);
     /* let's see if this is a source or just a random fserve file */
-    source = source_find_mount(client->uri);
+    source = source_find_mount_with_history(client->uri, &(client->history));
     if (source) {
         /* true mount */
         do {

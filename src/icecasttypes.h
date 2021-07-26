@@ -126,6 +126,10 @@ typedef struct listensocket_tag listensocket_t;
 
 typedef struct digest_tag digest_t;
 
+/* ---[ navigation.[ch] ]--- */
+
+typedef struct mount_identifier_tag mount_identifier_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -142,6 +146,7 @@ typedef union __attribute__ ((__transparent_union__)) {
     listensocket_container_t *listensocket_container;
     listensocket_t *listensocket;
     digest_t *digest;
+    mount_identifier_t *mount_identifier;
 } refobject_t;
 #else
 typedef void * refobject_t;
