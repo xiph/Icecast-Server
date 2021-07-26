@@ -65,6 +65,8 @@
 #undef CATMODULE
 #define CATMODULE "client"
 
+avl_tree *global_client_list;
+
 static inline void client_send_500(client_t *client, const char *message);
 
 /* This returns the protocol ID based on the string.
