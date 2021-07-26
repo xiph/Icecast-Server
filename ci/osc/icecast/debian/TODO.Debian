@@ -1,0 +1,4 @@
+  * Cleanup debian/copyright with newer release:
+    + Remove email note about use of CVS info
+    + Check if stripping non-free win32 stuff is still needed
+    + Change watch file back to automatic "debian" version

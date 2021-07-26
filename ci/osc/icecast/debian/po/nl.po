@@ -1,0 +1,116 @@
+# Dutch translation of icecast2 debconf templates.
+# Copyright (C) 2011, 2012 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the icecast2 package.
+# Jeroen Schot <schot@a-eskwadraat.nl>, 2011, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: icecast2 2.3.3-2\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-09-03 16:45+0200\n"
+"Last-Translator: Jeroen Schot <schot@a-eskwadraat.nl>\n"
+"Language-Team: Debian l10n Dutch <debian-l10n-dutch@lists.debian.org>\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Icecast2 configureren?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Kies voor deze optie om wachtwoorden in te stellen voor Icecast2. De server "
+"zal niet worden geactiveerd totdat deze geconfigureerd zijn."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr ""
+"Indien u de configuratie van Icecast2 al handmatig heeft aangepast moet u "
+"deze optie niet kiezen."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Icecast2 computernaam:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr ""
+"Geef de volledige domeinnaam op die als prefix voor alle streams moet worden "
+"gebruikt."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Icecast2 bronwachtwoord"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Geef het wachtwoord op dat moet worden gebruikt om de toegang tot Icecast2's "
+"mediabronnen te beperken."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Icecast2 relay-wachtwoord:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Geef het wachtwoord op dat moet worden gebruikt om de toegang tot Icecast2's "
+"streamrelays te beperken."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Icecast2 beheerderswachtwoord:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr ""
+"Geef het wachtwoord op dat moet worden gebruikt voor de Icecast2 "
+"beheerdersfuncties."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"De beheerderswebinterface, op http://localhost:8000, kan worden gebruikt om "
+"verbindingen te bekijken of om streaming te blokkeren voor gebruikers."

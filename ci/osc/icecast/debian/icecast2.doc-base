@@ -1,0 +1,9 @@
+Document: icecast2
+Title: Icecast2 documentation
+Author: The Icecast Team
+Abstract: Documentation of Icecast streaming media server
+Section: Network/Communication
+
+Format: HTML
+Index: /usr/share/doc/icecast2/index.html
+Files: /usr/share/doc/icecast2/*

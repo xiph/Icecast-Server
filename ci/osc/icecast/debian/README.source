@@ -1,0 +1,55 @@
+Building this package for Debian
+--------------------------------
+
+This source package uses quilt to apply and remove its patches.  Please
+refer to /usr/share/doc/quilt/README.source for information about how to
+use quilt for source packages.
+
+
+Developing this package for Debian
+----------------------------------
+
+The source of this package is developed using Subversion and the helper
+tool svn-buildpackage in mergeWithUpstream-mode.  This is documented
+below /usr/share/doc/svn-buildpackage/HOWTO.html/ .
+
+A custom build target shows current upstream and packaging versions:
+
+    debian/rules print-version
+
+Current upstream tarball can be prepared using this other build target:
+
+    debian/rules get-orig-source
+
+To switch to newer upstream source, first add a dummy changelog entry
+and comment out DEB_UPSTREAM_TARBALL_MD5 before getting the source:
+
+    dch -v ${new_upstream_version}-1 "Dummy changelog entry"
+    sed -i -e 's/^\(DEB_UPSTREAM_TARBALL_MD5\b\)/#\1/' debian/rules
+    debian/rules get-orig-source
+
+Store new md5sum to help ensure identical source is received later.
+
+
+Developing this package for Debian
+----------------------------------
+
+Setting DEB_MAINTAINER_MODE=1 enables additional build routines helpful
+during development of the package, but unfit for normal builds.  This
+typically includes the CDBS feature of auto-updating debian/control with
+CDBS-related build-dependencies, which is forbidden by Debian Policy as
+build environment must not change during automated builds.
+
+
+Maintaining packaging build routines
+------------------------------------
+
+This source package wraps debhelper commands and other tedious parts of
+the build routines using the CDBS framework.  Please refer to the actual
+makefile snippets included from debian/rules for details on their
+purpose and ways to override defaults.  Additionally, makefile snippets
+included from below /usr/share/cdbs may also be documented in
+/usr/share/doc/cdbs/cdbs-doc.pdf.gz .
+
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 26 Feb 2009 21:28:29 +0100

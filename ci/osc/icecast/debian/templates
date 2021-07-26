@@ -1,0 +1,49 @@
+# These templates have been reviewed by the debian-l10n-english
+# team
+#
+# If modifications/additions/rewording are needed, please ask
+# debian-l10n-english@lists.debian.org for advice.
+#
+# Even minor modifications require translation updates and such
+# changes should be coordinated with translators and reviewers.
+
+Template: icecast2/icecast-setup
+Type: boolean
+Default: false
+_Description: Configure Icecast2?
+ Choose this option to set up passwords for Icecast2. Until these are
+ configured the server will not be activated.
+ .
+ You should not use this option if you have already manually tweaked
+ the configuration of Icecast2.
+
+Template: icecast2/hostname
+Type: string
+Default: localhost
+_Description: Icecast2 hostname:
+ Please specify the fully qualified domain name that should be used
+ as prefix to all streams.
+
+Template: icecast2/sourcepassword
+Type: string
+Default: hackme
+_Description: Icecast2 source password:
+ Please specify the password that should be used to control access to
+ Icecast2's media sources.
+
+Template: icecast2/relaypassword
+Type: string
+Default: hackme
+_Description: Icecast2 relay password:
+ Please specify the password that should be used to control access to
+ Icecast2's stream relays.
+
+Template: icecast2/adminpassword
+Type: string
+Default: hackme
+_Description: Icecast2 administration password:
+ Please specify the password that should be used for Icecast2
+ administration.
+ .
+ The administration web interface, at http://localhost:8000, can be
+ used to monitor connections or to block users from streaming.

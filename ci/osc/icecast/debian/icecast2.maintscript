@@ -1,0 +1,1 @@
+rm_conffile /etc/icecast2/web/status2.xsl 2.4.0-1~ icecast2

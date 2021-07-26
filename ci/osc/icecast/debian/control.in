@@ -1,0 +1,19 @@
+Source: icecast2
+Section: sound
+Priority: optional
+Maintainer: Thomas B. Ruecker <thomas@ruecker.fi>
+Uploaders: Thomas B. Ruecker <thomas@ruecker.fi>
+Build-Depends: @cdbs@
+Standards-Version: 3.9.5
+Homepage: http://www.icecast.org/
+
+Package: icecast2
+Architecture: any
+Depends: adduser, ${shlibs:Depends}, ${misc:Depends}
+Suggests: ices2
+Description: streaming media server
+ Icecast is a versatile multimedia streaming server which can create
+ (for instance) a private jukebox or "Internet radio station". It
+ supports Ogg streaming using the Vorbis and Theora codecs, as well as
+ other formats such as MP3, AAC, or NSV, and is compatible with most
+ media players.

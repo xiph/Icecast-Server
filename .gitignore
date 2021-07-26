@@ -60,3 +60,7 @@ config.h.in~
 
 # Ignore vim swap files
 .*.swp
+
+
+# CI: OSC temp stuff
+/osc_tmp

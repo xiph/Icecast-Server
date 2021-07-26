@@ -1,0 +1,115 @@
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the icecast2 package.
+#
+# Yuri Kozlov <yuray@komyakino.ru>, 2011, 2012.
+msgid ""
+msgstr ""
+"Project-Id-Version: icecast2 2.3.3-2\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-08-30 20:51+0400\n"
+"Last-Translator: Yuri Kozlov <yuray@komyakino.ru>\n"
+"Language-Team: Russian <debian-l10n-russian@lists.debian.org>\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Lokalize 1.4\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
+"%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Настроить Icecast2?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Ответьте утвердительно, чтобы настроить пароли к Icecast2. Пока они "
+"не будут заданы, служба не запустится."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr "Ответьте отрицательно, если уже изменяли настройки Icecast2 вручную."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Имя узла Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr ""
+"Укажите полностью определённое доменное имя, которое должно использоваться в "
+"качестве префикса для всех потоков."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Пароль к источникам Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Укажите пароль, который должен использоваться для управления доступом к "
+"медиа-источникам Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Пароль к релею Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Укажите пароль, который должен использоваться для управления доступом к "
+"потоковым релеям Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Административный пароль Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr "Укажите пароль, который должен использоваться для управления Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"Через управляющий веб-интерфейс (http://localhost:8000) можно просматривать "
+"подключения или блокировать доступ пользователей к потокам."
+
