@@ -1,5 +1,5 @@
-# Build Icecast
-build:
+# Build Icecast - test
+make_dist:
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
 
@@ -12,8 +12,11 @@ build:
 
   before_script:
   - apk update
+  - cat /etc/os*
   - apk add musl-dev git make gcc automake autoconf libtool
   - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
+  # gzip required because busybox gzip does not understand best / zip for make dist
+  - apk add gzip zip tar
   # Required for tests
   #- apk add curl ffmpeg
   # Create user to run tests
@@ -22,7 +25,51 @@ build:
   script: 
     - ./autogen.sh
     - ./configure || cat config.log
-    - make
+    - make dist
+    - ls -la
     # Tests
     #- su -c "./tests/admin-tests.sh" icecast
 
+  artifacts:
+    paths:
+      - icecast-*.tar.gz
+      - icecast-*.zip
+    expire_in: 1 week
+
+
+upload_dist:
+  variables:
+#    GIT_CHECKOUT: "false"
+#    GIT_STRATEGY: "none"
+
+  tags:
+    - docker
+    - linux
+
+  stage: deploy
+
+  dependencies:
+    - make_dist
+
+  before_script:
+    - cat /etc/os*
+    - apk update
+    - apk add python3 py3-pip python3-dev openssl-dev g++ make swig coreutils bash ca-certificates
+    - pip install osc
+
+  script:
+    - pwd
+    - ls -la
+    - mkdir -p osc
+    - cd osc
+    - HOME=`pwd` osc-wrapper.py --config=$OSC_RC checkout home:stephan48:branches:multimedia:xiph:beta-devel icecast
+    - cp ../*.tar.gz home:stephan48:branches:multimedia:xiph:beta-devel/icecast/icecast2_2.4.99.2.orig.tar.gz
+    - cd home:stephan48:branches:multimedia:xiph:beta-devel/icecast
+    - /bin/bash ../../../ci/fix-dsc.sh
+    - HOME=`pwd`/../../ osc-wrapper.py --config=$OSC_RC diff
+    - HOME=`pwd`/../../ osc-wrapper.py --config=$OSC_RC commit -m "Commit via $CI_PIPELINE_URL"
+    - cd ../..
+    - shred -vzf $OSC_RC .osc_cookiejar
+    - rm -rf home*
+    - echo > $OSC_RC
+    - ls -la
