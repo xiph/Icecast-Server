@@ -1486,6 +1486,12 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "cf86d88e-dc20-4359-b446-110e7065d17a", "warning", "No admin contact given in <admin>. YP directory support will is disabled.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_PRNG)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "e2ba5a8b-4e4f-41ca-b455-68ae5fb6cae0", "error", "No PRNG seed configured. PRNG is insecure.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_UNKNOWN_NODE)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "6620ef7b-46ef-4781-9a5e-8ee7f0f9d44e", "error", "Unknown tags are used in the config file. See the error.log for details.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_OBSOLETE_NODE)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "b6224fc4-53a1-433f-a6cd-d5b85c60f1c9", "error", "Obsolete tags are used in the config file. See the error.log for details and update your configuration accordingly.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_INVALID_NODE)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "0f6f757d-52d8-4b9a-8e57-9bcd528fffba", "error", "Invalid tags are used in the config file. See the error.log for details and update your configuration accordingly.", NULL);
 
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);

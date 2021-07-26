@@ -33,7 +33,7 @@ typedef enum acl_policy_tag {
 
 /* basic functions to work with ACLs */
 acl_t * acl_new(void);
-acl_t * acl_new_from_xml_node(xmlNodePtr node);
+acl_t * acl_new_from_xml_node(ice_config_t *configuration, xmlNodePtr node);
 
 void acl_addref(acl_t * acl);
 void acl_release(acl_t * acl);

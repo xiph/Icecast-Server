@@ -186,7 +186,7 @@ void auth_shutdown(void);
 
 auth_result auth_str2result(const char *str);
 
-auth_t  *auth_get_authenticator(xmlNodePtr node);
+auth_t  *auth_get_authenticator(ice_config_t *configuration, xmlNodePtr node);
 void    auth_release(auth_t *authenticator);
 void    auth_addref(auth_t *authenticator);
 

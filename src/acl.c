@@ -121,7 +121,7 @@ acl_t *acl_new(void)
     return ret;
 }
 
-acl_t *acl_new_from_xml_node(xmlNodePtr node)
+acl_t *acl_new_from_xml_node(ice_config_t *configuration, xmlNodePtr node)
 {
     acl_t * ret;
     char * tmp;
@@ -212,7 +212,7 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
             if (xmlIsBlankNode(child))
                 continue;
             if (xmlStrcmp(child->name, XMLSTR("http-headers")) == 0) {
-                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers));
+                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers), configuration);
             }
         } while ((child = child->next));
     }

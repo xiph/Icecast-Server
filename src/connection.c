@@ -1692,7 +1692,7 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                client->mode = config_str_to_omode(httpp_get_param(client->parser, "omode"));
+                client->mode = config_str_to_omode(NULL, NULL, httpp_get_param(client->parser, "omode"));
 
                 if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
