@@ -21,7 +21,7 @@
                     The web interface may change completely between releases.
                     If you have a need for automatic processing of server data,
                     please read the appropriate documentation. Latest docs:
-                    https://icecast.org/docs/icecast-latest/icecast2_stats.html
+                    https://icecast.org/docs/icecast-latest/server-stats.html
                     -->
                 </xsl:text>
                 <!-- Header and menu -->
