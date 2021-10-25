@@ -940,7 +940,8 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
             if (!(flags & STATS_XML_FLAG_PUBLIC_VIEW)) {
                 config = config_get_config();
                 mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
-                __add_authstack(mountproxy->authstack, xmlnode);
+                if (mountproxy)
+                    __add_authstack(mountproxy->authstack, xmlnode);
                 config_release_config();
             }
         }
