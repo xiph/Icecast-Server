@@ -32,6 +32,7 @@ typedef enum _format_type_tag
     FORMAT_ERROR, /* No format, source not processable */
     FORMAT_TYPE_OGG,
     FORMAT_TYPE_EBML,
+    FORMAT_TYPE_TEXT,
     FORMAT_TYPE_GENERIC
 } format_type_t;
 
