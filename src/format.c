@@ -43,6 +43,7 @@
 #include "format_ogg.h"
 #include "format_mp3.h"
 #include "format_ebml.h"
+#include "format_text.h"
 
 #include "logging.h"
 #include "stats.h"
