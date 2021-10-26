@@ -260,10 +260,26 @@ ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
 }
 ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
 {
+    int ret;
+
     if (!tls)
         return -1;
 
-    return SSL_write(tls->ssl, buffer, len);
+    ret = SSL_write(tls->ssl, buffer, len);
+
+    if (ret <= 0) {
+        switch (SSL_get_error(tls->ssl, ret)) {
+            case SSL_ERROR_SYSCALL:
+            case SSL_ERROR_SSL:
+                return -1;
+                break;
+            default:
+                return 0;
+                break;
+        }
+    }
+
+    return ret;
 }
 #else
 void       tls_initialize(void)
