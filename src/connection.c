@@ -206,8 +206,6 @@ static int connection_send_tls(connection_t *con, const void *buf, size_t len)
     ssize_t bytes = tls_write(con->tls, buf, len);
 
     if (bytes < 0) {
-        if (tls_want_io(con->tls) > 0)
-            return -1;
         con->error = 1;
     } else {
         con->sent_bytes += bytes;
