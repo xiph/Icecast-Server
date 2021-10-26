@@ -13,6 +13,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "source.h"
 #include "format.h"
@@ -22,14 +23,42 @@
 
 #include "logging.h"
 
+typedef struct {
+    bool skipchar;
+    char skipchar_char;
+} text_state_t;
+
 static void text_free_plugin(format_plugin_t *plugin)
 {
+    free(plugin->_state);
     free(plugin);
 }
+
+static size_t skipchar(char *text, char skip, size_t len)
+{
+    char *inp = text;
+    char *outp = text;
+    size_t ret = 0;
+
+    // skip prefix.
+    for (; len && *inp != skip; inp++, outp++, len--, ret++);
+
+    for (; len; inp++, len--) {
+        if (*inp != skip) {
+            *outp = *inp;
+            outp++;
+            ret++;
+        }
+    }
+
+    return ret;
+}
+
 
 static refbuf_t *text_get_buffer(source_t *source)
 {
     format_plugin_t *format = source->format;
+    text_state_t *state = format->_state;
     refbuf_t *refbuf = refbuf_new(1024);
     ssize_t bytes;
 
@@ -41,6 +70,10 @@ static refbuf_t *text_get_buffer(source_t *source)
         }
         return NULL;
     }
+
+    if (state->skipchar)
+        bytes = skipchar(refbuf->data, state->skipchar_char, bytes);
+
     refbuf->len = bytes;
     refbuf->sync_point = 1;
     format->read_bytes += bytes;
@@ -53,6 +86,8 @@ static refbuf_t *text_get_buffer(source_t *source)
 int format_text_get_plugin(source_t *source)
 {
     format_plugin_t *plugin = calloc(1, sizeof(format_plugin_t));
+    text_state_t *state = calloc(1, sizeof(text_state_t));
+    const char *skip;
 
     ICECAST_LOG_DEBUG("Opening text format for source %p", source);
 
@@ -66,7 +101,33 @@ int format_text_get_plugin(source_t *source)
 
     plugin->contenttype = httpp_getvar(source->parser, "content-type");
 
-    plugin->_state = NULL;
+    skip = httpp_getvar(source->parser, "x-icecast-text-skip-char");
+    if (skip) {
+        ICECAST_LOG_WARN("Source %p on mount %#H uses experimental X-Icecast-Text-Skip-Char:-header", source, source->mount);
+    }
+    if (skip && strlen(skip) == 3 && skip[0] == '%') {
+        bool valid = true;
+        size_t i;
+
+        for (i = 1; i < 3; i++) {
+            const char c = skip[i];
+
+            state->skipchar_char <<= 4;
+            if (c >= '0' && c <= '9') {
+                state->skipchar_char += c - '0';
+            } else if (c >= 'a' && c <= 'f') {
+                state->skipchar_char += c - 'a' + 10;
+            } else if (c >= 'A' && c <= 'F') {
+                state->skipchar_char += c - 'A' + 10;
+            } else {
+                valid = false;
+            }
+        }
+
+        state->skipchar = valid;
+    }
+
+    plugin->_state = state;
     vorbis_comment_init(&plugin->vc);
     source->format = plugin;
 
