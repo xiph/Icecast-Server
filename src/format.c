@@ -54,6 +54,15 @@ static int format_prepare_headers (source_t *source, client_t *client);
 
 format_type_t format_get_type (const char *contenttype)
 {
+    char buf[32];
+    const char *separator = strpbrk(contenttype, "; \t");
+
+    if (separator && (size_t)(separator - contenttype) < sizeof(buf)) {
+        memcpy(buf, contenttype, separator - contenttype);
+        buf[separator - contenttype] = 0;
+        contenttype = buf;
+    }
+
     if(strcmp(contenttype, "application/x-ogg") == 0)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
