@@ -5,6 +5,36 @@
     <xsl:variable name="title">Status</xsl:variable>
     <xsl:template name="content">
         <!--mount point stats-->
+        <script>
+            <![CDATA[
+            function reload() {
+                var xhr = new XMLHttpRequest;
+                xhr.open('GET', '/admin/publicstats');
+                xhr.setRequestHeader('Accept', 'text/xml, */*; q=0');
+
+                xhr.onload = function () {
+                    if (xhr.readyState === xhr.DONE && xhr.status === 200) {
+                        var doc = xhr.responseXML;
+                        var iterator = doc.evaluate('/icestats/source', doc, null, XPathResult.UNORDERED_NODE_ITERATOR_TYPE, null);
+
+                        var thisNode = iterator.iterateNext();
+
+                        while (thisNode) {
+                            var us = document.querySelector('[data-mount="' + thisNode.attributes.mount.nodeValue + '"]');
+                            if (us) {
+                                us.innerText = doc.evaluate('display-title', thisNode, null, XPathResult.STRING_TYPE, null).stringValue;
+                            }
+                            thisNode = iterator.iterateNext();
+                        }
+                    }
+                };
+
+                xhr.send();
+            }
+
+            setInterval(reload, 5000);
+            ]]>
+        </script>
         <h2>Status</h2>
         <xsl:choose>
             <xsl:when test="source">
@@ -102,7 +132,7 @@
                                             </xsl:if>
                                             <tr>
                                                 <td>Currently playing:</td>
-                                                <td class="streamstats"><xsl:value-of select="display-title" /></td>
+                                                <td class="streamstats" data-mount="{@mount}"><xsl:value-of select="display-title" /></td>
                                             </tr>
                                         </tbody>
                                     </table>
