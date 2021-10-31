@@ -99,6 +99,7 @@ AC_CHECK_HEADERS([sys/types.h])
 AC_CHECK_HEADERS([sys/timeb.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
+AC_CHECK_HEADERS([sys/resource.h])
 
 AC_C_BIGENDIAN
 
@@ -119,6 +120,7 @@ AC_CHECK_FUNCS([setresgid])
 AC_CHECK_FUNCS([localtime_r])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([ftime])
+AC_CHECK_FUNCS([getrlimit])
 
 dnl Do not check for poll on Darwin, it is broken in some versions
 AS_IF([test "${SYS}" != "darwin"], [

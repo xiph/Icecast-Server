@@ -23,6 +23,10 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
 #include "admin.h"
 #include "compat.h"
 #include "cfgfile.h"
@@ -118,6 +122,12 @@
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
+
+typedef enum {
+    ADMIN_DASHBOARD_STATUS_OK = 0,
+    ADMIN_DASHBOARD_STATUS_WARNING = 1,
+    ADMIN_DASHBOARD_STATUS_ERROR = 2
+} admin_dashboard_status_t;
 
 typedef struct {
     const char *prefix;
@@ -1428,12 +1438,52 @@ static void __reportxml_add_maintenance(reportxml_node_t *parent, reportxml_data
     refobject_unref(incident);
 }
 
+static admin_dashboard_status_t command_dashboard__atbest(admin_dashboard_status_t a, admin_dashboard_status_t b)
+{
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+#if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
+static admin_dashboard_status_t command_dashboard__getrlimit(ice_config_t *config, reportxml_node_t *parent, reportxml_database_t *db)
+{
+    admin_dashboard_status_t ret = ADMIN_DASHBOARD_STATUS_OK;
+    struct rlimit limit;
+
+    if (getrlimit(RLIMIT_NOFILE, &limit) == 0) {
+        if (limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur != RLIM_SAVED_MAX && limit.rlim_cur != RLIM_SAVED_CUR) {
+            ICECAST_LOG_WARN("rlimit for NOFILE is %u", (unsigned int)limit.rlim_cur);
+            if (limit.rlim_cur < (unsigned int)(config->client_limit + config->source_limit * 3 + 24)) {
+                // We assume that we need one FD per client, at max three per source (e.g. for auth), and at max 24 additional for logfiles and similar.
+                // This is just an estimation.
+                __reportxml_add_maintenance(parent, db, "a93a842a-9664-43a9-b707-7f358066fe2b", "error", "Global client, and source limit is bigger than suitable for current open file limit.", NULL);
+                ret = command_dashboard__atbest(ret, ADMIN_DASHBOARD_STATUS_ERROR);
+            }
+        }
+    }
+
+    if (getrlimit(RLIMIT_CORE, &limit) == 0) {
+        if (limit.rlim_cur == 0) {
+            __reportxml_add_maintenance(parent, db, "fdbacc56-1150-4c79-b53a-43cc79046f40", "info", "Core files are disabled.", NULL);
+        } else {
+            __reportxml_add_maintenance(parent, db, "688bdebc-c190-4b5d-8764-3a050c48387a", "info", "Core files are enabled.", NULL);
+        }
+    }
+
+    return ret;
+}
+#endif
+
 static void command_dashboard           (client_t *client, source_t *source, admin_format_t response)
 {
     ice_config_t *config = config_get_config();
     reportxml_t *report = client_get_reportxml("0aa76ea1-bf42-49d1-887e-ca95fb307dc4", NULL, NULL);
     reportxml_node_t *reportnode = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_REPORT, 0);
     reportxml_node_t *incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
+    admin_dashboard_status_t status = ADMIN_DASHBOARD_STATUS_OK;
     reportxml_node_t *resource;
     reportxml_node_t *node;
     int has_sources;
@@ -1468,15 +1518,10 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(node);
 
     if (config->config_problems || has_too_many_clients) {
-        reportxml_helper_add_value_enum(resource, "status", "red");
+        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_ERROR);
     } else if (!has_sources || has_many_clients) {
-        reportxml_helper_add_value_enum(resource, "status", "yellow");
-    } else {
-        reportxml_helper_add_value_enum(resource, "status", "green");
+        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
     }
-
-    reportxml_node_add_child(incident, resource);
-    refobject_unref(resource);
 
     if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "c4f25c51-2720-4b38-a806-19ef024b5289", "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
@@ -1501,6 +1546,25 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     } else if (has_many_clients) {
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "417ae59c-de19-4ed1-ade1-429c689f1152", "info", "More than 75% of the server's configured maximum clients are connected", NULL);
     }
+
+#if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
+    status = command_dashboard__atbest(status, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
+#endif
+
+    switch (status) {
+        case ADMIN_DASHBOARD_STATUS_OK:
+            reportxml_helper_add_value_enum(resource, "status", "green");
+        break;
+        case ADMIN_DASHBOARD_STATUS_WARNING:
+            reportxml_helper_add_value_enum(resource, "status", "yellow");
+        break;
+        case ADMIN_DASHBOARD_STATUS_ERROR:
+            reportxml_helper_add_value_enum(resource, "status", "red");
+        break;
+    }
+
+    reportxml_node_add_child(incident, resource);
+    refobject_unref(resource);
 
     refobject_unref(incident);
 
