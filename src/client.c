@@ -148,7 +148,7 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
 
     global.clients++;
     if (config->client_limit < global.clients) {
-        ICECAST_LOG_WARN("server client limit reached (%d/%d)", config->client_limit, global.clients);
+        ICECAST_LOG_WARN("Server's configured global client limit reached (%d of %d), rejecting client", global.clients, config->client_limit);
     } else {
         ret = 0;
     }
