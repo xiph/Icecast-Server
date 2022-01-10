@@ -1116,6 +1116,10 @@ static void command_fallback(client_t *client,
 
     util_replace_string(&(source->fallback_mount), fallback);
 
+    fallback_override_t old = source->fallback_override;
+    source->fallback_override = FALLBACK_OVERRIDE_ALL;
+    free(old);
+
     html_success(client, source, response, "Fallback configured");
 }
 
