@@ -225,8 +225,10 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
         }
     }
 
-    if (format->charset == NULL)
-        format->charset = strdup ("ISO8859-1");
+    if (format->charset == NULL) {
+        ICECAST_LOG_INFO("No charset given for mount %#H with source client %zu, assuming ISO8859-1", mount ? mount->mountname : NULL, client->con->id);
+        format->charset = strdup("ISO8859-1");
+    }
 
     ICECAST_LOG_DEBUG("sending metadata interval %d", source_mp3->interval);
     ICECAST_LOG_DEBUG("charset %s", format->charset);
