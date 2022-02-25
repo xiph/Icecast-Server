@@ -212,7 +212,7 @@ void main_config_reload(ice_config_t *config)
 
 static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
-    int i = 1;
+    int i;
     bool config_ok = false;
 
     background = false;
@@ -226,8 +226,10 @@ static bool _parse_config_opts(int argc, char **argv, char *filename, size_t siz
         }
     }
 
-    while (i < argc) {
-        if (strcmp(argv[i], "-b") == 0) {
+    for (i = 1; i < argc; i++) {
+        const char *opt = argv[i];
+
+        if (strcmp(opt, "-b") == 0) {
 #ifndef WIN32
             pid_t pid;
             fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
@@ -237,29 +239,27 @@ static bool _parse_config_opts(int argc, char **argv, char *filename, size_t siz
             if (pid > 0) {
                 /* exit the parent */
                 exit(0);
-            }
-            else if(pid < 0) {
-                fprintf(stderr, "FATAL: Unable to fork child!");
+            } else if (pid < 0) {
+                fprintf(stderr, "FATAL: Unable to fork child!\n");
                 exit(1);
             }
             background = true;
 #endif
-        }
-        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+        } else if (strcmp(opt, "-v") == 0 || strcmp(opt, "--version") == 0) {
             fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
             exit(0);
-        }
-
-        if (strcmp(argv[i], "-c") == 0) {
-            if (i + 1 < argc) {
-                strncpy(filename, argv[i + 1], size-1);
+        } else if (strcmp(opt, "-c") == 0) {
+            if ((i + 1) < argc) {
+                strncpy(filename, argv[++i], size-1);
                 filename[size-1] = 0;
                 config_ok = true;
             } else {
                 return false;
             }
+        } else {
+            fprintf(stderr, "FATAL: Invalid option: %s\n", opt);
+            return false;
         }
-        i++;
     }
 
     return config_ok;
