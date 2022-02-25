@@ -18,6 +18,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -87,7 +88,7 @@
 #undef CATMODULE
 #define CATMODULE "main"
 
-static int background;
+static bool background;
 static char *pidfile = NULL;
 
 static void pidfile_update(ice_config_t *config, int always_try);
@@ -209,19 +210,19 @@ void main_config_reload(ice_config_t *config)
     pidfile_update(config, 0);
 }
 
-static int _parse_config_opts(int argc, char **argv, char *filename, size_t size)
+static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
     int i = 1;
-    int config_ok = 0;
+    bool config_ok = false;
 
-    background = 0;
+    background = false;
     if (argc < 2) {
         if (filename[0] != 0) {
             /* We have a default filename, so we can work with no options. */
-            return 1;
+            return true;
         } else {
             /* We need at least a config filename. */
-            return -1;
+            return false;
         }
     }
 
@@ -241,7 +242,7 @@ static int _parse_config_opts(int argc, char **argv, char *filename, size_t size
                 fprintf(stderr, "FATAL: Unable to fork child!");
                 exit(1);
             }
-            background = 1;
+            background = true;
 #endif
         }
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
@@ -253,18 +254,15 @@ static int _parse_config_opts(int argc, char **argv, char *filename, size_t size
             if (i + 1 < argc) {
                 strncpy(filename, argv[i + 1], size-1);
                 filename[size-1] = 0;
-                config_ok = 1;
+                config_ok = true;
             } else {
-                return -1;
+                return false;
             }
         }
         i++;
     }
 
-    if(config_ok)
-        return 1;
-    else
-        return -1;
+    return config_ok;
 }
 
 static int _start_logging_stdout(void) {
@@ -578,7 +576,7 @@ int mainService(int argc, char **argv)
 int main(int argc, char **argv)
 #endif
 {
-    int res, ret;
+    int ret;
 #ifdef ICECAST_DEFAULT_CONFIG
     char filename[512] = ICECAST_DEFAULT_CONFIG;
 #else
@@ -590,8 +588,7 @@ int main(int argc, char **argv)
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    res = _parse_config_opts(argc, argv, filename, sizeof(filename));
-    if (res == 1) {
+    if (_parse_config_opts(argc, argv, filename, sizeof(filename))) {
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
         initialize_subsystems();
@@ -629,7 +626,7 @@ int main(int argc, char **argv)
 #endif
             return 1;
         }
-    } else if (res == -1) {
+    } else {
         _print_usage();
         return 1;
     }
