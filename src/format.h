@@ -40,9 +40,6 @@ typedef struct _format_plugin_tag
 {
     format_type_t type;
 
-    /* we need to know the mount to report statistics */
-    char *mount;
-
     const char  *contenttype;
     char        *charset;
     uint64_t    read_bytes;
