@@ -1458,6 +1458,12 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
     if (string == NULL || in_charset == NULL || out_charset == NULL)
         return NULL;
 
+    if (strcmp(in_charset, out_charset) == 0) {
+        ret = strdup(string);
+        if (ret)
+            return ret;
+    }
+
     in  = xmlFindCharEncodingHandler (in_charset);
     out = xmlFindCharEncodingHandler (out_charset);
 
@@ -1467,7 +1473,7 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
         xmlBufferPtr utf8 = xmlBufferCreate ();
         xmlBufferPtr conv = xmlBufferCreate ();
 
-        ICECAST_LOG_INFO("converting metadata from %s to %s", in_charset, out_charset);
+        ICECAST_LOG_INFO("converting metadata from %#H to %#H", in_charset, out_charset);
         xmlBufferCCat (orig, string);
         if (xmlCharEncInFunc (in, utf8, orig) > 0)
         {
