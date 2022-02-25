@@ -1491,9 +1491,9 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     admin_dashboard_status_t status = ADMIN_DASHBOARD_STATUS_OK;
     reportxml_node_t *resource;
     reportxml_node_t *node;
-    int has_sources;
-    int has_many_clients;
-    int has_too_many_clients;
+    bool has_sources;
+    bool has_many_clients;
+    bool has_too_many_clients;
     bool has_legacy_sources;
 
 
