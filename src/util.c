@@ -1458,6 +1458,12 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
     if (string == NULL || in_charset == NULL || out_charset == NULL)
         return NULL;
 
+    if (strcmp(in_charset, out_charset) == 0) {
+        ret = strdup(string);
+        if (ret)
+            return ret;
+    }
+
     in  = xmlFindCharEncodingHandler (in_charset);
     out = xmlFindCharEncodingHandler (out_charset);
 
