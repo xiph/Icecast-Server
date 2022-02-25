@@ -38,6 +38,7 @@ void global_initialize(void)
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
+    global.sources_legacy = 0;
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
     global.modulecontainer = refobject_new(module_container_t);
     thread_mutex_create(&_global_mutex);

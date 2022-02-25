@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <time.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -1493,6 +1494,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     int has_sources;
     int has_many_clients;
     int has_too_many_clients;
+    bool has_legacy_sources;
 
 
     resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
@@ -1517,6 +1519,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     has_sources = global.sources > 0;
     has_many_clients = global.clients > ((75 * config->client_limit) / 100);
     has_too_many_clients = global.clients > ((90 * config->client_limit) / 100);
+    has_legacy_sources = global.sources_legacy > 0;
     global_unlock();
     reportxml_node_add_child(resource, node);
     refobject_unref(node);
@@ -1544,6 +1547,9 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);
+
+    if (has_legacy_sources)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "a3a51986-3bba-42b9-ad5c-d9ecc9967320", "warning", "Legacy sources are connected. See mount list for details.", NULL);
 
     if (has_too_many_clients) {
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "08676614-50b4-4ea7-ba99-7c2ffcecf705", "warning", "More than 90% of the server's configured maximum clients are connected", NULL);

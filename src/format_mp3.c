@@ -30,6 +30,7 @@
 # include <strings.h>
 #endif
 
+#include "global.h"
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
@@ -118,6 +119,9 @@ int format_mp3_get_plugin(source_t *source)
     vorbis_comment_init(&plugin->vc);
     source->format = plugin;
     thread_mutex_create(&state->url_lock);
+
+    /* we are in global locked state here, locked by connection_complete_source(). */
+    global.sources_legacy++;
 
     return 0;
 }
@@ -488,6 +492,10 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     free(state);
     vorbis_comment_clear(&self->vc);
     free(self);
+
+    global_lock();
+    global.sources_legacy--;
+    global_unlock();
 }
 
 
