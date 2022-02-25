@@ -25,6 +25,7 @@
 #endif
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <libxml/uri.h>
 
 #include "common/thread/thread.h"
 
@@ -2005,6 +2006,55 @@ static void _parse_relay_upstream(xmlDocPtr      doc,
                 xmlFree(upstream->bind);
             upstream->bind = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("uri")) == 0) {
+            xmlChar *uri = xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            if (uri) {
+                xmlURIPtr parsed_uri = xmlParseURI((const char *)uri);
+                if (parsed_uri) {
+                    if (parsed_uri->scheme && strcmp(parsed_uri->scheme, "http") == 0) {
+                        if (parsed_uri->server) {
+                            if (upstream->server)
+                                xmlFree(upstream->server);
+                            upstream->server = (char *)xmlStrdup(XMLSTR(parsed_uri->server));
+                        }
+
+                        if (parsed_uri->port) {
+                            upstream->port = parsed_uri->port;
+                        }
+
+                        if (parsed_uri->user) {
+                            char *username = (char *)xmlStrdup(XMLSTR(parsed_uri->user));
+
+                            if (username) {
+                                char *password = strchr(username, ':');
+
+                                if (upstream->username)
+                                    xmlFree(upstream->username);
+                                upstream->username = username;
+
+                                if (password) {
+                                    *password = 0;
+
+                                    if (upstream->password)
+                                        xmlFree(upstream->password);
+                                    upstream->password = (char *)xmlStrdup(XMLSTR(password+1));
+                                }
+                            }
+                        }
+
+                        if (parsed_uri->path) {
+                            if (upstream->mount)
+                                xmlFree(upstream->mount);
+                            upstream->mount = (char *)xmlStrdup(XMLSTR(parsed_uri->path));
+                        }
+                    } else {
+                        __found_bad_tag(configuration, node, BTR_INVALID, (const char *)uri);
+                    }
+
+                    xmlFreeURI(parsed_uri);
+                }
+                xmlFree(uri);
+            }
         }
     } while ((node = node->next));
 }
