@@ -1164,6 +1164,10 @@ static void command_metadata(client_t *client,
 
     if (same_ip && plugin && plugin->set_tag) {
         if (song) {
+            if (artist || title) {
+                ICECAST_LOG_WARN("Metadata request mountpoint %H contains \"song\" but also \"artist\" and/or \"title\"", source->mount);
+            }
+
             plugin->set_tag (plugin, "song", song, charset);
             ICECAST_LOG_INFO("Metadata on mountpoint %H changed to \"%H\"", source->mount, song);
         } else {
