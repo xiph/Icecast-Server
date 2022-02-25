@@ -139,6 +139,9 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
     }
 
     if (in_value) {
+        if (!charset)
+            charset = plugin->charset;
+
         value = util_conv_string (in_value, charset, "UTF-8");
         if (value == NULL)
             value = strdup(in_value);
