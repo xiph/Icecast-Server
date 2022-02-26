@@ -15,12 +15,5 @@ void prng_initialize(void);
 void prng_shutdown(void);
 void prng_configure(ice_config_t *config);
 void prng_deconfigure(void);
-void prng_auto_reseed(void);
-
-void prng_write(const void *buffer, size_t len);
-ssize_t prng_read(void *buffer, size_t len);
-
-int prng_write_file(const char *filename, ssize_t len);
-int prng_read_file(const char *filename, ssize_t len);
 
 #endif

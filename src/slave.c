@@ -38,6 +38,9 @@
 #include "compat.h"
 
 #include <libxml/uri.h>
+
+#include <igloo/prng.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/net/sock.h"
@@ -54,7 +57,6 @@
 #include "logging.h"
 #include "source.h"
 #include "format.h"
-#include "prng.h"
 
 #define CATMODULE "slave"
 
@@ -313,7 +315,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
             ICECAST_LOG_ERROR("Header read failed for %s (%s:%d%s)", relay->config->localmount, server, port, mount);
             break;
         }
-        prng_write(header, strlen(header));
+        igloo_prng_write(igloo_instance, header, strlen(header), -1, igloo_PRNG_FLAG_NONE);
         parser = httpp_create_parser();
         httpp_initialize (parser, NULL);
         if (! httpp_parse_response (parser, header, strlen(header), relay->config->localmount))
@@ -801,7 +803,7 @@ static int update_from_master(ice_config_t *config)
             size_t len = strlen(buf);
             if (!len)
                 break;
-            prng_write(buf, len);
+            igloo_prng_write(igloo_instance, buf, len, -1, igloo_PRNG_FLAG_NONE);
         }
         while (sock_read_line(mastersock, buf, sizeof(buf))) {
             size_t len = strlen(buf);
@@ -810,7 +812,7 @@ static int update_from_master(ice_config_t *config)
 
             if (!len)
                 continue;
-            prng_write(buf, len);
+            igloo_prng_write(igloo_instance, buf, len, -1, igloo_PRNG_FLAG_NONE);
 
             ICECAST_LOG_DEBUG("read %d from master \"%s\"", count++, buf);
             xmlURIPtr parsed_uri = xmlParseURI(buf);
@@ -916,7 +918,7 @@ static void *_slave_thread(void *arg)
         global_unlock();
 
         thread_sleep(1000000);
-        prng_auto_reseed();
+        igloo_prng_auto_reseed(igloo_instance, igloo_PRNG_FLAG_NONE);
         thread_mutex_lock(&_slave_mutex);
         if (slave_running == 0) {
             thread_mutex_unlock(&_slave_mutex);
