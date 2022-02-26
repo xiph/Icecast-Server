@@ -27,6 +27,7 @@
 #include "source.h"
 
 ice_global_t global;
+igloo_ro_t   igloo_instance = igloo_RO_NULL;
 
 static mutex_t _global_mutex;
 

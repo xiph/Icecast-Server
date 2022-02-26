@@ -21,6 +21,8 @@
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
+#include <igloo/igloo.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "icecasttypes.h"
@@ -48,6 +50,7 @@ typedef struct ice_global_tag
 } ice_global_t;
 
 extern ice_global_t global;
+extern igloo_ro_t   igloo_instance;
 
 void global_initialize(void);
 void global_shutdown(void);
