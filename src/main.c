@@ -729,6 +729,13 @@ int main(int argc, char **argv)
         free (pidfile);
     }
 
+    {
+        char *buf;
+        if (igloo_ro_stringify(igloo_instance, &buf, igloo_RO_SY_DEFAULT) == igloo_ERROR_NONE) {
+            printf("%s\n", buf);
+            free(buf);
+        }
+    }
     igloo_ro_unref(&igloo_instance);
     return 0;
 }
