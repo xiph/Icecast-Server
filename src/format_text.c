@@ -62,6 +62,8 @@ static refbuf_t *text_get_buffer(source_t *source)
     refbuf_t *refbuf = refbuf_new(1024);
     ssize_t bytes;
 
+    ICECAST_LOG_DDEBUG("Trying to read buffer.");
+
     bytes = client_body_read(source->client, refbuf->data, refbuf->len);
     if (bytes < 0) {
         /* Why do we do this here (not source.c)? -- ph3-der-loewe, 2018-04-17 */
