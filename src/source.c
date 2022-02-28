@@ -1024,6 +1024,8 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         source->allow_direct_access = mountinfo->allow_direct_access;
     }
 
+    stats_event(source->mount, "allow-direct-access", source->allow_direct_access ? "true" : "false");
+
     /* if a setting is available in the mount details then use it, else
      * check the parser details. */
 
