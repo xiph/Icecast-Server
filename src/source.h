@@ -15,6 +15,7 @@
 #define __SOURCE_H__
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "common/thread/thread.h"
 #include "common/httpp/httpp.h"
@@ -77,7 +78,7 @@ struct source_tag {
     int on_demand;
     int on_demand_req;
     int hidden;
-    int no_mount; // copy of mount_proxy->no_mount
+    bool allow_direct_access; // copy of mount_proxy->allow_direct_access
     time_t last_read;
     int short_delay;
 

@@ -20,6 +20,8 @@
 #define CONFIG_EBADROOT -3
 #define CONFIG_EPARSE   -4
 
+#include <stdbool.h>
+
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
@@ -102,7 +104,7 @@ typedef struct _mount_proxy {
     /* Do we permit direct requests of this mountpoint?
      * (or only indirect, through fallbacks)
      */
-    int no_mount;
+    bool allow_direct_access;
     /* amount to send to a new client if possible, -1 take
      * from global setting
      */

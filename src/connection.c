@@ -1061,7 +1061,7 @@ static void _handle_get_request(client_t *client) {
                 }
             }
 
-            if (source->no_mount) {
+            if (!source->allow_direct_access) {
                 client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_NO_FOR_DIRECT_ACCESS);
                 break;
             }

@@ -1652,6 +1652,7 @@ static void _parse_mount(xmlDocPtr      doc,
     mount->mp3_meta_interval    = -1;
     mount->yp_public            = -1;
     mount->max_history          = -1;
+    mount->allow_direct_access  = true;
     mount->next                 = NULL;
 
     tmp = (char *)xmlGetProp(parentnode, XMLSTR("type"));
@@ -1723,8 +1724,14 @@ static void _parse_mount(xmlDocPtr      doc,
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-mount")) == 0) {
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <allow-direct-access>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->no_mount = util_str_to_bool(tmp);
+            mount->allow_direct_access = !util_str_to_bool(tmp);
+            if(tmp)
+                xmlFree(tmp);
+        } else if (xmlStrcmp(node->name, XMLSTR("allow-direct-access")) == 0) {
+            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
+            mount->allow_direct_access = util_str_to_bool(tmp);
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("no-yp")) == 0) {
@@ -2928,8 +2935,8 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src)
         dst->fallback_mount = (char*)xmlStrdup((xmlChar*)src->fallback_mount);
     if (dst->fallback_override == FALLBACK_OVERRIDE_NONE)
         dst->fallback_override = src->fallback_override;
-    if (!dst->no_mount)
-        dst->no_mount = src->no_mount;
+    if (dst->allow_direct_access)
+        dst->allow_direct_access = src->allow_direct_access;
     if (dst->burst_size == -1)
         dst->burst_size = src->burst_size;
     if (!dst->queue_size_limit)

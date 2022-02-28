@@ -108,6 +108,7 @@ source_t *source_reserve (const char *mount)
         src->mount = strdup(mount);
         src->identifier = mount_identifier_new(mount);
         src->max_listeners = -1;
+        src->allow_direct_access = true;
         thread_mutex_create(&src->lock);
 
         avl_insert(global.source_tree, src);
@@ -1020,7 +1021,7 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         source->max_listeners = mountinfo->max_listeners;
         source->fallback_override = mountinfo->fallback_override;
         source->hidden = mountinfo->hidden;
-        source->no_mount = mountinfo->no_mount;
+        source->allow_direct_access = mountinfo->allow_direct_access;
     }
 
     /* if a setting is available in the mount details then use it, else
