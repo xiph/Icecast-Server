@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #ifndef _WIN32
 #include <fnmatch.h>
@@ -139,22 +140,22 @@
 #define CONFIG_LEGACY_SOURCE_NAME_GLOBAL    "legacy-global-source"
 #define CONFIG_LEGACY_SOURCE_NAME_MOUNT     "legacy-mount-source"
 #define CONFIG_LEGACY_SOURCE_METHODS        CONFIG_LEGACY_ALL_METHODS ",post,source,put,delete"
-#define CONFIG_LEGACY_SOURCE_ALLOW_WEB      0
+#define CONFIG_LEGACY_SOURCE_ALLOW_WEB      false
 #define CONFIG_LEGACY_SOURCE_ALLOW_ADMIN    "*"
 
 #define CONFIG_LEGACY_ADMIN_NAME            "legacy-admin"
 #define CONFIG_LEGACY_ADMIN_METHODS         CONFIG_LEGACY_ALL_METHODS ",post,head,stats,delete"
-#define CONFIG_LEGACY_ADMIN_ALLOW_WEB       1
+#define CONFIG_LEGACY_ADMIN_ALLOW_WEB       true
 #define CONFIG_LEGACY_ADMIN_ALLOW_ADMIN     "*"
 
 #define CONFIG_LEGACY_RELAY_NAME            "legacy-relay"
 #define CONFIG_LEGACY_RELAY_METHODS         CONFIG_LEGACY_ALL_METHODS
-#define CONFIG_LEGACY_RELAY_ALLOW_WEB       1
+#define CONFIG_LEGACY_RELAY_ALLOW_WEB       true
 #define CONFIG_LEGACY_RELAY_ALLOW_ADMIN     "streamlist.txt"
 
 #define CONFIG_LEGACY_ANONYMOUS_NAME        "anonymous"
 #define CONFIG_LEGACY_ANONYMOUS_METHODS     CONFIG_LEGACY_ALL_METHODS ",post,head"
-#define CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB   1
+#define CONFIG_LEGACY_ANONYMOUS_ALLOW_WEB   true
 #define CONFIG_LEGACY_ANONYMOUS_ALLOW_ADMIN NULL
 
 enum bad_tag_reason {
@@ -538,7 +539,7 @@ static void __append_old_style_auth(ice_config_t        *configuration,
                                     const char          *password,
                                     const char          *match_method,
                                     const char          *allow_method,
-                                    int                  allow_web,
+                                    bool                 allow_web,
                                     const char          *allow_admin)
 {
     xmlNodePtr  role,
@@ -1596,10 +1597,10 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
              headers, header_prefix);
          if (listener_add)
              __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-                 NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, 0, NULL);
+                 NULL, CONFIG_LEGACY_ANONYMOUS_METHODS, NULL, false, NULL);
          if (stream_auth)
              __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-                 NULL, CONFIG_LEGACY_SOURCE_METHODS, NULL, 0, NULL);
+                 NULL, CONFIG_LEGACY_SOURCE_METHODS, NULL, false, NULL);
 
          if (mount_add)
              xmlFree(mount_add);
@@ -1627,7 +1628,7 @@ static void _parse_mount_oldstyle_authentication(mount_proxy    *mount,
          ICECAST_LOG_ERROR("Unknown authentication type in legacy mode. "
              "Anonymous listeners and global login for sources disabled.");
          __append_old_style_auth(configuration, authstack, NULL, AUTH_TYPE_ANONYMOUS, NULL,
-             NULL, NULL, NULL, 0, NULL);
+             NULL, NULL, NULL, false, NULL);
      }
      xmlFree(type);
 }
