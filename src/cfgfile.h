@@ -270,9 +270,6 @@ struct ice_config_tag {
 
     ice_config_http_header_t *http_headers;
 
-    /* is TLS supported by the server? */
-    int tls_ok;
-
     size_t relay_length;
     relay_config_t **relay;
 

@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <string.h>
 #ifdef HAVE_POLL
@@ -98,7 +99,7 @@ static int _initialized = 0;
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
 static volatile client_queue_t *_body_queue = NULL, **_body_queue_tail = &_body_queue;
-static int tls_ok;
+static bool tls_ok = false;
 static tls_ctx_t *tls_ctx;
 
 /* filtering client connection based on IP */
@@ -169,7 +170,7 @@ static void get_tls_certificate(ice_config_t *config)
 {
     const char *keyfile;
 
-    config->tls_ok = tls_ok = 0;
+    tls_ok = false;
 
     keyfile = config->tls_context.key_file;
     if (!keyfile)
@@ -182,7 +183,7 @@ static void get_tls_certificate(ice_config_t *config)
         return;
     }
 
-    config->tls_ok = tls_ok = 1;
+    tls_ok = true;
 }
 
 
@@ -218,7 +219,7 @@ static int connection_send_tls(connection_t *con, const void *buf, size_t len)
 /* TLS not compiled in, so at least log it */
 static void get_tls_certificate(ice_config_t *config)
 {
-    tls_ok = 0;
+    tls_ok = false;
     ICECAST_LOG_INFO("No TLS capability. "
                      "Rebuild Icecast with OpenSSL support to enable this.");
 }
