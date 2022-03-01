@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 #ifndef _WIN32
 #include <fnmatch.h>
 #endif
@@ -50,18 +51,32 @@
 #include "prng.h"
 
 #define CATMODULE                       "CONFIG"
+#define RANGE_PORT                      1, 65535
+#define RANGE_ICY_INTERVAL              -1, (64*1024)
+#define RANGE_SNDBUF                    1024, (64*1024)
 #define CONFIG_DEFAULT_LOCATION         "Earth"
 #define CONFIG_DEFAULT_ADMIN            "icemaster@localhost"
 #define CONFIG_DEFAULT_CLIENT_LIMIT     256
+#define CONFIG_MAX_CLIENT_LIMIT         (32*1024)
 #define CONFIG_DEFAULT_SOURCE_LIMIT     16
+#define CONFIG_MAX_SOURCE_LIMIT         (CONFIG_MAX_CLIENT_LIMIT/2)
+#define CONFIG_MAX_LISTENERS            (CONFIG_MAX_CLIENT_LIMIT/2)
 #define CONFIG_DEFAULT_QUEUE_SIZE_LIMIT (500*1024)
+#define CONFIG_MAX_QUEUE_SIZE_LIMIT     (16 *1024*1024)
 #define CONFIG_DEFAULT_BODY_SIZE_LIMIT  (4*1024)
+#define CONFIG_MIN_BODY_SIZE_LIMIT      ( 1*1024)
+#define CONFIG_MAX_BODY_SIZE_LIMIT      (64*1024)
 #define CONFIG_DEFAULT_BURST_SIZE       (64*1024)
 #define CONFIG_DEFAULT_THREADPOOL_SIZE  4
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT   30
+#define CONFIG_RANGE_CLIENT_TIMEOUT     2, 600
+#define CONFIG_MAX_CLIENT_TIMEOUT       600
 #define CONFIG_DEFAULT_HEADER_TIMEOUT   15
+#define CONFIG_RANGE_HEADER_TIMEOUT     CONFIG_RANGE_CLIENT_TIMEOUT
 #define CONFIG_DEFAULT_SOURCE_TIMEOUT   10
+#define CONFIG_RANGE_SOURCE_TIMEOUT     CONFIG_RANGE_CLIENT_TIMEOUT
 #define CONFIG_DEFAULT_BODY_TIMEOUT     (10 + CONFIG_DEFAULT_HEADER_TIMEOUT)
+#define CONFIG_RANGE_BODY_TIMEOUT       CONFIG_RANGE_CLIENT_TIMEOUT
 #define CONFIG_DEFAULT_MASTER_USERNAME  "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
 #define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
@@ -72,12 +87,15 @@
 #define CONFIG_DEFAULT_ERROR_LOG        "error.log"
 #define CONFIG_DEFAULT_LOG_LEVEL        ICECAST_LOGLEVEL_INFO
 #define CONFIG_DEFAULT_LOG_LINES_KEPT   64
+#define CONFIG_RANGE_LOG_LINES_KEPT     8, 1024
 #define CONFIG_DEFAULT_CHROOT           0
 #define CONFIG_DEFAULT_CHUID            0
 #define CONFIG_DEFAULT_USER             NULL
 #define CONFIG_DEFAULT_GROUP            NULL
 #define CONFIG_MASTER_UPDATE_INTERVAL   120
 #define CONFIG_YP_URL_TIMEOUT           10
+#define CONFIG_RANGE_YP_URL_TIMEOUT     CONFIG_RANGE_CLIENT_TIMEOUT
+#define CONFIG_RANGE_YP_TOUCH_INTERVAL  30, 3600
 #define CONFIG_DEFAULT_RELAY_SERVER     "127.0.0.1"
 #define CONFIG_DEFAULT_RELAY_PORT       80
 #define CONFIG_DEFAULT_RELAY_MOUNT      "/"
@@ -162,7 +180,8 @@ enum bad_tag_reason {
     BTR_UNKNOWN,
     BTR_OBSOLETE,
     BTR_INVALID,
-    BTR_EMPTY
+    BTR_EMPTY,
+    BTR_RANGE
 };
 
 static ice_config_t _current_configuration;
@@ -294,25 +313,37 @@ void config_init_configuration(ice_config_t *configuration)
     configuration->reportxml_db = refobject_new(reportxml_database_t);
 }
 
-static inline void __read_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, int *val)
+static inline void __read_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, int *val, int min, int max)
 {
     char *str = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
     if (!str || !*str) {
         __found_bad_tag(configuration, node, BTR_EMPTY, NULL);
     } else {
-        *val = util_str_to_int(str, *val);
+        int res = util_str_to_int(str, *val);
+
+        if (res < min || res > max) {
+            __found_bad_tag(configuration, node, BTR_RANGE, NULL);
+        } else {
+            *val = res;
+        }
     }
     if (str)
         xmlFree(str);
 }
 
-static inline void __read_unsigned_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, unsigned int *val)
+static inline void __read_unsigned_int(ice_config_t *configuration, xmlDocPtr doc, xmlNodePtr node, unsigned int *val, unsigned int min, unsigned int max)
 {
     char *str = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
     if (!str || !*str) {
         __found_bad_tag(configuration, node, BTR_EMPTY, NULL);
     } else {
-        *val = util_str_to_unsigned_int(str, *val);
+        int res = util_str_to_unsigned_int(str, *val);
+
+        if (res < 0 || ((unsigned int)res) < min || ((unsigned int)res) > max) {
+            __found_bad_tag(configuration, node, BTR_RANGE, NULL);
+        } else {
+            *val = res;
+        }
     }
     if (str)
         xmlFree(str);
@@ -524,6 +555,14 @@ static void __found_bad_tag(ice_config_t *configuration, xmlNodePtr node, enum b
                 ICECAST_LOG_WARN("Invalid empty tag: %s", name);
             } else {
                 ICECAST_LOG_WARN("Invalid empty tag");
+            }
+        break;
+        case BTR_RANGE:
+            configuration->config_problems |= CONFIG_PROBLEM_INVALID_NODE;
+            if (name) {
+                ICECAST_LOG_WARN("Value for tag is out of range: %s", name);
+            } else {
+                ICECAST_LOG_WARN("Value for tag is out of range");
             }
         break;
     }
@@ -1278,9 +1317,9 @@ static void _parse_root(xmlDocPtr       doc,
                 xmlFree(configuration->master_password);
             configuration->master_password = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("master-server-port")) == 0) {
-            __read_int(configuration, doc, node, &configuration->master_server_port);
+            __read_int(configuration, doc, node, &configuration->master_server_port, RANGE_PORT);
         } else if (xmlStrcmp(node->name, XMLSTR("master-update-interval")) == 0) {
-            __read_int(configuration, doc, node, &configuration->master_update_interval);
+            __read_int(configuration, doc, node, &configuration->master_update_interval, 15, 3600);
         } else if (xmlStrcmp(node->name, XMLSTR("shoutcast-mount")) == 0) {
             if (configuration->shoutcast_mount)
                 xmlFree(configuration->shoutcast_mount);
@@ -1407,21 +1446,21 @@ static void _parse_limits(xmlDocPtr     doc,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("clients")) == 0) {
-            __read_int(configuration, doc, node, &configuration->client_limit);
+            __read_int(configuration, doc, node, &configuration->client_limit, 1, CONFIG_MAX_CLIENT_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("sources")) == 0) {
-            __read_int(configuration, doc, node, &configuration->source_limit);
+            __read_int(configuration, doc, node, &configuration->source_limit, 1, CONFIG_MAX_SOURCE_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("bodysize")) == 0) {
-            __read_int(configuration, doc, node, &configuration->body_size_limit);
+            __read_int(configuration, doc, node, &configuration->body_size_limit, CONFIG_MIN_BODY_SIZE_LIMIT, CONFIG_MAX_BODY_SIZE_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
-            __read_unsigned_int(configuration, doc, node, &configuration->queue_size_limit);
+            __read_unsigned_int(configuration, doc, node, &configuration->queue_size_limit, 1, CONFIG_MAX_QUEUE_SIZE_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("client-timeout")) == 0) {
-            __read_int(configuration, doc, node, &configuration->client_timeout);
+            __read_int(configuration, doc, node, &configuration->client_timeout, CONFIG_RANGE_CLIENT_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("header-timeout")) == 0) {
-            __read_int(configuration, doc, node, &configuration->header_timeout);
+            __read_int(configuration, doc, node, &configuration->header_timeout, CONFIG_RANGE_HEADER_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
-            __read_int(configuration, doc, node, &configuration->source_timeout);
+            __read_int(configuration, doc, node, &configuration->source_timeout, CONFIG_RANGE_SOURCE_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("body-timeout")) == 0) {
-            __read_int(configuration, doc, node, &configuration->body_timeout);
+            __read_int(configuration, doc, node, &configuration->body_timeout, CONFIG_RANGE_BODY_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <burst-size>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
@@ -1430,7 +1469,7 @@ static void _parse_limits(xmlDocPtr     doc,
             if (tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
-            __read_unsigned_int(configuration, doc, node, &configuration->burst_size);
+            __read_unsigned_int(configuration, doc, node, &configuration->burst_size, 0, CONFIG_MAX_QUEUE_SIZE_LIMIT);
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
@@ -1702,7 +1741,7 @@ static void _parse_mount(xmlDocPtr      doc,
             if(tmp)
                 xmlFree(tmp);
         } else if (xmlStrcmp(node->name, XMLSTR("max-listeners")) == 0) {
-            __read_int(configuration, doc, node, &mount->max_listeners);
+            __read_int(configuration, doc, node, &mount->max_listeners, 1, CONFIG_MAX_LISTENERS);
         } else if (xmlStrcmp(node->name, XMLSTR("max-history")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->max_history = util_str_to_int(tmp, mount->max_history);
@@ -1716,9 +1755,9 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("mp3-metadata-interval")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <icy-metadata-interval>.");
                 /* FIXME when do we plan to remove this? */
-            __read_int(configuration, doc, node, &mount->mp3_meta_interval);
+            __read_int(configuration, doc, node, &mount->mp3_meta_interval, RANGE_ICY_INTERVAL);
         } else if (xmlStrcmp(node->name, XMLSTR("icy-metadata-interval")) == 0) {
-            __read_int(configuration, doc, node, &mount->mp3_meta_interval);
+            __read_int(configuration, doc, node, &mount->mp3_meta_interval, RANGE_ICY_INTERVAL);
         } else if (xmlStrcmp(node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->fallback_override = config_str_to_fallback_override_t(configuration, node, tmp);
@@ -1770,13 +1809,13 @@ static void _parse_mount(xmlDocPtr      doc,
                 xmlFree(tmp);
             }
         } else if (xmlStrcmp(node->name, XMLSTR("max-listener-duration")) == 0) {
-            __read_unsigned_int(configuration, doc, node, &mount->max_listener_duration);
+            __read_unsigned_int(configuration, doc, node, &mount->max_listener_duration, 0, UINT_MAX);
         } else if (xmlStrcmp(node->name, XMLSTR("queue-size")) == 0) {
-            __read_unsigned_int(configuration, doc, node, &mount->queue_size_limit);
+            __read_unsigned_int(configuration, doc, node, &mount->queue_size_limit, 1, CONFIG_MAX_QUEUE_SIZE_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("source-timeout")) == 0) {
-            __read_unsigned_int(configuration, doc, node, &mount->source_timeout);
+            __read_unsigned_int(configuration, doc, node, &mount->source_timeout, CONFIG_RANGE_SOURCE_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-size")) == 0) {
-            __read_int(configuration, doc, node, &mount->burst_size);
+            __read_int(configuration, doc, node, &mount->burst_size, 0, CONFIG_MAX_QUEUE_SIZE_LIMIT);
         } else if (xmlStrcmp(node->name, XMLSTR("cluster-password")) == 0) {
             mount->cluster_password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
@@ -1988,7 +2027,7 @@ static void _parse_relay_upstream(xmlDocPtr      doc,
             upstream->server = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("port")) == 0) {
-            __read_int(configuration, doc, node, &upstream->port);
+            __read_int(configuration, doc, node, &upstream->port, RANGE_PORT);
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             if (upstream->mount)
                 xmlFree(upstream->mount);
@@ -2223,9 +2262,9 @@ static void _parse_listen_socket(xmlDocPtr      doc,
             listener->bind_address = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("so-sndbuf")) == 0) {
-            __read_int(configuration, doc, node, &listener->so_sndbuf);
+            __read_int(configuration, doc, node, &listener->so_sndbuf, RANGE_SNDBUF);
         } else if (xmlStrcmp(node->name, XMLSTR("listen-backlog")) == 0) {
-            __read_int(configuration, doc, node, &listener->listen_backlog);
+            __read_int(configuration, doc, node, &listener->listen_backlog, 1, 128);
         } else if (xmlStrcmp(node->name, XMLSTR("authentication")) == 0) {
             _parse_authentication_node(configuration, node, &(listener->authstack));
         } else if (xmlStrcmp(node->name, XMLSTR("http-headers")) == 0) {
@@ -2366,9 +2405,9 @@ static void _parse_oldstyle_directory(xmlDocPtr      doc,
                 xmlFree(yp_dir->url);
             yp_dir->url = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-url-timeout")) == 0) {
-            __read_int(configuration, doc, node, &yp_dir->timeout);
+            __read_int(configuration, doc, node, &yp_dir->timeout, CONFIG_RANGE_YP_URL_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("touch-interval")) == 0) {
-            __read_int(configuration, doc, node, &yp_dir->touch_interval);
+            __read_int(configuration, doc, node, &yp_dir->touch_interval, CONFIG_RANGE_YP_TOUCH_INTERVAL);
         }
     } while ((node = node->next));
 
@@ -2680,7 +2719,7 @@ static void _parse_logging(xmlDocPtr        doc,
                 xmlFree(configuration->playlist_log);
             configuration->playlist_log = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("logsize")) == 0) {
-            __read_int(configuration, doc, node, &configuration->logsize);
+            __read_int(configuration, doc, node, &configuration->logsize, 0, INT_MAX);
         } else if (xmlStrcmp(node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
            configuration->loglevel = util_str_to_loglevel(tmp);
@@ -2698,7 +2737,7 @@ static void _parse_logging(xmlDocPtr        doc,
             int val = CONFIG_DEFAULT_LOG_LINES_KEPT;
             char *logfile = (char *)xmlGetProp(node, XMLSTR("logfile"));
 
-            __read_int(configuration, doc, node, &val);
+            __read_int(configuration, doc, node, &val, CONFIG_RANGE_LOG_LINES_KEPT);
 
             if (logfile) {
                 if (!strcmp(logfile, "error")) {
