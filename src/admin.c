@@ -1530,6 +1530,11 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
     }
 
+#ifdef DEVEL_LOGGING
+    status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
+    __reportxml_add_maintenance(reportnode, config->reportxml_db, "c704804e-d3b9-4544-898b-d477078135de", "warning", "Developer logging is active. This mode is not for production.", NULL);
+#endif
+
     if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "c4f25c51-2720-4b38-a806-19ef024b5289", "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_LOCATION)
