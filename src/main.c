@@ -561,13 +561,15 @@ static inline void __log_system_name(void) {
 
    ICECAST_LOG_INFO("Running on %s; OS: %s; Address Bits: %i", hostname, system, sizeof(void*)*8);
 
+   config = config_get_config();
    if (have_hostname) {
-       config = config_get_config();
        if ((config->config_problems & CONFIG_PROBLEM_HOSTNAME) && util_hostcheck(hostname) == HOSTCHECK_SANE) {
            ICECAST_LOG_WARN("Hostname is not set to anything useful in <hostname>, Consider setting it to the system's name \"%s\".", hostname);
        }
-       config_release_config();
    }
+
+   ICECAST_LOG_WARN("From configuration: Our hostname is %#H, located % #H, with admin contact % #H", config->hostname, config->location, config->admin);
+   config_release_config();
 }
 
 #ifdef WIN32_SERVICE
