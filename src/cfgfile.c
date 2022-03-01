@@ -1040,6 +1040,12 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
     _parse_root(doc, node->xmlChildrenNode, configuration);
     xmlFreeDoc(doc);
     _merge_mounts_all(configuration);
+
+    if (configuration->client_limit <= (configuration->source_limit*2)) {
+        configuration->config_problems |= CONFIG_PROBLEM_VALIDATION;
+        ICECAST_LOG_ERROR("Client limit (%i) is too small for given source limit (%i)", configuration->client_limit, configuration->source_limit);
+    }
+
     return 0;
 }
 

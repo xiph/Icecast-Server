@@ -1549,6 +1549,8 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "b6224fc4-53a1-433f-a6cd-d5b85c60f1c9", "error", "Obsolete tags are used in the config file. See the error.log for details and update your configuration accordingly.", NULL);
     if (config->config_problems & CONFIG_PROBLEM_INVALID_NODE)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "0f6f757d-52d8-4b9a-8e57-9bcd528fffba", "error", "Invalid tags are used in the config file. See the error.log for details and update your configuration accordingly.", NULL);
+    if (config->config_problems & CONFIG_PROBLEM_VALIDATION)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "8fc33086-274d-4ccb-b32f-599b3fa0f41a", "error", "The configuration did not validate. See the error.log for details and update your configuration accordingly.", NULL);
 
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);
