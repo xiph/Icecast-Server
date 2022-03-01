@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
- * Copyright 2011-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __CFGFILE_H__

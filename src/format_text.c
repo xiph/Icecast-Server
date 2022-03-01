@@ -5,7 +5,7 @@
  * At your option, this specific source file can also be distributed
  * under the GNU GPL version 3.
  *
- * Copyright 2021,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2021-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
