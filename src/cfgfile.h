@@ -337,8 +337,6 @@ void config_parse_http_headers(xmlNodePtr                  node,
                                ice_config_t               *configuration);
 void config_clear_http_header(ice_config_http_header_t *header);
 
-int config_rehash(void);
-
 ice_config_locks *config_locks(void);
 
 ice_config_t *config_get_config(void);
