@@ -1584,6 +1584,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(resource);
 
     refobject_unref(incident);
+    refobject_unref(reportnode);
 
     config_release_config();
     client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, DASHBOARD_HTML_REQUEST, response, 200, NULL);
