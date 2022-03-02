@@ -887,6 +887,7 @@ static void config_clear_prng_seed(prng_seed_config_t *seed)
     while (seed) {
         prng_seed_config_t *next = seed->next;
         if (seed->filename) xmlFree(seed->filename);
+        free(seed);
         seed = next;
     }
 }
