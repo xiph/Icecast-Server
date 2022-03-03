@@ -18,7 +18,6 @@
                     <xsl:when test="source">
                         <xsl:choose>
                             <xsl:when test="param-id">
-                                <input type="hidden" name="id" value="{param-id}" />
                                 <p>Choose the mountpoint to which you want to move the listener to:</p>
                             </xsl:when>
                             <xsl:otherwise>
@@ -43,6 +42,7 @@
                                 <option value="replace-current">replace</option>
                                 <option value="replace-all" selected="selected">forget and replace</option>
                             </select>
+                            <input type="hidden" name="id" value="{param-id}" />
                             <input type="hidden" name="mount" value="{current_source}" />
                             &#160;
                             <input type="submit" value="Move listeners" />
