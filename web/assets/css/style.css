@@ -255,6 +255,11 @@ section.box table tbody tr:hover {
     background-color: #cccccc;
 }
 
+section.box table tr td {
+    overflow-wrap: break-word;
+    vertical-align: top;
+}
+
 section.box table.table-keys tr > * {
     padding: 0.4em 1.5em;
 }
