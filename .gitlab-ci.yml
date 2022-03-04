@@ -73,3 +73,40 @@ upload_dist:
     - rm -rf home*
     - echo > $OSC_RC
     - ls -la
+
+
+upload_dist_win:
+  variables:
+#    GIT_CHECKOUT: "false"
+#    GIT_STRATEGY: "none"
+
+  tags:
+    - docker
+    - linux
+
+  stage: deploy
+
+  dependencies:
+    - make_dist
+
+  before_script:
+    - cat /etc/os*
+    - apk update
+    - apk add python3 py3-pip python3-dev openssl-dev g++ make swig coreutils bash ca-certificates
+    - pip install osc
+
+  script:
+    - pwd
+    - ls -la
+    - mkdir -p osc
+    - cd osc
+    - HOME=`pwd` osc-wrapper.py --config=$OSC_RC checkout home:stephan48:branches:multimedia:xiph:beta-devel mingw32-icecast
+    - cp ../*.tar.gz home:stephan48:branches:multimedia:xiph:beta-devel/mingw32-icecast/icecast2_2.4.99.2.orig.tar.gz
+    - cd home:stephan48:branches:multimedia:xiph:beta-devel/mingw32-icecast
+    - HOME=`pwd`/../../ osc-wrapper.py --config=$OSC_RC diff
+    - HOME=`pwd`/../../ osc-wrapper.py --config=$OSC_RC commit -m "Commit via $CI_PIPELINE_URL"
+    - cd ../..
+    - shred -vzf $OSC_RC .osc_cookiejar
+    - rm -rf home*
+    - echo > $OSC_RC
+    - ls -la
