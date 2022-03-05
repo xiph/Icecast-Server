@@ -1644,6 +1644,7 @@ static void ui_command(client_t * client, source_t * source, admin_format_t form
 
         refobject_unref(param);
         refobject_unref(resource);
+        refobject_unref(incident);
 
         client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, buffer, format, 200, NULL);
         refobject_unref(report);
