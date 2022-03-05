@@ -858,3 +858,45 @@ static inline int listensocket__select_isset(listensocket_t *self, fd_set *set)
 
 }
 #endif
+
+/* ---------------------------------------------------------------------------- */
+
+const char *                listensocket_type_to_string(listener_type_t type)
+{
+    switch (type) {
+        case LISTENER_TYPE_ERROR:
+            return NULL;
+            break;
+        case LISTENER_TYPE_NORMAL:
+            return "normal";
+            break;
+        case LISTENER_TYPE_VIRTUAL:
+            return "virtual";
+            break;
+    }
+
+    return NULL;
+}
+
+const char *                listensocket_tlsmode_to_string(tlsmode_t mode)
+{
+    switch (mode) {
+        case ICECAST_TLSMODE_DISABLED:
+            return "disabled";
+            break;
+        case ICECAST_TLSMODE_AUTO:
+            return "auto";
+            break;
+        case ICECAST_TLSMODE_AUTO_NO_PLAIN:
+            return "auto_no_plain";
+            break;
+        case ICECAST_TLSMODE_RFC2817:
+            return "rfc2817";
+            break;
+        case ICECAST_TLSMODE_RFC2818:
+            return "rfc2818";
+            break;
+    }
+
+    return NULL;
+}

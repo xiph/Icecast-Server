@@ -33,4 +33,7 @@ const listener_t *          listensocket_get_listener(listensocket_t *self);
 int                         listensocket_release_listener(listensocket_t *self);
 listener_type_t             listensocket_get_type(listensocket_t *self);
 
+const char *                listensocket_type_to_string(listener_type_t type);
+const char *                listensocket_tlsmode_to_string(tlsmode_t mode);
+
 #endif
