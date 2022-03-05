@@ -27,7 +27,11 @@ void reportxml_helper_add_value(reportxml_node_t *parent, const char *type, cons
     reportxml_node_set_attribute(value, "type", type);
     if (member)
         reportxml_node_set_attribute(value, "member", member);
-    reportxml_node_set_attribute(value, "value", str);
+    if (str) {
+        reportxml_node_set_attribute(value, "value", str);
+    } else {
+        reportxml_node_set_attribute(value, "state", "unset");
+    }
     reportxml_node_add_child(parent, value);
     refobject_unref(value);
 }
