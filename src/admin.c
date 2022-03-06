@@ -1621,6 +1621,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     bool has_many_clients;
     bool has_too_many_clients;
     bool has_legacy_sources;
+    bool inet6_enabled;
 
 
     resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
@@ -1646,13 +1647,14 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     has_many_clients = global.clients > ((75 * config->client_limit) / 100);
     has_too_many_clients = global.clients > ((90 * config->client_limit) / 100);
     has_legacy_sources = global.sources_legacy > 0;
+    inet6_enabled = listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET6);
     global_unlock();
     reportxml_node_add_child(resource, node);
     refobject_unref(node);
 
     if (config->config_problems || has_too_many_clients) {
         status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_ERROR);
-    } else if (!has_sources || has_many_clients) {
+    } else if (!has_sources || has_many_clients || !inet6_enabled) {
         status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
     }
 
@@ -1660,6 +1662,9 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
     __reportxml_add_maintenance(reportnode, config->reportxml_db, "c704804e-d3b9-4544-898b-d477078135de", "warning", "Developer logging is active. This mode is not for production.", NULL);
 #endif
+
+    if (!inet6_enabled)
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "f90219e1-bd07-4b54-b1ee-0ba6a0289a15", "warning", "IPv6 not enabled.", NULL);
 
     if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "c4f25c51-2720-4b38-a806-19ef024b5289", "warning", "Hostname is not set to anything useful in <hostname>.", NULL);

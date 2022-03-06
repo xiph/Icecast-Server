@@ -9,6 +9,8 @@
 #ifndef __LISTENSOCKET_H__
 #define __LISTENSOCKET_H__
 
+#include <stdbool.h>
+
 #include "common/net/sock.h"
 
 #include "icecasttypes.h"
@@ -26,6 +28,7 @@ int                         listensocket_container_set_sockcount_cb(listensocket
 ssize_t                     listensocket_container_sockcount(listensocket_container_t *self);
 listensocket_t *            listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
 listensocket_t **           listensocket_container_list_sockets(listensocket_container_t *self);
+bool                        listensocket_container_is_family_included(listensocket_container_t *self, sock_family_t family);
 
 REFOBJECT_FORWARD_TYPE(listensocket_t);
 

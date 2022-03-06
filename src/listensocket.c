@@ -530,6 +530,24 @@ listensocket_t **           listensocket_container_list_sockets(listensocket_con
     return res;
 }
 
+bool                        listensocket_container_is_family_included(listensocket_container_t *self, sock_family_t family)
+{
+    size_t i;
+
+    thread_mutex_lock(&self->lock);
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            if (listensocket_get_family(self->sock[i]) == family) {
+                thread_mutex_unlock(&self->lock);
+                return true;
+            }
+        }
+    }
+    thread_mutex_unlock(&self->lock);
+
+    return false;
+}
+
 /* ---------------------------------------------------------------------------- */
 
 static void __listensocket_free(refobject_t self, void **userdata)
