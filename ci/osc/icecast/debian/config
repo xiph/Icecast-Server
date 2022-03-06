@@ -1,0 +1,25 @@
+#!/bin/bash
+# Debconf config script for icecast2
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+db_input high icecast2/icecast-setup || true
+db_go ||true
+
+db_get icecast2/icecast-setup
+if [ "$RET" = "true" ]; then
+	db_input high icecast2/hostname || true
+	db_go ||true
+	db_input high icecast2/sourcepassword || true
+	db_go ||true
+	db_input high icecast2/relaypassword|| true
+	db_go ||true
+	db_input high icecast2/adminpassword || true
+	db_go ||true
+fi
+
+#DEBHELPER#
+
+exit 0

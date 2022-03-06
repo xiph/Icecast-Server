@@ -1,0 +1,110 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Nguyen Vu Hung <vuhung16plus@gmail.com>, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Icecase2 2.3.2-9\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-08-31 14:55+0700\n"
+"Last-Translator: Nguyen Vu Hung <vuhung16plus@gmail.com>\n"
+"Language-Team: debian-l10n-vietnamese <debian-l10n-vietnamese@lists.debian.org>\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Cấu hình Icecast2?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Chọn để cấu hình mật khẩu cho Icecast2. Máy chủ sẽ không được kích hoạt cho "
+"tới khi cấu hình xong."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr "Bạn không nên dùng tùy chọn này nếu bạn đã cấu hình bằng tay Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Tên máy chủ Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr "Hãy chỉ định tên miền đầy đủ được dùng như tiền tố cho mọi luồng."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Mật khẩu nguồn Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Hãy nhập mật khẩu được sử dụng để kiểm soát truy cập vào các nguồn phương "
+"tiện truyền thông của Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Mật khẩu bộ chuyển tiếp Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Hãy chỉ định mật khẩu dùng để kiểm soát truy cập vào các bộ chuyển tiếp phát "
+"sóng của Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Mật khẩu quản trị Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr "Hãy chỉ định mật khẩu quản trị Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"Giao diện trang web quản trị tại http://localhost:8000, có thể được sử dụng "
+"để giám sát các kết nối hoặc để ngăn chặn người dùng khỏi luồng."

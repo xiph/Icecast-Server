@@ -1,0 +1,118 @@
+# Slovak translations for icecast2 package
+# Slovenské preklady pre balík icecast2.
+# Copyright (C) 2012 THE icecast2'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the icecast2 package.
+# Slavko <linux@slavino.sk>, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: icecast2 2.3.3-2\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-08-30 22:20+0200\n"
+"Last-Translator: Slavko <linux@slavino.sk>\n"
+"Language-Team: slovenčina <debian-l10n-slovak@lists.debian.org>\n"
+"Language: sk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+"X-POFile-SpellExtra: Icecast2 http stream relay 8000 localhost relays\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Nastaviť Icecast2?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Vyberte túto možnosť na nastavenie hesiel Icecast2. Kým nebudú nastavené, "
+"server nebude aktivovaný."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr ""
+"Túto možnosť by ste nemali použiť, ak už máte konfiguráciu Icecast2 manuálne "
+"prispôsobenú."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Meno stroja Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr ""
+"Prosím, zadajte úplné doménové meno, ktoré má byť použité ako predpona pre "
+"všetky prúdy (stream)."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Heslo zdroja Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Prosím, zadajte heslo, ktoré má byť použité na riadenie prístupu k zdrojom "
+"médií Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Heslo prenosu Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Prosím, zadajte heslo, ktoré má byť použité na riadenie prístupu  k prúdovým "
+"prenosom (stream relays) Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Heslo administrácie Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr ""
+"Prosím, zadajte heslo, ktoré má byť použité pre administráciu Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"Webové rozhranie administrácie, na http://localhost:8000, možno použiť na "
+"monitorovanie spojení alebo blokovanie používateľov."

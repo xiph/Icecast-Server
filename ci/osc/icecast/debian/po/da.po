@@ -1,0 +1,116 @@
+# Danish translation icecast2.
+# Copyright (C) 2012 icecast2 & nedenstående oversættere.
+# This file is distributed under the same license as the icecast2 package.
+# Joe Hansen <joedalton2@yahoo.dk>, 2011, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: icecast2\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-08-30 17:30+01:00\n"
+"Last-Translator: Joe Hansen <joedalton2@yahoo.dk>\n"
+"Language-Team: Danish <debian-l10n-danish@lists.debian.org> \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Konfigurer Icecast2?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Vælg denne indstilling for at opsætte adgangskoder for Icecast2. Indtil "
+"disse er konfigureret vil serveren ikke være aktiveret."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr ""
+"Du skal ikke bruge denne indstilling, hvis du allerede manuelt har "
+"justeret konfigurationen af Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Værtsnavn for Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr ""
+"Angiv venligst det fuldt kvalificerede domænenavn som skal bruges som "
+"præfiks for alle strømme."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Kildeadgangskode for Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Angiv venligst adgangskoden som skal bruges til at kontrollere adgang til "
+"Icecast2's mediekilder."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Relæadgangskode for Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Angiv venligst adgangskoden som skal bruges til at kontrollere adgang til "
+"Icecast2's udsendelsesrelæer (stream relays)."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Administrationsadgangskode for Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr ""
+"Angiv venligst adgangskoden som skal bruges for Icecast2-administration."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"Internetgrænsefladen for administrationen, på http://localhost:8000, kan "
+"bruges til at overvåge forbindelser eller til at blokere brugere fra at "
+"udsende (streaming)."

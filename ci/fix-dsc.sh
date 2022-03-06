@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 BASE=`dirname $0`
 TARGET=icecast.dsc
