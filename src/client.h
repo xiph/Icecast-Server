@@ -165,6 +165,8 @@ void client_send_redirect(client_t *client, const char *uuid, int status, const 
 void client_send_reportxml(client_t *client, reportxml_t *report, document_domain_t domain, const char *xsl, admin_format_t admin_format_hint, int status, const char *location);
 void client_send_buffer(client_t *client, int status, const char *mediatype, const char *charset, const char *buffer, ssize_t len, const char *extra_headers);
 reportxml_t *client_get_reportxml(const char *state_definition, const char *state_akindof, const char *state_text);
+reportxml_t *client_get_empty_reportxml(void);
+reportxml_node_t *client_add_empty_incident(reportxml_t *report, const char *state_definition, const char *state_akindof, const char *state_text);
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client);
 int client_send_bytes (client_t *client, const void *buf, unsigned len);
 int client_read_bytes (client_t *client, void *buf, unsigned len);
