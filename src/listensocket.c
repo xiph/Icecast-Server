@@ -799,6 +799,20 @@ listener_type_t             listensocket_get_type(listensocket_t *self)
     return ret;
 }
 
+sock_family_t               listensocket_get_family(listensocket_t *self)
+{
+    sock_family_t ret;
+
+    if (!self)
+        return SOCK_FAMILY__ERROR;
+
+    thread_mutex_lock(&self->lock);
+    ret = sock_get_family(self->sock);
+    thread_mutex_unlock(&self->lock);
+
+    return ret;
+}
+
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p)
 {
