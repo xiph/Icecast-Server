@@ -86,7 +86,7 @@ popd
 
 ls -la
 
-if [ "$NOCLEANUP" != "1" ];
+if [ "$NOCLEANUP" != "1" ]; then
   shred -vzf $OSC_RC .osc_cookiejar
   cd ..
   echo > $OSC_RC
