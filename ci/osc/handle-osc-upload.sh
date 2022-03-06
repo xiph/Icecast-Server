@@ -66,7 +66,7 @@ rm -r *
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$W32_ICECAST_INSTALLER_PROJECT/*.spec .
 
-sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT.spec 
+sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $W32_ICECAST_INSTALLER_PROJECT.spec 
 
 $OSC_CMD addremove
 $OSC_CMD diff
@@ -90,7 +90,7 @@ cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$W32_ICECAST_PROJECT/*.spec .
 
-sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT.spec 
+sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $W32_ICECAST_PROJECT.spec 
 
 $OSC_CMD addremove
 $OSC_CMD diff
