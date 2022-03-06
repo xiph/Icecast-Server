@@ -33,7 +33,7 @@ cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_VERSION.orig.tar.gz
 
 ls -la
 
-GZIP=-n tar  --format gnu -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_VERSION-1.debian.tar.gz debian/
+GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_VERSION-1.debian.tar.gz debian/
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$ICECAST_PROJECT/icecast* .
