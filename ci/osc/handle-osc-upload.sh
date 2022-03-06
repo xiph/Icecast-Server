@@ -31,14 +31,18 @@ pushd $OBS_BASE/$ICECAST_PROJECT
 rm -r *
 
 # copy dist archive
-cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_VERSION.orig.tar.gz 
+cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
 
 ls -la
 
-GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_VERSION-1.debian.tar.gz debian/
+sed -i "1s#^#icecast2 ($ICECAST_CI_VERSION) UNRELEASED; urgency=medium\n\n  * CI BUILD\n\n -- Stephan Jauernick <info@stephan-jauernick.de> `date +"%a, %d %b %Y %H:%M:%S %z"`\n\n#"  ci/osc/icecast/debian/changelog
+
+GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_CI_VERSION-1.debian.tar.gz debian/
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$ICECAST_PROJECT/icecast* .
+
+sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT.spec 
 
 $SCRIPT_DIR/../fix-dsc.sh
 
@@ -62,6 +66,8 @@ rm -r *
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$W32_ICECAST_INSTALLER_PROJECT/*.spec .
 
+sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT.spec 
+
 $OSC_CMD addremove
 $OSC_CMD diff
 $OSC_CMD commit -m "Commit via $CI_PIPELINE_URL"
@@ -79,10 +85,12 @@ pushd $OBS_BASE/$W32_ICECAST_PROJECT
 rm -r *
 
 # copy dist archive
-cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_VERSION.orig.tar.gz 
+cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$W32_ICECAST_PROJECT/*.spec .
+
+sed -i "s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT.spec 
 
 $OSC_CMD addremove
 $OSC_CMD diff
