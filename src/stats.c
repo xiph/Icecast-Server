@@ -825,7 +825,8 @@ static int _send_event_to_client(stats_event_t *event, client_t *client)
     return 0;
 }
 
-static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
+void stats_add_authstack(auth_stack_t *stack, xmlNodePtr parent)
+{
     xmlNodePtr authentication;
     authentication = xmlNewTextChild(parent, NULL, XMLSTR("authentication"), NULL);
 
@@ -866,7 +867,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
         flags &= ~(STATS_XML_FLAG_SHOW_LISTENERS|STATS_XML_FLAG_SHOW_HIDDEN);
     } else {
         config = config_get_config();
-        __add_authstack(config->authstack, root);
+        stats_add_authstack(config->authstack, root);
         config_release_config();
     }
 
@@ -941,7 +942,7 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
                 config = config_get_config();
                 mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
                 if (mountproxy)
-                    __add_authstack(mountproxy->authstack, xmlnode);
+                    stats_add_authstack(mountproxy->authstack, xmlnode);
                 config_release_config();
             }
         }

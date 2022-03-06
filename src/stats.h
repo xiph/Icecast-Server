@@ -103,5 +103,7 @@ void stats_sendxml(client_t *client);
 xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *client);
 char *stats_get_value(const char *source, const char *name);
 
+void stats_add_authstack(auth_stack_t *stack, xmlNodePtr parent);
+
 #endif  /* __STATS_H__ */
 
