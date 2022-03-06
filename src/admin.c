@@ -28,10 +28,13 @@
 #include <sys/resource.h>
 #endif
 
+#include "common/net/sock.h"
+
 #include "admin.h"
 #include "compat.h"
 #include "cfgfile.h"
 #include "connection.h"
+#include "listensocket.h"
 #include "refbuf.h"
 #include "client.h"
 #include "source.h"
@@ -95,6 +98,8 @@
 #define STREAMLIST_HTML_REQUEST             "streamlist.xsl"
 #define STREAMLIST_JSON_REQUEST             "streamlist.json"
 #define STREAMLIST_PLAINTEXT_REQUEST        "streamlist.txt"
+#define LISTENSOCKETLIST_RAW_REQUEST        "listensocketlist"
+#define LISTENSOCKETLIST_HTML_REQUEST       "listensocketlist.xsl"
 #define MOVECLIENTS_RAW_REQUEST             "moveclients"
 #define MOVECLIENTS_HTML_REQUEST            "moveclients.xsl"
 #define MOVECLIENTS_JSON_REQUEST            "moveclients.json"
@@ -145,6 +150,7 @@ static void command_stats               (client_t *client, source_t *source, adm
 static void command_public_stats        (client_t *client, source_t *source, admin_format_t response);
 static void command_queue_reload        (client_t *client, source_t *source, admin_format_t response);
 static void command_list_mounts         (client_t *client, source_t *source, admin_format_t response);
+static void command_list_listen_sockets (client_t *client, source_t *source, admin_format_t response);
 static void command_move_clients        (client_t *client, source_t *source, admin_format_t response);
 static void command_kill_client         (client_t *client, source_t *source, admin_format_t response);
 static void command_kill_source         (client_t *client, source_t *source, admin_format_t response);
@@ -183,6 +189,8 @@ static const admin_command_handler_t handlers[] = {
     { STREAMLIST_PLAINTEXT_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_PLAINTEXT,     ADMINSAFE_SAFE,     command_list_mounts, NULL},
     { STREAMLIST_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
     { STREAMLIST_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_list_mounts, NULL},
+    { LISTENSOCKETLIST_RAW_REQUEST,         ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_list_listen_sockets, NULL},
+    { LISTENSOCKETLIST_HTML_REQUEST,        ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_list_listen_sockets, NULL},
     { MOVECLIENTS_RAW_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_HYBRID,   command_move_clients, NULL},
     { MOVECLIENTS_HTML_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_HYBRID,   command_move_clients, NULL},
     { MOVECLIENTS_JSON_REQUEST,             ADMINTYPE_HYBRID,       ADMIN_FORMAT_JSON,          ADMINSAFE_HYBRID,   command_move_clients, NULL},
@@ -1309,6 +1317,124 @@ static void command_list_mounts(client_t *client, source_t *source, admin_format
             LISTMOUNTS_HTML_REQUEST);
         xmlFreeDoc(doc);
     }
+}
+
+static void command_list_listen_sockets(client_t *client, source_t *source, admin_format_t response)
+{
+    reportxml_t *report = client_get_empty_reportxml();
+    listensocket_t ** sockets;
+    size_t i;
+
+    global_lock();
+    sockets = listensocket_container_list_sockets(global.listensockets);
+    global_unlock();
+
+    for (i = 0; sockets[i]; i++) {
+        const listener_t * listener = listensocket_get_listener(sockets[i]);
+        reportxml_node_t * incident = client_add_empty_incident(report, "ee231290-81c6-484a-836c-20a00ad09898", NULL, NULL);
+        reportxml_node_t * resource = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+        reportxml_node_t * config = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+
+        reportxml_node_set_attribute(resource, "type", "result");
+        reportxml_node_set_attribute(config, "type", "structure");
+        reportxml_node_set_attribute(config, "member", "config");
+
+        reportxml_node_add_child(resource, config);
+        reportxml_node_add_child(incident, resource);
+        refobject_unref(incident);
+
+        reportxml_helper_add_value_enum(resource, "type", listensocket_type_to_string(listener->type));
+        reportxml_helper_add_value_enum(resource, "family", sock_family_to_string(listensocket_get_family(sockets[i])));
+        reportxml_helper_add_value_string(resource, "id", listener->id);
+        reportxml_helper_add_value_string(resource, "on_behalf_of", listener->on_behalf_of);
+
+        if (listener->port > 0) {
+            reportxml_helper_add_value_int(config, "port", listener->port);
+        } else {
+            reportxml_helper_add_value(config, "int", "port", NULL);
+        }
+
+        if (listener->so_sndbuf) {
+            reportxml_helper_add_value_int(config, "so_sndbuf", listener->so_sndbuf);
+        } else {
+            reportxml_helper_add_value(config, "int", "so_sndbuf", NULL);
+        }
+
+        if (listener->listen_backlog > 0) {
+            reportxml_helper_add_value_int(config, "listen_backlog", listener->listen_backlog);
+        } else {
+            reportxml_helper_add_value(config, "int", "listen_backlog", NULL);
+        }
+
+        reportxml_helper_add_value_string(config, "bind_address", listener->bind_address);
+        reportxml_helper_add_value_boolean(config, "shoutcast_compat", listener->shoutcast_compat);
+        reportxml_helper_add_value_string(config, "shoutcast_mount", listener->shoutcast_mount);
+        reportxml_helper_add_value_enum(config, "tlsmode", listensocket_tlsmode_to_string(listener->tls));
+
+        if (listener->authstack) {
+            reportxml_node_t * extension = reportxml_node_new(REPORTXML_NODE_TYPE_EXTENSION, NULL, NULL, NULL);
+            xmlNodePtr xmlroot = xmlNewNode(NULL, XMLSTR("icestats"));
+
+            reportxml_node_set_attribute(extension, "application", ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION);
+            reportxml_node_add_child(resource, extension);
+
+            xmlSetProp(xmlroot, XMLSTR("xmlns"), XMLSTR(XMLNS_LEGACY_STATS));
+
+            stats_add_authstack(listener->authstack, xmlroot);
+
+            reportxml_node_add_xml_child(extension, xmlroot);
+            refobject_unref(extension);
+            xmlFreeNode(xmlroot);
+        }
+
+        if (listener->http_headers) {
+            reportxml_node_t * headers = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+            ice_config_http_header_t *cur;
+
+            reportxml_node_set_attribute(headers, "member", "headers");
+            reportxml_node_set_attribute(headers, "type", "unordered-list");
+            reportxml_node_add_child(resource, headers);
+
+            for (cur = listener->http_headers; cur; cur = cur->next) {
+                reportxml_node_t * header = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+                reportxml_node_set_attribute(header, "type", "structure");
+                reportxml_node_add_child(headers, header);
+
+                switch (cur->type) {
+                    case HTTP_HEADER_TYPE_STATIC:
+                        reportxml_helper_add_value_enum(header, "type", "static");
+                        break;
+                    case HTTP_HEADER_TYPE_CORS:
+                        reportxml_helper_add_value_enum(header, "type", "cors");
+                        break;
+                }
+
+                reportxml_helper_add_value_string(header, "name", cur->name);
+                reportxml_helper_add_value_string(header, "value", cur->value);
+
+                if (cur->status > 100) {
+                    reportxml_helper_add_value_int(header, "status", cur->status > 100);
+                } else {
+                    reportxml_helper_add_value(header, "int", "status", NULL);
+                }
+
+                reportxml_helper_add_value_string(config, "shoutcast_mount", listener->shoutcast_mount);
+                refobject_unref(header);
+            }
+
+            refobject_unref(headers);
+        }
+
+        refobject_unref(config);
+        refobject_unref(resource);
+        listensocket_release_listener(sockets[i]);
+        refobject_unref(sockets[i]);
+    }
+
+    free(sockets);
+
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, LISTENSOCKETLIST_HTML_REQUEST, response, 200, NULL);
+    refobject_unref(report);
 }
 
 static void command_updatemetadata(client_t *client,

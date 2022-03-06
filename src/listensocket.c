@@ -506,6 +506,30 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
     return NULL;
 }
 
+listensocket_t **           listensocket_container_list_sockets(listensocket_container_t *self)
+{
+    listensocket_t **res;
+    size_t idx = 0;
+    size_t i;
+
+    thread_mutex_lock(&self->lock);
+    res = calloc(self->sock_len + 1, sizeof(*res));
+    if (!res) {
+        thread_mutex_unlock(&self->lock);
+        return NULL;
+    }
+
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            refobject_ref(res[idx++] = self->sock[i]);
+        }
+    }
+
+    thread_mutex_unlock(&self->lock);
+
+    return res;
+}
+
 /* ---------------------------------------------------------------------------- */
 
 static void __listensocket_free(refobject_t self, void **userdata)

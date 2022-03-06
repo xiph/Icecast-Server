@@ -17,6 +17,7 @@ nobase_dist_admin_DATA = \
     dashboard.xsl \
     fallbacks.xsl \
     showlog.xsl \
+    listensocketlist.xsl \
     includes/confirm.xsl \
     includes/footer.xsl \
     includes/head.xsl \
