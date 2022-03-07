@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -xe -o pipefail
 
 BASE=`dirname $0`
 TARGET=icecast.dsc
