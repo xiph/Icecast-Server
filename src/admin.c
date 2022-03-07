@@ -1663,8 +1663,12 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     __reportxml_add_maintenance(reportnode, config->reportxml_db, "c704804e-d3b9-4544-898b-d477078135de", "warning", "Developer logging is active. This mode is not for production.", NULL);
 #endif
 
-    if (!inet6_enabled)
+    if (!inet6_enabled) {
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f90219e1-bd07-4b54-b1ee-0ba6a0289a15", "warning", "IPv6 not enabled.", NULL);
+        if (sock_is_ipv4_mapped_supported()) {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "709ab43b-251d-49a5-a4fe-c749eaabf17c", "info", "IPv4-mapped IPv6 is available on this system.", NULL);
+        }
+    }
 
     if (config->config_problems & CONFIG_PROBLEM_HOSTNAME)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "c4f25c51-2720-4b38-a806-19ef024b5289", "warning", "Hostname is not set to anything useful in <hostname>.", NULL);
