@@ -1856,6 +1856,8 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("event-bindings")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("kartoffelsalat")) == 0) {
             _parse_events(&mount->event, node->xmlChildrenNode);
+        } else if (xmlStrcmp(node->name, XMLSTR("relay")) == 0) {
+            /* no-op, handled in second pass */
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
         }
@@ -2187,7 +2189,7 @@ static void _parse_relay(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("server")) == 0 || xmlStrcmp(node->name, XMLSTR("port")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("mount")) == 0 || xmlStrcmp(node->name, XMLSTR("relay-shoutcast-metadata")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("username")) == 0 || xmlStrcmp(node->name, XMLSTR("password")) == 0 ||
-                   xmlStrcmp(node->name, XMLSTR("bind")) == 0) {
+                   xmlStrcmp(node->name, XMLSTR("bind")) == 0 || xmlStrcmp(node->name, XMLSTR("uri")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <upstream type=\"default\"> block.");
         } else {
             __found_bad_tag(configuration, node, BTR_UNKNOWN, NULL);
