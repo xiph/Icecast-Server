@@ -36,7 +36,7 @@ pushd $OBS_BASE/$ICECAST_PROJECT
 rm -r *
 
 # copy dist archive
-cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_VERSION.orig.tar.gz 
+cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
 
 ls -la
 
@@ -90,7 +90,7 @@ pushd $OBS_BASE/$W32_ICECAST_PROJECT
 rm -r *
 
 # copy dist archive
-cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_VERSION.orig.tar.gz 
+cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$W32_ICECAST_PROJECT/*.spec .
