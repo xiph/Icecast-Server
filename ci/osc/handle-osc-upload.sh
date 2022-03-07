@@ -42,7 +42,7 @@ ls -la
 
 sed -i "1s#^#icecast2 ($ICECAST_CI_VERSION) UNRELEASED; urgency=medium\n\n  * CI BUILD\n\n -- Stephan Jauernick <info@stephan-jauernick.de> `date +"%a, %d %b %Y %H:%M:%S %z"`\n\n#"  $SCRIPT_DIR/$ICECAST_PROJECT/debian/changelog
 
-GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_VERSION-1.debian.tar.gz debian/
+GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_CI_VERSION-1.debian.tar.gz debian/
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$ICECAST_PROJECT/icecast* .
