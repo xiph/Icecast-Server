@@ -26,6 +26,11 @@ export HOME=`pwd`
 export SOURCE=`pwd`/..
 export OSC_CMD="osc-wrapper.py --config=$OSC_RC"
 
+cp -a $SCRIPT_DIR/$ICECAST_PROJECT/debian .
+
+sed -i "1s#^#icecast2 ($ICECAST_CI_VERSION-1) UNRELEASED; urgency=medium\n\n  * CI BUILD\n\n -- Stephan Jauernick <info@stephan-jauernick.de>  `date +"%a, %d %b %Y %H:%M:%S %z"`\n\n#"  debian/changelog
+
+
 $OSC_CMD checkout $OBS_BASE $ICECAST_PROJECT 
 
 pushd $OBS_BASE/$ICECAST_PROJECT
@@ -40,9 +45,7 @@ cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar
 
 ls -la
 
-sed -i "1s#^#icecast2 ($ICECAST_CI_VERSION) UNRELEASED; urgency=medium\n\n  * CI BUILD\n\n -- Stephan Jauernick <info@stephan-jauernick.de> `date +"%a, %d %b %Y %H:%M:%S %z"`\n\n#"  $SCRIPT_DIR/$ICECAST_PROJECT/debian/changelog
-
-GZIP=-n tar -C $SCRIPT_DIR/$ICECAST_PROJECT -cvzf icecast2_$ICECAST_CI_VERSION-1.debian.tar.gz debian/
+GZIP=-n tar -C $HOME -cvzf icecast2_$ICECAST_CI_VERSION-1.debian.tar.gz debian/
 
 # these files will be copied back - adjust as needed
 cp -a $SCRIPT_DIR/$ICECAST_PROJECT/icecast* .
