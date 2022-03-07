@@ -17,6 +17,11 @@ rm -rf osc_tmp/*
 mkdir -p osc_tmp
 cd osc_tmp
 
+#test for renaming archive content
+#tar cfvz icecast-$ICECAST_VERSION.tar.gz
+#mv icecast-$ICECAST_VERSION icecast2_$ICECAST_CI_VERSION
+#tar xfvz icecast2_$ICECAST_CI_VERSION.orig.tar.gz icecast2_$ICECAST_CI_VERSION
+
 export HOME=`pwd`
 export SOURCE=`pwd`/..
 export OSC_CMD="osc-wrapper.py --config=$OSC_RC"

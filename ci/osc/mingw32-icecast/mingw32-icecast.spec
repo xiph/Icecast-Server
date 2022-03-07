@@ -13,7 +13,7 @@ Group:          Applications/Multimedia
 License:        GPL-2.0
 URL:            http://www.icecast.org/
 #Source0:       http://downloads.xiph.org/releases/icecast/icecast-%{version}.tar.gz
-Source0:        icecast2_%{version_archive}.orig.tar.gz
+Source0:        icecast2_%{version}.orig.tar.gz
 #Source1:        icecast.bat
 BuildRequires:  mingw32-cross-binutils
 BuildRequires:  mingw32-cross-gcc

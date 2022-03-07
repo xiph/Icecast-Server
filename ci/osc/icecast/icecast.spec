@@ -17,8 +17,8 @@ License: GPLv2
 %endif
 URL: http://www.icecast.org/
 #Source0: http://downloads.xiph.org/releases/icecast/icecast-%{version}.tar.gz
-Source0: icecast2_%{version_archive}.orig.tar.gz
-Source1: icecast2_%{version_archive}-1.debian.tar.gz 
+Source0: icecast2_%{version}.orig.tar.gz
+Source1: icecast2_%{version}-1.debian.tar.gz 
 Source2: icecast.init
 Source3: icecast.logrotate
 Source4: icecast.xml
@@ -27,8 +27,6 @@ Source5: icecast.init.suse
 %if 0%{?suse_version} > 1
 Suggests:	logrotate
 
-#Patch0:         icecast-2.4.1_runas_icecast_user.patch
-Patch0:         icecast-fix-no-add-needed.patch
 PreReq:         %fillup_prereq
 PreReq:         %insserv_prereq
 PreReq:         /usr/sbin/groupadd
@@ -65,10 +63,6 @@ and interaction.
 
 %prep
 %setup -q -n icecast-%{version_archive}
-%if 0%{?suse_version} > 1
-#patch0
-#%patch1
-%endif
 find -name "*.html" -or -name "*.jpg" -or -name "*.png" -or -name "*.css" | xargs chmod 644
 tar -xzf %{SOURCE1}
 %{__sed} -i -e 's/icecast2/icecast/g' debian/icecast2.1
