@@ -226,7 +226,7 @@
                 <option name="client_remove"    value="http://myauthserver.net/notify_listener.php"/>
                 <option name="action_add"       value="listener_add"/>
                 <option name="action_remove"    value="listener_remove"/>
-                <option name="headers"          value="x-pragma,x-token"/>
+                <option name="headers"          value="app-pragma,cdn-token"/>
                 <option name="header_prefix"    value="ClientHeader."/>
             </role>
             <role type="anonymous" match-method="get,post,head,options" deny-all="*" />
