@@ -309,7 +309,7 @@ void client_destroy(client_t *client)
     avl_delete(global_client_list, client, NULL);
     avl_tree_unlock(global_client_list);
 
-    if (client->reuse != ICECAST_REUSE_CLOSE) {
+    if (client->reuse != ICECAST_REUSE_CLOSE && !client->con->error) {
         /* only reuse the client if we reached the body's EOF. */
         if (client_body_eof(client) == 1) {
             client_reuseconnection(client);
