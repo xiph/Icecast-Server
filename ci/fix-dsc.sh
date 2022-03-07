@@ -2,7 +2,7 @@
 
 BASE=`dirname $0`
 TARGET=icecast.dsc
-TARBASE=icecast2_${ICECAST_CI_VERSION:?Missing ICECAST_CI_VERSION}
+TARBASE=icecast2_${ICECAST_VERSION:?Missing ICECAST_VERSION}
 cat $BASE/$TARGET.templ > $TARGET
 
 function helper {

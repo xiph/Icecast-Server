@@ -3,7 +3,7 @@
 #
 # Parts of this file taken from original SUSE and Fedora packaging
 #
-
+%define version-archive _VERSION_ARCHIVE_
 Summary: Streaming media server
 Name: icecast
 Version: 2.4.99.2
@@ -17,8 +17,8 @@ License: GPLv2
 %endif
 URL: http://www.icecast.org/
 #Source0: http://downloads.xiph.org/releases/icecast/icecast-%{version}.tar.gz
-Source0: icecast2_%{version}.orig.tar.gz
-Source1: icecast2_%{version}-1.debian.tar.gz 
+Source0: icecast2_%{version-archive}.orig.tar.gz
+Source1: icecast2_%{version-archive}-1.debian.tar.gz 
 Source2: icecast.init
 Source3: icecast.logrotate
 Source4: icecast.xml
@@ -64,7 +64,7 @@ and interaction.
 
 
 %prep
-%setup -q -n icecast-%{version}
+%setup -q -n icecast-%{version-archive}
 %if 0%{?suse_version} > 1
 #patch0
 #%patch1

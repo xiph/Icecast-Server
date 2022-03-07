@@ -4,6 +4,7 @@
 # Parts of this file taken from original SUSE and Fedora packaging
 #
 
+%define version-archive _VERSION_ARCHIVE_
 Summary:        MinGW Windows port of Icecast streaming media server 
 Name:           mingw32-icecast
 Version:        2.4.99.2
@@ -12,7 +13,7 @@ Group:          Applications/Multimedia
 License:        GPL-2.0
 URL:            http://www.icecast.org/
 #Source0:       http://downloads.xiph.org/releases/icecast/icecast-%{version}.tar.gz
-Source0:        icecast2_%{version}.orig.tar.gz
+Source0:        icecast2_%{version-archive}.orig.tar.gz
 #Source1:        icecast.bat
 BuildRequires:  mingw32-cross-binutils
 BuildRequires:  mingw32-cross-gcc
@@ -48,7 +49,7 @@ and interaction.
 %_mingw32_debug_package
 
 %prep
-%setup -q -n icecast-%{version}
+%setup -q -n icecast-%{version-archive}
 find -name "*.html" -or -name "*.jpg" -or -name "*.png" -or -name "*.css" | xargs chmod 644
 
 %build
