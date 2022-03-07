@@ -3,7 +3,7 @@
 BASE=`dirname $0`
 TARGET=icecast.dsc
 TARBASE=icecast2_${ICECAST_CI_VERSION:?Missing ICECAST_CI_VERSION}
-cat $BASE/$TARGET.templ > $TARGET
+sed "s/^Version: .*$/Version: $ICECAST_CI_VERSION-1/" $BASE/$TARGET.templ > $TARGET
 
 function helper {
         HEADER=$1
