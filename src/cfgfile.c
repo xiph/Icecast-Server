@@ -427,7 +427,7 @@ static char *__build_node_name(xmlNodePtr node)
 
     memset(buf, 0, sizeof(buf));
 
-    for (have = 0; have < (sizeof(buf)/sizeof(*buf)); have++) {
+    for (have = 0; have < (sizeof(buf)/sizeof(*buf)) && node->parent; have++) {
         int ret = -1;
         xmlChar *id;
 
@@ -462,8 +462,6 @@ static char *__build_node_name(xmlNodePtr node)
         }
 
         node = node->parent;
-        if (!node)
-            break;
     }
 
     for (i = 0; i < (sizeof(buf)/sizeof(*buf)); i++) {
