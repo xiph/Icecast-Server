@@ -774,17 +774,17 @@ connection_t *              listensocket_accept(listensocket_t *self, listensock
         return NULL;
     }
 
+    ICECAST_LOG_DEBUG("Client (sock=%R, ip=%#H) on socket %p (%#H).", sock, ip, self, self->listener->id);
+
     if (strncmp(ip, "::ffff:", 7) == 0) {
         memmove(ip, ip+7, strlen(ip+7)+1);
     }
 
-    ICECAST_LOG_DEBUG("Client on socket %p \"%H\".", self, self->listener->id);
-
     if (self->listener->on_behalf_of) {
-        ICECAST_LOG_DEBUG("This socket is acting on behalf of \"%H\"", self->listener->on_behalf_of);
+        ICECAST_LOG_DEBUG("This socket is acting on behalf of %#H", self->listener->on_behalf_of);
         effective = listensocket_container_get_by_id(container, self->listener->on_behalf_of);
         if (!effective) {
-            ICECAST_LOG_ERROR("Can not find listen socket with ID \"%H\". Will continue on behalf of myself.", self->listener->on_behalf_of);
+            ICECAST_LOG_ERROR("Can not find listen socket with ID %#H. Will continue on behalf of myself.", self->listener->on_behalf_of);
         }
     }
 

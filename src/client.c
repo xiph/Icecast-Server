@@ -175,10 +175,11 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
 
     listener_real = listensocket_get_listener(con->listensocket_real);
     listener_effective = listensocket_get_listener(con->listensocket_effective);
-    ICECAST_LOG_DEBUG("Client %p created on connection %p (connection ID: %llu, socket real: %p \"%H\", socket effective: %p \"%H\")",
-            client, con, (long long unsigned int)con->id,
+    ICECAST_LOG_DEBUG("Client %p created on connection %p (connection ID: %llu, sock=%R, socket real: %p (%#H), socket effective: %p (%#H); global: %d of %d)",
+            client, con, (long long unsigned int)con->id, con->sock,
             con->listensocket_real, con->listensocket_real ? listener_real->id : NULL,
-            con->listensocket_effective, con->listensocket_effective ? listener_effective->id : NULL
+            con->listensocket_effective, con->listensocket_effective ? listener_effective->id : NULL,
+            global.clients, config->client_limit
             );
     listensocket_release_listener(con->listensocket_effective);
     listensocket_release_listener(con->listensocket_real);
@@ -260,8 +261,9 @@ static inline void client_reuseconnection(client_t *client) {
         return;
     }
 
+    ICECAST_LOG_DEBUG("Reusing connection %p (connection ID: %llu, sock=%R) of old client %p", con, (long long unsigned int)con->id, con->sock, client);
     con = connection_create(con->sock, con->listensocket_real, con->listensocket_effective, strdup(con->ip));
-    client->con->sock = -1; /* TODO: do not use magic */
+    client->con->sock = SOCK_ERROR;
 
     /* handle to keep the TLS connection */
     if (client->con->tls) {
@@ -294,9 +296,12 @@ static inline void client_reuseconnection(client_t *client) {
 
 void client_destroy(client_t *client)
 {
-    ICECAST_LOG_DEBUG("Called to destory client %p", client);
-    if (client == NULL)
+    if (client == NULL) {
+        ICECAST_LOG_ERROR("Called with client=NULL. This is a BUG.");
         return;
+    }
+
+    ICECAST_LOG_DEBUG("Called to destory client %p on connection %p (connection ID: %llu, sock=%R)", client, client->con, (long long unsigned int)client->con->id, client->con->sock);
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 

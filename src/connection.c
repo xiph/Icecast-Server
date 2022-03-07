@@ -1767,10 +1767,12 @@ void connection_close(connection_t *con)
     if (!con)
         return;
 
+    ICECAST_LOG_DEBUG("Closing connection %p (connection ID: %llu, sock=%R)", con, (long long unsigned int)con->id, con->sock);
+
     fastevent_emit(FASTEVENT_TYPE_CONNECTION_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CONNECTION, con);
 
     tls_unref(con->tls);
-    if (con->sock != -1) /* TODO: do not use magic */
+    if (con->sock != SOCK_ERROR)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
