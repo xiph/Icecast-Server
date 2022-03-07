@@ -568,7 +568,7 @@ static inline void __log_system_name(void) {
        }
    }
 
-   ICECAST_LOG_WARN("From configuration: Our hostname is %#H, located % #H, with admin contact % #H", config->hostname, config->location, config->admin);
+   ICECAST_LOG_INFO("From configuration: Our hostname is %#H, located % #H, with admin contact % #H", config->hostname, config->location, config->admin);
    config_release_config();
 }
 
