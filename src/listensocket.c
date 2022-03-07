@@ -37,6 +37,7 @@
 struct listensocket_container_tag {
     refobject_base_t __base;
     mutex_t lock;
+    bool prefer_inet6;
     listensocket_t **sock;
     int *sockref;
     size_t sock_len;
@@ -60,6 +61,8 @@ static listensocket_t * listensocket_new(const listener_t *listener);
 static int              listensocket_apply_config(listensocket_t *self);
 static int              listensocket_apply_config__unlocked(listensocket_t *self);
 static int              listensocket_set_update(listensocket_t *self, const listener_t *listener);
+static int              listensocket_refsock(listensocket_t *self, bool prefer_inet6);
+static int              listensocket_unrefsock(listensocket_t *self);
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 #else
@@ -271,11 +274,15 @@ int                         listensocket_container_configure_and_setup(listensoc
 {
     void (*cb)(size_t count, void *userdata);
     int ret;
+    bool prefer_inet6;
 
     if (!self)
         return -1;
 
+    prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
+
     thread_mutex_lock(&self->lock);
+    self->prefer_inet6 = prefer_inet6;
     cb = self->sockcount_cb;
     self->sockcount_cb = NULL;
 
@@ -295,11 +302,15 @@ int                         listensocket_container_configure_and_setup(listensoc
 int                         listensocket_container_setup(listensocket_container_t *self)
 {
     int ret;
+    bool prefer_inet6;
 
     if (!self)
         return -1;
 
+    prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
+
     thread_mutex_lock(&self->lock);
+    self->prefer_inet6 = prefer_inet6;
     ret = listensocket_container_setup__unlocked(self);
     thread_mutex_unlock(&self->lock);
 
@@ -320,7 +331,7 @@ static int listensocket_container_setup__unlocked(listensocket_container_t *self
                 self->sockref[i] = 0;
             }
         } else if (!self->sockref[i] && type != LISTENER_TYPE_VIRTUAL) {
-            if (listensocket_refsock(self->sock[i]) == 0) {
+            if (listensocket_refsock(self->sock[i], self->prefer_inet6) == 0) {
                 self->sockref[i] = 1;
             } else {
                 ICECAST_LOG_DEBUG("Can not ref socket.");
@@ -676,7 +687,7 @@ static int              listensocket_set_update(listensocket_t *self, const list
     return 0;
 }
 
-int                         listensocket_refsock(listensocket_t *self)
+static int listensocket_refsock(listensocket_t *self, bool prefer_inet6)
 {
     if (!self)
         return -1;
@@ -689,7 +700,7 @@ int                         listensocket_refsock(listensocket_t *self)
     }
 
     thread_rwlock_rlock(&self->listener_rwlock);
-    self->sock = sock_get_server_socket(self->listener->port, self->listener->bind_address);
+    self->sock = sock_get_server_socket(self->listener->port, self->listener->bind_address, self->listener->bind_address ? false : prefer_inet6);
     thread_rwlock_unlock(&self->listener_rwlock);
     if (self->sock == SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
@@ -717,7 +728,7 @@ int                         listensocket_refsock(listensocket_t *self)
     return 0;
 }
 
-int                         listensocket_unrefsock(listensocket_t *self)
+static int listensocket_unrefsock(listensocket_t *self)
 {
     if (!self)
         return -1;
