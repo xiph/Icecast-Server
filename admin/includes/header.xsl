@@ -19,6 +19,7 @@
                         </xsl:if>
                     </xsl:for-each>
                     <li class="right"><a href="/status.xsl">Public area</a></li>
+                    <li class="right adminlink"><a href="/admin/version.xsl">Version</a></li>
                 </ul>
             </nav>
         </header>

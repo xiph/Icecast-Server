@@ -23,9 +23,37 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/xmlversion.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif
+
+#ifdef HAVE_OPENSSL
+#include <openssl/opensslv.h>
+#endif
+
+#include <vorbis/codec.h>
+
+#ifdef HAVE_THEORA
+#include <theora/theora.h>
+#endif
+
+#ifdef HAVE_SPEEX
+#include <speex/speex.h>
+#endif
+
+#ifdef HAVE_CURL
+#include <curl/curlver.h>
+#include <curl/curl.h>
+#endif
+
+#ifdef HAVE_UNAME
+#include <sys/utsname.h>
 #endif
 
 #include "common/net/sock.h"
@@ -125,6 +153,8 @@
 #define DASHBOARD_RAW_REQUEST               "dashboard"
 #define DASHBOARD_HTML_REQUEST              "dashboard.xsl"
 #define DASHBOARD_JSON_REQUEST              "dashboard.json"
+#define VERSION_RAW_REQUEST                 "version"
+#define VERSION_HTML_REQUEST                "version.xsl"
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
@@ -160,6 +190,7 @@ static void command_buildm3u            (client_t *client, source_t *source, adm
 static void command_show_log            (client_t *client, source_t *source, admin_format_t response);
 static void command_mark_log            (client_t *client, source_t *source, admin_format_t response);
 static void command_dashboard           (client_t *client, source_t *source, admin_format_t response);
+static void command_version             (client_t *client, source_t *source, admin_format_t response);
 
 static const admin_command_handler_t handlers[] = {
     { "*",                                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   NULL, NULL}, /* for ACL framework */
@@ -216,6 +247,8 @@ static const admin_command_handler_t handlers[] = {
     { DASHBOARD_RAW_REQUEST,                ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_dashboard, NULL},
     { DASHBOARD_HTML_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_dashboard, NULL},
     { DASHBOARD_JSON_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_dashboard, NULL},
+    { VERSION_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_version, NULL},
+    { VERSION_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_version, NULL},
     { DEFAULT_HTML_REQUEST,                 ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_default_selector, NULL},
     { DEFAULT_RAW_REQUEST,                  ADMINTYPE_HYBRID,       ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_default_selector, NULL}
 };
@@ -1726,6 +1759,174 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(report);
 }
 
+#ifdef HAVE_SPEEX
+static inline const char *get_speex_version(void)
+{
+    const char *version;
+    if (speex_lib_ctl(SPEEX_LIB_GET_VERSION_STRING, &version) != 0)
+        return NULL;
+    return version;
+}
+#endif
+
+static void command_version             (client_t *client, source_t *source, admin_format_t response)
+{
+    reportxml_t      *report        = client_get_reportxml("8cdfc150-094d-42f7-9c61-f9fb9a6e07e7", NULL, NULL);
+    reportxml_node_t *incident      = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
+    reportxml_node_t *resource      = reportxml_node_new(REPORTXML_NODE_TYPE_RESOURCE, NULL, NULL, NULL);
+    reportxml_node_t *config        = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_t *dependencies  = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_t *flags         = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_t *cflags        = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    reportxml_node_t *rflags        = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+    ice_config_t *icecast_config;
+#ifdef HAVE_CURL
+    const curl_version_info_data * curl_runtime_version = curl_version_info(CURLVERSION_NOW);
+#endif
+    struct {
+        const char *name;
+        const char *compiletime;
+        const char *runtime;
+    } dependency_versions[] = {
+        {"libxml2", LIBXML_DOTTED_VERSION, NULL},
+#if defined(HAVE_OPENSSL) && defined(OPENSSL_VERSION_TEXT)
+        {"OpenSSL", OPENSSL_VERSION_TEXT, NULL},
+#endif
+        {"libvorbis", NULL, vorbis_version_string()},
+#ifdef HAVE_THEORA
+        {"libtheora", NULL, theora_version_string()},
+#endif
+#ifdef HAVE_SPEEX
+        {"libspeex", NULL, get_speex_version()},
+#endif
+#ifdef HAVE_CURL
+        {"libcurl", LIBCURL_VERSION, curl_runtime_version->version},
+#endif
+        {NULL, NULL, NULL}
+    };
+    const char *compiletime_flags[] = {
+#ifdef HAVE_POLL
+        "poll",
+#endif
+#ifdef HAVE_SYS_SELECT_H
+        "select",
+#endif
+#ifdef HAVE_UNAME
+        "uname",
+#endif
+#ifdef HAVE_GETHOSTNAME
+        "gethostname",
+#endif
+#ifdef WIN32
+        "win32",
+#endif
+#ifdef DEVEL_LOGGING
+        "developer-logging",
+#endif
+        NULL,
+    };
+    size_t i;
+
+    reportxml_node_set_attribute(resource, "type", "result");
+    reportxml_node_add_child(incident, resource);
+
+    reportxml_helper_add_value_string(resource, "version", ICECAST_VERSION_STRING);
+    reportxml_helper_add_value_int(resource, "address-bits", sizeof(void*)*8);
+
+#ifdef HAVE_GETHOSTNAME
+    if (true) {
+        char hostname[80];
+        if (gethostname(hostname, sizeof(hostname)) == 0) {
+            reportxml_helper_add_value_string(resource, "gethostname", hostname);
+        } else {
+            reportxml_helper_add_value_string(resource, "gethostname", NULL);
+        }
+    }
+#endif
+
+#ifdef HAVE_UNAME
+    if (true) {
+        reportxml_node_t *res = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+        struct utsname utsname;
+
+        reportxml_node_set_attribute(res, "type", "structure");
+        reportxml_node_set_attribute(res, "member", "uname");
+        reportxml_node_add_child(resource, res);
+
+        if(uname(&utsname) == 0) {
+            reportxml_helper_add_value_string(res, "sysname", utsname.sysname);
+            reportxml_helper_add_value_string(res, "release", utsname.release);
+            reportxml_helper_add_value_string(res, "nodename", utsname.nodename);
+            reportxml_helper_add_value_string(res, "version", utsname.version);
+            reportxml_helper_add_value_string(res, "machine", utsname.machine);
+        } else {
+            reportxml_node_set_attribute(res, "state", "unset");
+        }
+
+        refobject_unref(res);
+    }
+#endif
+
+    reportxml_node_set_attribute(config, "type", "structure");
+    reportxml_node_set_attribute(config, "member", "config");
+    reportxml_node_add_child(resource, config);
+
+    icecast_config = config_get_config();
+    reportxml_helper_add_value_string(config, "hostname", icecast_config->hostname);
+    reportxml_helper_add_value_string(config, "location", icecast_config->location);
+    reportxml_helper_add_value_string(config, "admin", icecast_config->admin);
+    reportxml_helper_add_value_string(config, "server-id", icecast_config->server_id);
+
+    reportxml_helper_add_value_flag(rflags, "requested-chroot", icecast_config->chroot);
+    reportxml_helper_add_value_flag(rflags, "requested-chuid", icecast_config->chuid);
+    config_release_config();
+
+    reportxml_node_set_attribute(dependencies, "type", "structure");
+    reportxml_node_set_attribute(dependencies, "member", "dependencies");
+    reportxml_node_add_child(resource, dependencies);
+
+    for (i = 0; dependency_versions[i].name; i++) {
+        reportxml_node_t *dependency = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
+        reportxml_node_set_attribute(dependency, "type", "structure");
+        reportxml_node_set_attribute(dependency, "member", dependency_versions[i].name);
+        reportxml_helper_add_value_string(dependency, "compiletime",  dependency_versions[i].compiletime);
+        reportxml_helper_add_value_string(dependency, "runtime",  dependency_versions[i].runtime);
+        reportxml_node_add_child(dependencies, dependency);
+        refobject_unref(dependency);
+    }
+
+    reportxml_node_set_attribute(flags, "type", "structure");
+    reportxml_node_set_attribute(flags, "member", "flags");
+    reportxml_node_add_child(resource, flags);
+
+    reportxml_node_set_attribute(cflags, "type", "unordered-list");
+    reportxml_node_set_attribute(cflags, "member", "compiletime");
+    reportxml_node_add_child(flags, cflags);
+    for (i = 0; compiletime_flags[i]; i++) {
+        reportxml_helper_add_value_flag(cflags, compiletime_flags[i], true);
+    }
+
+    reportxml_node_set_attribute(rflags, "type", "unordered-list");
+    reportxml_node_set_attribute(rflags, "member", "runtime");
+    reportxml_node_add_child(flags, rflags);
+    reportxml_helper_add_value_flag(rflags, "ipv4-mapped", sock_is_ipv4_mapped_supported());
+
+    global_lock();
+    reportxml_helper_add_value_flag(rflags, "bound-unix", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_UNIX));
+    reportxml_helper_add_value_flag(rflags, "bound-inet4", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET4));
+    reportxml_helper_add_value_flag(rflags, "bound-inet6", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET6));
+    global_unlock();
+
+    refobject_unref(config);
+    refobject_unref(dependencies);
+    refobject_unref(cflags);
+    refobject_unref(rflags);
+    refobject_unref(flags);
+    refobject_unref(resource);
+    refobject_unref(incident);
+    client_send_reportxml(client, report, DOCUMENT_DOMAIN_ADMIN, VERSION_HTML_REQUEST, response, 200, NULL);
+    refobject_unref(report);
+}
 
 static void ui_command(client_t * client, source_t * source, admin_format_t format, resourcematch_extract_t *parameters)
 {
