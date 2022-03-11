@@ -38,7 +38,7 @@ pushd $OBS_BASE/$ICECAST_PROJECT
 # disabled for now
 #find . -mindepth 1 -name '*' | grep -v ".osc" | xargs -r $OSC_CMD rm 
 #since we don't need to call osc we can simply do:
-rm -r *
+rm -rf *
 
 # copy dist archive
 cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
@@ -67,7 +67,7 @@ pushd $OBS_BASE/$W32_ICECAST_INSTALLER_PROJECT
 #disabled for now
 #find . -mindepth 1 -name '*' | grep -v ".osc" | xargs -r $OSC_CMD rm 
 #since we don't need to call osc we can simply do:
-rm -r *
+rm -rf *
 
 # we don't copy a dist file because we don't need this for the installer - it gets the sources from the installed version
 
@@ -90,7 +90,7 @@ pushd $OBS_BASE/$W32_ICECAST_PROJECT
 # disabled for now
 #find . -mindepth 1 -name '*' | grep -v ".osc" |  xargs -r $OSC_CMD rm 
 #since we don't need to call osc we can simply do:
-rm -r *
+rm -rf *
 
 # copy dist archive
 cp $SOURCE/icecast-$ICECAST_VERSION.tar.gz icecast2_$ICECAST_CI_VERSION.orig.tar.gz 
