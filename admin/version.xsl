@@ -93,7 +93,7 @@
             <section class="box">
                 <h3 class="box_title">Summary for reporting</h3>
                 <xsl:for-each select="resource[@type='result']">
-                    <pre>
+                    <pre id="summary">
 <xsl:for-each select="value[@type!='structure']"><xsl:value-of select="@member" />: <xsl:value-of select="@value" /><xsl:text>
 </xsl:text></xsl:for-each>
 <xsl:for-each select="value[@member='uname' and @state='set']/value">uname: <xsl:value-of select="@member" />: <xsl:value-of select="@value" /><xsl:text>
@@ -106,7 +106,31 @@
 </xsl:text></xsl:for-each>
                     </pre>
                 </xsl:for-each>
+                <ul class="boxnav">
+                    <li><a href="javascript:copy();">Copy to clipboard</a></li>
+                    <li><a href="javascript:openTicket();">Open ticket</a></li>
+                </ul>
             </section>
         </xsl:for-each>
+        <script>
+        function getText() {
+            const node = document.getElementById("summary");
+            return node.textContent;
+        }
+
+        function copy() {
+            const text = getText();
+            alert("Copied to clipboard: " + text);
+            navigator.clipboard.writeText(text);
+        }
+
+        function openTicket() {
+            const baseurl = "http://gitlab.xiph.org/xiph/icecast-server/-/issues/new?issue[description]=";
+            const basetext = "# Problem\r\n&lt;describe your problem here&gt;\r\n\r\n# Version Summary\r\n";
+            const text = getText();
+
+            window.location.href = baseurl + encodeURIComponent(basetext + "```\r\n" + text + "```");
+        }
+        </script>
     </xsl:template>
 </xsl:stylesheet>
