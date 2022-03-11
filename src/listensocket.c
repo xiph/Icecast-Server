@@ -37,6 +37,7 @@
 struct listensocket_container_tag {
     refobject_base_t __base;
     mutex_t lock;
+    bool prefer_inet6;
     listensocket_t **sock;
     int *sockref;
     size_t sock_len;
@@ -60,6 +61,8 @@ static listensocket_t * listensocket_new(const listener_t *listener);
 static int              listensocket_apply_config(listensocket_t *self);
 static int              listensocket_apply_config__unlocked(listensocket_t *self);
 static int              listensocket_set_update(listensocket_t *self, const listener_t *listener);
+static int              listensocket_refsock(listensocket_t *self, bool prefer_inet6);
+static int              listensocket_unrefsock(listensocket_t *self);
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p);
 #else
@@ -271,11 +274,15 @@ int                         listensocket_container_configure_and_setup(listensoc
 {
     void (*cb)(size_t count, void *userdata);
     int ret;
+    bool prefer_inet6;
 
     if (!self)
         return -1;
 
+    prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
+
     thread_mutex_lock(&self->lock);
+    self->prefer_inet6 = prefer_inet6;
     cb = self->sockcount_cb;
     self->sockcount_cb = NULL;
 
@@ -295,11 +302,15 @@ int                         listensocket_container_configure_and_setup(listensoc
 int                         listensocket_container_setup(listensocket_container_t *self)
 {
     int ret;
+    bool prefer_inet6;
 
     if (!self)
         return -1;
 
+    prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
+
     thread_mutex_lock(&self->lock);
+    self->prefer_inet6 = prefer_inet6;
     ret = listensocket_container_setup__unlocked(self);
     thread_mutex_unlock(&self->lock);
 
@@ -320,7 +331,7 @@ static int listensocket_container_setup__unlocked(listensocket_container_t *self
                 self->sockref[i] = 0;
             }
         } else if (!self->sockref[i] && type != LISTENER_TYPE_VIRTUAL) {
-            if (listensocket_refsock(self->sock[i]) == 0) {
+            if (listensocket_refsock(self->sock[i], self->prefer_inet6) == 0) {
                 self->sockref[i] = 1;
             } else {
                 ICECAST_LOG_DEBUG("Can not ref socket.");
@@ -506,6 +517,48 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
     return NULL;
 }
 
+listensocket_t **           listensocket_container_list_sockets(listensocket_container_t *self)
+{
+    listensocket_t **res;
+    size_t idx = 0;
+    size_t i;
+
+    thread_mutex_lock(&self->lock);
+    res = calloc(self->sock_len + 1, sizeof(*res));
+    if (!res) {
+        thread_mutex_unlock(&self->lock);
+        return NULL;
+    }
+
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            refobject_ref(res[idx++] = self->sock[i]);
+        }
+    }
+
+    thread_mutex_unlock(&self->lock);
+
+    return res;
+}
+
+bool                        listensocket_container_is_family_included(listensocket_container_t *self, sock_family_t family)
+{
+    size_t i;
+
+    thread_mutex_lock(&self->lock);
+    for (i = 0; i < self->sock_len; i++) {
+        if (self->sock[i] != NULL) {
+            if (listensocket_get_family(self->sock[i]) == family) {
+                thread_mutex_unlock(&self->lock);
+                return true;
+            }
+        }
+    }
+    thread_mutex_unlock(&self->lock);
+
+    return false;
+}
+
 /* ---------------------------------------------------------------------------- */
 
 static void __listensocket_free(refobject_t self, void **userdata)
@@ -634,7 +687,7 @@ static int              listensocket_set_update(listensocket_t *self, const list
     return 0;
 }
 
-int                         listensocket_refsock(listensocket_t *self)
+static int listensocket_refsock(listensocket_t *self, bool prefer_inet6)
 {
     if (!self)
         return -1;
@@ -647,7 +700,7 @@ int                         listensocket_refsock(listensocket_t *self)
     }
 
     thread_rwlock_rlock(&self->listener_rwlock);
-    self->sock = sock_get_server_socket(self->listener->port, self->listener->bind_address);
+    self->sock = sock_get_server_socket(self->listener->port, self->listener->bind_address, self->listener->bind_address ? false : prefer_inet6);
     thread_rwlock_unlock(&self->listener_rwlock);
     if (self->sock == SOCK_ERROR) {
         thread_mutex_unlock(&self->lock);
@@ -675,7 +728,7 @@ int                         listensocket_refsock(listensocket_t *self)
     return 0;
 }
 
-int                         listensocket_unrefsock(listensocket_t *self)
+static int listensocket_unrefsock(listensocket_t *self)
 {
     if (!self)
         return -1;
@@ -799,6 +852,20 @@ listener_type_t             listensocket_get_type(listensocket_t *self)
     return ret;
 }
 
+sock_family_t               listensocket_get_family(listensocket_t *self)
+{
+    sock_family_t ret;
+
+    if (!self)
+        return SOCK_FAMILY__ERROR;
+
+    thread_mutex_lock(&self->lock);
+    ret = sock_get_family(self->sock);
+    thread_mutex_unlock(&self->lock);
+
+    return ret;
+}
+
 #ifdef HAVE_POLL
 static inline int listensocket__poll_fill(listensocket_t *self, struct pollfd *p)
 {
@@ -858,3 +925,45 @@ static inline int listensocket__select_isset(listensocket_t *self, fd_set *set)
 
 }
 #endif
+
+/* ---------------------------------------------------------------------------- */
+
+const char *                listensocket_type_to_string(listener_type_t type)
+{
+    switch (type) {
+        case LISTENER_TYPE_ERROR:
+            return NULL;
+            break;
+        case LISTENER_TYPE_NORMAL:
+            return "normal";
+            break;
+        case LISTENER_TYPE_VIRTUAL:
+            return "virtual";
+            break;
+    }
+
+    return NULL;
+}
+
+const char *                listensocket_tlsmode_to_string(tlsmode_t mode)
+{
+    switch (mode) {
+        case ICECAST_TLSMODE_DISABLED:
+            return "disabled";
+            break;
+        case ICECAST_TLSMODE_AUTO:
+            return "auto";
+            break;
+        case ICECAST_TLSMODE_AUTO_NO_PLAIN:
+            return "auto_no_plain";
+            break;
+        case ICECAST_TLSMODE_RFC2817:
+            return "rfc2817";
+            break;
+        case ICECAST_TLSMODE_RFC2818:
+            return "rfc2818";
+            break;
+    }
+
+    return NULL;
+}

@@ -17,6 +17,7 @@ nobase_dist_admin_DATA = \
     dashboard.xsl \
     fallbacks.xsl \
     showlog.xsl \
+    listensocketlist.xsl \
     includes/confirm.xsl \
     includes/footer.xsl \
     includes/head.xsl \
@@ -25,6 +26,7 @@ nobase_dist_admin_DATA = \
     includes/mountnav.xsl \
     includes/player.xsl \
     includes/playlist.xsl \
+    includes/authlist.xsl \
     includes/web-page.xsl \
     ui/confirmdeleteuser.xsl \
     ui/confirmkillclient.xsl \
