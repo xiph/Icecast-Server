@@ -37,10 +37,6 @@ make_dist:
     expire_in: 1 week
 
 upload_dist:
-  variables:
-#    GIT_CHECKOUT: "false"
-#    GIT_STRATEGY: "none"
-
   tags:
     - docker
     - linux
@@ -55,3 +51,22 @@ upload_dist:
 
   script:
     - ./ci/osc/handle-osc-upload.sh
+
+upload_dist_release:
+  tags:
+    - docker
+    - linux
+
+  only:
+    - tags
+
+  stage: deploy
+
+  dependencies:
+    - make_dist
+
+  before_script:
+    - ./ci/osc/prepare-osc-tools.sh
+
+  script:
+    - ./ci/osc/handle-osc-upload.sh release

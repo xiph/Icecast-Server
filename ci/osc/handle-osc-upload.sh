@@ -4,7 +4,7 @@ SCRIPT_DIR=`dirname $0`
 SCRIPT_DIR=`realpath $SCRIPT_DIR`
 CONFIG=${1:-nightly}
 
-. $SCRIPT_DIR/nightly-config.sh
+. $SCRIPT_DIR/$CONFIG-config.sh
 
 : "${OSC_RC:?Variable OSC_RC not set or empty}"
 : "${CI_PIPELINE_URL:?Variable CI_PIPELINE_URL not set or empty}"
