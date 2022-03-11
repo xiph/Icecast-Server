@@ -17,6 +17,8 @@ void reportxml_helper_add_value(reportxml_node_t *parent, const char *type, cons
 
 #define reportxml_helper_add_value_string(parent,member,str) reportxml_helper_add_value((parent), "string", (member), (str))
 #define reportxml_helper_add_value_enum(parent,member,str) reportxml_helper_add_value((parent), "enum", (member), (str))
+#define reportxml_helper_add_value_boolean(parent,member,value) reportxml_helper_add_value((parent), "boolean", (member), (value) ? "true" : "false")
+#define reportxml_helper_add_value_flag(parent,member,value) reportxml_helper_add_value((parent), "flag", (member), (value) ? "true" : "false")
 void reportxml_helper_add_value_int(reportxml_node_t *parent, const char *member, long long int val);
 
 void reportxml_helper_add_text(reportxml_node_t *parent, const char *definition, const char *text);

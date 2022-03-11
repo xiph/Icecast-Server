@@ -794,32 +794,43 @@ reportxml_t *client_get_reportxml(const char *state_definition, const char *stat
     }
 
     if (!report) {
-        reportxml_node_t *rootnode, *incidentnode, *statenode;
-
-        report = refobject_new(reportxml_t);
-        rootnode = reportxml_get_root_node(report);
-        incidentnode = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
-        statenode = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);
-
-        if (state_text) {
-            reportxml_node_t *textnode;
-
-            textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
-            reportxml_node_set_content(textnode, state_text);
-            reportxml_node_add_child(statenode, textnode);
-            refobject_unref(textnode);
-        }
-
-        reportxml_node_add_child(incidentnode, statenode);
-        reportxml_node_add_child(rootnode, incidentnode);
-        refobject_unref(statenode);
-        refobject_unref(incidentnode);
-        refobject_unref(rootnode);
+        report = client_get_empty_reportxml();
+        refobject_unref(client_add_empty_incident(report, state_definition, state_akindof, state_text));
     }
+
+    return report;
+}
+
+reportxml_t *client_get_empty_reportxml(void)
+{
+    reportxml_t *report = refobject_new(reportxml_t);
 
     client_get_reportxml__add_basic_stats(report);
 
     return report;
+}
+
+reportxml_node_t *client_add_empty_incident(reportxml_t *report, const char *state_definition, const char *state_akindof, const char *state_text)
+{
+    reportxml_node_t *rootnode      = reportxml_get_root_node(report);
+    reportxml_node_t *incidentnode  = reportxml_node_new(REPORTXML_NODE_TYPE_INCIDENT, NULL, NULL, NULL);
+    reportxml_node_t *statenode     = reportxml_node_new(REPORTXML_NODE_TYPE_STATE, NULL, state_definition, state_akindof);;
+
+    if (state_text) {
+        reportxml_node_t *textnode;
+
+        textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, NULL, NULL);
+        reportxml_node_set_content(textnode, state_text);
+        reportxml_node_add_child(statenode, textnode);
+        refobject_unref(textnode);
+    }
+
+    reportxml_node_add_child(incidentnode, statenode);
+    reportxml_node_add_child(rootnode, incidentnode);
+    refobject_unref(statenode);
+    refobject_unref(rootnode);
+
+    return incidentnode;
 }
 
 admin_format_t client_get_admin_format_by_content_negotiation(client_t *client)
