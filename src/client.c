@@ -704,14 +704,18 @@ void client_send_reportxml(client_t *client, reportxml_t *report, document_domai
     }
 
     if (admin_format == ADMIN_FORMAT_RAW || admin_format == ADMIN_FORMAT_JSON) {
-        char extra_header[512] = "";
+        static const char json_warning[] = "Warning: 299 - \"JSON rendering is experimental\"\r\n";
+        char extra_header_buffer[512] = "";
+        const char *extra_header = extra_header_buffer;
 
         if (location) {
-            int res = snprintf(extra_header, sizeof(extra_header), "Location: %s\r\n", location);
-            if (res < 0 || res >= (ssize_t)sizeof(extra_header)) {
+            int res = snprintf(extra_header_buffer, sizeof(extra_header_buffer), "Location: %s\r\n%s", location, admin_format == ADMIN_FORMAT_JSON ? json_warning : "");
+            if (res < 0 || res >= (ssize_t)sizeof(extra_header_buffer)) {
                 client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
                 return;
             }
+        } else if (admin_format == ADMIN_FORMAT_JSON) {
+            extra_header = json_warning;
         }
 
         if (admin_format == ADMIN_FORMAT_RAW) {

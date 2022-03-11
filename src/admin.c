@@ -568,7 +568,7 @@ void admin_send_response(xmlDocPtr       doc,
             }
 
             json = xml2json_render_doc_simple(doc, ns);
-            client_send_buffer(client, 200, "application/json", "utf-8", json, -1, NULL);
+            client_send_buffer(client, 200, "application/json", "utf-8", json, -1, "Warning: 299 - \"JSON rendering is experimental\"\r\n");
             free(json);
         }
     } else if (response == ADMIN_FORMAT_HTML) {
