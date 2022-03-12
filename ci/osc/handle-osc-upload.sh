@@ -42,10 +42,9 @@ cp -a $SCRIPT_DIR/$ICECAST_PROJECT/icecast* $ICECAST_PROJECT/
 cp -a $SCRIPT_DIR/$ICECAST_PROJECT/debian $ICECAST_PROJECT/
 
 if [ "$DISABLE_CHANGELOG" == "0" ]; then
-  sed -i "1s#^#icecast2 ($ICECAST_CI_VERSION-1) UNRELEASED; urgency=medium\n\n  * CI BUILD\n\n -- Stephan Jauernick <info@stephan-jauernick.de>  `date +"%a, %d %b %Y %H:%M:%S %z"`\n\n#"  $ICECAST_PROJECT/debian/changelog
-  sed -i "s/_VERSION_ARCHIVE_/$ICECAST_VERSION/; s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $ICECAST_PROJECT/$ICECAST_PROJECT.spec 
-  sed -i "s/_VERSION_ARCHIVE_/$ICECAST_VERSION/; s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $W32_ICECAST_INSTALLER_PROJECT/$W32_ICECAST_INSTALLER_PROJECT.spec 
-  sed -i "s/_VERSION_ARCHIVE_/$ICECAST_VERSION/; s/^Version:.*$/Version: $ICECAST_CI_VERSION/; s#^%changelog.*\$#\0\n* `date +"%a %b %d %Y"` Stephan Jauernick <info@stephan-jauernick.de> - $ICECAST_CI_VERSION\n\nCI TEST\n#" $W32_ICECAST_PROJECT/$W32_ICECAST_PROJECT.spec 
+  pushd $SOURCE
+    $HOME/create-changelog-and-set-versions.sh "2.5-beta.2" "2.4.99.2" "2.5 beta2" "25-beta-2" "2.5-beta2" "2.4.99.2" "2.4.99.2" "now" "Stephan Jauernick <info@stephan-jauernick.de>" "CI Build - $CI_PIPELINE_URL" "icecast" "mingw32-icecast" "mingw32-icecast-installer"  
+  popd
 fi
 
 tar -C $ICECAST_PROJECT -cvzf $ICECAST_PROJECT/icecast2_$ICECAST_CI_VERSION-1.debian.tar.gz debian/

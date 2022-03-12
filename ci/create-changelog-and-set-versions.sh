@@ -42,6 +42,8 @@ sed -i "s/Icecast .* Documentation/Icecast $STRANGE_VERSION Documentation/; s/ic
 sed -i "s/\(\"DisplayVersion\" \"\).*\(\"\)$/\1$STRANGE_VERSION\2/" win32/icecast.nsis
 sed -i "s/\(OutFile \"icecast_win32_\).*\(.exe\"\)$/\1$WIN32_VERSION\2/" win32/icecast.nsis
 
+sed -i "s/^\(export ICECAST_VERSION=\).*$/\1$SHORT_VERSION/" ci/osc/*-config.sh
+
 if [ "$ARCHIVE_VERSION" != "_VERSION_ARCHIVE_" ]; then
   if ! git diff --quiet; then
     echo "git detected differences after ci driven create changelog run, this should not happen - please check";
