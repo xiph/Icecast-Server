@@ -43,7 +43,7 @@ cp -a $SCRIPT_DIR/$ICECAST_PROJECT/debian $ICECAST_PROJECT/
 
 if [ "$DISABLE_CHANGELOG" == "0" ]; then
   pushd $SOURCE
-    $SCRIPT_DIR/../create-changelog-and-set-versions.sh "$ICECAST_BETA_VERSION" "$ICECAST_VERSION" "2.5 beta$BETA_VERSION" "25-beta-$BETA_VERSION" "2.5-beta$BETA_VERSION" "$ICECAST_VERSION" "$ICECAST_CI_VERSION" "now" "Stephan Jauernick <info@stephan-jauernick.de>" "CI Build - $CI_PIPELINE_URL" "$ICECAST_PROJECT" "$W32_ICECAST_INSTALLER_PROJECT" "$W32_ICECAST_PROJECT"
+    $SCRIPT_DIR/../create-changelog-and-set-versions.sh "$ICECAST_BETA_VERSION" "$ICECAST_VERSION" "2.5 beta$ICECAST_BETA_VERSION" "25-beta-$ICECAST_BETA_VERSION" "2.5-beta$ICECAST_BETA_VERSION" "$ICECAST_VERSION" "$ICECAST_CI_VERSION" "now" "Stephan Jauernick <info@stephan-jauernick.de>" "CI Build - $CI_PIPELINE_URL" "$ICECAST_PROJECT" "$W32_ICECAST_INSTALLER_PROJECT" "$W32_ICECAST_PROJECT"
   popd
 fi
 
