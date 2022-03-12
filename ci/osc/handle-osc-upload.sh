@@ -13,7 +13,7 @@ pwd
 
 ls -la
 
-rm -rf osc_tmp/*
+rm -rf osc_tmp
 mkdir -p osc_tmp
 cd osc_tmp
 
@@ -43,7 +43,7 @@ cp -a $SCRIPT_DIR/$ICECAST_PROJECT/debian $ICECAST_PROJECT/
 
 if [ "$DISABLE_CHANGELOG" == "0" ]; then
   pushd $SOURCE
-    $HOME/create-changelog-and-set-versions.sh "2.5-beta.2" "2.4.99.2" "2.5 beta2" "25-beta-2" "2.5-beta2" "2.4.99.2" "2.4.99.2" "now" "Stephan Jauernick <info@stephan-jauernick.de>" "CI Build - $CI_PIPELINE_URL" "icecast" "mingw32-icecast" "mingw32-icecast-installer"  
+    $SCRIPT_DIR/../create-changelog-and-set-versions.sh "2.5-beta.2" "2.4.99.2" "2.5 beta2" "25-beta-2" "2.5-beta2" "2.4.99.2" "2.4.99.2" "now" "Stephan Jauernick <info@stephan-jauernick.de>" "CI Build - $CI_PIPELINE_URL" "icecast" "mingw32-icecast" "mingw32-icecast-installer"  
   popd
 fi
 

@@ -14,7 +14,7 @@ ICECAST_PROJECT=${1:?Icecast OSC Project Name}; shift
 W32_ICECAST_PROJECT=${1:?Icecast W32 OSC Project Name}; shift
 W32_ICECAST_INSTALLER_PROJECT=${1:?Icecast W32 Installer OSC Project Name}; shift
 
-OSC_BASE_DIR=.
+OSC_BASE_DIR=osc_tmp
 
 # upon release we modify the templates - in ci we modiy temporary files
 if [ "$ARCHIVE_VERSION" = "_VERSION_ARCHIVE_" ]; then
@@ -33,7 +33,10 @@ sed -i "s/\(icecast_win32_\).*\(.exe\)/\1$WIN32_VERSION\2/" $W32_ICECAST_INSTALL
 
 popd
 
-sed -i "1s#^#`date --date=$DATE +"%Y-%m-%d %H:%M:%S"`  $AUTHOR\n\n        * $TEXT\n\n#" ChangeLog
+# we only update the changelog for releases - until i figure out if we want to run the magic script pre CI
+if [ "$ARCHIVE_VERSION" = "_VERSION_ARCHIVE_" ]; then
+  sed -i "1s#^#`date --date=$DATE +"%Y-%m-%d %H:%M:%S"`  $AUTHOR\n\n        * $TEXT\n\n#" ChangeLog
+fi
 
 sed -i "1s#\[[.0-9]*\]#[$SHORT_VERSION]#" configure.ac
 
