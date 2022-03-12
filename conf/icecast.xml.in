@@ -59,10 +59,9 @@
          very carefully, as it is not enough to just uncomment this.
     -->
     <!--
-    <directory>
-        <yp-url-timeout>15</yp-url-timeout>
-        <yp-url>http://dir.xiph.org/cgi-bin/yp-cgi</yp-url>
-    </directory>
+    <yp-directory url="https://dir.xiph.org/cgi-bin/yp-cgi">
+        <option name="timeout" value="15" />
+    </yp-directory>
     -->
 
     <!-- You may have multiple <listen-socket> elements -->

@@ -1338,6 +1338,7 @@ static void _parse_root(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("mount")) == 0) {
             _parse_mount(doc, node, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("directory")) == 0) {
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <yp-directory> block.");
             _parse_oldstyle_directory(doc, node->xmlChildrenNode, configuration);
         } else if (xmlStrcmp(node->name, XMLSTR("yp-directory")) == 0) {
             _parse_yp_directory(doc, node, configuration);
@@ -2446,6 +2447,7 @@ static void _parse_yp_directory(xmlDocPtr      doc,
 
     url = (char *)xmlGetProp(node, XMLSTR("url"));
     if (url == NULL) {
+        __found_bad_tag(configuration, node, BTR_INVALID, NULL);
         ICECAST_LOG_ERROR("Missing mandatory attribute 'url' for <yp-directory>.");
         return;
     }
@@ -2461,6 +2463,7 @@ static void _parse_yp_directory(xmlDocPtr      doc,
     options = config_parse_options(node);
     for (config_options_t *opt = options; opt; opt = opt->next) {
         if (!opt->name || !opt->value) {
+            __found_bad_tag(configuration, node, BTR_INVALID, NULL);
             ICECAST_LOG_WARN("Invalid <option>, missing 'name' and 'value' attributes.");
             continue;
         }
@@ -2479,6 +2482,7 @@ static void _parse_yp_directory(xmlDocPtr      doc,
             /* FIXME: Pass the correct node to config_href_to_id(). */
             yp_dir->listen_socket_id = config_href_to_id(configuration, NULL, opt->value);
         } else {
+            __found_bad_tag(configuration, node, BTR_INVALID, NULL);
             ICECAST_LOG_WARN("Invalid YP <option> with unknown 'name' attribute.");
         }
     }
