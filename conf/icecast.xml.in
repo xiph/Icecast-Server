@@ -282,10 +282,6 @@
              the status page
         -->
         <alias source="/" destination="/status.xsl"/>
-        <!-- The certificate file needs to contain both public and private part.
-             Both should be PEM encoded.
-        <tls-certificate>@pkgdatadir@/icecast.pem</tls-certificate>
-        -->
     </paths>
 
     <logging>
@@ -310,6 +306,17 @@
             <group>nogroup</group>
         </changeowner>
         -->
+
+        <tls-context>
+            <!-- The certificate file containng public and optionally private key.
+                Must be PEM encoded.
+                <tls-certificate>@pkgdatadir@/icecast.pem</tls-certificate>
+            -->
+            <!-- The private key if not contained in <tls-certificate>.
+                Must be PEM encoded.
+                <tls-key>@pkgdatadir@/icecast.key</tls-key>
+            -->
+        </tls-context>
 
         <!-- It is generally helpful to set a PRNG seed, what seed to set depends on your OS. -->
         <!-- Useful on all operating systems is a seed file for Icecast to update.

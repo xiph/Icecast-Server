@@ -2625,8 +2625,12 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-certificate")) == 0) {
+
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <tls-certificate> in <tls-context>.");
+
             if (__check_node_impl(node, "generic") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                __found_bad_tag(configuration, node, BTR_INVALID, NULL);
                 continue;
             }
 
@@ -2635,8 +2639,12 @@ static void _parse_paths(xmlDocPtr      doc,
             configuration->tls_context.cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
+
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <tls-allowed-cipherse> in <tls-context>.");
+
             if (__check_node_impl(node, "openssl") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                __found_bad_tag(configuration, node, BTR_INVALID, NULL);
                 continue;
             }
 
@@ -2785,6 +2793,7 @@ static void _parse_tls_context(xmlDocPtr       doc,
         if (xmlStrcmp(node->name, XMLSTR("tls-certificate")) == 0) {
             if (__check_node_impl(node, "generic") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                __found_bad_tag(configuration, node, BTR_INVALID, NULL);
                 continue;
             }
 
@@ -2794,6 +2803,7 @@ static void _parse_tls_context(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls-key")) == 0) {
             if (__check_node_impl(node, "generic") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                __found_bad_tag(configuration, node, BTR_INVALID, NULL);
                 continue;
             }
 
@@ -2803,6 +2813,7 @@ static void _parse_tls_context(xmlDocPtr       doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0) {
             if (__check_node_impl(node, "openssl") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
+                __found_bad_tag(configuration, node, BTR_INVALID, NULL);
                 continue;
             }
 
