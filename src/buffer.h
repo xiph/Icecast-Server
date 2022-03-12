@@ -133,7 +133,7 @@ int         buffer_push_data(buffer_t *buffer, const void *data, size_t length);
  */
 int         buffer_push_string(buffer_t *buffer, const char *string);
 
-/* This pushes a formated string to the end of the buffer.
+/* This pushes a formatted string to the end of the buffer.
  * Parameters:
  *  buffer
  *      The buffer to operate on.
@@ -144,7 +144,7 @@ int         buffer_push_string(buffer_t *buffer, const char *string);
  */
 int         buffer_push_printf(buffer_t *buffer, const char *format, ...);
 
-/* This pushes a formated string to the end of the buffer using a va_list.
+/* This pushes a formatted string to the end of the buffer using a va_list.
  * Parameters:
  *  buffer
  *      The buffer to operate on.

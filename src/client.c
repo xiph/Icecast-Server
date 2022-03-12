@@ -301,7 +301,7 @@ void client_destroy(client_t *client)
         return;
     }
 
-    ICECAST_LOG_DEBUG("Called to destory client %p on connection %p (connection ID: %llu, sock=%R)", client, client->con, (long long unsigned int)client->con->id, client->con->sock);
+    ICECAST_LOG_DEBUG("Called to destroy client %p on connection %p (connection ID: %llu, sock=%R)", client, client->con, (long long unsigned int)client->con->id, client->con->sock);
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
 

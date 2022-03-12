@@ -366,7 +366,7 @@ static client_t *open_relay_connection (relay_t *relay, relay_config_upstream_t 
             if (client_create (&client, con, parser) < 0)
             {
                 global_unlock ();
-                /* make sure only the client_destory frees these */
+                /* make sure only the client_destroy frees these */
                 con = NULL;
                 parser = NULL;
                 client_destroy (client);

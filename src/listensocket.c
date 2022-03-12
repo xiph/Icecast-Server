@@ -634,7 +634,7 @@ static int              listensocket_apply_config__unlocked(listensocket_t *self
     thread_rwlock_wlock(&self->listener_rwlock);
     if (self->listener_update) {
         if (__listener_cmp(self->listener, self->listener_update) != 1) {
-            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address missmatch: have %s:%i, got %s:%i",
+            ICECAST_LOG_ERROR("Tried to apply incomplete configuration to listensocket: bind address mismatch: have %s:%i, got %s:%i",
                                 __string_default(self->listener->bind_address, "<ANY>"),
                                 self->listener->port,
                                 __string_default(self->listener_update->bind_address, "<ANY>"),

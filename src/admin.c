@@ -1006,7 +1006,7 @@ static void command_manageauth(client_t *client, source_t *source, admin_format_
 
         /* check if we found one */
         if (auth == NULL) {
-            ICECAST_LOG_WARN("Client requested mangement for unknown role %lu", id);
+            ICECAST_LOG_WARN("Client requested management for unknown role %lu", id);
             error_id = ICECAST_ERROR_ADMIN_ROLEMGN_ROLE_NOT_FOUND;
             break;
         }

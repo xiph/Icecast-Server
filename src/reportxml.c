@@ -1456,7 +1456,7 @@ reportxml_node_t *      reportxml_database_build_fragment(reportxml_database_t *
         return ret;
     } else if (got == type) {
         refobject_unref(definition);
-        ICECAST_LOG_ERROR("Definition lists multiple childs of target type. BAD.");
+        ICECAST_LOG_ERROR("Definition lists multiple children of target type. BAD.");
         return NULL;
     }
 

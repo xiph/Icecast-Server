@@ -914,7 +914,7 @@ static inline int __parse_q(const char *str)
         } else if (*str == '.') {
             mul = 100;
         } else {
-            ICECAST_LOG_ERROR("Badly formated quality parameter found.");
+            ICECAST_LOG_ERROR("Badly formatted quality parameter found.");
             return -1;
         }
     }
