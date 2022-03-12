@@ -1879,6 +1879,15 @@ static void command_version             (client_t *client, source_t *source, adm
 
     reportxml_helper_add_value_flag(rflags, "requested-chroot", icecast_config->chroot);
     reportxml_helper_add_value_flag(rflags, "requested-chuid", icecast_config->chuid);
+
+    reportxml_helper_add_value_flag(rflags, "cfgp-hostname", icecast_config->config_problems & CONFIG_PROBLEM_HOSTNAME);
+    reportxml_helper_add_value_flag(rflags, "cfgp-location", icecast_config->config_problems & CONFIG_PROBLEM_LOCATION);
+    reportxml_helper_add_value_flag(rflags, "cfgp-admin", icecast_config->config_problems & CONFIG_PROBLEM_ADMIN);
+    reportxml_helper_add_value_flag(rflags, "cfgp-prng", icecast_config->config_problems & CONFIG_PROBLEM_PRNG);
+    reportxml_helper_add_value_flag(rflags, "cfgp-node-unknown", icecast_config->config_problems & CONFIG_PROBLEM_UNKNOWN_NODE);
+    reportxml_helper_add_value_flag(rflags, "cfgp-node-obsolete", icecast_config->config_problems & CONFIG_PROBLEM_OBSOLETE_NODE);
+    reportxml_helper_add_value_flag(rflags, "cfgp-node-invalid", icecast_config->config_problems & CONFIG_PROBLEM_INVALID_NODE);
+    reportxml_helper_add_value_flag(rflags, "cfgp-validation", icecast_config->config_problems & CONFIG_PROBLEM_VALIDATION);
     config_release_config();
 
     reportxml_node_set_attribute(dependencies, "type", "structure");
