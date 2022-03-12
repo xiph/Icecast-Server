@@ -644,12 +644,13 @@ static inline void   _build_headers_loop(char **ret, size_t *len, const ice_conf
                                     value = allow;
                                 }
                             } else if (strcasecmp(name, "Access-Control-Expose-Headers") == 0) {
-                                value = "icy-br, icy-description, icy-genre, icy-name, icy-pub, icy-url";
+                                value = "content-range, icy-br, icy-description, icy-genre, icy-name, icy-pub, icy-url";
                             } else if (strcasecmp(name, "Access-Control-Max-Age") == 0) {
                                 value = "300"; /* 300s = 5 minutes */
+                            } else if (strcasecmp(name, "Access-Control-Allow-Headers") == 0) {
+                                value = "range, if-range";
                             /* No default (yet)
                              * } else if (strcasecmp(name, "Access-Control-Allow-Credentials") == 0) {
-                             * } else if (strcasecmp(name, "Access-Control-Allow-Headers") == 0) {
                              */
                             }
                         }
