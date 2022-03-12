@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 
-LONG_VERSION=${1:?Missing Long Version, Use 2.5-beta.2}; shift
+BETA_VERSION=${1:?Missing Beta Version, Use 2}; shift
 SHORT_VERSION=${1:?Missing Short Version, Use 2.4.99.2}; shift
 STRANGE_VERSION=${1:?Missing Strange Version, Use '2.5 beta2'}; shift
 HTML_VERSION=${1:?Missing HTML Version, Use '25-beta-2'}; shift
@@ -45,13 +45,13 @@ sed -i "s/Icecast .* Documentation/Icecast $STRANGE_VERSION Documentation/; s/ic
 sed -i "s/\(\"DisplayVersion\" \"\).*\(\"\)$/\1$STRANGE_VERSION\2/" win32/icecast.nsis
 sed -i "s/\(OutFile \"icecast_win32_\).*\(.exe\"\)$/\1$WIN32_VERSION\2/" win32/icecast.nsis
 
-sed -i "s/^\(export ICECAST_VERSION=\).*$/\1$SHORT_VERSION/" ci/osc/*-config.sh
+sed -i "s/^\(export ICECAST_VERSION=\).*$/\1$SHORT_VERSION/; s/\(export ICECAST_BETA_VERSION=\).*$/\1$BETA_VERSION/" ci/osc/*-config.sh
 
 if [ "$ARCHIVE_VERSION" != "_VERSION_ARCHIVE_" ]; then
   if ! git diff --quiet; then
     echo "git detected differences after ci driven create changelog run, this should not happen - please check";
     git status
-    git diff
+    git --no-pager diff
     exit 1;
   else
     echo "no repo diffs detected, this is good as CI should not change the repo(only temp files)!"
@@ -59,5 +59,5 @@ if [ "$ARCHIVE_VERSION" != "_VERSION_ARCHIVE_" ]; then
 else
   echo "applied changes to versions, please verify and commit them for a new release"
   git status
-  git diff
+  git --no-pager diff
 fi
