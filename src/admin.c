@@ -1817,6 +1817,9 @@ static void command_version             (client_t *client, source_t *source, adm
 #ifdef HAVE_GETHOSTNAME
         "gethostname",
 #endif
+#ifdef HAVE_GETADDRINFO
+        "getaddrinfo",
+#endif
 #ifdef WIN32
         "win32",
 #endif
