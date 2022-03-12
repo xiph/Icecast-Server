@@ -93,6 +93,8 @@
     -->
     <http-headers>
         <header type="cors" name="Access-Control-Allow-Origin" />
+        <header type="cors" name="Access-Control-Allow-Headers" />
+        <header type="cors" name="Access-Control-Expose-Headers" />
     </http-headers>
 
 
