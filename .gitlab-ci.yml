@@ -41,6 +41,10 @@ upload_dist:
     - docker
     - linux
 
+  only:
+    - master
+    - devel
+
   stage: deploy
 
   dependencies:

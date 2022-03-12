@@ -7,7 +7,7 @@ HTML_VERSION=${1:?Missing HTML Version, Use '25-beta-2'}; shift
 WIN32_VERSION=${1:?Missing Win32 Version, Use '2.5-beta2'}; shift
 ARCHIVE_VERSION=${1:?Missing Archive Version, Use '2.4.99.2' for ci or _VERSION_ARCHIVE_ for release}; shift
 CI_VERSION=${1:?Missing CI Version - Use 2.4.99.2+bla}; shift
-DATE=${1:?ISO DATE or now}; shift
+DATE=`date --date=${1:?ISO DATE or now} --iso-8601=seconds`; shift
 AUTHOR=${1:?Mail Address}; shift
 TEXT=${1:?Release Text}; shift
 ICECAST_PROJECT=${1:?Icecast OSC Project Name}; shift
@@ -46,6 +46,7 @@ sed -i "s/\(\"DisplayVersion\" \"\).*\(\"\)$/\1$STRANGE_VERSION\2/" win32/icecas
 sed -i "s/\(OutFile \"icecast_win32_\).*\(.exe\"\)$/\1$WIN32_VERSION\2/" win32/icecast.nsis
 
 sed -i "s/^\(export ICECAST_VERSION=\).*$/\1$SHORT_VERSION/; s/\(export ICECAST_BETA_VERSION=\).*$/\1$BETA_VERSION/" ci/osc/*-config.sh
+sed -i "s/^\(export RELEASE_AUTHOR=\"\).*\(\"\)$/\1$AUTHOR\2/; s/\(export RELEASE_DATETIME=\).*$/\1$DATE/" ci/osc/release-config.sh
 
 if [ "$ARCHIVE_VERSION" != "_VERSION_ARCHIVE_" ]; then
   if ! git diff --quiet; then
