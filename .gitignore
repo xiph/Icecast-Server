@@ -1,5 +1,6 @@
 stamp-h1
 src/icecast
+src/icecast.exe
 src/.deps
 src/.libs
 config.h
@@ -18,6 +19,7 @@ config.h.in
 config.log
 config.status
 configure
+configure~
 depcomp
 install-sh
 libtool
@@ -26,6 +28,7 @@ ltmain.sh
 missing
 mkinstalldirs
 *.tar.gz
+*.zip
 config.h.in~
 /build-aux
 
