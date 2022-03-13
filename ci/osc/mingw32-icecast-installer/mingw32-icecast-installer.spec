@@ -6,7 +6,7 @@
 
 Summary:        Installer for MinGW Windows port of Icecast  streaming media server
 Name:           mingw32-icecast-installer
-Version:        2.4.99.2
+Version:        2.4.99.3
 Release:        2%{?dist}
 Group:          Applications/Multimedia
 License:        GPL-2.0
@@ -70,15 +70,19 @@ makensis icecast.nsis -V4
 
 %install
 mkdir -p "%{buildroot}/%{_mingw32_bindir}"
-cp %_builddir/installer/icecast_win32_2.5-beta2.exe "%{buildroot}/%{_mingw32_bindir}"
+cp %_builddir/installer/icecast_win32_2.5-beta3.exe "%{buildroot}/%{_mingw32_bindir}"
 
 %clean
 
 %files
 %defattr(-,root,root)
-%{_mingw32_bindir}/icecast_win32_2.5-beta2.exe
+%{_mingw32_bindir}/icecast_win32_2.5-beta3.exe
 
 %changelog
+* Sun Mar 13 2022 Philipp Schafft <lion@lion.leolix.org> - 2.4.99.3-1
+- Preparing for 2.5 beta3 aka 2.4.99.3
+
+
 * Sun Mar 06 2022 Stephan Jauernick <info@stephan-jauernick.de> - 2.4.99.2
 
 Rework OBS CI/CD

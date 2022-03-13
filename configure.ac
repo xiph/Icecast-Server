@@ -1,4 +1,4 @@
-AC_INIT([Icecast], [2.4.99.2], [icecast@xiph.org])
+AC_INIT([Icecast], [2.4.99.3], [icecast@xiph.org])
 
 AC_PREREQ([2.54])
 

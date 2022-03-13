@@ -6,7 +6,7 @@
 %define version_archive _VERSION_ARCHIVE_
 Summary: Streaming media server
 Name: icecast
-Version: 2.4.99.2
+Version: 2.4.99.3
 Release: 1%{?dist}
 Group: Applications/Multimedia
 #because one way to say this is not enough...
@@ -180,6 +180,10 @@ fi
 %dir %attr(-,%{name},%{name}) %{_localstatedir}/log/icecast
 
 %changelog
+* Sun Mar 13 2022 Philipp Schafft <lion@lion.leolix.org> - 2.4.99.3-1
+- Preparing for 2.5 beta3 aka 2.4.99.3
+
+
 * Fri May 11 2018 Thomas B. Ruecker <thomas@ruecker.fi> - 2.4.2.99-1
 - 2.5 Beta 2
 
