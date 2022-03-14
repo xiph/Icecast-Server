@@ -11,23 +11,39 @@
 #endif
 
 #include <string.h>
+#include <stdarg.h>
+#include <stdlib.h> /* for EXIT_FAILURE */
+#include <stdio.h>
 
-#include "ctest_lib.h"
+#include <igloo/tap.h>
 
 #include "../src/buffer.h"
 #include "../src/refobject.h"
+
+static void ctest_diagnostic_printf(const char *format, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, format);
+
+    vsnprintf(buf, sizeof(buf), format, ap);
+
+    va_end(ap);
+
+    igloo_tap_diagnostic(buf);
+}
 
 static void test_create_ref_unref(void)
 {
     buffer_t *a;
 
     a = buffer_new(-1, NULL, NULL, REFOBJECT_NULL);
-    ctest_test("buffer created", a != NULL);
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("buffer created", a != NULL);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("buffer created", a != NULL);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 
 }
 
@@ -38,13 +54,13 @@ static void test_name(void)
     const char *ret;
 
     a = buffer_new(-1, NULL, name, REFOBJECT_NULL);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
     ret = refobject_get_name(a);
-    ctest_test("get name", ret != NULL);
-    ctest_test("name match", strcmp(name, ret) == 0);
+    igloo_tap_test("get name", ret != NULL);
+    igloo_tap_test("name match", strcmp(name, ret) == 0);
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_userdata(void)
@@ -55,27 +71,27 @@ static void test_userdata(void)
     void *ret;
 
     a = buffer_new(-1, NULL, NULL, REFOBJECT_NULL);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
     ret = refobject_get_userdata(a);
-    ctest_test("get userdata", ret == NULL);
-    ctest_test("set userdata", refobject_set_userdata(a, userdata) == 0);
+    igloo_tap_test("get userdata", ret == NULL);
+    igloo_tap_test("set userdata", refobject_set_userdata(a, userdata) == 0);
     ret = refobject_get_userdata(a);
-    ctest_test("get userdata", ret == userdata);
-    ctest_test("clearing userdata", refobject_set_userdata(a, NULL) == 0);
+    igloo_tap_test("get userdata", ret == userdata);
+    igloo_tap_test("clearing userdata", refobject_set_userdata(a, NULL) == 0);
     ret = refobject_get_userdata(a);
-    ctest_test("get userdata", ret == NULL);
+    igloo_tap_test("get userdata", ret == NULL);
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 
     a = buffer_new(-1, userdata, NULL, REFOBJECT_NULL);
-    ctest_test("buffer created", a != NULL);
-    ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
+    igloo_tap_test("buffer created", a != NULL);
+    igloo_tap_test("refobject created", !REFOBJECT_IS_NULL(a));
     ret = refobject_get_userdata(a);
-    ctest_test("get userdata", ret == userdata);
-    ctest_test("clearing userdata", refobject_set_userdata(a, NULL) == 0);
+    igloo_tap_test("get userdata", ret == userdata);
+    igloo_tap_test("clearing userdata", refobject_set_userdata(a, NULL) == 0);
     ret = refobject_get_userdata(a);
-    ctest_test("get userdata", ret == NULL);
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("get userdata", ret == NULL);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_associated(void)
@@ -84,14 +100,14 @@ static void test_associated(void)
     buffer_t *b;
 
     a = refobject_new(refobject_base_t);
-    ctest_test("refobject created", !REFOBJECT_IS_NULL(a));
+    igloo_tap_test("refobject created", !REFOBJECT_IS_NULL(a));
 
 
     b = buffer_new(-1, NULL, NULL, a);
-    ctest_test("buffer created with associated", !REFOBJECT_IS_NULL(b));
+    igloo_tap_test("buffer created with associated", !REFOBJECT_IS_NULL(b));
 
-    ctest_test("un-referenced (1 of 2)", refobject_unref(b) == 0);
-    ctest_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced (1 of 2)", refobject_unref(b) == 0);
+    igloo_tap_test("un-referenced (2 of 2)", refobject_unref(a) == 0);
 }
 
 static void test_empty(void)
@@ -103,39 +119,39 @@ static void test_empty(void)
     int ret;
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
     ret = buffer_get_data(a, &data, &length);
-    ctest_test("got data and length from buffer", ret == 0);
+    igloo_tap_test("got data and length from buffer", ret == 0);
     if (ret == 0) {
-        ctest_test("data is updated", data != &data);
-        ctest_test("length is zero", length == 0);
+        igloo_tap_test("data is updated", data != &data);
+        igloo_tap_test("length is zero", length == 0);
     }
 
     data = &data;
     ret = buffer_get_data(a, &data, NULL);
-    ctest_test("got data from buffer", ret == 0);
+    igloo_tap_test("got data from buffer", ret == 0);
     if (ret == 0) {
-        ctest_test("data is updated", data != &data);
+        igloo_tap_test("data is updated", data != &data);
     }
 
     length = 5;
     ret = buffer_get_data(a, NULL, &length);
-    ctest_test("got length from buffer", ret == 0);
+    igloo_tap_test("got length from buffer", ret == 0);
     if (ret == 0) {
-        ctest_test("length is zero", length == 0);
+        igloo_tap_test("length is zero", length == 0);
     }
 
     ret = buffer_get_string(a, &string);
-    ctest_test("got string from buffer", ret == 0);
+    igloo_tap_test("got string from buffer", ret == 0);
     if (ret == 0) {
-        ctest_test("string is non-NULL", string != NULL);
+        igloo_tap_test("string is non-NULL", string != NULL);
         if (string != NULL) {
-            ctest_test("string is empty", *string == 0);
+            igloo_tap_test("string is empty", *string == 0);
         }
     }
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_string(void)
@@ -148,29 +164,29 @@ static void test_string(void)
     int ret;
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
-    ctest_test("pushed string", buffer_push_string(a, hw) == 0);
+    igloo_tap_test("buffer created", a != NULL);
+    igloo_tap_test("pushed string", buffer_push_string(a, hw) == 0);
     ret = buffer_get_string(a, &string);
-    ctest_test("got strong", ret == 0);
+    igloo_tap_test("got strong", ret == 0);
     if (ret == 0) {
-        ctest_test("string is non-NULL", string != NULL);
+        igloo_tap_test("string is non-NULL", string != NULL);
         if (string != NULL) {
-            ctest_test("string matches input", strcmp(string, hw) == 0);
+            igloo_tap_test("string matches input", strcmp(string, hw) == 0);
         }
     }
 
-    ctest_test("pushed string", buffer_push_string(a, count) == 0);
+    igloo_tap_test("pushed string", buffer_push_string(a, count) == 0);
     string = NULL;
     ret = buffer_get_string(a, &string);
-    ctest_test("got strong", ret == 0);
+    igloo_tap_test("got strong", ret == 0);
     if (ret == 0) {
-        ctest_test("string is non-NULL", string != NULL);
+        igloo_tap_test("string is non-NULL", string != NULL);
         if (string != NULL) {
-            ctest_test("string matches combined input", strcmp(string, combined) == 0);
+            igloo_tap_test("string matches combined input", strcmp(string, combined) == 0);
         }
     }
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_binary(void)
@@ -183,38 +199,38 @@ static void test_binary(void)
     const void *data;
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
-    ctest_test("pushed data pattern a", buffer_push_data(a, pattern_a, sizeof(pattern_a)) == 0);
+    igloo_tap_test("pushed data pattern a", buffer_push_data(a, pattern_a, sizeof(pattern_a)) == 0);
     length = sizeof(pattern_a) + 42;
     data = &data;
     ret = buffer_get_data(a, &data, &length);
-    ctest_test("got data", ret == 0);
+    igloo_tap_test("got data", ret == 0);
     if (ret == 0) {
-        ctest_test("correct length was returned", length == sizeof(pattern_a));
-        ctest_test("data is non-NULL", data != NULL);
-        ctest_test("data has been set", data != &data);
+        igloo_tap_test("correct length was returned", length == sizeof(pattern_a));
+        igloo_tap_test("data is non-NULL", data != NULL);
+        igloo_tap_test("data has been set", data != &data);
         if (length == sizeof(pattern_a) && data != NULL && data != &data) {
-            ctest_test("data matches pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0);
+            igloo_tap_test("data matches pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0);
         }
     }
 
-    ctest_test("pushed data pattern b", buffer_push_data(a, pattern_b, sizeof(pattern_b)) == 0);
+    igloo_tap_test("pushed data pattern b", buffer_push_data(a, pattern_b, sizeof(pattern_b)) == 0);
     length = sizeof(pattern_a) + sizeof(pattern_b) + 42;
     data = &data;
     ret = buffer_get_data(a, &data, &length);
-    ctest_test("got data", ret == 0);
+    igloo_tap_test("got data", ret == 0);
     if (ret == 0) {
-        ctest_test("correct length was returned", length == (sizeof(pattern_a) + sizeof(pattern_b)));
-        ctest_test("data is non-NULL", data != NULL);
-        ctest_test("data has been set", data != &data);
+        igloo_tap_test("correct length was returned", length == (sizeof(pattern_a) + sizeof(pattern_b)));
+        igloo_tap_test("data is non-NULL", data != NULL);
+        igloo_tap_test("data has been set", data != &data);
         if (length == (sizeof(pattern_a) + sizeof(pattern_b)) && data != NULL && data != &data) {
-            ctest_test("data matches combined pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0 && memcmp(data + sizeof(pattern_a), pattern_b, sizeof(pattern_b)) == 0);
+            igloo_tap_test("data matches combined pattern", memcmp(data, pattern_a, sizeof(pattern_a)) == 0 && memcmp(data + sizeof(pattern_a), pattern_b, sizeof(pattern_b)) == 0);
         }
     }
 
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test__compare_to_string(buffer_t *a, const char *testname, const char *pattern)
@@ -223,11 +239,11 @@ static void test__compare_to_string(buffer_t *a, const char *testname, const cha
     int ret;
 
     ret = buffer_get_string(a, &string);
-    ctest_test("got strong", ret == 0);
+    igloo_tap_test("got strong", ret == 0);
     if (ret == 0) {
-        ctest_test("string is non-NULL", string != NULL);
+        igloo_tap_test("string is non-NULL", string != NULL);
         if (string != NULL) {
-            ctest_test(testname, strcmp(string, pattern) == 0);
+            igloo_tap_test(testname, strcmp(string, pattern) == 0);
             ctest_diagnostic_printf("string=\"%s\", pattern=\"%s\"", string, pattern);
         }
     }
@@ -239,21 +255,21 @@ static void test_shift(void)
     const char *pattern = "AABBBCC";
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
-    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    igloo_tap_test("pushed string", buffer_push_string(a, pattern) == 0);
     test__compare_to_string(a, "string matches input", pattern);
-    ctest_test("shifted data by 0 bytes", buffer_shift(a, 0) == 0);
+    igloo_tap_test("shifted data by 0 bytes", buffer_shift(a, 0) == 0);
     test__compare_to_string(a, "string matches input (no shift happened)", pattern);
-    ctest_test("shifted data by 2 bytes", buffer_shift(a, 2) == 0);
+    igloo_tap_test("shifted data by 2 bytes", buffer_shift(a, 2) == 0);
     test__compare_to_string(a, "string matches shifted input", pattern + 2);
-    ctest_test("shifted data by 3 bytes", buffer_shift(a, 3) == 0);
+    igloo_tap_test("shifted data by 3 bytes", buffer_shift(a, 3) == 0);
     test__compare_to_string(a, "string matches shifted input", pattern + 2 + 3);
-    ctest_test("shifted data by 3 bytes", buffer_shift(a, 2) == 0);
+    igloo_tap_test("shifted data by 3 bytes", buffer_shift(a, 2) == 0);
     test__compare_to_string(a, "string matches shifted input", pattern + 2 + 3 + 2);
-    ctest_test("shifted data beyond end (42 bytes)", buffer_shift(a, 42) != 0);
+    igloo_tap_test("shifted data beyond end (42 bytes)", buffer_shift(a, 42) != 0);
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_length(void)
@@ -265,20 +281,20 @@ static void test_length(void)
     const char *match_c = "";
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
-    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    igloo_tap_test("pushed string", buffer_push_string(a, pattern) == 0);
     test__compare_to_string(a, "string matches input", pattern);
-    ctest_test("Set length to match pattern a", buffer_set_length(a, strlen(match_a)) == 0);
+    igloo_tap_test("Set length to match pattern a", buffer_set_length(a, strlen(match_a)) == 0);
     test__compare_to_string(a, "string matches pattern a", match_a);
-    ctest_test("Set length to match pattern b", buffer_set_length(a, strlen(match_b)) == 0);
+    igloo_tap_test("Set length to match pattern b", buffer_set_length(a, strlen(match_b)) == 0);
     test__compare_to_string(a, "string matches pattern a", match_b);
-    ctest_test("Set length to match pattern c", buffer_set_length(a, strlen(match_c)) == 0);
+    igloo_tap_test("Set length to match pattern c", buffer_set_length(a, strlen(match_c)) == 0);
     test__compare_to_string(a, "string matches pattern a", match_c);
-    ctest_test("Set length to match pattern a (again)", buffer_set_length(a, strlen(match_a)) != 0);
+    igloo_tap_test("Set length to match pattern a (again)", buffer_set_length(a, strlen(match_a)) != 0);
     test__compare_to_string(a, "string still matches pattern c", match_c);
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_printf(void)
@@ -291,16 +307,16 @@ static void test_printf(void)
     const char *match_c = ":Hello World!:<-127 >? +127?";
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer created", a != NULL);
+    igloo_tap_test("buffer created", a != NULL);
 
-    ctest_test("Set length to match pattern a", buffer_push_printf(a, ":%s:", str) == 0);
+    igloo_tap_test("Set length to match pattern a", buffer_push_printf(a, ":%s:", str) == 0);
     test__compare_to_string(a, "string matches pattern a", match_a);
-    ctest_test("Set length to match pattern a", buffer_push_printf(a, "<%-5i>", num) == 0);
+    igloo_tap_test("Set length to match pattern a", buffer_push_printf(a, "<%-5i>", num) == 0);
     test__compare_to_string(a, "string matches pattern b", match_b);
-    ctest_test("Set length to match pattern a", buffer_push_printf(a, "?%+5i?", -num) == 0);
+    igloo_tap_test("Set length to match pattern a", buffer_push_printf(a, "?%+5i?", -num) == 0);
     test__compare_to_string(a, "string matches pattern c", match_c);
 
-    ctest_test("un-referenced", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced", refobject_unref(a) == 0);
 }
 
 static void test_push_buffer(void)
@@ -311,45 +327,45 @@ static void test_push_buffer(void)
     const char *match_a = "AABBBCCAABBBCC";
 
     a = refobject_new(buffer_t);
-    ctest_test("buffer a created", a != NULL);
+    igloo_tap_test("buffer a created", a != NULL);
     b = refobject_new(buffer_t);
-    ctest_test("buffer b created", b != NULL);
+    igloo_tap_test("buffer b created", b != NULL);
 
-    ctest_test("pushed string", buffer_push_string(a, pattern) == 0);
+    igloo_tap_test("pushed string", buffer_push_string(a, pattern) == 0);
     test__compare_to_string(a, "string matches input", pattern);
 
-    ctest_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
+    igloo_tap_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
     test__compare_to_string(b, "string matches input", pattern);
 
-    ctest_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
+    igloo_tap_test("pushed buffer a to b", buffer_push_buffer(b, a) == 0);
     test__compare_to_string(b, "string matches pattern a", match_a);
 
-    ctest_test("un-referenced b", refobject_unref(b) == 0);
-    ctest_test("un-referenced a", refobject_unref(a) == 0);
+    igloo_tap_test("un-referenced b", refobject_unref(b) == 0);
+    igloo_tap_test("un-referenced a", refobject_unref(a) == 0);
 }
 
 int main (void)
 {
-    ctest_init();
+    igloo_tap_init();
+    igloo_tap_exit_on(igloo_TAP_EXIT_ON_FIN, NULL);
 
+    igloo_tap_group_run("create-ref-unref", test_create_ref_unref);
 
-    test_create_ref_unref();
+    igloo_tap_group_run("name", test_name);
+    igloo_tap_group_run("userdata", test_userdata);
+    igloo_tap_group_run("associated", test_associated);
 
-    test_name();
-    test_userdata();
-    test_associated();
+    igloo_tap_group_run("empty", test_empty);
+    igloo_tap_group_run("string", test_string);
+    igloo_tap_group_run("binary", test_binary);
 
-    test_empty();
-    test_string();
-    test_binary();
+    igloo_tap_group_run("shift", test_shift);
+    igloo_tap_group_run("length", test_length);
 
-    test_shift();
-    test_length();
+    igloo_tap_group_run("printf", test_printf);
+    igloo_tap_group_run("push_buffer", test_push_buffer);
 
-    test_printf();
-    test_push_buffer();
+    igloo_tap_fin();
 
-    ctest_fin();
-
-    return 0;
+    return EXIT_FAILURE; // return failure as we should never reach this point!
 }

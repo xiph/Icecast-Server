@@ -9,12 +9,15 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <stdlib.h> /* for EXIT_FAILURE */
 
-#include "ctest_lib.h"
+#include <igloo/tap.h>
 
 int main (void) {
-    ctest_init();
-    ctest_test("suite working", 1);
-    ctest_fin();
-    return 0;
+    igloo_tap_init();
+    igloo_tap_exit_on(igloo_TAP_EXIT_ON_FIN, NULL);
+    igloo_tap_test("suite working", true);
+    igloo_tap_fin();
+
+    return EXIT_FAILURE; // return failure as we should never reach this point!
 }
