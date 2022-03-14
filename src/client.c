@@ -26,6 +26,9 @@
 
 #include <libxml/tree.h>
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
@@ -345,7 +348,7 @@ void client_destroy(client_t *client)
     if (client->free_client_data)
         client->free_client_data(client);
 
-    refobject_unref(client->handler_module);
+    igloo_ro_unref(&(client->handler_module));
     free(client->handler_function);
     free(client->uri);
     free(client->username);

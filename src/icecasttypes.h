@@ -139,8 +139,6 @@ typedef struct refobject_base_tag refobject_base_t;
 typedef union __attribute__ ((__transparent_union__)) {
     refobject_base_t *refobject_base;
     buffer_t *buffer;
-    module_t *module;
-    module_container_t *module_container;
     reportxml_t *reportxml;
     reportxml_node_t *reportxml_node;
     reportxml_database_t *reportxml_database;
@@ -153,5 +151,10 @@ typedef union __attribute__ ((__transparent_union__)) {
 #else
 typedef void * refobject_t;
 #endif
+
+/* --- [ For libigloo ]--- */
+#define igloo_RO_APPTYPES \
+    igloo_RO_TYPE(module_t) \
+    igloo_RO_TYPE(module_container_t)
 
 #endif

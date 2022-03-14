@@ -18,11 +18,13 @@
 
 #include <string.h>
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 
 #include "global.h"
-#include "refobject.h"
 #include "module.h"
 #include "source.h"
 
@@ -41,14 +43,14 @@ void global_initialize(void)
     global.sources = 0;
     global.sources_legacy = 0;
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
-    global.modulecontainer = refobject_new(module_container_t);
+    igloo_ro_new(&global.modulecontainer, module_container_t, igloo_instance);
     thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
-    refobject_unref(global.modulecontainer);
+    igloo_ro_unref(&global.modulecontainer);
     avl_tree_free(global.source_tree, NULL);
 }
 
