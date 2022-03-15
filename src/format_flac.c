@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <ogg/ogg.h>
 #include <string.h>
 
@@ -42,20 +43,55 @@ typedef enum {
     FLAC_BLOCK_TYPE_PICTURE = 6
 } flac_block_type_t;
 
-static flac_block_type_t flac_blocktype(const ogg_packet * packet)
+typedef struct {
+    flac_block_type_t type;
+    bool last;
+    size_t len;
+    const void *data;
+} flac_block_t;
+
+/* returns true if parse was ok, false on error */
+static bool flac_parse_block(flac_block_t *block, const ogg_packet * packet)
 {
     uint8_t type;
+    uint32_t len;
 
+    /* check header length */
     if (packet->bytes <= 4)
-        return FLAC_BLOCK_TYPE__ERROR;
+        return false;
 
-    type = packet->packet[0] & 0x7F;
+    type = packet->packet[0];
 
-    if (type <= FLAC_BLOCK_TYPE_PICTURE) {
-        return type;
-    } else {
-        return FLAC_BLOCK_TYPE__ERROR;
+    /* 0xFF is the sync code for a FRAME not a block */
+    if (type == 0xFF)
+        return false;
+
+    memset(block, 0, sizeof(*block));
+
+    if (type & 0x80) {
+        block->last = true;
+        type &= 0x7F;
     }
+
+    if (type > FLAC_BLOCK_TYPE_PICTURE)
+        return false;
+
+    block->type = type;
+
+    len  = (unsigned char)packet->packet[1];
+    len <<= 8;
+    len |= (unsigned char)packet->packet[2];
+    len <<= 8;
+    len |= (unsigned char)packet->packet[3];
+
+    /* check Ogg packet size vs. self-sync size */
+    if (packet->bytes != (len + 4))
+        return false;
+
+    block->len = len;
+    block->data = packet->packet + 4;
+
+    return true;
 }
 
 static const char * flac_block_type_to_name(flac_block_type_t type)
@@ -113,23 +149,17 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         }
 
         while (ogg_stream_packetout(&codec->os, &packet)) {
-            if (packet.bytes >= 1) {
-                uint8_t type = packet.packet[0];
-                flac_block_type_t blocktype;
+            flac_block_t block;
 
-                if (type == 0xFF) {
+            if (flac_parse_block(&block, &packet)) {
+                ICECAST_LOG_DEBUG("Found header of type %s%s with %zu bytes of data", flac_block_type_to_name(block.type), block.last ? "(last)" : "", block.len);
+
+                if (block.last) {
                     codec->headers = 0;
                     break;
                 }
 
-                blocktype = flac_blocktype(&packet);
-
-                ICECAST_LOG_DEBUG("Found header of type %s%s", flac_block_type_to_name(blocktype), (type & 0x80) ? "|0x80" : "");
-
-                if (type >= 1 && type <= 0x7E)
-                    continue;
-                if (type >= 0x81 && type <= 0xFE)
-                    continue;
+                continue;
             }
 
             ogg_info->error = 1;
