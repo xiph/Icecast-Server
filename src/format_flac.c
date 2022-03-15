@@ -51,16 +51,16 @@ typedef struct {
 } flac_block_t;
 
 /* returns true if parse was ok, false on error */
-static bool flac_parse_block(flac_block_t *block, const ogg_packet * packet)
+static bool flac_parse_block(flac_block_t *block, const ogg_packet * packet, size_t offset)
 {
     uint8_t type;
     uint32_t len;
 
     /* check header length */
-    if (packet->bytes <= 4)
+    if ((size_t)packet->bytes <= (4 + offset))
         return false;
 
-    type = packet->packet[0];
+    type = packet->packet[offset];
 
     /* 0xFF is the sync code for a FRAME not a block */
     if (type == 0xFF)
@@ -78,18 +78,18 @@ static bool flac_parse_block(flac_block_t *block, const ogg_packet * packet)
 
     block->type = type;
 
-    len  = (unsigned char)packet->packet[1];
+    len  = (unsigned char)packet->packet[1 + offset];
     len <<= 8;
-    len |= (unsigned char)packet->packet[2];
+    len |= (unsigned char)packet->packet[2 + offset];
     len <<= 8;
-    len |= (unsigned char)packet->packet[3];
+    len |= (unsigned char)packet->packet[3 + offset];
 
     /* check Ogg packet size vs. self-sync size */
-    if (packet->bytes != (len + 4))
+    if ((size_t)packet->bytes != (len + 4 + offset))
         return false;
 
     block->len = len;
-    block->data = packet->packet + 4;
+    block->data = packet->packet + 4 + offset;
 
     return true;
 }
@@ -126,6 +126,11 @@ static const char * flac_block_type_to_name(flac_block_type_t type)
     return "<unknown>";
 }
 
+static void flac_handle_block(ogg_state_t *ogg_info, ogg_codec_t *codec, const flac_block_t *block)
+{
+    ICECAST_LOG_DEBUG("Found header of type %s%s with %zu bytes of data", flac_block_type_to_name(block->type), block->last ? "(last)" : "", block->len);
+}
+
 static void flac_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
 {
     ICECAST_LOG_DEBUG("freeing FLAC codec");
@@ -133,7 +138,6 @@ static void flac_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
     ogg_stream_clear(&codec->os);
     free(codec);
 }
-
 
 /* Here, we just verify the page is ok and then add it to the queue */
 static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, ogg_page *page, format_plugin_t *plugin)
@@ -151,8 +155,8 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         while (ogg_stream_packetout(&codec->os, &packet)) {
             flac_block_t block;
 
-            if (flac_parse_block(&block, &packet)) {
-                ICECAST_LOG_DEBUG("Found header of type %s%s with %zu bytes of data", flac_block_type_to_name(block.type), block.last ? "(last)" : "", block.len);
+            if (flac_parse_block(&block, &packet, 0)) {
+                flac_handle_block(ogg_info, codec, &block);
 
                 if (block.last) {
                     codec->headers = 0;
@@ -196,6 +200,7 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
     do
     {
         unsigned char *parse = packet.packet;
+        flac_block_t block;
 
         if (page->header_len + page->body_len != 79)
             break;
@@ -213,6 +218,9 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
         codec->codec_free = flac_codec_free;
         codec->headers = 1;
         codec->name = "FLAC";
+
+        if (flac_parse_block(&block, &packet, 13))
+            flac_handle_block(ogg_info, codec, &block);
 
         format_ogg_attach_header(ogg_info, page);
         return codec;
