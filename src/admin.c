@@ -1685,9 +1685,9 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     reportxml_node_add_child(resource, node);
     refobject_unref(node);
 
-    if (config->config_problems || has_too_many_clients) {
+    if (config->config_problems || has_too_many_clients || !inet6_enabled) {
         status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_ERROR);
-    } else if (!has_sources || has_many_clients || !inet6_enabled) {
+    } else if (!has_sources || has_many_clients) {
         status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
     }
 
