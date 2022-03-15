@@ -47,6 +47,7 @@ noinst_HEADERS = \
     event_exec.h \
     event_url.h \
     acl.h auth.h \
+    metadata_xiph.h \
     format.h \
     format_ogg.h \
     format_mp3.h \
@@ -95,6 +96,7 @@ icecast_SOURCES = \
     listensocket.c \
     fastevent.c \
     navigation.c \
+    metadata_xiph.c \
     format.c \
     format_ogg.c \
     format_mp3.c \
