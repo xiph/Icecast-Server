@@ -18,6 +18,7 @@ nobase_dist_admin_DATA = \
     fallbacks.xsl \
     showlog.xsl \
     listensocketlist.xsl \
+    version.xsl \
     includes/confirm.xsl \
     includes/footer.xsl \
     includes/head.xsl \
