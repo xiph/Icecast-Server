@@ -54,17 +54,19 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
         }
 
         while (ogg_stream_packetout(&codec->os, &packet)) {
-            int type = packet.packet[0];
+            if (packet.bytes >= 1) {
+                int type = packet.packet[0];
 
-            if (type == 0xFF) {
-                codec->headers = 0;
-                break;
+                if (type == 0xFF) {
+                    codec->headers = 0;
+                    break;
+                }
+
+                if (type >= 1 && type <= 0x7E)
+                    continue;
+                if (type >= 0x81 && type <= 0xFE)
+                    continue;
             }
-
-            if (type >= 1 && type <= 0x7E)
-                continue;
-            if (type >= 0x81 && type <= 0xFE)
-                continue;
 
             ogg_info->error = 1;
 
