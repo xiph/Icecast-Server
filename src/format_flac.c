@@ -140,6 +140,9 @@ static void flac_handle_block(format_plugin_t *plugin, ogg_state_t *ogg_info, og
             }
             ogg_info->log_metadata = 1;
             break;
+        default:
+            /* no-op */
+            break;
     }
 }
 
