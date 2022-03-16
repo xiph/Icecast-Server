@@ -153,7 +153,6 @@ typedef union __attribute__ ((__transparent_union__)) {
     listensocket_t *listensocket;
     digest_t *digest;
     hmac_t *hmac;
-    mount_identifier_t *mount_identifier;
 } refobject_t;
 #else
 typedef void * refobject_t;
@@ -163,6 +162,7 @@ typedef void * refobject_t;
 #define igloo_RO_APPTYPES \
     igloo_RO_TYPE(string_renderer_t) \
     igloo_RO_TYPE(module_t) \
-    igloo_RO_TYPE(module_container_t)
+    igloo_RO_TYPE(module_container_t) \
+    igloo_RO_TYPE(mount_identifier_t)
 
 #endif

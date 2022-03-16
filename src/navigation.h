@@ -11,7 +11,7 @@
 
 #include <string.h>
 
-#include "refobject.h"
+#include <igloo/typedef.h>
 
 #define MAX_NAVIGATION_HISTORY_SIZE  8
 
@@ -27,7 +27,7 @@ typedef enum {
     NAVIGATION_DIRECTION_REPLACE_ALL
 } navigation_direction_t;
 
-REFOBJECT_FORWARD_TYPE(mount_identifier_t);
+igloo_RO_FORWARD_TYPE(mount_identifier_t);
 
 const char * navigation_direction_to_str(navigation_direction_t dir);
 navigation_direction_t navigation_str_to_direction(const char *str, navigation_direction_t def);
@@ -36,7 +36,7 @@ void navigation_initialize(void);
 void navigation_shutdown(void);
 
 mount_identifier_t *    mount_identifier_new(const char *mount);
-#define mount_identifier_get_mount(identifier)  refobject_get_name((identifier))
+const char *            mount_identifier_get_mount(mount_identifier_t *identifier);
 int                     mount_identifier_compare(mount_identifier_t *a, mount_identifier_t *b);
 
 #define navigation_history_init(history) memset((history), 0, sizeof(navigation_history_t))

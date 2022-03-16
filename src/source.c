@@ -39,6 +39,9 @@
 #define snprintf _snprintf
 #endif
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
@@ -178,7 +181,14 @@ source_t *source_find_mount_with_history(const char *mount, navigation_history_t
                 mount_identifier_t *identifier = mount_identifier_new(mount);
                 if (identifier) {
                     navigation_history_navigate_to(history, identifier, NAVIGATION_DIRECTION_DOWN);
-                    refobject_unref(identifier);
+                    char *x;
+                    if (igloo_ro_stringify(identifier, &x, igloo_RO_SY_OBJECT) != 0)
+                        x = NULL;
+                    ICECAST_LOG_DEBUG("pushed identifier=%p into history=%p direction down -> OK (%s)", identifier, history, x);
+                    free(x);
+                    igloo_ro_unref(&identifier);
+
+                    ICECAST_LOG_DEBUG("Alive? ALIVE!");
                 }
             }
         }
@@ -330,7 +340,7 @@ void source_free_source (source_t *source)
     /* make sure all YP entries have gone */
     yp_remove (source->mount);
 
-    refobject_unref(source->identifier);
+    igloo_ro_unref(&(source->identifier));
     free (source->mount);
     free (source);
 
