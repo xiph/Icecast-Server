@@ -30,9 +30,6 @@
 
 #include <igloo/prng.h>
 
-#include "common/thread/thread.h"
-#include "common/timing/timing.h"
-
 #include "prng.h"
 #include "global.h"
 #include "digest.h"
