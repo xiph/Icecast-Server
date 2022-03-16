@@ -18,7 +18,7 @@
 #include "logging.h"
 #define CATMODULE "metadata-xiph"
 
-uint32_t metadata_xiph_read_u32be_unaligned(const unsigned char *in)
+uint32_t metadata_xiph_read_u32le_unaligned(const unsigned char *in)
 {
     uint32_t ret = 0;
     ret += in[3];
@@ -45,7 +45,7 @@ bool     metadata_xiph_read_vorbis_comments(vorbis_comment *vc, const void *buff
         return false;
 
     /* reading vendor tag and discarding it */
-    vendor_len = metadata_xiph_read_u32be_unaligned(buffer);
+    vendor_len = metadata_xiph_read_u32le_unaligned(buffer);
     expected_len += vendor_len;
 
     if (len < expected_len)
@@ -53,7 +53,7 @@ bool     metadata_xiph_read_vorbis_comments(vorbis_comment *vc, const void *buff
 
     buffer += 4 + vendor_len;
 
-    count = metadata_xiph_read_u32be_unaligned(buffer);
+    count = metadata_xiph_read_u32le_unaligned(buffer);
 
     expected_len += count * 4;
 
@@ -63,7 +63,7 @@ bool     metadata_xiph_read_vorbis_comments(vorbis_comment *vc, const void *buff
     buffer += 4;
 
     for (i = 0; i < count; i++) {
-        uint32_t comment_len = metadata_xiph_read_u32be_unaligned(buffer);
+        uint32_t comment_len = metadata_xiph_read_u32le_unaligned(buffer);
 
         buffer += 4;
 

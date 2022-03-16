@@ -51,7 +51,7 @@ static void __handle_header_opushead(ogg_state_t *ogg_info, ogg_packet *packet)
     }
 
     stats_event_args(ogg_info->mount, "audio_channels", "%ld", (long int)packet->packet[9]);
-    stats_event_args(ogg_info->mount, "audio_samplerate", "%ld", (long int)metadata_xiph_read_u32be_unaligned(packet->packet+12));
+    stats_event_args(ogg_info->mount, "audio_samplerate", "%ld", (long int)metadata_xiph_read_u32le_unaligned(packet->packet+12));
 }
 
 static void __handle_header_opustags(ogg_state_t *ogg_info, ogg_packet *packet, format_plugin_t *plugin) 
