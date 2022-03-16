@@ -105,8 +105,9 @@ bool     metadata_xiph_read_vorbis_comments(vorbis_comment *vc, const void *buff
         vorbis_comment_add(vc, out_buffer);
     }
 
+    free(out_buffer);
+
     if (!ret) {
-        free(out_buffer);
         vorbis_comment_clear(vc);
         vorbis_comment_init(vc);
     }
