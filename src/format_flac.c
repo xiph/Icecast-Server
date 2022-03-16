@@ -127,11 +127,36 @@ static const char * flac_block_type_to_name(flac_block_type_t type)
     return "<unknown>";
 }
 
+static void flac_handle_block_streaminfo(format_plugin_t *plugin, ogg_state_t *ogg_info, ogg_codec_t *codec, const flac_block_t *block)
+{
+    uint32_t raw;
+    uint32_t sample_rate;
+    uint32_t channels;
+    uint32_t bits;
+
+    if (block->len != 34) {
+        ICECAST_LOG_ERROR("Can not parse FLAC header block STREAMINFO");
+        return;
+    }
+
+    raw = metadata_xiph_read_u32be_unaligned(block->data + 10);
+    sample_rate = ((raw >> 12) & 0xfffff) + 0;
+    channels    = ((raw >>  9) & 0x7    ) + 1;
+    bits        = ((raw >>  4) & 0x1F   ) + 1;
+
+    stats_event_args(ogg_info->mount, "audio_samplerate", "%ld", (long int)sample_rate);
+    stats_event_args(ogg_info->mount, "audio_channels", "%ld", (long int)channels);
+    stats_event_args(ogg_info->mount, "audio_bits", "%ld", (long int)bits);
+}
+
 static void flac_handle_block(format_plugin_t *plugin, ogg_state_t *ogg_info, ogg_codec_t *codec, const flac_block_t *block)
 {
     ICECAST_LOG_DEBUG("Found header of type %s%s with %zu bytes of data", flac_block_type_to_name(block->type), block->last ? "(last)" : "", block->len);
 
     switch (block->type) {
+        case FLAC_BLOCK_TYPE_STREAMINFO:
+            flac_handle_block_streaminfo(plugin, ogg_info, codec, block);
+            break;
         case FLAC_BLOCK_TYPE_VORBIS_COMMENT:
             vorbis_comment_clear(&plugin->vc);
             vorbis_comment_init(&plugin->vc);

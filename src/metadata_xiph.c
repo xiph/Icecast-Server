@@ -18,6 +18,19 @@
 #include "logging.h"
 #define CATMODULE "metadata-xiph"
 
+uint32_t metadata_xiph_read_u32be_unaligned(const unsigned char *in)
+{
+    uint32_t ret = 0;
+    ret += in[0];
+    ret <<= 8;
+    ret += in[1];
+    ret <<= 8;
+    ret += in[2];
+    ret <<= 8;
+    ret += in[3];
+    return ret;
+}
+
 uint32_t metadata_xiph_read_u32le_unaligned(const unsigned char *in)
 {
     uint32_t ret = 0;

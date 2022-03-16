@@ -15,6 +15,7 @@
 
 #include <vorbis/codec.h>
 
+uint32_t metadata_xiph_read_u32be_unaligned(const unsigned char *in);
 uint32_t metadata_xiph_read_u32le_unaligned(const unsigned char *in);
 
 /* returns true if parsing was successful, *vc must be in inited state before and will be in inited state after (even when false is returned) */
