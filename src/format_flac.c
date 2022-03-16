@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "refbuf.h"
+#include "metadata_xiph.h"
 #include "format_ogg.h"
 #include "client.h"
 #include "stats.h"
@@ -126,9 +127,20 @@ static const char * flac_block_type_to_name(flac_block_type_t type)
     return "<unknown>";
 }
 
-static void flac_handle_block(ogg_state_t *ogg_info, ogg_codec_t *codec, const flac_block_t *block)
+static void flac_handle_block(format_plugin_t *plugin, ogg_state_t *ogg_info, ogg_codec_t *codec, const flac_block_t *block)
 {
     ICECAST_LOG_DEBUG("Found header of type %s%s with %zu bytes of data", flac_block_type_to_name(block->type), block->last ? "(last)" : "", block->len);
+
+    switch (block->type) {
+        case FLAC_BLOCK_TYPE_VORBIS_COMMENT:
+            vorbis_comment_clear(&plugin->vc);
+            vorbis_comment_init(&plugin->vc);
+            if (!metadata_xiph_read_vorbis_comments(&plugin->vc, block->data, block->len)) {
+                ICECAST_LOG_ERROR("Can not parse FLAC header block VORBIS_COMMENT");
+            }
+            ogg_info->log_metadata = 1;
+            break;
+    }
 }
 
 static void flac_codec_free (ogg_state_t *ogg_info, ogg_codec_t *codec)
@@ -156,7 +168,7 @@ static refbuf_t *process_flac_page (ogg_state_t *ogg_info, ogg_codec_t *codec, o
             flac_block_t block;
 
             if (flac_parse_block(&block, &packet, 0)) {
-                flac_handle_block(ogg_info, codec, &block);
+                flac_handle_block(plugin, ogg_info, codec, &block);
 
                 if (block.last) {
                     codec->headers = 0;
@@ -220,7 +232,7 @@ ogg_codec_t *initial_flac_page (format_plugin_t *plugin, ogg_page *page)
         codec->name = "FLAC";
 
         if (flac_parse_block(&block, &packet, 13))
-            flac_handle_block(ogg_info, codec, &block);
+            flac_handle_block(plugin, ogg_info, codec, &block);
 
         format_ogg_attach_header(ogg_info, page);
         return codec;
