@@ -1697,7 +1697,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 #endif
 
     if (!inet6_enabled) {
-        __reportxml_add_maintenance(reportnode, config->reportxml_db, "f90219e1-bd07-4b54-b1ee-0ba6a0289a15", "warning", "IPv6 not enabled.", NULL);
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "f90219e1-bd07-4b54-b1ee-0ba6a0289a15", "error", "IPv6 not enabled.", NULL);
         if (sock_is_ipv4_mapped_supported()) {
             __reportxml_add_maintenance(reportnode, config->reportxml_db, "709ab43b-251d-49a5-a4fe-c749eaabf17c", "info", "IPv4-mapped IPv6 is available on this system.", NULL);
         }
