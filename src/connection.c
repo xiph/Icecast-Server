@@ -116,6 +116,7 @@ rwlock_t _source_shutdown_rwlock;
 
 static void _handle_connection(void);
 static void get_tls_certificate(ice_config_t *config);
+static void free_client_node(client_queue_entry_t *node);
 
 static void client_queue_init(client_queue_t *queue)
 {
@@ -527,7 +528,7 @@ static bool process_request_queue_one (client_queue_entry_t *node, int timeout)
     } else {
         if (len == 0 || client->con->error) {
             client_destroy(client);
-            free(node);
+            free_client_node(node);
             return true;
         }
     }
@@ -658,6 +659,13 @@ static client_queue_entry_t *create_client_node(client_t *client)
     listensocket_release_listener(client->con->listensocket_effective);
 
     return node;
+}
+
+static void free_client_node(client_queue_entry_t *node)
+{
+    free(node->shoutcast_mount);
+    free(node->bodybuffer);
+    free(node);
 }
 
 void connection_queue(connection_t *con)
@@ -848,8 +856,7 @@ static void _handle_shoutcast_compatible(client_queue_entry_t *node)
 
         if (ptr == NULL){
             client_destroy(client);
-            free(node->shoutcast_mount);
-            free(node);
+            free_client_node(node);
             return;
         }
         *ptr = '\0';
@@ -895,8 +902,7 @@ static void _handle_shoutcast_compatible(client_queue_entry_t *node)
         client_destroy(client);
     }
     free(http_compliant);
-    free(node->shoutcast_mount);
-    free(node);
+    free_client_node(node);
     return;
 }
 
@@ -993,9 +999,7 @@ static void _handle_connection(void)
                 if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
                     httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
-                free (node->bodybuffer);
-                free (node->shoutcast_mount);
-                free (node);
+                free_client_node(node);
 
                 connection_handle_client(client);
             } else {
