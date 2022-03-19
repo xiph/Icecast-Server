@@ -119,7 +119,6 @@ void connection_initialize(void)
     thread_spin_create (&_connection_lock);
     thread_mutex_create(&move_clients_mutex);
     thread_rwlock_create(&_source_shutdown_rwlock);
-    thread_cond_create(&global.shutdown_cond);
     _req_queue = NULL;
     _req_queue_tail = &_req_queue;
     _con_queue = NULL;
@@ -139,7 +138,6 @@ void connection_shutdown(void)
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
  
-    thread_cond_destroy(&global.shutdown_cond);
     thread_rwlock_destroy(&_source_shutdown_rwlock);
     thread_spin_destroy (&_connection_lock);
     thread_mutex_destroy(&move_clients_mutex);
@@ -723,7 +721,6 @@ void connection_accept_loop(void)
     }
 
     /* Give all the other threads notification to shut down */
-    thread_cond_broadcast(&global.shutdown_cond);
 
     /* wait for all the sources to shutdown */
     thread_rwlock_wlock(&_source_shutdown_rwlock);

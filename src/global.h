@@ -43,8 +43,6 @@ typedef struct ice_global_tag
     relay_t *master_relays;
 
     module_container_t *modulecontainer;
-
-    cond_t shutdown_cond;
 } ice_global_t;
 
 extern ice_global_t global;
