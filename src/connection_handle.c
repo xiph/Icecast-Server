@@ -274,7 +274,7 @@ static inline void source_startup(client_t *client)
         }
     } else {
         client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_IN_USE);
-        ICECAST_LOG_WARN("Mountpoint %s in use", client->uri);
+        ICECAST_LOG_WARN("Mountpoint %#H in use", client->uri);
     }
 }
 
