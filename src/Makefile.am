@@ -13,6 +13,7 @@ noinst_HEADERS = \
     logging.h \
     sighandler.h \
     connection.h \
+    connection_handle.h \
     global.h \
     util.h \
     errors.h \
@@ -68,6 +69,7 @@ icecast_SOURCES = \
     logging.c \
     sighandler.c \
     connection.c \
+    connection_handle.c \
     global.c \
     util.c \
     errors.c \
