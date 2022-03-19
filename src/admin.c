@@ -33,6 +33,10 @@
 #include <sys/resource.h>
 #endif
 
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+
 #ifdef HAVE_OPENSSL
 #include <openssl/opensslv.h>
 #endif
@@ -1835,6 +1839,10 @@ static void command_version             (client_t *client, source_t *source, adm
 
     reportxml_helper_add_value_string(resource, "version", ICECAST_VERSION_STRING);
     reportxml_helper_add_value_int(resource, "address-bits", sizeof(void*)*8);
+
+#ifdef HAVE_SYS_SELECT_H
+    reportxml_helper_add_value_int(resource, "fd-set-size", FD_SETSIZE);
+#endif
 
 #ifdef HAVE_GETHOSTNAME
     if (true) {

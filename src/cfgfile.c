@@ -25,6 +25,9 @@
 #ifndef _WIN32
 #include <fnmatch.h>
 #endif
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/uri.h>
@@ -1044,6 +1047,13 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
         configuration->config_problems |= CONFIG_PROBLEM_VALIDATION;
         ICECAST_LOG_ERROR("Client limit (%i) is too small for given source limit (%i)", configuration->client_limit, configuration->source_limit);
     }
+
+#ifndef HAVE_POLL
+    if (configuration->client_limit > (FD_SETSIZE - 32)) {
+        configuration->config_problems |= CONFIG_PROBLEM_VALIDATION;
+        ICECAST_LOG_ERROR("Client limit (%i) is too big for FD_SETSIZE (%i)", configuration->client_limit, FD_SETSIZE);
+    }
+#endif
 
     return 0;
 }
