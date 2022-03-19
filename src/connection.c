@@ -91,15 +91,15 @@ typedef struct client_queue_tag {
     size_t bodybufferlen;
     int tried_body;
     struct client_queue_tag *next;
-} client_queue_t;
+} client_queue_entry_t;
 
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
 static volatile connection_id_t _current_id = 0;
 static int _initialized = 0;
 
-static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
-static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
-static volatile client_queue_t *_body_queue = NULL, **_body_queue_tail = &_body_queue;
+static volatile client_queue_entry_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
+static volatile client_queue_entry_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
+static volatile client_queue_entry_t *_body_queue = NULL, **_body_queue_tail = &_body_queue;
 static bool tls_ok = false;
 static tls_ctx_t *tls_ctx;
 
@@ -395,11 +395,11 @@ int connection_read_put_back(connection_t *con, const void *buf, size_t len)
  * has been collected, so we now pass it onto the connection thread for
  * further processing
  */
-static void _add_connection(client_queue_t *node)
+static void _add_connection(client_queue_entry_t *node)
 {
     thread_spin_lock(&_connection_lock);
     *_con_queue_tail = node;
-    _con_queue_tail = (volatile client_queue_t **) &node->next;
+    _con_queue_tail = (volatile client_queue_entry_t **) &node->next;
     thread_spin_unlock(&_connection_lock);
 }
 
@@ -407,14 +407,14 @@ static void _add_connection(client_queue_t *node)
 /* this returns queued clients for the connection thread. headers are
  * already provided, but need to be parsed.
  */
-static client_queue_t *_get_connection(void)
+static client_queue_entry_t *_get_connection(void)
 {
-    client_queue_t *node = NULL;
+    client_queue_entry_t *node = NULL;
 
     thread_spin_lock(&_connection_lock);
 
     if (_con_queue){
-        node = (client_queue_t *)_con_queue;
+        node = (client_queue_entry_t *)_con_queue;
         _con_queue = node->next;
         if (_con_queue == NULL)
             _con_queue_tail = &_con_queue;
@@ -429,7 +429,7 @@ static client_queue_t *_get_connection(void)
 /* run along queue checking for any data that has come in or a timeout */
 static void process_request_queue (void)
 {
-    client_queue_t **node_ref = (client_queue_t **)&_req_queue;
+    client_queue_entry_t **node_ref = (client_queue_entry_t **)&_req_queue;
     ice_config_t *config;
     int timeout;
     char peak;
@@ -439,7 +439,7 @@ static void process_request_queue (void)
     config_release_config();
 
     while (*node_ref) {
-        client_queue_t *node = *node_ref;
+        client_queue_entry_t *node = *node_ref;
         client_t *client = node->client;
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
@@ -512,8 +512,8 @@ static void process_request_queue (void)
                     connection_read_put_back(client->con, client->refbuf->data + stream_offset, node->offset - stream_offset);
                     node->offset = stream_offset;
                 }
-                if ((client_queue_t **)_req_queue_tail == &(node->next))
-                    _req_queue_tail = (volatile client_queue_t **)node_ref;
+                if ((client_queue_entry_t **)_req_queue_tail == &(node->next))
+                    _req_queue_tail = (volatile client_queue_entry_t **)node_ref;
                 *node_ref = node->next;
                 node->next = NULL;
                 _add_connection(node);
@@ -521,8 +521,8 @@ static void process_request_queue (void)
             }
         } else {
             if (len == 0 || client->con->error) {
-                if ((client_queue_t **)_req_queue_tail == &node->next)
-                    _req_queue_tail = (volatile client_queue_t **)node_ref;
+                if ((client_queue_entry_t **)_req_queue_tail == &node->next)
+                    _req_queue_tail = (volatile client_queue_entry_t **)node_ref;
                 *node_ref = node->next;
                 client_destroy(client);
                 free(node);
@@ -536,17 +536,17 @@ static void process_request_queue (void)
 
 /* add client to body queue.
  */
-static void _add_body_client(client_queue_t *node)
+static void _add_body_client(client_queue_entry_t *node)
 {
     ICECAST_LOG_DEBUG("Putting client %p in body queue.", node->client);
 
     thread_spin_lock(&_connection_lock);
     *_body_queue_tail = node;
-    _body_queue_tail = (volatile client_queue_t **) &node->next;
+    _body_queue_tail = (volatile client_queue_entry_t **) &node->next;
     thread_spin_unlock(&_connection_lock);
 }
 
-static client_slurp_result_t process_request_body_queue_one(client_queue_t *node, time_t timeout, size_t body_size_limit)
+static client_slurp_result_t process_request_body_queue_one(client_queue_entry_t *node, time_t timeout, size_t body_size_limit)
 {
         client_t *client = node->client;
         client_slurp_result_t res;
@@ -586,7 +586,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_t *node
 /* This queue reads data from the body of clients. */
 static void process_request_body_queue (void)
 {
-    client_queue_t **node_ref = (client_queue_t **)&_body_queue;
+    client_queue_entry_t **node_ref = (client_queue_entry_t **)&_body_queue;
     ice_config_t *config;
     time_t timeout;
     size_t body_size_limit;
@@ -601,7 +601,7 @@ static void process_request_body_queue (void)
     config_release_config();
 
     while (*node_ref) {
-        client_queue_t *node = *node_ref;
+        client_queue_entry_t *node = *node_ref;
         client_t *client = node->client;
         client_slurp_result_t res;
 
@@ -614,8 +614,8 @@ static void process_request_body_queue (void)
         if (res != CLIENT_SLURP_NEEDS_MORE_DATA) {
             ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
 
-            if ((client_queue_t **)_body_queue_tail == &(node->next))
-                _body_queue_tail = (volatile client_queue_t **)node_ref;
+            if ((client_queue_entry_t **)_body_queue_tail == &(node->next))
+                _body_queue_tail = (volatile client_queue_entry_t **)node_ref;
             *node_ref = node->next;
             node->next = NULL;
             _add_connection(node);
@@ -628,15 +628,15 @@ static void process_request_body_queue (void)
 /* add node to the queue of requests. This is where the clients are when
  * initial http details are read.
  */
-static void _add_request_queue(client_queue_t *node)
+static void _add_request_queue(client_queue_entry_t *node)
 {
     *_req_queue_tail = node;
-    _req_queue_tail = (volatile client_queue_t **)&node->next;
+    _req_queue_tail = (volatile client_queue_entry_t **)&node->next;
 }
 
-static client_queue_t *create_client_node(client_t *client)
+static client_queue_entry_t *create_client_node(client_t *client)
 {
-    client_queue_t *node = calloc (1, sizeof (client_queue_t));
+    client_queue_entry_t *node = calloc (1, sizeof (client_queue_entry_t));
     const listener_t *listener;
 
     if (!node)
@@ -663,7 +663,7 @@ static client_queue_t *create_client_node(client_t *client)
 
 void connection_queue(connection_t *con)
 {
-    client_queue_t *node;
+    client_queue_entry_t *node;
     client_t *client = NULL;
 
     global_lock();
@@ -815,7 +815,7 @@ int connection_complete_source(source_t *source, int response)
     return -1;
 }
 
-static void _handle_shoutcast_compatible(client_queue_t *node)
+static void _handle_shoutcast_compatible(client_queue_entry_t *node)
 {
     char *http_compliant;
     int http_compliant_len = 0;
@@ -902,7 +902,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
 }
 
 /* Check if we need body of client */
-static int _need_body(client_queue_t *node)
+static int _need_body(client_queue_entry_t *node)
 {
     client_t *client = node->client;
 
@@ -934,7 +934,7 @@ static void _handle_connection(void)
 {
     http_parser_t *parser;
     const char *rawuri;
-    client_queue_t *node;
+    client_queue_entry_t *node;
 
     while (1) {
         node = _get_connection();
@@ -1079,6 +1079,6 @@ void connection_close(connection_t *con)
 
 void connection_queue_client(client_t *client)
 {
-    client_queue_t *node = create_client_node(client);
+    client_queue_entry_t *node = create_client_node(client);
     _add_connection(node);
 }
