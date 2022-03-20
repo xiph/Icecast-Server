@@ -268,6 +268,19 @@ static bool client_queue_check_ready(client_queue_t *queue, int timeout, time_t 
     return true;
 }
 
+static bool client_queue_check_ready_wait(client_queue_t *queue, int timeout, time_t connection_timeout)
+{
+    while (queue->running) {
+        if (client_queue_check_ready(queue, timeout, connection_timeout))
+            return true;
+
+        if (!queue->head)
+            thread_cond_wait(&(queue->cond));
+    }
+
+    return false;
+}
+
 static client_queue_entry_t * client_queue_shift_ready(client_queue_t *queue, client_queue_entry_t *stop)
 {
 #ifdef HAVE_POLL
@@ -693,7 +706,7 @@ static void * process_request_queue (client_queue_t *queue)
         timeout = time(NULL) - config->header_timeout;
         config_release_config();
 
-        client_queue_check_ready(queue, QUEUE_READY_TIMEOUT, timeout);
+        client_queue_check_ready_wait(queue, QUEUE_READY_TIMEOUT, timeout);
 
         while ((node = client_queue_shift_ready(queue, stop))) {
             if (!process_request_queue_one(node, timeout)) {
@@ -763,7 +776,7 @@ static void * process_request_body_queue (client_queue_t *queue)
         body_size_limit = config->body_size_limit;
         config_release_config();
 
-        client_queue_check_ready(queue, QUEUE_READY_TIMEOUT, timeout);
+        client_queue_check_ready_wait(queue, QUEUE_READY_TIMEOUT, timeout);
 
         while ((node = client_queue_shift(queue, stop))) {
             client_t *client = node->client;
