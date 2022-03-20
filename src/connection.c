@@ -336,8 +336,8 @@ void connection_initialize(void)
     client_queue_init(&_body_queue);
     client_queue_init(&_handle_queue);
 
-    client_queue_start_thread(&_request_queue, "request queue", process_request_queue);
-    client_queue_start_thread(&_body_queue, "body queue", process_request_body_queue);
+    client_queue_start_thread(&_request_queue, "Request Queue", process_request_queue);
+    client_queue_start_thread(&_body_queue, "Body Queue", process_request_body_queue);
     client_queue_start_thread(&_handle_queue, "Client Handler", handle_client_worker);
 
     _initialized = 1;
