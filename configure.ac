@@ -210,7 +210,7 @@ PKG_HAVE_WITH_MODULES([CURL], [libcurl], [
 dnl
 dnl openssl
 dnl
-PKG_HAVE_WITH_MODULES([OPENSSL], [openssl], [
+PKG_HAVE_WITH_MODULES([OPENSSL], [openssl >= 1.1.0], [
   CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
   LIBS="${LIBS} ${OPENSSL_LIBS}"
 ])
