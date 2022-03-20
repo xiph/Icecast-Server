@@ -227,6 +227,9 @@ CFLAGS="${CFLAGS} ${PTHREAD_CFLAGS}"
 CPPFLAGS="${CPPFLAGS} ${PTHREAD_CPPFLAGS}"
 LIBS="${LIBS} ${PTHREAD_LIBS}"
 
+dnl Check functions requiring -pthread:
+AC_CHECK_FUNCS([pthread_setname_np])
+
 dnl Feature enable/disable arguments
 
 AC_ARG_ENABLE([yp],
