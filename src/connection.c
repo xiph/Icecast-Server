@@ -107,7 +107,7 @@ typedef struct {
 #endif
 } client_queue_t;
 
-#define QUEUE_READY_TIMEOUT 800
+#define QUEUE_READY_TIMEOUT 50
 
 static spin_t _connection_lock; // protects _current_id
 static volatile connection_id_t _current_id = 0;
@@ -882,7 +882,7 @@ void connection_accept_loop(void)
     config_release_config();
 
     while (global.running == ICECAST_RUNNING) {
-        connection_t *con = listensocket_container_accept(global.listensockets, QUEUE_READY_TIMEOUT);
+        connection_t *con = listensocket_container_accept(global.listensockets, 800);
 
         if (con) {
             connection_queue(con);
