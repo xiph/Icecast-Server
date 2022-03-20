@@ -116,6 +116,7 @@ static int _initialized = 0;
 static client_queue_t _request_queue;
 static client_queue_t _connection_queue;
 static client_queue_t _body_queue;
+static client_queue_t _handle_queue;
 static bool tls_ok = false;
 static tls_ctx_t *tls_ctx;
 
@@ -129,6 +130,7 @@ static void get_tls_certificate(ice_config_t *config);
 static void free_client_node(client_queue_entry_t *node);
 static void * process_request_queue (client_queue_t *queue);
 static void * process_request_body_queue (client_queue_t *queue);
+static void * handle_client_worker(client_queue_t *queue);
 
 static void client_queue_init(client_queue_t *queue)
 {
@@ -332,9 +334,11 @@ void connection_initialize(void)
     client_queue_init(&_request_queue);
     client_queue_init(&_connection_queue);
     client_queue_init(&_body_queue);
+    client_queue_init(&_handle_queue);
 
     client_queue_start_thread(&_request_queue, "request queue", process_request_queue);
     client_queue_start_thread(&_body_queue, "body queue", process_request_body_queue);
+    client_queue_start_thread(&_handle_queue, "Client Handler", handle_client_worker);
 
     _initialized = 1;
 }
@@ -354,6 +358,7 @@ void connection_shutdown(void)
     client_queue_destroy(&_request_queue);
     client_queue_destroy(&_connection_queue);
     client_queue_destroy(&_body_queue);
+    client_queue_destroy(&_handle_queue);
 
     _initialized = 0;
 }
@@ -1159,9 +1164,8 @@ static void _handle_connection(void)
             if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
                 httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
-            free_client_node(node);
 
-            connection_handle_client(client);
+            client_queue_add(&_handle_queue, node);
         } else {
             free_client_node(node);
             ICECAST_LOG_ERROR("HTTP request parsing failed");
@@ -1170,6 +1174,22 @@ static void _handle_connection(void)
     }
 }
 
+static void * handle_client_worker(client_queue_t *queue)
+{
+    while (client_queue_running(queue)) {
+        client_queue_entry_t *node = client_queue_shift(queue, NULL);
+        if (node) {
+            client_t *client = node->client;
+            free_client_node(node);
+
+            connection_handle_client(client);
+        } else {
+            client_queue_wait(queue);
+        }
+    }
+
+    return NULL;
+}
 
 static void __on_sock_count(size_t count, void *userdata)
 {
