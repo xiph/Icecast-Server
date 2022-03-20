@@ -152,12 +152,12 @@ static void client_queue_destroy(client_queue_t *queue)
 #endif
 }
 
-static void client_queue_start_thread(client_queue_t *queue, void *(*func)(client_queue_t *))
+static void client_queue_start_thread(client_queue_t *queue, const char *name, void *(*func)(client_queue_t *))
 {
     if (queue->thread)
         return;
     queue->running = true;
-    queue->thread = thread_create("queue thread", (void*(*)(void*))func, queue, THREAD_ATTACHED);
+    queue->thread = thread_create(name, (void*(*)(void*))func, queue, THREAD_ATTACHED);
 }
 
 static inline bool client_queue_running(client_queue_t *queue)
@@ -333,8 +333,8 @@ void connection_initialize(void)
     client_queue_init(&_connection_queue);
     client_queue_init(&_body_queue);
 
-    client_queue_start_thread(&_request_queue, process_request_queue);
-    client_queue_start_thread(&_body_queue, process_request_body_queue);
+    client_queue_start_thread(&_request_queue, "request queue", process_request_queue);
+    client_queue_start_thread(&_body_queue, "body queue", process_request_body_queue);
 
     _initialized = 1;
 }
