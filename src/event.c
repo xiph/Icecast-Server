@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -13,6 +13,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "event.h"
 #include "event_log.h"
@@ -29,7 +30,7 @@
 
 static mutex_t event_lock;
 static event_t *event_queue = NULL;
-static int event_running = 0;
+static bool event_running = false;
 static thread_type *event_thread = NULL;
 
 /* work with event_t* */
@@ -164,7 +165,7 @@ static inline void _try_registrations(event_registration_t *er, event_t *event) 
 }
 
 static void *event_run_thread (void *arg) {
-    int running = 0;
+    bool running = false;
 
     (void)arg;
 
@@ -204,7 +205,7 @@ void event_initialise(void) {
 
     /* initialise everything */
     thread_mutex_lock(&event_lock);
-    event_running = 1;
+    event_running = true;
     thread_mutex_unlock(&event_lock);
 
     /* start thread */
@@ -219,7 +220,7 @@ void event_shutdown(void) {
         return;
 
     thread_mutex_lock(&event_lock);
-    event_running = 0;
+    event_running = false;
     thread_mutex_unlock(&event_lock);
 
     /* join thread as soon as it stopped */
