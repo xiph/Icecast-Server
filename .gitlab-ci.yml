@@ -9,8 +9,9 @@ make_dist:
   image: alpine:3.15
 
   stage: build
-#devel-stephan48-publish-bin-package
+
   before_script:
+  - set -xe
   - apk update
   - cat /etc/os*
   - apk add musl-dev git make gcc automake autoconf libtool curl ca-certificates
@@ -23,6 +24,7 @@ make_dist:
   #- adduser -s /bin/sh -D -H icecast
 
   script: 
+    - set -xe # yes i know the scripts will be merged... but for sanities sake
     - ./autogen.sh
     - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
     - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/143/packages/generic/libigloo-bins/0.0.1-$CI_COMMIT_REF_NAME/libigloo-$CI_COMMIT_REF_NAME.tar.gz"'
