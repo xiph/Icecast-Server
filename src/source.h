@@ -111,6 +111,7 @@ void source_recheck_mounts (int update_all);
 
 /* Writes a buffer of raw data to a dumpfile. returns true if the write was successful (and complete). */
 bool source_write_dumpfile(source_t *source, const void *buffer, size_t len);
+void source_kill_dumpfile(source_t *source);
 
 extern mutex_t move_clients_mutex;
 

@@ -1477,14 +1477,23 @@ bool source_write_dumpfile(source_t *source, const void *buffer, size_t len)
 
     if (fwrite(buffer, 1, len, source->dumpfile) != len) {
         ICECAST_LOG_WARN("Write to dump file failed, disabling");
-        fclose(source->dumpfile);
-        source->dumpfile = NULL;
-        stats_event(source->mount, "dumpfile_written", NULL);
-        stats_event(source->mount, "dumpfile_start", NULL);
+        source_kill_dumpfile(source);
         return false;
     }
 
     source->dumpfile_written += len;
 
     return true;
+}
+
+void source_kill_dumpfile(source_t *source)
+{
+    if (!source->dumpfile)
+        return;
+
+    fclose(source->dumpfile);
+    source->dumpfile = NULL;
+    source->dumpfile_written = 0;
+    stats_event(source->mount, "dumpfile_written", NULL);
+    stats_event(source->mount, "dumpfile_start", NULL);
 }
