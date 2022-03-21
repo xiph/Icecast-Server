@@ -64,17 +64,20 @@ typedef struct ypdata_tag
 
     char *sid;
     char *mount;
-    char *url;
     char *listen_url;
-    char *server_name;
-    char *server_desc;
-    char *server_genre;
     char *cluster_password;
-    char *bitrate;
-    char *audio_info;
-    char *server_type;
-    char *current_song;
-    char *subtype;
+    char *current_song; /* do_yp_touch: artist & title */
+
+    /* ---[ From stats ]--- */
+    char *server_type;  /* do_yp_add: server_type */
+    char *server_name;  /* do_yp_add: server_name */
+    char *url;          /* do_yp_add: server_url */
+    char *server_genre; /* do_yp_add: genre */
+    char *bitrate;      /* do_yp_add: audio_bitrate || ice-bitrate */
+    char *server_desc;  /* do_yp_add: server_description */
+    char *subtype;      /* do_yp_add: subtype; do_yp_touch: subtype */
+    char *audio_info;   /* do_yp_add: audio_info */
+    /* ---[ END from stats ]--- */
 
     struct yp_server *server;
     time_t next_update;
