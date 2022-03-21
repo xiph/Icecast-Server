@@ -54,8 +54,13 @@ struct source_tag {
 
     FILE *intro_file;
 
+    /* Dumpfile related data */
+    /* Config */
     char *dumpfilename; /* Name of a file to dump incoming stream to */
+    /* Runtime */
     FILE *dumpfile;
+    time_t dumpfile_start;
+    uint64_t dumpfile_written;
 
     unsigned long peak_listeners;
     unsigned long listeners;

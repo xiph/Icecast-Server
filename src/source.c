@@ -506,6 +506,10 @@ static refbuf_t *get_next_buffer (source_t *source)
                     "%"PRIu64, source->format->read_bytes);
             stats_event_args (source->mount, "total_bytes_sent",
                     "%"PRIu64, source->format->sent_bytes);
+            if (source->dumpfile) {
+            stats_event_args(source->mount, "dumpfile_written",
+                    "%"PRIu64, source->dumpfile_written);
+            }
             source->client_stats_update = current + 5;
         }
         if (fds < 0)
@@ -607,24 +611,31 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 /* Open the file for stream dumping.
  * This function should do all processing of the filename.
  */
-static FILE * source_open_dumpfile(const char * filename) {
+static void source_open_dumpfile(source_t *source) {
+    const char *filename = source->dumpfilename;
 #ifndef _WIN32
     /* some of the below functions seems not to be standard winapi functions */
+    time_t curtime = time(NULL);
     char buffer[PATH_MAX];
-    time_t curtime;
     struct tm *loctime;
 
-    /* Get the current time. */
-    curtime = time (NULL);
-
     /* Convert it to local time representation. */
-    loctime = localtime (&curtime);
+    loctime = localtime(&curtime);
 
-    strftime (buffer, sizeof(buffer), filename, loctime);
+    strftime(buffer, sizeof(buffer), filename, loctime);
     filename = buffer;
 #endif
 
-    return fopen (filename, "ab");
+    source->dumpfile = fopen(filename, "ab");
+
+    if (source->dumpfile) {
+        source->dumpfile_start = curtime;
+        stats_event(source->mount, "dumpfile_written", "0");
+        stats_event_time_iso8601(source->mount, "dumpfile_start");
+    } else {
+        ICECAST_LOG_WARN("Cannot open dump file \"%s\" for appending: %s, disabling.",
+                source->dumpfilename, strerror(errno));
+    }
 }
 
 /* Perform any initialisation just before the stream data is processed, the header
@@ -647,14 +658,7 @@ static void source_init (source_t *source)
     stats_event (source->mount, "listenurl", listenurl);
 
     if (source->dumpfilename != NULL)
-    {
-        source->dumpfile = source_open_dumpfile (source->dumpfilename);
-        if (source->dumpfile == NULL)
-        {
-            ICECAST_LOG_WARN("Cannot open dump file \"%s\" for appending: %s, disabling.",
-                    source->dumpfilename, strerror(errno));
-        }
-    }
+        source_open_dumpfile(source);
 
     /* grab a read lock, to make sure we get a chance to cleanup */
     thread_rwlock_rlock (source->shutdown_rwlock);
@@ -1475,8 +1479,12 @@ bool source_write_dumpfile(source_t *source, const void *buffer, size_t len)
         ICECAST_LOG_WARN("Write to dump file failed, disabling");
         fclose(source->dumpfile);
         source->dumpfile = NULL;
+        stats_event(source->mount, "dumpfile_written", NULL);
+        stats_event(source->mount, "dumpfile_start", NULL);
         return false;
     }
+
+    source->dumpfile_written += len;
 
     return true;
 }
