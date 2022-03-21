@@ -520,6 +520,22 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
     return NULL;
 }
 
+/* may return NULL if there is no default */
+listensocket_t *            listensocket_container_get_default(listensocket_container_t *self)
+{
+    listensocket_t *ret = NULL;
+
+    thread_rwlock_rlock(&self->rwlock);
+    if (self->sock_len == 1) {
+        if (refobject_ref(self->sock[0]) == 0) {
+            ret = self->sock[0];
+        }
+    }
+    thread_rwlock_unlock(&self->rwlock);
+
+    return ret;
+}
+
 listensocket_t **           listensocket_container_list_sockets(listensocket_container_t *self)
 {
     listensocket_t **res;

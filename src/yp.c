@@ -611,6 +611,11 @@ static ypdata_t *create_yp_entry (struct yp_server *server, const char *mount)
             if (!listen_socket)
                 ICECAST_LOG_ERROR("Failure to find listen socket with ID %#H, using default.",
                     server->listen_socket_id);
+        } else {
+            listen_socket = listensocket_container_get_default(global.listensockets);
+            if (!listen_socket) {
+                ICECAST_LOG_WARN("There is no listen socket defined for this YP nor is there a default. Listen URLs might be wrong.");
+            }
         }
         ret = client_get_baseurl(NULL, listen_socket, url, len, NULL, NULL, NULL, mount, NULL);
         if (ret >= len) {

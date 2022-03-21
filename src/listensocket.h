@@ -27,6 +27,7 @@ connection_t *              listensocket_container_accept(listensocket_container
 int                         listensocket_container_set_sockcount_cb(listensocket_container_t *self, void (*cb)(size_t count, void *userdata), void *userdata);
 ssize_t                     listensocket_container_sockcount(listensocket_container_t *self);
 listensocket_t *            listensocket_container_get_by_id(listensocket_container_t *self, const char *id);
+listensocket_t *            listensocket_container_get_default(listensocket_container_t *self); /* may return NULL if there is no default */
 listensocket_t **           listensocket_container_list_sockets(listensocket_container_t *self);
 bool                        listensocket_container_is_family_included(listensocket_container_t *self, sock_family_t family);
 
