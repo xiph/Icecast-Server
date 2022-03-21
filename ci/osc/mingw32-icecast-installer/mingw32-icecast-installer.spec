@@ -20,14 +20,6 @@ BuildRequires:  shared-mime-info
 BuildRequires:  mingw32-cross-binutils
 BuildRequires:  mingw32-filesystem >= 35
 BuildRequires:  timezone
-BuildRequires:  strace
-BuildRequires:  gdb
-BuildRequires:  glibc-debuginfo
-#BuildRequires:  glibc-locale-debuginfo
-BuildRequires:  libgcc_s1-debuginfo
-BuildRequires:  libstdc++6-debuginfo
-BuildRequires:  libz1-debuginfo
-#BuildRequires:  mingw32-cross-nsis-debuginfo
 BuildArch:      noarch
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}
