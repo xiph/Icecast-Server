@@ -14,7 +14,7 @@ make_dist:
   - apk update
   - cat /etc/os*
   - apk add musl-dev git make gcc automake autoconf libtool curl ca-certificates
-  - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
+  - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev  libc6-compat
   # gzip required because busybox gzip does not understand best / zip for make dist
   - apk add gzip zip tar
   # Required for tests
