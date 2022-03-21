@@ -9,11 +9,11 @@ make_dist:
   image: alpine:3.12
 
   stage: build
-
+#devel-stephan48-publish-bin-package
   before_script:
   - apk update
   - cat /etc/os*
-  - apk add musl-dev git make gcc automake autoconf libtool
+  - apk add musl-dev git make gcc automake autoconf libtool curl ca-certificates
   - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
   # gzip required because busybox gzip does not understand best / zip for make dist
   - apk add gzip zip tar
@@ -24,9 +24,21 @@ make_dist:
 
   script: 
     - ./autogen.sh
+    - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" ""${CI_API_V4_URL}/projects/143/packages/generic/libigloo-bins/0.0.1-$CI_COMMIT_REF_NAME/libigloo-$CI_COMMIT_REF_NAME.tar.gz"'
+    - tar -C / -xvzf libigloo-$CI_COMMIT_REF_NAME.tar.gz
+    - ls -la /usr/local/lib
     - ./configure || cat config.log
     - make dist
     - ls -la
+    - make install DESTDIR=`pwd`/_install_base/
+    - ls -la 
+    - ls -la _install_base/
+    - cd _install_base/
+    - tar -cvzf ../icecast-$CI_COMMIT_REF_NAME.tar.gz *
+    - cd ..
+    - ls -la
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file libigloo-$CI_COMMIT_REF_NAME.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/icecast-bins/0.0.1-$CI_COMMIT_REF_NAME/icecast-$CI_COMMIT_REF_NAME.tar.gz"'  
     # Tests
     #- su -c "./tests/admin-tests.sh" icecast
 
