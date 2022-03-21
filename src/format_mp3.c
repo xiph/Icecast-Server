@@ -760,13 +760,6 @@ static void free_mp3_client_data (client_t *client)
 
 static void write_mp3_to_file (source_t *source, refbuf_t *refbuf)
 {
-    if (refbuf->len == 0)
-        return;
-    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) < (size_t)refbuf->len)
-    {
-        ICECAST_LOG_WARN("Write to dump file failed, disabling");
-        fclose (source->dumpfile);
-        source->dumpfile = NULL;
-    }
+    source_write_dumpfile(source, refbuf->data, refbuf->len);
 }
 

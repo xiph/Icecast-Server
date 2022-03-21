@@ -1461,3 +1461,22 @@ void source_recheck_mounts (int update_all)
     avl_tree_unlock (global.source_tree);
     config_release_config();
 }
+
+/* Writes a buffer of raw data to a dumpfile. returns true if the write was successful (and complete). */
+bool source_write_dumpfile(source_t *source, const void *buffer, size_t len)
+{
+    if (!source->dumpfile)
+        return false;
+
+    if (!len)
+        return true;
+
+    if (fwrite(buffer, 1, len, source->dumpfile) != len) {
+        ICECAST_LOG_WARN("Write to dump file failed, disabling");
+        fclose(source->dumpfile);
+        source->dumpfile = NULL;
+        return false;
+    }
+
+    return true;
+}
