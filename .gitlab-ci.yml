@@ -6,7 +6,7 @@ make_dist:
   tags:
     - docker
 
-  image: alpine:3.12
+  image: alpine:3.15
 
   stage: build
 #devel-stephan48-publish-bin-package
