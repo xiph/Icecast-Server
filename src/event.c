@@ -32,6 +32,7 @@ static mutex_t event_lock;
 static event_t *event_queue = NULL;
 static bool event_running = false;
 static thread_type *event_thread = NULL;
+static cond_t cond;
 
 /* work with event_t* */
 static void event_addref(event_t *event) {
@@ -90,6 +91,8 @@ static void event_push(event_t **event, event_t *next) {
     }
 
     *event = next;
+
+    thread_cond_broadcast(&cond);
 }
 
 static void event_push_reglist(event_t *event, event_registration_t *reglist) {
@@ -186,7 +189,7 @@ static void *event_run_thread (void *arg) {
 
         /* sleep if nothing todo and then try again */
         if (!event) {
-            thread_sleep(150000);
+            thread_cond_wait(&cond);
             continue;
         }
 
@@ -202,6 +205,7 @@ static void *event_run_thread (void *arg) {
 void event_initialise(void) {
     /* create mutex */
     thread_mutex_create(&event_lock);
+    thread_cond_create(&cond);
 
     /* initialise everything */
     thread_mutex_lock(&event_lock);
@@ -224,6 +228,7 @@ void event_shutdown(void) {
     thread_mutex_unlock(&event_lock);
 
     /* join thread as soon as it stopped */
+    thread_cond_broadcast(&cond);
     thread_join(event_thread);
 
     /* shutdown everything */
@@ -235,6 +240,7 @@ void event_shutdown(void) {
 
     event_release(event_queue_to_free);
 
+    thread_cond_destroy(&cond);
     /* destry mutex */
     thread_mutex_destroy(&event_lock);
 }
