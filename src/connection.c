@@ -125,9 +125,9 @@ static matchfile_t *banned_ip, *allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
-static void _handle_connection(void);
 static void get_tls_certificate(ice_config_t *config);
 static void free_client_node(client_queue_entry_t *node);
+static void * _handle_connection(client_queue_t *queue);
 static void * process_request_queue (client_queue_t *queue);
 static void * process_request_body_queue (client_queue_t *queue);
 static void * handle_client_worker(client_queue_t *queue);
@@ -337,6 +337,7 @@ void connection_initialize(void)
     client_queue_init(&_handle_queue);
 
     client_queue_start_thread(&_request_queue, "Request Queue", process_request_queue);
+    client_queue_start_thread(&_connection_queue, "Con Queue", _handle_connection);
     client_queue_start_thread(&_body_queue, "Body Queue", process_request_body_queue);
     client_queue_start_thread(&_handle_queue, "Client Handler", handle_client_worker);
 
@@ -720,8 +721,6 @@ static void * process_request_queue (client_queue_t *queue)
                     stop = node;
             }
         }
-
-        _handle_connection();
     }
 
     return NULL;
@@ -1102,76 +1101,83 @@ static int _need_body(client_queue_entry_t *node)
  * the contents provided. We set up the parser then hand off to the specific
  * request handler.
  */
-static void _handle_connection(void)
+static void * _handle_connection(client_queue_t *queue)
 {
-    http_parser_t *parser;
-    const char *rawuri;
-    client_queue_entry_t *node;
+    while (client_queue_running(queue)) {
+        client_queue_entry_t *node;
 
-    while ((node = client_queue_shift(&_connection_queue, NULL))) {
-        client_t *client = node->client;
-        int already_parsed = 0;
+        node = client_queue_shift(&_connection_queue, NULL);
+        if (node) {
+            client_t *client = node->client;
+            http_parser_t *parser;
+            const char *rawuri;
+            int already_parsed = 0;
 
-        /* Check for special shoutcast compatability processing */
-        if (node->shoutcast) {
-            _handle_shoutcast_compatible (node);
-            if (node->shoutcast)
-                continue;
-        }
-
-        /* process normal HTTP headers */
-        if (client->parser) {
-            already_parsed = 1;
-            parser = client->parser;
-        } else {
-            parser = httpp_create_parser();
-            httpp_initialize(parser, NULL);
-            client->parser = parser;
-        }
-        if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
-            client->refbuf->len = 0;
-
-            /* early check if we need more data */
-            client_complete(client);
-            if (_need_body(node)) {
-                /* Just calling client_queue_add(&_body_queue, node) would do the job.
-                 * However, if the client only has a small body this might work without moving it between queues.
-                 * -> much faster.
-                 */
-                client_slurp_result_t res;
-                ice_config_t *config;
-                time_t timeout;
-                size_t body_size_limit;
-
-                config = config_get_config();
-                timeout = time(NULL) - config->body_timeout;
-                body_size_limit = config->body_size_limit;
-                config_release_config();
-
-                res = process_request_body_queue_one(node, timeout, body_size_limit);
-                if (res != CLIENT_SLURP_SUCCESS) {
-                    ICECAST_LOG_DEBUG("Putting client %p in body queue.", client);
-                    client_queue_add(&_body_queue, node);
+            /* Check for special shoutcast compatability processing */
+            if (node->shoutcast) {
+                _handle_shoutcast_compatible (node);
+                if (node->shoutcast)
                     continue;
-                } else {
-                    ICECAST_LOG_DEBUG("Success on fast lane");
-                }
             }
 
-            rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
+            /* process normal HTTP headers */
+            if (client->parser) {
+                already_parsed = 1;
+                parser = client->parser;
+            } else {
+                parser = httpp_create_parser();
+                httpp_initialize(parser, NULL);
+                client->parser = parser;
+            }
+            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
+                client->refbuf->len = 0;
 
-            /* assign a port-based shoutcast mountpoint if required */
-            if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
-                httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
+                /* early check if we need more data */
+                client_complete(client);
+                if (_need_body(node)) {
+                    /* Just calling client_queue_add(&_body_queue, node) would do the job.
+                     * However, if the client only has a small body this might work without moving it between queues.
+                     * -> much faster.
+                     */
+                    client_slurp_result_t res;
+                    ice_config_t *config;
+                    time_t timeout;
+                    size_t body_size_limit;
+
+                    config = config_get_config();
+                    timeout = time(NULL) - config->body_timeout;
+                    body_size_limit = config->body_size_limit;
+                    config_release_config();
+
+                    res = process_request_body_queue_one(node, timeout, body_size_limit);
+                    if (res != CLIENT_SLURP_SUCCESS) {
+                        ICECAST_LOG_DEBUG("Putting client %p in body queue.", client);
+                        client_queue_add(&_body_queue, node);
+                        continue;
+                    } else {
+                        ICECAST_LOG_DEBUG("Success on fast lane");
+                    }
+                }
+
+                rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
+
+                /* assign a port-based shoutcast mountpoint if required */
+                if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
+                    httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
 
-            client_queue_add(&_handle_queue, node);
+                client_queue_add(&_handle_queue, node);
+            } else {
+                free_client_node(node);
+                ICECAST_LOG_ERROR("HTTP request parsing failed");
+                client_destroy (client);
+            }
         } else {
-            free_client_node(node);
-            ICECAST_LOG_ERROR("HTTP request parsing failed");
-            client_destroy (client);
+            client_queue_wait(queue);
         }
     }
+
+    return NULL;
 }
 
 static void * handle_client_worker(client_queue_t *queue)
