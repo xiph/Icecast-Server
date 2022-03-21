@@ -10,7 +10,7 @@
                 <ul>
                     <li class="adminlink"><a href="/admin/dashboard.xsl">Dashboard</a></li>
                     <li class="adminlink"><a href="/admin/stats.xsl">Server status</a></li>
-                    <li class="adminlink"><a href="/admin/listmounts.xsl">Mountpoint list</a></li>
+                    <li class="adminlink"><a href="/admin/streamlist.xsl">Sources list</a></li>
                     <li class="adminlink"><a href="/admin/listensocketlist.xsl">Listen Socket list</a></li>
                     <li class="adminlink"><a href="/admin/showlog.xsl">Logfiles</a></li>
                     <xsl:for-each select="(/report/extension/icestats | /icestats | /iceresponse)/modules/module">

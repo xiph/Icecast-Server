@@ -5,7 +5,7 @@
     <xsl:include href="includes/player.xsl"/>
     <xsl:include href="includes/authlist.xsl"/>
 
-    <xsl:variable name="title">Active Mountpoints</xsl:variable>
+    <xsl:variable name="title">Active Sources</xsl:variable>
 
     <xsl:template name="content">
         <div class="section">
