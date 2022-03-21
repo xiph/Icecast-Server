@@ -45,6 +45,8 @@
 #include <sys/utsname.h>
 #endif
 
+#include <igloo/error.h>
+
 #include "common/thread/thread.h"
 #include "common/net/sock.h"
 #include "common/net/resolver.h"
@@ -587,6 +589,11 @@ int main(int argc, char **argv)
     char pbuf[1024];
     ice_config_t *config;
 
+    if (igloo_initialize(&igloo_instance) != igloo_ERROR_NONE) {
+        _fatal_error("FATAL: Can not initialize libigloo.");
+        return 1;
+    }
+
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
@@ -597,6 +604,7 @@ int main(int argc, char **argv)
         if (!_start_logging_stdout()) {
             _fatal_error("FATAL: Could not start logging on stderr.");
             shutdown_subsystems();
+            igloo_ro_unref(&igloo_instance);
             return 1;
         }
 #endif
@@ -626,10 +634,12 @@ int main(int argc, char **argv)
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
             shutdown_subsystems();
 #endif
+            igloo_ro_unref(&igloo_instance);
             return 1;
         }
     } else {
         _print_usage();
+        igloo_ro_unref(&igloo_instance);
         return 1;
     }
 
@@ -640,6 +650,7 @@ int main(int argc, char **argv)
     if(!_server_proc_init()) {
         _fatal_error("Server startup failed. Exiting");
         shutdown_subsystems();
+        igloo_ro_unref(&igloo_instance);
         return 1;
     }
 
@@ -650,6 +661,7 @@ int main(int argc, char **argv)
     if (!_start_logging()) {
         _fatal_error("FATAL: Could not start logging");
         shutdown_subsystems();
+        igloo_ro_unref(&igloo_instance);
         return 1;
     }
 
@@ -668,6 +680,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
         shutdown_subsystems();
+        igloo_ro_unref(&igloo_instance);
         return 1;
     }
 #endif
@@ -706,6 +719,7 @@ int main(int argc, char **argv)
         free (pidfile);
     }
 
+    igloo_ro_unref(&igloo_instance);
     return 0;
 }
 

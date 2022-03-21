@@ -11,11 +11,26 @@
 #endif
 
 #include <stddef.h> /* for NULL */
-#include <stdio.h> /* for snprintf() */
+#include <stdio.h>  /* for snprintf() */
+#include <stdlib.h> /* for EXIT_FAILURE */
+#include <stdarg.h>
 
-#include "ctest_lib.h"
+#include <igloo/tap.h>
 
 #include "../resourcematch.h"
+
+static void ctest_diagnostic_printf(const char *format, ...)
+{
+    char buf[1024];
+    va_list ap;
+    va_start(ap, format);
+
+    vsnprintf(buf, sizeof(buf), format, ap);
+
+    va_end(ap);
+
+    igloo_tap_diagnostic(buf);
+}
 
 struct test {
     const char *pattern;
@@ -103,16 +118,16 @@ static inline resourcematch_result_t run_test_base(const struct test *test, reso
     if (extract) {
         if (test->expected_result == RESOURCEMATCH_MATCH) {
             if (*extract) {
-                ctest_diagnostic(" got extract");
+                igloo_tap_diagnostic(" got extract");
             } else {
-                ctest_diagnostic(" got no extract");
+                igloo_tap_diagnostic(" got no extract");
                 ok = 0;
             }
         }
     }
 
     snprintf(name, sizeof(name), "pattern \"%s\" and string \"%s\" %s extract", test->pattern, test->string, extract ? "with" : "without");
-    ctest_test(name, test->expected_result == ret && ok);
+    igloo_tap_test(name, test->expected_result == ret && ok);
 
     ctest_diagnostic_printf("Expected: %s, Got: %s, Ok: %i", res2str(test->expected_result), res2str(ret), ok);
 
@@ -165,11 +180,12 @@ int main (void)
 {
     size_t i;
 
-    ctest_init();
+    igloo_tap_init();
+    igloo_tap_exit_on(igloo_TAP_EXIT_ON_FIN, NULL);
     for (i = 0; i < (sizeof(tests)/sizeof(*tests)); i++) {
         run_test(&(tests[i]));
     }
-    ctest_fin();
+    igloo_tap_fin();
 
-    return 0;
+    return EXIT_FAILURE; // return failure as we should never reach this point!
 }

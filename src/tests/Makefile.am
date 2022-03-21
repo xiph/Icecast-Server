@@ -10,38 +10,22 @@ TEST_LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 check_PROGRAMS = 
 
 #
-# Helper library for TAP tests
-#
-
-libice_ctest_la_SOURCES = tests/ctest_lib.c %reldir%/ctest_lib.h
-noinst_LTLIBRARIES = libice_ctest.la
-
-#
 # Test programs
 #
 
 ctest_suite_test_SOURCES = tests/ctest_suite.c
-ctest_suite_test_LDADD = libice_ctest.la
 check_PROGRAMS += ctest_suite.test
 
 ctest_resourcematch_test_SOURCES = tests/ctest_resourcematch.c
-ctest_resourcematch_test_LDADD = libice_ctest.la icecast-resourcematch.o
+ctest_resourcematch_test_LDADD = icecast-resourcematch.o
 check_PROGRAMS += ctest_resourcematch.test
 
 ctest_refobject_test_SOURCES = tests/ctest_refobject.c
-ctest_refobject_test_LDADD = libice_ctest.la \
+ctest_refobject_test_LDADD = \
     common/thread/libicethread.la \
     common/avl/libiceavl.la \
     icecast-refobject.o
 check_PROGRAMS += ctest_refobject.test
-
-ctest_buffer_test_SOURCES = tests/ctest_buffer.c
-ctest_buffer_test_LDADD = libice_ctest.la \
-    common/thread/libicethread.la \
-    common/avl/libiceavl.la \
-    icecast-refobject.o \
-    icecast-buffer.o
-check_PROGRAMS += ctest_buffer.test
 
 # Add all programs to TESTS
 TESTS = $(check_PROGRAMS)

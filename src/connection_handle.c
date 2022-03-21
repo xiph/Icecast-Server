@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+
 #include "connection_handle.h"
 #include "auth.h"
 #include "acl.h"
@@ -115,7 +118,7 @@ static bool _handle_resources(client_t *client, char **uri)
             module_t *module = module_container_get_module(global.modulecontainer, resource->module);
 
             if (module != NULL) {
-                refobject_unref(client->handler_module);
+                igloo_ro_unref(&(client->handler_module));
                 client->handler_module = module;
             } else {
                 ICECAST_LOG_ERROR("Module used in alias not found: %s", resource->module);

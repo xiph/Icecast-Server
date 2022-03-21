@@ -60,6 +60,8 @@
 #include <sys/utsname.h>
 #endif
 
+#include <igloo/error.h>
+
 #include "common/net/sock.h"
 
 #include "admin.h"
@@ -1773,6 +1775,14 @@ static inline const char *get_speex_version(void)
 }
 #endif
 
+static inline const char *get_igloo_version(void)
+{
+    const char *version;
+    if (igloo_version_get(&version, NULL, NULL, NULL) != igloo_ERROR_NONE)
+        return NULL;
+    return version;
+}
+
 static void command_version             (client_t *client, source_t *source, admin_format_t response)
 {
     reportxml_t      *report        = client_get_reportxml("8cdfc150-094d-42f7-9c61-f9fb9a6e07e7", NULL, NULL);
@@ -1792,6 +1802,7 @@ static void command_version             (client_t *client, source_t *source, adm
         const char *compiletime;
         const char *runtime;
     } dependency_versions[] = {
+        {"libigloo", NULL, get_igloo_version()},
         {"libxml2", LIBXML_DOTTED_VERSION, NULL},
 #if defined(HAVE_OPENSSL) && defined(OPENSSL_VERSION_TEXT)
         {"OpenSSL", OPENSSL_VERSION_TEXT, NULL},

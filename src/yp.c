@@ -20,6 +20,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <igloo/prng.h>
+
 #include "common/thread/thread.h"
 
 #include "yp.h"
@@ -30,7 +32,6 @@
 #include "cfgfile.h"
 #include "stats.h"
 #include "listensocket.h"
-#include "prng.h"
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -112,7 +113,7 @@ static size_t handle_returned_header (void *ptr, size_t size, size_t nmemb, void
     ypdata_t *yp = stream;
     size_t bytes = size * nmemb;
 
-    prng_write(ptr, bytes);
+    igloo_prng_write(igloo_instance, ptr, bytes, -1, igloo_PRNG_FLAG_NONE);
 
     /* ICECAST_LOG_DEBUG("header from YP is \"%.*s\"", bytes, ptr); */
     if (strncasecmp (ptr, "YPResponse: 1", 13) == 0)
