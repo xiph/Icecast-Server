@@ -36,7 +36,7 @@
 
 struct listensocket_container_tag {
     refobject_base_t __base;
-    mutex_t lock;
+    rwlock_t rwlock;
     bool prefer_inet6;
     listensocket_t **sock;
     int *sockref;
@@ -146,10 +146,10 @@ static void __listensocket_container_clear_sockets(listensocket_container_t *sel
 static void __listensocket_container_free(refobject_t self, void **userdata)
 {
     listensocket_container_t *container = REFOBJECT_TO_TYPE(self, listensocket_container_t *);
-    thread_mutex_lock(&container->lock);
+    thread_rwlock_wlock(&container->rwlock);
     __listensocket_container_clear_sockets(container);
-    thread_mutex_unlock(&container->lock);
-    thread_mutex_destroy(&container->lock);
+    thread_rwlock_unlock(&container->rwlock);
+    thread_rwlock_destroy(&container->rwlock);
 }
 
 int __listensocket_container_new(refobject_t self, const refobject_type_t *type, va_list ap)
@@ -161,7 +161,7 @@ int __listensocket_container_new(refobject_t self, const refobject_type_t *type,
     ret->sockcount_cb = NULL;
     ret->sockcount_userdata = NULL;
 
-    thread_mutex_create(&ret->lock);
+    thread_rwlock_create(&ret->rwlock);
 
     return 0;
 }
@@ -203,9 +203,9 @@ int                         listensocket_container_configure(listensocket_contai
     if (!self)
         return -1;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_wlock(&self->rwlock);
     ret = listensocket_container_configure__unlocked(self, config);
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return ret;
 }
@@ -281,7 +281,7 @@ int                         listensocket_container_configure_and_setup(listensoc
 
     prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_wlock(&self->rwlock);
     self->prefer_inet6 = prefer_inet6;
     cb = self->sockcount_cb;
     self->sockcount_cb = NULL;
@@ -294,7 +294,7 @@ int                         listensocket_container_configure_and_setup(listensoc
 
     self->sockcount_cb = cb;
     __call_sockcount_cb(self);
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return ret;
 }
@@ -309,10 +309,10 @@ int                         listensocket_container_setup(listensocket_container_
 
     prefer_inet6 = sock_is_ipv4_mapped_supported(); /* test before we enter lock to minimise locked time */
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_wlock(&self->rwlock);
     self->prefer_inet6 = prefer_inet6;
     ret = listensocket_container_setup__unlocked(self);
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return ret;
 }
@@ -442,10 +442,10 @@ connection_t *              listensocket_container_accept(listensocket_container
     if (!self)
         return NULL;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_rlock(&self->rwlock);
     ls = listensocket_container_accept__inner(self, timeout);
     refobject_ref(ls);
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     ret = listensocket_accept(ls, self);
     refobject_unref(ls);
@@ -458,10 +458,10 @@ int                         listensocket_container_set_sockcount_cb(listensocket
     if (!self)
         return -1;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_wlock(&self->rwlock);
     self->sockcount_cb = cb;
     self->sockcount_userdata = userdata;
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return 0;
 }
@@ -473,9 +473,9 @@ ssize_t                     listensocket_container_sockcount(listensocket_contai
     if (!self)
         return -1;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_rlock(&self->rwlock);
     ret = listensocket_container_sockcount__unlocked(self);
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return ret;
 }
@@ -499,6 +499,7 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
     size_t i;
     const listener_t *listener;
 
+    thread_rwlock_rlock(&self->rwlock);
     for (i = 0; i < self->sock_len; i++) {
         if (self->sock[i] != NULL) {
             listener = listensocket_get_listener(self->sock[i]);
@@ -506,6 +507,7 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
                 if (listener->id != NULL && strcmp(listener->id, id) == 0) {
                     if (refobject_ref(self->sock[i]) == 0) {
                         listensocket_release_listener(self->sock[i]);
+                        thread_rwlock_unlock(&self->rwlock);
                         return self->sock[i];
                     }
                 }
@@ -513,6 +515,7 @@ listensocket_t * listensocket_container_get_by_id(listensocket_container_t *self
             }
         }
     }
+    thread_rwlock_unlock(&self->rwlock);
 
     return NULL;
 }
@@ -523,10 +526,10 @@ listensocket_t **           listensocket_container_list_sockets(listensocket_con
     size_t idx = 0;
     size_t i;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_rlock(&self->rwlock);
     res = calloc(self->sock_len + 1, sizeof(*res));
     if (!res) {
-        thread_mutex_unlock(&self->lock);
+        thread_rwlock_unlock(&self->rwlock);
         return NULL;
     }
 
@@ -536,7 +539,7 @@ listensocket_t **           listensocket_container_list_sockets(listensocket_con
         }
     }
 
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return res;
 }
@@ -545,16 +548,16 @@ bool                        listensocket_container_is_family_included(listensock
 {
     size_t i;
 
-    thread_mutex_lock(&self->lock);
+    thread_rwlock_rlock(&self->rwlock);
     for (i = 0; i < self->sock_len; i++) {
         if (self->sock[i] != NULL) {
             if (listensocket_get_family(self->sock[i]) == family) {
-                thread_mutex_unlock(&self->lock);
+                thread_rwlock_unlock(&self->rwlock);
                 return true;
             }
         }
     }
-    thread_mutex_unlock(&self->lock);
+    thread_rwlock_unlock(&self->rwlock);
 
     return false;
 }

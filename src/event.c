@@ -208,7 +208,7 @@ void event_initialise(void) {
     thread_mutex_unlock(&event_lock);
 
     /* start thread */
-    event_thread = thread_create("events thread", event_run_thread, NULL, THREAD_ATTACHED);
+    event_thread = thread_create("Events Thread", event_run_thread, NULL, THREAD_ATTACHED);
 }
 
 void event_shutdown(void) {
