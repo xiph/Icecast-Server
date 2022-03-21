@@ -25,7 +25,7 @@ make_dist:
   script: 
     - ./autogen.sh
     - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" ""${CI_API_V4_URL}/projects/143/packages/generic/libigloo-bins/0.0.1-$CI_COMMIT_REF_NAME/libigloo-$CI_COMMIT_REF_NAME.tar.gz"'
+    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/143/packages/generic/libigloo-bins/0.0.1-$CI_COMMIT_REF_NAME/libigloo-$CI_COMMIT_REF_NAME.tar.gz"'
     - tar -C / -xvzf libigloo-$CI_COMMIT_REF_NAME.tar.gz
     - ls -la /usr/local/lib
     - ./configure || cat config.log
