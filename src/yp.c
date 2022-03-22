@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2013-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2013-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -39,8 +39,22 @@
 
 #define CATMODULE "yp"
 
-struct yp_server
-{
+typedef enum {
+    YP_SERVER_NAME,
+    YP_SERVER_DESC,
+    YP_SERVER_GENRE,
+    YP_SERVER_URL,
+    YP_BITRATE,
+    YP_AUDIO_INFO,
+    YP_SERVER_TYPE,
+    YP_CURRENT_SONG,
+    YP_CLUSTER_PASSWORD,
+    YP_SUBTYPE,
+    YP_AUDIO_SAMPLERATE,
+    YP_AUDIO_CHANNELS
+} yp_param_type_t;
+
+struct yp_server {
     char        *url;
     char        *server_id;
     unsigned    url_timeout;
@@ -54,10 +68,7 @@ struct yp_server
     char curl_error[CURL_ERROR_SIZE];
 };
 
-
-
-typedef struct ypdata_tag
-{
+typedef struct ypdata_tag {
     int remove;
     int release;
     int cmd_ok;
@@ -69,14 +80,16 @@ typedef struct ypdata_tag
     char *current_song; /* do_yp_touch: artist & title */
 
     /* ---[ From stats ]--- */
-    char *server_type;  /* do_yp_add: server_type */
-    char *server_name;  /* do_yp_add: server_name */
-    char *url;          /* do_yp_add: server_url */
-    char *server_genre; /* do_yp_add: genre */
-    char *bitrate;      /* do_yp_add: audio_bitrate || ice-bitrate */
-    char *server_desc;  /* do_yp_add: server_description */
-    char *subtype;      /* do_yp_add: subtype; do_yp_touch: subtype */
-    char *audio_info;   /* do_yp_add: audio_info */
+    char *server_type;      /* do_yp_add: server_type */
+    char *server_name;      /* do_yp_add: server_name */
+    char *url;              /* do_yp_add: server_url */
+    char *server_genre;     /* do_yp_add: genre */
+    char *bitrate;          /* do_yp_add: audio_bitrate || ice-bitrate */
+    char *server_desc;      /* do_yp_add: server_description */
+    char *audio_info;       /* do_yp_add: audio_info */
+    char *subtype;          /* update_yp_info: subtype*/
+    char *audio_samplerate; /* update_yp_info: audio_samplerate */
+    char *audio_channels;   /* update_yp_info: audio_channels */
     /* ---[ END from stats ]--- */
 
     struct yp_server *server;
@@ -101,7 +114,8 @@ static volatile unsigned client_limit = 0;
 static volatile char *server_version = NULL;
 
 static void *yp_update_thread(void *arg);
-static void add_yp_info(ypdata_t *yp, void *info, int type);
+static void update_yp_info(ypdata_t *yp);
+static void add_yp_info(ypdata_t *yp, void *info, yp_param_type_t type);
 static int do_yp_remove(ypdata_t *yp, char *s, unsigned len);
 static int do_yp_add(ypdata_t *yp, char *s, unsigned len);
 static int do_yp_touch(ypdata_t *yp, char *s, unsigned len);
@@ -396,20 +410,19 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     add_yp_info(yp, value, YP_SERVER_DESC);
     free(value);
 
-    value = stats_get_value(yp->mount, "subtype");
-    add_yp_info(yp, value, YP_SUBTYPE);
-    free(value);
-
     value = stats_get_value(yp->mount, "audio_info");
     add_yp_info(yp, value, YP_AUDIO_INFO);
     free(value);
 
+    update_yp_info(yp);
+
     ret = snprintf(s, len, "action=add&admin=%s&sn=%s&genre=%s&cpswd=%s&desc="
-                    "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&%s\r\n",
+                    "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&samplerate=%s&channels=%s&audioinfo=%s",
                     admin,
                     yp->server_name, yp->server_genre, yp->cluster_password,
                     yp->server_desc, yp->url, yp->listen_url,
-                    yp->server_type, yp->subtype, yp->bitrate, yp->audio_info);
+                    yp->server_type, yp->subtype, yp->bitrate,
+                    yp->audio_samplerate, yp->audio_channels, yp->audio_info);
     free(admin);
 
     if (ret >= (signed)len)
@@ -464,11 +477,7 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     }
     free(val);
 
-    val = stats_get_value(yp->mount, "subtype");
-    if (val) {
-        add_yp_info(yp, val, YP_SUBTYPE);
-        free(val);
-    }
+    update_yp_info(yp);
 
     ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
             "&listeners=%u&max_listeners=%u&stype=%s\r\n",
@@ -506,7 +515,7 @@ static int process_ypdata(struct yp_server *server, ypdata_t *yp)
             yp->next_update = 0;
         }
 
-        ret = yp->process (yp, s, len);
+        ret = yp->process(yp, s, len);
         if (ret <= 0) {
            free(s);
            return ret;
@@ -571,6 +580,8 @@ static ypdata_t *create_yp_entry (struct yp_server *server, const char *mount)
         yp->current_song = strdup("");
         yp->audio_info = strdup("");
         yp->subtype = strdup("");
+        yp->audio_samplerate = strdup("");
+        yp->audio_channels = strdup("");
         yp->process = do_yp_add;
 
         url = malloc (len);
@@ -789,50 +800,68 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
     }
 }
 
-static void add_yp_info(ypdata_t *yp, void *info, int type)
+static void update_yp_info(ypdata_t *yp)
 {
-    char *escaped;
+    char * val;
+    
+    if ((val = stats_get_value(yp->mount, "subtype"))) {
+        add_yp_info(yp, val, YP_SUBTYPE);
+        free(val);
+    }
 
+    if ((val = stats_get_value(yp->mount, "audio_samplerate"))) {
+        add_yp_info(yp, val, YP_AUDIO_SAMPLERATE);
+        free(val);
+    }
+
+    if ((val = stats_get_value(yp->mount, "audio_channels"))) {
+        add_yp_info(yp, val, YP_AUDIO_CHANNELS);
+        free(val);
+    }
+}
+
+static void add_yp_info(ypdata_t *yp, void *info, yp_param_type_t type)
+{
     if (!info)
-        return;
-
-    escaped = util_url_escape(info);
-    if (escaped == NULL)
         return;
 
     switch (type) {
         case YP_SERVER_NAME:
-            util_replace_string(&(yp->server_name), escaped);
+            util_replace_string_url_escape(&(yp->server_name), info);
             break;
         case YP_SERVER_DESC:
-            util_replace_string(&(yp->server_desc), escaped);
+            util_replace_string_url_escape(&(yp->server_desc), info);
             break;
         case YP_SERVER_GENRE:
-            util_replace_string(&(yp->server_genre), escaped);
+            util_replace_string_url_escape(&(yp->server_genre), info);
             break;
         case YP_SERVER_URL:
-            util_replace_string(&(yp->url), escaped);
+            util_replace_string_url_escape(&(yp->url), info);
             break;
         case YP_BITRATE:
-            util_replace_string(&(yp->bitrate), escaped);
+            util_replace_string_url_escape(&(yp->bitrate), info);
             break;
         case YP_AUDIO_INFO:
-            util_replace_string(&(yp->audio_info), escaped);
+            util_replace_string_url_escape(&(yp->audio_info), info);
             break;
         case YP_SERVER_TYPE:
-            util_replace_string(&(yp->server_type), escaped);
+            util_replace_string_url_escape(&(yp->server_type), info);
             break;
         case YP_CURRENT_SONG:
-            util_replace_string(&(yp->current_song), escaped);
+            util_replace_string_url_escape(&(yp->current_song), info);
             break;
         case YP_CLUSTER_PASSWORD:
-            util_replace_string(&(yp->cluster_password), escaped);
+            util_replace_string_url_escape(&(yp->cluster_password), info);
             break;
         case YP_SUBTYPE:
-            util_replace_string(&(yp->subtype), escaped);
+            util_replace_string_url_escape(&(yp->subtype), info);
             break;
-        default:
-            free(escaped);
+        case YP_AUDIO_SAMPLERATE:
+            util_replace_string_url_escape(&(yp->audio_samplerate), info);
+            break;
+        case YP_AUDIO_CHANNELS:
+            util_replace_string_url_escape(&(yp->audio_channels), info);
+            break;
     }
 }
 

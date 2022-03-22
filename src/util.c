@@ -1528,6 +1528,27 @@ int util_replace_string(char **dst, const char *src)
     return 0;
 }
 
+bool util_replace_string_url_escape(char **dst, const char *src)
+{
+    char *n;
+
+    if (!dst)
+        return false;
+
+    if (src) {
+        n = util_url_escape(src);
+        if (!n)
+            return false;
+    } else {
+        n = NULL;
+    }
+
+    free(*dst);
+    *dst = n;
+
+    return true;
+}
+
 int util_strtolower(char *str)
 {
     if (!str)

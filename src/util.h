@@ -5,7 +5,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- *  Copyright 2012-2020 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ *  Copyright 2012-2022 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  *
  *  This program is distributed under the GNU General Public License, version 2.
  *  A copy of this license is included with this source.
@@ -16,6 +16,7 @@
 
 /* for FILE* */
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "common/net/sock.h"
 #include "icecasttypes.h"
@@ -130,5 +131,6 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
 int get_line(FILE *file, char *buf, size_t siz);
 
 int util_replace_string(char **dst, const char *src);
+bool util_replace_string_url_escape(char **dst, const char *src); /* returns true on success */
 int util_strtolower(char *str);
 #endif  /* __UTIL_H__ */
