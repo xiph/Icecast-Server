@@ -480,8 +480,9 @@ static int do_yp_touch (ypdata_t *yp, char *s, unsigned len)
     update_yp_info(yp);
 
     ret = snprintf (s, len, "action=touch&sid=%s&st=%s"
-            "&listeners=%u&max_listeners=%u&stype=%s\r\n",
-            yp->sid, yp->current_song, listeners, max_listeners, yp->subtype);
+            "&listeners=%u&max_listeners=%u&stype=%s&samplerate=%s&channels=%s",
+            yp->sid, yp->current_song, listeners, max_listeners, yp->subtype,
+            yp->audio_samplerate, yp->audio_channels);
 
     if (ret >= (signed)len)
         return ret+1; /* space required for above text and nul*/
