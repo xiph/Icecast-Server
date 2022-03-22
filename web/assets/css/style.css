@@ -156,6 +156,10 @@ ul.boxnav > li.critical > a, a.critical, input[type='submit'].critical {
     background-color: #ff704d !important;
 }
 
+ul.boxnav > li.disabled > a, a.disabled, input[type='submit'].disabled {
+    background-color: #a4a4a4 !important;
+}
+
 th.actions {
     width: 10%;
 }

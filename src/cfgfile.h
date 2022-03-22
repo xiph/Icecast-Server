@@ -88,6 +88,8 @@ typedef struct _mount_proxy {
      * NULL to not dump.
      */
     char *dumpfile;
+    uint64_t dumpfile_size_limit;
+    unsigned int dumpfile_time_limit;
     /* Send contents of file to client before the stream */
     char *intro_filename;
     /* Switch new listener to fallback source when max listeners reached */

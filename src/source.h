@@ -54,8 +54,15 @@ struct source_tag {
 
     FILE *intro_file;
 
+    /* Dumpfile related data */
+    /* Config */
     char *dumpfilename; /* Name of a file to dump incoming stream to */
+    uint64_t dumpfile_size_limit;
+    unsigned int dumpfile_time_limit;
+    /* Runtime */
     FILE *dumpfile;
+    time_t dumpfile_start;
+    uint64_t dumpfile_written;
 
     unsigned long peak_listeners;
     unsigned long listeners;
@@ -103,6 +110,10 @@ void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, 
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);
+
+/* Writes a buffer of raw data to a dumpfile. returns true if the write was successful (and complete). */
+bool source_write_dumpfile(source_t *source, const void *buffer, size_t len);
+void source_kill_dumpfile(source_t *source);
 
 extern mutex_t move_clients_mutex;
 

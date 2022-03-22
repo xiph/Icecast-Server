@@ -31,4 +31,5 @@ nobase_dist_admin_DATA = \
     includes/web-page.xsl \
     ui/confirmdeleteuser.xsl \
     ui/confirmkillclient.xsl \
-    ui/confirmkillsource.xsl
+    ui/confirmkillsource.xsl \
+    ui/confirmkilldumpfile.xsl

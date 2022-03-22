@@ -565,21 +565,6 @@ static int write_buf_to_client(client_t *client)
 }
 
 
-static int write_ogg_data (source_t *source, refbuf_t *refbuf)
-{
-    int ret = 1;
-
-    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) != refbuf->len)
-    {
-        ICECAST_LOG_WARN("Write to dump file failed, disabling");
-        fclose (source->dumpfile);
-        source->dumpfile = NULL;
-        ret = 0;
-    }
-    return ret;
-}
-
-
 static void write_ogg_to_file (source_t *source, refbuf_t *refbuf)
 {
     ogg_state_t *ogg_info = source->format->_state;
@@ -589,13 +574,11 @@ static void write_ogg_to_file (source_t *source, refbuf_t *refbuf)
         refbuf_t *header = refbuf->associated;
         while (header)
         {
-            if (write_ogg_data (source, header) == 0)
+            if (!source_write_dumpfile(source, header->data, header->len))
                 return;
             header = header->next;
         }
         ogg_info->file_headers = refbuf->associated;
     }
-    write_ogg_data (source, refbuf);
+    source_write_dumpfile(source, refbuf->data, refbuf->len);
 }
-
-

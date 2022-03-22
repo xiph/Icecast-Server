@@ -143,6 +143,8 @@
 #define KILLSOURCE_RAW_REQUEST              "killsource"
 #define KILLSOURCE_HTML_REQUEST             "killsource.xsl"
 #define KILLSOURCE_JSON_REQUEST             "killsource.json"
+#define DUMPFILECONTROL_RAW_REQUEST         "dumpfilecontrol"
+#define DUMPFILECONTROL_HTML_REQUEST        "dumpfilecontrol.xsl"
 #define ADMIN_XSL_RESPONSE                  "response.xsl"
 #define MANAGEAUTH_RAW_REQUEST              "manageauth"
 #define MANAGEAUTH_HTML_REQUEST             "manageauth.xsl"
@@ -190,6 +192,7 @@ static void command_list_listen_sockets (client_t *client, source_t *source, adm
 static void command_move_clients        (client_t *client, source_t *source, admin_format_t response);
 static void command_kill_client         (client_t *client, source_t *source, admin_format_t response);
 static void command_kill_source         (client_t *client, source_t *source, admin_format_t response);
+static void command_dumpfile_control    (client_t *client, source_t *source, admin_format_t response);
 static void command_manageauth          (client_t *client, source_t *source, admin_format_t response);
 static void command_updatemetadata      (client_t *client, source_t *source, admin_format_t response);
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
@@ -237,6 +240,8 @@ static const admin_command_handler_t handlers[] = {
     { KILLSOURCE_RAW_REQUEST,               ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_kill_source, NULL},
     { KILLSOURCE_HTML_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_kill_source, NULL},
     { KILLSOURCE_JSON_REQUEST,              ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_UNSAFE,   command_kill_source, NULL},
+    { DUMPFILECONTROL_RAW_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_UNSAFE,   command_dumpfile_control, NULL},
+    { DUMPFILECONTROL_HTML_REQUEST,         ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_UNSAFE,   command_dumpfile_control, NULL},
     { MANAGEAUTH_RAW_REQUEST,               ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_HYBRID,   command_manageauth, NULL},
     { MANAGEAUTH_HTML_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_HYBRID,   command_manageauth, NULL},
     { MANAGEAUTH_JSON_REQUEST,              ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_HYBRID,   command_manageauth, NULL},
@@ -543,6 +548,9 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"),
                     XMLSTR(source->format->contenttype));
             }
+
+            snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
+            xmlNewTextChild(srcnode, NULL, XMLSTR("dumpfile_written"), XMLSTR(buf));
         }
         node = avl_get_next(node);
     }
@@ -1114,6 +1122,19 @@ static void command_kill_source(client_t *client,
     source->running = 0;
 
     admin_send_response_simple(client, source, response, "Source Removed", 1);
+}
+
+static void command_dumpfile_control    (client_t *client, source_t *source, admin_format_t response)
+{
+    const char *action;
+    COMMAND_REQUIRE(client, "action", action);
+
+    if (strcmp(action, "kill") == 0) {
+        source_kill_dumpfile(source);
+        admin_send_response_simple(client, source, response, "Dumpfile killed.", 1);
+    } else {
+        admin_send_response_simple(client, source, response, "No such action", 0);
+    }
 }
 
 static void command_kill_client(client_t *client,

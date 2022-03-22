@@ -368,33 +368,16 @@ static void ebml_free_client_data (client_t *client)
     client->format_data = NULL;
 }
 
-static void ebml_write_buf_to_file_fail (source_t *source)
-{
-    ICECAST_LOG_WARN("Write to dump file failed, disabling");
-    fclose (source->dumpfile);
-    source->dumpfile = NULL;
-}
-
 static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
 {
-
     ebml_source_state_t *ebml_source_state = source->format->_state;
 
-    if ( ! ebml_source_state->file_headers_written)
-    {
-        if (fwrite (ebml_source_state->header->data, 1,
-                    ebml_source_state->header->len,
-                    source->dumpfile) != ebml_source_state->header->len)
-            ebml_write_buf_to_file_fail(source);
-        else
+    if (!ebml_source_state->file_headers_written) {
+        if (source_write_dumpfile(source, ebml_source_state->header->data, ebml_source_state->header->len))
             ebml_source_state->file_headers_written = true;
     }
 
-    if (fwrite (refbuf->data, 1, refbuf->len, source->dumpfile) != refbuf->len)
-    {
-        ebml_write_buf_to_file_fail(source);
-    }
-
+    source_write_dumpfile(source, refbuf->data, refbuf->len);
 }
 
 /* internal ebml parsing */
