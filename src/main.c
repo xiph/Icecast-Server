@@ -172,6 +172,7 @@ static void initialize_subsystems(void)
 
 static void shutdown_subsystems(void)
 {
+    ICECAST_LOG_DEBUG("Shuting down subsystems...");
     event_shutdown();
     fserve_shutdown();
     refbuf_shutdown();
@@ -180,6 +181,7 @@ static void shutdown_subsystems(void)
     yp_shutdown();
     stats_shutdown();
 
+    ICECAST_LOG_DEBUG("Shuting down connection related subsystems...");
     connection_shutdown();
     client_shutdown();
     tls_shutdown();
@@ -200,6 +202,7 @@ static void shutdown_subsystems(void)
     icecast_curl_shutdown();
 #endif
 
+    ICECAST_LOG_DEBUG("Shuting down logging subsystem. See you!");
     /* Now that these are done, we can stop the loggers. */
     _stop_logging();
     log_shutdown();
