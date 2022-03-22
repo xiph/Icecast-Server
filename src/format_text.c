@@ -54,6 +54,10 @@ static size_t skipchar(char *text, char skip, size_t len)
     return ret;
 }
 
+static void text_to_file (source_t *source, refbuf_t *refbuf)
+{
+    source_write_dumpfile(source, refbuf->data, refbuf->len);
+}
 
 static refbuf_t *text_get_buffer(source_t *source)
 {
@@ -97,7 +101,7 @@ int format_text_get_plugin(source_t *source)
     plugin->write_buf_to_client = format_generic_write_to_client;
     plugin->create_client_data = NULL;
     plugin->free_plugin = text_free_plugin;
-    plugin->write_buf_to_file = NULL;
+    plugin->write_buf_to_file = text_to_file;
     plugin->set_tag = NULL;
     plugin->apply_settings = NULL;
 
