@@ -1737,6 +1737,14 @@ static void _parse_mount(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("dump-file")) == 0) {
             mount->dumpfile = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
+        } else if (xmlStrcmp(node->name, XMLSTR("dump-file-size-limit")) == 0) {
+            unsigned int val = mount->dumpfile_size_limit;
+            __read_unsigned_int(configuration, doc, node, &val, 0, UINT_MAX);
+            mount->dumpfile_size_limit = val;
+        } else if (xmlStrcmp(node->name, XMLSTR("dump-file-time-limit")) == 0) {
+            unsigned int val = mount->dumpfile_time_limit;
+            __read_unsigned_int(configuration, doc, node, &val, 0, UINT_MAX);
+            mount->dumpfile_time_limit = val;
         } else if (xmlStrcmp(node->name, XMLSTR("intro")) == 0) {
             mount->intro_filename = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
@@ -2989,6 +2997,10 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src)
 
     if (!dst->dumpfile)
         dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
+    if (!dst->dumpfile_size_limit)
+        dst->dumpfile_size_limit = src->dumpfile_size_limit;
+    if (!dst->dumpfile_time_limit)
+        dst->dumpfile_time_limit = src->dumpfile_time_limit;
     if (!dst->intro_filename)
         dst->intro_filename = (char*)xmlStrdup((xmlChar*)src->intro_filename);
     if (!dst->fallback_when_full)

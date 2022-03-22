@@ -1183,12 +1183,26 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         source->fallback_mount = NULL;
     }
 
+    /* Dumpfile settings */
     if (mountinfo && mountinfo->dumpfile) {
         util_replace_string(&(source->dumpfilename), mountinfo->dumpfile);
     } else {
         free(source->dumpfilename);
         source->dumpfilename = NULL;
+        if (source->dumpfile) {
+            ICECAST_LOG_INFO("Stopping dumpfile as it is now de-configured for source %p at mountpoint %#H.", source, source->mount);
+            source_kill_dumpfile(source);
+        }
     }
+
+    if (mountinfo) {
+        source->dumpfile_size_limit = mountinfo->dumpfile_size_limit;
+        source->dumpfile_time_limit = mountinfo->dumpfile_time_limit;
+    } else {
+        source->dumpfile_size_limit = 0;
+        source->dumpfile_time_limit = 0;
+    }
+
 
     if (source->intro_file)
     {
@@ -1482,6 +1496,17 @@ bool source_write_dumpfile(source_t *source, const void *buffer, size_t len)
     }
 
     source->dumpfile_written += len;
+
+    if (source->dumpfile_size_limit && source->dumpfile_written > source->dumpfile_size_limit) {
+        ICECAST_LOG_INFO("Dumpfile for source %p at mountpoint %#H reached size limit. Dumpfile will be disabled.", source, source->mount);
+        source_kill_dumpfile(source);
+    } else if (source->dumpfile_time_limit) {
+        time_t now = time(NULL);
+        if (now > (source->dumpfile_start + source->dumpfile_time_limit)) {
+            ICECAST_LOG_INFO("Dumpfile for source %p at mountpoint %#H reached time limit. Dumpfile will be disabled.", source, source->mount);
+            source_kill_dumpfile(source);
+        }
+    }
 
     return true;
 }
