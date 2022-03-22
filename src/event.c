@@ -189,6 +189,8 @@ static void *event_run_thread (void *arg) {
 
         /* sleep if nothing todo and then try again */
         if (!event) {
+            if (!running)
+                break;
             thread_cond_wait(&cond);
             continue;
         }
