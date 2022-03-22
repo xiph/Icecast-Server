@@ -796,6 +796,8 @@ static void yp_destroy_ypdata(ypdata_t *ypdata)
         free(ypdata->server_type);
         free(ypdata->audio_info);
         free(ypdata->subtype);
+        free(ypdata->audio_samplerate);
+        free(ypdata->audio_channels);
         free(ypdata->error_msg);
         free(ypdata);
     }

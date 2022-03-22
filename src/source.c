@@ -1172,23 +1172,19 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
         stats_event (source->mount, "authenticator", NULL);
     acl_release(acl);
 
-    if (mountinfo && mountinfo->fallback_mount)
-    {
-        char *mount = source->fallback_mount;
-        source->fallback_mount = strdup (mountinfo->fallback_mount);
-        free (mount);
-    }
-    else
+    if (mountinfo && mountinfo->fallback_mount) {
+        util_replace_string(&(source->fallback_mount), mountinfo->fallback_mount);
+    } else {
+        free(source->fallback_mount);
         source->fallback_mount = NULL;
-
-    if (mountinfo && mountinfo->dumpfile)
-    {
-        char *filename = source->dumpfilename;
-        source->dumpfilename = strdup (mountinfo->dumpfile);
-        free (filename);
     }
-    else
+
+    if (mountinfo && mountinfo->dumpfile) {
+        util_replace_string(&(source->dumpfilename), mountinfo->dumpfile);
+    } else {
+        free(source->dumpfilename);
         source->dumpfilename = NULL;
+    }
 
     if (source->intro_file)
     {
