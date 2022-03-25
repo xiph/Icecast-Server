@@ -689,12 +689,10 @@ static bool process_request_queue_one (client_queue_entry_t *node, time_t timeou
             client_queue_add(&_connection_queue, node);
             return true;
         }
-    } else {
-        if (len == 0 || client->con->error) {
-            client_destroy(client);
-            free_client_node(node);
-            return true;
-        }
+    } else if (len == 0 || client->con->error) {
+        client_destroy(client);
+        free_client_node(node);
+        return true;
     }
 
     return false;
