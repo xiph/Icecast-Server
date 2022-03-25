@@ -336,11 +336,6 @@ void connection_initialize(void)
     client_queue_init(&_body_queue);
     client_queue_init(&_handle_queue);
 
-    client_queue_start_thread(&_request_queue, "Request Queue", process_request_queue);
-    client_queue_start_thread(&_connection_queue, "Con Queue", _handle_connection);
-    client_queue_start_thread(&_body_queue, "Body Queue", process_request_body_queue);
-    client_queue_start_thread(&_handle_queue, "Client Handler", handle_client_worker);
-
     _initialized = 1;
 }
 
@@ -883,6 +878,11 @@ void connection_accept_loop(void)
     config = config_get_config();
     get_tls_certificate(config);
     config_release_config();
+
+    client_queue_start_thread(&_request_queue, "Request Queue", process_request_queue);
+    client_queue_start_thread(&_connection_queue, "Con Queue", _handle_connection);
+    client_queue_start_thread(&_body_queue, "Body Queue", process_request_body_queue);
+    client_queue_start_thread(&_handle_queue, "Client Handler", handle_client_worker);
 
     while (global.running == ICECAST_RUNNING) {
         connection_t *con = listensocket_container_accept(global.listensockets, 800);
