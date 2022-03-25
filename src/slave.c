@@ -918,7 +918,6 @@ static void *_slave_thread(void *arg)
         global_unlock();
 
         thread_sleep(1000000);
-        igloo_prng_auto_reseed(igloo_instance, igloo_PRNG_FLAG_NONE);
         thread_mutex_lock(&_slave_mutex);
         if (slave_running == 0) {
             thread_mutex_unlock(&_slave_mutex);
