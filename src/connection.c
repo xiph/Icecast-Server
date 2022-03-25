@@ -715,11 +715,12 @@ static void * process_request_queue (client_queue_t *queue)
         client_queue_check_ready_wait(queue, QUEUE_READY_TIMEOUT, timeout);
 
         while ((node = client_queue_shift_ready(queue, stop))) {
-            if (!process_request_queue_one(node, timeout)) {
-                client_queue_add(queue, node);
-                if (!stop)
-                    stop = node;
-            }
+            if (process_request_queue_one(node, timeout))
+                continue;
+
+            client_queue_add(queue, node);
+            if (!stop)
+                stop = node;
         }
     }
 
