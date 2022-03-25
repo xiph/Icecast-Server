@@ -270,10 +270,10 @@ static bool client_queue_check_ready(client_queue_t *queue, int timeout, time_t 
     return true;
 }
 
-static bool client_queue_check_ready_wait(client_queue_t *queue, int timeout, time_t connection_timeout)
+static bool client_queue_check_ready_wait(client_queue_t *queue, int timeout, int connection_timeout)
 {
     while (queue->running) {
-        if (client_queue_check_ready(queue, timeout, connection_timeout))
+        if (client_queue_check_ready(queue, timeout, time(NULL) - connection_timeout))
             return true;
 
         if (!queue->head)
@@ -702,16 +702,18 @@ static void * process_request_queue (client_queue_t *queue)
         client_queue_entry_t *stop = NULL;
         client_queue_entry_t *node;
         ice_config_t *config;
-        time_t timeout;
+        int timeout;
+        time_t now;
 
         config = config_get_config();
-        timeout = time(NULL) - config->header_timeout;
+        timeout = config->header_timeout;
         config_release_config();
 
         client_queue_check_ready_wait(queue, QUEUE_READY_TIMEOUT, timeout);
 
+        now = time(NULL);
         while ((node = client_queue_shift_ready(queue, stop))) {
-            if (process_request_queue_one(node, timeout))
+            if (process_request_queue_one(node, now - timeout))
                 continue;
 
             client_queue_add(queue, node);
@@ -767,13 +769,13 @@ static void * process_request_body_queue (client_queue_t *queue)
         client_queue_entry_t *stop = NULL;
         client_queue_entry_t *node;
         ice_config_t *config;
-        time_t timeout;
+        int timeout;
         size_t body_size_limit;
 
         ICECAST_LOG_DDEBUG("Processing body queue.");
 
         config = config_get_config();
-        timeout = time(NULL) - config->body_timeout;
+        timeout = config->body_timeout;
         body_size_limit = config->body_size_limit;
         config_release_config();
 
