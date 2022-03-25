@@ -625,7 +625,10 @@ static bool process_request_queue_one (client_queue_entry_t *node, time_t timeou
 
     if (len > 0) {
         if (client->con->con_time <= timeout) {
-            len = 0;
+            ICECAST_LOG_DEBUG("Timeout on client %p (connection ID: %llu, sock=%R)", client, (long long unsigned int)client->con->id, client->con->sock);
+            client_destroy(client);
+            free_client_node(node);
+            return true;
         } else {
             len = client_read_bytes(client, buf, len);
         }
