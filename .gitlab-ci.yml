@@ -34,15 +34,17 @@ make_dist:
   script: 
     - set -xe # yes i know the scripts will be merged... but for sanities sake
     - ./autogen.sh
-    - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+    - export PKG_CONFIG_PATH=`pwd`/EXTRA-LIBS/lib/pkgconfig
     # we build these in script as gitlab does not support nested expansion in above variables(or it is not well documented)
     - if echo "$CI_COMMIT_REF_NAME" | grep -- '-with-libigloo$'; then export LIBIGLOO_PACKAGE_SUFFIX=`echo "$CI_COMMIT_REF_NAME" | sed 's/-with-libigloo$//'`; elif echo "$CI_COMMIT_REF_NAME" | grep '^devel'; then export LIBIGLOO_PACKAGE_SUFFIX='devel'; else export LIBIGLOO_PACKAGE_SUFFIX='master'; fi
     - export LIBIGLOO_PACKAGE_BASE=$LIBIGLOO_PACKAGE_PREFIX-$LIBIGLOO_PACKAGE_SUFFIX
     - export LIBIGLOO_PACKAGE_ARCHIVE=$LIBIGLOO_PACKAGE_BASE.tar.gz
     - export LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX=$LIBIGLOO_PACKAGE_VERSION-$LIBIGLOO_PACKAGE_SUFFIX
     - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$LIBIGLOO_PROJECT_ID/packages/generic/$LIBIGLOO_PACKAGE_PREFIX/$LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX/$LIBIGLOO_PACKAGE_ARCHIVE"'
-    - tar -C / -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
-    - ls -la /usr/local/lib
+    - tar -C EXTRA-LIBS -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
+    - sed -i "s#/usr/local/#`pwd`/EXTRA-LIBS/#g" `pwd`/EXTRA-LIBS/lib/pkgconfig/*.pc
+    - grep . `pwd`/EXTRA-LIBS/lib/pkgconfig/*.pc
+    - ls -la /EXTRA-LIBS/lib
     - ./configure || cat config.log
     - make
     - make dist
