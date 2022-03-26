@@ -44,6 +44,7 @@ make_dist:
     - tar -C / -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
     - ls -la /usr/local/lib
     - ./configure || cat config.log
+    - make
     - make dist
 
     # Tests
