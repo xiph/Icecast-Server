@@ -1,15 +1,13 @@
 # Build Icecast - test
-make_dist:
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
 
-  tags:
-    - docker
-
+default:
   image: alpine:3.15
 
-  stage: build
+  tags:
+      - docker
+      - linux
 
+.TemplateAlpine:
   before_script:
   - set -xe
   - apk update
@@ -23,38 +21,65 @@ make_dist:
   # Create user to run tests
   #- adduser -s /bin/sh -D -H icecast
 
+make_dist:
+  extends: .TemplateAlpine
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    LIBIGLOO_PACKAGE_PREFIX: "alpine-libigloo-bins"
+    LIBIGLOO_PACKAGE_VERSION: "0.91"
+    LIBIGLOO_PROJECT_ID: 143
+
+  stage: build
+
   script: 
     - set -xe # yes i know the scripts will be merged... but for sanities sake
     - ./autogen.sh
-    - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/143/packages/generic/libigloo-bins/0.0.1-$CI_COMMIT_REF_NAME/libigloo-$CI_COMMIT_REF_NAME.tar.gz"'
-    - tar -C / -xvzf libigloo-$CI_COMMIT_REF_NAME.tar.gz
-    - ls -la /usr/local/lib
+    - mkdir EXTRA-LIBS
+    - export PKG_CONFIG_PATH=`pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig
+    # we build these in script as gitlab does not support nested expansion in above variables(or it is not well documented)
+    - if echo "$CI_COMMIT_REF_NAME" | grep -- '-with-libigloo$'; then export LIBIGLOO_PACKAGE_SUFFIX=`echo "$CI_COMMIT_REF_NAME" | sed 's/-with-libigloo$//'`; elif echo "$CI_COMMIT_REF_NAME" | grep '^devel'; then export LIBIGLOO_PACKAGE_SUFFIX='devel'; else export LIBIGLOO_PACKAGE_SUFFIX='master'; fi
+    - export LIBIGLOO_PACKAGE_BASE=$LIBIGLOO_PACKAGE_PREFIX-$LIBIGLOO_PACKAGE_SUFFIX
+    - export LIBIGLOO_PACKAGE_ARCHIVE=$LIBIGLOO_PACKAGE_BASE.tar.gz
+    - export LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX=$LIBIGLOO_PACKAGE_VERSION-$LIBIGLOO_PACKAGE_SUFFIX
+    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$LIBIGLOO_PROJECT_ID/packages/generic/$LIBIGLOO_PACKAGE_PREFIX/$LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX/$LIBIGLOO_PACKAGE_ARCHIVE"'
+    - tar -C ./EXTRA-LIBS -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
+    - sed -i "s#/usr/local#`pwd`/EXTRA-LIBS/\0#g" `pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig/*.pc
+    - grep . `pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig/*.pc
+    - ls -la `pwd`/EXTRA-LIBS/usr/local/lib
     - ./configure || cat config.log
+    - make
     - make dist
-    - ls -la
-    - make install DESTDIR=`pwd`/_install_base/
-    - ls -la
-    - ls -la _install_base/
-    - cd _install_base/
-    - tar -cvzf ../icecast-$CI_COMMIT_REF_NAME.tar.gz *
-    - cd ..
-    - ls -la
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file libigloo-$CI_COMMIT_REF_NAME.tar.gz "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/icecast-bins/0.0.1-$CI_COMMIT_REF_NAME/icecast-$CI_COMMIT_REF_NAME.tar.gz"'
+
     # Tests
     #- su -c "./tests/admin-tests.sh" icecast
 
   artifacts:
-    paths:
-      - icecast-*.tar.gz
-      - icecast-*.zip
+    untracked: true
     expire_in: 1 week
 
-upload_dist:
-  tags:
-    - docker
-    - linux
+upload_package:
+  extends: .TemplateAlpine
+  stage: deploy
+  variables:
+    ICECAST_SERVER_VERSION: "2.4.99.3"
+    ICECAST_SERVER_PREFIX: "alpine-icecast-server-bins"
 
+  script:
+    - make install DESTDIR=`pwd`/_install_base/
+    - cd _install_base/
+    # see above
+    - export ICECAST_SERVER_BASE=$ICECAST_SERVER_PREFIX-$CI_COMMIT_REF_NAME
+    - export ICECAST_SERVER_ARCHIVE=$ICECAST_SERVER_BASE.tar.gz
+    - export ICECAST_SERVER_VERSION_WITH_SUFFIX=$ICECAST_SERVER_VERSION-$CI_COMMIT_REF_NAME
+    - tar -cvzf ../$ICECAST_SERVER_ARCHIVE *
+    - cd ..
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $ICECAST_SERVER_ARCHIVE "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$ICECAST_SERVER_PREFIX/$ICECAST_SERVER_VERSION_WITH_SUFFIX/$ICECAST_SERVER_ARCHIVE"'  
+
+  needs:
+    - "make_dist"
+
+
+upload_dist:
   only:
     - master
     - devel
@@ -71,10 +96,6 @@ upload_dist:
     - ./ci/osc/handle-osc-upload.sh
 
 upload_dist_release:
-  tags:
-    - docker
-    - linux
-
   only:
     - tags
 
