@@ -43,7 +43,7 @@ make_dist:
     - export LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX=$LIBIGLOO_PACKAGE_VERSION-$LIBIGLOO_PACKAGE_SUFFIX
     - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$LIBIGLOO_PROJECT_ID/packages/generic/$LIBIGLOO_PACKAGE_PREFIX/$LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX/$LIBIGLOO_PACKAGE_ARCHIVE"'
     - tar -C ./EXTRA-LIBS -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
-    - sed -i "s#/usr/local/#`pwd`/EXTRA-LIBS/\0#g" `pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig/*.pc
+    - sed -i "s#/usr/local#`pwd`/EXTRA-LIBS/\0#g" `pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig/*.pc
     - grep . `pwd`/EXTRA-LIBS/usr/local/lib/pkgconfig/*.pc
     - ls -la `pwd`/EXTRA-LIBS/usr/local/lib
     - ./configure || cat config.log
