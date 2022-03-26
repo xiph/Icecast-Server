@@ -1,10 +1,11 @@
 # Build Icecast - test
 
-image: alpine:3.15
+default:
+  image: alpine:3.15
 
-tags:
-    - docker
-    - linux
+  tags:
+      - docker
+      - linux
 
 .TemplateAlpine:
   before_script:
