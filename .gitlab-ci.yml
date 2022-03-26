@@ -36,10 +36,11 @@ make_dist:
     - ./autogen.sh
     - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
     # we build these in script as gitlab does not support nested expansion in above variables(or it is not well documented)
-    - if echo "$CI_COMMIT_REF_NAME" | grep '-with-libigloo$'; then export LIBIGLOO_PACKAGE_SUFFIX=`echo "$CI_COMMIT_REF_NAME" | sed 's/-with-libigloo$//'`; elif echo "$CI_COMMIT_REF_NAME" | grep '^devel'; then export LIBIGLOO_PACKAGE_SUFFIX='devel'; else export LIBIGLOO_PACKAGE_SUFFIX='master'; fi
-    - export LIBIGLOO_PACKAGE_BASE=$LIBIGLOO_PACKAGE_VERSION-$LIBIGLOO_PACKAGE_SUFFIX
+    - if echo "$CI_COMMIT_REF_NAME" | grep -- '-with-libigloo$'; then export LIBIGLOO_PACKAGE_SUFFIX=`echo "$CI_COMMIT_REF_NAME" | sed 's/-with-libigloo$//'`; elif echo "$CI_COMMIT_REF_NAME" | grep '^devel'; then export LIBIGLOO_PACKAGE_SUFFIX='devel'; else export LIBIGLOO_PACKAGE_SUFFIX='master'; fi
+    - export LIBIGLOO_PACKAGE_BASE=$LIBIGLOO_PACKAGE_PREFIX-$LIBIGLOO_PACKAGE_SUFFIX
     - export LIBIGLOO_PACKAGE_ARCHIVE=$LIBIGLOO_PACKAGE_BASE.tar.gz
-    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$LIBIGLOO_PROJECT_ID/packages/generic/$LIBIGLOO_PACKAGE_PREFIX/$LIBIGLOO_PACKAGE_BASE/$LIBIGLOO_PACKAGE_ARCHIVE"'
+    - export LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX=$LIBIGLOO_PACKAGE_VERSION-$LIBIGLOO_PACKAGE_SUFFIX
+    - 'curl -LO --header "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$LIBIGLOO_PROJECT_ID/packages/generic/$LIBIGLOO_PACKAGE_PREFIX/$LIBIGLOO_PACKAGE_VERSION_WITH_SUFFIX/$LIBIGLOO_PACKAGE_ARCHIVE"'
     - tar -C / -xvzf $LIBIGLOO_PACKAGE_ARCHIVE
     - ls -la /usr/local/lib
     - ./configure || cat config.log
@@ -63,11 +64,12 @@ upload_package:
     - make install DESTDIR=`pwd`/_install_base/
     - cd _install_base/
     # see above
-    - export ICECAST_SERVER_BASE=$ICECAST_SERVER_VERSION-$CI_COMMIT_REF_NAME
+    - export ICECAST_SERVER_BASE=$ICECAST_SERVER_PREFIX-$CI_COMMIT_REF_NAME
     - export ICECAST_SERVER_ARCHIVE=$ICECAST_SERVER_BASE.tar.gz
+    - export ICECAST_SERVER_VERSION_WITH_SUFFIX=$ICECAST_SERVER_VERSION-$CI_COMMIT_REF_NAME
     - tar -cvzf ../$ICECAST_SERVER_ARCHIVE *
     - cd ..
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $ICECAST_SERVER_ARCHIVE "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$ICECAST_SERVER_PREFIX/$ICECAST_SERVER_BASE/$ICECAST_SERVER_ARCHIVE"'  
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $ICECAST_SERVER_ARCHIVE "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$ICECAST_SERVER_PREFIX/$ICECAST_SERVER_VERSION_WITH_SUFFIX/$ICECAST_SERVER_ARCHIVE"'  
 
   needs:
     - "make_dist"
