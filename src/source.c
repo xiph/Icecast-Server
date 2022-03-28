@@ -487,45 +487,36 @@ static refbuf_t *get_next_buffer (source_t *source)
 
     if (source->short_delay)
         delay = 0;
-    while (global.running == ICECAST_RUNNING && source->running)
-    {
-        int fds = 0;
-        time_t current = time (NULL);
 
-        if (source->client)
-            fds = util_timed_wait_for_fd (source->con->sock, delay);
-        else
-        {
-            thread_sleep (delay*1000);
+    while (global.running == ICECAST_RUNNING && source->running) {
+        int fds = 0;
+        time_t current = time(NULL);
+
+        if (source->client) {
+            fds = util_timed_wait_for_fd(source->con->sock, delay);
+        } else {
+            thread_sleep(delay*1000);
             source->last_read = current;
         }
 
-        if (current >= source->client_stats_update)
-        {
-            stats_event_args (source->mount, "total_bytes_read",
-                    "%"PRIu64, source->format->read_bytes);
-            stats_event_args (source->mount, "total_bytes_sent",
-                    "%"PRIu64, source->format->sent_bytes);
+        if (current >= source->client_stats_update) {
+            stats_event_args(source->mount, "total_bytes_read", "%"PRIu64, source->format->read_bytes);
+            stats_event_args(source->mount, "total_bytes_sent", "%"PRIu64, source->format->sent_bytes);
             if (source->dumpfile) {
-            stats_event_args(source->mount, "dumpfile_written",
-                    "%"PRIu64, source->dumpfile_written);
+                stats_event_args(source->mount, "dumpfile_written", "%"PRIu64, source->dumpfile_written);
             }
             source->client_stats_update = current + 5;
         }
-        if (fds < 0)
-        {
-            if (! sock_recoverable (sock_error()))
-            {
+        if (fds < 0) {
+            if (!sock_recoverable(sock_error())) {
                 ICECAST_LOG_WARN("Error while waiting on socket, Disconnecting source");
                 source->running = 0;
             }
             break;
         }
-        if (fds == 0)
-        {
+        if (fds == 0) {
             thread_mutex_lock(&source->lock);
-            if ((source->last_read + (time_t)source->timeout) < current)
-            {
+            if ((source->last_read + (time_t)source->timeout) < current) {
                 ICECAST_LOG_DEBUG("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
                 ICECAST_LOG_WARN("Disconnecting source due to socket timeout");
@@ -535,7 +526,7 @@ static refbuf_t *get_next_buffer (source_t *source)
             break;
         }
         source->last_read = current;
-        refbuf = source->format->get_buffer (source);
+        refbuf = source->format->get_buffer(source);
         if (client_body_eof(source->client)) {
             ICECAST_LOG_INFO("End of Stream %s", source->mount);
             source->running = 0;
