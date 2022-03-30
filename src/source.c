@@ -289,7 +289,7 @@ void source_clear_source (source_t *source)
     source->prev_listeners = 0;
     source->hidden = 0;
     source->shoutcast_compat = 0;
-    source->client_stats_update = 0;
+    source->last_stats_update = 0;
     util_dict_free(source->audio_info);
     source->audio_info = NULL;
 
@@ -499,13 +499,14 @@ static refbuf_t *get_next_buffer (source_t *source)
             source->last_read = current;
         }
 
-        if (current >= source->client_stats_update) {
+        if (current >= (source->last_stats_update + 5)) {
+
             stats_event_args(source->mount, "total_bytes_read", "%"PRIu64, source->format->read_bytes);
             stats_event_args(source->mount, "total_bytes_sent", "%"PRIu64, source->format->sent_bytes);
             if (source->dumpfile) {
                 stats_event_args(source->mount, "dumpfile_written", "%"PRIu64, source->dumpfile_written);
             }
-            source->client_stats_update = current + 5;
+            source->last_stats_update = current;
         }
         if (fds < 0) {
             if (!sock_recoverable(sock_error())) {
