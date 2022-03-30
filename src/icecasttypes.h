@@ -22,6 +22,14 @@
 #define XMLNS_LEGACY_STATS      "http://icecast.org/specs/legacystats-0.0.1"
 #define XMLNS_LEGACY_RESPONSE   "http://icecast.org/specs/legacyresponse-0.0.1"
 
+typedef enum {
+    HEALTH_OK = 0,
+    HEALTH_WARNING = 1,
+    HEALTH_ERROR = 2
+} health_t;
+
+#define health_atbest(a, b) (((a) > (b)) ? (a) : (b))
+
 /* ---[ client.[ch] ]--- */
 
 typedef struct _client_tag client_t;

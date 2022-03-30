@@ -167,12 +167,6 @@
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
 
-typedef enum {
-    ADMIN_DASHBOARD_STATUS_OK = 0,
-    ADMIN_DASHBOARD_STATUS_WARNING = 1,
-    ADMIN_DASHBOARD_STATUS_ERROR = 2
-} admin_dashboard_status_t;
-
 typedef struct {
     const char *prefix;
     size_t length;
@@ -1629,19 +1623,10 @@ static void __reportxml_add_maintenance(reportxml_node_t *parent, reportxml_data
     refobject_unref(incident);
 }
 
-static admin_dashboard_status_t command_dashboard__atbest(admin_dashboard_status_t a, admin_dashboard_status_t b)
-{
-    if (a > b) {
-        return a;
-    } else {
-        return b;
-    }
-}
-
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
-static admin_dashboard_status_t command_dashboard__getrlimit(ice_config_t *config, reportxml_node_t *parent, reportxml_database_t *db)
+static health_t command_dashboard__getrlimit(ice_config_t *config, reportxml_node_t *parent, reportxml_database_t *db)
 {
-    admin_dashboard_status_t ret = ADMIN_DASHBOARD_STATUS_OK;
+    health_t ret = HEALTH_OK;
     struct rlimit limit;
 
     if (getrlimit(RLIMIT_NOFILE, &limit) == 0) {
@@ -1651,7 +1636,7 @@ static admin_dashboard_status_t command_dashboard__getrlimit(ice_config_t *confi
                 // We assume that we need one FD per client, at max three per source (e.g. for auth), and at max 24 additional for logfiles and similar.
                 // This is just an estimation.
                 __reportxml_add_maintenance(parent, db, "a93a842a-9664-43a9-b707-7f358066fe2b", "error", "Global client, and source limit is bigger than suitable for current open file limit.", NULL);
-                ret = command_dashboard__atbest(ret, ADMIN_DASHBOARD_STATUS_ERROR);
+                ret = health_atbest(ret, HEALTH_ERROR);
             }
         }
     }
@@ -1674,7 +1659,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     reportxml_t *report = client_get_reportxml("0aa76ea1-bf42-49d1-887e-ca95fb307dc4", NULL, NULL);
     reportxml_node_t *reportnode = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_REPORT, 0);
     reportxml_node_t *incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
-    admin_dashboard_status_t status = ADMIN_DASHBOARD_STATUS_OK;
+    health_t health = HEALTH_OK;
     reportxml_node_t *resource;
     reportxml_node_t *node;
     bool has_sources;
@@ -1713,13 +1698,13 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(node);
 
     if (config->config_problems || has_too_many_clients || !inet6_enabled) {
-        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_ERROR);
+        health = health_atbest(health, HEALTH_ERROR);
     } else if (!has_sources || has_many_clients) {
-        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
+        health = health_atbest(health, HEALTH_WARNING);
     }
 
 #ifdef DEVEL_LOGGING
-    status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
+    health = health_atbest(health, HEALTH_WARNING);
     __reportxml_add_maintenance(reportnode, config->reportxml_db, "c704804e-d3b9-4544-898b-d477078135de", "warning", "Developer logging is active. This mode is not for production.", NULL);
 #endif
 
@@ -1760,17 +1745,17 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     }
 
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
-    status = command_dashboard__atbest(status, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
+    health = health_atbest(health, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
 #endif
 
-    switch (status) {
-        case ADMIN_DASHBOARD_STATUS_OK:
+    switch (health) {
+        case HEALTH_OK:
             reportxml_helper_add_value_enum(resource, "status", "green");
         break;
-        case ADMIN_DASHBOARD_STATUS_WARNING:
+        case HEALTH_WARNING:
             reportxml_helper_add_value_enum(resource, "status", "yellow");
         break;
-        case ADMIN_DASHBOARD_STATUS_ERROR:
+        case HEALTH_ERROR:
             reportxml_helper_add_value_enum(resource, "status", "red");
         break;
     }
