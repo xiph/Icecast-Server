@@ -35,6 +35,7 @@ typedef uint_least32_t source_flags_t;
 #define SOURCE_FLAG_LEGACY_METADATA ((source_flags_t)0x00000004U)
 
 #define SOURCE_FLAGS_CLEARABLE      (SOURCE_FLAG_LEGACY_METADATA)
+#define SOURCE_FLAGS_GOOD           (SOURCE_FLAG_GOT_DATA)
 
 struct source_tag {
     mutex_t lock;
@@ -125,6 +126,7 @@ void source_recheck_mounts (int update_all);
 bool source_write_dumpfile(source_t *source, const void *buffer, size_t len);
 void source_kill_dumpfile(source_t *source);
 health_t source_get_health(source_t *source);
+health_t source_get_health_by_flags(source_flags_t flags);
 void source_set_flags(source_t *source, source_flags_t flags);
 
 extern mutex_t move_clients_mutex;

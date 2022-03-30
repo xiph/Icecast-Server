@@ -470,6 +470,32 @@ xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
     return rootnode;
 }
 
+static inline void admin_build_sourcelist__add_flag(xmlNodePtr parent, source_flags_t flags, source_flags_t flag, bool invert, const char *name)
+{
+    xmlNodePtr node;
+    source_flags_t testflags = SOURCE_FLAGS_GOOD|flag;
+
+    if (invert ? (flags & flag) : !(flags & flag))
+        return;
+
+    node = xmlNewTextChild(parent, NULL, XMLSTR("flag"), XMLSTR(name));
+
+    if (invert)
+        testflags &= ~flag;
+
+    switch (source_get_health_by_flags(testflags)) {
+        case HEALTH_OK:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("info"));
+            break;
+        case HEALTH_WARNING:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("warning"));
+            break;
+        case HEALTH_ERROR:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("error"));
+            break;
+    }
+}
+
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
  * doc even if the source is running */
@@ -531,7 +557,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
 
             if (source->running) {
                 const source_flags_t flags = source->flags;
-                xmlNodePtr flagsnode;
+                xmlNodePtr maintenancenode;
 
                 if (source->client) {
                     snprintf(buf, sizeof(buf), "%lu",
@@ -556,11 +582,12 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                         xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("red"));
                         break;
                 }
-                flagsnode = xmlNewChild(srcnode, NULL, XMLSTR("flags"), NULL);
-                xmlSetProp(flagsnode, XMLSTR("comment"), XMLSTR("This is an experimental node. Do not use!"));
-                if (flags & SOURCE_FLAG_GOT_DATA)
-                    xmlNewTextChild(flagsnode, NULL, XMLSTR("flag"), XMLSTR("got-data"));
+                maintenancenode = xmlNewChild(srcnode, NULL, XMLSTR("maintenance"), NULL);
+                xmlSetProp(maintenancenode, XMLSTR("comment"), XMLSTR("This is an experimental node. Do not use!"));
 
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_GOT_DATA, true, "no-got-data");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);

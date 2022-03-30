@@ -1525,6 +1525,11 @@ void source_kill_dumpfile(source_t *source)
 health_t source_get_health(source_t *source)
 {
     const source_flags_t flags = source->flags;
+    return source_get_health_by_flags(flags);
+}
+
+health_t source_get_health_by_flags(source_flags_t flags)
+{
     health_t health = HEALTH_OK;
 
     if (!(flags & SOURCE_FLAG_GOT_DATA))
