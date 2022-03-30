@@ -952,6 +952,9 @@ int connection_complete_source(source_t *source, int response)
             format_type = FORMAT_TYPE_GENERIC;
         }
 
+        if (format_type == FORMAT_TYPE_GENERIC)
+           source_set_flags(source, SOURCE_FLAG_FORMAT_GENERIC);
+
         if (format_get_plugin (format_type, source) < 0) {
             global_unlock();
             config_release_config();

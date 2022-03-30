@@ -74,17 +74,6 @@ static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
 
-static void source_set_flags(source_t *source, source_flags_t flags)
-{
-    /* check if we need to do anything at all */
-    if ((source->flags & flags) == flags)
-        return;
-
-    thread_mutex_lock(&source->lock);
-    source->flags |= flags;
-    thread_mutex_unlock(&source->lock);
-}
-
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
  * NULL.
@@ -1541,5 +1530,22 @@ health_t source_get_health(source_t *source)
     if (!(flags & SOURCE_FLAG_GOT_DATA))
         health = health_atbest(health, HEALTH_ERROR);
 
+    if (flags & SOURCE_FLAG_FORMAT_GENERIC)
+        health = health_atbest(health, HEALTH_WARNING);
+
+    if (flags & SOURCE_FLAG_LEGACY_METADATA)
+        health = health_atbest(health, HEALTH_ERROR);
+
     return health;
+}
+
+void source_set_flags(source_t *source, source_flags_t flags)
+{
+    /* check if we need to do anything at all */
+    if ((source->flags & flags) == flags)
+        return;
+
+    thread_mutex_lock(&source->lock);
+    source->flags |= flags;
+    thread_mutex_unlock(&source->lock);
 }
