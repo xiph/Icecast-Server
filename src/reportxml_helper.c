@@ -43,6 +43,21 @@ void reportxml_helper_add_value_int(reportxml_node_t *parent, const char *member
     reportxml_helper_add_value(parent, "int", member, buf);
 }
 
+void reportxml_helper_add_value_health(reportxml_node_t *parent, const char *member, health_t val)
+{
+    switch (val) {
+        case HEALTH_OK:
+            reportxml_helper_add_value_enum(parent, member, "green");
+        break;
+        case HEALTH_WARNING:
+            reportxml_helper_add_value_enum(parent, member, "yellow");
+        break;
+        case HEALTH_ERROR:
+            reportxml_helper_add_value_enum(parent, member, "red");
+        break;
+    }
+}
+
 void reportxml_helper_add_text(reportxml_node_t *parent, const char *definition, const char *text)
 {
     reportxml_node_t *textnode = reportxml_node_new(REPORTXML_NODE_TYPE_TEXT, NULL, definition, NULL);

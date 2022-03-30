@@ -1748,17 +1748,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     health = health_atbest(health, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
 #endif
 
-    switch (health) {
-        case HEALTH_OK:
-            reportxml_helper_add_value_enum(resource, "status", "green");
-        break;
-        case HEALTH_WARNING:
-            reportxml_helper_add_value_enum(resource, "status", "yellow");
-        break;
-        case HEALTH_ERROR:
-            reportxml_helper_add_value_enum(resource, "status", "red");
-        break;
-    }
+    reportxml_helper_add_value_health(resource, "status", health);
 
     reportxml_node_add_child(incident, resource);
     refobject_unref(resource);
