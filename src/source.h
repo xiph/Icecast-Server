@@ -15,6 +15,7 @@
 #define __SOURCE_H__
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "common/thread/thread.h"
@@ -26,6 +27,12 @@
 #include "util.h"
 #include "format.h"
 #include "playlist.h"
+
+typedef uint_least32_t source_flags_t;
+
+#define SOURCE_FLAG_GOT_DATA        ((source_flags_t)0x00000001U)
+
+#define SOURCE_FLAGS_CLEARABLE      ((source_flags_t)0)
 
 struct source_tag {
     mutex_t lock;
@@ -43,6 +50,7 @@ struct source_tag {
     /* set to zero to request the source to shutdown without causing a global
      * shutdown */
     int running;
+    source_flags_t flags;
 
     struct _format_plugin_tag *format;
 
@@ -114,6 +122,7 @@ void source_recheck_mounts (int update_all);
 /* Writes a buffer of raw data to a dumpfile. returns true if the write was successful (and complete). */
 bool source_write_dumpfile(source_t *source, const void *buffer, size_t len);
 void source_kill_dumpfile(source_t *source);
+health_t source_get_health(source_t *source);
 
 extern mutex_t move_clients_mutex;
 

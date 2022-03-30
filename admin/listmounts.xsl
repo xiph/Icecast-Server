@@ -16,7 +16,10 @@
                         <section class="box">
                             <h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
                             <!-- Mount nav -->
-                            <xsl:call-template name="mountnav" />
+                            <div class="side-by-side">
+                                <div class="trafficlight colour-{health/text()}">&#160;</div>
+                                <xsl:call-template name="mountnav" />
+                            </div>
                             <xsl:call-template name="player" />
                             <p><xsl:value-of select="listeners" /> Listener(s)</p>
 

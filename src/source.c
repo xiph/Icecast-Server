@@ -74,6 +74,17 @@ static int _free_client(void *key);
 static void _parse_audio_info (source_t *source, const char *s);
 static void source_shutdown (source_t *source);
 
+static void source_set_flags(source_t *source, source_flags_t flags)
+{
+    /* check if we need to do anything at all */
+    if ((source->flags & flags) == flags)
+        return;
+
+    thread_mutex_lock(&source->lock);
+    source->flags |= flags;
+    thread_mutex_unlock(&source->lock);
+}
+
 /* Allocate a new source with the stated mountpoint, if one already
  * exists with that mountpoint in the global source tree then return
  * NULL.
@@ -290,6 +301,7 @@ void source_clear_source (source_t *source)
     source->hidden = 0;
     source->shoutcast_compat = 0;
     source->last_stats_update = 0;
+    source->flags = 0;
     util_dict_free(source->audio_info);
     source->audio_info = NULL;
 
@@ -536,6 +548,9 @@ static refbuf_t *get_next_buffer (source_t *source)
         if (refbuf)
             break;
     }
+
+    if (refbuf)
+        source_set_flags(source, SOURCE_FLAG_GOT_DATA);
 
     return refbuf;
 }
@@ -1012,6 +1027,8 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+
+    source->flags &= ~SOURCE_FLAGS_CLEARABLE;
 
     if (mountinfo)
     {
@@ -1514,4 +1531,15 @@ void source_kill_dumpfile(source_t *source)
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
+}
+
+health_t source_get_health(source_t *source)
+{
+    const source_flags_t flags = source->flags;
+    health_t health = HEALTH_OK;
+
+    if (!(flags & SOURCE_FLAG_GOT_DATA))
+        health = health_atbest(health, HEALTH_ERROR);
+
+    return health;
 }

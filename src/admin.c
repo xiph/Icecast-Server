@@ -530,6 +530,9 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
             config_release_config();
 
             if (source->running) {
+                const source_flags_t flags = source->flags;
+                xmlNodePtr flagsnode;
+
                 if (source->client) {
                     snprintf(buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
@@ -541,6 +544,23 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 }
                 xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"),
                     XMLSTR(source->format->contenttype));
+
+                switch (source_get_health(source)) {
+                    case HEALTH_OK:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("green"));
+                        break;
+                    case HEALTH_WARNING:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("yellow"));
+                        break;
+                    case HEALTH_ERROR:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("red"));
+                        break;
+                }
+                flagsnode = xmlNewChild(srcnode, NULL, XMLSTR("flags"), NULL);
+                xmlSetProp(flagsnode, XMLSTR("comment"), XMLSTR("This is an experimental node. Do not use!"));
+                if (flags & SOURCE_FLAG_GOT_DATA)
+                    xmlNewTextChild(flagsnode, NULL, XMLSTR("flag"), XMLSTR("got-data"));
+
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
