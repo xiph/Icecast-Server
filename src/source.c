@@ -290,6 +290,7 @@ void source_clear_source (source_t *source)
     source->hidden = 0;
     source->shoutcast_compat = 0;
     source->last_stats_update = 0;
+    source->create_time = 0;
     source->flags = 0;
     util_dict_free(source->audio_info);
     source->audio_info = NULL;
@@ -641,6 +642,7 @@ static void source_init (source_t *source)
 {
     char listenurl[512];
     const char *str;
+    time_t now;
 
     str = httpp_getvar(source->parser, "ice-audio-info");
     source->audio_info = util_dict_new();
@@ -668,8 +670,11 @@ static void source_init (source_t *source)
     stats_event_time (source->mount, "stream_start");
     stats_event_time_iso8601 (source->mount, "stream_start_iso8601");
 
+    now = time(NULL);
+    source->last_read = now;
+    source->create_time = now;
+
     ICECAST_LOG_DEBUG("Source creation complete");
-    source->last_read = time (NULL);
     source->prev_listeners = -1;
     source->running = 1;
 

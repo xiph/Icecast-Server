@@ -43,6 +43,7 @@ struct source_tag {
     connection_t *con;
     http_parser_t *parser;
     time_t last_stats_update;
+    time_t create_time;
     
     char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
     mount_identifier_t *identifier;
