@@ -1794,7 +1794,10 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     }
 
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
-    health = health_atbest(health, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
+    if (true) {
+        health_t limits = command_dashboard__getrlimit(config, reportnode, config->reportxml_db);
+        health = health_atbest(health, limits);
+    }
 #endif
 
     reportxml_helper_add_value_health(resource, "status", health);
