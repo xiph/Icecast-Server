@@ -502,12 +502,18 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
 
         if (current >= (source->last_stats_update + 5)) {
+            time_t age = current - source->create_time;
 
             stats_event_args(source->mount, "total_bytes_read", "%"PRIu64, source->format->read_bytes);
             stats_event_args(source->mount, "total_bytes_sent", "%"PRIu64, source->format->sent_bytes);
             if (source->dumpfile) {
                 stats_event_args(source->mount, "dumpfile_written", "%"PRIu64, source->dumpfile_written);
             }
+
+            if (age > 30) { /* TODO: Should this be configurable? */
+                source_set_flags(source, SOURCE_FLAG_AGED);
+            }
+
             source->last_stats_update = current;
         }
         if (fds < 0) {
@@ -1545,6 +1551,9 @@ health_t source_get_health_by_flags(source_flags_t flags)
 
     if (flags & SOURCE_FLAG_LEGACY_METADATA)
         health = health_atbest(health, HEALTH_ERROR);
+
+    if (!(flags & SOURCE_FLAG_AGED))
+        health = health_atbest(health, HEALTH_WARNING);
 
     return health;
 }

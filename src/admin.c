@@ -588,6 +588,7 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_GOT_DATA, true, "no-got-data");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic");
                 admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
