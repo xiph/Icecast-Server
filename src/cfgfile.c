@@ -2654,7 +2654,7 @@ static void _parse_paths(xmlDocPtr      doc,
         } else if (xmlStrcmp(node->name, XMLSTR("tls-allowed-ciphers")) == 0 ||
                    xmlStrcmp(node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
 
-            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <tls-allowed-cipherse> in <tls-context>.");
+            __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use a <tls-allowed-ciphers> in <tls-context>.");
 
             if (__check_node_impl(node, "openssl") != 0) {
                 ICECAST_LOG_WARN("Node %s uses unsupported implementation.", node->name);
