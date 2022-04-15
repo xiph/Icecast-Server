@@ -26,6 +26,7 @@
 #define EVENT_TYPE_LOG  "log"
 #define EVENT_TYPE_EXEC "exec"
 #define EVENT_TYPE_URL  "url"
+#define EVENT_TYPE_TERMINATE "terminate"
 
 #define MAX_REGLISTS_PER_EVENT 8
 
@@ -129,5 +130,6 @@ igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *
 int event_get_exec(event_registration_t *er, config_options_t *options);
 int event_get_url(event_registration_t *er, config_options_t *options);
 int event_get_log(event_registration_t *er, config_options_t *options);
+int event_get_terminate(event_registration_t *er, config_options_t *options);
 
 #endif

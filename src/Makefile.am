@@ -118,6 +118,7 @@ icecast_SOURCES = \
     event_stream.c \
     event_log.c \
     event_exec.c \
+    event_terminate.c \
     acl.c \
     auth.c \
     auth_htpasswd.c \
