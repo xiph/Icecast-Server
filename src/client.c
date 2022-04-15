@@ -388,6 +388,7 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
 
     if (client->encoding) {
         bytes = httpp_encoding_read(client->encoding, buf, len, reader, userdata);
+        ICECAST_LOG_DDEBUG("Reading with encoding from client %p with connection %p (connection ID: %llu, sock=%R) with buf=%p and len=%u returning %i", client, client->con, (long long unsigned int)client->con->id, client->con->sock, buf, len, bytes);
     } else {
         bytes = reader(userdata, buf, len);
     }
