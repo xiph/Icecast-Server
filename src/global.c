@@ -35,13 +35,8 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-    global.listensockets = NULL;
-    global.relays = NULL;
-    global.master_relays = NULL;
-    global.running = 0;
-    global.clients = 0;
-    global.sources = 0;
-    global.sources_legacy = 0;
+    memset(&global, 0, sizeof(global));
+    global.sources_update = time(NULL);
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
     igloo_ro_new(&global.modulecontainer, module_container_t, igloo_instance);
     thread_mutex_create(&_global_mutex);

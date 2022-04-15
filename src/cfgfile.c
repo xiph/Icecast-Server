@@ -80,6 +80,8 @@
 #define CONFIG_RANGE_SOURCE_TIMEOUT     CONFIG_RANGE_CLIENT_TIMEOUT
 #define CONFIG_DEFAULT_BODY_TIMEOUT     (10 + CONFIG_DEFAULT_HEADER_TIMEOUT)
 #define CONFIG_RANGE_BODY_TIMEOUT       CONFIG_RANGE_CLIENT_TIMEOUT
+#define CONFIG_DEFAULT_SERVER_IDLE_TIMEOUT  300
+#define CONFIG_RANGE_SERVER_IDLE_TIMEOUT    15, 3600
 #define CONFIG_DEFAULT_MASTER_USERNAME  "relay"
 #define CONFIG_DEFAULT_SHOUTCAST_MOUNT  "/stream"
 #define CONFIG_DEFAULT_SHOUTCAST_USER   "source"
@@ -1121,6 +1123,8 @@ static void _set_defaults(ice_config_t *configuration)
     configuration
         ->body_timeout = CONFIG_DEFAULT_BODY_TIMEOUT;
     configuration
+        ->server_idle_timeout = CONFIG_DEFAULT_SERVER_IDLE_TIMEOUT;
+    configuration
         ->shoutcast_mount = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_MOUNT);
     configuration
         ->shoutcast_user = (char *) xmlCharStrdup(CONFIG_DEFAULT_SHOUTCAST_USER);
@@ -1469,6 +1473,8 @@ static void _parse_limits(xmlDocPtr     doc,
             __read_int(configuration, doc, node, &configuration->source_timeout, CONFIG_RANGE_SOURCE_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("body-timeout")) == 0) {
             __read_int(configuration, doc, node, &configuration->body_timeout, CONFIG_RANGE_BODY_TIMEOUT);
+        } else if (xmlStrcmp(node->name, XMLSTR("server-idle-timeout")) == 0) {
+            __read_int(configuration, doc, node, &configuration->server_idle_timeout, CONFIG_RANGE_SERVER_IDLE_TIMEOUT);
         } else if (xmlStrcmp(node->name, XMLSTR("burst-on-connect")) == 0) {
             __found_bad_tag(configuration, node, BTR_OBSOLETE, "Use <burst-size>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);

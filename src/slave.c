@@ -58,6 +58,7 @@
 #include "logging.h"
 #include "source.h"
 #include "format.h"
+#include "event.h"
 
 #define CATMODULE "slave"
 
@@ -855,6 +856,7 @@ static void *_slave_thread(void *arg)
 {
     ice_config_t *config;
     unsigned int interval = 0;
+    bool idlemode = false;
 
     (void)arg;
 
@@ -871,6 +873,12 @@ static void *_slave_thread(void *arg)
     while (true) {
         relay_t *cleanup_relays = NULL;
         int skip_timer = 0;
+        bool active;
+        int server_idle_timeout;
+
+        config = config_get_config();
+        server_idle_timeout = config->server_idle_timeout;
+        config_release_config();
 
         /* re-read xml file if requested */
         global_lock();
@@ -878,7 +886,16 @@ static void *_slave_thread(void *arg)
             config_reread_config();
             global.schedule_config_reread = 0;
         }
+        active = global.sources || (global.sources_update + server_idle_timeout) > time(NULL);
         global_unlock();
+
+        if (idlemode && active) {
+            event_emit_global("icecast-active");
+            idlemode = false;
+        } else if (!idlemode && !active) {
+            event_emit_global("icecast-idle");
+            idlemode = true;
+        }
 
         thread_sleep(1000000);
         thread_mutex_lock(&_slave_mutex);

@@ -964,6 +964,7 @@ int connection_complete_source(source_t *source, int response)
         }
 
         global.sources++;
+        global.sources_update = time(NULL);
         stats_event_args(NULL, "sources", "%d", global.sources);
         global_unlock();
 

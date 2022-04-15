@@ -34,6 +34,7 @@ typedef struct ice_global_tag
     int running;
 
     int sources;
+    time_t sources_update;
     int sources_legacy;
     int clients;
     int schedule_config_reread;

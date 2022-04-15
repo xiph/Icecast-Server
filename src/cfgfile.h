@@ -249,6 +249,7 @@ struct ice_config_tag {
     int header_timeout;
     int source_timeout;
     int body_timeout;
+    int server_idle_timeout;
     int fileserve;
     int on_demand; /* global setting for all relays */
 
