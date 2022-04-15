@@ -100,4 +100,9 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 void event_emit_clientevent(const char *trigger, client_t *client, const char *uri);
 #define event_emit_global(x) event_emit_clientevent((x), NULL, NULL)
 
+/* Implementations */
+int event_get_exec(event_registration_t *er, config_options_t *options);
+int event_get_url(event_registration_t *er, config_options_t *options);
+int event_get_log(event_registration_t *er, config_options_t *options);
+
 #endif

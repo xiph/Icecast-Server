@@ -43,9 +43,6 @@ noinst_HEADERS = \
     fastevent.h \
     navigation.h \
     event.h \
-    event_log.h \
-    event_exec.h \
-    event_url.h \
     acl.h auth.h \
     metadata_xiph.h \
     format.h \

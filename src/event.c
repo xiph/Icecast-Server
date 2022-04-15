@@ -16,9 +16,6 @@
 #include <stdbool.h>
 
 #include "event.h"
-#include "event_log.h"
-#include "event_exec.h"
-#include "event_url.h"
 #include "fastevent.h"
 #include "logging.h"
 #include "admin.h"
