@@ -300,7 +300,7 @@ static inline void client_reuseconnection(client_t *client) {
 void client_destroy(client_t *client)
 {
     if (client == NULL) {
-        ICECAST_LOG_ERROR("Called with client=NULL. This is a BUG.");
+        ICECAST_LOG_DERROR("Called with client=NULL. This is a BUG.");
         return;
     }
 
