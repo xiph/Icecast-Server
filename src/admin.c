@@ -470,7 +470,7 @@ xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
     return rootnode;
 }
 
-static inline void admin_build_sourcelist__add_flag(xmlNodePtr parent, source_flags_t flags, source_flags_t flag, bool invert, const char *name)
+static inline void admin_build_sourcelist__add_flag(xmlNodePtr parent, source_flags_t flags, source_flags_t flag, bool invert, const char *name, const char *description)
 {
     xmlNodePtr node;
     source_flags_t testflags = SOURCE_FLAGS_GOOD|flag;
@@ -478,7 +478,8 @@ static inline void admin_build_sourcelist__add_flag(xmlNodePtr parent, source_fl
     if (invert ? (flags & flag) : !(flags & flag))
         return;
 
-    node = xmlNewTextChild(parent, NULL, XMLSTR("flag"), XMLSTR(name));
+    node = xmlNewTextChild(parent, NULL, XMLSTR("flag"), XMLSTR(description));
+    xmlSetProp(node, XMLSTR("value"), XMLSTR(name));
 
     if (invert)
         testflags &= ~flag;
@@ -585,10 +586,10 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 maintenancenode = xmlNewChild(srcnode, NULL, XMLSTR("maintenance"), NULL);
                 xmlSetProp(maintenancenode, XMLSTR("comment"), XMLSTR("This is an experimental node. Do not use!"));
 
-                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_GOT_DATA, true, "no-got-data");
-                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic");
-                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata");
-                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_GOT_DATA, true, "no-got-data", "No data has yet been received.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic", "Legacy or unsupported streaming format is used.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata", "Legacy metadata on non-legacy source received. This is likely a bug in the source client.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged", "The stream did not mature yet.");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
