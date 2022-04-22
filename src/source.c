@@ -290,6 +290,8 @@ void source_clear_source (source_t *source)
     source->hidden = 0;
     source->shoutcast_compat = 0;
     source->last_stats_update = 0;
+    source->create_time = 0;
+    source->flags = 0;
     util_dict_free(source->audio_info);
     source->audio_info = NULL;
 
@@ -500,12 +502,18 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
 
         if (current >= (source->last_stats_update + 5)) {
+            time_t age = current - source->create_time;
 
             stats_event_args(source->mount, "total_bytes_read", "%"PRIu64, source->format->read_bytes);
             stats_event_args(source->mount, "total_bytes_sent", "%"PRIu64, source->format->sent_bytes);
             if (source->dumpfile) {
                 stats_event_args(source->mount, "dumpfile_written", "%"PRIu64, source->dumpfile_written);
             }
+
+            if (age > 30) { /* TODO: Should this be configurable? */
+                source_set_flags(source, SOURCE_FLAG_AGED);
+            }
+
             source->last_stats_update = current;
         }
         if (fds < 0) {
@@ -536,6 +544,9 @@ static refbuf_t *get_next_buffer (source_t *source)
         if (refbuf)
             break;
     }
+
+    if (refbuf)
+        source_set_flags(source, SOURCE_FLAG_GOT_DATA);
 
     return refbuf;
 }
@@ -637,6 +648,7 @@ static void source_init (source_t *source)
 {
     char listenurl[512];
     const char *str;
+    time_t now;
 
     str = httpp_getvar(source->parser, "ice-audio-info");
     source->audio_info = util_dict_new();
@@ -664,8 +676,11 @@ static void source_init (source_t *source)
     stats_event_time (source->mount, "stream_start");
     stats_event_time_iso8601 (source->mount, "stream_start_iso8601");
 
+    now = time(NULL);
+    source->last_read = now;
+    source->create_time = now;
+
     ICECAST_LOG_DEBUG("Source creation complete");
-    source->last_read = time (NULL);
     source->prev_listeners = -1;
     source->running = 1;
 
@@ -1012,6 +1027,8 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
+
+    source->flags &= ~SOURCE_FLAGS_CLEARABLE;
 
     if (mountinfo)
     {
@@ -1514,4 +1531,40 @@ void source_kill_dumpfile(source_t *source)
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
+}
+
+health_t source_get_health(source_t *source)
+{
+    const source_flags_t flags = source->flags;
+    return source_get_health_by_flags(flags);
+}
+
+health_t source_get_health_by_flags(source_flags_t flags)
+{
+    health_t health = HEALTH_OK;
+
+    if (!(flags & SOURCE_FLAG_GOT_DATA))
+        health = health_atbest(health, HEALTH_ERROR);
+
+    if (flags & SOURCE_FLAG_FORMAT_GENERIC)
+        health = health_atbest(health, HEALTH_WARNING);
+
+    if (flags & SOURCE_FLAG_LEGACY_METADATA)
+        health = health_atbest(health, HEALTH_ERROR);
+
+    if (!(flags & SOURCE_FLAG_AGED))
+        health = health_atbest(health, HEALTH_WARNING);
+
+    return health;
+}
+
+void source_set_flags(source_t *source, source_flags_t flags)
+{
+    /* check if we need to do anything at all */
+    if ((source->flags & flags) == flags)
+        return;
+
+    thread_mutex_lock(&source->lock);
+    source->flags |= flags;
+    thread_mutex_unlock(&source->lock);
 }

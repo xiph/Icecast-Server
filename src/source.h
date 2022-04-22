@@ -15,6 +15,7 @@
 #define __SOURCE_H__
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "common/thread/thread.h"
@@ -27,12 +28,23 @@
 #include "format.h"
 #include "playlist.h"
 
+typedef uint_least32_t source_flags_t;
+
+#define SOURCE_FLAG_GOT_DATA        ((source_flags_t)0x00000001U)
+#define SOURCE_FLAG_FORMAT_GENERIC  ((source_flags_t)0x00000002U)
+#define SOURCE_FLAG_LEGACY_METADATA ((source_flags_t)0x00000004U)
+#define SOURCE_FLAG_AGED            ((source_flags_t)0x00000008U)
+
+#define SOURCE_FLAGS_CLEARABLE      (SOURCE_FLAG_LEGACY_METADATA)
+#define SOURCE_FLAGS_GOOD           (SOURCE_FLAG_GOT_DATA|SOURCE_FLAG_AGED)
+
 struct source_tag {
     mutex_t lock;
     client_t *client;
     connection_t *con;
     http_parser_t *parser;
     time_t last_stats_update;
+    time_t create_time;
     
     char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
     mount_identifier_t *identifier;
@@ -43,6 +55,7 @@ struct source_tag {
     /* set to zero to request the source to shutdown without causing a global
      * shutdown */
     int running;
+    source_flags_t flags;
 
     struct _format_plugin_tag *format;
 
@@ -114,6 +127,9 @@ void source_recheck_mounts (int update_all);
 /* Writes a buffer of raw data to a dumpfile. returns true if the write was successful (and complete). */
 bool source_write_dumpfile(source_t *source, const void *buffer, size_t len);
 void source_kill_dumpfile(source_t *source);
+health_t source_get_health(source_t *source);
+health_t source_get_health_by_flags(source_flags_t flags);
+void source_set_flags(source_t *source, source_flags_t flags);
 
 extern mutex_t move_clients_mutex;
 

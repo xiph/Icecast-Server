@@ -16,9 +16,23 @@
                         <section class="box">
                             <h3 class="box_title">Mountpoint <code><xsl:value-of select="@mount" /></code></h3>
                             <!-- Mount nav -->
-                            <xsl:call-template name="mountnav" />
+                            <div class="side-by-side">
+                                <div class="trafficlight colour-{health/text()}">&#160;</div>
+                                <xsl:call-template name="mountnav" />
+                            </div>
                             <xsl:call-template name="player" />
                             <p><xsl:value-of select="listeners" /> Listener(s)</p>
+
+                            <xsl:if test="maintenance/*">
+                                <h4>Maintenance</h4>
+                                <ul class="maintenance-container">
+                                    <xsl:for-each select="maintenance/*">
+                                        <li class="maintenance-level-{@maintenance-level}">
+                                            <p><xsl:value-of select="text()" /></p>
+                                        </li>
+                                    </xsl:for-each>
+                                </ul>
+                            </xsl:if>
 
                             <!-- Mount Authentication -->
                             <xsl:if test="authentication">

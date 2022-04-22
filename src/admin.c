@@ -167,12 +167,6 @@
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
 
-typedef enum {
-    ADMIN_DASHBOARD_STATUS_OK = 0,
-    ADMIN_DASHBOARD_STATUS_WARNING = 1,
-    ADMIN_DASHBOARD_STATUS_ERROR = 2
-} admin_dashboard_status_t;
-
 typedef struct {
     const char *prefix;
     size_t length;
@@ -476,6 +470,33 @@ xmlNodePtr admin_build_rootnode(xmlDocPtr doc, const char *name)
     return rootnode;
 }
 
+static inline void admin_build_sourcelist__add_flag(xmlNodePtr parent, source_flags_t flags, source_flags_t flag, bool invert, const char *name, const char *description)
+{
+    xmlNodePtr node;
+    source_flags_t testflags = SOURCE_FLAGS_GOOD|flag;
+
+    if (invert ? (flags & flag) : !(flags & flag))
+        return;
+
+    node = xmlNewTextChild(parent, NULL, XMLSTR("flag"), XMLSTR(description));
+    xmlSetProp(node, XMLSTR("value"), XMLSTR(name));
+
+    if (invert)
+        testflags &= ~flag;
+
+    switch (source_get_health_by_flags(testflags)) {
+        case HEALTH_OK:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("info"));
+            break;
+        case HEALTH_WARNING:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("warning"));
+            break;
+        case HEALTH_ERROR:
+            xmlSetProp(node, XMLSTR("maintenance-level"), XMLSTR("error"));
+            break;
+    }
+}
+
 /* build an XML doc containing information about currently running sources.
  * If a mountpoint is passed then that source will not be added to the XML
  * doc even if the source is running */
@@ -536,6 +557,9 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
             config_release_config();
 
             if (source->running) {
+                const source_flags_t flags = source->flags;
+                xmlNodePtr maintenancenode;
+
                 if (source->client) {
                     snprintf(buf, sizeof(buf), "%lu",
                         (unsigned long)(now - source->con->con_time));
@@ -547,6 +571,25 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
                 }
                 xmlNewTextChild(srcnode, NULL, XMLSTR("content-type"),
                     XMLSTR(source->format->contenttype));
+
+                switch (source_get_health(source)) {
+                    case HEALTH_OK:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("green"));
+                        break;
+                    case HEALTH_WARNING:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("yellow"));
+                        break;
+                    case HEALTH_ERROR:
+                        xmlNewTextChild(srcnode, NULL, XMLSTR("health"), XMLSTR("red"));
+                        break;
+                }
+                maintenancenode = xmlNewChild(srcnode, NULL, XMLSTR("maintenance"), NULL);
+                xmlSetProp(maintenancenode, XMLSTR("comment"), XMLSTR("This is an experimental node. Do not use!"));
+
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_GOT_DATA, true, "no-got-data", "No data has yet been received.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_FORMAT_GENERIC, false, "format-generic", "Legacy or unsupported streaming format is used.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_LEGACY_METADATA, false, "legacy-metadata", "Legacy metadata on non-legacy source received. This is likely a bug in the source client.");
+                admin_build_sourcelist__add_flag(maintenancenode, flags, SOURCE_FLAG_AGED, true, "no-aged", "The stream did not mature yet.");
             }
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
@@ -1212,6 +1255,7 @@ static void command_metadata(client_t *client,
     if (source->parser && source->parser->req_type == httpp_req_put) {
         ICECAST_LOG_ERROR("Got legacy SOURCE-style metadata update command on "
             "source connected with PUT at mountpoint %H", source->mount);
+        source_set_flags(source, SOURCE_FLAG_LEGACY_METADATA);
     }
 
     COMMAND_REQUIRE(client, "mode", action);
@@ -1256,6 +1300,7 @@ static void command_metadata(client_t *client,
     } else {
         ICECAST_LOG_ERROR("Got legacy shoutcast-style metadata update command "
             "on source that does not accept it at mountpoint %H", source->mount);
+        source_set_flags(source, SOURCE_FLAG_LEGACY_METADATA);
 
         admin_send_response_simple(client, source, response, "Mountpoint will not accept URL updates", 1);
         return;
@@ -1629,19 +1674,10 @@ static void __reportxml_add_maintenance(reportxml_node_t *parent, reportxml_data
     refobject_unref(incident);
 }
 
-static admin_dashboard_status_t command_dashboard__atbest(admin_dashboard_status_t a, admin_dashboard_status_t b)
-{
-    if (a > b) {
-        return a;
-    } else {
-        return b;
-    }
-}
-
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
-static admin_dashboard_status_t command_dashboard__getrlimit(ice_config_t *config, reportxml_node_t *parent, reportxml_database_t *db)
+static health_t command_dashboard__getrlimit(ice_config_t *config, reportxml_node_t *parent, reportxml_database_t *db)
 {
-    admin_dashboard_status_t ret = ADMIN_DASHBOARD_STATUS_OK;
+    health_t ret = HEALTH_OK;
     struct rlimit limit;
 
     if (getrlimit(RLIMIT_NOFILE, &limit) == 0) {
@@ -1651,7 +1687,7 @@ static admin_dashboard_status_t command_dashboard__getrlimit(ice_config_t *confi
                 // We assume that we need one FD per client, at max three per source (e.g. for auth), and at max 24 additional for logfiles and similar.
                 // This is just an estimation.
                 __reportxml_add_maintenance(parent, db, "a93a842a-9664-43a9-b707-7f358066fe2b", "error", "Global client, and source limit is bigger than suitable for current open file limit.", NULL);
-                ret = command_dashboard__atbest(ret, ADMIN_DASHBOARD_STATUS_ERROR);
+                ret = health_atbest(ret, HEALTH_ERROR);
             }
         }
     }
@@ -1674,7 +1710,7 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     reportxml_t *report = client_get_reportxml("0aa76ea1-bf42-49d1-887e-ca95fb307dc4", NULL, NULL);
     reportxml_node_t *reportnode = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_REPORT, 0);
     reportxml_node_t *incident = reportxml_get_node_by_type(report, REPORTXML_NODE_TYPE_INCIDENT, 0);
-    admin_dashboard_status_t status = ADMIN_DASHBOARD_STATUS_OK;
+    health_t health = HEALTH_OK;
     reportxml_node_t *resource;
     reportxml_node_t *node;
     bool has_sources;
@@ -1713,13 +1749,13 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(node);
 
     if (config->config_problems || has_too_many_clients || !inet6_enabled) {
-        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_ERROR);
+        health = health_atbest(health, HEALTH_ERROR);
     } else if (!has_sources || has_many_clients) {
-        status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
+        health = health_atbest(health, HEALTH_WARNING);
     }
 
 #ifdef DEVEL_LOGGING
-    status = command_dashboard__atbest(status, ADMIN_DASHBOARD_STATUS_WARNING);
+    health = health_atbest(health, HEALTH_WARNING);
     __reportxml_add_maintenance(reportnode, config->reportxml_db, "c704804e-d3b9-4544-898b-d477078135de", "warning", "Developer logging is active. This mode is not for production.", NULL);
 #endif
 
@@ -1760,20 +1796,13 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     }
 
 #if HAVE_GETRLIMIT && HAVE_SYS_RESOURCE_H
-    status = command_dashboard__atbest(status, command_dashboard__getrlimit(config, reportnode, config->reportxml_db));
+    if (true) {
+        health_t limits = command_dashboard__getrlimit(config, reportnode, config->reportxml_db);
+        health = health_atbest(health, limits);
+    }
 #endif
 
-    switch (status) {
-        case ADMIN_DASHBOARD_STATUS_OK:
-            reportxml_helper_add_value_enum(resource, "status", "green");
-        break;
-        case ADMIN_DASHBOARD_STATUS_WARNING:
-            reportxml_helper_add_value_enum(resource, "status", "yellow");
-        break;
-        case ADMIN_DASHBOARD_STATUS_ERROR:
-            reportxml_helper_add_value_enum(resource, "status", "red");
-        break;
-    }
+    reportxml_helper_add_value_health(resource, "status", health);
 
     reportxml_node_add_child(incident, resource);
     refobject_unref(resource);
