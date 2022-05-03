@@ -636,9 +636,11 @@ static void source_open_dumpfile(source_t *source) {
         source->dumpfile_start = curtime;
         stats_event(source->mount, "dumpfile_written", "0");
         stats_event_time_iso8601(source->mount, "dumpfile_start");
+        event_emit_clientevent("dumpfile-opened", NULL, source->mount);
     } else {
         ICECAST_LOG_WARN("Cannot open dump file \"%s\" for appending: %s, disabling.",
                 source->dumpfilename, strerror(errno));
+        event_emit_clientevent("dumpfile-error", NULL, source->mount);
     }
 }
 
@@ -1532,6 +1534,7 @@ void source_kill_dumpfile(source_t *source)
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
+    event_emit_clientevent("dumpfile-closed", NULL, source->mount);
 }
 
 health_t source_get_health(source_t *source)
