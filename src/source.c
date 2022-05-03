@@ -226,11 +226,9 @@ void source_clear_source (source_t *source)
     if (source->client && source->format)
         source->client->con->sent_bytes = source->format->read_bytes;
 
-    if (source->dumpfile)
-    {
+    if (source->dumpfile) {
         ICECAST_LOG_INFO("Closing dumpfile for %s", source->mount);
-        fclose (source->dumpfile);
-        source->dumpfile = NULL;
+        source_kill_dumpfile(source);
     }
 
     /* lets kick off any clients that are left on here */
