@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp Schafft <lion@lion.leolix.org>
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -16,6 +16,7 @@
 
 #include "acl.h"
 #include "admin.h"
+#include "util.h"
 
 #include <stdio.h>
 
@@ -26,12 +27,15 @@ struct acl_tag {
     /* reference counter */
     size_t refcount;
 
+    /* name, may be NULL if name was given in config */
+    char *name;
+
     /* allowed methods */
     acl_policy_t method[httpp_req_unknown+1];
 
     /* admin/ interface */
     struct {
-        int command;
+        admin_command_id_t command;
         acl_policy_t policy;
     } admin_commands[MAX_ADMIN_COMMANDS];
     size_t admin_commands_len;
@@ -43,15 +47,18 @@ struct acl_tag {
     /* mount specific functons */
     time_t max_connection_duration;
     size_t max_connections_per_user;
+
+    /* HTTP headers to send to clients using this role */
+    ice_config_http_header_t *http_headers;
 };
 
 /* some string util functions */
 static inline void __skip_spaces(const char **str)
 {
- register const char * p;
+    register const char * p;
 
- for (p = *str; *p == ' '; p++);
- *str = p;
+    for (p = *str; *p == ' '; p++);
+    *str = p;
 }
 
 int acl_set_ANY_str(acl_t           *acl,
@@ -101,10 +108,10 @@ acl_t *acl_new(void)
     ret->refcount = 1;
 
     acl_set_method_str(ret, ACL_POLICY_DENY, "*");
-    acl_set_method_str(ret, ACL_POLICY_ALLOW, "get");
+    acl_set_method_str(ret, ACL_POLICY_ALLOW, "get,options");
 
     acl_set_admin_str(ret, ACL_POLICY_DENY, "*");
-    acl_set_admin_str(ret, ACL_POLICY_ALLOW, "buildm3u");
+    acl_set_admin_str(ret, ACL_POLICY_ALLOW, "buildm3u,publicstats,publicstats.json");
 
     acl_set_web_policy(ret, ACL_POLICY_ALLOW);
 
@@ -114,7 +121,7 @@ acl_t *acl_new(void)
     return ret;
 }
 
-acl_t *acl_new_from_xml_node(xmlNodePtr node)
+acl_t *acl_new_from_xml_node(ice_config_t *configuration, xmlNodePtr node)
 {
     acl_t * ret;
     char * tmp;
@@ -126,6 +133,8 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
     ret = acl_new();
     if (!ret)
         return NULL;
+
+    ret->name = (char*)xmlGetProp(node, XMLSTR("name"));
 
     prop = node->properties;
     while (prop) {
@@ -194,6 +203,20 @@ acl_t *acl_new_from_xml_node(xmlNodePtr node)
         prop = prop->next;
     }
 
+    /* if we're new style configured try to read child nodes */
+    if (xmlStrcmp(node->name, XMLSTR("acl")) == 0) {
+        xmlNodePtr child = node->xmlChildrenNode;
+        do {
+            if (child == NULL)
+                break;
+            if (xmlIsBlankNode(child))
+                continue;
+            if (xmlStrcmp(child->name, XMLSTR("http-headers")) == 0) {
+                config_parse_http_headers(child->xmlChildrenNode, &(ret->http_headers), configuration);
+            }
+        } while ((child = child->next));
+    }
+
     return ret;
 }
 
@@ -214,7 +237,19 @@ void acl_release(acl_t * acl)
     if (acl->refcount)
         return;
 
+    config_clear_http_header(acl->http_headers);
+
+    if (acl->name)
+        xmlFree(acl->name);
+
     free(acl);
+}
+
+const char *acl_get_name(acl_t * acl)
+{
+    if (!acl)
+        return NULL;
+    return acl->name;
 }
 
 /* HTTP Method specific functions */
@@ -253,7 +288,7 @@ int acl_set_admin_str__callbck(acl_t        *acl,
                                const char   *str)
 {
     size_t read_i, write_i;
-    int command = admin_get_command(str);
+    admin_command_id_t command = admin_get_command(str);
 
    if (command == ADMIN_COMMAND_ERROR)
        return -1;
@@ -279,7 +314,7 @@ int acl_set_admin_str__callbck(acl_t        *acl,
    return 0;
 }
 
-acl_policy_t acl_test_admin(acl_t *acl, int command)
+acl_policy_t acl_test_admin(acl_t *acl, admin_command_id_t command)
 {
     size_t i;
 
@@ -347,4 +382,12 @@ ssize_t acl_get_max_connections_per_user(acl_t *acl)
         return -1;
 
     return acl->max_connections_per_user;
+}
+
+const ice_config_http_header_t *acl_get_http_headers(acl_t * acl)
+{
+    if (!acl)
+        return NULL;
+
+    return acl->http_headers;
 }

@@ -9,7 +9,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* format_mp3.c
@@ -24,14 +24,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #ifdef HAVE_STRINGS_H
 # include <strings.h>
 #endif
 
+#include "global.h"
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
+#include "connection.h"
 
 #include "stats.h"
 #include "format.h"
@@ -55,7 +58,7 @@ static refbuf_t *mp3_get_no_meta (source_t *source);
 static int  format_mp3_create_client_data (source_t *source, client_t *client);
 static void free_mp3_client_data (client_t *client);
 static int format_mp3_write_buf_to_client(client_t *client);
-static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf);
+static void write_mp3_to_file (source_t *source, refbuf_t *refbuf);
 static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *in_value, const char *charset);
 static void format_mp3_apply_settings(client_t *client, format_plugin_t *format, mount_proxy *mount);
 
@@ -117,6 +120,9 @@ int format_mp3_get_plugin(source_t *source)
     source->format = plugin;
     thread_mutex_create(&state->url_lock);
 
+    /* we are in global locked state here, locked by connection_complete_source(). */
+    global.sources_legacy++;
+
     return 0;
 }
 
@@ -136,11 +142,16 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
         return;
     }
 
-    if (in_value)
-    {
-        value = util_conv_string (in_value, charset, plugin->charset);
+    if (in_value) {
+        if (!charset)
+            charset = plugin->charset;
+
+        value = util_conv_string (in_value, charset, "UTF-8");
         if (value == NULL)
-            value = strdup (in_value);
+            value = strdup(in_value);
+    } else {
+        thread_mutex_unlock(&source_mp3->url_lock);
+        return;
     }
 
     if (strcmp(tag, "title") == 0 || strcmp(tag, "song") == 0) {
@@ -158,7 +169,7 @@ static void mp3_set_tag (format_plugin_t *plugin, const char *tag, const char *i
 }
 
 
-static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigned int meta_len)
+static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigned int meta_len, bool update_vc)
 {
     if (metadata)
     {
@@ -179,6 +190,9 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
                 memcpy (p, metadata+13, len);
                 logging_playlist (source->mount, p, source->listeners);
                 stats_event_conv (source->mount, "title", p, source->format->charset);
+                stats_event_conv (source->mount, "display-title", p, source->format->charset);
+                if (update_vc)
+                    format_set_vorbiscomment(source->format, MP3_METADATA_TITLE, p);
                 yp_touch (source->mount);
                 free (p);
                 playlist_push_track(source->history, &source->format->vc);
@@ -215,8 +229,10 @@ static void format_mp3_apply_settings (client_t *client, format_plugin_t *format
         }
     }
 
-    if (format->charset == NULL)
-        format->charset = strdup ("ISO8859-1");
+    if (format->charset == NULL) {
+        ICECAST_LOG_INFO("No charset given for mount %#H with source client %zu, assuming ISO8859-1", mount ? mount->mountname : NULL, client->con->id);
+        format->charset = strdup("ISO8859-1");
+    }
 
     ICECAST_LOG_DEBUG("sending metadata interval %d", source_mp3->interval);
     ICECAST_LOG_DEBUG("charset %s", format->charset);
@@ -230,38 +246,56 @@ static void mp3_set_title(source_t *source)
 {
     const char streamtitle[] = "StreamTitle='";
     const char streamurl[] = "StreamUrl='";
-    const char *url_artist = vorbis_comment_query(&source->format->vc, MP3_METADATA_ARTIST, 0);
-    const char *url_title = vorbis_comment_query(&source->format->vc, MP3_METADATA_TITLE, 0);
-    const char *url = vorbis_comment_query(&source->format->vc, MP3_METADATA_URL, 0);
+    const char *in_url_artist = vorbis_comment_query(&source->format->vc, MP3_METADATA_ARTIST, 0);
+    const char *in_url_title = vorbis_comment_query(&source->format->vc, MP3_METADATA_TITLE, 0);
+    const char *in_url = vorbis_comment_query(&source->format->vc, MP3_METADATA_URL, 0);
+    char *url_artist = NULL;
+    char *url_title = NULL;
+    char *url = NULL;
     size_t size;
     unsigned char len_byte;
     refbuf_t *p;
     unsigned int len = sizeof(streamtitle) + 2; /* the StreamTitle, quotes, ; and null */
     mp3_state *source_mp3 = source->format->_state;
+    const char *charset = source->format->charset;
 
     /* make sure the url data does not disappear from under us */
     thread_mutex_lock (&source_mp3->url_lock);
 
     /* work out message length */
-    if (url_artist)
-        len += strlen (url_artist);
-    if (url_title)
-        len += strlen (url_title);
+    if (in_url_artist) {
+        url_artist = util_conv_string(in_url_artist, "UTF-8", charset);
+        if (url_artist)
+            len += strlen(url_artist);
+    }
+
+    if (in_url_title) {
+        url_title = util_conv_string(in_url_title, "UTF-8", charset);
+        if (url_title)
+            len += strlen(url_title);
+    }
+
     if (url_artist && url_title)
         len += 3;
-    if (source_mp3->inline_url)
-    {
+
+    if (source_mp3->inline_url) {
         char *end = strstr (source_mp3->inline_url, "';");
         if (end)
             len += end - source_mp3->inline_url+2;
+    } else if (in_url) {
+        url = util_conv_string(in_url, "UTF-8", charset);
+        if (url)
+            len += strlen(url) + strlen(streamurl) + 2;
     }
-    else if (url)
-        len += strlen (url) + strlen (streamurl) + 2;
+
 #define MAX_META_LEN 255*16
     if (len > MAX_META_LEN)
     {
         thread_mutex_unlock (&source_mp3->url_lock);
         ICECAST_LOG_WARN("Metadata too long at %d chars", len);
+        free(url_artist);
+        free(url_title);
+        free(url);
         return;
     }
     /* work out the metadata len byte */
@@ -301,12 +335,16 @@ static void mp3_set_title(source_t *source)
                 snprintf (p->data+r, size-r, "StreamUrl='%s';", url);
         }
         ICECAST_LOG_DEBUG("shoutcast metadata block setup with %s", p->data+1);
-        filter_shoutcast_metadata (source, p->data, size);
+        filter_shoutcast_metadata (source, p->data, size, false);
 
         refbuf_release (source_mp3->metadata);
         source_mp3->metadata = p;
     }
     thread_mutex_unlock (&source_mp3->url_lock);
+
+    free(url_artist);
+    free(url_title);
+    free(url);
 }
 
 
@@ -454,6 +492,10 @@ static void format_mp3_free_plugin(format_plugin_t *self)
     free(state);
     vorbis_comment_clear(&self->vc);
     free(self);
+
+    global_lock();
+    global.sources_legacy--;
+    global_unlock();
 }
 
 
@@ -464,7 +506,7 @@ static void format_mp3_free_plugin(format_plugin_t *self)
  */
 static int complete_read(source_t *source)
 {
-    int bytes;
+    ssize_t bytes;
     format_plugin_t *format = source->format;
     mp3_state *source_mp3 = format->_state;
     char *buf;
@@ -479,10 +521,11 @@ static int complete_read(source_t *source)
     }
     buf = source_mp3->read_data->data + source_mp3->read_count;
 
-    bytes = client_read_bytes (source->client, buf, REFBUF_SIZE-source_mp3->read_count);
+    bytes = client_body_read(source->client, buf, REFBUF_SIZE-source_mp3->read_count);
     if (bytes < 0)
     {
-        if (source->client->con->error)
+        /* Why do we do this here (not source.c)? -- ph3-der-loewe, 2018-04-17 */
+        if (client_body_eof(source->client))
         {
             refbuf_release (source_mp3->read_data);
             source_mp3->read_data = NULL;
@@ -622,7 +665,7 @@ static refbuf_t *mp3_get_filter_meta(source_t *source)
             if (strncmp (meta->data+1, "StreamTitle=", 12) == 0)
             {
                 filter_shoutcast_metadata (source, source_mp3->build_metadata,
-                        source_mp3->build_metadata_len);
+                        source_mp3->build_metadata_len, true);
                 refbuf_release (source_mp3->metadata);
                 source_mp3->metadata = meta;
                 source_mp3->inline_url = strstr (meta->data+1, "StreamUrl='");
@@ -715,7 +758,7 @@ static void free_mp3_client_data (client_t *client)
 }
 
 
-static void write_mp3_to_file (struct source_tag *source, refbuf_t *refbuf)
+static void write_mp3_to_file (source_t *source, refbuf_t *refbuf)
 {
     if (refbuf->len == 0)
         return;

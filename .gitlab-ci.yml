@@ -1,0 +1,76 @@
+# Build Icecast - test
+make_dist:
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+
+  tags:
+    - docker
+
+  image: alpine:3.12
+
+  stage: build
+
+  before_script:
+  - apk update
+  - cat /etc/os*
+  - apk add musl-dev git make gcc automake autoconf libtool
+  - apk add curl-dev libogg-dev libvorbis-dev libxslt-dev libxml2-dev
+  # gzip required because busybox gzip does not understand best / zip for make dist
+  - apk add gzip zip tar
+  # Required for tests
+  #- apk add curl ffmpeg
+  # Create user to run tests
+  #- adduser -s /bin/sh -D -H icecast
+
+  script: 
+    - ./autogen.sh
+    - ./configure || cat config.log
+    - make dist
+    - ls -la
+    # Tests
+    #- su -c "./tests/admin-tests.sh" icecast
+
+  artifacts:
+    paths:
+      - icecast-*.tar.gz
+      - icecast-*.zip
+    expire_in: 1 week
+
+upload_dist:
+  tags:
+    - docker
+    - linux
+
+  only:
+    - master
+    - devel
+
+  stage: deploy
+
+  dependencies:
+    - make_dist
+
+  before_script:
+    - ./ci/osc/prepare-osc-tools.sh
+
+  script:
+    - ./ci/osc/handle-osc-upload.sh
+
+upload_dist_release:
+  tags:
+    - docker
+    - linux
+
+  only:
+    - tags
+
+  stage: deploy
+
+  dependencies:
+    - make_dist
+
+  before_script:
+    - ./ci/osc/prepare-osc-tools.sh
+
+  script:
+    - ./ci/osc/handle-osc-upload.sh release

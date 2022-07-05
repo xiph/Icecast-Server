@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp Schafft <lion@lion.leolix.org>
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __ACL_H__
@@ -18,24 +18,27 @@
 #include <libxml/tree.h>
 #include "common/httpp/httpp.h"
 
+#include "icecasttypes.h"
+#include "cfgfile.h"
+
 typedef enum acl_policy_tag {
- /* Error on function call */
- ACL_POLICY_ERROR  = -1,
- /* Client is allowed to do operation, go ahead! */
- ACL_POLICY_ALLOW = 0,
- /* Client is not allowed to do so, send error! */
- ACL_POLICY_DENY  = 1
+    /* Error on function call */
+    ACL_POLICY_ERROR  = -1,
+    /* Client is allowed to do operation, go ahead! */
+    ACL_POLICY_ALLOW = 0,
+    /* Client is not allowed to do so, send error! */
+    ACL_POLICY_DENY  = 1
 } acl_policy_t;
 
-struct acl_tag;
-typedef struct acl_tag acl_t;
 
 /* basic functions to work with ACLs */
 acl_t * acl_new(void);
-acl_t * acl_new_from_xml_node(xmlNodePtr node);
+acl_t * acl_new_from_xml_node(ice_config_t *configuration, xmlNodePtr node);
 
 void acl_addref(acl_t * acl);
 void acl_release(acl_t * acl);
+
+const char *acl_get_name(acl_t * acl);
 
 /* special functions */
 int acl_set_ANY_str(acl_t * acl, acl_policy_t policy, const char * str, int (*callback)(acl_t *, acl_policy_t, const char *));
@@ -48,7 +51,7 @@ acl_policy_t acl_test_method(acl_t * acl, httpp_request_type_e method);
 /* admin/ interface specific functions */
 int acl_set_admin_str__callbck(acl_t * acl, acl_policy_t policy, const char * str);
 #define acl_set_admin_str(acl,policy,str) acl_set_ANY_str((acl), (policy), (str), acl_set_admin_str__callbck)
-acl_policy_t acl_test_admin(acl_t * acl, int command);
+acl_policy_t acl_test_admin(acl_t * acl, admin_command_id_t command);
 
 /* web/ interface specific functions */
 int acl_set_web_policy(acl_t * acl, acl_policy_t policy);
@@ -59,5 +62,8 @@ int acl_set_max_connection_duration(acl_t * acl, time_t duration);
 time_t acl_get_max_connection_duration(acl_t * acl);
 int acl_set_max_connections_per_user(acl_t * acl, size_t limit);
 ssize_t acl_get_max_connections_per_user(acl_t * acl);
+
+/* HTTP specific functions */
+const ice_config_http_header_t *acl_get_http_headers(acl_t * acl);
 
 #endif

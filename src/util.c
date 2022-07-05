@@ -5,7 +5,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- *  Copyright 2012-2015 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ *  Copyright 2012-2022 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  *
  *  This program is distributed under the GNU General Public License, version 2.
  *  A copy of this license is included with this source.
@@ -17,6 +17,7 @@
 #endif
 
 #include <sys/types.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -32,7 +33,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #ifdef HAVE_POLL
-#include <sys/poll.h>
+#include <poll.h>
 #endif
 #else
 #include <windows.h>
@@ -41,14 +42,17 @@
 #include "common/net/sock.h"
 #include "common/thread/thread.h"
 
-#include "cfgfile.h"
+#include "util.h"
 #include "compat.h"
+#include "cfgfile.h"
 #include "refbuf.h"
 #include "connection.h"
 #include "client.h"
-#include "util.h"
 #include "source.h"
 #include "admin.h"
+#include "auth.h"
+#include "acl.h"
+#include "listensocket.h"
 
 #define CATMODULE "util"
 
@@ -399,17 +403,17 @@ char *util_normalise_uri(const char *uri) {
 
 char *util_bin_to_hex(unsigned char *data, int len)
 {
-    char *hex = malloc(len*2 + 1);
+    char *hexstr = malloc(len*2 + 1);
     int i;
 
     for (i = 0; i < len; i++) {
-        hex[i*2] = hexchars[(data[i]&0xf0) >> 4];
-        hex[i*2+1] = hexchars[data[i]&0x0f];
+        hexstr[i*2] = hexchars[(data[i]&0xf0) >> 4];
+        hexstr[i*2+1] = hexchars[data[i]&0x0f];
     }
 
-    hex[len*2] = 0;
+    hexstr[len*2] = 0;
 
-    return hex;
+    return hexstr;
 }
 
 /* This isn't efficient, but it doesn't need to be */
@@ -421,18 +425,20 @@ char *util_base64_encode(const char *data, size_t len) {
     while(len > 0) {
         chunk = (len > 3) ? 3 : len;
         *out++ = base64table[(*data & 0xFC)>>2];
-        *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
 
         switch(chunk) {
             case 3:
+                *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
                 *out++ = base64table[((*(data+1) & 0x0F)<<2) | ((*(data+2) & 0xC0)>>6)];
                 *out++ = base64table[(*(data+2)) & 0x3F];
             break;
             case 2:
+                *out++ = base64table[((*data & 0x03)<<4) | ((*(data+1) & 0xF0) >> 4)];
                 *out++ = base64table[((*(data+1) & 0x0F)<<2)];
                 *out++ = '=';
             break;
             case 1:
+                *out++ = base64table[((*data & 0x03)<<4)];
                 *out++ = '=';
                 *out++ = '=';
             break;
@@ -595,7 +601,7 @@ unsigned int util_str_to_unsigned_int(const char *str, const unsigned int defaul
 }
 
 /* TODO, FIXME: handle memory allocation errors better. */
-static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_http_header_t *header, int status) {
+static inline void   _build_headers_loop(char **ret, size_t *len, const ice_config_http_header_t *header, int status, const char *allow, client_t *client) {
     size_t headerlen;
     const char *name;
     const char *value;
@@ -617,7 +623,40 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
         switch (header->type) {
             case HTTP_HEADER_TYPE_STATIC:
                 value = header->value;
-                break;
+            break;
+            case HTTP_HEADER_TYPE_CORS:
+                if (name && client && client->parser) {
+                    const char *origin = httpp_getvar(client->parser, "origin");
+                    if (origin) {
+                        value = header->value;
+                        if (!value) {
+                            if (strcasecmp(name, "Access-Control-Allow-Origin") == 0) {
+                                if (status >= 200 && status <= 299) {
+                                    value = origin;
+                                } else if (status >= 400 && status <= 599) {
+                                    value = "null";
+                                } else {
+                                    /* do not set as we do not have a default for that. */
+                                }
+                            } else if (strcasecmp(name, "Access-Control-Allow-Methods") == 0) {
+                                if (status >= 200 && status <= 299) {
+                                    /* only use the default if we are posive reply. */
+                                    value = allow;
+                                }
+                            } else if (strcasecmp(name, "Access-Control-Expose-Headers") == 0) {
+                                value = "content-range, icy-br, icy-description, icy-genre, icy-name, icy-pub, icy-url";
+                            } else if (strcasecmp(name, "Access-Control-Max-Age") == 0) {
+                                value = "300"; /* 300s = 5 minutes */
+                            } else if (strcasecmp(name, "Access-Control-Allow-Headers") == 0) {
+                                value = "range, if-range";
+                            /* No default (yet)
+                             * } else if (strcasecmp(name, "Access-Control-Allow-Credentials") == 0) {
+                             */
+                            }
+                        }
+                    }
+                }
+            break;
         }
 
         /* check data */
@@ -641,7 +680,8 @@ static inline void   _build_headers_loop(char **ret, size_t *len, ice_config_htt
     } while ((header = header->next));
     *ret = r;
 }
-static inline char * _build_headers(int status, ice_config_t *config, source_t *source) {
+static inline char * _build_headers(int status, const char *allow, ice_config_t *config, source_t *source, client_t *client) {
+    const ice_config_http_header_t *header;
     mount_proxy *mountproxy = NULL;
     char *ret = NULL;
     size_t len = 1;
@@ -652,9 +692,21 @@ static inline char * _build_headers(int status, ice_config_t *config, source_t *
     ret = calloc(1, 1);
     *ret = 0;
 
-    _build_headers_loop(&ret, &len, config->http_headers, status);
+    _build_headers_loop(&ret, &len, config->http_headers, status, allow, client);
     if (mountproxy && mountproxy->http_headers)
-        _build_headers_loop(&ret, &len, mountproxy->http_headers, status);
+        _build_headers_loop(&ret, &len, mountproxy->http_headers, status, allow, client);
+    if (client && client->auth && (header = client->auth->http_headers))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
+    if (client && client->acl && (header = acl_get_http_headers(client->acl)))
+        _build_headers_loop(&ret, &len, header, status, allow, client);
+
+    if (client && client->con && client->con->listensocket_effective) {
+        const listener_t * listener = listensocket_get_listener(client->con->listensocket_effective);
+
+        if ((header = listener->http_headers))
+            _build_headers_loop(&ret, &len, header, status, allow, client);
+        listensocket_release_listener(client->con->listensocket_effective);
+    }
 
     return ret;
 }
@@ -664,8 +716,8 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
         const char * datablock,
-        struct source_tag * source, struct _client_tag * client) {
-    const char * http_version = "1.0";
+        source_t * source, client_t * client) {
+    const char * http_version = "1.1";
     ice_config_t *config;
     time_t now;
     struct tm result;
@@ -676,15 +728,19 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     ssize_t ret;
     char * extra_headers;
     const char *connection_header = "Close";
+    const char *upgrade_header = "";
+    const char *allow_header;
 
     if (!out)
         return -1;
 
     if (client) {
+        if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED)
+            upgrade_header = "Upgrade: TLS/1.0\r\n";
         switch (client->reuse) {
             case ICECAST_REUSE_CLOSE:      connection_header = "Close"; break;
             case ICECAST_REUSE_KEEPALIVE:  connection_header = "Keep-Alive"; break;
-            case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; break;
+            case ICECAST_REUSE_UPGRADETLS: connection_header = "Upgrade"; upgrade_header = ""; break;
         }
     }
 
@@ -704,17 +760,33 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         {
             switch (status)
             {
-                case 100: statusmsg = "Continue"; http_version = "1.1"; break;
-                case 101: statusmsg = "Switching Protocols"; http_version = "1.1"; break;
+                case 100: statusmsg = "Continue"; break;
+                case 101: statusmsg = "Switching Protocols"; break;
                 case 200: statusmsg = "OK"; break;
-                case 206: statusmsg = "Partial Content"; http_version = "1.1"; break;
+                case 204: statusmsg = "No Content"; break;
+                case 206: statusmsg = "Partial Content"; break;
+                case 300: statusmsg = "Multiple Choices"; break;
+                case 301: statusmsg = "Moved Permanently"; break;
+                case 302: statusmsg = "Found"; break;
+                case 303: statusmsg = "See Other"; break;
+                case 304: statusmsg = "Not Modified"; break;
+                case 305: statusmsg = "Use Proxy"; break;
+                case 307: statusmsg = "Temporary Redirect"; break;
+                case 308: statusmsg = "Permanent Redirect"; break;
                 case 400: statusmsg = "Bad Request"; break;
                 case 401: statusmsg = "Authentication Required"; break;
                 case 403: statusmsg = "Forbidden"; break;
                 case 404: statusmsg = "File Not Found"; break;
+                case 405: statusmsg = "Method Not Allowed"; break;
+                case 409: statusmsg = "Conflict"; break;
+                case 415: statusmsg = "Unsupported Media Type"; break;
                 case 416: statusmsg = "Request Range Not Satisfiable"; break;
-                case 426: statusmsg = "Upgrade Required"; http_version = "1.1"; break;
+                case 422: statusmsg = "Unprocessable Entity"; break;
+                case 426: statusmsg = "Upgrade Required"; break;
+                case 429: statusmsg = "Too Many Requests"; break;
+                /* case of 500 is handled differently. No need to list it here. -- ph3-der-loewe, 2018-05-05 */
                 case 501: statusmsg = "Unimplemented"; break;
+                case 503: statusmsg = "Service Unavailable"; break;
                 default:  statusmsg = "(unknown status code)"; break;
             }
         }
@@ -750,19 +822,30 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     else
         currenttime_buffer[0] = '\0';
 
+    if (client) {
+        if (client->admin_command != ADMIN_COMMAND_ERROR) {
+            allow_header = "GET, POST, OPTIONS";
+        } else if (source) {
+            allow_header = "GET, DELETE, OPTIONS";
+        } else {
+            allow_header = "GET, PUT, OPTIONS, SOURCE";
+        }
+    } else {
+        allow_header = "GET, OPTIONS";
+    }
+
     config = config_get_config();
-    extra_headers = _build_headers(status, config, source);
+    extra_headers = _build_headers(status, allow_header, config, source, client);
     ret = snprintf (out, len, "%sServer: %s\r\nConnection: %s\r\nAccept-Encoding: identity\r\nAllow: %s\r\n%s%s%s%s%s%s%s%s",
                               status_buffer,
                               config->server_id,
                               connection_header,
-                              (client && client->admin_command == ADMIN_COMMAND_ERROR ?
-                                                "GET, SOURCE" : "GET"),
-                              (config->tls_ok ? "Upgrade: TLS/1.0\r\n" : ""),
+                              allow_header,
+                              upgrade_header,
                               currenttime_buffer,
                               contenttype_buffer,
                               (status == 401 ? "WWW-Authenticate: Basic realm=\"Icecast2 Server\"\r\n" : ""),
-                              (cache     ? "" : "Cache-Control: no-cache\r\n"
+                              (cache     ? "" : "Cache-Control: no-cache, no-store\r\n"
                                                 "Expires: Mon, 26 Jul 1997 05:00:00 GMT\r\n"
                                                 "Pragma: no-cache\r\n"),
                               extra_headers,
@@ -774,6 +857,447 @@ ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
     return ret;
 }
 
+#define __SELECT_BEST_MAX_ARGS  8
+
+struct __args {
+    const char *comp;
+    char *group;
+    int best_comp;
+    int best_group;
+    int best_all;
+};
+
+static inline int __fill_arg(struct __args *arg, const char *str)
+{
+    char *delm;
+    size_t len;
+
+    arg->comp = str;
+    arg->best_comp = 0;
+    arg->best_group = 0;
+    arg->best_all = 0;
+
+    len = strlen(str);
+    arg->group = malloc(len + 2);
+    if (!arg->group)
+        return -1;
+
+    memcpy(arg->group, str, len + 1);
+
+    delm = strstr(arg->group, "/");
+    if (delm) {
+        delm[0] = '/';
+        delm[1] = '*';
+        delm[2] = 0;
+    }
+
+    return 0;
+}
+
+static inline void __free_args(struct __args *arg, size_t len)
+{
+    size_t i;
+
+    for (i = 0; i < len; i++) {
+        free(arg[i].group);
+    }
+}
+
+static inline int __parse_q(const char *str)
+{
+    int ret = 0;
+    int mul = 1000;
+
+    for (; *str; str++) {
+        if (*str >= '0' && *str <= '9') {
+            ret += mul * (*str - '0');
+            mul /= 10;
+        } else if (*str == '.') {
+            mul = 100;
+        } else {
+            ICECAST_LOG_ERROR("Badly formatted quality parameter found.");
+            return -1;
+        }
+    }
+
+    return ret;
+}
+
+static inline int __find_q_in_index(icecast_kva_t *kv, size_t idx)
+{
+    size_t i = kv->index[idx] + 1;
+    size_t last;
+
+    if (kv->indexlen <= (idx + 1)) {
+        last = kv->kvlen - 1;
+    } else {
+        last = kv->index[idx + 1] - 1;
+    }
+
+    for (; i <= last; i++) {
+        if (kv->kv[i].key && kv->kv[i].value && strcasecmp(kv->kv[i].key, "q") == 0) {
+            return __parse_q(kv->kv[i].value);
+        }
+    }
+
+    return 1000;
+}
+
+const char *util_http_select_best(const char *input, const char *first, ...)
+{
+    struct __args arg[__SELECT_BEST_MAX_ARGS];
+    icecast_kva_t *kv;
+    const char *p;
+    size_t arglen = 1;
+    size_t i, h;
+    va_list ap;
+    int q;
+    int best_q = 0;
+
+    if (__fill_arg(&(arg[0]), first) == -1) {
+        ICECAST_LOG_ERROR("Can not allocate memory. Selecting first option.");
+        return first;
+    }
+    va_start(ap, first);
+    while ((p = (const char*)va_arg(ap, const char*))) {
+        if (arglen == __SELECT_BEST_MAX_ARGS) {
+            ICECAST_LOG_ERROR("More arguments given than supported. Currently %zu args are supported.", (size_t)__SELECT_BEST_MAX_ARGS);
+            break;
+        }
+        if (__fill_arg(&(arg[arglen]), p) == -1) {
+            ICECAST_LOG_ERROR("Can not allocate memory. Selecting first option.");
+            __free_args(arg, arglen);
+            return first;
+        }
+
+        arglen++;
+    }
+    va_end(ap);
+
+    kv = util_parse_http_cn(input);
+    if (!kv) {
+        ICECAST_LOG_ERROR("Input string does not parse as KVA. Selecting first option.");
+        __free_args(arg, arglen);
+        return first;
+    }
+
+    ICECAST_LOG_DDEBUG("--- DUMP ---");
+    for (i = 0; i < kv->kvlen; i++) {
+        ICECAST_LOG_DDEBUG("kv[%zu] = {.key='%H', .value='%H'}", i, kv->kv[i].key, kv->kv[i].value);
+    }
+    for (i = 0; i < kv->indexlen; i++) {
+        ICECAST_LOG_DDEBUG("index[%zu] = %zu", i, kv->index[i]);
+    }
+    ICECAST_LOG_DDEBUG("--- END OF DUMP ---");
+
+    for (h = 0; h < arglen; h++) {
+        for (i = 0; i < kv->indexlen; i++) {
+            p = kv->kv[kv->index[i]].key;
+            if (!p) {
+                continue;
+            }
+
+            q = __find_q_in_index(kv, i);
+            if (best_q < q) {
+                best_q = q;
+            }
+
+            if (strcasecmp(p, arg[h].comp) == 0) {
+                if (arg[h].best_comp < q) {
+                    arg[h].best_comp = q;
+                }
+            }
+
+            if (strcasecmp(p, arg[h].group) == 0) {
+                if (arg[h].best_group < q) {
+                    arg[h].best_group = q;
+                }
+            }
+        }
+    }
+
+    util_kva_free(kv);
+
+    p = NULL;
+    for (h = 0; p == NULL && h < arglen; h++) {
+        if (arg[h].best_comp == best_q) {
+            p = arg[h].comp;
+        }
+    }
+    for (h = 0; p == NULL && h < arglen; h++) {
+        if (arg[h].best_group == best_q) {
+            p = arg[h].comp;
+        }
+    }
+
+    __free_args(arg, arglen);
+
+    if (p == NULL) {
+        p = first;
+    }
+
+    return p;
+}
+
+static inline void __skip_space(char **p)
+{
+    for (; **p == ' '; (*p)++);
+}
+
+static inline int __is_token(const char p)
+{
+    return (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || (p >= '0' && p <= '9') ||
+            p == '!' || p == '#'  ||  p == '$' || p == '%'  ||  p == '&' || p == '\'' ||
+            p == '*' || p == '+'  ||  p == '-' || p == '.'  ||  p == '^' || p == '_'  ||
+            p == '|' || p == '~'  ||  p == '/';
+
+}
+
+enum __tokenizer_result {
+    __TOKENIZER_RESULT_COMMA,
+    __TOKENIZER_RESULT_EQ,
+    __TOKENIZER_RESULT_SEMICOLON,
+    __TOKENIZER_RESULT_ILSEQ,
+    __TOKENIZER_RESULT_EOS
+};
+
+static inline enum __tokenizer_result __tokenizer_res_from_char(const char p)
+{
+    switch (p) {
+        case 0:
+            return __TOKENIZER_RESULT_EOS;
+        break;
+        case ',':
+            return __TOKENIZER_RESULT_COMMA;
+        break;
+        case '=':
+            return __TOKENIZER_RESULT_EQ;
+        break;
+        case ';':
+            return __TOKENIZER_RESULT_SEMICOLON;
+        break;
+        default:
+            return __TOKENIZER_RESULT_ILSEQ;
+        break;
+    }
+}
+
+static enum __tokenizer_result __tokenizer_str(char **out, char **in)
+{
+    char *p, *o;
+    char c;
+
+    __skip_space(in);
+
+    p = *in;
+    if (*p != '"')
+        return __TOKENIZER_RESULT_ILSEQ;
+
+    p++;
+    o = p;
+
+    for (; (c = *p); p++) {
+        if (c == '\t' || c == ' ' || c == 0x21 || (c >= 0x23 && c <= 0x5B) || (c >= 0x5D && c <= 0x7E) || ((unsigned char)c >= 0x80)) {
+            *(o++) = c;
+        } else if (c == '\\') {
+            p++;
+            c = *p;
+            if (c == 0) {
+                return __TOKENIZER_RESULT_ILSEQ;
+            } else {
+                *(o++) = c;
+            }
+        } else if (c == '"') {
+            *o = 0;
+            break;
+        } else {
+            return __TOKENIZER_RESULT_ILSEQ;
+        }
+    }
+
+    if (*p == '"') {
+        p++;
+        *in = p + 1;
+        __skip_space(in);
+        return __tokenizer_res_from_char(*p);
+    } else {
+        return __TOKENIZER_RESULT_ILSEQ;
+    }
+}
+
+static enum __tokenizer_result __tokenizer(char **out, char **in)
+{
+    char *p;
+    char c = 0;
+
+    __skip_space(in);
+
+    p = *in;
+
+    switch (*p) {
+        case '=':
+        /* fall through */
+        case ',':
+        /* fall through */
+        case ';':
+            return __TOKENIZER_RESULT_ILSEQ;
+        break;
+        case 0:
+            return __TOKENIZER_RESULT_EOS;
+        break;
+        case '"':
+            return __tokenizer_str(out, in);
+        break;
+    }
+
+    *out = p;
+    for (; __is_token(*p); p++);
+
+    *in = p;
+    if (*p) {
+        __skip_space(in);
+        c = **in;
+        if (c != 0) {
+            (*in)++;
+        }
+    }
+    *p = 0;
+
+    return __tokenizer_res_from_char(c);
+}
+
+#define HTTP_CN_INDEX_INCREMENT     8
+#define HTTP_CN_KV_INCREMENT        8
+
+static inline int __resize_array(void **also_ptr, void **array, size_t size, size_t *len, size_t revlen, size_t inc)
+{
+    void *n;
+
+    if (*len > revlen)
+        return 0;
+
+    n = realloc(*array, size*(*len + inc));
+    if (!n) {
+        return -1;
+    }
+
+    memset(n + size * *len, 0, size * inc);
+
+    *also_ptr = *array = n;
+    *len += inc;
+
+    return 0;
+}
+
+icecast_kva_t * util_parse_http_cn(const char *cnstr)
+{
+    icecast_kva_t *ret;
+    char *in;
+    int eos = 0;
+    size_t indexphylen = HTTP_CN_INDEX_INCREMENT;
+    size_t kvphylen = HTTP_CN_KV_INCREMENT;
+
+    if (!cnstr || !*cnstr)
+        return NULL;
+
+    ret = calloc(1, sizeof(*ret));
+
+    if (!ret)
+        return NULL;
+
+    ret->_tofree[0] = in = strdup(cnstr);
+    ret->_tofree[1] = ret->index = calloc(HTTP_CN_INDEX_INCREMENT, sizeof(*(ret->index)));
+    ret->_tofree[2] = ret->kv = calloc(HTTP_CN_KV_INCREMENT, sizeof(*(ret->kv)));
+    if (!ret->_tofree[0] || !ret->_tofree[1] || !ret->_tofree[2]) {
+        util_kva_free(ret);
+        return NULL;
+    }
+
+
+    /* we have at minimum one token */
+    ret->indexlen = 1;
+    ret->kvlen = 1;
+
+    while (!eos) {
+        char *out = NULL;
+        enum __tokenizer_result res = __tokenizer(&out, &in);
+
+        switch (res) {
+            case __TOKENIZER_RESULT_ILSEQ:
+                ICECAST_LOG_DEBUG("Illegal byte sequence error from tokenizer.");
+                util_kva_free(ret);
+                return NULL;
+            break;
+            case __TOKENIZER_RESULT_EOS:
+            /* fall through */
+            case __TOKENIZER_RESULT_COMMA:
+            /* fall through */
+            case __TOKENIZER_RESULT_EQ:
+            /* fall through */
+            case __TOKENIZER_RESULT_SEMICOLON:
+                ICECAST_LOG_DDEBUG("OK from tokenizer.");
+                /* no-op */
+            break;
+        }
+
+        if (__resize_array(&(ret->_tofree[2]), (void**)&(ret->kv), sizeof(*(ret->kv)), &kvphylen, ret->kvlen, HTTP_CN_KV_INCREMENT) == -1 ||
+            __resize_array(&(ret->_tofree[1]), (void**)&(ret->index), sizeof(*(ret->index)), &indexphylen, ret->indexlen, HTTP_CN_INDEX_INCREMENT) == -1) {
+            util_kva_free(ret);
+            return NULL;
+        }
+
+        if (ret->kv[ret->kvlen-1].key == NULL) {
+            ret->kv[ret->kvlen-1].key = out;
+        } else if (ret->kv[ret->kvlen-1].value == NULL) {
+            ret->kv[ret->kvlen-1].value = out;
+        } else {
+            util_kva_free(ret);
+            return NULL;
+        }
+
+        switch (res) {
+            case __TOKENIZER_RESULT_EOS:
+                ICECAST_LOG_DDEBUG("End of string from tokenizer.");
+                eos = 1;
+                continue;
+            break;
+            case __TOKENIZER_RESULT_COMMA:
+                ICECAST_LOG_DDEBUG("Comma from tokenizer.");
+                ret->index[ret->indexlen++] = ret->kvlen;
+                ret->kvlen++;
+            break;
+            case __TOKENIZER_RESULT_EQ:
+                ICECAST_LOG_DDEBUG("Eq from tokenizer.");
+                /* no-op */
+            break;
+            case __TOKENIZER_RESULT_SEMICOLON:
+                ICECAST_LOG_DDEBUG("Semicolon from tokenizer.");
+                ret->kvlen++;
+            break;
+            default:
+                util_kva_free(ret);
+                return NULL;
+            break;
+        }
+
+        ICECAST_LOG_DDEBUG("next...");
+    }
+
+    return ret;
+}
+
+void util_kva_free(icecast_kva_t *kva)
+{
+    size_t i;
+
+    if (!kva)
+        return;
+
+    for (i = 0; i < (sizeof(kva->_tofree)/sizeof(*(kva->_tofree))); i++)
+        free(kva->_tofree[i]);
+
+    free(kva);
+}
 
 util_dict *util_dict_new(void)
 {
@@ -935,6 +1459,12 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
     if (string == NULL || in_charset == NULL || out_charset == NULL)
         return NULL;
 
+    if (strcmp(in_charset, out_charset) == 0) {
+        ret = strdup(string);
+        if (ret)
+            return ret;
+    }
+
     in  = xmlFindCharEncodingHandler (in_charset);
     out = xmlFindCharEncodingHandler (out_charset);
 
@@ -944,7 +1474,7 @@ char *util_conv_string (const char *string, const char *in_charset, const char *
         xmlBufferPtr utf8 = xmlBufferCreate ();
         xmlBufferPtr conv = xmlBufferCreate ();
 
-        ICECAST_LOG_INFO("converting metadata from %s to %s", in_charset, out_charset);
+        ICECAST_LOG_INFO("converting metadata from %#H to %#H", in_charset, out_charset);
         xmlBufferCCat (orig, string);
         if (xmlCharEncInFunc (in, utf8, orig) > 0)
         {
@@ -974,5 +1504,37 @@ int get_line(FILE *file, char *buf, size_t siz)
         }
         return 1;
     }
+    return 0;
+}
+
+int util_replace_string(char **dst, const char *src)
+{
+    char *n;
+
+    if (!dst)
+        return -1;
+
+    if (src) {
+        n = strdup(src);
+        if (!n)
+            return -1;
+    } else {
+        n = NULL;
+    }
+
+    free(*dst);
+    *dst = n;
+
+    return 0;
+}
+
+int util_strtolower(char *str)
+{
+    if (!str)
+        return -1;
+
+    for (; *str; str++)
+        *str = tolower(*str);
+
     return 0;
 }

@@ -7,6 +7,7 @@
  *
  * Copyright 2012,      David Richards, Mozilla Foundation,
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 
@@ -19,8 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ogg/ogg.h>
-
-typedef struct source_tag source_t;
 
 #include "format_opus.h"
 #include "stats.h"

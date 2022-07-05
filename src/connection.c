@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>,
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -19,10 +19,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <string.h>
 #ifdef HAVE_POLL
-#include <sys/poll.h>
+#include <poll.h>
 #endif
 #include <sys/types.h>
 
@@ -33,32 +34,35 @@
 #include <winsock2.h>
 #endif
 
-#include "compat.h"
-
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/net/sock.h"
 #include "common/httpp/httpp.h"
 
+#include "compat.h"
+#include "connection.h"
 #include "cfgfile.h"
 #include "global.h"
 #include "util.h"
-#include "connection.h"
+#include "refobject.h"
 #include "refbuf.h"
 #include "client.h"
+#include "errors.h"
 #include "stats.h"
 #include "logging.h"
-#include "xslt.h"
 #include "fserve.h"
-#include "sighandler.h"
+#include "slave.h"
 
-#include "yp.h"
 #include "source.h"
-#include "format.h"
-#include "format_mp3.h"
 #include "admin.h"
 #include "auth.h"
 #include "matchfile.h"
+#include "tls.h"
+#include "acl.h"
+#include "refobject.h"
+#include "listensocket.h"
+#include "fastevent.h"
+#include "navigation.h"
 
 #define CATMODULE "connection"
 
@@ -80,34 +84,32 @@
 typedef struct client_queue_tag {
     client_t *client;
     int offset;
-    int stream_offset;
     int shoutcast;
     char *shoutcast_mount;
+    char *bodybuffer;
+    size_t bodybufferlen;
+    int tried_body;
     struct client_queue_tag *next;
 } client_queue_t;
 
-typedef struct _thread_queue_tag {
-    thread_type *thread_id;
-    struct _thread_queue_tag *next;
-} thread_queue_t;
-
 static spin_t _connection_lock; // protects _current_id, _con_queue, _con_queue_tail
-static volatile unsigned long _current_id = 0;
+static volatile connection_id_t _current_id = 0;
 static int _initialized = 0;
 
 static volatile client_queue_t *_req_queue = NULL, **_req_queue_tail = &_req_queue;
 static volatile client_queue_t *_con_queue = NULL, **_con_queue_tail = &_con_queue;
-static int ssl_ok;
-#ifdef HAVE_OPENSSL
-static SSL_CTX *ssl_ctx;
-#endif
+static volatile client_queue_t *_body_queue = NULL, **_body_queue_tail = &_body_queue;
+static bool tls_ok = false;
+static tls_ctx_t *tls_ctx;
 
 /* filtering client connection based on IP */
 static matchfile_t *banned_ip, *allowed_ip;
 
 rwlock_t _source_shutdown_rwlock;
 
+static int  _update_admin_command(client_t *client);
 static void _handle_connection(void);
+static void get_tls_certificate(ice_config_t *config);
 
 void connection_initialize(void)
 {
@@ -122,6 +124,8 @@ void connection_initialize(void)
     _req_queue_tail = &_req_queue;
     _con_queue = NULL;
     _con_queue_tail = &_con_queue;
+    _body_queue = NULL;
+    _body_queue_tail = &_body_queue;
 
     _initialized = 1;
 }
@@ -131,9 +135,7 @@ void connection_shutdown(void)
     if (!_initialized)
         return;
 
-#ifdef HAVE_OPENSSL
-    SSL_CTX_free (ssl_ctx);
-#endif
+    tls_ctx_unref(tls_ctx);
     matchfile_release(banned_ip);
     matchfile_release(allowed_ip);
  
@@ -145,9 +147,15 @@ void connection_shutdown(void)
     _initialized = 0;
 }
 
-static unsigned long _next_connection_id(void)
+void connection_reread_config(ice_config_t *config)
 {
-    unsigned long id;
+    get_tls_certificate(config);
+    listensocket_container_configure_and_setup(global.listensockets, config);
+}
+
+static connection_id_t _next_connection_id(void)
+{
+    connection_id_t id;
 
     thread_spin_lock(&_connection_lock);
     id = _current_id++;
@@ -157,96 +165,65 @@ static unsigned long _next_connection_id(void)
 }
 
 
-#ifdef HAVE_OPENSSL
-static void get_ssl_certificate(ice_config_t *config)
+#ifdef ICECAST_CAP_TLS
+static void get_tls_certificate(ice_config_t *config)
 {
-    SSL_METHOD *method;
-    long ssl_opts;
-    config->tls_ok = ssl_ok = 0;
+    const char *keyfile;
 
-    SSL_load_error_strings(); /* readable error messages */
-    SSL_library_init(); /* initialize library */
+    tls_ok = false;
 
-    method = SSLv23_server_method();
-    ssl_ctx = SSL_CTX_new(method);
-    ssl_opts = SSL_CTX_get_options(ssl_ctx);
-#ifdef SSL_OP_NO_COMPRESSION
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_COMPRESSION);
-#else
-    SSL_CTX_set_options(ssl_ctx, ssl_opts|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3);
-#endif
+    keyfile = config->tls_context.key_file;
+    if (!keyfile)
+        keyfile = config->tls_context.cert_file;
 
-    do {
-        if (config->cert_file == NULL)
-            break;
-        if (SSL_CTX_use_certificate_chain_file (ssl_ctx, config->cert_file) <= 0) {
-            ICECAST_LOG_WARN("Invalid cert file %s", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_use_PrivateKey_file (ssl_ctx, config->cert_file, SSL_FILETYPE_PEM) <= 0) {
-            ICECAST_LOG_WARN("Invalid private key file %s", config->cert_file);
-            break;
-        }
-        if (!SSL_CTX_check_private_key (ssl_ctx)) {
-            ICECAST_LOG_ERROR("Invalid %s - Private key does not match cert public key", config->cert_file);
-            break;
-        }
-        if (SSL_CTX_set_cipher_list(ssl_ctx, config->cipher_list) <= 0) {
-            ICECAST_LOG_WARN("Invalid cipher list: %s", config->cipher_list);
-        }
-        config->tls_ok = ssl_ok = 1;
-        ICECAST_LOG_INFO("Certificate found at %s", config->cert_file);
-        ICECAST_LOG_INFO("Using ciphers %s", config->cipher_list);
+    tls_ctx_unref(tls_ctx);
+    tls_ctx = tls_ctx_new(config->tls_context.cert_file, keyfile, config->tls_context.cipher_list);
+    if (!tls_ctx) {
+        ICECAST_LOG_INFO("No TLS capability on any configured ports");
         return;
-    } while (0);
-    ICECAST_LOG_INFO("No TLS capability on any configured ports");
+    }
+
+    tls_ok = true;
 }
 
 
-/* handlers for reading and writing a connection_t when there is ssl
+/* handlers for reading and writing a connection_t when there is TLS
  * configured on the listening port
  */
-static int connection_read_ssl(connection_t *con, void *buf, size_t len)
+static int connection_read_tls(connection_t *con, void *buf, size_t len)
 {
-    int bytes = SSL_read(con->ssl, buf, len);
+    ssize_t bytes = tls_read(con->tls, buf, len);
 
-    if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)) {
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
+    if (bytes <= 0) {
+        if (tls_want_io(con->tls) > 0)
             return -1;
-        }
         con->error = 1;
     }
     return bytes;
 }
 
-static int connection_send_ssl(connection_t *con, const void *buf, size_t len)
+static int connection_send_tls(connection_t *con, const void *buf, size_t len)
 {
-    int bytes = SSL_write (con->ssl, buf, len);
+    ssize_t bytes = tls_write(con->tls, buf, len);
 
     if (bytes < 0) {
-        switch (SSL_get_error(con->ssl, bytes)){
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                return -1;
-        }
         con->error = 1;
     } else {
         con->sent_bytes += bytes;
     }
+
     return bytes;
 }
 #else
 
-/* SSL not compiled in, so at least log it */
-static void get_ssl_certificate(ice_config_t *config)
+/* TLS not compiled in, so at least log it */
+static void get_tls_certificate(ice_config_t *config)
 {
-    ssl_ok = 0;
+    tls_ok = false;
     ICECAST_LOG_INFO("No TLS capability. "
-                     "Rebuild Icecast with openSSL support to enable this.");
+                     "Rebuild Icecast with OpenSSL support to enable this.");
 }
-#endif /* HAVE_OPENSSL */
+#endif /* ICECAST_CAP_TLS */
 
 
 /* handlers (default) for reading and writing a connection_t, no encrpytion
@@ -271,157 +248,150 @@ static int connection_send(connection_t *con, const void *buf, size_t len)
     } else {
         con->sent_bytes += bytes;
     }
+
     return bytes;
 }
 
-connection_t *connection_create (sock_t sock, sock_t serversock, char *ip)
+connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, listensocket_t* listensocket_effective, char *ip)
 {
     connection_t *con;
+
+    if (!matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
+        return NULL;
+
     con = (connection_t *)calloc(1, sizeof(connection_t));
     if (con) {
+        refobject_ref(listensocket_real);
+        refobject_ref(listensocket_effective);
+
         con->sock       = sock;
-        con->serversock = serversock;
+        con->listensocket_real = listensocket_real;
+        con->listensocket_effective = listensocket_effective;
         con->con_time   = time(NULL);
         con->id         = _next_connection_id();
         con->ip         = ip;
+        con->tlsmode    = ICECAST_TLSMODE_AUTO;
         con->read       = connection_read;
         con->send       = connection_send;
     }
 
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CONNECTION, con);
+
     return con;
 }
 
-/* prepare connection for interacting over a SSL connection
+/* prepare connection for interacting over a TLS connection
  */
-void connection_uses_ssl(connection_t *con)
+void connection_uses_tls(connection_t *con)
 {
-#ifdef HAVE_OPENSSL
-    if (con->ssl)
+#ifdef ICECAST_CAP_TLS
+    if (con->tls)
         return;
 
-    con->read = connection_read_ssl;
-    con->send = connection_send_ssl;
-    con->ssl = SSL_new(ssl_ctx);
-    SSL_set_accept_state(con->ssl);
-    SSL_set_fd(con->ssl, con->sock);
+    if (con->readbufferlen) {
+        ICECAST_LOG_ERROR("Connection is now using TLS but has data put back. BAD. Discarding putback data.");
+        free(con->readbuffer);
+        con->readbufferlen = 0;
+    }
+
+    con->tlsmode = ICECAST_TLSMODE_RFC2818;
+    con->read = connection_read_tls;
+    con->send = connection_send_tls;
+    con->tls = tls_new(tls_ctx);
+    tls_set_incoming(con->tls);
+    tls_set_socket(con->tls, con->sock);
 #endif
+}
+
+ssize_t connection_send_bytes(connection_t *con, const void *buf, size_t len)
+{
+    ssize_t ret = con->send(con, buf, len);
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_WRITE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, con, buf, len, ret);
+
+    return ret;
+}
+
+static inline ssize_t connection_read_bytes_real(connection_t *con, void *buf, size_t len)
+{
+    ssize_t done = 0;
+    ssize_t ret;
+
+    if (con->readbufferlen) {
+        ICECAST_LOG_DEBUG("On connection %p we read from putback buffer, filled with %zu bytes, requested are %zu bytes", con, con->readbufferlen, len);
+        if (len >= con->readbufferlen) {
+            memcpy(buf, con->readbuffer, con->readbufferlen);
+            free(con->readbuffer);
+            con->readbuffer = NULL;
+            ICECAST_LOG_DEBUG("New fill in buffer=<empty>");
+            if (len == con->readbufferlen) {
+                con->readbufferlen = 0;
+                return len;
+            } else {
+                len -= con->readbufferlen;
+                buf += con->readbufferlen;
+                done = con->readbufferlen;
+                con->readbufferlen = 0;
+            }
+        } else {
+            memcpy(buf, con->readbuffer, len);
+            memmove(con->readbuffer, con->readbuffer+len, con->readbufferlen-len);
+            con->readbufferlen -= len;
+            return len;
+        }
+    }
+
+    ret = con->read(con, buf, len);
+
+    if (ret < 0) {
+        if (done == 0) {
+            return ret;
+        } else {
+            return done;
+        }
+    }
+
+    return done + ret;
 }
 
 ssize_t connection_read_bytes(connection_t *con, void *buf, size_t len)
 {
-    return con->read(con, buf, len);
+    ssize_t ret = connection_read_bytes_real(con, buf, len);
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_READ, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, con, buf, len, ret);
+
+    return ret;
 }
 
-static sock_t wait_for_serversock(int timeout)
+int connection_read_put_back(connection_t *con, const void *buf, size_t len)
 {
-#ifdef HAVE_POLL
-    struct pollfd ufds [global.server_sockets];
-    int i, ret;
+    void *n;
 
-    for(i=0; i < global.server_sockets; i++) {
-        ufds[i].fd = global.serversock[i];
-        ufds[i].events = POLLIN;
-        ufds[i].revents = 0;
-    }
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_PUTBACK, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBR, con, buf, len);
 
-    ret = poll(ufds, global.server_sockets, timeout);
-    if(ret < 0) {
-        return SOCK_ERROR;
-    } else if(ret == 0) {
-        return SOCK_ERROR;
+    if (con->readbufferlen) {
+        n = realloc(con->readbuffer, con->readbufferlen + len);
+        if (!n)
+            return -1;
+
+        memcpy(n + con->readbufferlen, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen += len;
+
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
     } else {
-        int dst;
-        for(i=0; i < global.server_sockets; i++) {
-            if(ufds[i].revents & POLLIN)
-                return ufds[i].fd;
-            if(ufds[i].revents & (POLLHUP|POLLERR|POLLNVAL)) {
-                if (ufds[i].revents & (POLLHUP|POLLERR)) {
-                    sock_close (global.serversock[i]);
-                    ICECAST_LOG_WARN("Had to close a listening socket");
-                }
-                global.serversock[i] = SOCK_ERROR;
-            }
-        }
-        /* remove any closed sockets */
-        for(i=0, dst=0; i < global.server_sockets; i++) {
-            if (global.serversock[i] == SOCK_ERROR)
-            continue;
-            if (i!=dst)
-            global.serversock[dst] = global.serversock[i];
-            dst++;
-        }
-        global.server_sockets = dst;
-        return SOCK_ERROR;
-    }
-#else
-    fd_set rfds;
-    struct timeval tv, *p=NULL;
-    int i, ret;
-    sock_t max = SOCK_ERROR;
+        n = malloc(len);
+        if (!n)
+            return -1;
 
-    FD_ZERO(&rfds);
-
-    for(i=0; i < global.server_sockets; i++) {
-        FD_SET(global.serversock[i], &rfds);
-        if (max == SOCK_ERROR || global.serversock[i] > max)
-            max = global.serversock[i];
+        memcpy(n, buf, len);
+        con->readbuffer = n;
+        con->readbufferlen = len;
+        ICECAST_LOG_DEBUG("On connection %p %zu bytes have been put back.", con, len);
+        return 0;
     }
-
-    if(timeout >= 0) {
-        tv.tv_sec = timeout/1000;
-        tv.tv_usec = (timeout % 1000) * 1000;
-        p = &tv;
-    }
-
-    ret = select(max+1, &rfds, NULL, NULL, p);
-    if(ret < 0) {
-        return SOCK_ERROR;
-    } else if(ret == 0) {
-        return SOCK_ERROR;
-    } else {
-        for(i=0; i < global.server_sockets; i++) {
-            if(FD_ISSET(global.serversock[i], &rfds))
-                return global.serversock[i];
-        }
-        return SOCK_ERROR; /* Should be impossible, stop compiler warnings */
-    }
-#endif
 }
-
-static connection_t *_accept_connection(int duration)
-{
-    sock_t sock, serversock;
-    char *ip;
-
-    serversock = wait_for_serversock (duration);
-    if (serversock == SOCK_ERROR)
-        return NULL;
-
-    /* malloc enough room for a full IP address (including ipv6) */
-    ip = (char *)malloc(MAX_ADDR_LEN);
-
-    sock = sock_accept(serversock, ip, MAX_ADDR_LEN);
-    if (sock != SOCK_ERROR) {
-        connection_t *con = NULL;
-        /* Make any IPv4 mapped IPv6 address look like a normal IPv4 address */
-        if (strncmp(ip, "::ffff:", 7) == 0)
-            memmove(ip, ip+7, strlen (ip+7)+1);
-
-        if (matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
-            con = connection_create (sock, serversock, ip);
-        if (con)
-            return con;
-        sock_close(sock);
-    } else {
-        if (!sock_recoverable(sock_error())) {
-            ICECAST_LOG_WARN("accept() failed with error %d: %s", sock_error(), strerror(sock_error()));
-            thread_sleep(500000);
-        }
-    }
-    free(ip);
-    return NULL;
-}
-
 
 /* add client to connection queue. At this point some header information
  * has been collected, so we now pass it onto the connection thread for
@@ -462,8 +432,12 @@ static client_queue_t *_get_connection(void)
 static void process_request_queue (void)
 {
     client_queue_t **node_ref = (client_queue_t **)&_req_queue;
-    ice_config_t *config = config_get_config();
-    int timeout = config->header_timeout;
+    ice_config_t *config;
+    int timeout;
+    char peak;
+
+    config = config_get_config();
+    timeout = config->header_timeout;
     config_release_config();
 
     while (*node_ref) {
@@ -471,6 +445,16 @@ static void process_request_queue (void)
         client_t *client = node->client;
         int len = PER_CLIENT_REFBUF_SIZE - 1 - node->offset;
         char *buf = client->refbuf->data + node->offset;
+
+        ICECAST_LOG_DDEBUG("Checking on client %p", client);
+
+        if (client->con->tlsmode == ICECAST_TLSMODE_AUTO || client->con->tlsmode == ICECAST_TLSMODE_AUTO_NO_PLAIN) {
+            if (recv(client->con->sock, &peak, 1, MSG_PEEK) == 1) {
+                if (peak == 0x16) { /* TLS Record Protocol Content type 0x16 == Handshake */
+                    connection_uses_tls(client->con);
+                }
+            }
+        }
 
         if (len > 0) {
             if (client->con->con_time + timeout <= time(NULL)) {
@@ -480,9 +464,13 @@ static void process_request_queue (void)
             }
         }
 
-        if (len > 0) {
+        if (len > 0 || node->shoutcast > 1) {
+            ssize_t stream_offset = -1;
             int pass_it = 1;
             char *ptr;
+
+            if (len < 0 && node->shoutcast > 1)
+                len = 0;
 
             /* handle \n, \r\n and nsvcap which for some strange reason has
              * EOL as \r\r\n */
@@ -502,23 +490,30 @@ static void process_request_queue (void)
                  * http style headers, we don't want to lose those */
                 ptr = strstr(client->refbuf->data, "\r\r\n\r\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+6) - client->refbuf->data;
+                    stream_offset = (ptr+6) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\r\n\r\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+4) - client->refbuf->data;
+                    stream_offset = (ptr+4) - client->refbuf->data;
                     break;
                 }
                 ptr = strstr(client->refbuf->data, "\n\n");
                 if (ptr) {
-                    node->stream_offset = (ptr+2) - client->refbuf->data;
+                    stream_offset = (ptr+2) - client->refbuf->data;
                     break;
                 }
                 pass_it = 0;
             } while (0);
 
+            ICECAST_LOG_DDEBUG("pass_it=%i, len=%i", pass_it, (int)len);
+            ICECAST_LOG_DDEBUG("Client %p has buffer: %H", client, client->refbuf->data);
+
             if (pass_it) {
+                if (stream_offset != -1) {
+                    connection_read_put_back(client->con, client->refbuf->data + stream_offset, node->offset - stream_offset);
+                    node->offset = stream_offset;
+                }
                 if ((client_queue_t **)_req_queue_tail == &(node->next))
                     _req_queue_tail = (volatile client_queue_t **)node_ref;
                 *node_ref = node->next;
@@ -541,6 +536,96 @@ static void process_request_queue (void)
     _handle_connection();
 }
 
+/* add client to body queue.
+ */
+static void _add_body_client(client_queue_t *node)
+{
+    ICECAST_LOG_DEBUG("Putting client %p in body queue.", node->client);
+
+    thread_spin_lock(&_connection_lock);
+    *_body_queue_tail = node;
+    _body_queue_tail = (volatile client_queue_t **) &node->next;
+    thread_spin_unlock(&_connection_lock);
+}
+
+static client_slurp_result_t process_request_body_queue_one(client_queue_t *node, time_t timeout, size_t body_size_limit)
+{
+        client_t *client = node->client;
+        client_slurp_result_t res;
+
+        if (client->parser->req_type == httpp_req_post) {
+            if (node->bodybuffer == NULL && client->request_body_read == 0) {
+                if (client->request_body_length < 0) {
+                    node->bodybufferlen = body_size_limit;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                } else if (client->request_body_length <= (ssize_t)body_size_limit) {
+                    node->bodybufferlen = client->request_body_length;
+                    node->bodybuffer = malloc(node->bodybufferlen);
+                }
+            }
+        }
+
+        if (node->bodybuffer) {
+            res = client_body_slurp(client, node->bodybuffer, &(node->bodybufferlen));
+            if (res == CLIENT_SLURP_SUCCESS) {
+                httpp_parse_postdata(client->parser, node->bodybuffer, node->bodybufferlen);
+                free(node->bodybuffer);
+                node->bodybuffer = NULL;
+            }
+        } else {
+            res = client_body_skip(client);
+        }
+
+        if (res != CLIENT_SLURP_SUCCESS) {
+            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
+                return CLIENT_SLURP_ERROR;
+            }
+        }
+
+        return res;
+}
+
+/* This queue reads data from the body of clients. */
+static void process_request_body_queue (void)
+{
+    client_queue_t **node_ref = (client_queue_t **)&_body_queue;
+    ice_config_t *config;
+    time_t timeout;
+    size_t body_size_limit;
+
+    ICECAST_LOG_DDEBUG("Processing body queue.");
+
+    ICECAST_LOG_DDEBUG("_body_queue=%p, &_body_queue=%p, _body_queue_tail=%p", _body_queue, &_body_queue, _body_queue_tail);
+
+    config = config_get_config();
+    timeout = time(NULL) - config->body_timeout;
+    body_size_limit = config->body_size_limit;
+    config_release_config();
+
+    while (*node_ref) {
+        client_queue_t *node = *node_ref;
+        client_t *client = node->client;
+        client_slurp_result_t res;
+
+        node->tried_body = 1;
+
+        ICECAST_LOG_DEBUG("Got client %p in body queue.", client);
+
+        res = process_request_body_queue_one(node, timeout, body_size_limit);
+
+        if (res != CLIENT_SLURP_NEEDS_MORE_DATA) {
+            ICECAST_LOG_DEBUG("Putting client %p back in connection queue.", client);
+
+            if ((client_queue_t **)_body_queue_tail == &(node->next))
+                _body_queue_tail = (volatile client_queue_t **)node_ref;
+            *node_ref = node->next;
+            node->next = NULL;
+            _add_connection(node);
+            continue;
+        }
+        node_ref = &node->next;
+    }
+}
 
 /* add node to the queue of requests. This is where the clients are when
  * initial http details are read.
@@ -554,27 +639,26 @@ static void _add_request_queue(client_queue_t *node)
 static client_queue_t *create_client_node(client_t *client)
 {
     client_queue_t *node = calloc (1, sizeof (client_queue_t));
-    ice_config_t *config;
-    listener_t *listener;
+    const listener_t *listener;
 
     if (!node)
         return NULL;
 
     node->client = client;
 
-    config = config_get_config();
-    listener = config_get_listen_sock(config, client->con);
+    listener = listensocket_get_listener(client->con->listensocket_effective);
 
     if (listener) {
         if (listener->shoutcast_compat)
             node->shoutcast = 1;
-        if (listener->ssl && ssl_ok)
-            connection_uses_ssl(client->con);
+        client->con->tlsmode = listener->tls;
+        if (listener->tls == ICECAST_TLSMODE_RFC2818 && tls_ok)
+            connection_uses_tls(client->con);
         if (listener->shoutcast_mount)
             node->shoutcast_mount = strdup(listener->shoutcast_mount);
     }
 
-    config_release_config();
+    listensocket_release_listener(client->con->listensocket_effective);
 
     return node;
 }
@@ -587,7 +671,7 @@ void connection_queue(connection_t *con)
     global_lock();
     if (client_create(&client, con, NULL) < 0) {
         global_unlock();
-        client_send_error(client, 403, 1, "Icecast connection limit reached");
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_LIMIT);
         /* don't be too eager as this is an imposed hard limit */
         thread_sleep(400000);
         return;
@@ -621,11 +705,11 @@ void connection_accept_loop(void)
     int duration = 300;
 
     config = config_get_config();
-    get_ssl_certificate(config);
+    get_tls_certificate(config);
     config_release_config();
 
     while (global.running == ICECAST_RUNNING) {
-        con = _accept_connection (duration);
+        con = listensocket_container_accept(global.listensockets, duration);
 
         if (con) {
             connection_queue(con);
@@ -635,6 +719,7 @@ void connection_accept_loop(void)
                 duration = 300; /* use longer timeouts when nothing waiting */
         }
         process_request_queue();
+        process_request_body_queue();
     }
 
     /* Give all the other threads notification to shut down */
@@ -671,7 +756,7 @@ int connection_complete_source(source_t *source, int response)
                 config_release_config();
                 global_unlock();
                 if (response) {
-                    client_send_error(source->client, 403, 1, "Content-type not supported");
+                    client_send_error_by_id(source->client, ICECAST_ERROR_CON_CONTENT_TYPE_NOSYS);
                     source->client = NULL;
                 }
                 ICECAST_LOG_WARN("Content-type \"%s\" not supported, dropping source", contenttype);
@@ -681,7 +766,7 @@ int connection_complete_source(source_t *source, int response)
             config_release_config();
             global_unlock();
             if (response) {
-                client_send_error(source->client, 403, 1, "No Content-type given");
+                client_send_error_by_id(source->client, ICECAST_ERROR_CON_NO_CONTENT_TYPE_GIVEN);
                 source->client = NULL;
             }
             ICECAST_LOG_ERROR("Content-type not given in PUT request, dropping source");
@@ -697,7 +782,7 @@ int connection_complete_source(source_t *source, int response)
             global_unlock();
             config_release_config();
             if (response) {
-                client_send_error(source->client, 403, 1, "internal format allocation problem");
+                client_send_error_by_id(source->client, ICECAST_ERROR_CON_INTERNAL_FORMAT_ALLOC_ERROR);
                 source->client = NULL;
             }
             ICECAST_LOG_WARN("plugin format failed for \"%s\"", source->mount);
@@ -726,17 +811,17 @@ int connection_complete_source(source_t *source, int response)
     config_release_config();
 
     if (response) {
-        client_send_error(source->client, 403, 1, "too many sources connected");
+        client_send_error_by_id(source->client, ICECAST_ERROR_CON_SOURCE_CLIENT_LIMIT);
         source->client = NULL;
     }
 
     return -1;
 }
 
-static inline void source_startup(client_t *client, const char *uri)
+static inline void source_startup(client_t *client)
 {
     source_t *source;
-    source = source_reserve(uri);
+    source = source_reserve(client->uri);
 
     if (source) {
         source->client = client;
@@ -752,70 +837,87 @@ static inline void source_startup(client_t *client, const char *uri)
             client->respcode = 200;
             /* send this non-blocking but if there is only a partial write
              * then leave to header timeout */
-            sock_write (client->con->sock, "OK2\r\nicy-caps:11\r\n\r\n");
+            client_send_bytes(client, "OK2\r\nicy-caps:11\r\n\r\n", 20); /* TODO: Replace Magic Number! */
             source->shoutcast_compat = 1;
             source_client_callback(client, source);
         } else {
             refbuf_t *ok = refbuf_new(PER_CLIENT_REFBUF_SIZE);
             const char *expectcontinue;
             const char *transfer_encoding;
-            int status_to_send = 200;
+            int status_to_send = 0;
+            ssize_t ret;
 
             transfer_encoding = httpp_getvar(source->parser, "transfer-encoding");
             if (transfer_encoding && strcasecmp(transfer_encoding, HTTPP_ENCODING_IDENTITY) != 0) {
                 client->encoding = httpp_encoding_new(transfer_encoding);
                 if (!client->encoding) {
-                    client_send_error(client, 501, 1, "Unimplemented");
+                    client_send_error_by_id(client, ICECAST_ERROR_CON_UNIMPLEMENTED);
                     return;
                 }
             }
 
-            /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
-            expectcontinue = httpp_getvar (source->parser, "expect");
+            if (source->parser && source->parser->req_type == httpp_req_source) {
+                status_to_send = 200;
+            } else {
+                /* For PUT support we check for 100-continue and send back a 100 to stay in spec */
+                expectcontinue = httpp_getvar (source->parser, "expect");
 
-            if (expectcontinue != NULL) {
+                if (expectcontinue != NULL) {
 #ifdef HAVE_STRCASESTR
-                if (strcasestr (expectcontinue, "100-continue") != NULL)
+                    if (strcasestr (expectcontinue, "100-continue") != NULL)
 #else
-                ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
-                if (strstr (expectcontinue, "100-continue") != NULL)
+                    ICECAST_LOG_WARN("OS doesn't support case insensitive substring checks...");
+                    if (strstr (expectcontinue, "100-continue") != NULL)
 #endif
-                {
-                    status_to_send = 100;
+                    {
+                        status_to_send = 100;
+                    }
                 }
             }
 
             client->respcode = 200;
-            util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, "", NULL, client);
-            ok->len = strlen(ok->data);
-            /* we may have unprocessed data read in, so don't overwrite it */
-            ok->associated = client->refbuf;
+            if (status_to_send) {
+                ret = util_http_build_header(ok->data, PER_CLIENT_REFBUF_SIZE, 0, 0, status_to_send, NULL, NULL, NULL, NULL, NULL, client);
+                snprintf(ok->data + ret, PER_CLIENT_REFBUF_SIZE - ret, "Content-Length: 0\r\n\r\n");
+                ok->len = strlen(ok->data);
+            } else {
+                ok->len = 0;
+            }
+            refbuf_release(client->refbuf);
             client->refbuf = ok;
             fserve_add_client_callback(client, source_client_callback, source);
         }
     } else {
-        client_send_error(client, 403, 1, "Mountpoint in use");
-        ICECAST_LOG_WARN("Mountpoint %s in use", uri);
+        client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_IN_USE);
+        ICECAST_LOG_WARN("Mountpoint %s in use", client->uri);
     }
 }
 
 /* only called for native icecast source clients */
-static void _handle_source_request(client_t *client, const char *uri)
+static void _handle_source_request(client_t *client)
 {
-    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" from %s as role %s",
-        uri, client->con->ip, client->role);
+    const char *method = httpp_getvar(client->parser, HTTPP_VAR_REQ_TYPE);
 
-    if (uri[0] != '/') {
+    ICECAST_LOG_INFO("Source logging in at mountpoint \"%s\" using %s%H%s from %s as role %s with acl %s",
+        client->uri,
+        ((method) ? "\"" : "<"), ((method) ? method : "unknown"), ((method) ? "\"" : ">"),
+        client->con->ip, client->role, acl_get_name(client->acl));
+
+    if (client->parser && client->parser->req_type == httpp_req_source) {
+        ICECAST_LOG_DEBUG("Source at mountpoint \"%s\" connected using deprecated SOURCE method.", client->uri);
+    }
+
+    if (client->uri[0] != '/') {
         ICECAST_LOG_WARN("source mountpoint not starting with /");
-        client_send_error(client, 400, 1, "source mountpoint not starting with /");
+        client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNTPOINT_NOT_STARTING_WITH_SLASH);
         return;
     }
 
-    source_startup(client, uri);
+    source_startup(client);
 }
 
 
-static void _handle_stats_request(client_t *client, char *uri)
+static void _handle_stats_request(client_t *client)
 {
     stats_event_inc(NULL, "stats_connections");
 
@@ -829,7 +931,7 @@ static void _handle_stats_request(client_t *client, char *uri)
 /* if 0 is returned then the client should not be touched, however if -1
  * is returned then the caller is responsible for handling the client
  */
-static int __add_listener_to_source(source_t *source, client_t *client)
+static void __add_listener_to_source(source_t *source, client_t *client)
 {
     size_t loop = 10;
 
@@ -846,15 +948,18 @@ static int __add_listener_to_source(source_t *source, client_t *client)
             if (!next) {
                 ICECAST_LOG_ERROR("Fallback '%s' for full source '%s' not found",
                     source->mount, source->fallback_mount);
-                return -1;
+                client_send_error_by_id(client, ICECAST_ERROR_SOURCE_MAX_LISTENERS);
+                return;
             }
             ICECAST_LOG_INFO("stream full, trying %s", next->mount);
             source = next;
+            navigation_history_navigate_to(&(client->history), source->identifier, NAVIGATION_DIRECTION_DOWN);
             loop--;
             continue;
         }
         /* now we fail the client */
-        return -1;
+        client_send_error_by_id(client, ICECAST_ERROR_SOURCE_MAX_LISTENERS);
+        return;
     } while (1);
 
     client->write_to_client = format_generic_write_to_client;
@@ -873,7 +978,6 @@ static int __add_listener_to_source(source_t *source, client_t *client)
         source->on_demand_req = 1;
     }
     ICECAST_LOG_DEBUG("Added client to %s", source->mount);
-    return 0;
 }
 
 /* count the number of clients on a mount with same username and same role as the given one */
@@ -911,10 +1015,10 @@ static inline ssize_t __count_user_role_on_mount (source_t *source, client_t *cl
     return ret;
 }
 
-static void _handle_get_request(client_t *client, char *uri) {
+static void _handle_get_request(client_t *client) {
     source_t *source = NULL;
 
-    ICECAST_LOG_DEBUG("Got client %p with URI %H", client, uri);
+    ICECAST_LOG_DEBUG("Got client %p with URI %H", client, client->uri);
 
     /* there are several types of HTTP GET clients
      * media clients, which are looking for a source (eg, URI = /stream.ogg),
@@ -924,71 +1028,82 @@ static void _handle_get_request(client_t *client, char *uri) {
 
     stats_event_inc(NULL, "client_connections");
 
-    /* Dispatch all admin requests */
-    if ((strcmp(uri, "/admin.cgi") == 0) ||
-        (strncmp(uri, "/admin/", 7) == 0)) {
-        ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
-        admin_handle_request(client, uri);
-        return;
-    }
-
     /* this is a web/ request. let's check if we are allowed to do that. */
     if (acl_test_web(client->acl) != ACL_POLICY_ALLOW) {
         /* doesn't seem so, sad client :( */
-        if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
-            client_destroy(client);
-        } else {
-            client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        }
+        auth_reject_client_on_deny(client);
         return;
     }
 
-    if (util_check_valid_extension(uri) == XSLT_CONTENT) {
+    if (client->parser->req_type == httpp_req_options) {
+        client_send_204(client);
+        return;
+    }
+
+    if (util_check_valid_extension(client->uri) == XSLT_CONTENT) {
         /* If the file exists, then transform it, otherwise, write a 404 */
         ICECAST_LOG_DEBUG("Stats request, sending XSL transformed stats");
-        stats_transform_xslt(client, uri);
+        stats_transform_xslt(client);
         return;
     }
 
     avl_tree_rlock(global.source_tree);
     /* let's see if this is a source or just a random fserve file */
-    source = source_find_mount(uri);
+    source = source_find_mount_with_history(client->uri, &(client->history));
     if (source) {
         /* true mount */
-        int in_error = 0;
-        ssize_t max_connections_per_user = acl_get_max_connections_per_user(client->acl);
-        /* check for duplicate_logins */
-        if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
-            if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
-                client_send_error(client, 403, 1, "Reached limit of concurrent "
-                    "connections on those credentials");
-                in_error = 1;
-            }
-        }
-
-
-        /* Set max listening duration in case not already set. */
-        if (!in_error && client->con->discon_time == 0) {
-            time_t connection_duration = acl_get_max_connection_duration(client->acl);
-            if (connection_duration == -1) {
-                ice_config_t *config = config_get_config();
-                mount_proxy *mount = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
-                if (mount && mount->max_listener_duration)
-                    connection_duration = mount->max_listener_duration;
-                config_release_config();
+        do {
+            ssize_t max_connections_per_user = acl_get_max_connections_per_user(client->acl);
+            /* check for duplicate_logins */
+            if (max_connections_per_user > 0) { /* -1 = not set (-> default=unlimited), 0 = unlimited */
+                if (max_connections_per_user <= __count_user_role_on_mount(source, client)) {
+                    client_send_error_by_id(client, ICECAST_ERROR_CON_PER_CRED_CLIENT_LIMIT);
+                    break;
+                }
             }
 
-            if (connection_duration > 0) /* -1 = not set (-> default=unlimited), 0 = unlimited */
-                client->con->discon_time = connection_duration + time(NULL);
-        }
-        if (!in_error && __add_listener_to_source(source, client) == -1) {
-            client_send_error(client, 403, 1, "Rejecting client for whatever reason");
-        }
+            if (!source->allow_direct_access) {
+                client_send_error_by_id(client, ICECAST_ERROR_CON_MOUNT_NO_FOR_DIRECT_ACCESS);
+                break;
+            }
+
+            /* Set max listening duration in case not already set. */
+            if (client->con->discon_time == 0) {
+                time_t connection_duration = acl_get_max_connection_duration(client->acl);
+                if (connection_duration == -1) {
+                    ice_config_t *config = config_get_config();
+                    mount_proxy *mount = config_find_mount(config, source->mount, MOUNT_TYPE_NORMAL);
+                    if (mount && mount->max_listener_duration)
+                        connection_duration = mount->max_listener_duration;
+                    config_release_config();
+                }
+
+                if (connection_duration > 0) /* -1 = not set (-> default=unlimited), 0 = unlimited */
+                    client->con->discon_time = connection_duration + time(NULL);
+            }
+
+            __add_listener_to_source(source, client);
+        } while (0);
         avl_tree_unlock(global.source_tree);
     } else {
         /* file */
         avl_tree_unlock(global.source_tree);
-        fserve_client_create(client, uri);
+        fserve_client_create(client);
+    }
+}
+
+static void _handle_delete_request(client_t *client) {
+    source_t *source;
+
+    avl_tree_wlock(global.source_tree);
+    source = source_find_mount_raw(client->uri);
+    if (source) {
+        source->running = 0;
+        avl_tree_unlock(global.source_tree);
+        client_send_204(client);
+    } else {
+        avl_tree_unlock(global.source_tree);
+        client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
     }
 }
 
@@ -1001,9 +1116,13 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     client_t *client = node->client;
     ice_config_t *config;
 
+    ICECAST_LOG_DDEBUG("Client %p is a shoutcast client of stage %i", client, (int)node->shoutcast);
+
     if (node->shoutcast == 1)
     {
         char *ptr, *headers;
+
+        ICECAST_LOG_DDEBUG("Client %p has buffer: %H", client, client->refbuf->data);
 
         /* Get rid of trailing \r\n or \n after password */
         ptr = strstr(client->refbuf->data, "\r\r\n");
@@ -1029,11 +1148,15 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
         *ptr = '\0';
 
         client->password = strdup(client->refbuf->data);
+        config = config_get_config();
+        client->username = strdup(config->shoutcast_user);
+        config_release_config();
         node->offset -= (headers - client->refbuf->data);
         memmove(client->refbuf->data, headers, node->offset+1);
         node->shoutcast = 2;
         /* we've checked the password, now send it back for reading headers */
         _add_request_queue(node);
+        ICECAST_LOG_DDEBUG("Client %p re-added to request queue", client);
         return;
     }
     /* actually make a copy as we are dropping the config lock */
@@ -1055,14 +1178,7 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     parser = httpp_create_parser();
     httpp_initialize(parser, NULL);
     if (httpp_parse(parser, http_compliant, strlen(http_compliant))) {
-        /* we may have more than just headers, so prepare for it */
-        if (node->stream_offset == node->offset) {
-            client->refbuf->len = 0;
-        } else {
-            char *ptr = client->refbuf->data;
-            client->refbuf->len = node->offset - node->stream_offset;
-            memmove(ptr, ptr + node->stream_offset, client->refbuf->len);
-        }
+        client->refbuf->len = 0;
         client->parser = parser;
         client->protocol = ICECAST_PROTOCOL_SHOUTCAST;
         node->shoutcast = 0;
@@ -1077,10 +1193,10 @@ static void _handle_shoutcast_compatible(client_queue_t *node)
     return;
 }
 
-/* Handle <alias> lookups here.
+/* Handle <resource> lookups here.
  */
 
-static int _handle_aliases(client_t *client, char **uri)
+static int _handle_resources(client_t *client, char **uri)
 {
     const char *http_host = httpp_getvar(client->parser, "host");
     char *serverhost = NULL;
@@ -1089,8 +1205,8 @@ static int _handle_aliases(client_t *client, char **uri)
     char *vhost_colon;
     char *new_uri = NULL;
     ice_config_t *config;
-    listener_t *listen_sock;
-    aliases *alias;
+    const listener_t *listen_sock;
+    resource_t *resource;
 
     if (http_host) {
         vhost = strdup(http_host);
@@ -1102,29 +1218,83 @@ static int _handle_aliases(client_t *client, char **uri)
     }
 
     config = config_get_config();
-    listen_sock = config_get_listen_sock (config, client->con);
+    listen_sock = listensocket_get_listener(client->con->listensocket_effective);
     if (listen_sock) {
         serverhost = listen_sock->bind_address;
         serverport = listen_sock->port;
     }
 
-    alias = config->aliases;
+    resource = config->resources;
 
-    while (alias) {
-        if (strcmp(*uri, alias->source) == 0 &&
-           (alias->port == -1 || alias->port == serverport) &&
-           (alias->bind_address == NULL || (serverhost != NULL && strcmp(alias->bind_address, serverhost) == 0)) &&
-           (alias->vhost == NULL || (vhost != NULL && strcmp(alias->vhost, vhost) == 0)) ) {
-            if (alias->destination)
-                new_uri = strdup(alias->destination);
-            if (alias->omode != OMODE_DEFAULT)
-                client->mode = alias->omode;
-            ICECAST_LOG_DEBUG("alias has made %s into %s", *uri, new_uri);
-            break;
+    /* We now go thru all resources and see if any matches. */
+    for (; resource; resource = resource->next) {
+        /* We check for several aspects, if they DO NOT match, we continue with our search. */
+
+        /* Check for the URI to match. */
+        if (resource->flags & ALIAS_FLAG_PREFIXMATCH) {
+            size_t len = strlen(resource->source);
+            if (strncmp(*uri, resource->source, len) != 0)
+                continue;
+            ICECAST_LOG_DEBUG("Match: *uri='%s', resource->source='%s', len=%zu", *uri, resource->source, len);
+        } else {
+            if (strcmp(*uri, resource->source) != 0)
+                continue;
         }
-        alias = alias->next;
+
+        /* Check for the server's port to match. */
+        if (resource->port != -1 && resource->port != serverport)
+            continue;
+
+        /* Check for the server's bind address to match. */
+        if (resource->bind_address != NULL && serverhost != NULL && strcmp(resource->bind_address, serverhost) != 0)
+            continue;
+
+        if (resource->listen_socket != NULL && (listen_sock->id == NULL || strcmp(resource->listen_socket, listen_sock->id) != 0))
+            continue;
+
+        /* Check for the vhost to match. */
+        if (resource->vhost != NULL && vhost != NULL && strcmp(resource->vhost, vhost) != 0)
+            continue;
+
+        /* Ok, we found a matching entry. */
+
+        if (resource->destination) {
+            if (resource->flags & ALIAS_FLAG_PREFIXMATCH) {
+                size_t len = strlen(resource->source);
+                asprintf(&new_uri, "%s%s", resource->destination, (*uri) + len);
+            } else {
+                new_uri = strdup(resource->destination);
+            }
+        }
+        if (resource->omode != OMODE_DEFAULT)
+            client->mode = resource->omode;
+
+        if (resource->module) {
+            module_t *module = module_container_get_module(global.modulecontainer, resource->module);
+
+            if (module != NULL) {
+                refobject_unref(client->handler_module);
+                client->handler_module = module;
+            } else {
+                ICECAST_LOG_ERROR("Module used in alias not found: %s", resource->module);
+            }
+        }
+
+        if (resource->handler) {
+            char *func = strdup(resource->handler);
+            if (func) {
+                free(client->handler_function);
+                client->handler_function = func;
+            } else {
+                ICECAST_LOG_ERROR("Can not allocate memory.");
+            }
+        }
+
+        ICECAST_LOG_DEBUG("resource has made %s into %s", *uri, new_uri);
+        break;
     }
 
+    listensocket_release_listener(client->con->listensocket_effective);
     config_release_config();
 
     if (new_uri) {
@@ -1138,66 +1308,107 @@ static int _handle_aliases(client_t *client, char **uri)
     return 0;
 }
 
+static void _handle_admin_request(client_t *client, char *adminuri)
+{
+    ICECAST_LOG_DEBUG("Client %p requesting admin interface.", client);
+
+    stats_event_inc(NULL, "client_connections");
+
+    admin_handle_request(client, adminuri);
+}
+
 /* Handle any client that passed the authing process.
  */
-static void _handle_authed_client(client_t *client, void *uri, auth_result result)
+static void _handle_authed_client(client_t *client, void *userdata, auth_result result)
 {
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
+    /* Update admin parameters just in case auth changed our URI */
+    if (_update_admin_command(client) == -1)
+        return;
+
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_AUTHED, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
     if (result != AUTH_OK) {
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        free(uri);
+        auth_reject_client_on_fail(client);
         return;
     }
 
     if (acl_test_method(client->acl, client->parser->req_type) != ACL_POLICY_ALLOW) {
-        ICECAST_LOG_ERROR("Client (role=%s, username=%s) not allowed to use this request method on %H", client->role, client->username, uri);
-        client_send_error(client, 401, 1, "You need to authenticate\r\n");
-        free(uri);
+        ICECAST_LOG_ERROR("Client (role=%s, acl=%s, username=%s) not allowed to use this request method on %H", client->role, acl_get_name(client->acl), client->username, client->uri);
+        auth_reject_client_on_deny(client);
         return;
+    }
+
+    /* Dispatch legacy admin.cgi requests */
+    if (strcmp(client->uri, "/admin.cgi") == 0) {
+        _handle_admin_request(client, client->uri + 1);
+        return;
+    } /* Dispatch all admin requests */
+    else if (strncmp(client->uri, "/admin/", 7) == 0) {
+        _handle_admin_request(client, client->uri + 7);
+        return;
+    }
+
+    if (client->handler_module && client->handler_function) {
+        const module_client_handler_t *handler = module_get_client_handler(client->handler_module, client->handler_function);
+        if (handler) {
+            handler->cb(client->handler_module, client);
+            return;
+        } else {
+            ICECAST_LOG_ERROR("No such handler function in module: %s", client->handler_function);
+        }
     }
 
     switch (client->parser->req_type) {
         case httpp_req_source:
         case httpp_req_put:
-            _handle_source_request(client, uri);
+            _handle_source_request(client);
         break;
         case httpp_req_stats:
-            _handle_stats_request(client, uri);
+            _handle_stats_request(client);
         break;
         case httpp_req_get:
-            _handle_get_request(client, uri);
+        case httpp_req_post:
+        case httpp_req_options:
+            _handle_get_request(client);
+        break;
+        case httpp_req_delete:
+            _handle_delete_request(client);
         break;
         default:
             ICECAST_LOG_ERROR("Wrong request type from client");
-            client_send_error(client, 400, 0, "unknown request");
+            client_send_error_by_id(client, ICECAST_ERROR_CON_UNKNOWN_REQUEST);
         break;
     }
-
-    free(uri);
 }
 
 /* Handle clients that still need to authenticate.
  */
 
-static void _handle_authentication_global(client_t *client, void *uri, auth_result result)
+static void _handle_authentication_global(client_t *client, void *userdata, auth_result result)
 {
     ice_config_t *config;
+    auth_stack_t *authstack;
 
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
     if (result != AUTH_NOMATCH &&
-        !(result == AUTH_OK && client->admin_command != -1 && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
-        _handle_authed_client(client, uri, result);
+        /* Allow global admins access to all mount points */
+        !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
+        _handle_authed_client(client, userdata, result);
         return;
     }
 
     ICECAST_LOG_DEBUG("Trying global authenticators for client %p.", client);
     config = config_get_config();
-    auth_stack_add_client(config->authstack, client, _handle_authed_client, uri);
+    authstack = config->authstack;
+    auth_stack_addref(authstack);
     config_release_config();
+    auth_stack_add_client(authstack, client, _handle_authed_client, userdata);
+    auth_stack_release(authstack);
 }
 
 static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const char *name, mount_type type)
@@ -1208,18 +1419,18 @@ static inline mount_proxy * __find_non_admin_mount(ice_config_t *config, const c
     return config_find_mount(config, name, type);
 }
 
-static void _handle_authentication_mount_generic(client_t *client, void *uri, mount_type type, void (*callback)(client_t*, void*, auth_result))
+static void _handle_authentication_mount_generic(client_t *client, void *userdata, mount_type type, void (*callback)(client_t*, void*, auth_result))
 {
     ice_config_t *config;
     mount_proxy *mountproxy;
     auth_stack_t *stack = NULL;
 
     config = config_get_config();
-    mountproxy = __find_non_admin_mount(config, uri, type);
+    mountproxy = __find_non_admin_mount(config, client->uri, type);
     if (!mountproxy) {
         int command_type = admin_get_command_type(client->admin_command);
         if (command_type == ADMINTYPE_MOUNT || command_type == ADMINTYPE_HYBRID) {
-            const char *mount = httpp_get_query_param(client->parser, "mount");
+            const char *mount = httpp_get_param(client->parser, "mount");
             if (mount)
                 mountproxy = __find_non_admin_mount(config, mount, type);
         }
@@ -1230,37 +1441,68 @@ static void _handle_authentication_mount_generic(client_t *client, void *uri, mo
     config_release_config();
 
     if (stack) {
-        auth_stack_add_client(stack, client, callback, uri);
+        auth_stack_add_client(stack, client, callback, userdata);
         auth_stack_release(stack);
     } else {
-        callback(client, uri, AUTH_NOMATCH);
+        callback(client, userdata, AUTH_NOMATCH);
     }
 }
 
-static void _handle_authentication_mount_default(client_t *client, void *uri, auth_result result)
+static void _handle_authentication_mount_default(client_t *client, void *userdata, auth_result result)
 {
     auth_stack_release(client->authstack);
     client->authstack = NULL;
 
     if (result != AUTH_NOMATCH &&
-        !(result == AUTH_OK && client->admin_command != -1 && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
-        _handle_authed_client(client, uri, result);
+        /* Allow global admins access to all mount points */
+        !(result == AUTH_OK && client->admin_command != ADMIN_COMMAND_ERROR && acl_test_admin(client->acl, client->admin_command) == ACL_POLICY_DENY)) {
+        _handle_authed_client(client, userdata, result);
         return;
     }
 
     ICECAST_LOG_DEBUG("Trying <mount type=\"default\"> specific authenticators for client %p.", client);
-    _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
+    _handle_authentication_mount_generic(client, userdata, MOUNT_TYPE_DEFAULT, _handle_authentication_global);
 }
 
-static void _handle_authentication_mount_normal(client_t *client, char *uri)
+static void _handle_authentication_mount_normal(client_t *client, void *userdata, auth_result result)
 {
+    auth_stack_release(client->authstack);
+    client->authstack = NULL;
+
+    if (result != AUTH_NOMATCH) {
+        _handle_authed_client(client, userdata, result);
+        return;
+    }
+
     ICECAST_LOG_DEBUG("Trying <mount type=\"normal\"> specific authenticators for client %p.", client);
-    _handle_authentication_mount_generic(client, uri, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
+    _handle_authentication_mount_generic(client, userdata, MOUNT_TYPE_NORMAL, _handle_authentication_mount_default);
 }
 
-static void _handle_authentication(client_t *client, char *uri)
+static void _handle_authentication_listen_socket(client_t *client)
 {
-    _handle_authentication_mount_normal(client, uri);
+    auth_stack_t *stack = NULL;
+    const listener_t *listener;
+
+    listener = listensocket_get_listener(client->con->listensocket_effective);
+    if (listener) {
+        if (listener->authstack) {
+            auth_stack_addref(stack = listener->authstack);
+        }
+        listensocket_release_listener(client->con->listensocket_effective);
+    }
+
+    if (stack) {
+        auth_stack_add_client(stack, client, _handle_authentication_mount_normal, NULL);
+        auth_stack_release(stack);
+    } else {
+        _handle_authentication_mount_normal(client, NULL, AUTH_NOMATCH);
+    }
+}
+
+static void _handle_authentication(client_t *client)
+{
+    fastevent_emit(FASTEVENT_TYPE_CLIENT_READY_FOR_AUTH, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+    _handle_authentication_listen_socket(client);
 }
 
 static void __prepare_shoutcast_admin_cgi_request(client_t *client)
@@ -1268,7 +1510,7 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
     ice_config_t *config;
     const char *sc_mount;
     const char *pass = httpp_get_query_param(client->parser, "pass");
-    listener_t *listener;
+    const listener_t *listener;
 
     if (pass == NULL) {
         ICECAST_LOG_ERROR("missing pass parameter");
@@ -1280,19 +1522,64 @@ static void __prepare_shoutcast_admin_cgi_request(client_t *client)
         return;
     }
 
+    /* Why do we acquire a global lock here? -- ph3-der-loewe, 2018-05-11 */
     global_lock();
     config = config_get_config();
     sc_mount = config->shoutcast_mount;
-    listener = config_get_listen_sock(config, client->con);
 
+    listener = listensocket_get_listener(client->con->listensocket_effective);
     if (listener && listener->shoutcast_mount)
         sc_mount = listener->shoutcast_mount;
 
     httpp_set_query_param(client->parser, "mount", sc_mount);
+    listensocket_release_listener(client->con->listensocket_effective);
+
     httpp_setvar(client->parser, HTTPP_VAR_PROTOCOL, "ICY");
     client->password = strdup(pass);
     config_release_config();
     global_unlock();
+}
+
+/* Check if we need body of client */
+static int _need_body(client_queue_t *node)
+{
+    client_t *client = node->client;
+
+    if (node->tried_body)
+        return 0;
+
+    if (client->parser->req_type == httpp_req_source) {
+        /* SOURCE connection. */
+        return 0;
+    } else if (client->parser->req_type == httpp_req_put) {
+        /* PUT connection.
+         * TODO: We may need body for /admin/ but we do not know if it's an admin request yet.
+         */
+        return 0;
+    } else if (client->request_body_length != -1 && (size_t)client->request_body_length != client->request_body_read) {
+        return 1;
+    } else if (client->request_body_length == -1 && client_body_eof(client) == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/* Updates client's admin_command */
+static int _update_admin_command(client_t *client)
+{
+    if (strcmp(client->uri, "/admin.cgi") == 0) {
+        client->admin_command = admin_get_command(client->uri + 1);
+        __prepare_shoutcast_admin_cgi_request(client);
+        if (!client->password) {
+            client_send_error_by_id(client, ICECAST_ERROR_CON_MISSING_PASS_PARAMETER);
+            return -1;
+        }
+    } else if (strncmp(client->uri, "/admin/", 7) == 0) {
+        client->admin_command = admin_get_command(client->uri + 7);
+    }
+
+    return 0;
 }
 
 /* Connection thread. Here we take clients off the connection queue and check
@@ -1331,13 +1618,32 @@ static void _handle_connection(void)
                 char *uri;
                 const char *upgrade, *connection;
 
-                /* we may have more than just headers, so prepare for it */
-                if (node->stream_offset == node->offset) {
-                    client->refbuf->len = 0;
-                } else {
-                    char *ptr = client->refbuf->data;
-                    client->refbuf->len = node->offset - node->stream_offset;
-                    memmove (ptr, ptr + node->stream_offset, client->refbuf->len);
+                client->refbuf->len = 0;
+
+                /* early check if we need more data */
+                client_complete(client);
+                if (_need_body(node)) {
+                    /* Just calling _add_body_client() would do the job.
+                     * However, if the client only has a small body this might work without moving it between queues.
+                     * -> much faster.
+                     */
+                    client_slurp_result_t res;
+                    ice_config_t *config;
+                    time_t timeout;
+                    size_t body_size_limit;
+
+                    config = config_get_config();
+                    timeout = time(NULL) - config->body_timeout;
+                    body_size_limit = config->body_size_limit;
+                    config_release_config();
+
+                    res = process_request_body_queue_one(node, timeout, body_size_limit);
+                    if (res != CLIENT_SLURP_SUCCESS) {
+                        _add_body_client(node);
+                        continue;
+                    } else {
+                        ICECAST_LOG_DEBUG("Success on fast lane");
+                    }
                 }
 
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
@@ -1346,6 +1652,7 @@ static void _handle_connection(void)
                 if (node->shoutcast_mount && strcmp (rawuri, "/admin.cgi") == 0)
                     httpp_set_query_param (client->parser, "mount", node->shoutcast_mount);
 
+                free (node->bodybuffer);
                 free (node->shoutcast_mount);
                 free (node);
 
@@ -1358,8 +1665,22 @@ static void _handle_connection(void)
 
                 upgrade = httpp_getvar(parser, "upgrade");
                 connection = httpp_getvar(parser, "connection");
-                if (upgrade && connection && strstr(upgrade, "TLS/1.0") != NULL && strcasecmp(connection, "upgrade") == 0) {
-                    client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                if (upgrade && connection && strcasecmp(connection, "upgrade") == 0) {
+                    if (client->con->tlsmode == ICECAST_TLSMODE_DISABLED || client->con->tls || strstr(upgrade, "TLS/1.0") == NULL) {
+                        client_send_error_by_id(client, ICECAST_ERROR_CON_UPGRADE_ERROR);
+                        continue;
+                    } else {
+                        client_send_101(client, ICECAST_REUSE_UPGRADETLS);
+                        continue;
+                    }
+                } else if (client->con->tlsmode != ICECAST_TLSMODE_DISABLED && client->con->tlsmode != ICECAST_TLSMODE_AUTO && !client->con->tls) {
+                    client_send_426(client, ICECAST_REUSE_UPGRADETLS);
+                    continue;
+                }
+
+                if (parser->req_type == httpp_req_options && strcmp(rawuri, "*") == 0) {
+                    client->uri = strdup("*");
+                    client_send_204(client);
                     continue;
                 }
 
@@ -1370,25 +1691,19 @@ static void _handle_connection(void)
                     continue;
                 }
 
-                client->mode = config_str_to_omode(httpp_get_query_param(client->parser, "omode"));
+                client->mode = config_str_to_omode(NULL, NULL, httpp_get_param(client->parser, "omode"));
 
-                if (_handle_aliases(client, &uri) != 0) {
+                if (_handle_resources(client, &uri) != 0) {
                     client_destroy (client);
                     continue;
                 }
 
-                if (strcmp(uri, "/admin.cgi") == 0) {
-                    client->admin_command = admin_get_command(uri + 1);
-                    __prepare_shoutcast_admin_cgi_request(client);
-                    if (!client->password) {
-                        client_send_error(client, 400, 0, "missing pass parameter");
-                        continue;
-                    }
-                } else if (strncmp("/admin/", uri, 7) == 0) {
-                    client->admin_command = admin_get_command(uri + 7);
-                }
+                client->uri = uri;
 
-                _handle_authentication(client, uri);
+                if (_update_admin_command(client) == -1)
+                    continue;
+
+                _handle_authentication(client);
             } else {
                 free (node);
                 ICECAST_LOG_ERROR("HTTP request parsing failed");
@@ -1401,22 +1716,27 @@ static void _handle_connection(void)
 }
 
 
-/* called when listening thread is not checking for incoming connections */
-int connection_setup_sockets (ice_config_t *config)
+static void __on_sock_count(size_t count, void *userdata)
 {
-    int count = 0;
-    listener_t *listener, **prev;
+    (void)userdata;
 
-    global_lock();
-    if (global.serversock) {
-        for (; count < global.server_sockets; count++)
-            sock_close (global.serversock [count]);
-        free (global.serversock);
-        global.serversock = NULL;
+    ICECAST_LOG_DEBUG("Listen socket count is now %zu.", count);
+
+    if (count == 0 && global.running == ICECAST_RUNNING) {
+        ICECAST_LOG_INFO("No more listen sockets. Exiting.");
+        global.running = ICECAST_HALTING;
     }
+}
+
+/* called when listening thread is not checking for incoming connections */
+void connection_setup_sockets (ice_config_t *config)
+{
+    global_lock();
+    refobject_unref(global.listensockets);
+
     if (config == NULL) {
         global_unlock();
-        return 0;
+        return;
     }
 
     /* setup the banned/allowed IP filenames from the xml */
@@ -1432,57 +1752,13 @@ int connection_setup_sockets (ice_config_t *config)
         allowed_ip = matchfile_new(config->allowfile);
     }
 
-    count = 0;
-    global.serversock = calloc(config->listen_sock_count, sizeof(sock_t));
+    global.listensockets = refobject_new(listensocket_container_t);
+    listensocket_container_configure(global.listensockets, config);
 
-    listener = config->listen_sock;
-    prev = &config->listen_sock;
-    while (listener) {
-        int successful = 0;
-
-        do {
-            sock_t sock = sock_get_server_socket (listener->port, listener->bind_address);
-            if (sock == SOCK_ERROR)
-                break;
-            if (sock_listen (sock, ICECAST_LISTEN_QUEUE) == SOCK_ERROR) {
-                sock_close (sock);
-                break;
-            }
-            /* some win32 setups do not do TCP win scaling well, so allow an override */
-            if (listener->so_sndbuf)
-                sock_set_send_buffer (sock, listener->so_sndbuf);
-            sock_set_blocking (sock, 0);
-            successful = 1;
-            global.serversock [count] = sock;
-            count++;
-        } while(0);
-        if (successful == 0) {
-            if (listener->bind_address) {
-                ICECAST_LOG_ERROR("Could not create listener socket on port %d bind %s",
-                        listener->port, listener->bind_address);
-            } else {
-                ICECAST_LOG_ERROR("Could not create listener socket on port %d", listener->port);
-            }
-            /* remove failed connection */
-            *prev = config_clear_listener (listener);
-            listener = *prev;
-            continue;
-        }
-        if (listener->bind_address) {
-            ICECAST_LOG_INFO("listener socket on port %d address %s", listener->port, listener->bind_address);
-        } else {
-            ICECAST_LOG_INFO("listener socket on port %d", listener->port);
-        }
-        prev = &listener->next;
-        listener = listener->next;
-    }
-    global.server_sockets = count;
     global_unlock();
 
-    if (count == 0)
-        ICECAST_LOG_ERROR("No listening sockets established");
-
-    return count;
+    listensocket_container_set_sockcount_cb(global.listensockets, __on_sock_count, NULL);
+    listensocket_container_setup(global.listensockets);;
 }
 
 
@@ -1491,12 +1767,24 @@ void connection_close(connection_t *con)
     if (!con)
         return;
 
-    if (con->sock != -1) /* TODO: do not use magic */
+    ICECAST_LOG_DEBUG("Closing connection %p (connection ID: %llu, sock=%R)", con, (long long unsigned int)con->id, con->sock);
+
+    fastevent_emit(FASTEVENT_TYPE_CONNECTION_DESTROY, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CONNECTION, con);
+
+    tls_unref(con->tls);
+    if (con->sock != SOCK_ERROR)
         sock_close(con->sock);
     if (con->ip)
         free(con->ip);
-#ifdef HAVE_OPENSSL
-    if (con->ssl) { SSL_shutdown(con->ssl); SSL_free(con->ssl); }
-#endif
+    if (con->readbuffer)
+        free(con->readbuffer);
+    refobject_unref(con->listensocket_real);
+    refobject_unref(con->listensocket_effective);
     free(con);
+}
+
+void connection_queue_client(client_t *client)
+{
+    client_queue_t *node = create_client_node(client);
+    _add_connection(node);
 }

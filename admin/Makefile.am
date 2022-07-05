@@ -1,10 +1,33 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign
-
-SUBDIRS = includes
-
 admindir = $(pkgdatadir)/admin
-dist_admin_DATA = listclients.xsl listmounts.xsl moveclients.xsl response.xsl \
-	stats.xsl manageauth.xsl updatemetadata.xsl xspf.xsl vclt.xsl
 
+nobase_dist_admin_DATA = \
+    listclients.xsl \
+    listmounts.xsl \
+    moveclients.xsl \
+    response.xsl \
+    stats.xsl \
+    manageauth.xsl \
+    updatemetadata.xsl \
+    error-html.xsl \
+    error-plaintext.xsl \
+    xspf.xsl \
+    vclt.xsl \
+    dashboard.xsl \
+    fallbacks.xsl \
+    showlog.xsl \
+    listensocketlist.xsl \
+    includes/confirm.xsl \
+    includes/footer.xsl \
+    includes/head.xsl \
+    includes/header.xsl \
+    includes/page.xsl \
+    includes/mountnav.xsl \
+    includes/player.xsl \
+    includes/playlist.xsl \
+    includes/authlist.xsl \
+    includes/web-page.xsl \
+    ui/confirmdeleteuser.xsl \
+    ui/confirmkillclient.xsl \
+    ui/confirmkillsource.xsl

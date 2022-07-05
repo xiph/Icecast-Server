@@ -2,4 +2,4 @@ Note that these instructions are *not* necessary for distribution
 tarballs; they have separate configure/build instructions.  
 
 Please visit http://www.icecast.org/download/ for more detailed
-instructions about building from Subversion.
+instructions about building from Git.

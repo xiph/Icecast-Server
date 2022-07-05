@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -13,6 +13,8 @@
 #include <string.h>
 
 #include "event.h"
+#include "util.h"
+#include "cfgfile.h"
 #include "logging.h"
 #define CATMODULE "event_log"
 
@@ -25,7 +27,8 @@ typedef struct event_log {
 static int event_log_emit(void *state, event_t *event) {
     event_log_t *self = state;
 
-    ICECAST_LOG(self->level, "%s%strigger=\"%s\" uri=\"%s\" "
+    ICECAST_LOG(self->level, ICECAST_LOGFLAG_NONE,
+                             "%s%strigger=\"%s\" uri=\"%s\" "
                              "connection_id=%lu connection_ip=\"%s\" connection_time=%lli "
                              "client_role=\"%s\" client_username=\"%s\" client_useragent=\"%s\" client_admin_command=%i",
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
@@ -62,10 +65,7 @@ int event_get_log(event_registration_t *er, config_options_t *options) {
              * <option name="level" value="..." />
              */
             if (strcmp(options->name, "prefix") == 0) {
-                free(self->prefix);
-                self->prefix = NULL;
-                if (options->value)
-                    self->prefix = strdup(options->value);
+                util_replace_string(&(self->prefix), options->value);
             } else if (strcmp(options->name, "level") == 0) {
                 self->level = ICECAST_LOGLEVEL_INFO;
                 if (options->value)

@@ -1,87 +1,72 @@
-<xsl:stylesheet xmlns:xsl = "http://www.w3.org/1999/XSL/Transform" version = "1.0">
-	<xsl:output method="html" doctype-system="about:legacy-compat" encoding="UTF-8" />
-	<!-- Import include files -->
-	<xsl:include href="includes/head.xsl"/>
-	<xsl:include href="includes/header.xsl"/>
-	<xsl:include href="includes/footer.xsl"/>
+<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
+    <!-- Import include files -->
+    <xsl:include href="includes/page.xsl"/>
+    <xsl:include href="includes/mountnav.xsl"/>
 
-	<xsl:include href="includes/mountnav.xsl"/>
+    <xsl:variable name="title">Manage Authentication</xsl:variable>
 
-	<xsl:template match="/icestats">
-		<html>
+    <xsl:template name="content">
+        <div class="section">
+            <h2><xsl:value-of select="$title" /></h2>
+            <xsl:if test="iceresponse">
+                <aside class="error">
+                    <xsl:value-of select="iceresponse/message" />
+                </aside>
+            </xsl:if>
+            <xsl:for-each select="role">
+                <section class="box">
+                    <h3 class="box_title">Role <code><xsl:value-of select="@name" /></code> (<code><xsl:value-of select="@type" /></code>)
+                        <xsl:if test="server_name">
+                            <xsl:text> </xsl:text><small><xsl:value-of select="server_name" /></small>
+                        </xsl:if>
+                    </h3>
+                    <xsl:choose>
+                        <xsl:when test="users/user">
+                            <table class="table-flipscroll">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <xsl:if test="@can-deleteuser = 'true'">
+                                            <th class="actions">Action</th>
+                                        </xsl:if>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <xsl:for-each select="users/user">
+                                        <tr>
+                                            <td><xsl:value-of select="username" /></td>
+                                            <xsl:if test="../../@can-deleteuser = 'true'">
+                                                <td class="actions">
+                                                    <a class="critical" href="/admin/ui/confirmdeleteuser.xsl?id={../../@id}&amp;username={username}">Delete</a>
+                                                </td>
+                                            </xsl:if>
+                                        </tr>
+                                    </xsl:for-each>
+                                </tbody>
+                            </table>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <p>No Users</p>
+                        </xsl:otherwise>
+                    </xsl:choose>
+                    <!-- Form to add Users -->
+                    <xsl:if test="@can-adduser = 'true'">
+                        <h4>Add User</h4>
+                        <form method="post" action="/admin/manageauth.xsl">
+                            <input type="hidden" name="id" value="{@id}"/>
+                            <input type="hidden" name="action" value="add"/>
 
-			<xsl:call-template name="head">
-				<xsl:with-param name="title">Stats</xsl:with-param>
-			</xsl:call-template>
-
-			<body>
-				<!-- Header/Menu -->
-				<xsl:call-template name="header" />
-
-				<div class="section">
-					<h2>Manage Authentication</h2>
-					<xsl:if test="iceresponse">
-						<div class="aside error">
-							<xsl:value-of select="iceresponse/message" />
-						</div>
-					</xsl:if>
-					<xsl:for-each select="role">
-						<div class="article">
-							<h3>Role <xsl:value-of select="@name" /> (<xsl:value-of select="@type" />)
-								<xsl:if test="server_name">
-									<xsl:text> </xsl:text><small><xsl:value-of select="server_name" /></small>
-								</xsl:if>
-							</h3>
-							<xsl:choose>
-								<xsl:when test="users/user">
-									<table class="table-flipscroll">
-										<thead>
-											<tr>
-												<th>User</th>
-												<xsl:if test="@can-deleteuser = 'true'">
-													<th>Action</th>
-												</xsl:if>
-											</tr>
-										</thead>
-										<tbody>
-											<xsl:for-each select="users/user">
-												<tr>
-													<td><xsl:value-of select="username" /></td>
-													<xsl:if test="../../@can-deleteuser = 'true'">
-														<td>
-															<a href="manageauth.xsl?id={../../@id}&amp;username={username}&amp;action=delete">Delete</a>
-														</td>
-													</xsl:if>
-												</tr>
-											</xsl:for-each>
-										</tbody>
-									</table>
-								</xsl:when>
-								<xsl:otherwise>
-									<p>No Users</p>
-								</xsl:otherwise>
-							</xsl:choose>
-							<!-- Form to add Users -->
-							<xsl:if test="@can-adduser = 'true'">
-								<h4>Add User</h4>
-								<form method="get" action="manageauth.xsl">
-									<label for="username" class="hidden">Username</label>
-									<input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
-									<label for="password" class="hidden">Password</label>
-									<input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
-									<input type="hidden" name="id" value="{@id}"/>
-									<input type="hidden" name="action" value="add"/>
-									<input type="submit" value="Add new user" />
-								</form>
-							</xsl:if>
-						</div>
-					</xsl:for-each>
-				</div>
-
-				<!-- Footer -->
-				<xsl:call-template name="footer" />
-
-			</body>
-		</html>
-	</xsl:template>
+                            <label for="username" class="hidden">Username: </label>
+                            <input type="text" id="username" name="username" value="" placeholder="Username" required="required" />
+                            &#160;
+                            <label for="password" class="hidden">Password: </label>
+                            <input type="password" id="password" name="password" value="" placeholder="Password" required="required" />
+                            &#160;
+                            <input type="submit" value="Add new user" />
+                        </form>
+                    </xsl:if>
+                </section>
+            </xsl:for-each>
+        </div>
+    </xsl:template>
 </xsl:stylesheet>

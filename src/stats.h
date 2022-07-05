@@ -8,19 +8,23 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __STATS_H__
 #define __STATS_H__
 
-#include "cfgfile.h"
-#include "connection.h"
-#include "common/httpp/httpp.h"
-#include "client.h"
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "icecasttypes.h"
+#include "refbuf.h"
+
+#define STATS_XML_FLAG_NONE             0x0000U
+#define STATS_XML_FLAG_SHOW_HIDDEN      0x0001U
+#define STATS_XML_FLAG_SHOW_LISTENERS   0x0002U
+#define STATS_XML_FLAG_PUBLIC_VIEW      0x0004U
 
 typedef struct _stats_node_tag
 {
@@ -94,10 +98,12 @@ void stats_event_time_iso8601 (const char *mount, const char *name);
 void *stats_connection(void *arg);
 void stats_callback (client_t *client, void *notused);
 
-void stats_transform_xslt(client_t *client, const char *uri);
+void stats_transform_xslt(client_t *client);
 void stats_sendxml(client_t *client);
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, operation_mode mode);
+xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *client);
 char *stats_get_value(const char *source, const char *name);
+
+void stats_add_authstack(auth_stack_t *stack, xmlNodePtr parent);
 
 #endif  /* __STATS_H__ */
 

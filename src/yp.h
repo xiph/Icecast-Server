@@ -8,11 +8,14 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 #ifndef __YP_H__
 #define __YP_H__
+
+#include "icecasttypes.h"
 
 #define  YP_SERVER_NAME         1
 #define  YP_SERVER_DESC         2

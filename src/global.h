@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __GLOBAL_H__
@@ -21,25 +22,27 @@
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
 #include "common/thread/thread.h"
-#include "slave.h"
-#include "common/net/sock.h"
+#include "common/avl/avl.h"
+#include "icecasttypes.h"
 
 typedef struct ice_global_tag
 {
-    sock_t *serversock;
-    int server_sockets;
+    listensocket_container_t *listensockets;
 
     int running;
 
     int sources;
+    int sources_legacy;
     int clients;
     int schedule_config_reread;
 
     avl_tree *source_tree;
     /* for locally defined relays */
-    struct _relay_server *relays;
+    relay_t *relays;
     /* relays retrieved from master */
-    struct _relay_server *master_relays;
+    relay_t *master_relays;
+
+    module_container_t *modulecontainer;
 
     cond_t shutdown_cond;
 } ice_global_t;

@@ -5,7 +5,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- *  Copyright 2012-2015 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ *  Copyright 2012-2020 Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  *
  *  This program is distributed under the GNU General Public License, version 2.
  *  A copy of this license is included with this source.
@@ -16,6 +16,9 @@
 
 /* for FILE* */
 #include <stdio.h>
+
+#include "common/net/sock.h"
+#include "icecasttypes.h"
 
 #define UNKNOWN_CONTENT 0
 #define XSLT_CONTENT    1
@@ -38,13 +41,13 @@ char *util_base64_decode(const char *input);
 char *util_bin_to_hex(unsigned char *data, int len);
 
 typedef enum _util_hostcheck_tag {
- HOSTCHECK_ERROR = -1,
- HOSTCHECK_SANE  = 0,
- HOSTCHECK_NOT_FQDN,
- HOSTCHECK_IS_LOCALHOST,
- HOSTCHECK_IS_IPV4,
- HOSTCHECK_IS_IPV6,
- HOSTCHECK_BADCHAR
+    HOSTCHECK_ERROR = -1,
+    HOSTCHECK_SANE  = 0,
+    HOSTCHECK_NOT_FQDN,
+    HOSTCHECK_IS_LOCALHOST,
+    HOSTCHECK_IS_IPV4,
+    HOSTCHECK_IS_IPV6,
+    HOSTCHECK_BADCHAR
 } util_hostcheck_type;
 
 util_hostcheck_type util_hostcheck(const char *hostname);
@@ -78,22 +81,38 @@ char *util_url_escape(const char *src);
  * If datablock is NULL no end-of-header nor any data is appended.
  * Returns the number of bytes written or -1 on error.
  */
-struct source_tag; /* use forward decleration so we do not need to
-                    * include <source.h> that would cause other conflicts. */
 ssize_t util_http_build_header(char * out, size_t len, ssize_t offset,
         int cache,
         int status, const char * statusmsg,
         const char * contenttype, const char * charset,
         const char * datablock,
-        struct source_tag * source,
-        struct _client_tag * client);
+        source_t * source,
+        client_t * client);
+
+const char *util_http_select_best(const char *input, const char *first, ...);
+
+typedef struct icecast_kv_tag {
+    char *key;
+    char *value;
+} icecast_kv_t;
+
+typedef struct icecast_kva_tag {
+    void   *_tofree[3];
+    size_t kvlen;
+    size_t indexlen;
+    size_t *index;
+    icecast_kv_t *kv;
+} icecast_kva_t;
+
+icecast_kva_t * util_parse_http_cn(const char *cnstr);
+void util_kva_free(icecast_kva_t *kva);
 
 /* String dictionary type, without support for NULL keys, or multiple
  * instances of the same key */
 typedef struct _util_dict {
-  char *key;
-  char *val;
-  struct _util_dict *next;
+    char *key;
+    char *val;
+    struct _util_dict *next;
 } util_dict;
 
 util_dict *util_dict_new(void);
@@ -109,4 +128,7 @@ struct tm *localtime_r(const time_t *timep, struct tm *result);
 char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 
 int get_line(FILE *file, char *buf, size_t siz);
+
+int util_replace_string(char **dst, const char *src);
+int util_strtolower(char *str);
 #endif  /* __UTIL_H__ */

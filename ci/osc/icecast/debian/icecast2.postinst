@@ -1,0 +1,78 @@
+#! /bin/sh
+# postinst script for icecast2
+
+set -e
+
+. /usr/share/debconf/confmodule
+
+case "$1" in
+    configure|reconfigure)
+
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+	exit 0
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+# Move configuration file to current location, if an old one exists
+# and the init.d script configuration file was updated
+if [ -f /etc/icecast.xml ] && grep -q /etc/icecast2/ /etc/default/icecast2; then
+    echo "It seems you have an old configuration lying around at"
+    echo "/etc/icecast.xml. You will need to manually merge with"
+    echo "the current configuration at /etc/icecast2/icecast.xml."
+    echo
+    echo "See /usr/share/doc/icecast2/examples for new configuration options."
+fi
+
+getent group icecast >/dev/null 2>&1 || \
+	addgroup --system --quiet icecast
+id icecast2 >/dev/null 2>&1 || \
+	adduser --system --quiet --disabled-password --disabled-login \
+	--home /usr/share/icecast2 --no-create-home --ingroup icecast icecast2
+
+# set passwords
+db_get icecast2/icecast-setup
+if test "$RET" = "true"; then
+	if [ -f /etc/default/icecast2 -a -f /etc/icecast2/icecast.xml ]; then
+		echo "Configuring icecast2.." >&2
+		sed -i s/^.*ENABLE=.*$/ENABLE=true/ /etc/default/icecast2 2>/dev/null 1>&2 || true
+
+		db_get icecast2/sourcepassword
+		ICESOURCE=$RET
+		db_get icecast2/relaypassword
+		ICERELAY=$RET
+		db_get icecast2/adminpassword
+		ICEADMIN=$RET
+		db_get icecast2/hostname
+		ICEHOST=$RET
+		sed -i 	-e "s|<source-password>[^<]*</source-password>|<source-password>$ICESOURCE</source-password>|" \
+			-e "s|<relay-password>[^<]*</relay-password>|<relay-password>$ICERELAY</relay-password>|" \
+			-e "s|<admin-password>[^<]*</admin-password>|<admin-password>$ICEADMIN</admin-password>|" \
+			-e "s|<hostname>[^<]*</hostname>|<hostname>$ICEHOST</hostname>|" \
+			/etc/icecast2/icecast.xml 2>/dev/null 1>&2 || true		 
+		echo "Done Configuring icecast2.." >&2
+	fi
+fi
+
+# Tell debconf we're done, so it doesn't get confused when we start the daemon.
+db_stop
+
+chown -R icecast2: /var/log/icecast2 /etc/icecast2
+# Set all file readable by default
+chmod -R ug=rw,o=r,ugo+X /etc/icecast2
+# Tightened permissions for the config file
+chmod -R ug=rw,o=,ug+X /etc/icecast2/icecast.xml
+
+# avoid to fail on invoke-rc.d icecast2 start when upgrading see Bug#605507
+sleep 3
+
+#DEBHELPER#
+
+exit 0
+

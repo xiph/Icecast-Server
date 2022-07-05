@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; -*- */
@@ -42,6 +43,7 @@
 #include "format_ogg.h"
 #include "format_mp3.h"
 #include "format_ebml.h"
+#include "format_text.h"
 
 #include "logging.h"
 #include "stats.h"
@@ -52,6 +54,15 @@ static int format_prepare_headers (source_t *source, client_t *client);
 
 format_type_t format_get_type (const char *contenttype)
 {
+    char buf[32];
+    const char *separator = strpbrk(contenttype, "; \t");
+
+    if (separator && (size_t)(separator - contenttype) < sizeof(buf)) {
+        memcpy(buf, contenttype, separator - contenttype);
+        buf[separator - contenttype] = 0;
+        contenttype = buf;
+    }
+
     if(strcmp(contenttype, "application/x-ogg") == 0)
         return FORMAT_TYPE_OGG; /* Backwards compatibility */
     else if(strcmp(contenttype, "application/ogg") == 0)
@@ -70,6 +81,8 @@ format_type_t format_get_type (const char *contenttype)
         return FORMAT_TYPE_EBML;
     else if(strcmp(contenttype, "video/x-matroska-3d") == 0)
         return FORMAT_TYPE_EBML;
+    else if(strcmp(contenttype, "text/plain") == 0)
+        return FORMAT_TYPE_TEXT;
     else
         /* We default to the Generic format handler, which
            can handle many more formats than just mp3.
@@ -89,15 +102,15 @@ int format_get_plugin(format_type_t type, source_t *source)
         case FORMAT_TYPE_EBML:
             ret = format_ebml_get_plugin(source);
         break;
+        case FORMAT_TYPE_TEXT:
+            ret = format_text_get_plugin(source);
+        break;
         case FORMAT_TYPE_GENERIC:
             ret = format_mp3_get_plugin(source);
         break;
         default:
         break;
     }
-    if (ret < 0)
-        stats_event (source->mount, "content-type",
-                source->format->contenttype);
 
     return ret;
 }
@@ -290,6 +303,37 @@ int format_advance_queue(source_t *source, client_t *client)
  * calling functions will use a already freed client struct and
  * cause a segfault!
  */
+static inline ssize_t __print_var(char *str, size_t remaining, const char *format, const char *first, const http_var_t *var)
+{
+    size_t i;
+    ssize_t done = 0;
+    int ret;
+
+    for (i = 0; i < var->values; i++) {
+        ret = snprintf(str + done, remaining - done, format, first, var->value[i]);
+        if (ret <= 0 || (size_t)ret >= (remaining - done))
+            return -1;
+
+        done += ret;
+    }
+
+    return done;
+}
+
+static inline const char *__find_bitrate(const http_var_t *var)
+{
+    size_t i;
+    const char *ret;
+
+    for (i = 0; i < var->values; i++) {
+        ret = strstr(var->value[i], "bitrate=");
+        if (ret)
+            return ret;
+    }
+
+    return NULL;
+}
+
 static int format_prepare_headers (source_t *source, client_t *client)
 {
     size_t remaining;
@@ -303,7 +347,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
     client->respcode = 200;
 
     bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
-    if (bytes < 0) {
+    if (bytes <= 0) {
         ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
         client->respcode = 500;
         return -1;
@@ -314,7 +358,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             client->refbuf->data = ptr = new_ptr;
             client->refbuf->len = remaining = bytes + 1024;
             bytes = util_http_build_header(ptr, remaining, 0, 0, 200, NULL, source->format->contenttype, NULL, NULL, source, client);
-            if (bytes == -1 ) {
+            if (bytes <= 0 || (size_t)bytes >= remaining) {
                 ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
                 client->respcode = 500;
                 return -1;
@@ -326,6 +370,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
         }
     }
 
+    if (bytes <= 0 || (size_t)bytes >= remaining) {
+        ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+        client->respcode = 500;
+        return -1;
+    }
     remaining -= bytes;
     ptr += bytes;
 
@@ -340,11 +389,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
         if (!strcasecmp(var->name, "ice-audio-info"))
         {
             /* convert ice-audio-info to icy-br */
-            char *brfield = NULL;
+            const char *brfield = NULL;
             unsigned int bitrate;
 
             if (bitrate_filtered == 0)
-                brfield = strstr(var->value, "bitrate=");
+                brfield = __find_bitrate(var);
             if (brfield && sscanf (brfield, "bitrate=%u", &bitrate))
             {
                 bytes = snprintf (ptr, remaining, "icy-br:%u\r\n", bitrate);
@@ -353,7 +402,7 @@ static int format_prepare_headers (source_t *source, client_t *client)
             }
             else
                 /* show ice-audio_info header as well because of relays */
-                bytes = snprintf (ptr, remaining, "%s: %s\r\n", var->name, var->value);
+                bytes = __print_var(ptr, remaining, "%s: %s\r\n", var->name, var);
         }
         else
         {
@@ -371,28 +420,33 @@ static int format_prepare_headers (source_t *source, client_t *client)
                     if (mountinfo && mountinfo->stream_name)
                         bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", mountinfo->stream_name);
                     else
-                        bytes = snprintf (ptr, remaining, "icy-name:%s\r\n", var->value);
+                        bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "name", var);
 
                     config_release_config();
                 }
                 else if (!strncasecmp("ice-", var->name, 4))
                 {
                     if (!strcasecmp("ice-public", var->name))
-                        bytes = snprintf (ptr, remaining, "icy-pub:%s\r\n", var->value);
+                        bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "pub", var);
                     else
                         if (!strcasecmp ("ice-bitrate", var->name))
-                            bytes = snprintf (ptr, remaining, "icy-br:%s\r\n", var->value);
+                            bytes = __print_var(ptr, remaining, "icy-%s:%s\r\n", "br", var);
                         else
-                            bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
-                                    var->name + 3, var->value);
+                            bytes = __print_var(ptr, remaining, "icy%s:%s\r\n", var->name + 3, var);
                 }
                 else
                     if (!strncasecmp("icy-", var->name, 4))
                     {
-                        bytes = snprintf (ptr, remaining, "icy%s:%s\r\n",
-                                var->name + 3, var->value);
+                        bytes = __print_var(ptr, remaining, "icy%s:%s\r\n", var->name + 3, var);
                     }
             }
+        }
+
+        if (bytes < 0 || (size_t)bytes >= remaining) {
+            avl_tree_unlock(source->parser->vars);
+            ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+            client->respcode = 500;
+            return -1;
         }
 
         remaining -= bytes;
@@ -403,6 +457,11 @@ static int format_prepare_headers (source_t *source, client_t *client)
     avl_tree_unlock(source->parser->vars);
 
     bytes = snprintf(ptr, remaining, "\r\n");
+    if (bytes <= 0 || (size_t)bytes >= remaining) {
+        ICECAST_LOG_ERROR("Can not allocate headers for client %p", client);
+        client->respcode = 500;
+        return -1;
+    }
     remaining -= bytes;
     ptr += bytes;
 

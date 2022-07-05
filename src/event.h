@@ -3,24 +3,19 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp Schafft <lion@lion.leolix.org>
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __EVENT_H__
 #define __EVENT_H__
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
-#include "common/httpp/httpp.h"
 
-#include "cfgfile.h"
-#include "client.h"
-#include "source.h"
+#include "common/thread/thread.h"
+
+#include "icecasttypes.h"
 
 /* implemented */
 #define EVENT_TYPE_LOG  "log"
@@ -61,7 +56,7 @@ struct event_tag {
     char *client_role; /* from client->role */
     char *client_username; /* from client->username */
     char *client_useragent; /* from httpp_getvar(client->parser, "user-agent") */
-    int client_admin_command; /* from client->admin_command */
+    admin_command_id_t client_admin_command; /* from client->admin_command */
 };
 
 struct event_registration_tag {

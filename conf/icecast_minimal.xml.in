@@ -2,7 +2,8 @@
      and mostly just contains the things you need to change or are
      necessary to get Icecast working for most use cases.  We created
      this for those who got scared away from the rather large and heavily
-     commented icecast.xml.dist file. -->
+     commented icecast.xml.dist file.
+-->
 <icecast>
     <limits>
         <sources>2</sources>
@@ -13,15 +14,13 @@
         <admin-user>admin</admin-user>
         <admin-password>hackme</admin-password>
     </authentication>
-    <directory>
-        <yp-url-timeout>15</yp-url-timeout>
-        <yp-url>http://dir.xiph.org/cgi-bin/yp-cgi</yp-url>
-    </directory>
+    <yp-directory url="https://dir.xiph.org/cgi-bin/yp-cgi">
+        <option name="timeout" value="15" />
+    </yp-directory>
     <hostname>localhost</hostname>
     <listen-socket>
         <port>8000</port>
     </listen-socket>
-    <fileserve>1</fileserve>
     <paths>
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
         <webroot>@pkgdatadir@/web</webroot>
@@ -31,9 +30,11 @@
     <logging>
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
-        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>information</loglevel> <!-- "debug", "information", "warning", or "error" -->
     </logging>
     <http-headers>
-        <header name="Access-Control-Allow-Origin" value="*" />
+        <header type="cors" name="Access-Control-Allow-Origin" />
+        <header type="cors" name="Access-Control-Allow-Headers" />
+        <header type="cors" name="Access-Control-Expose-Headers" />
     </http-headers>
 </icecast>

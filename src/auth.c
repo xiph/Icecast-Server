@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2013-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2013-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /**
@@ -27,6 +27,7 @@
 #include "auth.h"
 #include "source.h"
 #include "client.h"
+#include "errors.h"
 #include "cfgfile.h"
 #include "stats.h"
 #include "common/httpp/httpp.h"
@@ -61,40 +62,43 @@ static unsigned long _next_auth_id(void) {
     return id;
 }
 
+static const struct {
+    auth_result result;
+    const char *string;
+} __auth_results[] = {
+    {.result = AUTH_UNDEFINED,      .string = "undefined"},
+    {.result = AUTH_OK,             .string = "ok"},
+    {.result = AUTH_FAILED,         .string = "failed"},
+    {.result = AUTH_RELEASED,       .string = "released"},
+    {.result = AUTH_FORBIDDEN,      .string = "forbidden"},
+    {.result = AUTH_NOMATCH,        .string = "no match"},
+    {.result = AUTH_USERADDED,      .string = "user added"},
+    {.result = AUTH_USEREXISTS,     .string = "user exists"},
+    {.result = AUTH_USERDELETED,    .string = "user deleted"}
+};
+
 static const char *auth_result2str(auth_result res)
 {
-    switch (res) {
-        case AUTH_UNDEFINED:
-            return "undefined";
-        break;
-        case AUTH_OK:
-            return "ok";
-        break;
-        case AUTH_FAILED:
-            return "failed";
-        break;
-        case AUTH_RELEASED:
-            return "released";
-        break;
-        case AUTH_FORBIDDEN:
-            return "forbidden";
-        break;
-        case AUTH_NOMATCH:
-            return "no match";
-        break;
-        case AUTH_USERADDED:
-            return "user added";
-        break;
-        case AUTH_USEREXISTS:
-            return "user exists";
-        break;
-        case AUTH_USERDELETED:
-            return "user deleted";
-        break;
-        default:
-            return "(unknown)";
-        break;
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (__auth_results[i].result == res)
+            return __auth_results[i].string;
     }
+
+    return "(unknown)";
+}
+
+auth_result auth_str2result(const char *str)
+{
+    size_t i;
+
+    for (i = 0; i < (sizeof(__auth_results)/sizeof(*__auth_results)); i++) {
+        if (strcasecmp(__auth_results[i].string, str) == 0)
+            return __auth_results[i].result;
+    }
+
+    return AUTH_FAILED;
 }
 
 static auth_client *auth_client_setup (client_t *client)
@@ -160,7 +164,7 @@ static void queue_auth_client (auth_client *auth_user)
         return;
     }
     auth = auth_user->client->auth;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", auth->mount, (int)auth->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", auth->mount, (int)auth->refcount);
     if (auth->immediate) {
         __handle_auth_client(auth, auth_user);
     } else {
@@ -178,12 +182,14 @@ static void queue_auth_client (auth_client *auth_user)
  * refcounted and only actual freed after the last use
  */
 void auth_release (auth_t *authenticator) {
+    size_t i;
+
     if (authenticator == NULL)
         return;
 
     thread_mutex_lock(&authenticator->lock);
     authenticator->refcount--;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
     if (authenticator->refcount)
     {
         thread_mutex_unlock(&authenticator->lock);
@@ -193,7 +199,9 @@ void auth_release (auth_t *authenticator) {
     /* cleanup auth thread attached to this auth */
     if (authenticator->running) {
         authenticator->running = 0;
+        thread_mutex_unlock(&authenticator->lock);
         thread_join(authenticator->thread);
+        thread_mutex_lock(&authenticator->lock);
     }
 
     if (authenticator->free)
@@ -204,11 +212,22 @@ void auth_release (auth_t *authenticator) {
         xmlFree (authenticator->role);
     if (authenticator->management_url)
         xmlFree (authenticator->management_url);
+    if (authenticator->failed_arg)
+        xmlFree (authenticator->failed_arg);
+    if (authenticator->deny_arg)
+        xmlFree (authenticator->deny_arg);
     thread_mutex_unlock(&authenticator->lock);
     thread_mutex_destroy(&authenticator->lock);
     if (authenticator->mount)
         free(authenticator->mount);
     acl_release(authenticator->acl);
+    config_clear_http_header(authenticator->http_headers);
+
+    for (i = 0; i < authenticator->filter_origin_len; i++) {
+        free(authenticator->filter_origin[i].origin);
+    }
+    free(authenticator->filter_origin);
+
     free(authenticator);
 }
 
@@ -220,15 +239,17 @@ void    auth_addref (auth_t *authenticator) {
 
     thread_mutex_lock (&authenticator->lock);
     authenticator->refcount++;
-    ICECAST_LOG_DEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
+    ICECAST_LOG_DDEBUG("...refcount on auth_t %s is now %d", authenticator->mount, (int)authenticator->refcount);
     thread_mutex_unlock (&authenticator->lock);
 }
 
 static void auth_client_free (auth_client *auth_user)
 {
-    if (auth_user == NULL)
+    if (!auth_user)
         return;
-    free (auth_user);
+
+    free(auth_user->alter_client_arg);
+    free(auth_user);
 }
 
 
@@ -294,6 +315,51 @@ static auth_result auth_remove_client(auth_t *auth, auth_client *auth_user)
     return ret;
 }
 
+static inline int __handle_auth_client_alter(client_t *client, auth_alter_t action, const char *arg)
+{
+    const char *uuid = NULL;
+    const char *location = NULL;
+    int http_status = 0;
+
+    switch (action) {
+        case AUTH_ALTER_NOOP:
+            return 0;
+        break;
+        case AUTH_ALTER_REWRITE:
+            util_replace_string(&(client->uri), arg);
+            return 0;
+        break;
+        case AUTH_ALTER_REDIRECT:
+        /* fall through */
+        case AUTH_ALTER_REDIRECT_SEE_OTHER:
+            uuid = "be7fac90-54fb-4673-9e0d-d15d6a4963a2";
+            http_status = 303;
+            location = arg;
+        break;
+        case AUTH_ALTER_REDIRECT_TEMPORARY:
+            uuid = "4b08a03a-ecce-4981-badf-26b0bb6c9d9c";
+            http_status = 307;
+            location = arg;
+        break;
+        case AUTH_ALTER_REDIRECT_PERMANENT:
+            uuid = "36bf6815-95cb-4cc8-a7b0-6b4b0c82ac5d";
+            http_status = 308;
+            location = arg;
+        break;
+        case AUTH_ALTER_SEND_ERROR:
+            client_send_error_by_uuid(client, arg);
+            return 1;
+        break;
+    }
+
+    if (uuid && location && http_status) {
+        client_send_redirect(client, uuid, http_status, location);
+        return 1;
+    }
+
+    return -1;
+}
+
 static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
     auth_result result;
 
@@ -310,8 +376,13 @@ static void __handle_auth_client (auth_t *auth, auth_client *auth_user) {
         if (auth_user->client->acl)
             acl_release(auth_user->client->acl);
         acl_addref(auth_user->client->acl = auth->acl);
-        if (auth->role) /* TODO: Handle errors here */
+        if (auth->role && !auth_user->client->role) /* TODO: Handle errors here */
             auth_user->client->role = strdup(auth->role);
+    }
+
+    if (result != AUTH_NOMATCH) {
+        if (__handle_auth_client_alter(auth_user->client, auth_user->alter_client_action, auth_user->alter_client_arg) == 1)
+            return;
     }
 
     if (result == AUTH_NOMATCH && auth_user->on_no_match) {
@@ -329,22 +400,25 @@ static void *auth_run_thread (void *arg)
     auth_t *auth = arg;
 
     ICECAST_LOG_INFO("Authentication thread started");
-    while (auth->running)
-    {
-        /* usually no clients are waiting, so don't bother taking locks */
-        if (auth->head)
-        {
+    while (1) {
+        thread_mutex_lock(&auth->lock);
+
+        if (!auth->running) {
+            thread_mutex_unlock(&auth->lock);
+            break;
+        }
+
+        if (auth->head) {
             auth_client *auth_user;
 
             /* may become NULL before lock taken */
-            thread_mutex_lock (&auth->lock);
             auth_user = (auth_client*)auth->head;
             if (auth_user == NULL)
             {
                 thread_mutex_unlock (&auth->lock);
                 continue;
             }
-            ICECAST_LOG_DEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
+            ICECAST_LOG_DDEBUG("%d client(s) pending on %s (role %s)", auth->pending_count, auth->mount, auth->role);
             auth->head = auth_user->next;
             if (auth->head == NULL)
                 auth->tailp = &auth->head;
@@ -355,6 +429,8 @@ static void *auth_run_thread (void *arg)
             __handle_auth_client(auth, auth_user);
 
             continue;
+        } else {
+            thread_mutex_unlock(&auth->lock);
         }
         thread_sleep (150000);
     }
@@ -367,17 +443,73 @@ static void *auth_run_thread (void *arg)
  */
 static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(client_t *client, void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata), void (*on_result)(client_t *client, void *userdata, auth_result result), void *userdata) {
     auth_client *auth_user;
+    auth_matchtype_t matchtype;
+    const char *origin;
+    size_t i;
 
-    ICECAST_LOG_DEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
+    ICECAST_LOG_DDEBUG("Trying to add client %p to auth %p's (role %s) queue.", client, auth, auth->role);
 
     /* TODO: replace that magic number */
     if (auth->pending_count > 100) {
         ICECAST_LOG_WARN("too many clients awaiting authentication on auth %p", auth);
-        client_send_error(client, 403, 1, "busy, please try again later");
+        client_send_error_by_id(client, ICECAST_ERROR_AUTH_BUSY);
         return;
     }
 
-    if (!auth->method[client->parser->req_type]) {
+    if (auth->filter_method[client->parser->req_type] == AUTH_MATCHTYPE_NOMATCH) {
+        if (on_no_match) {
+           on_no_match(client, on_result, userdata);
+        } else if (on_result) {
+           on_result(client, userdata, AUTH_NOMATCH);
+        }
+        return;
+    }
+
+    /* Filter for CORS "Origin".
+     *
+     * CORS actually knows about non-CORS requests and assigned the "null"
+     * location to them.
+     */
+    origin = httpp_getvar(client->parser, "origin");
+    if (!origin)
+        origin = "null";
+
+    matchtype = auth->filter_origin_policy;
+    for (i = 0; i < auth->filter_origin_len; i++) {
+        if (strcmp(auth->filter_origin[i].origin, origin) == 0) {
+            matchtype = auth->filter_origin[i].type;
+            break;
+        }
+    }
+    if (matchtype == AUTH_MATCHTYPE_NOMATCH) {
+        if (on_no_match) {
+            on_no_match(client, on_result, userdata);
+        } else if (on_result) {
+            on_result(client, userdata, AUTH_NOMATCH);
+        }
+        return;
+    }
+
+    if (client->admin_command == ADMIN_COMMAND_ERROR) {
+        /* this is a web/ client */
+        matchtype = auth->filter_web_policy;
+    } else {
+        /* this is a admin/ client */
+        size_t i;
+
+        matchtype = AUTH_MATCHTYPE_UNUSED;
+
+        for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+            if (auth->filter_admin[i].type != AUTH_MATCHTYPE_UNUSED && auth->filter_admin[i].command == client->admin_command) {
+                matchtype = auth->filter_admin[i].type;
+                break;
+            }
+        }
+
+        if (matchtype == AUTH_MATCHTYPE_UNUSED)
+            matchtype = auth->filter_admin_policy;
+    }
+    if (matchtype == AUTH_MATCHTYPE_NOMATCH) {
         if (on_no_match) {
            on_no_match(client, on_result, userdata);
         } else if (on_result) {
@@ -393,8 +525,15 @@ static void auth_add_client(auth_t *auth, client_t *client, void (*on_no_match)(
     auth_user->on_no_match = on_no_match;
     auth_user->on_result = on_result;
     auth_user->userdata = userdata;
-    ICECAST_LOG_INFO("adding client %p for authentication on %p", client, auth);
+    ICECAST_LOG_DDEBUG("adding client %p for authentication on %p", client, auth);
     queue_auth_client(auth_user);
+}
+
+static void __auth_on_result_destroy_client(client_t *client, void *userdata, auth_result result)
+{
+    (void)userdata, (void)result;
+
+    client_destroy(client);
 }
 
 /* determine whether we need to process this client further. This
@@ -404,14 +543,10 @@ int auth_release_client (client_t *client) {
     if (!client->acl)
         return 0;
 
-
-    /* drop any queue reference here, we do not want a race between the source thread
-     * and the auth/fserve thread */
-    client_set_queue (client, NULL);
-
     if (client->auth && client->auth->release_client) {
         auth_client *auth_user = auth_client_setup(client);
         auth_user->process = auth_remove_client;
+        auth_user->on_result = __auth_on_result_destroy_client;
         queue_auth_client(auth_user);
         return 1;
     } else if (client->auth) {
@@ -434,10 +569,10 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
     }
     do
     {
-        ICECAST_LOG_DEBUG("type is %s", auth->type);
+        ICECAST_LOG_DDEBUG("type is %s", auth->type);
 
         if (strcmp(auth->type, AUTH_TYPE_URL) == 0) {
-#ifdef HAVE_AUTH_URL
+#ifdef HAVE_CURL
             if (auth_get_url_auth(auth, options) < 0)
                 return -1;
             break;
@@ -461,6 +596,10 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
             if (auth_get_static_auth(auth, options) < 0)
                 return -1;
             break;
+        } else if (strcmp(auth->type, AUTH_TYPE_ENFORCE_AUTH) == 0) {
+            if (auth_get_enforce_auth_auth(auth, options) < 0)
+                return -1;
+            break;
         }
 
         ICECAST_LOG_ERROR("Unrecognised authenticator type: \"%s\"", auth->type);
@@ -471,13 +610,201 @@ static int get_authenticator (auth_t *auth, config_options_t *options)
 }
 
 
-auth_t *auth_get_authenticator(xmlNodePtr node)
+static inline void auth_get_authenticator__filter_admin(auth_t *auth, xmlNodePtr node, size_t *filter_admin_index, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+        char *next;
+
+        while (cur) {
+            next = strstr(cur, ",");
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (*filter_admin_index < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin)))) {
+                auth->filter_admin[*filter_admin_index].command = admin_get_command(cur);
+                switch (auth->filter_admin[*filter_admin_index].command) {
+                    case ADMIN_COMMAND_ERROR:
+                        ICECAST_LOG_ERROR("Can not add unknown %s command to role.", name);
+                    break;
+                    case ADMIN_COMMAND_ANY:
+                        auth->filter_admin_policy = matchtype;
+                    break;
+                    default:
+                        auth->filter_admin[*filter_admin_index].type = matchtype;
+                        (*filter_admin_index)++;
+                    break;
+                }
+            } else {
+                ICECAST_LOG_ERROR("Can not add more %s commands to role.", name);
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+}
+
+static inline void auth_get_authenticator__filter_origin(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+        char *next;
+
+        while (cur) {
+            next = strstr(cur, ",");
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                auth->filter_origin_policy = matchtype;
+            } else {
+                void *n = realloc(auth->filter_origin, (auth->filter_origin_len + 1)*sizeof(*auth->filter_origin));
+                if (!n) {
+                    ICECAST_LOG_ERROR("Can not allocate memory. BAD.");
+                    break;
+                }
+
+                auth->filter_origin = n;
+                auth->filter_origin[auth->filter_origin_len].type = matchtype;
+                auth->filter_origin[auth->filter_origin_len].origin = strdup(cur);
+                if (auth->filter_origin[auth->filter_origin_len].origin) {
+                    auth->filter_origin_len++;
+                } else {
+                    ICECAST_LOG_ERROR("Can not allocate memory. BAD.");
+                    break;
+                }
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+}
+
+static inline void auth_get_authenticator__init_method(auth_t *auth, int *method_inited, auth_matchtype_t init_with)
+{
+    size_t i;
+
+    if (*method_inited)
+        return;
+
+    for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+        auth->filter_method[i] = init_with;
+
+    *method_inited = 1;
+}
+
+static inline int auth_get_authenticator__filter_method(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype, int *method_inited, auth_matchtype_t init_with)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+
+        auth_get_authenticator__init_method(auth, method_inited, init_with);
+
+        while (cur) {
+            char *next = strstr(cur, ",");
+            httpp_request_type_e idx;
+
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                size_t i;
+
+                for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*(auth->filter_method))); i++)
+                    auth->filter_method[i] = matchtype;
+                break;
+            }
+
+            idx = httpp_str_to_method(cur);
+            if (idx == httpp_req_unknown) {
+                ICECAST_LOG_ERROR("Can not add known method \"%H\" to role's %s", cur, name);
+                return -1;
+            }
+            auth->filter_method[idx] = matchtype;
+            cur = next;
+        }
+
+        free(tmp);
+    }
+
+    return 0;
+}
+
+static inline int auth_get_authenticator__permission_alter(auth_t *auth, xmlNodePtr node, const char *name, auth_matchtype_t matchtype)
+{
+    char * tmp = (char*)xmlGetProp(node, XMLSTR(name));
+
+    if (tmp) {
+        char *cur = tmp;
+
+        while (cur) {
+            char *next = strstr(cur, ",");
+            auth_alter_t idx;
+
+            if (next) {
+                *next = 0;
+                next++;
+                for (; *next == ' '; next++);
+            }
+
+            if (strcmp(cur, "*") == 0) {
+                size_t i;
+
+                for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+                    auth->permission_alter[i] = matchtype;
+                break;
+            }
+
+            idx = auth_str2alter(cur);
+            if (idx == AUTH_ALTER_NOOP) {
+                ICECAST_LOG_ERROR("Can not add unknown alter action \"%H\" to role's %s", cur, name);
+                return -1;
+            } else if (idx == AUTH_ALTER_REDIRECT) {
+                auth->permission_alter[AUTH_ALTER_REDIRECT] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_SEE_OTHER] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_TEMPORARY] = matchtype;
+                auth->permission_alter[AUTH_ALTER_REDIRECT_PERMANENT] = matchtype;
+            } else {
+                auth->permission_alter[idx] = matchtype;
+            }
+
+            cur = next;
+        }
+
+        free(tmp);
+    }
+
+    return 0;
+}
+auth_t *auth_get_authenticator(ice_config_t *configuration, xmlNodePtr node)
 {
     auth_t *auth = calloc(1, sizeof(auth_t));
     config_options_t *options = NULL, **next_option = &options;
-    xmlNodePtr option;
+    xmlNodePtr child;
     char *method;
+    char *tmp;
     size_t i;
+    size_t filter_admin_index = 0;
+    int method_inited = 0;
 
     if (auth == NULL)
         return NULL;
@@ -488,6 +815,18 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     auth->type = (char*)xmlGetProp(node, XMLSTR("type"));
     auth->role = (char*)xmlGetProp(node, XMLSTR("name"));
     auth->management_url = (char*)xmlGetProp(node, XMLSTR("management-url"));
+    auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+    auth->filter_admin_policy = AUTH_MATCHTYPE_MATCH;
+    auth->failed_arg = AUTH_ALTER_NOOP;
+    auth->deny_arg = AUTH_ALTER_NOOP;
+
+    for (i = 0; i < (sizeof(auth->filter_admin)/sizeof(*(auth->filter_admin))); i++) {
+        auth->filter_admin[i].type = AUTH_MATCHTYPE_UNUSED;
+        auth->filter_admin[i].command = ADMIN_COMMAND_ERROR;
+    }
+
+    for (i = 0; i < (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))); i++)
+        auth->permission_alter[i] = AUTH_MATCHTYPE_NOMATCH;
 
     if (!auth->type) {
         auth_release(auth);
@@ -499,8 +838,9 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
         char *cur = method;
         char *next;
 
-        for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-            auth->method[i] = 0;
+        for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+            auth->filter_method[i] = AUTH_MATCHTYPE_NOMATCH;
+        method_inited = 1;
 
         while (cur) {
             httpp_request_type_e idx;
@@ -513,8 +853,8 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
             }
 
             if (strcmp(cur, "*") == 0) {
-                for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-                    auth->method[i] = 1;
+                for (i = 0; i < (sizeof(auth->filter_method)/sizeof(*auth->filter_method)); i++)
+                    auth->filter_method[i] = AUTH_MATCHTYPE_MATCH;
                 break;
             }
 
@@ -523,47 +863,116 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
                 auth_release(auth);
                 return NULL;
             }
-            auth->method[idx] = 1;
+            auth->filter_method[idx] = AUTH_MATCHTYPE_MATCH;
 
             cur = next;
         }
 
         xmlFree(method);
-    } else {
-        for (i = 0; i < (sizeof(auth->method)/sizeof(*auth->method)); i++)
-            auth->method[i] = 1;
     }
 
-    /* BEFORE RELEASE 2.5.0 TODO: Migrate this to config_parse_options(). */
-    option = node->xmlChildrenNode;
-    while (option)
-    {
-        xmlNodePtr current = option;
-        option = option->next;
-        if (xmlStrcmp (current->name, XMLSTR("option")) == 0)
-        {
+    auth_get_authenticator__filter_method(auth, node, "match-method", AUTH_MATCHTYPE_MATCH, &method_inited, AUTH_MATCHTYPE_NOMATCH);
+    auth_get_authenticator__filter_method(auth, node, "nomatch-method", AUTH_MATCHTYPE_NOMATCH, &method_inited, AUTH_MATCHTYPE_MATCH);
+
+    auth_get_authenticator__init_method(auth, &method_inited, AUTH_MATCHTYPE_MATCH);
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("match-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        }
+        free(tmp);
+    }
+
+    tmp = (char*)xmlGetProp(node, XMLSTR("nomatch-web"));
+    if (tmp) {
+        if (strcmp(tmp, "*") == 0) {
+            auth->filter_web_policy = AUTH_MATCHTYPE_NOMATCH;
+        } else {
+            auth->filter_web_policy = AUTH_MATCHTYPE_MATCH;
+        }
+        free(tmp);
+    }
+
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "match-admin", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_admin(auth, node, &filter_admin_index, "nomatch-admin", AUTH_MATCHTYPE_NOMATCH);
+
+    auth->filter_origin_policy = AUTH_MATCHTYPE_MATCH;
+    auth_get_authenticator__filter_origin(auth, node, "match-origin", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__filter_origin(auth, node, "nomatch-origin", AUTH_MATCHTYPE_NOMATCH);
+
+    auth_get_authenticator__permission_alter(auth, node, "may-alter", AUTH_MATCHTYPE_MATCH);
+    auth_get_authenticator__permission_alter(auth, node, "may-not-alter", AUTH_MATCHTYPE_NOMATCH);
+
+    /* sub node parsing */
+    child = node->xmlChildrenNode;
+    do {
+        if (child == NULL)
+            break;
+
+        if (xmlIsBlankNode(child))
+            continue;
+
+        if (xmlStrcmp (child->name, XMLSTR("option")) == 0) {
             config_options_t *opt = calloc(1, sizeof (config_options_t));
-            opt->name = (char *)xmlGetProp(current, XMLSTR("name"));
-            if (opt->name == NULL)
-            {
+            opt->name = (char *)xmlGetProp(child, XMLSTR("name"));
+            if (opt->name == NULL) {
                 free(opt);
                 continue;
             }
-            opt->value = (char *)xmlGetProp(current, XMLSTR("value"));
-            if (opt->value == NULL)
-            {
+            opt->value = (char *)xmlGetProp(child, XMLSTR("value"));
+            if (opt->value == NULL) {
                 xmlFree(opt->name);
                 free(opt);
                 continue;
             }
             *next_option = opt;
             next_option = &opt->next;
+        } else if (xmlStrcmp (child->name, XMLSTR("http-headers")) == 0) {
+            config_parse_http_headers(child->xmlChildrenNode, &(auth->http_headers), configuration);
+        } else if (xmlStrcmp (child->name, XMLSTR("acl")) == 0) {
+            if (!auth->acl) {
+                auth->acl  = acl_new_from_xml_node(configuration, child);
+            } else {
+                ICECAST_LOG_ERROR("More than one ACL defined in role! Not supported (yet).");
+            }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-failed-action")) == 0) {
+            tmp = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+            if (tmp) {
+                auth->failed_action = auth_str2alter(tmp);
+                if (auth->failed_action == AUTH_ALTER_NOOP) {
+                    ICECAST_LOG_WARN("Can not parse <on-failed-action> with value: %s", tmp);
+                }
+                xmlFree(tmp);
+            }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-failed-argument")) == 0) {
+            if (auth->failed_arg)
+                xmlFree(auth->failed_arg);
+            auth->failed_arg = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+        } else if (xmlStrcmp (child->name, XMLSTR("on-deny-action")) == 0) {
+            tmp = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+            if (tmp) {
+                auth->deny_action = auth_str2alter(tmp);
+                if (auth->deny_action == AUTH_ALTER_NOOP) {
+                    ICECAST_LOG_WARN("Can not parse <on-deny-action> with value: %s", tmp);
+                }
+                xmlFree(tmp);
+            }
+        } else if (xmlStrcmp (child->name, XMLSTR("on-deny-argument")) == 0) {
+            if (auth->deny_arg)
+                xmlFree(auth->deny_arg);
+            auth->deny_arg = (char *)xmlNodeListGetString(child->doc, child->xmlChildrenNode, 1);
+        } else {
+            ICECAST_LOG_WARN("unknown auth setting (%H)", child->name);
         }
-        else
-            if (xmlStrcmp (current->name, XMLSTR("text")) != 0)
-                ICECAST_LOG_WARN("unknown auth setting (%s)", current->name);
+    } while ((child = child->next));
+
+    if (!auth->acl) {
+        /* If we did not get a <acl> try ACL as part of <role> (old style). */
+        auth->acl  = acl_new_from_xml_node(configuration, node);
     }
-    auth->acl  = acl_new_from_xml_node(node);
     if (!auth->acl) {
         auth_release(auth);
         auth = NULL;
@@ -597,6 +1006,48 @@ auth_t *auth_get_authenticator(xmlNodePtr node)
     return auth;
 }
 
+int auth_alter_client(auth_t *auth, auth_client *auth_user, auth_alter_t action, const char *arg)
+{
+    if (!auth || !auth_user || !arg)
+        return -1;
+
+    if (action < 0 || action >= (sizeof(auth->permission_alter)/sizeof(*(auth->permission_alter))))
+        return -1;
+
+    if (auth->permission_alter[action] != AUTH_MATCHTYPE_MATCH)
+        return -1;
+
+    if (util_replace_string(&(auth_user->alter_client_arg), arg) != 0)
+        return -1;
+
+    auth_user->alter_client_action = action;
+
+    return 0;
+}
+
+auth_alter_t auth_str2alter(const char *str)
+{
+    if (!str)
+        return AUTH_ALTER_NOOP;
+
+    if (strcasecmp(str, "noop") == 0) {
+        return AUTH_ALTER_NOOP;
+    } else if (strcasecmp(str, "rewrite") == 0) {
+        return AUTH_ALTER_REWRITE;
+    } else if (strcasecmp(str, "redirect") == 0) {
+        return AUTH_ALTER_REDIRECT;
+    } else if (strcasecmp(str, "redirect_see_other") == 0) {
+        return AUTH_ALTER_REDIRECT_SEE_OTHER;
+    } else if (strcasecmp(str, "redirect_temporary") == 0) {
+        return AUTH_ALTER_REDIRECT_TEMPORARY;
+    } else if (strcasecmp(str, "redirect_permanent") == 0) {
+        return AUTH_ALTER_REDIRECT_PERMANENT;
+    } else if (strcasecmp(str, "send_error") == 0) {
+        return AUTH_ALTER_SEND_ERROR;
+    } else {
+        return AUTH_ALTER_NOOP;
+    }
+}
 
 /* these are called at server start and termination */
 
@@ -735,7 +1186,7 @@ auth_t       *auth_stack_get(auth_stack_t *stack) {
     if (!stack)
         return NULL;
 
-    thread_mutex_unlock(&stack->lock);
+    thread_mutex_lock(&stack->lock);
     auth_addref(auth = stack->auth);
     thread_mutex_unlock(&stack->lock);
     return auth;
@@ -776,7 +1227,7 @@ acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_ty
 
     while (!ret && stack) {
         auth_t *auth = auth_stack_get(stack);
-        if (auth->method[method] && strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
+        if (auth->filter_method[method] != AUTH_MATCHTYPE_NOMATCH && strcmp(auth->type, AUTH_TYPE_ANONYMOUS) == 0) {
             acl_addref(ret = auth->acl);
         }
         auth_release(auth);
@@ -789,4 +1240,40 @@ acl_t        *auth_stack_get_anonymous_acl(auth_stack_t *stack, httpp_request_ty
         auth_stack_release(stack);
 
     return ret;
+}
+
+
+static void          auth_reject_client(client_t *client, int fail)
+{
+    auth_t *auth;
+
+    if (!client)
+        return;
+
+    auth = client->auth;
+    if (auth) {
+        if (fail) {
+            if (__handle_auth_client_alter(client, auth->failed_action, auth->failed_arg) == 1)
+                return;
+        } else {
+            if (__handle_auth_client_alter(client, auth->deny_action, auth->deny_arg) == 1)
+                return;
+        }
+    }
+
+    if (client->protocol == ICECAST_PROTOCOL_SHOUTCAST) {
+        client_destroy(client);
+    } else {
+        client_send_error_by_id(client, ICECAST_ERROR_GEN_CLIENT_NEEDS_TO_AUTHENTICATE);
+    }
+}
+
+void          auth_reject_client_on_fail(client_t *client)
+{
+    auth_reject_client(client, 1);
+}
+
+void          auth_reject_client_on_deny(client_t *client)
+{
+    auth_reject_client(client, 0);
 }

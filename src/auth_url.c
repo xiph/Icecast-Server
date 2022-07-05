@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /*
@@ -67,16 +67,28 @@
 #   define strncasecmp strnicmp
 #endif
 
+#include "util.h"
 #include "curl.h"
 #include "auth.h"
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
+#include "connection.h"
 #include "common/httpp/httpp.h"
 #include "stats.h"
 
 #include "logging.h"
 #define CATMODULE "auth_url"
+
+/* Default headers */
+#define DEFAULT_HEADER_OLD_RESULT           "icecast-auth-user: 1\r\n"
+#define DEFAULT_HEADER_OLD_TIMELIMIT        "icecast-auth-timelimit:"
+#define DEFAULT_HEADER_OLD_MESSAGE          "icecast-auth-message"
+#define DEFAULT_HEADER_NEW_RESULT           "x-icecast-auth-result"
+#define DEFAULT_HEADER_NEW_TIMELIMIT        "x-icecast-auth-timelimit"
+#define DEFAULT_HEADER_NEW_MESSAGE          "x-icecast-auth-message"
+#define DEFAULT_HEADER_NEW_ALTER_ACTION     "x-icecast-auth-alter-action"
+#define DEFAULT_HEADER_NEW_ALTER_ARGUMENT   "x-icecast-auth-alter-argument"
 
 typedef struct {
     char       *pass_headers; // headers passed from client to addurl.
@@ -87,16 +99,37 @@ typedef struct {
     char       *removeaction;
     char       *username;
     char       *password;
+
+    /* old style */
     char       *auth_header;
-    int         auth_header_len;
+    size_t      auth_header_len;
     char       *timelimit_header;
-    int         timelimit_header_len;
+    size_t      timelimit_header_len;
+    /* new style */
+    char       *header_auth;
+    char       *header_timelimit;
+    char       *header_message;
+    char       *header_alter_action;
+    char       *header_alter_argument;
+
     char       *userpwd;
     CURL       *handle;
     char        errormsg[CURL_ERROR_SIZE];
     auth_result result;
 } auth_url;
 
+typedef struct {
+    char *all_headers;
+    size_t all_headers_len;
+    http_parser_t *parser;
+} auth_user_url_t;
+
+static inline const char * __str_or_default(const char *str, const char *def)
+{
+    if (str)
+        return str;
+    return def;
+}
 
 static void auth_url_clear(auth_t *self)
 {
@@ -116,8 +149,107 @@ static void auth_url_clear(auth_t *self)
     free(url->removeaction);
     free(url->auth_header);
     free(url->timelimit_header);
+    free(url->header_auth);
+    free(url->header_timelimit);
+    free(url->header_message);
+    free(url->header_alter_action);
+    free(url->header_alter_argument);
     free(url->userpwd);
     free(url);
+}
+
+static void auth_user_url_clear(auth_client *auth_user)
+{
+    auth_user_url_t *au_url = auth_user->authbackend_userdata;
+
+    if (!au_url)
+        return;
+
+    free(au_url->all_headers);
+    if (au_url->parser)
+        httpp_destroy(au_url->parser);
+
+    free(au_url);
+    auth_user->authbackend_userdata = NULL;
+}
+
+static void handle_returned_header__complete(auth_client *auth_user)
+{
+    auth_user_url_t *au_url = auth_user->authbackend_userdata;
+    const char *tmp;
+    const char *action;
+    const char *argument;
+    auth_url *url = auth_user->client->auth->state;
+
+    if (!au_url)
+        return;
+
+    if (au_url->parser)
+        return;
+
+    au_url->parser = httpp_create_parser();
+    httpp_initialize(au_url->parser, NULL);
+
+    if (!httpp_parse_response(au_url->parser, au_url->all_headers, au_url->all_headers_len, NULL)) {
+        ICECAST_LOG_ERROR("Can not parse auth backend reply.");
+        return;
+    }
+
+    tmp = httpp_getvar(au_url->parser, HTTPP_VAR_ERROR_CODE);
+    if (tmp[0] == '2') {
+        ICECAST_LOG_DEBUG("Got final status: %#H", tmp);
+    } else {
+        ICECAST_LOG_DEBUG("Got non-final status: %#H", tmp);
+        httpp_destroy(au_url->parser);
+        au_url->parser = NULL;
+        au_url->all_headers_len = 0;
+        return;
+    }
+
+    if (url->header_auth) {
+        tmp = httpp_getvar(au_url->parser, url->header_auth);
+        if (tmp) {
+            url->result = auth_str2result(tmp);
+        }
+    }
+
+    if (url->header_timelimit) {
+        tmp = httpp_getvar(au_url->parser, url->header_timelimit);
+        if (tmp) {
+            long long int ret;
+            char *endptr;
+
+            errno = 0;
+            ret = strtoll(tmp, &endptr, 0);
+            if (endptr != tmp && errno == 0) {
+                auth_user->client->con->discon_time = time(NULL) + (time_t)ret;
+            } else {
+                ICECAST_LOG_ERROR("Auth backend returned invalid new style timelimit header: % #H", tmp);
+            }
+        }
+    }
+
+    action   = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_action, DEFAULT_HEADER_NEW_ALTER_ACTION));
+    argument = httpp_getvar(au_url->parser, __str_or_default(url->header_alter_argument, DEFAULT_HEADER_NEW_ALTER_ARGUMENT));
+
+    if (action && argument) {
+        if (auth_alter_client(auth_user->client->auth, auth_user, auth_str2alter(action), argument) != 0) {
+            ICECAST_LOG_ERROR("Auth backend returned invalid alter action/argument.");
+        }
+    } else if (action || argument) {
+        ICECAST_LOG_ERROR("Auth backend returned incomplete alter action/argument.");
+    }
+
+    if (url->header_message) {
+        tmp = httpp_getvar(au_url->parser, url->header_message);
+    } else {
+        tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_NEW_MESSAGE);
+        if (!tmp)
+            tmp = httpp_getvar(au_url->parser, DEFAULT_HEADER_OLD_MESSAGE);
+    }
+    if (tmp) {
+        snprintf(url->errormsg, sizeof(url->errormsg), "%s", tmp);
+    }
 }
 
 static size_t handle_returned_header(void      *ptr,
@@ -125,33 +257,73 @@ static size_t handle_returned_header(void      *ptr,
                                      size_t    nmemb,
                                      void      *stream)
 {
+    size_t len = size * nmemb;
     auth_client *auth_user = stream;
-    unsigned bytes = size * nmemb;
     client_t *client = auth_user->client;
+    auth_t *auth;
+    auth_url *url;
 
-    if (client) {
-        auth_t *auth = client->auth;
-        auth_url *url = auth->state;
-        if (strncasecmp(ptr, url->auth_header, url->auth_header_len) == 0)
-            url->result = AUTH_OK;
-        if (strncasecmp(ptr, url->timelimit_header,
-                url->timelimit_header_len) == 0) {
-            unsigned int limit = 0;
-            sscanf ((char *)ptr+url->timelimit_header_len, "%u\r\n", &limit);
-            client->con->discon_time = time(NULL) + limit;
+    if (!client)
+        return len;
+
+    auth = client->auth;
+    url = auth->state;
+
+    if (!auth_user->authbackend_userdata) {
+        auth_user->authbackend_userdata = calloc(1, sizeof(auth_user_url_t));
+    }
+
+    if (auth_user->authbackend_userdata) {
+        auth_user_url_t *au_url = auth_user->authbackend_userdata;
+        char *n = realloc(au_url->all_headers, au_url->all_headers_len + len);
+        if (n) {
+            au_url->all_headers = n;
+            memcpy(n + au_url->all_headers_len, ptr, len);
+            au_url->all_headers_len += len;
+        } else {
+            ICECAST_LOG_ERROR("Can not allocate buffer for auth backend reply headers. BAD.");
         }
-        if (strncasecmp (ptr, "icecast-auth-message: ", 22) == 0) {
-            char *eol;
-            snprintf(url->errormsg, sizeof(url->errormsg), "%s", (char*)ptr+22);
-            eol = strchr(url->errormsg, '\r');
-            if (eol == NULL)
-                eol = strchr(url->errormsg, '\n');
-            if (eol)
-                *eol = '\0';
+    } else {
+        ICECAST_LOG_ERROR("Can not allocate authbackend_userdata. BAD.");
+    }
+
+    ICECAST_LOG_DEBUG("Got header: %* #H", (int)(size * nmemb + 2), ptr);
+
+    if (url->auth_header && len >= url->auth_header_len && strncasecmp(ptr, url->auth_header, url->auth_header_len) == 0) {
+        url->result = AUTH_OK;
+    }
+
+    if (url->timelimit_header && len > url->timelimit_header_len && strncasecmp(ptr, url->timelimit_header, url->timelimit_header_len) == 0) {
+        const char *input = ptr;
+        unsigned int limit = 0;
+
+        if (len >= 2 && input[len - 2] == '\r' && input[len - 1] == '\n') {
+            input += url->timelimit_header_len;
+
+            if (sscanf(input, "%u\r\n", &limit) == 1) {
+                client->con->discon_time = time(NULL) + limit;
+            } else {
+                ICECAST_LOG_ERROR("Auth backend returned invalid timeline header: Can not parse limit");
+            }
+        } else {
+            ICECAST_LOG_ERROR("Auth backend returned invalid timelimit header.");
         }
     }
 
-    return (int)bytes;
+    if (len == 1) {
+        const char *c = ptr;
+        if (c[0] == '\r' || c[0] == '\n') {
+            handle_returned_header__complete(auth_user);
+        }
+    } else if (len == 2) {
+        const char *c = ptr;
+        if ((c[0] == '\r' || c[0] == '\n') && (c[1] == '\r' || c[1] == '\n')) {
+            handle_returned_header__complete(auth_user);
+        }
+    }
+
+
+    return len;
 }
 
 static auth_result url_remove_client(auth_client *auth_user)
@@ -172,6 +344,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     const char     *agent;
     char           *user_agent,
                    *ipaddr;
+    int             ret;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
@@ -207,7 +380,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     mount = util_url_escape(mountreq);
     ipaddr = util_url_escape(client->con->ip);
 
-    snprintf(post, sizeof (post),
+    ret = snprintf(post, sizeof(post),
             "action=%s&server=%s&port=%d&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
             url->removeaction, /* already escaped */
@@ -220,6 +393,12 @@ static auth_result url_remove_client(auth_client *auth_user)
     free(password);
     free(ipaddr);
     free(user_agent);
+
+    if (ret <= 0 || ret >= (ssize_t)sizeof(post)) {
+        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
+        auth_user_url_clear(auth_user);
+        return AUTH_FAILED;
+    }
 
     if (strchr (url->removeurl, '@') == NULL) {
         if (url->userpwd) {
@@ -250,6 +429,7 @@ static auth_result url_remove_client(auth_client *auth_user)
             url->removeurl, url->errormsg);
 
     free(userpwd);
+    auth_user_url_clear(auth_user);
 
     return AUTH_OK;
 }
@@ -330,6 +510,13 @@ static auth_result url_add_client(auth_client *auth_user)
     free(password);
     free(ipaddr);
 
+
+    if (post_offset <= 0 || post_offset >= (ssize_t)sizeof(post)) {
+        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
+        auth_user_url_clear(auth_user);
+        return AUTH_FAILED;
+    }
+
     pass_headers = NULL;
     if (url->pass_headers)
         pass_headers = strdup(url->pass_headers);
@@ -344,17 +531,30 @@ static auth_result url_add_client(auth_client *auth_user)
 
             header_val = httpp_getvar (client->parser, cur_header);
             if (header_val) {
+                size_t left = sizeof(post) - post_offset;
+                int ret;
+
                 header_valesc = util_url_escape (header_val);
-                post_offset += snprintf(post + post_offset,
+                ret = snprintf(post + post_offset,
                                         sizeof(post) - post_offset,
                                         "&%s%s=%s",
                                         url->prefix_headers ? url->prefix_headers : "",
                                         cur_header, header_valesc);
                 free(header_valesc);
+
+                if (ret <= 0 || (size_t)ret >= left) {
+                    ICECAST_LOG_ERROR("Authentication failed for client %p as header \"%H\" is too long.", client, cur_header);
+                    free(pass_headers);
+                    auth_user_url_clear(auth_user);
+                    return AUTH_FAILED;
+                } else {
+                    post_offset += ret;
+                }
             }
 
             cur_header = next_header;
         }
+        free(pass_headers);
     }
 
     if (strchr(url->addurl, '@') == NULL) {
@@ -385,6 +585,7 @@ static auth_result url_add_client(auth_client *auth_user)
     res = curl_easy_perform(url->handle);
 
     free(userpwd);
+    auth_user_url_clear(auth_user);
 
     if (res) {
         ICECAST_LOG_WARN("auth to server %s failed with %s",
@@ -430,43 +631,46 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     url_info                    = calloc(1, sizeof(auth_url));
     authenticator->state        = url_info;
 
-    /* default headers */
-    url_info->auth_header       = strdup("icecast-auth-user: 1\r\n");
-    url_info->timelimit_header  = strdup("icecast-auth-timelimit:");
-
     /* force auth thread to call function. this makes sure the auth_t is attached to client */
     authenticator->authenticate_client = url_add_client;
 
     while(options) {
         if(strcmp(options->name, "username") == 0) {
-            free(url_info->username);
-            url_info->username = strdup(options->value);
+            util_replace_string(&(url_info->username), options->value);
         } else if(strcmp(options->name, "password") == 0) {
-            free(url_info->password);
-            url_info->password = strdup(options->value);
+            util_replace_string(&(url_info->password), options->value);
         } else if(strcmp(options->name, "headers") == 0) {
-            free(url_info->pass_headers);
-            url_info->pass_headers = strdup(options->value);
+            util_replace_string(&(url_info->pass_headers), options->value);
         } else if(strcmp(options->name, "header_prefix") == 0) {
-            free(url_info->prefix_headers);
-            url_info->prefix_headers = strdup(options->value);
+            util_replace_string(&(url_info->prefix_headers), options->value);
         } else if(strcmp(options->name, "client_add") == 0) {
-            free(url_info->addurl);
-            url_info->addurl = strdup(options->value);
+            util_replace_string(&(url_info->addurl), options->value);
         } else if(strcmp(options->name, "client_remove") == 0) {
             authenticator->release_client = url_remove_client;
-            free(url_info->removeurl);
-            url_info->removeurl = strdup(options->value);
+            util_replace_string(&(url_info->removeurl), options->value);
         } else if(strcmp(options->name, "action_add") == 0) {
             addaction = options->value;
         } else if(strcmp(options->name, "action_remove") == 0) {
             removeaction = options->value;
         } else if(strcmp(options->name, "auth_header") == 0) {
-            free(url_info->auth_header);
-            url_info->auth_header = strdup(options->value);
+            util_replace_string(&(url_info->auth_header), options->value);
         } else if (strcmp(options->name, "timelimit_header") == 0) {
-            free(url_info->timelimit_header);
-            url_info->timelimit_header = strdup(options->value);
+            util_replace_string(&(url_info->timelimit_header), options->value);
+        } else if (strcmp(options->name, "header_auth") == 0) {
+            util_replace_string(&(url_info->header_auth), options->value);
+            util_strtolower(url_info->header_message);
+        } else if (strcmp(options->name, "header_timelimit") == 0) {
+            util_replace_string(&(url_info->header_timelimit), options->value);
+            util_strtolower(url_info->header_message);
+        } else if (strcmp(options->name, "header_message") == 0) {
+            util_replace_string(&(url_info->header_message), options->value);
+            util_strtolower(url_info->header_message);
+        } else if (strcmp(options->name, "header_alter_action") == 0) {
+            util_replace_string(&(url_info->header_alter_action), options->value);
+            util_strtolower(url_info->header_alter_action);
+        } else if (strcmp(options->name, "header_alter_argument") == 0) {
+            util_replace_string(&(url_info->header_alter_argument), options->value);
+            util_strtolower(url_info->header_alter_argument);
         } else {
             ICECAST_LOG_ERROR("Unknown option: %s", options->name);
         }
@@ -480,6 +684,22 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
     if (url_info->handle == NULL) {
         auth_url_clear(authenticator);
         return -1;
+    }
+
+    /* default headers */
+    if (url_info->auth_header) {
+        ICECAST_LOG_WARN("You use old style auth option \"auth_header\". Please switch to new style option \"header_auth\".");
+    } else if (!url_info->header_auth && !url_info->auth_header) {
+        ICECAST_LOG_WARN("You do not have enabled old or new style auth option for auth status header. I will enable both. Please set \"header_auth\".");
+        url_info->auth_header = strdup(DEFAULT_HEADER_OLD_RESULT);
+        url_info->header_auth = strdup(DEFAULT_HEADER_NEW_RESULT);
+    }
+    if (url_info->timelimit_header) {
+        ICECAST_LOG_WARN("You use old style auth option \"timelimit_header\". Please switch to new style option \"header_timelimit\".");
+    } else if (!url_info->header_timelimit && !url_info->timelimit_header) {
+        ICECAST_LOG_WARN("You do not have enabled old or new style auth option for auth timelimit header. I will enable both. Please set \"header_timelimit\".");
+        url_info->timelimit_header = strdup(DEFAULT_HEADER_OLD_TIMELIMIT);
+        url_info->header_timelimit = strdup(DEFAULT_HEADER_NEW_TIMELIMIT);
     }
 
     if (url_info->auth_header)

@@ -1,0 +1,900 @@
+icecast2 (2.4.99.3-1) UNRELEASED; urgency=medium
+
+  * Preparing for 2.5 beta3 aka 2.4.99.3
+
+ --  Philipp Schafft <lion@lion.leolix.org>  Sun, 13 Mar 2022 18:25:33 +0000
+
+icecast2 (2.4.99.2-1) UNRELEASED; urgency=medium
+
+  * 2.5 beta 2
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Wed, 04 Apr 2018 05:42:23 -0000
+
+icecast2 (2.4.2-2) UNRELEASED; urgency=medium
+
+  * Fix broken postinst script
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Wed, 14 Apr 2015 09:05:23 -0000
+
+icecast2 (2.4.2-1) UNRELEASED; urgency=medium
+
+  * Security fix release
+  * Also fixed the package configuration, tnx Ukikie
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Wed, 08 Apr 2015 10:23:42 -0000
+
+icecast2 (2.4.1-2) UNRELEASED; urgency=medium
+
+  * Fixed docdir problem, doc directory structure is now OK.
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sun, 13 Dec 2014 18:23:42 -0000
+
+icecast2 (2.4.1-1) UNRELEASED; urgency=medium
+
+  * Packaging based on 2.4.0 of debian/SID
+  * SECURITY FIX
+  * see ChangeLog for details
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sun, 23 Nov 2014 16:47:42 -0000
+
+icecast2 (2.4.0-1) UNRELEASED; urgency=low
+
+  * SECURITY FIX - Override supplementary groups if <changeowner>
+  * Added <audio> for supported streams. TNX ePirat
+  * status2.xsl, broken for a decade, now it's gone!
+  * Updated docs: 
+    * logging to STDERR; known issues
+    * Refactored docs about client authentication
+    * Vastly improved page about Icecast statistics
+    * Clean up supported windows versions
+    * Quick fixup of the basic setup page
+    * Minor fixes to the config file documentation
+    * Updated YP documentation
+    * Reduced win32 documentation to essentials
+  * Adding stream_start_iso8601, server_start_iso8601
+    ISO8601 compliante timestamps for statistics. Should make usage in
+    e.g. JSON much easier.
+    Added as new variables to avoid breaking backwards compatibility.
+  * Nicer looking tables for the admin interface.
+    ePirat sent updated tables code that should look much nicer.
+    This is admin interface only (and a global css change).
+  * Set content-type to official "application/json"
+  * Initial JSON status transform.
+    Output roughly limited to data also visible through status.xsl.
+  * Silence direct calls, add partial array support.
+  * The XSLT will now return empty if called directly.
+    This is a security measure to prevent unintended data leakage.
+  * Adding partial array support to print sources in an array. 
+    Code lifted from: 
+    https://code.google.com/p/xml2json-xslt/issues/detail?id=3
+  * Adding xml2json XSLT, svn r31 upstream trunk.
+    https://code.google.com/p/xml2json-xslt/
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sun, 25 May 2014 13:54:42 +0000
+
+icecast2 (2.3.99.5-1) UNRELEASED; urgency=low
+
+  * Icecast 2.4 Beta5 aka 2.3.99.5
+  * Updated web interface to be fully XHTML compliant.
+    Credit to ePirat
+  * Send charset in headers for everything, excluding file-serv and streams.
+  * Documentation updates
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sat, 01 Mar 2014 18:32:23 +0000
+
+icecast2 (2.3.99.4-1) UNRELEASED; urgency=low
+
+  * Icecast 2.4 Beta4
+  * Updated web interface to be more XHTML compliant.
+  * Fixed a memory leak. Lost headers of stream because of wrong ref
+    counter in associated refbuf objects.
+  * avoid memory leak in _parse_mount() when "type"-attribute is set
+  * Completed HTTP PUT support, send 100-continue-header,
+    if client requests it. We need to adhere to HTTP1.1 here.
+  * corrected Date-header format to conform the standard (see RFC1123).
+    Thanks to cato for reporting.
+  * Added a favicon to the web-root content
+  * We now split handling of command line arguments into two parts.
+    Only the critical part of getting the config file is done first (and
+    -v as it prevents startup). The rest (currently only -b) is deferred.
+    It allows us to log error messages to stderr even if the -b argument
+    is passed. This is mainly for the case where the logfile or TCP port 
+    can't be opened.
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Thu, 23 Jan 2014 13:55:23 +0000
+
+icecast2 (2.3.99.3-1) UNRELEASED; urgency=low
+
+  * Icecast 2.4 Beta3
+  * Added default mount settings
+  * Various fixes
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sat, 06 Apr 2013 05:00:00 +0000
+
+icecast2 (2.3.99.2-1) UNRELEASED; urgency=low
+
+  * Icecast 2.4 Beta2
+  * Now compiles for win32 using mingw
+  * Added options "headers" and "header_prefix" to URL based listener auth.
+  * Updated listener_remove handler:
+    +   added ip= and agent=,
+    +   Some cleanup && made code more uniform,
+    +   avoid int for size_t vars.
+    +   close #1422 #1422
+  * Allow full URLs to be returned by the master server. close #1878
+  * Highly experimental HTTP PUT support. ref #1812
+    +   We are handling it the same as we would handle a SOURCE request.
+        Due to legacy code, sender MUST send proper content-type header,
+        if content type is not audio/mpeg!
+        Can be tested using real-time encoded output and piping it into:
+         | curl -u username:password -H "Content-type: application/ogg" \
+         -T - http://localhost:8000/mountname.ogg
+       Note that this example has ZERO timing, so a simple 'cat *.ogg' 
+       will fail.
+       Whatever feeds the pipe must do it at proper timing for real-time
+       playback!
+
+ -- Thomas B. Ruecker <thomas@ruecker.fi>  Sun, 31 Mar 2013 15:16:35 +0000
+
+icecast2 (2.3.3-1) unstable; urgency=low
+
+  [ upstream ]
+  * New upstream bugfix release.
+    + Allow the source password to be undefined. This is to avoid
+      falling back to a default password which would be a security
+      problem. Fixing #1846
+    + Applied justdave's patches, fixing #1717 and #1718. HTTPS now with
+      better security and support for chained certificates.
+    + trunk/icecast/conf/icecast_minimal.xml.in: Updated <alias> to use
+      destination="" not dest="". The old dest="" attribute is still
+      supported.
+    + Added 'admin' and 'location' to default config, thus fixing #1839.
+    + Added VCLT playlist support.
+    Closes: bug#652663, which fixes CVE-2011-4612.
+
+  [ Jonas Smedegaard ]
+  * Setup git-import-orig to filter out debian subdir.
+  * Drop patches 1002 and 1003, applied upstream.
+  * Unfuzz patch 1001.
+  * Avoid locally shipped CDBS snippets (but keep them included with
+    source to minimize diff for freeze-exception inspection).
+  * Add Brazilian Portuguese (pt_BR) localization.
+    Closes: bug#652050. Thanks to Adriano Rafael Gomes.
+  * Setup git-buildpackage to use wheezy branch.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Mon, 23 Jul 2012 10:31:34 +0200
+
+icecast2 (2.3.2-9) unstable; urgency=medium
+
+  * Team upload.
+  * Call db_stop before starting icecast2 in postinst.
+    Thanks to Julien Cristau for the patch. (Closes: #639751)
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 03 Jan 2012 01:42:12 +0100
+
+icecast2 (2.3.2-8) unstable; urgency=low
+
+  [ Alessio Treglia ]
+  * Team upload.
+  * debian/icecast2.1: Escape minus sign "-".
+  * Fix lintian's debian-news-entry-uses-asterisk warning.
+
+  [ Christian Perrier ]
+  * Debconf templates and debian/control reviewed by the debian-l10n-
+    english team as part of the Smith review project. Closes: #640085
+  * [Debconf translation updates]
+  * Debconf templates and debian/control reviewed by the debian-l10n-
+    english team as part of the Smith review project. Closes: #640085
+  * [Debconf translation updates]
+  * Vietnamese (Hung Tran).  Closes: #640674
+  * Swedish (Martin Bagge / brother).  Closes: #640708
+  * Russian (Yuri Kozlov).  Closes: #641026
+  * French (Julien Patriarca).  Closes: #641142
+  * Portuguese (Rui Branco).  Closes: #641159, #641158
+  * German (Erik Pfannenstein).  Closes: #641048
+  * Spanish; (SM Baby Siabef).  Closes: #642067
+  * Dutch; (Jeroen Schot).  Closes: #642289
+  * Czech (Michal Simunek).  Closes: #642332
+  * Danish (Joe Hansen).  Closes: #642334
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 05 Dec 2011 13:00:17 +0100
+
+icecast2 (2.3.2-7) unstable; urgency=low
+
+  * Team upload.
+
+  [ Jonas Smedegaard ]
+  * Tidy user+group creation and removal.
+
+  [ Alessio Treglia ]
+  * Switch to source format 3.0 (quilt).
+  * Improve the short description, video streaming support was
+    not mentioned (Closes: #610830).
+  * Add config/templates/postinst configuration (Closes: #623256).
+    Thanks to Robin Gareus for the patch.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 12 Aug 2011 11:42:18 +0200
+
+icecast2 (2.3.2-6) unstable; urgency=medium
+
+  * Team upload.
+  * New Maintainer as the Icecast team is merging with Multimedia
+    Maintainers: update Vcs-* tags, add git-buildpackage config file.
+  * Prevent icecast2 to fail to reinstall/upgrade/purge (Closes: #605507):
+    - debian/icecast2.postinst:
+      + Avoid to fail on invoke-rc.d icecast2 start when upgrading.
+    - debian/icecast2.init:
+      + When stopping, send TERM after 5 seconds, wait at most 30 seconds.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 08 Dec 2010 09:01:54 +0100
+
+icecast2 (2.3.2-5) unstable; urgency=high
+
+  * Added patch to fix a memory leak. 
+    Thanks to Gilles Pietri for reporting
+    and Jussi Kukkonen for providing a patch.
+  * Bumped standards version to 3.8.3 
+  * Added doc-base registration.
+
+ -- Romain Beauxis <toots@rastageeks.org>  Mon, 14 Dec 2009 10:05:47 -0600
+
+icecast2 (2.3.2-4) unstable; urgency=low
+
+  * Add README.Debian mentioning the use of Subversion, CDBS, quilt and
+    DEB_MAINTAINER_MODE.
+  * Update CDBS snippets:
+    + Add new snippet package-relations.mk.
+    + Consistently use underscore (not dash) in variables.
+    + Implement fail-source-not-repackaged rule in upstream-tarball.mk.
+    + Update URL to draft DEP5 format in copyright-check.mk output.
+  * Resolve, cleanup and apply CDBS-declared dependencies using
+    package-relations.mk.
+  * Build-depend on autotools-dev.
+  * Merge mutiple build-dependencies on cdbs. Closes: bug#550227, thanks
+    to Stefan Ritter.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 08 Oct 2009 16:55:02 +0200
+
+icecast2 (2.3.2-3) unstable; urgency=low
+
+  [ Jonas Smedegaard ]
+  * Cosmetic changes to debian/rules.
+
+  [ Romain Beauxis ]
+  * Bumped standards version to 3.8.2
+  * Bumped compat to 7
+  * Removed inactive uploader.
+  * Added missing xspf.xsl. This file is missing
+    from upstream's 2.3.2 tarball.
+  Closes: #513398
+  * Added test for icecast2 running process in
+    logrotate's postrotate script.
+  Closes: #522703
+  * Relaxed non-config file permissions in /etc/icecast2
+  Closes: #519486
+  * Added retry option for icecast2's init.d restart action.
+  Closes: #533182
+  * Changed recommends on ices2 to suggests now that 
+    recommended packages are installed by default.
+  * Removed path in postrm script commands, see lintian 
+    warning 'command-with-path-in-maintainer-script'.
+
+ -- Romain Beauxis <toots@rastageeks.org>  Fri, 31 Jul 2009 02:50:37 +0200
+
+icecast2 (2.3.2-2) unstable; urgency=low
+
+  * Update local cdbs snippets:
+    + Always do copyright-check, but only warn by default.
+    + Update dependency cleanup to strip cdbs 0.4.27 (not 0.4.27-1).
+  * Update debian/copyright-hints.
+  * Bump debhelper compatibility level to 6.
+  * Semi-auto-update debian/control to update build-dependencies:
+      DEB_MAINTAINER_BUILD=yes fakeroot debian/rules clean
+
+ -- Jonas Smedegaard <dr@jones.dk>  Tue, 24 Jun 2008 00:47:34 +0200
+
+icecast2 (2.3.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Dropped patches applied upstream
+  * Added Short-Description and $network dependency to 
+    init script
+  * Changed build dep from libcurl3-gnutls-dev to libcurl4-gnutls-dev
+  * Updated debian/copyright_hints
+
+ -- Romain Beauxis <toots@rastageeks.org>  Tue, 03 Jun 2008 10:16:43 -0400
+
+icecast2 (2.3.1-7) unstable; urgency=low
+
+  [ Romain Beauxis ]
+  * Acknowledge NMU
+  Closes: #460853
+  * Updated Uploaders field
+  * Made copyright check optional, add documentation
+  Closes: #442601
+  * Added a special variable to enable maintainer mode builds,
+    with, for now, copyright check and control file update. Use:
+      DEB_MAINTAINER_BUILD=yes (svn|dpkg)-buildpackage (...)
+    and similar..
+  * Bumped standards to 3.7.3 (no changes)
+
+  [ Jonas Smedegaard ]
+  * Update local cdbs snippets:
+    + Major improvements to update-tarball (but none of them affecting
+      this current packaging).
+    + Major improvements to copyright-check, including new versioned
+      build-dependency on devscripts.  Update debian/copyright_hints.
+    + Drop buildcore.mk override.  Set DEB_AUTO_UPDATE_DEBIAN_CONTROL
+      directly instead when needed.
+    + Update debian/README.cdbs-tweaks
+  * Drop leading XS- from Vcs-* fields in debian/control.
+  * Fix watch file to invoke svn-upgrade (not uupdate).
+  * Semi-auto-update debian/control to update build-dependencies:
+    DEB_AUTO_UPDATE_DEBIAN_CONTROL=yes fakeroot debian/rules clean
+
+ -- Jonas Smedegaard <dr@jones.dk>  Fri, 11 Apr 2008 02:07:38 +0200
+
+icecast2 (2.3.1-6.1) unstable; urgency=low
+
+  * Non-maintainer upload to solve release goal.
+  * Add LSB dependency header to init.d scripts (Closes: #460853).
+
+ -- Petter Reinholdtsen <pere@debian.org>  Sat, 29 Mar 2008 19:39:17 +0100
+
+icecast2 (2.3.1-6) unstable; urgency=low
+
+  * Acknowledge NMU. Closes: bug#416771, #423778, thanks to Luk Claes
+    and Michael Ablassmeier.
+  * Add patch 1002 to fix generating /admin/streamlist.txt with missing
+    mount tags. Closes: bug#405524, thanks to Yauhen Kharuzhy.
+  * Isolate CURL bugfix from -5.1 NMU as patch 1003.
+  * Update local cdbs tweaks:
+    + Add new local cdbs tweak upstream.tarball.mk to add a
+      get-orig-source target and more.
+    + Replace auto-update.mk with overloading buildcore.mk.
+    + Emit list of suspects if new copyrights are found.
+    + Check for copyrights at pre-build (at clean we might run before
+      actual cleanup has finished).
+    + Various improvements to update-tarball.
+    + document the tweaks in debian/README.cdbs-tweaks.
+  * Resolve all build-dependencies using cdbs, and cleanup duplicates.
+  * Bump up to using automake1.10 (from 1.7).
+  * Bump up to using debhelper compatibility level 5 (from 4).
+  * Build-depend on libxslt1-dev (and on virtual libxslt-dev only as
+    fallback).
+  * Add XS-Vcs-Svn and XS-Vcs-Browser fields to debian/control.
+  * Move Homepage to own field (from pseudo-field in long description).
+  * Semi-auto-update debian/control:
+      DEB_BUILD_OPTIONS=cdbs-autoupdate fakeroot debian/rules pre-build
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 29 Sep 2007 15:27:17 +0200
+
+icecast2 (2.3.1-5.1) unstable; urgency=high
+
+  * Non-maintainer upload during BSP.
+  * Fix unconditional use of passwd package in postrm (Closes: #416771).
+  * Fix FTBFS due to use of obsolete curl API (Closes: #423778).
+
+ -- Luk Claes <luk@debian.org>  Sat, 19 May 2007 14:45:18 +0200
+
+icecast2 (2.3.1-5) unstable; urgency=low
+
+  * Add patch to syncronize with upstream SVN as of 20060620 (r11419).
+    Reasoning: No new upstream release for quite some time, and changes
+    in SVN seems to only be small tightenings, not new risky features.
+    + Safer use of ICECAST_VERSION_STRING.
+    + Fix (void) function prototypes.
+    + Fix various leaks.
+    + Fail on unrecognized codec, dropping source instead of looping.
+    + Improved slave handling.
+    + Prevent races by locking when modifying content.
+    + Fix possible bad pointer dereference when processing new clients.
+    + Consistently use compat.h (and drop os.h).
+  * Enable cdbs update of automake, as the above change Makefile.am's.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 19 Aug 2006 21:57:36 +0200
+
+icecast2 (2.3.1-4) unstable; urgency=low
+
+  * Acknowledge NMU. Closes: bug#375253, #373855, #373818.
+  * Build-depend on libtheora-dev again (but at least alpha7), as later
+    suggested in the above bug#375253. Closes: bug#308939.
+  * Bump standards-version to 3.7.2 (no changes needed).
+  * Enable cdbs relibtoolization, fixing linkage problem causing FTBFS.
+    Closes: bug#346507 (thanks to "J.H.M. Dassen (Ray)"
+    <fsmla@xinara.org>).
+  * Add patch to avoid autotools messing with debian subdir.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 19 Aug 2006 20:11:00 +0200
+
+icecast2 (2.3.1-3.1) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * Disable Theora support (by removing Depends and Build-Depends on
+    libtheora0 and libtheora-dev, adding a Build-Conflicts on libtheora-dev
+    instead); the 0.0.0.alpha6 version is currently too unstable (see
+    #340175), and 0.0.0.alpha5 is no longer in the archive. This fixes both
+    FTBFS (Closes: #373855) and missing dependency (Closes: #373818) problems,
+    but it reopens #308939.
+
+ -- Steinar H. Gunderson <sesse@debian.org>  Sat, 24 Jun 2006 21:06:52 +0200
+
+icecast2 (2.3.1-3) unstable; urgency=low
+
+  * Small adjustments to debian/copyright:
+    + Remove note on "FSF address adjusted" (it was stripped instead).
+    + Correct path to src/httpp (not src/httpd).
+    + Mention src/httpp licensing info only once.
+    + Info for src/httpp covers src/timing too.
+  * Update local cdbs snippet auto-update.mk:
+    + Drop unneeded buildcore.mk inclusion.
+    + Avoid problematic build-essential build-dependency.
+  * Update local cdbs snippet copyright-check.mk:
+    + Support changing the scope of files found.
+    + Treat all found files as non-binary.
+  * Bump to standards-version 3.7.1 (no changes needed).
+  * Semi-auto-update debian/rules.
+  * Tightening (build-)dependency on libtheora to avoid the crashing
+    bugs mentioned in (but unrelated to) bug#340175. This also for sure
+    closes: Bug#308939 (thanks to <j@v2v.cc>).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Fri,  5 May 2006 10:10:01 +0200
+
+icecast2 (2.3.1-2) unstable; urgency=low
+
+  * This package is now team-maintained!
+    + Debian Icecast team <pkg-icecast-devel@lists.alioth.debian.org>
+      maintains the package, with me as uploader.
+    + If you want to help improve the package or want other Icecast-
+      related packages maintained here then drop an email to the above
+      mailinglist!
+  * Move auto-update of debian/control out in reusable cdbs snippet.
+  * Minor update to other cdbs snippets (non-unique cdbs namespace).
+  * Auto-update debian/control, and manually strip build-essential from
+    build-dependencies to not upset ftp-masters.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 17 Dec 2005 21:41:55 +0100
+
+icecast2 (2.3.1-1) unstable; urgency=low
+
+  * New upstream release. Closes: bug#343613 (thanks to Alexander
+    Schories <alexander@schories.com>).
+  * Debian subdir is again stripped from tarball.
+  * Mention homepage (not website) in long description.
+  * Depend on adduser (thanks to lintian).
+  * Add local cdbs snippet copyright-check.mk.
+  * Update debian/copyright to quote less of GPL licenses - to avoid
+    lintian complaining about wrong FSF address.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Fri, 16 Dec 2005 23:08:50 +0100
+
+icecast2 (2.3.0-2) unstable; urgency=low
+
+  * Build-depend on libcurl3-gnutls-dev (not libcurl-dev) to avoid
+    indirectly linking against GPL-unfriendly openssl. This also closes:
+    bug#335891 (thanks to Chris Murton <chris@areti.net>).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 27 Oct 2005 00:17:54 +0200
+
+icecast2 (2.3.0-1) unstable; urgency=low
+
+  * New upstream release. Closes: bug#332323 (thanks to  Jesus Climent
+    <jesus.climent@hispalinux.es>).
+  * Debian subdir is again stripped from tarball.
+  * Bump up watch file version.
+  * Build-depend on libspeex-dev.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 13 Oct 2005 09:54:54 +0200
+
+icecast2 (2.2.0-3) unstable; urgency=low
+
+  * Raise to standards version 3.6.2 (no changes needed).
+  * Use cdbs debian/control auto-build, but only when environment
+    includes DEB_BUILD_OPTIONS=update.
+  * Auto-update build-dependencies (and manually rip out build-essential
+    buggily sneaking in).
+  * Fix watch file by simplifying it (seems uscan wrongly parse it as a
+    newer version format).
+  * Build-depend only on virtual package libcurl-dev (not libcurl3-dev).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Wed, 13 Jul 2005 17:42:57 +0200
+
+icecast2 (2.2.0-2) unstable; urgency=high
+
+  * Depend on netbase (see bug#308401).
+  * Set urgency=high as package fails to install/remove with netbase not
+    present.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu,  2 Jun 2005 14:49:29 +0200
+
+icecast2 (2.2.0-1) unstable; urgency=low
+
+  * New upstream release. Closes: bug#286739 (thanks - again - to Andre
+    Tomt <andre@tomt.net>).
+  * Debian subdir is again stripped from tarball, but autotools patching
+    (to aboid complaints about the missing dir) is now in diff. Updated
+    note in debian/copyright.
+  * Build-depend on libtheora-dev (current version is too old but as
+    soon as libtheora is updated it will then get built in).
+  * Updated source location in debian/copyright and debian/watch.
+  * Correct typo in long description.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Wed, 29 Dec 2004 15:04:17 +0100
+
+icecast2 (2.1.0-1) unstable; urgency=medium
+
+  * New upstream release. Closes: bug#279869 (thanks to Andre Tomt
+    <andre@tomt.net>).
+  * Strip annoying debian subdir from upstream source.
+  * Update debian/copyright:
+    + License is included now (no need to refer to CVS).
+    + Remove stray repeated license above licensing section.
+    + Add note about tarball not being pristine (and explain why).
+    + Use capital "I" in initial introduction to upstream name.
+  * Use generic (but unofficial) buildinfo cdbs snippet.
+  * Drop cleaning up conf/icecast.xml.dist (handled properly upstream
+    now).
+  * Set urgency=medium to hopefully reach sarge.
+  * Correct README.Debian to mention user "icecast2" (not "icecast").
+  * Move and symlink stylesheet to /etc (similar to xslt files).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun,  7 Nov 2004 15:52:50 +0100
+
+icecast2 (2.0.2.debian-3) unstable; urgency=high
+
+  * Fix wrong space in build-depends.
+  * Set urgency=high to hopefully get this compiled (even for sparc)
+    in time for sarge release.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Tue, 26 Oct 2004 14:23:04 +0200
+
+icecast2 (2.0.2.debian-2) unstable; urgency=high
+
+  * Include "endscript" in logrotate rule. Closes: bug#274823 (thanks to
+    Jose Antonio <jose@shaolin.homeip.net>).
+  * Set urgency=high to still push earlier security fix.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Mon,  4 Oct 2004 11:00:31 +0200
+
+icecast2 (2.0.2.debian-1) unstable; urgency=high
+
+  * New upstream release.
+    + Fixes upstream announced security bug.
+    + Set urgency=high due to the above.
+    + Closes: bug#274320 (thanks to Jeroen Wolffelaar
+      <jeroen@wolffelaar.nl>).
+    + Again - strip non-free win32/ResizableDialog.* from source.
+    + While we are at it, move upstream debian subdirectory off to
+      dist/debian. Hack configure and configure.in to not mess around.
+  * Update location of upstream source in copyright and watch file.
+  * Use more flexible regexp in watch file.
+  * Rename Debian NEWS file in source to get recognized automativally.
+  * Devine man page within rules file.
+  * Drop unneeded preinst (from a time before official Debian where it
+    did not run properly as a daemon?).
+  * Build-depend on libcurl3-dev, and on the virtual package libcurl-dev
+    only as fallback (not mandatory, but aptitude chokes and so will the
+    build daemons as well, I suppose).
+  * Reload (which does a sighup) daemon after logrotate. Closes:
+    bug#265301 (thanks to David Pashley <david@davidpashley.com>).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat,  2 Oct 2004 11:27:14 +0200
+
+icecast2 (2.0.1.debian-3) unstable; urgency=low
+
+  * Tolerate failure to remove icecast group on purge (it is used by
+    other packages as well, and was badly handled in older unstable
+    packages). This closes: Bug#246263 (thanks to Pete de Zwart
+    <dezwart@froob.net>).
+  * Fix logrotate script. Closes: Bug#249404, #255430 (thanks
+    to Julien Cristau <jcristau@ens-lyon.fr> and Mykola A. Nickishov
+    <mn@mn.com.ua>).
+  * Mention upstream website in long description.
+  * Build-depend on autotools-dev to let cdbs do clever autotools magic.
+  * Stylistic improvements to debian/rules:
+    + Add copyright notice and editor hints at top.
+    + Use only (cdbs-)generic make targets.
+  * Build-depend generically on libxslt-dev and libcurl-dev (instead of
+    libxslt1-dev and libcurl2-dev).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Wed,  7 Jul 2004 09:32:56 +0200
+
+icecast2 (2.0.1.debian-2) unstable; urgency=low
+
+  * Really add ChangeLog from 2.0.0.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 20 May 2004 23:03:22 +0200
+
+icecast2 (2.0.1.debian-1) unstable; urgency=medium
+
+  * New upstream release (thanks to Ian Kumlien <pomac@vapor.com>):
+    + According to announcement on website, it "fixes a overflow buffer
+      which can cause server crashes under certain circumstances" so set
+      urgency=medium (the code change is one line only).
+    + Again, remove the non-free win32/ResizableDialog.* as it is
+      still(!) distributed with official source.
+    + Add ChangeLog from 2.0.0 missing from current release.
+  * Register with (and recommend) logrotate. Closes: Bug#299404 (thanks
+    to Julien Cristau <jcristau@ens-lyon.fr>).
+  * Add note to README.Debian about chroots not working with symlinks
+    due to FHS requirements of configuration files located below /etc.
+    Closes: Bug#250056 (thanks to Ian Kumlien <pomac@vapor.com>).
+  * Standards-Version: 3.6.1 (no changes needed).
+  * Explicitly note version in watch file, and add it to TODO.Debian.
+  * Add comment to watch file hinting on how to use it.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 20 May 2004 21:40:03 +0200
+
+icecast2 (2.0.0.debian-1) unstable; urgency=low
+
+  * Re-release with non-free files (unused with Debian) stripped from
+    source:
+    + Remove non-free win32/ResizableDialog.* from source, and remove
+      its copyright and licensing info from debian/copyright.
+    + Add to debian/copyright GPL info taken from newer CVS, and email
+      from upstream to BTS permitting it to be used also with this
+      earlier release.
+    + This closes: Bug#229720, thanks to upstream and Steve Langasek
+      <vorlon@debian.org>.
+  * Add TODO.Debian with reminder to clean this mess later.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun, 28 Mar 2004 16:02:27 +0200
+
+icecast2 (2.0.0-2) unstable; urgency=low
+
+  * Add group if non-existing.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Mon, 26 Jan 2004 16:07:23 +0100
+
+icecast2 (2.0.0-1) unstable; urgency=low
+
+  * New upstream release. Closes: Bug#223645, thanks to Nicholas Humfrey
+    <njh@ecs.soton.ac.uk>.
+  * Use upstream long description, and rearrange short description a
+    bit.
+  * Rewrite debian/copyright:
+    + Note the upstream package name.
+    + Drop Debian-related info also in debian/changelog.
+    + Update location of upstream source.
+    + Replace general copyright and license info (where was it found?
+      See bug#229720) with that of individual files where provided.
+  * Update debian/watch with new location.
+  * Use username icecast2 (instead of icecast also used in the package
+    icecast-server). Add NEWS.Debian with info on the change. Closes:
+    bug#215671, #226807, thanks to Michael Deegan
+    <debbts@cnspc18.murdoch.edu.au> and Robin Lee Powell
+    <rlpowell@digitalkingdom.org>.
+  * Make sure /etc/icecast2 is owned by icecast2 and not world readable.
+    Closes: bug#210860, thanks to Frank Barknecht <fbar@footils.org>.
+  * Install NEWS again (now that NEWS and ChangeLog are different).
+  * Build-depend on libcurl2-dev (again, and hope it works now...).
+    Closes: Bug#222274 thanks to Nicholas Humfrey <njh@ecs.soton.ac.uk>.
+  * Let icecast2 go into background by itself (using -b). Closes:
+    Bug#204061 (and add the actual content of the bugreport - how to
+    bind to a priviledged port by starting as root - to README.Debian),
+    thanks to Jürgen A. Erhard <jae@jerhard.org>.
+  * Let "configure --program-transform-name" rename icecast to icecast2.
+  * Let debhelper create /var/log/icecast2/.
+  * Keep debian/rules comments from showing during build.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Mon, 26 Jan 2004 06:30:26 +0100
+
+icecast2 (1.9+2.0beta3-1) unstable; urgency=low
+
+  * New upstream release.
+  * Taking over maintainership. When Keegan some day comes through the
+    NM process he can take over maintainance.
+  * ChangeLog is provided upstream now, so use that (in favor of NEWS).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Tue, 16 Dec 2003 22:02:25 +0100
+
+icecast2 (1.9+2.0alphasnap2+20030802-1.2) unstable; urgency=low
+
+  * Another sponsor-NMU (forgot to force including source).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun, 17 Aug 2003 10:25:16 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030802-1.1) unstable; urgency=low
+
+  * NMU by sponsor.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun, 17 Aug 2003 01:25:22 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030802-1) unstable; urgency=low
+
+  * Added a 'watch' file to automate tracking of updates.
+  * Now uses dh-buildinfo to store information about the package build
+    environment.  Added a Build-Dependancy to dh-buildinfo.
+  * Removed cdbs/autotools-vars.mk, from cdbs CVS, because a new release
+    was made.
+  * Enabled curl during configure stage, since --disable-curl was recently
+    broken upstream, and potentially broken YP support can be disabled at
+    runtime.
+  * Trimmed ancient upgrade nodes and other cruft, left over from
+    pre-Debian versions, from README.Debian.
+  * Removed some autotools build cruft, since bugs were fixed upstream.
+  * Normalized {preinst,postinst,postrm} filenames to
+    icecast2.{preinst,postinst,postrm}.  Thanks to Emmanuel le Chevoir
+    for this suggestion.
+  * Fixed preinst; was stopping /usr/bin/icecast instead of
+    /usr/bin/icecast2.  Thanks to Emmanuel le Chevoir for this suggestion.
+  * Removed prerm, since it was not serving any purpose.  Thanks to
+    Emmanuel le Chevoir for this suggestion.
+  * Cleaned up postinst: removed old comments, fixed a path typo in the
+    configuration file location change message.
+  * Cleaned up postrm: removed old comments, fixed a typo in the group
+    removal test.
+  * Thanks to Jonas Smedegaard for sponsoring this package, and
+    providing many good suggestions.
+
+ -- Keegan Quinn <ice@thebasement.org>  Sat,  2 Aug 2003 20:28:13 -0700
+
+icecast2 (1.9+2.0alphasnap2+20030720-1.1) unstable; urgency=low
+
+  * NMU by sponsor (still closes: Bug#178160).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Wed, 23 Jul 2003 06:03:42 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030720-1) unstable; urgency=low
+
+  * New daily snapshot build.
+  * Added Build-Dependancy to cdbs, and increased debhelper version
+    requirement as recommended by cdbs README.
+  * Corrected Standards-Version to 3.6.0.  This package now generates
+    no lintian errors.
+  * Updated Recommends for ices to ices2; it was renamed.
+  * Added more information to the long description.
+  * Thanks to Jonas Smedegaard for sponsoring this package.
+  * This revision still closes: #178160 - the last was not uploaded.
+
+ -- Keegan Quinn <ice@thebasement.org>  Mon, 21 Jul 2003 08:55:27 -0700
+
+icecast2 (1.9+2.0alphasnap2+20030714-0.2) unstable; urgency=low
+
+  * Sponsored upload. Closes: Bug#178160.
+  * Switch to cdbs (agreed with maintainer).
+  * Use cdbs autotools-vars.mk from CVS to avoid cross-compiling on same
+    host.
+  * Add build-dependency on libxml2-dev.
+  * Explicitly configure without curl support to avoid building broken
+    YP stuff.
+  * Hack src/Makefile.am to use AM_CFLAGS instead of CFLAGS (which is
+    overridden by cdbs), and add clean rule to avoid invoking automake.
+  * Disable daemon by default and hint about changing passwords before
+    enabling.
+  * Avoid moving config files from pre-Debian times - instead just print
+    a warning if config exists in old location (better mess as little as
+    possible with files not ever claimed to be ours).
+  * Update README.Debian to reflect the above, include note about YP
+    support not compiled in, and remove note regarding adoption.
+  * Strip paths from packaging scripts (they may move around in the
+    future, and if PATH is wrong then something else broken anyway).
+  * Avoid removing unused /usr/share/icecast2 on purge.
+  * Remove icecast group on purge only if empty.
+  * Standards-version 3.6 (no changes needed).
+  * Fix wrong escaping of sed vars in conf/Makefile.
+  * Symlink public files from /usr/share/icecast2 to /etc/icecast2
+    (instead of pointing public root dirs below /etc).
+  * Use upstream config (paths are properly included now).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sun, 20 Jul 2003 20:19:30 +0200
+
+icecast2 (1.9+2.0alphasnap2+20030714-0.1) unstable; urgency=low
+
+  * New daily snapshot build.
+  * Updated versioning scheme to reflect (as well as possible) that the 
+    source is a daily snapshot now, not CVS.
+
+ -- Keegan Quinn <ice@thebasement.org>  Mon, 14 Jul 2003 19:39:58 -0700
+
+icecast2 (1.9+2.0alphacvs030704-0.1) unstable; urgency=low
+
+  * Constructed a build script to completely automate the construction
+    of the 'pristine' tarball from CVS.  This doesn't really effect the
+    contents of the package, just makes it easier for me to rebuild.
+  * New CVS source.
+  * Removed Build-Dependancy on libcurl2-dev; packages built without this
+    library present will not have YP functionality, which is okay for
+    now since it's badly broken.
+  * Updated the default configuration file, including some new options
+    recently added upstream.
+  * Added a number of tweaks to clean up and rearrange new configuration
+    and documentation added to upstream install target.
+  * Moved the configuration file from /etc/icecast.xml to
+    /etc/icecast2/icecast.xml.  See README.Debian.
+  * Nice ugly version number to reflect that upstream calls this the 2.0
+    alpha branch, without potentially introducing the need for an epoch.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Jul 2003 23:46:56 -0700
+
+icecast2 (0.00.cvs030529-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Removed unnecessary debconf stuff.
+  * Added README.Debian.
+  * Path updates:
+    - /usr/share/icecast to /usr/share/icecast2,
+    - /var/log/icecast to /var/log/icecast2,
+    - /usr/bin/icecast to /usr/bin/icecast2,
+    - /usr/share/man/man8/icecast.8.gz to /usr/share/man/man8/icecast2.8.gz.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed, 29 May 2003 22:53:21 -0700
+
+icecast2 (0.00.cvs030403-0.2) unstable; urgency=low
+
+  * Tried to make the default configuration more understandable. 
+
+ -- Keegan Quinn <ice@thebasement.org>  Fri,  4 Apr 2003 10:55:27 -0800
+
+icecast2 (0.00.cvs030403-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Minor changes to postrm.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 16:05:09 -0800
+
+icecast2 (0.00.cvs030401-0.7) unstable; urgency=low
+
+  * Minor changes to postinst.
+  * Added --background flag to initscript, since this version of icecast
+    does not yet run detached.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 14:24:19 -0800
+
+icecast2 (0.00.cvs030401-0.6) unstable; urgency=low
+
+  * Added Debianized configuration file.
+  * Created and set ownership of /var/log/icecast and /usr/share/icecast.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 14:15:11 -0800
+
+icecast2 (0.00.cvs030401-0.5) unstable; urgency=low
+
+  * Attempt at making debconf work properly.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 12:07:16 -0800
+
+icecast2 (0.00.cvs030401-0.4) unstable; urgency=low
+
+  * Minor edits to init.d script.
+  * Added bits to create and remove system accounts appropriately.
+  * Typo fix in the manual page.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu,  3 Apr 2003 11:06:48 -0800
+
+icecast2 (0.00.cvs030401-0.3) unstable; urgency=low
+
+  * Finished init.d script and manual page.
+  * Updated postinst to handle rc*.d links.
+  * Package is now lintian/linda clean.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 16:29:18 -0800
+
+icecast2 (0.00.cvs030401-0.2) unstable; urgency=low
+
+  * Updated copyright (replacing dh_make template).
+  * Fixed duplicate conffiles.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 16:18:02 -0800
+
+icecast2 (0.00.cvs030401-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Lots of packaging cleanup.
+  * Initial stab at manual page and init.d script.
+
+ -- Keegan Quinn <ice@thebasement.org>  Wed,  2 Apr 2003 10:25:56 -0800
+
+icecast2 (0.00.cvs030320-0.1) unstable; urgency=low
+
+  * New CVS source.
+  * Automated CVS original source creation.
+
+ -- Keegan Quinn <ice@thebasement.org>  Thu, 20 Mar 2003 12:58:49 -0800
+
+icecast2 (0.00.cvs030315-0.1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Keegan Quinn <ice@thebasement.org>  Sun, 16 Mar 2003 13:45:23 -0800

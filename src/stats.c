@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2012-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -30,14 +30,13 @@
 #include "common/httpp/httpp.h"
 #include "common/net/sock.h"
 
+#include "stats.h"
 #include "connection.h"
-
 #include "source.h"
 #include "global.h"
 #include "refbuf.h"
 #include "client.h"
 #include "admin.h"
-#include "stats.h"
 #include "xslt.h"
 #include "util.h"
 #include "auth.h"
@@ -88,8 +87,8 @@ static volatile event_listener_t *_event_listeners;
 
 
 static void *_stats_thread(void *arg);
-static int _compare_stats(void *a, void *b, void *arg);
-static int _compare_source_stats(void *a, void *b, void *arg);
+static int _compare_stats(void *arg, void *a, void *b);
+static int _compare_source_stats(void *arg, void *a, void *b);
 static int _free_stats(void *key);
 static int _free_source_stats(void *key);
 static void _add_event_to_queue(stats_event_t *event, event_queue_t *queue);
@@ -155,7 +154,9 @@ void stats_shutdown(void)
         return;
 
     /* wait for thread to exit */
+    thread_mutex_lock(&_stats_mutex);
     _stats_running = 0;
+    thread_mutex_unlock(&_stats_mutex);
     thread_join(_stats_thread_id);
 
     /* wait for other threads to shut down */
@@ -640,7 +641,7 @@ static inline void __format_time(char * buffer, size_t len, const char * format)
 
 void stats_event_time (const char *mount, const char *name)
 {
-    char buffer[100];
+    char buffer[256];
 
     __format_time(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S ");
     stats_event (mount, name, buffer);
@@ -649,7 +650,7 @@ void stats_event_time (const char *mount, const char *name)
 
 void stats_event_time_iso8601 (const char *mount, const char *name)
 {
-    char buffer[100];
+    char buffer[256];
 
     __format_time(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S");
     stats_event (mount, name, buffer);
@@ -692,7 +693,14 @@ static void *_stats_thread(void *arg)
     stats_event (NULL, "listener_connections", "0");
 
     ICECAST_LOG_INFO("stats thread started");
-    while (_stats_running) {
+    while (1) {
+        thread_mutex_lock(&_stats_mutex);
+        if (!_stats_running) {
+            thread_mutex_unlock(&_stats_mutex);
+            break;
+        }
+        thread_mutex_unlock(&_stats_mutex);
+
         thread_mutex_lock(&_global_event_mutex);
         if (_global_event_queue.head != NULL) {
             /* grab the next event from the queue */
@@ -817,7 +825,8 @@ static int _send_event_to_client(stats_event_t *event, client_t *client)
     return 0;
 }
 
-static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
+void stats_add_authstack(auth_stack_t *stack, xmlNodePtr parent)
+{
     xmlNodePtr authentication;
     authentication = xmlNewTextChild(parent, NULL, XMLSTR("authentication"), NULL);
 
@@ -830,10 +839,37 @@ static inline void __add_authstack (auth_stack_t *stack, xmlNodePtr parent) {
         auth_stack_next(&stack);
    }
 }
-static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, int hidden) {
+
+static inline int __is_in_list(const char *key, const char *list[])
+{
+    size_t i;
+    for (i = 0; list[i]; i++)
+        if (strcmp(key, list[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static inline int __include_node(unsigned int flags, const char *key, const char *list[])
+{
+    return !(flags & STATS_XML_FLAG_PUBLIC_VIEW) || __is_in_list(key, list);
+}
+
+static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const char *show_mount, client_t *client) {
+    static const char *public_keys_global[] = {"admin", "location", "host", "server_id", "server_start_iso8601", NULL};
+    static const char *public_keys_source[] = {"listeners", "server_name", "server_description", "stream_start_iso8601", "subtype", "content-type", "listenurl", "genre", "display-title", NULL};
+    int hidden = flags & STATS_XML_FLAG_SHOW_HIDDEN ? 1 : 0;
     avl_node *avlnode;
     xmlNodePtr ret = NULL;
     ice_config_t *config;
+
+    if (flags & STATS_XML_FLAG_PUBLIC_VIEW) {
+        /* Ensure those flags are clear when rendering a public view */
+        flags &= ~(STATS_XML_FLAG_SHOW_LISTENERS|STATS_XML_FLAG_SHOW_HIDDEN);
+    } else {
+        config = config_get_config();
+        stats_add_authstack(config->authstack, root);
+        config_release_config();
+    }
 
     thread_mutex_lock(&_stats_mutex);
     /* general stats first */
@@ -841,15 +877,12 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
 
     while (avlnode) {
         stats_node_t *stat = avlnode->key;
-        if (stat->hidden <=  hidden)
+        if (stat->hidden <=  hidden && __include_node(flags, stat->name, public_keys_global))
             xmlNewTextChild (root, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
         avlnode = avl_get_next (avlnode);
     }
     /* now per mount stats */
     avlnode = avl_get_first(_stats.source_tree);
-    config = config_get_config();
-    __add_authstack(config->authstack, root);
-    config_release_config();
 
     while (avlnode) {
         stats_source_t *source = (stats_source_t *)avlnode->key;
@@ -871,27 +904,47 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, const char *show_mount, i
             while (avlnode2)
             {
                 stats_node_t *stat = avlnode2->key;
-                xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                if (__include_node(flags, stat->name, public_keys_source)) {
+                    if (client && strcmp(stat->name, "listenurl") == 0) {
+                        char buf[512];
+                        client_get_baseurl(client, NULL, buf, sizeof(buf), NULL, NULL, NULL, source->source, NULL);
+                        xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(buf));
+                    } else {
+                        xmlNewTextChild (xmlnode, NULL, XMLSTR(stat->name), XMLSTR(stat->value));
+                    }
+                }
                 avlnode2 = avl_get_next (avlnode2);
             }
 
 
             avl_tree_rlock(global.source_tree);
             source_real = source_find_mount_raw(source->source);
-            history = playlist_render_xspf(source_real->history);
-            if (history)
-                xmlAddChild(xmlnode, history);
-            metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
-            if (source_real->format) {
-                for (i = 0; i < source_real->format->vc.comments; i++)
-                    __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+            if (source_real) {
+                history = playlist_render_xspf(source_real->history);
+                if (history)
+                    xmlAddChild(xmlnode, history);
+
+                metadata = xmlNewTextChild(xmlnode, NULL, XMLSTR("metadata"), NULL);
+                if (source_real->format) {
+                    for (i = 0; i < source_real->format->vc.comments; i++)
+                        __add_metadata(metadata, source_real->format->vc.user_comments[i]);
+                }
+
+                if (source_real->running)
+                    xmlNewTextChild(xmlnode, NULL, XMLSTR("content-type"), XMLSTR(source_real->format->contenttype));
+
+                if (flags & STATS_XML_FLAG_SHOW_LISTENERS)
+                    admin_add_listeners_to_mount(source_real, xmlnode, client->mode);
             }
             avl_tree_unlock(global.source_tree);
 
-            config = config_get_config();
-            mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
-            __add_authstack(mountproxy->authstack, xmlnode);
-            config_release_config();
+            if (!(flags & STATS_XML_FLAG_PUBLIC_VIEW)) {
+                config = config_get_config();
+                mountproxy = config_find_mount(config, source->source, MOUNT_TYPE_NORMAL);
+                if (mountproxy)
+                    stats_add_authstack(mountproxy->authstack, xmlnode);
+                config_release_config();
+            }
         }
         avlnode = avl_get_next (avlnode);
     }
@@ -966,7 +1019,14 @@ void *stats_connection(void *arg)
 
     _register_listener (&listener);
 
-    while (_stats_running) {
+    while (1) {
+        thread_mutex_lock(&_stats_mutex);
+        if (!_stats_running) {
+            thread_mutex_unlock(&_stats_mutex);
+            break;
+        }
+        thread_mutex_unlock(&_stats_mutex);
+
         thread_mutex_lock (&listener.mutex);
         event = _get_event_from_queue (&listener.queue);
         thread_mutex_unlock (&listener.mutex);
@@ -1017,15 +1077,15 @@ typedef struct _source_xml_tag {
 } source_xml_t;
 
 
-void stats_transform_xslt(client_t *client, const char *uri)
+void stats_transform_xslt(client_t *client)
 {
     xmlDocPtr doc;
-    char *xslpath = util_get_path_from_normalised_uri(uri);
-    const char *mount = httpp_get_query_param(client->parser, "mount");
+    char *xslpath = util_get_path_from_normalised_uri(client->uri);
+    const char *mount = httpp_get_param(client->parser, "mount");
 
-    doc = stats_get_xml(0, mount, client->mode);
+    doc = stats_get_xml(STATS_XML_FLAG_NONE, mount, client);
 
-    xslt_transform(doc, xslpath, client);
+    xslt_transform(doc, xslpath, client, 200, NULL, NULL);
 
     xmlFreeDoc(doc);
     free(xslpath);
@@ -1054,24 +1114,20 @@ static void __add_metadata(xmlNodePtr node, const char *tag) {
     free(name);
 }
 
-xmlDocPtr stats_get_xml(int show_hidden, const char *show_mount, operation_mode mode)
+xmlDocPtr stats_get_xml(unsigned int flags, const char *show_mount, client_t *client)
 {
     xmlDocPtr doc;
     xmlNodePtr node;
-    source_t * source;
+    xmlNodePtr modules;
 
     doc = xmlNewDoc (XMLSTR("1.0"));
     node = xmlNewDocNode (doc, NULL, XMLSTR("icestats"), NULL);
     xmlDocSetRootElement(doc, node);
 
-    node = _dump_stats_to_doc (node, show_mount, show_hidden);
+    modules = module_container_get_modulelist_as_xml(global.modulecontainer);
+    xmlAddChild(node, modules);
 
-    if (show_mount && node) {
-        avl_tree_rlock(global.source_tree);
-        source = source_find_mount_raw(show_mount);
-        admin_add_listeners_to_mount(source, node, mode);
-        avl_tree_unlock(global.source_tree);
-    }
+    node = _dump_stats_to_doc(node, flags, show_mount, client);
 
     return doc;
 }

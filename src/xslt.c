@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2012-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -45,15 +46,14 @@
 #include "common/httpp/httpp.h"
 #include "common/net/sock.h"
 
-#include "connection.h"
-
-#include "global.h"
+#include "xslt.h"
 #include "refbuf.h"
 #include "client.h"
-#include "config.h"
+#include "errors.h"
 #include "stats.h"
 #include "fserve.h"
 #include "util.h"
+#include "cfgfile.h"
 
 #define CATMODULE "xslt"
 
@@ -100,8 +100,8 @@ static mutex_t xsltlock;
 
 /* Reference to the original xslt loader func */
 static xsltDocLoaderFunc xslt_loader;
-/* Admin path cache */
-static xmlChar *admin_path = NULL;
+/* Admin URI cache */
+static xmlChar *admin_URI = NULL;
 
 void xslt_initialize(void)
 {
@@ -115,20 +115,41 @@ void xslt_initialize(void)
 }
 
 void xslt_shutdown(void) {
-    int i;
 
-    for(i=0; i < CACHESIZE; i++) {
-        if(cache[i].filename)
-            free(cache[i].filename);
-        if(cache[i].stylesheet)
-            xsltFreeStylesheet(cache[i].stylesheet);
-    }
+    xslt_clear_cache();
 
     thread_mutex_destroy (&xsltlock);
     xmlCleanupParser();
     xsltCleanupGlobals();
-    if (admin_path)
-        xmlFree(admin_path);
+    if (admin_URI)
+        xmlFree(admin_URI);
+}
+
+static void clear_cache_entry(size_t idx) {
+    free(cache[idx].filename);
+    cache[idx].filename = NULL;
+    if (cache[idx].stylesheet)
+        xsltFreeStylesheet(cache[idx].stylesheet);
+    cache[idx].stylesheet = NULL;
+}
+
+void xslt_clear_cache(void)
+{
+    size_t i;
+
+    ICECAST_LOG_DEBUG("Clearing stylesheet cache.");
+
+    thread_mutex_lock(&xsltlock);
+
+    for (i = 0; i < CACHESIZE; i++)
+        clear_cache_entry(i);
+
+    if (admin_URI) {
+        xmlFree(admin_URI);
+        admin_URI = NULL;
+    }
+
+    thread_mutex_unlock(&xsltlock);
 }
 
 static int evict_cache_entry(void) {
@@ -141,8 +162,7 @@ static int evict_cache_entry(void) {
         }
     }
 
-    xsltFreeStylesheet(cache[oldest].stylesheet);
-    free(cache[oldest].filename);
+    clear_cache_entry(oldest);
 
     return oldest;
 }
@@ -152,23 +172,23 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
     int empty = -1;
     struct stat file;
 
-    if(stat(fn, &file)) {
+    ICECAST_LOG_DEBUG("Looking up stylesheet file \"%s\".", fn);
+
+    if (stat(fn, &file) != 0) {
         ICECAST_LOG_WARN("Error checking for stylesheet file \"%s\": %s", fn,
                 strerror(errno));
         return NULL;
     }
 
-    for(i=0; i < CACHESIZE; i++) {
-        if(cache[i].filename)
-        {
+    for (i = 0; i < CACHESIZE; i++) {
+        if(cache[i].filename) {
 #ifdef _WIN32
-            if(!stricmp(fn, cache[i].filename))
+            if(!stricmp(fn, cache[i].filename)) {
 #else
-            if(!strcmp(fn, cache[i].filename))
+            if(!strcmp(fn, cache[i].filename)) {
 #endif
-            {
-                if(file.st_mtime > cache[i].last_modified)
-                {
+                if(file.st_mtime > cache[i].last_modified) {
+                    ICECAST_LOG_DEBUG("Source file newer than cached copy. Reloading slot %i", i);
                     xsltFreeStylesheet(cache[i].stylesheet);
 
                     cache[i].last_modified = file.st_mtime;
@@ -178,20 +198,24 @@ static xsltStylesheetPtr xslt_get_stylesheet(const char *fn) {
                 ICECAST_LOG_DEBUG("Using cached sheet %i", i);
                 return cache[i].stylesheet;
             }
-        }
-        else
+        } else {
             empty = i;
+        }
     }
 
-    if(empty>=0)
+    if (empty >= 0) {
         i = empty;
-    else
+        ICECAST_LOG_DEBUG("Using empty slot %i", i);
+    } else {
         i = evict_cache_entry();
+        ICECAST_LOG_DEBUG("Using evicted slot %i", i);
+    }
 
     cache[i].last_modified = file.st_mtime;
     cache[i].filename = strdup(fn);
     cache[i].stylesheet = xsltParseStylesheetFile(XMLSTR(fn));
     cache[i].cache_age = time(NULL);
+
     return cache[i].stylesheet;
 }
 
@@ -203,7 +227,7 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                                xsltLoadType type)
 {
     xmlDocPtr ret;
-    xmlChar *rel_path, *fn, *final_URI = NULL;
+    xmlChar *rel_URI, *fn, *final_URI = NULL;
     char *path_URI = NULL;
     xsltStylesheet *c;
     ice_config_t *config;
@@ -230,44 +254,43 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
                 break;
 
             /* Construct the right path */
-            rel_path = xmlBuildRelativeURI(URI, c->doc->URL);
-            if (rel_path != NULL && admin_path != NULL) {
-                fn = xmlBuildURI(rel_path, admin_path);
+            rel_URI = xmlBuildRelativeURI(URI, c->doc->URL);
+            if (rel_URI != NULL && admin_URI != NULL) {
+                fn = xmlBuildURI(rel_URI, admin_URI);
                 final_URI = fn;
-                xmlFree(rel_path);
+                xmlFree(rel_URI);
             }
 
             /* Fail if there was an error constructing the path */
             if (final_URI == NULL) {
-                if (rel_path)
-                    xmlFree(rel_path);
+                if (rel_URI)
+                    xmlFree(rel_URI);
                 return NULL;
             }
         break;
+
         /* In case a top stylesheet is loaded */
         case XSLT_LOAD_START:
+            /* Check if the admin URI is already cached */
+            if (admin_URI != NULL) {
+                break;
+            }
+
             config = config_get_config();
-            /* Admin path is cached, so that we don't need to get it from
-             * the config every time we load a xsl include.
-             * Whenever a new top stylesheet is loaded, we check here
-             * if the path in the config has changed and adjust it, if needed.
-             */
-            if (admin_path != NULL &&
-                strcmp(config->adminroot_dir, (char *)admin_path) != 0) {
-                xmlFree(admin_path);
-                admin_path = NULL;
-            }
-            /* Do we need to load the admin path? */
-            if (!admin_path) {
+                /* Append path separator to path */
                 size_t len = strlen(config->adminroot_dir);
+                xmlChar* admin_path = xmlMalloc(len+2);
+                xmlStrPrintf(admin_path, len+2, "%s/", XMLSTR(config->adminroot_dir));
 
-                admin_path = xmlMalloc(len+2);
-                if (!admin_path)
+                /* Convert admin path to URI */
+                admin_URI = xmlPathToURI(admin_path);
+                xmlFree(admin_path);
+
+                if (!admin_URI) {
                     return NULL;
-
-                /* Copy over admin path and add a tailing slash. */
-                xmlStrPrintf(admin_path, len+2, XMLSTR("%s/"), XMLSTR(config->adminroot_dir));
-            }
+                } else {
+                    ICECAST_LOG_DEBUG("Loaded and cached admin_URI \"%s\"", admin_URI);
+                }
             config_release_config();
         break;
 
@@ -278,15 +301,26 @@ static xmlDocPtr custom_loader(const        xmlChar *URI,
 
     /* Get the actual xmlDoc */
     if (final_URI) {
+        ICECAST_LOG_DDEBUG("Calling xslt_loader() for \"%s\" (was: \"%s\").", final_URI, URI);
         ret = xslt_loader(final_URI, dict, options, ctxt, type);
         xmlFree(final_URI);
     } else {
+        ICECAST_LOG_DDEBUG("Calling xslt_loader() for \"%s\".", URI);
         ret = xslt_loader(URI, dict, options, ctxt, type);
     }
     return ret;
 }
 
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
+static inline void _send_error(client_t *client, icecast_error_id_t id, int old_status) {
+    if (old_status >= 400) {
+        client_send_error_by_id(client, ICECAST_ERROR_RECURSIVE_ERROR);
+        return;
+    }
+
+    client_send_error_by_id(client, id);
+}
+
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status, const char *location, const char **params)
 {
     xmlDocPtr res;
     xsltStylesheetPtr cur;
@@ -306,86 +340,51 @@ void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client)
     {
         thread_mutex_unlock(&xsltlock);
         ICECAST_LOG_ERROR("problem reading stylesheet \"%s\"", xslfilename);
-        client_send_error(client, 404, 0, "Could not parse XSLT file");
+        _send_error(client, ICECAST_ERROR_XSLT_PARSE, status);
         return;
     }
 
-    res = xsltApplyStylesheet(cur, doc, NULL);
-
-    if (xsltSaveResultToString (&string, &len, res, cur) < 0)
+    res = xsltApplyStylesheet(cur, doc, params);
+    if (res != NULL) {
+        if (xsltSaveResultToString(&string, &len, res, cur) < 0)
+            problem = 1;
+    } else {
         problem = 1;
+    }
 
     /* lets find out the content type and character encoding to use */
     if (cur->encoding)
        charset = (char *)cur->encoding;
 
-    if (cur->mediaType)
+    if (cur->mediaType) {
         mediatype = (char *)cur->mediaType;
-    else
-    {
+    } else {
         /* check method for the default, a missing method assumes xml */
-        if (cur->method && xmlStrcmp (cur->method, XMLSTR("html")) == 0)
+        if (cur->method && xmlStrcmp(cur->method, XMLSTR("html")) == 0) {
             mediatype = "text/html";
-        else
-            if (cur->method && xmlStrcmp (cur->method, XMLSTR("text")) == 0)
-                mediatype = "text/plain";
-            else
-                mediatype = "text/xml";
-    }
-    if (problem == 0)
-    {
-        ssize_t ret;
-        int failed = 0;
-        refbuf_t *refbuf;
-        ssize_t full_len = strlen(mediatype) + (ssize_t)len + (ssize_t)1024;
-        if (full_len < 4096)
-            full_len = 4096;
-        refbuf = refbuf_new (full_len);
-
-        if (string == NULL)
-            string = xmlCharStrdup ("");
-        ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
-        if (ret == -1) {
-            ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-            client_send_error(client, 500, 0, "Header generation failed.");
+        } else if (cur->method && xmlStrcmp(cur->method, XMLSTR("text")) == 0) {
+            mediatype = "text/plain";
         } else {
-            if ( full_len < (ret + (ssize_t)len + (ssize_t)64) ) {
-                void *new_data;
-                full_len = ret + (ssize_t)len + (ssize_t)64;
-                new_data = realloc(refbuf->data, full_len);
-                if (new_data) {
-                    ICECAST_LOG_DEBUG("Client buffer reallocation succeeded.");
-                    refbuf->data = new_data;
-                    refbuf->len = full_len;
-                    ret = util_http_build_header(refbuf->data, full_len, 0, 0, 200, NULL, mediatype, charset, NULL, NULL, client);
-                    if (ret == -1) {
-                        ICECAST_LOG_ERROR("Dropping client as we can not build response headers.");
-                        client_send_error(client, 500, 0, "Header generation failed.");
-                        failed = 1;
-                    }
-                } else {
-                    ICECAST_LOG_ERROR("Client buffer reallocation failed. Dropping client.");
-                    client_send_error(client, 500, 0, "Buffer reallocation failed.");
-                    failed = 1;
-                }
-            }
+            mediatype = "text/xml";
+        }
+    }
 
-            if (!failed) {
-                  snprintf(refbuf->data + ret, full_len - ret, "Content-Length: %d\r\n\r\n%s", len, string);
+    if (problem == 0) {
+        char extra_header[512] = "";
 
-                client->respcode = 200;
-                client_set_queue (client, NULL);
-                client->refbuf = refbuf;
-                refbuf->len = strlen (refbuf->data);
-                fserve_add_client (client, NULL);
+        if (location) {
+            int res = snprintf(extra_header, sizeof(extra_header), "Location: %s\r\n", location);
+            if (res < 0 || res >= (ssize_t)sizeof(extra_header)) {
+                client_send_error_by_id(client, ICECAST_ERROR_GEN_HEADER_GEN_FAILED);
+                return;
             }
         }
-        xmlFree (string);
-    }
-    else
-    {
+
+        client_send_buffer(client, status, mediatype, charset, (const char *)string, len, extra_header);
+        xmlFree(string);
+    } else {
         ICECAST_LOG_WARN("problem applying stylesheet \"%s\"", xslfilename);
-        client_send_error(client, 404, 0, "XSLT problem");
+        _send_error(client, ICECAST_ERROR_XSLT_problem, status);
     }
     thread_mutex_unlock (&xsltlock);
     xmlFreeDoc(res);

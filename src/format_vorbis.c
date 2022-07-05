@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 
@@ -415,6 +416,8 @@ static void vorbis_set_tag (format_plugin_t *plugin, const char *tag, const char
     ogg_codec_t *codec = ogg_info->codecs;
     vorbis_codec_t *source_vorbis;
     char *value;
+
+    ICECAST_LOG_WARN("Not officially supported metadata update detected, please inform the source client software vendor that they should fix their software!");
 
     /* avoid updating if multiple codecs in use */
     if (codec && codec->next == NULL)

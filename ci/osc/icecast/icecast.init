@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# icecast      This shell script takes care of starting and stopping
+#              the icecast multimedia streaming systen.
+#
+# chkconfig: - 85 15
+# description: icecast is a multimedia streaming daemon. It is used to \
+#              relay and offer multimedia streaming content.
+# processname: icecast
+# pidfile: /var/run/icecast/icecast.pid
+# config: /etc/icecast.xml
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+[ -x /usr/bin/icecast ] || exit 0
+
+# See how we were called.
+case "$1" in
+  start)
+	# Start daemon.
+	echo -n $"Starting icecast streaming daemon: "
+	daemon "/usr/bin/icecast -b -c /etc/icecast.xml > /dev/null"
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/icecast
+	;;
+  stop)
+	# Stop daemon.
+	echo -n $"Shutting down icecast streaming daemon: "
+	killproc icecast
+	RETVAL=$?
+	echo
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/icecast
+	;;
+  status)
+	status icecast
+	RETVAL=$?
+	;;
+  restart)
+	$0 stop
+	$0 start
+	;;
+  reload)
+	echo -n $"Reloading icecast: "
+	killproc icecast -HUP
+	RETVAL=$?
+	echo
+	;;
+  condrestart)
+        [ -f /var/lock/subsys/icecast ] && restart || :
+        ;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|reload}"
+	RETVAL=1
+	;;
+esac
+
+exit $RETVAL

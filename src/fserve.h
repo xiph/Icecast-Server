@@ -8,13 +8,15 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2018,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __FSERVE_H__
 #define __FSERVE_H__
 
 #include <stdio.h>
-#include "cfgfile.h"
+
+#include "icecasttypes.h"
 
 typedef void (*fserve_callback_t)(client_t *, void *);
 
@@ -31,7 +33,7 @@ typedef struct _fserve_t
 
 void fserve_initialize(void);
 void fserve_shutdown(void);
-int fserve_client_create(client_t *httpclient, const char *path);
+int fserve_client_create(client_t *httpclient);
 int fserve_add_client (client_t *client, FILE *file);
 void fserve_add_client_callback (client_t *client, fserve_callback_t callback, void *arg);
 char *fserve_content_type (const char *path);

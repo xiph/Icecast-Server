@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2012, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -22,14 +22,16 @@
 #include "common/thread/thread.h"
 #include "common/httpp/httpp.h"
 
+#include "logging.h"
 #include "connection.h"
 #include "refbuf.h"
 #include "client.h"
 
 #include "compat.h"
 #include "cfgfile.h"
-#include "logging.h"
 #include "util.h"
+
+#define CATMODULE "logging"
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -40,6 +42,23 @@
 int errorlog = 0;
 int accesslog = 0;
 int playlistlog = 0;
+
+int logging_str2logid(const char *str)
+{
+    if (!str)
+        return -1;
+
+    if (!strcmp(str, "error")) {
+        return errorlog;
+    } else if (!strcmp(str, "access")) {
+        return accesslog;
+    } else if (!strcmp(str, "playlist")) {
+        return playlistlog;
+    }
+
+    return -1;
+}
+
 
 #ifdef _WIN32
 /* Since strftime's %z option on win32 is different, we need
@@ -201,6 +220,11 @@ void logging_playlist(const char *mount, const char *metadata, long listeners)
              metadata);
 }
 
+void logging_mark(const char *username, const char *role)
+{
+    ICECAST_LOG_INFO("######## -- MARK -- (requested by %#H with role %#H) ########", username, role);
+    logging_playlist("/admin/", "-- MARK --", 0);
+}
 
 void log_parse_failure (void *ctx, const char *fmt, ...)
 {
@@ -249,4 +273,8 @@ void restart_logging (ice_config_t *config)
         log_set_archive_timestamp (playlistlog, config->logarchive);
         log_reopen (playlistlog);
     }
+
+    log_set_lines_kept(errorlog, config->error_log_lines_kept);
+    log_set_lines_kept(accesslog, config->access_log_lines_kept);
+    log_set_lines_kept(playlistlog, config->playlist_log_lines_kept);
 }

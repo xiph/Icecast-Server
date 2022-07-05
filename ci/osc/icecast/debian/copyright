@@ -1,0 +1,179 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Icecast
+Upstream-Contact: the icecast team <team@icecast.org>
+Source: http://downloads.us.xiph.org/releases/icecast/
+
+Files: *
+Copyright: 2000-2004, Jack Moffitt <jack@xiph.org>
+  2000-2004, Karl Heyes <karl@xiph.org>
+  2000-2004, Michael Smith <msmith@xiph.org>
+  2000-2004, oddsock <oddsock@xiph.org>
+  2011, Dave 'justdave' Miller <justdave@mozilla.com>
+  2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+License: GPL-2
+
+Files: src/net/*
+ src/thread/*
+Copyright: 1999-2000, the icecast team <team@icecast.org>
+License: LGPL-2+
+
+Files: src/avl/*
+Copyright: 1995-1997, Sam Rushing <rushing@nightmare.com>
+License: MIT~Rushing
+
+Files: src/cfgfile.c
+Copyright: 2000-2004, Jack Moffitt <jack@xiph.org
+  2000-2004, Karl Heyes <karl@xiph.org>
+  2000-2004, Michael Smith <msmith@xiph.org>
+  2000-2004, oddsock <oddsock@xiph.org>
+  2011-2014, Thomas B. "dm8tbr" Ruecker <thomas@ruecker.fi>
+  2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+License: GPL-2
+
+Files: src/main.c
+Copyright: 2000-2004, Jack Moffitt <jack@xiph.org
+  2000-2004, Karl Heyes <karl@xiph.org>
+  2000-2004, Michael Smith <msmith@xiph.org>
+  2000-2004, oddsock <oddsock@xiph.org>
+  2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+  2014, Thomas B. Ruecker <thomas@ruecker.fi>
+License: GPL-2
+
+Files: src/format_speex.c
+Copyright: 2000-2004, Jack Moffitt <jack@xiph.org>
+  2000-2004, Karl Heyes <karl@xiph.org>
+  2000-2004, Michael Smith <msmith@xiph.org>
+  2000-2004, oddsock <oddsock@xiph.org>
+License: GPL-2
+
+Files: admin/vclt.xsl
+ admin/xspf.xsl
+Copyright:
+  2007, Thomas B. Ruecker <tbr@ruecker-itk.de>
+  2011, Philipp Schafft <lion@lion.leolix.org>
+License: GPL-2+
+
+Files: src/net/sock.h
+Copyright: 1999, the icecast team
+License: GPL-2+
+
+Files: web/xml2json.xslt
+Copyright: 2006,2008, Doeke Zanstra
+License: BSD-2-clause
+
+Files: debian/po/fr.po
+Copyright: 2011-2012, Debian French l10n team <debian-l10n-french@lists.debian.org>
+License: GPL-2+
+
+Files: debian/po/de.po
+Copyright: 2011-2012, Erik Pfannenstein
+License: GPL-2+
+
+Files: debian/po/sv.po
+Copyright: 2011-2012, Martin Bagge <brother@bsnet.se>
+License: GPL-2+
+
+Files: debian/po/cs.po
+Copyright: 2011-2012, Michal Simunek <michal.simunek@gmail.com>
+License: GPL-2+
+
+Files: debian/po/es.po
+Copyright: 2011-2012, Software in the Public Interest
+License: GPL-2+
+
+Files: debian/po/da.po
+Copyright: 2011, icecast2 & nedenstående oversættere
+License: GPL-2+
+
+Files: debian/po/pl.po
+Copyright: 2012, Michał Kułach <michal.kulach@gmail.com>
+License: GPL-2+
+
+Files: debian/po/it.po debian/po/sk.po debian/po/ja.po
+Copyright: 2012, Icecast2 package holder
+License: GPL-2+
+
+Files: debian/po/pt.po debian/po/pt_BR.po debian/po/nl.po
+Copyright: 2011,2012, Icecast2 package holder
+License: GPL-2+
+
+Files: debian/rules
+Copyright: 2003-2009, 2012 Jonas Smedegaard <dr@jones.dk>
+License: GPL-2+
+
+License: GPL-2
+ This program is distributed under the GNU General Public License,
+ version 2.  A copy of this license is included with this source.
+Comment:
+ On Debian systems the 'GNU General Public License' version 2 is located
+ in '/usr/share/common-licenses/GPL-2'.
+ .
+ You should have received a copy of the 'GNU General Public License'
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by the
+ Free Software Foundation; either version 2, or (at your option) any
+ later version.
+ .
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ General Public License for more details.
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Library General Public License as published
+ by the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Library General Public License for more details.
+Comment:
+ On Debian systems the 'GNU Library General Public License' version 2 is
+ located in '/usr/share/common-licenses/LGPL-2'.
+ .
+ You should have received a copy of the 'GNU Library General Public
+ License' along with this program.  If not, see
+ <http://www.gnu.org/licenses/>.
+
+License: MIT~Rushing
+ Permission to use, copy, modify, and distribute this software and its
+ documentation for any purpose and without fee is hereby granted,
+ provided that the above copyright notice appear in all copies and that
+ both that copyright notice and this permission notice appear in
+ supporting documentation, and that the name of Sam Rushing not be used
+ in advertising or publicity pertaining to distribution of the software
+ without specific, written prior permission.
+ .
+ SAM RUSHING DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+ INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+ EVENT SHALL SAM RUSHING BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+ CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
+ USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ PERFORMANCE OF THIS SOFTWARE.
+
+License: BSD-2-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

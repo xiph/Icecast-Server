@@ -1,19 +1,16 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign
-
-SUBDIRS = assets
-
 webdir = $(pkgdatadir)/web
-web_DATA =      status.xsl \
-                favicon.ico \
-                icecast.png \
-                style.css \
-                auth.xsl \
-                server_version.xsl \
-                tunein.png \
-                key.png \
-                status-json.xsl \
-                xml2json.xslt
 
-EXTRA_DIST = $(web_DATA)
+nobase_web_DATA = \
+    status.xsl \
+    auth.xsl \
+    server_version.xsl \
+    status-json.xsl \
+    xml2json.xslt \
+    favicon.ico \
+    assets/css/style.css \
+    assets/img/icecast.png
+
+
+EXTRA_DIST = $(nobase_web_DATA)

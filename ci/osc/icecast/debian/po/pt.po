@@ -1,0 +1,116 @@
+# Portuguese translation for icecast2 (debconf)
+# This file is distributed under the same license as the icecast2 package.
+# Rui Branco <ruipb@debianpt.org>, 2011, 2012.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: icecast2 2.3.2-9\n"
+"Report-Msgid-Bugs-To: icecast2@packages.debian.org\n"
+"POT-Creation-Date: 2012-08-30 08:29-0400\n"
+"PO-Revision-Date: 2012-09-02 20:56+0100\n"
+"Last-Translator: Rui Branco <ruipb@debianpt.org>\n"
+"Language-Team: Portuguese <traduz@debianpt.org>\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid "Configure Icecast2?"
+msgstr "Configurar o Icecast2 ?"
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"Choose this option to set up passwords for Icecast2. Until these are "
+"configured the server will not be activated."
+msgstr ""
+"Escolha esta opção para definir palavras-chave para o Icecast2. Até que "
+"estas estejam definidas o servidor não será activado."
+
+#. Type: boolean
+#. Description
+#: ../templates:2001
+msgid ""
+"You should not use this option if you have already manually tweaked the "
+"configuration of Icecast2."
+msgstr ""
+"Não deverá utilizar esta opção se alterou manualmente a configuração do "
+"Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid "Icecast2 hostname:"
+msgstr "Nome da máquina Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:3001
+msgid ""
+"Please specify the fully qualified domain name that should be used as prefix "
+"to all streams."
+msgstr ""
+"Por favor especifique o nome completo de domínio qualificado que deverá ser "
+"utilizado como prefixo para todos os streams."
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid "Icecast2 source password:"
+msgstr "Palavra-passe da fonte do Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:4001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's media sources."
+msgstr ""
+"Por favor especifique uma palavra-passe que deverá ser utilizada para aceder "
+"ao controle das fontes de media do Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid "Icecast2 relay password:"
+msgstr "Palavra-passe de retransmissão (relay) do Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:5001
+msgid ""
+"Please specify the password that should be used to control access to "
+"Icecast2's stream relays."
+msgstr ""
+"Por favor especifique a palavra-passe que deverá ser utilizada para aceder "
+"ao controle das retransmissões de streams do Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid "Icecast2 administration password:"
+msgstr "Palavra-passe de administração do Icecast2:"
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"Please specify the password that should be used for Icecast2 administration."
+msgstr ""
+"Por favor especifique a palavra-passe que deverá ser utilizada para "
+"administração do Icecast2."
+
+#. Type: string
+#. Description
+#: ../templates:6001
+msgid ""
+"The administration web interface, at http://localhost:8000, can be used to "
+"monitor connections or to block users from streaming."
+msgstr ""
+"A interface web de administração, em http://localhost:8000, pode ser "
+"utilizada para monitorizar ligações ou bloquear streaming de utilizadores."

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2015,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
+ * Copyright 2015-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>
  */
 
 #ifdef HAVE_CONFIG_H
@@ -19,10 +19,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "common/avl/avl.h"
+
 #include "matchfile.h"
 #include "logging.h"
 #include "util.h" /* for MAX_LINE_LEN and get_line() */
-#include "common/avl/avl.h"
 #define CATMODULE "matchfile"
 
 struct matchfile_tag {

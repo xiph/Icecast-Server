@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -14,6 +14,8 @@
 
 #include "curl.h"
 #include "event.h"
+#include "cfgfile.h"
+#include "util.h"
 #include "logging.h"
 #define CATMODULE "event_url"
 
@@ -120,19 +122,13 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
              * <option name="action" value="..." />
              */
             if (strcmp(options->name, "url") == 0) {
-                free(self->url);
-                self->url = NULL;
-                if (options->value)
-                    self->url = strdup(options->value);
+                util_replace_string(&(self->url), options->value);
             } else if (strcmp(options->name, "username") == 0) {
                 username = options->value;
             } else if (strcmp(options->name, "password") == 0) {
                 password = options->value;
             } else if (strcmp(options->name, "action") == 0) {
-                free(self->url);
-                self->action = NULL;
-                if (options->value)
-                    self->action = strdup(options->value);
+                util_replace_string(&(self->action), options->value);
             } else {
                 ICECAST_LOG_ERROR("Unknown <option> tag with name %s.", options->name);
             }

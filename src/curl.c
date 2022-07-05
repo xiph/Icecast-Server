@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2015,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2015-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -11,6 +11,8 @@
 #endif
 
 #include "curl.h"
+#include "cfgfile.h"
+#include "global.h"
 
 #include "logging.h"
 #define CATMODULE "curl"
@@ -47,7 +49,6 @@ int   icecast_curl_shutdown(void)
 
 CURL *icecast_curl_new(const char *url, char * errors)
 {
-    ice_config_t *config;
     CURL *curl = curl_easy_init();
 
     if (!curl)
@@ -76,9 +77,7 @@ CURL *icecast_curl_new(const char *url, char * errors)
     if (errors)
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errors);
 
-    config = config_get_config();
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, config->server_id);
-    config_release_config();
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, ICECAST_VERSION_STRING);
 
     return curl;
 }

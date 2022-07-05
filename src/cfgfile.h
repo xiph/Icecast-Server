@@ -9,7 +9,7 @@
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
  * Copyright 2011,      Dave 'justdave' Miller <justdave@mozilla.com>.
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __CFGFILE_H__
@@ -20,42 +20,30 @@
 #define CONFIG_EBADROOT -3
 #define CONFIG_EPARSE   -4
 
-#define MAX_YP_DIRECTORIES 25
-
-struct _mount_proxy;
+#include <stdbool.h>
 
 #include <libxml/tree.h>
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "global.h"
-#include "connection.h"
+#include "icecasttypes.h"
+#include "compat.h"
 
 #define XMLSTR(str) ((xmlChar *)(str)) 
 
-typedef enum _operation_mode {
- /* Default operation mode. may depend on context */
- OMODE_DEFAULT = 0,
- /* The normal mode. */
- OMODE_NORMAL,
- /* Mimic some of the behavior of older versions.
-  * This mode should only be used in transition to normal mode,
-  * e.g. to give some clients time to upgrade to new API.
-  */
- OMODE_LEGACY,
- /* The struct mode includes some behavior for future versions
-  * that can for some reason not yet be used in the normal mode
-  * e.g. because it may break interfaces in some way.
-  * New applications should test against this mode and developer
-  * of software interacting with Icecast on an API level should
-  * have a look for strict mode behavior to avoid random breakage
-  * with newer versions of Icecast.
-  */
- OMODE_STRICT
-} operation_mode;
+#define CONFIG_PROBLEM_HOSTNAME         0x0001U
+#define CONFIG_PROBLEM_LOCATION         0x0002U
+#define CONFIG_PROBLEM_ADMIN            0x0004U
+#define CONFIG_PROBLEM_PRNG             0x0008U
+#define CONFIG_PROBLEM_UNKNOWN_NODE     0x0010U
+#define CONFIG_PROBLEM_OBSOLETE_NODE    0x0020U
+#define CONFIG_PROBLEM_INVALID_NODE     0x0040U
+#define CONFIG_PROBLEM_VALIDATION       0x0080U
 
 typedef enum _http_header_type {
- /* static: headers are passed as is to the client. */
- HTTP_HEADER_TYPE_STATIC
+    /* static: headers are passed as is to the client. */
+    HTTP_HEADER_TYPE_STATIC,
+    /* CORS: headers are only sent to the client if it's a CORS request. */
+    HTTP_HEADER_TYPE_CORS
 } http_header_type;
 
 typedef struct ice_config_http_header_tag {
@@ -73,23 +61,23 @@ typedef struct ice_config_http_header_tag {
     struct ice_config_http_header_tag *next;
 } ice_config_http_header_t;
 
-typedef struct ice_config_dir_tag {
-    char *host;
-    int touch_interval;
-    struct ice_config_dir_tag *next;
-} ice_config_dir_t;
-
-typedef struct _config_options {
+struct _config_options {
     char *type;
     char *name;
     char *value;
-    struct _config_options *next;
-} config_options_t;
+    config_options_t *next;
+};
 
 typedef enum _mount_type {
  MOUNT_TYPE_NORMAL,
  MOUNT_TYPE_DEFAULT
 } mount_type;
+
+typedef enum {
+    FALLBACK_OVERRIDE_NONE = 0,
+    FALLBACK_OVERRIDE_ALL,
+    FALLBACK_OVERRIDE_OWN
+} fallback_override_t;
 
 typedef struct _mount_proxy {
     /* The mountpoint this proxy is used for */
@@ -113,11 +101,11 @@ typedef struct _mount_proxy {
     /* When this source arrives, do we steal back
      * clients from the fallback?
      */
-    int fallback_override;
+    fallback_override_t fallback_override;
     /* Do we permit direct requests of this mountpoint?
      * (or only indirect, through fallbacks)
      */
-    int no_mount;
+    bool allow_direct_access;
     /* amount to send to a new client if possible, -1 take
      * from global setting
      */
@@ -140,7 +128,7 @@ typedef struct _mount_proxy {
     struct event_registration_tag *event;
 
     char *cluster_password;
-    struct auth_stack_tag *authstack;
+    auth_stack_t *authstack;
     unsigned int max_listener_duration;
 
     char *stream_name;
@@ -155,52 +143,120 @@ typedef struct _mount_proxy {
     struct _mount_proxy *next;
 } mount_proxy;
 
-typedef struct _aliases {
+#define ALIAS_FLAG_PREFIXMATCH          0x0001
+
+typedef struct _resource {
     char *source;
     char *destination;
     int port;
     char *bind_address;
+    char *listen_socket;
     char *vhost;
+    char *module;
+    char *handler;
     operation_mode omode;
-    struct _aliases *next;
-} aliases;
+    unsigned int flags;
+    struct _resource *next;
+} resource_t;
+
+typedef struct _yp_directory {
+    char *url;
+    int timeout;
+    int touch_interval;
+    char *listen_socket_id;
+    struct _yp_directory *next;
+} yp_directory_t;
+
+typedef enum _listener_type_tag {
+    LISTENER_TYPE_ERROR,
+    LISTENER_TYPE_NORMAL,
+    LISTENER_TYPE_VIRTUAL
+} listener_type_t;
 
 typedef struct _listener_t {
     struct _listener_t *next;
+    char *id;
+    char *on_behalf_of;
+    listener_type_t type;
     int port;
     int so_sndbuf;
+    int listen_backlog;
     char *bind_address;
     int shoutcast_compat;
     char *shoutcast_mount;
-    int ssl;
+    tlsmode_t tls;
+    auth_stack_t *authstack;
+    /* additional HTTP headers */
+    ice_config_http_header_t *http_headers;
 } listener_t;
 
-typedef struct ice_config_tag {
+typedef struct _config_tls_context {
+    char *cert_file;
+    char *key_file;
+    char *cipher_list;
+} config_tls_context_t;
+
+typedef struct {
+    char *server;
+    int port;
+    char *mount;
+    char *username;
+    char *password;
+    char *bind;
+    int mp3metadata;
+} relay_config_upstream_t;
+
+typedef struct {
+    char *localmount;
+    int on_demand;
+    size_t upstreams;
+    relay_config_upstream_t *upstream;
+    relay_config_upstream_t upstream_default;
+} relay_config_t;
+
+typedef enum {
+    PRNG_SEED_TYPE_READ_ONCE,
+    PRNG_SEED_TYPE_READ_WRITE,
+    PRNG_SEED_TYPE_DEVICE,
+    PRNG_SEED_TYPE_STATIC,
+    PRNG_SEED_TYPE_PROFILE
+} prng_seed_type_t;
+
+typedef struct prng_seed_config_tag prng_seed_config_t;
+struct prng_seed_config_tag {
+    char *filename;
+    prng_seed_type_t type;
+    ssize_t size;
+    prng_seed_config_t *next;
+};
+
+struct ice_config_tag {
     char *config_filename;
+
+    unsigned int config_problems;
 
     char *location;
     char *admin;
 
     int client_limit;
     int source_limit;
+    int body_size_limit;
     unsigned int queue_size_limit;
     unsigned int burst_size;
     int client_timeout;
     int header_timeout;
     int source_timeout;
+    int body_timeout;
     int fileserve;
     int on_demand; /* global setting for all relays */
 
     char *shoutcast_mount;
-    struct auth_stack_tag *authstack;
+    char *shoutcast_user;
+    auth_stack_t *authstack;
 
     struct event_registration_tag *event;
 
-    int touch_interval;
-    ice_config_dir_t *dir_list;
-
     char *hostname;
-    int sane_hostname;
     int port;
     char *mimetypes_fn;
 
@@ -215,10 +271,8 @@ typedef struct ice_config_tag {
 
     ice_config_http_header_t *http_headers;
 
-    /* is TLS supported by the server? */
-    int tls_ok;
-
-    relay_server *relay;
+    size_t relay_length;
+    relay_config_t **relay;
 
     mount_proxy *mounts;
 
@@ -229,11 +283,11 @@ typedef struct ice_config_tag {
     char *null_device;
     char *banfile;
     char *allowfile;
-    char *cert_file;
-    char *cipher_list;
     char *webroot_dir;
     char *adminroot_dir;
-    aliases *aliases;
+    prng_seed_config_t *prng_seed;
+    resource_t *resources;
+    reportxml_database_t *reportxml_db;
 
     char *access_log;
     char *error_log;
@@ -241,16 +295,19 @@ typedef struct ice_config_tag {
     int loglevel;
     int logsize;
     int logarchive;
+    size_t access_log_lines_kept;
+    size_t error_log_lines_kept;
+    size_t playlist_log_lines_kept;
+
+    config_tls_context_t tls_context;
 
     int chroot;
     int chuid;
     char *user;
     char *group;
-    char *yp_url[MAX_YP_DIRECTORIES];
-    int yp_url_timeout[MAX_YP_DIRECTORIES];
-    int yp_touch_interval[MAX_YP_DIRECTORIES];
-    int num_yp_directories;
-} ice_config_t;
+
+    yp_directory_t *yp_directories;
+};
 
 typedef struct {
     rwlock_t config_lock;
@@ -260,7 +317,7 @@ typedef struct {
 void config_initialize(void);
 void config_shutdown(void);
 
-operation_mode config_str_to_omode(const char *str);
+operation_mode config_str_to_omode(ice_config_t *configuration, xmlNodePtr node, const char *str);
 
 void config_reread_config(void);
 int config_parse_file(const char *filename, ice_config_t *configuration);
@@ -270,12 +327,16 @@ void config_set_config(ice_config_t *config);
 listener_t *config_clear_listener (listener_t *listener);
 void config_clear(ice_config_t *config);
 mount_proxy *config_find_mount(ice_config_t *config, const char *mount, mount_type type);
-listener_t *config_get_listen_sock(ice_config_t *config, connection_t *con);
+
+listener_t *config_copy_listener_one(const listener_t *listener);
 
 config_options_t *config_parse_options(xmlNodePtr node);
 void config_clear_options(config_options_t *options);
 
-int config_rehash(void);
+void config_parse_http_headers(xmlNodePtr                  node,
+                               ice_config_http_header_t  **http_headers,
+                               ice_config_t               *configuration);
+void config_clear_http_header(ice_config_http_header_t *header);
 
 ice_config_locks *config_locks(void);
 

@@ -1,0 +1,26 @@
+language: c
+
+# Install dependencies
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y autoconf automake
+  - sudo apt-get install -y libxml2 libxslt1-dev libssl-dev libcurl4-openssl-dev
+  - sudo apt-get install -y libogg-dev libspeex-dev libtheora-dev libvorbis-dev
+
+# Build commands
+script: ./autogen.sh && ./configure && make
+
+# Compilers to build with
+compiler:
+  - clang
+  - gcc
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#icecast-mentors"
+    on_success: change
+    on_failure: always
+    template:
+      - "%{repository_slug}#%{build_number} (%{branch} - %{commit} : %{author}): %{message}"
+      - "Build details : %{build_url}"

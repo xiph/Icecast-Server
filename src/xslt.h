@@ -8,33 +8,17 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2018-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #include <libxml/xmlmemory.h>
-#include <libxml/debugXML.h>
-#include <libxml/HTMLtree.h>
-#include <libxml/xmlIO.h>
-#include <libxslt/xslt.h>
-#include <libxslt/xsltInternals.h>
-#include <libxslt/transform.h>
-#include <libxslt/xsltutils.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 
+#include "icecasttypes.h"
 
-#include "common/thread/thread.h"
-#include "common/avl/avl.h"
-#include "common/httpp/httpp.h"
-#include "common/net/sock.h"
-
-
-#include "connection.h"
-
-#include "global.h"
-#include "refbuf.h"
-#include "client.h"
-#include "stats.h"
-
-
-void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client);
+void xslt_transform(xmlDocPtr doc, const char *xslfilename, client_t *client, int status, const char *location, const char **params);
 void xslt_initialize(void);
 void xslt_shutdown(void);
+void xslt_clear_cache(void);
 

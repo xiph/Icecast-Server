@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2015-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -19,15 +20,11 @@
 
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
-#include "common/httpp/httpp.h"
-
-#include "connection.h"
-#include "refbuf.h"
-#include "client.h"
-#include "source.h"
-#include "format.h"
 
 #include "global.h"
+#include "refobject.h"
+#include "module.h"
+#include "source.h"
 
 ice_global_t global;
 
@@ -35,19 +32,22 @@ static mutex_t _global_mutex;
 
 void global_initialize(void)
 {
-    global.server_sockets = 0;
+    global.listensockets = NULL;
     global.relays = NULL;
     global.master_relays = NULL;
     global.running = 0;
     global.clients = 0;
     global.sources = 0;
+    global.sources_legacy = 0;
     global.source_tree = avl_tree_new(source_compare_sources, NULL);
+    global.modulecontainer = refobject_new(module_container_t);
     thread_mutex_create(&_global_mutex);
 }
 
 void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
+    refobject_unref(global.modulecontainer);
     avl_tree_free(global.source_tree, NULL);
 }
 

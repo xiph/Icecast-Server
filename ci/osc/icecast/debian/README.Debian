@@ -1,0 +1,30 @@
+icecast2 for Debian
+-------------------
+
+In the Debian packaging the configuration files have been symlinked from
+the upstream location below /usr/share to /etc. This is needed to
+satisfy FHS (/usr/share are for static content only).
+If running icecast2 in a chroot environment, beware that the symlinks to
+/etc will break. A possible (untestet!) solution might be to manually
+put the configuration files back below /usr/share - and revert the hack
+again before updating the package!
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 20 May 2004 21:04:27 +0200
+
+
+It is recommended to run icecast under a dedicated user account, which only
+has access to write the log files.  The Debian package creates such an
+account, named 'icecast2', and uses it by default, but you are free to
+reconfigure it and remove the account.
+
+Edit /etc/default/icecast2 to change the init-script configuration.
+
+It is possible (but discouraged for security reasons) to bind to a
+privileged port (like standard web port 80). Edit /etc/init.d/icecast2
+to not change userid and instead set the correct userid and group in
+/etc/icecast2/icecast2.xml. Beware that this way you rely on the
+icecast2 binary to properly drop privileges (instead of the much more
+thoroughly audited start-stop-daemon). Thanks to Jürgen A. Erhard
+<jae@jerhard.org> for the tip.
+
+ -- Keegan Quinn <ice@thebasement.org>

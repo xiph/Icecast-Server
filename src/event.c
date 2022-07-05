@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp Schafft <lion@lion.leolix.org>
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -18,8 +18,12 @@
 #include "event_log.h"
 #include "event_exec.h"
 #include "event_url.h"
+#include "fastevent.h"
 #include "logging.h"
 #include "admin.h"
+#include "connection.h"
+#include "client.h"
+#include "cfgfile.h"
 
 #define CATMODULE "event"
 
@@ -32,17 +36,24 @@ static thread_type *event_thread = NULL;
 static void event_addref(event_t *event) {
     if (!event)
         return;
+    thread_mutex_lock(&event_lock);
     event->refcount++;
+    thread_mutex_unlock(&event_lock);
 }
 
 static void event_release(event_t *event) {
     size_t i;
+    event_t *to_free;
 
     if (!event)
         return;
+
+    thread_mutex_lock(&event_lock);
     event->refcount--;
-    if (event->refcount)
+    if (event->refcount) {
+        thread_mutex_unlock(&event_lock);
         return;
+    }
 
     for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++)
         event_registration_release(event->reglist[i]);
@@ -53,9 +64,12 @@ static void event_release(event_t *event) {
     free(event->client_role);
     free(event->client_username);
     free(event->client_useragent);
-    event_release(event->next);
-
+    to_free = event->next;
     free(event);
+    thread_mutex_unlock(&event_lock);
+
+    if (to_free)
+        event_release(to_free);
 }
 
 static void event_push(event_t **event, event_t *next) {
@@ -74,7 +88,7 @@ static void event_push(event_t **event, event_t *next) {
         return;
     }
 
-    event_addref(*event = next);
+    *event = next;
 }
 
 static void event_push_reglist(event_t *event, event_registration_t *reglist) {
@@ -198,6 +212,8 @@ void event_initialise(void) {
 }
 
 void event_shutdown(void) {
+    event_t *event_queue_to_free = NULL;
+
     /* stop thread */
     if (!event_running)
         return;
@@ -212,9 +228,11 @@ void event_shutdown(void) {
     /* shutdown everything */
     thread_mutex_lock(&event_lock);
     event_thread = NULL;
-    event_release(event_queue);
+    event_queue_to_free = event_queue;
     event_queue = NULL;
     thread_mutex_unlock(&event_lock);
+
+    event_release(event_queue_to_free);
 
     /* destry mutex */
     thread_mutex_destroy(&event_lock);
@@ -247,7 +265,7 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
         rv = event_get_log(ret, options);
     } else if (strcmp(ret->type, EVENT_TYPE_EXEC) == 0) {
         rv = event_get_exec(ret, options);
-#ifdef HAVE_AUTH_URL
+#ifdef HAVE_CURL
     } else if (strcmp(ret->type, EVENT_TYPE_URL) == 0) {
         rv = event_get_url(ret, options);
 #endif
@@ -331,6 +349,8 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 
 /* event signaling */
 void event_emit(event_t *event) {
+    fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
+    event_addref(event);
     thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
     thread_mutex_unlock(&event_lock);
@@ -368,11 +388,13 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
      * We do this before inserting all the data into the object to avoid
      * all the strdups() and stuff in case they aren't needed.
      */
+#ifndef FASTEVENT_ENABLED
     if (event->reglist[0] == NULL) {
         /* we have no registrations, drop this event. */
         event_release(event);
         return;
     }
+#endif
 
     if (client) {
         const char *tmp;

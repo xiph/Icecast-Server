@@ -7,7 +7,7 @@
  *
  * Copyright 2012,      David Richards, Mozilla Foundation,
  *                      and others (see AUTHORS for details).
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>.
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* format_ebml.c
@@ -317,7 +317,7 @@ static refbuf_t *ebml_get_buffer(source_t *source)
         } else if(read_bytes == 0) {
             /* Feed more bytes into the parser */
             write_buffer = ebml_get_write_buffer(ebml_source_state->ebml, &write_bytes);
-            read_bytes = client_read_bytes (source->client, write_buffer, write_bytes);
+            read_bytes = client_body_read(source->client, write_buffer, write_bytes);
             if (read_bytes <= 0) {
                 ebml_wrote (ebml_source_state->ebml, 0);
                 return NULL;
@@ -845,7 +845,7 @@ static inline void ebml_check_track(ebml_t *ebml)
         && ebml->parsing_track_number != EBML_UNKNOWN) {
 
         ebml->keyframe_track_number = ebml->parsing_track_number;
-        ICECAST_LOG_DEBUG("Identified track #%ffu as the video track", ebml->keyframe_track_number);
+        ICECAST_LOG_DEBUG("Identified track #%llu as the video track", (long long unsigned int)ebml->keyframe_track_number);
     }
 }
 

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Server Statistics - Icecast Docs</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Server Statistics";
+    var mkdocs_page_input_path = "server_stats.md";
+    var mkdocs_page_url = "/server_stats/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> Icecast Docs</a>
+        
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Introduction</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../basic_setup/">Basic Setup</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../config_file/">Configuration File</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Server Statistics</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#html-interface">HTML Interface</a></li>
+    
+
+    <li class="toctree-l2"><a href="#json-stats">JSON Stats</a></li>
+    
+
+    <li class="toctree-l2"><a href="#available-xml-data">Available XML data</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#general-statistics">General Statistics</a></li>
+        
+            <li><a class="toctree-l3" href="#source-specific-statistics">Source-specific Statistics</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../auth/">Authentication</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../relaying/">Relaying</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../yp/">Listing in a YellowPage Directory</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../admin_interface/">Admin Interface</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../win32/">Windows Specific</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">Icecast Docs</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Server Statistics</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p>Icecast provides extensive run time statistics. Both in the form of active connection numbers and cumulative
+counters (since server startup or respectively source connection startup).</p>
+<h1 id="html-interface">HTML Interface</h1>
+<p>Icecast comes with a HTML web interface, it exposes a basic set of server statistics that should
+fulfil basic user needs. Icecast uses the very powerful libxslt engine to transform its internal
+raw statistical data into custom tailored interfaces.<br />
+Many people have written custom XSLT code that produces e.g. plain text “now playing”, XSPF, VCLT,
+munin interface data, etc. If so desired, the files in webroot can be customized to contain more or less
+information (see section on raw XML data below).</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p><strong>We strongly discourage attempts to scrape data from the web interface</strong> as we do not consider this an
+API and will change it, even completely, between versions! The preferred ways are custom XSLT, JSON and raw XML.</p>
+</div>
+<h1 id="json-stats">JSON Stats</h1>
+<p>Since version 2.4.0 Icecast includes a basic JSON endpoint (<code>/status-json.xsl</code>) based on a xml2json template by Doeke Zanstra
+(see <code>xml2json.xslt</code>). It exposes the same set of server statistics that are available through the web interface and
+should fulfil basic user needs. The intention is to not break backwards compatibility of this interface in the future, 
+still we recommend to design robust software that can deal with possible changes like addition or removal of variables.
+Also note that not all variables are available all the time and availability may change at runtime due to stream type, etc.</p>
+<h1 id="available-xml-data">Available XML data</h1>
+<p>This section contains information about the raw XML server statistics data available inside Icecast. An example
+stats XML tree will be shown and each element will be described. The following example stats tree will be used:  </p>
+<pre><code class="xml">&lt;icestats&gt;
+    &lt;admin&gt;icemaster@localhost&lt;/admin&gt;
+    &lt;client_connections&gt;649&lt;/client_connections&gt;
+    &lt;clients&gt;2&lt;/clients&gt;
+    &lt;connections&gt;907&lt;/connections&gt;
+    &lt;file_connections&gt;379&lt;/file_connections&gt;
+    &lt;host&gt;localhost&lt;/host&gt;
+    &lt;listener_connections&gt;90&lt;/listener_connections&gt;
+    &lt;listeners&gt;0&lt;/listeners&gt;
+    &lt;location&gt;Earth&lt;/location&gt;
+    &lt;server_id&gt;Icecast 2.5&lt;/server_id&gt;
+    &lt;source_client_connections&gt;164&lt;/source_client_connections&gt;
+    &lt;source_relay_connections&gt;0&lt;/source_relay_connections&gt;
+    &lt;source_total_connections&gt;164&lt;/source_total_connections&gt;
+    &lt;sources&gt;2&lt;/sources&gt;
+    &lt;stats&gt;0&lt;/stats&gt;
+    &lt;stats_connections&gt;0&lt;/stats_connections&gt;
+    &lt;source mount=&quot;/audio.ogg&quot;&gt;
+        &lt;title&gt;All that she wants&lt;/title&gt;
+        &lt;artist&gt;Ace of Base&lt;/artist&gt;
+        &lt;audio_bitrate&gt;499821&lt;/audio_bitrate&gt;
+        &lt;audio_channels&gt;2&lt;/audio_channels&gt;
+        &lt;audio_info&gt;samplerate=44100;quality=10%2e0;channels=2&lt;/audio_info&gt;
+        &lt;audio_samplerate&gt;44100&lt;/audio_samplerate&gt;
+        &lt;channels&gt;2&lt;/channels&gt;
+        &lt;genre&gt;various&lt;/genre&gt;
+        &lt;ice-bitrate&gt;499&lt;/ice-bitrate&gt;
+        &lt;listener_peak&gt;0&lt;/listener_peak&gt;
+        &lt;listeners&gt;0&lt;/listeners&gt;
+        &lt;listenurl&gt;http://localhost:8000/audio&lt;/listenurl&gt;
+        &lt;max_listeners&gt;unlimited&lt;/max_listeners&gt;
+        &lt;public&gt;1&lt;/public&gt;
+        &lt;quality&gt;10.0&lt;/quality&gt;
+        &lt;samplerate&gt;44100&lt;/samplerate&gt;
+        &lt;server_description&gt;Teststream&lt;/server_description&gt;
+        &lt;server_name&gt;Great audio stream&lt;/server_name&gt;
+        &lt;server_type&gt;application/ogg&lt;/server_type&gt;
+        &lt;server_url&gt;http://example.org/&lt;/server_url&gt;
+        &lt;slow_listeners&gt;0&lt;/slow_listeners&gt;
+        &lt;source_ip&gt;192.0.2.21&lt;/source_ip&gt;
+        &lt;subtype&gt;Vorbis&lt;/subtype&gt;
+        &lt;total_bytes_read&gt;3372153&lt;/total_bytes_read&gt;
+        &lt;total_bytes_sent&gt;0&lt;/total_bytes_sent&gt;
+        &lt;user_agent&gt;LadioCast/0.10.5 libshout/2.3.1&lt;/user_agent&gt;
+    &lt;/source&gt;
+    &lt;source mount=&quot;/video.ogg&quot;&gt;
+        &lt;audio_bitrate&gt;276000&lt;/audio_bitrate&gt;
+        &lt;audio_channels&gt;6&lt;/audio_channels&gt;
+        &lt;audio_samplerate&gt;48000&lt;/audio_samplerate&gt;
+        &lt;frame_rate&gt;25.00&lt;/frame_rate&gt;
+        &lt;frame_size&gt;720 x 576&lt;/frame_size&gt;
+        &lt;genre&gt;various&lt;/genre&gt;
+        &lt;ice-bitrate&gt;276&lt;/ice-bitrate&gt;
+        &lt;listener_peak&gt;0&lt;/listener_peak&gt;
+        &lt;listeners&gt;0&lt;/listeners&gt;
+        &lt;listenurl&gt;http://localhost:8000/video&lt;/listenurl&gt;
+        &lt;max_listeners&gt;unlimited&lt;/max_listeners&gt;
+        &lt;public&gt;0&lt;/public&gt;
+        &lt;server_description&gt;Unspecified description&lt;/server_description&gt;
+        &lt;server_name&gt;Unspecified name&lt;/server_name&gt;
+        &lt;server_type&gt;video/ogg&lt;/server_type&gt;
+        &lt;slow_listeners&gt;0&lt;/slow_listeners&gt;
+        &lt;source_ip&gt;192.0.2.21&lt;/source_ip&gt;
+        &lt;subtype&gt;Vorbis/Theora&lt;/subtype&gt;
+        &lt;title&gt;ERAGON&lt;/title&gt;
+        &lt;total_bytes_read&gt;37136&lt;/total_bytes_read&gt;
+        &lt;total_bytes_sent&gt;0&lt;/total_bytes_sent&gt;
+        &lt;user_agent&gt;Lavf/55.20.0&lt;/user_agent&gt;
+        &lt;video_bitrate&gt;200000&lt;/video_bitrate&gt;
+        &lt;video_quality&gt;0&lt;/video_quality&gt;
+    &lt;/source&gt;
+&lt;/icestats&gt;
+</code></pre>
+
+<h2 id="general-statistics">General Statistics</h2>
+<!-- FIXME -->
+
+<dl>
+<dt>admin</dt>
+<dd>As set in the server config, this should contain contact details for getting in touch with the server administrator.
+  Usually this will be an email address, but as this can be an arbitrary string it could also be a phone number.</dd>
+<dt>client_connections</dt>
+<dd>Client connections are basically anything that is not a source connection. These include listeners (not concurrent,
+  but cumulative), any admin function accesses, and any static content (file serving) accesses.
+  <em>This is an accumulating counter.</em></dd>
+<dt>clients</dt>
+<dd>Number of currently active client connections.</dd>
+<dt>connections</dt>
+<dd>The total of all inbound TCP connections since start-up.
+  <em>This is an accumulating counter.</em></dd>
+<dt>file_connections</dt>
+<dd><em>This is an accumulating counter.</em></dd>
+<dt>host</dt>
+<dd>As set in the server config, this should be the full DNS resolveable name or FQDN for the host on which this
+  Icecast instance is running.</dd>
+<dt>listener_connections</dt>
+<dd>Number of listener connections to mount points.
+  <em>This is an accumulating counter.</em></dd>
+<dt>listeners</dt>
+<dd>Number of currently active listener connections.</dd>
+<dt>location</dt>
+<dd>As set in the server config, this is a free form field that should describe e.g. the physical location of this server.</dd>
+<dt>server_id</dt>
+<dd>Defaults to the version string of the currently running Icecast server. While not recommended it can be overriden in
+  the server config.</dd>
+<dt>server_start_iso8601</dt>
+<dd>Timestamp of server startup in ISO 8601 date format.</dd>
+<dt>server_start</dt>
+<dd>Timestamp of server startup in RFC 2822 date format. This field is deprecated and may be removed in a future version,
+  please use <code>server_start_iso8601</code> instead.</dd>
+<dt>source_client_connections</dt>
+<dd>Source client connections are the number of times (cumulative since start-up, not just currently connected) a source
+  client has connected to Icecast.
+  <em>This is an accumulating counter.</em></dd>
+<dt>source_relay_connections</dt>
+<dd>Number of outbound relay connections to (master) icecast servers.
+  <em>This is an accumulating counter.</em></dd>
+<dt>source_total_connections</dt>
+<dd>Both clients and relays.
+  <em>This is an accumulating counter.</em></dd>
+<dt>sources</dt>
+<dd>The total of currently connected sources.</dd>
+<dt>stats</dt>
+<dd>The total of currently connected STATS clients.</dd>
+<dt>stats_connections</dt>
+<dd>Number of times a stats client has connected to Icecast.
+  <em>This is an accumulating counter.</em></dd>
+</dl>
+<h2 id="source-specific-statistics">Source-specific Statistics</h2>
+<p>Please note that the statistics are valid within the scope of the current source connection.
+A reconnect or disconnection will reset those.</p>
+<dl>
+<dt>artist</dt>
+<dd>Artist of the current song
+  <em>Metadata set by source client</em></dd>
+<dt>title</dt>
+<dd>Title of the current song
+  <em>Metadata set by source client</em></dd>
+<dt>audio_bitrate</dt>
+<dd>Audio bitrate in bits/s
+  <em>Can be set by source client</em></dd>
+<dt>audio_channels</dt>
+<dd>Number of audio channels.</dd>
+<dt>audio-info</dt>
+<dd>Information about the bitrate/samplerate/quality of the stream.
+  Also used for directory listings.
+  <em>Metadata set by source client</em>
+  Example:
+  <code>samplerate=44100;quality=10%2e0;channels=2</code> (LadioCast)
+  <code>ice-bitrate=128;ice-channels=2;ice-samplerate=44100</code> (Butt)</dd>
+<dt>ice-bitrate</dt>
+<dd>Information about the audio bitrate (in kbit/s) of the stream.
+  <em>Can be set by source client</em></dd>
+<dt>samplerate</dt>
+<dd>Information about the samplerate of the stream.
+  <em>Can be set by source client</em></dd>
+<dt>quality</dt>
+<dd>Information about the audio quality of the stream.
+  <em>Metadata set by source client</em></dd>
+<dt>frame_rate</dt>
+<dd>Information about the framerate of the stream.
+  <em>Only present for video streams</em></dd>
+<dt>frame_size</dt>
+<dd>Information about the frame size of the stream.
+  <em>Only present for video streams</em></dd>
+<dt>video_bitrate</dt>
+<dd>Information about the video bitrate of the stream.
+  <em>Only present for video streams</em></dd>
+<dt>video_quality</dt>
+<dd>Information about the video quality of the stream.
+  <em>Only present for video streams</em></dd>
+<dt>server_name</dt>
+<dd>Stream name
+  <em>Metadata set by source client</em></dd>
+<dt>server_description</dt>
+<dd>Stream description
+  <em>Metadata set by source client</em></dd>
+<dt>server_type</dt>
+<dd>MIME-type for the stream currently active on this mountpoint.</dd>
+<dt>subtype</dt>
+<dd>MIME-subtype, can be e.g. codecs like Opus, Vorbis, Theora.
+  Separated with <code>/</code>.</dd>
+<dt>listener_peak</dt>
+<dd>Peak concurrent number of listener connections for this mountpoint.</dd>
+<dt>listeners</dt>
+<dd>The number of currently connected listeners.</dd>
+<dt>listenurl</dt>
+<dd>URL to this mountpoint. (This is not aware of aliases)</dd>
+<dt>max_listeners</dt>
+<dd>Maximum number of listeners permitted to concurrently connect to this mountpoint.</dd>
+<dt>public</dt>
+<dd>Flag that indicates whether this mount is to be listed on a directory.
+  <em>Set by source client, can be overriden by server config</em></dd>
+<dt>slow_listeners</dt>
+<dd>Number of slow listeners</dd>
+<dt>source_ip</dt>
+<dd>IP address of the currently connected source client.
+  In case of relays the content of <code>&lt;server&gt;</code>.</dd>
+<dt>stream_start_iso8601</dt>
+<dd>Timestamp of when the currently active source client connected to this mount point in ISO 8601 date format.</dd>
+<dt>stream_start</dt>
+<dd>Timestamp of when the currently active source client connected to this mount point in RFC 2822 date format.
+  This field is deprecated and may be removed in a future version, please use <code>stream_start_iso8601</code> instead.</dd>
+<dt>total_bytes_read</dt>
+<dd>Total number of bytes received from the source client.</dd>
+<dt>total_bytes_sent</dt>
+<dd>Total number of bytes sent to all listener connections since last source connect.</dd>
+<dt>user_agent</dt>
+<dd>HTTP user agent string as sent by the source client.</dd>
+</dl>
+<p>Additional data can be accessed through the admin interface, as every page of the admin
+interface has an XML equivalent.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../auth/" class="btn btn-neutral float-right" title="Authentication">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../config_file/" class="btn btn-neutral" title="Configuration File"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../config_file/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../auth/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+
+</body>
+</html>

@@ -8,7 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>,
  *                      and others (see AUTHORS for details).
- * Copyright 2011-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2011-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  * Copyright 2014,      Thomas B. Ruecker <thomas@ruecker.fi>.
  */
 
@@ -18,6 +18,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -45,7 +46,6 @@
 #endif
 
 #include "common/thread/thread.h"
-#include "common/avl/avl.h"
 #include "common/net/sock.h"
 #include "common/net/resolver.h"
 #include "common/httpp/httpp.h"
@@ -60,6 +60,7 @@
 #include <pwd.h>
 #endif
 
+#include "main.h"
 #include "cfgfile.h"
 #include "util.h"
 #include "sighandler.h"
@@ -77,14 +78,20 @@
 #include "yp.h"
 #include "auth.h"
 #include "event.h"
+#include "listensocket.h"
+#include "fastevent.h"
+#include "prng.h"
+#include "navigation.h"
 
 #include <libxml/xmlmemory.h>
 
 #undef CATMODULE
 #define CATMODULE "main"
 
-static int background;
+static bool background;
 static char *pidfile = NULL;
+
+static void pidfile_update(ice_config_t *config, int always_try);
 
 static void _fatal_error(const char *perr)
 {
@@ -116,15 +123,43 @@ static void _stop_logging(void)
     log_close(playlistlog);
 }
 
-void initialize_subsystems(void)
+#ifndef FASTEVENT_ENABLED
+static void __fastevent_cb(const void *userdata, fastevent_type_t type, fastevent_flag_t flags, fastevent_datatype_t datatype, va_list ap)
+{
+    event_t *event;
+
+    if (datatype != FASTEVENT_DATATYPE_EVENT)
+        return;
+
+    event = va_arg(ap, event_t*);
+
+    if (event == NULL) {
+        ICECAST_LOG_DEBUG("event=%p", event);
+    } else {
+        ICECAST_LOG_DEBUG("event=%p{.trigger='%s', ...}", event, event->trigger);
+    }
+}
+
+static refobject_t fastevent_reg;
+#endif
+
+static void initialize_subsystems(void)
 {
     log_initialize();
     thread_initialize();
+    prng_initialize();
+    navigation_initialize();
+    global_initialize();
+#ifndef FASTEVENT_ENABLED
+    fastevent_initialize();
+    fastevent_reg = fastevent_register(FASTEVENT_TYPE_SLOWEVENT, __fastevent_cb, NULL, NULL);
+#endif
     sock_initialize();
     resolver_initialize();
     config_initialize();
+    tls_initialize();
+    client_initialize();
     connection_initialize();
-    global_initialize();
     refbuf_initialize();
 
     xslt_initialize();
@@ -133,7 +168,7 @@ void initialize_subsystems(void)
 #endif
 }
 
-void shutdown_subsystems(void)
+static void shutdown_subsystems(void)
 {
     event_shutdown();
     fserve_shutdown();
@@ -143,11 +178,20 @@ void shutdown_subsystems(void)
     yp_shutdown();
     stats_shutdown();
 
-    global_shutdown();
     connection_shutdown();
+    client_shutdown();
+    tls_shutdown();
+    prng_deconfigure();
     config_shutdown();
     resolver_shutdown();
     sock_shutdown();
+#ifndef FASTEVENT_ENABLED
+    refobject_unref(fastevent_reg);
+    fastevent_shutdown();
+#endif
+    navigation_shutdown();
+    prng_shutdown();
+    global_shutdown();
     thread_shutdown();
 
 #ifdef HAVE_CURL
@@ -160,16 +204,32 @@ void shutdown_subsystems(void)
     xslt_shutdown();
 }
 
-static int _parse_config_opts(int argc, char **argv, char *filename, int size)
+void main_config_reload(ice_config_t *config)
 {
-    int i = 1;
-    int config_ok = 0;
+    ICECAST_LOG_DEBUG("Reloading configuration.");
+    pidfile_update(config, 0);
+}
 
-    background = 0;
-    if (argc < 2) return -1;
+static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
+{
+    int i;
+    bool config_ok = false;
 
-    while (i < argc) {
-        if (strcmp(argv[i], "-b") == 0) {
+    background = false;
+    if (argc < 2) {
+        if (filename[0] != 0) {
+            /* We have a default filename, so we can work with no options. */
+            return true;
+        } else {
+            /* We need at least a config filename. */
+            return false;
+        }
+    }
+
+    for (i = 1; i < argc; i++) {
+        const char *opt = argv[i];
+
+        if (strcmp(opt, "-b") == 0) {
 #ifndef WIN32
             pid_t pid;
             fprintf(stdout, "Starting icecast2\nDetaching from the console\n");
@@ -179,35 +239,30 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
             if (pid > 0) {
                 /* exit the parent */
                 exit(0);
-            }
-            else if(pid < 0) {
-                fprintf(stderr, "FATAL: Unable to fork child!");
+            } else if (pid < 0) {
+                fprintf(stderr, "FATAL: Unable to fork child!\n");
                 exit(1);
             }
-            background = 1;
+            background = true;
 #endif
-        }
-        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+        } else if (strcmp(opt, "-v") == 0 || strcmp(opt, "--version") == 0) {
             fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
             exit(0);
-        }
-
-        if (strcmp(argv[i], "-c") == 0) {
-            if (i + 1 < argc) {
-                strncpy(filename, argv[i + 1], size-1);
+        } else if (strcmp(opt, "-c") == 0) {
+            if ((i + 1) < argc) {
+                strncpy(filename, argv[++i], size-1);
                 filename[size-1] = 0;
-                config_ok = 1;
+                config_ok = true;
             } else {
-                return -1;
+                return false;
             }
+        } else {
+            fprintf(stderr, "FATAL: Invalid option: %s\n", opt);
+            return false;
         }
-        i++;
     }
 
-    if(config_ok)
-        return 1;
-    else
-        return -1;
+    return config_ok;
 }
 
 static int _start_logging_stdout(void) {
@@ -225,7 +280,7 @@ static int _start_logging(void)
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
     char fn_playlist[FILENAME_MAX];
-    char buf[1024];
+    char buf[FILENAME_MAX+1024];
     int log_to_stderr;
 
     ice_config_t *config = config_get_config_unlocked();
@@ -295,23 +350,65 @@ static int _start_logging(void)
     log_set_level(accesslog, 4);
     log_set_level(playlistlog, 4);
 
+    log_set_lines_kept(errorlog, config->error_log_lines_kept);
+    log_set_lines_kept(accesslog, config->access_log_lines_kept);
+    log_set_lines_kept(playlistlog, config->playlist_log_lines_kept);
+
     if (errorlog >= 0 && accesslog >= 0) return 1;
 
     return 0;
 }
 
-
-static int _start_listening(void)
+static void pidfile_update(ice_config_t *config, int always_try)
 {
-    int i;
-    for(i=0; i < global.server_sockets; i++) {
-        if (sock_listen(global.serversock[i], ICECAST_LISTEN_QUEUE) == SOCK_ERROR)
-            return 0;
+    char *newpidfile = NULL;
 
-        sock_set_blocking(global.serversock[i], 0);
+    if (config->pidfile) {
+        FILE *f;
+
+        /* check if the file actually changed */
+        if (pidfile && strcmp(pidfile, config->pidfile) == 0)
+            return;
+
+        ICECAST_LOG_DEBUG("New pidfile on %H", config->pidfile);
+
+        if (!always_try) {
+            if (config->chuid) {
+                ICECAST_LOG_ERROR("Can not write new pidfile, changeowner in effect.");
+                return;
+            }
+
+            if (config->chroot) {
+                ICECAST_LOG_ERROR("Can not write new pidfile, chroot in effect.");
+                return;
+            }
+        }
+
+        newpidfile = strdup(config->pidfile);
+        if (!newpidfile) {
+            ICECAST_LOG_ERROR("Can not allocate memory for pidfile filename. BAD.");
+            return;
+        }
+
+        f = fopen(newpidfile, "w");
+        if (!f) {
+            free(newpidfile);
+            ICECAST_LOG_ERROR("Can not open new pidfile for writing.");
+            return;
+        }
+
+        fprintf(f, "%lld\n", (long long int)getpid());
+        fclose(f);
+
+        ICECAST_LOG_INFO("pidfile %H updated.", pidfile);
     }
 
-    return 1;
+    if (newpidfile != pidfile) {
+        if (pidfile)
+            remove(pidfile);
+        free(pidfile);
+        pidfile = newpidfile;
+    }
 }
 
 /* bind the socket and start listening */
@@ -319,25 +416,14 @@ static int _server_proc_init(void)
 {
     ice_config_t *config = config_get_config_unlocked();
 
-    if (connection_setup_sockets (config) < 1)
-        return 0;
+    connection_setup_sockets(config);
 
-    if (!_start_listening()) {
-        _fatal_error("Failed trying to listen on server socket");
+    if (listensocket_container_sockcount(global.listensockets) < 1) {
+        ICECAST_LOG_ERROR("Can not listen on any sockets.");
         return 0;
     }
 
-    /* recreate the pid file */
-    if (config->pidfile)
-    {
-        FILE *f;
-        pidfile = strdup (config->pidfile);
-        if (pidfile && (f = fopen (config->pidfile, "w")) != NULL)
-        {
-            fprintf (f, "%d\n", (int)getpid());
-            fclose (f);
-        }
-    }
+    pidfile_update(config, 1);
 
     return 1;
 }
@@ -446,7 +532,7 @@ static void _ch_root_uid_setup(void)
 
 static inline void __log_system_name(void) {
     char hostname[80] = "(unknown)";
-    char system[128] = "(unknown)";
+    char system[1024] = "(unknown)";
     int have_hostname = 0;
 #ifdef HAVE_UNAME
     struct utsname utsname;
@@ -475,13 +561,15 @@ static inline void __log_system_name(void) {
 
    ICECAST_LOG_INFO("Running on %s; OS: %s; Address Bits: %i", hostname, system, sizeof(void*)*8);
 
+   config = config_get_config();
    if (have_hostname) {
-       config = config_get_config();
-       if (!config->sane_hostname && util_hostcheck(hostname) == HOSTCHECK_SANE) {
+       if ((config->config_problems & CONFIG_PROBLEM_HOSTNAME) && util_hostcheck(hostname) == HOSTCHECK_SANE) {
            ICECAST_LOG_WARN("Hostname is not set to anything useful in <hostname>, Consider setting it to the system's name \"%s\".", hostname);
        }
-       config_release_config();
    }
+
+   ICECAST_LOG_INFO("From configuration: Our hostname is %#H, located % #H, with admin contact % #H", config->hostname, config->location, config->admin);
+   config_release_config();
 }
 
 #ifdef WIN32_SERVICE
@@ -490,15 +578,19 @@ int mainService(int argc, char **argv)
 int main(int argc, char **argv)
 #endif
 {
-    int res, ret;
-    char filename[512];
+    int ret;
+#ifdef ICECAST_DEFAULT_CONFIG
+    char filename[512] = ICECAST_DEFAULT_CONFIG;
+#else
+    char filename[512] = "";
+#endif
     char pbuf[1024];
+    ice_config_t *config;
 
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile
     */
-    res = _parse_config_opts(argc, argv, filename, 512);
-    if (res == 1) {
+    if (_parse_config_opts(argc, argv, filename, sizeof(filename))) {
 #if !defined(_WIN32) || defined(_CONSOLE) || defined(__MINGW32__) || defined(__MINGW64__)
         /* startup all the modules */
         initialize_subsystems();
@@ -536,7 +628,7 @@ int main(int argc, char **argv)
 #endif
             return 1;
         }
-    } else if (res == -1) {
+    } else {
         _print_usage();
         return 1;
     }
@@ -555,13 +647,23 @@ int main(int argc, char **argv)
     _ch_root_uid_setup(); /* Change user id and root if requested/possible */
 #endif
 
+    if (!_start_logging()) {
+        _fatal_error("FATAL: Could not start logging");
+        shutdown_subsystems();
+        return 1;
+    }
+
+    config = config_get_config();
+    prng_configure(config);
+    config_release_config();
+
     stats_initialize(); /* We have to do this later on because of threading */
     fserve_initialize(); /* This too */
 
 #ifdef HAVE_SETUID
     /* We'll only have getuid() if we also have setuid(), it's reasonable to
      * assume */
-    if(!getuid()) /* Running as root! Don't allow this */
+    if(!getuid() && getpid() != 1) /* Running as root! Don't allow this */
     {
         fprintf(stderr, "ERROR: You should not run icecast2 as root\n");
         fprintf(stderr, "Use the changeowner directive in the config file\n");
@@ -573,13 +675,8 @@ int main(int argc, char **argv)
     /* setup default signal handlers */
     sighandler_initialize();
 
-    if (!_start_logging()) {
-        _fatal_error("FATAL: Could not start logging");
-        shutdown_subsystems();
-        return 1;
-    }
-
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
+    ICECAST_LOG_INFO("Server's PID is %lli", (long long int)getpid());
     __log_system_name();
 
     /* REM 3D Graphics */

@@ -8,30 +8,34 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2012-2014, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2012-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __SOURCE_H__
 #define __SOURCE_H__
 
-#include "cfgfile.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+#include "common/thread/thread.h"
+#include "common/httpp/httpp.h"
+
+#include "icecasttypes.h"
+#include "connection.h"
 #include "yp.h"
 #include "util.h"
 #include "format.h"
 #include "playlist.h"
-#include "common/thread/thread.h"
 
-#include <stdio.h>
-
-typedef struct source_tag
-{
+struct source_tag {
     mutex_t lock;
     client_t *client;
     connection_t *con;
     http_parser_t *parser;
     time_t client_stats_update;
     
-    char *mount;
+    char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
+    mount_identifier_t *identifier;
 
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;
@@ -58,7 +62,7 @@ typedef struct source_tag
     unsigned long prev_listeners;
     long max_listeners;
     int yp_public;
-    int fallback_override;
+    fallback_override_t fallback_override;
     int fallback_when_full;
     int shoutcast_compat;
 
@@ -74,6 +78,7 @@ typedef struct source_tag
     int on_demand;
     int on_demand_req;
     int hidden;
+    bool allow_direct_access; // copy of mount_proxy->allow_direct_access
     time_t last_read;
     int short_delay;
 
@@ -81,20 +86,20 @@ typedef struct source_tag
     refbuf_t *stream_data_tail;
 
     playlist_t *history;
-
-} source_t;
+};
 
 source_t *source_reserve (const char *mount);
 void *source_client_thread (void *arg);
 void source_client_callback (client_t *client, void *source);
 void source_update_settings (ice_config_t *config, source_t *source, mount_proxy *mountinfo);
 void source_clear_source (source_t *source);
-source_t *source_find_mount(const char *mount);
+#define source_find_mount(mount) source_find_mount_with_history((mount), NULL)
+source_t *source_find_mount_with_history(const char *mount, navigation_history_t *history);
 source_t *source_find_mount_raw(const char *mount);
-client_t *source_find_client(source_t *source, int id);
+client_t *source_find_client(source_t *source, connection_id_t id);
 int source_compare_sources(void *arg, void *a, void *b);
 void source_free_source(source_t *source);
-void source_move_clients (source_t *source, source_t *dest);
+void source_move_clients(source_t *source, source_t *dest, connection_id_t *id, navigation_direction_t direction);
 int source_remove_client(void *key);
 void source_main(source_t *source);
 void source_recheck_mounts (int update_all);

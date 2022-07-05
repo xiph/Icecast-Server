@@ -8,15 +8,15 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2020, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __LOGGING_H__
 #define __LOGGING_H__
 
-#include "cfgfile.h"
-#include "client.h"
 #include "common/log/log.h"
+
+#include "icecasttypes.h"
 
 /* declare the global log descriptors */
 
@@ -35,15 +35,32 @@ extern int playlistlog;
 #define ICECAST_LOGLEVEL_INFO   3
 #define ICECAST_LOGLEVEL_DEBUG  4
 
+/* Log flags */
+#define ICECAST_LOGFLAG_NONE    0
+#define ICECAST_LOGFLAG_DEVEL   1
+
 /*
 ** Variadic macros for logging
 */
 
-#define ICECAST_LOG(level,...) log_write(errorlog, (level), CATMODULE "/", __func__, __VA_ARGS__)
-#define ICECAST_LOG_ERROR(...) ICECAST_LOG(ICECAST_LOGLEVEL_ERROR, __VA_ARGS__)
-#define ICECAST_LOG_WARN(...) ICECAST_LOG(ICECAST_LOGLEVEL_WARN, __VA_ARGS__)
-#define ICECAST_LOG_INFO(...) ICECAST_LOG(ICECAST_LOGLEVEL_INFO, __VA_ARGS__)
-#define ICECAST_LOG_DEBUG(...) ICECAST_LOG(ICECAST_LOGLEVEL_DEBUG,__VA_ARGS__)
+#define ICECAST_LOG(level,flags,...) log_write(errorlog, (level), CATMODULE "/", __func__, __VA_ARGS__)
+
+#define ICECAST_LOG_ERROR(...)  ICECAST_LOG(ICECAST_LOGLEVEL_ERROR, ICECAST_LOGFLAG_NONE, __VA_ARGS__)
+#define ICECAST_LOG_WARN(...)   ICECAST_LOG(ICECAST_LOGLEVEL_WARN,  ICECAST_LOGFLAG_NONE, __VA_ARGS__)
+#define ICECAST_LOG_INFO(...)   ICECAST_LOG(ICECAST_LOGLEVEL_INFO,  ICECAST_LOGFLAG_NONE, __VA_ARGS__)
+#define ICECAST_LOG_DEBUG(...)  ICECAST_LOG(ICECAST_LOGLEVEL_DEBUG, ICECAST_LOGFLAG_NONE, __VA_ARGS__)
+/* Currently only an alias for ICECAST_LOG_DEBUG() */
+#ifdef DEVEL_LOGGING
+#define ICECAST_LOG_DERROR(...) ICECAST_LOG(ICECAST_LOGLEVEL_ERROR, ICECAST_LOGFLAG_DEVEL, __VA_ARGS__)
+#define ICECAST_LOG_DWARN(...)  ICECAST_LOG(ICECAST_LOGLEVEL_WARN,  ICECAST_LOGFLAG_DEVEL, __VA_ARGS__)
+#define ICECAST_LOG_DINFO(...)  ICECAST_LOG(ICECAST_LOGLEVEL_INFO,  ICECAST_LOGFLAG_DEVEL, __VA_ARGS__)
+#define ICECAST_LOG_DDEBUG(...) ICECAST_LOG(ICECAST_LOGLEVEL_DEBUG, ICECAST_LOGFLAG_DEVEL, __VA_ARGS__)
+#else
+#define ICECAST_LOG_DERROR(...)
+#define ICECAST_LOG_DWARN(...)
+#define ICECAST_LOG_DINFO(...)
+#define ICECAST_LOG_DDEBUG(...)
+#endif
 
 /* CATMODULE is the category or module that logging messages come from.
 ** we set one here in cause someone forgets in the .c file.
@@ -79,8 +96,11 @@ extern int playlistlog;
 
 #define LOGGING_FORMAT_CLF "%d/%b/%Y:%H:%M:%S %z"
 
+int logging_str2logid(const char *str);
+
 void logging_access(client_t *client);
 void logging_playlist(const char *mount, const char *metadata, long listeners);
+void logging_mark(const char *username, const char *role);
 void restart_logging (ice_config_t *config);
 void log_parse_failure (void *ctx, const char *fmt, ...);
 

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014,      Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -21,6 +21,8 @@
 #endif
 
 #include "event.h"
+#include "global.h"
+#include "source.h"
 #include "logging.h"
 #define CATMODULE "event_exec"
 
@@ -71,7 +73,7 @@ static inline event_exec_argvtype_t __str2argvtype(const char *str) {
     } else if (strcmp(str, "legacy") == 0) {
         return ARGVTYPE_LEGACY;
     } else {
-        ICECAST_LOG_ERROR("Unknown argument type %s, using \"default\"");
+        ICECAST_LOG_ERROR("Unknown argument type %s, using \"default\"", str);
         return ARGVTYPE_DFAULT;
     }
 }
@@ -273,10 +275,7 @@ int event_get_exec(event_registration_t *er, config_options_t *options) {
                  * <option name="default_arguments" value="..." /> (for values see near top of documment)
                  */
                 if (strcmp(cur->name, "executable") == 0) {
-                    free(self->executable);
-                    self->executable = NULL;
-                    if (cur->value)
-                        self->executable = strdup(cur->value);
+                    util_replace_string(&(self->executable), cur->value);
                 } else if (strcmp(cur->name, "default_arguments") == 0) {
                     self->argvtype = __str2argvtype(cur->value);
                 } else {

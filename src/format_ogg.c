@@ -8,6 +8,7 @@
  *                      oddsock <oddsock@xiph.org>,
  *                      Karl Heyes <karl@xiph.org>
  *                      and others (see AUTHORS for details).
+ * Copyright 2014-2018, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* format_ogg.c
@@ -60,7 +61,7 @@ static void format_ogg_free_plugin(format_plugin_t *plugin);
 static int create_ogg_client_data(source_t *source, client_t *client);
 static void free_ogg_client_data(client_t *client);
 
-static void write_ogg_to_file(struct source_tag *source, refbuf_t *refbuf);
+static void write_ogg_to_file(source_t *source, refbuf_t *refbuf);
 static refbuf_t *ogg_get_buffer(source_t *source);
 static int write_buf_to_client(client_t *client);
 
@@ -318,6 +319,7 @@ static void update_comments(source_t *source)
     }
     stats_event (source->mount, "artist", artist);
     stats_event (source->mount, "title", title);
+    stats_event (source->mount, "display-title", title);
 
     playlist_push_track(source->history, &source->format->vc);
 
@@ -402,7 +404,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
     ogg_state_t *ogg_info = source->format->_state;
     format_plugin_t *format = source->format;
     char *data = NULL;
-    int bytes = 0;
+    ssize_t bytes = 0;
 
     while (1)
     {
@@ -449,7 +451,7 @@ static refbuf_t *ogg_get_buffer(source_t *source)
         /* we need more data to continue getting pages */
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
 
-        bytes = client_read_bytes (source->client, data, 4096);
+        bytes = client_body_read(source->client, data, 4096);
         if (bytes <= 0)
         {
             ogg_sync_wrote (&ogg_info->oy, 0);
@@ -563,7 +565,7 @@ static int write_buf_to_client(client_t *client)
 }
 
 
-static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
+static int write_ogg_data (source_t *source, refbuf_t *refbuf)
 {
     int ret = 1;
 
@@ -578,7 +580,7 @@ static int write_ogg_data (struct source_tag *source, refbuf_t *refbuf)
 }
 
 
-static void write_ogg_to_file (struct source_tag *source, refbuf_t *refbuf)
+static void write_ogg_to_file (source_t *source, refbuf_t *refbuf)
 {
     ogg_state_t *ogg_info = source->format->_state;
 
