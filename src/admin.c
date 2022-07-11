@@ -1174,7 +1174,7 @@ static void command_dumpfile_control    (client_t *client, source_t *source, adm
 
     if (strcmp(action, "kill") == 0) {
         source_kill_dumpfile(source);
-        admin_send_response_simple(client, source, response, "Dumpfile killed.", 1);
+        admin_send_response_simple(client, source, response, "Dump file killed.", 1);
     } else {
         admin_send_response_simple(client, source, response, "No such action", 0);
     }

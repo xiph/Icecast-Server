@@ -1,7 +1,7 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0" xmlns:xt="http://www.jclark.com/xt" extension-element-prefixes="xt" exclude-result-prefixes="xt">
     <!-- Import include files -->
     <xsl:include href="includes/confirm.xsl"/>
-    <xsl:variable name="title">Confirm Stopping dumpfile</xsl:variable>
+    <xsl:variable name="title">Confirm stopping dump file</xsl:variable>
     <xsl:template name="content">
         <xsl:for-each select="/report/incident">
             <xsl:variable name="get-parameters" select="resource[@type='parameter']/value[@member='get-parameters']" />

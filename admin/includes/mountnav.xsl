@@ -10,7 +10,7 @@
                 <li><a href="/admin/fallbacks.xsl?mount={$mount}&amp;omode=strict">Set fallback</a></li>
                 <xsl:choose>
                     <xsl:when test="dumpfile_written/text() != '0'">
-                        <li class="critical"><a href="/admin/ui/confirmkilldumpfile.xsl?mount={$mount}">Stop dumpfile</a></li>
+                        <li class="critical"><a href="/admin/ui/confirmkilldumpfile.xsl?mount={$mount}">Stop dump file</a></li>
                     </xsl:when>
                     <xsl:otherwise>
                         <li class="disabled"><a>No dumpfile running</a></li>
