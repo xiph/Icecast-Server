@@ -1051,12 +1051,15 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     int val;
     http_parser_t *parser = NULL;
     acl_t *acl = NULL;
+    source_flags_t old_flags = source->flags;
 
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
 
     source->flags &= ~SOURCE_FLAGS_CLEARABLE;
+    if (old_flags != source->flags)
+        event_emit_clientevent("source-flags-changed", NULL, source->mount);
 
     if (mountinfo)
     {
@@ -1592,11 +1595,19 @@ health_t source_get_health_by_flags(source_flags_t flags)
 
 void source_set_flags(source_t *source, source_flags_t flags)
 {
+    bool changed;
+    source_flags_t old_flags;
+
     /* check if we need to do anything at all */
     if ((source->flags & flags) == flags)
         return;
 
     thread_mutex_lock(&source->lock);
+    old_flags = source->flags;
     source->flags |= flags;
+    changed = old_flags != source->flags;
     thread_mutex_unlock(&source->lock);
+
+    if (changed)
+        event_emit_clientevent("source-flags-changed", NULL, source->mount);
 }
