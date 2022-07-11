@@ -214,7 +214,7 @@ void source_clear_source (source_t *source)
 {
     int c;
 
-    ICECAST_LOG_DEBUG("clearing source \"%s\"", source->mount);
+    ICECAST_LOG_DEBUG("clearing source %#H", source->mount);
 
     avl_tree_wlock (source->pending_tree);
     client_destroy(source->client);
