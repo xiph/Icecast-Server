@@ -518,7 +518,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         }
         if (fds < 0) {
             if (!sock_recoverable(sock_error())) {
-                ICECAST_LOG_WARN("Error while waiting on socket, Disconnecting source");
+                ICECAST_LOG_WARN("Error while waiting on socket, Disconnecting source on %#H", source->mount);
                 source->running = 0;
             }
             break;
@@ -528,7 +528,7 @@ static refbuf_t *get_next_buffer (source_t *source)
             if ((source->last_read + (time_t)source->timeout) < current) {
                 ICECAST_LOG_DEBUG("last %ld, timeout %d, now %ld", (long)source->last_read,
                         source->timeout, (long)current);
-                ICECAST_LOG_WARN("Disconnecting source due to socket timeout");
+                ICECAST_LOG_WARN("Disconnecting source on %#H due to socket timeout", source->mount);
                 source->running = 0;
             }
             thread_mutex_unlock(&source->lock);
