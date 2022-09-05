@@ -450,6 +450,8 @@ static refbuf_t *ogg_get_buffer(source_t *source)
         }
         /* we need more data to continue getting pages */
         data = ogg_sync_buffer (&ogg_info->oy, 4096);
+        if (!data)
+            return NULL;
 
         bytes = client_body_read(source->client, data, 4096);
         if (bytes <= 0)
