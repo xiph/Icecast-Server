@@ -75,6 +75,7 @@
 #include "cfgfile.h"
 #include "connection.h"
 #include "common/httpp/httpp.h"
+#include "stats.h"
 
 #include "logging.h"
 #define CATMODULE "auth_url"
@@ -457,6 +458,7 @@ static auth_result url_add_client(auth_client *auth_user)
                    *next_header;
     const char     *header_val;
     char           *header_valesc;
+    char           *current_listeners;
 
     if (url->addurl == NULL)
         return AUTH_OK;
@@ -492,12 +494,14 @@ static auth_result url_add_client(auth_client *auth_user)
     mount = util_url_escape(mountreq);
     ipaddr = util_url_escape(client->con->ip);
 
+    current_listeners = stats_get_value(auth->mount, "listeners");
+
     post_offset = snprintf(post, sizeof (post),
-            "action=%s&server=%s&port=%d&client=%lu&mount=%s"
-            "&user=%s&pass=%s&ip=%s&agent=%s",
-            url->addaction, /* already escaped */
-            server, port, client->con->id, mount, username,
-            password, ipaddr, user_agent);
+                           "action=%s&server=%s&port=%d&client=%lu&mount=%s"
+                           "&user=%s&pass=%s&ip=%s&agent=%s&current_listeners=%s",
+                           url->addaction, /* already escaped */
+                           server, port, client->con->id, mount, username,
+                           password, ipaddr, user_agent, current_listeners);
 
     free(server);
     free(mount);
