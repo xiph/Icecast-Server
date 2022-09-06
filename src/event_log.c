@@ -33,9 +33,12 @@ static int event_log_emit(void *state, event_t *event) {
                              "client_role=%# H client_username=%#H client_useragent=%# H client_admin_command=%i",
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
                 event->trigger,
-                event->uri,
-                event->connection_id, event->connection_ip, (long long int)event->connection_time,
-                event->client_role, event->client_username, event->client_useragent, event->client_admin_command);
+                event_extra_get(event, EVENT_EXTRA_KEY_URI),
+                event->connection_id, event_extra_get(event, EVENT_EXTRA_CONNECTION_IP), (long long int)event->connection_time,
+                event_extra_get(event, EVENT_EXTRA_CLIENT_ROLE),
+                event_extra_get(event, EVENT_EXTRA_CLIENT_USERNAME),
+                event_extra_get(event, EVENT_EXTRA_CLIENT_USERAGENT),
+                event->client_admin_command);
     return 0;
 }
 

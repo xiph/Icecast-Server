@@ -48,11 +48,11 @@ static int event_url_emit(void *state, event_t *event) {
     char post[4096];
 
     action   = util_url_escape(self->action ? self->action : event->trigger);
-    mount    = __escape(event->uri, "");
-    role     = __escape(event->client_role, "");
-    username = __escape(event->client_username, "");
-    ip       = __escape(event->connection_ip, "");
-    agent    = __escape(event->client_useragent, "-");
+    mount    = __escape(event_extra_get(event, EVENT_EXTRA_KEY_URI), "");
+    role     = __escape(event_extra_get(event, EVENT_EXTRA_CLIENT_ROLE), "");
+    username = __escape(event_extra_get(event, EVENT_EXTRA_CLIENT_USERNAME), "");
+    ip       = __escape(event_extra_get(event, EVENT_EXTRA_CONNECTION_IP), "");
+    agent    = __escape(event_extra_get(event, EVENT_EXTRA_CLIENT_USERAGENT), "-");
 
     if (event->connection_time) {
         duration = time(NULL) - event->connection_time;

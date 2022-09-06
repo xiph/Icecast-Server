@@ -25,6 +25,19 @@
 
 #define MAX_REGLISTS_PER_EVENT 8
 
+typedef enum {
+    EVENT_EXTRA_KEY_URI,
+    EVENT_EXTRA_CONNECTION_IP,
+    EVENT_EXTRA_CLIENT_ROLE,
+    EVENT_EXTRA_CLIENT_USERNAME,
+    EVENT_EXTRA_CLIENT_USERAGENT
+} event_extra_key_t;
+
+typedef struct {
+    event_extra_key_t key;
+    const char *value;
+} event_extra_entry_t;
+
 struct event_registration_tag;
 typedef struct event_registration_tag event_registration_t;
 
@@ -49,14 +62,13 @@ struct event_tag {
     char *trigger;
 
     /* from client */
-    char *uri; /* from context */
     unsigned long connection_id; /* from client->con->id */
-    char *connection_ip; /* from client->con->ip */
     time_t connection_time; /* from client->con->con_time */
-    char *client_role; /* from client->role */
-    char *client_username; /* from client->username */
-    char *client_useragent; /* from httpp_getvar(client->parser, "user-agent") */
     admin_command_id_t client_admin_command; /* from client->admin_command */
+    /* extra */
+    size_t extra_size;
+    size_t extra_fill;
+    event_extra_entry_t *extra_entries;
 };
 
 struct event_registration_tag {
@@ -99,6 +111,9 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 /* event signaling */
 void event_emit_clientevent(const char *trigger, client_t *client, const char *uri);
 #define event_emit_global(x) event_emit_clientevent((x), NULL, NULL)
+
+/* reading extra from events */
+const char * event_extra_get(const event_t *event, const event_extra_key_t key);
 
 /* Implementations */
 int event_get_exec(event_registration_t *er, config_options_t *options);

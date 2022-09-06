@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include <igloo/error.h>
+#include <igloo/sp.h>
+
 #include "event.h"
 #include "fastevent.h"
 #include "logging.h"
@@ -22,6 +25,7 @@
 #include "connection.h"
 #include "client.h"
 #include "cfgfile.h"
+#include "global.h"  /* for igloo_instance */
 
 #define CATMODULE "event"
 
@@ -30,6 +34,42 @@ static event_t *event_queue = NULL;
 static bool event_running = false;
 static thread_type *event_thread = NULL;
 static cond_t cond;
+
+/* ignores errors */
+static void extra_add(event_t *event, event_extra_key_t key, const char *value)
+{
+    if (!value)
+        return;
+
+    if (event->extra_fill == event->extra_size) {
+        event_extra_entry_t *n = realloc(event->extra_entries, sizeof(*n)*(event->extra_size + 16));
+        if (!n)
+            return;
+        memset(&(n[event->extra_size]), 0, sizeof(*n)*16);
+        event->extra_size += 16;
+        event->extra_entries = n;
+    }
+
+    if (igloo_sp_replace(value, &(event->extra_entries[event->extra_fill].value), igloo_instance) == igloo_ERROR_NONE) {
+        event->extra_entries[event->extra_fill].key = key;
+        event->extra_fill++;
+    }
+}
+
+const char * event_extra_get(const event_t *event, const event_extra_key_t key)
+{
+    size_t i;
+
+    if (!event || !event->extra_entries)
+        return NULL;
+
+    for (i = 0; i < event->extra_fill; i++) {
+        if (event->extra_entries[i].key == key)
+            return event->extra_entries[i].value;
+    }
+
+    return NULL;
+}
 
 /* work with event_t* */
 static void event_addref(event_t *event) {
@@ -58,11 +98,11 @@ static void event_release(event_t *event) {
         event_registration_release(event->reglist[i]);
 
     free(event->trigger);
-    free(event->uri);
-    free(event->connection_ip);
-    free(event->client_role);
-    free(event->client_username);
-    free(event->client_useragent);
+
+    for (i = 0; i < event->extra_fill; i++)
+        igloo_sp_unref(&(event->extra_entries[i].value), igloo_instance);
+    free(event->extra_entries);
+
     to_free = event->next;
     free(event);
     thread_mutex_unlock(&event_lock);
@@ -403,22 +443,17 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
 #endif
 
     if (client) {
-        const char *tmp;
         event->connection_id = client->con->id;
         event->connection_time = client->con->con_time;
         event->client_admin_command = client->admin_command;
-        event->connection_ip = strdup(client->con->ip);
-        if (client->role)
-            event->client_role = strdup(client->role);
-        if (client->username)
-            event->client_username = strdup(client->username);
-        tmp = httpp_getvar(client->parser, "user-agent");
-        if (tmp)
-            event->client_useragent = strdup(tmp);
+        extra_add(event, EVENT_EXTRA_CONNECTION_IP, client->con->ip);
+        extra_add(event, EVENT_EXTRA_CLIENT_ROLE, client->role);
+        extra_add(event, EVENT_EXTRA_CLIENT_USERNAME, client->username);
+        extra_add(event, EVENT_EXTRA_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
     }
 
     if (uri)
-        event->uri = strdup(uri);
+        extra_add(event, EVENT_EXTRA_KEY_URI, uri);
 
     event_emit(event);
     event_release(event);
