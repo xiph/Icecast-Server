@@ -473,10 +473,9 @@ void event_emit_va(const char *trigger, ...) {
 
         if (key == EVENT_EXTRA_LIST_END) {
             break;
-        } else if (key == EVENT_EXTRA_SOURCE) {
-            source = va_arg(ap, source_t *);
-        } else if (key == EVENT_EXTRA_CLIENT) {
-            client = va_arg(ap, client_t *);
+        } else if (key == EVENT_EXTRA_SOURCE || key == EVENT_EXTRA_CLIENT) {
+            /* shift one arg off */
+            va_arg(ap, const void *);
         } else {
             const char *value = va_arg(ap, const char *);
 
