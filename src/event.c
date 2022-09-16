@@ -457,10 +457,10 @@ void event_emit_va(const char *trigger, const char *uri, ...) {
                 event->connection_id = client->con->id;
                 event->connection_time = client->con->con_time;
                 event->client_admin_command = client->admin_command;
-                extra_add(event, EVENT_EXTRA_CONNECTION_IP, client->con->ip);
-                extra_add(event, EVENT_EXTRA_CLIENT_ROLE, client->role);
-                extra_add(event, EVENT_EXTRA_CLIENT_USERNAME, client->username);
-                extra_add(event, EVENT_EXTRA_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
+                extra_add(event, EVENT_EXTRA_KEY_CONNECTION_IP, client->con->ip);
+                extra_add(event, EVENT_EXTRA_KEY_CLIENT_ROLE, client->role);
+                extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERNAME, client->username);
+                extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
             }
         } else {
             const char *value = va_arg(ap, const char *);

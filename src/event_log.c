@@ -34,10 +34,10 @@ static int event_log_emit(void *state, event_t *event) {
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
                 event->trigger,
                 event_extra_get(event, EVENT_EXTRA_KEY_URI),
-                event->connection_id, event_extra_get(event, EVENT_EXTRA_CONNECTION_IP), (long long int)event->connection_time,
-                event_extra_get(event, EVENT_EXTRA_CLIENT_ROLE),
-                event_extra_get(event, EVENT_EXTRA_CLIENT_USERNAME),
-                event_extra_get(event, EVENT_EXTRA_CLIENT_USERAGENT),
+                event->connection_id, event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), (long long int)event->connection_time,
+                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE),
+                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME),
+                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT),
                 event->client_admin_command);
     return 0;
 }
