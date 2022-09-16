@@ -627,19 +627,19 @@ static bool source_open_dumpfile(source_t *source)
 
     if (!filename) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. No filename defined.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
     if (source->dumpfile) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. Dump already running.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
     if (!source->format->write_buf_to_file) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. format does not support dumping.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
@@ -659,12 +659,12 @@ static bool source_open_dumpfile(source_t *source)
         source->dumpfile_start = curtime;
         stats_event(source->mount, "dumpfile_written", "0");
         stats_event_time_iso8601(source->mount, "dumpfile_start");
-        event_emit_clientevent("dumpfile-opened", NULL, source->mount);
+        event_emit_va("dumpfile-opened", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return true;
     } else {
         ICECAST_LOG_WARN("Cannot open dump file for source %#H with filename %#H for appending: %s, disabling.",
                 source->mount, source->dumpfilename, strerror(errno));
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 }
@@ -1059,7 +1059,7 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
 
     source->flags &= ~SOURCE_FLAGS_CLEARABLE;
     if (old_flags != source->flags)
-        event_emit_clientevent("source-flags-changed", NULL, source->mount);
+        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 
     if (mountinfo)
     {
@@ -1565,7 +1565,7 @@ void source_kill_dumpfile(source_t *source)
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
-    event_emit_clientevent("dumpfile-closed", NULL, source->mount);
+    event_emit_va("dumpfile-closed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 }
 
 health_t source_get_health(source_t *source)
@@ -1609,5 +1609,5 @@ void source_set_flags(source_t *source, source_flags_t flags)
     thread_mutex_unlock(&source->lock);
 
     if (changed)
-        event_emit_clientevent("source-flags-changed", NULL, source->mount);
+        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 }

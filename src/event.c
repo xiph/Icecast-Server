@@ -25,6 +25,7 @@
 #include "admin.h"
 #include "connection.h"
 #include "client.h"
+#include "source.h"
 #include "cfgfile.h"
 #include "global.h"  /* for igloo_instance */
 
@@ -403,8 +404,11 @@ void event_emit(event_t *event) {
     thread_mutex_unlock(&event_lock);
 }
 
-void event_emit_va(const char *trigger, const char *uri, ...) {
+void event_emit_va(const char *trigger, ...) {
     event_t *event = event_new(trigger);
+    source_t *source = NULL;
+    client_t *client = NULL;
+    const char *uri = NULL;
     ice_config_t *config;
     const mount_proxy *mount;
     va_list ap;
@@ -413,6 +417,25 @@ void event_emit_va(const char *trigger, const char *uri, ...) {
         ICECAST_LOG_ERROR("Can not create event.");
         return;
     }
+
+    va_start(ap, trigger);
+    while (true) {
+        event_extra_key_t key = va_arg(ap, event_extra_key_t);
+
+        if (key == EVENT_EXTRA_LIST_END) {
+            break;
+        } else if (key == EVENT_EXTRA_KEY_URI) {
+            uri = va_arg(ap, const char *);
+        } else if (key == EVENT_EXTRA_SOURCE) {
+            source = va_arg(ap, source_t *);
+        } else if (key == EVENT_EXTRA_CLIENT) {
+            client = va_arg(ap, client_t *);
+        }
+    }
+    va_end(ap);
+
+    if (source && !uri)
+        uri = source->mount;
 
     config = config_get_config();
     event_push_reglist(event, config->event);
@@ -444,24 +467,16 @@ void event_emit_va(const char *trigger, const char *uri, ...) {
     if (uri)
         extra_add(event, EVENT_EXTRA_KEY_URI, uri);
 
-    va_start(ap, uri);
+    va_start(ap, trigger);
     while (true) {
         event_extra_key_t key = va_arg(ap, event_extra_key_t);
 
         if (key == EVENT_EXTRA_LIST_END) {
             break;
+        } else if (key == EVENT_EXTRA_SOURCE) {
+            source = va_arg(ap, source_t *);
         } else if (key == EVENT_EXTRA_CLIENT) {
-            client_t *client = va_arg(ap, client_t *);
-
-            if (client) {
-                event->connection_id = client->con->id;
-                event->connection_time = client->con->con_time;
-                event->client_admin_command = client->admin_command;
-                extra_add(event, EVENT_EXTRA_KEY_CONNECTION_IP, client->con->ip);
-                extra_add(event, EVENT_EXTRA_KEY_CLIENT_ROLE, client->role);
-                extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERNAME, client->username);
-                extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
-            }
+            client = va_arg(ap, client_t *);
         } else {
             const char *value = va_arg(ap, const char *);
 
@@ -469,6 +484,16 @@ void event_emit_va(const char *trigger, const char *uri, ...) {
         }
     }
     va_end(ap);
+
+    if (client) {
+        event->connection_id = client->con->id;
+        event->connection_time = client->con->con_time;
+        event->client_admin_command = client->admin_command;
+        extra_add(event, EVENT_EXTRA_KEY_CONNECTION_IP, client->con->ip);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_ROLE, client->role);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERNAME, client->username);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
+    }
 
     event_emit(event);
     event_release(event);
