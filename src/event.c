@@ -12,6 +12,7 @@
 #endif
 
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -402,13 +403,11 @@ void event_emit(event_t *event) {
     thread_mutex_unlock(&event_lock);
 }
 
-/* this function needs to extract all the info from the client, source and mount object
- * as after return the pointers become invalid.
- */
-void event_emit_clientevent(const char *trigger, client_t *client, const char *uri) {
+void event_emit_va(const char *trigger, const char *uri, ...) {
     event_t *event = event_new(trigger);
     ice_config_t *config;
-    mount_proxy *mount;
+    const mount_proxy *mount;
+    va_list ap;
 
     if (!event) {
         ICECAST_LOG_ERROR("Can not create event.");
@@ -442,18 +441,34 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
     }
 #endif
 
-    if (client) {
-        event->connection_id = client->con->id;
-        event->connection_time = client->con->con_time;
-        event->client_admin_command = client->admin_command;
-        extra_add(event, EVENT_EXTRA_CONNECTION_IP, client->con->ip);
-        extra_add(event, EVENT_EXTRA_CLIENT_ROLE, client->role);
-        extra_add(event, EVENT_EXTRA_CLIENT_USERNAME, client->username);
-        extra_add(event, EVENT_EXTRA_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
-    }
-
     if (uri)
         extra_add(event, EVENT_EXTRA_KEY_URI, uri);
+
+    va_start(ap, uri);
+    while (true) {
+        event_extra_key_t key = va_arg(ap, event_extra_key_t);
+
+        if (key == EVENT_EXTRA_LIST_END) {
+            break;
+        } else if (key == EVENT_EXTRA_CLIENT) {
+            client_t *client = va_arg(ap, client_t *);
+
+            if (client) {
+                event->connection_id = client->con->id;
+                event->connection_time = client->con->con_time;
+                event->client_admin_command = client->admin_command;
+                extra_add(event, EVENT_EXTRA_CONNECTION_IP, client->con->ip);
+                extra_add(event, EVENT_EXTRA_CLIENT_ROLE, client->role);
+                extra_add(event, EVENT_EXTRA_CLIENT_USERNAME, client->username);
+                extra_add(event, EVENT_EXTRA_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
+            }
+        } else {
+            const char *value = va_arg(ap, const char *);
+
+            extra_add(event, key, value);
+        }
+    }
+    va_end(ap);
 
     event_emit(event);
     event_release(event);
