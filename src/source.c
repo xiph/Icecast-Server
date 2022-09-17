@@ -615,14 +615,37 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 /* Open the file for stream dumping.
  * This function should do all processing of the filename.
  */
-static void source_open_dumpfile(source_t *source) {
+static bool source_open_dumpfile(source_t *source)
+{
     const char *filename = source->dumpfilename;
 #ifndef _WIN32
     /* some of the below functions seems not to be standard winapi functions */
     time_t curtime = time(NULL);
     char buffer[PATH_MAX];
     struct tm *loctime;
+#endif
 
+    if (!filename) {
+        ICECAST_LOG_WARN("Can not open dump file for source %#H. No filename defined.", source->mount);
+        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        return false;
+    }
+
+    if (source->dumpfile) {
+        ICECAST_LOG_WARN("Can not open dump file for source %#H. Dump already running.", source->mount);
+        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        return false;
+    }
+
+    if (!source->format->write_buf_to_file) {
+        ICECAST_LOG_WARN("Can not open dump file for source %#H. format does not support dumping.", source->mount);
+        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        return false;
+    }
+
+    ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .burst_point=%p, .stream_data=%p, .stream_data_tail=%p, ...}", source, source->mount, source->burst_point, source->stream_data, source->stream_data_tail);
+
+#ifndef _WIN32
     /* Convert it to local time representation. */
     loctime = localtime(&curtime);
 
@@ -636,9 +659,13 @@ static void source_open_dumpfile(source_t *source) {
         source->dumpfile_start = curtime;
         stats_event(source->mount, "dumpfile_written", "0");
         stats_event_time_iso8601(source->mount, "dumpfile_start");
+        event_emit_clientevent("dumpfile-opened", NULL, source->mount);
+        return true;
     } else {
-        ICECAST_LOG_WARN("Cannot open dump file \"%s\" for appending: %s, disabling.",
-                source->dumpfilename, strerror(errno));
+        ICECAST_LOG_WARN("Cannot open dump file for source %#H with filename %#H for appending: %s, disabling.",
+                source->mount, source->dumpfilename, strerror(errno));
+        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        return false;
     }
 }
 
@@ -1527,11 +1554,15 @@ void source_kill_dumpfile(source_t *source)
     if (!source->dumpfile)
         return;
 
+    if (source->format && source->format->on_file_close)
+        source->format->on_file_close(source);
+
     fclose(source->dumpfile);
     source->dumpfile = NULL;
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
+    event_emit_clientevent("dumpfile-closed", NULL, source->mount);
 }
 
 health_t source_get_health(source_t *source)

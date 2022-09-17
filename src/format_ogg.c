@@ -62,6 +62,7 @@ static int create_ogg_client_data(source_t *source, client_t *client);
 static void free_ogg_client_data(client_t *client);
 
 static void write_ogg_to_file(source_t *source, refbuf_t *refbuf);
+static void on_file_close(source_t *source);
 static refbuf_t *ogg_get_buffer(source_t *source);
 static int write_buf_to_client(client_t *client);
 
@@ -170,6 +171,7 @@ int format_ogg_get_plugin(source_t *source)
     plugin->get_buffer = ogg_get_buffer;
     plugin->write_buf_to_client = write_buf_to_client;
     plugin->write_buf_to_file = write_ogg_to_file;
+    plugin->on_file_close = on_file_close;
     plugin->create_client_data = create_ogg_client_data;
     plugin->free_plugin = format_ogg_free_plugin;
     plugin->set_tag = NULL;
@@ -583,4 +585,10 @@ static void write_ogg_to_file (source_t *source, refbuf_t *refbuf)
         ogg_info->file_headers = refbuf->associated;
     }
     source_write_dumpfile(source, refbuf->data, refbuf->len);
+}
+
+static void on_file_close(source_t *source)
+{
+    ogg_state_t *ogg_info = source->format->_state;
+    ogg_info->file_headers = NULL;
 }
