@@ -30,7 +30,7 @@ static int event_log_emit(void *state, event_t *event) {
     ICECAST_LOG(self->level, ICECAST_LOGFLAG_NONE,
                              "%s%strigger=%# H uri=%#H "
                              "connection_id=%lu connection_ip=%#H connection_time=%lli "
-                             "client_role=%# H client_username=%#H client_useragent=%# H client_admin_command=%i",
+                             "client_role=%# H client_username=%#H client_useragent=%# H client_admin_command=%i source_media_type=%#H",
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
                 event->trigger,
                 event_extra_get(event, EVENT_EXTRA_KEY_URI),
@@ -38,7 +38,9 @@ static int event_log_emit(void *state, event_t *event) {
                 event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE),
                 event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME),
                 event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT),
-                event->client_admin_command);
+                event->client_admin_command,
+                event_extra_get(event, EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE)
+                );
     return 0;
 }
 

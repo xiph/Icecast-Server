@@ -43,16 +43,17 @@ static inline char *__escape(const char *src, const char *default_value) {
 static int event_url_emit(void *state, event_t *event) {
     event_url_t *self = state;
     ice_config_t *config;
-    char *action, *mount, *server, *role, *username, *ip, *agent;
+    char *action, *mount, *server, *role, *username, *ip, *agent, *media_type;
     time_t duration;
     char post[4096];
 
-    action   = util_url_escape(self->action ? self->action : event->trigger);
-    mount    = __escape(event_extra_get(event, EVENT_EXTRA_KEY_URI), "");
-    role     = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), "");
-    username = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), "");
-    ip       = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), "");
-    agent    = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT), "-");
+    action      = util_url_escape(self->action ? self->action : event->trigger);
+    mount       = __escape(event_extra_get(event, EVENT_EXTRA_KEY_URI), "");
+    role        = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), "");
+    username    = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), "");
+    ip          = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), "");
+    agent       = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT), "-");
+    media_type  = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT), "-");
 
     if (event->connection_time) {
         duration = time(NULL) - event->connection_time;
@@ -64,9 +65,11 @@ static int event_url_emit(void *state, event_t *event) {
     server   = __escape(config->hostname, "");
 
     snprintf (post, sizeof (post),
-            "action=%s&mount=%s&server=%s&port=%d&client=%lu&role=%s&username=%s&ip=%s&agent=%s&duration=%lli&admin=%i",
+            "action=%s&mount=%s&server=%s&port=%d&client=%lu&role=%s&username=%s&ip=%s&agent=%s&duration=%lli&admin=%i&source-media-type=%s",
             action, mount, server, config->port,
-            event->connection_id, role, username, ip, agent, (long long int)duration, event->client_admin_command);
+            event->connection_id, role, username, ip, agent, (long long int)duration, event->client_admin_command,
+            media_type
+            );
     config_release_config();
 
     free(action);
@@ -76,6 +79,7 @@ static int event_url_emit(void *state, event_t *event) {
     free(username);
     free(ip);
     free(agent);
+    free(media_type);
 
     if (strchr(self->url, '@') == NULL && self->userpwd) {
         curl_easy_setopt(self->handle, CURLOPT_USERPWD, self->userpwd);

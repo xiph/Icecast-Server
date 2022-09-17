@@ -484,6 +484,12 @@ void event_emit_va(const char *trigger, ...) {
     }
     va_end(ap);
 
+    if (source) {
+        if (source->format && source->format->contenttype) {
+            extra_add(event, EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE, source->format->contenttype);
+        }
+    }
+
     if (client) {
         event->connection_id = client->con->id;
         event->connection_time = client->con->con_time;
