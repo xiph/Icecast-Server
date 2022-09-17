@@ -15,6 +15,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include <igloo/error.h>
+
 #include "common/thread/thread.h"
 
 #include "icecasttypes.h"
@@ -125,6 +127,7 @@ void event_emit_va(const char *trigger, ...);
 /* reading extra from events */
 const char * event_extra_get(const event_t *event, const event_extra_key_t key);
 const char * event_extra_key_name(event_extra_key_t key);
+igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *renderer); /* expects renderer in list mode */
 
 /* Implementations */
 int event_get_exec(event_registration_t *er, config_options_t *options);

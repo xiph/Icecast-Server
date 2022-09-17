@@ -12,6 +12,12 @@
 
 #include <string.h>
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+#include <igloo/error.h>
+
+#include "global.h"  /* for igloo_instance */
+#include "string_renderer.h"
 #include "curl.h"
 #include "event.h"
 #include "cfgfile.h"
@@ -43,43 +49,41 @@ static inline char *__escape(const char *src, const char *default_value) {
 static int event_url_emit(void *state, event_t *event) {
     event_url_t *self = state;
     ice_config_t *config;
-    char *action, *mount, *server, *role, *username, *ip, *agent, *media_type;
     time_t duration;
-    char post[4096];
+    string_renderer_t * renderer;
 
-    action      = util_url_escape(self->action ? self->action : event->trigger);
-    mount       = __escape(event_extra_get(event, EVENT_EXTRA_KEY_URI), "");
-    role        = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), "");
-    username    = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), "");
-    ip          = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), "");
-    agent       = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT), "-");
-    media_type  = __escape(event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT), "-");
+    if (igloo_ro_new(&renderer, string_renderer_t, igloo_instance) != igloo_ERROR_NONE)
+        return 0;
 
-    if (event->connection_time) {
+    if (event->client_data) {
         duration = time(NULL) - event->connection_time;
     } else {
         duration = 0;
     }
 
-    config = config_get_config();
-    server   = __escape(config->hostname, "");
+    string_renderer_start_list_formdata(renderer);
+    /* Old style */
+    string_renderer_add_kv_with_options(renderer, "action", self->action ? self->action : event->trigger, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    string_renderer_add_kv_with_options(renderer, "mount", event_extra_get(event, EVENT_EXTRA_KEY_URI), STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_ki_with_options(renderer, "client", event->connection_id, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_kv_with_options(renderer, "role", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_kv_with_options(renderer, "username", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_kv_with_options(renderer, "ip", event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_kv_with_options(renderer, "agent", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) ? event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) : "-", STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_ki_with_options(renderer, "duration", duration, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_ki_with_options(renderer, "admin", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, true);
 
-    snprintf (post, sizeof (post),
-            "action=%s&mount=%s&server=%s&port=%d&client=%lu&role=%s&username=%s&ip=%s&agent=%s&duration=%lli&admin=%i&source-media-type=%s",
-            action, mount, server, config->port,
-            event->connection_id, role, username, ip, agent, (long long int)duration, event->client_admin_command,
-            media_type
-            );
+    /* new style */
+    event_to_string_renderer(event, renderer);
+
+    /* common */
+    config = config_get_config();
+    string_renderer_add_kv_with_options(renderer, "server", config->hostname, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    string_renderer_add_ki_with_options(renderer, "port", config->port, STRING_RENDERER_ENCODING_PLAIN, true, true);
     config_release_config();
 
-    free(action);
-    free(mount);
-    free(server);
-    free(role);
-    free(username);
-    free(ip);
-    free(agent);
-    free(media_type);
+    string_renderer_end_list(renderer);
+
 
     if (strchr(self->url, '@') == NULL && self->userpwd) {
         curl_easy_setopt(self->handle, CURLOPT_USERPWD, self->userpwd);
@@ -88,10 +92,12 @@ static int event_url_emit(void *state, event_t *event) {
     }
 
     curl_easy_setopt(self->handle, CURLOPT_URL, self->url);
-    curl_easy_setopt(self->handle, CURLOPT_POSTFIELDS, post);
+    curl_easy_setopt(self->handle, CURLOPT_POSTFIELDS, string_renderer_to_string_zero_copy(renderer));
 
     if (curl_easy_perform(self->handle))
         ICECAST_LOG_WARN("auth to server %s failed with %s", self->url, self->errormsg);
+
+    igloo_ro_unref(&renderer);
 
     return 0;
 }

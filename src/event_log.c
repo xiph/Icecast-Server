@@ -12,7 +12,13 @@
 
 #include <string.h>
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+#include <igloo/error.h>
+
 #include "event.h"
+#include "global.h"  /* for igloo_instance */
+#include "string_renderer.h"
 #include "util.h"
 #include "cfgfile.h"
 #include "logging.h"
@@ -24,23 +30,24 @@ typedef struct event_log {
     int level;
 } event_log_t;
 
+
 static int event_log_emit(void *state, event_t *event) {
     event_log_t *self = state;
+    string_renderer_t * renderer;
+
+    if (igloo_ro_new(&renderer, string_renderer_t, igloo_instance) != igloo_ERROR_NONE)
+        return 0;
+
+    string_renderer_start_list(renderer, " ", "=", false, false, STRING_RENDERER_ENCODING_H_ALT_SPACE);
+    event_to_string_renderer(event, renderer);
+    string_renderer_end_list(renderer);
 
     ICECAST_LOG(self->level, ICECAST_LOGFLAG_NONE,
-                             "%s%strigger=%# H uri=%#H "
-                             "connection_id=%lu connection_ip=%#H connection_time=%lli "
-                             "client_role=%# H client_username=%#H client_useragent=%# H client_admin_command=%i source_media_type=%#H",
+                             "%s%s%s",
                 self->prefix ? self->prefix : "", self->prefix ? ": " : "",
-                event->trigger,
-                event_extra_get(event, EVENT_EXTRA_KEY_URI),
-                event->connection_id, event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), (long long int)event->connection_time,
-                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE),
-                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME),
-                event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT),
-                event->client_admin_command,
-                event_extra_get(event, EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE)
-                );
+                string_renderer_to_string_zero_copy(renderer));
+
+    igloo_ro_unref(&renderer);
     return 0;
 }
 

@@ -22,6 +22,7 @@
 #include "event.h"
 #include "fastevent.h"
 #include "logging.h"
+#include "string_renderer.h"
 #include "admin.h"
 #include "connection.h"
 #include "client.h"
@@ -88,6 +89,32 @@ const char * event_extra_key_name(event_extra_key_t key)
     }
 
     return NULL;
+}
+
+igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *renderer)
+{
+    static const event_extra_key_t key_list[] = {
+        EVENT_EXTRA_KEY_URI,
+        EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE,
+        EVENT_EXTRA_KEY_CONNECTION_IP,
+        EVENT_EXTRA_KEY_CLIENT_ROLE,
+        EVENT_EXTRA_KEY_CLIENT_USERNAME,
+        EVENT_EXTRA_KEY_CLIENT_USERAGENT,
+        EVENT_EXTRA_LIST_END
+    };
+
+    string_renderer_add_kv_with_options(renderer, "trigger", event->trigger, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    for (size_t i = 0; key_list[i] != EVENT_EXTRA_LIST_END; i++) {
+        string_renderer_add_kv_with_options(renderer, event_extra_key_name(key_list[i]), event_extra_get(event, key_list[i]), STRING_RENDERER_ENCODING_PLAIN, false, false);
+    }
+
+    if (event->client_data) {
+        string_renderer_add_ki_with_options(renderer, "connection-id", event->connection_id, STRING_RENDERER_ENCODING_PLAIN, true, false);
+        string_renderer_add_ki_with_options(renderer, "connection-time", event->connection_time, STRING_RENDERER_ENCODING_PLAIN, true, false);
+        string_renderer_add_ki_with_options(renderer, "client-admin-command", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, false);
+    }
+
+    return igloo_ERROR_NONE;
 }
 
 /* work with event_t* */
