@@ -21,7 +21,11 @@ igloo_RO_FORWARD_TYPE(string_renderer_t);
 typedef enum {
     STRING_RENDERER_ENCODING_DEFAULT,
     STRING_RENDERER_ENCODING_PLAIN,
-    STRING_RENDERER_ENCODING_URI
+    STRING_RENDERER_ENCODING_URI,
+    STRING_RENDERER_ENCODING_H,             /* same as "%H"   */
+    STRING_RENDERER_ENCODING_H_ALT,         /* same as "%#H"  */
+    STRING_RENDERER_ENCODING_H_SPACE,       /* same as "% H"  */
+    STRING_RENDERER_ENCODING_H_ALT_SPACE    /* same as "%# H" */
 } string_renderer_encoding_t;
 
 /* all functions are NOT thread safe */

@@ -65,11 +65,8 @@ igloo_RO_PUBLIC_TYPE(string_renderer_t, igloo_ro_full_t,
         igloo_RO_TYPEDECL_NEW(__string_renderer_new)
         );
 
-static igloo_error_t string_renderer_append_raw(string_renderer_t *self, const char *string, ssize_t len)
+static inline igloo_error_t string_renderer_pre_allocate(string_renderer_t *self, size_t len)
 {
-    if (len < 0)
-        len = strlen(string);
-
     if (self->len < (self->fill + len + 1)) {
         size_t new_len = self->len + len + 1 + 64; /* allocate more than we need to avoid re-allocating every time */
         char *n = realloc(self->buffer, new_len);
@@ -79,9 +76,33 @@ static igloo_error_t string_renderer_append_raw(string_renderer_t *self, const c
         self->len = new_len;
     }
 
+    return igloo_ERROR_NONE;
+}
+
+static igloo_error_t string_renderer_append_raw(string_renderer_t *self, const char *string, ssize_t len)
+{
+    igloo_error_t err;
+
+    if (len < 0)
+        len = strlen(string);
+
+    err = string_renderer_pre_allocate(self, len);
+    if (err != igloo_ERROR_NONE)
+        return err;
+
     memcpy(self->buffer + self->fill, string, len);
     self->fill += len;
 
+    return igloo_ERROR_NONE;
+}
+
+static inline igloo_error_t string_renderer_append_char(string_renderer_t *self, const char c)
+{
+    if (self->len < (self->fill + 1 + 1)) {
+        return string_renderer_append_raw(self, &c, 1);
+    }
+
+    self->buffer[self->fill++] = c;
     return igloo_ERROR_NONE;
 }
 
@@ -143,6 +164,52 @@ igloo_error_t       string_renderer_add_string_with_options(string_renderer_t *s
                 return err;
             }
             break;
+        case STRING_RENDERER_ENCODING_H:
+        case STRING_RENDERER_ENCODING_H_ALT:
+        case STRING_RENDERER_ENCODING_H_SPACE:
+        case STRING_RENDERER_ENCODING_H_ALT_SPACE:
+            if (!string) {
+                return string_renderer_append_char(self, '-');
+            } else {
+                bool alt    = encoding == STRING_RENDERER_ENCODING_H_ALT    || encoding == STRING_RENDERER_ENCODING_H_ALT_SPACE;
+                bool space  = encoding == STRING_RENDERER_ENCODING_H_SPACE  || encoding == STRING_RENDERER_ENCODING_H_ALT_SPACE;
+
+                /* ignore errors here as we just try to optimise access */
+                string_renderer_pre_allocate(self, strlen(string));
+
+                if (alt) {
+                    igloo_error_t err = string_renderer_append_char(self, '"');
+                    if (err != igloo_ERROR_NONE)
+                        return err;
+                }
+
+                for (const char *sp = string; *sp; sp++) {
+                    const char c = *sp;
+
+                    /* copied from common/log/log.c __vsnprintf__is_print() */
+                    if ((c <= '"' || c == '`' || c == '\\') && !(space && c == ' ')) {
+                        static const char hextable[] = "0123456789abcdef";
+                        char buf[4] = "\\xXX";
+                        buf[2] = hextable[(c >> 4) & 0x0F];
+                        buf[3] = hextable[(c >> 0) & 0x0F];
+                        igloo_error_t err = string_renderer_append_raw(self, buf, 4);
+                        if (err != igloo_ERROR_NONE)
+                            return err;
+                    } else {
+                        igloo_error_t err = string_renderer_append_char(self, c);
+                        if (err != igloo_ERROR_NONE)
+                            return err;
+                    }
+                }
+
+                if (alt) {
+                    igloo_error_t err = string_renderer_append_char(self, '"');
+                    if (err != igloo_ERROR_NONE)
+                        return err;
+                }
+            }
+            return igloo_ERROR_NONE;
+            break;
         default:
             return igloo_ERROR_INVAL;
     }
@@ -171,6 +238,10 @@ igloo_error_t       string_renderer_add_int_with_options(string_renderer_t *self
     switch (encoding) {
         case STRING_RENDERER_ENCODING_PLAIN:
         case STRING_RENDERER_ENCODING_URI:
+        case STRING_RENDERER_ENCODING_H:
+        case STRING_RENDERER_ENCODING_H_ALT:
+        case STRING_RENDERER_ENCODING_H_SPACE:
+        case STRING_RENDERER_ENCODING_H_ALT_SPACE:
             {
                 char buffer[64];
                 int ret = snprintf(buffer, sizeof(buffer), "%lli", val);
@@ -270,7 +341,7 @@ const char *        string_renderer_to_string_zero_copy(string_renderer_t *self)
         return NULL;
 
     /* add a \0 to the end */
-    if (string_renderer_append_raw(self, "\0", 1) != igloo_ERROR_NONE)
+    if (string_renderer_append_char(self, '\0') != igloo_ERROR_NONE)
         return NULL;
 
     /* but do not count it as fill */
