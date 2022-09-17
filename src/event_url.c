@@ -11,6 +11,7 @@
 #endif
 
 #include <string.h>
+#include <stdbool.h>
 
 #include "icecasttypes.h"
 #include <igloo/ro.h>
@@ -27,6 +28,7 @@
 
 
 typedef struct event_url {
+    bool legacy;
     char *url;
     char *action;
     char *userpwd;
@@ -62,24 +64,28 @@ static int event_url_emit(void *state, event_t *event) {
     }
 
     string_renderer_start_list_formdata(renderer);
-    /* Old style */
-    string_renderer_add_kv_with_options(renderer, "action", self->action ? self->action : event->trigger, STRING_RENDERER_ENCODING_PLAIN, false, false);
-    string_renderer_add_kv_with_options(renderer, "mount", event_extra_get(event, EVENT_EXTRA_KEY_URI), STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_ki_with_options(renderer, "client", event->connection_id, STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_kv_with_options(renderer, "role", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_kv_with_options(renderer, "username", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_kv_with_options(renderer, "ip", event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_kv_with_options(renderer, "agent", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) ? event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) : "-", STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_ki_with_options(renderer, "duration", duration, STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_ki_with_options(renderer, "admin", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, true);
-
-    /* new style */
-    event_to_string_renderer(event, renderer);
+    if (self->legacy) {
+        /* Old style */
+        string_renderer_add_kv_with_options(renderer, "action", self->action ? self->action : event->trigger, STRING_RENDERER_ENCODING_PLAIN, false, false);
+        string_renderer_add_kv_with_options(renderer, "mount", event_extra_get(event, EVENT_EXTRA_KEY_URI), STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_ki_with_options(renderer, "client", event->connection_id, STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_kv_with_options(renderer, "role", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_kv_with_options(renderer, "username", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_kv_with_options(renderer, "ip", event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_kv_with_options(renderer, "agent", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) ? event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) : "-", STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_ki_with_options(renderer, "duration", duration, STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_ki_with_options(renderer, "admin", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    } else {
+        /* new style */
+        event_to_string_renderer(event, renderer);
+    }
 
     /* common */
     config = config_get_config();
     string_renderer_add_kv_with_options(renderer, "server", config->hostname, STRING_RENDERER_ENCODING_PLAIN, true, true);
-    string_renderer_add_ki_with_options(renderer, "port", config->port, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    if (self->legacy) {
+        string_renderer_add_ki_with_options(renderer, "port", config->port, STRING_RENDERER_ENCODING_PLAIN, true, true);
+    }
     config_release_config();
 
     string_renderer_end_list(renderer);
@@ -119,6 +125,8 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
     if (!self)
         return -1;
 
+    self->legacy = true;
+
     if (options) {
         do {
             if (options->type)
@@ -139,6 +147,8 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
                 password = options->value;
             } else if (strcmp(options->name, "action") == 0) {
                 util_replace_string(&(self->action), options->value);
+            } else if (strcmp(options->name, "legacy") == 0) {
+                self->legacy = util_str_to_bool(options->value);
             } else {
                 ICECAST_LOG_ERROR("Unknown <option> tag with name %s.", options->name);
             }
