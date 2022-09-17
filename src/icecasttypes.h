@@ -135,6 +135,10 @@ typedef struct hmac_tag hmac_t;
 
 typedef struct mount_identifier_tag mount_identifier_t;
 
+/* ---[ string_renderer.[ch] ]--- */
+
+typedef struct string_renderer_tag string_renderer_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -157,6 +161,7 @@ typedef void * refobject_t;
 
 /* --- [ For libigloo ]--- */
 #define igloo_RO_APPTYPES \
+    igloo_RO_TYPE(string_renderer_t) \
     igloo_RO_TYPE(module_t) \
     igloo_RO_TYPE(module_container_t)
 
