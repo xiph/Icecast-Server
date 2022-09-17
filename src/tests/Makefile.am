@@ -27,5 +27,11 @@ ctest_refobject_test_LDADD = \
     icecast-refobject.o
 check_PROGRAMS += ctest_refobject.test
 
+ctest_string_renderer_test_SOURCES = tests/ctest_string_renderer.c
+ctest_string_renderer_test_LDADD = \
+    icecast-util_string.o \
+    icecast-string_renderer.o
+check_PROGRAMS += ctest_string_renderer.test
+
 # Add all programs to TESTS
 TESTS = $(check_PROGRAMS)
