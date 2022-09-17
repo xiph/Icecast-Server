@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
@@ -242,7 +243,7 @@ static void _run_script (event_exec_t *self, event_t *event) {
                 default: /* parent */
                     break;
             }
-            exit (0);
+            _exit(0);
         case -1:
             ICECAST_LOG_ERROR("Unable to fork %s", strerror (errno));
             break;
