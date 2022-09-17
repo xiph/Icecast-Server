@@ -124,6 +124,7 @@ void event_emit_va(const char *trigger, ...);
 
 /* reading extra from events */
 const char * event_extra_get(const event_t *event, const event_extra_key_t key);
+const char * event_extra_key_name(event_extra_key_t key);
 
 /* Implementations */
 int event_get_exec(event_registration_t *er, config_options_t *options);

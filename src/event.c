@@ -73,6 +73,23 @@ const char * event_extra_get(const event_t *event, const event_extra_key_t key)
     return NULL;
 }
 
+const char * event_extra_key_name(event_extra_key_t key)
+{
+    switch (key) {
+        case EVENT_EXTRA_KEY_URI: return "uri"; break;
+        case EVENT_EXTRA_KEY_CONNECTION_IP: return "connection-id"; break;
+        case EVENT_EXTRA_KEY_CLIENT_ROLE: return "client-role"; break;
+        case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
+        case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
+        case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-mediatype"; break;
+#ifndef DEVEL_LOGGING
+        default: break;
+#endif
+    }
+
+    return NULL;
+}
+
 /* work with event_t* */
 static void event_addref(event_t *event) {
     if (!event)
