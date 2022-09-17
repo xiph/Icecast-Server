@@ -659,12 +659,12 @@ static bool source_open_dumpfile(source_t *source)
         source->dumpfile_start = curtime;
         stats_event(source->mount, "dumpfile_written", "0");
         stats_event_time_iso8601(source->mount, "dumpfile_start");
-        event_emit_va("dumpfile-opened", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
+        event_emit_va("dumpfile-opened", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_KEY_DUMPFILE_FILENAME, filename, EVENT_EXTRA_LIST_END);
         return true;
     } else {
         ICECAST_LOG_WARN("Cannot open dump file for source %#H with filename %#H for appending: %s, disabling.",
                 source->mount, source->dumpfilename, strerror(errno));
-        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_KEY_DUMPFILE_FILENAME, filename, EVENT_EXTRA_LIST_END);
         return false;
     }
 }

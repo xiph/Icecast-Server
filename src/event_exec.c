@@ -157,6 +157,7 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     __update_environ_with_key(event, "CLIENT_ROLE", EVENT_EXTRA_KEY_CLIENT_ROLE);
     __update_environ_with_key(event, "CLIENT_USERNAME", EVENT_EXTRA_KEY_CLIENT_USERNAME);
     __update_environ_with_key(event, "CLIENT_USERAGENT", EVENT_EXTRA_KEY_CLIENT_USERAGENT);
+    __update_environ_with_key(event, "DUMPFILE_FILENAME", EVENT_EXTRA_KEY_DUMPFILE_FILENAME);
 
     snprintf(buf, sizeof(buf), "%lu", event->connection_id);
     __update_environ("CLIENT_ID",         buf);

@@ -83,6 +83,7 @@ const char * event_extra_key_name(event_extra_key_t key)
         case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
         case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-mediatype"; break;
+        case EVENT_EXTRA_KEY_DUMPFILE_FILENAME: return "dumpfile-filename"; break;
 #ifndef DEVEL_LOGGING
         default: break;
 #endif
@@ -100,6 +101,7 @@ igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *
         EVENT_EXTRA_KEY_CLIENT_ROLE,
         EVENT_EXTRA_KEY_CLIENT_USERNAME,
         EVENT_EXTRA_KEY_CLIENT_USERAGENT,
+        EVENT_EXTRA_KEY_DUMPFILE_FILENAME,
         EVENT_EXTRA_LIST_END
     };
 
