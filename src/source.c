@@ -712,7 +712,7 @@ static void source_init (source_t *source)
     source->prev_listeners = -1;
     source->running = 1;
 
-    event_emit_clientevent("source-connect", source->client, source->mount);
+    event_emit_va("source-connect", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, source->client, EVENT_EXTRA_LIST_END);
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -927,7 +927,7 @@ static void source_shutdown (source_t *source)
         ICECAST_LOG_INFO("Source at \"%s\" exiting", source->mount);
     }
 
-    event_emit_clientevent("source-disconnect", source->client, source->mount);
+    event_emit_va("source-disconnect", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, source->client, EVENT_EXTRA_LIST_END);
 
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
