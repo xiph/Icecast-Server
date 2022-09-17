@@ -627,19 +627,19 @@ static bool source_open_dumpfile(source_t *source)
 
     if (!filename) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. No filename defined.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
     if (source->dumpfile) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. Dump already running.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
     if (!source->format->write_buf_to_file) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. format does not support dumping.", source->mount);
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
 
@@ -659,12 +659,12 @@ static bool source_open_dumpfile(source_t *source)
         source->dumpfile_start = curtime;
         stats_event(source->mount, "dumpfile_written", "0");
         stats_event_time_iso8601(source->mount, "dumpfile_start");
-        event_emit_clientevent("dumpfile-opened", NULL, source->mount);
+        event_emit_va("dumpfile-opened", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_KEY_DUMPFILE_FILENAME, filename, EVENT_EXTRA_LIST_END);
         return true;
     } else {
         ICECAST_LOG_WARN("Cannot open dump file for source %#H with filename %#H for appending: %s, disabling.",
                 source->mount, source->dumpfilename, strerror(errno));
-        event_emit_clientevent("dumpfile-error", NULL, source->mount);
+        event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_KEY_DUMPFILE_FILENAME, filename, EVENT_EXTRA_LIST_END);
         return false;
     }
 }
@@ -712,7 +712,7 @@ static void source_init (source_t *source)
     source->prev_listeners = -1;
     source->running = 1;
 
-    event_emit_clientevent("source-connect", source->client, source->mount);
+    event_emit_va("source-connect", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, source->client, EVENT_EXTRA_LIST_END);
 
     /*
     ** Now, if we have a fallback source and override is on, we want
@@ -927,7 +927,7 @@ static void source_shutdown (source_t *source)
         ICECAST_LOG_INFO("Source at \"%s\" exiting", source->mount);
     }
 
-    event_emit_clientevent("source-disconnect", source->client, source->mount);
+    event_emit_va("source-disconnect", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, source->client, EVENT_EXTRA_LIST_END);
 
     /* we have de-activated the source now, so no more clients will be
      * added, now move the listeners we have to the fallback (if any)
@@ -1051,12 +1051,15 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     int val;
     http_parser_t *parser = NULL;
     acl_t *acl = NULL;
+    source_flags_t old_flags = source->flags;
 
     ICECAST_LOG_DEBUG("Applying mount information for \"%s\"", source->mount);
     avl_tree_rlock (source->client_tree);
     stats_event_args (source->mount, "listener_peak", "%lu", source->peak_listeners);
 
     source->flags &= ~SOURCE_FLAGS_CLEARABLE;
+    if (old_flags != source->flags)
+        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 
     if (mountinfo)
     {
@@ -1562,7 +1565,7 @@ void source_kill_dumpfile(source_t *source)
     source->dumpfile_written = 0;
     stats_event(source->mount, "dumpfile_written", NULL);
     stats_event(source->mount, "dumpfile_start", NULL);
-    event_emit_clientevent("dumpfile-closed", NULL, source->mount);
+    event_emit_va("dumpfile-closed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 }
 
 health_t source_get_health(source_t *source)
@@ -1592,11 +1595,19 @@ health_t source_get_health_by_flags(source_flags_t flags)
 
 void source_set_flags(source_t *source, source_flags_t flags)
 {
+    bool changed;
+    source_flags_t old_flags;
+
     /* check if we need to do anything at all */
     if ((source->flags & flags) == flags)
         return;
 
     thread_mutex_lock(&source->lock);
+    old_flags = source->flags;
     source->flags |= flags;
+    changed = old_flags != source->flags;
     thread_mutex_unlock(&source->lock);
+
+    if (changed)
+        event_emit_va("source-flags-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
 }

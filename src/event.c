@@ -12,16 +12,23 @@
 #endif
 
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
+#include <igloo/error.h>
+#include <igloo/sp.h>
 
 #include "event.h"
 #include "fastevent.h"
 #include "logging.h"
+#include "string_renderer.h"
 #include "admin.h"
 #include "connection.h"
 #include "client.h"
+#include "source.h"
 #include "cfgfile.h"
+#include "global.h"  /* for igloo_instance */
 
 #define CATMODULE "event"
 
@@ -30,6 +37,87 @@ static event_t *event_queue = NULL;
 static bool event_running = false;
 static thread_type *event_thread = NULL;
 static cond_t cond;
+
+/* ignores errors */
+static void extra_add(event_t *event, event_extra_key_t key, const char *value)
+{
+    if (!value)
+        return;
+
+    if (event->extra_fill == event->extra_size) {
+        event_extra_entry_t *n = realloc(event->extra_entries, sizeof(*n)*(event->extra_size + 16));
+        if (!n)
+            return;
+        memset(&(n[event->extra_size]), 0, sizeof(*n)*16);
+        event->extra_size += 16;
+        event->extra_entries = n;
+    }
+
+    if (igloo_sp_replace(value, &(event->extra_entries[event->extra_fill].value), igloo_instance) == igloo_ERROR_NONE) {
+        event->extra_entries[event->extra_fill].key = key;
+        event->extra_fill++;
+    }
+}
+
+const char * event_extra_get(const event_t *event, const event_extra_key_t key)
+{
+    size_t i;
+
+    if (!event || !event->extra_entries)
+        return NULL;
+
+    for (i = 0; i < event->extra_fill; i++) {
+        if (event->extra_entries[i].key == key)
+            return event->extra_entries[i].value;
+    }
+
+    return NULL;
+}
+
+const char * event_extra_key_name(event_extra_key_t key)
+{
+    switch (key) {
+        case EVENT_EXTRA_KEY_URI: return "uri"; break;
+        case EVENT_EXTRA_KEY_CONNECTION_IP: return "connection-ip"; break;
+        case EVENT_EXTRA_KEY_CLIENT_ROLE: return "client-role"; break;
+        case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
+        case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
+        case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-media-type"; break;
+        case EVENT_EXTRA_KEY_DUMPFILE_FILENAME: return "dumpfile-filename"; break;
+#ifndef DEVEL_LOGGING
+        default: break;
+#endif
+    }
+
+    return NULL;
+}
+
+igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *renderer)
+{
+    static const event_extra_key_t key_list[] = {
+        EVENT_EXTRA_KEY_URI,
+        EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE,
+        EVENT_EXTRA_KEY_CONNECTION_IP,
+        EVENT_EXTRA_KEY_CLIENT_ROLE,
+        EVENT_EXTRA_KEY_CLIENT_USERNAME,
+        EVENT_EXTRA_KEY_CLIENT_USERAGENT,
+        EVENT_EXTRA_KEY_DUMPFILE_FILENAME,
+        EVENT_EXTRA_LIST_END
+    };
+
+    string_renderer_add_kv_with_options(renderer, "trigger", event->trigger, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    for (size_t i = 0; key_list[i] != EVENT_EXTRA_LIST_END; i++) {
+        string_renderer_add_kv_with_options(renderer, event_extra_key_name(key_list[i]), event_extra_get(event, key_list[i]), STRING_RENDERER_ENCODING_PLAIN, false, false);
+    }
+
+    if (event->client_data) {
+        string_renderer_add_ki_with_options(renderer, "connection-id", event->connection_id, STRING_RENDERER_ENCODING_PLAIN, true, false);
+        string_renderer_add_ki_with_options(renderer, "connection-time", event->connection_time, STRING_RENDERER_ENCODING_PLAIN, true, false);
+        string_renderer_add_ki_with_options(renderer, "client-admin-command", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, false);
+    }
+
+    return igloo_ERROR_NONE;
+}
 
 /* work with event_t* */
 static void event_addref(event_t *event) {
@@ -58,11 +146,11 @@ static void event_release(event_t *event) {
         event_registration_release(event->reglist[i]);
 
     free(event->trigger);
-    free(event->uri);
-    free(event->connection_ip);
-    free(event->client_role);
-    free(event->client_username);
-    free(event->client_useragent);
+
+    for (i = 0; i < event->extra_fill; i++)
+        igloo_sp_unref(&(event->extra_entries[i].value), igloo_instance);
+    free(event->extra_entries);
+
     to_free = event->next;
     free(event);
     thread_mutex_unlock(&event_lock);
@@ -362,18 +450,38 @@ void event_emit(event_t *event) {
     thread_mutex_unlock(&event_lock);
 }
 
-/* this function needs to extract all the info from the client, source and mount object
- * as after return the pointers become invalid.
- */
-void event_emit_clientevent(const char *trigger, client_t *client, const char *uri) {
+void event_emit_va(const char *trigger, ...) {
     event_t *event = event_new(trigger);
+    source_t *source = NULL;
+    client_t *client = NULL;
+    const char *uri = NULL;
     ice_config_t *config;
-    mount_proxy *mount;
+    const mount_proxy *mount;
+    va_list ap;
 
     if (!event) {
         ICECAST_LOG_ERROR("Can not create event.");
         return;
     }
+
+    va_start(ap, trigger);
+    while (true) {
+        event_extra_key_t key = va_arg(ap, event_extra_key_t);
+
+        if (key == EVENT_EXTRA_LIST_END) {
+            break;
+        } else if (key == EVENT_EXTRA_KEY_URI) {
+            uri = va_arg(ap, const char *);
+        } else if (key == EVENT_EXTRA_SOURCE) {
+            source = va_arg(ap, source_t *);
+        } else if (key == EVENT_EXTRA_CLIENT) {
+            client = va_arg(ap, client_t *);
+        }
+    }
+    va_end(ap);
+
+    if (source && !uri)
+        uri = source->mount;
 
     config = config_get_config();
     event_push_reglist(event, config->event);
@@ -402,23 +510,42 @@ void event_emit_clientevent(const char *trigger, client_t *client, const char *u
     }
 #endif
 
+    if (uri)
+        extra_add(event, EVENT_EXTRA_KEY_URI, uri);
+
+    va_start(ap, trigger);
+    while (true) {
+        event_extra_key_t key = va_arg(ap, event_extra_key_t);
+
+        if (key == EVENT_EXTRA_LIST_END) {
+            break;
+        } else if (key == EVENT_EXTRA_SOURCE || key == EVENT_EXTRA_CLIENT) {
+            /* shift one arg off */
+            va_arg(ap, const void *);
+        } else {
+            const char *value = va_arg(ap, const char *);
+
+            extra_add(event, key, value);
+        }
+    }
+    va_end(ap);
+
+    if (source) {
+        if (source->format && source->format->contenttype) {
+            extra_add(event, EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE, source->format->contenttype);
+        }
+    }
+
     if (client) {
-        const char *tmp;
+        event->client_data = true;
         event->connection_id = client->con->id;
         event->connection_time = client->con->con_time;
         event->client_admin_command = client->admin_command;
-        event->connection_ip = strdup(client->con->ip);
-        if (client->role)
-            event->client_role = strdup(client->role);
-        if (client->username)
-            event->client_username = strdup(client->username);
-        tmp = httpp_getvar(client->parser, "user-agent");
-        if (tmp)
-            event->client_useragent = strdup(tmp);
+        extra_add(event, EVENT_EXTRA_KEY_CONNECTION_IP, client->con->ip);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_ROLE, client->role);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERNAME, client->username);
+        extra_add(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT, httpp_getvar(client->parser, "user-agent"));
     }
-
-    if (uri)
-        event->uri = strdup(uri);
 
     event_emit(event);
     event_release(event);

@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
@@ -46,6 +47,13 @@ typedef struct event_exec {
     char **argv;
 } event_exec_t;
 
+static char *_null_aware_strdup(const char *s)
+{
+    if (!s)
+        return NULL;
+    return strdup(s);
+}
+
 /* OS independed code: */
 static inline size_t __argvtype2offset(event_exec_argvtype_t argvtype) {
     switch (argvtype) {
@@ -79,6 +87,8 @@ static inline event_exec_argvtype_t __str2argvtype(const char *str) {
 }
 
 static inline char **__setup_argv(event_exec_t *self, event_t *event) {
+    char *uri;
+
     self->argv[0] = self->executable;
 
     switch (self->argvtype) {
@@ -89,14 +99,16 @@ static inline char **__setup_argv(event_exec_t *self, event_t *event) {
             self->argv[2] = event->trigger ? event->trigger : "";
         /* fall through */
         case ARGVTYPE_ONLY_URI:
-            self->argv[1] = event->uri ? event->uri : "";
+            uri = _null_aware_strdup(event_extra_get(event, EVENT_EXTRA_KEY_URI));
+            self->argv[1] = uri ? uri : "";
         break;
         case ARGVTYPE_LEGACY:
             /* This mode is similar to ARGVTYPE_ONLY_URI
              * but if URI is unknown the parameter is skipped!
              */
-            if (event->uri) {
-                self->argv[1] = event->uri;
+            uri = _null_aware_strdup(event_extra_get(event, EVENT_EXTRA_KEY_URI));
+            if (uri) {
+                self->argv[1] = uri;
             } else {
                 self->argv[1] = self->executable;
                 return &self->argv[1];
@@ -122,6 +134,12 @@ static inline void __update_environ(const char *name, const char *value) {
 #else
 #define __update_environ(x,y)
 #endif
+
+static inline void __update_environ_with_key(const event_t *event, const char *name, event_extra_key_t key)
+{
+    __update_environ(name, event_extra_get(event, key));
+}
+
 static inline void __setup_environ(ice_config_t *config, event_exec_t *self, event_t *event) {
     mount_proxy *mountinfo;
     source_t *source;
@@ -132,13 +150,15 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     __update_environ("ICECAST_HOSTNAME",  config->hostname);
     __update_environ("ICECAST_ADMIN",     config->admin);
     __update_environ("ICECAST_LOGDIR",    config->log_dir);
-    __update_environ("EVENT_URI",         event->uri);
     __update_environ("EVENT_TRIGGER",     event->trigger); /* new name */
     __update_environ("SOURCE_ACTION",     event->trigger); /* old name (deprecated) */
-    __update_environ("CLIENT_IP",         event->connection_ip);
-    __update_environ("CLIENT_ROLE",       event->client_role);
-    __update_environ("CLIENT_USERNAME",   event->client_username);
-    __update_environ("CLIENT_USERAGENT",  event->client_useragent);
+    __update_environ_with_key(event, "EVENT_URI", EVENT_EXTRA_KEY_URI);
+    __update_environ_with_key(event, "SOURCE_MEDIA_TYPE", EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE);
+    __update_environ_with_key(event, "CLIENT_IP", EVENT_EXTRA_KEY_CONNECTION_IP);
+    __update_environ_with_key(event, "CLIENT_ROLE", EVENT_EXTRA_KEY_CLIENT_ROLE);
+    __update_environ_with_key(event, "CLIENT_USERNAME", EVENT_EXTRA_KEY_CLIENT_USERNAME);
+    __update_environ_with_key(event, "CLIENT_USERAGENT", EVENT_EXTRA_KEY_CLIENT_USERAGENT);
+    __update_environ_with_key(event, "DUMPFILE_FILENAME", EVENT_EXTRA_KEY_DUMPFILE_FILENAME);
 
     snprintf(buf, sizeof(buf), "%lu", event->connection_id);
     __update_environ("CLIENT_ID",         buf);
@@ -147,7 +167,7 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     snprintf(buf, sizeof(buf), "%i", event->client_admin_command);
     __update_environ("CLIENT_ADMIN_COMMAND", buf);
 
-    mountinfo = config_find_mount(config, event->uri, MOUNT_TYPE_NORMAL);
+    mountinfo = config_find_mount(config, event_extra_get(event, EVENT_EXTRA_KEY_URI), MOUNT_TYPE_NORMAL);
     if (mountinfo) {
         __update_environ("MOUNT_NAME",        mountinfo->stream_name);
         __update_environ("MOUNT_DESCRIPTION", mountinfo->stream_description);
@@ -156,7 +176,7 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     }
 
     avl_tree_rlock(global.source_tree);
-    source = source_find_mount(event->uri);
+    source = source_find_mount(event_extra_get(event, EVENT_EXTRA_KEY_URI));
     if (source) {
         __update_environ("SOURCE_MOUNTPOINT", source->mount);
         __update_environ("SOURCE_PUBLIC",     source->yp_public ? "true" : "false");
@@ -223,7 +243,7 @@ static void _run_script (event_exec_t *self, event_t *event) {
                 default: /* parent */
                     break;
             }
-            exit (0);
+            _exit(0);
         case -1:
             ICECAST_LOG_ERROR("Unable to fork %s", strerror (errno));
             break;

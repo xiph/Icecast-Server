@@ -9,9 +9,13 @@
 #ifndef __EVENT_H__
 #define __EVENT_H__
 
+#include <stdbool.h>
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+
+#include <igloo/error.h>
 
 #include "common/thread/thread.h"
 
@@ -24,6 +28,26 @@
 #define EVENT_TYPE_URL  "url"
 
 #define MAX_REGLISTS_PER_EVENT 8
+
+typedef enum {
+    /* special keys */
+    EVENT_EXTRA_LIST_END,
+    EVENT_EXTRA_CLIENT,
+    EVENT_EXTRA_SOURCE,
+    /* real keys */
+    EVENT_EXTRA_KEY_URI,
+    EVENT_EXTRA_KEY_CONNECTION_IP,
+    EVENT_EXTRA_KEY_CLIENT_ROLE,
+    EVENT_EXTRA_KEY_CLIENT_USERNAME,
+    EVENT_EXTRA_KEY_CLIENT_USERAGENT,
+    EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE,
+    EVENT_EXTRA_KEY_DUMPFILE_FILENAME,
+} event_extra_key_t;
+
+typedef struct {
+    event_extra_key_t key;
+    const char *value;
+} event_extra_entry_t;
 
 struct event_registration_tag;
 typedef struct event_registration_tag event_registration_t;
@@ -49,14 +73,14 @@ struct event_tag {
     char *trigger;
 
     /* from client */
-    char *uri; /* from context */
+    bool client_data;
     unsigned long connection_id; /* from client->con->id */
-    char *connection_ip; /* from client->con->ip */
     time_t connection_time; /* from client->con->con_time */
-    char *client_role; /* from client->role */
-    char *client_username; /* from client->username */
-    char *client_useragent; /* from httpp_getvar(client->parser, "user-agent") */
     admin_command_id_t client_admin_command; /* from client->admin_command */
+    /* extra */
+    size_t extra_size;
+    size_t extra_fill;
+    event_extra_entry_t *extra_entries;
 };
 
 struct event_registration_tag {
@@ -97,8 +121,13 @@ void event_registration_release(event_registration_t *er);
 void event_registration_push(event_registration_t **er, event_registration_t *tail);
 
 /* event signaling */
-void event_emit_clientevent(const char *trigger, client_t *client, const char *uri);
-#define event_emit_global(x) event_emit_clientevent((x), NULL, NULL)
+void event_emit_va(const char *trigger, ...);
+#define event_emit_global(event) event_emit_va((event), EVENT_EXTRA_LIST_END)
+
+/* reading extra from events */
+const char * event_extra_get(const event_t *event, const event_extra_key_t key);
+const char * event_extra_key_name(event_extra_key_t key);
+igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *renderer); /* expects renderer in list mode */
 
 /* Implementations */
 int event_get_exec(event_registration_t *er, config_options_t *options);
