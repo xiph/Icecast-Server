@@ -78,7 +78,7 @@ const char * event_extra_key_name(event_extra_key_t key)
 {
     switch (key) {
         case EVENT_EXTRA_KEY_URI: return "uri"; break;
-        case EVENT_EXTRA_KEY_CONNECTION_IP: return "connection-id"; break;
+        case EVENT_EXTRA_KEY_CONNECTION_IP: return "connection-ip"; break;
         case EVENT_EXTRA_KEY_CLIENT_ROLE: return "client-role"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
