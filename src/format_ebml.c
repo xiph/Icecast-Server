@@ -172,6 +172,7 @@ static void ebml_free_plugin(format_plugin_t *plugin);
 static refbuf_t *ebml_get_buffer(source_t *source);
 static int ebml_write_buf_to_client(client_t *client);
 static void ebml_write_buf_to_file(source_t *source, refbuf_t *refbuf);
+static void ebml_on_file_close(source_t *source);
 static int ebml_create_client_data(source_t *source, client_t *client);
 static void ebml_free_client_data(client_t *client);
 
@@ -206,6 +207,7 @@ int format_ebml_get_plugin(source_t *source)
     plugin->create_client_data = ebml_create_client_data;
     plugin->free_plugin = ebml_free_plugin;
     plugin->write_buf_to_file = ebml_write_buf_to_file;
+    plugin->on_file_close = ebml_on_file_close;
     plugin->set_tag = NULL;
     plugin->apply_settings = NULL;
 
@@ -378,6 +380,12 @@ static void ebml_write_buf_to_file (source_t *source, refbuf_t *refbuf)
     }
 
     source_write_dumpfile(source, refbuf->data, refbuf->len);
+}
+
+static void ebml_on_file_close(source_t *source)
+{
+    ebml_source_state_t *ebml_source_state = source->format->_state;
+    ebml_source_state->file_headers_written = false;
 }
 
 /* internal ebml parsing */
