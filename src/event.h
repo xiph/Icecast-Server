@@ -122,7 +122,6 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 
 /* event signaling */
 void event_emit_va(const char *trigger, ...);
-#define event_emit_clientevent(event,client,uri) event_emit_va((event), EVENT_EXTRA_KEY_URI, (uri), EVENT_EXTRA_CLIENT, (client), EVENT_EXTRA_LIST_END)
 #define event_emit_global(event) event_emit_va((event), EVENT_EXTRA_LIST_END)
 
 /* reading extra from events */
