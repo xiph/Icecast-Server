@@ -16,6 +16,7 @@ noinst_HEADERS = \
     connection_handle.h \
     global.h \
     util.h \
+    util_string.h \
     errors.h \
     curl.h \
     slave.h \
@@ -39,6 +40,7 @@ noinst_HEADERS = \
     reportxml_helper.h \
     json.h \
     xml2json.h \
+    string_renderer.h \
     listensocket.h \
     fastevent.h \
     navigation.h \
@@ -68,6 +70,7 @@ icecast_SOURCES = \
     connection_handle.c \
     global.c \
     util.c \
+    util_string.c \
     errors.c \
     slave.c \
     source.c \
@@ -90,6 +93,7 @@ icecast_SOURCES = \
     reportxml_helper.c \
     json.c \
     xml2json.c \
+    string_renderer.c \
     listensocket.c \
     fastevent.c \
     navigation.c \

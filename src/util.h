@@ -20,6 +20,7 @@
 
 #include "common/net/sock.h"
 #include "icecasttypes.h"
+#include "util_string.h" /* so not all users need to be updated yet */
 
 #define UNKNOWN_CONTENT 0
 #define XSLT_CONTENT    1
@@ -37,9 +38,6 @@ char *util_get_extension(const char *path);
 char *util_get_path_from_uri(char *uri);
 char *util_get_path_from_normalised_uri(const char *uri);
 char *util_normalise_uri(const char *uri);
-char *util_base64_encode(const char *data, size_t len);
-char *util_base64_decode(const char *input);
-char *util_bin_to_hex(unsigned char *data, int len);
 
 typedef enum _util_hostcheck_tag {
     HOSTCHECK_ERROR = -1,
@@ -57,9 +55,6 @@ int util_str_to_bool(const char *str);
 int util_str_to_loglevel(const char *str);
 int util_str_to_int(const char *str, const int default_value);
 unsigned int util_str_to_unsigned_int(const char *str, const unsigned int default_value);
-
-char *util_url_unescape(const char *src);
-char *util_url_escape(const char *src);
 
 /* Function to build up a HTTP header.
  * out is the pointer to storage.
@@ -129,8 +124,4 @@ struct tm *localtime_r(const time_t *timep, struct tm *result);
 char *util_conv_string (const char *string, const char *in_charset, const char *out_charset);
 
 int get_line(FILE *file, char *buf, size_t siz);
-
-int util_replace_string(char **dst, const char *src);
-bool util_replace_string_url_escape(char **dst, const char *src); /* returns true on success */
-int util_strtolower(char *str);
 #endif  /* __UTIL_H__ */
