@@ -290,7 +290,7 @@ igloo_error_t       string_renderer_add_kv_with_options(string_renderer_t *self,
     if (!self)
         return igloo_ERROR_FAULT;
 
-    if (!value && !allow_null_value && !self->allow_null_value) {
+    if (!value && !(allow_null_value && self->allow_null_value)) {
         return igloo_ERROR_INVAL;
     }
 
