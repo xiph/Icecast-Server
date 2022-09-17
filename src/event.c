@@ -491,6 +491,7 @@ void event_emit_va(const char *trigger, ...) {
     }
 
     if (client) {
+        event->client_data = true;
         event->connection_id = client->con->id;
         event->connection_time = client->con->con_time;
         event->client_admin_command = client->admin_command;

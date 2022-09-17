@@ -9,6 +9,8 @@
 #ifndef __EVENT_H__
 #define __EVENT_H__
 
+#include <stdbool.h>
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -68,6 +70,7 @@ struct event_tag {
     char *trigger;
 
     /* from client */
+    bool client_data;
     unsigned long connection_id; /* from client->con->id */
     time_t connection_time; /* from client->con->con_time */
     admin_command_id_t client_admin_command; /* from client->admin_command */
