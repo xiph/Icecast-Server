@@ -82,7 +82,7 @@ const char * event_extra_key_name(event_extra_key_t key)
         case EVENT_EXTRA_KEY_CLIENT_ROLE: return "client-role"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
-        case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-mediatype"; break;
+        case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-media-type"; break;
         case EVENT_EXTRA_KEY_DUMPFILE_FILENAME: return "dumpfile-filename"; break;
 #ifndef DEVEL_LOGGING
         default: break;
