@@ -1826,6 +1826,19 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     }
 #endif
 
+    if (true) {
+        /* A list of environment variables that will normally not be seen in a daemon environment. */
+        static const char * const keys[] = {"DISPLAY", "LS_COLORS", "TERM", "XDG_RUNTIME_DIR"};
+        size_t i;
+
+        for (i = 0; i < (sizeof(keys)/sizeof(*keys)); i++) {
+            if (getenv(keys[i])) {
+                __reportxml_add_maintenance(reportnode, config->reportxml_db, "dc91ce96-f473-41d1-bfff-379666306911", "info", "Environment is noisy.", NULL);
+                break;
+            }
+        }
+    }
+
     reportxml_helper_add_value_health(resource, "status", health);
 
     reportxml_node_add_child(incident, resource);
