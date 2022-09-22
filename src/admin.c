@@ -1783,6 +1783,22 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     if (config->config_problems & CONFIG_PROBLEM_VALIDATION)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "8fc33086-274d-4ccb-b32f-599b3fa0f41a", "error", "The configuration did not validate. See the error.log for details and update your configuration accordingly.", NULL);
 
+    if (config->chroot) {
+#if HAVE_CHROOT
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "1c69ae7a-af2c-4a41-81c4-163e63f7ef62", "info", "chroot configured.", NULL);
+#else
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "1a3fea5c-3352-4cb5-85cc-51ab9bd6ea83", "error", "chroot configured but not supported by operating system.", NULL);
+#endif
+    }
+
+    if(config->chuid) {
+#if HAVE_SETUID
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "95f59593-be32-4f17-9a8c-0a51e41acfbf", "info", "Change of UID/GID configured.", NULL);
+#else
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "afcaa756-b91c-4496-a9e2-44400a18789c", "error", "Change of UID/GID configured but not supported by operating system.", NULL);
+#endif
+    }
+
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);
 
