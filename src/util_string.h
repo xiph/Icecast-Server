@@ -34,4 +34,7 @@ int util_replace_string(char **dst, const char *src);
 bool util_replace_string_url_escape(char **dst, const char *src); /* returns true on success */
 int util_strtolower(char *str);
 
+/* Supports wildcards, supports negatives matches. */
+bool util_is_in_list(const char *list, const char *needle);
+
 #endif  /* __UTIL_STRING_H__ */

@@ -309,3 +309,36 @@ int util_strtolower(char *str)
 
     return 0;
 }
+
+bool util_is_in_list(const char *list, const char *needle)
+{
+    while (*list) {
+        const char *t = needle;
+        bool positive = true;
+
+        for (; *list == ','; list++);
+
+        for (; *list == '!'; list++)
+            positive = !positive;
+
+        for (; *list; list++) {
+            if (*list == ',')
+                break;
+            if (*list == '*')
+                return positive;
+
+            if (*list == *t) {
+                t++;
+            } else {
+                break;
+            }
+        }
+        if ((*list == 0 || *list == ',') && *t == 0) {
+            return positive;
+        }
+
+        for (; *list && *list != ','; list++);
+    }
+
+    return false;
+}

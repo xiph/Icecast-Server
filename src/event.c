@@ -222,7 +222,7 @@ static event_t *event_new(const char *trigger) {
 /* subsystem functions */
 static inline void _try_event(event_registration_t *er, event_t *event) {
     /* er is already locked */
-    if (strcmp(er->trigger, event->trigger) != 0)
+    if (!util_is_in_list(er->trigger, event->trigger))
         return;
 
     if (er->emit)
