@@ -1785,7 +1785,11 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 
     if (config->chroot) {
 #if HAVE_CHROOT
-        __reportxml_add_maintenance(reportnode, config->reportxml_db, "1c69ae7a-af2c-4a41-81c4-163e63f7ef62", "info", "chroot configured.", NULL);
+        if (global.chroot_succeeded) {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "6830cbf7-cd68-4c0c-ab5a-81499c70fd34", "info", "chroot configured and active.", NULL);
+        } else {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "2d584a76-e67c-4268-b7e8-139b0b9b1131", "error", "chroot configured but failed.", NULL);
+        }
 #else
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "1a3fea5c-3352-4cb5-85cc-51ab9bd6ea83", "error", "chroot configured but not supported by operating system.", NULL);
 #endif
@@ -1793,7 +1797,11 @@ static void command_dashboard           (client_t *client, source_t *source, adm
 
     if(config->chuid) {
 #if HAVE_SETUID
-        __reportxml_add_maintenance(reportnode, config->reportxml_db, "95f59593-be32-4f17-9a8c-0a51e41acfbf", "info", "Change of UID/GID configured.", NULL);
+        if (global.chuid_succeeded) {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "bab05e81-fd03-4773-9fc5-c4609883a5e3", "info", "Change of UID/GID configured and active.", NULL);
+        } else {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "4f856dd4-7aac-44b4-95b5-b6798f547603", "error", "Change of UID/GID configured but failed.", NULL);
+        }
 #else
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "afcaa756-b91c-4496-a9e2-44400a18789c", "error", "Change of UID/GID configured but not supported by operating system.", NULL);
 #endif
