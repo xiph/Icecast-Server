@@ -33,6 +33,7 @@
 
 #include "stats.h"
 #include "playlist.h"
+#include "event.h"
 #include "format.h"
 #include "format_ogg.h"
 #include "format_vorbis.h"
@@ -363,6 +364,7 @@ static refbuf_t *complete_buffer (source_t *source, refbuf_t *refbuf)
     if (ogg_info->log_metadata)
     {
         update_comments (source);
+        event_emit_va("format-metadata-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         ogg_info->log_metadata = 0;
     }
     /* listeners can start anywhere unless the codecs themselves are

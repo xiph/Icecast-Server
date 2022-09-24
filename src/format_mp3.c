@@ -32,6 +32,7 @@
 
 #include "global.h"
 #include "refbuf.h"
+#include "event.h"
 #include "source.h"
 #include "client.h"
 #include "connection.h"
@@ -189,6 +190,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
             {
                 memcpy (p, metadata+13, len);
                 logging_playlist (source->mount, p, source->listeners);
+                event_emit_va("format-metadata-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
                 stats_event_conv (source->mount, "title", p, source->format->charset);
                 stats_event_conv (source->mount, "display-title", p, source->format->charset);
                 if (update_vc)
