@@ -1783,6 +1783,30 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     if (config->config_problems & CONFIG_PROBLEM_VALIDATION)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "8fc33086-274d-4ccb-b32f-599b3fa0f41a", "error", "The configuration did not validate. See the error.log for details and update your configuration accordingly.", NULL);
 
+    if (config->chroot) {
+#if HAVE_CHROOT
+        if (global.chroot_succeeded) {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "6830cbf7-cd68-4c0c-ab5a-81499c70fd34", "info", "chroot configured and active.", NULL);
+        } else {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "2d584a76-e67c-4268-b7e8-139b0b9b1131", "error", "chroot configured but failed.", NULL);
+        }
+#else
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "1a3fea5c-3352-4cb5-85cc-51ab9bd6ea83", "error", "chroot configured but not supported by operating system.", NULL);
+#endif
+    }
+
+    if(config->chuid) {
+#if HAVE_SETUID
+        if (global.chuid_succeeded) {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "bab05e81-fd03-4773-9fc5-c4609883a5e3", "info", "Change of UID/GID configured and active.", NULL);
+        } else {
+            __reportxml_add_maintenance(reportnode, config->reportxml_db, "4f856dd4-7aac-44b4-95b5-b6798f547603", "error", "Change of UID/GID configured but failed.", NULL);
+        }
+#else
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "afcaa756-b91c-4496-a9e2-44400a18789c", "error", "Change of UID/GID configured but not supported by operating system.", NULL);
+#endif
+    }
+
     if (!has_sources)
         __reportxml_add_maintenance(reportnode, config->reportxml_db, "f68dd8a3-22b1-4118-aba6-b039f2c5b51e", "info", "Currently no sources are connected to this server.", NULL);
 
@@ -1801,6 +1825,19 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         health = health_atbest(health, limits);
     }
 #endif
+
+    if (true) {
+        /* A list of environment variables that will normally not be seen in a daemon environment. */
+        static const char * const keys[] = {"DISPLAY", "LS_COLORS", "TERM", "XDG_RUNTIME_DIR"};
+        size_t i;
+
+        for (i = 0; i < (sizeof(keys)/sizeof(*keys)); i++) {
+            if (getenv(keys[i])) {
+                __reportxml_add_maintenance(reportnode, config->reportxml_db, "dc91ce96-f473-41d1-bfff-379666306911", "info", "Environment is noisy.", NULL);
+                break;
+            }
+        }
+    }
 
     reportxml_helper_add_value_health(resource, "status", health);
 

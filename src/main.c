@@ -479,34 +479,36 @@ static void _ch_root_uid_setup(void)
    }
 #endif
 
+   /* ensure a valid initial state */
+   global.chroot_succeeded = false;
+   global.chuid_succeeded = false;
+
 #if HAVE_CHROOT
-   if (conf->chroot)
-   {
-       if(getuid()) /* root check */
-       {
+   if (conf->chroot) {
+       if (getuid()) { /* root check */
            fprintf(stderr, "WARNING: Cannot change server root unless running as root.\n");
        }
-       if(chroot(conf->base_dir) == -1 || chdir("/") == -1)
-       {
+
+       if(chroot(conf->base_dir) == -1 || chdir("/") == -1) {
            fprintf(stderr,"WARNING: Couldn't change server root: %s\n", strerror(errno));
            return;
-       }
-       else
+       } else {
            fprintf(stdout, "Changed root successfully to \"%s\".\n", conf->base_dir);
-
+           global.chroot_succeeded = true;
+       }
    }
 #endif
 
 #if HAVE_SETUID
-   if(conf->chuid)
-   {
-       if(getuid()) /* root check */
-       {
+   if(conf->chuid) {
+       if (getuid()) { /* root check */
            fprintf(stderr, "WARNING: Can't change user id unless you are root.\n");
            return;
        }
 
-       if(uid != (uid_t)-1 && gid != (gid_t)-1) {
+       if (uid != (uid_t)-1 && gid != (gid_t)-1) {
+           global.chuid_succeeded = true;
+
 #ifdef HAVE_SETRESGID
            if(!setresgid(gid, gid, gid)) {
 #else
@@ -515,11 +517,15 @@ static void _ch_root_uid_setup(void)
                fprintf(stdout, "Changed groupid to %i.\n", (int)gid);
            } else {
                fprintf(stdout, "Error changing groupid: %s.\n", strerror(errno));
+               global.chuid_succeeded = false;
            }
-           if(!initgroups(conf->user, gid))
+           if(!initgroups(conf->user, gid)) {
                fprintf(stdout, "Changed supplementary groups based on user: %s.\n", conf->user);
-           else
+           } else {
                fprintf(stdout, "Error changing supplementary groups: %s.\n", strerror(errno));
+               global.chuid_succeeded = false;
+           }
+
 #ifdef HAVE_SETRESUID
            if(!setresuid(uid, uid, uid)) {
 #else
@@ -528,6 +534,7 @@ static void _ch_root_uid_setup(void)
                fprintf(stdout, "Changed userid to %i.\n", (int)uid);
            } else {
                fprintf(stdout, "Error changing userid: %s.\n", strerror(errno));
+               global.chuid_succeeded = false;
            }
        }
    }
