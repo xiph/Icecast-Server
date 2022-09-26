@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "icecasttypes.h"
 #include <igloo/error.h>
 #include <igloo/sp.h>
 
@@ -37,6 +38,16 @@ static event_t *event_queue = NULL;
 static bool event_running = false;
 static thread_type *event_thread = NULL;
 static cond_t cond;
+
+static void event_registration_free(igloo_ro_t self);
+igloo_RO_PUBLIC_TYPE(event_registration_t, igloo_ro_full_t,
+        igloo_RO_TYPEDECL_FREE(event_registration_free)
+        );
+
+static void event_free(igloo_ro_t self);
+igloo_RO_PUBLIC_TYPE(event_t, igloo_ro_full_t,
+        igloo_RO_TYPEDECL_FREE(event_free)
+        );
 
 /* ignores errors */
 static void extra_add(event_t *event, event_extra_key_t key, const char *value)
@@ -120,15 +131,9 @@ igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *
 }
 
 /* work with event_t* */
-static void event_addref(event_t *event) {
-    if (!event)
-        return;
-    thread_mutex_lock(&event_lock);
-    event->refcount++;
-    thread_mutex_unlock(&event_lock);
-}
-
-static void event_release(event_t *event) {
+static void event_free(igloo_ro_t self)
+{
+    event_t *event = igloo_ro_to_type(self, event_t);
     size_t i;
     event_t *to_free;
 
@@ -136,14 +141,8 @@ static void event_release(event_t *event) {
         return;
 
     thread_mutex_lock(&event_lock);
-    event->refcount--;
-    if (event->refcount) {
-        thread_mutex_unlock(&event_lock);
-        return;
-    }
-
     for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++)
-        event_registration_release(event->reglist[i]);
+        igloo_ro_unref(&(event->reglist[i]));
 
     free(event->trigger);
 
@@ -152,11 +151,10 @@ static void event_release(event_t *event) {
     free(event->extra_entries);
 
     to_free = event->next;
-    free(event);
     thread_mutex_unlock(&event_lock);
 
     if (to_free)
-        event_release(to_free);
+        igloo_ro_unref(&to_free);
 }
 
 static void event_push(event_t **event, event_t *next) {
@@ -175,7 +173,7 @@ static void event_push(event_t **event, event_t *next) {
         return;
     }
 
-    *event = next;
+    igloo_ro_ref(next, event, event_t);
 
     thread_cond_broadcast(&cond);
 }
@@ -188,7 +186,7 @@ static void event_push_reglist(event_t *event, event_registration_t *reglist) {
 
     for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++) {
         if (!event->reglist[i]) {
-            event_registration_addref(event->reglist[i] = reglist);
+            igloo_ro_ref(reglist, &(event->reglist[i]), event_registration_t);
             return;
         }
     }
@@ -202,17 +200,14 @@ static event_t *event_new(const char *trigger) {
     if (!trigger)
         return NULL;
 
-    ret = calloc(1, sizeof(event_t));
-
-    if (!ret)
+    if (igloo_ro_new_raw(&ret, event_t, igloo_instance) != igloo_ERROR_NONE)
         return NULL;
 
-    ret->refcount = 1;
     ret->trigger = strdup(trigger);
     ret->client_admin_command = ADMIN_COMMAND_ERROR;
 
     if (!ret->trigger) {
-        event_release(ret);
+        igloo_ro_unref(&ret);
         return NULL;
     }
 
@@ -283,7 +278,7 @@ static void *event_run_thread (void *arg) {
         for (i = 0; i < (sizeof(event->reglist)/sizeof(*event->reglist)); i++)
             _try_registrations(event->reglist[i], event);
 
-        event_release(event);
+        igloo_ro_unref(&event);
     } while (running);
 
     return NULL;
@@ -325,7 +320,7 @@ void event_shutdown(void) {
     event_queue = NULL;
     thread_mutex_unlock(&event_lock);
 
-    event_release(event_queue_to_free);
+    igloo_ro_unref(&event_queue_to_free);
 
     thread_cond_destroy(&cond);
     /* destry mutex */
@@ -335,14 +330,12 @@ void event_shutdown(void) {
 
 /* basic functions to work with event registrations */
 event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
-    event_registration_t *ret = calloc(1, sizeof(event_registration_t));
+    event_registration_t *ret;
     config_options_t *options;
     int rv;
 
-    if(!ret)
+    if (igloo_ro_new_raw(&ret, event_registration_t, igloo_instance) != igloo_ERROR_NONE)
         return NULL;
-
-    ret->refcount = 1;
 
     /* BEFORE RELEASE 2.5.0 DOCUMENT: Document <event type="..." trigger="..."> */
     ret->type     = (char*)xmlGetProp(node, XMLSTR("type"));
@@ -350,7 +343,7 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
 
     if (!ret->type || !ret->trigger) {
         ICECAST_LOG_ERROR("Event node isn't complete. Type or Trigger missing.");
-        event_registration_release(ret);
+        igloo_ro_unref(&ret);
         return NULL;
     }
 
@@ -371,34 +364,21 @@ event_registration_t * event_new_from_xml_node(xmlNodePtr node) {
 
     if (rv != 0) {
         ICECAST_LOG_ERROR("Can not set up event backend %s for trigger %s", ret->type, ret->trigger);
-        event_registration_release(ret);
+        igloo_ro_unref(&ret);
         return NULL;
     }
 
     return ret;
 }
 
-void event_registration_addref(event_registration_t * er) {
-    if(!er)
-        return;
-    thread_mutex_lock(&er->lock);
-    er->refcount++;
-    thread_mutex_unlock(&er->lock);
-}
+static void event_registration_free(igloo_ro_t self)
+{
+    event_registration_t *er = igloo_ro_to_type(self, event_registration_t);
 
-void event_registration_release(event_registration_t *er) {
-    if(!er)
-        return;
     thread_mutex_lock(&er->lock);
-    er->refcount--;
-
-    if (er->refcount) {
-        thread_mutex_unlock(&er->lock);
-        return;
-    }
 
     if (er->next)
-        event_registration_release(er->next);
+        igloo_ro_unref(&(er->next));
 
     xmlFree(er->type);
     xmlFree(er->trigger);
@@ -408,7 +388,6 @@ void event_registration_release(event_registration_t *er) {
 
     thread_mutex_unlock(&er->lock);
     thread_mutex_destroy(&er->lock);
-    free(er);
 }
 
 void event_registration_push(event_registration_t **er, event_registration_t *tail) {
@@ -418,33 +397,33 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
         return;
 
     if (!*er) {
-        event_registration_addref(*er = tail);
+        igloo_ro_ref(tail, er, event_registration_t);
         return;
     }
 
-    event_registration_addref(cur = *er);
+    igloo_ro_ref(*er, &cur, event_registration_t);
     thread_mutex_lock(&cur->lock);
     while (1) {
-        next = cur->next;
         if (!cur->next)
             break;
 
-        event_registration_addref(next);
+        if (igloo_ro_ref(cur->next, &next, event_registration_t) != igloo_ERROR_NONE)
+            break;
+
         thread_mutex_unlock(&cur->lock);
-        event_registration_release(cur);
+        igloo_ro_unref(&cur);
         cur = next;
         thread_mutex_lock(&cur->lock);
     }
 
-    event_registration_addref(cur->next = tail);
+    igloo_ro_ref(tail, &(cur->next), event_registration_t);
     thread_mutex_unlock(&cur->lock);
-    event_registration_release(cur);
+    igloo_ro_unref(&cur);
 }
 
 /* event signaling */
 void event_emit(event_t *event) {
     fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
-    event_addref(event);
     thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
     thread_mutex_unlock(&event_lock);
@@ -505,7 +484,7 @@ void event_emit_va(const char *trigger, ...) {
 #ifndef FASTEVENT_ENABLED
     if (event->reglist[0] == NULL) {
         /* we have no registrations, drop this event. */
-        event_release(event);
+        igloo_ro_unref(&event);
         return;
     }
 #endif
@@ -548,5 +527,5 @@ void event_emit_va(const char *trigger, ...) {
     }
 
     event_emit(event);
-    event_release(event);
+    igloo_ro_unref(&event);
 }
