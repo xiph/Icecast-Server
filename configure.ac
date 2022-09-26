@@ -144,7 +144,7 @@ dnl
 dnl linigloo
 dnl
 PKG_CHECK_MODULES([LIBIGLOO], [igloo >= 0.9.1], [], [
-  AC_MSG_ERROR([${LIBIGLOO_PKG_ERRORS}. libigloo (v0.9.0 or newer) is required.])
+  AC_MSG_ERROR([${LIBIGLOO_PKG_ERRORS}. libigloo (v0.9.1 or newer) is required.])
 ])
 
 CFLAGS="${CFLAGS} ${LIBIGLOO_CFLAGS}"
