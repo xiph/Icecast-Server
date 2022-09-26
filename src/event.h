@@ -15,11 +15,12 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "icecasttypes.h"
 #include <igloo/error.h>
+#include <igloo/typedef.h>
+#include <igloo/ro.h>
 
 #include "common/thread/thread.h"
-
-#include "icecasttypes.h"
 
 /* implemented */
 #define EVENT_TYPE_LOG  "log"
@@ -49,17 +50,14 @@ typedef struct {
     const char *value;
 } event_extra_entry_t;
 
-struct event_registration_tag;
-typedef struct event_registration_tag event_registration_t;
+igloo_RO_FORWARD_TYPE(event_t);
+igloo_RO_FORWARD_TYPE(event_registration_t);
 
-struct event_tag;
-typedef struct event_tag event_t;
 /* this has no lock member to protect multiple accesses as every non-readonly access is within event.c
  * and is protected by global lock or on the same thread anyway.
  */
 struct event_tag {
-    /* refernece counter */
-    size_t refcount;
+    igloo_ro_full_t __parent;
     /* reference to next element in chain */
     event_t *next;
 
@@ -84,8 +82,8 @@ struct event_tag {
 };
 
 struct event_registration_tag {
-    /* refernece counter */
-    size_t refcount;
+    igloo_ro_full_t __parent;
+
     /* reference to next element in chain */
     event_registration_t *next;
 
@@ -116,8 +114,6 @@ void event_shutdown(void);
 /* basic functions to work with event registrations */
 event_registration_t * event_new_from_xml_node(xmlNodePtr node);
 
-void event_registration_addref(event_registration_t *er);
-void event_registration_release(event_registration_t *er);
 void event_registration_push(event_registration_t **er, event_registration_t *tail);
 
 /* event signaling */
