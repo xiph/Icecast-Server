@@ -139,6 +139,11 @@ typedef struct mount_identifier_tag mount_identifier_t;
 
 typedef struct string_renderer_tag string_renderer_t;
 
+/* ---[ event.[ch] ]--- */
+
+typedef struct event_tag event_t;
+typedef struct event_registration_tag event_registration_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -162,6 +167,8 @@ typedef void * refobject_t;
 /* --- [ For libigloo ]--- */
 #define igloo_RO_APPTYPES \
     igloo_RO_TYPE(string_renderer_t) \
+    igloo_RO_TYPE(event_t) \
+    igloo_RO_TYPE(event_registration_t) \
     igloo_RO_TYPE(module_t) \
     igloo_RO_TYPE(module_container_t)
 

@@ -34,6 +34,9 @@
 
 #include "common/thread/thread.h"
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+
 #include "cfgfile.h"
 #include "global.h"
 #include "logging.h"
@@ -728,7 +731,7 @@ static void __append_old_style_exec_event(event_registration_t **list,
 
     er = event_new_from_xml_node(exec);
     event_registration_push(list, er);
-    event_registration_release(er);
+    igloo_ro_unref(&er);
 
     xmlFreeNode(exec);
 }
@@ -755,7 +758,7 @@ static void __append_old_style_url_event(event_registration_t   **list,
 
     er = event_new_from_xml_node(exec);
     event_registration_push(list, er);
-    event_registration_release(er);
+    igloo_ro_unref(&er);
 
     xmlFreeNode(exec);
 }
@@ -832,7 +835,7 @@ static void config_clear_mount(mount_proxy *mount)
     if (mount->cluster_password)    xmlFree(mount->cluster_password);
     if (mount->authstack)           auth_stack_release(mount->authstack);
 
-    event_registration_release(mount->event);
+    igloo_ro_unref(&(mount->event));
     config_clear_http_header(mount->http_headers);
     free(mount);
 }
@@ -932,7 +935,7 @@ void config_clear(ice_config_t *c)
     if (c->tls_context.key_file)        xmlFree(c->tls_context.key_file);
     if (c->tls_context.cipher_list)     xmlFree(c->tls_context.cipher_list);
 
-    event_registration_release(c->event);
+    igloo_ro_unref(&(c->event));
 
     while ((c->listen_sock = config_clear_listener(c->listen_sock)));
 
@@ -2935,7 +2938,7 @@ static void _parse_events(event_registration_t **events, xmlNodePtr node)
         if (xmlStrcmp(node->name, XMLSTR("event")) == 0) {
             event_registration_t *reg = event_new_from_xml_node(node);
             event_registration_push(events, reg);
-            event_registration_release(reg);
+            igloo_ro_unref(&reg);
         }
         node = node->next;
     }
