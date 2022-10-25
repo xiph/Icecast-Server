@@ -638,7 +638,7 @@ static bool source_open_dumpfile(source_t *source)
     }
 
     if (!source->format->write_buf_to_file) {
-        ICECAST_LOG_WARN("Can not open dump file for source %#H. format does not support dumping.", source->mount);
+        ICECAST_LOG_WARN("Can not open dump file for source %#H. Format does not support dumping.", source->mount);
         event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         return false;
     }
