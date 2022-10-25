@@ -276,6 +276,23 @@ static fallback_override_t config_str_to_fallback_override_t(ice_config_t *confi
     }
 }
 
+static interpolation_t config_str_to_interpolation_t(ice_config_t *configuration, xmlNodePtr node, const char *str)
+{
+    if (!str || !*str || strcmp(str, "default") == 0) {
+        return INTERPOLATION_DEFAULT;
+    } else if (strcasecmp(str, "none") == 0) {
+        return INTERPOLATION_NONE;
+    } else if (strcasecmp(str, "strftime") == 0) {
+        return INTERPOLATION_STRFTIME;
+    } else if (strcasecmp(str, "uuid") == 0) {
+        return INTERPOLATION_UUID;
+    } else {
+        __found_bad_tag(configuration, node, BTR_INVALID, str);
+        ICECAST_LOG_ERROR("Unknown interpolation type \"%s\", falling back to DEFAULT.", str);
+        return INTERPOLATION_DEFAULT;
+    }
+}
+
 char * config_href_to_id(ice_config_t *configuration, xmlNodePtr node, const char *href)
 {
     if (!href || !*href)
@@ -1748,8 +1765,13 @@ static void _parse_mount(xmlDocPtr      doc,
             password = (char *)xmlNodeListGetString(doc,
                 node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("dump-file")) == 0) {
+            xmlChar * interpolation = xmlGetProp(node, XMLSTR("interpolation"));
+            if (interpolation) {
+                mount->dumpfile_interpolation = config_str_to_interpolation_t(configuration, node, (const char *)interpolation);
+                xmlFree(interpolation);
+            }
             mount->dumpfile = (char *)xmlNodeListGetString(doc,
-                node->xmlChildrenNode, 1);
+                    node->xmlChildrenNode, 1);
         } else if (xmlStrcmp(node->name, XMLSTR("dump-file-size-limit")) == 0) {
             unsigned int val = mount->dumpfile_size_limit;
             __read_unsigned_int(configuration, doc, node, &val, 0, UINT_MAX);
@@ -3020,6 +3042,8 @@ static void merge_mounts(mount_proxy * dst, mount_proxy * src)
 
     if (!dst->dumpfile)
         dst->dumpfile = (char*)xmlStrdup((xmlChar*)src->dumpfile);
+    if (dst->dumpfile_interpolation == INTERPOLATION_DEFAULT)
+        dst->dumpfile_interpolation = src->dumpfile_interpolation;
     if (!dst->dumpfile_size_limit)
         dst->dumpfile_size_limit = src->dumpfile_size_limit;
     if (!dst->dumpfile_time_limit)

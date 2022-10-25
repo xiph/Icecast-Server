@@ -73,6 +73,7 @@ struct source_tag {
     /* Dumpfile related data */
     /* Config */
     char *dumpfilename; /* Name of a file to dump incoming stream to */
+    interpolation_t dumpfile_interpolation;
     uint64_t dumpfile_size_limit;
     unsigned int dumpfile_time_limit;
     /* Runtime */
