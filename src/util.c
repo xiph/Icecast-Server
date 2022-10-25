@@ -39,6 +39,9 @@
 #include <windows.h>
 #endif
 
+#include <igloo/uuid.h>
+#include <igloo/error.h> /* for igloo_ERROR_NONE */
+
 #include "common/net/sock.h"
 #include "common/thread/thread.h"
 
@@ -53,6 +56,7 @@
 #include "auth.h"
 #include "acl.h"
 #include "listensocket.h"
+#include "global.h" /* for igloo_instance */
 
 #define CATMODULE "util"
 
@@ -1270,4 +1274,83 @@ int get_line(FILE *file, char *buf, size_t siz)
         return 1;
     }
     return 0;
+}
+
+bool util_interpolation_uuid(char * buffer, size_t bufferlen, const char *in)
+{
+    char *random_uuid = NULL;
+
+    if (!buffer || bufferlen < 1 || !in)
+        return false;
+
+    for (; *in; in++) {
+        if (*in == '%') {
+            in++;
+            switch (*in) {
+                case '%':
+                    if (!bufferlen) {
+                        free(random_uuid);
+                        return false;
+                    }
+
+                    *buffer++ = *in;
+                    bufferlen--;
+                    break;
+                case 'r':
+                case 'g':
+                    if (true) {
+                        const char *str;
+                        size_t len;
+
+                        switch (*in) {
+                            case 'r':
+                                if (!random_uuid) {
+                                    if (igloo_uuid_new_random_cstr(&random_uuid, igloo_instance) != igloo_ERROR_NONE) {
+                                        return false;
+                                    }
+                                }
+                                str = random_uuid;
+                                break;
+                            case 'g':
+                                str = global_instance_uuid();
+                                break;
+                            default:
+                                free(random_uuid);
+                                return false;
+                        }
+
+                        len = strlen(str);
+
+                        if (bufferlen <= len) {
+                            free(random_uuid);
+                            return false;
+                        }
+
+                        memcpy(buffer, str, len);
+                        buffer += len;
+                        bufferlen -= len;
+                    }
+                    break;
+                default:
+                    free(random_uuid);
+                    return false;
+            }
+        } else {
+            if (!bufferlen) {
+                free(random_uuid);
+                return false;
+            }
+
+            *buffer++ = *in;
+            bufferlen--;
+        }
+    }
+
+    free(random_uuid);
+
+    if (bufferlen) {
+        *buffer = 0;
+        return true;
+    }
+    return false;
 }

@@ -79,6 +79,13 @@ typedef enum {
     FALLBACK_OVERRIDE_OWN
 } fallback_override_t;
 
+typedef enum {
+    INTERPOLATION_DEFAULT = 0,
+    INTERPOLATION_NONE,
+    INTERPOLATION_STRFTIME,
+    INTERPOLATION_UUID
+} interpolation_t;
+
 typedef struct _mount_proxy {
     /* The mountpoint this proxy is used for */
     char *mountname;
@@ -88,6 +95,7 @@ typedef struct _mount_proxy {
      * NULL to not dump.
      */
     char *dumpfile;
+    interpolation_t dumpfile_interpolation;
     uint64_t dumpfile_size_limit;
     unsigned int dumpfile_time_limit;
     /* Send contents of file to client before the stream */

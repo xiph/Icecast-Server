@@ -634,12 +634,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 static bool source_open_dumpfile(source_t *source)
 {
     const char *filename = source->dumpfilename;
+    interpolation_t interpolation = source->dumpfile_interpolation;
     time_t curtime = time(NULL);
-#ifndef _WIN32
-    /* some of the below functions seems not to be standard winapi functions */
     char buffer[PATH_MAX];
-    struct tm *loctime;
-#endif
 
     if (!filename) {
         ICECAST_LOG_WARN("Can not open dump file for source %#H. No filename defined.", source->mount);
@@ -661,13 +658,46 @@ static bool source_open_dumpfile(source_t *source)
 
     ICECAST_LOG_DDEBUG("source=%p{.mount=%#H, .burst_point=%p, .stream_data=%p, .stream_data_tail=%p, ...}", source, source->mount, source->burst_point, source->stream_data, source->stream_data_tail);
 
+    if (interpolation == INTERPOLATION_DEFAULT) {
 #ifndef _WIN32
-    /* Convert it to local time representation. */
-    loctime = localtime(&curtime);
-
-    strftime(buffer, sizeof(buffer), filename, loctime);
-    filename = buffer;
+        interpolation = INTERPOLATION_STRFTIME;
+#else
+        interpolation = INTERPOLATION_NONE;
 #endif
+    }
+
+    switch (interpolation) {
+        case INTERPOLATION_NONE:
+            /* no-op */
+            break;
+        case INTERPOLATION_STRFTIME:
+#ifndef _WIN32
+            {
+                /* some of the below functions seems not to be standard winapi functions */
+                struct tm *loctime;
+
+                /* Convert it to local time representation. */
+                loctime = localtime(&curtime);
+
+                strftime(buffer, sizeof(buffer), filename, loctime);
+                filename = buffer;
+            }
+#else
+            ICECAST_LOG_ERROR("Can not interpolation dump file filename for source %#H. strftime() interpolation is not supported by your operating system.", source->mount);
+#endif
+            break;
+        case INTERPOLATION_UUID:
+            if (!util_interpolation_uuid(buffer, sizeof(buffer), filename)) {
+                ICECAST_LOG_WARN("Can not open dump file for source %#H. Filename does not interpolate.", source->mount);
+                event_emit_va("dumpfile-error", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
+                return false;
+            }
+            filename = buffer;
+            break;
+        default:
+            ICECAST_LOG_ERROR("Bug. Bad interpolation %i. Source %p on %#H.", (int)interpolation, source, source->mount);
+            break;
+    }
 
     source->dumpfile = fopen(filename, "ab");
 
@@ -1258,11 +1288,13 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     }
 
     if (mountinfo) {
-        source->dumpfile_size_limit = mountinfo->dumpfile_size_limit;
-        source->dumpfile_time_limit = mountinfo->dumpfile_time_limit;
+        source->dumpfile_size_limit    = mountinfo->dumpfile_size_limit;
+        source->dumpfile_time_limit    = mountinfo->dumpfile_time_limit;
+        source->dumpfile_interpolation = mountinfo->dumpfile_interpolation;
     } else {
-        source->dumpfile_size_limit = 0;
-        source->dumpfile_time_limit = 0;
+        source->dumpfile_size_limit    = 0;
+        source->dumpfile_time_limit    = 0;
+        source->dumpfile_interpolation = INTERPOLATION_DEFAULT;
     }
 
 
