@@ -618,9 +618,9 @@ static void send_to_listener (source_t *source, client_t *client, int deletion_e
 static bool source_open_dumpfile(source_t *source)
 {
     const char *filename = source->dumpfilename;
+    time_t curtime = time(NULL);
 #ifndef _WIN32
     /* some of the below functions seems not to be standard winapi functions */
-    time_t curtime = time(NULL);
     char buffer[PATH_MAX];
     struct tm *loctime;
 #endif
