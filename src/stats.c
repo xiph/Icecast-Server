@@ -442,16 +442,15 @@ static void modify_node_event(stats_node_t *node, stats_event_t *event)
 {
     char *str;
 
-    if (event->action == STATS_EVENT_HIDDEN)
-    {
+    if (event->action == STATS_EVENT_HIDDEN) {
         if (event->value)
             node->hidden = 1;
         else
             node->hidden = 0;
         return;
     }
-    if (event->action != STATS_EVENT_SET)
-    {
+
+    if (event->action != STATS_EVENT_SET) {
         int64_t value = 0;
 
         switch (event->action)
@@ -472,19 +471,20 @@ static void modify_node_event(stats_node_t *node, stats_event_t *event)
                 ICECAST_LOG_WARN("unhandled event (%d) for %s", event->action, event->source);
                 break;
         }
-        str = malloc (16);
-        snprintf (str, 16, "%" PRId64, value);
+        str = malloc(16);
+        snprintf(str, 16, "%" PRId64, value);
         if (event->value == NULL)
-            event->value = strdup (str);
+            event->value = strdup(str);
+    } else {
+        str = (char *)strdup(event->value);
     }
-    else
-        str = (char *)strdup (event->value);
-    free (node->value);
+    free(node->value);
     node->value = str;
-    if (event->source)
+    if (event->source) {
         ICECAST_LOG_DEBUG("update \"%s\" %s (%s)", event->source, node->name, node->value);
-    else
+    } else {
         ICECAST_LOG_DEBUG("update global %s (%s)", node->name, node->value);
+    }
 }
 
 
@@ -538,16 +538,14 @@ static void process_source_event (stats_event_t *event)
 
         avl_insert(_stats.source_tree, (void *) snode);
     }
-    if (event->name)
-    {
+
+    if (event->name) {
         stats_node_t *node = _find_node(snode->stats_tree, event->name);
-        if (node == NULL)
-        {
+        if (node == NULL) {
             if (event->action == STATS_EVENT_REMOVE)
                 return;
             /* adding node */
-            if (event->value)
-            {
+            if (event->value) {
                 ICECAST_LOG_DEBUG("new node %s (%s)", event->name, event->value);
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
                 node->name = (char *)strdup(event->name);
@@ -558,33 +556,35 @@ static void process_source_event (stats_event_t *event)
             }
             return;
         }
-        if (event->action == STATS_EVENT_REMOVE)
-        {
+
+        if (event->action == STATS_EVENT_REMOVE) {
             ICECAST_LOG_DEBUG("delete node %s", event->name);
             avl_delete(snode->stats_tree, (void *)node, _free_stats);
             return;
         }
-        modify_node_event (node, event);
+        modify_node_event(node, event);
         return;
     }
-    if (event->action == STATS_EVENT_HIDDEN)
-    {
+
+    if (event->action == STATS_EVENT_HIDDEN) {
         avl_node *node = avl_get_first (snode->stats_tree);
 
-        if (event->value)
+        if (event->value) {
             snode->hidden = 1;
-        else
+        } else {
             snode->hidden = 0;
-        while (node)
-        {
+        }
+
+        while (node) {
             stats_node_t *stats = (stats_node_t*)node->key;
             stats->hidden = snode->hidden;
-            node = avl_get_next (node);
+            node = avl_get_next(node);
         }
+
         return;
     }
-    if (event->action == STATS_EVENT_REMOVE)
-    {
+
+    if (event->action == STATS_EVENT_REMOVE) {
         ICECAST_LOG_DEBUG("delete source node %s", event->source);
         avl_delete(_stats.source_tree, (void *)snode, _free_source_stats);
     }
@@ -634,7 +634,7 @@ static inline void __format_time(char * buffer, size_t len, const char * format)
 
     snprintf(tzbuffer, sizeof(tzbuffer), "%c%.2d%.2d", sign, time_tz / 60, time_tz % 60);
 #endif
-    strftime (timebuffer, sizeof(timebuffer), format, &local);
+    strftime(timebuffer, sizeof(timebuffer), format, &local);
 
     snprintf(buffer, len, "%s%s", timebuffer, tzbuffer);
 }
@@ -644,7 +644,7 @@ void stats_event_time (const char *mount, const char *name)
     char buffer[256];
 
     __format_time(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S ");
-    stats_event (mount, name, buffer);
+    stats_event(mount, name, buffer);
 }
 
 
@@ -653,16 +653,16 @@ void stats_event_time_iso8601 (const char *mount, const char *name)
     char buffer[256];
 
     __format_time(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S");
-    stats_event (mount, name, buffer);
+    stats_event(mount, name, buffer);
 }
 
 
 void stats_global (ice_config_t *config)
 {
-    stats_event (NULL, "server_id", config->server_id);
-    stats_event (NULL, "host", config->hostname);
-    stats_event (NULL, "location", config->location);
-    stats_event (NULL, "admin", config->admin);
+    stats_event(NULL, "server_id", config->server_id);
+    stats_event(NULL, "host", config->hostname);
+    stats_event(NULL, "location", config->location);
+    stats_event(NULL, "admin", config->admin);
 }
 
 
@@ -674,23 +674,23 @@ static void *_stats_thread(void *arg)
 
     (void)arg;
 
-    stats_event_time (NULL, "server_start");
-    stats_event_time_iso8601 (NULL, "server_start_iso8601");
+    stats_event_time(NULL, "server_start");
+    stats_event_time_iso8601(NULL, "server_start_iso8601");
 
     /* global currently active stats */
-    stats_event (NULL, "clients", "0");
-    stats_event (NULL, "connections", "0");
-    stats_event (NULL, "sources", "0");
-    stats_event (NULL, "stats", "0");
-    stats_event (NULL, "listeners", "0");
+    stats_event(NULL, "clients", "0");
+    stats_event(NULL, "connections", "0");
+    stats_event(NULL, "sources", "0");
+    stats_event(NULL, "stats", "0");
+    stats_event(NULL, "listeners", "0");
 
     /* global accumulating stats */
-    stats_event (NULL, "client_connections", "0");
-    stats_event (NULL, "source_client_connections", "0");
-    stats_event (NULL, "source_relay_connections", "0");
-    stats_event (NULL, "source_total_connections", "0");
-    stats_event (NULL, "stats_connections", "0");
-    stats_event (NULL, "listener_connections", "0");
+    stats_event(NULL, "client_connections", "0");
+    stats_event(NULL, "source_client_connections", "0");
+    stats_event(NULL, "source_relay_connections", "0");
+    stats_event(NULL, "source_total_connections", "0");
+    stats_event(NULL, "stats_connections", "0");
+    stats_event(NULL, "listener_connections", "0");
 
     ICECAST_LOG_INFO("stats thread started");
     while (1) {
@@ -715,9 +715,9 @@ static void *_stats_thread(void *arg)
 
             /* check if we are dealing with a global or source event */
             if (event->source == NULL)
-                process_global_event (event);
+                process_global_event(event);
             else
-                process_source_event (event);
+                process_source_event(event);
 
             /* now we have an event that's been processed into the running stats */
             /* this event should get copied to event listeners' queues */
