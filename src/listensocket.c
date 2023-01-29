@@ -726,6 +726,16 @@ static int listensocket_refsock(listensocket_t *self, bool prefer_inet6)
         return -1;
     }
 
+#ifndef HAVE_POLL
+    if (self->sock >= FD_SETSIZE) {
+        sock_close(self->sock);
+        self->sock = SOCK_ERROR;
+        thread_mutex_unlock(&self->lock);
+        ICECAST_LOG_ERROR("Can not listen on socket: %s port %i: System filehandle set overflow", __string_default(self->listener->bind_address, "<ANY>"), self->listener->port);
+        return -1;
+    }
+#endif
+
     if (__socket_listen(self->sock, self->listener) == 0) {
         sock_close(self->sock);
         self->sock = SOCK_ERROR;
