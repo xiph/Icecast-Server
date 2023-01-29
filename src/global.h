@@ -61,4 +61,6 @@ void global_shutdown(void);
 void global_lock(void);
 void global_unlock(void);
 
+const char * global_instance_uuid(void);
+
 #endif  /* __GLOBAL_H__ */

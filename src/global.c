@@ -20,6 +20,9 @@
 
 #include "icecasttypes.h"
 #include <igloo/ro.h>
+#include <igloo/uuid.h>
+#include <igloo/sp.h>
+#include <igloo/error.h>
 
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
@@ -32,6 +35,8 @@ ice_global_t global;
 igloo_ro_t   igloo_instance = igloo_RO_NULL;
 
 static mutex_t _global_mutex;
+
+static const char * _instance_uuid = NULL;
 
 void global_initialize(void)
 {
@@ -47,6 +52,7 @@ void global_shutdown(void)
     thread_mutex_destroy(&_global_mutex);
     igloo_ro_unref(&global.modulecontainer);
     avl_tree_free(global.source_tree, NULL);
+    igloo_sp_unref(&_instance_uuid, igloo_instance);
 }
 
 void global_lock(void)
@@ -57,4 +63,16 @@ void global_lock(void)
 void global_unlock(void)
 {
     thread_mutex_unlock(&_global_mutex);
+}
+
+const char * global_instance_uuid(void)
+{
+    if (_instance_uuid)
+        return _instance_uuid;
+
+    if (igloo_uuid_new_random_sp(&_instance_uuid, igloo_instance) != igloo_ERROR_NONE) {
+        return NULL;
+    }
+
+    return _instance_uuid;
 }

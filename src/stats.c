@@ -663,6 +663,7 @@ void stats_global (ice_config_t *config)
     stats_event(NULL, "host", config->hostname);
     stats_event(NULL, "location", config->location);
     stats_event(NULL, "admin", config->admin);
+    stats_event(NULL, "instance_uuid", global_instance_uuid());
 }
 
 
