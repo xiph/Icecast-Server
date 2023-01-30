@@ -49,6 +49,9 @@ struct source_tag {
     char *mount; // TODO: Should we at some point migrate away from this to only use identifier?
     mount_identifier_t *identifier;
 
+    /* Instance UUID for this source. Will be different every time a source is connected. */
+    const char *instance_uuid;
+
     /* If this source drops, try to move all clients to this fallback */
     char *fallback_mount;
 
