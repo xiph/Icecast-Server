@@ -39,6 +39,10 @@
 #define snprintf _snprintf
 #endif
 
+#include <igloo/uuid.h>
+#include <igloo/sp.h>
+#include <igloo/error.h>
+
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
 #include "common/httpp/httpp.h"
@@ -100,6 +104,12 @@ source_t *source_reserve (const char *mount)
         if (src == NULL)
             break;
 
+        if (igloo_uuid_new_random_sp(&src->instance_uuid, igloo_instance) != igloo_ERROR_NONE) {
+            free(src);
+            src = NULL;
+            break;
+        }
+
         src->client_tree = avl_tree_new(client_compare, NULL);
         src->pending_tree = avl_tree_new(client_compare, NULL);
         src->history = playlist_new(10 /* DOCUMENT: default is max_tracks=10. */);
@@ -116,6 +126,11 @@ source_t *source_reserve (const char *mount)
     } while (0);
 
     avl_tree_unlock(global.source_tree);
+
+    if (src) {
+        stats_event(mount, "instance_uuid", src->instance_uuid);
+    }
+
     return src;
 }
 
@@ -331,6 +346,7 @@ void source_free_source (source_t *source)
     yp_remove (source->mount);
 
     refobject_unref(source->identifier);
+    igloo_sp_unref(&source->instance_uuid, igloo_instance);
     free (source->mount);
     free (source);
 
