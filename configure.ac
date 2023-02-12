@@ -226,6 +226,26 @@ PKG_HAVE_WITH_MODULES([OPENSSL], [openssl >= 1.1.0], [
   LIBS="${LIBS} ${OPENSSL_LIBS}"
 ])
 
+dnl
+dnl librhash - first try pkgconfig and then basic search
+dnl since the function is defined in rhash.h we need to check for that first,
+dnl before we can check for the function, bit crude but seems to work.
+dnl
+
+PKG_CHECK_MODULES([LIBRHASH], [librhash], [
+  CFLAGS="${CFLAGS} ${LIBRHASH_CFLAGS}"
+  LIBS="${LIBS} ${LIBRHASH_LIBS}"
+], [
+    AC_CHECK_HEADER([rhash.h], [
+      AC_CHECK_LIB(rhash, rhash_library_init, [], [
+        AC_MSG_ERROR([${LIBRHASH_PKG_ERRORS}. librhash is required.])
+      ])
+    ], [
+      AC_MSG_ERROR([${LIBRHASH_PKG_ERRORS}. librhash is required.])
+    ])
+])
+
+
 dnl Check for library-specific functions
 AC_CHECK_FUNCS([xsltSaveResultToString])
 
