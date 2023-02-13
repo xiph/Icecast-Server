@@ -69,14 +69,14 @@ static void htpasswd_clear(auth_t *self)
 
 
 /* md5 hash */
-static char *get_hash(const char *data, int len)
+static char *get_hash(const char *data)
 {
     struct MD5Context context;
     unsigned char digest[16];
 
     MD5Init(&context);
 
-    MD5Update(&context, (const unsigned char *)data, len);
+    MD5Update(&context, (const unsigned char *)data, strlen(data));
 
     MD5Final(digest, &context);
 
@@ -203,7 +203,7 @@ static auth_result htpasswd_auth (auth_client *auth_user)
         char *hashed_pw;
 
         thread_rwlock_unlock (&htpasswd->file_rwlock);
-        hashed_pw = get_hash (client->password, strlen (client->password));
+        hashed_pw = get_hash(client->password);
         if (strcmp (found->pass, hashed_pw) == 0) {
             free (hashed_pw);
             return AUTH_OK;
@@ -291,7 +291,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
         return AUTH_FAILED;
     }
 
-    hashed_password = get_hash(password, strlen(password));
+    hashed_password = get_hash(password);
     if (hashed_password) {
         fprintf(passwdfile, "%s:%s\n", username, hashed_password);
         free(hashed_password);
