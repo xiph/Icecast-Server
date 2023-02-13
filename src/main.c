@@ -62,6 +62,8 @@
 #include <pwd.h>
 #endif
 
+#include <rhash.h>
+
 #include "main.h"
 #include "cfgfile.h"
 #include "util.h"
@@ -603,6 +605,11 @@ int main(int argc, char **argv)
         _fatal_error("FATAL: Can not initialize libigloo.");
         return 1;
     }
+
+    /* likely libigloo already did this for us, however how should we know?
+     * Still/Only required for htpasswd MD5 support.
+     */
+    rhash_library_init();
 
     /* parse the '-c icecast.xml' option
     ** only, so that we can read a configfile

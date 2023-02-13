@@ -15,13 +15,12 @@
 
 #include "compat.h"
 
+#include <rhash.h>
+
 #define HASH_LEN     16
 
-struct MD5Context
-{       
-    uint32_t     buf[4];
-    uint32_t     bits[2];
-    unsigned char in[64];
+struct MD5Context {
+    rhash rhash;
 };
 
 void MD5Init(struct MD5Context *context);

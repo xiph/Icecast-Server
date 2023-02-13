@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <rhash.h>
+
 #include <igloo/tap.h>
 
 #include "../md5.h"
@@ -70,6 +72,9 @@ int main (void)
 {
     igloo_tap_init();
     igloo_tap_exit_on(igloo_TAP_EXIT_ON_FIN, NULL);
+
+    rhash_library_init();
+
     igloo_tap_group_run("md5 vectors", test_md5);
     igloo_tap_fin();
 
