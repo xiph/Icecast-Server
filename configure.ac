@@ -122,6 +122,15 @@ AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([ftime])
 AC_CHECK_FUNCS([getrlimit])
 
+dnl check for crypt():
+AC_CHECK_FUNCS([crypt_r], [], [
+  AC_CHECK_LIB(crypt, crypt_r, [], [
+    AC_CHECK_FUNCS([crypt], [], [
+      AC_CHECK_LIB(crypt, crypt)
+    ])
+  ])
+])
+
 dnl Do not check for poll on Darwin, it is broken in some versions
 AS_IF([test "${SYS}" != "darwin"], [
   AC_CHECK_FUNCS([poll])
