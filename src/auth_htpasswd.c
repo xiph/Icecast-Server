@@ -31,7 +31,7 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "common/httpp/httpp.h"
-#include "md5.h"
+#include "util_crypt.h"
 
 #include "logging.h"
 #define CATMODULE "auth_htpasswd"
@@ -65,22 +65,6 @@ static void htpasswd_clear(auth_t *self)
         avl_tree_free (state->users, _free_user);
     thread_rwlock_destroy(&state->file_rwlock);
     free(state);
-}
-
-
-/* md5 hash */
-static char *get_hash(const char *data)
-{
-    struct MD5Context context;
-    unsigned char digest[16];
-
-    MD5Init(&context);
-
-    MD5Update(&context, (const unsigned char *)data, strlen(data));
-
-    MD5Final(digest, &context);
-
-    return util_bin_to_hex(digest, 16);
 }
 
 
@@ -200,15 +184,11 @@ static auth_result htpasswd_auth (auth_client *auth_user)
     entry.name = client->username;
     if (avl_get_by_key (htpasswd->users, &entry, &result) == 0) {
         htpasswd_user *found = result;
-        char *hashed_pw;
 
         thread_rwlock_unlock (&htpasswd->file_rwlock);
-        hashed_pw = get_hash(client->password);
-        if (strcmp (found->pass, hashed_pw) == 0) {
-            free (hashed_pw);
+        if (util_crypt_check(client->password, found->pass)) {
             return AUTH_OK;
         }
-        free (hashed_pw);
         ICECAST_LOG_DEBUG("incorrect password for client with username: %s", client->username);
         return AUTH_FAILED;
     }
@@ -291,7 +271,7 @@ static auth_result htpasswd_adduser (auth_t *auth, const char *username, const c
         return AUTH_FAILED;
     }
 
-    hashed_password = get_hash(password);
+    hashed_password = util_crypt_hash(password);
     if (hashed_password) {
         fprintf(passwdfile, "%s:%s\n", username, hashed_password);
         free(hashed_password);

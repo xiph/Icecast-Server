@@ -17,27 +17,18 @@
 
 #include <igloo/tap.h>
 
-#include "../md5.h"
-#include "../util_string.h"
+#include "../util_crypt.h"
 
 void test_md5_hash(const char *in, const char *expect, bool positive)
 {
-    struct MD5Context context;
-    unsigned char digest[16];
-    char *out;
-
-    MD5Init(&context);
-
-    MD5Update(&context, (const unsigned char *)in, strlen(in));
-
-    MD5Final(digest, &context);
-
-    out = util_bin_to_hex(digest, 16);
+    char *out = util_crypt_hash(in);
 
     if (positive) {
         igloo_tap_test("md5 positive vector", strcmp(out, expect) == 0);
+        igloo_tap_test("md5 positive match", util_crypt_check(in, expect));
     } else {
         igloo_tap_test("md5 negative vector", strcmp(out, expect) != 0);
+        igloo_tap_test("md5 negative match", !util_crypt_check(in, expect));
     }
 
     free(out);

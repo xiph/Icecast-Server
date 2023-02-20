@@ -36,7 +36,7 @@ check_PROGRAMS += ctest_string_renderer.test
 ctest_crypt_test_SOURCES = tests/ctest_crypt.c
 ctest_crypt_test_LDADD = \
     icecast-util_string.o \
-    icecast-md5.o
+    icecast-util_crypt.o
 check_PROGRAMS += ctest_crypt.test
 
 # Add all programs to TESTS
