@@ -2043,8 +2043,14 @@ static void command_version             (client_t *client, source_t *source, adm
     global_unlock();
 
     reportxml_helper_add_value_flag(rflags, "crypt-1", util_crypt_is_supported("$1$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-3", util_crypt_is_supported("$3$"));
     reportxml_helper_add_value_flag(rflags, "crypt-5", util_crypt_is_supported("$5$"));
     reportxml_helper_add_value_flag(rflags, "crypt-6", util_crypt_is_supported("$6$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-7", util_crypt_is_supported("$7$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-md5", util_crypt_is_supported("$md5$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-sha1", util_crypt_is_supported("$sha1$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-y", util_crypt_is_supported("$y$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-gy", util_crypt_is_supported("$gy$"));
 
     refobject_unref(config);
     refobject_unref(dependencies);
