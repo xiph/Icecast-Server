@@ -100,6 +100,7 @@ AC_CHECK_HEADERS([sys/timeb.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
 AC_CHECK_HEADERS([sys/resource.h])
+AC_CHECK_HEADERS([crypt.h])
 
 AC_C_BIGENDIAN
 
@@ -123,11 +124,11 @@ AC_CHECK_FUNCS([ftime])
 AC_CHECK_FUNCS([getrlimit])
 
 dnl check for crypt():
-AC_CHECK_FUNCS([crypt_r], [], [
-  AC_CHECK_LIB(crypt, crypt_r, [], [
-    AC_CHECK_FUNCS([crypt], [], [
-      AC_CHECK_LIB(crypt, crypt)
-    ])
+AC_SEARCH_LIBS([crypt_r], [crypt], [
+    AC_DEFINE([HAVE_CRYPT_R], [1], [Define if you have crypt_r])
+  ], [
+  AC_SEARCH_LIBS([crypt], [crypt], [
+    AC_DEFINE([HAVE_CRYPT], [1], [Define if you have crypt])
   ])
 ])
 
