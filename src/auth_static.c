@@ -16,11 +16,13 @@
 
 /* for strcmp() and strdup() */
 #include <string.h>
+#include <stdbool.h>
 
 #include "auth.h"
 #include "cfgfile.h"
 #include "client.h"
 #include "util.h"
+#include "util_crypt.h"
 
 #include "logging.h"
 #define CATMODULE "auth_static"
@@ -30,6 +32,7 @@ typedef struct auth_static {
     char *password;
     auth_alter_t action;
     char *arg;
+    bool is_hashed;
 } auth_static_t;
 
 static auth_result static_auth(auth_client *auth_user)
@@ -48,8 +51,13 @@ static auth_result static_auth(auth_client *auth_user)
     if (!client->password)
         return AUTH_NOMATCH;
 
-    if (strcmp(auth_info->password, client->password) != 0)
-        return AUTH_FAILED;
+    if (auth_info->is_hashed) {
+        if (!util_crypt_check(client->password, auth_info->password))
+            return AUTH_FAILED;
+    } else {
+        if (strcmp(auth_info->password, client->password) != 0)
+            return AUTH_FAILED;
+    }
 
 
     if (auth_info->action != AUTH_ALTER_NOOP) {
@@ -118,6 +126,8 @@ int  auth_get_static_auth (auth_t *authenticator, config_options_t *options)
             if (auth_info->password)
                 free(auth_info->password);
             auth_info->password = strdup(options->value);
+        } else if (strcmp(options->name, "hashed") == 0) {
+            auth_info->is_hashed = util_str_to_bool(options->value);
         } else if (strcmp(options->name, "action") == 0) {
             auth_info->action = auth_str2alter(options->value);
             if (auth_info->action == AUTH_ALTER_NOOP) {

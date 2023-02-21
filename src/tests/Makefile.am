@@ -33,5 +33,11 @@ ctest_string_renderer_test_LDADD = \
     icecast-string_renderer.o
 check_PROGRAMS += ctest_string_renderer.test
 
+ctest_crypt_test_SOURCES = tests/ctest_crypt.c
+ctest_crypt_test_LDADD = \
+    icecast-util_string.o \
+    icecast-util_crypt.o
+check_PROGRAMS += ctest_crypt.test
+
 # Add all programs to TESTS
 TESTS = $(check_PROGRAMS)

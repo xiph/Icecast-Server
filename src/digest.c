@@ -17,7 +17,6 @@
 #include <stdlib.h>
 
 #include "digest.h"
-#include "md5.h"
 
 #include "logging.h"
 #define CATMODULE "digest"
@@ -32,7 +31,6 @@ struct digest_tag {
     /* state */
     int done;
     union {
-        struct MD5Context md5;
         struct {
             /* 1600 bits algorithm hashing state */
             uint64_t hash[25];
@@ -328,9 +326,6 @@ const char *digest_algo_id2str(digest_algo_t algo)
 {
     switch (algo) {
 
-        case DIGEST_ALGO_MD5:
-            return "MD5";
-        break;
         case DIGEST_ALGO_SHA3_224:
             return "SHA3-224";
         break;
@@ -350,9 +345,6 @@ const char *digest_algo_id2str(digest_algo_t algo)
 ssize_t     digest_algo_length_bytes(digest_algo_t algo)
 {
     switch (algo) {
-        case DIGEST_ALGO_MD5:
-            return 16;
-        break;
         case DIGEST_ALGO_SHA3_224:
             return 224/8;
         break;
@@ -379,9 +371,6 @@ digest_t * digest_new(digest_algo_t algo)
 
     digest->algo = algo;
     switch (algo) {
-        case DIGEST_ALGO_MD5:
-            MD5Init(&(digest->state.md5));
-        break;
         case DIGEST_ALGO_SHA3_224:
             sha3_init(digest, 224);
         break;
@@ -427,10 +416,6 @@ ssize_t digest_write(digest_t *digest, const void *data, size_t len)
         return -1;
 
     switch (digest->algo) {
-        case DIGEST_ALGO_MD5:
-            MD5Update(&(digest->state.md5), (const unsigned char *)data, len);
-            return len;
-        break;
         case DIGEST_ALGO_SHA3_224:
         case DIGEST_ALGO_SHA3_256:
         case DIGEST_ALGO_SHA3_384:
@@ -455,17 +440,6 @@ ssize_t digest_read(digest_t *digest, void *buf, size_t len)
     digest->done = 1;
 
     switch (digest->algo) {
-        case DIGEST_ALGO_MD5:
-            if (len < HASH_LEN) {
-                unsigned char buffer[HASH_LEN];
-                MD5Final(buffer, &(digest->state.md5));
-                memcpy(buf, buffer, len);
-                return len;
-            } else {
-                MD5Final((unsigned char*)buf, &(digest->state.md5));
-                return HASH_LEN;
-            }
-        break;
         case DIGEST_ALGO_SHA3_224:
         case DIGEST_ALGO_SHA3_256:
         case DIGEST_ALGO_SHA3_384:
@@ -490,7 +464,6 @@ ssize_t digest_length_bytes(digest_t *digest)
 static size_t __digest_algo_blocklength(digest_algo_t algo)
 {
     switch (algo) {
-        case DIGEST_ALGO_MD5: return 64; break;
         case DIGEST_ALGO_SHA3_224: return 144; break;
         case DIGEST_ALGO_SHA3_256: return 136; break;
         case DIGEST_ALGO_SHA3_384: return 104; break;

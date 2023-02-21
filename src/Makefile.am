@@ -17,6 +17,7 @@ noinst_HEADERS = \
     global.h \
     util.h \
     util_string.h \
+    util_crypt.h \
     errors.h \
     curl.h \
     slave.h \
@@ -29,7 +30,6 @@ noinst_HEADERS = \
     fserve.h \
     xslt.h \
     yp.h \
-    md5.h \
     digest.h \
     prng.h \
     matchfile.h \
@@ -71,6 +71,7 @@ icecast_SOURCES = \
     global.c \
     util.c \
     util_string.c \
+    util_crypt.c \
     errors.c \
     slave.c \
     source.c \
@@ -82,7 +83,6 @@ icecast_SOURCES = \
     fserve.c \
     admin.c \
     resourcematch.c \
-    md5.c \
     digest.c \
     prng.c \
     matchfile.c \

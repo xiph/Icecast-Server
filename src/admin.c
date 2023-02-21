@@ -80,6 +80,7 @@
 #include "reportxml.h"
 #include "reportxml_helper.h"
 #include "xml2json.h"
+#include "util_crypt.h"
 
 #include "format.h"
 
@@ -1839,6 +1840,10 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         }
     }
 
+    if (!util_crypt_is_new_secure()) {
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "40d134e3-fbbe-46b1-a409-9b2ca8954528", "warning", "No secure password hash support detected.", NULL);
+    }
+
     reportxml_helper_add_value_health(resource, "status", health);
 
     reportxml_node_add_child(incident, resource);
@@ -1921,6 +1926,12 @@ static void command_version             (client_t *client, source_t *source, adm
 #endif
 #ifdef HAVE_GETADDRINFO
         "getaddrinfo",
+#endif
+#ifdef HAVE_CRYPT
+        "crypt",
+#endif
+#ifdef HAVE_CRYPT_R
+        "crypt_r",
 #endif
 #ifdef WIN32
         "win32",
@@ -2034,6 +2045,16 @@ static void command_version             (client_t *client, source_t *source, adm
     reportxml_helper_add_value_flag(rflags, "bound-inet4", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET4));
     reportxml_helper_add_value_flag(rflags, "bound-inet6", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET6));
     global_unlock();
+
+    reportxml_helper_add_value_flag(rflags, "crypt-1", util_crypt_is_supported("$1$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-3", util_crypt_is_supported("$3$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-5", util_crypt_is_supported("$5$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-6", util_crypt_is_supported("$6$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-7", util_crypt_is_supported("$7$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-md5", util_crypt_is_supported("$md5$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-sha1", util_crypt_is_supported("$sha1$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-y", util_crypt_is_supported("$y$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-gy", util_crypt_is_supported("$gy$"));
 
     refobject_unref(config);
     refobject_unref(dependencies);

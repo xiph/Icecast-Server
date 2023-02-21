@@ -100,6 +100,7 @@ AC_CHECK_HEADERS([sys/timeb.h])
 AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
 AC_CHECK_HEADERS([sys/resource.h])
+AC_CHECK_HEADERS([crypt.h])
 
 AC_C_BIGENDIAN
 
@@ -121,6 +122,15 @@ AC_CHECK_FUNCS([localtime_r])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([ftime])
 AC_CHECK_FUNCS([getrlimit])
+
+dnl check for crypt():
+AC_SEARCH_LIBS([crypt_r], [crypt], [
+    AC_DEFINE([HAVE_CRYPT_R], [1], [Define if you have crypt_r])
+  ], [
+  AC_SEARCH_LIBS([crypt], [crypt], [
+    AC_DEFINE([HAVE_CRYPT], [1], [Define if you have crypt])
+  ])
+])
 
 dnl Do not check for poll on Darwin, it is broken in some versions
 AS_IF([test "${SYS}" != "darwin"], [
@@ -225,6 +235,26 @@ PKG_HAVE_WITH_MODULES([OPENSSL], [openssl >= 1.1.0], [
   CFLAGS="${CFLAGS} ${OPENSSL_CFLAGS}"
   LIBS="${LIBS} ${OPENSSL_LIBS}"
 ])
+
+dnl
+dnl librhash - first try pkgconfig and then basic search
+dnl since the function is defined in rhash.h we need to check for that first,
+dnl before we can check for the function, bit crude but seems to work.
+dnl
+
+PKG_CHECK_MODULES([LIBRHASH], [librhash], [
+  CFLAGS="${CFLAGS} ${LIBRHASH_CFLAGS}"
+  LIBS="${LIBS} ${LIBRHASH_LIBS}"
+], [
+    AC_CHECK_HEADER([rhash.h], [
+      AC_CHECK_LIB(rhash, rhash_library_init, [], [
+        AC_MSG_ERROR([${LIBRHASH_PKG_ERRORS}. librhash is required.])
+      ])
+    ], [
+      AC_MSG_ERROR([${LIBRHASH_PKG_ERRORS}. librhash is required.])
+    ])
+])
+
 
 dnl Check for library-specific functions
 AC_CHECK_FUNCS([xsltSaveResultToString])
