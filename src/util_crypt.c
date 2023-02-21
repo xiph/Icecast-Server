@@ -21,10 +21,13 @@
 #include <crypt.h>
 #endif
 
-#if !defined(HAVE_CRYPT_R) && defined(HAVE_CRYPT) && defined(HAVE_PTHREAD)
+#if (defined(HAVE_CRYPT_R) || defined(HAVE_CRYPT)) && defined(HAVE_PTHREAD)
 #include <pthread.h>
 #endif
 
+#include <igloo/prng.h>
+
+#include "global.h"
 #include "util_crypt.h"
 #include "util_string.h"
 
@@ -34,7 +37,29 @@
 static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-char * util_crypt_hash(const char *pw)
+#if (defined(HAVE_CRYPT_R) || defined(HAVE_CRYPT)) && HAVE_PTHREAD
+static pthread_once_t crypt_detect = PTHREAD_ONCE_INIT;
+static const char *new_prefix;
+static size_t new_saltlen;
+
+void crypt_detect_run(void)
+{
+    static const struct {
+        const char prefix[4];
+        const size_t saltlen;
+    } list[] = {{"$6$", 12}, {"$5$", 12}, {"$1$", 6}};
+
+    for (size_t i = 0; i < (sizeof(list)/sizeof(*list)); i++) {
+        if (util_crypt_is_supported(list[i].prefix)) {
+            new_prefix = list[i].prefix;
+            new_saltlen = list[i].saltlen;
+            return;
+        }
+    }
+}
+#endif
+
+char * util_crypt_hash_oldstyle(const char *pw)
 {
     unsigned char digest[HASH_LEN];
 
@@ -42,6 +67,61 @@ char * util_crypt_hash(const char *pw)
         return NULL;
 
     return util_bin_to_hex(digest, HASH_LEN);
+}
+
+char * util_crypt_hash(const char *pw)
+{
+#if (defined(HAVE_CRYPT_R) || defined(HAVE_CRYPT)) && HAVE_PTHREAD
+    if (pthread_once(&crypt_detect, crypt_detect_run) != 0)
+        return NULL;
+
+    if (new_prefix) {
+        char input[128];
+        char salt[64];
+        char *salt_base64;
+        ssize_t len;
+#ifdef HAVE_CRYPT_R
+        struct crypt_data data;
+#elif defined(HAVE_CRYPT) && defined(HAVE_PTHREAD)
+        char *data;
+#endif
+
+        /* if this is true, we have a bug */
+        if (new_saltlen > sizeof(salt))
+            return NULL;
+
+        len = igloo_prng_read(igloo_instance, salt, new_saltlen, igloo_PRNG_FLAG_NONE);
+        if (len != (ssize_t)new_saltlen)
+            return NULL;
+
+        salt_base64 = util_base64_encode(salt, new_saltlen);
+        if (!salt_base64)
+            return NULL;
+
+        snprintf(input, sizeof(input), "%s%s", new_prefix, salt_base64);
+
+        free(salt_base64);
+
+#ifdef HAVE_CRYPT_R
+        memset(&data, 0, sizeof(data));
+
+        return strdup(crypt_r(pw, input, &data));
+#elif defined(HAVE_CRYPT) && defined(HAVE_PTHREAD)
+        if (pthread_mutex_lock(&crypt_mutex) != 0)
+            return NULL;
+
+        data = strdup(crypt(pw, input));
+        pthread_mutex_unlock(&crypt_mutex);
+        return data;
+#else
+#error "BUG"
+#endif
+    } else {
+#endif
+        return util_crypt_hash_oldstyle(pw);
+#if (defined(HAVE_CRYPT_R) || defined(HAVE_CRYPT)) && HAVE_PTHREAD
+    }
+#endif
 }
 
 bool   util_crypt_check(const char *plain, const char *crypted)
@@ -58,7 +138,7 @@ bool   util_crypt_check(const char *plain, const char *crypted)
     /* below here we know that plain and crypted are non-null and that crypted is at least one byte long */
 
     if (len == (HASH_LEN*2) && crypted[0] != '$') {
-        char *digest = util_crypt_hash(plain);
+        char *digest = util_crypt_hash_oldstyle(plain);
         bool res;
 
         if (!digest)

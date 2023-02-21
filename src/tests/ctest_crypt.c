@@ -16,12 +16,16 @@
 #include <rhash.h>
 
 #include <igloo/tap.h>
+#include <igloo/ro.h>
 
 #include "../util_crypt.h"
 
+/* Workaround: Avoiding the need to add global.c */
+igloo_ro_t   igloo_instance = igloo_RO_NULL;
+
 void test_md5_hash(const char *in, const char *expect, bool positive)
 {
-    char *out = util_crypt_hash(in);
+    char *out = util_crypt_hash_oldstyle(in);
 
     if (positive) {
         igloo_tap_test("md5 positive vector", strcmp(out, expect) == 0);
