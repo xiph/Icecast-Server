@@ -13,5 +13,6 @@
 
 char * util_crypt_hash(const char *pw);
 bool   util_crypt_check(const char *plain, const char *crypted);
+bool   util_crypt_is_supported(const char *prefix);
 
 #endif  /* __UTIL_CRYPT_H__ */

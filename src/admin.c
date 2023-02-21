@@ -80,6 +80,7 @@
 #include "reportxml.h"
 #include "reportxml_helper.h"
 #include "xml2json.h"
+#include "util_crypt.h"
 
 #include "format.h"
 
@@ -1922,6 +1923,12 @@ static void command_version             (client_t *client, source_t *source, adm
 #ifdef HAVE_GETADDRINFO
         "getaddrinfo",
 #endif
+#ifdef HAVE_CRYPT
+        "crypt",
+#endif
+#ifdef HAVE_CRYPT_R
+        "crypt_r",
+#endif
 #ifdef WIN32
         "win32",
 #endif
@@ -2034,6 +2041,10 @@ static void command_version             (client_t *client, source_t *source, adm
     reportxml_helper_add_value_flag(rflags, "bound-inet4", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET4));
     reportxml_helper_add_value_flag(rflags, "bound-inet6", listensocket_container_is_family_included(global.listensockets, SOCK_FAMILY_INET6));
     global_unlock();
+
+    reportxml_helper_add_value_flag(rflags, "crypt-1", util_crypt_is_supported("$1$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-5", util_crypt_is_supported("$5$"));
+    reportxml_helper_add_value_flag(rflags, "crypt-6", util_crypt_is_supported("$6$"));
 
     refobject_unref(config);
     refobject_unref(dependencies);

@@ -95,3 +95,38 @@ bool   util_crypt_check(const char *plain, const char *crypted)
 
     return false;
 }
+
+bool   util_crypt_is_supported(const char *prefix)
+{
+    static const struct {
+        const char *plain;
+        const char *crypted;
+        const bool expected;
+    } vectors[] = {
+        {"abc", "$1$xxxxxxxx$3GbMJKRcRFz50R9Q96xFb.", true},
+        {"abX", "$1$xxxxxxxx$3GbMJKRcRFz50R9Q96xFb.", false},
+        {"abc", "$1$xxxxxxxx$3GbMJKRcRFz50R9Q96xFbY", false},
+        {"abX", "$1$xxxxxxxx$3GbMJKRcRFz50R9Q96xFbY", false},
+        {"abc", "$5$xxxxxxxxxxxxxxxx$zNpAueQbvBleD3aSz0KwnySLaHSedk8ULXPvT1m7DUC", true},
+        {"abX", "$5$xxxxxxxxxxxxxxxx$zNpAueQbvBleD3aSz0KwnySLaHSedk8ULXPvT1m7DUC", false},
+        {"abc", "$5$xxxxxxxxxxxxxxxx$zNpAueQbvBleD3aSz0KwnySLaHSedk8ULXPvT1m7DUY", false},
+        {"abX", "$5$xxxxxxxxxxxxxxxx$zNpAueQbvBleD3aSz0KwnySLaHSedk8ULXPvT1m7DUY", false},
+        {"abc", "$6$xxxxxxxxxxxxxxxx$yNfBmH1zabagyi9HZwRuCgebrSjfr1zXUE6pFhnTG1BcvINxhgU53sjSUJDnQ5s6FPq8NSIntrpmc5ox87wX5.", true},
+        {"abX", "$6$xxxxxxxxxxxxxxxx$yNfBmH1zabagyi9HZwRuCgebrSjfr1zXUE6pFhnTG1BcvINxhgU53sjSUJDnQ5s6FPq8NSIntrpmc5ox87wX5.", false},
+        {"abc", "$6$xxxxxxxxxxxxxxxx$yNfBmH1zabagyi9HZwRuCgebrSjfr1zXUE6pFhnTG1BcvINxhgU53sjSUJDnQ5s6FPq8NSIntrpmc5ox87wX5Y", false},
+        {"abX", "$6$xxxxxxxxxxxxxxxx$yNfBmH1zabagyi9HZwRuCgebrSjfr1zXUE6pFhnTG1BcvINxhgU53sjSUJDnQ5s6FPq8NSIntrpmc5ox87wX5Y", false}
+    };
+    size_t prefixlen = strlen(prefix);
+    bool supported = false;
+
+    for (size_t i = 0; i < (sizeof(vectors)/sizeof(*vectors)); i++) {
+        if (strncmp(vectors[i].crypted, prefix, prefixlen) == 0) {
+            bool res = util_crypt_check(vectors[i].plain, vectors[i].crypted);
+            if (res != vectors[i].expected)
+                return false;
+            supported = true;
+        }
+    }
+
+    return supported;
+}
