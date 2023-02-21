@@ -1840,6 +1840,10 @@ static void command_dashboard           (client_t *client, source_t *source, adm
         }
     }
 
+    if (!util_crypt_is_new_secure()) {
+        __reportxml_add_maintenance(reportnode, config->reportxml_db, "40d134e3-fbbe-46b1-a409-9b2ca8954528", "warning", "No secure password hash support detected.", NULL);
+    }
+
     reportxml_helper_add_value_health(resource, "status", health);
 
     reportxml_node_add_child(incident, resource);

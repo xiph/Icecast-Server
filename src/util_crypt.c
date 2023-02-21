@@ -38,21 +38,23 @@ static pthread_mutex_t crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 #if (defined(HAVE_CRYPT_R) || defined(HAVE_CRYPT)) && HAVE_PTHREAD
+struct algo {
+    const char prefix[4];
+    const size_t saltlen;
+    const bool secure;
+};
+
 static pthread_once_t crypt_detect = PTHREAD_ONCE_INIT;
-static const char *new_prefix;
-static size_t new_saltlen;
+static const struct algo *new_algo;
+#define HAVE_new_algo
 
 void crypt_detect_run(void)
 {
-    static const struct {
-        const char prefix[4];
-        const size_t saltlen;
-    } list[] = {{"$6$", 12}, {"$5$", 12}, {"$1$", 6}};
+    static const struct algo list[] = {{"$6$", 12, true}, {"$5$", 12, true}, {"$1$", 6, false}};
 
     for (size_t i = 0; i < (sizeof(list)/sizeof(*list)); i++) {
         if (util_crypt_is_supported(list[i].prefix)) {
-            new_prefix = list[i].prefix;
-            new_saltlen = list[i].saltlen;
+            new_algo = &(list[i]);
             return;
         }
     }
@@ -75,7 +77,7 @@ char * util_crypt_hash(const char *pw)
     if (pthread_once(&crypt_detect, crypt_detect_run) != 0)
         return NULL;
 
-    if (new_prefix) {
+    if (new_algo) {
         char input[128];
         char salt[64];
         char *salt_base64;
@@ -87,18 +89,18 @@ char * util_crypt_hash(const char *pw)
 #endif
 
         /* if this is true, we have a bug */
-        if (new_saltlen > sizeof(salt))
+        if (new_algo->saltlen > sizeof(salt))
             return NULL;
 
-        len = igloo_prng_read(igloo_instance, salt, new_saltlen, igloo_PRNG_FLAG_NONE);
-        if (len != (ssize_t)new_saltlen)
+        len = igloo_prng_read(igloo_instance, salt, new_algo->saltlen, igloo_PRNG_FLAG_NONE);
+        if (len != (ssize_t)new_algo->saltlen)
             return NULL;
 
-        salt_base64 = util_base64_encode(salt, new_saltlen);
+        salt_base64 = util_base64_encode(salt, new_algo->saltlen);
         if (!salt_base64)
             return NULL;
 
-        snprintf(input, sizeof(input), "%s%s", new_prefix, salt_base64);
+        snprintf(input, sizeof(input), "%s%s", new_algo->prefix, salt_base64);
 
         free(salt_base64);
 
@@ -233,4 +235,16 @@ bool   util_crypt_is_supported(const char *prefix)
     }
 
     return supported;
+}
+
+bool   util_crypt_is_new_secure(void)
+{
+#ifdef HAVE_new_algo
+    if (pthread_once(&crypt_detect, crypt_detect_run) != 0)
+        return NULL;
+
+    return new_algo->secure;
+#else
+    return false;
+#endif
 }
