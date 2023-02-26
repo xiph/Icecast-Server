@@ -9,4 +9,7 @@
 #ifndef __PING_H__
 #define __PING_H__
 
+void ping_initialize(void);
+void ping_shutdown(void);
+
 #endif  /* __PING_H__ */
