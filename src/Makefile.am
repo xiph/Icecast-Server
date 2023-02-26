@@ -112,7 +112,6 @@ icecast_SOURCES = \
     event.c \
     event_log.c \
     event_exec.c \
-    ping.c \
     acl.c \
     auth.c \
     auth_htpasswd.c \
@@ -123,6 +122,7 @@ icecast_SOURCES = \
 if HAVE_CURL
 icecast_SOURCES += \
     curl.c \
+    ping.c \
     auth_url.c \
     event_url.c
 endif
@@ -145,6 +145,7 @@ endif
 
 EXTRA_icecast_SOURCES = \
     curl.c \
+    ping.c \
     yp.c \
     auth_url.c \
     event_url.c \
