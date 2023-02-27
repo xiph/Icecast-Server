@@ -19,7 +19,7 @@
 
 #include "global.h"  /* for igloo_instance */
 #include "string_renderer.h"
-#include "curl.h"
+#include "ping.h"
 #include "event.h"
 #include "cfgfile.h"
 #include "util.h"
@@ -33,21 +33,7 @@ typedef struct event_url {
     char *action;
     char *username;
     char *password;
-    CURL *handle;
-    char errormsg[CURL_ERROR_SIZE];
 } event_url_t;
-
-static size_t handle_returned (void *ptr, size_t size, size_t nmemb, void *stream) {
-    (void)ptr, (void)stream;
-    return size * nmemb;
-}
-
-static inline char *__escape(const char *src, const char *default_value) {
-    if (src)
-        return util_url_escape(src);
-
-    return strdup(default_value);
-}
 
 static int event_url_emit(void *state, event_t *event) {
     event_url_t *self = state;
@@ -93,19 +79,7 @@ static int event_url_emit(void *state, event_t *event) {
 
     string_renderer_end_list(renderer);
 
-
-    if (strchr(self->url, '@') == NULL && self->username && self->password) {
-        curl_easy_setopt(self->handle, CURLOPT_USERNAME, self->username);
-        curl_easy_setopt(self->handle, CURLOPT_PASSWORD, self->password);
-    } else {
-        curl_easy_setopt(self->handle, CURLOPT_USERPWD, "");
-    }
-
-    curl_easy_setopt(self->handle, CURLOPT_URL, self->url);
-    curl_easy_setopt(self->handle, CURLOPT_POSTFIELDS, string_renderer_to_string_zero_copy(renderer));
-
-    if (curl_easy_perform(self->handle))
-        ICECAST_LOG_WARN("auth to server %s failed with %s", self->url, self->errormsg);
+    ping_simple(self->url, self->username, self->password, string_renderer_to_string_zero_copy(renderer));
 
     igloo_ro_unref(&renderer);
 
@@ -114,7 +88,6 @@ static int event_url_emit(void *state, event_t *event) {
 
 static void event_url_free(void *state) {
     event_url_t *self = state;
-    icecast_curl_free(self->handle);
     free(self->url);
     free(self->action);
     free(self->username);
@@ -158,16 +131,11 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
         } while ((options = options->next));
     }
 
-    self->handle = icecast_curl_new(NULL, NULL);
-
     /* check if we are in sane state */
-    if (!self->url || !self->handle) {
+    if (!self->url) {
         event_url_free(self);
         return -1;
     }
-
-    curl_easy_setopt(self->handle, CURLOPT_HEADERFUNCTION, handle_returned);
-    curl_easy_setopt(self->handle, CURLOPT_ERRORBUFFER, self->errormsg);
 
     er->state = self;
     er->emit = event_url_emit;

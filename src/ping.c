@@ -13,6 +13,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "thread/thread.h"
 
@@ -103,7 +104,7 @@ static void ping_add_to_queue(ping_queue_t *entry)
     thread_mutex_unlock(&ping_mutex);
 }
 
-void ping_simple(const char *url)
+void ping_simple(const char *url, const char *username, const char *password, const char *data)
 {
     ping_queue_t *entry = calloc(1, sizeof(*entry));
 
@@ -115,6 +116,16 @@ void ping_simple(const char *url)
         free(entry);
         return;
     }
+
+    if (strchr(url, '@') == NULL) {
+        if (username)
+            curl_easy_setopt(entry->curl, CURLOPT_USERNAME, username);
+        if (password)
+            curl_easy_setopt(entry->curl, CURLOPT_PASSWORD, password);
+    }
+
+    if (data)
+        curl_easy_setopt(entry->curl, CURLOPT_COPYPOSTFIELDS, data);
 
     ping_add_to_queue(entry);
 }

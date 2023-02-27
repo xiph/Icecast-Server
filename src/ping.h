@@ -12,6 +12,6 @@
 void ping_initialize(void);
 void ping_shutdown(void);
 
-void ping_simple(const char *url);
+void ping_simple(const char *url, const char *username, const char *password, const char *data);
 
 #endif  /* __PING_H__ */
