@@ -34,6 +34,7 @@ static bool          ping_running = false;
 static thread_type  *ping_thread_id;
 static mutex_t       ping_mutex;
 static ping_queue_t *ping_queue;
+static cond_t        ping_cond;
 
 static void on_done(ping_queue_t *entry)
 {
@@ -68,7 +69,9 @@ static void *ping_thread(void *arg)
             break;
 
         if (!status) {
-            thread_sleep(100000);
+            if (!ping_running)
+                break;
+            thread_cond_wait(&ping_cond);
             continue;
         }
 
@@ -102,6 +105,7 @@ static void ping_add_to_queue(ping_queue_t *entry)
     entry->next = ping_queue;
     ping_queue = entry;
     thread_mutex_unlock(&ping_mutex);
+    thread_cond_broadcast(&ping_cond);
 }
 
 void ping_simple(const char *url, const char *username, const char *password, const char *data)
@@ -136,6 +140,7 @@ void ping_initialize(void)
         return;
 
     thread_mutex_create(&ping_mutex);
+    thread_cond_create(&ping_cond);
 
     ping_running = true;
     ping_thread_id = thread_create("Ping Thread", ping_thread, NULL, THREAD_ATTACHED);
@@ -148,7 +153,9 @@ void ping_shutdown(void)
 
     ping_running = false;
     ICECAST_LOG_DEBUG("Waiting for ping thread");
+    thread_cond_broadcast(&ping_cond);
     thread_join(ping_thread_id);
     thread_mutex_destroy(&ping_mutex);
+    thread_cond_destroy(&ping_cond);
     ICECAST_LOG_DEBUG("Joined ping thread, good job!");
 }
