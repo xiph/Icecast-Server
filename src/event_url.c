@@ -88,6 +88,8 @@ static int event_url_emit(void *state, event_t *event) {
     }
     config_release_config();
 
+    string_renderer_add_kv_with_options(renderer, "server-instance", global_instance_uuid(), STRING_RENDERER_ENCODING_PLAIN, false, false);
+
     string_renderer_end_list(renderer);
 
 

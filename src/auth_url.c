@@ -73,6 +73,7 @@
 #include "source.h"
 #include "client.h"
 #include "cfgfile.h"
+#include "global.h"
 #include "connection.h"
 #include "common/httpp/httpp.h"
 
@@ -334,7 +335,8 @@ static auth_result url_remove_client(auth_client *auth_user)
     char           *username,
                    *password,
                    *mount,
-                   *server;
+                   *server,
+                   *server_instance;
     const char     *mountreq;
     ice_config_t   *config;
     int             port;
@@ -352,6 +354,7 @@ static auth_result url_remove_client(auth_client *auth_user)
     server = util_url_escape(config->hostname);
     port = config->port;
     config_release_config();
+    server_instance = util_url_escape(global_instance_uuid());
 
     agent = httpp_getvar(client->parser, "user-agent");
     if (agent) {
@@ -380,12 +383,13 @@ static auth_result url_remove_client(auth_client *auth_user)
     ipaddr = util_url_escape(client->con->ip);
 
     ret = snprintf(post, sizeof(post),
-            "action=%s&server=%s&port=%d&client=%lu&mount=%s"
+            "action=%s&server=%s&port=%d&server-instance=%s&client=%lu&mount=%s"
             "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
             url->removeaction, /* already escaped */
-            server, port, client->con->id, mount, username,
+            server, port, server_instance, client->con->id, mount, username,
             password, (long unsigned)duration, ipaddr, user_agent);
 
+    free(server_instance);
     free(server);
     free(mount);
     free(username);
@@ -448,7 +452,8 @@ static auth_result url_add_client(auth_client *auth_user)
     const char     *mountreq;
     char           *mount,
                    *ipaddr,
-                   *server;
+                   *server,
+                   *server_instance;
     ice_config_t   *config;
     char           *userpwd    = NULL, post [4096];
     ssize_t         post_offset;
@@ -465,6 +470,7 @@ static auth_result url_add_client(auth_client *auth_user)
     server = util_url_escape(config->hostname);
     port = config->port;
     config_release_config();
+    server_instance = util_url_escape(global_instance_uuid());
 
     agent = httpp_getvar(client->parser, "user-agent");
     if (agent) {
@@ -493,12 +499,13 @@ static auth_result url_add_client(auth_client *auth_user)
     ipaddr = util_url_escape(client->con->ip);
 
     post_offset = snprintf(post, sizeof (post),
-            "action=%s&server=%s&port=%d&client=%lu&mount=%s"
+            "action=%s&server=%s&port=%d&server-instance=%s&client=%lu&mount=%s"
             "&user=%s&pass=%s&ip=%s&agent=%s",
             url->addaction, /* already escaped */
-            server, port, client->con->id, mount, username,
+            server, port, server_instance, client->con->id, mount, username,
             password, ipaddr, user_agent);
 
+    free(server_instance);
     free(server);
     free(mount);
     free(user_agent);
