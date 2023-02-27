@@ -12,4 +12,6 @@
 void ping_initialize(void);
 void ping_shutdown(void);
 
+void ping_simple(const char *url);
+
 #endif  /* __PING_H__ */
