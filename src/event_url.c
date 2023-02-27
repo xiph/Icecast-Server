@@ -31,7 +31,8 @@ typedef struct event_url {
     bool legacy;
     char *url;
     char *action;
-    char *userpwd;
+    char *username;
+    char *password;
     CURL *handle;
     char errormsg[CURL_ERROR_SIZE];
 } event_url_t;
@@ -93,8 +94,9 @@ static int event_url_emit(void *state, event_t *event) {
     string_renderer_end_list(renderer);
 
 
-    if (strchr(self->url, '@') == NULL && self->userpwd) {
-        curl_easy_setopt(self->handle, CURLOPT_USERPWD, self->userpwd);
+    if (strchr(self->url, '@') == NULL && self->username && self->password) {
+        curl_easy_setopt(self->handle, CURLOPT_USERNAME, self->username);
+        curl_easy_setopt(self->handle, CURLOPT_PASSWORD, self->password);
     } else {
         curl_easy_setopt(self->handle, CURLOPT_USERPWD, "");
     }
@@ -115,14 +117,13 @@ static void event_url_free(void *state) {
     icecast_curl_free(self->handle);
     free(self->url);
     free(self->action);
-    free(self->userpwd);
+    free(self->username);
+    free(self->password);
     free(self);
 }
 
 int event_get_url(event_registration_t *er, config_options_t *options) {
     event_url_t *self = calloc(1, sizeof(event_url_t));
-    const char *username = NULL;
-    const char *password = NULL;
 
     if (!self)
         return -1;
@@ -144,9 +145,9 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
             if (strcmp(options->name, "url") == 0) {
                 util_replace_string(&(self->url), options->value);
             } else if (strcmp(options->name, "username") == 0) {
-                username = options->value;
+                util_replace_string(&(self->username), options->value);
             } else if (strcmp(options->name, "password") == 0) {
-                password = options->value;
+                util_replace_string(&(self->password), options->value);
             } else if (strcmp(options->name, "action") == 0) {
                 util_replace_string(&(self->action), options->value);
             } else if (strcmp(options->name, "legacy") == 0) {
@@ -167,16 +168,6 @@ int event_get_url(event_registration_t *er, config_options_t *options) {
 
     curl_easy_setopt(self->handle, CURLOPT_HEADERFUNCTION, handle_returned);
     curl_easy_setopt(self->handle, CURLOPT_ERRORBUFFER, self->errormsg);
-
-    if (username && password) {
-        size_t len = strlen(username) + strlen(password) + 2;
-        self->userpwd = malloc(len);
-        if (!self->userpwd) {
-            event_url_free(self);
-            return -1;
-        }
-        snprintf(self->userpwd, len, "%s:%s", username, password);
-    }
 
     er->state = self;
     er->emit = event_url_emit;
