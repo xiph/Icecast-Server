@@ -45,6 +45,7 @@ noinst_HEADERS = \
     fastevent.h \
     navigation.h \
     event.h \
+    ping.h \
     acl.h auth.h \
     metadata_xiph.h \
     format.h \
@@ -121,6 +122,7 @@ icecast_SOURCES = \
 if HAVE_CURL
 icecast_SOURCES += \
     curl.c \
+    ping.c \
     auth_url.c \
     event_url.c
 endif
@@ -143,6 +145,7 @@ endif
 
 EXTRA_icecast_SOURCES = \
     curl.c \
+    ping.c \
     yp.c \
     auth_url.c \
     event_url.c \

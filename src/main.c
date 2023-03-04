@@ -82,6 +82,7 @@
 #include "yp.h"
 #include "auth.h"
 #include "event.h"
+#include "ping.h"
 #include "listensocket.h"
 #include "fastevent.h"
 #include "prng.h"
@@ -169,6 +170,7 @@ static void initialize_subsystems(void)
     xslt_initialize();
 #ifdef HAVE_CURL
     icecast_curl_initialize();
+    ping_initialize();
 #endif
 }
 
@@ -182,6 +184,9 @@ static void shutdown_subsystems(void)
     auth_shutdown();
     yp_shutdown();
     stats_shutdown();
+#ifdef HAVE_CURL
+    ping_shutdown();
+#endif
 
     ICECAST_LOG_DEBUG("Shuting down connection related subsystems...");
     connection_shutdown();
