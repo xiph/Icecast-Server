@@ -151,7 +151,7 @@ AC_TYPE_UID_T
 dnl Checks for required libraries
 
 dnl
-dnl linigloo
+dnl libigloo
 dnl
 PKG_CHECK_MODULES([LIBIGLOO], [igloo >= 0.9.2], [], [
   AC_MSG_ERROR([${LIBIGLOO_PKG_ERRORS}. libigloo (v0.9.2 or newer) is required.])
