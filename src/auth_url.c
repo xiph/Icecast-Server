@@ -661,10 +661,10 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
             util_replace_string(&(url_info->timelimit_header), options->value);
         } else if (strcmp(options->name, "header_auth") == 0) {
             util_replace_string(&(url_info->header_auth), options->value);
-            util_strtolower(url_info->header_message);
+            util_strtolower(url_info->header_auth);
         } else if (strcmp(options->name, "header_timelimit") == 0) {
             util_replace_string(&(url_info->header_timelimit), options->value);
-            util_strtolower(url_info->header_message);
+            util_strtolower(url_info->header_timelimit);
         } else if (strcmp(options->name, "header_message") == 0) {
             util_replace_string(&(url_info->header_message), options->value);
             util_strtolower(url_info->header_message);
