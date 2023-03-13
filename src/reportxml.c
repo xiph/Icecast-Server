@@ -15,6 +15,7 @@
 #endif
 
 #include <string.h>
+#include <stdbool.h>
 
 #include "common/thread/thread.h"
 #include "common/avl/avl.h"
@@ -62,6 +63,7 @@ struct reportxml_database_tag {
     mutex_t lock;
     /* The tree of definitions */
     avl_tree *definitions;
+    bool loaded;
 };
 
 /* The nodeattr structure is used to store definition of node attributes */
@@ -1061,6 +1063,8 @@ int                     reportxml_database_add_report(reportxml_database_t *db, 
         avl_insert(db->definitions, copy);
     }
 
+    db->loaded = true;
+
     thread_mutex_unlock(&(db->lock));
 
     refobject_unref(root);
@@ -1310,7 +1314,10 @@ reportxml_t *           reportxml_database_build_report(reportxml_database_t *db
     /* first find the definition itself.  This will be some REPORTXML_NODE_TYPE_DEFINITION node. */
     definition = __reportxml_database_build_node_ext(db, id, depth, &type);
     if (!definition) {
-        ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        if (db->loaded) {
+            /* we ignore the log for db->loaded here as is most unlikely that we read a wrong value here AND this is just a diagnostic message */
+            ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        }
         return NULL;
     }
 
@@ -1435,7 +1442,10 @@ reportxml_node_t *      reportxml_database_build_fragment(reportxml_database_t *
     /* first find the definition itself.  This will be some REPORTXML_NODE_TYPE_DEFINITION node. */
     definition = __reportxml_database_build_node_ext(db, id, depth, &got);
     if (!definition) {
-        ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        if (db->loaded) {
+            /* we ignore the log for db->loaded here as is most unlikely that we read a wrong value here AND this is just a diagnostic message */
+            ICECAST_LOG_WARN("No matching definition for \"%H\"", id);
+        }
         return NULL;
     }
 
