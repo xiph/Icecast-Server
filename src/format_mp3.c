@@ -30,6 +30,9 @@
 # include <strings.h>
 #endif
 
+#include <igloo/sp.h>
+#include <igloo/error.h>
+
 #include "global.h"
 #include "refbuf.h"
 #include "event.h"
@@ -78,6 +81,7 @@ int format_mp3_get_plugin(source_t *source)
     format_plugin_t *plugin;
     mp3_state *state = calloc(1, sizeof(mp3_state));
     refbuf_t *meta;
+    const char *contenttype;
 
     plugin = (format_plugin_t *) calloc(1, sizeof(format_plugin_t));
 
@@ -90,10 +94,14 @@ int format_mp3_get_plugin(source_t *source)
     plugin->set_tag = mp3_set_tag;
     plugin->apply_settings = format_mp3_apply_settings;
 
-    plugin->contenttype = httpp_getvar(source->parser, "content-type");
-    if (plugin->contenttype == NULL) {
+    contenttype = httpp_getvar(source->parser, "content-type");
+    if (contenttype == NULL) {
         /* We default to MP3 audio for old clients without content types */
-        plugin->contenttype = "audio/mpeg";
+        contenttype = "audio/mpeg";
+    }
+
+    if (igloo_sp_replace(contenttype, &(plugin->contenttype), igloo_instance) != igloo_ERROR_NONE) {
+        ICECAST_LOG_ERROR("Cannot set content type for legacy source %#H. BAD.", source->mount);
     }
 
     plugin->_state = state;

@@ -237,8 +237,11 @@ void source_clear_source (source_t *source)
     source->parser = NULL;
     source->con = NULL;
 
-    if (source->format)
-        source->format->contenttype = NULL;
+    if (source->format) {
+        if (igloo_sp_unref(&(source->format->contenttype), igloo_instance) != igloo_ERROR_NONE) {
+            ICECAST_LOG_ERROR("Cannot unref content type for source %#H", source->mount);
+        }
+    }
 
     /* log bytes read in access log */
     if (source->client && source->format)

@@ -27,6 +27,10 @@
 
 #include <ogg/ogg.h>
 
+#include <igloo/sp.h>
+#include <igloo/error.h>
+
+#include "global.h"
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
@@ -178,7 +182,10 @@ int format_ogg_get_plugin(source_t *source)
     plugin->set_tag = NULL;
     if (strcmp (httpp_getvar (source->parser, "content-type"), "application/x-ogg") == 0)
         httpp_setvar (source->parser, "content-type", "application/ogg");
-    plugin->contenttype = httpp_getvar (source->parser, "content-type");
+
+    if (igloo_sp_replace(httpp_getvar(source->parser, "content-type"), &(plugin->contenttype), igloo_instance) != igloo_ERROR_NONE) {
+        ICECAST_LOG_ERROR("Cannot set content type for Ogg source %#H. BAD.", source->mount);
+    }
 
     ogg_sync_init (&state->oy);
     vorbis_comment_init(&plugin->vc);

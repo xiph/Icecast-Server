@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <igloo/sp.h>
+#include <igloo/error.h>
+
+#include "global.h"
 #include "refbuf.h"
 #include "source.h"
 #include "client.h"
@@ -211,7 +215,9 @@ int format_ebml_get_plugin(source_t *source)
     plugin->set_tag = NULL;
     plugin->apply_settings = NULL;
 
-    plugin->contenttype = httpp_getvar(source->parser, "content-type");
+    if (igloo_sp_replace(httpp_getvar(source->parser, "content-type"), &(plugin->contenttype), igloo_instance) != igloo_ERROR_NONE) {
+        ICECAST_LOG_ERROR("Cannot set content type for EBML source %#H. BAD.", source->mount);
+    }
 
     plugin->_state = ebml_source_state;
     vorbis_comment_init(&plugin->vc);
