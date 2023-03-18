@@ -67,6 +67,10 @@
 #   define strncasecmp strnicmp
 #endif
 
+#include "icecasttypes.h"
+#include <igloo/ro.h>
+#include <igloo/error.h>
+
 #include "util.h"
 #include "curl.h"
 #include "auth.h"
@@ -74,6 +78,7 @@
 #include "client.h"
 #include "cfgfile.h"
 #include "global.h"
+#include "string_renderer.h"
 #include "connection.h"
 #include "common/httpp/httpp.h"
 
@@ -326,82 +331,99 @@ static size_t handle_returned_header(void      *ptr,
     return len;
 }
 
-static auth_result url_remove_client(auth_client *auth_user)
+static auth_result url_add_params(auth_client *auth_user, bool is_remove)
 {
-    client_t       *client      = auth_user->client;
-    auth_t         *auth        = client->auth;
-    auth_url       *url         = auth->state;
-    time_t          duration    = time(NULL) - client->con->con_time;
-    char           *username,
-                   *password,
-                   *mount,
-                   *server,
-                   *server_instance;
-    const char     *mountreq;
-    ice_config_t   *config;
-    int             port;
-    char           *userpwd     = NULL,
-                    post[4096];
-    const char     *agent;
-    char           *user_agent,
-                   *ipaddr;
-    int             ret;
+    client_t          *client      = auth_user->client;
+    auth_t            *auth        = client->auth;
+    auth_url          *url         = auth->state;
+    string_renderer_t *renderer;
+    const char        *agent;
+    const char        *mountreq;
+    ice_config_t      *config;
+    char              *pass_headers,
+                      *cur_header,
+                      *next_header;
 
-    if (url->removeurl == NULL)
-        return AUTH_OK;
+    if (igloo_ro_new(&renderer, string_renderer_t, igloo_instance) != igloo_ERROR_NONE)
+        return AUTH_FAILED;
+
+    string_renderer_start_list_formdata(renderer);
+
+    if (is_remove) {
+        string_renderer_add_kv_with_options(renderer, "action", url->removeaction, STRING_RENDERER_ENCODING_PLAIN, false, false);
+        string_renderer_add_ki_with_options(renderer, "duration", time(NULL) - client->con->con_time, STRING_RENDERER_ENCODING_PLAIN, true, false);
+    } else {
+        string_renderer_add_kv_with_options(renderer, "action", url->addaction, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    }
 
     config = config_get_config();
-    server = util_url_escape(config->hostname);
-    port = config->port;
+    string_renderer_add_kv_with_options(renderer, "server", config->hostname, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    string_renderer_add_ki_with_options(renderer, "port", config->port, STRING_RENDERER_ENCODING_PLAIN, false, false);
     config_release_config();
-    server_instance = util_url_escape(global_instance_uuid());
+    string_renderer_add_kv_with_options(renderer, "server-instance", global_instance_uuid(), STRING_RENDERER_ENCODING_PLAIN, false, false);
 
-    agent = httpp_getvar(client->parser, "user-agent");
-    if (agent) {
-        user_agent = util_url_escape(agent);
-    } else {
-        user_agent = strdup("-");
-    }
-
-    if (client->username) {
-        username = util_url_escape(client->username);
-    } else {
-        username = strdup("");
-    }
-
-    if (client->password) {
-        password = util_url_escape(client->password);
-    } else {
-        password = strdup("");
-    }
+    string_renderer_add_ki_with_options(renderer, "client", client->con->id, STRING_RENDERER_ENCODING_PLAIN, false, false);
 
     /* get the full uri (with query params if available) */
     mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
     if (mountreq == NULL)
         mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape(mountreq);
-    ipaddr = util_url_escape(client->con->ip);
+    string_renderer_add_kv_with_options(renderer, "mount", mountreq, STRING_RENDERER_ENCODING_PLAIN, false, false);
 
-    ret = snprintf(post, sizeof(post),
-            "action=%s&server=%s&port=%d&server-instance=%s&client=%lu&mount=%s"
-            "&user=%s&pass=%s&duration=%lu&ip=%s&agent=%s",
-            url->removeaction, /* already escaped */
-            server, port, server_instance, client->con->id, mount, username,
-            password, (long unsigned)duration, ipaddr, user_agent);
+    string_renderer_add_kv_with_options(renderer, "user", client->username, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    string_renderer_add_kv_with_options(renderer, "pass", client->password, STRING_RENDERER_ENCODING_PLAIN, false, false);
+    string_renderer_add_kv_with_options(renderer, "ip", client->con->ip, STRING_RENDERER_ENCODING_PLAIN, false, false);
 
-    free(server_instance);
-    free(server);
-    free(mount);
-    free(username);
-    free(password);
-    free(ipaddr);
-    free(user_agent);
+    agent = httpp_getvar(client->parser, "user-agent");
+    string_renderer_add_kv_with_options(renderer, "agent", agent ? agent : "-", STRING_RENDERER_ENCODING_PLAIN, false, false);
 
-    if (ret <= 0 || ret >= (ssize_t)sizeof(post)) {
-        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
-        auth_user_url_clear(auth_user);
-        return AUTH_FAILED;
+    if (!is_remove) {
+        pass_headers = NULL;
+        if (url->pass_headers)
+            pass_headers = strdup(url->pass_headers);
+        if (pass_headers) {
+            cur_header = pass_headers;
+            while (cur_header) {
+                const char *header_val;
+
+                next_header = strstr(cur_header, ",");
+                if (next_header) {
+                    *next_header=0;
+                    next_header++;
+                }
+
+                header_val = httpp_getvar (client->parser, cur_header);
+                if (header_val) {
+                    char buf[64];
+
+                    snprintf(buf, sizeof(buf), "%s%s",  url->prefix_headers ? url->prefix_headers : "", cur_header);
+
+                    string_renderer_add_kv_with_options(renderer, buf, header_val, STRING_RENDERER_ENCODING_URI, false, false);
+                }
+
+                cur_header = next_header;
+            }
+            free(pass_headers);
+        }
     }
+
+    string_renderer_end_list(renderer);
+
+    curl_easy_setopt(url->handle, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(renderer));
+    igloo_ro_unref(&renderer);
+
+    return AUTH_OK;
+}
+
+static auth_result url_remove_client(auth_client *auth_user)
+{
+    client_t       *client      = auth_user->client;
+    auth_t         *auth        = client->auth;
+    auth_url       *url         = auth->state;
+    char           *userpwd     = NULL;
+
+    if (url->removeurl == NULL)
+        return AUTH_OK;
 
     if (strchr (url->removeurl, '@') == NULL) {
         if (url->userpwd) {
@@ -423,8 +445,11 @@ static auth_result url_remove_client(auth_client *auth_user)
         /* url has user/pass but libcurl may need to clear any existing settings */
         curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
     }
+
+    if (url_add_params(auth_user, true) != AUTH_OK)
+        return AUTH_FAILED;
+
     curl_easy_setopt(url->handle, CURLOPT_URL, url->removeurl);
-    curl_easy_setopt(url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
 
     if (curl_easy_perform (url->handle))
@@ -443,122 +468,11 @@ static auth_result url_add_client(auth_client *auth_user)
     client_t       *client      = auth_user->client;
     auth_t         *auth        = client->auth;
     auth_url       *url         = auth->state;
-    int             res         = 0,
-                    port;
-    const char     *agent;
-    char           *user_agent,
-                   *username,
-                   *password;
-    const char     *mountreq;
-    char           *mount,
-                   *ipaddr,
-                   *server,
-                   *server_instance;
-    ice_config_t   *config;
-    char           *userpwd    = NULL, post [4096];
-    ssize_t         post_offset;
-    char           *pass_headers,
-                   *cur_header,
-                   *next_header;
-    const char     *header_val;
-    char           *header_valesc;
+    int             res         = 0;
+    char           *userpwd    = NULL;
 
     if (url->addurl == NULL)
         return AUTH_OK;
-
-    config = config_get_config();
-    server = util_url_escape(config->hostname);
-    port = config->port;
-    config_release_config();
-    server_instance = util_url_escape(global_instance_uuid());
-
-    agent = httpp_getvar(client->parser, "user-agent");
-    if (agent) {
-        user_agent = util_url_escape(agent);
-    } else {
-        user_agent = strdup("-");
-    }
-
-    if (client->username) {
-        username = util_url_escape(client->username);
-    } else {
-        username = strdup("");
-    }
-
-    if (client->password) {
-        password = util_url_escape(client->password);
-    } else {
-        password = strdup("");
-    }
-
-    /* get the full uri (with query params if available) */
-    mountreq = httpp_getvar(client->parser, HTTPP_VAR_RAWURI);
-    if (mountreq == NULL)
-        mountreq = httpp_getvar(client->parser, HTTPP_VAR_URI);
-    mount = util_url_escape(mountreq);
-    ipaddr = util_url_escape(client->con->ip);
-
-    post_offset = snprintf(post, sizeof (post),
-            "action=%s&server=%s&port=%d&server-instance=%s&client=%lu&mount=%s"
-            "&user=%s&pass=%s&ip=%s&agent=%s",
-            url->addaction, /* already escaped */
-            server, port, server_instance, client->con->id, mount, username,
-            password, ipaddr, user_agent);
-
-    free(server_instance);
-    free(server);
-    free(mount);
-    free(user_agent);
-    free(username);
-    free(password);
-    free(ipaddr);
-
-
-    if (post_offset <= 0 || post_offset >= (ssize_t)sizeof(post)) {
-        ICECAST_LOG_ERROR("Authentication failed for client %p as header POST data is too long.", client);
-        auth_user_url_clear(auth_user);
-        return AUTH_FAILED;
-    }
-
-    pass_headers = NULL;
-    if (url->pass_headers)
-        pass_headers = strdup(url->pass_headers);
-    if (pass_headers) {
-        cur_header = pass_headers;
-        while (cur_header) {
-            next_header = strstr(cur_header, ",");
-            if (next_header) {
-                *next_header=0;
-                next_header++;
-            }
-
-            header_val = httpp_getvar (client->parser, cur_header);
-            if (header_val) {
-                size_t left = sizeof(post) - post_offset;
-                int ret;
-
-                header_valesc = util_url_escape (header_val);
-                ret = snprintf(post + post_offset,
-                                        sizeof(post) - post_offset,
-                                        "&%s%s=%s",
-                                        url->prefix_headers ? url->prefix_headers : "",
-                                        cur_header, header_valesc);
-                free(header_valesc);
-
-                if (ret <= 0 || (size_t)ret >= left) {
-                    ICECAST_LOG_ERROR("Authentication failed for client %p as header \"%H\" is too long.", client, cur_header);
-                    free(pass_headers);
-                    auth_user_url_clear(auth_user);
-                    return AUTH_FAILED;
-                } else {
-                    post_offset += ret;
-                }
-            }
-
-            cur_header = next_header;
-        }
-        free(pass_headers);
-    }
 
     if (strchr(url->addurl, '@') == NULL) {
         if (url->userpwd) {
@@ -579,8 +493,11 @@ static auth_result url_add_client(auth_client *auth_user)
         /* url has user/pass but libcurl may need to clear any existing settings */
         curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
     }
+
+    if (url_add_params(auth_user, false) != AUTH_OK)
+        return AUTH_FAILED;
+
     curl_easy_setopt(url->handle, CURLOPT_URL, url->addurl);
-    curl_easy_setopt(url->handle, CURLOPT_POSTFIELDS, post);
     curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
     url->errormsg[0] = '\0';
 
@@ -623,8 +540,6 @@ static auth_result auth_url_listuser(auth_t *auth, xmlNodePtr srcnode)
 int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
 {
     auth_url    *url_info;
-    const char  *addaction      = "listener_add";
-    const char  *removeaction   = "listener_remove";
 
     authenticator->free         = auth_url_clear;
     authenticator->adduser      = auth_url_adduser;
@@ -636,6 +551,9 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
 
     /* force auth thread to call function. this makes sure the auth_t is attached to client */
     authenticator->authenticate_client = url_add_client;
+
+    url_info->addaction    = strdup("listener_add");
+    url_info->removeaction = strdup("listener_remove");
 
     while(options) {
         if(strcmp(options->name, "username") == 0) {
@@ -652,9 +570,9 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
             authenticator->release_client = url_remove_client;
             util_replace_string(&(url_info->removeurl), options->value);
         } else if(strcmp(options->name, "action_add") == 0) {
-            addaction = options->value;
+            util_replace_string(&(url_info->addaction), options->value);
         } else if(strcmp(options->name, "action_remove") == 0) {
-            removeaction = options->value;
+            util_replace_string(&(url_info->removeaction), options->value);
         } else if(strcmp(options->name, "auth_header") == 0) {
             util_replace_string(&(url_info->auth_header), options->value);
         } else if (strcmp(options->name, "timelimit_header") == 0) {
@@ -679,9 +597,6 @@ int auth_get_url_auth(auth_t *authenticator, config_options_t *options)
         }
         options = options->next;
     }
-
-    url_info->addaction = util_url_escape(addaction);
-    url_info->removeaction = util_url_escape(removeaction);
 
     url_info->handle = icecast_curl_new(NULL, &url_info->errormsg[0]);
     if (url_info->handle == NULL) {
