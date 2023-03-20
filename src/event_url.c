@@ -79,7 +79,7 @@ static int event_url_emit(void *state, event_t *event) {
 
     string_renderer_end_list(renderer);
 
-    ping_simple(self->url, self->username, self->password, string_renderer_to_string_zero_copy(renderer));
+    ping_simple(self->url, self->username, self->password, renderer);
 
     igloo_ro_unref(&renderer);
 

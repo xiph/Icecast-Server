@@ -18,6 +18,7 @@
 #include "thread/thread.h"
 
 #include "ping.h"
+#include "string_renderer.h"
 #include "logging.h"
 #include "curl.h"
 
@@ -108,7 +109,7 @@ static void ping_add_to_queue(ping_queue_t *entry)
     thread_cond_broadcast(&ping_cond);
 }
 
-void ping_simple(const char *url, const char *username, const char *password, const char *data)
+void ping_simple(const char *url, const char *username, const char *password, string_renderer_t *data)
 {
     ping_queue_t *entry = calloc(1, sizeof(*entry));
 
@@ -129,7 +130,7 @@ void ping_simple(const char *url, const char *username, const char *password, co
     }
 
     if (data)
-        curl_easy_setopt(entry->curl, CURLOPT_COPYPOSTFIELDS, data);
+        curl_easy_setopt(entry->curl, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(data));
 
     ping_add_to_queue(entry);
 }
