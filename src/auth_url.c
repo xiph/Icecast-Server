@@ -73,6 +73,7 @@
 
 #include "util.h"
 #include "curl.h"
+#include "ping.h"
 #include "auth.h"
 #include "source.h"
 #include "client.h"
@@ -331,7 +332,7 @@ static size_t handle_returned_header(void      *ptr,
     return len;
 }
 
-static auth_result url_add_params(auth_client *auth_user, bool is_remove)
+static string_renderer_t * url_add_params(auth_client *auth_user, bool is_remove)
 {
     client_t          *client      = auth_user->client;
     auth_t            *auth        = client->auth;
@@ -345,7 +346,7 @@ static auth_result url_add_params(auth_client *auth_user, bool is_remove)
                       *next_header;
 
     if (igloo_ro_new(&renderer, string_renderer_t, igloo_instance) != igloo_ERROR_NONE)
-        return AUTH_FAILED;
+        return NULL;
 
     string_renderer_start_list_formdata(renderer);
 
@@ -409,10 +410,7 @@ static auth_result url_add_params(auth_client *auth_user, bool is_remove)
 
     string_renderer_end_list(renderer);
 
-    curl_easy_setopt(url->handle, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(renderer));
-    igloo_ro_unref(&renderer);
-
-    return AUTH_OK;
+    return renderer;
 }
 
 static auth_result url_remove_client(auth_client *auth_user)
@@ -420,44 +418,25 @@ static auth_result url_remove_client(auth_client *auth_user)
     client_t       *client      = auth_user->client;
     auth_t         *auth        = client->auth;
     auth_url       *url         = auth->state;
-    char           *userpwd     = NULL;
+    string_renderer_t *renderer;
 
     if (url->removeurl == NULL)
         return AUTH_OK;
 
-    if (strchr (url->removeurl, '@') == NULL) {
-        if (url->userpwd) {
-            curl_easy_setopt(url->handle, CURLOPT_USERPWD, url->userpwd);
-        } else {
-            /* auth'd requests may not have a user/pass, but may use query args */
-            if (client->username && client->password) {
-                size_t len = strlen(client->username) +
-                    strlen(client->password) + 2;
-                userpwd = malloc(len);
-                snprintf(userpwd, len, "%s:%s",
-                    client->username, client->password);
-                curl_easy_setopt(url->handle, CURLOPT_USERPWD, userpwd);
-            } else {
-                curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
-            }
-        }
-    } else {
-        /* url has user/pass but libcurl may need to clear any existing settings */
-        curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
-    }
-
-    if (url_add_params(auth_user, true) != AUTH_OK)
+    if (!(renderer = url_add_params(auth_user, true)))
         return AUTH_FAILED;
 
-    curl_easy_setopt(url->handle, CURLOPT_URL, url->removeurl);
-    curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
+    if (strchr (url->removeurl, '@') != NULL) {
+        ping_simple(url->removeurl, NULL, NULL, renderer);
+    } else {
+        if (url->username) {
+            ping_simple(url->removeurl, url->username, url->password, renderer);
+        } else {
+            ping_simple(url->removeurl, client->username, client->password, renderer);
+        }
+    }
 
-    if (curl_easy_perform (url->handle))
-        ICECAST_LOG_WARN("auth to server %s failed with %s",
-            url->removeurl, url->errormsg);
-
-    free(userpwd);
-    auth_user_url_clear(auth_user);
+    igloo_ro_unref(&renderer);
 
     return AUTH_OK;
 }
@@ -470,6 +449,7 @@ static auth_result url_add_client(auth_client *auth_user)
     auth_url       *url         = auth->state;
     int             res         = 0;
     char           *userpwd    = NULL;
+    string_renderer_t *renderer;
 
     if (url->addurl == NULL)
         return AUTH_OK;
@@ -494,8 +474,11 @@ static auth_result url_add_client(auth_client *auth_user)
         curl_easy_setopt(url->handle, CURLOPT_USERPWD, "");
     }
 
-    if (url_add_params(auth_user, false) != AUTH_OK)
+    if (!(renderer = url_add_params(auth_user, false)))
         return AUTH_FAILED;
+
+    curl_easy_setopt(url->handle, CURLOPT_COPYPOSTFIELDS, string_renderer_to_string_zero_copy(renderer));
+    igloo_ro_unref(&renderer);
 
     curl_easy_setopt(url->handle, CURLOPT_URL, url->addurl);
     curl_easy_setopt(url->handle, CURLOPT_WRITEHEADER, auth_user);
