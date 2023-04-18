@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2023, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil; -*- */
@@ -94,6 +94,7 @@ const char * event_extra_key_name(event_extra_key_t key)
         case EVENT_EXTRA_KEY_CLIENT_USERNAME: return "client-username"; break;
         case EVENT_EXTRA_KEY_CLIENT_USERAGENT: return "client-useragent"; break;
         case EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE: return "source-media-type"; break;
+        case EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID: return "source-instance"; break;
         case EVENT_EXTRA_KEY_DUMPFILE_FILENAME: return "dumpfile-filename"; break;
 #ifndef DEVEL_LOGGING
         default: break;
@@ -108,6 +109,7 @@ igloo_error_t event_to_string_renderer(const event_t *event, string_renderer_t *
     static const event_extra_key_t key_list[] = {
         EVENT_EXTRA_KEY_URI,
         EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE,
+        EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID,
         EVENT_EXTRA_KEY_CONNECTION_IP,
         EVENT_EXTRA_KEY_CLIENT_ROLE,
         EVENT_EXTRA_KEY_CLIENT_USERNAME,
@@ -513,6 +515,7 @@ void event_emit_va(const char *trigger, ...) {
         if (source->format && source->format->contenttype) {
             extra_add(event, EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE, source->format->contenttype);
         }
+        extra_add(event, EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID, source->instance_uuid);
     }
 
     if (client) {

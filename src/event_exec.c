@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2023, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -154,6 +154,7 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     __update_environ("SOURCE_ACTION",     event->trigger); /* old name (deprecated) */
     __update_environ_with_key(event, "EVENT_URI", EVENT_EXTRA_KEY_URI);
     __update_environ_with_key(event, "SOURCE_MEDIA_TYPE", EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE);
+    __update_environ_with_key(event, "SOURCE_INSTANCE", EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID);
     __update_environ_with_key(event, "CLIENT_IP", EVENT_EXTRA_KEY_CONNECTION_IP);
     __update_environ_with_key(event, "CLIENT_ROLE", EVENT_EXTRA_KEY_CLIENT_ROLE);
     __update_environ_with_key(event, "CLIENT_USERNAME", EVENT_EXTRA_KEY_CLIENT_USERNAME);

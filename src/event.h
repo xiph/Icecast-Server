@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2023, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifndef __EVENT_H__
@@ -42,6 +42,7 @@ typedef enum {
     EVENT_EXTRA_KEY_CLIENT_USERNAME,
     EVENT_EXTRA_KEY_CLIENT_USERAGENT,
     EVENT_EXTRA_KEY_SOURCE_MEDIA_TYPE,
+    EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID,
     EVENT_EXTRA_KEY_DUMPFILE_FILENAME,
 } event_extra_key_t;
 

@@ -3,7 +3,7 @@
  * This program is distributed under the GNU General Public License, version 2.
  * A copy of this license is included with this source.
  *
- * Copyright 2014-2022, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
+ * Copyright 2014-2023, Philipp "ph3-der-loewe" Schafft <lion@lion.leolix.org>,
  */
 
 #ifdef HAVE_CONFIG_H
@@ -59,6 +59,7 @@ static int event_url_emit(void *state, event_t *event) {
         string_renderer_add_kv_with_options(renderer, "role", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_ROLE), STRING_RENDERER_ENCODING_PLAIN, true, true);
         string_renderer_add_kv_with_options(renderer, "username", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERNAME), STRING_RENDERER_ENCODING_PLAIN, true, true);
         string_renderer_add_kv_with_options(renderer, "ip", event_extra_get(event, EVENT_EXTRA_KEY_CONNECTION_IP), STRING_RENDERER_ENCODING_PLAIN, true, true);
+        string_renderer_add_kv_with_options(renderer, "source-instance", event_extra_get(event, EVENT_EXTRA_KEY_SOURCE_INSTANCE_UUID), STRING_RENDERER_ENCODING_PLAIN, true, true);
         string_renderer_add_kv_with_options(renderer, "agent", event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) ? event_extra_get(event, EVENT_EXTRA_KEY_CLIENT_USERAGENT) : "-", STRING_RENDERER_ENCODING_PLAIN, true, true);
         string_renderer_add_ki_with_options(renderer, "duration", duration, STRING_RENDERER_ENCODING_PLAIN, true, true);
         string_renderer_add_ki_with_options(renderer, "admin", event->client_admin_command, STRING_RENDERER_ENCODING_PLAIN, true, true);
