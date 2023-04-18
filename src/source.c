@@ -899,6 +899,11 @@ void source_main (source_t *source)
             stats_event_args (source->mount, "listeners", "%lu", source->listeners);
             if (source->listeners == 0 && source->on_demand)
                 source->running = 0;
+
+            if (source->listeners == 0)
+                event_emit_va("source-listeners-is-zero", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
+
+            event_emit_va("source-listeners-changed", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_LIST_END);
         }
 
         /* lets reduce the queue, any lagging clients should of been
