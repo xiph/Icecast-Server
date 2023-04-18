@@ -25,7 +25,6 @@
 /* implemented */
 #define EVENT_TYPE_LOG  "log"
 #define EVENT_TYPE_EXEC "exec"
-/* not implemented */
 #define EVENT_TYPE_URL  "url"
 
 #define MAX_REGLISTS_PER_EVENT 8
