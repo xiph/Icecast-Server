@@ -767,7 +767,6 @@ static void source_init (source_t *source)
 void source_main (source_t *source)
 {
     refbuf_t *refbuf;
-    client_t *client;
     avl_node *client_node;
 
     source_init (source);
@@ -829,7 +828,7 @@ void source_main (source_t *source)
 
         client_node = avl_get_first(source->client_tree);
         while (client_node) {
-            client = (client_t *) client_node->key;
+            client_t *client = (client_t *) client_node->key;
 
             send_to_listener(source, client, remove_from_q);
 
@@ -848,6 +847,7 @@ void source_main (source_t *source)
         /** add pending clients **/
         client_node = avl_get_first(source->pending_tree);
         while (client_node) {
+            client_t *client = (client_t *)client_node->key;
 
             if(source->max_listeners != -1 &&
                     source->listeners >= (unsigned long)source->max_listeners)
@@ -857,7 +857,6 @@ void source_main (source_t *source)
                  * and doesn't give the listening client any information about
                  * why they were disconnected
                  */
-                client = (client_t *)client_node->key;
                 client_node = avl_get_next(client_node);
                 avl_delete(source->pending_tree, (void *)client, _free_client);
 
@@ -872,6 +871,7 @@ void source_main (source_t *source)
             source->listeners++;
             ICECAST_LOG_DEBUG("Client added for mountpoint (%s)", source->mount);
             stats_event_inc(source->mount, "connections");
+            event_emit_va("source-listener-attach", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, client, EVENT_EXTRA_LIST_END);
 
             client_node = avl_get_next(client_node);
         }
