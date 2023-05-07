@@ -15,6 +15,7 @@
 #define __SIGHANDLER_H__
 
 void sighandler_initialize(void);
+void sighandler_handle_pending(void);
 
 
 #endif  /* __SIGHANDLER_H__ */

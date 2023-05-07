@@ -55,6 +55,7 @@
 #include "source.h"
 #include "format.h"
 #include "prng.h"
+#include "sighandler.h"
 
 #define CATMODULE "slave"
 
@@ -906,6 +907,9 @@ static void *_slave_thread(void *arg)
     {
         relay_t *cleanup_relays = NULL;
         int skip_timer = 0;
+
+        /* handle any pending signals */
+        sighandler_handle_pending();
 
         /* re-read xml file if requested */
         global_lock();

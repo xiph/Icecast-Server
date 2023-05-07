@@ -30,6 +30,9 @@
 #define CATMODULE "sighandler"
 
 #ifndef _WIN32
+sig_atomic_t caught_sig_die = 0;
+sig_atomic_t caught_sig_hup = 0;
+
 void _sig_hup(int signo);
 void _sig_die(int signo);
 void _sig_ignore(int signo);
@@ -46,7 +49,38 @@ void sighandler_initialize(void)
 #endif
 }
 
+void sighandler_handle_pending(void)
+{
 #ifndef _WIN32
+    int signo = caught_sig_hup;
+
+    if (signo) {
+        ICECAST_LOG_INFO("Caught signal %d, scheduling config re-read...", signo);
+
+        /* inform the server to reload configuration */
+        global_lock();
+        global . schedule_config_reread = 1;
+        global_unlock();
+
+        caught_sig_hup = 0;
+    }
+
+    signo = caught_sig_die;
+    if (signo) {
+        ICECAST_LOG_INFO("Caught signal %d, shutting down...", signo);
+
+        /* inform the server to start shutting down */
+        global_lock();
+        global . running = ICECAST_HALTING;
+        global_unlock();
+
+        caught_sig_die = 0;
+    }
+#endif
+}
+
+#ifndef _WIN32
+
 void _sig_ignore(int signo)
 {
     signal(signo, _sig_ignore);
@@ -54,11 +88,7 @@ void _sig_ignore(int signo)
 
 void _sig_hup(int signo)
 {
-    ICECAST_LOG_INFO("Caught signal %d, scheduling config re-read...", signo);
-
-    global_lock();
-    global . schedule_config_reread = 1;
-    global_unlock();
+    caught_sig_hup = signo;
 
     /* some OSes require us to reattach the signal handler */
     signal(SIGHUP, _sig_hup);
@@ -66,10 +96,7 @@ void _sig_hup(int signo)
 
 void _sig_die(int signo)
 {
-    ICECAST_LOG_INFO("Caught signal %d, shutting down...", signo);
-
-    /* inform the server to start shutting down */
-    global.running = ICECAST_HALTING;
+    caught_sig_die = signo;
 }
 
 #endif
