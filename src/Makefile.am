@@ -30,7 +30,6 @@ noinst_HEADERS = \
     fserve.h \
     xslt.h \
     yp.h \
-    digest.h \
     prng.h \
     matchfile.h \
     tls.h \
@@ -84,7 +83,6 @@ icecast_SOURCES = \
     fserve.c \
     admin.c \
     resourcematch.c \
-    digest.c \
     prng.c \
     matchfile.c \
     tls.c \

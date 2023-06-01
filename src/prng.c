@@ -32,7 +32,6 @@
 
 #include "prng.h"
 #include "global.h"
-#include "digest.h"
 #include "cfgfile.h"
 
 #include "logging.h"
