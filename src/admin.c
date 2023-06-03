@@ -37,25 +37,6 @@
 #include <sys/select.h>
 #endif
 
-#ifdef HAVE_OPENSSL
-#include <openssl/opensslv.h>
-#endif
-
-#include <vorbis/codec.h>
-
-#ifdef HAVE_THEORA
-#include <theora/theora.h>
-#endif
-
-#ifdef HAVE_SPEEX
-#include <speex/speex.h>
-#endif
-
-#ifdef HAVE_CURL
-#include <curl/curlver.h>
-#include <curl/curl.h>
-#endif
-
 #ifdef HAVE_UNAME
 #include <sys/utsname.h>
 #endif
@@ -65,6 +46,7 @@
 #include "common/net/sock.h"
 
 #include "admin.h"
+#include "version.h"
 #include "compat.h"
 #include "cfgfile.h"
 #include "connection.h"
@@ -1857,24 +1839,6 @@ static void command_dashboard           (client_t *client, source_t *source, adm
     refobject_unref(report);
 }
 
-#ifdef HAVE_SPEEX
-static inline const char *get_speex_version(void)
-{
-    const char *version;
-    if (speex_lib_ctl(SPEEX_LIB_GET_VERSION_STRING, &version) != 0)
-        return NULL;
-    return version;
-}
-#endif
-
-static inline const char *get_igloo_version(void)
-{
-    const char *version;
-    if (igloo_version_get(&version, NULL, NULL, NULL) != igloo_ERROR_NONE)
-        return NULL;
-    return version;
-}
-
 static void command_version             (client_t *client, source_t *source, admin_format_t response)
 {
     reportxml_t      *report        = client_get_reportxml("8cdfc150-094d-42f7-9c61-f9fb9a6e07e7", NULL, NULL);
@@ -1886,61 +1850,8 @@ static void command_version             (client_t *client, source_t *source, adm
     reportxml_node_t *cflags        = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     reportxml_node_t *rflags        = reportxml_node_new(REPORTXML_NODE_TYPE_VALUE, NULL, NULL, NULL);
     ice_config_t *icecast_config;
-#ifdef HAVE_CURL
-    const curl_version_info_data * curl_runtime_version = curl_version_info(CURLVERSION_NOW);
-#endif
-    struct {
-        const char *name;
-        const char *compiletime;
-        const char *runtime;
-    } dependency_versions[] = {
-        {"libigloo", NULL, get_igloo_version()},
-        {"libxml2", LIBXML_DOTTED_VERSION, NULL},
-#if defined(HAVE_OPENSSL) && defined(OPENSSL_VERSION_TEXT)
-        {"OpenSSL", OPENSSL_VERSION_TEXT, NULL},
-#endif
-        {"libvorbis", NULL, vorbis_version_string()},
-#ifdef HAVE_THEORA
-        {"libtheora", NULL, theora_version_string()},
-#endif
-#ifdef HAVE_SPEEX
-        {"libspeex", NULL, get_speex_version()},
-#endif
-#ifdef HAVE_CURL
-        {"libcurl", LIBCURL_VERSION, curl_runtime_version->version},
-#endif
-        {NULL, NULL, NULL}
-    };
-    const char *compiletime_flags[] = {
-#ifdef HAVE_POLL
-        "poll",
-#endif
-#ifdef HAVE_SYS_SELECT_H
-        "select",
-#endif
-#ifdef HAVE_UNAME
-        "uname",
-#endif
-#ifdef HAVE_GETHOSTNAME
-        "gethostname",
-#endif
-#ifdef HAVE_GETADDRINFO
-        "getaddrinfo",
-#endif
-#ifdef HAVE_CRYPT
-        "crypt",
-#endif
-#ifdef HAVE_CRYPT_R
-        "crypt_r",
-#endif
-#ifdef WIN32
-        "win32",
-#endif
-#ifdef DEVEL_LOGGING
-        "developer-logging",
-#endif
-        NULL,
-    };
+    const char * const * compiletime_flags = version_get_compiletime_flags();
+    const icecast_dependency_t * dependency_versions = version_get_dependencies();
     size_t i;
 
     reportxml_node_set_attribute(resource, "type", "result");

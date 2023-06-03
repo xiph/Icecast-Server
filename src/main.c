@@ -65,6 +65,7 @@
 #include <rhash.h>
 
 #include "main.h"
+#include "version.h"
 #include "cfgfile.h"
 #include "util.h"
 #include "sighandler.h"
@@ -222,6 +223,38 @@ void main_config_reload(ice_config_t *config)
     pidfile_update(config, 0);
 }
 
+static void show_version(bool full)
+{
+    printf("%s\n", ICECAST_VERSION_STRING);
+
+    if (full) {
+        const char * const * compiletime_flag = version_get_compiletime_flags();
+        const icecast_dependency_t * dependencies = version_get_dependencies();
+        size_t i;
+
+        printf("\n");
+
+        printf("Address bits: %u\n", (unsigned int)sizeof(void*)*8);
+#ifdef HAVE_SYS_SELECT_H
+        printf("fd set size: %u\n", (unsigned int)FD_SETSIZE);
+#endif
+
+        printf("Compile time flags: ");
+        for (i = 0; compiletime_flag[i]; i++)
+            printf("%s ", compiletime_flag[i]);
+        printf("\n");
+
+        printf("Dependencies:\n");
+        for (i = 0; dependencies[i].name; i++) {
+            printf(" %s:\n", dependencies[i].name);
+            if (dependencies[i].compiletime)
+                printf("  compile time: %s\n", dependencies[i].compiletime);
+            if (dependencies[i].runtime)
+                printf("  run time: %s\n", dependencies[i].runtime);
+        }
+    }
+}
+
 static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
     int i;
@@ -258,7 +291,10 @@ static bool _parse_config_opts(int argc, char **argv, char *filename, size_t siz
             background = true;
 #endif
         } else if (strcmp(opt, "-v") == 0 || strcmp(opt, "--version") == 0) {
-            fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
+            show_version(false);
+            exit(0);
+        } else if (strcmp(opt, "-V") == 0) {
+            show_version(true);
             exit(0);
         } else if (strcmp(opt, "-c") == 0) {
             if ((i + 1) < argc) {

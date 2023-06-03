@@ -6,6 +6,7 @@ bin_PROGRAMS = icecast
 
 noinst_HEADERS = \
     icecasttypes.h \
+    version.h \
     admin.h \
     resourcematch.h \
     main.h \
@@ -63,6 +64,7 @@ noinst_HEADERS = \
 
 icecast_SOURCES = \
     main.c \
+    version.c \
     cfgfile.c \
     logging.c \
     sighandler.c \
