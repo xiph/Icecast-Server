@@ -883,6 +883,7 @@ static void *_slave_thread(void *arg)
         /* re-read xml file if requested */
         global_lock();
         if (global.schedule_config_reread) {
+            ICECAST_LOG_INFO("Reloading config for reload was queued");
             config_reread_config();
             global.schedule_config_reread = 0;
         }

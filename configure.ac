@@ -147,6 +147,7 @@ AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 AC_TYPE_UID_T
+AC_CHECK_TYPES([sig_atomic_t], [], [], [[#include <signal.h>]])
 
 dnl Checks for required libraries
 

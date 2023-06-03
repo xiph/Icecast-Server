@@ -21,6 +21,8 @@
 
 #define ICECAST_VERSION_STRING "Icecast " PACKAGE_VERSION
 
+#include <signal.h>
+
 #include <igloo/igloo.h>
 
 #include "common/thread/thread.h"
@@ -37,7 +39,12 @@ typedef struct ice_global_tag
     time_t sources_update;
     int sources_legacy;
     int clients;
-    int schedule_config_reread;
+
+#ifdef HAVE_SIG_ATOMIC_T
+    volatile sig_atomic_t schedule_config_reread;
+#else
+    volatile int schedule_config_reread;
+#endif
 
     avl_tree *source_tree;
     /* for locally defined relays */
