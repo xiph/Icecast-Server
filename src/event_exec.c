@@ -10,6 +10,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -222,28 +223,31 @@ static inline void __setup_empty_script_environment(event_exec_t *self, event_t 
 static void _run_script (event_exec_t *self, event_t *event) {
     pid_t pid, external_pid;
 
+    if (access(self->executable, R_OK|X_OK) != 0) {
+        ICECAST_LOG_ERROR("Bad permissions on command %#H (%s)", self->executable, strerror(errno));
+    }
+
+    ICECAST_LOG_DEBUG("Trying to start command %H", self->executable);
+
     /* do a fork twice so that the command has init as parent */
     external_pid = fork();
     switch (external_pid) {
         case 0:
             switch (pid = fork()) {
                 case -1:
-                    ICECAST_LOG_ERROR("Unable to fork %s (%s)", self->executable, strerror(errno));
+                    /* We cannot log the error here as we're no longer in the main process */
+                    _exit(EXIT_FAILURE);
                     break;
                 case 0:  /* child */
-                    if (access(self->executable, R_OK|X_OK) != 0) {
-                        ICECAST_LOG_ERROR("Unable to run command %s (%s)", self->executable, strerror(errno));
-                        exit(1);
-                    }
-                    ICECAST_LOG_DEBUG("Starting command %s", self->executable);
                     __setup_empty_script_environment(self, event);
                     execv(self->executable, __setup_argv(self, event));
-                    exit(1);
+                    _exit(EXIT_FAILURE);
                 default: /* parent */
                     break;
             }
-            _exit(0);
+            _exit(EXIT_SUCCESS);
         case -1:
+            /* fork() failed but we're still in main process and can therefore log */
             ICECAST_LOG_ERROR("Unable to fork %s", strerror(errno));
             break;
         default: /* parent */
