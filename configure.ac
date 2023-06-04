@@ -101,6 +101,7 @@ AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADERS([pwd.h grp.h])
 AC_CHECK_HEADERS([sys/resource.h])
 AC_CHECK_HEADERS([crypt.h])
+AC_CHECK_HEADERS([spawn.h])
 
 AC_C_BIGENDIAN
 
@@ -122,6 +123,9 @@ AC_CHECK_FUNCS([localtime_r])
 AC_CHECK_FUNCS([gettimeofday])
 AC_CHECK_FUNCS([ftime])
 AC_CHECK_FUNCS([getrlimit])
+
+dnl Checked only for reporting in version display as of now (may be used in future versions):
+AC_CHECK_FUNCS([pipe pipe2 socketpair posix_spawn posix_spawnp])
 
 dnl check for crypt():
 AC_SEARCH_LIBS([crypt_r], [crypt], [

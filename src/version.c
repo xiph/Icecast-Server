@@ -52,6 +52,7 @@
 const char * const * version_get_compiletime_flags(void)
 {
     static const char * const compiletime_flags[] = {
+        /* ---[ Functions ]--- */
 #ifdef HAVE_POLL
         "poll",
 #endif
@@ -73,9 +74,26 @@ const char * const * version_get_compiletime_flags(void)
 #ifdef HAVE_CRYPT_R
         "crypt_r",
 #endif
+#ifdef HAVE_PIPE
+        "pipe",
+#endif
+#ifdef HAVE_PIPE2
+        "pipe2",
+#endif
+#ifdef HAVE_SOCKETPAIR
+        "socketpair",
+#endif
+#ifdef HAVE_POSIX_SPAWN
+        "posix_spawn",
+#endif
+#ifdef HAVE_POSIX_SPAWNP
+        "posix_spawnp",
+#endif
+        /* ---[ OS ]--- */
 #ifdef WIN32
         "win32",
 #endif
+        /* ---[ Options ]--- */
 #ifdef DEVEL_LOGGING
         "developer-logging",
 #endif
