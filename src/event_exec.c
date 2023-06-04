@@ -224,13 +224,11 @@ static void _run_script (event_exec_t *self, event_t *event) {
 
     /* do a fork twice so that the command has init as parent */
     external_pid = fork();
-    switch (external_pid)
-    {
+    switch (external_pid) {
         case 0:
-            switch (pid = fork ())
-            {
+            switch (pid = fork()) {
                 case -1:
-                    ICECAST_LOG_ERROR("Unable to fork %s (%s)", self->executable, strerror (errno));
+                    ICECAST_LOG_ERROR("Unable to fork %s (%s)", self->executable, strerror(errno));
                     break;
                 case 0:  /* child */
                     if (access(self->executable, R_OK|X_OK) != 0) {
@@ -246,10 +244,10 @@ static void _run_script (event_exec_t *self, event_t *event) {
             }
             _exit(0);
         case -1:
-            ICECAST_LOG_ERROR("Unable to fork %s", strerror (errno));
+            ICECAST_LOG_ERROR("Unable to fork %s", strerror(errno));
             break;
         default: /* parent */
-            waitpid (external_pid, NULL, 0);
+            waitpid(external_pid, NULL, 0);
             break;
     }
 }
