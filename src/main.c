@@ -62,6 +62,10 @@
 #include <pwd.h>
 #endif
 
+#if HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+
 #include <rhash.h>
 
 #include "main.h"
@@ -236,7 +240,8 @@ static void show_version(bool full)
 
         printf("Address bits: %u\n", (unsigned int)sizeof(void*)*8);
 #ifdef HAVE_SYS_SELECT_H
-        printf("fd set size: %u\n", (unsigned int)FD_SETSIZE);
+        printf("fd set size: %u entries\n", (unsigned int)FD_SETSIZE);
+        printf("fd_set size: %u Bytes\n", (unsigned int)sizeof(fd_set));
 #endif
 
         printf("Compile time flags: ");

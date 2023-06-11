@@ -1862,6 +1862,7 @@ static void command_version             (client_t *client, source_t *source, adm
 
 #ifdef HAVE_SYS_SELECT_H
     reportxml_helper_add_value_int(resource, "fd-set-size", FD_SETSIZE);
+    reportxml_helper_add_value_int(resource, "fd-set-object-size", sizeof(fd_set));
 #endif
 
 #ifdef HAVE_GETHOSTNAME
