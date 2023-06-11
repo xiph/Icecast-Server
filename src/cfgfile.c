@@ -1053,7 +1053,7 @@ int config_parse_file(const char *filename, ice_config_t *configuration)
         ICECAST_LOG_ERROR("Client limit (%i) is too small for given source limit (%i)", configuration->client_limit, configuration->source_limit);
     }
 
-#ifndef HAVE_POLL
+#if !defined(HAVE_POLL) && !defined(_WIN32)
     if (configuration->client_limit > (FD_SETSIZE - 32)) {
         configuration->config_problems |= CONFIG_PROBLEM_VALIDATION;
         ICECAST_LOG_ERROR("Client limit (%i) is too big for FD_SETSIZE (%i)", configuration->client_limit, FD_SETSIZE);

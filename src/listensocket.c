@@ -726,7 +726,7 @@ static int listensocket_refsock(listensocket_t *self, bool prefer_inet6)
         return -1;
     }
 
-#ifndef HAVE_POLL
+#if !defined(HAVE_POLL) && !defined(_WIN32)
     if (self->sock >= FD_SETSIZE) {
         sock_close(self->sock);
         self->sock = SOCK_ERROR;

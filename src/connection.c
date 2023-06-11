@@ -471,7 +471,7 @@ connection_t *connection_create(sock_t sock, listensocket_t *listensocket_real, 
     if (!matchfile_match_allow_deny(allowed_ip, banned_ip, ip))
         return NULL;
 
-#ifndef HAVE_POLL
+#if !defined(HAVE_POLL) && !defined(_WIN32)
     if (sock >= FD_SETSIZE) {
         ICECAST_LOG_ERROR("Can not create connection: System filehandle set overflow");
         return NULL;
