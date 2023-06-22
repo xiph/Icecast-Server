@@ -254,7 +254,7 @@ static int _start_logging(void)
     char fn_error[FILENAME_MAX];
     char fn_access[FILENAME_MAX];
     char fn_playlist[FILENAME_MAX];
-    char buf[1024];
+    char buf[1024 + FILENAME_MAX];
     int log_to_stderr;
 
     ice_config_t *config = config_get_config_unlocked();
