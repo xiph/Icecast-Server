@@ -98,6 +98,66 @@ static void _add_server(xmlDocPtr doc, xmlNodePtr node, ice_config_t *c);
 static void merge_mounts(mount_proxy * dst, mount_proxy * src);
 static inline void _merge_mounts_all(ice_config_t *c);
 
+
+static int util_str_to_loglevel(const char *str) {
+    if (strcasecmp(str, "debug") == 0 || strcasecmp(str, "DBUG") == 0)
+        return ICECAST_LOGLEVEL_DEBUG;
+    if (strcasecmp(str, "information") == 0 || strcasecmp(str, "INFO") == 0)
+        return ICECAST_LOGLEVEL_INFO;
+    if (strcasecmp(str, "warning") == 0 || strcasecmp(str, "WARN") == 0)
+        return ICECAST_LOGLEVEL_WARN;
+    if (strcasecmp(str, "error") == 0 || strcasecmp(str, "EROR") == 0)
+        return ICECAST_LOGLEVEL_ERROR;
+
+    /* gussing it is old-style numerical setting */
+    return atoi(str);
+}
+
+/* This is a very reduced variant of the function with the same name in 2.5.x */
+static int str_to_tlsmode(const char *str) {
+    /* consider NULL and empty strings as disabled */
+    if (!str || !*str)
+        return 0;
+
+    if (strcasecmp(str, "disabled") == 0) {
+        return 0;
+    } else if (strcasecmp(str, "auto_no_plain") == 0 ||
+               /* specific mode */
+               strcasecmp(str, "rfc2818") == 0 ||
+               /* boolean-style values */
+               strcasecmp(str, "true")    == 0 ||
+               strcasecmp(str, "yes")     == 0 ||
+               strcasecmp(str, "on")      == 0 ) {
+        return 1;
+    } else if (strcasecmp(str, "rfc2817") == 0 ||
+               strcasecmp(str, "auto")    == 0) {
+        ICECAST_LOG_ERROR("Unsupported TLS mode \"%s\" selected. Disabling TLS. Use \"disabled\" or \"auto_no_plain\".");
+        return 0;
+    }
+
+    /* old style numbers: consider everyting non-zero RFC2818 */
+    return atoi(str);
+}
+
+int util_str_to_bool(const char *str) {
+    /* consider NULL and empty strings false */
+    if (!str || !*str)
+        return 0;
+
+    /* common words for true values */
+    if (strcasecmp(str, "true") == 0 ||
+        strcasecmp(str, "yes")  == 0 ||
+        strcasecmp(str, "on")   == 0 )
+        return 1;
+
+    /* old style numbers: consider everyting non-zero true */
+    if (atoi(str))
+        return 1;
+
+    /* we default to no */
+    return 0;
+}
+
 static void create_locks(void) {
     thread_mutex_create(&_locks.relay_lock);
     thread_rwlock_create(&_locks.config_lock);
@@ -485,11 +545,11 @@ static void _parse_root(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("fileserve")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->fileserve = atoi(tmp);
+            configuration->fileserve = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("relays-on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->on_demand = atoi(tmp);
+            configuration->on_demand = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("hostname")) == 0) {
             if (configuration->hostname) xmlFree(configuration->hostname);
@@ -696,7 +756,7 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("fallback-when-full")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_when_full = atoi(tmp);
+            mount->fallback_when_full = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("max-listeners")) == 0) {
@@ -715,22 +775,33 @@ static void _parse_mount(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("fallback-override")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->fallback_override = atoi(tmp);
-            if(tmp) xmlFree(tmp);
+            if (tmp) {
+                if (strcasecmp(tmp, "all") == 0) {
+                    mount->fallback_override = 1;
+                } else if (strcasecmp(tmp, "none") == 0) {
+                    mount->fallback_override = 0;
+                } else {
+                    mount->fallback_override = atoi(tmp);
+                }
+                xmlFree(tmp);
+            } else {
+                mount->fallback_override = 0;
+            }
         }
         else if (xmlStrcmp (node->name, XMLSTR("no-mount")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->no_mount = atoi(tmp);
+            mount->no_mount = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("no-yp")) == 0) {
+            ICECAST_LOG_WARN("The <no-yp> tag is deprecated. Please use <public>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             mount->yp_public = atoi(tmp) == 0 ? -1 : 0;
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("hidden")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            mount->hidden = atoi(tmp);
+            mount->hidden = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("authentication")) == 0) {
@@ -941,7 +1012,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("relay-shoutcast-metadata")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->mp3metadata = atoi(tmp);
+            relay->mp3metadata = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("username")) == 0) {
@@ -956,7 +1027,7 @@ static void _parse_relay(xmlDocPtr doc, xmlNodePtr node,
         }
         else if (xmlStrcmp (node->name, XMLSTR("on-demand")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            relay->on_demand = atoi(tmp);
+            relay->on_demand = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("bind")) == 0) {
@@ -993,14 +1064,14 @@ static void _parse_listen_socket(xmlDocPtr doc, xmlNodePtr node,
                 ICECAST_LOG_WARN("<port> must not be empty.");
             }
         }
-        else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0) {
+        else if (xmlStrcmp (node->name, XMLSTR("ssl")) == 0 || xmlStrcmp (node->name, XMLSTR("tls")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->ssl = atoi(tmp);
+            listener->ssl = str_to_tlsmode(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("shoutcast-compat")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            listener->shoutcast_compat = atoi(tmp);
+            listener->shoutcast_compat = util_str_to_bool(tmp);
             if(tmp) xmlFree(tmp);
         }
         else if (xmlStrcmp (node->name, XMLSTR("shoutcast-mount")) == 0) {
@@ -1147,10 +1218,10 @@ static void _parse_paths(xmlDocPtr doc, xmlNodePtr node,
         } else if (xmlStrcmp (node->name, XMLSTR("allow-ip")) == 0) {
             if (configuration->allowfile) xmlFree(configuration->allowfile);
             configuration->allowfile = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("ssl-certificate")) == 0) {
+        } else if (xmlStrcmp (node->name, XMLSTR("ssl-certificate")) == 0 || xmlStrcmp (node->name, XMLSTR("tls-certificate")) == 0) {
             if (configuration->cert_file) xmlFree(configuration->cert_file);
             configuration->cert_file = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-        } else if (xmlStrcmp (node->name, XMLSTR("ssl-allowed-ciphers")) == 0) {
+        } else if (xmlStrcmp (node->name, XMLSTR("ssl-allowed-ciphers")) == 0 || xmlStrcmp (node->name, XMLSTR("tls-allowed-ciphers")) == 0) {
             if (configuration->cipher_list) xmlFree(configuration->cipher_list);
             configuration->cipher_list = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
         } else if (xmlStrcmp (node->name, XMLSTR("webroot")) == 0) {
@@ -1242,11 +1313,11 @@ static void _parse_logging(xmlDocPtr doc, xmlNodePtr node,
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("loglevel")) == 0) {
            char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           configuration->loglevel = atoi(tmp);
+           configuration->loglevel = util_str_to_loglevel(tmp);
            if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("logarchive")) == 0) {
             char *tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->logarchive = atoi(tmp);
+            configuration->logarchive = util_str_to_bool(tmp);
             if (tmp) xmlFree(tmp);
         }
     } while ((node = node->next));
@@ -1264,7 +1335,7 @@ static void _parse_security(xmlDocPtr doc, xmlNodePtr node,
 
        if (xmlStrcmp (node->name, XMLSTR("chroot")) == 0) {
            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-           configuration->chroot = atoi(tmp);
+           configuration->chroot = util_str_to_bool(tmp);
            if (tmp) xmlFree(tmp);
        } else if (xmlStrcmp (node->name, XMLSTR("changeowner")) == 0) {
            configuration->chuid = 1;

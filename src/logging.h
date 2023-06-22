@@ -27,14 +27,19 @@ extern int playlistlog;
 #define __func__ strrchr (__FILE__, '\\') ? strrchr (__FILE__, '\\') + 1 : __FILE__
 #endif
 
+#define ICECAST_LOGLEVEL_ERROR  1
+#define ICECAST_LOGLEVEL_WARN   2
+#define ICECAST_LOGLEVEL_INFO   3
+#define ICECAST_LOGLEVEL_DEBUG  4
+
 /*
 ** Variadic macros for logging
 */
 
-#define ICECAST_LOG_ERROR(...) log_write(errorlog, 1, CATMODULE "/", __func__, __VA_ARGS__)
-#define ICECAST_LOG_WARN(...) log_write(errorlog, 2, CATMODULE "/", __func__, __VA_ARGS__)
-#define ICECAST_LOG_INFO(...) log_write(errorlog, 3, CATMODULE "/", __func__, __VA_ARGS__)
-#define ICECAST_LOG_DEBUG(...) log_write(errorlog, 4, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_LOG_ERROR(...) log_write(errorlog, ICECAST_LOGLEVEL_ERROR, CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_LOG_WARN(...)  log_write(errorlog, ICECAST_LOGLEVEL_WARN,  CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_LOG_INFO(...)  log_write(errorlog, ICECAST_LOGLEVEL_INFO,  CATMODULE "/", __func__, __VA_ARGS__)
+#define ICECAST_LOG_DEBUG(...) log_write(errorlog, ICECAST_LOGLEVEL_DEBUG, CATMODULE "/", __func__, __VA_ARGS__)
 
 /* CATMODULE is the category or module that logging messages come from.
 ** we set one here in cause someone forgets in the .c file.

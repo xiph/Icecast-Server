@@ -74,7 +74,7 @@
     <!--
     <listen-socket>
         <port>8443</port>
-        <ssl>1</ssl>
+        <tls>auto_no_plain</tls>
     </listen-socket>
     -->
 
@@ -152,10 +152,10 @@
         <dump-file>/tmp/dump-example1.ogg</dump-file>
         <burst-size>65536</burst-size>
         <fallback-mount>/example2.ogg</fallback-mount>
-        <fallback-override>1</fallback-override>
-        <fallback-when-full>1</fallback-when-full>
+        <fallback-override>all</fallback-override>
+        <fallback-when-full>true</fallback-when-full>
         <intro>/example_intro.ogg</intro>
-        <hidden>1</hidden>
+        <hidden>true</hidden>
         <public>1</public>
         <authentication type="htpasswd">
                 <option name="filename" value="myauth"/>
@@ -209,7 +209,7 @@
         <alias source="/" destination="/status.xsl"/>
         <!-- The certificate file needs to contain both public and private part.
              Both should be PEM encoded.
-        <ssl-certificate>@pkgdatadir@/icecast.pem</ssl-certificate>
+        <tls-certificate>@pkgdatadir@/icecast.pem</tls-certificate>
         -->
     </paths>
 
@@ -217,18 +217,18 @@
         <accesslog>access.log</accesslog>
         <errorlog>error.log</errorlog>
         <!-- <playlistlog>playlist.log</playlistlog> -->
-        <loglevel>3</loglevel> <!-- 4 Debug, 3 Info, 2 Warn, 1 Error -->
+        <loglevel>information</loglevel> <!-- "debug", "information", "warning", or "error" -->
         <logsize>10000</logsize> <!-- Max size of a logfile -->
         <!-- If logarchive is enabled (1), then when logsize is reached
              the logfile will be moved to [error|access|playlist].log.DATESTAMP,
              otherwise it will be moved to [error|access|playlist].log.old.
              Default is non-archive mode (i.e. overwrite)
         -->
-        <!-- <logarchive>1</logarchive> -->
+        <!-- <logarchive>true</logarchive> -->
     </logging>
 
     <security>
-        <chroot>0</chroot>
+        <chroot>false</chroot>
         <!--
         <changeowner>
             <user>nobody</user>
