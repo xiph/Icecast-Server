@@ -29,7 +29,6 @@
             <option name="listener_remove" value="http://myauthserver.net/action.php"/>
         </authentication>
     </mount>
-    <fileserve>1</fileserve>
     <paths>
         <basedir>@pkgdatadir@</basedir>
         <logdir>@localstatedir@/log/@PACKAGE@</logdir>
