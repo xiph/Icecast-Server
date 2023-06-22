@@ -18,6 +18,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -51,6 +52,10 @@
 #endif
 #if HAVE_PWD_H
 #include <pwd.h>
+#endif
+
+#if HAVE_SYS_SELECT_H
+#include <sys/select.h>
 #endif
 
 #include "cfgfile.h"
@@ -150,6 +155,37 @@ void shutdown_subsystems(void)
     xslt_shutdown();
 }
 
+static void show_version(bool full)
+{
+    printf("%s\n", ICECAST_VERSION_STRING);
+
+    if (full) {
+        printf("\n");
+
+        printf("Address bits: %u\n", (unsigned int)sizeof(void*)*8);
+#ifdef HAVE_SYS_SELECT_H
+        printf("fd set size: %u entries\n", (unsigned int)FD_SETSIZE);
+        printf("fd_set size: %u Bytes\n", (unsigned int)sizeof(fd_set));
+#endif
+
+        printf("Compile time flags:");
+#ifdef HAVE_POLL
+        printf(" poll");
+#endif
+#ifdef HAVE_SYS_SELECT_H
+        printf(" select");
+#endif
+#ifdef HAVE_UNAME
+        printf(" uname");
+#endif
+        /* ---[ OS ]--- */
+#ifdef WIN32
+        printf(" win32");
+#endif
+        printf("\n");
+    }
+}
+
 static int _parse_config_opts(int argc, char **argv, char *filename, int size)
 {
     int i = 1;
@@ -178,7 +214,10 @@ static int _parse_config_opts(int argc, char **argv, char *filename, int size)
 #endif
         }
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            fprintf(stdout, "%s\n", ICECAST_VERSION_STRING);
+            show_version(false);
+            exit(0);
+        } else if (strcmp(argv[i], "-V") == 0) {
+            show_version(true);
             exit(0);
         }
 
