@@ -636,7 +636,7 @@ static inline void __format_time(char * buffer, size_t len, const char * format)
 
 void stats_event_time (const char *mount, const char *name)
 {
-    char buffer[100];
+    char buffer[192];
 
     __format_time(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S ");
     stats_event (mount, name, buffer);
@@ -645,7 +645,7 @@ void stats_event_time (const char *mount, const char *name)
 
 void stats_event_time_iso8601 (const char *mount, const char *name)
 {
-    char buffer[100];
+    char buffer[192];
 
     __format_time(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S");
     stats_event (mount, name, buffer);
