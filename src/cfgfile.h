@@ -147,7 +147,6 @@ typedef struct ice_config_tag {
     int client_limit;
     int source_limit;
     unsigned int queue_size_limit;
-    int threadpool_size;
     unsigned int burst_size;
     int client_timeout;
     int header_timeout;

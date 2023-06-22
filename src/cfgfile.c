@@ -412,7 +412,6 @@ static void _set_defaults(ice_config_t *configuration)
     configuration->client_limit = CONFIG_DEFAULT_CLIENT_LIMIT;
     configuration->source_limit = CONFIG_DEFAULT_SOURCE_LIMIT;
     configuration->queue_size_limit = CONFIG_DEFAULT_QUEUE_SIZE_LIMIT;
-    configuration->threadpool_size = CONFIG_DEFAULT_THREADPOOL_SIZE;
     configuration->client_timeout = CONFIG_DEFAULT_CLIENT_TIMEOUT;
     configuration->header_timeout = CONFIG_DEFAULT_HEADER_TIMEOUT;
     configuration->source_timeout = CONFIG_DEFAULT_SOURCE_TIMEOUT;
@@ -607,9 +606,7 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             configuration->queue_size_limit = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("threadpool")) == 0) {
-            tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
-            configuration->threadpool_size = atoi(tmp);
-            if (tmp) xmlFree(tmp);
+            ICECAST_LOG_ERROR("Invalid <threadpool> tag is used. Please remove this tag from your config. No additional changes needed.");
         } else if (xmlStrcmp (node->name, XMLSTR("client-timeout")) == 0) {
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             configuration->client_timeout = atoi(tmp);
@@ -623,6 +620,7 @@ static void _parse_limits(xmlDocPtr doc, xmlNodePtr node,
             configuration->source_timeout = atoi(tmp);
             if (tmp) xmlFree(tmp);
         } else if (xmlStrcmp (node->name, XMLSTR("burst-on-connect")) == 0) {
+            ICECAST_LOG_WARN("Deprecated <burst-on-connect> is used. Only use <burst-size>.");
             tmp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1);
             if (atoi(tmp) == 0)
                 configuration->burst_size = 0;
