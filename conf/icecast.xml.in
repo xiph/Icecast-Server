@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <icecast>
     <!-- location and admin are two arbitrary strings that are e.g. visible
          on the server info page of the icecast web interface
