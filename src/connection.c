@@ -903,6 +903,7 @@ void connection_accept_loop(void)
             connection_queue(con);
         }
     }
+    ICECAST_LOG_INFO("No longer running. Shutting down...");
 
     /* Give all the other threads notification to shut down */
 

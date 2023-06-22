@@ -62,8 +62,6 @@ void _sig_hup(int signo)
 
 void _sig_die(int signo)
 {
-    ICECAST_LOG_INFO("Caught signal %d, shutting down...", signo);
-
     /* inform the server to start shutting down */
     global.running = ICECAST_HALTING;
 }
