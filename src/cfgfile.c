@@ -2337,8 +2337,10 @@ static void _parse_authentication(xmlDocPtr doc, xmlNodePtr node,
             continue;
 
         if (xmlStrcmp(node->name, XMLSTR("source-password")) == 0) {
-            if (xmlGetProp(node, XMLSTR("mount"))) {
+            xmlChar *tmp;
+            if ((tmp = xmlGetProp(node, XMLSTR("mount")))) {
                 ICECAST_LOG_ERROR("Mount level source password defined within global <authentication> section.");
+                xmlFree(tmp);
             } else {
                 if (*source_password)
                     xmlFree(*source_password);
