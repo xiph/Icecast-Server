@@ -1019,6 +1019,7 @@ client_slurp_result_t client_body_skip(client_t *client)
 {
     char buf[2048];
     int ret;
+    ssize_t got;
 
     ICECAST_LOG_DEBUG("Slurping client %p", client);
 
@@ -1038,8 +1039,17 @@ client_slurp_result_t client_body_skip(client_t *client)
         if (left > sizeof(buf))
             left = sizeof(buf);
 
-        client_body_read(client, buf, left);
+        got = client_body_read(client, buf, left);
+    } else {
+        got = client_body_read(client, buf, sizeof(buf));
+    }
 
+    if (got < 1) {
+        ICECAST_LOG_DEBUG("Slurping client %p ... got no data EOF or needs more data", client);
+        return CLIENT_SLURP_ERROR;
+    }
+
+    if (client->request_body_length != -1) {
         if ((size_t)client->request_body_length == client->request_body_read) {
             ICECAST_LOG_DEBUG("Slurping client %p ... was a success", client);
             return CLIENT_SLURP_SUCCESS;
@@ -1047,8 +1057,6 @@ client_slurp_result_t client_body_skip(client_t *client)
             ICECAST_LOG_DEBUG("Slurping client %p ... needs more data", client);
             return CLIENT_SLURP_NEEDS_MORE_DATA;
         }
-    } else {
-        client_body_read(client, buf, sizeof(buf));
     }
 
     ret = client_body_eof(client);

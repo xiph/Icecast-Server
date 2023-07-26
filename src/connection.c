@@ -737,6 +737,8 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_entry_t
         client_t *client = node->client;
         client_slurp_result_t res;
 
+        node->ready = false;
+
         if (client->parser->req_type == httpp_req_post) {
             if (node->bodybuffer == NULL && client->request_body_read == 0) {
                 if (client->request_body_length < 0) {
