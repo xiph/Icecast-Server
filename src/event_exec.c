@@ -182,7 +182,8 @@ static inline void __setup_environ(ice_config_t *config, event_exec_t *self, eve
     if (source) {
         __update_environ("SOURCE_MOUNTPOINT", source->mount);
         __update_environ("SOURCE_PUBLIC",     source->yp_public ? "true" : "false");
-        __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false");
+        __update_environ("SOURCE_HIDDEN",     source->hidden    ? "true" : "false");
+        __update_environ("SROUCE_HIDDEN",     source->hidden    ? "true" : "false"); /* Typo, kept for compatibility */
     }
     avl_tree_unlock(global.source_tree);
 }
