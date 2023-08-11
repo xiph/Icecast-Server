@@ -516,6 +516,12 @@ void auth_postprocess_source (auth_client *auth_user)
         admin_handle_request (client, "/admin/metadata");
     }
     else
+        if (strncmp ("/admin/listclients", req, 18) == 0)
+    {
+        ICECAST_LOG_DEBUG("admin listclients request on mountpoint %s", mount);
+        admin_handle_request (client, "/admin/listclients");
+    }
+    else
     {
         ICECAST_LOG_DEBUG("on mountpoint %s", mount);
         source_startup (client, mount, 0);
