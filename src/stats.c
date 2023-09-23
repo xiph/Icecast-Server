@@ -934,8 +934,10 @@ static xmlNodePtr _dump_stats_to_doc (xmlNodePtr root, unsigned int flags, const
                 if (source_real->running)
                     xmlNewTextChild(xmlnode, NULL, XMLSTR("content-type"), XMLSTR(source_real->format->contenttype));
 
-                if (flags & STATS_XML_FLAG_SHOW_LISTENERS)
+                if (flags & STATS_XML_FLAG_SHOW_LISTENERS) {
                     admin_add_listeners_to_mount(source_real, xmlnode, client->mode);
+                    admin_add_geoip_to_mount(source_real, xmlnode, client->mode);
+                }
             }
             avl_tree_unlock(global.source_tree);
 
