@@ -244,6 +244,14 @@ PKG_HAVE_WITH_MODULES([OPENSSL], [openssl >= 1.1.0], [
 ])
 
 dnl
+dnl libmaxminddb
+dnl
+PKG_HAVE_WITH_MODULES([MAXMINDDB], [libmaxminddb >= 1.3.2], [
+  CFLAGS="${CFLAGS} ${MAXMINDDB_CFLAGS}"
+  LIBS="${LIBS} ${MAXMINDDB_LIBS}"
+])
+
+dnl
 dnl librhash - first try pkgconfig and then basic search
 dnl since the function is defined in rhash.h we need to check for that first,
 dnl before we can check for the function, bit crude but seems to work.

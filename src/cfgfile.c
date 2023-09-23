@@ -55,6 +55,7 @@
 #include "slave.h"
 #include "xslt.h"
 #include "prng.h"
+#include "geoip.h"
 
 #define CATMODULE                       "CONFIG"
 #define RANGE_PORT                      1, 65535
@@ -914,6 +915,7 @@ void config_clear(ice_config_t *c)
     if (c->log_dir)         xmlFree(c->log_dir);
     if (c->webroot_dir)     xmlFree(c->webroot_dir);
     if (c->adminroot_dir)   xmlFree(c->adminroot_dir);
+    if (c->geoipdbfile)     xmlFree(c->geoipdbfile);
     if (c->null_device)     xmlFree(c->null_device);
     if (c->pidfile)         xmlFree(c->pidfile);
     if (c->banfile)         xmlFree(c->banfile);
@@ -1004,6 +1006,8 @@ void config_reread_config(void)
         restart_logging(config);
         prng_configure(config);
         main_config_reload(config);
+        igloo_ro_unref(&global.geoip_db);
+        global.geoip_db = geoip_db_new(config->geoipdbfile);
         connection_reread_config(config);
         yp_recheck_config(config);
         fserve_recheck_mime_types(config);
@@ -2719,6 +2723,14 @@ static void _parse_paths(xmlDocPtr      doc,
                 }
             }
             xmlFree(temp);
+        } else if (xmlStrcmp(node->name, XMLSTR("geoipdb")) == 0) {
+            if (!(temp = (char *)xmlNodeListGetString(doc, node->xmlChildrenNode, 1))) {
+                ICECAST_LOG_WARN("<geoipdb> setting must not be empty.");
+                continue;
+            }
+            if (configuration->geoipdbfile)
+                xmlFree(configuration->geoipdbfile);
+            configuration->geoipdbfile = (char *)temp;
         } else if (xmlStrcmp(node->name, XMLSTR("resource")) == 0 || xmlStrcmp(node->name, XMLSTR("alias")) == 0) {
             _parse_resource(doc, node, configuration);
         } else {

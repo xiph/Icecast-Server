@@ -922,6 +922,12 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));
 
+    if (client->con && *client->con->geoip.iso_3166_1_alpha_2) {
+        xmlNodePtr geoip = xmlNewChild(node, NULL, XMLSTR("geoip"), NULL);
+        xmlNodePtr country = xmlNewChild(geoip, NULL, XMLSTR("country"), NULL);
+        xmlSetProp(country, XMLSTR("iso-alpha-2"), XMLSTR(client->con->geoip.iso_3166_1_alpha_2));
+    }
+
     do {
         xmlNodePtr history = xmlNewChild(node, NULL, XMLSTR("history"), NULL);
         size_t i;

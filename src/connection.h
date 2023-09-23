@@ -64,6 +64,10 @@ struct connection_tag {
 
     /* IP Address of the client as seen by the server */
     char *ip;
+
+    struct {
+        char iso_3166_1_alpha_2[3]; /* 2 bytes plus \0 */
+    } geoip;
 };
 
 void connection_initialize(void);

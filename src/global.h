@@ -53,6 +53,7 @@ typedef struct ice_global_tag
     relay_t *master_relays;
 
     module_container_t *modulecontainer;
+    geoip_db_t *geoip_db;
 
 
     /* state */

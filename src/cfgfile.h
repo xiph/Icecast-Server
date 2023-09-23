@@ -288,6 +288,7 @@ struct ice_config_tag {
     char *allowfile;
     char *webroot_dir;
     char *adminroot_dir;
+    char *geoipdbfile;
     prng_seed_config_t *prng_seed;
     resource_t *resources;
     reportxml_database_t *reportxml_db;

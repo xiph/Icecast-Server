@@ -91,6 +91,7 @@
 #include "listensocket.h"
 #include "fastevent.h"
 #include "prng.h"
+#include "geoip.h"
 #include "navigation.h"
 
 #include <libxml/xmlmemory.h>
@@ -754,6 +755,10 @@ int main(int argc, char **argv)
     ICECAST_LOG_INFO("%s server started", ICECAST_VERSION_STRING);
     ICECAST_LOG_INFO("Server's PID is %lli", (long long int)getpid());
     __log_system_name();
+
+    config = config_get_config();
+    global.geoip_db = geoip_db_new(config->geoipdbfile);
+    config_release_config();
 
     /* REM 3D Graphics */
 

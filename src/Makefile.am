@@ -34,6 +34,7 @@ noinst_HEADERS = \
     prng.h \
     matchfile.h \
     tls.h \
+    geoip.h \
     refobject.h \
     module.h \
     reportxml.h \
@@ -88,6 +89,7 @@ icecast_SOURCES = \
     prng.c \
     matchfile.c \
     tls.c \
+    geoip.c \
     refobject.c \
     module.c \
     reportxml.c \

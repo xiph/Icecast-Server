@@ -51,6 +51,7 @@ void global_shutdown(void)
 {
     thread_mutex_destroy(&_global_mutex);
     igloo_ro_unref(&global.modulecontainer);
+    igloo_ro_unref(&global.geoip_db);
     avl_tree_free(global.source_tree, NULL);
     igloo_sp_unref(&_instance_uuid, igloo_instance);
 }
