@@ -467,6 +467,50 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                         json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
                         render_node(renderer, doc, cur, node, cache);
                         nodelist_unset(&nodelist, i);
+                    } else if (strcmp((const char *)cur->name, "geoip") == 0) {
+                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                        json_renderer_write_key(renderer, "country", JSON_RENDERER_FLAGS_NONE);
+                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                        for (size_t j = i; j < len; j++) {
+                            xmlNodePtr subcur = nodelist_get(&nodelist, j);
+                            if (subcur == NULL)
+                                continue;
+
+                            if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
+                                nodelist_unset(&nodelist, j);
+                                xmlNodePtr child = subcur->xmlChildrenNode;
+                                while (child) {
+                                    if (child->type == XML_ELEMENT_NODE && child->name && strcmp((const char *)child->name, "country") == 0) {
+                                        xmlChar *keyval = xmlGetProp(child, XMLSTR("iso-alpha-2"));
+
+                                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+
+                                        if (keyval) {
+                                            json_renderer_write_key(renderer, "iso-alpha-2", JSON_RENDERER_FLAGS_NONE);
+                                            json_renderer_write_string(renderer, (const char *)keyval, JSON_RENDERER_FLAGS_NONE);
+                                            xmlFree(keyval);
+                                        }
+
+                                        for (xmlNodePtr subchild = child->xmlChildrenNode; subchild; subchild = subchild->next) {
+                                            if (subchild->type == XML_ELEMENT_NODE && subchild->name) {
+                                                xmlChar *value = xmlNodeListGetString(doc, subchild->xmlChildrenNode, 1);
+                                                if (value) {
+                                                    json_renderer_write_key(renderer, (const char*)subchild->name, JSON_RENDERER_FLAGS_NONE);
+                                                    json_renderer_write_int(renderer, strtoll((const char*)value, NULL, 10));
+                                                    xmlFree(value);
+                                                }
+                                            }
+                                        }
+
+                                        json_renderer_end(renderer);
+                                    }
+                                    child = child->next;
+                                }
+                            }
+                        }
+                        json_renderer_end(renderer);
+                        json_renderer_end(renderer);
                     }
                 }
                 //render_node_generic(renderer, doc, node, parent, cache);
