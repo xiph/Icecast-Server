@@ -1342,11 +1342,21 @@ static void command_shoutcast_metadata(client_t *client,
 
 static void command_stats(client_t *client, source_t *source, admin_format_t response)
 {
-    unsigned int flags = (source) ? STATS_XML_FLAG_SHOW_HIDDEN|STATS_XML_FLAG_SHOW_LISTENERS : STATS_XML_FLAG_SHOW_HIDDEN;
+    unsigned int flags = STATS_XML_FLAG_SHOW_HIDDEN;
     const char *mount = (source) ? source->mount : NULL;
     xmlDocPtr doc;
+    const char *show_listeners;
 
     ICECAST_LOG_DEBUG("Stats request, sending xml stats");
+
+    COMMAND_OPTIONAL(client, "show-listeners", show_listeners);
+    if (show_listeners) {
+        if (util_str_to_bool(show_listeners))
+            flags |= STATS_XML_FLAG_SHOW_LISTENERS;
+    } else {
+        if (source)
+            flags |= STATS_XML_FLAG_SHOW_LISTENERS;
+    }
 
     doc = stats_get_xml(flags, mount, client);
     admin_send_response(doc, client, response, STATS_HTML_REQUEST);
