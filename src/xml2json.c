@@ -468,10 +468,8 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                         render_node(renderer, doc, cur, node, cache);
                         nodelist_unset(&nodelist, i);
                     } else if (strcmp((const char *)cur->name, "geoip") == 0) {
-                        json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
-                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
-                        json_renderer_write_key(renderer, "country", JSON_RENDERER_FLAGS_NONE);
-                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                        xmlNodePtr geoip = NULL;
+
                         for (size_t j = i; j < len; j++) {
                             xmlNodePtr subcur = nodelist_get(&nodelist, j);
                             if (subcur == NULL)
@@ -479,7 +477,19 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
 
                             if (subcur->type == XML_ELEMENT_NODE && subcur->name && strcmp((const char *)cur->name, (const char *)subcur->name) == 0) {
                                 nodelist_unset(&nodelist, j);
-                                xmlNodePtr child = subcur->xmlChildrenNode;
+                                geoip = subcur;
+                            }
+                        }
+
+                        if (geoip) {
+                            json_renderer_write_key(renderer, (const char *)cur->name, JSON_RENDERER_FLAGS_NONE);
+                            json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+
+                            {
+                                xmlNodePtr child = geoip->xmlChildrenNode;
+
+                                json_renderer_write_key(renderer, "country", JSON_RENDERER_FLAGS_NONE);
+                                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
                                 while (child) {
                                     if (child->type == XML_ELEMENT_NODE && child->name && strcmp((const char *)child->name, "country") == 0) {
                                         xmlChar *keyval = xmlGetProp(child, XMLSTR("iso-alpha-2"));
@@ -507,10 +517,40 @@ static void render_node_legacystats(json_renderer_t *renderer, xmlDocPtr doc, xm
                                     }
                                     child = child->next;
                                 }
+                                json_renderer_end(renderer);
                             }
+
+                            {
+                                xmlNodePtr child = geoip->xmlChildrenNode;
+
+                                json_renderer_write_key(renderer, "location", JSON_RENDERER_FLAGS_NONE);
+                                json_renderer_begin(renderer, JSON_ELEMENT_TYPE_ARRAY);
+                                while (child) {
+                                    ICECAST_LOG_INFO("child->name=<%s>", child->name);
+                                    if (child->type == XML_ELEMENT_NODE && child->name && strcmp((const char *)child->name, "location") == 0) {
+                                        static const char * keys[] = {"latitude", "longitude", NULL};
+
+                                        json_renderer_begin(renderer, JSON_ELEMENT_TYPE_OBJECT);
+                                        for (const char **p = keys; *p; p++) {
+                                            xmlChar *keyval = xmlGetProp(child, XMLSTR(*p));
+
+
+                                            if (keyval) {
+                                                json_renderer_write_key(renderer, *p, JSON_RENDERER_FLAGS_NONE);
+                                                json_renderer_write_string(renderer, (const char *)keyval, JSON_RENDERER_FLAGS_NONE);
+                                                xmlFree(keyval);
+                                            }
+
+                                        }
+                                        json_renderer_end(renderer);
+                                    }
+                                    child = child->next;
+                                }
+                                json_renderer_end(renderer);
+                            }
+
+                            json_renderer_end(renderer);
                         }
-                        json_renderer_end(renderer);
-                        json_renderer_end(renderer);
                     }
                 }
                 //render_node_generic(renderer, doc, node, parent, cache);
