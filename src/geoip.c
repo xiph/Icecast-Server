@@ -98,8 +98,9 @@ void geoip_lookup_client(geoip_db_t *self, client_t * client)
 
     if (result.found_entry) {
         MMDB_entry_data_s entry_data;
-        int status = MMDB_get_value(&result.entry, &entry_data, "country", "iso_code", (const char*)NULL);
+        int status;
 
+        status = MMDB_get_value(&result.entry, &entry_data, "country", "iso_code", (const char*)NULL);
         if (status == MMDB_SUCCESS && entry_data.has_data) {
             if (entry_data.type == MMDB_DATA_TYPE_UTF8_STRING) {
                 if (entry_data.data_size < sizeof(con->geoip.iso_3166_1_alpha_2)) {
@@ -109,6 +110,18 @@ void geoip_lookup_client(geoip_db_t *self, client_t * client)
                     ICECAST_LOG_DINFO("FOUND: <%zu> <%H>", (size_t)entry_data.data_size, con->geoip.iso_3166_1_alpha_2);
                 }
             }
+        }
+
+        status = MMDB_get_value(&result.entry, &entry_data, "location", "latitude", (const char*)NULL);
+        if (status == MMDB_SUCCESS && entry_data.has_data && entry_data.type == MMDB_DATA_TYPE_DOUBLE) {
+            con->geoip.latitude = entry_data.double_value;
+            con->geoip.have_latitude = true;
+        }
+
+        status = MMDB_get_value(&result.entry, &entry_data, "location", "longitude", (const char*)NULL);
+        if (status == MMDB_SUCCESS && entry_data.has_data && entry_data.type == MMDB_DATA_TYPE_DOUBLE) {
+            con->geoip.longitude = entry_data.double_value;
+            con->geoip.have_longitude = true;
         }
     }
 }

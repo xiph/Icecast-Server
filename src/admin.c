@@ -930,10 +930,28 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));
 
-    if (client->con && *client->con->geoip.iso_3166_1_alpha_2) {
-        xmlNodePtr geoip = xmlNewChild(node, NULL, XMLSTR("geoip"), NULL);
-        xmlNodePtr country = xmlNewChild(geoip, NULL, XMLSTR("country"), NULL);
-        xmlSetProp(country, XMLSTR("iso-alpha-2"), XMLSTR(client->con->geoip.iso_3166_1_alpha_2));
+    if (client->con) {
+        connection_t *con = client->con;
+
+        if (*con->geoip.iso_3166_1_alpha_2 || con->geoip.have_latitude || con->geoip.have_longitude) {
+            xmlNodePtr geoip = xmlNewChild(node, NULL, XMLSTR("geoip"), NULL);
+
+            if (*con->geoip.iso_3166_1_alpha_2) {
+                xmlNodePtr country = xmlNewChild(geoip, NULL, XMLSTR("country"), NULL);
+                xmlSetProp(country, XMLSTR("iso-alpha-2"), XMLSTR(con->geoip.iso_3166_1_alpha_2));
+            }
+            if (con->geoip.have_latitude || con->geoip.have_longitude) {
+                xmlNodePtr location = xmlNewChild(geoip, NULL, XMLSTR("location"), NULL);
+                if (con->geoip.have_latitude) {
+                    snprintf(buf, sizeof(buf), "%f", con->geoip.latitude);
+                    xmlSetProp(location, XMLSTR("latitude"), XMLSTR(buf));
+                }
+                if (con->geoip.have_longitude) {
+                    snprintf(buf, sizeof(buf), "%f", con->geoip.longitude);
+                    xmlSetProp(location, XMLSTR("longitude"), XMLSTR(buf));
+                }
+            }
+        }
     }
 
     do {

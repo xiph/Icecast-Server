@@ -16,6 +16,7 @@
 
 #include <sys/types.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "tls.h"
 
@@ -66,6 +67,10 @@ struct connection_tag {
     char *ip;
 
     struct {
+        double latitude;
+        double longitude;
+        bool have_latitude;
+        bool have_longitude;
         char iso_3166_1_alpha_2[3]; /* 2 bytes plus \0 */
     } geoip;
 };
