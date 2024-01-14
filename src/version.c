@@ -89,6 +89,21 @@ const char * const * version_get_compiletime_flags(void)
 #ifdef HAVE_POSIX_SPAWNP
         "posix_spawnp",
 #endif
+#ifdef HAVE_POSIX_FADVISE
+        "posix_fadvise",
+#endif
+#ifdef HAVE_POSIX_FALLOCATE
+        "posix_fallocate",
+#endif
+#ifdef HAVE_POSIX_MADVISE
+        "posix_madvise",
+#endif
+#ifdef HAVE_FALLOCATE
+        "fallocate",
+#endif
+#ifdef HAVE_FTRUNCATE
+        "ftruncate",
+#endif
         /* ---[ OS ]--- */
 #ifdef WIN32
         "win32",

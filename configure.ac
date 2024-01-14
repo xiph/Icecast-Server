@@ -126,6 +126,8 @@ AC_CHECK_FUNCS([getrlimit])
 
 dnl Checked only for reporting in version display as of now (may be used in future versions):
 AC_CHECK_FUNCS([pipe pipe2 socketpair posix_spawn posix_spawnp])
+AC_CHECK_FUNCS([posix_fadvise posix_fallocate posix_madvise])
+AC_CHECK_FUNCS([fallocate ftruncate])
 
 dnl check for crypt():
 AC_SEARCH_LIBS([crypt_r], [crypt], [
