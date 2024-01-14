@@ -554,7 +554,7 @@ static refbuf_t *get_next_buffer (source_t *source)
         source->last_read = current;
         refbuf = source->format->get_buffer(source);
         if (client_body_eof(source->client)) {
-            ICECAST_LOG_INFO("End of Stream %s", source->mount);
+            ICECAST_LOG_INFO("End of Stream %H", source->mount);
             source->running = 0;
             continue;
         }
@@ -943,9 +943,9 @@ static void source_shutdown (source_t *source)
 {
     source->running = 0;
     if (source->con && source->con->ip) {
-        ICECAST_LOG_INFO("Source from %s at \"%s\" exiting", source->con->ip, source->mount);
+        ICECAST_LOG_INFO("Source from %s at %#H exiting", source->con->ip, source->mount);
     } else {
-        ICECAST_LOG_INFO("Source at \"%s\" exiting", source->mount);
+        ICECAST_LOG_INFO("Source at %#H exiting", source->mount);
     }
 
     event_emit_va("source-disconnect", EVENT_EXTRA_SOURCE, source, EVENT_EXTRA_CLIENT, source->client, EVENT_EXTRA_LIST_END);
