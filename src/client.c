@@ -57,6 +57,7 @@
 #include "acl.h"
 #include "listensocket.h"
 #include "fastevent.h"
+#include "geoip.h"
 
 /* for ADMIN_COMMAND_ERROR, and ADMIN_ICESTATS_LEGACY_EXTENSION_APPLICATION */
 #include "admin.h"
@@ -188,6 +189,8 @@ int client_create(client_t **c_ptr, connection_t *con, http_parser_t *parser)
     listensocket_release_listener(con->listensocket_real);
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_CREATE, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_CLIENT, client);
+
+    geoip_lookup_client(global.geoip_db, client);
 
     return ret;
 }

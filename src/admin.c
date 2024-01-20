@@ -151,6 +151,12 @@
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
 
 typedef struct {
+    size_t listeners;
+    size_t tls;
+    size_t ipv6;
+} country_t;
+
+typedef struct {
     const char *prefix;
     size_t length;
     const admin_command_handler_t *handlers;
@@ -577,6 +583,8 @@ xmlDocPtr admin_build_sourcelist(const char *mount, client_t *client, admin_form
 
             snprintf(buf, sizeof(buf), "%"PRIu64, source->dumpfile_written);
             xmlNewTextChild(srcnode, NULL, XMLSTR("dumpfile_written"), XMLSTR(buf));
+
+            admin_add_geoip_to_mount(source, srcnode, client->mode);
         }
         node = avl_get_next(node);
     }
@@ -922,6 +930,30 @@ static inline xmlNodePtr __add_listener(client_t        *client,
 
     xmlNewTextChild(node, NULL, XMLSTR("protocol"), XMLSTR(client_protocol_to_string(client->protocol)));
 
+    if (client->con) {
+        connection_t *con = client->con;
+
+        if (*con->geoip.iso_3166_1_alpha_2 || con->geoip.have_latitude || con->geoip.have_longitude) {
+            xmlNodePtr geoip = xmlNewChild(node, NULL, XMLSTR("geoip"), NULL);
+
+            if (*con->geoip.iso_3166_1_alpha_2) {
+                xmlNodePtr country = xmlNewChild(geoip, NULL, XMLSTR("country"), NULL);
+                xmlSetProp(country, XMLSTR("iso-alpha-2"), XMLSTR(con->geoip.iso_3166_1_alpha_2));
+            }
+            if (con->geoip.have_latitude || con->geoip.have_longitude) {
+                xmlNodePtr location = xmlNewChild(geoip, NULL, XMLSTR("location"), NULL);
+                if (con->geoip.have_latitude) {
+                    snprintf(buf, sizeof(buf), "%f", con->geoip.latitude);
+                    xmlSetProp(location, XMLSTR("latitude"), XMLSTR(buf));
+                }
+                if (con->geoip.have_longitude) {
+                    snprintf(buf, sizeof(buf), "%f", con->geoip.longitude);
+                    xmlSetProp(location, XMLSTR("longitude"), XMLSTR(buf));
+                }
+            }
+        }
+    }
+
     do {
         xmlNodePtr history = xmlNewChild(node, NULL, XMLSTR("history"), NULL);
         size_t i;
@@ -950,6 +982,80 @@ void admin_add_listeners_to_mount(source_t          *source,
     avl_tree_unlock(source->client_tree);
 }
 
+static void admin_add_geoip_to_mount__country(source_t          *source,
+                                       xmlNodePtr        parent,
+                                       operation_mode    mode,
+                                       const char        *code,
+                                       country_t         *country)
+{
+    if (country->listeners) {
+        xmlNodePtr node = xmlNewChild(parent, NULL, XMLSTR("country"), NULL);
+        char buf[22];
+
+        if (code)
+            xmlSetProp(node, XMLSTR("iso-alpha-2"), XMLSTR(code));
+
+        snprintf(buf, sizeof(buf), "%llu", (long long unsigned)country->listeners);
+        xmlNewTextChild(node, NULL, XMLSTR("listeners"), XMLSTR(buf));
+
+        snprintf(buf, sizeof(buf), "%llu", (long long unsigned)country->tls);
+        xmlNewTextChild(node, NULL, XMLSTR("tls"), XMLSTR(buf));
+
+        snprintf(buf, sizeof(buf), "%llu", (long long unsigned)country->ipv6);
+        xmlNewTextChild(node, NULL, XMLSTR("ipv6"), XMLSTR(buf));
+    }
+}
+
+void admin_add_geoip_to_mount(source_t          *source,
+                              xmlNodePtr        parent,
+                              operation_mode    mode)
+{
+    avl_node *client_node;
+    xmlNodePtr geoip = xmlNewChild(parent, NULL, XMLSTR("geoip"), NULL);
+    country_t countries[26][26];
+    country_t default_country;
+
+    memset(countries, 0, sizeof(countries));
+    memset(&default_country, 0, sizeof(default_country));
+
+    avl_tree_rlock(source->client_tree);
+    client_node = avl_get_first(source->client_tree);
+    while(client_node) {
+        client_t *client = client_node->key;
+        connection_t *con = client->con;
+        country_t *country = &default_country;
+
+        if (con && *con->geoip.iso_3166_1_alpha_2) {
+            const char *iso = client->con->geoip.iso_3166_1_alpha_2;
+
+            if ((iso[0] >= 'a' && iso[0] <= 'z') && (iso[1] >= 'a' && iso[1] <= 'z')) {
+                country = &(countries[iso[0] - 'a'][iso[1] - 'a']);
+            }
+        }
+        country->listeners++;
+
+        if (con) {
+            if (con->tls)
+                country->tls++;
+
+            if (con->ip && strchr(con->ip, ':'))
+                country->ipv6++;
+        }
+
+        client_node = avl_get_next(client_node);
+    }
+    avl_tree_unlock(source->client_tree);
+
+    for (size_t idx_a = 0; idx_a < 26; idx_a++) {
+        for (size_t idx_b = 0; idx_b < 26; idx_b++) {
+            const char code[3] = {idx_a + 'a', idx_b + 'a', 0};
+            admin_add_geoip_to_mount__country(source, geoip, mode, code, &(countries[idx_a][idx_b]));
+        }
+    }
+
+    admin_add_geoip_to_mount__country(source, geoip, mode, NULL, &default_country);
+}
+
 static void command_show_listeners(client_t *client,
                                    source_t *source,
                                    admin_format_t response)
@@ -970,6 +1076,7 @@ static void command_show_listeners(client_t *client,
     xmlNewTextChild(srcnode, NULL, XMLSTR(client->mode == OMODE_LEGACY ? "Listeners" : "listeners"), XMLSTR(buf));
 
     admin_add_listeners_to_mount(source, srcnode, client->mode);
+    admin_add_geoip_to_mount(source, srcnode, client->mode);
 
     admin_send_response(doc, client, response,
         LISTCLIENTS_HTML_REQUEST);

@@ -61,6 +61,11 @@ void admin_add_listeners_to_mount(source_t       *source,
                                   xmlNodePtr      parent,
                                   operation_mode  mode);
 
+void admin_add_geoip_to_mount(source_t          *source,
+                              xmlNodePtr        parent,
+                              operation_mode    mode);
+
+
 xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent);
 
 admin_command_id_t admin_get_command(const char *command);

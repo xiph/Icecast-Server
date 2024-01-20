@@ -134,6 +134,10 @@ typedef struct mount_identifier_tag mount_identifier_t;
 
 typedef struct string_renderer_tag string_renderer_t;
 
+/* ---[ geoip.[ch] ]--- */
+
+typedef struct geoip_db_tag geoip_db_t;
+
 /* ---[ event.[ch] ]--- */
 
 typedef struct event_tag event_t;
@@ -160,6 +164,7 @@ typedef void * refobject_t;
 /* --- [ For libigloo ]--- */
 #define igloo_RO_APPTYPES \
     igloo_RO_TYPE(string_renderer_t) \
+    igloo_RO_TYPE(geoip_db_t) \
     igloo_RO_TYPE(event_t) \
     igloo_RO_TYPE(event_registration_t) \
     igloo_RO_TYPE(module_t) \

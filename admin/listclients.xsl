@@ -25,6 +25,7 @@
                                         <th>Role</th>
                                         <th>Sec. connected</th>
                                         <th>User Agent</th>
+                                        <th>Location</th>
                                         <th class="actions">Action</th>
                                     </tr>
                                 </thead>
@@ -36,6 +37,10 @@
                                             <td><xsl:value-of select="role" /></td>
                                             <td><xsl:value-of select="connected" /></td>
                                             <td><xsl:value-of select="useragent" /></td>
+                                            <td>
+                                                <xsl:value-of select="geoip/country/@iso-alpha-2" />
+                                                <xsl:if test="geoip/location/@latitude and geoip/location/@longitude">&#160;<a href="https://www.openstreetmap.org/?mlat={geoip/location/@latitude}&amp;mlon={geoip/location/@longitude}&amp;zoom=7">On OSM</a></xsl:if>
+                                            </td>
                                             <td class="actions">
                                                 <a class="critical" href="/admin/ui/confirmkillclient.xsl?mount={../@mount}&amp;id={id}">Kick</a>
                                                 <a href="/admin/moveclients.xsl?mount={../@mount}&amp;id={id}">Move</a>
