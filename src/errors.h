@@ -59,11 +59,13 @@ struct icecast_error_tag {
     const int http_status;
     const char *uuid;
     const char *message;
+    const char *symbol;
 };
 
 typedef struct icecast_error_tag icecast_error_t;
 
 const icecast_error_t * error_get_by_id(icecast_error_id_t id);
 const icecast_error_t * error_get_by_uuid(const char *uuid);
+const icecast_error_t * error_get_by_index(size_t idx);
 
 #endif  /* __ERRORS_H__ */

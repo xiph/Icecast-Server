@@ -45,6 +45,7 @@
 #include <sys/utsname.h>
 #endif
 
+#include "icecasttypes.h"
 #include <igloo/error.h>
 
 #include "common/thread/thread.h"
@@ -93,6 +94,8 @@
 #include "prng.h"
 #include "geoip.h"
 #include "navigation.h"
+#include "valuefile.h"
+#include "string_renderer.h"
 
 #include <libxml/xmlmemory.h>
 
@@ -261,6 +264,13 @@ static void show_version(bool full)
     }
 }
 
+static void export_database(void)
+{
+    string_renderer_t * db = valuefile_export_database();
+    fputs(string_renderer_to_string_zero_copy(db), stdout);
+    igloo_ro_unref(&db);
+}
+
 static bool _parse_config_opts(int argc, char **argv, char *filename, size_t size)
 {
     int i;
@@ -301,6 +311,9 @@ static bool _parse_config_opts(int argc, char **argv, char *filename, size_t siz
             exit(0);
         } else if (strcmp(opt, "-V") == 0) {
             show_version(true);
+            exit(0);
+        } else if (strcmp(opt, "--export-database") == 0) {
+            export_database();
             exit(0);
         } else if (strcmp(opt, "-c") == 0) {
             if ((i + 1) < argc) {
