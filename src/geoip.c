@@ -57,6 +57,11 @@ geoip_db_t * geoip_db_new(const char *filename)
     MMDB_s mmdb;
     int status;
 
+    if (!filename) {
+        ICECAST_LOG_INFO("No geoip database given");
+        return NULL;
+    }
+
     status = MMDB_open(filename, MMDB_MODE_MMAP, &mmdb);
     if (status != MMDB_SUCCESS) {
         if (status == MMDB_IO_ERROR) {
