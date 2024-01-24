@@ -47,6 +47,7 @@ noinst_HEADERS = \
     fastevent.h \
     navigation.h \
     event.h \
+    event_stream.h \
     ping.h \
     acl.h auth.h \
     metadata_xiph.h \
@@ -114,6 +115,7 @@ icecast_SOURCES = \
     format_skeleton.c \
     format_opus.c \
     event.c \
+    event_stream.c \
     event_log.c \
     event_exec.c \
     acl.c \
