@@ -143,6 +143,10 @@ typedef struct geoip_db_tag geoip_db_t;
 typedef struct event_tag event_t;
 typedef struct event_registration_tag event_registration_t;
 
+/* ---[ event_stream.[ch] ]--- */
+
+typedef struct event_stream_event_tag event_stream_event_t;
+
 /* ---[ refobject.[ch] ]--- */
 
 typedef struct refobject_base_tag refobject_base_t;
@@ -167,6 +171,7 @@ typedef void * refobject_t;
     igloo_RO_TYPE(geoip_db_t) \
     igloo_RO_TYPE(event_t) \
     igloo_RO_TYPE(event_registration_t) \
+    igloo_RO_TYPE(event_stream_event_t) \
     igloo_RO_TYPE(module_t) \
     igloo_RO_TYPE(module_container_t)
 
