@@ -11,6 +11,7 @@
 #endif
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include <igloo/typedef.h>
 #include "icecasttypes.h"
