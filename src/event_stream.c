@@ -256,6 +256,32 @@ static void event_stream_send_to_client(client_t *client)
     }
 }
 
+static void event_stream_cleanup_queue(void)
+{
+    thread_mutex_lock(&event_stream_event_mutex);
+    {
+        static const size_t to_keep = 32;
+        event_stream_event_t *cur;
+        size_t count = 0;
+
+        cur = event_queue;
+        while (cur) {
+            count++;
+            cur = cur->next;
+        }
+
+        if (count > to_keep) {
+            for (size_t to_remove = count - to_keep; to_remove; to_remove--) {
+                cur = event_queue;
+                event_queue = cur->next;
+                cur->removed = 1;
+                cur->next = NULL;
+            }
+        }
+    }
+    thread_mutex_unlock(&event_stream_event_mutex);
+}
+
 static void *event_stream_thread_function(void *arg)
 {
     bool running = true;
@@ -264,6 +290,8 @@ static void *event_stream_thread_function(void *arg)
 
     do {
         thread_cond_timedwait(&event_stream_cond, 1000);
+
+        event_stream_cleanup_queue();
 
         {
             avl_tree_wlock(client_tree);
