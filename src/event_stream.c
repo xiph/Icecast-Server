@@ -247,13 +247,6 @@ static void event_stream_send_to_client(client_t *client)
             }
         }
     } while (going);
-
-
-    if (state->current_event->removed) {
-        ICECAST_LOG_INFO("Client %p %lu (%s) has fallen too far behind, removing",
-                client, client->con->id, client->con->ip);
-        client->con->error = 1;
-    }
 }
 
 static void event_stream_cleanup_queue(void)
@@ -305,6 +298,14 @@ static void *event_stream_thread_function(void *arg)
                 next = avl_get_next(next);
 
                 event_stream_send_to_client(client);
+                {
+                    event_stream_clientstate_t *state = client->format_data;
+                    if (state->current_event->removed) {
+                        ICECAST_LOG_INFO("Client %p %lu (%s) has fallen too far behind, removing",
+                                client, client->con->id, client->con->ip);
+                        client->con->error = 1;
+                    }
+                }
                 if (client->con->error) {
                     avl_delete(client_tree, (void *) client, _free_client);
                 }
