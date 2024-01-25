@@ -39,6 +39,8 @@
 struct event_stream_event_tag {
     igloo_ro_full_t __parent;
 
+    bool removed; // removed from the queue, clients referencing this are fallen too far behind
+
     const char * uuid;
     const char * rendered;
     size_t rendered_length;
@@ -245,6 +247,13 @@ static void event_stream_send_to_client(client_t *client)
             }
         }
     } while (going);
+
+
+    if (state->current_event->removed) {
+        ICECAST_LOG_INFO("Client %p %lu (%s) has fallen too far behind, removing",
+                client, client->con->id, client->con->ip);
+        client->con->error = 1;
+    }
 }
 
 static void *event_stream_thread_function(void *arg)
