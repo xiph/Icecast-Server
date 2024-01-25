@@ -183,6 +183,8 @@ void event_stream_add_client_inner(client_t *client, void *ud)
         event_stream_thread = thread_create("Event Stream Thread", event_stream_thread_function, (void *)NULL, THREAD_ATTACHED);
     }
     thread_mutex_unlock(&event_stream_event_mutex);
+
+    thread_cond_broadcast(&event_stream_cond);
 }
 
 void event_stream_add_client(client_t *client)
@@ -252,8 +254,7 @@ static void *event_stream_thread_function(void *arg)
     ICECAST_LOG_INFO("Good morning!");
 
     do {
-        thread_cond_wait(&event_stream_cond);
-        ICECAST_LOG_INFO("Tick!");
+        thread_cond_timedwait(&event_stream_cond, 1000);
 
         {
             avl_tree_wlock(client_tree);
