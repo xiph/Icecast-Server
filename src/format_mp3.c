@@ -39,6 +39,7 @@
 #include "source.h"
 #include "client.h"
 #include "connection.h"
+#include "event_stream.h"
 
 #include "stats.h"
 #include "format.h"
@@ -206,6 +207,7 @@ static void filter_shoutcast_metadata (source_t *source, char *metadata, unsigne
                 yp_touch (source->mount);
                 free (p);
                 playlist_push_track(source->history, &source->format->vc);
+                event_stream_emit_vc(source, &source->format->vc);
             }
         } while (0);
     }

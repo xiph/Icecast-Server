@@ -9,6 +9,8 @@
 #ifndef __EVENT_STREAM_H__
 #define __EVENT_STREAM_H__
 
+#include <vorbis/codec.h>
+
 #include "icecasttypes.h"
 
 igloo_RO_FORWARD_TYPE(event_stream_event_t);
@@ -18,5 +20,6 @@ void event_stream_shutdown(void);
 
 void event_stream_add_client(client_t *client);
 void event_stream_emit_event(event_t *event);
+void event_stream_emit_vc(source_t *source, vorbis_comment *vc);
 
 #endif

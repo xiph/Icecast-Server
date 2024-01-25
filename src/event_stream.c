@@ -19,6 +19,7 @@
 #include <igloo/error.h>
 #include <igloo/ro.h>
 #include <igloo/sp.h>
+#include <igloo/cs.h>
 #include <igloo/uuid.h>
 
 #include "common/thread/thread.h"
@@ -33,7 +34,9 @@
 #include "event.h"
 #include "client.h"
 #include "connection.h"
+#include "source.h"
 #include "errors.h"
+#include "format_mp3.h"
 #include "logging.h"
 #define CATMODULE "event-stream"
 
@@ -44,10 +47,12 @@ struct event_stream_event_tag {
 
     const char * uuid;
     const char * mount;
+    const char * source_instance_uuid;
     const char * rendered;
     size_t rendered_length;
 
     event_t *event;
+    vorbis_comment *vc;
 
     event_stream_event_t *next;
 };
@@ -95,6 +100,8 @@ static void event_stream_event_free(igloo_ro_t self)
 {
     event_stream_event_t *event = igloo_ro_to_type(self, event_stream_event_t);
     igloo_sp_unref(&(event->uuid), igloo_instance);
+    igloo_sp_unref(&(event->mount), igloo_instance);
+    igloo_sp_unref(&(event->source_instance_uuid), igloo_instance);
     igloo_sp_unref(&(event->rendered), igloo_instance);
     igloo_ro_unref(&(event->event));
     igloo_ro_unref(&(event->next));
@@ -255,6 +262,12 @@ void event_stream_add_client(client_t *client)
     fserve_add_client_callback(client, event_stream_add_client_inner, NULL);
 }
 
+static void event_stream_set_source(event_stream_event_t *event, source_t *source)
+{
+    igloo_sp_replace(source->mount, &(event->mount), igloo_instance);
+    igloo_sp_replace(source->instance_uuid, &(event->source_instance_uuid), igloo_instance);
+}
+
 void event_stream_emit_event(event_t *event)
 {
     event_stream_event_t *el = event_stream_event_new();
@@ -263,6 +276,22 @@ void event_stream_emit_event(event_t *event)
 
     igloo_ro_ref_replace(event, &(el->event), event_t);
     igloo_sp_replace(event_extra_get(event, EVENT_EXTRA_KEY_URI), &(el->mount), igloo_instance);
+
+    event_stream_queue(el);
+}
+
+void event_stream_emit_vc(source_t *source, vorbis_comment *vc)
+{
+    event_stream_event_t *el = event_stream_event_new();
+    if (!el)
+        return;
+
+    event_stream_set_source(el, source);
+
+    /* we only have a temp reference to vc, so we set it, render, and then unset before we queue. */
+    el->vc = vc;
+    event_stream_event_render(el);
+    el->vc = NULL;
 
     event_stream_queue(el);
 }
@@ -393,6 +422,8 @@ static void event_stream_event_render(event_stream_event_t *event)
     string_renderer_t * renderer;
     json_renderer_t *json;
     char *body;
+    bool has_type = false;
+    bool has_crude = false;
 
     if (event->rendered)
         return;
@@ -408,6 +439,9 @@ static void event_stream_event_render(event_stream_event_t *event)
     json_renderer_begin(json, JSON_ELEMENT_TYPE_OBJECT);
     if (event->event) {
         event_t *uevent = event->event;
+
+        has_type = true;
+        has_crude = true;
 
         json_renderer_write_key(json, "type", JSON_RENDERER_FLAGS_NONE);
         json_renderer_write_string(json, "event", JSON_RENDERER_FLAGS_NONE);
@@ -450,6 +484,111 @@ static void event_stream_event_render(event_stream_event_t *event)
         json_renderer_write_key(json, "mount", JSON_RENDERER_FLAGS_NONE);
         json_renderer_write_string(json, event->mount, JSON_RENDERER_FLAGS_NONE);
     }
+
+    if (event->vc) {
+        if (!has_type) {
+            json_renderer_write_key(json, "type", JSON_RENDERER_FLAGS_NONE);
+            json_renderer_write_string(json, "vc", JSON_RENDERER_FLAGS_NONE);
+            has_type = true;
+        }
+
+        json_renderer_write_key(json, "vc", JSON_RENDERER_FLAGS_NONE);
+        json_renderer_begin(json, JSON_ELEMENT_TYPE_OBJECT);
+        {
+            /* ok, this part is tricky, we first need to figure out all the keys.
+             * we however cheat here by assuming a few things.
+             * TODO: Fix this.
+             */
+            struct {
+                char name[64];
+                size_t count;
+            } keys[64];
+            memset(keys, 0, sizeof(keys));
+
+            /* it is an int in libvorbis, not a size_t */
+            for (int i = 0; i < event->vc->comments; i++) {
+                const char *comment = event->vc->user_comments[i];
+                const char *keyend = strchr(comment, '=');
+                bool found = false;
+                size_t keylen;
+
+                if (!keyend)
+                    continue;
+                keylen = keyend - comment;
+                if (keylen >= sizeof(keys->name))
+                    continue;
+
+                for (size_t j = 0; j < (sizeof(keys)/sizeof(*keys)); j++) {
+                    char *name = keys[j].name;
+
+                    if (*name) {
+                        if (strncasecmp(comment, name, keylen) == 0) {
+                            found = true;
+                            keys[j].count++;
+                        }
+                    }
+                }
+
+                if (found)
+                    break;
+
+                for (size_t j = 0; j < (sizeof(keys)/sizeof(*keys)); j++) {
+                    char *name = keys[j].name;
+
+                    if (!*name) {
+                        memcpy(name, comment, keylen);
+                        name[keylen] = 0;
+                        keys[j].count = 1;
+                        igloo_cs_to_upper(name);
+                        break;
+                    }
+                }
+            }
+
+            /* Now we have a list of all keys... */
+            for (size_t j = 0; j < (sizeof(keys)/sizeof(*keys)); j++) {
+                const char *name = keys[j].name;
+                if (!*name)
+                    continue;
+
+                json_renderer_write_key(json, name, JSON_RENDERER_FLAGS_NONE);
+                json_renderer_begin(json, JSON_ELEMENT_TYPE_ARRAY);
+                for (size_t i = 0; i < keys[j].count; i++) {
+                    const char *value = vorbis_comment_query(event->vc, name, i);
+                    json_renderer_write_string(json, value, JSON_RENDERER_FLAGS_NONE);
+                }
+                json_renderer_end(json);
+            }
+        }
+        json_renderer_end(json);
+
+        if (!has_crude) {
+            has_crude = true;
+            json_renderer_write_key(json, "crude", JSON_RENDERER_FLAGS_NONE);
+            json_renderer_begin(json, JSON_ELEMENT_TYPE_OBJECT);
+            {
+                static const char * display_title_keys[] = {"TITLE", MP3_METADATA_TITLE};
+                const char *display_title = NULL;
+                for (size_t i = 0; i < (sizeof(display_title_keys)/sizeof(*display_title_keys)); i++) {
+                    display_title = vorbis_comment_query(event->vc, display_title_keys[i], 0);
+                    if (display_title)
+                        break;
+                }
+                json_renderer_write_key(json, "display-title", JSON_RENDERER_FLAGS_NONE);
+                if (display_title) {
+                    json_renderer_write_string(json, display_title, JSON_RENDERER_FLAGS_NONE);
+                } else {
+                    json_renderer_write_null(json);
+                }
+                if (event->source_instance_uuid) {
+                    json_renderer_write_key(json, "source-instance", JSON_RENDERER_FLAGS_NONE);
+                    json_renderer_write_string(json, event->source_instance_uuid, JSON_RENDERER_FLAGS_NONE);
+                }
+            }
+            json_renderer_end(json);
+        }
+    }
+
     json_renderer_end(json);
 
     body = json_renderer_finish(&json);
