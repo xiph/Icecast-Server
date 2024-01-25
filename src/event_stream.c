@@ -445,6 +445,11 @@ static void event_stream_event_render(event_stream_event_t *event)
         }
         json_renderer_end(json);
     }
+
+    if (event->mount) {
+        json_renderer_write_key(json, "mount", JSON_RENDERER_FLAGS_NONE);
+        json_renderer_write_string(json, event->mount, JSON_RENDERER_FLAGS_NONE);
+    }
     json_renderer_end(json);
 
     body = json_renderer_finish(&json);
