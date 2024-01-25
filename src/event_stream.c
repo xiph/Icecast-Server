@@ -187,6 +187,7 @@ static void event_stream_add_client_inner(client_t *client, void *ud)
     event_stream_clientstate_t *state = calloc(1, sizeof(event_stream_clientstate_t));
     const char *mount = httpp_get_param(client->parser, "mount");
     const char *request_global = httpp_get_param(client->parser, "request-global");
+    const char *last_event_id = httpp_getvar(client->parser, "last-event-id");
 
     (void)ud;
 
@@ -204,7 +205,22 @@ static void event_stream_add_client_inner(client_t *client, void *ud)
         igloo_cs_to_bool(request_global, &(state->events_global));
 
     thread_mutex_lock(&event_stream_event_mutex);
-    igloo_ro_ref(event_queue, &(state->current_event), event_stream_event_t);
+    { /* find the best possible event! */
+        event_stream_event_t * next = event_queue;
+        event_stream_event_t * event = NULL;
+
+        while (next) {
+            event = next;
+            next = event->next;
+
+            if (last_event_id && strcmp(event->uuid, last_event_id) == 0 && next) {
+                event = next;
+                break;
+            }
+        }
+
+        igloo_ro_ref(event, &(state->current_event), event_stream_event_t);
+    }
     thread_mutex_unlock(&event_stream_event_mutex);
 
     client->format_data = state;
