@@ -271,7 +271,7 @@ static void event_stream_send_to_client(client_t *client)
     event_stream_clientstate_t *state = client->format_data;
     bool going = true;
 
-    ICECAST_LOG_INFO("Sending to client %p {.con.id = %llu}, with state %p", client, (long long unsigned int)client->con->id, state);
+    ICECAST_LOG_DINFO("Sending to client %p {.con.id = %llu}, with state %p", client, (long long unsigned int)client->con->id, state);
 
     do {
         if (!state->current_buffer) {
@@ -370,14 +370,6 @@ static void *event_stream_thread_function(void *arg)
 
         thread_mutex_lock(&event_stream_event_mutex);
         running = alive;
-
-        {
-            event_stream_event_t *head = event_queue;
-            while (head) {
-                ICECAST_LOG_INFO("Event: % #H", head->rendered);
-                head = head->next;
-            }
-        }
 
         thread_mutex_unlock(&event_stream_event_mutex);
     } while (running);
