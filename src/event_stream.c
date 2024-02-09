@@ -221,13 +221,16 @@ static void event_stream_add_client_inner(client_t *client, void *ud)
             event = next;
             next = event->next;
 
-            if (last_event_id && strcmp(event->uuid, last_event_id) == 0 && next) {
-                event = next;
+            if (last_event_id && strcmp(event->uuid, last_event_id) == 0) {
                 break;
             }
         }
 
         igloo_ro_ref(event, &(state->current_event), event_stream_event_t);
+
+        /* emulate the the state of us just being done */
+        state->current_buffer = "";
+        state->todo = 0;
     }
     thread_mutex_unlock(&event_stream_event_mutex);
 
