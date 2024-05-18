@@ -379,10 +379,23 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
     char *value;
     ice_config_t *config;
     char *admin;
+    char *content_language;
+    char *instance_uuid;
 
     config = config_get_config();
     admin = util_url_escape(config->admin);
     config_release_config();
+
+    {
+        avl_tree_rlock(global.source_tree);
+        source_t *source = source_find_mount(yp->mount);
+        instance_uuid = util_url_escape(source->instance_uuid);
+        avl_tree_unlock(global.source_tree);
+    }
+
+    value = stats_get_value(yp->mount, "content-language");
+    content_language = value ? util_url_escape(value) : NULL;
+    free(value);
 
     value = stats_get_value(yp->mount, "server_type");
     add_yp_info(yp, value, YP_SERVER_TYPE);
@@ -416,13 +429,19 @@ static int do_yp_add (ypdata_t *yp, char *s, unsigned len)
 
     update_yp_info(yp);
 
-    ret = snprintf(s, len, "action=add&admin=%s&sn=%s&genre=%s&cpswd=%s&desc="
-                    "%s&url=%s&listenurl=%s&type=%s&stype=%s&b=%s&samplerate=%s&channels=%s&audioinfo=%s",
+    ret = snprintf(s, len, "action=add&admin=%s&sn=%s&genre=%s&cpswd=%s"
+            "&desc=%s&url=%s&listenurl=%s&type=%s&stype=%s"
+            "&language=%s&sourceinstance=%s"
+            "&b=%s&samplerate=%s&channels=%s&audioinfo=%s",
                     admin,
                     yp->server_name, yp->server_genre, yp->cluster_password,
                     yp->server_desc, yp->url, yp->listen_url,
-                    yp->server_type, yp->subtype, yp->bitrate,
-                    yp->audio_samplerate, yp->audio_channels, yp->audio_info);
+                    yp->server_type, yp->subtype,
+                    content_language ? content_language : "", instance_uuid,
+                    yp->bitrate, yp->audio_samplerate, yp->audio_channels,
+                    yp->audio_info);
+    free(instance_uuid);
+    free(content_language);
     free(admin);
 
     if (ret >= (signed)len)
