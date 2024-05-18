@@ -53,6 +53,7 @@
 #include "listensocket.h"
 #include "refbuf.h"
 #include "client.h"
+#include "event_stream.h"
 #include "source.h"
 #include "global.h"
 #include "stats.h"
@@ -149,6 +150,7 @@
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
+#define EVENTSTREAM_RAW_REQUEST             "eventfeed"
 
 typedef struct {
     size_t listeners;
@@ -179,6 +181,7 @@ static void command_dumpfile_control    (client_t *client, source_t *source, adm
 static void command_manageauth          (client_t *client, source_t *source, admin_format_t response);
 static void command_updatemetadata      (client_t *client, source_t *source, admin_format_t response);
 static void command_buildm3u            (client_t *client, source_t *source, admin_format_t response);
+static void command_eventstream         (client_t *client, source_t *source, admin_format_t response);
 static void command_show_log            (client_t *client, source_t *source, admin_format_t response);
 static void command_mark_log            (client_t *client, source_t *source, admin_format_t response);
 static void command_dashboard           (client_t *client, source_t *source, admin_format_t response);
@@ -232,6 +235,7 @@ static const admin_command_handler_t handlers[] = {
     { UPDATEMETADATA_HTML_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_updatemetadata, NULL},
     { UPDATEMETADATA_JSON_REQUEST,          ADMINTYPE_MOUNT,        ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_updatemetadata, NULL},
     { BUILDM3U_RAW_REQUEST,                 ADMINTYPE_MOUNT,        ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_buildm3u, NULL},
+    { EVENTSTREAM_RAW_REQUEST,              ADMINTYPE_HYBRID,       ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_eventstream, NULL},
     { SHOWLOG_RAW_REQUEST,                  ADMINTYPE_GENERAL,      ADMIN_FORMAT_RAW,           ADMINSAFE_SAFE,     command_show_log, NULL},
     { SHOWLOG_HTML_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_HTML,          ADMINSAFE_SAFE,     command_show_log, NULL},
     { SHOWLOG_JSON_REQUEST,                 ADMINTYPE_GENERAL,      ADMIN_FORMAT_JSON,          ADMINSAFE_SAFE,     command_show_log, NULL},
@@ -1095,6 +1099,12 @@ static void command_buildm3u(client_t *client, source_t *source, admin_format_t 
 
     client_get_baseurl(client, NULL, buffer, sizeof(buffer), username, password, NULL, mount, "\r\n");
     client_send_buffer(client, 200, "audio/x-mpegurl", NULL, buffer, -1, "Content-Disposition: attachment; filename=listen.m3u\r\n");
+}
+
+static void command_eventstream         (client_t *client, source_t *source, admin_format_t response)
+{
+    (void)source, (void)response;
+    event_stream_add_client(client);
 }
 
 xmlNodePtr admin_add_role_to_authentication(auth_t *auth, xmlNodePtr parent)

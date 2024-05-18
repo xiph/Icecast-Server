@@ -37,6 +37,7 @@
 
 #include "stats.h"
 #include "playlist.h"
+#include "event_stream.h"
 #include "event.h"
 #include "format.h"
 #include "format_ogg.h"
@@ -332,6 +333,7 @@ static void update_comments(source_t *source)
     stats_event (source->mount, "display-title", title);
 
     playlist_push_track(source->history, &source->format->vc);
+    event_stream_emit_vc(source, &source->format->vc);
 
     codec = ogg_info->codecs;
     while (codec)

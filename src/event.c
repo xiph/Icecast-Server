@@ -21,6 +21,7 @@
 #include <igloo/sp.h>
 
 #include "event.h"
+#include "event_stream.h"
 #include "fastevent.h"
 #include "logging.h"
 #include "string_renderer.h"
@@ -426,6 +427,7 @@ void event_registration_push(event_registration_t **er, event_registration_t *ta
 /* event signaling */
 void event_emit(event_t *event) {
     fastevent_emit(FASTEVENT_TYPE_SLOWEVENT, FASTEVENT_FLAG_NONE, FASTEVENT_DATATYPE_EVENT, event);
+    event_stream_emit_event(event);
     thread_mutex_lock(&event_lock);
     event_push(&event_queue, event);
     thread_mutex_unlock(&event_lock);
@@ -475,21 +477,6 @@ void event_emit_va(const char *trigger, ...) {
     if (mount && mount->mounttype == MOUNT_TYPE_DEFAULT)
         event_push_reglist(event, mount->event);
     config_release_config();
-
-    /* This isn't perfectly clean but is an important speedup:
-     * If first element of reglist is NULL none of the above pushed in
-     * some registrations. If there are no registrations we can just drop
-     * this event now and here.
-     * We do this before inserting all the data into the object to avoid
-     * all the strdups() and stuff in case they aren't needed.
-     */
-#ifndef FASTEVENT_ENABLED
-    if (event->reglist[0] == NULL) {
-        /* we have no registrations, drop this event. */
-        igloo_ro_unref(&event);
-        return;
-    }
-#endif
 
     if (uri)
         extra_add(event, EVENT_EXTRA_KEY_URI, uri);

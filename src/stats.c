@@ -528,7 +528,7 @@ static void process_source_event (stats_event_t *event)
         snode = (stats_source_t *)calloc(1,sizeof(stats_source_t));
         if (snode == NULL)
             return;
-        ICECAST_LOG_DEBUG("new source stat %s", event->source);
+        ICECAST_LOG_DEBUG("new source stat %#H", event->source);
         snode->source = (char *)strdup(event->source);
         snode->stats_tree = avl_tree_new(_compare_stats, NULL);
         if (event->action == STATS_EVENT_HIDDEN)
@@ -546,7 +546,7 @@ static void process_source_event (stats_event_t *event)
                 return;
             /* adding node */
             if (event->value) {
-                ICECAST_LOG_DEBUG("new node %s (%s)", event->name, event->value);
+                ICECAST_LOG_DEBUG("new node %H on %#H (% H)", event->name, event->source, event->value);
                 node = (stats_node_t *)calloc(1,sizeof(stats_node_t));
                 node->name = (char *)strdup(event->name);
                 node->value = (char *)strdup(event->value);

@@ -88,6 +88,7 @@
 #include "yp.h"
 #include "auth.h"
 #include "event.h"
+#include "event_stream.h"
 #include "ping.h"
 #include "listensocket.h"
 #include "fastevent.h"
@@ -186,6 +187,7 @@ static void initialize_subsystems(void)
 static void shutdown_subsystems(void)
 {
     ICECAST_LOG_DEBUG("Shuting down subsystems...");
+    event_stream_shutdown();
     event_shutdown();
     fserve_shutdown();
     refbuf_shutdown();
@@ -785,6 +787,7 @@ int main(int argc, char **argv)
     slave_initialize();
     auth_initialise ();
     event_initialise();
+    event_stream_initialise();
 
     event_emit_global("icecast-start");
     _server_proc();
