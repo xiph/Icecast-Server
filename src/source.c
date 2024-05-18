@@ -1251,6 +1251,10 @@ static void source_apply_mount (ice_config_t *config, source_t *source, mount_pr
     }
     stats_event (source->mount, "bitrate", str);
 
+    if ((str = httpp_getvar(parser, "content-language"))) {
+        stats_event(source->mount, "content-language", str);
+    }
+
     /* handle MIME-type */
     if (mountinfo && mountinfo->type)
         stats_event (source->mount, "server_type", mountinfo->type);
