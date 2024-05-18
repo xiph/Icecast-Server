@@ -150,7 +150,7 @@
 #define DEFAULT_RAW_REQUEST                 ""
 #define DEFAULT_HTML_REQUEST                ""
 #define BUILDM3U_RAW_REQUEST                "buildm3u"
-#define EVENTSTREAM_RAW_REQUEST             "eventstream"
+#define EVENTSTREAM_RAW_REQUEST             "eventfeed"
 
 typedef struct {
     size_t listeners;
