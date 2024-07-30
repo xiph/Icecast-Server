@@ -16,6 +16,7 @@
 
 /* for strcmp() and strdup() */
 #include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "auth.h"

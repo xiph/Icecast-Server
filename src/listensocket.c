@@ -21,6 +21,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "common/net/sock.h"
 #include "common/thread/thread.h"

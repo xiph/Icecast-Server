@@ -15,6 +15,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "common/thread/thread.h"
