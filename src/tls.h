@@ -9,6 +9,8 @@
 #ifndef __TLS_H__
 #define __TLS_H__
 
+#include <stdbool.h>
+
 #include "common/net/sock.h"
 
 /* Do we have TLS Support? */
@@ -43,5 +45,7 @@ int        tls_got_shutdown(tls_t *tls);
 
 ssize_t    tls_read(tls_t *tls, void *buffer, size_t len);
 ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len);
+
+bool       tls_error(tls_t *tls);
 
 #endif

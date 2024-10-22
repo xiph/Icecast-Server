@@ -397,7 +397,7 @@ int client_read_bytes(client_t *client, void *buf, unsigned len)
     }
 
     if (bytes == -1 && client->con->error)
-        ICECAST_LOG_DEBUG("reading from connection has failed");
+        ICECAST_LOG_DEBUG("reading from connection has failed (client=%p, con=%p)", client, client->con);
 
     fastevent_emit(FASTEVENT_TYPE_CLIENT_READ, FASTEVENT_FLAG_MODIFICATION_ALLOWED, FASTEVENT_DATATYPE_OBRD, client, buf, (size_t)len, (ssize_t)bytes);
 

@@ -407,6 +407,10 @@ static int connection_read_tls(connection_t *con, void *buf, size_t len)
     ssize_t bytes = tls_read(con->tls, buf, len);
 
     if (bytes <= 0) {
+        if (tls_error(con->tls)) {
+            ICECAST_LOG_DEBUG("Client hit TLS error (con=%p, tls=%p)", con, con->tls);
+            con->error = 1;
+        }
         if (tls_want_io(con->tls) > 0)
             return -1;
         con->error = 1;
@@ -763,7 +767,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_entry_t
         }
 
         if (res != CLIENT_SLURP_SUCCESS) {
-            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit) {
+            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit || client->con->error) {
                 return CLIENT_SLURP_ERROR;
             }
         }
@@ -1147,7 +1151,7 @@ static void * _handle_connection(client_queue_t *queue)
                 httpp_initialize(parser, NULL);
                 client->parser = parser;
             }
-            if (already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) {
+            if ((already_parsed || httpp_parse (parser, client->refbuf->data, node->offset)) && !client->con->error) {
                 client->refbuf->len = 0;
 
                 /* early check if we need more data */
@@ -1187,7 +1191,7 @@ static void * _handle_connection(client_queue_t *queue)
                 client_queue_add(&_handle_queue, node);
             } else {
                 free_client_node(node);
-                ICECAST_LOG_ERROR("HTTP request parsing failed");
+                ICECAST_LOG_ERROR("HTTP request parsing failed (client=%p)", client);
                 client_destroy (client);
             }
         } else {

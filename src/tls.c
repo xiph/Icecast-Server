@@ -52,6 +52,7 @@ struct tls_tag {
     size_t refc;
     SSL *ssl;
     tls_ctx_t *ctx;
+    bool error;
 };
 
 void       tls_initialize(void)
@@ -241,10 +242,22 @@ int        tls_got_shutdown(tls_t *tls)
 
 ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
 {
+    int ret;
+
     if (!tls)
         return -1;
 
-    return SSL_read(tls->ssl, buffer, len);
+    ret = SSL_read(tls->ssl, buffer, len);
+    ICECAST_LOG_DDEBUG("Read on TLS (tls=%o, ret=%i)", tls, ret);
+
+    if (ret <= 0 && !tls->error) {
+        int error = SSL_get_error(tls->ssl, ret);
+        ICECAST_LOG_DEBUG("Zero read on TLS (tls=%p, ret=%i, error=%i)", tls, ret, error);
+        if (error == SSL_ERROR_SYSCALL || error == SSL_ERROR_SSL)
+            tls->error = true;
+    }
+
+    return ret;
 }
 ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
 {
@@ -268,6 +281,13 @@ ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
     }
 
     return ret;
+}
+
+bool       tls_error(tls_t *tls) {
+    if (!tls)
+        return true;
+
+    return tls->error;
 }
 #else
 void       tls_initialize(void)
@@ -323,6 +343,10 @@ ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
 ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
 {
     return -1;
+}
+
+bool       tls_error(tls_t *tls) {
+    return true;
 }
 
 #endif
