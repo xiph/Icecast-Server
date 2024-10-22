@@ -252,7 +252,7 @@ ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
 
     if (ret <= 0 && !tls->error) {
         int error = SSL_get_error(tls->ssl, ret);
-        ICECAST_LOG_DEBUG("Zero read on TLS (tls=%p, ret=%i, error=%i)", tls, ret, error);
+        ICECAST_LOG_DDEBUG("Zero read on TLS (tls=%p, ret=%i, error=%i)", tls, ret, error);
         if (error == SSL_ERROR_SYSCALL || error == SSL_ERROR_SSL)
             tls->error = true;
     }
