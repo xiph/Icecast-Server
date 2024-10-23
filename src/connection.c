@@ -1099,23 +1099,30 @@ static int _need_body(client_queue_entry_t *node)
 {
     client_t *client = node->client;
 
-    if (node->tried_body)
+    if (node->tried_body) {
+        ICECAST_LOG_DEBUG("tried_body is true (client=%p)", client);
         return 0;
+    }
 
     if (client->parser->req_type == httpp_req_source) {
         /* SOURCE connection. */
+        ICECAST_LOG_DEBUG("SOURCE connection (client=%p)", client);
         return 0;
     } else if (client->parser->req_type == httpp_req_put) {
         /* PUT connection.
          * TODO: We may need body for /admin/ but we do not know if it's an admin request yet.
          */
+        ICECAST_LOG_DEBUG("PUT connection (client=%p)", client);
         return 0;
     } else if (client->request_body_length != -1 && (size_t)client->request_body_length != client->request_body_read) {
+        ICECAST_LOG_DEBUG("request_body_length missmatch (client=%p)", client);
         return 1;
     } else if (client->request_body_length == -1 && client_body_eof(client) == 0) {
+        ICECAST_LOG_DEBUG("Unknown body length (client=%p)", client);
         return 1;
     }
 
+    ICECAST_LOG_DEBUG("No body (client=%p)", client);
     return 0;
 }
 

@@ -53,6 +53,7 @@ struct tls_tag {
     SSL *ssl;
     tls_ctx_t *ctx;
     bool error;
+    bool no_shutdown;
 };
 
 void       tls_initialize(void)
@@ -164,6 +165,8 @@ tls_t     *tls_new(tls_ctx_t *ctx)
     tls->ssl  = ssl;
     tls->ctx  = ctx;
 
+    ICECAST_LOG_DEBUG("tls_new(ctx=%p) = %p", ctx, tls);
+
     return tls;
 }
 void       tls_ref(tls_t *tls)
@@ -183,7 +186,14 @@ void       tls_unref(tls_t *tls)
     if (tls->refc)
         return;
 
-    SSL_shutdown(tls->ssl);
+    if (!tls->no_shutdown) {
+        int ret = SSL_shutdown(tls->ssl);
+        if (ret < 0) {
+            int error = SSL_get_error(tls->ssl, ret);
+            ICECAST_LOG_DEBUG("Shutdown unsuccessful: tls=%p, ret=%i, error=%i", tls, ret, error);
+        }
+    }
+
     SSL_free(tls->ssl);
 
     if (tls->ctx)
@@ -252,9 +262,11 @@ ssize_t    tls_read(tls_t *tls, void *buffer, size_t len)
 
     if (ret <= 0 && !tls->error) {
         int error = SSL_get_error(tls->ssl, ret);
-        ICECAST_LOG_DDEBUG("Zero read on TLS (tls=%p, ret=%i, error=%i)", tls, ret, error);
+        ICECAST_LOG_DEBUG("Zero read on TLS (tls=%p, ret=%i, error=%i)", tls, ret, error);
         if (error == SSL_ERROR_SYSCALL || error == SSL_ERROR_SSL)
             tls->error = true;
+        if (error == SSL_ERROR_SSL)
+            tls->no_shutdown = true;
     }
 
     return ret;
@@ -270,8 +282,10 @@ ssize_t    tls_write(tls_t *tls, const void *buffer, size_t len)
 
     if (ret <= 0) {
         switch (SSL_get_error(tls->ssl, ret)) {
-            case SSL_ERROR_SYSCALL:
             case SSL_ERROR_SSL:
+                tls->no_shutdown = true;
+                /* fall thru */
+            case SSL_ERROR_SYSCALL:
                 return -1;
                 break;
             default:
