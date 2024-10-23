@@ -767,7 +767,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_entry_t
         }
 
         if (res != CLIENT_SLURP_SUCCESS) {
-            if (client->con->con_time <= (time(NULL) - timeout) || client->request_body_read >= body_size_limit || client->con->error) {
+            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit || client->con->error) {
                 return CLIENT_SLURP_ERROR;
             }
         }
