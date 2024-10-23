@@ -767,7 +767,7 @@ static client_slurp_result_t process_request_body_queue_one(client_queue_entry_t
         }
 
         if (res != CLIENT_SLURP_SUCCESS) {
-            if (client->con->con_time <= timeout || client->request_body_read >= body_size_limit || client->con->error) {
+            if (client->con->con_time <= (time(NULL) - timeout) || client->request_body_read >= body_size_limit || client->con->error) {
                 return CLIENT_SLURP_ERROR;
             }
         }
@@ -1177,8 +1177,15 @@ static void * _handle_connection(client_queue_t *queue)
                         client_queue_add(&_body_queue, node);
                         continue;
                     } else {
-                        ICECAST_LOG_DEBUG("Success on fast lane");
+                        ICECAST_LOG_DEBUG("Success on fast lane (client=%p)", client);
                     }
+                }
+
+                if (client->request_body_length != -1 && (size_t)client->request_body_length != client->request_body_read) {
+                    ICECAST_LOG_DEBUG("Incomplete request, dropping client (client=%p)", client);
+                    free_client_node(node);
+                    client_destroy(client);
+                    continue;
                 }
 
                 rawuri = httpp_getvar(parser, HTTPP_VAR_URI);
